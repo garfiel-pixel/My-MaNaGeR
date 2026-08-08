@@ -1,1 +1,4 @@
+.git/
+.wrangler/
 _not-deployed/
+node_modules/

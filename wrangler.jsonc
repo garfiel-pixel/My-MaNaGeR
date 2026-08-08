@@ -1,0 +1,22 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "my-manager",
+  "compatibility_date": "2026-08-08",
+  "observability": {
+    "enabled": true
+  },
+  "assets": {
+    "directory": ".",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "exclude": [
+      ".git",
+      ".wrangler",
+      "_not-deployed",
+      "README.md"
+    ]
+  },
+  "compatibility_flags": [
+    "nodejs_compat"
+  ]
+}

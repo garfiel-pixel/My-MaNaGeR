@@ -8,7 +8,7 @@ var MMGR = window.MMGR || {};
   'use strict';
 
   const STORAGE_KEY = 'mmgr_state';
-  const SCHEMA_VERSION = 16;
+  const SCHEMA_VERSION = 17;
 
   // ---- Default State ----
   function getDefaultState() {
@@ -147,6 +147,13 @@ var MMGR = window.MMGR || {};
       // a `trace` of the exact state fields its text was drawn from, so the
       // zero-fabrication acceptance gate can be re-verified on every run.
       aiOutputs: {},
+      // PLAN-OF-ACTION-AI-VOICE-SYNC-v1 Rank 4.4: per-field write timestamps.
+      // { fieldName: iso-string } — stamped on every save for the TOP-LEVEL
+      // fields (plus nested charter keys) whose JSON actually changed since
+      // the previous save. This is the primitive the cross-device merge uses
+      // for last-write-wins PER FIELD instead of whole-document overwrite.
+      // Deliberately the lighter option over a CRDT rewrite (per the plan).
+      fieldTs: {},
       // MASTER-ACTION-PLAN-v3-STRICT Rank 3.1 (PLAN-OF-ACTION-AI-VOICE-SYNC-v1
       // Rank 3.4 companion): Core Mode vs Advanced Packs — progressive
       // disclosure. New projects start in CORE ONLY (Dashboard + WBS +
@@ -378,6 +385,14 @@ var MMGR = window.MMGR || {};
         if (state.packs[k] === undefined) state.packs[k] = true;
       });
       return state;
+    },
+    17: function(state) {
+      // V16 -> V17: PLAN-OF-ACTION-AI-VOICE-SYNC-v1 Rank 4.4 — per-field
+      // timestamps. Additive back-fill: no map yet, the first save stamps it.
+      if (!state.fieldTs || typeof state.fieldTs !== 'object' || Array.isArray(state.fieldTs)) {
+        state.fieldTs = {};
+      }
+      return state;
     }
   };
 
@@ -472,6 +487,70 @@ var MMGR = window.MMGR || {};
     }
   }
 
+  // ---- Rank 4.4: field-level last-write-wins merge ----
+  // Merges an externally supplied state (another device, a teammate's
+  // export) into the current state at FIELD granularity instead of the
+  // all-or-nothing replace adoptExternal performs. Each tracked top-level
+  // field keeps whichever side has the NEWER per-field timestamp
+  // (state.fieldTs, written by stampFieldTs on every save); timestamps that
+  // are missing defer to updatedAt, then to the LOCAL value — a tie never
+  // loses local data. Returns a report of decisions (or null on invalid
+  // input) so the caller can surface a human-readable summary.
+  //
+  // NOTE on exclusions: flags and config (including the AI provider key) are
+  // deliberately NOT in FIELD_KEYS — those are per-device preferences that
+  // must never leak across a merge. Do not "fix" that.
+  function mergeExternal(parsedState) {
+    const report = [];
+    try {
+      const incoming = migrate(parsedState);
+      if (!incoming || typeof incoming !== 'object') return null;
+      // Snapshot before mutating so a merge is undoable, like every other
+      // destructive op (adopt, cascade, clear-all, baseline restore). Only
+      // pushed once, at the first actual adoption — a pure no-op merge
+      // (nothing adopted) doesn't waste an undo slot.
+      let undoPushed = false;
+      const localTs = (_state.fieldTs && typeof _state.fieldTs === 'object') ? _state.fieldTs : {};
+      const incTs = (incoming.fieldTs && typeof incoming.fieldTs === 'object') ? incoming.fieldTs : {};
+      const localTime = _state.updatedAt || '';
+      const incTime = incoming.updatedAt || '';
+      let adopted = 0;
+      FIELD_KEYS.forEach(function(k) {
+        const hasLocal = _state[k] !== undefined;
+        const hasInc = incoming[k] !== undefined;
+        if (!hasInc) return; // incoming lacks the field -> keep local
+        const lt = localTs[k] || localTime;
+        const it = incTs[k] || incTime;
+        if (!hasLocal || (it > lt)) {
+          if (!undoPushed) { pushUndo(); undoPushed = true; }
+          _state[k] = incoming[k];
+          if (_state.fieldTs) _state.fieldTs[k] = it;
+          adopted++;
+          report.push({ field: k, side: 'incoming', reason: hasLocal ? 'newer-timestamp' : 'missing-locally' });
+        } else {
+          report.push({ field: k, side: 'local', reason: 'local-equal-or-newer' });
+        }
+      });
+      if (adopted > 0) {
+        _state.updatedAt = new Date().toISOString();
+        // CRITICAL: align the save-fingerprint with the POST-merge state so
+        // the save's stampFieldTs pass sees no diff. Otherwise every adopted
+        // field is re-stamped with the merge time, inflating its timestamp
+        // and silently rejecting a genuinely-newer edit in the NEXT round
+        // trip (device B edits 10:30, device A merged at 12:00 -> B's newer
+        // edit loses to A's inflated 12:00 stamp). Keep the incoming stamp.
+        _lastSaveFingerprint = fingerprintOf(_state);
+        _dirty = false;
+        save(true);
+        _changeListeners.forEach(fn => fn('merge'));
+      }
+      return { report: report, adopted: adopted, total: report.length };
+    } catch(e) {
+      console.warn('State merge failed:', e);
+      return null;
+    }
+  }
+
   function load() {
     try {
       const raw = localStorage.getItem(getProjectKey());
@@ -489,9 +568,50 @@ var MMGR = window.MMGR || {};
     return _state;
   }
 
+  // ---- Rank 4.4: per-field write timestamps ----
+  // Top-level fields whose JSON changed since the LAST save get stamped with
+  // the current updatedAt (plus nested charter keys — those are edited as
+  // subfields). The merge module (MMGR.Merge) reads these to decide
+  // last-write-wins per field instead of replacing the whole document.
+  const FIELD_KEYS = ['projectName', 'methodology', 'workWeek', 'theme', 'crosshairOn', 'userName', 'charter', 'tasks', 'meetings', 'meetingPromises', 'activeMeeting', 'resources', 'budgetLines', 'budgetEnvelope', 'spendLog', 'stakeholders', 'risks', 'issues', 'changes', 'logEntries', 'commsEntries', 'documents', 'closure', 'raci', 'sprint', 'dailySnapshots', 'dmaic', 'baseline', 'weatherRegion', 'siteLat', 'siteLon', 'sitePlace', 'wxCache', 'weatherLog', 'ldRate', 'wxViewDays', 'wxWindow', 'kbShowLeadtime', 'hlCritical', 'dailySnapshot', 'focusMode', 'streak', 'sentimentHistory', 'scheduleSlips', 'slipCauses', 'digestSnapshot', 'aiOutputs', 'packs'];
+  let _lastSaveFingerprint = null;
+
+  function fingerprintOf(s) {
+    const o = {};
+    FIELD_KEYS.forEach(function(k) { if (s[k] !== undefined) o[k] = s[k]; });
+    return JSON.stringify(o);
+  }
+
+  // Stamp fieldTs for every tracked key whose serialized value changed since
+  // the previous save (or all keys on the first save). Called once per save.
+  function stampFieldTs(nowIso) {
+    if (!_state) return;
+    if (!_state.fieldTs || typeof _state.fieldTs !== 'object') _state.fieldTs = {};
+    const fp = fingerprintOf(_state);
+    if (_lastSaveFingerprint === null) {
+      // First save in this session: stamp everything once so old state has a
+      // complete map; subsequent saves only stamp what actually changed.
+      FIELD_KEYS.forEach(function(k) { if (_state[k] !== undefined) _state.fieldTs[k] = nowIso; });
+    } else if (fp !== _lastSaveFingerprint) {
+      // Recompute the per-key diff the cheap way: compare each key's own
+      // serialization against the last fingerprint (we kept the full JSON).
+      let last = null;
+      try { last = JSON.parse(_lastSaveFingerprint); } catch (e) { last = {}; }
+      FIELD_KEYS.forEach(function(k) {
+        const a = _state[k] === undefined ? '__undef__' : JSON.stringify(_state[k]);
+        const b = last[k] === undefined ? '__undef__' : JSON.stringify(last[k]);
+        if (a !== b) _state.fieldTs[k] = nowIso;
+      });
+    }
+    _lastSaveFingerprint = fp;
+  }
+
   function save(immediate, opts) {
     if (!_state) return;
     _state.updatedAt = new Date().toISOString();
+    // Rank 4.4: stamp per-field timestamps BEFORE persisting so the saved
+    // blob carries the same map the merge will read.
+    stampFieldTs(_state.updatedAt);
     // File-backup watermark: stamping updatedAt and lastBackedUpAt with the
     // SAME timestamp keeps the dirty-indicator comparison exact (a backup is
     // only "clean" while no edit has landed after it).
@@ -768,6 +888,7 @@ var MMGR = window.MMGR || {};
     undoDepth: undoDepth,
     redoDepth: redoDepth,
     adoptExternal: adoptExternal,
+    mergeExternal: mergeExternal,
     flushSave: flushSave,
     restoreFromJournal: restoreFromJournal,
     journalPut: journalPut,

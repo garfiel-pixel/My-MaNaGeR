@@ -51,9 +51,10 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
   const p1 = await ev(`(function(){
     var s = MMGR.State.getState();
     var pk = s.packs || {};
-    return { exists: !!s.packs, allOn: ['schedule','money','governance','field','quality'].every(function(k){ return pk[k] === true; }), schema: s.schemaVersion };
+    return { exists: !!s.packs, allOn: ['schedule','money','governance','field','quality'].every(function(k){ return pk[k] === true; }), schema: s.schemaVersion, live: MMGR.State.SCHEMA_VERSION };
   })()`);
-  check('R01 packs: existing project migrates with ALL packs on (nothing disappears)', p1.exists && p1.allOn && p1.schema === 16, p1);
+  // Schema version must equal the LIVE version (17 as of Rank 4.4 fieldTs).
+  check('R01 packs: existing project migrates with ALL packs on (nothing disappears)', p1.exists && p1.allOn && p1.schema === p1.live, p1);
 
   // A brand-new project (default state) starts Core-only.
   const p2 = await ev(`(function(){

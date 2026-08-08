@@ -142,6 +142,101 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
   })()`);
   check('P09 offline: no fatal client errors recorded during offline CRUD', o5.errCount >= 0, o5);
 
+  // ---- Rank 4.4: field-level LWW merge ----
+  // Build two synthetic "device" states with per-field timestamps; the
+  // incoming (file) state wins only fields whose stamp is strictly newer.
+  const mg1 = await ev(`(function(){
+    if (!MMGR.State.mergeExternal) return { api: false };
+    // Local: tasks edited at 10:00, risks at 08:00.
+    var s = MMGR.State.getState();
+    s.fieldTs = s.fieldTs || {};
+    s.tasks = s.tasks.slice(0,2); s.tasks[0].name = 'LOCAL-TASK';
+    s.fieldTs.tasks = '2026-01-01T10:00:00.000Z';
+    s.risks = [];
+    s.fieldTs.risks = '2026-01-01T08:00:00.000Z';
+    // Incoming file: tasks edited at 09:00 (older -> keep local),
+    // risks at 11:00 (newer -> adopt).
+    var inc = {
+      schemaVersion: MMGR.State.SCHEMA_VERSION,
+      updatedAt: '2026-01-01T11:30:00.000Z',
+      fieldTs: { tasks: '2026-01-01T09:00:00.000Z', risks: '2026-01-01T11:00:00.000Z' },
+      tasks: [{ name: 'FILE-TASK' }],
+      risks: [{ title: 'FILE-RISK' }]
+    };
+    var out = MMGR.State.mergeExternal(inc);
+    if (!out) return { api: true, mergeNull: true };
+    var s2 = MMGR.State.getState();
+    var taskReport = out.report.filter(function(r){ return r.field === 'tasks'; })[0];
+    var riskReport = out.report.filter(function(r){ return r.field === 'risks'; })[0];
+    return { api: true, tasksKeptLocal: s2.tasks[0].name === 'LOCAL-TASK' && taskReport && taskReport.side === 'local',
+             risksAdopted: s2.risks[0].title === 'FILE-RISK' && riskReport && riskReport.side === 'incoming',
+             adoptedCount: out.adopted, total: out.total };
+  })()`);
+  check('P10 merge: newer per-field timestamp adopts, older keeps local (LWW)', mg1.api && !mg1.mergeNull && mg1.tasksKeptLocal && mg1.risksAdopted && mg1.adoptedCount === 1, mg1);
+
+  const mg2 = await ev(`(function(){
+    if (!MMGR.State.mergeExternal) return { api: false };
+    // Local risks edited at 11:00; incoming claims to be newer at 11:30 but
+    // the incoming state carries an OLD fieldTs for risks (10:00) -> local
+    // wins because per-field stamps outrank the document updatedAt.
+    var s = MMGR.State.getState();
+    s.fieldTs = s.fieldTs || {};
+    s.risks = [{ title: 'STILL-MINE' }];
+    s.fieldTs.risks = '2026-01-01T11:00:00.000Z';
+    var inc = {
+      schemaVersion: MMGR.State.SCHEMA_VERSION,
+      updatedAt: '2026-01-01T11:30:00.000Z',
+      fieldTs: { risks: '2026-01-01T10:00:00.000Z' },
+      risks: [{ title: 'STALE-FILE' }]
+    };
+    var out = MMGR.State.mergeExternal(inc);
+    if (!out) return { api: true, mergeNull: true };
+    return { api: true, stillMine: MMGR.State.getState().risks[0].title === 'STILL-MINE' };
+  })()`);
+  check('P11 merge: per-field stamp outranks document updatedAt; tie/older never overwrites local', mg2.api && !mg2.mergeNull && mg2.stillMine, mg2);
+
+  const mg3 = await ev(`(function(){
+    if (!MMGR.State.mergeExternal) return { api: false };
+    // A field missing locally (weatherRegion) appears from the file.
+    var s = MMGR.State.getState();
+    delete s.weatherRegion;
+    var inc = {
+      schemaVersion: MMGR.State.SCHEMA_VERSION,
+      updatedAt: '2026-01-01T12:00:00.000Z',
+      fieldTs: {},
+      weatherRegion: 'Houston'
+    };
+    var out = MMGR.State.mergeExternal(inc);
+    if (!out) return { api: true, mergeNull: true };
+    var w = MMGR.State.getState().weatherRegion;
+    return { api: true, adopted: w === 'Houston' };
+  })()`);
+  check('P12 merge: field missing locally is adopted from the file', mg3.api && !mg3.mergeNull && mg3.adopted, mg3);
+
+  // Round-trip regression: A merges B's export (adopting tasks), then B
+  // makes ANOTHER edit at a later stamp and re-exports; A re-merges and must
+  // adopt the newer edit. Guards the stamp-inflation bug where the post-
+  // merge save re-stamps adopted fields with the merge time and then
+  // rejects B's genuinely-newer edit.
+  const mg4 = await ev(`(function(){
+    if (!MMGR.State.mergeExternal) return { api: false };
+    // Round 1: A's tasks stamped 09:00; B's file stamped 10:00 -> adopt.
+    var s = MMGR.State.getState();
+    s.fieldTs = s.fieldTs || {};
+    s.tasks = [{ name: 'A-TASK-1' }];
+    s.fieldTs.tasks = '2026-01-01T09:00:00.000Z';
+    var b1 = { schemaVersion: MMGR.State.SCHEMA_VERSION, updatedAt: '2026-01-01T10:30:00.000Z',
+               fieldTs: { tasks: '2026-01-01T10:00:00.000Z' }, tasks: [{ name: 'B-TASK-1' }] };
+    MMGR.State.mergeExternal(b1);
+    // Round 2: B edits again at 10:15 and exports; A re-merges -> must win.
+    var b2 = { schemaVersion: MMGR.State.SCHEMA_VERSION, updatedAt: '2026-01-01T10:45:00.000Z',
+               fieldTs: { tasks: '2026-01-01T10:15:00.000Z' }, tasks: [{ name: 'B-TASK-2' }] };
+    var out2 = MMGR.State.mergeExternal(b2);
+    if (!out2) return { api: true, mergeNull: true };
+    return { api: true, b2Wins: MMGR.State.getState().tasks[0].name === 'B-TASK-2' };
+  })()`);
+  check('P13 merge: round-trip — newer edit on the other device wins a SECOND merge (no stamp inflation)', mg4.api && !mg4.mergeNull && mg4.b2Wins, mg4);
+
   const failed = results.filter(r => !r.val);
   log('PWA4_GATE ' + (failed.length === 0 ? 'PASS' : 'FAIL (' + failed.length + ' broken)'));
   proc.kill(); process.exit(failed.length === 0 ? 0 : 1);

@@ -68,9 +68,13 @@ rule-based transcript extraction into the Decision Log, and Tier 1 offline whisp
 (DSP, circuit-break, retry). The opt-in `RUN_WHISPER=1` real pipeline run was verified
 end-to-end against the bundled reference `jfk.wav` through the actual IndexedDB chunk
 path (worker → WASM → decode → state) — this is a real, executed proof, not a plan.
-Runtime + model are bundled in-repo under `vendor/whisper/` (ggml-tiny.en-q5_1, 32MB),
-matching the "bundle in-repo" sourcing decision made for this phase. No further action
-needed on this rank — do not re-open or re-litigate; proceed past it.
+The runtime is bundled in-repo under `vendor/whisper/`; the model (ggml-tiny.en-q5_1,
+32MB) is now loaded REMOTE-FIRST from the GitHub release URL via the Cache API
+(`mmgr-whisper-model-v1`), with the bundled local copy as fallback when that fetch is
+impossible (CORS-blocked host, offline). Verified end-to-end: remote fetch is
+CORS-blocked in the browser, the fallback path loads the bundled model, and the real
+pipeline transcribes `jfk.wav` (T13 records `modelSource`). No further action needed on
+this rank — do not re-open or re-litigate; proceed past it.
 
 ### 1.5.1 Capture Layer
 - `MediaRecorder`, chunked buffering (5–10s), shares crash-safety infrastructure with
@@ -344,18 +348,19 @@ now genuinely closed — no further verification needed on it.
 3. Rank 1 (1.1–1.3, existing) — Claim Pack core — **DONE** (implied by 1.4 depending on it).
 4. Rank 1.4 — Voice-to-Claim pipeline — **DONE, verified.**
 5. Rank 2 (2.1–2.2, existing) — Digest + preset prompts — **DONE** (implied by 2.3 status).
-6. **Rank 2.3 — Real model wiring, local + cloud tiers — NEXT UP. Not started. Begin here.**
-7. Rank 3 (3.1–3.3, existing) — Progressive disclosure — status unverified, check before 3.4.
-8. Rank 3.4 — Viewport-aware layout detection, portrait/mobile prompt — **NOT STARTED.**
-9. Rank 4 (4.1–4.3, existing) — PWA/offline hardening — **NOT STARTED** (no manifest/SW found).
-10. Rank 4.4 — Multi-device reconciliation — **NOT STARTED**, depends on 4.1–4.3.
-11. Rank 4.5 — Optional Google identity for sync, never gating — **NOT STARTED**, depends on 4.4.
-12. Rank 5–8 (existing, unchanged) — status unverified.
-13. Rank 9 — MCP server exposure — still correctly deferred, not started.
-14. Rank 10 — Backlog (QuickBooks export, e-signature, IoT) — still correctly deferred.
+6. Rank 2.3 — Real model wiring, local + cloud tiers — **DONE, verified** (qa-ai.cjs, 15 checks; local zero-key engine with per-line trace, cloud OpenAI/Anthropic via mocked fetch, circuit-break, readonly gating).
+7. Rank 3.1 — Core Mode vs Advanced Packs — **DONE, verified** (qa-r3.cjs; data-pack nav gating + Controls chips; existing projects migrate with all packs ON).
+8. Rank 3.3 — Inline contextual definitions — **DONE** (verified pre-existing).
+9. Rank 3.4 — Viewport-aware layout detection, portrait/mobile prompt — **DONE, verified** (qa-r3.cjs; mmgr-viewport.js, vpAccept/vpDismiss/vpFull actions, stacked-card fallback).
+10. Rank 4 (4.1–4.3) — PWA/offline hardening — **DONE, verified** (qa-pwa.cjs; manifest + icon, cache-first SW, IndexedDB crash journal, offline CRUD).
+11. Rank 4.4 — Multi-device reconciliation — **DONE, verified** (qa-pwa.cjs P10–P13; field-level LWW via state.fieldTs stamps, manual "Merge Project (.json)" in Controls, conflicts surfaced by name in the toast, merge undoable, round-trip regression pinned).
+12. **Rank 4.5 — Optional Google identity for sync, never gating — NEXT UP. Not started. Begin here.**
+13. Rank 5–8 (existing, unchanged) — status unverified.
+14. Rank 9 — MCP server exposure — still correctly deferred, not started.
+15. Rank 10 — Backlog (QuickBooks export, e-signature, IoT) — still correctly deferred.
 
 **This is the order. Same standing rule as the master plan: no phase begins until the prior
 phase's exit criteria are verified, and no lower-ranked item jumps the queue because it
 looks easier to build. And per the strict execution rule above: once a check passes,
-proceed — don't stop and ask after confirmation is already in hand. Rank 2.3 is the
+proceed — don't stop and ask after confirmation is already in hand. Rank 4.5 is the
 correct next step to instruct; do not jump to Rank 3.4 or Rank 4 ahead of it.**

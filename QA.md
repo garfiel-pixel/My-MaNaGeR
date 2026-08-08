@@ -30,15 +30,18 @@ node qa-r3.cjs     # RANK 3 gate — Core Mode vs Advanced Packs (3.1): new proj
                    #   device, simplified view + escape hatch, no re-prompt (13)
 node qa-pwa.cjs    # RANK 4 gate — PWA manifest + cache-first SW registration,
                    #   IndexedDB crash journal (4.2: wiped-LS restore), and
-                   #   100% offline core CRUD with network disabled (4.3) (9)
+                   #   100% offline core CRUD with network disabled (4.3), and
+                   #   field-level LWW merge (4.4): per-field timestamps adopt
+                   #   only strictly-newer, ties keep local (12)
 node qa-voice.cjs  # RANK 1.5 gate — voice capture: chunked IndexedDB persistence,
                    #   abrupt-kill durability, Tier 0 circuit-break, zero-AI
                    #   transcript extraction into Decision Log + promises,
                    #   Tier 1 offline whisper: DSP, circuit-break, retry (29)
                    # OPT-IN real offline pipeline (worker+wasm+model+decode):
-RUN_WHISPER=1 node qa-voice.cjs   # ~1-2 min; proves the bundled whisper
-                   #   runtime transcribes the reference jfk.wav end to end
-                   #   through the real IndexedDB chunk path (T10-T12)
+RUN_WHISPER=1 node qa-voice.cjs   # ~1-2 min; proves the whisper runtime
+                   #   transcribes the reference jfk.wav end to end through
+                   #   the real IndexedDB chunk path (T10-T12); model loads
+                   #   remote-first (Cache API) with bundled fallback (T13)
 node qa-full.cjs   # full 148-check battery (schema v10 features + regressions)
 ```
 
@@ -83,8 +86,11 @@ Every harness exits 0 only when every check passes and prints a `PASS` line
 
 ## 5. Rank 1.5 Tier 1 (offline whisper WASM) notes
 
-- Runtime + model are bundled in-repo under `vendor/whisper/` (provenance and
-  sizes in `vendor/whisper/README.md`). Model: ggml-tiny.en-q5_1 (32 MB).
+- Runtime is bundled in-repo under `vendor/whisper/` (provenance and sizes
+  in `vendor/whisper/README.md`). Model: ggml-tiny.en-q5_1 (32 MB), loaded
+  remote-first from the GitHub release URL via Cache API (`mmgr-whisper-
+  model-v1`), with the bundled local copy as fallback when the remote fetch
+  is impossible (CORS-blocked host, offline).
 - The page CSP includes `script-src 'wasm-unsafe-eval'` — the narrow WASM
   allowance; it enables no eval().
 - `serve.cjs` maps `.wasm` -> application/wasm and `.bin` -> octet-stream.

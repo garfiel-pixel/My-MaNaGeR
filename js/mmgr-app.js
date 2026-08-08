@@ -1265,6 +1265,43 @@ var MMGR = window.MMGR || {};
     ev.target.value = '';
   }
 
+  // Rank 4.4: field-level merge of an exported project file into the current
+  // plan. Every tracked field keeps whichever side is newer (per-field
+  // timestamps, falling back to updatedAt); ties keep the LOCAL value, so a
+  // merge never silently discards local edits. Reports a per-field summary.
+  function mergeProjectFile(ev) {
+    const file = ev.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      let parsed = null;
+      try { parsed = JSON.parse(e.target.result); }
+      catch (err) { showToast('Invalid project file.', 'err'); return; }
+      const out = ns.State.mergeExternal(parsed);
+      if (!out) { showToast('Invalid project file.', 'err'); return; }
+      R.renderAll();
+      if (ns.Charter) ns.Charter.loadCharterData();
+      if (ns.Sprint) ns.Sprint.loadSprintData();
+      // Surface every two-way conflict by NAME — never silently resolved.
+      // A conflict is a field present on BOTH sides; the newer stamp wins
+      // and the loser is named in the toast so the user can verify it.
+      const conflicts = out.report.filter(r => r.reason === 'newer-timestamp' || r.reason === 'local-equal-or-newer');
+      // Cap the named list — a full project import can conflict on dozens of
+      // fields and would overflow the toast.
+      const NAMED = 5;
+      const names = conflicts.slice(0, NAMED).map(r => r.field).join(', ');
+      const more = conflicts.length > NAMED ? ', +' + (conflicts.length - NAMED) + ' more' : '';
+      const fromFile = out.report.filter(r => r.side === 'incoming').length;
+      const keptLocal = out.report.length - fromFile;
+      const summary = names
+        ? 'Merged ' + fromFile + ' field(s) from file, kept ' + keptLocal + ' local. Conflicting fields (newest edit won): ' + names + more + '.'
+        : 'Merged ' + fromFile + ' field(s) from file, kept ' + keptLocal + ' local. No field had edits on both sides.';
+      showToast(summary, out.adopted > 0 ? 'ok' : 'warn');
+    };
+    reader.readAsText(file);
+    ev.target.value = '';
+  }
+
   function saveBaseline() {
     ns.State.saveBaseline();
     showToast('Baseline saved!', 'ok');
@@ -1397,6 +1434,7 @@ var MMGR = window.MMGR || {};
     loadClip: loadClip,
     saveProjectFile: saveProjectFile,
     loadProjectFile: loadProjectFile,
+    mergeProjectFile: mergeProjectFile,
     saveBaseline: saveBaseline,
     checkAccess: checkAccess
   };
@@ -1574,6 +1612,8 @@ window.MMGR = MMGR;
     'setWorkWeek': (el) => window.MMGR.App.setWorkWeek(el.value),
     'loadProjectFileClick': () => { document.getElementById('load-file').click(); },
     'loadProjectFile': (el) => window.MMGR.App.loadProjectFile({ target: el }),
+    'mergeProjectFileClick': () => { document.getElementById('merge-file').click(); },
+    'mergeProjectFile': (el) => window.MMGR.App.mergeProjectFile({ target: el }),
     'print': () => window.print(),
     // Charter fields
     'updCharter': (el) => {
@@ -1774,7 +1814,7 @@ window.MMGR = MMGR;
     const action = el.getAttribute('data-action');
     if (!guardReadonly(action)) return;
     const handler = ACTION_MAP[action];
-    if (handler && (action === 'updEnvelope' || action === 'saveSprint' || action === 'setWorkWeek' || action === 'setRegion' || action === 'loadProjectFile' || action === 'updCharter' || action === 'updClose' || action === 'setUserName' || action === 'addRaciTaskFromPicker' || action === 'addRaciPersonFromPicker' || action === 'updField' || action === 'updTaskField' || action === 'updKPI' || action === 'updKPILink' || action === 'updKPIDir' || action === 'updSpendEntry' || action === 'updRaciTask' || action === 'updRaciPerson' || action === 'claimSetCause' || action === 'aiSetTier' || action === 'aiSetProvider' || action === 'aiSetEndpoint' || action === 'aiSetModel' || action === 'aiSetKey')) {
+    if (handler && (action === 'updEnvelope' || action === 'saveSprint' || action === 'setWorkWeek' || action === 'setRegion' || action === 'loadProjectFile' || action === 'mergeProjectFile' || action === 'updCharter' || action === 'updClose' || action === 'setUserName' || action === 'addRaciTaskFromPicker' || action === 'addRaciPersonFromPicker' || action === 'updField' || action === 'updTaskField' || action === 'updKPI' || action === 'updKPILink' || action === 'updKPIDir' || action === 'updSpendEntry' || action === 'updRaciTask' || action === 'updRaciPerson' || action === 'claimSetCause' || action === 'aiSetTier' || action === 'aiSetProvider' || action === 'aiSetEndpoint' || action === 'aiSetModel' || action === 'aiSetKey')) {
       handler(el, e);
     }
   });

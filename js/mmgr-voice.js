@@ -16,11 +16,14 @@
      circuit-broken: if speech recognition is unavailable or errors,
      capture continues silently and the transcript stays hand-editable.
      Tier 1 (whisper.cpp/WASM, TRUE OFFLINE) is LIVE in this build — the
-     prebuilt runtime + ggml-tiny.en-q5_1 model are bundled in-repo
-     (vendor/whisper/) per the user's bundling decision, so offline
-     transcription works from first run with zero network and zero keys.
-     Tier 1 is batch-on-stop: live captions stream during the meeting,
-     then whisper produces the definitive transcript when recording stops.
+     prebuilt runtime is bundled in-repo (vendor/whisper/), and the
+     ggml-tiny.en-q5_1 model is fetched ONCE from a GitHub release URL and
+     cached via the Cache API (mmgr-whisper-model-v1). If that fetch is
+     impossible (CORS-blocked release host, offline), init falls back to
+     the bundled local copy, so offline transcription works from first run
+     with zero keys. Tier 1 is batch-on-stop: live captions stream during
+     the meeting, then whisper produces the definitive transcript when
+     recording stops.
      Tier 2 (cloud, BYO key) remains registered and gated.
    - 1.5.4 Rule-based extraction (NO AI dependency) — keyword
      patterns ("I'll", "by Friday", "we agreed") write straight
@@ -57,7 +60,7 @@ var MMGR = window.MMGR || {};
   // capture pipeline; Tier 2 is opt-in BYO-key, circuit-broken like weather).
   const TIERS = {
     tier0: { id: 'tier0', label: 'Live captions (browser speech)', offline: false, key: false, gated: false },
-    tier1: { id: 'tier1', label: 'Offline transcription (whisper WASM)', offline: true, key: false, gated: false, model: 'ggml-tiny.en-q5_1 (31 MB, bundled in-repo)' },
+    tier1: { id: 'tier1', label: 'Offline transcription (whisper WASM)', offline: true, key: false, gated: false, model: 'ggml-tiny.en-q5_1 (31 MB, cached after first download)' },
     tier2: { id: 'tier2', label: 'Cloud transcription (BYO key)', offline: false, key: true, gated: true }
   };
 
@@ -488,15 +491,45 @@ var MMGR = window.MMGR || {};
   }
 
   // ---- Tier 1: offline whisper.cpp WASM transcription (1.5.2) -----------
-  // Prebuilt @fugood/node-whisper-wasm runtime + ggml-tiny.en-q5_1 model
-  // are bundled in-repo under vendor/whisper/ (user's bundling decision:
-  // fully offline from first run). Batch-on-stop architecture: Tier 0
-  // streams captions live; on Stop, whisper transcribes the full recording
-  // in a module worker and writes the definitive transcript into unified
-  // state. Circuit-broken like Tier 0 — any failure leaves the captions
-  // intact and never blocks ending the meeting.
+  // Prebuilt @fugood/node-whisper-wasm runtime is bundled in-repo under
+  // vendor/whisper/; the ggml-tiny.en-q5_1 model is fetched once from the
+  // GitHub release URL and cached via the Cache API (remote-first, user
+  // change), falling back to the bundled local copy when that fetch is
+  // impossible. Batch-on-stop architecture: Tier 0 streams captions live;
+  // on Stop, whisper transcribes the full recording in a module worker and
+  // writes the definitive transcript into unified state. Circuit-broken
+  // like Tier 0 — any failure leaves the captions intact and never blocks
+  // ending the meeting.
   const TIER1_ENTRY = 'vendor/whisper/index.js';
-  const TIER1_MODEL_PATH = 'vendor/whisper/ggml-tiny.en-q5_1.bin';
+  // Remote-first model hosting (user change): the ggml-tiny.en-q5_1 binary
+  // is fetched ONCE from the release URL and cached locally via the Cache
+  // API (mmgr-whisper-model-v1) so repeat loads are instant and offline.
+  // If the remote fetch is impossible — the release host is CORS-blocked
+  // for browser fetches (github release assets send no
+  // Access-Control-Allow-Origin) or the device is offline — init falls back
+  // to the bundled local copy so Tier 1 never silently breaks.
+  const TIER1_MODEL_URL = 'https://github.com/garfiel-pixel/My-MaNaGeR/releases/download/v1.0-model/ggml-tiny.en-q5_1.bin';
+  const TIER1_MODEL_FALLBACK = 'vendor/whisper/ggml-tiny.en-q5_1.bin';
+  const TIER1_MODEL_CACHE = 'mmgr-whisper-model-v1';
+
+  // Download the Tier 1 model exactly once and serve repeat loads from the
+  // Cache API. Returns the model bytes as an ArrayBuffer. Throws when the
+  // fetch fails (CORS-blocked release host, offline, no Cache API) or when
+  // the host answers with an error status — callers fall back to the
+  // bundled local model in that case. Throwing on !response.ok matters: an
+  // error-page body must never be handed to whisper as "model bytes".
+  async function getModelBytes() {
+    if (typeof caches === 'undefined') throw new Error('Cache API unavailable (insecure context?)');
+    const cache = await caches.open(TIER1_MODEL_CACHE);
+    let response = await cache.match(TIER1_MODEL_URL);
+    if (!response) {
+      response = await fetch(TIER1_MODEL_URL);
+      if (!response.ok) throw new Error('model download failed: HTTP ' + response.status);
+      await cache.put(TIER1_MODEL_URL, response.clone());
+    }
+    return response.arrayBuffer();
+  }
+
   let _t1 = {
     promise: null,     // memoized init promise (cleared on failure -> retry)
     ready: false,
@@ -504,33 +537,68 @@ var MMGR = window.MMGR || {};
     transcribing: false,
     progress: 0,
     lastErr: null,
-    pendingKick: null  // newest session requested while one is still running
+    pendingKick: null, // newest session requested while one is still running
+    modelSource: null  // 'remote-cache' | 'local-fallback' | 'hook' (diagnostic)
   };
 
   function _t1Url(p) { return new URL(p, document.baseURI).href; }
+
+  // Load the whisper runtime and init a context against a model source.
+  // Shared by the remote (Blob URL of cached bytes) and local-fallback
+  // paths so both get identical single-thread configuration.
+  async function _t1InitRuntime(modelPath, cacheModel) {
+    const mod = await import(_t1Url(TIER1_ENTRY));
+    // Force the single-thread artifact: static hosts (this dev server
+    // included) do not send COOP/COEP, so SharedArrayBuffer is
+    // unavailable — the loader would fall back anyway; forcing it keeps
+    // the runtime path deterministic across hosts. configureWasm throws
+    // once the runtime is already loaded (the module singleton is shared)
+    // — that is fine: the first configure wins, later calls are no-ops.
+    if (typeof mod.configureWasm === 'function') {
+      try { mod.configureWasm({ threads: false }); } catch (e) { /* already configured */ }
+    }
+    return mod.initWhisper({ filePath: modelPath, cacheModel: cacheModel });
+  }
 
   async function _initTier1Impl(forcedModelUrl) {
     // forcedModelUrl is a test/diagnostic hook: it MUST stay fully detached
     // from _t1 so a forced failure can never corrupt the real runtime state.
     const target = forcedModelUrl ? { ready: false, ctx: null, lastErr: null } : _t1;
     try {
-      const mod = await import(_t1Url(TIER1_ENTRY));
-      // Force the single-thread artifact: static hosts (this dev server
-      // included) do not send COOP/COEP, so SharedArrayBuffer is
-      // unavailable — the loader would fall back anyway; forcing it keeps
-      // the runtime path deterministic across hosts. configureWasm throws
-      // once the runtime is already loaded (the module singleton is shared)
-      // — that is fine: the first configure wins, later calls are no-ops.
-      if (typeof mod.configureWasm === 'function') {
-        try { mod.configureWasm({ threads: false }); } catch (e) { /* already configured */ }
+      let modelPath, cacheModel, modelSource;
+      if (forcedModelUrl) {
+        // Diagnostic hook: deterministic, no network, no cache writes.
+        modelPath = _t1Url(forcedModelUrl);
+        cacheModel = true;
+        modelSource = 'hook';
+      } else {
+        // Production: remote-first. Fetch (or read from Cache API) the
+        // model bytes, wrap them in a Blob URL, and hand that URL to the
+        // whisper runtime. initWhisper accepts a fetchable URL, not raw
+        // bytes, so the Blob URL is the bridge. cacheModel=false here: the
+        // Cache API already persists the model under TIER1_MODEL_CACHE,
+        // and a Blob URL is not a stable Cache key for the runtime.
+        try {
+          const bytes = await getModelBytes();
+          modelPath = URL.createObjectURL(new Blob([bytes], { type: 'application/octet-stream' }));
+          cacheModel = false;
+          modelSource = 'remote-cache';
+        } catch (remoteErr) {
+          // CORS-blocked host or offline: fall back to the bundled copy so
+          // offline Tier 1 keeps working from first run. Record why.
+          if (ns.Errors && ns.Errors.log) {
+            ns.Errors.log('voice-tier1: remote model fetch failed (' + ((remoteErr && remoteErr.message) || String(remoteErr)) + ') — using bundled model', 'voice-tier1');
+          }
+          modelPath = _t1Url(TIER1_MODEL_FALLBACK);
+          cacheModel = true; // bundled copy: runtime Cache Storage is fine
+          modelSource = 'local-fallback';
+        }
       }
-      const ctx = await mod.initWhisper({
-        filePath: _t1Url(forcedModelUrl || TIER1_MODEL_PATH),
-        cacheModel: true // Cache Storage: repeat loads are instant offline
-      });
+      const ctx = await _t1InitRuntime(modelPath, cacheModel);
       target.ctx = ctx;
       target.ready = true;
       target.lastErr = null;
+      target.modelSource = modelSource;
     } catch (err) {
       target.ready = false;
       target.ctx = null;
@@ -558,7 +626,8 @@ var MMGR = window.MMGR || {};
       transcribing: _t1.transcribing,
       progress: _t1.progress,
       error: _t1.lastErr ? String((_t1.lastErr && _t1.lastErr.message) || _t1.lastErr) : null,
-      model: TIER1_MODEL_PATH
+      model: TIER1_MODEL_URL,
+      modelSource: _t1.modelSource
     };
   }
 
@@ -893,7 +962,7 @@ var MMGR = window.MMGR || {};
           t1row = '<div class="voice-t1 voice-t1-err"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-alert-triangle"></use></svg> Offline transcription failed — captions kept. <button class="btn btn-n btn-s" data-action="voiceTranscribeOffline">Retry</button></div>';
         } else {
           t1row = '<div class="g6 voice-t1"><button class="btn btn-n btn-s" data-action="voiceTranscribeOffline"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cpu"></use></svg> Transcribe Offline</button>' +
-            '<span class="voice-sub">Runs fully in-browser via bundled whisper — no network, no key. First run loads a 31 MB model from this site.</span></div>';
+            '<span class="voice-sub">Runs fully in-browser via whisper — no key. First run downloads the 31 MB model once and caches it; if the download is blocked it uses the bundled copy.</span></div>';
         }
       }
       html = '<div class="voice-card">' +
@@ -964,9 +1033,10 @@ var MMGR = window.MMGR || {};
     renderCaptureSection: renderCaptureSection,
     checkRecovery: checkRecovery,
     dismissRecovery: dismissRecovery,
-    // Tier 1: offline whisper WASM (bundled in-repo)
+    // Tier 1: offline whisper WASM (remote-first model, local fallback)
     initTier1: initTier1,
     warmTier1: warmTier1,
+    getModelBytes: getModelBytes,
     tier1Ready: tier1Ready,
     tier1Status: tier1Status,
     transcribeOffline: transcribeOffline,

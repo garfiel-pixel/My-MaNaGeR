@@ -37,8 +37,13 @@
       no key configured the cloud tier never fires, and the local tier
       (Tier A) needs no network at all. A custom provider endpoint would
       need its host added here, same as any other connect-src entry.
+  - connect-src also adds the Tier 1 whisper model release hosts:
+      https://github.com https://release-assets.githubusercontent.com
+      (mmgr-voice.js fetches ggml-tiny.en-q5_1.bin from the GitHub release
+      once, caches it via Cache API, and falls back to the bundled copy if
+      the fetch is blocked).
 -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self' https://api.open-meteo.com https://geocoding-api.open-meteo.com https://api.openai.com https://api.anthropic.com; base-uri 'self'; form-action 'self';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self' https://api.open-meteo.com https://geocoding-api.open-meteo.com https://api.openai.com https://api.anthropic.com https://github.com https://release-assets.githubusercontent.com; base-uri 'self'; form-action 'self';">
 </head>
 <body>
 
@@ -900,6 +905,8 @@
     <button class="btn btn-g full mb7"  data-action="saveProjectFile"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-save"></use></svg> Save Project (.json)</button>
     <button class="btn btn-n full mb7"  data-action="loadProjectFileClick"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-folder-open"></use></svg> Load Project</button>
     <input type="file" id="load-file" accept=".json,application/json" class="hide" data-action="loadProjectFile">
+    <button class="btn btn-o full mb7" data-action="mergeProjectFileClick" title="Merge a project file into the current plan field-by-field (newest edit wins per field). Your local fields are never lost on a tie."><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> Merge Project (.json)</button>
+    <input type="file" id="merge-file" accept=".json,application/json" class="hide" data-action="mergeProjectFile">
     <button class="btn btn-o full mb7"  data-action="saveBaseline"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-pin"></use></svg> Save Baseline (Snapshot)</button>
     <button class="btn btn-n full mb7"  data-action="restoreBaseline"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-corner-down-left"></use></svg> Restore Baseline</button>
     <div class="sr " ><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-corner-down-left"></use></svg> Undo / Redo</span><span class="g6"><button class="btn btn-n btn-s" data-action="undo" id="undo-btn">Undo</button><button class="btn btn-n btn-s" data-action="redo" id="redo-btn">Redo</button></span></div>

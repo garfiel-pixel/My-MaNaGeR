@@ -66,13 +66,13 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
   const t1 = await ev(`(function(){
     MMGR.AiWin.setAiCfg({ tier: 'local' });
     var s = MMGR.State.getState();
-    return { tier: s.config.ai.tier, schema: s.schemaVersion,
+    return { tier: s.config.ai.tier, schema: s.schemaVersion, live: MMGR.State.SCHEMA_VERSION,
       merged: MMGR.Net.getConfig().ai.tier,
       aiOutputs: typeof s.aiOutputs === 'object' && s.aiOutputs !== null };
   })()`);
-  // Schema must equal the CURRENT schema version (16 as of Rank 3.1 packs) —
-  // the point is the toggle itself never bumps it.
-  check('A03 toggle: setAiCfg(local) -> state.config.ai.tier=local, schema unchanged, aiOutputs exists', t1.tier === 'local' && t1.schema === 16 && t1.merged === 'local' && t1.aiOutputs, t1);
+  // Schema must equal the CURRENT schema version — the point is the toggle
+  // itself never bumps it (config-only by design).
+  check('A03 toggle: setAiCfg(local) -> state.config.ai.tier=local, schema unchanged, aiOutputs exists', t1.tier === 'local' && t1.schema === t1.live && t1.merged === 'local' && t1.aiOutputs, t1);
 
   // ---- 3. Tier A (local): one-click preset writes state.aiOutputs with trace ----
   const l1 = await ev(`(async function(){

@@ -173,6 +173,16 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
   check('T03 tier1: circuit-break — bad model path resolves false, no throw', t1cb.ok === false && !!t1cb.err, t1cb);
   const t1no = await ev('MMGR.Voice.transcribeOffline();');
   check('T04 tier1: transcribeOffline with no session returns false gracefully', t1no === false, t1no);
+  // Remote-first model (user change): the binary comes from the GitHub
+  // release URL, cached once via Cache API; status must report the URL and
+  // getModelBytes must be exported. In THIS harness the release host is
+  // CORS-blocked for browser fetches, so getModelBytes must either return
+  // bytes (if a CORS proxy ever fronts it) or throw gracefully — never hang.
+  const t1url = await ev('MMGR.Voice.tier1Status().model');
+  const t1api = await ev('typeof MMGR.Voice.getModelBytes === "function"');
+  check('T06 tier1 model: status reports the remote release URL + getModelBytes exported', typeof t1url === 'string' && t1url.indexOf('github.com') > -1 && t1api === true, { t1url, t1api });
+  const t1gb = await ev('(async function(){ try { var b = await MMGR.Voice.getModelBytes(); return { resolved: true, bytes: b instanceof ArrayBuffer, len: b && b.byteLength }; } catch (e) { return { resolved: true, threw: true, msg: String(e && e.message || e) }; } })()');
+  check('T07 tier1 model: getModelBytes resolves (bytes or graceful CORS throw, never hangs)', t1gb && t1gb.resolved === true && (t1gb.bytes === true || t1gb.threw === true), t1gb);
   // Dedupe regression (review fix): the same meeting extracted twice (e.g.
   // endMeeting from partial captions, then whisper completion from the full
   // text) must not duplicate Decision Log / promise entries.
@@ -203,6 +213,12 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
     }
     check('T11 real: whisper transcribes jfk offline -> transcript on stored meeting', done === true && tx.length > 15, { done, tx: tx.slice(0, 120), cm });
     check('T12 real: captureMethod=tier1 on the stored meeting record', cm === 'tier1', cm);
+    // The real pipeline just ran production initTier1() with no forced URL:
+    // its modelSource must be tracked (remote-cache if the CORS-proxied
+    // release ever succeeds, otherwise local-fallback) — proving the
+    // remote-first seam is what actually served the model.
+    const t1src = await ev('MMGR.Voice.tier1Status().modelSource');
+    check('T13 real: production init tracked its model source (remote-cache or local-fallback)', t1src === 'remote-cache' || t1src === 'local-fallback', t1src);
   } else {
     log('RUN_WHISPER=1 to execute the real offline whisper end-to-end check (worker + wasm + model).');
   }

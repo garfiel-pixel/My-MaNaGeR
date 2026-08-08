@@ -33,6 +33,53 @@ var MMGR = window.MMGR || {};
   //   'dismiss' -> user dismissed the prompt; don't ask again on this device
   const PREF_PREFIX = 'mmgr_vp_';
 
+  // ---- PLAN-OF-ACTION-LIQUID-GLASS-UI Rank 3.5: shared capability signal ---
+  // ONE detection path, TWO consumers. The same isHighEnd() verdict that
+  // decides simplified-vs-full layout on narrow screens also decides
+  // Premium-glass-vs-CSS-glass, so a low-end device never pays for a heavy
+  // WebGL layer it was already spared by the layout logic. The glass mode
+  // preference lives in the same device-level slot family as the viewport
+  // prefs (localStorage, never project state).
+  //   'css'     -> CSS backdrop-filter glass (the universal default)
+  //   'premium' -> opt-in Three.js liquid-glass engine (capable devices only)
+  const GLASS_KEY = 'mmgr_glass_mode';
+
+  // Hardware-capability floor (3.5.2): enough parallel cores AND a sane
+  // devicePixelRatio. A genuine low-end profile reports premium as
+  // unavailable REGARDLESS of any stored preference — capability floor
+  // overrides preference, preference never overrides incapability.
+  function hasWebGL() {
+    try {
+      const c = document.createElement('canvas');
+      return !!(c.getContext('webgl2') || c.getContext('webgl'));
+    } catch (e) { return false; }
+  }
+  function isHighEnd() {
+    // Test hook (same convention as qa-voice's forcedModelUrl): a QA gate
+    // can force the verdict deterministically. Production never sets it.
+    if (typeof window.__mmgrForceHighEnd === 'boolean') return window.__mmgrForceHighEnd;
+    const cores = (typeof navigator !== 'undefined' && navigator.hardwareConcurrency) || 4;
+    const dpr = (typeof window !== 'undefined' && window.devicePixelRatio) || 1;
+    return cores >= 6 && dpr <= 2.5 && hasWebGL();
+  }
+
+  function getGlassMode() {
+    try { return localStorage.getItem(GLASS_KEY) === 'premium' ? 'premium' : 'css'; }
+    catch (e) { return 'css'; }
+  }
+  function setGlassMode(mode) {
+    try { localStorage.setItem(GLASS_KEY, mode === 'premium' ? 'premium' : 'css'); } catch (e) { /* ignore */ }
+  }
+  // The single decision both consumers read. Premium requires: stored
+  // preference 'premium' AND capability floor AND a wide viewport (a narrow
+  // screen gets CSS glass + the simplified layout, never a heavy engine).
+  function effectiveGlassMode() {
+    if (getGlassMode() !== 'premium') return 'css';
+    if (!isHighEnd()) return 'css'; // capability floor overrides preference
+    if (isNarrow()) return 'css';   // shared detection: narrow => CSS only
+    return 'premium';
+  }
+
   function prefKey(section) { return PREF_PREFIX + section; }
 
   function getPref(section) {
@@ -155,7 +202,14 @@ var MMGR = window.MMGR || {};
     accept: accept,
     dismiss: dismiss,
     clearPref: clearPref,
-    getPref: getPref
+    getPref: getPref,
+    // Rank 3.5 (PLAN-OF-ACTION-LIQUID-GLASS-UI): shared capability signal
+    // + glass mode preference. One detection path, two consumers.
+    hasWebGL: hasWebGL,
+    isHighEnd: isHighEnd,
+    getGlassMode: getGlassMode,
+    setGlassMode: setGlassMode,
+    effectiveGlassMode: effectiveGlassMode
   };
 })(MMGR);
 window.MMGR = MMGR;

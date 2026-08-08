@@ -169,8 +169,15 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
   check('T01 tier1: registry ungated (ships with the build)', t1reg && t1reg.gated === false, t1reg);
   const t1math = await ev('(function(){ try { var ac = new AudioContext(); var b = ac.createBuffer(2, 48000, 48000); var d0 = b.getChannelData(0), d1 = b.getChannelData(1); for (var i = 0; i < d0.length; i++) { d0[i] = 0.5; d1[i] = 1.0; } var mono = MMGR.Voice.mixToMono16k(b); ac.close(); if (!mono) return { err: "null" }; var ok = mono.length === 16000; for (var j = 0; ok && j < mono.length; j++) { if (Math.abs(mono[j] - 0.75) > 1e-3) ok = false; } return { len: mono.length, ok: ok, first: mono[0] }; } catch (e) { return { err: String(e) }; } })()');
   check('T02 tier1: mixToMono16k -> 1s stereo 48k downmixes to 16k mono avg', t1math.ok === true && t1math.len === 16000, t1math);
-  const t1cb = await ev('(async function(){ var ok = await MMGR.Voice.initTier1("vendor/whisper/NO-SUCH-MODEL.bin"); return { ok: ok, err: MMGR.Voice.tier1Status().error }; })()');
-  check('T03 tier1: circuit-break — bad model path resolves false, no throw', t1cb.ok === false && !!t1cb.err, t1cb);
+  const t1cb = await ev('(async function(){ var ok = await MMGR.Voice.initTier1("vendor/whisper/NO-SUCH-MODEL.bin"); return { ok: ok }; })()');
+  // NOTE (skeptical-audit fix): the old assertion ALSO required
+  // tier1Status().error to be truthy — but the forced hook is deliberately
+  // DETACHED from the production _t1 state, so that read was the production
+  // error slot. It only ever passed while the production model was BROKEN
+  // (a stale error left behind by the failed load). With the model source
+  // fixed, production init succeeds, the slot is null, and the correct
+  // circuit-break contract is simply: resolves false, never throws.
+  check('T03 tier1: circuit-break — bad model path resolves false, no throw', t1cb.ok === false, t1cb);
   const t1no = await ev('MMGR.Voice.transcribeOffline();');
   check('T04 tier1: transcribeOffline with no session returns false gracefully', t1no === false, t1no);
   // Remote-first model (user change): the binary comes from the GitHub
@@ -180,7 +187,14 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
   // bytes (if a CORS proxy ever fronts it) or throw gracefully — never hang.
   const t1url = await ev('MMGR.Voice.tier1Status().model');
   const t1api = await ev('typeof MMGR.Voice.getModelBytes === "function"');
-  check('T06 tier1 model: status reports the remote release URL + getModelBytes exported', typeof t1url === 'string' && t1url.indexOf('github.com') > -1 && t1api === true, { t1url, t1api });
+  // NOTE (skeptical-audit fix): the URL assertion previously required
+  // 'github.com'. The GitHub release asset host is CORS-blocked for browser
+  // fetches (no Access-Control-Allow-Origin), so the remote-first path was
+  // broken and Tier 1 failed end-to-end. The model is now served from the
+  // CORS-enabled HuggingFace mirror (verified Access-Control-Allow-Origin:
+  // *). Accept either a github.com or huggingface.co source URL.
+  const t1urlOk = typeof t1url === 'string' && (t1url.indexOf('huggingface.co') > -1 || t1url.indexOf('github.com') > -1);
+  check('T06 tier1 model: status reports a real model source URL + getModelBytes exported', t1urlOk && t1api === true, { t1url, t1api });
   const t1gb = await ev('(async function(){ try { var b = await MMGR.Voice.getModelBytes(); return { resolved: true, bytes: b instanceof ArrayBuffer, len: b && b.byteLength }; } catch (e) { return { resolved: true, threw: true, msg: String(e && e.message || e) }; } })()');
   check('T07 tier1 model: getModelBytes resolves (bytes or graceful CORS throw, never hangs)', t1gb && t1gb.resolved === true && (t1gb.bytes === true || t1gb.threw === true), t1gb);
   // Dedupe regression (review fix): the same meeting extracted twice (e.g.

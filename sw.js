@@ -52,7 +52,9 @@ const SHELL = [
   'js/mmgr-claim.js',
   'js/mmgr-digest.js',
   'js/mmgr-ai.js',
-  'js/mmgr-viewport.js'
+  'js/mmgr-viewport.js',
+  'js/mmgr-glass.js',
+  'js/mmgr-sync.js'
 ];
 
 self.addEventListener('install', function(e) {

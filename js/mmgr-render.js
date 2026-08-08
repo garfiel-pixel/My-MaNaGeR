@@ -1077,6 +1077,11 @@ var MMGR = window.MMGR || {};
     // Rank 3.4: viewport-aware layout detection — offer the one-time
     // simplified-view prompt for dense sections on narrow screens.
     if (ns.Viewport && ns.Viewport.maybePrompt) ns.Viewport.maybePrompt(section);
+    // PLAN-OF-ACTION-LIQUID-GLASS-UI §2: the SAME detection signal also
+    // drives the glass engine choice — one signal, two consumers (layout
+    // simplification and glass-engine selection). Section changes re-check
+    // so a resize/switch into a narrow view never leaves a heavy engine on.
+    if (ns.Glass && ns.Glass.sync) ns.Glass.sync();
   }
 
   // ---- WBS ----

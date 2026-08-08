@@ -32,17 +32,28 @@ node qa-pwa.cjs    # RANK 4 gate — PWA manifest + cache-first SW registration,
                    #   IndexedDB crash journal (4.2: wiped-LS restore), and
                    #   100% offline core CRUD with network disabled (4.3), and
                    #   field-level LWW merge (4.4): per-field timestamps adopt
-                   #   only strictly-newer, ties keep local (12)
+                   #   only strictly-newer, ties keep local (13)
 node qa-voice.cjs  # RANK 1.5 gate — voice capture: chunked IndexedDB persistence,
                    #   abrupt-kill durability, Tier 0 circuit-break, zero-AI
                    #   transcript extraction into Decision Log + promises,
-                   #   Tier 1 offline whisper: DSP, circuit-break, retry (29)
+                   #   Tier 1 offline whisper: DSP, circuit-break, retry (37)
                    # OPT-IN real offline pipeline (worker+wasm+model+decode):
 RUN_WHISPER=1 node qa-voice.cjs   # ~1-2 min; proves the whisper runtime
                    #   transcribes the reference jfk.wav end to end through
                    #   the real IndexedDB chunk path (T10-T12); model loads
-                   #   remote-first (Cache API) with bundled fallback (T13)
-node qa-full.cjs   # full 148-check battery (schema v10 features + regressions)
+                   #   remote-first (Cache API) from the CORS-enabled Hugging
+                   #   Face mirror with bundled local copy as fallback (T13)
+node qa-glass.cjs  # RANK 3.5 gate — Dual-Engine Glass UI: CSS glass ships as
+                   #   the default .card treatment, capability + preference
+                   #   detection (low-end floor overrides pref), settings
+                   #   toggle off-by-default, premium inert until toggled
+                   #   (zero-net hard gate), pinned Three.js @0.160.0, shared
+                   #   teardown — repeated on/off cycles leak no WebGL (12)
+node qa-sync.cjs   # RANK 4.5 gate — optional Google identity for sync: never
+                   #   gating, identity = pairing label only, merge + JSON
+                   #   export/import fully working signed-out, single
+                   #   dismissible suggestion after multi-device use (13)
+node qa-full.cjs   # full 167-check battery (schema v10 features + regressions)
 ```
 
 Legacy probes (superseded by qa-p0, kept as focused regression probes):
@@ -53,7 +64,7 @@ node qa-typing.cjs # WBS typing survives updTaskField re-render
 ```
 
 Every harness exits 0 only when every check passes and prints a `PASS` line
-(`P0_GATE PASS`, `QA SUMMARY: 148 passed / 0 failed of 148`, ...).
+(`P0_GATE PASS`, `QA SUMMARY: 167 passed / 0 failed of 167`, ...).
 
 ## 3. Phase gates
 
@@ -88,11 +99,16 @@ Every harness exits 0 only when every check passes and prints a `PASS` line
 
 - Runtime is bundled in-repo under `vendor/whisper/` (provenance and sizes
   in `vendor/whisper/README.md`). Model: ggml-tiny.en-q5_1 (32 MB), loaded
-  remote-first from the GitHub release URL via Cache API (`mmgr-whisper-
-  model-v1`), with the bundled local copy as fallback when the remote fetch
-  is impossible (CORS-blocked host, offline).
+  remote-first via Cache API (`mmgr-whisper-model-v1`) from the Hugging Face
+  mirror `huggingface.co/ggerganov/whisper.cpp` (CORS-enabled — verified
+  `Access-Control-Allow-Origin: *`), with the bundled local copy as fallback
+  when the remote fetch is impossible (offline). The previously-referenced
+  GitHub release URL is CORS-blocked in browsers (no ACAO header) and must
+  not be used as the remote source; this was fixed in the same session that
+  verified T10–T13 end-to-end.
 - The page CSP includes `script-src 'wasm-unsafe-eval'` — the narrow WASM
-  allowance; it enables no eval().
+  allowance; it enables no eval(). `connect-src` additionally allows
+  `huggingface.co` and `*.cdn.hf.co` (the mirror's redirect target).
 - `serve.cjs` maps `.wasm` -> application/wasm and `.bin` -> octet-stream.
 - Tier 1 is batch-on-stop, runs in a module worker, and is circuit-broken:
   any failure keeps the hand-editable Tier 0 captions and never blocks

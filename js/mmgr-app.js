@@ -178,6 +178,20 @@ var MMGR = window.MMGR || {};
       }
     });
 
+    // PLAN-OF-ACTION-LIQUID-GLASS-UI 3.5.2/3.5.4: apply the glass engine on
+    // boot if the device preference + capability floor allow it. Also sync
+    // the settings toggle's checked state to the stored preference. The
+    // engine is dynamically imported and only then — zero cost otherwise.
+    if (ns.Viewport && ns.Viewport.getGlassMode) {
+      const gt = U.$('glass-tgl');
+      if (gt) gt.checked = ns.Viewport.getGlassMode() === 'premium';
+    }
+    if (ns.Glass && ns.Glass.sync) ns.Glass.sync();
+
+    // Rank 4.5: render the optional sync identity section (device label,
+    // never a gate) into the Controls drawer.
+    if (ns.Sync && ns.Sync.renderSyncSection) ns.Sync.renderSyncSection();
+
     // Run validation
     const issues = ns.State.validate();
     if (issues.length > 0) {
@@ -198,6 +212,41 @@ var MMGR = window.MMGR || {};
     const isLight = tgl ? tgl.checked : S().theme !== 'dark';
     document.body.classList.toggle('dark-mode', !isLight);
     ns.State.updateState(function(s) { s.theme = isLight ? 'light' : 'dark'; });
+    // Rank 3.5: keep the premium glass shader's dark flag in step with the
+    // theme (a toggle between light/dark must not leave a stale backdrop).
+    if (ns.Glass && ns.Glass.refreshTheme) ns.Glass.refreshTheme();
+  }
+
+  // ---- PLAN-OF-ACTION-LIQUID-GLASS-UI 3.5.3: Premium visual mode toggle ----
+  // A single, clearly-labeled settings toggle, off by default, persisted to
+  // the shared device-preference slot (localStorage — NOT project state, so
+  // it can never travel in the .json export). Never a popup or forced
+  // prompt. The capability floor (Viewport.effectiveGlassMode) overrides the
+  // stored preference: a low-end device stays on CSS glass no matter what.
+  function tglGlassMode() {
+    const tgl = U.$('glass-tgl');
+    const on = tgl ? tgl.checked : false;
+    if (ns.Viewport) ns.Viewport.setGlassMode(on ? 'premium' : 'css');
+    if (ns.Glass) ns.Glass.sync();
+    const effective = (ns.Viewport && ns.Viewport.effectiveGlassMode) ? ns.Viewport.effectiveGlassMode() : 'css';
+    showToast(on
+      ? (effective === 'premium' ? 'Premium visual mode on — liquid-glass backdrop active.' : 'Preference saved — this device uses CSS glass (capability floor).')
+      : 'Premium visual mode off — CSS glass stays on.',
+      effective === 'premium' ? 'ok' : 'warn');
+  }
+
+  // ---- PLAN-OF-ACTION-AI-VOICE-SYNC-v1 4.5: optional Google identity ----
+  function syncConnect() {
+    if (ns.Sync && ns.Sync.connect) ns.Sync.connect();
+  }
+  function syncSignOut() {
+    if (ns.Sync && ns.Sync.signOut) ns.Sync.signOut();
+  }
+  function syncClientId(el) {
+    if (ns.Sync && ns.Sync.setClientId) ns.Sync.setClientId(el);
+  }
+  function syncDismissSuggest() {
+    if (ns.Sync && ns.Sync.dismissSuggestion) ns.Sync.dismissSuggestion();
   }
 
   function tglCh() {
@@ -1296,6 +1345,10 @@ var MMGR = window.MMGR || {};
       const summary = names
         ? 'Merged ' + fromFile + ' field(s) from file, kept ' + keptLocal + ' local. Conflicting fields (newest edit won): ' + names + more + '.'
         : 'Merged ' + fromFile + ' field(s) from file, kept ' + keptLocal + ' local. No field had edits on both sides.';
+      // Rank 4.5: after a merge (multi-device use detected), offer the
+      // single dismissible optional-identity suggestion — if not signed in
+      // and not already dismissed on this device. Never a modal, never spam.
+      if (ns.Sync && ns.Sync.noteMultiDeviceUse) ns.Sync.noteMultiDeviceUse();
       showToast(summary, out.adopted > 0 ? 'ok' : 'warn');
     };
     reader.readAsText(file);
@@ -1377,6 +1430,12 @@ var MMGR = window.MMGR || {};
     tglCh: tglCh,
     tglLock: tglLock,
     setWorkWeek: setWorkWeek,
+    // PLAN-OF-ACTION-LIQUID-GLASS-UI 3.5.3 + PLAN-OF-ACTION-AI-VOICE-SYNC-v1 4.5
+    tglGlassMode: tglGlassMode,
+    syncConnect: syncConnect,
+    syncSignOut: syncSignOut,
+    syncClientId: syncClientId,
+    syncDismissSuggest: syncDismissSuggest,
     swMeth: swMeth,
     showSec: showSec,
     tglFocusMode: tglFocusMode,
@@ -1548,6 +1607,16 @@ window.MMGR = MMGR;
     'vpAccept': (el) => window.MMGR.Viewport.accept(el.getAttribute('data-section')),
     'vpDismiss': (el) => window.MMGR.Viewport.dismiss(el.getAttribute('data-section')),
     'vpFull': (el) => window.MMGR.Viewport.toggleFull(el.getAttribute('data-section')),
+    // Rank 3.5 (PLAN-OF-ACTION-LIQUID-GLASS-UI): premium visual mode toggle —
+    // writes a device-level preference only (localStorage, never project
+    // state), so it is safe in view-only, exactly like the viewport prefs.
+    'tglGlassMode': () => window.MMGR.App.tglGlassMode(),
+    // Rank 4.5 (PLAN-OF-ACTION-AI-VOICE-SYNC-v1): optional Google identity
+    // for sync — device-level label only, never a gate, safe in view-only.
+    'syncConnect': () => window.MMGR.App.syncConnect(),
+    'syncSignOut': () => window.MMGR.App.syncSignOut(),
+    'syncClientId': (el) => window.MMGR.App.syncClientId(el),
+    'syncDismissSuggest': () => window.MMGR.App.syncDismissSuggest(),
     'cascadeGantt': () => window.MMGR.App.cascadeGantt(),
     'toggleCritical': (el) => window.MMGR.App.toggleCritical(el),
     'tglLeadtimeLane': (el) => window.MMGR.App.tglLeadtimeLane(el),
@@ -1754,7 +1823,13 @@ window.MMGR = MMGR;
     // Rank 3.4: viewport preference is a device-level screen choice, not
     // project state — allowed in view-only (like theme is a preference, but
     // this one intentionally stays out of project state entirely).
-    'vpAccept': 1, 'vpDismiss': 1, 'vpFull': 1
+    'vpAccept': 1, 'vpDismiss': 1, 'vpFull': 1,
+    // Rank 3.5: glass preference is a device-level screen choice, not
+    // project state — allowed in view-only like the viewport prefs.
+    'tglGlassMode': 1,
+    // Rank 4.5: Google identity is a device-level label, never a gate to
+    // project data — signing in/out/dismissing never mutates project state.
+    'syncConnect': 1, 'syncSignOut': 1, 'syncClientId': 1, 'syncDismissSuggest': 1
   };
   function guardReadonly(action) {
     // The ACTION_MAP delegation IIFE has no closure over the App module's

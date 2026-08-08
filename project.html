@@ -37,13 +37,22 @@
       no key configured the cloud tier never fires, and the local tier
       (Tier A) needs no network at all. A custom provider endpoint would
       need its host added here, same as any other connect-src entry.
-  - connect-src also adds the Tier 1 whisper model release hosts:
-      https://github.com https://release-assets.githubusercontent.com
-      (mmgr-voice.js fetches ggml-tiny.en-q5_1.bin from the GitHub release
-      once, caches it via Cache API, and falls back to the bundled copy if
-      the fetch is blocked).
+  - connect-src also adds the Tier 1 whisper model hosts:
+      https://huggingface.co https://*.cdn.hf.co https://github.com https://release-assets.githubusercontent.com
+      (mmgr-voice.js fetches ggml-tiny.en-q5_1.bin from the CORS-enabled
+      HuggingFace mirror once, caches it via Cache API, and falls back to
+      the bundled copy for self-hosted deploys; the HF host redirects to
+      *.cdn.hf.co, hence both entries).
+  - Rank 3.5 (Liquid Glass, premium tier): https://unpkg.com is the pinned
+      Three.js CDN used ONLY by the opt-in Premium visual mode via dynamic
+      import(). It is never fetched at boot — with the toggle off there is
+      zero network request (hard gate, verified by qa-glass.cjs).
+  - Rank 4.5 (Optional Google identity): https://accounts.google.com is the
+      Google Identity Services script host, lazy-loaded ONLY when the user
+      clicks "Connect Google" in Settings > Controls. It is a device label,
+      never a gate — offline/CSP-blocked loads degrade to a toast.
 -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self' https://api.open-meteo.com https://geocoding-api.open-meteo.com https://api.openai.com https://api.anthropic.com https://github.com https://release-assets.githubusercontent.com; base-uri 'self'; form-action 'self';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://accounts.google.com https://unpkg.com; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self' https://api.open-meteo.com https://geocoding-api.open-meteo.com https://api.openai.com https://api.anthropic.com https://github.com https://release-assets.githubusercontent.com https://accounts.google.com https://huggingface.co https://*.cdn.hf.co; base-uri 'self'; form-action 'self';">
 </head>
 <body>
 
@@ -866,6 +875,17 @@
     <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-calendar"></use></svg> Work Week (days)</span><select id="ww-sel" data-action="setWorkWeek" class="ctl-in"><option value="3">3-day</option><option value="4">4-day</option><option value="5" selected>5-day (default)</option><option value="6">6-day</option><option value="7">7-day</option></select></div>
     <div class="sr-hint">Used for resource utilization &amp; budget cost calculations. Monthly capacity ≈ days × 4 weeks × 8h.</div>
     <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cloud-rain"></use></svg> Weather Region</span><select id="weather-region-sel" data-action="setRegion" class="ctl-in"></select></div>
+    <!-- PLAN-OF-ACTION-LIQUID-GLASS-UI 3.5.3: Premium visual mode settings
+         toggle — off by default, user-initiated only, never a popup. The
+         preference is a device-level slot (same family as the viewport and
+         sync-identity prefs), not project state. Capability floor still
+         overrides it: a low-end device stays on CSS glass no matter what. -->
+    <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-orb"></use></svg> Premium Visual Mode</span><label class="tgl"><input type="checkbox" id="glass-tgl" data-action="tglGlassMode"><span class="tsl"></span></label></div>
+    <div class="sr-hint">Premium visual mode — uses more graphics power (WebGL liquid-glass backdrop). Off by default; requires a capable device. CSS glass is the universal default for everyone else.</div>
+    <!-- PLAN-OF-ACTION-AI-VOICE-SYNC-v1 4.5: optional Google identity for
+         sync — never gating. Rendered by js/mmgr-sync.js into this slot. -->
+    <div id="sync-section"></div>
+    <div class="sr-hint">Sync identity is 100% optional — the app works forever without an account. JSON export/import is the guaranteed sync path on every device, signed in or not.</div>
     <!-- Phase 2: client feature flags — all default on; off hides the optional UI -->
     <div class="sr-hint">Feature flags — switch a module off to hide it from the workspace. All default on.</div>
     <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg> AI Assistant Window</span><label class="tgl"><input type="checkbox" data-action="tglFlag" data-flag="aiWindow"><span class="tsl"></span></label></div>
@@ -1075,6 +1095,8 @@
   <script src="js/mmgr-digest.js"></script>
   <script src="js/mmgr-ai.js"></script>
   <script src="js/mmgr-viewport.js"></script>
+  <script src="js/mmgr-glass.js"></script>
+  <script src="js/mmgr-sync.js"></script>
   <script>
 /* Deploy guard: every icon in this app is a <use href="css/mmgr-icons.svg#...">.
    A missing sprite on the live host makes icons vanish silently — surface it

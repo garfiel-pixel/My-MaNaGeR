@@ -501,14 +501,25 @@ var MMGR = window.MMGR || {};
   // like Tier 0 — any failure leaves the captions intact and never blocks
   // ending the meeting.
   const TIER1_ENTRY = 'vendor/whisper/index.js';
-  // Remote-first model hosting (user change): the ggml-tiny.en-q5_1 binary
-  // is fetched ONCE from the release URL and cached locally via the Cache
-  // API (mmgr-whisper-model-v1) so repeat loads are instant and offline.
-  // If the remote fetch is impossible — the release host is CORS-blocked
-  // for browser fetches (github release assets send no
-  // Access-Control-Allow-Origin) or the device is offline — init falls back
-  // to the bundled local copy so Tier 1 never silently breaks.
-  const TIER1_MODEL_URL = 'https://github.com/garfiel-pixel/My-MaNaGeR/releases/download/v1.0-model/ggml-tiny.en-q5_1.bin';
+  // Remote-first model hosting (SKEPTICAL-AUDIT FIX, Aug 2026): the
+  // ggml-tiny.en-q5_1 binary is fetched ONCE from the CORS-enabled
+  // HuggingFace mirror of the canonical whisper.cpp model and cached
+  // locally via the Cache API (mmgr-whisper-model-v1) so repeat loads are
+  // instant and offline.
+  //
+  // WHY the URL changed: the original GitHub release URL serves release
+  // assets WITHOUT Access-Control-Allow-Origin, so a browser fetch is
+  // CORS-blocked and ALWAYS fails; and the bundled local copy that used to
+  // be the fallback was later removed to satisfy the 25MB Cloudflare Pages
+  // per-file deploy limit. Together that made Tier 1 fail end-to-end
+  // (verified: qa-voice RUN_WHISPER=1 T11/T12/T13). The HuggingFace mirror
+  // serves with Access-Control-Allow-Origin: * (verified), so the browser
+  // can fetch + cache it on first use, satisfying: zero mandatory server
+  // cost (free mirror), offline-first after first fetch (Cache API),
+  // no repo bloat (deploy limit holds), portable data (model is not
+  // project data). The bundled path below remains ONLY as a fallback for
+  // self-hosted deploys that ship the .bin themselves.
+  const TIER1_MODEL_URL = 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.en-q5_1.bin';
   const TIER1_MODEL_FALLBACK = 'vendor/whisper/ggml-tiny.en-q5_1.bin';
   const TIER1_MODEL_CACHE = 'mmgr-whisper-model-v1';
 
@@ -572,27 +583,29 @@ var MMGR = window.MMGR || {};
         cacheModel = true;
         modelSource = 'hook';
       } else {
-        // Production: remote-first. Fetch (or read from Cache API) the
-        // model bytes, wrap them in a Blob URL, and hand that URL to the
-        // whisper runtime. initWhisper accepts a fetchable URL, not raw
-        // bytes, so the Blob URL is the bridge. cacheModel=false here: the
-        // Cache API already persists the model under TIER1_MODEL_CACHE,
-        // and a Blob URL is not a stable Cache key for the runtime.
-        try {
-          const bytes = await getModelBytes();
-          modelPath = URL.createObjectURL(new Blob([bytes], { type: 'application/octet-stream' }));
-          cacheModel = false;
-          modelSource = 'remote-cache';
-        } catch (remoteErr) {
-          // CORS-blocked host or offline: fall back to the bundled copy so
-          // offline Tier 1 keeps working from first run. Record why.
-          if (ns.Errors && ns.Errors.log) {
-            ns.Errors.log('voice-tier1: remote model fetch failed (' + ((remoteErr && remoteErr.message) || String(remoteErr)) + ') — using bundled model', 'voice-tier1');
-          }
-          modelPath = _t1Url(TIER1_MODEL_FALLBACK);
-          cacheModel = true; // bundled copy: runtime Cache Storage is fine
-          modelSource = 'local-fallback';
+      // Production: remote-first. Fetch (or read from Cache API) the
+      // model bytes, wrap them in a Blob URL, and hand that URL to the
+      // whisper runtime. initWhisper accepts a fetchable URL, not raw
+      // bytes, so the Blob URL is the bridge. cacheModel=false here: the
+      // Cache API already persists the model under TIER1_MODEL_CACHE,
+      // and a Blob URL is not a stable Cache key for the runtime.
+      try {
+        const bytes = await getModelBytes();
+        modelPath = URL.createObjectURL(new Blob([bytes], { type: 'application/octet-stream' }));
+        cacheModel = false;
+        modelSource = 'remote-cache';
+      } catch (remoteErr) {
+        // Offline, or a host outage: fall back to the bundled copy for
+        // self-hosted deploys that ship the .bin themselves. Record why.
+        // (A plain CORS block no longer lands here — the primary URL is
+        // the CORS-enabled HF mirror, verified at implementation time.)
+        if (ns.Errors && ns.Errors.log) {
+          ns.Errors.log('voice-tier1: remote model fetch failed (' + ((remoteErr && remoteErr.message) || String(remoteErr)) + ') — using bundled model', 'voice-tier1');
         }
+        modelPath = _t1Url(TIER1_MODEL_FALLBACK);
+        cacheModel = true; // bundled copy: runtime Cache Storage is fine
+        modelSource = 'local-fallback';
+      }
       }
       const ctx = await _t1InitRuntime(modelPath, cacheModel);
       target.ctx = ctx;

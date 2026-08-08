@@ -125,11 +125,11 @@ re-litigate; proceed past it.
 
 ## RANK 2 EXTENSION — 2.3 Real Model Wiring + Agent-Style Presets
 
-**STATUS: CONFIRMED NOT STARTED — this is the next item in rank order.** Direct
-inspection confirms `mmgr-ai.js` still documents itself as non-mutating ("no state is
-mutated") and `submit()` is still a commented future hook, not implemented. Since 1.4 and
-1.5 above are both confirmed complete, this is the next unstarted item in sequence —
-begin here without further confirmation needed to proceed.
+**STATUS: DONE, verified** — `qa-ai.cjs`, 15 checks (AI23_GATE PASS): the settings tier
+toggle is config-only (no schema change), the local zero-key engine answers from state
+with a per-line trace (zero-fabrication), the cloud tier sends OpenAI/Anthropic payloads
+via a mocked fetch with a circuit-break, and readonly gating blocks run/settings but
+allows open/copy. See sequence item 6.
 
 **Sequenced after 2.1 and 2.2 (already in the master plan) as an extension, not a
 prerequisite** — the digest and preset system must work with the existing copy-to-clipboard
@@ -175,6 +175,11 @@ conflicting simulated edits, with conflicts visible and resolvable by the user, 
 ---
 
 ## RANK 4 EXTENSION — 4.5 Optional Google Identity for Sync (recommended, never gating)
+
+**STATUS: DONE, verified** — `qa-sync.cjs`, 13 checks (SYNC45_GATE PASS): identity is an
+optional pairing label, never a gate to any feature; merge + JSON export/import work fully
+signed-out; the suggestion is single and dismissible and fires only after multi-device use
+is actually detected (never at boot, no nagging). See sequence item 12.
 
 **Sequenced after 4.4 (multi-device reconciliation, above).** This gives 4.4's merge
 mechanism a human-friendly way to know "which devices belong together" without requiring
@@ -354,7 +359,7 @@ now genuinely closed — no further verification needed on it.
 9. Rank 3.4 — Viewport-aware layout detection, portrait/mobile prompt — **DONE, verified** (qa-r3.cjs; mmgr-viewport.js, vpAccept/vpDismiss/vpFull actions, stacked-card fallback).
 10. Rank 4 (4.1–4.3) — PWA/offline hardening — **DONE, verified** (qa-pwa.cjs; manifest + icon, cache-first SW, IndexedDB crash journal, offline CRUD).
 11. Rank 4.4 — Multi-device reconciliation — **DONE, verified** (qa-pwa.cjs P10–P13; field-level LWW via state.fieldTs stamps, manual "Merge Project (.json)" in Controls, conflicts surfaced by name in the toast, merge undoable, round-trip regression pinned).
-12. **Rank 4.5 — Optional Google identity for sync, never gating — NEXT UP. Not started. Begin here.**
+12. **Rank 4.5 — Optional Google identity for sync, never gating — DONE, verified** (qa-sync.cjs, 13 checks; GIS identity as pairing label only — never a data-access gate, merge + export work logged-out, single dismissible suggestion after multi-device use is detected).
 13. Rank 5–8 (existing, unchanged) — status unverified.
 14. Rank 9 — MCP server exposure — still correctly deferred, not started.
 15. Rank 10 — Backlog (QuickBooks export, e-signature, IoT) — still correctly deferred.
@@ -362,5 +367,6 @@ now genuinely closed — no further verification needed on it.
 **This is the order. Same standing rule as the master plan: no phase begins until the prior
 phase's exit criteria are verified, and no lower-ranked item jumps the queue because it
 looks easier to build. And per the strict execution rule above: once a check passes,
-proceed — don't stop and ask after confirmation is already in hand. Rank 4.5 is the
-correct next step to instruct; do not jump to Rank 3.4 or Rank 4 ahead of it.**
+proceed — don't stop and ask after confirmation is already in hand. Rank 4.5 is now
+complete (verified this session). Next unstarted work: verify Rank 5–8 status; Rank 9
+(MCP) stays deferred until Rank 2 has been used for a real project cycle.**

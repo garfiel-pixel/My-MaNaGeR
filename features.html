@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<!--
+  My MaNaGeR — Features page (Liquid Glass v1.0).
+  Phase 2: detailed per-feature sections live here.
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Features — My MaNaGeR</title>
+<meta name="description" content="All the features of My MaNaGeR: WBS + Gantt, Kanban, RACI, risk &amp; Monte Carlo, budget &amp; EVM, AI prompts, weather-aware scheduling, and offline-first.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='2.5' y='2.5' width='19' height='19' rx='5' fill='%23E8B84A'/%3E%3Cpath d='M12 5.5c.5 3 1.2 4.8 2.7 6.2 1.5 1.5 3.3 2.2 6.3 2.7-3 .5-4.8 1.2-6.3 2.7-1.5 1.5-2.2 3.3-2.7 6.3-.5-3-1.2-4.8-2.7-6.3C7.8 15.6 6 14.9 3 14.4c3-.5 4.8-1.2 6.3-2.7C10.8 10.2 11.5 8.4 12 5.5z' fill='%230F172A'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="css/marketing.css">
+</head>
+<body>
+
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="site-header">
+  <div class="container header-inner">
+    <a class="brand" href="index.html" aria-label="My MaNaGeR — home">
+      <span class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3.5c.55 3.1 1.3 4.95 2.9 6.4 1.6 1.45 3.45 2.2 6.6 2.7-3.15.5-5 1.25-6.6 2.7-1.6 1.45-2.35 3.3-2.9 6.4-.55-3.1-1.3-4.95-2.9-6.4C7.5 15.85 5.65 15.1 2.5 14.6c3.15-.5 5-1.25 6.6-2.7 1.6-1.45 2.35-3.3 2.9-6.4z"/></svg>
+      </span>
+      <span><b>My <span>MaNaGeR</span></b><small>Project Workspace</small></span>
+    </a>
+    <nav class="site-nav" aria-label="Primary">
+      <a class="nav-link" href="index.html#features">Features</a>
+      <a class="nav-link" href="mymanager-field-guide.html">Guide</a>
+      <a class="nav-link" href="about.html">About</a>
+      <a class="nav-link" href="contact.html">Contact</a>
+    </nav>
+    <div class="header-cta-desktop">
+      <a class="btn btn-gold btn-sm" href="app.html">
+        Open App
+        <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg>
+      </a>
+    </div>
+    <button class="nav-toggle" id="nav-toggle" aria-label="Open menu" aria-expanded="false" aria-controls="mobile-menu">
+      <svg class="ico" aria-hidden="true" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+    </button>
+  </div>
+</header>
+
+<nav class="mobile-menu" id="mobile-menu" aria-label="Mobile">
+  <a href="index.html#features">Features</a>
+  <a href="mymanager-field-guide.html">Field Guide</a>
+  <a href="about.html">About</a>
+  <a href="contact.html">Contact</a>
+  <a class="btn btn-gold" href="app.html">Open App</a>
+</nav>
+
+<main id="main">
+  <section class="page-hero">
+    <div class="container">
+      <span class="crumbs"><a href="index.html">Home</a> · Features</span>
+      <h1>Features</h1>
+      <!-- Phase 2: detailed per-feature sections. -->
+      <p>Eight panels, each wired to the others — enter once, see it everywhere. Every capability below lives in the same workspace, feeding the same numbers.</p>
+    </div>
+  </section>
+
+  <!-- photo band so the page doesn't feel empty (solid layer — never glass) -->
+  <section class="photo-band">
+    <img class="pb-img" src="images/completed-kitchen.webp" alt="Completed modern kitchen installation" loading="lazy" width="1376" height="768">
+    <div class="pb-overlay" aria-hidden="true"></div>
+    <div class="container pb-content">
+      <span class="eyebrow">From plan to finished</span>
+      <h2>Every feature, wired to the next.</h2>
+      <p>Enter a task once and it flows through the Gantt, Kanban, RACI, and Dashboard — no re-entry, no drift.</p>
+      <div class="pb-cta">
+        <a class="btn btn-gold" href="index.html#features">See the features</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <div class="section-head">
+        <span class="eyebrow">Capabilities</span>
+        <h2>Eight panels, each wired to the next</h2>
+        <p>Enter a number once and it shows up everywhere it matters — the Gantt, the Kanban board, the RACI matrix, and the Dashboard all stay in sync.</p>
+      </div>
+
+      <div class="feature">
+        <div class="feature-head">
+          <div class="f-icon"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-calendar"></use></svg></div>
+          <div>
+            <h2>WBS + Gantt</h2>
+            <span class="f-tag">Schedule</span>
+          </div>
+        </div>
+        <p>The work-breakdown structure is the spine everything else attaches to — build it once, and the Gantt, Kanban, RACI, and Dashboard all stay in sync.</p>
+        <ul>
+          <li>WBS Text Import — paste a plain-text outline; blank lines start tasks, indents become subtasks, and re-pasting merges by name instead of duplicating.</li>
+          <li>Dates cascade automatically from predecessors, with a cycle guard so circular dependencies can't lock up the math.</li>
+          <li>Critical Path Highlighter lights the deadline-driving chain in gold; Deadline Pulse flags any task within three days of its end date.</li>
+          <li>Lead-Time tasks track submitted and expected dates for permits and procurement; Recurring tasks auto-span the whole project.</li>
+        </ul>
+      </div>
+
+      <div class="feature">
+        <div class="feature-head">
+          <div class="f-icon"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg></div>
+          <div>
+            <h2>Kanban Board</h2>
+            <span class="f-tag">Execution</span>
+          </div>
+        </div>
+        <p>Your WBS tasks, seen as cards across To Do, In Progress, Blocked, and Completed — with tools built for the field, not the boardroom.</p>
+        <ul>
+          <li>Dedicated Lead-Time lane keeps permits and procurement items from cluttering the normal columns.</li>
+          <li>Populate Sprint clamps every in-progress task's dates inside your sprint window — a fast way to timebox the current push.</li>
+          <li>Dashed cards mark lead-time items; amber pulses flag tasks within three days of their deadline.</li>
+          <li>Sprint Planning, Review, and Retrospective templates unlock when you're running Agile.</li>
+        </ul>
+      </div>
+
+      <div class="feature">
+        <div class="feature-head">
+          <div class="f-icon"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-users"></use></svg></div>
+          <div>
+            <h2>RACI Matrix</h2>
+            <span class="f-tag">Accountability</span>
+          </div>
+        </div>
+        <p>Rows and columns pull live from your WBS tasks and your people lists — add a person or task anywhere else and it appears here with nothing to re-enter.</p>
+        <ul>
+          <li>Click any cell to cycle Responsible → Accountable → Consulted → Informed.</li>
+          <li>Built from the same data as the Gantt and the Kanban — no stale, hand-typed matrix.</li>
+          <li>Every handoff stays unambiguous, from kickoff meeting to closeout.</li>
+        </ul>
+      </div>
+
+      <div class="feature">
+        <div class="feature-head">
+          <div class="f-icon"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-dice"></use></svg></div>
+          <div>
+            <h2>Risk + Monte Carlo</h2>
+            <span class="f-tag">Forecast</span>
+          </div>
+        </div>
+        <p>A risk register and issue log that feed a real simulation engine — not a gut-feel forecast.</p>
+        <ul>
+          <li>1,000-trial Monte Carlo simulation computes hit probability and P50 finish dates on your target completion.</li>
+          <li>conf:high / conf:low tags from AI-generated dates shape each task's risk spread in the simulation.</li>
+          <li>Open, unmitigated risks weigh directly into the Dashboard's Health Score.</li>
+          <li>Float Watch and Crash Candidates rank recovery options — excluding work gated by permits or curing time.</li>
+        </ul>
+      </div>
+
+      <div class="feature">
+        <div class="feature-head">
+          <div class="f-icon"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-dollar"></use></svg></div>
+          <div>
+            <h2>Budget / EVM</h2>
+            <span class="f-tag">Finance</span>
+          </div>
+        </div>
+        <p>Budget lines and a spend log roll straight into earned-value math — the forecast updates the moment the numbers do.</p>
+        <ul>
+          <li>Auto-calculated SPI, CPI, EAC, ETC, VAC, and TCPI once you have a budget line and a dated task.</li>
+          <li>S-curve chart of planned vs. actual spend, always in view.</li>
+          <li>Labor-cost math uses your Work Week (3–7 days) from Settings.</li>
+        </ul>
+      </div>
+
+      <div class="feature">
+        <div class="feature-head">
+          <div class="f-icon"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg></div>
+          <div>
+            <h2>AI Prompt Library</h2>
+            <span class="f-tag">Intelligence</span>
+          </div>
+        </div>
+        <p>A dozen built-in prompts that turn your live project data into working documents — no copy-pasting numbers by hand.</p>
+        <ul>
+          <li>Weekly digests, status reports, and schedule audits generated from real project state.</li>
+          <li>Generate Dates proposes a dated WBS and merges the results back in — nothing duplicated.</li>
+          <li>Paste into any AI you already use; your data stays in your hands.</li>
+        </ul>
+      </div>
+
+      <div class="feature">
+        <div class="feature-head">
+          <div class="f-icon"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cloud-rain"></use></svg></div>
+          <div>
+            <h2>Weather-Aware</h2>
+            <span class="f-tag">Field</span>
+          </div>
+        </div>
+        <p>Site forecasts and weather windows keep schedule reality in front of you — before the rain decides for you.</p>
+        <ul>
+          <li>Weather Variance flags weather-exposed tasks that lack enough cushion against your rainy-season window.</li>
+          <li>Dispute-ready delay log tied to your exposed tasks, with dates and reasons on record.</li>
+          <li>Weather-season contingency feeds the Charter's target-date reasoning.</li>
+        </ul>
+      </div>
+
+      <div class="feature">
+        <div class="feature-head">
+          <div class="f-icon"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg></div>
+          <div>
+            <h2>Offline-First</h2>
+            <span class="f-tag">Privacy</span>
+          </div>
+        </div>
+        <p>Runs in your browser, autosaves to LocalStorage, and exports a portable file — nothing uploads by default.</p>
+        <ul>
+          <li>No servers, no accounts, no subscription — and no tracking.</li>
+          <li>Save Project to File / Load Project from File moves work between devices.</li>
+          <li>Access codes protect each project, with view-only codes for read-only review.</li>
+        </ul>
+      </div>
+
+      <div class="prose-card" style="margin-top:28px;text-align:center">
+        <h2 style="text-align:center">Want the sheet-by-sheet walkthrough?</h2>
+        <p style="text-align:center">Every panel is covered in the Field Guide, styled like a real set of construction drawings — sixteen sheets from your first fifteen minutes to the FAQ.</p>
+        <p style="margin-top:22px;text-align:center">
+          <a class="btn btn-gold" href="mymanager-field-guide.html">Open the Field Guide</a>
+          <a class="btn btn-ghost" href="app.html" style="margin-left:10px">Open the App</a>
+        </p>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <a class="brand" href="index.html">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3.5c.55 3.1 1.3 4.95 2.9 6.4 1.6 1.45 3.45 2.2 6.6 2.7-3.15.5-5 1.25-6.6 2.7-1.6 1.45-2.35 3.3-2.9 6.4-.55-3.1-1.3-4.95-2.9-6.4C7.5 15.85 5.65 15.1 2.5 14.6c3.15-.5 5-1.25 6.6-2.7 1.6-1.45 2.35-3.3 2.9-6.4z"/></svg>
+          </span>
+          <span><b>My <span>MaNaGeR</span></b></span>
+        </a>
+        <p>One workspace for construction &amp; project management — charters through closeout, entirely in your browser.</p>
+        <a class="btn btn-gold btn-sm" href="app.html">
+          Open App
+          <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg>
+        </a>
+      </div>
+      <div class="footer-col">
+        <b>Product</b>
+        <a href="index.html#features">Features</a>
+        <a href="mymanager-field-guide.html">Field Guide</a>
+        <a href="app.html">Open the App</a>
+      </div>
+      <div class="footer-col">
+        <b>Company</b>
+        <a href="about.html">About</a>
+        <a href="contact.html">Contact</a>
+      </div>
+      <div class="footer-col">
+        <b>Help</b>
+        <a href="mymanager-field-guide.html#faq">Guide FAQ</a>
+        <a href="contact.html">Get support</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>© <span id="year">2026</span> My MaNaGeR. All rights reserved.</span>
+      <span>Local-first · No tracking · No servers required</span>
+    </div>
+  </div>
+</footer>
+
+<script src="js/marketing.js"></script>
+</body>
+</html>

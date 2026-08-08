@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Seed</title></head>
+<body>
+<script>
+// Pre-seed a demo project into localStorage, then send the user to the app.
+var KEY = 'mmgr_state_demo-project';
+var DATA = {
+  v: 5,
+  updatedAt: Date.now(),
+  charter: {
+    name: 'Demo Tower Renovation', owner: 'Grace', startDate: '2026-06-01',
+    targetCompletion: '2026-12-31', budgetEnvelope: 1000000, status: 'Active',
+    scope: 'Full lobby + core renovation', region: 'northern-temperate',
+    assumptions: '', exclusions: '', constraints: '', successMetrics: ''
+  },
+  tasks: [
+    { id: 't1', name: 'Foundations', level: 0, indent: 0, isPhase: true, status: 'inprogress', startDate: '2026-06-01', endDate: '2026-07-10', duration: '40', assignee: 'Alice', critical: false, leadTime: false, predecessors: [], milestone: false, weatherSensitive: true, weatherExposed: false, confidence: 'high' },
+    { id: 't2', name: 'Structural Steel', level: 1, indent: 1, status: 'inprogress', startDate: '2026-07-13', endDate: '2026-08-21', duration: '30', assignee: 'Bob', critical: true, leadTime: false, predecessors: ['t1'], milestone: false, weatherSensitive: false, weatherExposed: false, confidence: 'medium' },
+    { id: 't3', name: 'Permit - Utility', level: 1, indent: 1, status: 'inprogress', startDate: '2026-06-15', endDate: '2026-08-15', duration: '45', assignee: 'Carol', critical: false, leadTime: true, submittedDate: '2026-06-15', expectedDate: '2026-08-15', predecessors: [], milestone: false, weatherSensitive: false, weatherExposed: false, confidence: 'low' },
+    { id: 't4', name: 'Glazing Install', level: 0, indent: 0, isPhase: true, status: 'todo', startDate: '2026-09-01', endDate: '2026-10-15', duration: '33', assignee: '', critical: false, leadTime: false, predecessors: ['t2'], milestone: false, weatherSensitive: false, weatherExposed: false, confidence: 'medium' },
+    { id: 't5', name: 'Handover & Closeout', level: 0, indent: 0, isPhase: true, status: 'completed', startDate: '2026-11-01', endDate: '2026-11-20', duration: '15', assignee: 'Dave', critical: false, leadTime: false, predecessors: ['t4'], milestone: true, weatherSensitive: false, weatherExposed: false, confidence: 'high' }
+  ],
+  ntaskid: 6,
+  resources: [{ id: 'r1', name: 'Alice' }, { id: 'r2', name: 'Bob' }, { id: 'r3', name: 'Carol' }, { id: 'r4', name: 'Dave' }],
+  stakeholders: [{ id: 's1', name: 'Owner' }, { id: 's2', name: 'Municipality' }],
+  raci: { tasks: [], persons: [], matrix: {} },
+  meetings: [], nmeetid: 1,
+  spend: { entries: [], envelope: 1000000 },
+  nspendid: 1,
+  weather: { start: '2026-06-01', end: '2026-12-31', bufferDays: 14, region: 'northern-temperate' },
+  wxLog: [],
+  settings: { userName: 'Grace' },
+  projectName: 'Demo Tower Renovation',
+  focusMode: false, darkMode: false, crosshairOn: false, kbShowLeadtime: true, hlCritical: false,
+  leadtime: {},
+  dmaic: { active: false, define: { problem: '', goal: '', scope: '', sponsor: '', voice: '', done: false }, measure: { baseline: '', defects: '', unit: '', opportunity: '', dpmo: '', sigmaNow: '', done: false }, analyze: { rootCauses: '', fishbone: '', paretoTop: '', done: false }, improve: { solutions: '', pilot: '', results: '', done: false }, control: { plan: '', metrics: '', handover: '', done: false } },
+  schedule: {},
+  evm: {}, health: {}, close: {}, sprint: {},
+  backlog: [], nbacklogid: 1
+};
+try { localStorage.setItem(KEY, JSON.stringify(DATA)); } catch (e) {}
+try {
+  localStorage.setItem('mmgr_current_project', 'demo-project');
+  localStorage.setItem('mmgr_unlocked_demo-project', '1');
+  localStorage.setItem('mmgr_unlocked_my_manager', '1');
+} catch (e) {}
+location.replace('project.html?id=demo-project');
+</script>
+</body>
+</html>

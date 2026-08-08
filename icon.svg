@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <rect width="512" height="512" rx="96" fill="#0f1420"/>
+  <!-- gold sparkle (matches the app's AI mark) -->
+  <path d="M256 96c9 52 22 84 48 110 26 26 58 39 110 48-52 9-84 22-110 48-26 26-39 58-48 110-9-52-22-84-48-110-26-26-58-39-110-48 52-9 84-22 110-48 26-25 39-57 48-110z" fill="#D4AF37"/>
+  <!-- hard-hat band + dome hint in gold outline -->
+  <path d="M146 330a110 110 0 0 1 220 0z" fill="none" stroke="#D4AF37" stroke-width="22" stroke-linecap="round"/>
+  <rect x="122" y="352" width="268" height="26" rx="13" fill="#D4AF37"/>
+</svg>

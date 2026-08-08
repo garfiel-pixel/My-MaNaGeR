@@ -1,0 +1,31 @@
+{
+  "name": "My MaNaGeR — Construction Project Manager",
+  "short_name": "My MaNaGeR",
+  "description": "Offline-first construction project management: charter, WBS, Gantt, Kanban, budget, EVM, risks, claims, meetings with voice capture. No account required.",
+  "start_url": "project.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0f1420",
+  "theme_color": "#D4AF37",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "primary icon.png",
+      "sizes": "473x483",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "high contrast icon.png",
+      "sizes": "676x369",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

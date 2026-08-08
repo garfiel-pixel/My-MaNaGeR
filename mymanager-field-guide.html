@@ -1,0 +1,1372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My MaNaGeR — Field Guide</title>
+<meta name="description" content="A field guide to My MaNaGeR: the construction &amp; project management workspace. Learn every panel, template, and metric — sheet by sheet.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='9' fill='none' stroke='%23cf9a52' stroke-width='1.6'/%3E%3Cpath d='M12 3V7M12 17V21M3 12H7M17 12H21' stroke='%236fd0ff' stroke-width='1.6'/%3E%3Ccircle cx='12' cy='12' r='1.6' fill='%23cf9a52'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   MY MANAGER — FIELD GUIDE
+   Design system: "Working Drawing" — the site is styled as a set
+   of construction/engineering drawing sheets. Every section opens
+   with a title-block (sheet number, name, scale, revision) the
+   way a real architectural sheet would. Grid = drafting paper.
+   ============================================================ */
+
+:root{
+  --ink:#0a1930;
+  --ink-2:#0e2540;
+  --ink-3:#122c4d;
+  --paper:#f3efe4;
+  --line:#24476b;
+  --line-soft:rgba(111,208,255,0.13);
+  --cyan:#6fd0ff;
+  --cyan-dim:#3f92c2;
+  --brass:#cf9a52;
+  --brass-bright:#e8b876;
+  --text:#dfe9f2;
+  --text-dim:#8fa7bf;
+  --text-dimmer:#5f7891;
+  --radius:10px;
+  --radius-lg:18px;
+  --sidebar-w:296px;
+  --serif:'Inter',-apple-system,sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,monospace;
+  --ease:cubic-bezier(.22,.88,.30,1);
+}
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;}
+@media (prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto;}
+  *,*::before,*::after{animation-duration:.01ms !important;animation-iteration-count:1 !important;transition-duration:.01ms !important;scroll-behavior:auto !important;}
+}
+
+body{
+  font-family:var(--serif);
+  background:var(--ink);
+  color:var(--text);
+  line-height:1.7;
+  font-size:16px;
+  -webkit-font-smoothing:antialiased;
+  overflow-x:hidden;
+  position:relative;
+}
+
+/* drafting-paper grid — fixed, ambient, low-opacity */
+body::before{
+  content:"";
+  position:fixed;inset:0;
+  z-index:0;
+  pointer-events:none;
+  background-image:
+    linear-gradient(var(--line-soft) 1px,transparent 1px),
+    linear-gradient(90deg,var(--line-soft) 1px,transparent 1px);
+  background-size:44px 44px;
+  opacity:.5;
+  mask-image:radial-gradient(ellipse 90% 70% at 50% 0%,#000 40%,transparent 92%);
+}
+
+a{color:inherit;text-decoration:none;}
+img{max-width:100%;display:block;}
+ul,ol{list-style:none;}
+
+::selection{background:var(--brass);color:var(--ink);}
+
+/* scrollbar */
+::-webkit-scrollbar{width:10px;height:10px;}
+::-webkit-scrollbar-track{background:var(--ink);}
+::-webkit-scrollbar-thumb{background:var(--ink-3);border-radius:8px;border:2px solid var(--ink);}
+::-webkit-scrollbar-thumb:hover{background:var(--cyan-dim);}
+
+/* ===== progress bar ===== */
+#scroll-progress{
+  position:fixed;top:0;left:0;height:3px;width:0%;
+  background:linear-gradient(90deg,var(--cyan),var(--brass));
+  z-index:900;transition:width .08s linear;
+}
+
+/* ===== layout shell ===== */
+.shell{
+  display:flex;
+  max-width:1760px;
+  margin:0 auto;
+  position:relative;
+  z-index:1;
+}
+
+/* ===== SIDEBAR / SHEET INDEX ===== */
+.sidebar{
+  width:var(--sidebar-w);
+  flex-shrink:0;
+  position:sticky;
+  top:0;
+  height:100vh;
+  overflow-y:auto;
+  border-right:1px solid var(--line);
+  padding:26px 0 40px;
+  scrollbar-width:thin;
+}
+.sidebar-brand{
+  padding:0 26px 20px;
+  border-bottom:1px solid var(--line);
+  margin-bottom:6px;
+}
+.brand-mark{
+  display:flex;align-items:center;gap:10px;margin-bottom:14px;
+}
+.brand-mark svg{flex-shrink:0;}
+.brand-name{
+  font-weight:800;font-size:1.02rem;letter-spacing:.01em;color:var(--text);
+  line-height:1.25;
+}
+.brand-name span{display:block;font-family:var(--mono);font-weight:600;font-size:.62rem;color:var(--brass);letter-spacing:.14em;text-transform:uppercase;margin-top:3px;}
+.brand-tblock{
+  font-family:var(--mono);font-size:.63rem;color:var(--text-dimmer);
+  display:grid;grid-template-columns:1fr 1fr;gap:4px 10px;
+  border-top:1px dashed var(--line);padding-top:12px;letter-spacing:.02em;
+}
+.brand-tblock b{color:var(--text-dim);font-weight:600;}
+
+.sheet-nav{padding:14px 12px 0;}
+.nav-group{margin-bottom:4px;}
+.nav-group-label{
+  font-family:var(--mono);font-size:.63rem;font-weight:600;color:var(--text-dimmer);
+  text-transform:uppercase;letter-spacing:.16em;
+  padding:14px 14px 8px;
+}
+.nav-link{
+  display:flex;align-items:baseline;gap:10px;
+  padding:7px 14px;margin:0 2px;border-radius:7px;
+  font-size:.84rem;color:var(--text-dim);
+  border-left:2px solid transparent;
+  transition:color .15s var(--ease),background .15s var(--ease),border-color .15s var(--ease);
+}
+.nav-link .idx{font-family:var(--mono);font-size:.68rem;color:var(--cyan-dim);flex-shrink:0;transition:color .15s var(--ease);}
+.nav-link:hover{color:var(--text);background:rgba(111,208,255,.05);}
+.nav-link.active{color:var(--brass-bright);background:rgba(207,154,82,.08);border-left-color:var(--brass);}
+.nav-link.active .idx{color:var(--brass);}
+
+.sidebar-toggle{display:none;}
+
+/* back-to-site link in the sidebar brand block */
+.site-exit{
+  display:inline-flex;align-items:center;gap:7px;
+  font-size:.78rem;font-weight:600;color:var(--cyan);
+  margin:4px 26px 0;padding:7px 12px;border-radius:7px;
+  border:1px solid var(--line);
+  transition:background .15s var(--ease),border-color .15s var(--ease);
+}
+.site-exit:hover{background:rgba(111,208,255,.08);border-color:var(--cyan-dim);color:var(--cyan);}
+
+/* ===== MAIN ===== */
+main{flex:1;min-width:0;position:relative;}
+
+/* ===== HERO ===== */
+.hero{
+  position:relative;
+  min-height:92vh;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  padding:120px 64px 90px;
+  overflow:hidden;
+  border-bottom:1px solid var(--line);
+}
+.hero-bg{
+  position:absolute;inset:0;z-index:0;
+  background-image:
+    linear-gradient(180deg,rgba(10,25,48,.94) 0%,rgba(10,25,48,.80) 38%,rgba(10,25,48,.93) 78%,var(--ink) 100%),
+    linear-gradient(100deg,rgba(10,25,48,.55),rgba(15,60,90,.28)),
+    url('images/hero-crane-sky.webp');
+  background-size:cover;background-position:center;
+  filter:saturate(.72) contrast(1.05);
+}
+.hero-eyebrow{
+  position:relative;z-index:1;
+  display:inline-flex;align-items:center;gap:10px;
+  font-family:var(--mono);font-size:.72rem;letter-spacing:.18em;text-transform:uppercase;
+  color:var(--brass);margin-bottom:26px;
+}
+.hero-eyebrow::before{content:"";width:34px;height:1px;background:var(--brass);}
+.hero h1{
+  position:relative;z-index:1;
+  font-size:clamp(2.7rem,6.4vw,5.6rem);
+  font-weight:800;
+  letter-spacing:-.02em;
+  line-height:1.03;
+  max-width:16ch;
+  color:#f4f7fb;
+}
+.hero h1 em{
+  font-style:normal;color:var(--cyan);
+}
+.hero-sub{
+  position:relative;z-index:1;
+  margin-top:26px;max-width:56ch;
+  font-size:clamp(1.02rem,1.6vw,1.22rem);
+  color:var(--text-dim);
+  font-weight:400;
+}
+.hero-cta{
+  position:relative;z-index:1;
+  display:flex;gap:14px;flex-wrap:wrap;margin-top:40px;
+}
+.btn{
+  display:inline-flex;align-items:center;gap:9px;
+  font-family:var(--serif);font-weight:700;font-size:.86rem;
+  padding:14px 24px;border-radius:8px;cursor:pointer;
+  transition:transform .18s var(--ease),background .18s var(--ease),border-color .18s var(--ease);
+  border:1px solid transparent;
+}
+.btn:active{transform:scale(.97);}
+.btn-brass{background:var(--brass);color:#1a1204;}
+.btn-brass:hover{background:var(--brass-bright);transform:translateY(-2px);}
+.btn-ghost{border-color:var(--line);color:var(--text);}
+.btn-ghost:hover{border-color:var(--cyan-dim);color:var(--cyan);transform:translateY(-2px);}
+
+.hero-meta{
+  position:relative;z-index:1;
+  display:flex;gap:32px;flex-wrap:wrap;margin-top:64px;
+  padding-top:26px;border-top:1px dashed var(--line);
+  max-width:760px;
+}
+.hero-meta div{font-family:var(--mono);font-size:.68rem;color:var(--text-dimmer);letter-spacing:.04em;}
+.hero-meta b{display:block;color:var(--text-dim);font-size:.78rem;margin-bottom:3px;font-weight:600;}
+
+/* registration / crop marks — signature device, reused at every sheet head */
+.reg-marks{position:absolute;inset:0;pointer-events:none;z-index:1;}
+.reg-marks span{position:absolute;width:15px;height:15px;opacity:.55;}
+.reg-marks span::before,.reg-marks span::after{content:"";position:absolute;background:var(--cyan);}
+.reg-marks span::before{width:100%;height:1px;top:50%;}
+.reg-marks span::after{width:1px;height:100%;left:50%;}
+.reg-marks .tl{top:26px;left:26px;}
+.reg-marks .tr{top:26px;right:26px;}
+.reg-marks .bl{bottom:26px;left:26px;}
+.reg-marks .br{bottom:26px;right:26px;}
+
+/* ===== SHEET (section) ===== */
+.sheet{
+  padding:96px 64px;
+  border-bottom:1px solid var(--line);
+  position:relative;
+}
+.sheet-alt{background:linear-gradient(180deg,transparent,rgba(111,208,255,.025),transparent);}
+
+.tblock{
+  display:flex;align-items:flex-end;justify-content:space-between;
+  gap:24px;flex-wrap:wrap;
+  border-bottom:1px solid var(--line);
+  padding-bottom:20px;margin-bottom:44px;
+}
+.tblock-left{display:flex;align-items:baseline;gap:16px;}
+.tblock .sheet-no{
+  font-family:var(--mono);font-weight:700;font-size:.92rem;color:var(--brass);
+  letter-spacing:.04em;
+}
+.tblock h2{
+  font-size:clamp(1.8rem,3.4vw,2.7rem);font-weight:800;letter-spacing:-.015em;color:#f2f6fa;
+}
+.tblock-right{
+  display:flex;gap:22px;font-family:var(--mono);font-size:.64rem;color:var(--text-dimmer);
+  letter-spacing:.08em;text-transform:uppercase;text-align:right;
+}
+.tblock-right b{display:block;color:var(--text-dim);font-size:.68rem;margin-bottom:3px;font-weight:600;letter-spacing:.04em;}
+
+.kicker{
+  font-family:var(--mono);font-size:.72rem;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--cyan-dim);margin-bottom:12px;display:block;
+}
+.lede{
+  font-size:1.12rem;color:var(--text-dim);max-width:74ch;margin-bottom:36px;font-weight:400;
+}
+.prose{max-width:74ch;color:var(--text-dim);font-size:.98rem;}
+.prose p{margin-bottom:16px;}
+.prose strong{color:var(--text);font-weight:600;}
+.prose a{color:var(--cyan);border-bottom:1px solid var(--cyan-dim);}
+
+h3.h-sub{font-size:1.24rem;font-weight:700;color:#eef3f8;margin:36px 0 14px;letter-spacing:-.01em;}
+h4.h-mini{font-size:.98rem;font-weight:700;color:var(--text);margin:22px 0 10px;}
+
+/* ===== GRID / CARDS ===== */
+.grid{display:grid;gap:18px;margin-top:8px;}
+.grid-2{grid-template-columns:repeat(2,1fr);}
+.grid-3{grid-template-columns:repeat(3,1fr);}
+.grid-4{grid-template-columns:repeat(4,1fr);}
+
+.card{
+  background:var(--ink-2);
+  border:1px solid var(--line);
+  border-radius:var(--radius);
+  padding:22px;
+  position:relative;
+  transition:border-color .2s var(--ease),transform .2s var(--ease),background .2s var(--ease);
+}
+.card:hover{border-color:var(--cyan-dim);transform:translateY(-3px);background:var(--ink-3);}
+.card .cnum{
+  font-family:var(--mono);font-size:.66rem;color:var(--brass);letter-spacing:.08em;margin-bottom:10px;display:block;
+}
+.card h4{font-size:1rem;font-weight:700;color:var(--text);margin-bottom:8px;letter-spacing:-.01em;}
+.card p{font-size:.86rem;color:var(--text-dim);line-height:1.6;}
+.card .ic{color:var(--cyan);margin-bottom:14px;}
+
+/* dimension-line corner bracket used on some feature cards */
+.card.bracket::before,.card.bracket::after{
+  content:"";position:absolute;width:10px;height:10px;
+  border-top:1.5px solid var(--cyan-dim);border-left:1.5px solid var(--cyan-dim);
+  top:-1px;left:-1px;opacity:.7;
+}
+.card.bracket::after{
+  top:auto;left:auto;bottom:-1px;right:-1px;
+  border:none;border-bottom:1.5px solid var(--cyan-dim);border-right:1.5px solid var(--cyan-dim);
+}
+
+/* ===== TABS ===== */
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:26px;border-bottom:1px solid var(--line);padding-bottom:0;}
+.tab-btn{
+  font-family:var(--mono);font-size:.72rem;letter-spacing:.05em;text-transform:uppercase;
+  color:var(--text-dimmer);background:none;border:none;cursor:pointer;
+  padding:10px 16px;position:relative;font-weight:600;
+  transition:color .15s var(--ease);
+}
+.tab-btn::after{
+  content:"";position:absolute;left:16px;right:16px;bottom:-1px;height:2px;background:var(--brass);
+  transform:scaleX(0);transition:transform .2s var(--ease);transform-origin:left;
+}
+.tab-btn:hover{color:var(--text-dim);}
+.tab-btn.active{color:var(--brass-bright);}
+.tab-btn.active::after{transform:scaleX(1);}
+.tab-panel{display:none;animation:fadein .3s var(--ease);}
+.tab-panel.active{display:block;}
+@keyframes fadein{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
+
+/* ===== TABLE ===== */
+.tbl{width:100%;border-collapse:collapse;font-size:.86rem;margin:18px 0;}
+.tbl th{
+  font-family:var(--mono);font-size:.64rem;text-transform:uppercase;letter-spacing:.08em;
+  color:var(--text-dimmer);text-align:left;padding:10px 14px;border-bottom:1px solid var(--line);font-weight:600;
+}
+.tbl td{padding:12px 14px;border-bottom:1px solid var(--line);color:var(--text-dim);vertical-align:top;}
+.tbl tr:hover td{background:rgba(111,208,255,.03);}
+.tbl td.num{font-family:var(--mono);color:var(--brass);white-space:nowrap;}
+.tbl td strong{color:var(--text);}
+
+/* ===== FLOW / STEP LIST ===== */
+.flow{counter-reset:flow;margin-top:10px;}
+.flow-item{
+  display:flex;gap:20px;padding:22px 0;border-top:1px dashed var(--line);position:relative;
+}
+.flow-item:first-child{border-top:none;}
+.flow-num{
+  counter-increment:flow;
+  font-family:var(--mono);font-weight:700;color:var(--brass);font-size:.85rem;
+  flex-shrink:0;width:56px;padding-top:2px;
+}
+.flow-num::before{content:"STEP " counter(flow,decimal-leading-zero);}
+.flow-body h4{font-size:1.02rem;font-weight:700;color:var(--text);margin-bottom:6px;}
+.flow-body p{font-size:.9rem;color:var(--text-dim);max-width:64ch;}
+
+/* ===== ACCORDION (FAQ) ===== */
+.acc-item{border-bottom:1px solid var(--line);}
+.acc-q{
+  width:100%;text-align:left;background:none;border:none;cursor:pointer;
+  display:flex;justify-content:space-between;align-items:center;gap:16px;
+  padding:18px 4px;font-size:.98rem;font-weight:600;color:var(--text);font-family:var(--serif);
+}
+.acc-q:hover{color:var(--cyan);}
+.acc-q .arrow{font-family:var(--mono);color:var(--brass);flex-shrink:0;transition:transform .2s var(--ease);font-size:.8rem;}
+.acc-item.open .arrow{transform:rotate(90deg);}
+.acc-a{max-height:0;overflow:hidden;transition:max-height .28s var(--ease);}
+.acc-item.open .acc-a{max-height:400px;}
+.acc-a-inner{padding:0 4px 20px;font-size:.9rem;color:var(--text-dim);max-width:70ch;line-height:1.65;}
+
+/* ===== PHOTO BAND ===== */
+.band{
+  position:relative;min-height:340px;display:flex;align-items:center;
+  border-top:1px solid var(--line);border-bottom:1px solid var(--line);
+  overflow:hidden;
+}
+.band-bg{position:absolute;inset:0;background-size:cover;background-position:center;filter:saturate(.7) contrast(1.05);}
+.band-overlay{position:absolute;inset:0;background:linear-gradient(100deg,rgba(10,25,48,.92) 18%,rgba(10,25,48,.55) 60%,rgba(10,25,48,.85));}
+.band-content{position:relative;z-index:1;padding:56px 64px;max-width:640px;}
+.band-content .kicker{color:var(--brass);}
+.band-content h3{font-size:clamp(1.5rem,3vw,2.1rem);font-weight:800;color:#f4f7fb;line-height:1.2;margin-bottom:14px;letter-spacing:-.01em;}
+.band-content p{color:var(--text-dim);font-size:.98rem;max-width:52ch;}
+.band-stat{display:flex;gap:36px;margin-top:26px;flex-wrap:wrap;}
+.band-stat div b{display:block;font-family:var(--mono);font-size:1.5rem;color:var(--cyan);font-weight:700;}
+.band-stat div span{font-size:.72rem;color:var(--text-dimmer);text-transform:uppercase;letter-spacing:.06em;}
+
+/* ===== CODE / COPY DEMO ===== */
+.copy-demo{
+  background:var(--ink);border:1px solid var(--line);border-radius:var(--radius);
+  overflow:hidden;margin-top:20px;
+}
+.copy-demo-head{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:12px 18px;border-bottom:1px solid var(--line);background:var(--ink-2);
+}
+.copy-demo-head span{font-family:var(--mono);font-size:.7rem;color:var(--text-dimmer);letter-spacing:.06em;text-transform:uppercase;}
+.copy-btn{
+  font-family:var(--mono);font-size:.7rem;font-weight:600;letter-spacing:.04em;
+  color:var(--ink);background:var(--cyan);border:none;border-radius:5px;padding:7px 13px;cursor:pointer;
+  transition:background .15s;
+}
+.copy-btn:hover{background:var(--brass);}
+.copy-btn.copied{background:var(--brass);}
+.copy-demo pre{
+  padding:20px 22px;font-family:var(--mono);font-size:.78rem;color:var(--text-dim);
+  white-space:pre-wrap;line-height:1.75;max-height:340px;overflow-y:auto;
+}
+.copy-demo pre b{color:var(--cyan);}
+
+/* ===== MISC ===== */
+.pill{
+  display:inline-flex;align-items:center;gap:6px;
+  font-family:var(--mono);font-size:.67rem;letter-spacing:.05em;text-transform:uppercase;
+  padding:5px 11px;border-radius:100px;border:1px solid var(--line);color:var(--text-dim);
+}
+.pill.brass{border-color:var(--brass);color:var(--brass-bright);}
+.pill.cyan{border-color:var(--cyan-dim);color:var(--cyan);}
+
+.divider-note{
+  display:flex;gap:14px;align-items:flex-start;
+  background:rgba(207,154,82,.06);border:1px solid rgba(207,154,82,.28);
+  border-radius:var(--radius);padding:18px 20px;margin:28px 0;max-width:74ch;
+}
+.divider-note svg{flex-shrink:0;color:var(--brass);margin-top:2px;}
+.divider-note p{font-size:.88rem;color:var(--text-dim);}
+.divider-note strong{color:var(--brass-bright);}
+
+.reveal{opacity:0;transform:translateY(22px);transition:opacity .6s var(--ease),transform .6s var(--ease);}
+.reveal.in-view{opacity:1;transform:translateY(0);}
+
+/* footer */
+footer{padding:70px 64px 46px;position:relative;}
+.footer-grid{display:flex;justify-content:space-between;gap:40px;flex-wrap:wrap;border-bottom:1px solid var(--line);padding-bottom:36px;margin-bottom:26px;}
+.footer-brand{max-width:360px;}
+.footer-brand h4{font-size:1.1rem;font-weight:800;color:var(--text);margin-bottom:10px;}
+.footer-brand p{font-size:.86rem;color:var(--text-dim);}
+.footer-cols{display:flex;gap:56px;flex-wrap:wrap;}
+.footer-col b{font-family:var(--mono);font-size:.64rem;letter-spacing:.1em;text-transform:uppercase;color:var(--brass);display:block;margin-bottom:12px;}
+.footer-col a{display:block;font-size:.83rem;color:var(--text-dim);margin-bottom:9px;transition:color .15s;}
+.footer-col a:hover{color:var(--cyan);}
+.footer-bottom{display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px;font-family:var(--mono);font-size:.66rem;color:var(--text-dimmer);}
+.footer-bottom a{color:var(--text-dimmer);}
+.footer-bottom a:hover{color:var(--cyan);}
+
+/* mobile top bar (hidden on desktop) */
+.mobile-bar{display:none;}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width:980px){
+  .shell{display:block;}
+  .sidebar{
+    position:fixed;top:0;left:0;height:100vh;z-index:800;
+    transform:translateX(-100%);transition:transform .28s var(--ease);
+    background:var(--ink);width:82vw;max-width:340px;
+  }
+  .sidebar.open{transform:translateX(0);box-shadow:20px 0 60px rgba(0,0,0,.5);}
+  .mobile-bar{
+    display:flex;align-items:center;justify-content:space-between;
+    position:sticky;top:0;z-index:700;background:rgba(10,25,48,.96);backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--line);padding:14px 20px;
+  }
+  .mobile-bar b{font-size:.85rem;font-weight:800;}
+  .mobile-bar button{background:none;border:1px solid var(--line);color:var(--text);border-radius:7px;padding:8px 12px;font-size:1rem;cursor:pointer;}
+  .sidebar-scrim{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:750;}
+  .sidebar-scrim.show{display:block;}
+  .hero,.sheet,.band-content,footer{padding-left:26px;padding-right:26px;}
+  .grid-2,.grid-3,.grid-4{grid-template-columns:1fr;}
+  .hero{padding-top:90px;min-height:auto;}
+}
+@media (min-width:981px){
+  .sidebar-toggle{display:none !important;}
+}
+</style>
+</head>
+<body>
+
+<div id="scroll-progress"></div>
+
+<div class="mobile-bar">
+  <b>MY MANAGER — FIELD GUIDE</b>
+  <button id="menuBtn" aria-label="Open sheet index">☰</button>
+</div>
+<div class="sidebar-scrim" id="scrim"></div>
+
+<div class="shell">
+  <!-- ============ SIDEBAR / SHEET INDEX ============ -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-mark">
+        <svg width="30" height="30" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="#cf9a52" stroke-width="1.5"/><path d="M12 3V7M12 17V21M3 12H7M17 12H21" stroke="#6fd0ff" stroke-width="1.5"/><circle cx="12" cy="12" r="1.6" fill="#cf9a52"/></svg>
+        <div class="brand-name">My MaNaGeR<span>Field Guide</span></div>
+      </div>
+      <div class="brand-tblock">
+        <div><b>Drawn for</b>V3.3.8</div>
+        <div><b>Sheets</b>16</div>
+        <div><b>Scale</b>As noted</div>
+        <div><b>Status</b>Current</div>
+      </div>
+      <a class="site-exit" href="index.html">← Back to mymanager site</a>
+    </div>
+    <nav class="sheet-nav" id="sheetNav">
+      <div class="nav-group">
+        <div class="nav-group-label">Start Here</div>
+        <a class="nav-link" href="#welcome"><span class="idx">A-00</span>Welcome &amp; Orientation</a>
+        <a class="nav-link" href="#quickstart"><span class="idx">A-01</span>Your First 15 Minutes</a>
+      </div>
+      <div class="nav-group">
+        <div class="nav-group-label">Core Documents</div>
+        <a class="nav-link" href="#dashboard"><span class="idx">A-02</span>Dashboard &amp; Health Score</a>
+        <a class="nav-link" href="#charter"><span class="idx">A-03</span>Charter &amp; Definitions</a>
+      </div>
+      <div class="nav-group">
+        <div class="nav-group-label">Plan &amp; Schedule</div>
+        <a class="nav-link" href="#wbs"><span class="idx">A-04</span>WBS, Gantt &amp; Critical Path</a>
+        <a class="nav-link" href="#kanban"><span class="idx">A-05</span>Kanban &amp; RACI</a>
+      </div>
+      <div class="nav-group">
+        <div class="nav-group-label">People &amp; Money</div>
+        <a class="nav-link" href="#resources"><span class="idx">A-06</span>Resources &amp; Budget</a>
+      </div>
+      <div class="nav-group">
+        <div class="nav-group-label">Governance</div>
+        <a class="nav-link" href="#risk"><span class="idx">A-07</span>Risk, Issues &amp; Simulation</a>
+        <a class="nav-link" href="#records"><span class="idx">A-08</span>Stakeholders, Changes &amp; Closure</a>
+      </div>
+      <div class="nav-group">
+        <div class="nav-group-label">Communication</div>
+        <a class="nav-link" href="#meetings"><span class="idx">A-09</span>Meetings &amp; Agenda Templates</a>
+        <a class="nav-link" href="#comms"><span class="idx">A-10</span>Comms Log &amp; Documents</a>
+      </div>
+      <div class="nav-group">
+        <div class="nav-group-label">Intelligence</div>
+        <a class="nav-link" href="#ai"><span class="idx">A-11</span>AI Prompt Library</a>
+        <a class="nav-link" href="#dmaic"><span class="idx">A-12</span>DMAIC (Six Sigma Mode)</a>
+      </div>
+      <div class="nav-group">
+        <div class="nav-group-label">System</div>
+        <a class="nav-link" href="#data"><span class="idx">A-13</span>Data, Backup &amp; Access</a>
+        <a class="nav-link" href="#interface"><span class="idx">A-14</span>Interface &amp; Shortcuts</a>
+        <a class="nav-link" href="#faq"><span class="idx">A-15</span>FAQ</a>
+      </div>
+    </nav>
+  </aside>
+
+  <main>
+    <!-- ============ HERO ============ -->
+    <!-- Local photo (crane against sky) — brand-consistent hero backdrop. -->
+    <section class="hero" id="top">
+      <div class="hero-bg"></div>
+      <div class="reg-marks"><span class="tl"></span><span class="tr"></span><span class="bl"></span><span class="br"></span></div>
+      <span class="hero-eyebrow">Field Guide · New User Orientation</span>
+      <h1>Read this app<br>the way you'd <em>read a set of plans.</em></h1>
+      <p class="hero-sub">My MaNaGeR is a construction &amp; project management workspace — Waterfall, Agile, or Hybrid, your call. This guide walks every panel, template, and number on the Dashboard so your first project starts on solid footing.</p>
+      <div class="hero-cta">
+        <a href="#welcome" class="btn btn-brass">Start with Sheet A-00 →</a>
+        <a href="#quickstart" class="btn btn-ghost">Jump to Quick Start</a>
+      </div>
+      <div class="hero-meta">
+        <div><b>18 panels</b>one workspace, zero tab-switching</div>
+        <div><b>14 meeting templates</b>agenda copied in one click</div>
+        <div><b>12 AI prompts</b>paste into any chat you already use</div>
+        <div><b>Local-first</b>autosaves to your browser, nothing uploaded</div>
+      </div>
+    </section>
+    <!-- ============ A-00 WELCOME ============ -->
+    <section class="sheet reveal" id="welcome">
+      <div class="tblock">
+        <div class="tblock-left"><span class="sheet-no">A-00</span><h2>Welcome &amp; Orientation</h2></div>
+        <div class="tblock-right"><div><b>Scale</b>Overview</div></div>
+      </div>
+
+      <span class="kicker">What you're looking at</span>
+      <p class="lede">My MaNaGeR is a single-page workspace for running a construction or capital project end‑to‑end — charter through closeout — without stitching together five different tools. Everything you enter feeds everything else: a task you add to the WBS shows up in the Gantt, the Kanban board, the RACI matrix, and the Dashboard's Health Score, automatically.</p>
+
+      <div class="prose">
+        <p>The app doesn't assume one delivery style. At the top of the screen you'll always find three tabs — <strong>Waterfall</strong>, <strong>Agile</strong>, and <strong>Hybrid</strong> — and the panels beneath reorganize around whichever one is active. Hover any of the three (before you pick) and a small card explains what that methodology changes and gives a worked example, so the choice isn't a guess.</p>
+      </div>
+
+      <h3 class="h-sub">The three methodologies</h3>
+      <div class="grid grid-3">
+        <div class="card bracket">
+          <span class="cnum">01 — DEFAULT</span>
+          <h4>Waterfall</h4>
+          <p>Sequential, date-driven delivery. WBS tasks cascade off predecessors, the Gantt shows a true critical path, and EVM (SPI/CPI) assumes a fixed baseline. Best when scope and sequence are locked before ground breaks.</p>
+        </div>
+        <div class="card bracket">
+          <span class="cnum">02</span>
+          <h4>Agile</h4>
+          <p>Sprint-based delivery. Reveals the Kanban board's sprint tools and unlocks three extra meeting templates — Sprint Planning, Sprint Review, Retrospective — under the Meetings panel.</p>
+        </div>
+        <div class="card bracket">
+          <span class="cnum">03</span>
+          <h4>Hybrid</h4>
+          <p>Runs both models side by side — a Waterfall schedule for procurement and structural milestones, Agile sprints for design iteration or punch-list burndown.</p>
+        </div>
+      </div>
+
+      <div class="divider-note">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 3L19 6V11C19 15.5 16 19.5 12 21C8 19.5 5 15.5 5 11V6L12 3Z" stroke="currentColor" stroke-width="1.6"/></svg>
+        <p><strong>Methodology Lock.</strong> Once your team commits, lock it in from Settings ▸ Controls. A gold padlock appears in the header as confirmation, and the app blocks mid-project switching — the same discipline as a signed-off drawing set.</p>
+      </div>
+
+      <h3 class="h-sub">How the workspace is laid out</h3>
+      <p class="prose" style="margin-bottom:20px">One row of icon tabs runs across the top of the app — that's your entire project. Eighteen panels, grouped here the same way this guide is:</p>
+      <div class="grid grid-4">
+        <div class="card"><span class="cnum">GROUP</span><h4>Core Docs</h4><p>Dashboard · Definitions · Charter</p></div>
+        <div class="card"><span class="cnum">GROUP</span><h4>Plan &amp; Schedule</h4><p>WBS · Gantt · Kanban · RACI</p></div>
+        <div class="card"><span class="cnum">GROUP</span><h4>People &amp; Money</h4><p>Resources · Budget</p></div>
+        <div class="card"><span class="cnum">GROUP</span><h4>Governance</h4><p>Stakeholders · Changes · Decision Log · Risk/Issues · Closure</p></div>
+        <div class="card"><span class="cnum">GROUP</span><h4>Communication</h4><p>Comms Log · Documents · Meetings</p></div>
+        <div class="card"><span class="cnum">HIDDEN</span><h4>DMAIC</h4><p>Appears only once Six Sigma mode is switched on</p></div>
+      </div>
+
+      <div class="divider-note" style="margin-top:32px">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><rect x="3" y="4" width="18" height="14" rx="2" stroke="currentColor" stroke-width="1.6"/><path d="M3 8H21" stroke="currentColor" stroke-width="1.6"/></svg>
+        <p><strong>Local-first, by design.</strong> Every change autosaves to your browser's LocalStorage as you type — the "Not backed up" indicator in the header just means it hasn't been exported to a portable file yet. Nothing leaves your device unless you export it or paste an AI prompt somewhere yourself. Sheet A-13 covers backups properly.</p>
+      </div>
+    </section>
+
+    <!-- ============ PHOTO BAND ============ -->
+    <!-- Local photo (plans on a desk) — matches the guide's working-drawing theme. -->
+    <div class="band reveal">
+      <div class="band-bg" style="background-image:url('images/office-project-desk.webp')"></div>
+      <div class="band-overlay"></div>
+      <div class="band-content">
+        <span class="kicker">Built for the field, not the boardroom</span>
+        <h3>One workspace, from the kickoff meeting to the last punch-list item.</h3>
+        <div class="band-stat">
+          <div><b>18</b><span>Panels</span></div>
+          <div><b>36</b><span>Glossary terms</span></div>
+          <div><b>0</b><span>API calls made by the app itself</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ A-01 QUICK START ============ -->
+    <section class="sheet sheet-alt reveal" id="quickstart">
+      <div class="tblock">
+        <div class="tblock-left"><span class="sheet-no">A-01</span><h2>Your First 15 Minutes</h2></div>
+        <div class="tblock-right"><div><b>Scale</b>Procedure</div></div>
+      </div>
+      <span class="kicker">Do these in order</span>
+      <p class="lede">Everything downstream — Health Score, EVM, RACI, the Dashboard — depends on a handful of fields being filled in first. Here's the sequence that gets a new project from blank to fully live.</p>
+
+      <div class="flow">
+        <div class="flow-item"><div class="flow-num"></div><div class="flow-body">
+          <h4>Pick a methodology and set the basics</h4>
+          <p>Choose Waterfall, Agile, or Hybrid up top. Then open <strong>Settings ▸ Controls</strong> and set your name (personalizes the greeting) and your Work Week (3–7 days) — it feeds both Resource Utilization and Budget's labor-cost math.</p>
+        </div></div>
+        <div class="flow-item"><div class="flow-num"></div><div class="flow-body">
+          <h4>Fill out the Charter</h4>
+          <p>Your project's identity document — Sponsor, stakeholders, requirements, deliverables, KPIs, scope, budget. Already have one written? Use <strong>Upload Existing Charter</strong> (.docx/.pdf/.txt) or <strong>Paste Charter Text</strong> to auto-fill the fields instead of retyping.</p>
+        </div></div>
+        <div class="flow-item"><div class="flow-num"></div><div class="flow-body">
+          <h4>Establish realistic target dates</h4>
+          <p>Before a single task exists, open <strong>Establish Charter Target Dates</strong> in the Charter panel — it reasons through a realistic duration, a weather-season contingency, and a management reserve, then proposes dates to lock in.</p>
+        </div></div>
+        <div class="flow-item"><div class="flow-num"></div><div class="flow-body">
+          <h4>Build the WBS</h4>
+          <p>Paste a plain-text outline (blank line = new main task, indents = subtasks) or add tasks by hand. Set predecessors so downstream dates cascade automatically as the schedule shifts.</p>
+        </div></div>
+        <div class="flow-item"><div class="flow-num"></div><div class="flow-body">
+          <h4>Set RACI</h4>
+          <p>Rows and columns populate live from your WBS tasks and your Resources/Stakeholders lists — nothing to re-enter. Click a cell to cycle Responsible → Accountable → Consulted → Informed.</p>
+        </div></div>
+        <div class="flow-item"><div class="flow-num"></div><div class="flow-body">
+          <h4>Save a Baseline</h4>
+          <p><strong>Settings ▸ Controls ▸ Save Baseline</strong> snapshots your current schedule and budget before real work starts — the Dashboard's Baseline Variance card has nothing to compare against until you do this once.</p>
+        </div></div>
+        <div class="flow-item"><div class="flow-num"></div><div class="flow-body">
+          <h4>Open the Dashboard</h4>
+          <p>Health Score, EVM, Timeline Target Tracker, and Today's Focus are now populated. Sheet A-02 breaks down every number you'll see there.</p>
+        </div></div>
+        <div class="flow-item"><div class="flow-num"></div><div class="flow-body">
+          <h4>Back up to a file</h4>
+          <p>LocalStorage protects you against a closed tab, not a wiped browser. <strong>Settings ▸ Controls ▸ Save Project to File</strong> exports a portable .json — do this before switching devices or closing up for the day.</p>
+        </div></div>
+      </div>
+    </section>
+    <!-- ============ A-02 DASHBOARD & HEALTH SCORE ============ -->
+    <section class="sheet reveal" id="dashboard">
+      <div class="tblock">
+        <div class="tblock-left"><span class="sheet-no">A-02</span><h2>Dashboard &amp; Health Score</h2></div>
+        <div class="tblock-right"><div><b>Scale</b>1 : 1 detail</div></div>
+      </div>
+      <span class="kicker">Where every number lives</span>
+      <p class="lede">The Dashboard is the only panel that reads from every other panel at once. Nothing here is manually entered — it's all calculated from your WBS, Budget, Risk register, and Charter the moment they have enough data to be honest about it.</p>
+
+      <div class="tabs" data-tabgroup="dash">
+        <button class="tab-btn active" data-tab="health">Health Score</button>
+        <button class="tab-btn" data-tab="evm">Earned Value (EVM)</button>
+        <button class="tab-btn" data-tab="timeline">Timeline &amp; Baseline</button>
+        <button class="tab-btn" data-tab="confidence">Schedule Confidence</button>
+        <button class="tab-btn" data-tab="today">Today's Focus</button>
+      </div>
+
+      <div class="tab-panel active" data-panel="health">
+        <p class="prose">One number, 0–100, blending five weighted factors. Until there's enough of the project entered to calculate honestly, it reads <strong>"no data yet"</strong> instead of showing a fake score.</p>
+        <table class="tbl">
+          <thead><tr><th>Factor</th><th>Weight</th><th>Reads from</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Completion</strong></td><td class="num">30%</td><td>% complete across WBS tasks</td></tr>
+            <tr><td><strong>Schedule</strong></td><td class="num">25%</td><td>Timeline Target Tracker / critical path drift</td></tr>
+            <tr><td><strong>Budget</strong></td><td class="num">20%</td><td>Planned vs. actual spend</td></tr>
+            <tr><td><strong>Risk</strong></td><td class="num">15%</td><td>Open, unmitigated items in the Risk register</td></tr>
+            <tr><td><strong>Change volume</strong></td><td class="num">10%</td><td>Pending / recent Change Requests</td></tr>
+          </tbody>
+        </table>
+        <p class="prose">This same score is what gets stamped at the top of every meeting agenda you copy from the Meetings panel — see Sheet A-09.</p>
+      </div>
+
+      <div class="tab-panel" data-panel="evm">
+        <p class="prose">Earned Value Management, auto-calculated once you have at least one budget line and one dated task. SPI/CPI above 1.0 means ahead of plan / under budget; below 1.0 means behind / over.</p>
+        <div class="grid grid-4" style="margin-top:20px">
+          <div class="card"><span class="cnum">SPI</span><h4>Schedule Perf. Index</h4><p>Earned value ÷ planned value.</p></div>
+          <div class="card"><span class="cnum">CPI</span><h4>Cost Perf. Index</h4><p>Earned value ÷ actual cost.</p></div>
+          <div class="card"><span class="cnum">EAC</span><h4>Estimate at Completion</h4><p>Forecast total cost at finish.</p></div>
+          <div class="card"><span class="cnum">ETC</span><h4>Estimate to Complete</h4><p>What's left to spend.</p></div>
+        </div>
+        <p class="prose" style="margin-top:20px">Also on the card: <strong>SV</strong> (Schedule Variance), <strong>CV</strong> (Cost Variance), <strong>PV</strong> (Planned Value), <strong>AC</strong> (Actual Cost), and <strong>VAC</strong> / <strong>TCPI</strong> in the forecast strip beneath.</p>
+      </div>
+
+      <div class="tab-panel" data-panel="timeline">
+        <h4 class="h-mini">Timeline Target Tracker</h4>
+        <p class="prose">Compares the <strong>Target Completion Date</strong> you locked into the Charter against your <strong>Current Planned Finish</strong> — the latest end date across all scheduled tasks. Once you slip past target, a badge appears in the header from any panel; clicking it jumps straight back to this card.</p>
+        <h4 class="h-mini">Baseline Variance</h4>
+        <p class="prose">A different comparison: <strong>Settings ▸ Controls ▸ Save Baseline</strong> snapshots your schedule and budget at a moment in time. From then on, this card shows how far your live numbers have drifted from that snapshot — independent of the Charter's promised date.</p>
+      </div>
+
+      <div class="tab-panel" data-panel="confidence">
+        <p class="prose">One unified view standing in for four separate checks — a single glance instead of four cards to answer "are we going to make it."</p>
+        <div class="grid grid-2" style="margin-top:16px">
+          <div class="card bracket"><span class="cnum">MONTE CARLO</span><h4>Hit-probability</h4><p>Live odds of reaching the Charter's Target Completion Date, from the same 1,000-trial simulation engine as the full Monte Carlo panel (Sheet A-07).</p></div>
+          <div class="card bracket"><span class="cnum">WEATHER</span><h4>Weather Variance</h4><p>Checks weather-exposed tasks against your Weather Window (a hurricane/rainy-season range plus buffer, set in Settings) and flags any without enough cushion.</p></div>
+          <div class="card bracket"><span class="cnum">CRASH</span><h4>Crash Candidates</h4><p>Ranks critical-path tasks by realistic recovery potential — e.g. "add another mason crew" — while excluding anything gated by permits, curing time, or third-party lead time, since more labor can't compress those.</p></div>
+          <div class="card bracket"><span class="cnum">FLOAT</span><h4>Float Watch</h4><p>Lists tasks with little or no schedule slack, plus how much float has been consumed against your saved baseline. Recalculates every time you open the Dashboard.</p></div>
+        </div>
+        <p class="prose" style="margin-top:20px">A separate <strong>Lead-Time Tracker</strong> card sits alongside these, listing days remaining or overdue for anything tracked as a Lead-Time task (permits, procurement) — see Sheet A-04.</p>
+      </div>
+
+      <div class="tab-panel" data-panel="today">
+        <p class="prose">A same-day view of what's active right now — refreshed on demand, not on a timer, so it reflects exactly where things stood the last time you hit refresh. Sits beside the <strong>Next 3 Priority Actions</strong> list and the <strong>Active Issues &amp; Blockers</strong> card, which is also where you'll find the one-click <strong>Weekly Digest</strong> and <strong>Report Prompt</strong> buttons covered in Sheet A-11.</p>
+      </div>
+    </section>
+    <!-- ============ A-03 CHARTER & DEFINITIONS ============ -->
+    <section class="sheet sheet-alt reveal" id="charter">
+      <div class="tblock">
+        <div class="tblock-left"><span class="sheet-no">A-03</span><h2>Charter &amp; Definitions</h2></div>
+        <div class="tblock-right"><div><b>Scale</b>Overview</div></div>
+      </div>
+      <span class="kicker">Your project's identity document</span>
+      <p class="lede">Fill the Charter out before real work begins. It locks the Sponsor, stakeholders, requirements, deliverables, KPIs, scope, and budget on record — everything downstream treats it as the source of truth.</p>
+
+      <div class="grid grid-3">
+        <div class="card bracket">
+          <span class="cnum">FASTEST</span>
+          <h4>Upload Existing Charter</h4>
+          <p>Reads a .docx, .pdf, or .txt file and auto-fills the fields for you. Needs an internet connection the first time, to load the parsing libraries.</p>
+        </div>
+        <div class="card bracket">
+          <span class="cnum">OFFLINE</span>
+          <h4>Paste Charter Text</h4>
+          <p>Same auto-fill logic, run on text you paste in directly — works with no connection at all.</p>
+        </div>
+        <div class="card bracket">
+          <span class="cnum">HANDOFF</span>
+          <h4>Print Charter</h4>
+          <p>A clean, buttons-hidden printout of just the Charter — full text expanded, legible on paper regardless of your Dark/Light theme setting.</p>
+        </div>
+      </div>
+
+      <h3 class="h-sub">KPIs, with a twist</h3>
+      <p class="prose">Add a name, a target value, and how it's measured — standard stuff. The twist: you can optionally link a KPI to a live in-app metric (Health Score, Timeline Variance, Open Risks, and others), and its current value and status will show automatically instead of you tracking it by hand.</p>
+
+      <h3 class="h-sub">Definitions — the glossary that's actually useful</h3>
+      <p class="prose">36 plain-language PM and construction terms, each with a note on why it matters <em>inside this app specifically</em>, plus a worked example. A few samples:</p>
+
+      <div class="grid grid-3" style="margin-top:16px">
+        <div class="card"><span class="cnum">TERM</span><h4>RACI</h4><p>Who's Responsible, Accountable, Consulted, Informed on each task — cross-referenced live against your WBS and people lists in Sheet A-05.</p></div>
+        <div class="card"><span class="cnum">TERM</span><h4>CPM</h4><p>Critical Path Method — the task chain that directly controls your finish date, highlighted in gold on the Gantt.</p></div>
+        <div class="card"><span class="cnum">TERM</span><h4>EVM</h4><p>Earned Value Management — the SPI/CPI math behind the Dashboard's forecast card, in Sheet A-02.</p></div>
+      </div>
+      <p class="prose" style="margin-top:18px;font-size:.84rem;color:var(--text-dimmer)">The full 36-term list — including WBS, Monte Carlo, DMAIC, float, baseline, and the rest — lives in the app's Definitions panel, one click from the top nav.</p>
+    </section>
+    <!-- ============ A-04 WBS, GANTT & CRITICAL PATH ============ -->
+    <section class="sheet reveal" id="wbs">
+      <div class="tblock">
+        <div class="tblock-left"><span class="sheet-no">A-04</span><h2>WBS, Gantt &amp; Critical Path</h2></div>
+        <div class="tblock-right"><div><b>Scale</b>1 : 1 detail</div></div>
+      </div>
+      <span class="kicker">Where the schedule actually lives</span>
+      <p class="lede">The Work Breakdown Structure is the spine everything else attaches to. Build it once, and the Gantt, Kanban, RACI, and Dashboard all stay in sync automatically.</p>
+
+      <h3 class="h-sub">Three ways to build it</h3>
+      <div class="grid grid-3">
+        <div class="card bracket"><span class="cnum">MANUAL</span><h4>Add Task</h4><p>Build row by row. Indent / outdent to nest subtasks; collapse or expand the whole tree at once.</p></div>
+        <div class="card bracket"><span class="cnum">FAST</span><h4>WBS Text Import</h4><p>Paste a plain outline — blank line starts a new main task, indented lines become subtasks. Paste again later and it merges by matching name instead of duplicating.</p></div>
+        <div class="card bracket"><span class="cnum">AI-ASSISTED</span><h4>Import Dates for Existing WBS</h4><p>Pulls your live WBS into a prompt, asks your AI for a dated version, and merges the returned dates back in — nothing duplicated.</p></div>
+      </div>
+
+      <h3 class="h-sub">Two special task types</h3>
+      <div class="grid grid-2">
+        <div class="card"><span class="cnum">TYPE</span><h4>Lead-Time</h4><p>For procurement, permits, or anything waiting on a third party. Tracked by Submitted Date / Expected Date instead of Start/End and % Complete. Shows as a dashed card in Kanban and a hatched bar in the Gantt — and feeds the Lead-Time Tracker on the Dashboard.</p></div>
+        <div class="card"><span class="cnum">TYPE</span><h4>Recurring</h4><p>For work that runs the whole project — weekly safety talks, ongoing QC. Its Start/End auto-span the full project length and update as the schedule changes. Excluded from Critical Path and Float, same as phase-summary rows.</p></div>
+      </div>
+
+      <h3 class="h-sub">How dates cascade</h3>
+      <p class="prose">Enter a Task ID in the Pred. column. When that predecessor's end date changes, every downstream task recalculates automatically — with a cycle guard, so a circular dependency (A depends on B depends on A) can't lock up the math.</p>
+
+      <div class="divider-note">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 8V12M12 16H12.01M21 12C21 16.97 16.97 21 12 21C7.03 21 3 16.97 3 12C3 7.03 7.03 3 12 3C16.97 3 21 7.03 21 12Z" stroke="currentColor" stroke-width="1.6"/></svg>
+        <p><strong>conf:high / conf:low tags.</strong> When AI-generated dates come back from the "Generate Dates" prompt, each line carries a confidence badge — high for low-variance work like pouring concrete, low for anything depending on outside parties. These tags feed directly into the Monte Carlo simulator, giving high-confidence tasks a tighter risk spread and low-confidence ones a wider one.</p>
+      </div>
+
+      <h3 class="h-sub">On the Gantt itself</h3>
+      <div class="grid grid-2">
+        <div class="card"><span class="cnum">TOGGLE</span><h4>Critical Path Highlighter</h4><p>Illuminates in gold the exact chain of tasks controlling your final deadline; every non-critical task dims. Toggle it from the Gantt panel header.</p></div>
+        <div class="card"><span class="cnum">PASSIVE</span><h4>Deadline Pulse Alert</h4><p>Any task within 3 days of its end date pulses amber — on the Gantt bar and its Kanban card. No setup required.</p></div>
+      </div>
+
+      <div class="divider-note" style="margin-top:24px">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M4 4V20H20" stroke="currentColor" stroke-width="1.6"/><path d="M8 15L12 10L16 13L20 7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+        <p><strong>The Audit → Correct → Reimport loop.</strong> Run the Schedule Logic Audit prompt (Sheet A-11), feed its findings back into the Generate Dates prompt as context, reimport the corrected outline. This is a manual refinement cycle you drive as the schedule evolves — the app won't run it for you.</p>
+      </div>
+    </section>
+
+    <!-- ============ PHOTO BAND 2 ============ -->
+    <!-- Local photo (brand-consistent site overview) — matches the marketing homepage band. -->
+    <div class="band reveal">
+      <div class="band-bg" style="background-image:url('images/site-overview-clean.webp')"></div>
+      <div class="band-overlay"></div>
+      <div class="band-content">
+        <span class="kicker">Every task, one source of truth</span>
+        <h3>The WBS you build once shows up on the Gantt, the Kanban board, and the RACI matrix — never re-entered.</h3>
+      </div>
+    </div>
+
+    <!-- ============ A-05 KANBAN & RACI ============ -->
+    <section class="sheet sheet-alt reveal" id="kanban">
+      <div class="tblock">
+        <div class="tblock-left"><span class="sheet-no">A-05</span><h2>Kanban &amp; RACI</h2></div>
+        <div class="tblock-right"><div><b>Scale</b>Overview</div></div>
+      </div>
+
+      <div class="tabs" data-tabgroup="kanraci">
+        <button class="tab-btn active" data-tab="kan">Kanban Board</button>
+        <button class="tab-btn" data-tab="raci">RACI Matrix</button>
+      </div>
+
+      <div class="tab-panel active" data-panel="kan">
+        <p class="prose">Your WBS tasks, viewed as cards across To Do / In Progress / Blocked / Completed.</p>
+        <div class="grid grid-2" style="margin-top:16px">
+          <div class="card"><span class="cnum">TOGGLE</span><h4>Show Lead-Time Lane</h4><p>Adds a dedicated swimlane for Lead-Time tasks so procurement and permit items don't clutter the normal columns.</p></div>
+          <div class="card"><span class="cnum">TOOL</span><h4>Populate Sprint</h4><p>Set a Sprint Start/End date and every "In Progress" task's dates clamp to fall inside that window — a fast way to timebox your current push.</p></div>
+        </div>
+      </div>
+
+      <div class="tab-panel" data-panel="raci">
+        <p class="prose">Rows and columns pull live from your WBS tasks and your Resources/Stakeholders lists — add a person or task elsewhere and it appears here with nothing to re-enter.</p>
+        <div class="grid grid-3" style="margin-top:16px">
+          <div class="card"><span class="cnum">CLICK</span><h4>Cycle a cell</h4><p>Click to move Responsible → Accountable → Consulted → Informed → blank. Right-click, or Backspace with the cell focused, steps back.</p></div>
+          <div class="card"><span class="cnum">⚠ ALERT</span><h4>External Accountable</h4><p>Flags when the person marked Accountable on a task is an external Stakeholder rather than an internal Resource — usually worth double-checking.</p></div>
+          <div class="card"><span class="cnum">⚠ ALERT</span><h4>Overload warning</h4><p>Flags any task with nobody Accountable, and any person Accountable for more than 5 tasks — a possible bottleneck worth redistributing.</p></div>
+        </div>
+      </div>
+    </section>
+    <!-- ============ A-06 RESOURCES & BUDGET ============ -->
+    <section class="sheet reveal" id="resources">
+      <div class="tblock">
+        <div class="tblock-left"><span class="sheet-no">A-06</span><h2>Resources &amp; Budget</h2></div>
+        <div class="tblock-right"><div><b>Scale</b>Overview</div></div>
+      </div>
+      <span class="kicker">People, hours, and money — connected</span>
+      <p class="lede">Resources and Budget aren't two separate spreadsheets here. One setting — your Work Week — feeds both, and one button pushes labor straight from one panel into the other.</p>
+
+      <div class="grid grid-3">
+        <div class="card bracket"><span class="cnum">STRIP</span><h4>Resource Utilization</h4><p>A visual bar per person showing how much of their available capacity is booked across active tasks. Over 100% means they're over-allocated.</p></div>
+        <div class="card bracket"><span class="cnum">SETTING</span><h4>Work Week</h4><p>Set in Settings ▸ Controls, 3–7 days. Determines how many working days someone actually has — and multiplies straight into Budget's labor cost math. Change it and both recalculate instantly.</p></div>
+        <div class="card bracket"><span class="cnum">BUTTON</span><h4>Push Resources to Budget</h4><p>Turns your Resources list directly into budget lines — no re-typing names, rates, or allocations a second time.</p></div>
+      </div>
+
+      <h3 class="h-sub">Budget lines &amp; spend entries</h3>
+      <p class="prose">Budget lines set the plan; spend entries record what actually went out the door against each line. The gap between the two is exactly what the Dashboard's Budget Variance card and the EVM engine (Sheet A-02) are reading.</p>
+    </section>
+
+    <!-- ============ A-07 RISK, ISSUES & SIMULATION ============ -->
+    <section class="sheet sheet-alt reveal" id="risk">
+      <div class="tblock">
+        <div class="tblock-left"><span class="sheet-no">A-07</span><h2>Risk, Issues &amp; Simulation</h2></div>
+        <div class="tblock-right"><div><b>Scale</b>1 : 1 detail</div></div>
+      </div>
+      <span class="kicker">The register that feeds the Health Score</span>
+      <p class="lede">Fifteen percent of your Health Score comes straight from what's open here — so this panel earns its keep beyond just documentation.</p>
+
+      <div class="grid grid-2">
+        <div class="card bracket"><span class="cnum">WORKFLOW</span><h4>Risk → Issue conversion</h4><p>Toggle the switch in the → Issue column and the row visually converts, moving to the Live Issues table with a red alert border. No re-entering the description.</p></div>
+        <div class="card bracket"><span class="cnum">SIMULATION</span><h4>Monte Carlo Simulator</h4><p>Runs 1,000 randomized trials of your schedule using each task's duration, your Risk Factor setting, and predecessor chains, then reports P10/P50/P80/P90 completion dates — a realistic range instead of one falsely-precise date. Set a Target Completion Date and it reports your probability of hitting it. Needs at least 2 dated tasks.</p></div>
+      </div>
+
+      <div class="divider-note">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.6"/><path d="M9 12L11 14L15 9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <p><strong>Where the spread comes from.</strong> Tasks tagged <span class="pill cyan">conf:high</span> during AI-assisted dating (Sheet A-04) get a tighter risk spread in the simulation; <span class="pill cyan">conf:low</span> tasks get a wider one — instead of every task sharing one blanket Risk Factor.</p>
+      </div>
+    </section>
+
+    <!-- ============ A-08 STAKEHOLDERS, CHANGES & CLOSURE ============ -->
+    <section class="sheet reveal" id="records">
+      <div class="tblock">
+        <div class="tblock-left"><span class="sheet-no">A-08</span><h2>Stakeholders, Changes &amp; Closure</h2></div>
+        <div class="tblock-right"><div><b>Scale</b>Overview</div></div>
+      </div>
+      <span class="kicker">The record-keeping panels</span>
+      <p class="lede">Four panels that mostly document decisions rather than calculate anything — but they're what you'll actually reach for in a scope dispute or a sponsor review.</p>
+
+      <div class="grid grid-4">
+        <div class="card"><span class="cnum">A</span><h4>Stakeholders</h4><p>Your engagement register — separate from internal Resources, and cross-checked against RACI's "external Accountable" alert.</p></div>
+        <div class="card"><span class="cnum">B</span><h4>Changes</h4><p>Log Change Requests here; the Change Control Board meeting template (Sheet A-09) walks the approve/reject/defer decision.</p></div>
+        <div class="card"><span class="cnum">C</span><h4>Decision Log</h4><p>A running record of decisions made, separate from the Comms Log — useful when someone asks "wait, who approved that?"</p></div>
+        <div class="card"><span class="cnum">D</span><h4>Closure</h4><p>A closeout checklist plus a Lessons Learned form — What Went Well, Improvements, Recommendations. Trigger it as the project approaches completion.</p></div>
+      </div>
+    </section>
+    <!-- ============ A-09 MEETINGS & AGENDA TEMPLATES ============ -->
+    <section class="sheet sheet-alt reveal" id="meetings">
+      <div class="tblock">
+        <div class="tblock-left"><span class="sheet-no">A-09</span><h2>Meetings &amp; Agenda Templates</h2></div>
+        <div class="tblock-right"><div><b>Scale</b>1 : 1 detail</div><div><b>Templates</b>14</div></div>
+      </div>
+      <span class="kicker">Never build an agenda from scratch again</span>
+      <p class="lede">Every template compiles your live project data — Health Score, project name, the works — into a ready agenda and copies it straight to your clipboard. Paste it into a document, an email, or your meeting notes app.</p>
+
+      <div class="tabs" data-tabgroup="meet">
+        <button class="tab-btn active" data-tab="kickoff">Project Kickoff</button>
+        <button class="tab-btn" data-tab="recurring">Recurring</button>
+        <button class="tab-btn" data-tab="specialized">Specialized</button>
+        <button class="tab-btn" data-tab="agile">Agile-only</button>
+      </div>
+
+      <div class="tab-panel active" data-panel="kickoff">
+        <p class="prose">The one meeting every project starts with. Eleven agenda items, built to walk a new team through the entire workspace in a single sitting.</p>
+        <div class="grid grid-2" style="margin-top:8px;margin-bottom:28px">
+          <ol style="counter-reset:ko;font-size:.88rem;color:var(--text-dim);line-height:2.1">
+            <li style="display:flex;gap:10px"><span style="font-family:var(--mono);color:var(--brass);flex-shrink:0">01</span>Welcome &amp; Introductions + Roles/RACI Confirmation</li>
+            <li style="display:flex;gap:10px"><span style="font-family:var(--mono);color:var(--brass);flex-shrink:0">02</span>Project Charter Walkthrough (scope, sponsor, targets, budget)</li>
+            <li style="display:flex;gap:10px"><span style="font-family:var(--mono);color:var(--brass);flex-shrink:0">03</span>Stakeholder Register &amp; Engagement Plan</li>
+            <li style="display:flex;gap:10px"><span style="font-family:var(--mono);color:var(--brass);flex-shrink:0">04</span>WBS &amp; Deliverables Review</li>
+            <li style="display:flex;gap:10px"><span style="font-family:var(--mono);color:var(--brass);flex-shrink:0">05</span>Resource &amp; Procurement Plan (long-lead items)</li>
+            <li style="display:flex;gap:10px"><span style="font-family:var(--mono);color:var(--brass);flex-shrink:0">06</span>Budget Baseline &amp; EVM Setup</li>
+          </ol>
+          <ol style="font-size:.88rem;color:var(--text-dim);line-height:2.1">
+            <li style="display:flex;gap:10px"><span style="font-family:var(--mono);color:var(--brass);flex-shrink:0">07</span>Risk Workshop (populate register live)</li>
+            <li style="display:flex;gap:10px"><span style="font-family:var(--mono);color:var(--brass);flex-shrink:0">08</span>Safety/HSE, Quality &amp; Site Logistics</li>
+            <li style="display:flex;gap:10px"><span style="font-family:var(--mono);color:var(--brass);flex-shrink:0">09</span>Schedule Target + Weather Buffer Confirmation</li>
+            <li style="display:flex;gap:10px"><span style="font-family:var(--mono);color:var(--brass);flex-shrink:0">10</span>Change Control &amp; Governance Agreement</li>
+            <li style="display:flex;gap:10px"><span style="font-family:var(--mono);color:var(--brass);flex-shrink:0">11</span>Action Items, Next Steps &amp; Minutes Distribution</li>
+          </ol>
+        </div>
+
+        <h4 class="h-mini">What "Copy Template" actually produces</h4>
+        <p class="prose">A timestamped, ready-to-paste agenda — project name and current Health Score stamped at the top, every item numbered with a notes line beneath it, and action-item / decisions / next-meeting sections at the bottom. Try it below — this is a real, working copy button.</p>
+        <div class="copy-demo">
+          <div class="copy-demo-head"><span>Preview — Project Kickoff</span><button class="copy-btn" data-copy="kickoff-demo">Copy</button></div>
+          <pre id="kickoff-demo">[<b>Today's date/time</b> | My MaNaGeR | WATERFALL]
+
+PROJECT KICKOFF — AGENDA
+==================================================
+Project: <b>[Your Project Name]</b>
+Health Score: <b>—</b>
+Duration: 60–90 min
+Date: ____________  Time: ____________
+Facilitator: ____________
+Attendees: ____________
+
+AGENDA ITEMS
+--------------------------------------------------
+1. Welcome &amp; Introductions + Roles/RACI Confirmation
+   Notes:
+
+2. Project Charter Walkthrough (scope, sponsor, targets, budget)
+   Notes:
+
+3. Stakeholder Register &amp; Engagement Plan
+   Notes:
+
+   … 8 more items …
+
+ACTION ITEMS
+--------------------------------------------------
+# | Action | Owner | Due Date | Status
+1 |  |  |  | Open
+2 |  |  |  | Open
+3 |  |  |  | Open
+
+DECISIONS MADE
+--------------------------------------------------
+-
+
+NEXT MEETING
+--------------------------------------------------
+Date: ____________  Focus: ____________</pre>
+        </div>
+      </div>
+
+      <div class="tab-panel" data-panel="recurring">
+        <div class="grid grid-2">
+          <div class="card bracket"><span class="cnum">30 MIN</span><h4>Weekly Progress Review</h4><p>Health Score &amp; KPI trend, schedule variance, budget variance, open risks, blockers, priorities for next 7 days.</p></div>
+          <div class="card bracket"><span class="cnum">45 MIN</span><h4>Risk Review</h4><p>Re-score risks (P × I), retire closed ones, add emerging risks, confirm owners, update contingency reserve.</p></div>
+          <div class="card bracket"><span class="cnum">30 MIN</span><h4>Change Control Board</h4><p>Review open CRs, assess impact, approve/reject/defer, update baselines, communicate decisions.</p></div>
+          <div class="card bracket"><span class="cnum">15 MIN</span><h4>Daily Stand-up / Toolbox Talk</h4><p>Safety moment, yesterday's progress, today's priorities, blockers &amp; help needed.</p></div>
+        </div>
+      </div>
+
+      <div class="tab-panel" data-panel="specialized">
+        <div class="grid grid-3">
+          <div class="card"><span class="cnum">60 MIN</span><h4>Steering Committee</h4><p>Executive summary, Health Score, milestones, budget/schedule status, escalations.</p></div>
+          <div class="card"><span class="cnum">60 MIN</span><h4>Procurement / Vendor Selection</h4><p>Bid comparison, scoring, award recommendation, contract next steps.</p></div>
+          <div class="card"><span class="cnum">45 MIN</span><h4>Quality Review / DMAIC Check</h4><p>Defect log, root cause, corrective actions, metrics update.</p></div>
+          <div class="card"><span class="cnum">60 MIN</span><h4>Phase-Gate / Milestone Review</h4><p>Deliverables completeness, acceptance criteria, go/no-go decision.</p></div>
+          <div class="card"><span class="cnum">45 MIN</span><h4>Scope Validation</h4><p>Deliverable walkthrough, formal sign-off, WBS status update, handover items.</p></div>
+          <div class="card"><span class="cnum">60 MIN</span><h4>Lessons Learned</h4><p>What worked, what didn't, root causes, actions for future phases.</p></div>
+        </div>
+      </div>
+
+      <div class="tab-panel" data-panel="agile">
+        <div class="divider-note" style="margin-bottom:24px">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.6"/></svg>
+          <p>These three only appear in the Meetings panel once your methodology is set to <strong>Agile</strong> or <strong>Hybrid</strong>.</p>
+        </div>
+        <div class="grid grid-3">
+          <div class="card bracket"><span class="cnum">60 MIN</span><h4>Sprint Planning</h4><p>Review backlog, confirm team capacity, commit to sprint backlog, define sprint goal.</p></div>
+          <div class="card bracket"><span class="cnum">45 MIN</span><h4>Sprint Review</h4><p>Demo completed stories, gather stakeholder feedback, update the product backlog.</p></div>
+          <div class="card bracket"><span class="cnum">45 MIN</span><h4>Retrospective</h4><p>What went well, what to improve, action items with named owners.</p></div>
+        </div>
+      </div>
+    </section>
+    <!-- ============ A-10 COMMS LOG & DOCUMENTS ============ -->
+    <section class="sheet reveal" id="comms">
+      <div class="tblock">
+        <div class="tblock-left"><span class="sheet-no">A-10</span><h2>Comms Log &amp; Documents</h2></div>
+        <div class="tblock-right"><div><b>Scale</b>Overview</div></div>
+      </div>
+      <div class="grid grid-2">
+        <div class="card bracket"><span class="cnum">RECORD</span><h4>Comms Log</h4><p>Every material communication — meetings, calls, emails, site visits — with attendees, a summary, action items, and a follow-up date. Your record of reference in any scope dispute.</p></div>
+        <div class="card bracket"><span class="cnum">REGISTER</span><h4>Document Register</h4><p>Tracks drawings, contracts, permits, specs, and inspection reports by version and status, with alerts for anything outstanding.</p></div>
+      </div>
+    </section>
+
+    <!-- ============ A-11 AI PROMPT LIBRARY ============ -->
+    <section class="sheet sheet-alt reveal" id="ai">
+      <div class="tblock">
+        <div class="tblock-left"><span class="sheet-no">A-11</span><h2>AI Prompt Library</h2></div>
+        <div class="tblock-right"><div><b>Scale</b>1 : 1 detail</div><div><b>Prompts</b>12</div></div>
+      </div>
+      <span class="kicker">Zero API calls. Zero extra cost.</span>
+      <p class="lede">Each button compiles your live project data into a structured prompt and copies it to your clipboard. You paste it into whichever AI chat you already use, then bring the response back here if you need to. The app itself never calls out to anything — nothing leaves your browser unless you paste it somewhere.</p>
+
+      <div class="grid grid-4">
+        <div class="card"><span class="cnum">01</span><h4>Report Writing</h4><p>A full formal status report.</p></div>
+        <div class="card"><span class="cnum">02</span><h4>Forecasting</h4><p>EAC / completion projections.</p></div>
+        <div class="card"><span class="cnum">03</span><h4>Risk Analysis</h4><p>Deep dive on your Risk register.</p></div>
+        <div class="card"><span class="cnum">04</span><h4>Weekly Digest</h4><p>Internal, team-facing recap.</p></div>
+        <div class="card"><span class="cnum">05</span><h4>Project Health Summary</h4><p>Exec/board-toned overview.</p></div>
+        <div class="card"><span class="cnum">06</span><h4>Visual Output</h4><p>Asks the AI to return a self-contained HTML dashboard, including a RACI grid if you've built one.</p></div>
+        <div class="card"><span class="cnum">07</span><h4>Schedule Logic Audit</h4><p>CPM logic review of your WBS dates.</p></div>
+        <div class="card"><span class="cnum">08</span><h4>Change Impact Assessment</h4><p>Scope/schedule/cost/risk verdict on a pending Change Request before it goes to the Sponsor.</p></div>
+        <div class="card"><span class="cnum">09</span><h4>Client-Facing Update</h4><p>Plain-language update written for the paying client — no PM jargon.</p></div>
+        <div class="card"><span class="cnum">10</span><h4>Establish Charter Dates</h4><p>Proposes realistic Target Start/Completion dates before a WBS exists (Sheet A-03).</p></div>
+        <div class="card"><span class="cnum">11</span><h4>Generate Dates for WBS</h4><p>Returns your outline with dates and confidence tags attached (Sheet A-04).</p></div>
+        <div class="card"><span class="cnum">12</span><h4>Daily Field Status Report</h4><p>Same-day site-walk digest — see the snapshot diff below.</p></div>
+      </div>
+
+      <div class="divider-note" style="margin-top:32px">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M3 9L7 5L11 9M7 5V19" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 15L17 19L13 15M17 19V5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <p><strong>The Daily Field Report's diff.</strong> Click "📸 Snapshot Now" next to the prompt title once it's open, to save today's task statuses. Run the prompt again tomorrow and it shows exactly what changed since that snapshot — a same-day diff instead of a flat status dump.</p>
+      </div>
+    </section>
+
+    <!-- ============ A-12 DMAIC ============ -->
+    <section class="sheet reveal" id="dmaic">
+      <div class="tblock">
+        <div class="tblock-left"><span class="sheet-no">A-12</span><h2>DMAIC (Six Sigma Mode)</h2></div>
+        <div class="tblock-right"><div><b>Scale</b>Overview</div></div>
+      </div>
+      <p class="lede" style="margin-bottom:0">An optional workflow for working a recurring quality or process problem — <strong>Define, Measure, Analyze, Improve, Control</strong> — separate from one-off Change Requests, which are for scope changes rather than systemic issues. Switch it on in Settings to reveal its tab in the top nav; the Quality Review / DMAIC Check meeting template (Sheet A-09) is built to run alongside it.</p>
+    </section>
+    <!-- ============ PHOTO BAND 3 ============ -->
+    <!-- Local photo (finished interior) — "your space, your data". -->
+    <div class="band reveal">
+      <div class="band-bg" style="background-image:url('images/finished-interior-living.webp')"></div>
+      <div class="band-overlay"></div>
+      <div class="band-content">
+        <span class="kicker">Your data, your device</span>
+        <h3>Nothing uploads by default. Your project lives in this browser until you decide to export it.</h3>
+      </div>
+    </div>
+
+    <!-- ============ A-13 DATA, BACKUP & ACCESS ============ -->
+    <section class="sheet sheet-alt reveal" id="data">
+      <div class="tblock">
+        <div class="tblock-left"><span class="sheet-no">A-13</span><h2>Data, Backup &amp; Access</h2></div>
+        <div class="tblock-right"><div><b>Scale</b>1 : 1 detail</div></div>
+      </div>
+      <span class="kicker">Where your project actually lives</span>
+      <p class="lede">Every change autosaves to this browser's LocalStorage the moment you make it — no save button, no network call. That also means: one project lives on one browser, on one device, until you deliberately move it.</p>
+
+      <div class="grid grid-3">
+        <div class="card bracket"><span class="cnum">EXPORT</span><h4>Save Project to File</h4><p>Settings ▸ Controls ▸ Save Project to File writes a portable .json — your ticket to a new device, a teammate's laptop, or just peace of mind.</p></div>
+        <div class="card bracket"><span class="cnum">IMPORT</span><h4>Load Project from File</h4><p>Settings ▸ Controls ▸ Load Project from File, then pick a previously saved .json to restore it.</p></div>
+        <div class="card bracket"><span class="cnum">SNAPSHOT</span><h4>Save Baseline</h4><p>A point-in-time snapshot of schedule and budget, feeding the Dashboard's Baseline Variance card (Sheet A-02).</p></div>
+      </div>
+
+      <h3 class="h-sub">Copy All — your fastest way into Word</h3>
+      <p class="prose">Navigate to any panel and click <strong>Copy All</strong>. Everything visible on that view is compiled, timestamped, and placed on your clipboard — ready to paste straight into a Word document, an email, or a client report. It works the same way on every panel: WBS, Budget, Risk, RACI, Charter, all of it.</p>
+
+      <h3 class="h-sub">Safety net: Clear All</h3>
+      <p class="prose">Hold the Clear All button for a full 10 seconds — a red bar fills across the bottom as you hold — and a 5-second undo window appears immediately after, so an accidental clear is always recoverable.</p>
+    </section>
+
+    <!-- ============ A-14 INTERFACE & SHORTCUTS ============ -->
+    <section class="sheet reveal" id="interface">
+      <div class="tblock">
+        <div class="tblock-left"><span class="sheet-no">A-14</span><h2>Interface &amp; Shortcuts</h2></div>
+        <div class="tblock-right"><div><b>Scale</b>Overview</div></div>
+      </div>
+      <div class="grid grid-4">
+        <div class="card"><span class="cnum">KEY: F</span><h4>Focus Mode</h4><p>Collapses everything except your active panel. Press F again to restore; an indicator confirms it's on.</p></div>
+        <div class="card"><span class="cnum">HEADER</span><h4>Status indicators</h4><p>The header always shows backup status, timeline status, and methodology lock at a glance — click any to jump to the relevant panel.</p></div>
+        <div class="card"><span class="cnum">SETTING</span><h4>Theme</h4><p>Switch between the default dark theme and a light theme — printouts (Sheet A-03) stay legible either way.</p></div>
+        <div class="card"><span class="cnum">SETTING</span><h4>Your Name</h4><p>Settings ▸ Controls ▸ Your Name personalizes the header greeting. Leave it blank for a generic welcome.</p></div>
+      </div>
+    </section>
+
+    <!-- ============ A-15 FAQ ============ -->
+    <section class="sheet sheet-alt reveal" id="faq">
+      <div class="tblock">
+        <div class="tblock-left"><span class="sheet-no">A-15</span><h2>Frequently Asked</h2></div>
+        <div class="tblock-right"><div><b>Scale</b>Selected</div></div>
+      </div>
+      <p class="lede">A short list to start with — the app's own Dashboard has a fuller FAQ tab if your question isn't here.</p>
+
+      <div class="acc-list">
+        <div class="acc-item">
+          <button class="acc-q">Do I need an internet connection to use this?<span class="arrow">▶</span></button>
+          <div class="acc-a"><div class="acc-a-inner">Only for two things: loading the parser the first time you upload a Charter file, and pasting an AI prompt into whatever chat you use. Everything else — WBS, Gantt, Budget, Risk, RACI — runs and saves fully offline.</div></div>
+        </div>
+        <div class="acc-item">
+          <button class="acc-q">What happens if I clear my browser data?<span class="arrow">▶</span></button>
+          <div class="acc-a"><div class="acc-a-inner">Your project disappears with it, since it only ever lived in LocalStorage. This is exactly what Sheet A-13's Save Project to File is for — export a .json backup before doing anything that might wipe browser storage.</div></div>
+        </div>
+        <div class="acc-item">
+          <button class="acc-q">Can I switch methodology mid-project?<span class="arrow">▶</span></button>
+          <div class="acc-a"><div class="acc-a-inner">Yes, until you lock it. Methodology Lock (Sheet A-00) is an optional commitment device, not a permanent restriction — it just stops accidental switching once a team has agreed on an approach.</div></div>
+        </div>
+        <div class="acc-item">
+          <button class="acc-q">Why does my Health Score say "no data yet"?<span class="arrow">▶</span></button>
+          <div class="acc-a"><div class="acc-a-inner">The formula needs real inputs across all five weighted factors to be honest. Fill in a few WBS tasks with dates, a budget line, and at least one risk entry, and it'll start reporting a number.</div></div>
+        </div>
+        <div class="acc-item">
+          <button class="acc-q">Does the Monte Carlo simulator need special setup?<span class="arrow">▶</span></button>
+          <div class="acc-a"><div class="acc-a-inner">Just two dated tasks minimum. Add a Target Completion Date in the Charter too, and it'll report your live probability of hitting it, not just a P10–P90 range.</div></div>
+        </div>
+        <div class="acc-item">
+          <button class="acc-q">What's the difference between the Decision Log and the Comms Log?<span class="arrow">▶</span></button>
+          <div class="acc-a"><div class="acc-a-inner">Comms Log records that a conversation happened — attendees, summary, follow-up. Decision Log records what was actually decided as a result. In a dispute, you'll usually want both.</div></div>
+        </div>
+        <div class="acc-item">
+          <button class="acc-q">Is DMAIC required?<span class="arrow">▶</span></button>
+          <div class="acc-a"><div class="acc-a-inner">No — it's an optional panel for teams running a formal Six Sigma quality process. Most projects will never need to turn it on.</div></div>
+        </div>
+      </div>
+    </section>
+    <!-- ============ CLOSING CTA BAND ============ -->
+    <!-- Local photo (completed kitchen) — the finished job. -->
+    <div class="band reveal" style="min-height:420px">
+      <div class="band-bg" style="background-image:url('images/completed-kitchen.webp')"></div>
+      <div class="band-overlay"></div>
+      <div class="band-content" style="max-width:680px">
+        <span class="kicker">Sheet A-16 and beyond</span>
+        <h3>This index has room for what's next.</h3>
+        <p>New panels and features get their own sheet, numbered and slotted in — the guide grows the same way the app does. For now: open My MaNaGeR in the next tab over, start with the Charter, and keep this page bookmarked.</p>
+        <div class="hero-cta" style="margin-top:28px">
+          <a href="#top" class="btn btn-brass">Back to the top ↑</a>
+          <a href="#quickstart" class="btn btn-ghost">Revisit Quick Start</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ FOOTER ============ -->
+    <footer>
+      <div class="footer-grid">
+        <div class="footer-brand">
+          <h4>My MaNaGeR — Field Guide</h4>
+          <p>An unofficial companion guide to the My MaNaGeR workspace — sixteen sheets, one per panel or workflow, built to sit open in a second tab while you learn the app.</p>
+        </div>
+        <div class="footer-cols">
+          <div class="footer-col">
+            <b>Start Here</b>
+            <a href="#welcome">A-00 Welcome</a>
+            <a href="#quickstart">A-01 Quick Start</a>
+            <a href="#dashboard">A-02 Dashboard</a>
+            <a href="#charter">A-03 Charter</a>
+          </div>
+          <div class="footer-col">
+            <b>Core Workflows</b>
+            <a href="#wbs">A-04 WBS &amp; Gantt</a>
+            <a href="#kanban">A-05 Kanban &amp; RACI</a>
+            <a href="#resources">A-06 Resources &amp; Budget</a>
+            <a href="#risk">A-07 Risk &amp; Simulation</a>
+          </div>
+          <div class="footer-col">
+            <b>Reference</b>
+            <a href="#meetings">A-09 Meetings</a>
+            <a href="#ai">A-11 AI Prompts</a>
+            <a href="#data">A-13 Data &amp; Backup</a>
+            <a href="#faq">A-15 FAQ</a>
+          </div>
+          <div class="footer-col">
+            <b>Site</b>
+            <a href="index.html">Home</a>
+            <a href="features.html">Features</a>
+            <a href="about.html">About</a>
+            <a href="contact.html">Contact</a>
+            <a href="app.html">Open the App</a>
+          </div>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <span>MY MANAGER FIELD GUIDE · UNOFFICIAL COMPANION · DRAWN FOR V3.3.8</span>
+        <span>PHOTOGRAPHY VIA UNSPLASH — M. ZVADA · N. MISASTRA · SMKN 1 GANTAR · E. K · R. GARCIN</span>
+      </div>
+    </footer>
+  </main>
+</div>
+
+<script>
+/* ============================================================
+   JS — scrollspy, tabs, accordion, copy-to-clipboard,
+   scroll-reveal, mobile sidebar, scroll progress.
+   ============================================================ */
+(function(){
+  "use strict";
+
+  /* ---- scroll progress bar ---- */
+  var progress = document.getElementById('scroll-progress');
+  function updateProgress(){
+    var h = document.documentElement;
+    var scrolled = h.scrollTop || document.body.scrollTop;
+    var height = (h.scrollHeight - h.clientHeight) || 1;
+    progress.style.width = Math.min(100,(scrolled/height)*100) + '%';
+  }
+  document.addEventListener('scroll', updateProgress, {passive:true});
+  updateProgress();
+
+  /* ---- mobile sidebar toggle ---- */
+  var sidebar = document.getElementById('sidebar');
+  var menuBtn = document.getElementById('menuBtn');
+  var scrim = document.getElementById('scrim');
+  function closeSidebar(){ sidebar.classList.remove('open'); scrim.classList.remove('show'); }
+  function openSidebar(){ sidebar.classList.add('open'); scrim.classList.add('show'); }
+  if(menuBtn){
+    menuBtn.addEventListener('click', function(){
+      sidebar.classList.contains('open') ? closeSidebar() : openSidebar();
+    });
+  }
+  scrim.addEventListener('click', closeSidebar);
+  document.querySelectorAll('.nav-link').forEach(function(a){
+    a.addEventListener('click', closeSidebar);
+  });
+
+  /* ---- scrollspy: highlight active nav link ---- */
+  var navLinks = Array.prototype.slice.call(document.querySelectorAll('.nav-link'));
+  var sections = navLinks.map(function(a){
+    return document.querySelector(a.getAttribute('href'));
+  }).filter(Boolean);
+
+  var spy = new IntersectionObserver(function(entries){
+    entries.forEach(function(entry){
+      var id = '#' + entry.target.id;
+      var link = navLinks.find(function(a){ return a.getAttribute('href') === id; });
+      if(!link) return;
+      if(entry.isIntersecting){
+        navLinks.forEach(function(a){ a.classList.remove('active'); });
+        link.classList.add('active');
+      }
+    });
+  }, {rootMargin:'-15% 0px -70% 0px', threshold:0});
+  sections.forEach(function(s){ spy.observe(s); });
+
+  /* ---- scroll-reveal ---- */
+  var reveals = document.querySelectorAll('.reveal');
+  var revealObs = new IntersectionObserver(function(entries){
+    entries.forEach(function(entry){
+      if(entry.isIntersecting){
+        entry.target.classList.add('in-view');
+        revealObs.unobserve(entry.target);
+      }
+    });
+  }, {threshold:0.08});
+  reveals.forEach(function(el){ revealObs.observe(el); });
+
+  /* ---- tabs (generic, works for any [data-tabgroup]) ---- */
+  document.querySelectorAll('[data-tabgroup]').forEach(function(group){
+    var buttons = group.querySelectorAll('.tab-btn');
+    var container = group.parentElement;
+    buttons.forEach(function(btn){
+      btn.addEventListener('click', function(){
+        buttons.forEach(function(b){ b.classList.remove('active'); });
+        btn.classList.add('active');
+        var name = btn.getAttribute('data-tab');
+        container.querySelectorAll(':scope > .tab-panel').forEach(function(panel){
+          panel.classList.toggle('active', panel.getAttribute('data-panel') === name);
+        });
+      });
+    });
+  });
+
+  /* ---- accordion (FAQ) ---- */
+  document.querySelectorAll('.acc-q').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      btn.parentElement.classList.toggle('open');
+    });
+  });
+
+  /* ---- copy-to-clipboard demo ---- */
+  document.querySelectorAll('.copy-btn[data-copy]').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var target = document.getElementById(btn.getAttribute('data-copy'));
+      if(!target) return;
+      var text = target.innerText;
+      var done = function(){
+        var original = btn.textContent;
+        btn.textContent = 'Copied ✓';
+        btn.classList.add('copied');
+        setTimeout(function(){ btn.textContent = original; btn.classList.remove('copied'); }, 1800);
+      };
+      if(navigator.clipboard && navigator.clipboard.writeText){
+        navigator.clipboard.writeText(text).then(done, function(){
+          fallbackCopy(text); done();
+        });
+      } else {
+        fallbackCopy(text); done();
+      }
+    });
+  });
+  function fallbackCopy(text){
+    var ta = document.createElement('textarea');
+    ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    try{ document.execCommand('copy'); }catch(e){}
+    document.body.removeChild(ta);
+  }
+
+})();
+</script>
+</body>
+</html>

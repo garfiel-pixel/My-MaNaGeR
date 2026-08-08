@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<!--
+  My MaNaGeR — legacy dashboard.html → app.html redirect.
+
+  The current dashboard lives at app.html (the app entry: project list +
+  access-code unlock). Older builds of this site shipped dashboard.html,
+  which embedded http://404tutorial.com images, a StatCounter tracker,
+  the pictos-web font, and loaded vendor.js — the exact sources of the
+  mixed-content / CORS / "No Listener" console errors seen on the live host.
+
+  Upload this file to replace that old dashboard.html on the server.
+  Any leftover links or bookmarks (e.g. dashboard.html?locked=demo-project)
+  then land on the current app entry instead of the broken old page.
+
+  This stub carries ZERO external requests: no scripts, no fonts, no
+  images, no tracking. It cannot trigger mixed-content or CORS errors.
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My MaNaGeR — Projects</title>
+<meta http-equiv="refresh" content="0; url=app.html">
+<script>
+  /* Hard redirect for browsers that ignore the meta refresh. */
+  window.location.replace('app.html');
+</script>
+<style>
+  body{font-family:system-ui,-apple-system,sans-serif;background:#f4f5f7;color:#0f172a;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;text-align:center;padding:20px;font-size:.9rem;}
+  a{color:#b45309;}
+</style>
+</head>
+<body>
+  <p>This page has moved — <a href="app.html">go to the dashboard</a>.</p>
+</body>
+</html>

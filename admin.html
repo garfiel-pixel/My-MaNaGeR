@@ -1,0 +1,844 @@
+<!DOCTYPE html>
+<!--
+  My MaNaGeR — construction/project management workspace.
+  Icon system + access-control build by Garack.
+-->
+
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My MaNaGeR — Admin</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="stylesheet" href="css/mmgr.css">
+<style>
+/* ============================================================
+   Admin-specific styles. Shared component classes (.btn, .card,
+   .badge, .mb/.mh/.mt/.dc/.mbody/.mf, .toolbar, …) come from
+   css/mmgr.css — nothing here re-declares them. Only layout that
+   is unique to the admin panel lives below.
+   ============================================================ */
+.hidden{display:none !important;}
+
+/* ── gate screens (password setup / login) ── */
+.gatewrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;}
+.gbox{width:380px;max-width:100%;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:30px 26px;text-align:center;}
+.gbox .icon{font-size:2rem;margin-bottom:10px;}
+.gbox h1{font-size:1.05rem;margin-bottom:6px;}
+.gbox p{font-size:.78rem;color:var(--slate);margin-bottom:18px;line-height:1.5;}
+.gbox input{width:100%;background:#f8fafc;border:1px solid var(--border);border-radius:6px;color:var(--text);
+  font-size:.9rem;padding:11px 12px;font-family:inherit;outline:none;margin-bottom:10px;transition:border-color .15s;}
+.gbox input:focus{border-color:var(--gold);}
+.gerr{min-height:16px;font-size:.72rem;color:var(--danger);margin-bottom:6px;}
+
+/* ── app shell (admin layout) ── */
+header{display:flex;align-items:center;justify-content:space-between;padding:16px 28px;border-bottom:1px solid var(--border);
+  flex-wrap:wrap;gap:10px;}
+header h1{font-size:1rem;display:flex;align-items:center;gap:8px;}
+header h1 .mark{color:var(--gold);}
+.hdr-actions{display:flex;gap:8px;align-items:center;}
+.hdr-actions a{font-size:.74rem;color:var(--slate);text-decoration:none;margin-right:6px;}
+.hdr-actions a:hover{color:var(--text);}
+main{max-width:1000px;margin:0 auto;padding:26px 24px 70px;}
+
+/* ── project rows ── */
+.prow{border:1px solid var(--border);border-radius:6px;padding:14px 16px;margin-bottom:10px;}
+.prow-top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap;}
+.prow-title{font-size:.86rem;font-weight:700;}
+.prow-desc{font-size:.74rem;color:var(--slate);margin-top:3px;max-width:520px;}
+/* §6.7 — active/completed solid-tinted; on-hold/planning frosted glass */
+.badge.active{background:rgba(16,185,129,.18);color:var(--green);border:1px solid var(--green);backdrop-filter:none;}
+.badge.completed{background:rgba(100,116,139,.35);color:var(--slate);border:1px solid rgba(100,116,139,.5);backdrop-filter:none;}
+.badge.on-hold{background:var(--glass-fill-dark);color:var(--gold);border:1px solid rgba(245,158,11,.35);backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturate));-webkit-backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturate));}
+.badge.planning{background:var(--glass-fill-dark);color:var(--blue);border:1px solid rgba(59,130,246,.35);backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturate));-webkit-backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturate));}
+.prow-meta{display:flex;gap:16px;align-items:center;margin-top:12px;flex-wrap:wrap;font-size:.74rem;color:var(--slate);}
+.code-box{font-family:ui-monospace,monospace;background:#f1f5f9;border:1px solid var(--border);border-radius:4px;
+  padding:4px 9px;letter-spacing:.08em;color:var(--text);}
+.prow-actions{display:flex;gap:6px;margin-top:12px;flex-wrap:wrap;}
+.demo-tag{font-size:.66rem;color:var(--gold);border:1px solid rgba(245,158,11,.3);border-radius:100px;padding:2px 8px;}
+.empty{text-align:center;padding:40px 20px;color:var(--slate);font-size:.8rem;}
+
+/* ── modal chrome (overlay only; .mb skeleton is shared) ── */
+#om{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:2000;align-items:center;justify-content:center;padding:20px;overflow-y:auto;}
+#om.show{display:flex;}
+#adm-cfm,#pw-om,#adm-conflict,#snip-om{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:2100;align-items:center;justify-content:center;padding:20px;overflow-y:auto;}
+#adm-cfm.show,#pw-om.show,#adm-conflict.show,#snip-om.show{display:flex;}
+/* admin modals keep the narrower width + entrance animation (admin layout) */
+#om .mb,#snip-om .mb,#adm-cfm .mb,#pw-om .mb,#adm-conflict .mb{width:460px;max-width:100%;max-height:88vh;animation:mIn .25s cubic-bezier(.25,1,.5,1);}
+@keyframes mIn{from{opacity:0;transform:translateY(10px) scale(.98)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.mb{animation:none!important;}}
+.pw-box{width:420px;max-width:100%;}
+
+/* ── form fields (admin-only component set) ── */
+.field{margin-bottom:14px;}
+.field label{display:block;font-size:.72rem;color:var(--slate);margin-bottom:5px;font-weight:600;}
+.field input,.field select,.field textarea{width:100%;background:#f8fafc;border:1px solid var(--border);
+  border-radius:6px;color:var(--text);font-size:.82rem;padding:9px 10px;font-family:inherit;outline:none;transition:border-color .15s;}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--gold);}
+.field textarea{resize:vertical;min-height:60px;}
+.field .hint{font-size:.68rem;color:var(--slate);margin-top:4px;}
+.code-row{display:flex;gap:8px;}
+.code-row input{font-family:ui-monospace,monospace;letter-spacing:.1em;}
+pre.snippet{background:#f8fafc;border:1px solid var(--border);border-radius:6px;padding:14px;font-size:.72rem;
+  line-height:1.6;white-space:pre-wrap;word-break:break-all;color:var(--text);font-family:ui-monospace,monospace;}
+
+/* ── toast (not part of the shared stylesheet) ── */
+.toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%);background:var(--card);border-radius:8px;
+  padding:10px 20px;font-size:.78rem;z-index:9999;transition:opacity .3s;box-shadow:0 8px 24px rgba(0,0,0,.4);}
+.toast.ok{border:1px solid var(--green);color:var(--green);}
+.toast.err{border:1px solid var(--danger);color:var(--danger);}
+
+@media(max-width:600px){header{padding:14px 18px;}main{padding:20px 16px 60px;}.prow-top{flex-direction:column;}}
+</style>
+</head>
+<body>
+
+
+<!-- ═══ GATE: first-run password setup ═══ -->
+<div class="gatewrap" id="setup-screen">
+  <div class="gbox">
+    <div class="icon"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-tool"></use></svg></div>
+    <h1>Set Up Admin Access</h1>
+    <p>No admin password is set on this device yet. Choose one now — you'll need it every new browser session to manage projects and codes.</p>
+    <input id="setup-pass1" type="password" placeholder="New admin password (min 8 characters)" autocomplete="new-password">
+    <input id="setup-pass2" type="password" placeholder="Confirm password" autocomplete="new-password">
+    <div class="gerr" id="setup-err"></div>
+    <button class="btn btn-g full" data-action="adminSetupPassword">Create Admin Password</button>
+  </div>
+</div>
+
+<!-- ═══ GATE: returning login ═══ -->
+<div class="gatewrap hidden" id="login-screen">
+  <div class="gbox">
+    <div class="icon"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-lock"></use></svg> </div>
+    <h1>Admin Login</h1>
+    <p>Enter your admin password to manage projects.</p>
+    <input id="login-pass" type="password" placeholder="Admin password" autocomplete="current-password">
+    <div class="gerr" id="login-err"></div>
+    <button class="btn btn-g full" data-action="adminLogin">Unlock Admin Panel</button>
+  </div>
+</div>
+
+<!-- ═══ MAIN ADMIN UI ═══ -->
+<div class="hidden" id="admin-app">
+  <header>
+    <h1><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-tool"></use></svg> <span class="mark">My</span> MaNaGeR — Admin</h1>
+    <div class="hdr-actions">
+      <a href="app.html" target="_blank">View Dashboard <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg></a>
+      <button class="btn btn-n btn-s" data-action="changePassword">Change Password</button>
+      <button class="btn btn-n btn-s" data-action="lockAdmin">Lock</button>
+    </div>
+  </header>
+
+  <main>
+    <div class="toolbar">
+      <button class="btn btn-g" data-action="openProjectModal">+ Add Project</button>
+      <button class="btn btn-n" data-action="downloadPublicData"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Download Public Data File</button>
+      <button class="btn btn-n" data-action="downloadAdminBackup"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Export Admin Backup (CSV)</button>
+    </div>
+
+    <div class="card" style="font-size:.74rem;color:var(--slate);line-height:1.6;">
+      <strong style="color:var(--text)">Publishing changes:</strong> edits here save to <em>this browser only</em>.
+      To make them visible to your visitors, click <strong>Download Public Data File</strong> and upload the resulting
+      <code style="color:var(--gold)">projects-data.js</code> to your site's root on InfinityFree (File Manager or FTP),
+      replacing the old one.
+    </div>
+
+    <div class="card" style="font-size:.74rem;color:var(--slate);line-height:1.6">
+      <strong style="color:var(--text)">Security model (local-only):</strong>
+      The admin password hash, this browser's session flag, and the plaintext project access codes are stored in this
+      device's <code>localStorage</code>/<code>sessionStorage</code> only. This is convenience protection for a personal
+      tool — it is <strong>not</strong> server-side security. Anyone with physical access to this browser can reset the
+      password or reveal the codes. The published <code>projects-data.js</code> contains SHA-256 hashes only, never
+      plaintext codes. Do not use this panel to protect genuinely sensitive data.
+    </div>
+
+    <div id="project-list"></div>
+  </main>
+</div>
+
+<!-- ═══ Add / Edit project modal ═══ -->
+<div id="om">
+  <div class="mb">
+    <div class="mh"><span class="mt" id="pm-title">Add Project</span><button class="dc" data-action="closeProjectModal"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> </button></div>
+    <div class="mbody">
+      <div class="field">
+        <label>Project Title</label>
+        <input id="pf-title" type="text" placeholder="e.g. Riverside Tower Renovation" data-action="syncSlug">
+      </div>
+      <div class="field">
+        <label>Description <span style="font-weight:400;color:var(--slate)">(shown on the dashboard card)</span></label>
+        <textarea id="pf-desc" placeholder="One or two sentences a client would recognize their project by."></textarea>
+      </div>
+      <div class="field">
+        <label>Status</label>
+        <select id="pf-status">
+          <option value="active">Active</option>
+          <option value="on-hold">On Hold</option>
+          <option value="planning">Planning</option>
+          <option value="completed">Completed</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Project ID <span style="font-weight:400;color:var(--slate)">(url-safe, unique — auto-filled from title)</span></label>
+        <input id="pf-id" type="text" placeholder="riverside-tower" data-action="pfIdManual">
+        <div class="hint">Used in the file path and to keep this project's saved data separate from others. Avoid changing it once you've shared a code, or treat it as a new project.</div>
+      </div>
+      <div class="field">
+        <label>Project File <span style="font-weight:400;color:var(--slate)">(relative path to the project page)</span></label>
+        <input id="pf-file" type="text" placeholder="project.html?id=riverside-tower">
+        <div class="hint">Used as the link on the public dashboard. Defaults to <code>project.html?id=&lt;id&gt;</code> — change it only if you host per-project pages elsewhere.</div>
+      </div>
+      <div class="field">
+        <label>Access Code</label>
+        <div class="code-row">
+          <input id="pf-code" type="text" maxlength="16" placeholder="Click Generate">
+          <select id="pf-codelen" style="width:auto">
+            <option value="8">8 chars</option>
+            <option value="10" selected>10 chars</option>
+            <option value="12">12 chars</option>
+          </select>
+          <button class="btn btn-n btn-s" type="button" data-action="generateCodeIntoForm"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-dice"></use></svg> Generate</button>
+        </div>
+        <div class="hint" id="pf-code-hint">This is the code you'll share with the client. It's only ever stored in plaintext on this device — write it down somewhere safe.</div>
+      </div>
+      <div class="field">
+        <label>View-Only Code <span style="font-weight:400;color:var(--slate)">(optional — opens the project read-only)</span></label>
+        <div class="code-row">
+          <input id="pf-rocode" type="text" maxlength="16" placeholder="Leave blank to disable view-only access">
+          <select id="pf-rocodelen" style="width:auto">
+            <option value="8">8 chars</option>
+            <option value="10" selected>10 chars</option>
+            <option value="12">12 chars</option>
+          </select>
+          <button class="btn btn-n btn-s" type="button" data-action="generateRoCodeIntoForm"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-dice"></use></svg> Generate</button>
+        </div>
+        <div class="hint">Holders of this code can view the project but cannot edit anything (ACTION-PLAN 4.1). Leave blank to require the full code for all access.</div>
+      </div>
+    </div>
+    <div class="mf">
+      <button class="btn btn-n" data-action="closeProjectModal">Cancel</button>
+      <button class="btn btn-g" data-action="saveProjectForm">Save Project</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ Access URL modal ═══ -->
+<div id="snip-om">
+  <div class="mb">
+    <div class="mh"><span class="mt"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Access URL</span><button class="dc" data-action="closeSnippetModal"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> </button></div>
+    <div class="mbody">
+      <p style="font-size:.76rem;color:var(--slate);margin-bottom:12px;line-height:1.5">
+        This is the direct URL for this project. Share it with the project team.<br>
+        The access code is the project's short code.
+      </p>
+      <pre class="snippet" id="snip-text"></pre>
+    </div>
+    <div class="mf">
+      <button class="btn btn-n" data-action="closeSnippetModal">Close</button>
+      <button class="btn btn-g" data-action="copySnippet"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy to Clipboard</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ Confirm modal (replaces native confirm() — same standard as the project viewer) ═══ -->
+<div id="adm-cfm">
+  <div class="mb">
+    <div class="mh"><span class="mt" id="adm-cfm-title">Confirm</span><button class="dc" data-action="admCfmCancel"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> </button></div>
+    <div class="mbody">
+      <p style="font-size:.78rem;color:var(--slate);line-height:1.5;margin:0" id="adm-cfm-msg"></p>
+    </div>
+    <div class="mf">
+      <button class="btn btn-n" data-action="admCfmCancel" id="adm-cfm-cancel">Cancel</button>
+      <button class="btn btn-g" data-action="admCfmOk" id="adm-cfm-ok">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ Password change modal (replaces native prompt()) ═══ -->
+<div id="pw-om">
+  <div class="mb pw-box">
+    <div class="mh"><span class="mt"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-lock"></use></svg> Change Admin Password</span><button class="dc" data-action="closePwModal"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> </button></div>
+    <div class="mbody">
+      <div class="field">
+        <label>Current password</label>
+        <input id="pw-current" type="password" autocomplete="current-password">
+      </div>
+      <div class="field">
+        <label>New password <span style="font-weight:400;color:var(--slate)">(min 8 characters)</span></label>
+        <input id="pw-new" type="password" autocomplete="new-password">
+      </div>
+      <div class="field">
+        <label>Confirm new password</label>
+        <input id="pw-new2" type="password" autocomplete="new-password">
+      </div>
+      <div class="gerr" id="pw-err"></div>
+    </div>
+    <div class="mf">
+      <button class="btn btn-n" data-action="closePwModal">Cancel</button>
+      <button class="btn btn-g" data-action="submitPasswordChange">Change Password</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ Multi-tab conflict modal (same pattern as the project viewer) ═══ -->
+<div id="adm-conflict">
+  <div class="mb">
+    <div class="mh"><span class="mt"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-alert-triangle"></use></svg> Changes from Another Tab</span></div>
+    <div class="mbody">
+      <p style="font-size:.78rem;color:var(--slate);line-height:1.5;margin:0" id="adm-conflict-info"></p>
+    </div>
+    <div class="mf">
+      <button class="btn btn-g" data-action="admLoadTheirs">Load Theirs</button>
+      <button class="btn btn-n" data-action="admKeepMine">Keep Mine</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   ADMIN PANEL — data model
+   ------------------------------------------------------------
+   localStorage['mmgr_admin_pass_hash']  SHA-256 hash of the admin
+     password. Persists on this device across sessions.
+   sessionStorage['mmgr_admin_session']  set once logged in for
+     this browser tab; cleared on tab close (re-login next visit).
+   localStorage['mmgr_admin_projects']   this device's PRIVATE
+     working copy of every project, INCLUDING plaintext codes.
+     Never upload this data anywhere — it's for your reference
+     and for editing only. Only the hash-only export gets published.
+   ============================================================ */
+
+async function sha256(str){
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str.trim()));
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+async function codeHashOf(code){
+  // Codes are normalized to uppercase before hashing everywhere in this
+  // system (admin, dashboard, and each project's gate) so entry is
+  // case-insensitive for whoever types it in.
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(code.trim().toUpperCase()));
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+function generateCode(length){
+  const charset = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no 0/O or 1/I/l — avoids misreads
+  const bytes = new Uint8Array(length);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, b => charset[b % charset.length]).join('');
+}
+function slugify(text){
+  return (text||'').toLowerCase().trim().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'') || 'project';
+}
+function uniqueSlug(base){
+  const existing = new Set(projects.map(p=>p.id));
+  if(!existing.has(base)) return base;
+  let i = 2;
+  while(existing.has(`${base}-${i}`)) i++;
+  return `${base}-${i}`;
+}
+
+function toast(msg, type){
+  const t = document.createElement('div');
+  t.className = 'toast ' + (type === 'error' ? 'err' : 'ok');
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(()=>{ t.style.opacity='0'; setTimeout(()=>t.remove(),300); }, 2400);
+}
+
+/* ── seed data: one worked demo example on a totally fresh browser ── */
+const DEMO_SEED = [{
+  id: 'demo-project',
+  title: 'Demo Project — Riverside Tower Renovation',
+  description: 'A working example wired up end-to-end so you can test the unlock flow before adding your own projects.',
+  status: 'active',
+  file: 'project.html?id=demo-project',
+  code: 'TRYME2026',
+  codeHash: '5b583f9cc37f83fa78453b41c1516a1f23510fd367396523f36bd58b7dcb87f7',
+  isDemo: true
+}];
+
+let projects = [];
+
+function loadProjects(){
+  try{
+    const raw = localStorage.getItem('mmgr_admin_projects');
+    projects = raw ? JSON.parse(raw) : JSON.parse(JSON.stringify(DEMO_SEED));
+  }catch(e){ projects = JSON.parse(JSON.stringify(DEMO_SEED)); }
+}
+function saveProjects(){
+  _admLastWritten = JSON.stringify(projects);
+  localStorage.setItem('mmgr_admin_projects', _admLastWritten);
+}
+
+/* Merge in anything published live that this device doesn't know about
+   yet (e.g. first time opening admin.html on a new computer). Public
+   data never has plaintext codes, so merged-in projects show code:null
+   until you regenerate a code for them. Silently no-ops if the fetch
+   fails (opened locally, or the file isn't uploaded yet). */
+async function mergeLiveData(){
+  try{
+    const res = await fetch('projects-data.js', {cache:'no-store'});
+    if(!res.ok) return;
+    const text = await res.text();
+    const match = text.match(/window\.MMGR_PROJECTS\s*=\s*(\[[\s\S]*?\]);/);
+    if(!match) return;
+    const live = JSON.parse(match[1]);
+    let added = 0;
+    live.forEach(lp=>{
+      if(!projects.some(p=>p.id===lp.id)){
+        projects.push({...lp, code:null});
+        added++;
+      }
+    });
+    if(added){ saveProjects(); renderProjects(); toast(`Imported ${added} project(s) found in the live data file.`); }
+  }catch(e){ /* fine — no live file reachable yet */ }
+}
+
+/* ============================================================
+   ADMIN GATE — password setup / login / session
+   ============================================================ */
+function showScreen(id){
+  ['setup-screen','login-screen','admin-app'].forEach(s=>{
+    document.getElementById(s).classList.toggle('hidden', s!==id);
+  });
+}
+async function initGate(){
+  const storedHash = localStorage.getItem('mmgr_admin_pass_hash');
+  if(!storedHash){ showScreen('setup-screen'); return; }
+  if(sessionStorage.getItem('mmgr_admin_session') === '1'){ enterAdmin(); return; }
+  showScreen('login-screen');
+  setTimeout(()=>document.getElementById('login-pass').focus(), 50);
+}
+async function handleSetupPassword(){
+  const p1 = document.getElementById('setup-pass1').value;
+  const p2 = document.getElementById('setup-pass2').value;
+  const err = document.getElementById('setup-err');
+  if(p1.length < 8){ err.textContent = 'Use at least 8 characters.'; return; }
+  if(p1 !== p2){ err.textContent = 'Passwords do not match.'; return; }
+  localStorage.setItem('mmgr_admin_pass_hash', await sha256(p1));
+  sessionStorage.setItem('mmgr_admin_session','1');
+  err.textContent = '';
+  enterAdmin();
+}
+async function handleLogin(){
+  const pass = document.getElementById('login-pass').value;
+  const err = document.getElementById('login-err');
+  const storedHash = localStorage.getItem('mmgr_admin_pass_hash');
+  if(await sha256(pass) === storedHash){
+    sessionStorage.setItem('mmgr_admin_session','1');
+    err.textContent = '';
+    enterAdmin();
+  }else{
+    err.textContent = 'Incorrect password.';
+    document.getElementById('login-pass').select();
+  }
+}
+function lockAdmin(){
+  sessionStorage.removeItem('mmgr_admin_session');
+  document.getElementById('login-pass').value = '';
+  showScreen('login-screen');
+}
+/* Replace the native prompt()/confirm() calls with the same custom-modal
+   standard the project viewer uses. */
+let _admCfmCb = null;
+function admConfirm(opts){
+  _admCfmCb = (opts && opts.onOk) || null;
+  document.getElementById('adm-cfm-title').textContent = (opts && opts.title) || 'Confirm';
+  document.getElementById('adm-cfm-msg').textContent = (opts && opts.message) || '';
+  const ok = document.getElementById('adm-cfm-ok');
+  ok.textContent = (opts && opts.confirmLabel) || 'Confirm';
+  ok.classList.toggle('btn-d', !!(opts && opts.danger));
+  ok.classList.toggle('btn-g', !(opts && opts.danger));
+  document.getElementById('adm-cfm-cancel').textContent = (opts && opts.cancelLabel) || 'Cancel';
+  document.getElementById('adm-cfm').classList.add('show');
+}
+function admCfmOk(){
+  document.getElementById('adm-cfm').classList.remove('show');
+  const cb = _admCfmCb;
+  _admCfmCb = null;
+  if (cb) cb();
+}
+function admCfmCancel(){
+  document.getElementById('adm-cfm').classList.remove('show');
+  _admCfmCb = null;
+}
+
+function openPasswordModal(){
+  document.getElementById('pw-current').value = '';
+  document.getElementById('pw-new').value = '';
+  document.getElementById('pw-new2').value = '';
+  document.getElementById('pw-err').textContent = '';
+  document.getElementById('pw-om').classList.add('show');
+  setTimeout(()=>document.getElementById('pw-current').focus(), 50);
+}
+function closePwModal(){
+  document.getElementById('pw-om').classList.remove('show');
+}
+async function submitPasswordChange(){
+  const err = document.getElementById('pw-err');
+  const current = document.getElementById('pw-current').value;
+  const next = document.getElementById('pw-new').value;
+  const next2 = document.getElementById('pw-new2').value;
+  const storedHash = localStorage.getItem('mmgr_admin_pass_hash');
+  if(await sha256(current) !== storedHash){ err.textContent = 'Incorrect current password.'; return; }
+  if(next.length < 8){ err.textContent = 'Use at least 8 characters.'; return; }
+  if(next !== next2){ err.textContent = 'New passwords do not match.'; return; }
+  localStorage.setItem('mmgr_admin_pass_hash', await sha256(next));
+  closePwModal();
+  toast('Admin password updated on this device.');
+}
+/* ============================================================
+   MULTI-TAB CONFLICT — same storage-event pattern as the project
+   viewer. Two admin tabs editing the project list must never
+   silently overwrite each other: when another tab saves, this
+   tab is notified and must choose Keep Mine or Load Theirs.
+   ============================================================ */
+let _admPending = null;      // the other tab's project list, awaiting a choice
+let _admLastWritten = null;  // JSON we last persisted (our own echo filter)
+let _conflictBound = false;  // storage listener registered exactly once per session
+
+function admShowConflict(incoming){
+  _admPending = incoming;
+  document.getElementById('adm-conflict-info').textContent =
+    'Another tab saved a newer project list (' + new Date().toLocaleTimeString() +
+    '). Keep your current edits, or load their version. Unresolved changes in the other tab are not lost either way — pick deliberately.';
+  document.getElementById('adm-conflict').classList.add('show');
+}
+function admKeepMine(){
+  document.getElementById('adm-conflict').classList.remove('show');
+  _admPending = null;
+  saveProjects(); // re-persist ours so the other tab sees it
+  toast('Kept your version.');
+}
+function admLoadTheirs(){
+  document.getElementById('adm-conflict').classList.remove('show');
+  if (_admPending){
+    projects = JSON.parse(JSON.stringify(_admPending));
+    saveProjects();
+    renderProjects();
+  }
+  _admPending = null;
+  toast('Loaded the other tab\'s version.');
+}
+
+function enterAdmin(){
+  showScreen('admin-app');
+  loadProjects();
+  _admLastWritten = JSON.stringify(projects);
+  renderProjects();
+  mergeLiveData();
+  // Storage events fire in OTHER tabs only — this tab is notified whenever a
+  // peer overwrites the shared projects key while we are editing. Registered
+  // once: re-login after lockAdmin() must not stack duplicate listeners.
+  if (!_conflictBound){
+    _conflictBound = true;
+    window.addEventListener('storage', function(e){
+      if (e.key !== 'mmgr_admin_projects' || !e.newValue) return;
+      try {
+        const incoming = JSON.parse(e.newValue);
+        const ours = JSON.stringify(projects);
+        if (e.newValue === _admLastWritten || e.newValue === ours) return; // own echo / identical content
+        admShowConflict(incoming);
+      } catch(err){ /* unparseable write from elsewhere — ignore */ }
+    });
+  }
+}
+
+/* ============================================================
+   PROJECT LIST rendering
+   ============================================================ */
+function renderProjects(){
+  const list = document.getElementById('project-list');
+  if(!projects.length){
+    list.innerHTML = '<div class="empty">No projects yet. Click "+ Add Project" to create your first one.</div>';
+    return;
+  }
+  list.innerHTML = projects.map((p, i) => {
+    const status = (p.status||'active').toLowerCase();
+    const codeDisplay = p.code
+      ? `<span class="code-box" id="code-${i}" data-code="${escapeAttr(p.code)}" data-masked="1">••••••••</span>
+         <button class="btn btn-n btn-s" data-action="toggleCode" data-idx="${i}"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-eye"></use></svg> Show</button>
+         <button class="btn btn-n btn-s" data-action="copyCode" data-idx="${i}"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy</button>`
+      : `<span class="code-box" style="color:var(--slate)">unknown</span>
+         <span class="hint" style="margin:0">(imported from live data — regenerate to get a new code)</span>`;
+    return `
+      <div class="prow">
+        <div class="prow-top">
+          <div>
+            <div class="prow-title">${escapeHtml(p.title)} ${p.isDemo ? '<span class="demo-tag">DEMO — delete when ready</span>' : ''}</div>
+            <div class="prow-desc">${escapeHtml(p.description||'')}</div>
+          </div>
+          <span class="badge ${status}">${escapeHtml(status.replace('-',' '))}</span>
+        </div>
+        <div class="prow-meta">
+          <span>ID: <code>${escapeHtml(p.id)}</code></span>
+          <span>File: <code>${escapeHtml(p.file)}</code></span>
+          <span>Code: ${codeDisplay}</span>
+          <span>View-only: ${p.roCode ? '<code class="code-box">' + escapeHtml(p.roCode) + '</code>' : '<span class="hint" style="margin:0">—</span>'}</span>
+        </div>
+        <div class="prow-actions">
+          <button class="btn btn-n btn-s" data-action="openProjectModal" data-idx="${i}">Edit</button>
+          <button class="btn btn-n btn-s" data-action="regenerateCode" data-idx="${i}"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-dice"></use></svg> Regenerate Code</button>
+          <button class="btn btn-n btn-s" data-action="openSnippetModal" data-idx="${i}"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Access URL</button>
+          <button class="btn btn-d btn-s" data-action="deleteProject" data-idx="${i}">Delete</button>
+        </div>
+      </div>`;
+  }).join('');
+}
+function escapeHtml(str){ const d=document.createElement('div'); d.textContent=str==null?'':String(str); return d.innerHTML; }
+function escapeAttr(str){ return escapeHtml(str).replace(/"/g,'&quot;'); }
+
+function toggleCode(i){
+  const el = document.getElementById('code-'+i);
+  const masked = el.dataset.masked === '1';
+  el.textContent = masked ? el.dataset.code : '••••••••';
+  el.dataset.masked = masked ? '0' : '1';
+}
+function copyCode(i){
+  const code = projects[i].code;
+  if(!code) return;
+  navigator.clipboard.writeText(code).then(()=>toast('Code copied to clipboard.'))
+    .catch(()=>toast('Could not access clipboard — copy manually.','error'));
+}
+function deleteProject(i){
+  const p = projects[i];
+  admConfirm({
+    title: 'Delete Project?',
+    message: `Delete "${p.title}"? This only removes it from your admin list and (after you republish) the public dashboard — it does not delete the project's HTML file itself.`,
+    danger: true,
+    confirmLabel: 'Delete Project',
+    onOk: function(){
+      projects.splice(i,1);
+      saveProjects();
+      renderProjects();
+      toast('Project deleted. Remember to republish the public data file.');
+    }
+  });
+}
+function regenerateCode(i){
+  admConfirm({
+    title: 'Regenerate Access Code?',
+    message: 'Generate a new code for this project? The old code will stop working once you republish the data file.',
+    danger: true,
+    confirmLabel: 'Regenerate',
+    onOk: async function(){
+      const code = generateCode(10);
+      projects[i].code = code;
+      projects[i].codeHash = await codeHashOf(code);
+      saveProjects();
+      renderProjects();
+      toast(`New code generated: ${code} — copy it now, it won't be shown again unless you click Show.`);
+    }
+  });
+}
+
+/* ============================================================
+   ADD / EDIT modal
+   ============================================================ */
+let editingIndex = null;
+let slugManuallyEdited = false;
+
+function openProjectModal(index){
+  editingIndex = (typeof index === 'number') ? index : null;
+  slugManuallyEdited = false;
+  const isEdit = editingIndex !== null;
+  document.getElementById('pm-title').textContent = isEdit ? 'Edit Project' : 'Add Project';
+  const p = isEdit ? projects[editingIndex] : {title:'',description:'',status:'active',id:'',file:'',code:''};
+  document.getElementById('pf-title').value = p.title;
+  document.getElementById('pf-desc').value = p.description;
+  document.getElementById('pf-status').value = p.status;
+  document.getElementById('pf-id').value = p.id;
+  document.getElementById('pf-file').value = p.file;
+  document.getElementById('pf-code').value = p.code || '';
+  document.getElementById('pf-rocode').value = p.roCode || '';
+  // Manual slug edit flag is now driven by the pfIdManual data-action handler
+  document.getElementById('om').classList.add('show');
+  setTimeout(()=>document.getElementById('pf-title').focus(), 50);
+}
+function closeProjectModal(){
+  document.getElementById('om').classList.remove('show');
+  editingIndex = null;
+}
+function syncSlug(){
+  if(slugManuallyEdited) return;
+  const title = document.getElementById('pf-title').value;
+  const base = slugify(title);
+  document.getElementById('pf-id').value = base;
+  // Unified file-path contract: every project page is project.html?id=<id>.
+  // The dashboard navigates straight to this value, so it must be a working
+  // relative URL, not a path to a file that may not exist.
+  document.getElementById('pf-file').value = `project.html?id=${base}`;
+}
+function generateCodeIntoForm(){
+  const len = parseInt(document.getElementById('pf-codelen').value, 10);
+  document.getElementById('pf-code').value = generateCode(len);
+}
+function generateRoCodeIntoForm(){
+  const len = parseInt(document.getElementById('pf-rocodelen').value, 10);
+  document.getElementById('pf-rocode').value = generateCode(len);
+}
+async function saveProjectForm(){
+  const title = document.getElementById('pf-title').value.trim();
+  const desc  = document.getElementById('pf-desc').value.trim();
+  const status = document.getElementById('pf-status').value;
+  let id = slugify(document.getElementById('pf-id').value || title);
+  const file = document.getElementById('pf-file').value.trim() || `project.html?id=${id}`;
+  const code = document.getElementById('pf-code').value.trim();
+
+  if(!title){ toast('Give the project a title first.','error'); return; }
+  if(!code){ toast('Generate or enter an access code first.','error'); return; }
+
+  // enforce unique id, excluding the project currently being edited
+  const clashes = projects.some((p,i)=> p.id===id && i!==editingIndex);
+  if(clashes) id = uniqueSlug(id);
+
+  const codeHash = await codeHashOf(code);
+  const roCode = document.getElementById('pf-rocode').value.trim();
+  const roCodeHash = roCode ? await codeHashOf(roCode) : null;
+  const record = {id, title, description:desc, status, file, code, codeHash, roCode, roCodeHash};
+
+  if(editingIndex !== null){
+    record.isDemo = projects[editingIndex].isDemo; // preserve the demo tag if editing the seed
+    projects[editingIndex] = record;
+  }else{
+    projects.push(record);
+  }
+  saveProjects();
+  renderProjects();
+  closeProjectModal();
+  toast('Project saved. Download the public data file to publish this change.');
+}
+
+/* ============================================================
+   SETUP SNIPPET modal
+   ============================================================ */
+function openSnippetModal(i){
+  const p = projects[i];
+  // Resolve the project's stored `file` field (e.g. project.html?id=foo)
+  // against this page so the shared URL always matches the dashboard link.
+  const rel = (p.file && p.file.trim()) ? p.file.trim() : ('project.html?id=' + encodeURIComponent(p.id));
+  let url;
+  try { url = new URL(rel, window.location.href).href; }
+  catch(e){ url = rel; }
+  document.getElementById('snip-text').textContent = url;
+  document.getElementById('snip-om').classList.add('show');
+}
+function closeSnippetModal(){ document.getElementById('snip-om').classList.remove('show'); }
+function copySnippet(){
+  navigator.clipboard.writeText(document.getElementById('snip-text').textContent)
+    .then(()=>toast('URL copied to clipboard.'))
+    .catch(()=>toast('Could not access clipboard — select and copy manually.','error'));
+}
+
+/* ============================================================
+   EXPORTS
+   ============================================================ */
+function downloadFile(filename, content, mime){
+  const blob = new Blob([content], {type: mime});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(a.href);
+}
+function downloadPublicData(){
+  const publicProjects = projects.map(({id,title,description,status,file,codeHash,roCodeHash})=>
+    ({id,title,description,status,file,codeHash,roCodeHash}));
+  const content =
+`/* ============================================================
+   My MaNaGeR — Public Projects Manifest
+   Generated by Admin Panel on ${new Date().toLocaleString()}.
+   Upload this file to your site's root on InfinityFree to publish.
+   Contains hashes only — no plaintext codes.
+   ============================================================ */
+window.MMGR_PROJECTS = ${JSON.stringify(publicProjects, null, 2)};
+`;
+  downloadFile('projects-data.js', content, 'application/javascript');
+  toast('Downloaded — upload this to replace projects-data.js on your live site.');
+}
+function downloadAdminBackup(){
+  const rows = [['id','title','description','status','file','code','codeHash']];
+  projects.forEach(p=>rows.push([p.id,p.title,p.description,p.status,p.file,p.code||'',p.codeHash]));
+  const csv = rows.map(r => r.map(v => `"${String(v??'').replace(/"/g,'""')}"`).join(',')).join('\n');
+  downloadFile('mmgr-admin-backup.csv', csv, 'text/csv');
+  toast('Backup downloaded. Keep this file private — it contains plaintext codes.');
+}
+
+/* ── wire up Enter-to-submit on the two gate screens ── */
+document.getElementById('setup-pass2').addEventListener('keydown', e=>{ if(e.key==='Enter') handleSetupPassword(); });
+document.getElementById('login-pass').addEventListener('keydown', e=>{ if(e.key==='Enter') handleLogin(); });
+document.getElementById('om').addEventListener('click', e=>{ if(e.target.id==='om') closeProjectModal(); });
+document.getElementById('snip-om').addEventListener('click', e=>{ if(e.target.id==='snip-om') closeSnippetModal(); });
+document.getElementById('adm-cfm').addEventListener('click', e=>{ if(e.target.id==='adm-cfm') admCfmCancel(); });
+document.getElementById('pw-om').addEventListener('click', e=>{ if(e.target.id==='pw-om') closePwModal(); });
+/* Escape closes the admin's custom modals, matching the project viewer. */
+document.addEventListener('keydown', e=>{
+  if(e.key==='Escape'){ admCfmCancel(); closePwModal(); closeProjectModal(); closeSnippetModal(); }
+});
+document.getElementById('pw-new2').addEventListener('keydown', e=>{ if(e.key==='Enter') submitPasswordChange(); });
+
+/* ============================================================
+   Phase B — data-action event delegation.
+   Zero inline onclick/oninput handlers remain in this page;
+   every interactive element routes through ADMIN_ACTION_MAP.
+   ============================================================ */
+function _admIdx(el){
+  const raw = el.getAttribute('data-idx');
+  return raw === null ? undefined : parseInt(raw, 10);
+}
+const ADMIN_ACTION_MAP = {
+  'adminSetupPassword': () => handleSetupPassword(),
+  'adminLogin': () => handleLogin(),
+  'changePassword': () => openPasswordModal(),
+  'admCfmOk': () => admCfmOk(),
+  'admCfmCancel': () => admCfmCancel(),
+  'closePwModal': () => closePwModal(),
+  'submitPasswordChange': () => submitPasswordChange(),
+  'admKeepMine': () => admKeepMine(),
+  'admLoadTheirs': () => admLoadTheirs(),
+  'lockAdmin': () => lockAdmin(),
+  'openProjectModal': (el) => openProjectModal(_admIdx(el)),
+  'downloadPublicData': () => downloadPublicData(),
+  'downloadAdminBackup': () => downloadAdminBackup(),
+  'closeProjectModal': () => closeProjectModal(),
+  'syncSlug': () => syncSlug(),
+  'pfIdManual': () => { slugManuallyEdited = true; },
+  'generateCodeIntoForm': () => generateCodeIntoForm(),
+  'generateRoCodeIntoForm': () => generateRoCodeIntoForm(),
+  'saveProjectForm': () => saveProjectForm(),
+  'closeSnippetModal': () => closeSnippetModal(),
+  'copySnippet': () => copySnippet(),
+  'toggleCode': (el) => toggleCode(_admIdx(el)),
+  'copyCode': (el) => copyCode(_admIdx(el)),
+  'regenerateCode': (el) => regenerateCode(_admIdx(el)),
+  'openSnippetModal': (el) => openSnippetModal(_admIdx(el)),
+  'deleteProject': (el) => deleteProject(_admIdx(el))
+};
+document.addEventListener('click', function(e){
+  const el = e.target.closest('[data-action]');
+  if (!el) return;
+  const fn = ADMIN_ACTION_MAP[el.getAttribute('data-action')];
+  if (fn){ e.preventDefault(); fn(el, e); }
+});
+document.addEventListener('input', function(e){
+  const el = e.target.closest('[data-action]');
+  if (!el) return;
+  const action = el.getAttribute('data-action');
+  if (action === 'syncSlug' || action === 'pfIdManual'){
+    const fn = ADMIN_ACTION_MAP[action];
+    if (fn) fn(el, e);
+  }
+});
+
+initGate();
+
+/* Deploy guard: every icon in the app is a <use href="css/mmgr-icons.svg#...">.
+   If the sprite 404s on the live host the icons silently vanish — surface that
+   loudly. HTTP(S) only, so local file:// testing stays quiet. */
+if (window.location.protocol === 'http:' || window.location.protocol === 'https:'){
+  fetch('css/mmgr-icons.svg').then(r=>{ if(!r.ok) console.warn('ICON SPRITE MISSING: css/mmgr-icons.svg returned ' + r.status + ' — upload the css/ folder (mmgr.css + mmgr-icons.svg) to the site root.'); })
+    .catch(()=>console.warn('ICON SPRITE MISSING: css/mmgr-icons.svg could not be fetched — upload the css/ folder to the site root.'));
+}
+</script>
+</body>
+</html>

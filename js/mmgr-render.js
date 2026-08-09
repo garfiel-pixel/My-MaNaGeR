@@ -2282,7 +2282,17 @@ var MMGR = window.MMGR || {};
         el.classList.toggle('is-hide', fl[flag] === false);
       });
     };
-    gate('#ai-fab', 'aiWindow');
+    // MERGED-AI-CONTROL (audit 1.2): flags.aiWindow is gone. The fab and the
+    // drawer AI switch now both follow state.config.ai.tier — one control,
+    // one meaning. The fab is hidden only when the engine is fully off, so
+    // the entry point can never disagree with the tier value.
+    const aiCfg = (ns.AiWin && ns.AiWin.getAiCfg) ? ns.AiWin.getAiCfg() : null;
+    const aiOn = aiCfg ? (aiCfg.tier || 'off') !== 'off' : false;
+    document.querySelectorAll('#ai-fab').forEach(function(el) {
+      el.classList.toggle('is-hide', !aiOn);
+    });
+    const aiChip = document.querySelector('[data-action="tglAiTier"]');
+    if (aiChip) { aiChip.checked = aiOn; aiChip.classList.toggle('is-on', aiOn); }
     gate('[data-action="runMonteCarlo"]', 'monteCarlo');
     gate('[data-action="exportGanttPNG"]', 'ganttExport');
     gate('[data-action="tglLeadtimeLane"]', 'leadtimeLane');

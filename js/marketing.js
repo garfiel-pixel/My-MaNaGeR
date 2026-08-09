@@ -71,14 +71,28 @@
         else a.removeAttribute('aria-current');
       });
     }
+    var lastId = spyLinks.length
+      ? (spyLinks[spyLinks.length - 1].getAttribute('href') || '').slice(1)
+      : null;
+    function atPageBottom(){
+      return (window.innerHeight + window.scrollY) >= (document.documentElement.scrollHeight - 4);
+    }
+    /* Pick the section with the largest visible share, not just "the last one
+       that intersected" — when several sections are in frame, the most visible
+       one wins, so the active stick tracks what is actually on screen. */
     var spy = new IntersectionObserver(function(entries){
-      var current = null;
+      var best = null, bestRatio = -1;
       entries.forEach(function(entry){
-        if (entry.isIntersecting) current = entry.target.id;
+        if (entry.isIntersecting && entry.intersectionRatio > bestRatio) {
+          bestRatio = entry.intersectionRatio;
+          best = entry.target.id;
+        }
       });
-      /* null when scrolled back above the first section — nothing active */
-      setSpy(current);
-    }, { rootMargin: '-30% 0px -50% 0px', threshold: 0 });
+      /* Bottom of the page: a short final section can sit entirely above the
+         observer band, so force the last spy link active instead of none. */
+      if (!best && atPageBottom() && lastId) best = lastId;
+      setSpy(best);
+    }, { rootMargin: '-40% 0px -45% 0px', threshold: [0, 0.25, 0.5, 0.75, 1] });
     spySections.forEach(function(el){ spy.observe(el); });
   }
 

@@ -55,7 +55,7 @@
 const INLINE_SCRIPT_HASHES = [
   "'sha256-o+0No2XpbES4E5QJh31mY9JsJFqSmE+B4x+z1fNPjVc='", // project.html
   "'sha256-uXP6UbKN008OGX7DDZbsyDbAG4Dj8LT6FVZf333Vp/U='", // app.html
-  "'sha256-Nes7RKcL0MVY3SnKF5ktyLpO5Xz59WjxI14E5Qst+90='", // admin.html
+  "'sha256-Hfsdwmny9zsiCJQoODAHOC8BM8DQnwKSQDE6n2mJnvA='", // admin.html
   "'sha256-Oa7ON+9A164SSXhnxu08mFn0V9Tj2SlZ2SzFXFoqKNE='", // dashboard.html
   "'sha256-DRiA9m7qJLb4z1QyfjbEUFyubzWHRCl2Cgf+YJkjyi8='", // seed-test.html
   "'sha256-l7T1LLezhae1ZGfmUGxTadrqmveWG2jA4nLGwRkmB3k='", // mymanager-field-guide.html
@@ -66,10 +66,10 @@ const INLINE_SCRIPT_HASHES = [
 const CSP = [
   "default-src 'self'",
   "script-src 'self' 'wasm-unsafe-eval' https://unpkg.com https://accounts.google.com https://apis.google.com " + INLINE_SCRIPT_HASHES,
-  "style-src 'self' 'unsafe-inline'",
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "img-src 'self' data: blob:",
   "media-src 'self' data: blob:",
-  "font-src 'self' data:",
+  "font-src 'self' data: https://fonts.gstatic.com",
   "connect-src 'self' https: https://accounts.google.com https://oauth2.googleapis.com blob:",
   "worker-src 'self'",
   "manifest-src 'self'",

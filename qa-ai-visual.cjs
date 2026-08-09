@@ -44,8 +44,11 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
   await ev(`(function(){
     localStorage.setItem('mmgr_unlocked_demo','1');
     localStorage.setItem('mmgr_current_project','demo');
-    localStorage.setItem('mmgr_scope_demo','full');
-    localStorage.setItem('mmgr_state_demo', JSON.stringify({ charter:{name:'Demo Tower', targetCompletion:'2026-12-01'}, tasks:[{id:'T1',name:'Foundations',status:'inprogress',endDate:'2026-09-01'},{id:'T2',name:'Steel',status:'todo',endDate:'2026-10-15'}], risks:[{id:'R1',description:'Weather delay',probability:'High',impact:'High'}], issues:[], budgetLines:[] }));
+    localStorage.setItem('mmgr_scope_demo','full');    // MERGED-AI-CONTROL (audit 1.2): seed tier 'local' so the fab is genuinely
+    // visible — the old default (no config.ai) left the fab hidden behind
+    // is-hide, and a programmatic .click() on display:none would mask a real
+    // "fab missing" regression.
+    localStorage.setItem('mmgr_state_demo', JSON.stringify({charter:{name:'Demo Tower', targetCompletion:'2026-12-01'}, tasks:[{id:'T1',name:'Foundations',status:'inprogress',endDate:'2026-09-01'},{id:'T2',name:'Steel',status:'todo',endDate:'2026-10-15'}], risks:[{id:'R1',description:'Weather delay',probability:'High',impact:'High'}], issues:[], budgetLines:[], config:{ai:{tier:'local'}} }));
     return true;
   })()`);
   await send('Page.navigate', { url: BASE + '/project.html?id=demo' }); await delay(4000);
@@ -56,10 +59,14 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
   // Open the AI window.
   const o = await ev(`(function(){
     var fab = document.getElementById('ai-fab');
-    fab.click();
+    return { fabVisible: !!fab && !fab.classList.contains('is-hide') };
+  })()`);
+  // MERGED-AI-CONTROL: with tier seeded 'local' the fab must be genuinely
+  // visible before we click it — no display:none workaround.
+  await ev(`document.getElementById('ai-fab').click(); true;`); await delay(600);
+  const oOpen = await ev(`(function(){
     return { open: document.getElementById('ai-win').classList.contains('open') };
   })()`);
-  await delay(600);
   const a = await ev(`(function(){
     var th = document.getElementById('ai-thread');
     var welcome = document.getElementById('ai-welcome');
@@ -78,7 +85,7 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
       advCollapsed: !!adv && !adv.open
     };
   })()`);
-  check('AI window opens with chat layout', o.open === true, o);
+  check('AI window opens with chat layout', o.fabVisible === true && oOpen.open === true, { fabVisible: o.fabVisible, open: oOpen.open });
   check('Welcome bubble visible + thread present', a.thread && a.welcome, a);
   check('Preset chips rendered (>=10) + engine pill + input bar + collapsed advanced', a.chips >= 10 && a.pill && a.inputBar && a.advCollapsed, a);
 

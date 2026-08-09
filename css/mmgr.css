@@ -567,7 +567,10 @@ body.readonly-mode .btn[data-action]:not([data-action="showSec"]):not([data-acti
 .tgl input{opacity:0;width:0;height:0;}
 .tsl{position:absolute;cursor:pointer;inset:0;background:var(--border);border-radius:100px;transition:all .4s var(--spring);}
 .tsl::before{content:'';position:absolute;height:14px;width:14px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:var(--tr);}
-.tgl input:checked+.tsl{background:var(--danger);}
+/* MERGED-AI-CONTROL/audit 1.2 (#4): the old `var(--danger)` checked-state
+   was dead code — the Android toggle contrast block later in this sheet
+   overrides it with var(--toggle-on-bg) on equal specificity. Relying on
+   cascade order to suppress a red ON state is fragile; the rule is deleted. */
 .tgl input:checked+.tsl::before{transform:translateX(16px);}
 
 /* ---- Issue Row ---- */
@@ -1197,6 +1200,12 @@ body.dark-mode .pcard:hover{box-shadow:var(--glass-rim),0 12px 30px rgba(0,0,0,.
 .ai-pill[data-tier="cloud"] .ai-pill-dot{background:var(--gold);box-shadow:0 0 6px var(--gold);}
 .ai-head-actions{display:flex;align-items:center;gap:4px;margin-left:auto;}
 .ai-head-actions .dc{font-size:1.15rem;padding:6px;}
+/* MERGED-AI-CONTROL (audit 1.2): the tier selector promoted into the AI
+   window header, styled to sit beside the engine pill without expanding the
+   collapsed details panel. */
+.ai-head-tier{border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:100px;padding:3px 10px;font-size:.64rem;font-weight:600;font-family:inherit;cursor:pointer;white-space:nowrap;}
+.ai-head-tier:hover{border-color:var(--gold);color:var(--gold);}
+.ai-head-tier:focus{outline:none;border-color:var(--gold);}
 .ai-clear-btn{background:none;border:1px solid var(--border);color:var(--slate);border-radius:100px;padding:4px 11px;font-size:.66rem;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:5px;transition:all var(--tr);}
 .ai-clear-btn:hover{color:var(--danger);border-color:var(--danger);}
 
@@ -1269,6 +1278,7 @@ body.dark-mode .ai-chip{background:rgba(255,255,255,.05);}
 body.dark-mode .ai-adv .ai-adv-body{background:rgba(0,0,0,.18);}
 body.dark-mode .ai-cfg{background:rgba(255,255,255,.03);}
 body.dark-mode .ai-cfg select,body.dark-mode .ai-cfg input{background:rgba(0,0,0,.25);}
+body.dark-mode .ai-head-tier{background:rgba(0,0,0,.25);border-color:rgba(255,255,255,.14);}
 /* Rank 3.4 — viewport-aware layout detection: the one-time dismissible
    prompt bar + the simplified stacked presentation (never hides function,
    restructures presentation; .vp-full restores the wide layout). */

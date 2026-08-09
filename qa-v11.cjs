@@ -35,26 +35,56 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
   const f1 = await ev(`(function(){
     var s = MMGR.State.getState();
     var fl = s.flags || {};
+    // MERGED-AI-CONTROL (audit 1.2): aiWindow is no longer a flag — the AI
+    // assistant follows state.config.ai.tier. Only the four real UI modules
+    // remain flags, all default-on.
     return { has: typeof s.flags === 'object' && s.flags !== null,
-      allOn: ['aiWindow','monteCarlo','ganttExport','leadtimeLane','weatherForecast'].every(function(k){ return fl[k] !== false; }) };
+      allOn: ['monteCarlo','ganttExport','leadtimeLane','weatherForecast'].every(function(k){ return fl[k] !== false; }) };
   })()`);
   check('01 flags: state.flags object present, all default on', f1.has && f1.allOn, f1);
 
   const f2 = await ev(`(function(){
     var chips = Array.prototype.slice.call(document.querySelectorAll('[data-action="tglFlag"]'));
+    var ai = document.querySelector('[data-action="tglAiTier"]');
     return { count: chips.length,
       checked: chips.every(function(c){ return c.checked; }),
-      labels: chips.map(function(c){ return c.getAttribute('data-flag'); }).join(',') };
+      labels: chips.map(function(c){ return c.getAttribute('data-flag'); }).join(','),
+      aiSwitch: !!ai && ai.type === 'checkbox' && !ai.getAttribute('data-flag') };
   })()`);
-  check('02 flags: 5 chips render in Controls, all checked', f2.count === 5 && f2.checked && f2.labels.indexOf('aiWindow') > -1 && f2.labels.indexOf('weatherForecast') > -1, f2);
+  check('02 flags: 4 chips render in Controls (AI is a tier switch, not a flag)', f2.count === 4 && f2.checked && f2.labels.indexOf('weatherForecast') > -1 && f2.aiSwitch, f2);
 
-  await ev(`document.querySelector('[data-action="tglFlag"][data-flag="aiWindow"]').click()`); await delay(300);
-  const f3 = await ev(`(function(){
+  // MERGED-AI-CONTROL: the drawer switch is the single AI on/off. Default tier
+  // is 'off' -> switch unchecked + FAB hidden. Turning it ON restores the last
+  // non-off tier (default 'local') and shows the FAB; OFF -> tier 'off' + FAB
+  // hidden. This exercises the 'can never disagree' invariant both ways.
+  const f3a = await ev(`(function(){
     var fab = document.getElementById('ai-fab');
-    return { stateOff: MMGR.State.getState().flags.aiWindow === false,
-      fabHidden: !!fab && fab.classList.contains('is-hide') };
+    var ai = document.querySelector('[data-action="tglAiTier"]');
+    return { tier: (MMGR.AiWin && MMGR.AiWin.getAiCfg) ? MMGR.AiWin.getAiCfg().tier : null,
+      fabHidden: !!fab && fab.classList.contains('is-hide'),
+      chipChecked: !!ai && ai.checked };
   })()`);
-  check('03 flags: aiWindow off -> state false + FAB hidden', f3.stateOff && f3.fabHidden, f3);
+  check('03a flags: default AI state = tier off, switch unchecked, FAB hidden', f3a.tier === 'off' && f3a.fabHidden && !f3a.chipChecked, f3a);
+
+  await ev(`document.querySelector('[data-action="tglAiTier"]').click()`); await delay(300);
+  const f3b = await ev(`(function(){
+    var fab = document.getElementById('ai-fab');
+    var ai = document.querySelector('[data-action="tglAiTier"]');
+    return { tier: MMGR.AiWin.getAiCfg().tier,
+      fabVisible: !!fab && !fab.classList.contains('is-hide'),
+      chipChecked: !!ai && ai.checked };
+  })()`);
+  check('03b flags: AI switch ON -> tier local (restore default), FAB visible', f3b.tier === 'local' && f3b.fabVisible && f3b.chipChecked, f3b);
+
+  await ev(`document.querySelector('[data-action="tglAiTier"]').click()`); await delay(300);
+  const f3c = await ev(`(function(){
+    var fab = document.getElementById('ai-fab');
+    var ai = document.querySelector('[data-action="tglAiTier"]');
+    return { tier: MMGR.AiWin.getAiCfg().tier,
+      fabHidden: !!fab && fab.classList.contains('is-hide'),
+      chipChecked: !!ai && ai.checked };
+  })()`);
+  check('03c flags: AI switch OFF -> tier off, FAB hidden again', f3c.tier === 'off' && f3c.fabHidden && !f3c.chipChecked, f3c);
 
   await ev(`document.querySelector('[data-action="tglFlag"][data-flag="monteCarlo"]').click()`); await delay(300);
   const f4 = await ev(`(function(){
@@ -100,15 +130,20 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
     var fab = document.getElementById('ai-fab');
     var card = document.getElementById('weather-forecast-card');
     var lane = document.getElementById('col-leadtime');
-    return { aiOff: s.flags.aiWindow === false, wxOff: s.flags.weatherForecast === false, ltOff: s.flags.leadtimeLane === false,
+    var ai = document.querySelector('[data-action="tglAiTier"]');
+    // MERGED-AI-CONTROL: AI 'off' is now tier === 'off' (persisted in
+    // state.config.ai), and the switch + FAB must still agree after refresh.
+    var aiTier = (MMGR.AiWin && MMGR.AiWin.getAiCfg) ? MMGR.AiWin.getAiCfg().tier : null;
+    return { aiOff: aiTier === 'off', wxOff: s.flags.weatherForecast === false, ltOff: s.flags.leadtimeLane === false,
       fabHidden: !!fab && fab.classList.contains('is-hide'),
       cardHidden: !!card && card.classList.contains('is-hide'),
       laneHidden: !!lane && lane.classList.contains('is-hide'),
+      aiChipSynced: !!ai && ai.checked === (aiTier !== 'off'),
       chipsSynced: Array.prototype.every.call(document.querySelectorAll('[data-action="tglFlag"]'), function(c){
         var want = s.flags[c.getAttribute('data-flag')] !== false; return c.checked === want;
       }) };
   })()`);
-  check('08 flags: off-flags persist + gates + chips sync after hard refresh', f8.aiOff && f8.wxOff && f8.ltOff && f8.fabHidden && f8.cardHidden && f8.laneHidden && f8.chipsSynced, f8);
+  check('08 flags: off-flags persist + gates + chips sync after hard refresh', f8.aiOff && f8.wxOff && f8.ltOff && f8.fabHidden && f8.cardHidden && f8.laneHidden && f8.aiChipSynced && f8.chipsSynced, f8);
 
   // ---- ERROR LOG -----------------------------------------------------------
   const e1 = await ev(`(async function(){
@@ -274,14 +309,16 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
   await ev(`(function(){ localStorage.setItem('mmgr_scope_demo-project','readonly'); return true; })()`);
   await send('Page.navigate', { url: BASE + '/project.html?id=demo-project' }); await delay(4000);
   const r1 = await ev(`(function(){
-    var before = MMGR.State.getState().flags.aiWindow;
-    var chip = document.querySelector('[data-action="tglFlag"][data-flag="aiWindow"]');
+    // MERGED-AI-CONTROL: the drawer switch mutates state.config.ai.tier, so
+    // like every other write it must be refused in view-only mode.
+    var before = (MMGR.AiWin && MMGR.AiWin.getAiCfg) ? MMGR.AiWin.getAiCfg().tier : null;
+    var chip = document.querySelector('[data-action="tglAiTier"]');
     chip.click();
-    var after = MMGR.State.getState().flags.aiWindow;
+    var after = (MMGR.AiWin && MMGR.AiWin.getAiCfg) ? MMGR.AiWin.getAiCfg().tier : null;
     var toast = document.querySelector('.toast');
-    return { blocked: before === after && before === false, toastShown: !!toast && toast.textContent.indexOf('View-only') > -1 };
+    return { blocked: before === after && before === 'off', toastShown: !!toast && toast.textContent.indexOf('View-only') > -1 };
   })()`);
-  check('23 readonly: tglFlag refused with toast, state unchanged', r1.blocked && r1.toastShown, r1);
+  check('23 readonly: AI master switch refused with toast, tier unchanged', r1.blocked && r1.toastShown, r1);
 
   await ev(`(function(){ localStorage.setItem('mmgr_scope_demo-project','full'); return true; })()`);
   await send('Page.navigate', { url: BASE + '/project.html?id=demo-project' }); await delay(3500);

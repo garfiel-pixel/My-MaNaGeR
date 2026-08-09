@@ -10,9 +10,9 @@
      1. Open admin.html and manage projects there.
      2. Click "Download Public Data File" to get an updated
         copy of this exact file.
-     3. Upload it to your site's root on InfinityFree (File
-        Manager or FTP), overwriting the old one.
-   That upload step is the "publish" step — nothing is live
+     3. Commit it to your repository and deploy via
+        `npx wrangler deploy` (Cloudflare Workers static assets).
+   That deploy step is the "publish" step — nothing is live
    for other visitors until this file is replaced on the server.
 
    Fields per project:

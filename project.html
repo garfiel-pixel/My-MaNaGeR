@@ -787,6 +787,14 @@
     <div class="mh ai-head">
       <span class="mt"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg> AI Assistant</span>
       <span class="ai-pill" id="ai-engine-pill" data-tier="off"><span class="ai-pill-dot"></span><span id="ai-engine-pill-label">Engine</span></span>
+      <!-- MERGED-AI-CONTROL (audit 1.2): the tier selector now lives in the
+           header next to the engine pill — visible without expanding anything.
+           Same id + action as before so syncSettingsUI/action wiring is intact. -->
+      <select id="ai-tier" class="ai-head-tier" data-action="aiSetTier" title="AI engine — Off, Local (zero-key, offline), or Cloud (BYO key)">
+        <option value="off">Off</option>
+        <option value="local">Local</option>
+        <option value="cloud">Cloud</option>
+      </select>
       <div class="ai-head-actions">
         <button class="ai-clear-btn" data-action="aiClear" title="Start a new conversation"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> New</button>
         <button class="dc" data-action="closeAiWin" title="Close"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> </button>
@@ -811,7 +819,7 @@
       <!-- Project context + engine settings (collapsed by default — keeps the
            chat view clean; all ids/actions unchanged for Rank 2.3 wiring) -->
       <details class="ai-adv">
-        <summary><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-settings"></use></svg> Project context &amp; AI engine</summary>
+        <summary><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-settings"></use></svg> Project context &amp; cloud connection</summary>
         <div class="ai-adv-body">
           <div class="dsec">Project context (auto-generated grounding for both tiers)</div>
           <textarea id="ai-ctx" class="ai-ctx" readonly placeholder="Project context appears here — charter, health, EVM, timeline, risks, critical path, weather."></textarea>
@@ -822,12 +830,7 @@
             <button class="btn btn-n btn-s" data-action="aiClear">Clear</button>
           </div>
           <div class="ai-cfg">
-            <span class="ai-cfg-label"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cpu"></use></svg> AI Engine</span>
-            <select id="ai-tier" data-action="aiSetTier">
-              <option value="off">Off — copy-first only</option>
-              <option value="local">Local (zero-key, offline)</option>
-              <option value="cloud">Cloud (BYO key)</option>
-            </select>
+            <span class="ai-cfg-label"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cpu"></use></svg> Cloud connection (BYO key)</span>
             <span id="ai-cfg-cloud" class="ai-cfg-cloud is-hide">
               <select id="ai-provider" data-action="aiSetProvider">
                 <option value="openai">OpenAI</option>
@@ -932,7 +935,11 @@
     <div id="drive-section"></div>
     <!-- Phase 2: client feature flags — all default on; off hides the optional UI -->
     <div class="sr-hint">Feature flags — switch a module off to hide it from the workspace. All default on.</div>
-    <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg> AI Assistant Window</span><label class="tgl"><input type="checkbox" data-action="tglFlag" data-flag="aiWindow"><span class="tsl"></span></label></div>
+    <!-- MERGED-AI-CONTROL (audit 1.2): this switch is now the SINGLE AI on/off
+         control — it reads/writes state.config.ai.tier (OFF -> 'off', ON ->
+         restore last non-off tier, default 'local'). flags.aiWindow is gone. -->
+    <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg> AI Assistant</span><label class="tgl"><input type="checkbox" data-action="tglAiTier"><span class="tsl"></span></label></div>
+    <div class="sr-hint">AI Assistant is the engine master switch — Off disables the assistant (fab hidden); On restores Local or your last engine tier.</div>
     <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-activity"></use></svg> Monte Carlo Simulation</span><label class="tgl"><input type="checkbox" data-action="tglFlag" data-flag="monteCarlo"><span class="tsl"></span></label></div>
     <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-printer"></use></svg> Gantt PNG Export</span><label class="tgl"><input type="checkbox" data-action="tglFlag" data-flag="ganttExport"><span class="tsl"></span></label></div>
     <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clock"></use></svg> Kanban Lead-Time Lane</span><label class="tgl"><input type="checkbox" data-action="tglFlag" data-flag="leadtimeLane"><span class="tsl"></span></label></div>

@@ -14,7 +14,7 @@
    project data lives in localStorage/IndexedDB, not here — this
    worker never touches user data.
    ============================================================ */
-const CACHE = 'mmgr-shell-v11'; // bumped when shell content changes (v11: glass shader palette constrained — cool slate + low-weight gold, accent mix <= 0.15 dark / 0.06 light, chromatic offset reduced)
+const CACHE = 'mmgr-shell-v13'; // bumped when shell content changes (v13: review pass — readonly checkbox revert on view-only rejection, fab-visibility seed in qa-ai-visual; v12: audit 1.2 merged AI controls — drawer switch now drives state.config.ai.tier, tier select promoted to AI window header, flags.aiWindow dropped as a gate; v11: glass shader palette constrained — cool slate + low-weight gold, accent mix <= 0.15 dark / 0.06 light, chromatic offset reduced)
 const SHELL = [
   './',
   'index.html',

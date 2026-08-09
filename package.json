@@ -1,0 +1,14 @@
+{
+  "name": "my-manager",
+  "version": "1.0.0",
+  "private": true,
+  "description": "My MaNaGeR — offline-first construction PM workspace (Cloudflare Workers static assets).",
+  "scripts": {
+    "serve": "node serve.cjs",
+    "verify:csp": "node tools/verify-csp-hashes.cjs",
+    "verify:sw": "node tools/verify-sw-cache.cjs",
+    "verify": "npm run verify:csp && npm run verify:sw",
+    "predeploy": "npm run verify",
+    "deploy": "npm run predeploy && npx wrangler deploy"
+  }
+}

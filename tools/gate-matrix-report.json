@@ -1,0 +1,126 @@
+{
+  "note": "app.html and admin.html do not load the Liquid Glass engine (mmgr-glass.js/mmgr-viewport.js) nor any theme reader. Premium = localStorage mmgr_glass_mode=premium + __mmgrForceHighEnd; dark = forced .dark-mode class (the class the app theme logic uses).",
+  "rows": [
+    {
+      "combo": "app-light-css",
+      "glass": "css",
+      "theme": "light",
+      "screen": "clicked-locked-card",
+      "worstContrast": 4.6,
+      "errors": 0,
+      "warnings": 0,
+      "gate": "mb",
+      "broken": false,
+      "verdict": "OK"
+    },
+    {
+      "combo": "app-dark-css",
+      "glass": "css",
+      "theme": "dark",
+      "screen": "clicked-locked-card",
+      "worstContrast": 9.21,
+      "errors": 0,
+      "warnings": 0,
+      "gate": "mb",
+      "broken": false,
+      "verdict": "OK"
+    },
+    {
+      "combo": "app-light-premium",
+      "glass": "premium",
+      "theme": "light",
+      "screen": "clicked-locked-card",
+      "worstContrast": 4.6,
+      "errors": 0,
+      "warnings": 0,
+      "gate": "mb",
+      "broken": false,
+      "verdict": "OK (premium-engine-not-on-page)"
+    },
+    {
+      "combo": "app-dark-premium",
+      "glass": "premium",
+      "theme": "dark",
+      "screen": "clicked-locked-card",
+      "worstContrast": 9.21,
+      "errors": 0,
+      "warnings": 0,
+      "gate": "mb",
+      "broken": false,
+      "verdict": "OK (premium-engine-not-on-page)"
+    },
+    {
+      "combo": "admin-setup-light-css",
+      "glass": "css",
+      "theme": "light",
+      "screen": "n/a",
+      "worstContrast": 4.36,
+      "errors": 0,
+      "warnings": 0,
+      "gate": "gbox",
+      "broken": false,
+      "verdict": "OK"
+    },
+    {
+      "combo": "admin-setup-dark-css",
+      "glass": "css",
+      "theme": "dark",
+      "screen": "n/a",
+      "worstContrast": 4.16,
+      "errors": 0,
+      "warnings": 0,
+      "gate": "gbox",
+      "broken": false,
+      "verdict": "OK"
+    },
+    {
+      "combo": "admin-setup-light-premium",
+      "glass": "premium",
+      "theme": "light",
+      "screen": "n/a",
+      "worstContrast": 4.36,
+      "errors": 0,
+      "warnings": 0,
+      "gate": "gbox",
+      "broken": false,
+      "verdict": "OK (premium-engine-not-on-page)"
+    },
+    {
+      "combo": "admin-setup-dark-premium",
+      "glass": "premium",
+      "theme": "dark",
+      "screen": "n/a",
+      "worstContrast": 4.16,
+      "errors": 0,
+      "warnings": 0,
+      "gate": "gbox",
+      "broken": false,
+      "verdict": "OK (premium-engine-not-on-page)"
+    },
+    {
+      "combo": "admin-login-light-css",
+      "glass": "css",
+      "theme": "light",
+      "screen": "n/a",
+      "worstContrast": 4.36,
+      "errors": 0,
+      "warnings": 0,
+      "gate": "gbox",
+      "broken": false,
+      "verdict": "OK"
+    },
+    {
+      "combo": "admin-login-dark-premium",
+      "glass": "premium",
+      "theme": "dark",
+      "screen": "n/a",
+      "worstContrast": 4.16,
+      "errors": 0,
+      "warnings": 0,
+      "gate": "gbox",
+      "broken": false,
+      "verdict": "OK (premium-engine-not-on-page)"
+    }
+  ],
+  "anyBroken": false
+}

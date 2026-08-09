@@ -1731,6 +1731,11 @@ window.MMGR = MMGR;
     'aiRun': () => window.MMGR.AiWin.runQuestion(),
     'aiCopyOut': () => window.MMGR.AiWin.copyOut(),
     'aiSetTier': (el) => { window.MMGR.AiWin.setAiCfg({ tier: el.value }); window.MMGR.AiWin.syncSettingsUI(); },
+    // MERGED-AI-CONTROL (audit 1.2): the drawer's AI Assistant switch is now
+    // the single AI on/off control — it reads/writes state.config.ai.tier
+    // directly (flags.aiWindow is dropped as a gate). OFF -> tier 'off'; ON
+    // -> restore the last non-off tier (default 'local').
+    'tglAiTier': (el) => window.MMGR.AiWin.tglDrawerTier(el),
     'aiSetProvider': (el) => { window.MMGR.AiWin.setAiCfg({ provider: el.value }); window.MMGR.AiWin.syncSettingsUI(); },
     'aiSetEndpoint': (el) => window.MMGR.AiWin.setAiCfg({ endpoint: el.value }),
     'aiSetModel': (el) => window.MMGR.AiWin.setAiCfg({ model: el.value }),
@@ -2030,7 +2035,14 @@ window.MMGR = MMGR;
       return;
     }
     const action = el.getAttribute('data-action');
-    if (!guardReadonly(action)) return;
+    if (!guardReadonly(action)) {
+      // View-only rejection: Chrome has already flipped a checkbox's `checked`
+      // before this handler runs, so revert it — otherwise the switch would
+      // visually toggle while the state it controls stays unchanged (audit
+      // 1.2 / 1.3 — the AI master switch, tglPack, tglFlag all behave this way).
+      if (el.tagName === 'INPUT' && el.type === 'checkbox') el.checked = !el.checked;
+      return;
+    }
     const handler = ACTION_MAP[action];
     if (handler) {
       if (el.tagName === 'INPUT' && el.type === 'checkbox') {

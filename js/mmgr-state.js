@@ -119,7 +119,10 @@ var MMGR = window.MMGR || {};
       lastBackedUpAt: null,
       // Phase 2: client feature flags — all default-on; switching a flag off
       // hides the corresponding optional UI (Controls drawer > Features).
-      flags: { aiWindow: true, monteCarlo: true, ganttExport: true, leadtimeLane: true, weatherForecast: true },
+      // MERGED-AI-CONTROL (audit 1.2): aiWindow is NOT a flag anymore — the
+      // AI assistant is controlled by state.config.ai.tier (the drawer switch
+      // is its master on/off). Only the four real UI modules stay flags.
+      flags: { monteCarlo: true, ganttExport: true, leadtimeLane: true, weatherForecast: true },
       // Phase 2: client-side error surface — last 20 errors, each with a
       // timestamp and the source action, surfaced in the Controls drawer.
       errorLog: [],
@@ -323,7 +326,9 @@ var MMGR = window.MMGR || {};
       if (!state.flags || typeof state.flags !== 'object' || Array.isArray(state.flags)) {
         state.flags = {};
       }
-      ['aiWindow', 'monteCarlo', 'ganttExport', 'leadtimeLane', 'weatherForecast'].forEach(k => {
+      // MERGED-AI-CONTROL (audit 1.2): aiWindow is dropped from the backfill —
+      // the AI assistant now follows state.config.ai.tier, not a flag.
+      ['monteCarlo', 'ganttExport', 'leadtimeLane', 'weatherForecast'].forEach(k => {
         if (state.flags[k] === undefined) state.flags[k] = true;
       });
       if (!Array.isArray(state.errorLog)) state.errorLog = [];

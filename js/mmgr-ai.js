@@ -269,12 +269,32 @@ var MMGR = window.MMGR || {};
 
   // Settings toggle — writes into state.config.ai (per-project, portable,
   // merged over defaults by Net.getConfig). No schema change.
+  // MERGED-AI-CONTROL (audit 1.2): whenever a non-off tier is selected, it is
+  // remembered as lastTier so the drawer master switch can restore it when
+  // flipped back ON (default 'local' when never set).
   function setAiCfg(patch) {
     ns.State.updateState(function(s) {
       if (!s.config || typeof s.config !== 'object' || Array.isArray(s.config)) s.config = {};
       if (!s.config.ai || typeof s.config.ai !== 'object' || Array.isArray(s.config.ai)) s.config.ai = {};
       Object.keys(patch).forEach(function(k) { s.config.ai[k] = patch[k]; });
+      if (patch.tier !== undefined && patch.tier !== 'off') s.config.ai.lastTier = patch.tier;
     });
+  }
+
+  // MERGED-AI-CONTROL (audit 1.2): the Settings ▸ Features "AI Assistant"
+  // switch is now the SINGLE AI on/off control — it reads/writes
+  // state.config.ai.tier directly (flags.aiWindow is dropped as a gate).
+  // OFF -> tier 'off'; ON -> restore the last non-off tier (default 'local').
+  // Chrome flips checkbox `checked` before the click handler runs, so read it
+  // as-is and let the native toggle stand.
+  function tglDrawerTier(el) {
+    const on = el.type === 'checkbox' ? el.checked : false;
+    const cfg = getAiCfg();
+    const tier = on ? (cfg.lastTier || 'local') : 'off';
+    setAiCfg({ tier: tier });
+    // syncSettingsUI re-gates the fab (renderFlags) so visibility and tier
+    // can never disagree — no separate renderFlags call needed here.
+    syncSettingsUI();
   }
 
   // Sync the AI window's tier/keys inputs from state.
@@ -297,6 +317,10 @@ var MMGR = window.MMGR || {};
         : (cfg.tier || 'off') === 'cloud' ? 'Cloud · BYO key'
         : 'Off · copy-first';
     }
+    // MERGED-AI-CONTROL: the fab visibility follows the tier (hidden only
+    // when the engine is fully off) — re-gate here so the header select and
+    // the drawer switch can never leave the fab disagreeing with the tier.
+    if (ns.Render && ns.Render.renderFlags) ns.Render.renderFlags();
   }
 
   // ---- Tier A: local zero-key engine ----
@@ -871,6 +895,7 @@ var MMGR = window.MMGR || {};
     TIERS: TIERS,
     getAiCfg: getAiCfg,
     setAiCfg: setAiCfg,
+    tglDrawerTier: tglDrawerTier,
     submit: submit,
     runPreset: runPreset,
     runQuestion: runQuestion,

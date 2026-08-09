@@ -33,8 +33,11 @@
       * JS-rendered templates (mmgr-render.js + sibling modules) emit
         per-value inline styles (bar geometry, status colors, the sprint
         panel's flex layout) that cannot be classed.
-  - connect-src adds the two AI providers (Rank 2.3 Tier B, BYO-key only):
-      https://api.openai.com https://api.anthropic.com
+  - connect-src adds the AI providers for the BYO cloud tier (BYO-AI-KEY-
+      SESSION-ONLY-v1: OpenAI + Google Gemini; the session key routes through
+      the same-origin Worker relay /api/ai/chat, with a direct-call fallback
+      for local/static hosting): https://api.openai.com https://api.anthropic.com
+      https://generativelanguage.googleapis.com
       Tier B is OPTIONAL and circuit-broken exactly like Open-Meteo — with
       no key configured the cloud tier never fires, and the local tier
       (Tier A) needs no network at all. A custom provider endpoint would
@@ -54,7 +57,7 @@
       clicks "Connect Google" in Settings > Controls. It is a device label,
       never a gate — offline/CSP-blocked loads degrade to a toast.
 -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' 'sha256-o+0No2XpbES4E5QJh31mY9JsJFqSmE+B4x+z1fNPjVc=' https://accounts.google.com https://unpkg.com; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self' https://api.open-meteo.com https://geocoding-api.open-meteo.com https://api.openai.com https://api.anthropic.com https://github.com https://release-assets.githubusercontent.com https://accounts.google.com https://huggingface.co https://*.cdn.hf.co; base-uri 'self'; form-action 'self';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' 'sha256-o+0No2XpbES4E5QJh31mY9JsJFqSmE+B4x+z1fNPjVc=' https://accounts.google.com https://unpkg.com; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self' https://api.open-meteo.com https://geocoding-api.open-meteo.com https://api.openai.com https://api.anthropic.com https://generativelanguage.googleapis.com https://github.com https://release-assets.githubusercontent.com https://accounts.google.com https://huggingface.co https://*.cdn.hf.co; base-uri 'self'; form-action 'self';">
 </head>
 <body>
 <script>
@@ -839,18 +842,26 @@
             <button class="btn btn-n btn-s" data-action="aiClear">Clear</button>
           </div>
           <div class="ai-cfg">
-            <span class="ai-cfg-label"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cpu"></use></svg> Cloud connection (BYO key)</span>
+            <span class="ai-cfg-label"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cpu"></use></svg> Cloud connection (your own key)</span>
             <span id="ai-cfg-cloud" class="ai-cfg-cloud is-hide">
-              <select id="ai-provider" data-action="aiSetProvider">
+              <!-- BYO-AI-KEY-SESSION-ONLY-v1 STEP-2: session-only connect flow.
+                   The key lives ONLY in sessionStorage (mmgr_byo_ai) for this
+                   tab — never in project state, localStorage, exports, or on
+                   the server. Wired directly in mmgr-ai.js (no action-map
+                   entries, so the vault flow stays available in read-only
+                   mode — connecting a key is not a project mutation). -->
+              <span class="ai-byo-status" id="ai-byo-status" data-state="off"><span class="ai-byo-dot"></span><span class="ai-byo-status-txt">Disconnected</span></span>
+              <select id="ai-byo-provider" title="AI provider for this session">
                 <option value="openai">OpenAI</option>
-                <option value="anthropic">Anthropic</option>
+                <option value="google-gemini">Google Gemini</option>
               </select>
-              <input type="text" id="ai-endpoint" data-action="aiSetEndpoint" placeholder="Endpoint (blank = provider default)">
-              <input type="text" id="ai-model" data-action="aiSetModel" placeholder="Model (blank = provider default)">
-              <input type="password" id="ai-key" data-action="aiSetKey" placeholder="API key (stored in this project's state only)">
+              <input type="password" id="ai-byo-key" class="ai-byo-key" placeholder="Paste your API key — this session only" autocomplete="off" spellcheck="false">
+              <button class="btn btn-g btn-s" id="ai-byo-connect" title="Connect for this browser session only"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-link"></use></svg> Connect</button>
+              <button class="btn btn-n btn-s" id="ai-byo-clear" title="Forget the key in this session"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> Clear</button>
+              <p class="ai-byo-sec">Your API key stays in this browser for this session only. It is not stored on our servers. When you close the tab, the key is cleared. Next time you will connect again. Project data still requires your access code.</p>
             </span>
           </div>
-          <p class="ai-note">Tier A runs a zero-key engine in this browser — every line traces to a real project field, offline. Tier B uses your own OpenAI/Anthropic key through the same circuit-broken network path as weather. Both write results back into project state; the copy-first flow still works for any external tool.</p>
+          <p class="ai-note">Tier A runs a zero-key engine in this browser — every line traces to a real project field, offline. Tier B uses your own OpenAI / Google Gemini key for this session only (never stored, cleared on close) through the Worker relay or the same circuit-broken network path as weather. The copy-first flow still works for any external tool.</p>
         </div>
       </details>
       <!-- Result store — hidden; copyOut() reads it and runs render as bubbles -->
@@ -859,7 +870,8 @@
     </div>
     <div class="mf ai-inputbar">
       <textarea id="ai-q" class="ai-q" rows="1" placeholder="Ask anything about this project…  (Enter to send · Shift+Enter for a new line)"></textarea>
-      <button class="ai-send" data-action="aiRun" title="Send"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-zap"></use></svg> Send</button>
+      <span class="ai-conn-hint is-hide" id="ai-conn-hint" aria-live="polite"></span>
+      <button class="ai-send" id="ai-send" data-action="aiRun" title="Send"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-zap"></use></svg> Send</button>
     </div>
   </div>
 </div>
@@ -1162,6 +1174,7 @@
   <script src="js/mmgr-decisions.js"></script>
   <script src="js/mmgr-claim.js"></script>
   <script src="js/mmgr-digest.js"></script>
+  <script src="js/mmgr-ai-key.js"></script>
   <script src="js/mmgr-ai.js"></script>
   <script src="js/mmgr-viewport.js"></script>
   <script src="js/mmgr-glass.js"></script>

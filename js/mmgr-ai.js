@@ -39,6 +39,33 @@ var MMGR = window.MMGR || {};
 
   const U = ns.Utils;
 
+  // BYO-AI-KEY-SESSION-ONLY-v1: the session vault (mmgr-ai-key.js). The AI
+  // key NEVER lives in project state / localStorage / exports — only in
+  // sessionStorage for this tab, cleared on Close or Clear. A missing vault
+  // module degrades to disconnected (live chat disabled), never crashes.
+  const BYO = ns.AiKey || {
+    isConnected: function() { return false; },
+    getKey: function() { return null; },
+    getProvider: function() { return 'openai'; },
+    setKey: function() { throw new Error('session vault not loaded'); },
+    clearKey: function() {}
+  };
+
+  // BYO-AI-KEY-SESSION-ONLY-v1: scrub any legacy apiKey the pre-directive
+  // flow may have persisted in state.config.ai. The key must never survive
+  // in project state or any export — the session vault is its only home now.
+  // Runs once at module load; adds nothing to the state schema.
+  (function scrubLegacyKey() {
+    try {
+      const s = (ns.State && ns.State.getState) ? ns.State.getState() : null;
+      if (s && s.config && s.config.ai && typeof s.config.ai.apiKey === 'string' && s.config.ai.apiKey) {
+        ns.State.updateState(function(st) {
+          if (st.config && st.config.ai && typeof st.config.ai.apiKey === 'string') delete st.config.ai.apiKey;
+        });
+      }
+    } catch (e) { /* never block boot on cleanup */ }
+  })();
+
   // Readable labels for the existing prompt generators.
   const PRESET_LABELS = {
     report: 'Report Writing',
@@ -60,7 +87,7 @@ var MMGR = window.MMGR || {};
   const TIERS = {
     off:   { label: 'Off — copy-first only' },
     local: { label: 'Local (zero-key, offline, zero-fabrication)' },
-    cloud: { label: 'Cloud (BYO key, OpenAI / Anthropic)' }
+    cloud: { label: 'Cloud (BYO key, session-only — OpenAI / Google Gemini)' }
   };
 
   function toast(msg, type) {
@@ -136,6 +163,12 @@ var MMGR = window.MMGR || {};
       'WEATHER': ['Site', 'Weather risk days', 'Weather delay days logged']
     }
   };
+
+  // BYO-AI-KEY-SESSION-ONLY-v1 STEP-3: cap the serialized context so a very
+  // large project can never blow a provider's input window. Limit documented
+  // here: 12,000 chars ≈ ~3k tokens — comfortably inside every v1 provider's
+  // context budget and still far richer than a chat-only prompt.
+  const CONTEXT_MAX_CHARS = 12000;
 
   // ---- Automatic context dump of live state ----
   // Pure client-side read of the state tree. Every section is defensive
@@ -234,7 +267,11 @@ var MMGR = window.MMGR || {};
       line('Weather delay days logged', (s.weatherLog || []).length);
     } catch (e) {}
 
-    return L.join('\n');
+    let out = L.join('\n');
+    if (out.length > CONTEXT_MAX_CHARS) {
+      out = out.slice(0, CONTEXT_MAX_CHARS) + '\n…[context truncated — project data exceeds the safe packet size]';
+    }
+    return out;
   }
 
   function attachContext() {
@@ -297,30 +334,89 @@ var MMGR = window.MMGR || {};
     syncSettingsUI();
   }
 
-  // Sync the AI window's tier/keys inputs from state.
+  // Sync the AI window's tier select + BYO connect UI + send gate.
+  // BYO-AI-KEY-SESSION-ONLY-v1: the key inputs live in the session vault
+  // (mmgr-ai-key.js), never in project state — so nothing here reads or
+  // writes an apiKey from state.config.
   function syncSettingsUI() {
     const cfg = getAiCfg();
     const set = (id, val) => { const el = U.$(id); if (el && el.value !== val) el.value = val; };
     set('ai-tier', cfg.tier || 'off');
-    set('ai-provider', cfg.provider || 'openai');
-    set('ai-endpoint', cfg.endpoint || '');
-    set('ai-model', cfg.model || '');
-    set('ai-key', cfg.apiKey || '');
     const cloudRow = U.$('ai-cfg-cloud');
     if (cloudRow) cloudRow.classList.toggle('is-hide', (cfg.tier || 'off') !== 'cloud');
+    syncByoStatus();
+    syncSendGate();
     // Engine-status pill in the chat header.
     const pill = U.$('ai-engine-pill');
     if (pill) pill.setAttribute('data-tier', cfg.tier || 'off');
     const pillLbl = U.$('ai-engine-pill-label');
+    const tier = cfg.tier || 'off';
     if (pillLbl) {
-      pillLbl.textContent = (cfg.tier || 'off') === 'local' ? 'Local · zero-key'
-        : (cfg.tier || 'off') === 'cloud' ? 'Cloud · BYO key'
+      pillLbl.textContent = tier === 'local' ? 'Local · zero-key'
+        : tier === 'cloud' ? (BYO.isConnected() ? 'Cloud · connected' : 'Cloud · connect key')
         : 'Off · copy-first';
     }
     // MERGED-AI-CONTROL: the fab visibility follows the tier (hidden only
     // when the engine is fully off) — re-gate here so the header select and
     // the drawer switch can never leave the fab disagreeing with the tier.
     if (ns.Render && ns.Render.renderFlags) ns.Render.renderFlags();
+  }
+
+  // ---- BYO Connect flow (BYO-AI-KEY-SESSION-ONLY-v1 STEP-2) ----
+  function syncByoStatus() {
+    const st = U.$('ai-byo-status');
+    if (!st) return;
+    const txt = st.querySelector('.ai-byo-status-txt');
+    if (BYO.isConnected()) {
+      st.setAttribute('data-state', 'on');
+      if (txt) txt.textContent = 'Connected · ' + (BYO.getProvider() === 'google-gemini' ? 'Google Gemini' : 'OpenAI');
+    } else {
+      st.setAttribute('data-state', 'off');
+      if (txt) txt.textContent = 'Disconnected';
+    }
+  }
+
+  // STEP-4: live chat is gated on the session key. Cloud + no key -> Send
+  // disabled with a hint; Off tier also disables Send (presets stay usable).
+  function syncSendGate() {
+    const s = U.$('ai-send');
+    const hint = U.$('ai-conn-hint');
+    if (!s) return;
+    const tier = getAiCfg().tier || 'off';
+    const cloudNoKey = tier === 'cloud' && !BYO.isConnected();
+    const off = tier === 'off';
+    s.disabled = off || cloudNoKey;
+    if (hint) {
+      const msg = cloudNoKey ? 'Connect your AI key to send (session-only).' : (off ? 'Engine is Off — choose Local or Cloud.' : '');
+      hint.textContent = msg;
+      hint.classList.toggle('is-hide', !msg);
+    }
+  }
+
+  // Connect a BYO key for this session only. Empty key -> error, stay
+  // Disconnected. The full key is never rendered again after connect.
+  function connectByo(provider, apiKey) {
+    if (!apiKey || !String(apiKey).trim()) {
+      toast('Paste your API key first — session-only, never stored.', 'err');
+      return { ok: false, error: 'empty key' };
+    }
+    try {
+      BYO.setKey(provider, apiKey);
+    } catch (e) {
+      toast('Could not connect — ' + ((e && e.message) || 'invalid key'), 'err');
+      return { ok: false, error: (e && e.message) || 'invalid key' };
+    }
+    const k = U.$('ai-byo-key');
+    if (k) k.value = ''; // never show the raw key after connect (with_key_ux)
+    syncSettingsUI();
+    toast('Key connected — this session only. Cleared when you close the tab.', 'ok');
+    return { ok: true };
+  }
+
+  function clearByo() {
+    BYO.clearKey();
+    syncSettingsUI();
+    toast('Session key cleared — you will paste it again next time.', 'ok');
   }
 
   // ---- Tier A: local zero-key engine ----
@@ -589,40 +685,98 @@ var MMGR = window.MMGR || {};
   const CLOUD_SYSTEM_PROMPT =
     'You are an assistant grounded ONLY in the project data below. Use ONLY that data — never invent dates, amounts, names, or facts. If a requested detail is not present in the data, say "not in data" explicitly. Keep every claim traceable to a line of the provided context.';
 
-  async function runCloud(prompt, ctx, cfg) {
-    const provider = (cfg.provider === 'anthropic') ? 'anthropic' : 'openai';
+  // Convert OpenAI-style [{role,content}] into the Gemini generateContent
+  // payload shape (systemInstruction + contents with role 'user'/'model').
+  function geminiPayload(messages) {
+    let system = '';
+    const contents = [];
+    (messages || []).forEach(function(m) {
+      if (m.role === 'system') system += (system ? '\n' : '') + (m.content || '');
+      else contents.push({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content || '' }] });
+    });
+    const p = { contents: contents };
+    if (system) p.systemInstruction = { parts: [{ text: system }] };
+    return p;
+  }
+
+  // Direct provider call — the fallback used only when the Worker relay is
+  // not reachable/deployed (local/static hosting). The key still comes from
+  // the session vault, never from project state.
+  async function directChat(provider, key, messages) {
     const def = (ns.Net && ns.Net.PROVIDER_DEFAULTS) ? ns.Net.PROVIDER_DEFAULTS[provider] : {};
-    const endpoint = cfg.endpoint || def.endpoint;
-    const model = cfg.model || def.model;
-    if (!endpoint) throw new Error('no AI endpoint configured');
-    if (!cfg.apiKey) throw new Error('no API key configured for cloud tier');
-    const userContent = (prompt || '') + (ctx ? '\n\n==== PROJECT CONTEXT (grounding only) ====\n' + ctx : '');
-    let res;
-    if (provider === 'anthropic') {
-      res = await ns.Net.post(endpoint, {
-        model: model,
-        max_tokens: 2048,
-        system: CLOUD_SYSTEM_PROMPT,
-        messages: [{ role: 'user', content: userContent }]
-      }, { headers: { 'Content-Type': 'application/json', 'x-api-key': cfg.apiKey, 'anthropic-version': '2023-06-01' } });
-    } else {
-      res = await ns.Net.post(endpoint, {
-        model: model,
-        messages: [
-          { role: 'system', content: CLOUD_SYSTEM_PROMPT },
-          { role: 'user', content: userContent }
-        ]
-      }, { headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + cfg.apiKey } });
-    }
+    if (!def || !def.endpoint) throw new Error('no AI endpoint configured');
+    const res = (provider === 'google-gemini')
+      ? await ns.Net.post(def.endpoint, geminiPayload(messages), { headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key }, timeoutMs: 30000, maxRetries: 1 })
+      : await ns.Net.post(def.endpoint, { model: def.model, messages: messages }, { headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key }, timeoutMs: 30000, maxRetries: 1 });
+    if (res.status === 401 || res.status === 403) { const e = new Error('provider rejected the key'); e.status = 401; throw e; }
     if (!res.ok) throw new Error('AI endpoint HTTP ' + res.status);
-    const data = await res.json();
-    let text = null;
-    if (provider === 'anthropic') {
-      text = data && data.content && data.content[0] && data.content[0].text;
-    } else {
-      text = data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
-    }
+    const data = await res.json().catch(function() { return null; });
+    const text = (provider === 'google-gemini')
+      ? (data && data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts ? data.candidates[0].content.parts.map(function(p) { return p.text || ''; }).join('') : null)
+      : (data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content);
     if (!text) throw new Error('empty AI response');
+    return String(text);
+  }
+
+  // Preferred path (STEP-4/5): the same-origin Worker relay POST
+  // /api/ai/chat carries the key only in the per-request X-User-Api-Key
+  // header, forwards to the provider, and never stores or logs it. If the
+  // relay route is absent (404/405, e.g. local static hosting) or unreachable
+  // it degrades to the direct call above — the key is still vault-only.
+  async function relayChat(provider, key, messages, ctx) {
+    let res;
+    try {
+      res = await ns.Net.post('/api/ai/chat', { provider: provider, messages: messages, context: ctx || '' }, {
+        headers: { 'Content-Type': 'application/json', 'X-User-Api-Key': key },
+        timeoutMs: 30000, maxRetries: 1
+      });
+    } catch (e) {
+      return directChat(provider, key, messages);
+    }
+    if (res.status === 404 || res.status === 405) return directChat(provider, key, messages);
+    let data;
+    try { data = await res.json(); } catch (e) { throw new Error('bad relay response'); }
+    if (!res.ok) {
+      const err = new Error((data && data.error) ? data.error : ('AI chat HTTP ' + res.status));
+      err.status = res.status;
+      throw err;
+    }
+    if (!data || typeof data.text !== 'string' || !data.text) throw new Error('empty AI response');
+    return data.text;
+  }
+
+  async function runCloud(prompt, ctx, cfg) {
+    // STEP-4 gate: live chat requires a connected session key. The key and
+    // provider come from the vault ONLY — state.config.ai.apiKey (legacy) is
+    // never read, so no project-state field can ever carry the key.
+    const key = BYO.getKey();
+    if (!key) throw new Error('No AI key connected — connect one in the AI window (session-only, cleared when the tab closes).');
+    const provider = BYO.getProvider() || 'openai';
+    const def = (ns.Net && ns.Net.PROVIDER_DEFAULTS) ? ns.Net.PROVIDER_DEFAULTS[provider] : {};
+    // Provider defaults only: legacy config.ai.endpoint/model overrides were
+    // UI-removed by this directive, and the relay path ignores them anyway —
+    // honoring them only in the direct fallback would be inconsistent.
+    const model = (def && def.model) || provider;
+    // STEP-3: the key must never appear in the packet — defensive strip even
+    // though buildContext() only ever reads project state.
+    const userContent = (prompt || '') + (ctx ? '\n\n==== PROJECT CONTEXT (grounding only) ====\n' + String(ctx).split(key).join('[key removed]') : '');
+    const messages = [
+      { role: 'system', content: CLOUD_SYSTEM_PROMPT },
+      { role: 'user', content: userContent }
+    ];
+    let text;
+    try {
+      text = await relayChat(provider, key, messages, ctx || '');
+    } catch (e) {
+      // STEP-4: auth failure is the ONLY condition that clears the session
+      // key — network/timeout/provider-5xx errors leave it in place.
+      if (e && e.status === 401) {
+        BYO.clearKey();
+        syncSettingsUI();
+        throw new Error('AI key rejected by the provider — session key cleared. Connect again.');
+      }
+      throw e;
+    }
     return { ok: true, tier: 'cloud', model: model, text: String(text), trace: ['cloud:' + provider + ':' + model, 'grounded in attached context'] };
   }
 
@@ -649,6 +803,11 @@ var MMGR = window.MMGR || {};
         };
       }
       if (tier === 'cloud') {
+        // STEP-4 gate at the single seam (covers Enter-send, preset runs, and
+        // any caller that bypasses the disabled Send button).
+        if (!BYO.isConnected()) {
+          return { ok: false, error: 'No AI key connected — open the AI window, pick Cloud, and Connect your key (session-only, never stored). Live chat needs it.', tier: 'cloud' };
+        }
         return await runCloud(prompt, ctx || buildContext(), cfg);
       }
       return { ok: false, error: 'Unknown tier: ' + tier, tier: tier };
@@ -880,6 +1039,29 @@ var MMGR = window.MMGR || {};
     q.addEventListener('focus', grow);
   })();
 
+  // ---- BYO Connect/Clear controls (STEP-2) ----
+  // Wired directly (not through the action map) so the vault flow never
+  // touches the read-only action lists — connecting a key is not a project
+  // mutation and must stay available in view-only mode.
+  (function() {
+    const conn = U.$('ai-byo-connect');
+    if (conn) conn.addEventListener('click', function() {
+      const p = U.$('ai-byo-provider');
+      const k = U.$('ai-byo-key');
+      connectByo((p && p.value) || 'openai', (k && k.value) || '');
+    });
+    const clr = U.$('ai-byo-clear');
+    if (clr) clr.addEventListener('click', clearByo);
+    const pk = U.$('ai-byo-key');
+    if (pk) pk.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const p = U.$('ai-byo-provider');
+        connectByo((p && p.value) || 'openai', pk.value);
+      }
+    });
+  })();
+
   // ---- API ----
   ns.AiWin = {
     open: open,
@@ -901,7 +1083,12 @@ var MMGR = window.MMGR || {};
     runQuestion: runQuestion,
     renderOutput: renderOutput,
     copyOut: copyOut,
-    syncSettingsUI: syncSettingsUI
+    syncSettingsUI: syncSettingsUI,
+    // BYO-AI-KEY-SESSION-ONLY-v1
+    connectByo: connectByo,
+    clearByo: clearByo,
+    syncByoStatus: syncByoStatus,
+    syncSendGate: syncSendGate
   };
 })(MMGR);
 window.MMGR = MMGR;

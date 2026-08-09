@@ -9,9 +9,13 @@
        preset output writes state.aiOutputs[type] with a `trace`
        array of the exact state fields used (zero-fabrication by
        construction), and free-form lookups answer from state.
-     - Tier B (cloud): OpenAI + Anthropic payload shapes verified
-       against a mocked fetch; circuit-break on network failure
-       returns { ok:false } without throwing or corrupting state.
+     - Tier B (cloud, BYO-AI-KEY-SESSION-ONLY-v1): the session vault
+       (MMGR.AiKey, sessionStorage-only) is the only key source — relay
+       /api/ai/chat first, direct fallback when the relay is absent;
+       OpenAI + Google Gemini payload shapes verified against a mocked
+       fetch; circuit-break on network failure returns { ok:false }
+       without throwing or corrupting state, and only an auth failure
+       clears the session key.
      - Readonly gating: aiRunPreset / aiSet* stay blocked in
        view-only mode; open/load/copy stay allowed.
    Exit 0 only when every contract holds.
@@ -103,64 +107,121 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
   })()`);
   check('A06 local: digest output contains no fabricated values', l3.ok && l3.hasOut && l3.banned.length === 0, l3);
 
-  // ---- 4. Tier B (cloud): OpenAI payload + circuit-break via mocked fetch ----
+  // ---- 3b. BYO session vault (BYO-AI-KEY-SESSION-ONLY-v1 STEP-1) ----
+  const v1 = await ev(`(function(){
+    var before = !!localStorage.getItem('mmgr_byo_ai');
+    MMGR.AiKey.clearKey();
+    return { empty: MMGR.AiKey.isConnected() === false,
+      noLocal: !before && !localStorage.getItem('mmgr_byo_ai'),
+      key: MMGR.AiKey.getKey() === null };
+  })()`);
+  check('B01 vault: isConnected false when sessionStorage empty, no localStorage write', v1.empty && v1.noLocal && v1.key, v1);
+
+  const v2 = await ev(`(function(){
+    MMGR.AiKey.setKey('openai', 'sk-session-789');
+    var s = MMGR.State.getState();
+    var json = JSON.stringify(s);
+    return { on: MMGR.AiKey.isConnected() === true,
+      provider: MMGR.AiKey.getProvider() === 'openai',
+      key: MMGR.AiKey.getKey() === 'sk-session-789',
+      noStateKey: json.indexOf('apiKey') === -1 && json.indexOf('sk-session-789') === -1 };
+  })()`);
+  check('B02 vault: setKey -> connected + provider/key stored; project state has NO key fields', v2.on && v2.provider && v2.key && v2.noStateKey, v2);
+
+  const v3 = await ev(`(function(){
+    MMGR.AiKey.clearKey();
+    return { off: MMGR.AiKey.isConnected() === false, noLocal: !localStorage.getItem('mmgr_byo_ai') };
+  })()`);
+  check('B03 vault: clearKey -> disconnected, still nothing in localStorage', v3.off && v3.noLocal, v3);
+
+  const v4 = await ev(`(function(){
+    var threw = false;
+    try { MMGR.AiKey.setKey('openai', '   '); } catch (e) { threw = true; }
+    return { threw: threw, off: MMGR.AiKey.isConnected() === false };
+  })()`);
+  check('B04 vault: whitespace key rejected, stays disconnected', v4.threw && v4.off, v4);
+
+  // ---- 4. Tier B (cloud): session-vault key -> relay-first, direct fallback ----
   const c1 = await ev(`(async function(){
     var calls = [];
     var orig = window.fetch;
     window.fetch = function(url, opts){
       calls.push({ url: url, opts: opts });
+      if (String(url).indexOf('/api/ai/chat') === 0) return Promise.resolve(new Response('', { status: 404 })); // relay absent locally -> fallback
       return Promise.resolve(new Response(JSON.stringify({ choices: [{ message: { content: 'CLOUD-REPLY-OK' } }] }), { status: 200, headers: { 'Content-Type': 'application/json' } }));
     };
     try {
-      MMGR.AiWin.setAiCfg({ tier: 'cloud', provider: 'openai', apiKey: 'sk-test-123', endpoint: '', model: '' });
+      MMGR.AiKey.setKey('openai', 'sk-test-123');
+      MMGR.AiWin.setAiCfg({ tier: 'cloud', provider: 'openai', endpoint: '', model: '' });
       var res = await MMGR.AiWin.submit('draft report', '## PROJECT\\n- Name: Demo', { tier: 'cloud' });
-      var call = calls[0];
-      var body = call && call.opts ? JSON.parse(call.opts.body) : null;
+      var direct = calls.filter(function(c){ return String(c.url).indexOf('openai.com') > -1; })[0];
+      var body = direct && direct.opts ? JSON.parse(direct.opts.body) : null;
       return { ok: res.ok, text: res.text, tier: res.tier,
-        url: call ? call.url : null,
-        method: call && call.opts ? call.opts.method : null,
-        auth: !!(call && call.opts && call.opts.headers && call.opts.headers.Authorization === 'Bearer sk-test-123'),
+        relayFirst: calls.length > 0 && String(calls[0].url).indexOf('/api/ai/chat') === 0,
+        auth: !!(direct && direct.opts && direct.opts.headers && direct.opts.headers.Authorization === 'Bearer sk-test-123'),
         hasMessages: !!(body && body.messages && body.messages.length === 2),
         hasSystem: !!(body && body.messages && body.messages[0].role === 'system') };
     } finally { window.fetch = orig; }
   })()`);
-  check('A07 cloud: OpenAI POST with Bearer key + system/user messages', c1.ok && c1.text === 'CLOUD-REPLY-OK' && c1.tier === 'cloud' && c1.method === 'POST' && c1.auth && c1.hasMessages && c1.hasSystem, c1);
+  check('A07 cloud: vault key -> relay-first, 404 fallback -> direct OpenAI POST with Bearer + system/user messages', c1.ok && c1.text === 'CLOUD-REPLY-OK' && c1.tier === 'cloud' && c1.relayFirst && c1.auth && c1.hasMessages && c1.hasSystem, c1);
 
   const c2 = await ev(`(async function(){
     var calls = [];
     var orig = window.fetch;
     window.fetch = function(url, opts){
-      calls.push(opts);
-      return Promise.resolve(new Response(JSON.stringify({ content: [{ type: 'text', text: 'CLOUD-ANTHROPIC-OK' }] }), { status: 200, headers: { 'Content-Type': 'application/json' } }));
+      calls.push({ url: url, opts: opts });
+      if (String(url).indexOf('/api/ai/chat') === 0) return Promise.resolve(new Response('', { status: 404 }));
+      return Promise.resolve(new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: 'CLOUD-GEMINI-OK' }] } }] }), { status: 200, headers: { 'Content-Type': 'application/json' } }));
     };
     try {
-      MMGR.AiWin.setAiCfg({ tier: 'cloud', provider: 'anthropic', apiKey: 'sk-ant-456' });
+      MMGR.AiKey.setKey('google-gemini', 'AIza-test-456');
+      // State provider is deliberately set to openai — the VAULT provider must win.
+      MMGR.AiWin.setAiCfg({ tier: 'cloud', provider: 'openai', endpoint: '', model: '' });
       var res = await MMGR.AiWin.submit('hello', '', { tier: 'cloud' });
-      var o = calls[0];
-      var body = o ? JSON.parse(o.body) : null;
+      var direct = calls.filter(function(c){ return String(c.url).indexOf('generativelanguage') > -1; })[0];
+      var body = direct && direct.opts ? JSON.parse(direct.opts.body) : null;
       return { ok: res.ok, text: res.text,
-        xkey: !!(o && o.headers && o.headers['x-api-key'] === 'sk-ant-456'),
-        version: !!(o && o.headers && o.headers['anthropic-version']),
-        hasSystem: !!(body && typeof body.system === 'string' && body.system.length > 0),
-        hasMessages: !!(body && body.messages && body.messages[0].role === 'user') };
+        xkey: !!(direct && direct.opts && direct.opts.headers && direct.opts.headers['x-goog-api-key'] === 'AIza-test-456'),
+        hasSystem: !!(body && body.systemInstruction && body.systemInstruction.parts && body.systemInstruction.parts[0].text.length > 0),
+        hasContents: !!(body && body.contents && body.contents[0] && body.contents[0].parts && body.contents[0].parts[0].text.length > 0) };
     } finally { window.fetch = orig; }
   })()`);
-  check('A08 cloud: Anthropic POST with x-api-key + anthropic-version + system string', c2.ok && c2.text === 'CLOUD-ANTHROPIC-OK' && c2.xkey && c2.version && c2.hasSystem && c2.hasMessages, c2);
+  check('A08 cloud: Google Gemini POST with x-goog-api-key + systemInstruction/contents (vault provider wins)', c2.ok && c2.text === 'CLOUD-GEMINI-OK' && c2.xkey && c2.hasSystem && c2.hasContents, c2);
+
+  const c2b = await ev(`(async function(){
+    var calls = [];
+    var orig = window.fetch;
+    window.fetch = function(url, opts){
+      calls.push({ url: url, opts: opts });
+      // Relay IS deployed here — answer with a live 200; no fallback may fire.
+      return Promise.resolve(new Response(JSON.stringify({ ok: true, text: 'CLOUD-RELAY-OK' }), { status: 200, headers: { 'Content-Type': 'application/json' } }));
+    };
+    try {
+      MMGR.AiKey.setKey('openai', 'sk-relay-200');
+      MMGR.AiWin.setAiCfg({ tier: 'cloud', provider: 'openai', endpoint: '', model: '' });
+      var res = await MMGR.AiWin.submit('hello', '', { tier: 'cloud' });
+      var noDirect = calls.every(function(c){ return String(c.url).indexOf('openai.com') === -1 && String(c.url).indexOf('generativelanguage') === -1; });
+      return { ok: res.ok, text: res.text, relayUsed: calls.length === 1 && String(calls[0].url).indexOf('/api/ai/chat') === 0, noDirect: noDirect };
+    } finally { window.fetch = orig; }
+  })()`);
+  check('A08b cloud: relay 200 -> text rendered, NO direct fallback call', c2b.ok && c2b.text === 'CLOUD-RELAY-OK' && c2b.relayUsed && c2b.noDirect, c2b);
 
   const c3 = await ev(`(async function(){
     var orig = window.fetch;
     var errCount = MMGR.State.getState().errorLog ? MMGR.State.getState().errorLog.length : 0;
     window.fetch = function(){ return Promise.reject(new Error('network down')); };
     try {
-      MMGR.AiWin.setAiCfg({ tier: 'cloud', provider: 'openai', apiKey: 'sk-test-123', endpoint: '', model: '' });
-      var res = await MMGR.AiWin.submit('anything', 'ctx', { tier: 'cloud', maxRetries: 0 });
+      MMGR.AiKey.setKey('openai', 'sk-test-123');
+      MMGR.AiWin.setAiCfg({ tier: 'cloud', provider: 'openai', endpoint: '', model: '' });
+      var res = await MMGR.AiWin.submit('anything', 'ctx', { tier: 'cloud' });
       var after = MMGR.State.getState();
       return { ok: res.ok, hasErr: !!res.error && res.error.indexOf('failed') > -1,
         stateIntact: typeof after.tasks === 'object' && Array.isArray(after.tasks),
-        logged: after.errorLog.length > errCount };
+        logged: after.errorLog.length > errCount,
+        stillConnected: MMGR.AiKey.isConnected() };
     } finally { window.fetch = orig; }
   })()`);
-  check('A09 cloud: circuit-break on network failure -> ok:false + error logged, state intact', c3.ok === false && c3.hasErr && c3.stateIntact && c3.logged, c3);
+  check('A09 cloud: network failure -> ok:false + error logged, state intact, session key KEPT (only auth failure clears it)', c3.ok === false && c3.hasErr && c3.stateIntact && c3.logged && c3.stillConnected, c3);
 
   // ---- 5. offline tier does not touch the network ----
   const o1 = await ev(`(async function(){
@@ -186,13 +247,50 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
   })()`);
   check('A11 ui: tier select + per-preset run buttons + result panel render', u1.tierSel && u1.runBtns >= 10 && u1.runMain && u1.out && u1.chipCells === u1.runBtns, u1);
 
+  // ---- 6b. BYO Connect flow (STEP-2) ----
+  const u1b = await ev(`(async function(){
+    MMGR.AiWin.setAiCfg({ tier: 'cloud' }); MMGR.AiWin.syncSettingsUI();
+    var p = document.getElementById('ai-byo-provider'); var k = document.getElementById('ai-byo-key');
+    if (p) p.value = 'google-gemini'; if (k) k.value = 'AIza-ui-flow-1';
+    var conn = document.getElementById('ai-byo-connect');
+    if (conn) conn.click();
+    await new Promise(function(r){ setTimeout(r, 120); });
+    var st = document.getElementById('ai-byo-status');
+    var send = document.querySelector('.ai-send');
+    return { connected: MMGR.AiKey.isConnected(),
+      chip: !!(st && st.getAttribute('data-state') === 'on' && st.textContent.indexOf('Connected') === 0 && st.textContent.indexOf('Google Gemini') > -1),
+      inputCleared: !!k && k.value === '',
+      sendEnabled: !!(send && !send.disabled) };
+  })()`);
+  check('B05 ui: Connect -> "Connected · Google Gemini" chip, raw key cleared, cloud Send enabled', u1b.connected && u1b.chip && u1b.inputCleared && u1b.sendEnabled, u1b);
+
+  const u1c = await ev(`(async function(){
+    var clr = document.getElementById('ai-byo-clear');
+    if (clr) clr.click();
+    await new Promise(function(r){ setTimeout(r, 120); });
+    var st = document.getElementById('ai-byo-status');
+    var send = document.querySelector('.ai-send');
+    var hint = document.getElementById('ai-conn-hint');
+    return { off: MMGR.AiKey.isConnected() === false,
+      chip: !!(st && st.getAttribute('data-state') === 'off' && st.textContent.indexOf('Disconnected') === 0),
+      sendBlocked: !!(send && send.disabled),
+      hintShown: !!(hint && !hint.classList.contains('is-hide') && hint.textContent.length > 0) };
+  })()`);
+  check('B06 ui: Clear -> Disconnected chip, session key gone, cloud Send disabled + hint', u1c.off && u1c.chip && u1c.sendBlocked && u1c.hintShown, u1c);
+
   await ev('MMGR.AiWin.setAiCfg({ tier: "cloud" }); MMGR.AiWin.syncSettingsUI();'); await delay(200);
   const u2 = await ev(`(function(){
     var cloud = document.getElementById('ai-cfg-cloud');
+    var prov = document.getElementById('ai-byo-provider');
+    if (prov) prov.value = 'openai'; // reset — earlier B-tests left it on gemini
     return { shown: cloud && !cloud.classList.contains('is-hide'),
-      prov: document.getElementById('ai-provider') ? document.getElementById('ai-provider').value : null };
+      prov: prov ? prov.value : null,
+      status: !!document.getElementById('ai-byo-status'),
+      connect: !!document.getElementById('ai-byo-connect'),
+      clear: !!document.getElementById('ai-byo-clear'),
+      secCopy: !!(document.querySelector('.ai-byo-sec') && document.querySelector('.ai-byo-sec').textContent.indexOf('session only') > -1) };
   })()`);
-  check('A12 ui: cloud tier reveals provider/endpoint/key fields', u2.shown && u2.prov === 'openai', u2);
+  check('A12 ui: cloud tier reveals BYO connect flow (provider select, status chip, Connect/Clear, security copy)', u2.shown && u2.prov === 'openai' && u2.status && u2.connect && u2.clear && u2.secCopy, u2);
   await ev('MMGR.AiWin.setAiCfg({ tier: "local" }); MMGR.AiWin.syncSettingsUI();'); await delay(150);
   const u3 = await ev(`(function(){
     var cloud = document.getElementById('ai-cfg-cloud');

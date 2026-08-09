@@ -14,7 +14,7 @@
    project data lives in localStorage/IndexedDB, not here — this
    worker never touches user data.
    ============================================================ */
-const CACHE = 'mmgr-shell-v15'; // bumped when shell content changes (v15: launcher/admin toggle handlers sync every instance — gate pill + header can't disagree with the saved pref; v14: launcher + admin gate gained the premium-glass & dark-theme preview — glass engine modules loaded on app.html/admin.html, gate preference pill; device-level mmgr_theme pref applied across launcher/admin/app; v13: review pass — readonly checkbox revert on view-only rejection, fab-visibility seed in qa-ai-visual; v12: audit 1.2 merged AI controls — drawer switch now drives state.config.ai.tier, tier select promoted to AI window header, flags.aiWindow dropped as a gate; v11: glass shader palette constrained — cool slate + low-weight gold, accent mix <= 0.15 dark / 0.06 light, chromatic offset reduced)
+const CACHE = 'mmgr-shell-v16'; // bumped when shell content changes (v16: BYO-AI-KEY-SESSION-ONLY-v1 — session-only AI key vault module mmgr-ai-key.js added, Connect/Clear flow in the AI window, cloud chat now relay/vault-gated; v15: launcher/admin toggle handlers sync every instance — gate pill + header can't disagree with the saved pref; v14: launcher + admin gate gained the premium-glass & dark-theme preview — glass engine modules loaded on app.html/admin.html, gate preference pill; device-level mmgr_theme pref applied across launcher/admin/app; v13: review pass — readonly checkbox revert on view-only rejection, fab-visibility seed in qa-ai-visual; v12: audit 1.2 merged AI controls — drawer switch now drives state.config.ai.tier, tier select promoted to AI window header, flags.aiWindow dropped as a gate; v11: glass shader palette constrained — cool slate + low-weight gold, accent mix <= 0.15 dark / 0.06 light, chromatic offset reduced)
 const SHELL = [
   './',
   'index.html',
@@ -53,6 +53,7 @@ const SHELL = [
   'js/mmgr-decisions.js',
   'js/mmgr-claim.js',
   'js/mmgr-digest.js',
+  'js/mmgr-ai-key.js',
   'js/mmgr-ai.js',
   'js/mmgr-viewport.js',
   'js/mmgr-glass.js',

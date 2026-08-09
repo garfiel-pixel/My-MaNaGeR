@@ -166,6 +166,117 @@ function json(data, status = 200) {
   });
 }
 
+/* ============================================================
+   BYO-AI-KEY-SESSION-ONLY-v1 STEP-5 — /api/ai/chat relay
+   ------------------------------------------------------------
+   Stateless forwarder ONLY: the user's key is read from the per-request
+   X-User-Api-Key header (or the body apiKey field) for that single request,
+   forwarded to the provider endpoint over HTTPS, and never persisted. The
+   key is not logged, not written to any binding (KV/D1/secrets), and never
+   echoed in any error response. Enforced: max body size + hard upstream
+   timeout. Missing key -> 401; bad body -> 400.
+   ============================================================ */
+const AI_PROVIDERS = {
+  openai: { url: 'https://api.openai.com/v1/chat/completions', model: 'gpt-4o-mini' },
+  'google-gemini': { url: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent', model: 'gemini-2.0-flash' }
+};
+const AI_BODY_LIMIT_BYTES = 262144; // 256 KB max request body
+const AI_TIMEOUT_MS = 30000;        // hard upstream timeout
+
+// OpenAI-style [{role,content}] -> Gemini generateContent payload.
+function aiGeminiPayload(messages) {
+  let system = '';
+  const contents = [];
+  (messages || []).forEach(function(m) {
+    if (m && m.role === 'system') system += (system ? '\n' : '') + (m.content || '');
+    else if (m && m.content) contents.push({ role: (m.role === 'assistant' || m.role === 'model') ? 'model' : 'user', parts: [{ text: m.content }] });
+  });
+  const p = { contents: contents };
+  if (system) p.systemInstruction = { parts: [{ text: system }] };
+  return p;
+}
+
+function aiExtractText(provider, data) {
+  if (provider === 'google-gemini') {
+    return data && data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts
+      ? data.candidates[0].content.parts.map(function(p) { return p.text || ''; }).join('') : null;
+  }
+  return data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
+}
+
+// Read + parse the JSON body with a hard size cap. Content-Length alone is
+// not enough (string bodies from browsers often omit it), so the stream is
+// read with a running byte budget and abandoned once it exceeds the limit.
+async function readAiBody(request) {
+  const cl = Number(request.headers.get('Content-Length') || 0);
+  if (cl > AI_BODY_LIMIT_BYTES) return { tooLarge: true };
+  if (!request.body) {
+    try { return { body: await request.json() }; } catch (e) { return { bad: true }; }
+  }
+  const reader = request.body.getReader();
+  const chunks = [];
+  let total = 0;
+  let done = false;
+  while (!done) {
+    const res = await reader.read();
+    done = res.done;
+    if (res.value) {
+      total += res.value.byteLength;
+      if (total > AI_BODY_LIMIT_BYTES) return { tooLarge: true };
+      chunks.push(res.value);
+    }
+  }
+  const bytes = new Uint8Array(total);
+  let off = 0;
+  for (const c of chunks) { bytes.set(c, off); off += c.byteLength; }
+  const text = new TextDecoder().decode(bytes);
+  try { return { body: JSON.parse(text) }; } catch (e) { return { bad: true }; }
+}
+
+async function handleAiChat(request) {
+  const read = await readAiBody(request);
+  if (read.tooLarge) return json({ ok: false, error: 'body too large' }, 413);
+  if (read.bad) return json({ ok: false, error: 'bad request' }, 400);
+  const body = read.body;
+  if (!body || typeof body !== 'object') return json({ ok: false, error: 'bad request' }, 400);
+  const provider = String(body.provider || '').toLowerCase();
+  if (!AI_PROVIDERS[provider]) return json({ ok: false, error: 'unsupported provider' }, 400);
+  // Key for THIS request only — header preferred, body field accepted.
+  const key = String(request.headers.get('X-User-Api-Key') || '').trim()
+    || (typeof body.apiKey === 'string' ? String(body.apiKey).trim() : '');
+  if (!key) return json({ ok: false, error: 'missing api key' }, 401);
+  if (!Array.isArray(body.messages) || !body.messages.length) return json({ ok: false, error: 'bad request' }, 400);
+  const ctrl = new AbortController();
+  const timer = setTimeout(function() { ctrl.abort(); }, AI_TIMEOUT_MS);
+  let upstream;
+  try {
+    const isGemini = provider === 'google-gemini';
+    upstream = await fetch(AI_PROVIDERS[provider].url, {
+      method: 'POST',
+      headers: isGemini
+        ? { 'Content-Type': 'application/json', 'x-goog-api-key': key }
+        : { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
+      body: JSON.stringify(isGemini ? aiGeminiPayload(body.messages) : { model: AI_PROVIDERS[provider].model, messages: body.messages }),
+      signal: ctrl.signal
+    });
+  } catch (e) {
+    clearTimeout(timer);
+    return json({ ok: false, error: 'upstream unreachable or timed out' }, 502);
+  }
+  clearTimeout(timer);
+  if (!upstream.ok) {
+    // Provider auth failures surface as 401 so the client clears its session
+    // key (STEP-4). The key itself is never echoed anywhere.
+    if (upstream.status === 401 || upstream.status === 403) return json({ ok: false, error: 'provider rejected the key' }, 401);
+    return json({ ok: false, error: 'provider error ' + upstream.status }, 502);
+  }
+  let data;
+  try { data = await upstream.json(); } catch (e) { return json({ ok: false, error: 'bad provider response' }, 502); }
+  const text = aiExtractText(provider, data);
+  if (!text) return json({ ok: false, error: 'empty provider response' }, 502);
+  return json({ ok: true, text: String(text) });
+}
+
 function base64UrlEncode(str) {
   let bin = '';
   for (const b of new TextEncoder().encode(str)) bin += String.fromCharCode(b);
@@ -315,6 +426,11 @@ async function handleApi(request, env, url) {
     const session = await readSession(request, env);
     if (!session) return json({ ok: false, user: null });
     return json({ ok: true, user: { sub: session.sub, email: session.email, name: session.name, picture: session.picture } });
+  }
+
+  // POST /api/ai/chat (BYO-AI-KEY-SESSION-ONLY-v1 STEP-5) — stateless relay.
+  if (path === '/api/ai/chat' && request.method === 'POST') {
+    return handleAiChat(request);
   }
 
   // POST /api/auth/logout -> clear the session cookie

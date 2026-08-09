@@ -38,7 +38,12 @@ var MMGR = window.MMGR || {};
   // change, per Rank 2.3's exit criterion.
   const PROVIDER_DEFAULTS = {
     openai: { endpoint: 'https://api.openai.com/v1/chat/completions', model: 'gpt-4o-mini' },
-    anthropic: { endpoint: 'https://api.anthropic.com/v1/messages', model: 'claude-3-5-sonnet-latest' }
+    anthropic: { endpoint: 'https://api.anthropic.com/v1/messages', model: 'claude-3-5-sonnet-latest' },
+    // BYO-AI-KEY-SESSION-ONLY-v1: Google Gemini joins the v1 provider set.
+    // The Connect flow offers only openai + google-gemini (providers_v1);
+    // anthropic stays as a legacy lookup so stored config never 404s on an
+    // unknown provider key.
+    'google-gemini': { endpoint: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent', model: 'gemini-2.0-flash' }
   };
 
   const Config = {

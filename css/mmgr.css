@@ -1259,6 +1259,17 @@ body.dark-mode .pcard:hover{box-shadow:var(--glass-rim),0 12px 30px rgba(0,0,0,.
 .ai-cfg select,.ai-cfg input{border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:6px;padding:5px 8px;font-size:.7rem;font-family:inherit;}
 .ai-cfg-cloud{display:inline-flex;flex-wrap:wrap;gap:6px;align-items:center;}
 .ai-cfg-cloud input{width:150px;}
+/* BYO-AI-KEY-SESSION-ONLY-v1 — Connect flow (STEP-2): status chip,
+   session-only key input, security copy, and the send gate. */
+.ai-byo-status{display:inline-flex;align-items:center;gap:6px;font-size:.66rem;font-weight:700;border-radius:100px;padding:3px 10px;border:1px solid var(--border);background:var(--tile-bg);color:var(--slate);white-space:nowrap;transition:color var(--tr),border-color var(--tr),background var(--tr);}
+.ai-byo-dot{width:7px;height:7px;border-radius:50%;background:var(--slate);transition:background var(--tr),box-shadow var(--tr);}
+.ai-byo-status[data-state="on"]{color:var(--green);border-color:var(--green);}
+.ai-byo-status[data-state="on"] .ai-byo-dot{background:var(--green);box-shadow:0 0 6px var(--green);}
+.ai-byo-key{width:190px;}
+.ai-byo-sec{font-size:.62rem;color:var(--slate);line-height:1.5;margin:6px 0 0;flex-basis:100%;}
+.ai-conn-hint{font-size:.62rem;color:var(--danger);font-weight:600;max-width:130px;line-height:1.35;text-align:right;}
+.ai-send:disabled{opacity:.45;cursor:not-allowed;filter:saturate(.4);box-shadow:none;transform:none;}
+.ai-send:disabled:hover{transform:none;box-shadow:none;}
 .ai-note{font-size:.64rem;color:var(--slate);margin-top:10px;line-height:1.5;}
 
 /* chat input bar (replaces the old footer) */
@@ -1279,6 +1290,8 @@ body.dark-mode .ai-adv .ai-adv-body{background:rgba(0,0,0,.18);}
 body.dark-mode .ai-cfg{background:rgba(255,255,255,.03);}
 body.dark-mode .ai-cfg select,body.dark-mode .ai-cfg input{background:rgba(0,0,0,.25);}
 body.dark-mode .ai-head-tier{background:rgba(0,0,0,.25);border-color:rgba(255,255,255,.14);}
+body.dark-mode .ai-byo-status{background:rgba(255,255,255,.05);}
+body.dark-mode .ai-byo-key{background:rgba(0,0,0,.25);}
 /* Rank 3.4 — viewport-aware layout detection: the one-time dismissible
    prompt bar + the simplified stacked presentation (never hides function,
    restructures presentation; .vp-full restores the wide layout). */

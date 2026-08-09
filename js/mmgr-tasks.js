@@ -368,6 +368,29 @@ var MMGR = window.MMGR || {};
     if (modal) modal.classList.remove('on');
   }
 
+  // ---- MONOLITH-FEATURE-PARITY-DIRECTIVES RESTORE-2: 'Copy List' ----
+  // Restores the monolith's copyIdTemplate() — one click copies the readonly
+  // id-template textarea (the task list the user takes to dictate durations)
+  // to the clipboard. The spec mislabeled this as a stakeholder feature; the
+  // monolith reference (button ~469, def ~3300) shows it belongs to the
+  // Import Dates modal, so that is what is restored here.
+  function copyIdTemplate() {
+    const template = U.$('id-template');
+    if (!template) return;
+    // execCommand returns false on failure rather than throwing — check the
+    // return value so the async clipboard fallback actually fires when the
+    // legacy path fails (read-only content is safe to select + copy).
+    template.select();
+    let ok = false;
+    try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+    if (ok) {
+      ns.App.showToast('Copied — paste it wherever you\'re going to dictate.', 'ok');
+    } else {
+      U.copyToClipboard(template.value);
+      ns.App.showToast('Copied to clipboard.', 'ok');
+    }
+  }
+
   function idPreview() {
     // Reads the editable textarea (id-source), NOT the readonly template.
     const source = U.$('id-source');
@@ -471,7 +494,8 @@ var MMGR = window.MMGR || {};
     openImportDates: openImportDates,
     closeImportDates: closeImportDates,
     idPreview: idPreview,
-    idCommit: idCommit
+    idCommit: idCommit,
+    copyIdTemplate: copyIdTemplate
   };
 
   // Alias for backward compat with inline onclick
@@ -489,7 +513,8 @@ var MMGR = window.MMGR || {};
     openImportDates: openImportDates,
     closeImportDates: closeImportDates,
     idPreview: idPreview,
-    idCommit: idCommit
+    idCommit: idCommit,
+    copyIdTemplate: copyIdTemplate
   };
 
 })(MMGR);

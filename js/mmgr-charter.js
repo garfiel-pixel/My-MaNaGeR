@@ -417,6 +417,54 @@ var MMGR = window.MMGR || {};
     ns.App.showToast('Charter fields populated from AI output', 'ok');
   }
 
+  // ---- MONOLITH-FEATURE-PARITY-DIRECTIVES RESTORE-5: Print Charter ----
+  // Restores the monolith's printCharter() — a scoped print that shows only
+  // the charter section (body.print-charter + .charter-print-root, CSS
+  // already present in css/mmgr.css). The textarea-expansion step fixes the
+  // classic bug where a <textarea> only prints its scrolled-into-view text.
+  function printCharter() {
+    document.body.classList.add('print-charter');
+    const tas = document.querySelectorAll('.charter-print-root textarea');
+    const restore = [];
+    tas.forEach(t => { restore.push([t, t.style.height]); t.style.height = 'auto'; t.style.height = t.scrollHeight + 'px'; });
+    setTimeout(() => {
+      window.print();
+      setTimeout(() => {
+        document.body.classList.remove('print-charter');
+        restore.forEach(([t, h]) => { t.style.height = h; });
+      }, 500);
+    }, 100);
+  }
+
+  // ---- MONOLITH-FEATURE-PARITY-DIRECTIVES RESTORE-6: Save Charter button ----
+  // Restores the monolith's saveCharter() — an explicit save distinct from
+  // the silent debounced autosave, with a confirming toast so the user gets
+  // positive, visible confirmation the charter was persisted.
+  function saveCharter() {
+    const read = (id) => { const el = U.$(id); return el ? el.value : undefined; };
+    const vals = {
+      name: read('ch-name'),
+      sponsor: read('ch-sponsor'),
+      targetStart: read('ch-target-start'),
+      targetCompletion: read('ch-target-end'),
+      objective: read('ch-obj'),
+      scope: read('ch-scope'),
+      deliverables: read('ch-deliverables'),
+      constraints: read('ch-constraints'),
+      assumptions: read('ch-assumptions'),
+      exclusions: read('ch-exclusions'),
+      // budgetEnvelope is numeric everywhere else in state — coerce on save
+      // so downstream math (buildBudgetSummary, EVM) never sees a string.
+      budgetEnvelope: read('ch-budget') !== undefined && read('ch-budget') !== '' ? +read('ch-budget') : undefined
+    };
+    ns.State.updateState(function(st) {
+      if (!st.charter) st.charter = {};
+      Object.keys(vals).forEach(k => { if (vals[k] !== undefined) st.charter[k] = vals[k]; });
+    });
+    ns.State.save(true);
+    if (ns.App && ns.App.showToast) ns.App.showToast('Charter saved!', 'ok');
+  }
+
   // ---- API ----
   ns.Charter = {
     loadCharterData: loadCharterData,
@@ -442,7 +490,9 @@ var MMGR = window.MMGR || {};
     copyChartPrompt: copyChartPrompt,
     tryParseCharterJSON: tryParseCharterJSON,
     regexExtractCharter: regexExtractCharter,
-    applyChartAIOutput: applyChartAIOutput
+    applyChartAIOutput: applyChartAIOutput,
+    printCharter: printCharter,
+    saveCharter: saveCharter
   };
 
 })(MMGR);

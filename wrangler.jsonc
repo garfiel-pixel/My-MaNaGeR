@@ -2,8 +2,36 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "my-manager",
   "compatibility_date": "2026-08-08",
+  // OBSERVABILITY-SECURITY-DOMAIN-EXECUTION-DIRECTIVES DIR-2 (branch B):
+  // Workers static-assets does NOT honor a _headers file (Pages-only), so the
+  // five security headers are injected by a thin Worker fetch() handler that
+  // serves assets through the automatic ASSETS binding. This is the app's
+  // first server-side code — deliberately minimal (see worker.js).
+  "main": "worker.js",
+  // DEPLOY NOTE (verified Aug 2026): wrangler uploads the whole assets
+  // directory and does NOT exclude .git here (no gitignore pattern matched
+  // it, and a 28 MiB git object exceeded the 25 MiB asset limit). Deploy
+  // from a clean staging copy instead:
+  //   mkdir -p /tmp/mmgr-deploy && tar --exclude='.git' --exclude='.wrangler' \
+  //     --exclude='node_modules' -cf - . | tar -xf - -C /tmp/mmgr-deploy
+  //   cd /tmp/mmgr-deploy && npx wrangler deploy
+  // GOOGLE-OPERATOR-IDENTITY-v1: public (non-secret) Client ID so the Worker
+  // can prefer env.GOOGLE_CLIENT_ID over its constant. The Client Secret is a
+  // Wrangler secret ONLY (env.GOOGLE_CLIENT_SECRET) — never a var in this file.
+  "vars": {
+    "GOOGLE_CLIENT_ID": "297970704704-m05hgt93lfaq286q90br8c96ffg1aph3.apps.googleusercontent.com"
+  },
   "assets": {
+    "binding": "ASSETS",
     "directory": ".",
-    "not_found_handling": "single-page-application"
+    "not_found_handling": "single-page-application",
+    // run_worker_first: the Worker's fetch() handler MUST run for asset
+    // requests too — otherwise Cloudflare serves static files directly at
+    // the edge and the security headers (CSP incl. GIS origins, XFO, …) and
+    // whisper CSP scoping are never applied (verified on the wire, Aug 2026).
+    // The ASSETS binding is declared explicitly because the automatic
+    // binding was not present in env (deploy bindings list showed only
+    // GOOGLE_CLIENT_ID) — env.ASSETS.fetch() threw a TypeError.
+    "run_worker_first": true
   }
 }

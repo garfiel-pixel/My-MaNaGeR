@@ -527,7 +527,7 @@ body.gantt-dragging .gb{cursor:grabbing;}
 #readonly-banner{position:sticky;top:0;z-index:1500;display:flex;align-items:center;justify-content:center;gap:8px;background:rgba(245,158,11,.12);border-bottom:1px solid rgba(245,158,11,.35);color:var(--gold);font-size:.72rem;padding:6px 14px;letter-spacing:.3px;}
 #readonly-banner.is-hide{display:none;}
 body.readonly-mode input:not([readonly]),body.readonly-mode textarea:not([readonly]),body.readonly-mode select:not([disabled]){pointer-events:none;opacity:.6;}
-body.readonly-mode .btn[data-action]:not([data-action="showSec"]):not([data-action="cpAllPage"]):not([data-action="print"]):not([data-action="openDrw"]):not([data-action="openDrwToPrompts"]):not([data-action="openDrwToSave"]):not([data-action="runMonteCarlo"]){opacity:.55;}
+body.readonly-mode .btn[data-action]:not([data-action="showSec"]):not([data-action="cpAllPage"]):not([data-action="print"]):not([data-action="openDrw"]):not([data-action="openDrwToPrompts"]):not([data-action="openDrwToSave"]):not([data-action="runMonteCarlo"]):not([data-action="printCharter"]):not([data-action="emailTpl"]):not([data-action="copyIdTemplate"]):not([data-action="riskMatrixClear"]):not([data-action="copyErrorLog"]):not([data-action="downloadErrorLog"]){opacity:.55;}
 .bs-spin{width:34px;height:34px;border-radius:50%;border:3px solid var(--border);border-top-color:var(--gold);animation:bs-spin .8s linear infinite;}
 @keyframes bs-spin{to{transform:rotate(360deg)}}
 @media (prefers-reduced-motion:reduce){.bs-spin{animation:none;}}
@@ -730,6 +730,8 @@ hr.div{border:none;border-top:1px solid var(--border);margin:14px 0;}
 #wbsimport-modal .wi-hint{font-size:.72rem;color:var(--slate);margin-top:4px;}
 #wbsimport-modal textarea{width:100%;min-height:180px;background:var(--canvas);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:10px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.78rem;resize:vertical;}
 #wbsimport-modal .wi-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:6px;}
+#importdates-modal .wi-actions-left{display:flex;justify-content:flex-start;gap:8px;margin-top:6px;}
+#wbs-alerts{margin-bottom:10px;}
 #wi-preview{max-height:300px;overflow:auto;background:var(--canvas);border:1px solid var(--border);border-radius:8px;padding:10px;font-size:.78rem;}
 
 /* ---- Import Dates Modal ---- */
@@ -1029,7 +1031,7 @@ body.dark-mode .btn-warn:hover{background:#d97706;}
 .pcard.unlocked{box-shadow:inset 0 3px 0 var(--gold),var(--glass-rim),var(--glass-shadow);}
 
 /* §6.3 access-code input — recessed glass well with gold focus ring */
-#code-input{background:#f8fafc;border:var(--glass-border);border-radius:var(--squircle-sm);
+#code-input{background:var(--glass-fill-dark);border:var(--glass-border);border-radius:var(--squircle-sm);
   box-shadow:inset 0 2px 4px rgba(15,23,42,.08);}
 #code-input:focus{border-color:var(--gold);outline:none;
   box-shadow:inset 0 2px 4px rgba(15,23,42,.08),0 0 0 3px rgba(245,158,11,.25);}
@@ -1049,7 +1051,7 @@ body.dark-mode .btn-warn:hover{background:#d97706;}
 
 /* §3 mandatory fallback — no backdrop-filter support: solid card colour */
 @supports not (backdrop-filter:blur(1px)){
-  .glass-surface,#app-header,header,#drw,.mb,#chartup-modal .cu-box,#wbsimport-modal .wi-box,#importdates-modal .wi-box,
+  .glass-surface,#app-header,header,#drw,.mb,.gbox,#chartup-modal .cu-box,#wbsimport-modal .wi-box,#importdates-modal .wi-box,
   .pcard,.btn,.toggle-chip,.tab-btn,.sec-btn,.settings-btn,.dc,.tgl .tsl,.badge.on-hold,.badge.planning{
     background:var(--card);
   }
@@ -1059,7 +1061,7 @@ body.dark-mode .btn-warn:hover{background:#d97706;}
 }
 /* Accessibility: reduced transparency removes the blur, keeps solid surfaces */
 @media (prefers-reduced-transparency:reduce){
-  .glass-surface,#app-header,header,#drw,.mb,#chartup-modal .cu-box,#wbsimport-modal .wi-box,#importdates-modal .wi-box,
+  .glass-surface,#app-header,header,#drw,.mb,.gbox,#chartup-modal .cu-box,#wbsimport-modal .wi-box,#importdates-modal .wi-box,
   .pcard,.btn,.toggle-chip,.tab-btn,.sec-btn,.settings-btn,.dc,.tgl .tsl,.badge.on-hold,.badge.planning{
     backdrop-filter:none!important;-webkit-backdrop-filter:none!important;background:var(--card);
   }
@@ -1280,6 +1282,21 @@ body.dark-mode .cause-sel{background:rgba(0,0,0,.25);}
 body.glass-premium #app-main{position:relative;z-index:1;}
 body.glass-premium #app-header{position:relative;z-index:2;}
 body.glass-premium .sec-nav{position:relative;z-index:1;}
+
+/* ---- GOOGLE-OPERATOR-IDENTITY-v1: optional operator identity bar ----
+   Mount points rendered by js/mmgr-google-auth.js on app.html (below the
+   page title) and admin.html (inside the header actions). The bar is a pure
+   mount point: [hidden] toggles are explicit because the flex rules below
+   would otherwise override the UA's display:none for hidden elements. */
+.auth-bar{display:flex;align-items:center;justify-content:flex-end;gap:10px;min-height:44px;}
+#google-signin-button{min-height:40px;display:flex;align-items:center;}
+#google-user-chip{display:flex;align-items:center;gap:8px;padding:3px 6px 3px 3px;border:var(--glass-border);border-radius:100px;background:var(--glass-fill-dark);box-shadow:var(--glass-rim);font-size:.74rem;color:var(--text);max-width:100%;}
+#google-signin-button[hidden],#google-user-chip[hidden]{display:none;}
+.gchip-avatar{width:30px;height:30px;flex-shrink:0;border-radius:50%;overflow:hidden;background:var(--gold);color:#0b0c10;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.82rem;}
+.gchip-avatar-img{width:100%;height:100%;object-fit:cover;display:block;}
+.gchip-name{font-weight:600;max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.gchip-out{border:1px solid var(--border);background:transparent;color:var(--slate);border-radius:100px;padding:4px 10px;font-size:.68rem;font-weight:600;cursor:pointer;transition:all var(--tr);}
+.gchip-out:hover{border-color:var(--danger);color:var(--danger);}
 
 /* ---- Rank 4.5 sync section (Controls drawer) ---- */
 .sync-gis-btn{margin:4px 0 8px;min-height:40px;}

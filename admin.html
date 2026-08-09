@@ -10,7 +10,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>My MaNaGeR — Admin</title>
 <meta name="robots" content="noindex, nofollow">
+<link rel="icon" type="image/png" href="primary icon.png">
 <link rel="stylesheet" href="css/mmgr.css">
+<!-- GOOGLE-OPERATOR-IDENTITY-v1: optional operator identity (admin chip).
+     async+defer; the admin gate and password flow are completely untouched. -->
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
 /* ============================================================
    Admin-specific styles. Shared component classes (.btn, .card,
@@ -22,13 +26,28 @@
 
 /* ── gate screens (password setup / login) ── */
 .gatewrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;}
-.gbox{width:380px;max-width:100%;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:30px 26px;text-align:center;}
+.gbox{width:380px;max-width:100%;background:var(--glass-fill-dark-hover);
+  backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  border:var(--glass-border);border-radius:var(--squircle-lg);
+  box-shadow:var(--glass-rim),var(--glass-shadow);
+  padding:30px 26px;text-align:center;}
 .gbox .icon{font-size:2rem;margin-bottom:10px;}
 .gbox h1{font-size:1.05rem;margin-bottom:6px;}
 .gbox p{font-size:.78rem;color:var(--slate);margin-bottom:18px;line-height:1.5;}
-.gbox input{width:100%;background:#f8fafc;border:1px solid var(--border);border-radius:6px;color:var(--text);
+.gbox input{width:100%;background:var(--glass-fill-dark);border:1px solid var(--border);border-radius:6px;color:var(--text);
   font-size:.9rem;padding:11px 12px;font-family:inherit;outline:none;margin-bottom:10px;transition:border-color .15s;}
 .gbox input:focus{border-color:var(--gold);}
+body.dark-mode .gbox input{background:rgba(0,0,0,.3);}
+/* B-1: reduced transparency / no backdrop-filter — flatten .gbox to solid like
+   the shared mmgr.css fallback (this inline rule must come after the .gbox
+   rules above to win at equal specificity). */
+@supports not (backdrop-filter:blur(1px)){
+  .gbox{background:var(--card);}
+}
+@media (prefers-reduced-transparency:reduce){
+  .gbox{background:var(--card);backdrop-filter:none!important;-webkit-backdrop-filter:none!important;}
+}
 .gerr{min-height:16px;font-size:.72rem;color:var(--danger);margin-bottom:6px;}
 
 /* ── app shell (admin layout) ── */
@@ -124,6 +143,10 @@ pre.snippet{background:#f8fafc;border:1px solid var(--border);border-radius:6px;
   <header>
     <h1><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-tool"></use></svg> <span class="mark">My</span> MaNaGeR — Admin</h1>
     <div class="hdr-actions">
+      <div class="auth-bar">
+        <div id="google-signin-button"></div>
+        <div id="google-user-chip" hidden></div>
+      </div>
       <a href="app.html" target="_blank">View Dashboard <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg></a>
       <button class="btn btn-n btn-s" data-action="changePassword">Change Password</button>
       <button class="btn btn-n btn-s" data-action="lockAdmin">Lock</button>
@@ -840,5 +863,6 @@ if (window.location.protocol === 'http:' || window.location.protocol === 'https:
     .catch(()=>console.warn('ICON SPRITE MISSING: css/mmgr-icons.svg could not be fetched — upload the css/ folder to the site root.'));
 }
 </script>
+<script src="js/mmgr-google-auth.js"></script>
 </body>
 </html>

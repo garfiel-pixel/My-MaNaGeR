@@ -13,6 +13,8 @@
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#D4AF37">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="icon" type="image/png" href="high contrast icon.png">
+<link rel="apple-touch-icon" href="high contrast icon.png">
 <link rel="stylesheet" href="css/mmgr.css">
 <!--
   Content Security Policy:
@@ -52,7 +54,7 @@
       clicks "Connect Google" in Settings > Controls. It is a device label,
       never a gate — offline/CSP-blocked loads degrade to a toast.
 -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://accounts.google.com https://unpkg.com; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self' https://api.open-meteo.com https://geocoding-api.open-meteo.com https://api.openai.com https://api.anthropic.com https://github.com https://release-assets.githubusercontent.com https://accounts.google.com https://huggingface.co https://*.cdn.hf.co; base-uri 'self'; form-action 'self';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' 'sha256-o+0No2XpbES4E5QJh31mY9JsJFqSmE+B4x+z1fNPjVc=' https://accounts.google.com https://unpkg.com; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self' https://api.open-meteo.com https://geocoding-api.open-meteo.com https://api.openai.com https://api.anthropic.com https://github.com https://release-assets.githubusercontent.com https://accounts.google.com https://huggingface.co https://*.cdn.hf.co; base-uri 'self'; form-action 'self';">
 </head>
 <body>
 
@@ -327,8 +329,8 @@
   <!-- ═══ CHARTER ═══ -->
   <div class="panel" id="panel-charter">
     <!-- Charter form rendered by js/mmgr-render.js -->
-    <div id="charter-root" class="card">
-      <div class="card-title">Project Charter<div><button class="btn btn-o btn-s" data-action="uploadCharterDoc"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-upload"></use></svg> Upload Charter</button><button class="btn btn-o btn-s" data-action="openChartUp"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-edit"></use></svg> Auto-Fill</button><button class="btn btn-n btn-s" data-action="print"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-printer"></use></svg> Print</button></div></div>
+    <div id="charter-root" class="card charter-print-root">
+      <div class="card-title">Project Charter<div><button class="btn btn-g btn-s" data-action="saveCharter"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-save"></use></svg> Save</button><button class="btn btn-o btn-s" data-action="uploadCharterDoc"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-upload"></use></svg> Upload Charter</button><button class="btn btn-o btn-s" data-action="openChartUp"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-edit"></use></svg> Auto-Fill</button><button class="btn btn-n btn-s" data-action="printCharter"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-printer"></use></svg> Print</button></div></div>
       <p class="t-xs mb14">Define the project's identity, objectives, KPIs, and constraints before work begins. The Charter is the single source of truth for scope, budget, and success criteria.</p>
       <div class="charter-grid">
         <div class="cf-field full"><label class="cf-label">Project Name</label><input class="cf-input" id="ch-name" placeholder="e.g. Riverside Tower Renovation" data-action="updCharter" data-charter-field="name"></div>
@@ -364,6 +366,7 @@
           <button class="btn btn-d btn-s" data-action="startHold" data-section="wbs"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-trash"></use></svg> Clear All</button>
         </div>
       </div>
+      <div id="wbs-alerts" class="wbs-alerts"></div>
       <div class="ox">
         <table class="dt"><thead><tr>
           <th class="w38">ID</th><th>Task Name</th><th class="w130">Assignee</th>
@@ -604,6 +607,10 @@
           <button class="btn btn-n btn-s" data-action="cpAllPage" data-section="risk"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy All</button>
           <button class="btn btn-d btn-s" data-action="startHold" data-section="risk"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-trash"></use></svg> Clear All</button>
         </div>
+      </div>
+      <div class="rsec">
+        <div class="rst"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-target"></use></svg> Probability × Impact Matrix</div>
+        <div class="ox"><div id="risk-matrix"></div></div>
       </div>
       <div class="rsec">
         <div class="rst"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-target"></use></svg> Tracked Risks</div>
@@ -868,6 +875,17 @@
       <button class="btn btn-n btn-s" data-action="cpFormats" data-kind="email" title="Email digest">Email</button>
       <button class="btn btn-n btn-s" data-action="cpFormats" data-kind="client" title="Printable client summary">Client</button>
     </div>
+    <!-- MONOLITH-FEATURE-PARITY-DIRECTIVES RESTORE-3: one-click email templates
+         (static, zero-AI baseline restored from the monolith — the guaranteed
+         fallback). AI-upgrade path tracked separately in BACKLOG.md. -->
+    <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-mail"></use></svg> Copy Email Template</span></div>
+    <div class="sr-hint">Ready-to-send drafts built from live project data — copy and paste into your mail client.</div>
+    <div class="exp-row">
+      <button class="btn btn-n btn-s" data-action="emailTpl" data-kind="status" title="Weekly status update email">Status Update</button>
+      <button class="btn btn-n btn-s" data-action="emailTpl" data-kind="change" title="Change request approval email">Change Request</button>
+      <button class="btn btn-n btn-s" data-action="emailTpl" data-kind="risk" title="Risk / issue escalation email">Risk Escalation</button>
+      <button class="btn btn-n btn-s" data-action="emailTpl" data-kind="closure" title="Closure sign-off email">Closure Sign-Off</button>
+    </div>
     <div class="sr-hint">Shown in the header greeting. Leave blank for a generic welcome.</div>
     <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-moon"></use></svg> Light / Dark Theme</span><label class="tgl"><input type="checkbox" id="thm-tgl" data-action="tglTheme"><span class="tsl"></span></label></div>
     <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-crosshair"></use></svg> Crosshair Cursor</span><label class="tgl"><input type="checkbox" id="ch-tgl" data-action="tglCh"><span class="tsl"></span></label></div>
@@ -907,9 +925,15 @@
     <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-activity"></use></svg> Quality</span><label class="tgl"><input type="checkbox" data-action="tglPack" data-pack="quality"><span class="tsl"></span></label></div>
     <hr class="div">
     <!-- Phase 2: client-side error surface (last 20 errors, timestamp + action) -->
-    <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-alert-triangle"></use></svg> Client Error Log</span><button class="btn btn-n btn-s" data-action="clearErrorLog">Clear</button></div>
-    <div class="sr-hint">Last 20 client-side errors with timestamp and source action — for debugging on static hosting where no server log exists.</div>
+    <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-alert-triangle"></use></svg> Client Error Log</span><span class="g6"><button class="btn btn-n btn-s" data-action="copyErrorLog" title="Copy the error log to the clipboard as plain text"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy</button><button class="btn btn-n btn-s" data-action="downloadErrorLog" title="Download the error log as a .txt file"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Download</button><button class="btn btn-n btn-s" data-action="clearErrorLog">Clear</button></span></div>
+    <div class="sr-hint">Last 20 client-side errors with timestamp and source action — for debugging on static hosting where no server log exists. Copy or download the log to share it.</div>
     <div id="errlog-body" class="errlog"></div>
+    <!-- DIR-1b: opt-in remote error reporting — OFF by default, device-level
+         slot (never project state), POSTs routed through MMGR.Net's
+         circuit-breaker. Zero network activity while off. -->
+    <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-upload"></use></svg> Remote Error Reporting</span><label class="tgl"><input type="checkbox" id="err-report-tgl" data-action="tglErrReport"><span class="tsl"></span></label></div>
+    <div class="sr-hint">Optional and off by default. When enabled with a webhook URL, new client errors are posted to your own endpoint — never to a third-party service. A failed send stays logged locally only.</div>
+    <input type="url" id="err-webhook" class="ctl-in" data-action="setErrWebhook" placeholder="https://your-webhook.example.com/hook (optional)" autocomplete="off">
     <div class="sr-kbd">
       <div class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-lightbulb"></use></svg> Keyboard Shortcuts</div>
       <div class="kbd-grid">
@@ -1014,6 +1038,9 @@
     <div class="wi-step">
       <div class="wi-lbl">1. Copy this list</div>
       <textarea id="id-template" readonly></textarea>
+      <div class="wi-actions wi-actions-left">
+        <button class="btn btn-n btn-s" data-action="copyIdTemplate"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy List</button>
+      </div>
     </div>
     <div class="wi-step">
       <div class="wi-lbl">2. Paste durations</div>

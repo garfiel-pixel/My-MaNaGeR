@@ -14,7 +14,7 @@
    project data lives in localStorage/IndexedDB, not here — this
    worker never touches user data.
    ============================================================ */
-const CACHE = 'mmgr-shell-v1';
+const CACHE = 'mmgr-shell-v5'; // bumped when shell content changes (v5: GOOGLE-OPERATOR-IDENTITY-v1 added js/mmgr-google-auth.js + app.html/admin.html auth bar)
 const SHELL = [
   './',
   'index.html',
@@ -23,6 +23,8 @@ const SHELL = [
   'css/mmgr.css',
   'css/mmgr-icons.svg',
   'icon.svg',
+  'primary icon.png',
+  'high contrast icon.png',
   'js/mmgr-state.js',
   'js/mmgr-utils.js',
   'js/mmgr-net.js',
@@ -54,7 +56,8 @@ const SHELL = [
   'js/mmgr-ai.js',
   'js/mmgr-viewport.js',
   'js/mmgr-glass.js',
-  'js/mmgr-sync.js'
+  'js/mmgr-sync.js',
+  'js/mmgr-google-auth.js'
 ];
 
 self.addEventListener('install', function(e) {
@@ -86,6 +89,11 @@ self.addEventListener('fetch', function(e) {
 
   // Skip non-GET and any request the app explicitly wants fresh.
   if (req.method !== 'GET') return;
+
+  // GOOGLE-OPERATOR-IDENTITY-v1: NEVER intercept the auth API. /api/auth/me
+  // (a same-origin GET) must hit the Worker live every time — caching its
+  // response would serve stale signed-in/out state after logout or expiry.
+  if (url.pathname.indexOf('/api/') === 0) return;
 
   // HTML navigations: network-first, cached shell as offline fallback.
   if (req.mode === 'navigate') {

@@ -835,9 +835,35 @@ var MMGR = window.MMGR || {};
   const DUE_RE = /\bby\s+(tomorrow|tonight|this week|next week|next month|monday|tuesday|wednesday|thursday|friday|saturday|sunday|\d{1,2}\/\d{1,2}(?:\/\d{2,4})?|\d{4}-\d{2}-\d{2})\b/i;
   const OWNER_RE = /\b(?:assign|to|for|with)\s+([A-Z][A-Za-z]{1,20})\b/;
 
+  // Clause splitter (QA-STRESS DIR-2 finding, Aug 2026): real whisper
+  // output is often punctuation-sparse — long run-on stretches with only
+  // commas. The old per-sentence matcher treated a 600-char comma-only
+  // transcript as ONE sentence, so first-match-wins collapsed it: the first
+  // decision matched and the entire rest (every action item!) was skipped.
+  // Now: split on sentence punctuation first, then sub-split any clause
+  // longer than 140 chars at commas/semicolons into INDEPENDENT clauses.
+  // Deliberately NO merging back: merging two comma-bits can glue an
+  // action clause to a decision clause, and the per-clause first-match
+  // rule would then drop the action again (verified by the stress run —
+  // the merge step was the regression, not the split).
+  function splitClauses(text) {
+    const sentences = String(text || '').match(/[^.!?\n]+[.!?]*/g) || [];
+    const out = [];
+    sentences.forEach(function(raw) {
+      const p = raw.trim();
+      if (!p) return;
+      if (p.length <= 140) { out.push(p); return; }
+      p.split(/[,;]\s+/).forEach(function(b) {
+        b = b.trim();
+        if (b) out.push(b);
+      });
+    });
+    return out;
+  }
+
   function extractFromTranscript(text) {
     const src = String(text || '');
-    const sentences = src.match(/[^.!?\n]+[.!?]*/g) || [];
+    const sentences = splitClauses(src);
     const decisions = [];
     const actions = [];
     const seen = {};

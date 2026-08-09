@@ -1090,6 +1090,8 @@ var MMGR = window.MMGR || {};
     if (!s) return;
     const body = $('wbs-body');
     if (!body) return;
+    // RESTORE-7: keep the schedule-issues banner in sync with the rows below.
+    renderWbsAlerts();
     const tasks = s.tasks || [];
     const defExpanded = s.defExpanded || {};
     if (tasks.length === 0) {
@@ -1585,19 +1587,103 @@ var MMGR = window.MMGR || {};
   }
 
   // ---- Risks ----
+  // MONOLITH-FEATURE-PARITY-DIRECTIVES RESTORE-1: clickable probability ×
+  // impact matrix. Clicking a cell filters the risk list to that exact
+  // probability/impact combination (active cell keeps a gold outline); a
+  // Clear filter button appears only while a filter is active. Restored from
+  // the monolith's clickRiskCell / clearRiskFilter / renderRiskMatrix,
+  // adapted to the current 5-level string model ('Very Low'..'Very High').
+  let riskMatrixFilter = null; // { prob, imp } or null
+
+  function riskMatrixCell(prob, imp) {
+    riskMatrixFilter = (riskMatrixFilter && riskMatrixFilter.prob === prob && riskMatrixFilter.imp === imp)
+      ? null
+      : { prob: prob, imp: imp };
+    renderRisks();
+  }
+
+  function clearRiskFilter() {
+    riskMatrixFilter = null;
+    renderRisks();
+  }
+
+  function renderRiskMatrix() {
+    const el = $('risk-matrix');
+    if (!el) return;
+    const s = S();
+    const risks = (s && s.risks) || [];
+    if (!risks.length) {
+      el.innerHTML = '<div class="es" style="padding:10px;font-size:.7rem">Matrix populates once you add tracked risks above.</div>';
+      return;
+    }
+    const LEVELS = ['Very Low', 'Low', 'Medium', 'High', 'Very High'];
+    const counts = {};
+    // Counts ALL risks, including issue-promoted ones — deliberate divergence
+    // from the monolith (which excluded r.issue): the risk table below this
+    // matrix also shows every risk, so the counts stay consistent with what
+    // the user can see and click on in the same panel.
+    risks.forEach(r => { const k = (r.probability || '') + '|' + (r.impact || ''); counts[k] = (counts[k] || 0) + 1; });
+    const active = riskMatrixFilter;
+    const sev = (p, i) => { const sum = LEVELS.indexOf(p) + LEVELS.indexOf(i); return sum <= 3 ? 'bg' : sum <= 5 ? 'ba' : 'br'; };
+    const hdr = `<tr><td></td>${LEVELS.map(p => `<td style="font-size:.62rem;color:var(--slate);text-align:center;padding-bottom:3px">${p}</td>`).join('')}</tr>`;
+    const rows = LEVELS.slice().reverse().map(imp => {
+      const cells = LEVELS.map(p => {
+        const n = counts[p + '|' + imp] || 0;
+        const on = active && active.prob === p && active.imp === imp;
+        return `<td style="padding:2px"><div class="badge ${sev(p, imp)}" data-action="riskMatrixCell" data-prob="${p}" data-imp="${imp}" style="width:44px;min-height:26px;justify-content:center;cursor:pointer;font-weight:700;${on ? 'outline:2px solid var(--gold);outline-offset:1px' : ''}" title="Probability ${p} × Impact ${imp} — click to filter">${n || ''}</div></td>`;
+      }).join('');
+      return `<tr><td style="font-size:.62rem;color:var(--slate);text-align:right;padding-right:6px;white-space:nowrap">${imp}</td>${cells}</tr>`;
+    }).join('');
+    el.innerHTML = `<div style="font-size:.64rem;color:var(--slate);margin-bottom:6px">Impact ↑ &nbsp;/&nbsp; Probability → &nbsp;(click a cell to filter the list below)</div>
+      <table style="border-collapse:collapse">${hdr}${rows}</table>
+      ${active ? `<button class="btn btn-n btn-s" data-action="riskMatrixClear" style="margin-top:8px"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> Clear filter</button>` : ''}`;
+  }
+
+  // ---- MONOLITH-FEATURE-PARITY-DIRECTIVES RESTORE-7: WBS schedule-issues
+  // collapsible banner. The schedule engine's audit() computed issues that
+  // nothing surfaced — restore the monolith's badge banner consuming its
+  // output (collapsed badge count, click to expand the detail list).
+  let wbsIssuesOpen = false;
+  function toggleWbsIssues() {
+    wbsIssuesOpen = !wbsIssuesOpen;
+    renderWbsAlerts();
+  }
+  function renderWbsAlerts() {
+    const el = $('wbs-alerts');
+    if (!el) return;
+    // Runs a full schedule audit per WBS render (matches the monolith's
+    // renderWBS behaviour) — acceptable on project-sized schedules; if this
+    // ever shows up in profiling, debounce the audit rather than caching it,
+    // since the whole point is that it never goes stale.
+    const issues = (ns.Schedule && ns.Schedule.audit) ? ns.Schedule.audit() : [];
+    // audit() always appends a summary 'info' row (task 'all') — the badge
+    // counts actionable rows; the detail lists them all.
+    const real = issues.filter(i => i.task !== 'all');
+    if (!real.length) { el.innerHTML = ''; return; }
+    const sevCls = { error: 'br', warning: 'ba', info: 'bs' };
+    el.innerHTML = `<div class="badge br" style="padding:6px 12px;cursor:pointer" data-action="tglWbsIssues"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-alert-triangle"></use></svg> ${real.length} schedule logic issue${real.length !== 1 ? 's' : ''} detected — click for details</div>
+      <div id="wbs-issues-detail" style="display:${wbsIssuesOpen ? 'block' : 'none'};margin-top:8px;font-size:.74rem;background:rgba(0,0,0,.2);border-radius:6px;padding:10px 12px">
+        ${real.map(i => `<div style="margin-bottom:6px"><span class="badge ${sevCls[i.severity] || 'bs'}" style="font-size:.6rem;padding:1px 5px">${U.escapeHtml(i.severity)}</span> <strong>${U.escapeHtml(i.task)}</strong> — ${U.escapeHtml(i.message)}</div>`).join('')}
+      </div>`;
+  }
+
   function renderRisks() {
     const s = S();
     if (!s) return;
     const body = $('risk-body');
     if (body) {
-      const risks = s.risks || [];
+      let risks = s.risks || [];
+      // RESTORE-1: an active matrix cell filters the list below.
+      if (riskMatrixFilter) {
+        risks = risks.filter(r => (r.probability || '') === riskMatrixFilter.prob && (r.impact || '') === riskMatrixFilter.imp);
+      }
       // 2.1 dependency-aware risk propagation: flag risks whose linked task
       // is overdue, and offer the task link in the row itself.
       const overdueIds = {};
       (s.tasks || []).forEach(t => { if (t.status !== 'completed' && U.isOverdue(t.endDate)) overdueIds[String(t.id)] = true; });
       const taskOpts = (s.tasks || []).map(t => `<option value="${U.escapeHtml(String(t.id))}">${U.escapeHtml(t.name)}</option>`).join('');
       if (risks.length === 0) {
-        body.innerHTML = emptyStateRow(9, 'No risks logged yet.', '<button class="btn btn-g btn-s" data-action="addRisk">+ Add Risk</button>');
+        body.innerHTML = emptyStateRow(9, riskMatrixFilter ? 'No risks in this matrix cell.' : 'No risks logged yet.', riskMatrixFilter ? '' : '<button class="btn btn-g btn-s" data-action="addRisk">+ Add Risk</button>');
       } else {
         body.innerHTML = risks.map((r, i) => {
           const linkedLate = r.linkedTaskId && overdueIds[String(r.linkedTaskId)];
@@ -1631,6 +1717,7 @@ var MMGR = window.MMGR || {};
         </tr>`).join('');
       }
     }
+    renderRiskMatrix();
   }
 
   // ---- Resources ----
@@ -2669,6 +2756,12 @@ var MMGR = window.MMGR || {};
     renderWbs: renderWbs,
     renderGantt: renderGantt,
     renderKanban: renderKanban,
+    // RESTORE-1: risk matrix click-to-filter actions (view-only).
+    riskMatrixCell: riskMatrixCell,
+    clearRiskFilter: clearRiskFilter,
+    // RESTORE-7: WBS schedule-issues banner toggle (view-only).
+    toggleWbsIssues: toggleWbsIssues,
+    renderWbsAlerts: renderWbsAlerts,
     renderRisks: renderRisks,
     renderResources: renderResources,
     renderBudget: renderBudget,

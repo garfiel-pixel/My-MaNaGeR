@@ -12,7 +12,12 @@
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#D4AF37">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="icon" type="image/png" href="primary icon.png">
+<link rel="apple-touch-icon" href="primary icon.png">
 <link rel="stylesheet" href="css/mmgr.css">
+<!-- GOOGLE-OPERATOR-IDENTITY-v1: optional operator identity. async+defer so
+     it never blocks first paint; if it never loads the page is unaffected. -->
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
 /* Dashboard-specific styles */
 .wrap{max-width:1080px;margin:0 auto;padding:48px 24px 80px;}
@@ -68,6 +73,14 @@
     <p>Select a project to view its dashboard, schedule, risk register, and budget. Each project is protected by its own access code.</p>
   </div>
 
+  <!-- GOOGLE-OPERATOR-IDENTITY-v1: optional operator identity bar. Pure mount
+       point — signing in is optional and never affects the project grid, the
+       portfolio strip, or the access-code unlock modal below. -->
+  <div class="auth-bar">
+    <div id="google-signin-button"></div>
+    <div id="google-user-chip" hidden></div>
+  </div>
+
   <div class="notice"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-lock"></use></svg> Contact the admin to get an access code for this project.</div>
 
   <!-- ACTION-PLAN 6.1: cross-project portfolio health rollup, ranked by
@@ -98,6 +111,7 @@
 
 <script src="projects-data.js"></script>
 <script src="js/mmgr-portfolio.js"></script>
+<script src="js/mmgr-google-auth.js"></script>
 <script>
 /* ============================================================
    Dashboard logic — renders cards from window.MMGR_PROJECTS,

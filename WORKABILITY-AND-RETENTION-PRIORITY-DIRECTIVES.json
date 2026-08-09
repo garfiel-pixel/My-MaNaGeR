@@ -1,0 +1,81 @@
+{
+  "spec_name": "WORKABILITY-AND-RETENTION-PRIORITY-DIRECTIVES",
+  "version": "1.0",
+  "classification": "Priority-reordering directives. Not code. Directs WHAT to work on next and in what order -- does not itself specify implementation, since the underlying features (Rank 4.4, Claim Pack, AI presets) already have their own specs elsewhere in this plan set.",
+  "mandate": "Visual/presentation work (Rank 3.5 Liquid Glass and its sub-items) is explicitly DEPRIORITIZED as of this spec. It is not cancelled and not undone -- what's already shipped stays shipped -- but no further time goes into it until every directive below is either complete or explicitly deferred by the project owner. Workability, reliability, and retention-driving features come first.",
+
+  "governing_rule": "This spec reorders priority, not scope. Every feature named below already has its own detailed spec elsewhere (PLAN-OF-ACTION-AI-VOICE-SYNC-v1.md, PLAN-OF-ACTION-LIQUID-GLASS-UI.md). This document does not replace those specs' acceptance criteria -- it tells execution what order to tackle them in and adds new validation requirements that go beyond what a QA gate alone can confirm.",
+  "execution_rule": "Once given the go-ahead, work through directives in the listed order. A passed QA gate is necessary but NOT sufficient to close DIR-2 and DIR-3 below -- both require the additional real-world validation step specified, not just green automated tests. Do not mark either complete on gate-pass alone.",
+
+  "reprioritization": {
+    "deprioritized_effective_immediately": [
+      "Rank 3.5.4 (Liquid Glass shader upgrade, Option A/B decision) -- paused. Whichever option was chosen stands as-is; no further shader work until directives below are resolved.",
+      "Any further glass/UI consistency polish beyond what's already scoped in LIQUID-GLASS-UI-FIX-DIRECTIVES.json -- that spec may still be executed if already in progress, but no NEW visual polish work should be started."
+    ],
+    "promoted_to_top_priority": [
+      "Rank 4.4 -- Multi-device reconciliation",
+      "Real-world validation of the Claim Pack + Voice-to-Claim pipeline (Rank 1/1.4/1.5)",
+      "Real-world validation of the AI assistant + agent-style presets (Rank 2.3)",
+      "A reliability/data-loss audit of the offline save path on an actual physical device, not only headless-Chrome QA gates"
+    ]
+  },
+
+  "directives": [
+
+    {
+      "id": "DIR-1",
+      "title": "Rank 4.4 -- Multi-device reconciliation: build now, not later",
+      "why_this_first": "This is the single largest gap between 'works for one person' and 'works for a team' -- and 'works seamlessly across a whole team' is the exact thing enterprise tools (Procore, Autodesk, Buildertrend) win on. A construction PM tool that can't have a foreman on a tablet and an owner on a laptop both using the same project without manual file juggling cannot credibly compete for a team's daily use, no matter how good any single-device feature is.",
+      "spec_reference": "PLAN-OF-ACTION-AI-VOICE-SYNC-v1.md, Rank 4.4 (field-level timestamp merge, dumb server-free sync transport)",
+      "instruction": "Proceed to build Rank 4.4 exactly per its existing spec in that file -- this directive does not change its design, only confirms it as the top build priority. Verify Rank 4.1-4.3's actual current status directly against the codebase before starting (per that plan's own Section 6 verification checklist) -- do not assume completion.",
+      "acceptance": "Unchanged from the existing Rank 4.4 spec: two simulated devices, non-conflicting and deliberately conflicting edits, zero data loss, conflicts surfaced to the user rather than silently resolved."
+    },
+
+    {
+      "id": "DIR-2",
+      "title": "Real-world validation of the Claim Pack + Voice-to-Claim pipeline -- beyond QA-gate-green",
+      "why_this_matters": "QA gates confirm the pipeline runs without crashing and produces structurally correct output against a simulated project. They do NOT confirm a real project manager would actually trust, use, and send the output as-is during a live claim dispute. A passing gate and a genuinely useful claim pack are different things, and only the second one drives retention.",
+      "spec_reference": "PLAN-OF-ACTION-AI-VOICE-SYNC-v1.md, Rank 1 / 1.4 / 1.5 (already confirmed built and gated)",
+      "instruction": "Do not treat Rank 1/1.4/1.5 as 'done' in the retention sense just because their QA gates pass. Required validation steps, beyond automated testing:",
+      "validation_steps": [
+        "Run the full pipeline (voice capture -> transcription -> diarization -> extraction -> claim pack) against a real or realistically messy recorded meeting -- not the clean jfk.wav reference sample -- including background noise, overlapping speech, and construction jargon, to see where accuracy actually degrades.",
+        "Have a real project manager (the project owner, or a comparable reviewer) read the generated claim pack output and judge, in their own words, whether they would send it to a client or use it in a dispute as-is, or what specifically they'd need to change first.",
+        "Record what that reviewer actually changed or flagged -- this becomes real input for refining the extraction/summarization logic, not a hypothetical improvement list."
+      ],
+      "acceptance": "This directive is complete only when a real reviewer has actually assessed real or realistic output and specific, concrete gaps (if any) have been logged -- not when the existing QA gate passes."
+    },
+
+    {
+      "id": "DIR-3",
+      "title": "Real-world validation of the AI assistant + agent-style presets",
+      "why_this_matters": "Same reasoning as DIR-2 -- 'submit() is wired and returns a response' is a technical fact, not evidence the responses are actually good enough that a PM would rely on them weekly. This is what determines whether the AI tier becomes a genuine daily habit or a novelty used once and ignored.",
+      "spec_reference": "PLAN-OF-ACTION-LIQUID-GLASS-UI.md Section 1 confirms Rank 2.3 as built; PLAN-OF-ACTION-AI-VOICE-SYNC-v1.md Rank 2.3 for original spec",
+      "instruction": "For each shipped preset (report/forecast/risk/digest/health/audit/change/client/daily), test against a real or realistically complex project, on both the local model tier and the cloud BYO-key tier, and evaluate:",
+      "validation_steps": [
+        "Does the local (zero-key) tier produce genuinely usable output for simple lookups, or does it need to be cloud-only in practice? Log which presets work acceptably locally and which don't.",
+        "Does the cloud tier's reasoning hold up on a messy real project (conflicting data, incomplete fields, ambiguous risk entries) rather than only a clean simulated one?",
+        "For agent-style presets that write results back into project state: confirm a real reviewer checked that the written-back data was correct, not just that the write succeeded without error.",
+        "Identify the 1-2 presets most likely to be used weekly if this app is actually adopted, and prioritize refining those specifically over presets less likely to be used regularly."
+      ],
+      "acceptance": "Complete only when real-project-based findings exist for each preset's practical usefulness, not just confirmation that submit() returns a response without error."
+    },
+
+    {
+      "id": "DIR-4",
+      "title": "Reliability / data-loss audit on an actual physical device",
+      "why_this_matters": "Data loss is the one bug category that permanently kills retention outright -- a user who loses real project data once will not give the tool a second chance, regardless of how good every other feature is. Headless-Chrome QA gates verify logic; they do not verify real-world conditions like a phone locking, a tablet's browser being killed by the OS for memory, or a laggy real WiFi connection dropping mid-save.",
+      "spec_reference": "Ties to the unload-safety fix already confirmed present in js/mmgr-state.js, and to Rank 4.4's crash-safety-sharing infrastructure",
+      "instruction": "On at least one real physical device (a phone and a tablet if both are realistically going to be used on-site, not just a desktop browser), deliberately attempt to lose data via realistic interruption scenarios:",
+      "validation_steps": [
+        "Mid-edit, background the browser tab/app and let the OS suspend or kill it (common on mobile after a few minutes) -- reopen and confirm the last edit is present.",
+        "Mid-voice-recording (Rank 1.5), force-close the tab -- confirm at most one small unflushed chunk is lost, matching the existing acceptance criteria, tested for real rather than only in the QA gate's simulation.",
+        "Deliberately interrupt network mid-save on a real, imperfect WiFi/cellular connection (not just a disabled-network simulation) -- confirm the app never assumes success it didn't actually have.",
+        "If any real data loss is found in any of the above, treat it as the single highest-priority bug in the entire plan -- above every other directive in this document -- until fixed and re-verified on a real device."
+      ],
+      "acceptance": "Complete only when each scenario has been physically attempted on a real device and the outcome recorded -- a QA gate passing this scenario in simulation does not satisfy this directive."
+    }
+
+  ],
+
+  "closing_instruction": "Do not resume Rank 3.5 shader work or any further visual polish until DIR-1 through DIR-4 are each either complete or explicitly deferred by the project owner in writing. If asked 'what's next' during this period and the honest answer is 'more glass polish,' that is the wrong answer -- redirect to whichever of DIR-1-4 is least complete."
+}

@@ -12,6 +12,72 @@ const path = require('path');
 const ROOT = __dirname;
 const PORT = 8765;
 
+// OBSERVABILITY-SECURITY-DOMAIN-EXECUTION-DIRECTIVES DIR-2:   mirror of the
+// production Worker headers (see worker.js) so the headless Chrome QA gates
+// exercise the REAL CSP locally. Keep this in sync with worker.js whenever
+// the CSP (inline-script hashes! GIS origins!) or any header changes.
+// CSP construction rule: every SHA-256 hash source must stay INSIDE the
+// script-src directive (space-separated). A hash as its own ';'-joined element
+// becomes an invalid directive and the browser rejects the WHOLE policy,
+// silently breaking every inline script. Must match worker.js exactly.
+const INLINE_SCRIPT_HASHES = [
+  "'sha256-o+0No2XpbES4E5QJh31mY9JsJFqSmE+B4x+z1fNPjVc='",
+  "'sha256-uXP6UbKN008OGX7DDZbsyDbAG4Dj8LT6FVZf333Vp/U='",
+  "'sha256-Nes7RKcL0MVY3SnKF5ktyLpO5Xz59WjxI14E5Qst+90='",
+  "'sha256-Oa7ON+9A164SSXhnxu08mFn0V9Tj2SlZ2SzFXFoqKNE='",
+  "'sha256-DRiA9m7qJLb4z1QyfjbEUFyubzWHRCl2Cgf+YJkjyi8='",
+  "'sha256-l7T1LLezhae1ZGfmUGxTadrqmveWG2jA4nLGwRkmB3k='",
+  "'sha256-c2U+m5SzyupzeOrPEiOjlnaSgS1KdAxZTFnYA5dW/Rk='",
+  "'sha256-3TjcOBgQeATMpPC1MUJPRDjeq7SvgohH62pIViDmtnk='"
+].join(' ');
+const SECURITY_HEADERS = {
+  'Content-Security-Policy': [
+    "default-src 'self'",
+    "script-src 'self' 'wasm-unsafe-eval' https://unpkg.com https://accounts.google.com https://apis.google.com " + INLINE_SCRIPT_HASHES,
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data: blob:",
+    "media-src 'self' data: blob:",
+    "font-src 'self' data:",
+    "connect-src 'self' https: https://accounts.google.com https://oauth2.googleapis.com blob:",
+    "worker-src 'self'",
+    "manifest-src 'self'",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "frame-src https://accounts.google.com",
+    "frame-ancestors 'none'"
+  ].join('; '),
+  'X-Content-Type-Options': 'nosniff',
+  'X-Frame-Options': 'DENY',
+  'Referrer-Policy': 'strict-origin-when-cross-origin',
+  'Permissions-Policy': 'camera=(), microphone=(self), geolocation=(), payment=(), usb=()'
+};
+
+// WHISPER-CSP (QA-STRESS DIR-2 finding, Aug 2026): the bundled offline
+// whisper runtime (vendor/whisper/) runs its Emscripten glue inside a
+// module worker, and that glue builds function invokers with `new Function`
+// (Asyncify invoker generation + embind method callers). Chrome enforces
+// the CSP delivered WITH THE WORKER SCRIPT for the worker's own script
+// execution — NOT the embedding document's CSP (probe-verified: the
+// tools/csp-probe* harness shows evalAllowed:true when only the worker
+// script's response is relaxed). So the app pages keep the STRICT CSP
+// above, and ONLY this vendored, trusted whisper subtree gets the eval
+// allowance it needs. Must stay in sync with the production Worker's
+// WHISPER_CSP (worker.js).
+const WHISPER_CSP = [
+  "default-src 'self'",
+  "script-src 'self' 'unsafe-eval' 'wasm-unsafe-eval'",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: blob:",
+  "media-src 'self' data: blob:",
+  "font-src 'self' data:",
+  "connect-src 'self' https: blob:",
+  "worker-src 'self' blob:",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self'"
+].join('; ');
+
 const MIME = {
   '.html': 'text/html; charset=utf-8',
   '.js': 'text/javascript; charset=utf-8',
@@ -42,10 +108,21 @@ const server = http.createServer((req, res) => {
       return;
     }
     const ext = path.extname(file).toLowerCase();
-    res.writeHead(200, {
+    const headers = Object.assign({
       'Content-Type': MIME[ext] || 'application/octet-stream',
       'Cache-Control': 'no-store'
-    });
+    }, SECURITY_HEADERS);
+    // Scoped CSP: only the vendored whisper runtime files get the relaxed
+    // policy (see WHISPER_CSP above). Everything else stays strict.
+    // CHECK ON THE RESOLVED PATH (review finding): the raw URL pathname can
+    // contain dot-segments (/vendor/whisper/../../js/x.js resolves to a real
+    // non-whisper file under ROOT), so a prefix test on `p` alone would hand
+    // the relaxed CSP to non-whisper content. `file` is already the
+    // path.join(ROOT, p) result used for serving — test it directly.
+    if (file.startsWith(path.join(ROOT, 'vendor', 'whisper') + path.sep)) {
+      headers['Content-Security-Policy'] = WHISPER_CSP;
+    }
+    res.writeHead(200, headers);
     fs.createReadStream(file).pipe(res);
   } catch (e) {
     res.writeHead(500); res.end(String(e && e.message));

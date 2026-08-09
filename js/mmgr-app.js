@@ -188,6 +188,17 @@ var MMGR = window.MMGR || {};
     }
     if (ns.Glass && ns.Glass.sync) ns.Glass.sync();
 
+    // DIR-1b: reflect the device-level remote-error-reporting preference
+    // (localStorage slot, like the glass mode toggle above — never project
+    // state) into the Controls drawer controls on boot.
+    if (ns.Errors && ns.Errors.getReportCfg) {
+      const rc = ns.Errors.getReportCfg();
+      const rt = U.$('err-report-tgl');
+      if (rt) rt.checked = !!rc.enabled;
+      const rw = U.$('err-webhook');
+      if (rw && rw.value !== rc.url) rw.value = rc.url;
+    }
+
     // Rank 4.5: render the optional sync identity section (device label,
     // never a gate) into the Controls drawer.
     if (ns.Sync && ns.Sync.renderSyncSection) ns.Sync.renderSyncSection();
@@ -276,6 +287,62 @@ var MMGR = window.MMGR || {};
   function clearErrorLog() {
     if (ns.Errors && ns.Errors.clear) ns.Errors.clear();
     showToast('Error log cleared.', 'ok');
+  }
+
+  // ---- DIR-1a: error log export (Copy / Download) ----
+  // Consumes ns.Errors.getLog() — the single data source. Plain-text format
+  // matches the drawer's ts / action / msg columns. Zero network calls.
+  function errLogText() {
+    // Single source of truth: ns.Errors.formatEntry shares the drawer's ts
+    // formatter (mmgr-errors.js fmtTs), so the exported log can never drift
+    // from the on-screen log.
+    const entries = (ns.Errors && ns.Errors.getLog) ? ns.Errors.getLog() : [];
+    const fmt = (ns.Errors && ns.Errors.formatEntry) ? ns.Errors.formatEntry : function(en) { return String(en.msg); };
+    return entries.map(fmt).join('\n');
+  }
+
+  async function copyErrorLog() {
+    const text = errLogText();
+    if (!text) { showToast('Error log is empty.', 'warn'); return; }
+    // U.copyToClipboard never rejects (clipboard API + execCommand fallback
+    // both resolve true), so no catch is needed — a successful copy is the
+    // only path that reaches the success toast.
+    await U.copyToClipboard(text);
+    showToast('Error log copied.', 'ok');
+  }
+
+  function downloadErrorLog() {
+    const text = errLogText();
+    if (!text) { showToast('Error log is empty.', 'warn'); return; }
+    try {
+      const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'mymanager-error-log-' + new Date().toISOString().slice(0, 10) + '.txt';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function() { URL.revokeObjectURL(a.href); }, 400);
+      showToast('Error log downloaded.', 'ok');
+    } catch (e) {
+      showToast('Could not download the error log.', 'err');
+    }
+  }
+
+  // ---- DIR-1b: opt-in remote error reporting ----
+  // Device-level preference (localStorage, never project state), off by
+  // default. The actual POST lives in mmgr-errors.js (routed through
+  // MMGR.Net's circuit-breaker). These handlers only move the toggle/URL.
+  function tglErrReport() {
+    const tgl = U.$('err-report-tgl');
+    const on = tgl ? tgl.checked : false;
+    if (ns.Errors && ns.Errors.setReportCfg) ns.Errors.setReportCfg({ enabled: on });
+    showToast(on
+      ? 'Remote error reporting ON — new errors are posted to your webhook.'
+      : 'Remote error reporting OFF — errors stay on this device only.',
+      on ? 'ok' : 'warn');
+  }
+
+  function setErrWebhook(el) {
+    if (ns.Errors && ns.Errors.setReportCfg) ns.Errors.setReportCfg({ url: el.value });
   }
 
   function tglLock() {
@@ -597,6 +664,45 @@ var MMGR = window.MMGR || {};
       U.copyToClipboard(lines.join('\n'));
       showToast('Client summary copied!', 'ok');
     }
+  }
+
+  // ---- MONOLITH-FEATURE-PARITY-DIRECTIVES RESTORE-3: one-click email
+  // template generator (Status Update / Change Request / Risk Escalation /
+  // Closure Sign-Off). Restored as the monolith's ORIGINAL static, zero-AI
+  // version — every button copies a ready-to-send email draft built from
+  // live project state, so it works with no model configured and remains the
+  // guaranteed fallback. (The AI-upgrade path — richer versions of the same
+  // templates through the mmgr-prompts.js preset system — is logged as a
+  // separate tracked follow-up in BACKLOG.md, deliberately not folded in.)
+  function emailTpl(kind) {
+    const s = ns.State.getState();
+    const f = s.charter || {};
+    const pn = f.name || '[Project Name]';
+    // The current charter schema has no PM field — the signer is deliberately
+    // a distinct placeholder rather than reusing the sponsor, so the email
+    // does not imply the sponsor wrote it.
+    const pm = '[PM]';
+    const sp = f.sponsor || '[Sponsor]';
+    const tasks = s.tasks || [];
+    const tot = tasks.length;
+    const dn = tasks.filter(t => t.status === 'completed').length;
+    const pct = tot ? Math.round(dn / tot * 100) : 0;
+    const openIssues = (s.issues || []).filter(i => i.status !== 'resolved' && i.status !== 'closed');
+    let body = '';
+    if (kind === 'status') {
+      body = 'Subject: ' + pn + ' — Weekly Status Update\n\nHi ' + sp + ',\n\nQuick status on ' + pn + ' as of ' + new Date().toLocaleDateString() + ':\n• Overall progress: ' + pct + '% Completed (' + dn + '/' + tot + ' tasks)\n• In Progress: ' + tasks.filter(t => t.status === 'inprogress').length + '\n• Blocked: ' + tasks.filter(t => t.status === 'blocked').length + '\n• Live issues: ' + openIssues.length + '\n\nNext priorities:\n' + (tasks.filter(t => t.status !== 'completed').slice(0, 3).map(t => '  - ' + (t.name || t.id)).join('\n') || '  - (none)') + '\n\nRegards,\n' + pm;
+    } else if (kind === 'change') {
+      const pending = (s.changes || []).filter(c => c.status === 'submitted' || c.status === 'review');
+      body = 'Subject: ' + pn + ' — Change Request for Approval\n\nHi ' + sp + ',\n\nA change request has been raised on ' + pn + '. Please review the impact below and confirm approval:\n\n' + (pending.map(c => '• ' + (c.title || '(untitled)') + ' (Sched ' + (c.schedImpact || '—') + ', Cost ' + (c.costImpact || '—') + ') — Requester: ' + (c.requester || '—') + '\n  Notes: ' + (c.notes || '')).join('\n') || '(no pending changes)') + '\n\nAwaiting your decision.\n\nRegards,\n' + pm;
+    } else if (kind === 'risk') {
+      const highRisks = (s.risks || []).filter(r => !r.issueId && (r.probability === 'High' || r.probability === 'Very High' || r.impact === 'High' || r.impact === 'Very High'));
+      body = 'Subject: ' + pn + ' — Risk / Issue Escalation\n\nHi ' + sp + ',\n\nThe following items require attention on ' + pn + ':\n\nACTIVE ISSUES:\n' + (openIssues.map(r => '• [' + (r.id || 'I?') + '] ' + r.description + ' | Owner: ' + (r.owner || '—') + ' | Target: ' + (r.targetDate || '—')).join('\n') || '(none)') + '\n\nHIGH RISKS:\n' + (highRisks.map(r => '• [' + (r.id || 'R?') + '] ' + r.description + ' | Prob ' + r.probability + ' | Impact ' + r.impact + ' | Mitigation: ' + (r.mitigation || '—')).join('\n') || '(none)') + '\n\nRegards,\n' + pm;
+    } else {
+      const items = (s.closure && s.closure.items) || [];
+      body = 'Subject: ' + pn + ' — Closure Sign-Off Request\n\nHi ' + sp + ',\n\n' + pn + ' is ready for formal closure. Summary:\n• Overall: ' + pct + '% Completed\n• Deliverables checklist: ' + items.filter(c => c.done).length + '/' + items.length + ' complete\n\nLessons learned and final report attached. Please confirm sign-off.\n\nRegards,\n' + pm;
+    }
+    U.copyToClipboard(body);
+    showToast('Email template copied!', 'ok');
   }
 
   // ---- 5.2 Definitions tooltips ----
@@ -1448,9 +1554,15 @@ var MMGR = window.MMGR || {};
     scheduleMLCClose: scheduleMLCClose,
     tglFlag: tglFlag,
     clearErrorLog: clearErrorLog,
+    copyErrorLog: copyErrorLog,
+    downloadErrorLog: downloadErrorLog,
+    errLogText: errLogText,
+    tglErrReport: tglErrReport,
+    setErrWebhook: setErrWebhook,
     clearMlcTimer: clearMlcTimer,
     cpAllPage: cpAllPage,
     cpFormats: cpFormats,
+    emailTpl: emailTpl,
     wxGeocode: wxGeocode,
     wxRefresh: wxRefresh,
     wxSetView: wxSetView,
@@ -1535,11 +1647,20 @@ window.MMGR = MMGR;
     'openImportDates': () => window.MMGR.Tasks.openImportDates(),
     'idPreview': () => window.MMGR.Tasks.idPreview(),
     'idCommit': () => window.MMGR.Tasks.idCommit(),
+    // MONOLITH-FEATURE-PARITY-DIRECTIVES RESTORE-2: Import Dates 'Copy List'.
+    'copyIdTemplate': () => window.MMGR.Tasks.copyIdTemplate(),
     'saveSprint': () => window.MMGR.Tasks.saveSprint(),
     'addRisk': () => window.MMGR.Risks.addRisk(),
     'delRisk': (el) => window.MMGR.Risks.delRisk(parseInt(el.getAttribute('data-idx'))),
     'toggleRiskIssue': (el) => window.MMGR.Risks.toggleRiskIssue(parseInt(el.getAttribute('data-idx'))),
     'delIssue': (el) => window.MMGR.Risks.delIssue(parseInt(el.getAttribute('data-idx'))),
+    // MONOLITH-FEATURE-PARITY-DIRECTIVES RESTORE-1: risk matrix
+    // click-to-filter (view-only — filtering the list, not mutating state).
+    'riskMatrixCell': (el) => window.MMGR.Render.riskMatrixCell(el.getAttribute('data-prob'), el.getAttribute('data-imp')),
+    'riskMatrixClear': () => window.MMGR.Render.clearRiskFilter(),
+    // MONOLITH-FEATURE-PARITY-DIRECTIVES RESTORE-7: WBS schedule-issues
+    // banner toggle (view-only).
+    'tglWbsIssues': () => window.MMGR.Render.toggleWbsIssues(),
     'addResource': () => window.MMGR.Resources.addResource(),
     'delResource': (el) => window.MMGR.Resources.delResource(parseInt(el.getAttribute('data-idx'))),
     'pushResourcesToBudget': () => window.MMGR.Resources.pushResourcesToBudget(),
@@ -1566,8 +1687,16 @@ window.MMGR = MMGR;
     'regenChartPrompt': () => window.MMGR.Charter.regenChartPrompt(),
     'copyChartPrompt': () => window.MMGR.Charter.copyChartPrompt(),
     'applyChartAIOutput': () => window.MMGR.Charter.applyChartAIOutput(),
+    // MONOLITH-FEATURE-PARITY-DIRECTIVES RESTORE-5/6: Print Charter + Save
+    // Charter (save mutates state and stays blocked in view-only; print is
+    // view-only).
+    'printCharter': () => window.MMGR.Charter.printCharter(),
+    'saveCharter': () => window.MMGR.Charter.saveCharter(),
     'cpAllPage': (el) => window.MMGR.App.cpAllPage(el.getAttribute('data-section')),
     'cpFormats': (el) => window.MMGR.App.cpFormats(el.getAttribute('data-kind')),
+    // MONOLITH-FEATURE-PARITY-DIRECTIVES RESTORE-3: one-click email template
+    // generator (view-only — composes + copies, never mutates state).
+    'emailTpl': (el) => window.MMGR.App.emailTpl(el.getAttribute('data-kind')),
     'exportGanttPNG': () => window.MMGR.App.exportGanttPNG(),
     'wxGeocode': () => window.MMGR.App.wxGeocode(),
     'wxRefresh': () => window.MMGR.App.wxRefresh(),
@@ -1659,6 +1788,12 @@ window.MMGR = MMGR;
     'tglCh': (el) => { window.MMGR.App.tglCh(); },
     'tglFlag': (el) => window.MMGR.App.tglFlag(el),
     'clearErrorLog': () => window.MMGR.App.clearErrorLog(),
+    // DIR-1a/1b: error log export (view-only) + remote-reporting toggle/URL
+    // (device-level preference, not project state).
+    'copyErrorLog': () => window.MMGR.App.copyErrorLog(),
+    'downloadErrorLog': () => window.MMGR.App.downloadErrorLog(),
+    'tglErrReport': (el) => window.MMGR.App.tglErrReport(),
+    'setErrWebhook': (el) => window.MMGR.App.setErrWebhook(el),
     // Rank 3.1: Core Mode vs Advanced Packs — toggling a pack mutates
     // state.packs (blocked in view-only, like every other write). Same
     // checkbox convention as tglFlag: Chrome has already flipped `checked`
@@ -1798,6 +1933,12 @@ window.MMGR = MMGR;
     'swDtab': 1, 'openDrwToPrompts': 1, 'openDrwToSave': 1,
     'jumpToDashTimeline': 1, 'closeMLC': 1, 'openMeetPrompt': 1,
     'copyMeetingMinutes': 1, 'runMonteCarlo': 1, 'undoClr': 1,
+    // MONOLITH-FEATURE-PARITY-DIRECTIVES restorations: risk matrix filtering,
+    // WBS issues banner toggle, Import Dates Copy List, email templates, and
+    // Print Charter are ALL view-only. saveCharter mutates state and stays
+    // blocked in view-only (deliberately not listed here).
+    'riskMatrixCell': 1, 'riskMatrixClear': 1, 'tglWbsIssues': 1,
+    'copyIdTemplate': 1, 'emailTpl': 1, 'printCharter': 1,
     // Phase 7: wxRefresh (view the forecast) + wxCopyNotice (copy text) are
     // read-only; wxGeocode writes the site location config and wxLogToday /
     // wxLogManual write the LD-claim weather log — all stay blocked in
@@ -1827,6 +1968,10 @@ window.MMGR = MMGR;
     // Rank 3.5: glass preference is a device-level screen choice, not
     // project state — allowed in view-only like the viewport prefs.
     'tglGlassMode': 1,
+    // DIR-1a/1b: copying/downloading the error log is read-only; the
+    // remote-reporting toggle + webhook URL are device-level preferences
+    // (localStorage, like the glass mode toggle) — never project state.
+    'copyErrorLog': 1, 'downloadErrorLog': 1, 'tglErrReport': 1, 'setErrWebhook': 1,
     // Rank 4.5: Google identity is a device-level label, never a gate to
     // project data — signing in/out/dismissing never mutates project state.
     'syncConnect': 1, 'syncSignOut': 1, 'syncClientId': 1, 'syncDismissSuggest': 1
@@ -1889,7 +2034,7 @@ window.MMGR = MMGR;
     const action = el.getAttribute('data-action');
     if (!guardReadonly(action)) return;
     const handler = ACTION_MAP[action];
-    if (handler && (action === 'updEnvelope' || action === 'saveSprint' || action === 'setWorkWeek' || action === 'setRegion' || action === 'loadProjectFile' || action === 'mergeProjectFile' || action === 'updCharter' || action === 'updClose' || action === 'setUserName' || action === 'addRaciTaskFromPicker' || action === 'addRaciPersonFromPicker' || action === 'updField' || action === 'updTaskField' || action === 'updKPI' || action === 'updKPILink' || action === 'updKPIDir' || action === 'updSpendEntry' || action === 'updRaciTask' || action === 'updRaciPerson' || action === 'claimSetCause' || action === 'aiSetTier' || action === 'aiSetProvider' || action === 'aiSetEndpoint' || action === 'aiSetModel' || action === 'aiSetKey')) {
+    if (handler && (action === 'updEnvelope' || action === 'saveSprint' || action === 'setWorkWeek' || action === 'setRegion' || action === 'loadProjectFile' || action === 'mergeProjectFile' || action === 'updCharter' || action === 'updClose' || action === 'setUserName' || action === 'addRaciTaskFromPicker' || action === 'addRaciPersonFromPicker' || action === 'updField' || action === 'updTaskField' || action === 'updKPI' || action === 'updKPILink' || action === 'updKPIDir' || action === 'updSpendEntry' || action === 'updRaciTask' || action === 'updRaciPerson' || action === 'claimSetCause' || action === 'aiSetTier' || action === 'aiSetProvider' || action === 'aiSetEndpoint' || action === 'aiSetModel' || action === 'aiSetKey' || action === 'setErrWebhook')) {
       handler(el, e);
     }
   });
@@ -1905,7 +2050,7 @@ window.MMGR = MMGR;
     const action = el.getAttribute('data-action');
     if (!guardReadonly(action)) return;
     const handler = ACTION_MAP[action];
-    if (handler && (action === 'updCharter' || action === 'updClose' || action === 'setUserName' || action === 'updEnvelope' || action === 'wiPreview' || action === 'idPreview' || action === 'regenChartPrompt' || action === 'updField' || action === 'updTaskField' || action === 'updKPI' || action === 'updSpendEntry' || action === 'updRaciTask' || action === 'updRaciPerson' || action === 'updDMAIC' || action === 'updMeetItemNote' || action === 'updMeetField' || action === 'handleCharterUpload' || action === 'aiSetEndpoint' || action === 'aiSetModel' || action === 'aiSetKey')) {
+    if (handler && (action === 'updCharter' || action === 'updClose' || action === 'setUserName' || action === 'updEnvelope' || action === 'wiPreview' || action === 'idPreview' || action === 'regenChartPrompt' || action === 'updField' || action === 'updTaskField' || action === 'updKPI' || action === 'updSpendEntry' || action === 'updRaciTask' || action === 'updRaciPerson' || action === 'updDMAIC' || action === 'updMeetItemNote' || action === 'updMeetField' || action === 'handleCharterUpload' || action === 'aiSetEndpoint' || action === 'aiSetModel' || action === 'aiSetKey' || action === 'setErrWebhook')) {
       handler(el, e);
     }
   });

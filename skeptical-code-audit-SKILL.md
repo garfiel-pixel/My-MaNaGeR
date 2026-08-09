@@ -1,6 +1,17 @@
 ---
 name: skeptical-code-audit
-description: Systematic, skeptical methodology for auditing a codebase for broken wiring — mismatched CSS classes toggled by JS, data-action/event handlers with no matching map entry, DOM ids referenced in JS but missing from HTML, dead code paths, and features that silently no-op instead of crashing. Use this whenever the user asks to "audit", "check for bugs", "verify everything works", "find what's broken", "double check the code", or asks you to confirm a codebase is consistent/complete before shipping — even if they don't name a specific bug. Especially useful for multi-file HTML/CSS/JS or template-based web apps where JS and markup can drift out of sync silently. Push yourself to use this any time you're about to claim "everything checks out" based on a single grep or regex pass — don't trust first-pass tooling output.
+description: >-
+  Systematic, skeptical methodology for auditing a codebase for broken wiring —
+  mismatched CSS classes toggled by JS, data-action/event handlers with no matching
+  map entry, DOM ids referenced in JS but missing from HTML, dead code paths, and
+  features that silently no-op instead of crashing. Use this whenever the user asks
+  to "audit", "check for bugs", "verify everything works", "find what's broken",
+  "double check the code", or asks you to confirm a codebase is consistent/complete
+  before shipping — even if they don't name a specific bug. Especially useful for
+  multi-file HTML/CSS/JS or template-based web apps where JS and markup can drift out
+  of sync silently. Push yourself to use this any time you're about to claim
+  "everything checks out" based on a single grep or regex pass — don't trust
+  first-pass tooling output.
 ---
 
 # Skeptical Code Audit

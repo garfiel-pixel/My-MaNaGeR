@@ -64,13 +64,18 @@ var MMGR = window.MMGR || {};
 
   // ---- Shaders: liquid-glass refraction (FIX-1, Option B) ----
   // The flat blob-glow shader was replaced with a genuine glass-refraction look:
-  // an iridescent procedural liquid field is sampled at RGB-channel-offset UVs
-  // along a slowly drifting distortion vector, so edges of the field bend like
-  // light through glass (chromatic fringing), plus a moving specular sheen that
-  // reads as a physical surface. The background is procedural (in-shader), so no
-  // texture uploads and no new THREE API surface — the qa-glass.cjs fake-THREE
-  // mock stays valid and the lifecycle gate is untouched. One full-screen quad,
-  // one draw call, theme-aware (uDark switches base + tint strength).
+  // a procedural liquid field is sampled at RGB-channel-offset UVs along a
+  // slowly drifting distortion vector, so edges of the field bend like light
+  // through glass — but the chromatic offset is kept small (0.004) so edges
+  // never rainbow. The palette is CONSTRAINED: a cool slate base with only a
+  // very-low-weight warm-gold accent (no iridescent multi-hue wash), and the
+  // accent is mixed into the theme base at <= 0.15 (dark) / 0.06 (light) so the
+  // glass stays dark in dark mode and near off-white in light mode. A faint
+  // specular sheen + vignette are kept so the surface still reads as physical
+  // glass. The background is procedural (in-shader), so no texture uploads and
+  // no new THREE API surface — the qa-glass.cjs fake-THREE mock stays valid and
+  // the lifecycle gate is untouched. One full-screen quad, one draw call,
+  // theme-aware (uDark switches base + tint strength).
   const VERT = [
     'void main() {',
     '  gl_Position = vec4(position.xy, 0.0, 1.0);',
@@ -114,15 +119,15 @@ var MMGR = window.MMGR || {};
     'float field(vec2 p){',
     '  return fbm(p);',
     '}',
-    // Iridescent palette — gold/blue/green/violet accents that shift as the
-    // surface flows, theme-compatible in both light and dark.
+    // Constrained palette — cool slate is the only hue, with a warm-gold accent
+    // at very low weight (0.22 max), so the field never shows the old iridescent
+    // purple/green/orange wash. Theme-compatible in both light and dark.
     'vec3 palette(float t){',
-    '  vec3 a = vec3(0.50, 0.32, 0.10);',
-    '  vec3 b = vec3(0.42, 0.38, 0.42);',
-    '  vec3 c = vec3(1.0, 1.0, 1.0);',
-    '  vec3 d = vec3(0.00, 0.33, 0.67);',
-    '  return a + b * cos(6.2831 * (c * t + d));',
-    '}',
+    '  vec3 slate = vec3(0.32, 0.36, 0.46);',
+    '  vec3 gold  = vec3(0.72, 0.56, 0.30);',
+    '  float w = 0.5 + 0.5 * sin(6.2831 * t * 0.4 + 1.7);',
+    '  return mix(slate, gold, 0.22 * w);',
+    '}', 
     'void main(){',
     '  vec2 uv = gl_FragCoord.xy / uRes;',
     '  vec2 p = uv - 0.5;',
@@ -134,15 +139,17 @@ var MMGR = window.MMGR || {};
     '    field(uv * 3.0 + vec2(-t * 0.08, t * 0.16)));',
     '  // Chromatic aberration — light bends through the surface: sample the',
     '  // background at RGB-offset UVs along a slowly drifting distortion vector.',
-    '  // Fringing is strongest wherever the field has edges (real edge refraction,',
-    '  // not a colored glow).',
-    '  vec2 ca = 0.018 * vec2(sin(t * 0.7), cos(t * 0.6));',
+    '  // Kept deliberately small (0.004) so edges refract without rainbow fringing.',
+    '  vec2 ca = 0.004 * vec2(sin(t * 0.7), cos(t * 0.6));', 
     '  float r = field((uv + ca + w) * 3.0);',
     '  float g = field((uv + w) * 3.0);',
     '  float b = field((uv - ca + w) * 3.0);',
     '  vec3 irid = palette(mix(r, b, 0.5) * 0.6 + g * 0.4 + 0.12);',
-    '  vec3 base = uDark > 0.5 ? vec3(0.020, 0.026, 0.052) : vec3(0.965, 0.967, 0.975);',
-    '  vec3 col = mix(base, irid, uDark > 0.5 ? 0.55 : 0.22);',
+    '  // Constrained accent weight: <= 0.15 in dark, ~0.06 in light — the glass',
+    '  // stays near the theme base (deep slate / off-white) instead of washing',
+    '  // the whole screen in color.',
+    '  vec3 base = uDark > 0.5 ? vec3(0.020, 0.026, 0.050) : vec3(0.970, 0.972, 0.978);',
+    '  vec3 col = mix(base, irid, uDark > 0.5 ? 0.15 : 0.06);', 
     '  // Specular sheen: light glides across the surface like glass.',
     '  float sheen = 0.09 * pow(1.0 - abs(p.y + 0.30 * sin(uv.x * 4.0 + t * 0.5)), 3.0);',
     '  sheen += 0.045 * pow(1.0 - abs(p.x - 0.30 * cos(t * 0.4)), 6.0);',

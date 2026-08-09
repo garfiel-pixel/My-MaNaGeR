@@ -84,7 +84,10 @@ var MMGR = window.MMGR || {};
       chips.dataset.filled = '1';
     }
     syncSettingsUI();
+    seedThreadFromState();
     modal.classList.add('open');
+    const q = U.$('ai-q');
+    if (q) setTimeout(function() { q.focus(); }, 60);
   }
 
   function close() {
@@ -96,17 +99,21 @@ var MMGR = window.MMGR || {};
     const q = U.$('ai-q');
     if (!q) return;
     q.value = (ns.Prompts && ns.Prompts.generate) ? ns.Prompts.generate(type) : '';
-    toast('Preset prompt loaded — Run it with AI, edit, or copy.');
+    q.focus();
+    toast('Preset prompt loaded — send it, edit it, or copy it.');
   }
 
   function clear() {
     const q = U.$('ai-q');
     const c = U.$('ai-ctx');
     const o = U.$('ai-out');
-    if (q) q.value = '';
+    const t = U.$('ai-trace');
+    if (q) { q.value = ''; q.style.height = ''; }
     if (c) c.value = '';
     if (o) o.value = '';
-    toast('Cleared.');
+    if (t) t.textContent = '';
+    resetThread();
+    toast('Cleared — new conversation.');
   }
 
   // ============================================================
@@ -281,6 +288,15 @@ var MMGR = window.MMGR || {};
     set('ai-key', cfg.apiKey || '');
     const cloudRow = U.$('ai-cfg-cloud');
     if (cloudRow) cloudRow.classList.toggle('is-hide', (cfg.tier || 'off') !== 'cloud');
+    // Engine-status pill in the chat header.
+    const pill = U.$('ai-engine-pill');
+    if (pill) pill.setAttribute('data-tier', cfg.tier || 'off');
+    const pillLbl = U.$('ai-engine-pill-label');
+    if (pillLbl) {
+      pillLbl.textContent = (cfg.tier || 'off') === 'local' ? 'Local · zero-key'
+        : (cfg.tier || 'off') === 'cloud' ? 'Cloud · BYO key'
+        : 'Off · copy-first';
+    }
   }
 
   // ---- Tier A: local zero-key engine ----
@@ -626,7 +642,20 @@ var MMGR = window.MMGR || {};
     const ctx = (c && c.value) ? c.value : buildContext();
     if (q) q.value = prompt;
     if (c) c.value = ctx;
-    const res = await submit(prompt, ctx, { type: type });
+    if (_aiBusy) return { ok: false, error: 'busy' };
+    _aiBusy = true;
+    showTyping();
+    let res;
+    try {
+      res = await submit(prompt, ctx, { type: type });
+    } catch (e) {
+      hideTyping();
+      res = { ok: false, error: (e && e.message) || 'AI run failed.' };
+    } finally {
+      _aiBusy = false;
+    }
+    await holdTyping();
+    renderThread(prompt, res);
     if (res.ok) {
       // Structured write-back into unified state (constraint #1/#5).
       ns.State.updateState(function(s) {
@@ -650,13 +679,27 @@ var MMGR = window.MMGR || {};
   }
 
   // ---- Run the free-form question box ----
+  let _aiBusy = false; // guards the Send path against rapid double-submits
   async function runQuestion() {
+    if (_aiBusy) return { ok: false, error: 'busy' };
     const q = U.$('ai-q');
     const c = U.$('ai-ctx');
     const prompt = (q && q.value) || '';
     if (!prompt.trim()) { toast('Type a question first.', 'err'); return { ok: false, error: 'empty question' }; }
     const ctx = (c && c.value) ? c.value : buildContext();
-    const res = await submit(prompt, ctx, {});
+    _aiBusy = true;
+    showTyping();
+    let res;
+    try {
+      res = await submit(prompt, ctx, {});
+    } catch (e) {
+      hideTyping();
+      res = { ok: false, error: (e && e.message) || 'AI call failed.' };
+    } finally {
+      _aiBusy = false;
+    }
+    await holdTyping();
+    renderThread(prompt, res);
     if (res.ok) {
       renderOutput(null, res);
       toast('Answer generated (' + res.tier + ').', 'ok');
@@ -688,6 +731,130 @@ var MMGR = window.MMGR || {};
     U.copyToClipboard(out.value);
     toast('Result copied.');
   }
+
+  // ---- Chat-thread rendering ----------------------------------------------
+  // The window renders each exchange as user/assistant bubbles (a real chat
+  // UI) while #ai-out stays the hidden functional store copyOut/state use.
+  let _typingEl = null;
+  let _typingShownAt = 0;
+  const MIN_TYPING_MS = 500; // hold the typing beat long enough to read, even for instant local answers
+  function escHtml(s) {
+    const d = document.createElement('div');
+    d.textContent = (s === undefined || s === null) ? '' : String(s);
+    return d.innerHTML;
+  }
+  function scrollThread() {
+    const th = U.$('ai-thread');
+    if (th) th.scrollTop = th.scrollHeight;
+  }
+  function hideWelcome() {
+    const w = U.$('ai-welcome');
+    if (w) w.classList.add('is-hide');
+  }
+  function hideTyping() {
+    if (_typingEl) { _typingEl.remove(); _typingEl = null; }
+  }
+  function resetThread() {
+    hideTyping();
+    const th = U.$('ai-thread');
+    if (!th) return;
+    if (th.dataset) delete th.dataset.seeded;
+    Array.prototype.forEach.call(th.querySelectorAll('.ai-bubble'), function(b) {
+      if (b.id !== 'ai-welcome') b.remove();
+    });
+    const w = U.$('ai-welcome');
+    if (w) w.classList.remove('is-hide');
+  }
+  function showTyping() {
+    const th = U.$('ai-thread');
+    if (!th) return;
+    hideWelcome();
+    hideTyping();
+    _typingShownAt = Date.now();
+    _typingEl = document.createElement('div');
+    _typingEl.className = 'ai-bubble ai-bot ai-typing';
+    _typingEl.innerHTML = '<span></span><span></span><span></span>';
+    th.appendChild(_typingEl);
+    scrollThread();
+  }
+  // Let the typing beat play for at least MIN_TYPING_MS so fast (local) answers
+  // don't blink it away imperceptibly. Adds no latency when the call is slower.
+  async function holdTyping() {
+    const elapsed = Date.now() - _typingShownAt;
+    if (elapsed < MIN_TYPING_MS) {
+      await new Promise(function(r) { setTimeout(r, MIN_TYPING_MS - elapsed); });
+    }
+  }
+  function addBubble(role, innerHtml) {
+    const th = U.$('ai-thread');
+    if (!th) return;
+    hideWelcome();
+    const b = document.createElement('div');
+    b.className = role === 'user' ? 'ai-bubble ai-user' : 'ai-bubble ai-bot';
+    b.innerHTML = innerHtml;
+    th.appendChild(b);
+    scrollThread();
+  }
+  function botAvatar() {
+    return '<div class="ai-bot-avatar"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg></div>';
+  }
+  function botBubbleHtml(textHtml, metaHtml, traceHtml) {
+    return botAvatar() + '<div class="ai-bot-body"><div class="ai-text">' + textHtml + '</div>' + (metaHtml || '') + (traceHtml || '') + '</div>';
+  }
+  function botMeta(engine) {
+    return '<div class="ai-meta"><span>⚡ ' + escHtml(engine) + '</span></div>';
+  }
+  // Render one exchange: prompt = user bubble, res = submit() result shape.
+  function renderThread(prompt, res) {
+    hideTyping();
+    if (prompt && String(prompt).trim()) {
+      addBubble('user', escHtml(prompt).replace(/\n/g, '<br>'));
+    }
+    if (!res) return;
+    if (res.ok) {
+      const engine = (res.tier === 'local') ? 'Local engine' : (res.tier === 'cloud' ? 'Cloud' : res.tier) + (res.model ? ' · ' + res.model : '');
+      const trace = (res.trace && res.trace.length)
+        ? '<div class="ai-trace-inline">Traceable to: ' + escHtml(res.trace.join(', ')) + '</div>'
+        : '';
+      addBubble('bot', botBubbleHtml(escHtml(res.text).replace(/\n/g, '<br>'), botMeta(engine), trace));
+    } else {
+      addBubble('bot', botAvatar() + '<div class="ai-bot-body ai-err">' + escHtml(res.error || 'Something went wrong.') + '</div>');
+    }
+  }
+  // On open, surface the most recent persisted result so the conversation
+  // feels continuous (reads state.aiOutputs only — never invents anything).
+  function seedThreadFromState() {
+    const th = U.$('ai-thread');
+    if (!th || th.dataset.seeded) return;
+    th.dataset.seeded = '1';
+    const s = (ns.State && ns.State.getState) ? ns.State.getState() : {};
+    const outputs = (s && s.aiOutputs) || {};
+    const types = Object.keys(outputs);
+    if (!types.length) return;
+    const last = outputs[types[types.length - 1]];
+    if (!last || !last.text) return;
+    const engine = (last.tier === 'local') ? 'Local engine' : (last.tier === 'cloud' ? 'Cloud' : last.tier);
+    addBubble('bot', botBubbleHtml(escHtml(last.text).replace(/\n/g, '<br>'),
+      botMeta(engine + ' · saved ' + (last.at ? new Date(last.at).toLocaleString() : ''))));
+  }
+
+  // ---- Chat input: Enter sends (Shift+Enter = new line) + auto-grow ------
+  (function() {
+    const q = U.$('ai-q');
+    if (!q) return;
+    q.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        runQuestion();
+      }
+    });
+    const grow = function() {
+      q.style.height = 'auto';
+      q.style.height = Math.min(q.scrollHeight, 120) + 'px';
+    };
+    q.addEventListener('input', grow);
+    q.addEventListener('focus', grow);
+  })();
 
   // ---- API ----
   ns.AiWin = {

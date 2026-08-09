@@ -203,6 +203,11 @@ var MMGR = window.MMGR || {};
     // never a gate) into the Controls drawer.
     if (ns.Sync && ns.Sync.renderSyncSection) ns.Sync.renderSyncSection();
 
+    // GOOGLE-DRIVE-BACKUP: render the optional Drive backup/restore section
+    // into the Controls drawer (project.html only — app.html uses its
+    // auth-bar controls). Same zero-throw guard as the sync section above.
+    if (ns.GoogleAuth && ns.GoogleAuth.renderDriveSection) ns.GoogleAuth.renderDriveSection();
+
     // Run validation
     const issues = ns.State.validate();
     if (issues.length > 0) {
@@ -1746,6 +1751,16 @@ window.MMGR = MMGR;
     'syncSignOut': () => window.MMGR.App.syncSignOut(),
     'syncClientId': (el) => window.MMGR.App.syncClientId(el),
     'syncDismissSuggest': () => window.MMGR.App.syncDismissSuggest(),
+    // GOOGLE-DRIVE-BACKUP: optional Drive backup/restore controls in the
+    // Controls drawer (project.html). Backup is export-equivalent (reads the
+    // workspace, writes Drive + a device pref), restore is import-equivalent
+    // (confirm-gated, overwrites local workspace), and the auto-interval is a
+    // device pref — all user-initiated, never gating. GoogleAuth is optional,
+    // so every handler guards before touching it (zero-throw module).
+    'driveBackup': () => { const G = window.MMGR.GoogleAuth; if (G && G.triggerBackup) G.triggerBackup(); },
+    'driveRestore': () => { const G = window.MMGR.GoogleAuth; if (G && G.triggerRestore) G.triggerRestore(); },
+    'driveAutoInterval': (el) => { const G = window.MMGR.GoogleAuth; if (G && G.setAutoIntervalFrom) G.setAutoIntervalFrom(el); },
+    'driveSetPass': (el) => { const G = window.MMGR.GoogleAuth; if (G && G.setDrivePassFrom) G.setDrivePassFrom(el); },
     'cascadeGantt': () => window.MMGR.App.cascadeGantt(),
     'toggleCritical': (el) => window.MMGR.App.toggleCritical(el),
     'tglLeadtimeLane': (el) => window.MMGR.App.tglLeadtimeLane(el),
@@ -1974,7 +1989,14 @@ window.MMGR = MMGR;
     'copyErrorLog': 1, 'downloadErrorLog': 1, 'tglErrReport': 1, 'setErrWebhook': 1,
     // Rank 4.5: Google identity is a device-level label, never a gate to
     // project data — signing in/out/dismissing never mutates project state.
-    'syncConnect': 1, 'syncSignOut': 1, 'syncClientId': 1, 'syncDismissSuggest': 1
+    'syncConnect': 1, 'syncSignOut': 1, 'syncClientId': 1, 'syncDismissSuggest': 1,
+    // GOOGLE-DRIVE-BACKUP: backup is export-equivalent (reads the workspace,
+    // writes Drive + a device pref) and the auto-interval + backup passphrase
+    // are device-level preferences (localStorage / sessionStorage, never
+    // project state) — safe in view-only, like claimGenerate / digestGenerate
+    // / runMonteCarlo above. Restore is DELIBERATELY excluded: it overwrites
+    // local workspace, exactly like import, so it stays blocked in view-only.
+    'driveBackup': 1, 'driveAutoInterval': 1, 'driveSetPass': 1
   };
   function guardReadonly(action) {
     // The ACTION_MAP delegation IIFE has no closure over the App module's
@@ -2034,7 +2056,7 @@ window.MMGR = MMGR;
     const action = el.getAttribute('data-action');
     if (!guardReadonly(action)) return;
     const handler = ACTION_MAP[action];
-    if (handler && (action === 'updEnvelope' || action === 'saveSprint' || action === 'setWorkWeek' || action === 'setRegion' || action === 'loadProjectFile' || action === 'mergeProjectFile' || action === 'updCharter' || action === 'updClose' || action === 'setUserName' || action === 'addRaciTaskFromPicker' || action === 'addRaciPersonFromPicker' || action === 'updField' || action === 'updTaskField' || action === 'updKPI' || action === 'updKPILink' || action === 'updKPIDir' || action === 'updSpendEntry' || action === 'updRaciTask' || action === 'updRaciPerson' || action === 'claimSetCause' || action === 'aiSetTier' || action === 'aiSetProvider' || action === 'aiSetEndpoint' || action === 'aiSetModel' || action === 'aiSetKey' || action === 'setErrWebhook')) {
+    if (handler && (action === 'updEnvelope' || action === 'saveSprint' || action === 'setWorkWeek' || action === 'setRegion' || action === 'loadProjectFile' || action === 'mergeProjectFile' || action === 'updCharter' || action === 'updClose' || action === 'setUserName' || action === 'addRaciTaskFromPicker' || action === 'addRaciPersonFromPicker' || action === 'updField' || action === 'updTaskField' || action === 'updKPI' || action === 'updKPILink' || action === 'updKPIDir' || action === 'updSpendEntry' || action === 'updRaciTask' || action === 'updRaciPerson' || action === 'claimSetCause' || action === 'aiSetTier' || action === 'aiSetProvider' || action === 'aiSetEndpoint' || action === 'aiSetModel' || action === 'aiSetKey' || action === 'setErrWebhook' || action === 'driveAutoInterval' || action === 'driveSetPass')) {
       handler(el, e);
     }
   });

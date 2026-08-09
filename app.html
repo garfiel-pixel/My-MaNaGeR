@@ -79,6 +79,28 @@
   <div class="auth-bar">
     <div id="google-signin-button"></div>
     <div id="google-user-chip" hidden></div>
+    <!-- GOOGLE-DRIVE-BACKUP: optional Drive backup/restore buttons, wired by
+         js/mmgr-google-auth.js (zero inline onclick — matches the page rule). -->
+    <div class="cloud-sync-controls">
+      <button type="button" id="btn-drive-backup" class="btn btn-n btn-s" title="Save all workspace data to your Google Drive">
+        <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-upload"></use></svg> Backup to Drive
+      </button>
+      <button type="button" id="btn-drive-restore" class="btn btn-n btn-s" title="Pull the workspace backup back from Google Drive">
+        <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Restore from Drive
+      </button>
+      <label class="drive-auto" for="drive-auto-interval">
+        <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg>
+        <span>Auto</span>
+        <select id="drive-auto-interval" class="drive-auto-select" aria-label="Automatic backup interval">
+          <option value="off">Off</option>
+          <option value="15">15 min</option>
+          <option value="30">30 min</option>
+          <option value="60">60 min</option>
+        </select>
+      </label>
+      <input type="password" id="drive-pass" class="drive-pass-in" placeholder="🔒 backup passphrase" title="Encrypt backups with a passphrase (optional) — enter once per browser session" autocomplete="new-password">
+      <span id="drive-sync-status" class="drive-status" role="status" aria-live="polite"></span>
+    </div>
   </div>
 
   <div class="notice"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-lock"></use></svg> Contact the admin to get an access code for this project.</div>

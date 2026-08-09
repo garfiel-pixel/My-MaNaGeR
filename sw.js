@@ -14,7 +14,7 @@
    project data lives in localStorage/IndexedDB, not here — this
    worker never touches user data.
    ============================================================ */
-const CACHE = 'mmgr-shell-v5'; // bumped when shell content changes (v5: GOOGLE-OPERATOR-IDENTITY-v1 added js/mmgr-google-auth.js + app.html/admin.html auth bar)
+const CACHE = 'mmgr-shell-v11'; // bumped when shell content changes (v11: glass shader palette constrained — cool slate + low-weight gold, accent mix <= 0.15 dark / 0.06 light, chromatic offset reduced)
 const SHELL = [
   './',
   'index.html',

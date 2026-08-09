@@ -2,8 +2,10 @@
    My MaNaGeR — Optional Operator Identity (GOOGLE-OPERATOR-
    IDENTITY-v1)
    ------------------------------------------------------------
-   Loaded by app.html (and admin.html). This is an OPTIONAL
-   operator-identity layer ONLY:
+   Loaded by app.html, admin.html, and project.html (the project
+   Controls drawer mounts the optional Drive backup section there
+   via #drive-section). This is an OPTIONAL operator-identity layer
+   ONLY:
 
    - It NEVER replaces, bypasses, or weakens per-project access
      codes. No code path in this module opens project data — the
@@ -167,7 +169,712 @@ var MMGR = window.MMGR || {};
     document.dispatchEvent(new CustomEvent('mmgr:google-signed-out'));
   }
 
+  /* ============================================================
+     GOOGLE-DRIVE-BACKUP — optional Drive backup & restore
+     ------------------------------------------------------------
+     Strictly client-side, strictly local-first: the workspace JSON
+     goes DIRECTLY from this browser to the Google Drive REST API
+     using the OAuth access token — no server relay, no third party.
+
+     - The GIS ID-token flow (above) cannot request OAuth scopes, so
+       a separate GIS OAuth2 token client is used for Drive. It asks
+       for https://www.googleapis.com/auth/drive.file ONLY — the app
+       sees files it created (mymanager-backup.json), never the
+       user's whole Drive.
+     - The access token is kept in a MODULE variable (session memory)
+       — never localStorage, never shipped to the Worker, never
+       logged. It is refreshed silently by GIS when needed.
+     - Backup collects ONLY the workspace slots in localStorage
+       (mmgr_state_*, mmgr_unlocked_*, mmgr_scope_*, current project)
+       — device-only slots (sync identity, client id, error webhook,
+       glass mode, viewport prefs) are deliberately excluded, so they
+       never leave this device.
+     - OPTIONAL passphrase encryption: when a passphrase is set, the
+       envelope is sealed with AES-256-GCM (key derived via PBKDF2,
+       250k iterations, fresh salt + IV per backup) BEFORE upload, so
+       project-state secrets like AI API keys never sit in Drive as
+       plaintext. The passphrase lives in session memory only (module
+       var + sessionStorage) and never leaves this device. Encryption
+       is FAIL-CLOSED: while it is ON, a backup with no session
+       passphrase refuses to upload rather than silently downgrade to
+       plaintext. Legacy plaintext backups still restore fine.
+     - Restore validates the envelope, writes back only workspace
+       keys, then reloads. A stale backup never wipes local state
+       without the user confirming first.
+     - Zero-throw: missing GIS, offline, denied scope, or a 401 all
+       degrade to a status line — never a crash.
+     ============================================================ */
+  const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
+  const DRIVE_FILE = 'mymanager-backup.json';
+  const DRIVE_API = 'https://www.googleapis.com/drive/v3/files';
+  const DRIVE_UPLOAD = 'https://www.googleapis.com/upload/drive/v3/files';
+
+  let _driveToken = null;      // session memory ONLY (module variable)
+  let _driveTokenExpiry = 0;
+  let _driveTokenClient = null;
+  let _tokenWaiter = null;
+  let _tokenInflight = false;  // re-entry guard: one token request at a time
+
+  // Auto-backup device-level prefs (localStorage, same family as the
+  // mmgr_sync_* slots — never project state).
+  const AUTO_KEY = 'mmgr_drive_auto';   // 'off' | '15' | '30' | '60' (minutes)
+  const LAST_KEY = 'mmgr_drive_last';   // ISO timestamp of last successful auto backup
+
+  // The OAuth access token also caches to sessionStorage — literal "session
+  // memory" that survives a reload WITHIN the same tab session, so the
+  // background auto-backup keeps working after refresh without re-consent.
+  // Never localStorage (a token must not outlive the session), never shipped.
+  const DRIVE_TOKEN_KEY = 'mmgr_drive_token';
+  const DRIVE_TOKEN_EXP_KEY = 'mmgr_drive_token_exp';
+  const DRIVE_GRANT_KEY = 'mmgr_drive_granted'; // '1' once a grant was ever obtained
+
+  let _autoInterval = 'off';
+  let _autoTimer = null;
+  let _driveBusy = false;     // manual/auto mutual exclusion for Drive ops
+
+  // Optional passphrase encryption. The passphrase itself is session memory
+  // ONLY (module var + sessionStorage, exactly like the OAuth token) — never
+  // localStorage, never shipped — while the "encryption is ON" flag is a
+  // persistent device pref (localStorage) so a fresh session fails CLOSED
+  // instead of silently uploading plaintext after a browser restart.
+  const ENC_FLAG_KEY = 'mmgr_drive_enc';   // '1' = backups must be encrypted
+  const ENC_PASS_KEY = 'mmgr_drive_pass';  // sessionStorage: this session's passphrase
+  const KDF_ITERS = 250000;                // PBKDF2-SHA256 iterations
+  const KDF_HASH = 'SHA-256';
+  const CIPHER = 'AES-256-GCM';
+  let _drivePass = '';                     // session memory ONLY
+
+  function oauth2Ready() {
+    return !!(window.google && window.google.accounts && window.google.accounts.oauth2);
+  }
+
+  // The GIS script is async+defer in the page head — if the user clicks a
+  // Drive button before it has loaded, wait (briefly) for it instead of
+  // reporting "unavailable". Injects the script if the tag is missing
+  // (admin.html / offline-first shells). Zero-throw; rejects on timeout.
+  function waitForOAuth2() {
+    if (oauth2Ready()) return Promise.resolve(true);
+    return new Promise(function(resolve) {
+      const s = document.querySelector('script[src*="gsi/client"]');
+      let t = null;
+      let done = false;
+      const finish = function(ok) { if (!done) { done = true; if (t) clearTimeout(t); resolve(ok); } };
+      if (s && typeof s.addEventListener === 'function') {
+        s.addEventListener('load', function() { finish(oauth2Ready()); });
+        s.addEventListener('error', function() { finish(false); });
+      } else {
+        try {
+          const tag = document.createElement('script');
+          tag.src = GIS_SRC;
+          tag.async = true;
+          tag.onload = function() { finish(oauth2Ready()); };
+          tag.onerror = function() { finish(false); };
+          document.head.appendChild(tag);
+        } catch (e) { finish(false); return; }
+      }
+      t = setTimeout(function() { finish(oauth2Ready()); }, 8000);
+    });
+  }
+
+  // Workspace keys only — device-only slots never ride along (see header).
+  function isWorkspaceKey(k) {
+    return k === 'mmgr_current_project' ||
+      k.indexOf('mmgr_state_') === 0 ||
+      k.indexOf('mmgr_unlocked_') === 0 ||
+      k.indexOf('mmgr_scope_') === 0;
+  }
+
+  // GIS OAuth2 token-client callback: stores the access token in session
+  // memory and resolves the pending promise. Never throws.
+  function persistDriveToken(token, expiry) {
+    _driveToken = token;
+    _driveTokenExpiry = expiry;
+    try {
+      sessionStorage.setItem(DRIVE_TOKEN_KEY, token);
+      sessionStorage.setItem(DRIVE_TOKEN_EXP_KEY, String(expiry));
+    } catch (e) { /* sessionStorage blocked — module var still holds it */ }
+  }
+  function clearDriveTokenCache() {
+    _driveToken = null;
+    _driveTokenExpiry = 0;
+    try { sessionStorage.removeItem(DRIVE_TOKEN_KEY); sessionStorage.removeItem(DRIVE_TOKEN_EXP_KEY); } catch (e) { /* ignore */ }
+  }
+  // Restore the token from sessionStorage if a valid one exists there.
+  function restoreDriveToken() {
+    if (_driveToken && Date.now() < _driveTokenExpiry) return _driveToken;
+    try {
+      const t = sessionStorage.getItem(DRIVE_TOKEN_KEY);
+      const e = parseInt(sessionStorage.getItem(DRIVE_TOKEN_EXP_KEY) || '0', 10);
+      if (t && e > Date.now()) {
+        _driveToken = t;
+        _driveTokenExpiry = e;
+        return t;
+      }
+    } catch (e2) { /* ignore */ }
+    return null;
+  }
+
+  function driveTokenCallback(resp) {
+    const w = _tokenWaiter;
+    _tokenWaiter = null;
+    if (!w) return;
+    if (resp && resp.access_token) {
+      persistDriveToken(resp.access_token, Date.now() + ((resp.expires_in || 3600) * 1000) - 30000); // 30s safety margin
+      try { localStorage.setItem(DRIVE_GRANT_KEY, '1'); } catch (e) { /* ignore */ }
+      w.resolve(_driveToken);
+    } else {
+      w.reject(new Error((resp && resp.error_description) || (resp && resp.error) || 'Google Drive access was not granted.'));
+    }
+  }
+
+  // Lazy-build the GIS OAuth2 token client for drive.file. Zero-throw.
+  function driveTokenClient() {
+    if (!oauth2Ready()) return null;
+    if (_driveTokenClient) return _driveTokenClient;
+    try {
+      _driveTokenClient = window.google.accounts.oauth2.initTokenClient({
+        client_id: CLIENT_ID,
+        scope: DRIVE_SCOPE,
+        callback: driveTokenCallback
+      });
+    } catch (e) { _driveTokenClient = null; }
+    return _driveTokenClient;
+  }
+
+  // Resolves with a drive.file access token. forceConsent pops the consent
+  // screen; otherwise GIS stays silent when a previous grant exists.
+  function requestDriveToken(forceConsent) {
+    const client = driveTokenClient();
+    if (!client) {
+      return Promise.reject(new Error('Google sign-in is unavailable (offline or blocked) — Drive backup needs Google.'));
+    }
+    return new Promise(function(resolve, reject) {
+      _tokenWaiter = { resolve: resolve, reject: reject };
+      try {
+        client.requestAccessToken(forceConsent ? { prompt: 'consent' } : {});
+      } catch (e) {
+        _tokenWaiter = null;
+        reject(e);
+      }
+    });
+  }
+
+  async function getDriveToken(forceConsent) {
+    if (!forceConsent) {
+      const cached = restoreDriveToken();
+      if (cached) return cached;
+    }
+    // Re-entry guard: never stack a second token request on top of a pending
+    // one (a stale waiter would orphan the first promise forever).
+    if (_tokenInflight) {
+      throw new Error('A Google sign-in request is already in progress — wait for it to finish.');
+    }
+    try {
+      if (!oauth2Ready()) await waitForOAuth2(); // let the async GIS script catch up
+      _tokenInflight = true;
+      const t = await requestDriveToken(forceConsent);
+      _tokenInflight = false;
+      return t;
+    } catch (e) {
+      _tokenInflight = false;
+      // On the silent path, retry once with the consent screen so real
+      // errors (denied scope, misconfigured client) surface to the user.
+      if (!forceConsent && !(e && e.message && e.message.indexOf('already in progress') > -1)) {
+        return requestDriveToken(true);
+      }
+      throw e;
+    }
+  }
+
+  // Silent variant for the background auto-backup timer: NEVER pops the
+  // consent screen, NEVER throws. Returns a valid token or null — the timer
+  // just skips that tick and tries again on the next interval.
+  async function getDriveTokenSilent() {
+    const cached = restoreDriveToken();
+    if (cached) return cached;
+    // No usable token: only attempt a (silent) refresh if a grant was ever
+    // obtained on this device — otherwise a timer would surprise the user
+    // with a consent popup out of nowhere.
+    let granted = false;
+    try { granted = localStorage.getItem(DRIVE_GRANT_KEY) === '1'; } catch (e) { /* ignore */ }
+    if (!granted || _tokenInflight) return null;
+    try {
+      if (!oauth2Ready()) await waitForOAuth2();
+      if (!oauth2Ready()) return null;
+      _tokenInflight = true;
+      const t = await requestDriveToken(false); // GIS stays silent when a prior grant exists
+      _tokenInflight = false;
+      return t;
+    } catch (e) {
+      _tokenInflight = false;
+      if (window.console && window.console.warn) window.console.warn('mmgr-google-auth: silent Drive token refresh skipped', e && e.message);
+      return null;
+    }
+  }
+
+  // Authorized Drive fetch with one 401 → refresh-and-retry. Never throws on
+  // HTTP errors; callers inspect res.ok. silentOnly (auto-backup path) keeps
+  // the retry quiet: refresh via getDriveTokenSilent (never a consent popup)
+  // and bail out — no fallback to the interactive consent screen.
+  async function driveFetch(url, options, token, retried, silentOnly) {
+    if (!token) token = silentOnly ? await getDriveTokenSilent() : await getDriveToken(false);
+    if (!token) throw new Error('No Google Drive access token.');
+    const res = await fetch(url, {
+      method: (options && options.method) || 'GET',
+      headers: Object.assign({ Authorization: 'Bearer ' + token }, (options && options.headers) || {}),
+      body: options && options.body
+    });
+    if (res.status === 401 && !retried) {
+      clearDriveTokenCache();
+      const fresh = silentOnly ? await getDriveTokenSilent() : await getDriveToken(false);
+      if (!fresh) throw new Error('Google Drive session expired — sign in again to back up.');
+      return driveFetch(url, options, fresh, true, silentOnly);
+    }
+    return res;
+  }
+
+  function driveApiError(res, data) {
+    const e = data && data.error;
+    if (typeof e === 'string') return e;
+    if (e && e.message) return e.message;
+    if (data && data.message) return data.message;
+    return '';
+  }
+
+  // ---- Passphrase encryption (Web Crypto, secure-context only) ------------
+  // AES-256-GCM with a PBKDF2-derived key; fresh 16-byte salt + 12-byte IV on
+  // every backup so identical workspaces never produce identical ciphertext.
+  // GCM authenticates the ciphertext, so a wrong passphrase FAILS decryption
+  // (tag mismatch) instead of yielding garbage — restore can detect it and
+  // refuses to overwrite anything.
+  function cryptoOk() {
+    return !!(window.crypto && window.crypto.subtle && window.TextEncoder && window.TextDecoder);
+  }
+  function bytesToB64(bytes) {
+    let s = '';
+    for (let i = 0; i < bytes.length; i += 0x8000) { // chunked — no call-stack overflow on big states
+      s += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+    }
+    return btoa(s);
+  }
+  function b64ToBytes(b64) {
+    const bin = atob(b64);
+    const out = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+    return out;
+  }
+  // iters/hash default to the current constants but may be overridden from the
+  // envelope's recorded kdf metadata (see decryptPayload) so that a future KDF
+  // change never bricks older encrypted backups.
+  async function derivePassKey(pass, saltBytes, iters, hash) {
+    const material = await crypto.subtle.importKey('raw', new TextEncoder().encode(pass), 'PBKDF2', false, ['deriveKey']);
+    return crypto.subtle.deriveKey(
+      { name: 'PBKDF2', salt: saltBytes, iterations: iters || KDF_ITERS, hash: hash || KDF_HASH },
+      material,
+      { name: 'AES-GCM', length: 256 },
+      false,
+      ['encrypt', 'decrypt']
+    );
+  }
+  // Seal a plain JSON object -> { salt, iv, data(base64 ciphertext) }.
+  async function encryptPayload(obj, pass) {
+    if (!cryptoOk()) throw new Error('Encryption is unavailable in this browser (needs HTTPS).');
+    const salt = crypto.getRandomValues(new Uint8Array(16));
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const key = await derivePassKey(pass, salt);
+    const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv }, key, new TextEncoder().encode(JSON.stringify(obj)));
+    return { salt: bytesToB64(salt), iv: bytesToB64(iv), data: bytesToB64(new Uint8Array(ct)) };
+  }
+  // Unseal { salt, iv, data }. GCM auth failure (wrong passphrase / tampered
+  // file) rejects with an OperationError, which callers translate to a clear
+  // message — nothing is ever written on a failed decrypt.
+  // kdfOverride comes from the envelope ({ iterations, hash }) so backups made
+  // with different KDF settings still decrypt; falls back to the constants.
+  async function decryptPayload(enc, pass, kdfOverride) {
+    if (!cryptoOk()) throw new Error('Encryption is unavailable in this browser (needs HTTPS).');
+    if (!enc || !enc.salt || !enc.iv || !enc.data) throw new Error('Encrypted backup is missing its key material.');
+    const iters = (kdfOverride && kdfOverride.iterations > 0) ? kdfOverride.iterations : KDF_ITERS;
+    const hash = (kdfOverride && kdfOverride.hash) ? kdfOverride.hash : KDF_HASH;
+    const key = await derivePassKey(pass, b64ToBytes(enc.salt), iters, hash);
+    const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: b64ToBytes(enc.iv) }, key, b64ToBytes(enc.data));
+    return JSON.parse(new TextDecoder().decode(pt));
+  }
+
+  // ---- Passphrase state (session memory + persistent ON flag) --------------
+  function encryptionEnabled() {
+    let flag = false;
+    try { flag = localStorage.getItem(ENC_FLAG_KEY) === '1'; } catch (e) { /* ignore */ }
+    return flag || !!_drivePass;
+  }
+  function getDrivePass() {
+    if (_drivePass) return _drivePass;
+    try { _drivePass = sessionStorage.getItem(ENC_PASS_KEY) || ''; } catch (e) { _drivePass = ''; }
+    return _drivePass;
+  }
+  // Setting a non-empty passphrase turns encryption ON (persistent flag);
+  // clearing it turns it OFF again. Returns whether encryption is now on.
+  function setDrivePass(pass) {
+    const p = String(pass || '');
+    _drivePass = p;
+    try {
+      if (p) {
+        sessionStorage.setItem(ENC_PASS_KEY, p);
+        localStorage.setItem(ENC_FLAG_KEY, '1');
+      } else {
+        sessionStorage.removeItem(ENC_PASS_KEY);
+        localStorage.removeItem(ENC_FLAG_KEY);
+      }
+    } catch (e) { /* storage blocked — module var still holds it */ }
+    return !!p;
+  }
+  // data-action / auth-bar entry point. Refuses to enable when the browser
+  // can't encrypt, and never leaves the passphrase echoing in the input.
+  function setDrivePassFrom(el) {
+    const v = (el && el.value != null) ? el.value : '';
+    if (v && !cryptoOk()) {
+      if (el && 'value' in el) el.value = '';
+      setDriveStatus('Encryption is unavailable in this browser (needs HTTPS) — passphrase not saved.', 'err');
+      return;
+    }
+    const on = setDrivePass(v);
+    if (el && 'value' in el) el.value = ''; // never echo the passphrase in the DOM
+    setDriveStatus(on
+      ? 'Backup encryption ON — future backups are passphrase-encrypted (AES-256-GCM).'
+      : 'Backup encryption OFF — backups upload as plaintext.',
+      on ? 'ok' : 'warn');
+  }
+
+  // Collect ONLY the workspace slots (see isWorkspaceKey). Envelope has a
+  // version + kind so restore can reject foreign JSON safely.
+  function collectWorkspace() {
+    const data = {};
+    try {
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && isWorkspaceKey(k)) data[k] = localStorage.getItem(k);
+      }
+    } catch (e) { /* storage locked — best effort */ }
+    return {
+      app: 'mymanager',
+      kind: 'workspace-backup',
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      data: data
+    };
+  }
+
+  // Find the existing backup so repeated backups UPDATE it instead of
+  // piling up duplicate files in Drive. Returns null on first run.
+  async function findDriveBackup(silentOnly) {
+    const q = encodeURIComponent("name = '" + DRIVE_FILE + "' and trashed = false");
+    const res = await driveFetch(DRIVE_API + '?q=' + q + '&spaces=drive&fields=files(id,name,modifiedTime)', null, null, false, silentOnly);
+    const data = await res.json().catch(function() { return {}; });
+    if (!res.ok) throw new Error(driveApiError(res, data) || 'Drive search failed (HTTP ' + res.status + ').');
+    return (data.files && data.files[0]) || null;
+  }
+
+  // Package the workspace and push it to Drive (multipart upload). Creates
+  // mymanager-backup.json on first run, PATCHes it on later runs. When
+  // silentOnly is set (auto-backup) every Drive call stays quiet — no consent
+  // popup can ever come from this path.
+  async function backupToDrive(silentOnly) {
+    const payload = collectWorkspace();
+    // Optional passphrase encryption: when ON, seal the workspace envelope
+    // with AES-256-GCM BEFORE it leaves this device. Fail-closed — if the
+    // flag is on but no passphrase is in session memory (fresh browser
+    // session), REFUSE to upload rather than silently write plaintext to
+    // Drive. The inner payload (exportedAt + data) is what gets sealed.
+    let uploadDoc = payload; // plaintext (legacy envelope v1) when encryption is off
+    if (encryptionEnabled()) {
+      const pass = getDrivePass();
+      if (!pass) {
+        throw new Error('Backup encryption is ON — enter your backup passphrase first (a backup never uploads plaintext while it\u2019s on).');
+      }
+      if (!cryptoOk()) {
+        throw new Error('Encryption is unavailable in this browser (needs HTTPS) — turn backup encryption off or use a secure connection.');
+      }
+      const sealed = await encryptPayload(payload, pass);
+      uploadDoc = {
+        app: 'mymanager',
+        kind: 'workspace-backup',
+        version: 2,
+        encrypted: true,
+        cipher: CIPHER,
+        kdf: { name: 'PBKDF2', iterations: KDF_ITERS, hash: KDF_HASH },
+        salt: sealed.salt,
+        iv: sealed.iv,
+        exportedAt: payload.exportedAt,
+        data: sealed.data
+      };
+    }
+    const form = new FormData();
+    form.append('metadata', new Blob([JSON.stringify({ name: DRIVE_FILE, mimeType: 'application/json' })], { type: 'application/json' }));
+    form.append('file', new Blob([JSON.stringify(uploadDoc)], { type: 'application/json' }));
+
+    const existing = await findDriveBackup(silentOnly);
+    const url = existing && existing.id
+      ? DRIVE_UPLOAD + '/' + encodeURIComponent(existing.id) + '?uploadType=multipart'
+      : DRIVE_UPLOAD + '?uploadType=multipart';
+    const method = existing && existing.id ? 'PATCH' : 'POST';
+
+    const res = await driveFetch(url, { method: method, body: form }, null, false, silentOnly);
+    const result = await res.json().catch(function() { return {}; });
+    if (!res.ok || !result.id) {
+      throw new Error(driveApiError(res, result) || 'Backup upload failed (HTTP ' + res.status + ').');
+    }
+    return {
+      fileId: result.id,
+      updated: !!(existing && existing.id),
+      exportedAt: payload.exportedAt,
+      keyCount: Object.keys(payload.data).length
+    };
+  }
+
+  // Find + download the backup, validate the envelope, restore workspace
+  // keys into localStorage. Returns the count written.
+  async function restoreFromDrive() {
+    const existing = await findDriveBackup();
+    if (!existing || !existing.id) {
+      throw new Error('No backup found on Drive yet — run “Backup to Drive” first.');
+    }
+    const res = await driveFetch(DRIVE_API + '/' + encodeURIComponent(existing.id) + '?alt=media');
+    if (!res.ok) throw new Error('Restore download failed (HTTP ' + res.status + ').');
+    const raw = await res.json().catch(function() { return null; });
+    // Encrypted envelope (v2): unseal with the session passphrase first. GCM
+    // auth failure on a wrong passphrase throws BEFORE any key is written, so
+    // a bad passphrase can never wipe local data.
+    let payload = raw;
+    if (raw && raw.encrypted) {
+      const pass = getDrivePass();
+      if (!pass) {
+        throw new Error('That backup is encrypted — enter your backup passphrase (Backup settings) to restore it.');
+      }
+      try {
+        // Pass the envelope's recorded KDF settings so a future iteration/hash
+        // change never orphans older encrypted backups.
+        payload = await decryptPayload(raw, pass, (raw && raw.kdf) ? raw.kdf : null);
+      } catch (e) {
+        throw new Error('Wrong passphrase or corrupted backup — nothing was restored.');
+      }
+    }
+    if (!payload || payload.app !== 'mymanager' || payload.kind !== 'workspace-backup' || !payload.data || typeof payload.data !== 'object') {
+      throw new Error('That Drive file is not a My MaNaGeR workspace backup.');
+    }
+    let written = 0;
+    for (const k of Object.keys(payload.data)) {
+      if (!isWorkspaceKey(k)) continue; // never restore device-only slots
+      try { localStorage.setItem(k, String(payload.data[k])); written++; } catch (e) { /* skip */ }
+    }
+    return { written: written, exportedAt: payload.exportedAt };
+  }
+
+  // ---- Auto-backup engine -------------------------------------------------
+  // Background timer: checks every 60s, backs up at most once per selected
+  // interval, and NEVER pops the consent screen (getDriveTokenSilent). A
+  // failed or un-granted tick is skipped quietly and retried next interval.
+  function getAutoInterval() {
+    try {
+      const v = localStorage.getItem(AUTO_KEY);
+      return (v === '15' || v === '30' || v === '60') ? v : 'off';
+    } catch (e) { return 'off'; }
+  }
+  function setAutoInterval(v) {
+    const val = (v === '15' || v === '30' || v === '60') ? v : 'off';
+    try { localStorage.setItem(AUTO_KEY, val); } catch (e) { /* ignore */ }
+    _autoInterval = val;
+    // Keep the auth-bar select in sync when set programmatically.
+    const sel = $('drive-auto-interval');
+    if (sel && String(sel.value) !== val) sel.value = val;
+    startAutoTimer();
+    return val;
+  }
+  function getLastAutoBackup() {
+    try { return localStorage.getItem(LAST_KEY) || ''; } catch (e) { return ''; }
+  }
+  function setLastAutoBackup(iso) {
+    try { localStorage.setItem(LAST_KEY, iso || new Date().toISOString()); } catch (e) { /* ignore */ }
+  }
+
+  async function runAutoBackupCheck() {
+    if (_autoInterval === 'off' || _driveBusy) return false;
+    const mins = parseInt(_autoInterval, 10);
+    if (!mins || mins <= 0) return false;
+    // Respect the chosen interval since the last successful auto backup.
+    const last = getLastAutoBackup();
+    if (last && Number.isFinite(new Date(last).getTime()) && (Date.now() - new Date(last).getTime()) < mins * 60000) return false;
+    // Silent token only — never a consent popup from a background timer.
+    const token = await getDriveTokenSilent();
+    if (!token) return false;
+    _driveBusy = true;
+    setDriveBusy(true);
+    setDriveStatus('Auto-backup…', 'busy');
+    try {
+      const r = await backupToDrive(true); // silentOnly — every call stays quiet
+      setLastAutoBackup(new Date().toISOString());
+      if (!document.hidden) setDriveStatus('Auto-backup saved — ' + r.keyCount + ' workspace keys.', 'ok');
+      return true;
+    } catch (e) {
+      if (window.console && window.console.warn) window.console.warn('mmgr-google-auth: auto-backup skipped', e && e.message);
+      // Fail-closed: when encryption is ON but the session passphrase is
+      // missing, the user must act to resume backups — show a persistent hint
+      // (only when the tab is visible) instead of going completely silent.
+      const noPass = /passphrase/i.test((e && e.message) || '');
+      if (!document.hidden) setDriveStatus(noPass ? 'Enter your backup passphrase to resume auto-backup.' : '', 'err');
+      return false;
+    } finally {
+      _driveBusy = false;
+      setDriveBusy(false);
+    }
+  }
+
+  function startAutoTimer() {
+    if (_autoTimer) { clearInterval(_autoTimer); _autoTimer = null; }
+    _autoInterval = getAutoInterval();
+    // Controls-gated: no timer on pages without the Drive controls
+    // (admin.html loads this module too, but auto-backup is a workspace
+    // feature). Either the app.html auth-bar button or the project.html
+    // drawer section (#drive-section) counts as a Drive-enabled page.
+    if (_autoInterval === 'off' || (!$('btn-drive-backup') && !$('drive-section'))) return;
+    _autoTimer = setInterval(function() {
+      runAutoBackupCheck().catch(function() { /* timer tick must never throw */ });
+    }, 60000);
+  }
+
+  // ---- UI wiring (app.html auth bar). No inline onclick — the module
+  // binds the buttons directly, matching the zero-inline-handler rule. ----
+  function setDriveStatus(msg, kind) {
+    const s = $('drive-sync-status');
+    if (!s) return;
+    s.textContent = msg || '';
+    s.className = 'drive-status' + (kind ? ' ds-' + kind : '');
+  }
+  function setDriveBusy(busy) {
+    const b = $('btn-drive-backup');
+    const r = $('btn-drive-restore');
+    if (b) b.disabled = busy;
+    if (r) r.disabled = busy;
+    // The project.html drawer buttons use data-action delegation instead of
+    // ids — disable them too so a running backup/restore can't be re-triggered
+    // there (the _driveBusy guard would also block it, this is just visual).
+    document.querySelectorAll('[data-action="driveBackup"], [data-action="driveRestore"]').forEach(function(btn) {
+      btn.disabled = busy;
+    });
+  }
+
+  // Shared auto-interval status line (used by both the app.html auth-bar
+  // select and the project.html drawer select): chosen interval + next run.
+  function autoIntervalStatus(v) {
+    if (v === 'off') { setDriveStatus('Auto-backup off.', 'ok'); return; }
+    const next = getLastAutoBackup();
+    setDriveStatus('Auto-backup every ' + v + ' min' + (next ? ' — next ' + new Date(new Date(next).getTime() + parseInt(v, 10) * 60000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '') + '.', 'ok');
+  }
+
+  // data-action entry point for the project.html drawer select: reads the
+  // select's value, persists the device pref, restarts the timer, reports.
+  function setAutoIntervalFrom(el) {
+    const v = (el && el.value != null) ? el.value : 'off';
+    autoIntervalStatus(setAutoInterval(v));
+  }
+
+  // Renders the optional Drive backup section into the Controls drawer on
+  // project.html (#drive-section, right next to #sync-section). Uses the
+  // drawer's existing classes (sr/sr-hint/exp-row/btn/ctl-in) — zero new
+  // CSS. Buttons/select use data-action so the readonly guard and ACTION_MAP
+  // delegation apply, exactly like the sync section above.
+  function renderDriveSection() {
+    const wrap = $('drive-section');
+    if (!wrap) return;
+    const cur = getAutoInterval();
+    wrap.innerHTML =
+      '<div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-folder"></use></svg> Google Drive Backup</span></div>' +
+      '<div class="sr-hint">Optional — push this workspace to Google Drive (drive.file scope only, never your whole Drive) and pull it back on any device. Never required; JSON export/import stays the guaranteed sync path.</div>' +
+      '<div class="exp-row">' +
+      '<button class="btn btn-n btn-s" data-action="driveBackup"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-upload"></use></svg> Backup to Drive</button>' +
+      '<button class="btn btn-n btn-s" data-action="driveRestore"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Restore from Drive</button>' +
+      '</div>' +
+      '<div class="sr"><span class="sl">Auto backup</span><select class="ctl-in w150" data-action="driveAutoInterval">' +
+      '<option value="off"' + (cur === 'off' ? ' selected' : '') + '>Off</option>' +
+      '<option value="15"' + (cur === '15' ? ' selected' : '') + '>Every 15 min</option>' +
+      '<option value="30"' + (cur === '30' ? ' selected' : '') + '>Every 30 min</option>' +
+      '<option value="60"' + (cur === '60' ? ' selected' : '') + '>Every 60 min</option>' +
+      '</select></div>' +
+      '<div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-lock"></use></svg> Passphrase</span><input type="password" class="ctl-in w150" data-action="driveSetPass" placeholder="' + (encryptionEnabled() ? 'Encryption on — enter to change' : 'Encrypt backups (optional)') + '" autocomplete="new-password"></div>' +
+      '<div class="sr-hint">Set a passphrase to encrypt every backup (AES-256-GCM, PBKDF2 key) so AI keys and other project-state secrets never sit in Drive as plaintext. The passphrase stays on this device; re-enter it after restarting the browser. Clear it to go back to plaintext backups.</div>' +
+      '<div id="drive-sync-status" class="drive-status"></div>';
+  }
+
+  async function triggerBackup() {
+    if (_driveBusy) return;
+    _driveBusy = true;
+    setDriveBusy(true);
+    setDriveStatus('Backing up…', 'busy');
+    try {
+      const r = await backupToDrive();
+      // A successful manual backup also resets the auto-interval clock, so
+      // the timer never fires right after a manual one.
+      setLastAutoBackup(new Date().toISOString());
+      setDriveStatus('Backed up ' + r.keyCount + ' workspace keys' + (r.updated ? ' (updated)' : '') + ' — ' + r.exportedAt.slice(0, 10) + '.', 'ok');
+    } catch (e) {
+      setDriveStatus((e && e.message) || 'Backup failed.', 'err');
+    } finally {
+      _driveBusy = false;
+      setDriveBusy(false);
+    }
+  }
+
+  async function triggerRestore() {
+    if (_driveBusy) return;
+    // Restoring overwrites this device's local workspace — confirm first.
+    if (!window.confirm('Replace this device\u2019s workspace with the backup from Google Drive? Current local data will be overwritten.')) return;
+    _driveBusy = true;
+    setDriveBusy(true);
+    setDriveStatus('Restoring…', 'busy');
+    try {
+      const r = await restoreFromDrive();
+      setDriveStatus('Restored ' + r.written + ' workspace keys — reloading.', 'ok');
+      setTimeout(function() { window.location.reload(); }, 1200);
+      // Safety net: if the reload is ever blocked, re-enable the controls.
+      // Matches BOTH mounts — the app.html id-based button and the
+      // project.html drawer's data-action button (no id).
+      setTimeout(function() {
+        if ($('btn-drive-restore') || document.querySelector('[data-action="driveRestore"]')) {
+          _driveBusy = false;
+          setDriveBusy(false);
+        }
+      }, 5000);
+    } catch (e) {
+      setDriveStatus((e && e.message) || 'Restore failed.', 'err');
+      _driveBusy = false;
+      setDriveBusy(false);
+    }
+  }
+
+  function wireDriveControls() {
+    const b = $('btn-drive-backup');
+    const r = $('btn-drive-restore');
+    if (b) b.addEventListener('click', triggerBackup);
+    if (r) r.addEventListener('click', triggerRestore);
+    // Auto-backup interval select: value change persists the pref + restarts
+    // the timer. Reflects the stored pref on load.
+    const sel = $('drive-auto-interval');
+    if (sel) {
+      _autoInterval = getAutoInterval();
+      sel.value = _autoInterval;
+      sel.addEventListener('change', function() {
+        autoIntervalStatus(setAutoInterval(sel.value));
+      });
+    }
+    // Optional backup passphrase (app.html auth bar; the project.html drawer
+    // version routes through data-action="driveSetPass" instead).
+    const pp = $('drive-pass');
+    if (pp) {
+      pp.addEventListener('change', function() { setDrivePassFrom(pp); });
+    }
+    startAutoTimer();
+  }
+
   function boot() {
+    wireDriveControls();
     // The GIS script tag is async+defer in the page head, so it may still be
     // loading. Initialize the moment it's present; if it never loads
     // (offline / blocked), the button slot stays empty and nothing is gated.
@@ -199,7 +906,32 @@ var MMGR = window.MMGR || {};
     initGIS: initGIS,
     restoreSession: restoreSession,
     handleCredentialResponse: handleCredentialResponse,
-    signOut: signOut
+    signOut: signOut,
+    // GOOGLE-DRIVE-BACKUP API (optional; safe to call from console too)
+    DRIVE_SCOPE: DRIVE_SCOPE,
+    DRIVE_FILE: DRIVE_FILE,
+    getDriveToken: getDriveToken,
+    getDriveTokenSilent: getDriveTokenSilent,
+    collectWorkspace: collectWorkspace,
+    isWorkspaceKey: isWorkspaceKey,
+    backupToDrive: backupToDrive,
+    restoreFromDrive: restoreFromDrive,
+    triggerBackup: triggerBackup,
+    triggerRestore: triggerRestore,
+    // Auto-backup API
+    getAutoInterval: getAutoInterval,
+    setAutoInterval: setAutoInterval,
+    setAutoIntervalFrom: setAutoIntervalFrom,
+    runAutoBackupCheck: runAutoBackupCheck,
+    // Passphrase-encryption API (optional; safe to call from console too)
+    encryptionEnabled: encryptionEnabled,
+    getDrivePass: getDrivePass,
+    setDrivePass: setDrivePass,
+    setDrivePassFrom: setDrivePassFrom,
+    encryptPayload: encryptPayload,
+    decryptPayload: decryptPayload,
+    // project.html Controls-drawer rendering (optional; no-ops without #drive-section)
+    renderDriveSection: renderDriveSection
   };
 })(MMGR);
 window.MMGR = MMGR;

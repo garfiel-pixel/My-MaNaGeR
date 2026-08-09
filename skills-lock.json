@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "google-drive": {
+      "source": "membranedev/application-skills",
+      "sourceType": "github",
+      "skillPath": "skills/google-drive/SKILL.md",
+      "computedHash": "b196f35c48ba05979d81edea1b4031939e17dbeb9874fa23f96e68bfe6eb45cc"
+    }
+  }
+}

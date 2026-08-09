@@ -784,47 +784,70 @@
 <button id="ai-fab" class="ai-fab" data-action="openAiWin" title="AI Assistant — preset prompts, free-form question, project context"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg></button>
 <div id="ai-win" data-action="closeAiWinBg">
   <div class="mb ai-box">
-    <div class="mh"><span class="mt"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg> AI Assistant</span><button class="dc" data-action="closeAiWin"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> </button></div>
-    <div class="mbody">
-      <div class="dsec">1. One-click preset prompts <span class="ct-sub">— the ▶ button generates and saves to project state</span></div>
-      <div id="ai-presets" class="ai-presets"></div>
-      <div class="dsec mt-md">2. Or ask anything (free-form)</div>
-      <textarea id="ai-q" class="ai-q" placeholder="Free-form question about this project — e.g. 'Summarize where we are and what is blocking the critical path.'"></textarea>
-      <div class="ai-actions">
-        <button class="btn btn-g btn-s" data-action="aiRun"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-zap"></use></svg> Run with AI</button>
-        <button class="btn btn-n btn-s" data-action="aiAttachContext"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-file-text"></use></svg> Attach Project Context</button>
-        <button class="btn btn-n btn-s" data-action="aiClear">Clear</button>
+    <div class="mh ai-head">
+      <span class="mt"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg> AI Assistant</span>
+      <span class="ai-pill" id="ai-engine-pill" data-tier="off"><span class="ai-pill-dot"></span><span id="ai-engine-pill-label">Engine</span></span>
+      <div class="ai-head-actions">
+        <button class="ai-clear-btn" data-action="aiClear" title="Start a new conversation"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> New</button>
+        <button class="dc" data-action="closeAiWin" title="Close"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> </button>
       </div>
-      <div class="dsec mt-md">3. Project context dump (auto-generated — grounding for both tiers)</div>
-      <textarea id="ai-ctx" class="ai-ctx" readonly placeholder="Project context appears here — charter, health, EVM, timeline, risks, critical path, weather."></textarea>
-      <!-- Rank 2.3: result panel + AI engine settings (tier toggle = the only
-           thing that changes between local and cloud — no schema change) -->
-      <div class="dsec mt-md">4. Result — saved to project state (aiOutputs)</div>
-      <textarea id="ai-out" class="ai-out" readonly placeholder="Generated result appears here. Runs are saved into the project state and travel with the .json export."></textarea>
-      <div class="ai-trace" id="ai-trace"></div>
-      <div class="ai-cfg">
-        <span class="ai-cfg-label"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cpu"></use></svg> AI Engine</span>
-        <select id="ai-tier" data-action="aiSetTier">
-          <option value="off">Off — copy-first only</option>
-          <option value="local">Local (zero-key, offline)</option>
-          <option value="cloud">Cloud (BYO key)</option>
-        </select>
-        <span id="ai-cfg-cloud" class="ai-cfg-cloud is-hide">
-          <select id="ai-provider" data-action="aiSetProvider">
-            <option value="openai">OpenAI</option>
-            <option value="anthropic">Anthropic</option>
-          </select>
-          <input type="text" id="ai-endpoint" data-action="aiSetEndpoint" placeholder="Endpoint (blank = provider default)">
-          <input type="text" id="ai-model" data-action="aiSetModel" placeholder="Model (blank = provider default)">
-          <input type="password" id="ai-key" data-action="aiSetKey" placeholder="API key (stored in this project's state only)">
-        </span>
-      </div>
-      <p class="ai-note">Tier A runs a zero-key engine in this browser — every line traces to a real project field, offline. Tier B uses your own OpenAI/Anthropic key through the same circuit-broken network path as weather. Both write results back into project state; the copy-first flow still works for any external tool.</p>
     </div>
-    <div class="mf">
-      <button class="btn btn-n btn-s" data-action="closeAiWin">Close</button>
-      <button class="btn btn-n btn-s" data-action="aiCopyOut"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy Result</button>
-      <button class="btn btn-g btn-s" data-action="aiCopy"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-file-text"></use></svg> Copy Prompt + Context</button>
+    <div class="mbody ai-body">
+      <!-- Conversation thread (rendered as chat bubbles by js/mmgr-ai.js) -->
+      <div class="ai-thread" id="ai-thread" aria-live="polite">
+        <div class="ai-bubble ai-bot ai-welcome" id="ai-welcome">
+          <div class="ai-bot-avatar"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg></div>
+          <div class="ai-bot-body">
+            <div class="ai-text">Hi — I'm your project assistant. Ask anything about this project, or run a one-click preset below.</div>
+            <div class="ai-tip">Try: “Where are we and what is blocking the critical path?” · “Summarize the top risks” · “Is the budget on track?”</div>
+          </div>
+        </div>
+      </div>
+      <!-- One-click preset prompts (rendered by js/mmgr-ai.js open()) -->
+      <div class="ai-sug-wrap">
+        <div class="ai-sug-label"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-zap"></use></svg> One-click presets — generate &amp; save to project state</div>
+        <div class="ai-presets" id="ai-presets"></div>
+      </div>
+      <!-- Project context + engine settings (collapsed by default — keeps the
+           chat view clean; all ids/actions unchanged for Rank 2.3 wiring) -->
+      <details class="ai-adv">
+        <summary><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-settings"></use></svg> Project context &amp; AI engine</summary>
+        <div class="ai-adv-body">
+          <div class="dsec">Project context (auto-generated grounding for both tiers)</div>
+          <textarea id="ai-ctx" class="ai-ctx" readonly placeholder="Project context appears here — charter, health, EVM, timeline, risks, critical path, weather."></textarea>
+          <div class="ai-actions">
+            <button class="btn btn-n btn-s" data-action="aiAttachContext"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-file-text"></use></svg> Attach Project Context</button>
+            <button class="btn btn-n btn-s" data-action="aiCopy"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-file-text"></use></svg> Copy Prompt + Context</button>
+            <button class="btn btn-n btn-s" data-action="aiCopyOut"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy Result</button>
+            <button class="btn btn-n btn-s" data-action="aiClear">Clear</button>
+          </div>
+          <div class="ai-cfg">
+            <span class="ai-cfg-label"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cpu"></use></svg> AI Engine</span>
+            <select id="ai-tier" data-action="aiSetTier">
+              <option value="off">Off — copy-first only</option>
+              <option value="local">Local (zero-key, offline)</option>
+              <option value="cloud">Cloud (BYO key)</option>
+            </select>
+            <span id="ai-cfg-cloud" class="ai-cfg-cloud is-hide">
+              <select id="ai-provider" data-action="aiSetProvider">
+                <option value="openai">OpenAI</option>
+                <option value="anthropic">Anthropic</option>
+              </select>
+              <input type="text" id="ai-endpoint" data-action="aiSetEndpoint" placeholder="Endpoint (blank = provider default)">
+              <input type="text" id="ai-model" data-action="aiSetModel" placeholder="Model (blank = provider default)">
+              <input type="password" id="ai-key" data-action="aiSetKey" placeholder="API key (stored in this project's state only)">
+            </span>
+          </div>
+          <p class="ai-note">Tier A runs a zero-key engine in this browser — every line traces to a real project field, offline. Tier B uses your own OpenAI/Anthropic key through the same circuit-broken network path as weather. Both write results back into project state; the copy-first flow still works for any external tool.</p>
+        </div>
+      </details>
+      <!-- Result store — hidden; copyOut() reads it and runs render as bubbles -->
+      <textarea id="ai-out" class="ai-out" readonly></textarea>
+      <div class="ai-trace" id="ai-trace"></div>
+    </div>
+    <div class="mf ai-inputbar">
+      <textarea id="ai-q" class="ai-q" rows="1" placeholder="Ask anything about this project…  (Enter to send · Shift+Enter for a new line)"></textarea>
+      <button class="ai-send" data-action="aiRun" title="Send"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-zap"></use></svg> Send</button>
     </div>
   </div>
 </div>
@@ -904,6 +927,9 @@
          sync — never gating. Rendered by js/mmgr-sync.js into this slot. -->
     <div id="sync-section"></div>
     <div class="sr-hint">Sync identity is 100% optional — the app works forever without an account. JSON export/import is the guaranteed sync path on every device, signed in or not.</div>
+    <!-- GOOGLE-DRIVE-BACKUP: optional Drive backup/restore controls — never
+         gating. Rendered by js/mmgr-google-auth.js into this slot. -->
+    <div id="drive-section"></div>
     <!-- Phase 2: client feature flags — all default on; off hides the optional UI -->
     <div class="sr-hint">Feature flags — switch a module off to hide it from the workspace. All default on.</div>
     <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg> AI Assistant Window</span><label class="tgl"><input type="checkbox" data-action="tglFlag" data-flag="aiWindow"><span class="tsl"></span></label></div>
@@ -1124,6 +1150,7 @@
   <script src="js/mmgr-viewport.js"></script>
   <script src="js/mmgr-glass.js"></script>
   <script src="js/mmgr-sync.js"></script>
+  <script src="js/mmgr-google-auth.js"></script>
   <script>
 /* Deploy guard: every icon in this app is a <use href="css/mmgr-icons.svg#...">.
    A missing sprite on the live host makes icons vanish silently — surface it

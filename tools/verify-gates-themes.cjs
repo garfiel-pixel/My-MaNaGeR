@@ -12,7 +12,8 @@
    errors, invisible/low-contrast text, layout overflow, gate
    rect escaping the viewport. Saves one screenshot per combo.
 
-   Run: node tools/verify-gates-themes.cjs
+   Run: node tools/verify-gates-themes.cjs [width]   (width default 1280;
+   pass 400 for a mobile pass — narrow screens force the CSS-glass path)
    ============================================================ */
 const { spawn } = require('child_process');
 const fs = require('fs');
@@ -21,6 +22,11 @@ const CHROME = 'C:/Program Files/Google/Chrome/Application/chrome.exe';
 const PORT = 9336;
 const ROOT = 'C:/Users/Garfield/Downloads/mymanager-fixed';
 const userDir = 'C:/tmp/chrome-gates-' + Date.now();
+
+// Optional viewport width from argv (mobile passes suffix their artifacts).
+const viewportW = parseInt(process.argv[2], 10) || 1280;
+const viewportH = viewportW <= 640 ? 800 : 900;
+const suffix = viewportW === 1280 ? '' : '-m' + viewportW;
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
@@ -97,7 +103,11 @@ async function waitForPageTarget() {
   await send('Page.enable');
   await send('Runtime.enable');
   await send('Log.enable');
+  // Override the viewport (headless window stays 1280x900; the page sees the
+  // requested size — innerWidth + media queries both reflect it).
+  await send('Emulation.setDeviceMetricsOverride', { width: viewportW, height: viewportH, deviceScaleFactor: 1, mobile: false });
   await sleep(600);
+  console.log('VIEWPORT ' + viewportW + 'x' + viewportH + (viewportW <= 640 ? ' (narrow — CSS-glass path)' : ' (wide)'));
 
   /* ---- in-page check: sample the gate's computed look + contrast ---- */
   const CHECK_SRC = `(function(){
@@ -132,7 +142,9 @@ async function waitForPageTarget() {
         radius:cs.borderRadius, shadow:cs.boxShadow.slice(0,70),
         backdrop:cs.backdropFilter,
         top:Math.round(r.top), bottom:Math.round(r.bottom), h:Math.round(r.height),
-        inView: r.top>=0 && r.bottom<=window.innerHeight};
+        left:Math.round(r.left), right:Math.round(r.right),
+        inView: r.top>=0 && r.bottom<=window.innerHeight,
+        hFits: r.left>=-1 && r.right<=window.innerWidth+1};
       out.samples=[];
       \${SAMPLE_SEL}
     } else { out.gate=null; out.samples=[]; }
@@ -145,20 +157,23 @@ async function waitForPageTarget() {
     return JSON.stringify(out);
   })()`;
 
-  function preload(glass, adminLogin) {
+  function preload(glass, adminLogin, dark) {
     let s = "try{localStorage.setItem('mmgr_glass_mode','" + glass + "');}catch(e){}";
     if (glass === 'premium') s += "try{window.__mmgrForceHighEnd=true;}catch(e){}";
+    if (dark) s += "try{localStorage.setItem('mmgr_theme','dark');}catch(e){}";
     if (adminLogin) s += "try{localStorage.setItem('mmgr_admin_pass_hash','seedhash');}catch(e){}";
     return s;
   }
 
   const passes = [];
   async function pass(name, file, opts) {
-    const pre = await send('Page.addScriptToEvaluateOnNewDocument', { source: preload(opts.glass, opts.adminLogin) });
+    const pre = await send('Page.addScriptToEvaluateOnNewDocument', { source: preload(opts.glass, opts.adminLogin, opts.dark) });
     const startIdx = consoleIssues.length;
     await send('Page.navigate', { url: 'file:///' + ROOT + '/' + file });
     await sleep(opts.waitMs || 3200);
-    if (opts.dark) await evaluate("document.body.classList.add('dark-mode'); true");
+    // Dark is NOT forced here: each page's own early-apply snippet must turn
+    // the seeded mmgr_theme=dark pref into the body class. DARK-NOT-APPLIED
+    // below fails the pass if a page ever stops doing that.
     let click = null;
     if (file === 'app.html') {
       click = await evaluate(`(function(){
@@ -174,7 +189,7 @@ async function waitForPageTarget() {
     let parsed = null;
     try { parsed = JSON.parse(raw); } catch (e) { parsed = { parseError: String(raw).slice(0, 200) }; }
     const shot = await send('Page.captureScreenshot', { format: 'png' });
-    const png = 'tools/gate-' + name + '.png';
+    const png = 'tools/gate-' + name + suffix + '.png';
     if (shot.result && shot.result.data) fs.writeFileSync(png, Buffer.from(shot.result.data, 'base64'));
     await send('Page.removeScriptToEvaluateOnNewDocument', { identifier: pre.identifier });
     await sleep(250);
@@ -216,11 +231,15 @@ async function waitForPageTarget() {
     if (errors.length) flags.push('CONSOLE-ERRORS');
     if (p.page && p.page.overflow) flags.push('H-OVERFLOW');
     if (p.gate && !p.gate.inView) flags.push('GATE-OUT-OF-VIEW');
+    if (p.gate && !p.gate.hFits) flags.push('GATE-H-OVERFLOW');
     let worst = 99;
     if (p.samples && p.samples.length) worst = Math.min(...p.samples.map(s => s.ratio));
     if (worst < 1.25) flags.push('INVISIBLE-TEXT(' + worst.toFixed(2) + ')');
     else if (worst < 3) flags.push('LOW-CONTRAST(' + worst.toFixed(2) + ')');
     if (!p.gate) flags.push('NO-GATE-FOUND');
+    // The page's early-apply snippet must turn the seeded device pref into the
+    // dark-mode class; if it doesn't, the persistence wiring is broken.
+    if (p.dark && p.page && !p.page.darkClass) flags.push('DARK-NOT-APPLIED');
     // Informational only: the premium engine is not loaded on launcher/gate
     // pages, so premium preference + capability legitimately changes nothing.
     if (p.glass === 'premium' && p.page && p.page.canvasCount === 0) info.push('premium-engine-not-on-page');
@@ -235,11 +254,12 @@ async function waitForPageTarget() {
   });
 
   const summary = {
-    note: 'app.html and admin.html do not load the Liquid Glass engine (mmgr-glass.js/mmgr-viewport.js) nor any theme reader. Premium = localStorage mmgr_glass_mode=premium + __mmgrForceHighEnd; dark = forced .dark-mode class (the class the app theme logic uses).',
+    viewport: viewportW + 'x' + viewportH + (viewportW <= 640 ? ' (narrow — CSS-glass path)' : ' (wide)'),
+    note: 'Launcher/gate pages do not load the Liquid Glass engine (mmgr-glass.js/mmgr-viewport.js). Premium = localStorage mmgr_glass_mode=premium + __mmgrForceHighEnd (no-op on these pages by design). Dark = seeded device pref mmgr_theme=dark applied by each page\'s own early-apply snippet — the real persistence path, not a forced class.',
     rows,
     anyBroken: rows.some(r => r.broken)
   };
-  fs.writeFileSync('tools/gate-matrix-report.json', JSON.stringify(summary, null, 2));
+  fs.writeFileSync('tools/gate-matrix-report' + suffix + '.json', JSON.stringify(summary, null, 2));
   console.log('\n===== MATRIX REPORT =====');
   console.log(JSON.stringify(summary, null, 2));
   console.log('RESULT:', summary.anyBroken ? 'BROKEN STATES FOUND' : 'NO BROKEN STATES');

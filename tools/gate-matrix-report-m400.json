@@ -1,5 +1,5 @@
 {
-  "viewport": "1280x900 (wide)",
+  "viewport": "400x800 (narrow — CSS-glass path)",
   "note": "Launcher/gate pages do not load the Liquid Glass engine (mmgr-glass.js/mmgr-viewport.js). Premium = localStorage mmgr_glass_mode=premium + __mmgrForceHighEnd (no-op on these pages by design). Dark = seeded device pref mmgr_theme=dark applied by each page's own early-apply snippet — the real persistence path, not a forced class.",
   "rows": [
     {
@@ -36,7 +36,7 @@
       "warnings": 0,
       "gate": "mb",
       "broken": false,
-      "verdict": "OK"
+      "verdict": "OK (premium-engine-not-on-page)"
     },
     {
       "combo": "app-dark-premium",
@@ -48,7 +48,7 @@
       "warnings": 0,
       "gate": "mb",
       "broken": false,
-      "verdict": "OK"
+      "verdict": "OK (premium-engine-not-on-page)"
     },
     {
       "combo": "admin-setup-light-css",
@@ -84,7 +84,7 @@
       "warnings": 0,
       "gate": "gbox",
       "broken": false,
-      "verdict": "OK"
+      "verdict": "OK (premium-engine-not-on-page)"
     },
     {
       "combo": "admin-setup-dark-premium",
@@ -96,7 +96,7 @@
       "warnings": 0,
       "gate": "gbox",
       "broken": false,
-      "verdict": "OK"
+      "verdict": "OK (premium-engine-not-on-page)"
     },
     {
       "combo": "admin-login-light-css",
@@ -120,7 +120,7 @@
       "warnings": 0,
       "gate": "gbox",
       "broken": false,
-      "verdict": "OK"
+      "verdict": "OK (premium-engine-not-on-page)"
     }
   ],
   "anyBroken": false

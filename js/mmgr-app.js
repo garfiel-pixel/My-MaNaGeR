@@ -57,9 +57,15 @@ var MMGR = window.MMGR || {};
       if (banner) banner.classList.remove('is-hide');
     }
 
-    // Apply theme — light is the default; dark is opt-in
+    // Apply theme — light is the default; dark is opt-in. The device-level
+    // preference (localStorage mmgr_theme — the same slot the launcher and
+    // admin read, and the same slot tglTheme writes) is the MASTER so the
+    // choice made anywhere persists everywhere; per-project state.theme is
+    // the portable fallback for a fresh device or an imported project file.
     const thmTgl = U.$('thm-tgl');
-    if (s.theme === 'dark') {
+    let theme = s.theme || 'light';
+    try { theme = localStorage.getItem('mmgr_theme') || theme; } catch (e) { /* ignore */ }
+    if (theme === 'dark') {
       document.body.classList.add('dark-mode');
       if (thmTgl) thmTgl.checked = false;
     } else {
@@ -226,8 +232,15 @@ var MMGR = window.MMGR || {};
   function tglTheme() {
     const tgl = U.$('thm-tgl');
     const isLight = tgl ? tgl.checked : S().theme !== 'dark';
+    const theme = isLight ? 'light' : 'dark';
     document.body.classList.toggle('dark-mode', !isLight);
-    ns.State.updateState(function(s) { s.theme = isLight ? 'light' : 'dark'; });
+    // Device-level preference (shared slot with the launcher + admin): the
+    // choice persists across every page. state.theme stays in step so the
+    // portable export still carries the theme for fresh devices — but that
+    // project-state write is skipped in view-only (a read-only scope must not
+    // mutate project state; the device pref + body class are enough there).
+    try { localStorage.setItem('mmgr_theme', theme); } catch (e) { /* ignore */ }
+    if (!isReadonly()) ns.State.updateState(function(s) { s.theme = theme; });
     // Rank 3.5: keep the premium glass shader's dark flag in step with the
     // theme (a toggle between light/dark must not leave a stale backdrop).
     if (ns.Glass && ns.Glass.refreshTheme) ns.Glass.refreshTheme();
@@ -1988,6 +2001,11 @@ window.MMGR = MMGR;
     // Rank 3.5: glass preference is a device-level screen choice, not
     // project state — allowed in view-only like the viewport prefs.
     'tglGlassMode': 1,
+    // Theme-persistence: the theme preference is a device-level choice too
+    // (localStorage mmgr_theme, the same slot the launcher + admin read) —
+    // allowed in view-only like glass mode. tglTheme writes only the device
+    // pref + body class in view-only; the per-project state write is skipped.
+    'tglTheme': 1,
     // DIR-1a/1b: copying/downloading the error log is read-only; the
     // remote-reporting toggle + webhook URL are device-level preferences
     // (localStorage, like the glass mode toggle) — never project state.

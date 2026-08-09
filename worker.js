@@ -53,9 +53,12 @@
 // WHOLE policy — silently breaking every inline script (verified the hard
 // way during implementation; the qa battery catches it via console errors).
 const INLINE_SCRIPT_HASHES = [
+  "'sha256-gCwlAVKUNamFRjZeFSwcBd1zxQs+/mZ2GoLF8lqT/II='", // project.html (early-apply theme snippet)
   "'sha256-o+0No2XpbES4E5QJh31mY9JsJFqSmE+B4x+z1fNPjVc='", // project.html
-  "'sha256-uXP6UbKN008OGX7DDZbsyDbAG4Dj8LT6FVZf333Vp/U='", // app.html
-  "'sha256-Hfsdwmny9zsiCJQoODAHOC8BM8DQnwKSQDE6n2mJnvA='", // admin.html
+  "'sha256-gCwlAVKUNamFRjZeFSwcBd1zxQs+/mZ2GoLF8lqT/II='", // app.html (early-apply theme snippet)
+  "'sha256-Qe9OiwBUQ4xSqd1HVEMQM78xVf4dWkgN4aoWxnhoIx0='", // app.html
+  "'sha256-qbHZHLyhdEDRwWrA8/I8ty4xIjUv+L/+Y6/0cIXdkJo='", // admin.html (early-apply theme snippet)
+  "'sha256-Dbp9yMFt1PeVXNmV8atS1+D8uQl13D5wK2e+xwWxFP4='", // admin.html
   "'sha256-Oa7ON+9A164SSXhnxu08mFn0V9Tj2SlZ2SzFXFoqKNE='", // dashboard.html
   "'sha256-DRiA9m7qJLb4z1QyfjbEUFyubzWHRCl2Cgf+YJkjyi8='", // seed-test.html
   "'sha256-l7T1LLezhae1ZGfmUGxTadrqmveWG2jA4nLGwRkmB3k='", // mymanager-field-guide.html

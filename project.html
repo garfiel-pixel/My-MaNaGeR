@@ -57,6 +57,15 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' 'sha256-o+0No2XpbES4E5QJh31mY9JsJFqSmE+B4x+z1fNPjVc=' https://accounts.google.com https://unpkg.com; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self' https://api.open-meteo.com https://geocoding-api.open-meteo.com https://api.openai.com https://api.anthropic.com https://github.com https://release-assets.githubusercontent.com https://accounts.google.com https://huggingface.co https://*.cdn.hf.co; base-uri 'self'; form-action 'self';">
 </head>
 <body>
+<script>
+/* Device-level theme (shared across launcher, admin, and app): applied before
+   first paint from the same localStorage slot every theme toggle writes, so a
+   dark choice made anywhere persists everywhere with no flash. Kept inline on
+   purpose — these pages don't load the shared mmgr-*.js suite. */
+(function(){ try {
+  if (localStorage.getItem('mmgr_theme') === 'dark') document.body.classList.add('dark-mode');
+} catch (e) {} })();
+</script>
 
 <!-- Boot loading skeleton (hidden by App.init after first paint) -->
 <div id="boot-splash"><div class="bs-inner"><div class="bs-spin"></div><div>Loading project...</div></div></div>

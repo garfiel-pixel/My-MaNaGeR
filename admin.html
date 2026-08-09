@@ -50,6 +50,15 @@ body.dark-mode .gbox input{background:rgba(0,0,0,.3);}
 }
 .gerr{min-height:16px;font-size:.72rem;color:var(--danger);margin-bottom:6px;}
 
+/* ── gate preferences pill (theme + premium glass preview) ── */
+.pref-row{position:fixed;left:50%;transform:translateX(-50%);bottom:22px;display:flex;gap:18px;align-items:center;padding:8px 18px;border:var(--glass-border);border-radius:100px;background:var(--glass-fill-dark);box-shadow:var(--glass-rim),var(--glass-shadow);z-index:60;}
+.pref{display:inline-flex;align-items:center;gap:7px;font-size:.7rem;color:var(--slate);cursor:pointer;}
+.pref .tgl{margin:0;}
+/* Premium backdrop layers above the fixed z-0 canvas on this page. */
+body.glass-premium .gatewrap{position:relative;z-index:1;}
+body.glass-premium header{position:relative;z-index:1;}
+body.glass-premium main{position:relative;z-index:1;}
+
 /* ── app shell (admin layout) ── */
 header{display:flex;align-items:center;justify-content:space-between;padding:16px 28px;border-bottom:1px solid var(--border);
   flex-wrap:wrap;gap:10px;}
@@ -111,7 +120,15 @@ pre.snippet{background:#f8fafc;border:1px solid var(--border);border-radius:6px;
 </style>
 </head>
 <body>
-
+<script>
+/* Device-level theme (shared across launcher, admin, and app): applied before
+   first paint from the same localStorage slot every theme toggle writes, so a
+   dark choice made anywhere persists everywhere — the gate screens included.
+   Kept inline on purpose — these pages don't load the shared mmgr-*.js suite. */
+(function(){ try {
+  if (localStorage.getItem('mmgr_theme') === 'dark') document.body.classList.add('dark-mode');
+} catch (e) {} })();
+</script>
 
 <!-- ═══ GATE: first-run password setup ═══ -->
 <div class="gatewrap" id="setup-screen">
@@ -138,6 +155,13 @@ pre.snippet{background:#f8fafc;border:1px solid var(--border);border-radius:6px;
   </div>
 </div>
 
+<!-- ═══ Gate preferences (theme + premium glass preview) — shown while the
+     gate screens are up, hidden once the admin panel is unlocked ═══ -->
+<div class="pref-row" id="gate-prefs">
+  <span class="pref"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-moon"></use></svg> Dark<label class="tgl"><input type="checkbox" id="thm-tgl" data-action="tglTheme" aria-label="Toggle dark theme"><span class="tsl"></span></label></span>
+  <span class="pref"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-orb"></use></svg> Glass<label class="tgl"><input type="checkbox" id="glass-tgl" data-action="tglGlassMode" aria-label="Toggle premium liquid-glass backdrop"><span class="tsl"></span></label></span>
+</div>
+
 <!-- ═══ MAIN ADMIN UI ═══ -->
 <div class="hidden" id="admin-app">
   <header>
@@ -147,6 +171,8 @@ pre.snippet{background:#f8fafc;border:1px solid var(--border);border-radius:6px;
         <div id="google-signin-button"></div>
         <div id="google-user-chip" hidden></div>
       </div>
+      <label class="tgl" title="Light / dark theme — applies to the launcher, admin, and every project on this device"><input type="checkbox" aria-label="Toggle dark theme" data-action="tglTheme"><span class="tsl"></span></label>
+      <label class="tgl" title="Premium liquid-glass backdrop — applies on capable devices"><input type="checkbox" aria-label="Toggle premium glass" data-action="tglGlassMode"><span class="tsl"></span></label>
       <a href="app.html" target="_blank">View Dashboard <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg></a>
       <button class="btn btn-n btn-s" data-action="changePassword">Change Password</button>
       <button class="btn btn-n btn-s" data-action="lockAdmin">Lock</button>
@@ -319,6 +345,12 @@ pre.snippet{background:#f8fafc;border:1px solid var(--border);border-radius:6px;
   </div>
 </div>
 
+<!-- Premium liquid-glass engine (same modules the project viewer uses),
+     loaded for the gate pill's glass toggle + backdrop preview. Three.js is
+     only fetched from the pinned CDN when the engine actually activates. -->
+<script src="js/mmgr-utils.js"></script>
+<script src="js/mmgr-viewport.js"></script>
+<script src="js/mmgr-glass.js"></script>
 <script>
 /* ============================================================
    ADMIN PANEL — data model
@@ -425,6 +457,10 @@ function showScreen(id){
   ['setup-screen','login-screen','admin-app'].forEach(s=>{
     document.getElementById(s).classList.toggle('hidden', s!==id);
   });
+  // The gate preference pill (theme + premium glass) belongs to the gate
+  // screens; it hides once the admin panel is unlocked (header has its own).
+  const gp = document.getElementById('gate-prefs');
+  if (gp) gp.classList.toggle('hidden', id === 'admin-app');
 }
 async function initGate(){
   const storedHash = localStorage.getItem('mmgr_admin_pass_hash');
@@ -461,6 +497,36 @@ function lockAdmin(){
   sessionStorage.removeItem('mmgr_admin_session');
   document.getElementById('login-pass').value = '';
   showScreen('login-screen');
+}
+// Device-level theme toggle — writes the same localStorage slot (mmgr_theme)
+// that project.html's Settings toggle and the launcher's switch use, so the
+// choice persists across admin, launcher, and app. el-scoped so the gate pill
+// and the header switch stay in sync regardless of which is visible.
+function tglTheme(el){
+  const dark = el ? !el.checked : localStorage.getItem('mmgr_theme') === 'dark';
+  document.body.classList.toggle('dark-mode', dark);
+  try { localStorage.setItem('mmgr_theme', dark ? 'dark' : 'light'); } catch(e){}
+  // Keep every instance of this toggle on the page in step (gate pill + header)
+  // so flipping one never leaves the other disagreeing with the saved pref.
+  document.querySelectorAll('[data-action="tglTheme"]').forEach(t => { t.checked = !dark; });
+  // Keep the premium glass shader's dark flag in step (if the engine is up).
+  if (window.MMGR && MMGR.Glass && MMGR.Glass.refreshTheme) MMGR.Glass.refreshTheme();
+}
+
+// Premium liquid-glass toggle — same device-level slot (mmgr_glass_mode) and
+// capability floor as the project viewer's Settings toggle. On a narrow or
+// low-end device the preference is still saved; CSS glass simply stays on.
+function tglGlassMode(el){
+  const on = el ? el.checked : (window.MMGR && MMGR.Viewport && MMGR.Viewport.getGlassMode() === 'premium');
+  if (window.MMGR && MMGR.Viewport) MMGR.Viewport.setGlassMode(on ? 'premium' : 'css');
+  if (window.MMGR && MMGR.Glass) MMGR.Glass.sync();
+  // Keep every instance of this toggle on the page in step (see tglTheme).
+  document.querySelectorAll('[data-action="tglGlassMode"]').forEach(g => { g.checked = on; });
+  const eff = (window.MMGR && MMGR.Viewport && MMGR.Viewport.effectiveGlassMode) ? MMGR.Viewport.effectiveGlassMode() : 'css';
+  toast(on
+    ? (eff === 'premium' ? 'Premium liquid-glass mode on.' : 'Preference saved — this device uses CSS glass.')
+    : 'Premium visual mode off — CSS glass stays on.',
+    eff === 'premium' ? 'ok' : 'warn');
 }
 /* Replace the native prompt()/confirm() calls with the same custom-modal
    standard the project viewer uses. */
@@ -836,13 +902,21 @@ const ADMIN_ACTION_MAP = {
   'copyCode': (el) => copyCode(_admIdx(el)),
   'regenerateCode': (el) => regenerateCode(_admIdx(el)),
   'openSnippetModal': (el) => openSnippetModal(_admIdx(el)),
-  'deleteProject': (el) => deleteProject(_admIdx(el))
+  'deleteProject': (el) => deleteProject(_admIdx(el)),
+  'tglTheme': (el) => tglTheme(el),
+  'tglGlassMode': (el) => tglGlassMode(el)
 };
 document.addEventListener('click', function(e){
   const el = e.target.closest('[data-action]');
   if (!el) return;
   const fn = ADMIN_ACTION_MAP[el.getAttribute('data-action')];
-  if (fn){ e.preventDefault(); fn(el, e); }
+  if (!fn) return;
+  // Checkbox toggles own their click (theme): Chrome flips `checked` before
+  // this listener runs — no preventDefault, read the value as-is (same
+  // contract as the project viewer's theme toggle).
+  if (el.tagName === 'INPUT' && el.type === 'checkbox'){ fn(el, e); return; }
+  e.preventDefault();
+  fn(el, e);
 });
 document.addEventListener('input', function(e){
   const el = e.target.closest('[data-action]');
@@ -855,6 +929,17 @@ document.addEventListener('input', function(e){
 });
 
 initGate();
+
+// Reflect the device-level theme + glass preferences on every admin switch
+// (gate pill + header — the early-apply snippet already handled the gate's
+// body class before paint) and boot the premium engine if allowed.
+(function(){
+  const dark = localStorage.getItem('mmgr_theme') === 'dark';
+  document.querySelectorAll('[data-action="tglTheme"]').forEach(t => { t.checked = !dark; });
+  const glass = !!(window.MMGR && MMGR.Viewport && MMGR.Viewport.getGlassMode() === 'premium');
+  document.querySelectorAll('[data-action="tglGlassMode"]').forEach(g => { g.checked = glass; });
+  if (window.MMGR && MMGR.Glass && MMGR.Glass.sync) MMGR.Glass.sync();
+})();
 
 /* Deploy guard: every icon in the app is a <use href="css/mmgr-icons.svg#...">.
    If the sprite 404s on the live host the icons silently vanish — surface that

@@ -158,9 +158,10 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
     return { active: window.MMGR.Glass.active(),
       cls: document.body.classList.contains('glass-premium'),
       canvas: !!document.getElementById('glass-canvas'),
+      glow: !!document.querySelector('.mouse-glow'),
       disposed: window.__glassDisposed, lost: window.__glassLost };
   })()`);
-  check('G08 teardown: deactivate -> renderer.dispose + WEBGL_lose_context, canvas removed', !t1.active && !t1.cls && !t1.canvas && t1.disposed === 1 && t1.lost === 1, t1);
+  check('G08 teardown: deactivate -> renderer.dispose + WEBGL_lose_context, canvas + mouse-glow removed', !t1.active && !t1.cls && !t1.canvas && !t1.glow && t1.disposed === 1 && t1.lost === 1, t1);
 
   // Toggle on/off repeatedly — dispose count must track activations exactly
   // (one context created per activate, one disposed per deactivate: no leak).
@@ -171,9 +172,9 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
       if (!a) return { fail: 'activate ' + i };
       window.MMGR.Glass.deactivate();
     }
-    return { disposed: window.__glassDisposed - beforeDisposed, active: window.MMGR.Glass.active(), canvas: !!document.getElementById('glass-canvas') };
+    return { disposed: window.__glassDisposed - beforeDisposed, active: window.MMGR.Glass.active(), canvas: !!document.getElementById('glass-canvas'), glow: !!document.querySelector('.mouse-glow') };
   })()`);
-  check('G09 teardown: 4 on/off cycles -> 4 disposes, 0 active, 0 canvas left (no leak)', t2.disposed === 4 && !t2.active && !t2.canvas, t2);
+  check('G09 teardown: 4 on/off cycles -> 4 disposes, 0 active, 0 canvas + 0 mouse-glow left (no leak)', t2.disposed === 4 && !t2.active && !t2.canvas && !t2.glow, t2);
 
   // Settings-toggle path: real checkbox click flips the pref and sync()s.
   // Convention (verified in qa-r3): Chrome flips checkbox `checked` BEFORE

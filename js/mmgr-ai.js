@@ -94,6 +94,62 @@ var MMGR = window.MMGR || {};
     if (ns.App && ns.App.showToast) ns.App.showToast(msg, type || 'ok');
   }
 
+  // ============================================================
+  // INTEGRATED-STRUCTURE-API-WINDOW — live backend-API status badge
+  // ------------------------------------------------------------
+  // The plan's AIWindow pings the backend health endpoint on mount and
+  // reports checking / connected / error / disconnected. Adaptation: the
+  // app's backend is the same-origin Worker relay, so the badge pings
+  // GET /api/health (worker.js) through the existing MMGR.Net circuit
+  // breaker. A missing endpoint (static/local hosting without the Worker)
+  // resolves to 'disconnected' — the window still works, it just says so.
+  // The raw pill element is exposed so the QA battery can drive it.
+  let _apiCheckInFlight = false;
+
+  function setApiStatus(state, label) {
+    const pill = U.$('ai-api-pill');
+    if (pill) pill.setAttribute('data-state', state);
+    const lbl = U.$('ai-api-pill-label');
+    if (lbl) lbl.textContent = label;
+  }
+
+  // Pings /api/health with a SHORT timeout and zero retries (a health check
+  // must fail fast, not back off). Resolves the pill state and returns it
+  // so callers/QA can assert the outcome.
+  //
+  // Mapping: 2xx -> 'connected'; 404/405 (static hosting without the Worker
+  // relay, same degradation relayChat() treats as "no Worker -> direct") ->
+  // 'disconnected'; any other HTTP status -> 'error'; network failure/
+  // timeout -> 'disconnected'. force=true (the pill click) bypasses the
+  // in-flight guard so a user re-check is never silently swallowed by a
+  // slow earlier probe.
+  async function checkApiHealth(force) {
+    if (_apiCheckInFlight && !force) return null;
+    _apiCheckInFlight = true;
+    setApiStatus('checking', 'API · checking');
+    let result = 'disconnected';
+    try {
+      const res = await ns.Net.get('/api/health', { timeoutMs: 4000, maxRetries: 0 });
+      if (res && res.ok) {
+        result = 'connected';
+        setApiStatus('connected', 'API · connected');
+      } else if (res && (res.status === 404 || res.status === 405)) {
+        result = 'disconnected';
+        setApiStatus('disconnected', 'API · offline');
+      } else {
+        result = 'error';
+        setApiStatus('error', 'API · error' + (res ? ' ' + res.status : ''));
+      }
+    } catch (e) {
+      result = 'disconnected';
+      setApiStatus('disconnected', 'API · offline');
+      if (ns.Errors && ns.Errors.log) ns.Errors.log('api health check failed: ' + ((e && e.message) || 'unreachable'), 'apiHealth');
+    } finally {
+      _apiCheckInFlight = false;
+    }
+    return result;
+  }
+
   function open() {
     const modal = U.$('ai-win');
     if (!modal) return;
@@ -111,6 +167,7 @@ var MMGR = window.MMGR || {};
       chips.dataset.filled = '1';
     }
     syncSettingsUI();
+    checkApiHealth(); // live backend-API status badge (plan §3)
     seedThreadFromState();
     modal.classList.add('open');
     const q = U.$('ai-q');
@@ -1062,6 +1119,23 @@ var MMGR = window.MMGR || {};
     });
   })();
 
+  // INTEGRATED-STRUCTURE-API-WINDOW (plan §3): click (or Enter/Space on) the
+  // API pill to re-check the backend health route on demand. force=true so a
+  // user re-check bypasses an in-flight earlier probe.
+  (function() {
+    const pill = U.$('ai-api-pill');
+    if (!pill) return;
+    pill.setAttribute('role', 'button');
+    pill.setAttribute('tabindex', '0');
+    pill.addEventListener('click', function() { checkApiHealth(true); });
+    pill.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        checkApiHealth(true);
+      }
+    });
+  })();
+
   // ---- API ----
   ns.AiWin = {
     open: open,
@@ -1088,7 +1162,10 @@ var MMGR = window.MMGR || {};
     connectByo: connectByo,
     clearByo: clearByo,
     syncByoStatus: syncByoStatus,
-    syncSendGate: syncSendGate
+    syncSendGate: syncSendGate,
+    // INTEGRATED-STRUCTURE-API-WINDOW (plan §1/§3)
+    checkApiHealth: checkApiHealth,
+    setApiStatus: setApiStatus
   };
 })(MMGR);
 window.MMGR = MMGR;

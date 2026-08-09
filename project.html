@@ -799,6 +799,12 @@
     <div class="mh ai-head">
       <span class="mt"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg> AI Assistant</span>
       <span class="ai-pill" id="ai-engine-pill" data-tier="off"><span class="ai-pill-dot"></span><span id="ai-engine-pill-label">Engine</span></span>
+      <!-- INTEGRATED-STRUCTURE-API-WINDOW plan §1/§3: live backend-API status
+           badge — pings the same-origin Worker relay health route
+           (GET /api/health) when the window opens and reports
+           checking / connected / error / disconnected. Wired in
+           mmgr-ai.js checkApiHealth(); click to re-check. -->
+      <span class="ai-pill ai-api-pill" id="ai-api-pill" data-state="checking" title="Backend API connection — click to re-check"><span class="ai-pill-dot"></span><span id="ai-api-pill-label">API · checking</span></span>
       <!-- MERGED-AI-CONTROL (audit 1.2): the tier selector now lives in the
            header next to the engine pill — visible without expanding anything.
            Same id + action as before so syncSettingsUI/action wiring is intact. -->

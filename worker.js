@@ -396,6 +396,14 @@ async function readSession(request, env) {
 async function handleApi(request, env, url) {
   const path = url.pathname;
 
+  // GET /api/health — liveness probe (INTEGRATED-STRUCTURE-API-WINDOW plan
+  // §1: the plan's client.py check_connection() pings /health; the Worker
+  // equivalent is this same-origin route that the AI window's status badge
+  // pings on open). Stateless, no auth, always 200 while the Worker is up.
+  if (path === '/api/health' && request.method === 'GET') {
+    return json({ ok: true, status: 'ok', app: 'my-manager', time: new Date().toISOString() });
+  }
+
   // POST /api/auth/google { idToken } -> verify -> Set-Cookie mmgr_session
   if (path === '/api/auth/google' && request.method === 'POST') {
     let body;

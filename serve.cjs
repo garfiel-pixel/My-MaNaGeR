@@ -103,6 +103,17 @@ const server = http.createServer((req, res) => {
     const url = new URL(req.url, 'http://localhost:' + PORT);
     let p = decodeURIComponent(url.pathname);
     if (p === '/') p = '/index.html';
+
+    // INTEGRATED-STRUCTURE-API-WINDOW plan §1: mirror of the Worker's
+    // GET /api/health liveness probe so the local QA battery exercises the
+    // same API-status pill path against the dev server (worker.js serves
+    // this route in production).
+    if (p === '/api/health' && req.method === 'GET') {
+      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
+      res.end(JSON.stringify({ ok: true, status: 'ok', app: 'my-manager', time: new Date().toISOString() }));
+      return;
+    }
+
     const file = path.join(ROOT, p);
     if (!file.startsWith(ROOT)) { res.writeHead(403); res.end('forbidden'); return; }
     if (!fs.existsSync(file) || !fs.statSync(file).isFile()) {

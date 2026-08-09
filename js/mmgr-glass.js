@@ -164,6 +164,47 @@ var MMGR = window.MMGR || {};
     '}'
   ].join('\n');
 
+  // ---- INTEGRATED-STRUCTURE-API-WINDOW plan §2: mouse-tracking glow ----
+  // The plan's GlossyBackground tracks the cursor via CSS custom properties
+  // (--mouse-x / --mouse-y) and renders a radial `.mouse-glow` overlay that
+  // follows it. Adaptation: while the premium engine is active, a lightweight
+  // fixed-position glow div sits ABOVE the liquid canvas but BELOW the app
+  // content (z-index 0, later in DOM than #glass-canvas; #app-main is z1),
+  // and a rAF-throttled mousemove listener writes the custom properties onto
+  // <html> so the glow follows the cursor. The listener + element live only
+  // for the premium session — deactivate()/fallback remove both, keeping the
+  // zero-cost-when-off gate intact (verified by qa-glass.cjs).
+  let _glowEl = null;
+  let _glowRaf = 0;
+
+  function _onMouseMove(e) {
+    if (_glowRaf) return;
+    _glowRaf = requestAnimationFrame(function() {
+      _glowRaf = 0;
+      const de = document.documentElement;
+      if (!de) return;
+      de.style.setProperty('--mouse-x', e.clientX + 'px');
+      de.style.setProperty('--mouse-y', e.clientY + 'px');
+    });
+  }
+
+  function _mountGlow() {
+    if (_glowEl) return;
+    const el = document.createElement('div');
+    el.className = 'mouse-glow';
+    el.setAttribute('aria-hidden', 'true');
+    document.body.appendChild(el); // after #glass-canvas → paints above it
+    _glowEl = el;
+    window.addEventListener('mousemove', _onMouseMove, { passive: true });
+  }
+
+  function _unmountGlow() {
+    if (_glowRaf) { cancelAnimationFrame(_glowRaf); _glowRaf = 0; }
+    window.removeEventListener('mousemove', _onMouseMove);
+    if (_glowEl && _glowEl.parentNode) _glowEl.parentNode.removeChild(_glowEl);
+    _glowEl = null;
+  }
+
   function _frame() {
     if (!_state.active || !_state.renderer) return;
     try {
@@ -206,6 +247,7 @@ var MMGR = window.MMGR || {};
       canvas.id = 'glass-canvas';
       canvas.setAttribute('aria-hidden', 'true');
       document.body.appendChild(canvas);
+      _mountGlow(); // mouse-tracking glow above the canvas, below the app
       const renderer = new THREE.WebGLRenderer({ canvas: canvas, alpha: false, antialias: false, powerPreference: 'high-performance' });
       renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
       renderer.setSize(window.innerWidth, window.innerHeight);
@@ -240,6 +282,7 @@ var MMGR = window.MMGR || {};
   }
 
   function _fallback(why, err) {
+    _unmountGlow();
     try {
       if (_state.canvas && _state.canvas.parentNode) _state.canvas.parentNode.removeChild(_state.canvas);
     } catch (e) { /* ignore */ }
@@ -253,6 +296,7 @@ var MMGR = window.MMGR || {};
   // mode toggle never leaks GPU contexts. Idempotent and never throws.
   function deactivate() {
     if (!_state.active && !_state.renderer) return;
+    _unmountGlow();
     if (_state.rafId) cancelAnimationFrame(_state.rafId);
     window.removeEventListener('resize', _onResize);
     try {

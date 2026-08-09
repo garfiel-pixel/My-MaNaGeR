@@ -247,6 +247,21 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
   })()`);
   check('A11 ui: tier select + per-preset run buttons + result panel render', u1.tierSel && u1.runBtns >= 10 && u1.runMain && u1.out && u1.chipCells === u1.runBtns, u1);
 
+  // ---- 6a. INTEGRATED-STRUCTURE-API-WINDOW (plan §1/§3): live API badge ----
+  // force=true so the assert isn't swallowed by the open()-triggered probe
+  // that may still be in flight on a slow server (review fix).
+  const u1a = await ev(`(async function(){
+    var pill = document.getElementById('ai-api-pill');
+    var lbl = document.getElementById('ai-api-pill-label');
+    var res = await MMGR.AiWin.checkApiHealth(true);
+    await new Promise(function(r){ setTimeout(r, 150); });
+    return { exists: !!pill && !!lbl,
+      result: res,
+      state: pill ? pill.getAttribute('data-state') : null,
+      label: lbl ? lbl.textContent : null };
+  })()`);
+  check('A16 api: /api/health badge exists and reports connected against the dev server', u1a.exists && u1a.result === 'connected' && u1a.state === 'connected' && u1a.label === 'API · connected', u1a);
+
   // ---- 6b. BYO Connect flow (STEP-2) ----
   const u1b = await ev(`(async function(){
     MMGR.AiWin.setAiCfg({ tier: 'cloud' }); MMGR.AiWin.syncSettingsUI();

@@ -37,14 +37,50 @@ var MMGR = window.MMGR || {};
   // Switching tiers is a settings toggle only — no schema/architecture
   // change, per Rank 2.3's exit criterion.
   const PROVIDER_DEFAULTS = {
-    openai: { endpoint: 'https://api.openai.com/v1/chat/completions', model: 'gpt-4o-mini' },
-    anthropic: { endpoint: 'https://api.anthropic.com/v1/messages', model: 'claude-3-5-sonnet-latest' },
+    // MODEL-FALLBACK-LADDER (DIR-5 fast-follow): OpenAI + Anthropic now carry
+    // the same ordered fallback lists as Gemini — 'model' first (preferred/
+    // highest-quality), then 'fallbackModels' smaller/cheaper as safety nets.
+    // Verified against provider docs on 2026-08-09 (same discipline as the
+    // Gemini ladder): OpenAI — gpt-4o-mini remains active; gpt-5-mini and
+    // gpt-5-nano are the active cheaper siblings (gpt-4.1-nano is deprecated
+    // and was NOT used). Anthropic — claude-3-5-sonnet-latest ->
+    // claude-3-5-haiku-latest -> claude-3-haiku.
+    openai: { endpoint: 'https://api.openai.com/v1/chat/completions', model: 'gpt-4o-mini', fallbackModels: ['gpt-5-mini', 'gpt-5-nano'] },
+    anthropic: { endpoint: 'https://api.anthropic.com/v1/messages', model: 'claude-3-5-sonnet-latest', fallbackModels: ['claude-3-5-haiku-latest', 'claude-3-haiku'] },
     // BYO-AI-KEY-SESSION-ONLY-v1: Google Gemini joins the v1 provider set.
-    // The Connect flow offers only openai + google-gemini (providers_v1);
-    // anthropic stays as a legacy lookup so stored config never 404s on an
-    // unknown provider key.
-    'google-gemini': { endpoint: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent', model: 'gemini-2.0-flash' }
+    // ANTHROPIC-CONNECTABLE fast-follow: Anthropic is now a full Connect-flow
+    // provider too (vault whitelist + provider select + live probe), so the
+    // claude ladder above is reachable from the UI, not just legacy config.
+    //
+    // GEMINI-MODEL-FALLBACK-LADDER (DIR-1): the Gemini provider now carries an
+    // ordered fallback ladder — `model` first (preferred/highest-quality),
+    // then `fallbackModels` from smaller/cheaper to last-resort safety net,
+    // matching the semantics of Garfield's own Python fallback (big model
+    // first, smaller ones as safety nets, never the reverse). Model IDs were
+    // verified against the LIVE API on 2026-08-09 before hardcoding (DIR-1
+    // verification_before_edit): gemini-2.5-flash and gemini-2.5-flash-lite
+    // BOTH returned 404 "no longer available to new users" (the directive's
+    // illustrative IDs are dead — using them would turn a rate-limit failure
+    // into an instant 404, worse than doing nothing), while gemini-flash-latest
+    // returned a real 200 generation on a quota-starved free key and is the
+    // last-rung safety net. DIR-2: the endpoint below is the DEFAULT-model
+    // URL; every ladder rung builds its own via geminiEndpointFor(modelId)
+    // because the model name lives in the URL path.
+    'google-gemini': {
+      endpoint: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent',
+      model: 'gemini-2.0-flash',
+      fallbackModels: ['gemini-2.0-flash-lite', 'gemini-flash-latest']
+    }
   };
+
+  // GEMINI-MODEL-FALLBACK-LADDER (DIR-2): the Gemini model name is embedded in
+  // the endpoint URL path, so a fallback to a different model cannot reuse the
+  // static `endpoint` string — the URL has to be built per attempted model.
+  // This is the single builder both the direct call (mmgr-ai.js) and the
+  // Worker relay (worker.js) use for whichever model is being tried.
+  function geminiEndpointFor(modelId) {
+    return 'https://generativelanguage.googleapis.com/v1beta/models/' + modelId + ':generateContent';
+  }
 
   const Config = {
     ai: {
@@ -114,6 +150,11 @@ var MMGR = window.MMGR || {};
         const retriable = res.status >= 500 || res.status === 429 || res.status === 408;
         if (res.ok || !retriable) return res;
         lastErr = new Error('HTTP ' + res.status);
+        // GEMINI-MODEL-FALLBACK-LADDER (DIR-3): carry the HTTP status on the
+        // thrown error so the AI ladder can tell capacity rejections (429 rate
+        // limit / 503 overload) apart from everything else and fall back to a
+        // smaller model ONLY on capacity, never on auth/config bugs.
+        lastErr.status = res.status;
       } catch (e) {
         // Network failure or timeout — retriable.
         lastErr = e;
@@ -158,6 +199,11 @@ var MMGR = window.MMGR || {};
         const retriable = res.status >= 500 || res.status === 429 || res.status === 408;
         if (res.ok || !retriable) return res;
         lastErr = new Error('HTTP ' + res.status);
+        // GEMINI-MODEL-FALLBACK-LADDER (DIR-3): carry the HTTP status on the
+        // thrown error so the AI ladder can tell capacity rejections (429 rate
+        // limit / 503 overload) apart from everything else and fall back to a
+        // smaller model ONLY on capacity, never on auth/config bugs.
+        lastErr.status = res.status;
       } catch (e) {
         lastErr = e;
       }
@@ -178,6 +224,7 @@ var MMGR = window.MMGR || {};
   ns.Net = {
     Config: Config,
     PROVIDER_DEFAULTS: PROVIDER_DEFAULTS,
+    geminiEndpointFor: geminiEndpointFor,
     getConfig: getConfig,
     get: get,
     getJSON: getJSON,

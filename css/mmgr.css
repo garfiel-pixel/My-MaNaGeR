@@ -1236,6 +1236,7 @@ body.dark-mode .ai-api-pill[data-state="error"]{background:rgba(239,68,68,.1);}
 .ai-err{color:var(--danger);font-weight:500;}
 .ai-meta{font-size:.6rem;color:var(--slate);margin-top:9px;padding-top:7px;border-top:1px dashed var(--border);display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
 .ai-trace-inline{font-size:.6rem;color:var(--slate);margin-top:5px;word-break:break-word;line-height:1.45;}
+.ai-fallback{font-size:.65rem;font-weight:600;color:var(--amber);background:rgba(255,193,7,.14);border:1px solid var(--amber);border-radius:8px;padding:4px 9px;margin-top:7px;display:inline-flex;align-items:center;gap:5px;line-height:1.35;}
 .ai-typing{display:inline-flex;gap:5px;align-items:center;padding:14px 18px;}
 .ai-typing span{width:7px;height:7px;border-radius:50%;background:var(--slate);animation:aiTyping 1.2s ease-in-out infinite;}
 .ai-typing span:nth-child(2){animation-delay:.16s;}

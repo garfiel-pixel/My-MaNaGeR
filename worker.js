@@ -178,8 +178,26 @@ function json(data, status = 200) {
    ============================================================ */
 const AI_PROVIDERS = {
   openai: { url: 'https://api.openai.com/v1/chat/completions', model: 'gpt-4o-mini' },
+  // MODEL-FALLBACK-LADDER fast-follow (DIR-5): Anthropic joins the relay so
+  // relay-hosted deployments get the same ladder as the direct path. The
+  // Messages API authenticates with x-api-key + anthropic-version headers and
+  // returns text in content[].text (handled below).
+  anthropic: { url: 'https://api.anthropic.com/v1/messages', model: 'claude-3-5-sonnet-latest' },
+  // GEMINI-MODEL-FALLBACK-LADDER (DIR-2): the Gemini model name is embedded in
+  // the URL path, so the upstream URL is built per request via geminiUrl() —
+  // the static default above is only a fallback. The client drives the model
+  // ladder THROUGH this relay (DIR-3): each attempt posts a validated `model`
+  // field and the relay forwards to exactly that model; capacity statuses
+  // (429/503) pass through with their own status so the client can advance.
   'google-gemini': { url: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent', model: 'gemini-2.0-flash' }
 };
+// Strict model-id validation: the value is interpolated into the upstream URL
+// path, so it must be a plain Gemini model id (letters/digits/dash/dot/underscore
+// only — no slashes/colons/query): path-injection guard. Invalid -> default.
+const GEMINI_MODEL_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
+function geminiUrl(model) {
+  return 'https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent';
+}
 const AI_BODY_LIMIT_BYTES = 262144; // 256 KB max request body
 const AI_TIMEOUT_MS = 30000;        // hard upstream timeout
 
@@ -201,7 +219,25 @@ function aiExtractText(provider, data) {
     return data && data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts
       ? data.candidates[0].content.parts.map(function(p) { return p.text || ''; }).join('') : null;
   }
+  if (provider === 'anthropic') {
+    return data && Array.isArray(data.content)
+      ? data.content.map(function(c) { return (c && c.type === 'text' && c.text) ? c.text : ''; }).join('') : null;
+  }
   return data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
+}
+
+// OpenAI-style [{role,content}] -> Anthropic Messages API payload (mirror of
+// mmgr-ai.js anthropicPayload): system split out, max_tokens required.
+function aiAnthropicPayload(model, messages) {
+  let system = '';
+  const msgs = [];
+  (messages || []).forEach(function(m) {
+    if (m && m.role === 'system') system += (system ? '\n' : '') + (m.content || '');
+    else if (m && m.content) msgs.push({ role: (m.role === 'assistant' || m.role === 'model') ? 'assistant' : 'user', content: m.content });
+  });
+  const p = { model: model, max_tokens: 4096, messages: msgs };
+  if (system) p.system = system;
+  return p;
 }
 
 // Read + parse the JSON body with a hard size cap. Content-Length alone is
@@ -241,6 +277,11 @@ async function handleAiChat(request) {
   if (!body || typeof body !== 'object') return json({ ok: false, error: 'bad request' }, 400);
   const provider = String(body.provider || '').toLowerCase();
   if (!AI_PROVIDERS[provider]) return json({ ok: false, error: 'unsupported provider' }, 400);
+  // GEMINI-MODEL-FALLBACK-LADDER (DIR-3): optional per-attempt model override
+  // (client-driven ladder). Strictly validated; an invalid value falls back
+  // to the provider default instead of erroring.
+  const reqModel = (typeof body.model === 'string' && GEMINI_MODEL_RE.test(body.model)) ? body.model : null;
+  const model = reqModel || AI_PROVIDERS[provider].model;
   // Key for THIS request only — header preferred, body field accepted.
   const key = String(request.headers.get('X-User-Api-Key') || '').trim()
     || (typeof body.apiKey === 'string' ? String(body.apiKey).trim() : '');
@@ -251,12 +292,15 @@ async function handleAiChat(request) {
   let upstream;
   try {
     const isGemini = provider === 'google-gemini';
-    upstream = await fetch(AI_PROVIDERS[provider].url, {
+    const isAnthropic = provider === 'anthropic';
+    upstream = await fetch(isGemini ? geminiUrl(model) : AI_PROVIDERS[provider].url, {
       method: 'POST',
       headers: isGemini
         ? { 'Content-Type': 'application/json', 'x-goog-api-key': key }
-        : { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
-      body: JSON.stringify(isGemini ? aiGeminiPayload(body.messages) : { model: AI_PROVIDERS[provider].model, messages: body.messages }),
+        : isAnthropic
+          ? { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' }
+          : { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
+      body: JSON.stringify(isGemini ? aiGeminiPayload(body.messages) : isAnthropic ? aiAnthropicPayload(model, body.messages) : { model: model, messages: body.messages }),
       signal: ctrl.signal
     });
   } catch (e) {
@@ -268,13 +312,19 @@ async function handleAiChat(request) {
     // Provider auth failures surface as 401 so the client clears its session
     // key (STEP-4). The key itself is never echoed anywhere.
     if (upstream.status === 401 || upstream.status === 403) return json({ ok: false, error: 'provider rejected the key' }, 401);
+    // GEMINI-MODEL-FALLBACK-LADDER (DIR-3): capacity rejections (429 rate
+    // limit / 503 overload) pass through with their own status so the client's
+    // model ladder can detect them and retry the NEXT model through this same
+    // relay. Everything else collapses to a generic 502.
+    if (upstream.status === 429 || upstream.status === 503) return json({ ok: false, error: 'provider rate limited (HTTP ' + upstream.status + ')' }, upstream.status);
     return json({ ok: false, error: 'provider error ' + upstream.status }, 502);
   }
   let data;
   try { data = await upstream.json(); } catch (e) { return json({ ok: false, error: 'bad provider response' }, 502); }
   const text = aiExtractText(provider, data);
   if (!text) return json({ ok: false, error: 'empty provider response' }, 502);
-  return json({ ok: true, text: String(text) });
+  // Echo the model that actually answered so the client can report it (DIR-4).
+  return json({ ok: true, text: String(text), model: model });
 }
 
 function base64UrlEncode(str) {

@@ -141,6 +141,16 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
   })()`);
   check('B04 vault: whitespace key rejected, stays disconnected', v4.threw && v4.off, v4);
 
+  // B06: ANTHROPIC-CONNECTABLE — the whitelist must round-trip anthropic
+  // (before this fast-follow, setKey('anthropic', ...) silently coerced to
+  // 'openai', making the Anthropic ladder unreachable from the UI).
+  const v5 = await ev(`(function(){
+    MMGR.AiKey.clearKey();
+    MMGR.AiKey.setKey('anthropic', 'sk-ant-vault');
+    return { provider: MMGR.AiKey.getProvider() === 'anthropic', key: MMGR.AiKey.getKey() === 'sk-ant-vault' };
+  })()`);
+  check('B06 vault: anthropic is a first-class provider (whitelist round-trip)', v5.provider && v5.key, v5);
+
   // ---- 4. Tier B (cloud): session-vault key -> relay-first, direct fallback ----
   const c1 = await ev(`(async function(){
     var calls = [];
@@ -205,6 +215,209 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
     } finally { window.fetch = orig; }
   })()`);
   check('A08b cloud: relay 200 -> text rendered, NO direct fallback call', c2b.ok && c2b.text === 'CLOUD-RELAY-OK' && c2b.relayUsed && c2b.noDirect, c2b);
+
+  // ---- GEMINI-MODEL-FALLBACK-LADDER (DIR-3/DIR-4) ----
+  // A08c: primary model 429s (rate limited) -> the ladder retries the next,
+  // smaller model (gemini-2.0-flash-lite) and reports WHICH model actually
+  // answered in res.model + res.trace (DIR-4 transparency).
+  const c2c = await ev(`(async function(){
+    var calls = [];
+    var orig = window.fetch;
+    window.fetch = function(url, opts){
+      calls.push({ url: url, opts: opts });
+      if (String(url).indexOf('/api/ai/chat') === 0) return Promise.resolve(new Response('', { status: 404 })); // no relay -> direct per model
+      if (String(url).indexOf('gemini-2.0-flash:generateContent') > -1) return Promise.resolve(new Response('', { status: 429 })); // primary quota-exhausted
+      return Promise.resolve(new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: 'LADDER-OK' }] } }] }), { status: 200, headers: { 'Content-Type': 'application/json' } }));
+    };
+    try {
+      MMGR.AiKey.setKey('google-gemini', 'AIza-ladder-1');
+      MMGR.AiWin.setAiCfg({ tier: 'cloud', provider: 'openai', endpoint: '', model: '' });
+      var res = await MMGR.AiWin.submit('hello', '', { tier: 'cloud' });
+      var liteCalled = calls.some(function(c){ return String(c.url).indexOf('gemini-2.0-flash-lite:generateContent') > -1; });
+      return { ok: res.ok, text: res.text, model: res.model,
+        liteCalled: liteCalled,
+        traceFallback: !!(res.trace && res.trace.join(' ').indexOf('fell back from gemini-2.0-flash on 429') > -1) };
+    } finally { window.fetch = orig; }
+  })()`);
+  check('A08c cloud: 429 on primary -> ladder falls back to flash-lite, reports actual model + fallback trace', c2c.ok && c2c.text === 'LADDER-OK' && c2c.model === 'gemini-2.0-flash-lite' && c2c.liteCalled && c2c.traceFallback, c2c);
+
+  // A08d: 401 on the FIRST model stops the whole ladder (no smaller-model
+  // attempt with a rejected key) AND clears the session key (401-only rule).
+  const c2d = await ev(`(async function(){
+    var calls = [];
+    var orig = window.fetch;
+    window.fetch = function(url, opts){
+      calls.push({ url: url, opts: opts });
+      if (String(url).indexOf('/api/ai/chat') === 0) return Promise.resolve(new Response('', { status: 404 }));
+      return Promise.resolve(new Response('', { status: 401 })); // key rejected on every model
+    };
+    try {
+      MMGR.AiKey.setKey('google-gemini', 'AIza-bad-ladder');
+      MMGR.AiWin.setAiCfg({ tier: 'cloud', provider: 'openai', endpoint: '', model: '' });
+      var res = await MMGR.AiWin.submit('hello', '', { tier: 'cloud' });
+      var geminiCalls = calls.filter(function(c){ return String(c.url).indexOf('generateContent') > -1; });
+      var onlyPrimary = geminiCalls.length === 1 && String(geminiCalls[0].url).indexOf('gemini-2.0-flash:generateContent') > -1 && String(geminiCalls[0].url).indexOf('gemini-2.0-flash-lite') === -1;
+      return { ok: res.ok, keyCleared: MMGR.AiKey.isConnected() === false,
+        status: MMGR.AiWin.getConnectionState(),
+        onlyPrimary: onlyPrimary,
+        noLite: !calls.some(function(c){ return String(c.url).indexOf('gemini-2.0-flash-lite') > -1; }) };
+    } finally { window.fetch = orig; }
+  })()`);
+  check('A08d cloud: 401 on first model -> ladder STOPS (no lite attempt), session key cleared', c2d.ok === false && c2d.keyCleared && c2d.status === 'not_connected' && c2d.onlyPrimary && c2d.noLite, c2d);
+
+  // A08e: RELAY-first ladder (the documented DIR-3 decision) — the relay
+  // reports 429 on the first model, so the client retries THROUGH THE RELAY
+  // with the next model and reports the actual answering model. No direct
+  // provider call may fire while the relay is present.
+  const c2e = await ev(`(async function(){
+    var calls = [];
+    var orig = window.fetch;
+    window.fetch = function(url, opts){
+      calls.push({ url: url, opts: opts });
+      if (String(url).indexOf('/api/ai/chat') === 0) {
+        var b = opts && opts.body ? JSON.parse(opts.body) : null;
+        if (b && b.model === 'gemini-2.0-flash') return Promise.resolve(new Response('', { status: 429 })); // relay reports capacity on primary
+        return Promise.resolve(new Response(JSON.stringify({ ok: true, text: 'RELAY-LADDER-OK', model: (b && b.model) || 'unknown' }), { status: 200, headers: { 'Content-Type': 'application/json' } }));
+      }
+      return Promise.resolve(new Response('', { status: 404 }));
+    };
+    try {
+      MMGR.AiKey.setKey('google-gemini', 'AIza-relay-ladder');
+      MMGR.AiWin.setAiCfg({ tier: 'cloud', provider: 'openai', endpoint: '', model: '' });
+      var res = await MMGR.AiWin.submit('hello', '', { tier: 'cloud' });
+      var relayCalls = calls.filter(function(c){ return String(c.url).indexOf('/api/ai/chat') === 0; });
+      var liteRelay = relayCalls.some(function(c){ var b = c.opts && c.opts.body ? JSON.parse(c.opts.body) : null; return b && b.model === 'gemini-2.0-flash-lite'; });
+      var noDirect = !calls.some(function(c){ return String(c.url).indexOf('generativelanguage') > -1; });
+      return { ok: res.ok, text: res.text, model: res.model, liteRelay: liteRelay, noDirect: noDirect,
+        traceFallback: !!(res.trace && res.trace.join(' ').indexOf('fell back from gemini-2.0-flash on 429') > -1) };
+    } finally { window.fetch = orig; }
+  })()`);
+  check('A08e cloud: relay 429 on primary -> ladder retries flash-lite THROUGH the relay, reports actual model', c2e.ok && c2e.text === 'RELAY-LADDER-OK' && c2e.model === 'gemini-2.0-flash-lite' && c2e.liteRelay && c2e.noDirect && c2e.traceFallback, c2e);
+
+  // A08f: OPENAI ladder — 429 on gpt-4o-mini falls back to gpt-5-mini (the
+  // first verified cheaper rung) and reports the actual model + fallback trace.
+  const c2f = await ev(`(async function(){
+    var calls = [];
+    var orig = window.fetch;
+    window.fetch = function(url, opts){
+      calls.push({ url: url, opts: opts });
+      if (String(url).indexOf('/api/ai/chat') === 0) return Promise.resolve(new Response('', { status: 404 }));
+      var b = opts && opts.body ? JSON.parse(opts.body) : null;
+      if (b && b.model === 'gpt-4o-mini') return Promise.resolve(new Response('', { status: 429 }));
+      return Promise.resolve(new Response(JSON.stringify({ choices: [{ message: { content: 'OPENAI-LADDER-OK' } }] }), { status: 200, headers: { 'Content-Type': 'application/json' } }));
+    };
+    try {
+      MMGR.AiKey.setKey('openai', 'sk-ladder-1');
+      MMGR.AiWin.setAiCfg({ tier: 'cloud', provider: 'openai', endpoint: '', model: '' });
+      var res = await MMGR.AiWin.submit('hello', '', { tier: 'cloud' });
+      var triedGpt5Mini = calls.some(function(c){ var b = c.opts && c.opts.body ? JSON.parse(c.opts.body) : null; return b && b.model === 'gpt-5-mini'; });
+      return { ok: res.ok, text: res.text, model: res.model, triedGpt5Mini: triedGpt5Mini,
+        traceFallback: !!(res.trace && res.trace.join(' ').indexOf('fell back from gpt-4o-mini on 429') > -1) };
+    } finally { window.fetch = orig; }
+  })()`);
+  check('A08f cloud: OpenAI 429 on gpt-4o-mini -> ladder falls back to gpt-5-mini, reports actual model', c2f.ok && c2f.text === 'OPENAI-LADDER-OK' && c2f.model === 'gpt-5-mini' && c2f.triedGpt5Mini && c2f.traceFallback, c2f);
+
+  // A08g: ANTHROPIC wire format — the Messages API needs x-api-key +
+  // anthropic-version headers, max_tokens + system field in the body, and the
+  // reply comes back in content[0].text (NOT choices[0].message.content).
+  const c2g = await ev(`(async function(){
+    var calls = [];
+    var orig = window.fetch;
+    window.fetch = function(url, opts){
+      calls.push({ url: url, opts: opts });
+      if (String(url).indexOf('/api/ai/chat') === 0) return Promise.resolve(new Response('', { status: 404 }));
+      return Promise.resolve(new Response(JSON.stringify({ content: [{ type: 'text', text: 'CLAUDE-OK' }] }), { status: 200, headers: { 'Content-Type': 'application/json' } }));
+    };
+    try {
+      MMGR.AiKey.setKey('anthropic', 'sk-ant-1');
+      MMGR.AiWin.setAiCfg({ tier: 'cloud', provider: 'openai', endpoint: '', model: '' });
+      var res = await MMGR.AiWin.submit('hello', '', { tier: 'cloud' });
+      var direct = calls.filter(function(c){ return String(c.url).indexOf('anthropic.com') > -1; })[0];
+      var body = direct && direct.opts ? JSON.parse(direct.opts.body) : null;
+      return { ok: res.ok, text: res.text,
+        xkey: !!(direct && direct.opts && direct.opts.headers && direct.opts.headers['x-api-key'] === 'sk-ant-1'),
+        version: !!(direct && direct.opts && direct.opts.headers && direct.opts.headers['anthropic-version'] === '2023-06-01'),
+        maxTokens: !!(body && body.max_tokens > 0),
+        system: !!(body && body.system && body.system.length > 0),
+        messages: !!(body && body.messages && body.messages.length === 1 && body.messages[0].role === 'user') };
+    } finally { window.fetch = orig; }
+  })()`);
+  check('A08g cloud: Anthropic direct POST uses x-api-key + anthropic-version + max_tokens/system, parses content[0].text', c2g.ok && c2g.text === 'CLAUDE-OK' && c2g.xkey && c2g.version && c2g.maxTokens && c2g.system && c2g.messages, c2g);
+
+  // A08h: ANTHROPIC ladder — 429 on claude-3-5-sonnet-latest falls back to
+  // claude-3-5-haiku-latest and reports the actual model + fallback trace.
+  const c2h = await ev(`(async function(){
+    var calls = [];
+    var orig = window.fetch;
+    window.fetch = function(url, opts){
+      calls.push({ url: url, opts: opts });
+      if (String(url).indexOf('/api/ai/chat') === 0) return Promise.resolve(new Response('', { status: 404 }));
+      var b = opts && opts.body ? JSON.parse(opts.body) : null;
+      if (b && b.model === 'claude-3-5-sonnet-latest') return Promise.resolve(new Response('', { status: 429 }));
+      return Promise.resolve(new Response(JSON.stringify({ content: [{ type: 'text', text: 'CLAUDE-HAIKU-OK' }] }), { status: 200, headers: { 'Content-Type': 'application/json' } }));
+    };
+    try {
+      MMGR.AiKey.setKey('anthropic', 'sk-ant-2');
+      MMGR.AiWin.setAiCfg({ tier: 'cloud', provider: 'openai', endpoint: '', model: '' });
+      var res = await MMGR.AiWin.submit('hello', '', { tier: 'cloud' });
+      var triedHaiku = calls.some(function(c){ var b = c.opts && c.opts.body ? JSON.parse(c.opts.body) : null; return b && b.model === 'claude-3-5-haiku-latest'; });
+      return { ok: res.ok, text: res.text, model: res.model, triedHaiku: triedHaiku,
+        traceFallback: !!(res.trace && res.trace.join(' ').indexOf('fell back from claude-3-5-sonnet-latest on 429') > -1) };
+    } finally { window.fetch = orig; }
+  })()`);
+  check('A08h cloud: Anthropic 429 on sonnet -> ladder falls back to haiku, reports actual model', c2h.ok && c2h.text === 'CLAUDE-HAIKU-OK' && c2h.model === 'claude-3-5-haiku-latest' && c2h.triedHaiku && c2h.traceFallback, c2h);
+
+  // A08i: ANTHROPIC CONNECT probe — Connect & Test must hit the Anthropic
+  // models endpoint with x-api-key + anthropic-version, NOT the OpenAI
+  // endpoint (a wrong-endpoint probe would 401 and clear the session key).
+  const c2i = await ev(`(async function(){
+    var calls = [];
+    var orig = window.fetch;
+    window.fetch = function(url, opts){
+      calls.push({ url: url, opts: opts });
+      return Promise.resolve(new Response(JSON.stringify({ data: [] }), { status: 200, headers: { 'Content-Type': 'application/json' } }));
+    };
+    try {
+      var r = await MMGR.AiWin.probeProvider('anthropic', 'sk-ant-probe');
+      var hit = calls.filter(function(c){ return String(c.url).indexOf('api.anthropic.com/v1/models') > -1; })[0];
+      return { ok: r.ok, status: r.status,
+        anthropicUrl: !!hit,
+        xkey: !!(hit && hit.opts && hit.opts.headers && hit.opts.headers['x-api-key'] === 'sk-ant-probe'),
+        version: !!(hit && hit.opts && hit.opts.headers && hit.opts.headers['anthropic-version'] === '2023-06-01') };
+    } finally { window.fetch = orig; }
+  })()`);
+  check('A08i cloud: Anthropic Connect probe hits /v1/models with x-api-key + anthropic-version', c2i.ok && c2i.status === 200 && c2i.anthropicUrl && c2i.xkey && c2i.version, c2i);
+
+  // A08j: VISIBLE FALLBACK BADGE — after a 429-driven ladder fallback the
+  // chat bubble must render a .ai-fallback chip naming both models (visible
+  // without reading the trace), and the result must expose fellBackFrom.
+  const c2j = await ev(`(async function(){
+    var calls = [];
+    var orig = window.fetch;
+    window.fetch = function(url, opts){
+      calls.push({ url: url, opts: opts });
+      if (String(url).indexOf('/api/ai/chat') === 0) return Promise.resolve(new Response('', { status: 404 }));
+      var b = opts && opts.body ? JSON.parse(opts.body) : null;
+      if (b && b.model === 'claude-3-5-sonnet-latest') return Promise.resolve(new Response('', { status: 429 }));
+      return Promise.resolve(new Response(JSON.stringify({ content: [{ type: 'text', text: 'CLAUDE-HAIKU-OK' }] }), { status: 200, headers: { 'Content-Type': 'application/json' } }));
+    };
+    try {
+      MMGR.AiKey.setKey('anthropic', 'sk-ant-badge');
+      MMGR.AiWin.setAiCfg({ tier: 'cloud', provider: 'openai', endpoint: '', model: '' });
+      var q = document.getElementById('ai-q');
+      if (q) q.value = 'is the schedule safe?';
+      var res1 = await MMGR.AiWin.runQuestion();
+      if (q) q.value = '';
+      var bubbles = document.querySelectorAll('#ai-thread .ai-bubble');
+      var last = bubbles.length ? bubbles[bubbles.length - 1] : null;
+      var badge = last ? last.querySelector('.ai-fallback') : null;
+      return {
+        ok: res1.ok, model: res1.model, fellBackFrom: res1.fellBackFrom || null,
+        badgeShown: !!(badge && badge.textContent.indexOf('claude-3-5-haiku-latest') > -1 && badge.textContent.indexOf('claude-3-5-sonnet-latest') > -1)
+      };
+    } finally { window.fetch = orig; }
+  })()`);
+  check('A08j UI: fallback bubble renders a visible .ai-fallback badge naming both models', c2j.ok && c2j.model === 'claude-3-5-haiku-latest' && c2j.fellBackFrom === 'claude-3-5-sonnet-latest' && c2j.badgeShown, c2j);
 
   const c3 = await ev(`(async function(){
     var orig = window.fetch;

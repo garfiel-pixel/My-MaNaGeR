@@ -34,7 +34,7 @@
         per-value inline styles (bar geometry, status colors, the sprint
         panel's flex layout) that cannot be classed.
   - connect-src adds the AI providers for the BYO cloud tier (BYO-AI-KEY-
-      SESSION-ONLY-v1: OpenAI + Google Gemini; the session key routes through
+      SESSION-ONLY-v1: OpenAI + Google Gemini + Anthropic Claude; the session key routes through
       the same-origin Worker relay /api/ai/chat, with a direct-call fallback
       for local/static hosting): https://api.openai.com https://api.anthropic.com
       https://generativelanguage.googleapis.com
@@ -829,9 +829,11 @@
     <div class="ai-conn-row" id="ai-cfg-cloud">
       <span class="ai-conn-row-label"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cpu"></use></svg> Cloud connection (your own key)</span>
       <span class="ai-byo-status" id="ai-byo-status" data-state="off"><span class="ai-byo-dot"></span><span class="ai-byo-status-txt">Disconnected</span></span>
+      <!-- Provider list must match MMGR.AiKey.PROVIDERS (js/mmgr-ai-key.js) — keep in sync -->
       <select id="ai-byo-provider" title="AI provider for this session">
         <option value="openai">OpenAI</option>
         <option value="google-gemini">Google Gemini</option>
+        <option value="anthropic">Anthropic Claude</option>
       </select>
       <input type="password" id="ai-byo-key" class="ai-byo-key" placeholder="Paste your API key — this session only, never exported" autocomplete="off" spellcheck="false">
       <button class="btn btn-g btn-s" id="ai-byo-connect" title="Save this session key and verify it with a live provider check"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-link"></use></svg> Connect &amp; Test</button>
@@ -867,7 +869,7 @@
             <button class="btn btn-n btn-s" data-action="aiCopyOut"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy Result</button>
             <button class="btn btn-n btn-s" data-action="aiClear">Clear</button>
           </div>
-          <p class="ai-note">Tier A runs a zero-key engine in this browser — every line traces to a real project field, offline. Tier B uses your own OpenAI / Google Gemini key for this session only (never stored, never exported, cleared on close) through the Worker relay or the same circuit-broken network path as weather. Connect &amp; Test verifies the key with a live provider check before Send unlocks. The copy-first flow still works for any external tool.</p>
+          <p class="ai-note">Tier A runs a zero-key engine in this browser — every line traces to a real project field, offline. Tier B uses your own OpenAI / Google Gemini / Anthropic Claude key for this session only (never stored, never exported, cleared on close) through the Worker relay or the same circuit-broken network path as weather. Connect &amp; Test verifies the key with a live provider check before Send unlocks. The copy-first flow still works for any external tool.</p>
         </div>
       </details>
       <!-- Result store — hidden; copyOut() reads it and runs render as bubbles -->

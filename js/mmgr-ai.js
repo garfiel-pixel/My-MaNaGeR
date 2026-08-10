@@ -87,11 +87,20 @@ var MMGR = window.MMGR || {};
   const TIERS = {
     off:   { label: 'Off — copy-first only' },
     local: { label: 'Local (zero-key, offline, zero-fabrication)' },
-    cloud: { label: 'Cloud (BYO key, session-only — OpenAI / Google Gemini)' }
+    cloud: { label: 'Cloud (BYO key, session-only — OpenAI / Google Gemini / Anthropic)' }
   };
 
   function toast(msg, type) {
     if (ns.App && ns.App.showToast) ns.App.showToast(msg, type || 'ok');
+  }
+
+  // Readable provider names for the connect UI (ANTHROPIC-CONNECTABLE
+  // fast-follow: Anthropic joined the selectable set, so a two-way ternary
+  // is no longer enough).
+  function providerLabel(provider) {
+    if (provider === 'google-gemini') return 'Google Gemini';
+    if (provider === 'anthropic') return 'Anthropic Claude';
+    return 'OpenAI';
   }
 
   // ============================================================
@@ -465,7 +474,7 @@ var MMGR = window.MMGR || {};
     const status = getConnectionState();
     if (status === 'connected') {
       st.setAttribute('data-state', 'on');
-      if (txt) txt.textContent = 'Connected · ' + (BYO.getProvider() === 'google-gemini' ? 'Google Gemini' : 'OpenAI');
+      if (txt) txt.textContent = 'Connected · ' + providerLabel(BYO.getProvider());
     } else if (status === 'saved_untested') {
       st.setAttribute('data-state', 'untested');
       if (txt) txt.textContent = 'Key saved — not tested';
@@ -510,10 +519,15 @@ var MMGR = window.MMGR || {};
     const def = (ns.Net && ns.Net.PROVIDER_DEFAULTS) ? ns.Net.PROVIDER_DEFAULTS[provider] : null;
     if (!def) return { ok: false, status: 0 };
     const isGemini = provider === 'google-gemini';
+    const isAnthropic = provider === 'anthropic';
     const url = isGemini
       ? 'https://generativelanguage.googleapis.com/v1beta/models?key=' + encodeURIComponent(key)
-      : 'https://api.openai.com/v1/models';
-    const headers = isGemini ? {} : { 'Authorization': 'Bearer ' + key };
+      : isAnthropic
+        ? 'https://api.anthropic.com/v1/models'
+        : 'https://api.openai.com/v1/models';
+    const headers = isGemini ? {} : isAnthropic
+      ? { 'x-api-key': key, 'anthropic-version': '2023-06-01' }
+      : { 'Authorization': 'Bearer ' + key };
     try {
       const res = await ns.Net.get(url, { headers: headers, timeoutMs: 6000, maxRetries: 0 });
       return { ok: !!(res && res.ok), status: res ? res.status : 0 };
@@ -546,7 +560,7 @@ var MMGR = window.MMGR || {};
     if (probe.ok) {
       setConnectionStatus('connected');
       syncSettingsUI();
-      toast('Key connected and verified against ' + (provider === 'google-gemini' ? 'Google Gemini' : 'OpenAI') + ' — this session only. Cleared when you close the tab.', 'ok');
+      toast('Key connected and verified against ' + providerLabel(provider) + ' — this session only. Cleared when you close the tab.', 'ok');
       return { ok: true, status: 'connected' };
     }
     if (probe.status === 401 || probe.status === 403) {
@@ -852,50 +866,183 @@ var MMGR = window.MMGR || {};
     return p;
   }
 
-  // Direct provider call — the fallback used only when the Worker relay is
-  // not reachable/deployed (local/static hosting). The key still comes from
-  // the session vault, never from project state.
-  async function directChat(provider, key, messages) {
-    const def = (ns.Net && ns.Net.PROVIDER_DEFAULTS) ? ns.Net.PROVIDER_DEFAULTS[provider] : {};
+  // ============================================================
+  // MODEL-FALLBACK-LADDER (DIR-3, generalized to all providers)
+  // ------------------------------------------------------------
+  // ONE shared fallback implementation, used by BOTH hosting modes and ALL
+  // providers. directChat() and relayChat() both route through
+  // callProviderWithFallback(); nobody implements a second ladder.
+  // Model list is [def.model].concat(def.fallbackModels || []) per provider
+  // from PROVIDER_DEFAULTS — ordered preferred/highest-quality first ->
+  // smallest/cheapest last (DIR-1). Fallback IDs were verified against the
+  // providers' current model docs on 2026-08-09 (see mmgr-net.js).
+  //
+  // Fallback classification (DIR-3): an attempt advances to the next, smaller
+  // model ONLY on capacity rejections — 429 (rate limit) or 503 (overload). A
+  // 401/403 on ANY attempt stops the whole ladder immediately: the key itself
+  // is rejected, so the existing 401-only key-clear rule (BYO.clearKey() in
+  // runCloud) applies — never keep trying smaller models with a key that is
+  // already confirmed bad. Any OTHER error (400 bad request, network failure
+  // after normal retries) also stops the ladder: silently trying a different
+  // model would mask a real configuration bug.
+  //
+  // Relay-vs-direct (DIR-3 decision, documented): the client drives the
+  // ladder THROUGH the same-origin Worker relay when it is active — each
+  // attempt posts to /api/ai/chat with a per-attempt `model` field, and the
+  // relay (worker.js) forwards to exactly that model and passes 429/503
+  // through with their own status so the ladder can advance. If the relay
+  // route is absent (404/405, e.g. local static hosting) or a relay network
+  // failure occurs, the attempt degrades to the direct provider call for the
+  // SAME model before the ladder advances. Both hosting modes therefore get
+  // identical fallback behavior from this one function.
+
+  // Single DIRECT OpenAI attempt at ONE model. Key rides the Authorization
+  // Bearer header. Throws errors with .status set (429/503 capacity, 401 auth).
+  async function openaiDirectAttempt(key, model, messages) {
+    const def = (ns.Net && ns.Net.PROVIDER_DEFAULTS) ? ns.Net.PROVIDER_DEFAULTS.openai : {};
     if (!def || !def.endpoint) throw new Error('no AI endpoint configured');
-    const res = (provider === 'google-gemini')
-      ? await ns.Net.post(def.endpoint, geminiPayload(messages), { headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key }, timeoutMs: 30000, maxRetries: 1 })
-      : await ns.Net.post(def.endpoint, { model: def.model, messages: messages }, { headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key }, timeoutMs: 30000, maxRetries: 1 });
+    const res = await ns.Net.post(def.endpoint, { model: model, messages: messages }, { headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key }, timeoutMs: 30000, maxRetries: 1 });
+    if (res.status === 429 || res.status === 503) { const e = new Error('OpenAI rate limited (HTTP ' + res.status + ')'); e.status = res.status; throw e; }
     if (res.status === 401 || res.status === 403) { const e = new Error('provider rejected the key'); e.status = 401; throw e; }
     if (!res.ok) throw new Error('AI endpoint HTTP ' + res.status);
     const data = await res.json().catch(function() { return null; });
-    const text = (provider === 'google-gemini')
-      ? (data && data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts ? data.candidates[0].content.parts.map(function(p) { return p.text || ''; }).join('') : null)
-      : (data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content);
+    const text = (data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content);
     if (!text) throw new Error('empty AI response');
     return String(text);
   }
 
+  // OpenAI-style [{role,content}] -> Anthropic Messages API payload: the
+  // system prompt splits out into its own field, roles are 'user'/'assistant'
+  // (never 'model'), and max_tokens is required by the API.
+  function anthropicPayload(model, messages) {
+    let system = '';
+    const msgs = [];
+    (messages || []).forEach(function(m) {
+      if (m.role === 'system') system += (system ? '\n' : '') + (m.content || '');
+      else msgs.push({ role: m.role === 'assistant' ? 'assistant' : 'user', content: m.content || '' });
+    });
+    const p = { model: model, max_tokens: 4096, messages: msgs };
+    if (system) p.system = system;
+    return p;
+  }
+
+  // Single DIRECT Anthropic attempt at ONE model. The Messages API authenticates
+  // with x-api-key + anthropic-version headers (NOT Bearer), requires
+  // max_tokens, and returns text in data.content[].text.
+  async function anthropicDirectAttempt(key, model, messages) {
+    const def = (ns.Net && ns.Net.PROVIDER_DEFAULTS) ? ns.Net.PROVIDER_DEFAULTS.anthropic : {};
+    if (!def || !def.endpoint) throw new Error('no AI endpoint configured');
+    const res = await ns.Net.post(def.endpoint, anthropicPayload(model, messages), { headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' }, timeoutMs: 30000, maxRetries: 1 });
+    if (res.status === 429 || res.status === 503) { const e = new Error('Anthropic rate limited (HTTP ' + res.status + ')'); e.status = res.status; throw e; }
+    if (res.status === 401 || res.status === 403) { const e = new Error('provider rejected the key'); e.status = 401; throw e; }
+    if (!res.ok) throw new Error('AI endpoint HTTP ' + res.status);
+    const data = await res.json().catch(function() { return null; });
+    const text = (data && Array.isArray(data.content)) ? data.content.map(function(c) { return (c && c.type === 'text' && c.text) ? c.text : ''; }).join('') : null;
+    if (!text) throw new Error('empty AI response');
+    return String(text);
+  }
+
+  // Single DIRECT attempt at ONE Gemini model (the per-model call refactored
+  // out of the old directChat Gemini branch). Endpoint is parameterized by
+  // model (DIR-2). Key rides the x-goog-api-key header only.
+  // NOTE: Net.post throws with .status after exhausting retries on 429/408/5xx
+  // and carries status-less network failures up as-is. The ladder classifies
+  // both: 429/503 advance, everything else (including a status-less network
+  // failure) stops the ladder — DIR-3 says a network failure must NOT
+  // silently fall through to a smaller model.
+  async function geminiDirectAttempt(key, model, messages) {
+    const url = (ns.Net && ns.Net.geminiEndpointFor) ? ns.Net.geminiEndpointFor(model) : null;
+    if (!url) throw new Error('no AI endpoint configured');
+    const res = await ns.Net.post(url, geminiPayload(messages), { headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key }, timeoutMs: 30000, maxRetries: 1 });
+    if (res.status === 429 || res.status === 503) { const e = new Error('Gemini rate limited (HTTP ' + res.status + ')'); e.status = res.status; throw e; }
+    if (res.status === 401 || res.status === 403) { const e = new Error('provider rejected the key'); e.status = 401; throw e; }
+    if (!res.ok) throw new Error('AI endpoint HTTP ' + res.status);
+    const data = await res.json().catch(function() { return null; });
+    const text = (data && data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts)
+      ? data.candidates[0].content.parts.map(function(p) { return p.text || ''; }).join('') : null;
+    if (!text) throw new Error('empty AI response');
+    return String(text);
+  }
+
+  // One attempt against ONE model of ANY provider. directOnly skips the relay
+  // hop (used when the relay already proved absent — static hosting /
+  // directChat). Relay 429/503/401 (or any relay-reported 5xx/408 with a
+  // status) is a real answer — carried up. A status-less throw is a network
+  // failure/timeout: degrade to the direct call for the SAME model.
+  async function providerAttempt(provider, key, model, messages, ctx, directOnly) {
+    const direct = function() {
+      if (provider === 'google-gemini') return geminiDirectAttempt(key, model, messages);
+      if (provider === 'anthropic') return anthropicDirectAttempt(key, model, messages);
+      return openaiDirectAttempt(key, model, messages);
+    };
+    if (!directOnly) {
+      let res;
+      try {
+        res = await ns.Net.post('/api/ai/chat', { provider: provider, model: model, messages: messages, context: ctx || '' }, {
+          headers: { 'Content-Type': 'application/json', 'X-User-Api-Key': key },
+          timeoutMs: 30000, maxRetries: 1
+        });
+      } catch (e) {
+        if (e && (e.status === 429 || e.status === 503 || e.status === 401 || e.status === 403)) throw e;
+        return direct();
+      }
+      if (res.status === 404 || res.status === 405) return direct();
+      if (res.status === 429 || res.status === 503) { const e = new Error('provider rate limited (HTTP ' + res.status + ')'); e.status = res.status; throw e; }
+      if (res.status === 401 || res.status === 403) { const e = new Error('provider rejected the key'); e.status = 401; throw e; }
+      if (!res.ok) throw new Error('AI chat HTTP ' + res.status);
+      const data = await res.json().catch(function() { return null; });
+      if (!data || typeof data.text !== 'string' || !data.text) throw new Error('empty AI response');
+      return String(data.text);
+    }
+    return direct();
+  }
+
+  // The ladder itself (DIR-3 core). Returns { ok:true, text, model,
+  // fellBackFrom } — `model` is the model that ACTUALLY answered and
+  // `fellBackFrom` is the original preferred model when a fallback fired
+  // (DIR-4 transparency). Throws the last capacity error when every rung is
+  // exhausted.
+  async function callProviderWithFallback(provider, key, messages, ctx, opts) {
+    const def = (ns.Net && ns.Net.PROVIDER_DEFAULTS && ns.Net.PROVIDER_DEFAULTS[provider]) || {};
+    const models = [def.model].concat(def.fallbackModels || []).filter(Boolean);
+    if (!models.length) throw new Error('no model configured for provider ' + provider);
+    const directOnly = !!(opts && opts.directOnly);
+    let lastCapacityErr = null;
+    for (let i = 0; i < models.length; i++) {
+      const model = models[i];
+      try {
+        const text = await providerAttempt(provider, key, model, messages, ctx || '', directOnly);
+        return { ok: true, text: text, model: model, fellBackFrom: i > 0 ? models[0] : null };
+      } catch (e) {
+        const status = e && e.status;
+        if (status === 429 || status === 503) { lastCapacityErr = e; continue; }
+        throw e; // 401/403 or any other error — stop the ladder immediately
+      }
+    }
+    if (lastCapacityErr) throw lastCapacityErr;
+    const e = new Error('all ' + provider + ' models rate-limited or unavailable');
+    e.status = 429;
+    throw e;
+  }
+
+  // Direct provider call — the fallback used only when the Worker relay is
+  // not reachable/deployed (local/static hosting). The key still comes from
+  // the session vault, never from project state. Every provider routes
+  // through the shared ladder in direct-only mode (DIR-3).
+  async function directChat(provider, key, messages) {
+    const r = await callProviderWithFallback(provider, key, messages, '', { directOnly: true });
+    return r.text;
+  }
+
   // Preferred path (STEP-4/5): the same-origin Worker relay POST
   // /api/ai/chat carries the key only in the per-request X-User-Api-Key
-  // header, forwards to the provider, and never stores or logs it. If the
-  // relay route is absent (404/405, e.g. local static hosting) or unreachable
-  // it degrades to the direct call above — the key is still vault-only.
+  // header, forwards to the provider, and never stores or logs it. Every
+  // provider routes through the shared ladder (relay-first per model, DIR-3);
+  // the relay is a thin forwarder that accepts the per-attempt model and
+  // passes 429/503 through.
   async function relayChat(provider, key, messages, ctx) {
-    let res;
-    try {
-      res = await ns.Net.post('/api/ai/chat', { provider: provider, messages: messages, context: ctx || '' }, {
-        headers: { 'Content-Type': 'application/json', 'X-User-Api-Key': key },
-        timeoutMs: 30000, maxRetries: 1
-      });
-    } catch (e) {
-      return directChat(provider, key, messages);
-    }
-    if (res.status === 404 || res.status === 405) return directChat(provider, key, messages);
-    let data;
-    try { data = await res.json(); } catch (e) { throw new Error('bad relay response'); }
-    if (!res.ok) {
-      const err = new Error((data && data.error) ? data.error : ('AI chat HTTP ' + res.status));
-      err.status = res.status;
-      throw err;
-    }
-    if (!data || typeof data.text !== 'string' || !data.text) throw new Error('empty AI response');
-    return data.text;
+    const r = await callProviderWithFallback(provider, key, messages, ctx || '');
+    return r.text;
   }
 
   async function runCloud(prompt, ctx, cfg) {
@@ -918,8 +1065,14 @@ var MMGR = window.MMGR || {};
       { role: 'user', content: userContent }
     ];
     let text;
+    // DIR-4: report the model that ACTUALLY answered, not the configured one.
+    let actualModel = model;
+    let fellBackFrom = null;
     try {
-      text = await relayChat(provider, key, messages, ctx || '');
+      const r = await callProviderWithFallback(provider, key, messages, ctx || '');
+      text = r.text;
+      actualModel = r.model;
+      fellBackFrom = r.fellBackFrom;
     } catch (e) {
       // STEP-4: auth failure is the ONLY condition that clears the session
       // key — network/timeout/provider-5xx errors leave it in place.
@@ -931,7 +1084,11 @@ var MMGR = window.MMGR || {};
       }
       throw e;
     }
-    return { ok: true, tier: 'cloud', model: model, text: String(text), trace: ['cloud:' + provider + ':' + model, 'grounded in attached context'] };
+    // DIR-4 transparency: tell the user which model actually answered, and
+    // when a 429 pushed the ladder to a smaller tier.
+    const trace = ['cloud:' + provider + ':' + actualModel + (fellBackFrom && fellBackFrom !== actualModel ? ' (fell back from ' + fellBackFrom + ' on 429)' : '')];
+    trace.push('grounded in attached context');
+    return { ok: true, tier: 'cloud', model: actualModel, fellBackFrom: fellBackFrom, text: String(text), trace: trace };
   }
 
   // ---- submit(): the single seam both tiers share ----
@@ -1001,6 +1158,7 @@ var MMGR = window.MMGR || {};
           at: new Date().toISOString(),
           tier: res.tier,
           model: res.model,
+          fellBackFrom: res.fellBackFrom,
           promptType: type,
           text: res.text,
           trace: res.trace || []
@@ -1135,8 +1293,18 @@ var MMGR = window.MMGR || {};
   function botAvatar() {
     return '<div class="ai-bot-avatar"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg></div>';
   }
-  function botBubbleHtml(textHtml, metaHtml, traceHtml) {
-    return botAvatar() + '<div class="ai-bot-body"><div class="ai-text">' + textHtml + '</div>' + (metaHtml || '') + (traceHtml || '') + '</div>';
+  // AI-FALLBACK-BADGE: ONE shared chip builder — renderThread and
+  // seedThreadFromState both call it, so the two render paths can never
+  // drift (same convention as the shared fallback ladder itself). Returns
+  // '' when no fallback fired. Tier gate keeps it cloud-only (the only tier
+  // with a ladder).
+  function fallbackBadgeHtml(tier, model, fellBackFrom) {
+    if (tier !== 'cloud' || !fellBackFrom || !model || fellBackFrom === model) return '';
+    return '<div class="ai-fallback" role="status">⬇ Fell back to <strong>' + escHtml(model) + '</strong> — ' + escHtml(fellBackFrom) + ' hit its rate limit</div>';
+  }
+
+  function botBubbleHtml(textHtml, metaHtml, badgeHtml, traceHtml) {
+    return botAvatar() + '<div class="ai-bot-body"><div class="ai-text">' + textHtml + '</div>' + (metaHtml || '') + (badgeHtml || '') + (traceHtml || '') + '</div>';
   }
   function botMeta(engine) {
     return '<div class="ai-meta"><span>⚡ ' + escHtml(engine) + '</span></div>';
@@ -1150,10 +1318,14 @@ var MMGR = window.MMGR || {};
     if (!res) return;
     if (res.ok) {
       const engine = (res.tier === 'local') ? 'Local engine' : (res.tier === 'cloud' ? 'Cloud' : res.tier) + (res.model ? ' · ' + res.model : '');
+      // MODEL-FALLBACK-LADDER badge (DIR-4 visibility): when a 429 pushed the
+      // ladder to a smaller model, render a visible chip so users see the
+      // fallback fired WITHOUT having to read the trace line.
+      const fallback = fallbackBadgeHtml(res.tier, res.model, res.fellBackFrom);
       const trace = (res.trace && res.trace.length)
         ? '<div class="ai-trace-inline">Traceable to: ' + escHtml(res.trace.join(', ')) + '</div>'
         : '';
-      addBubble('bot', botBubbleHtml(escHtml(res.text).replace(/\n/g, '<br>'), botMeta(engine), trace));
+      addBubble('bot', botBubbleHtml(escHtml(res.text).replace(/\n/g, '<br>'), botMeta(engine), fallback, trace));
     } else {
       addBubble('bot', botAvatar() + '<div class="ai-bot-body ai-err">' + escHtml(res.error || 'Something went wrong.') + '</div>');
     }
@@ -1171,8 +1343,9 @@ var MMGR = window.MMGR || {};
     const last = outputs[types[types.length - 1]];
     if (!last || !last.text) return;
     const engine = (last.tier === 'local') ? 'Local engine' : (last.tier === 'cloud' ? 'Cloud' : last.tier);
+    const badge = fallbackBadgeHtml(last.tier, last.model, last.fellBackFrom);
     addBubble('bot', botBubbleHtml(escHtml(last.text).replace(/\n/g, '<br>'),
-      botMeta(engine + ' · saved ' + (last.at ? new Date(last.at).toLocaleString() : ''))));
+      botMeta(engine + ' · saved ' + (last.at ? new Date(last.at).toLocaleString() : '')), badge));
   }
 
   // ---- Chat input: Enter sends (Shift+Enter = new line) + auto-grow ------

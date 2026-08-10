@@ -94,6 +94,51 @@ const check = (name, val, detail) => { results.push({ name, val }); log((val ? '
   const r7 = await run('/api/ai/chat', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-User-Api-Key': 'sk-x' }, body: big });
   check('R07 oversized body -> 413', r7.status === 413, { status: r7.status });
 
+  // ---- GEMINI-MODEL-FALLBACK-LADDER (DIR-3) relay contract ----
+  // R11: a per-attempt model field parameterizes the upstream Gemini URL and
+  // is echoed back so the client can report which model answered (DIR-4).
+  globalThis.fetch = async function(url, opts) {
+    upstreamCalls.push({ url: String(url), opts });
+    return new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: 'GEMINI-OK' }] } }] }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+  };
+  upstreamCalls = [];
+  const r11 = await run('/api/ai/chat', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-User-Api-Key': 'AIza-secret-3' }, body: JSON.stringify({ provider: 'google-gemini', model: 'gemini-2.0-flash-lite', messages: [{ role: 'user', content: 'hi' }] }) });
+  const d11 = await r11.json();
+  const up11 = upstreamCalls[0];
+  check('R11 gemini model field -> per-model upstream URL + model echoed in response', r11.status === 200 && d11.ok === true && d11.model === 'gemini-2.0-flash-lite' && String(up11.url).indexOf('/models/gemini-2.0-flash-lite:generateContent') > -1, { status: r11.status, d11, up: up11 && up11.url });
+
+  // R12: provider rate limit (429) passes through with its own status so the
+  // client's model ladder can detect it and retry the next model.
+  globalThis.fetch = async function() { return new Response('', { status: 429 }); };
+  const r12 = await run('/api/ai/chat', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-User-Api-Key': 'sk-x' }, body: JSON.stringify({ provider: 'openai', messages: [{ role: 'user', content: 'hi' }] }) });
+  check('R12 provider 429 -> relay 429 passthrough (ladder can advance)', r12.status === 429, { status: r12.status });
+  globalThis.fetch = realFetch;
+
+  // R13: a malicious model field (path injection attempt) is rejected by the
+  // strict validation — the provider default model is used instead.
+  globalThis.fetch = async function(url, opts) {
+    upstreamCalls.push({ url: String(url), opts });
+    return new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: 'GEMINI-OK' }] } }] }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+  };
+  upstreamCalls = [];
+  const r13 = await run('/api/ai/chat', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-User-Api-Key': 'AIza-secret-4' }, body: JSON.stringify({ provider: 'google-gemini', model: '../../etc/passwd', messages: [{ role: 'user', content: 'hi' }] }) });
+  const d13 = await r13.json();
+  const up13 = upstreamCalls[0];
+  check('R13 malicious model field rejected -> default gemini URL + default model echoed', r13.status === 200 && d13.model === 'gemini-2.0-flash' && String(up13.url).indexOf('/models/gemini-2.0-flash:generateContent') > -1 && String(up13.url).indexOf('..') === -1, { status: r13.status, d13, up: up13 && up13.url });
+
+  // 14. Anthropic relay forward — x-api-key + anthropic-version headers,
+  //     model + max_tokens + system in the body, content[].text extracted.
+  globalThis.fetch = async function(url, opts) {
+    upstreamCalls.push({ url: String(url), opts });
+    return new Response(JSON.stringify({ content: [{ type: 'text', text: 'CLAUDE-OK' }] }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+  };
+  upstreamCalls = [];
+  const r14 = await run('/api/ai/chat', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-User-Api-Key': 'sk-ant-3' }, body: JSON.stringify({ provider: 'anthropic', model: 'claude-3-5-haiku-latest', messages: [{ role: 'system', content: 'sys' }, { role: 'user', content: 'hi' }] }) });
+  const d14 = await r14.json();
+  const up14 = upstreamCalls[0];
+  const upBody14 = up14 ? JSON.parse(up14.opts.body) : null;
+  check('R14 anthropic: 200 {ok:true,text}, x-api-key + anthropic-version headers, max_tokens/system body, content text', r14.status === 200 && d14.ok === true && d14.text === 'CLAUDE-OK' && d14.model === 'claude-3-5-haiku-latest' && up14.opts.headers['x-api-key'] === 'sk-ant-3' && up14.opts.headers['anthropic-version'] === '2023-06-01' && upBody14.max_tokens > 0 && upBody14.system.length > 0 && JSON.stringify(d14).indexOf('sk-ant-3') === -1, { status: r14.status, d14, auth: up14 && up14.opts.headers });
+
   // 8. Static page still decorated with CSP headers (ASSETS path preserved)
   const r8 = await run('/project.html', { method: 'GET' });
   check('R08 static page served + CSP header intact', r8.status === 200 && (r8.headers.get('Content-Security-Policy') || '').indexOf('default-src') !== -1, { status: r8.status, csp: r8.headers.get('Content-Security-Policy') });

@@ -1769,11 +1769,10 @@ window.MMGR = MMGR;
     // directly (flags.aiWindow is dropped as a gate). OFF -> tier 'off'; ON
     // -> restore the last non-off tier (default 'local').
     'tglAiTier': (el) => window.MMGR.AiWin.tglDrawerTier(el),
-    'aiSetProvider': (el) => { window.MMGR.AiWin.setAiCfg({ provider: el.value }); window.MMGR.AiWin.syncSettingsUI(); },
-    'aiSetEndpoint': (el) => window.MMGR.AiWin.setAiCfg({ endpoint: el.value }),
-    'aiSetModel': (el) => window.MMGR.AiWin.setAiCfg({ model: el.value }),
-    // AI-CLOUD-CONNECT-UI (DIR-2): no aiSetKey action. The BYO key is wired
-    // directly in mmgr-ai.js (session vault only) and setAiCfg drops apiKey
+    // AI-CLOUD-CONNECT-UI (DIR-2): no aiSetKey action — and no aiSetProvider /
+    // aiSetEndpoint / aiSetModel actions either. The BYO provider select is
+    // read directly by the Connect & Test flow, and the key is wired
+    // directly in mmgr-ai.js (session vault only); setAiCfg drops apiKey
     // patches anyway — a key can never be persisted into project state.
     // Rank 3.4: viewport prompt answers write a device-level preference only
     // (localStorage, never project state) — safe in view-only. toggleFull is
@@ -2108,7 +2107,7 @@ window.MMGR = MMGR;
     const action = el.getAttribute('data-action');
     if (!guardReadonly(action)) return;
     const handler = ACTION_MAP[action];
-    if (handler && (action === 'updEnvelope' || action === 'saveSprint' || action === 'setWorkWeek' || action === 'setRegion' || action === 'loadProjectFile' || action === 'mergeProjectFile' || action === 'updCharter' || action === 'updClose' || action === 'setUserName' || action === 'addRaciTaskFromPicker' || action === 'addRaciPersonFromPicker' || action === 'updField' || action === 'updTaskField' || action === 'updKPI' || action === 'updKPILink' || action === 'updKPIDir' || action === 'updSpendEntry' || action === 'updRaciTask' || action === 'updRaciPerson' || action === 'claimSetCause' || action === 'aiSetTier' || action === 'aiSetProvider' || action === 'aiSetEndpoint' || action === 'aiSetModel' || action === 'aiSetKey' || action === 'setErrWebhook' || action === 'driveAutoInterval' || action === 'driveSetPass')) {
+    if (handler && (action === 'updEnvelope' || action === 'saveSprint' || action === 'setWorkWeek' || action === 'setRegion' || action === 'loadProjectFile' || action === 'mergeProjectFile' || action === 'updCharter' || action === 'updClose' || action === 'setUserName' || action === 'addRaciTaskFromPicker' || action === 'addRaciPersonFromPicker' || action === 'updField' || action === 'updTaskField' || action === 'updKPI' || action === 'updKPILink' || action === 'updKPIDir' || action === 'updSpendEntry' || action === 'updRaciTask' || action === 'updRaciPerson' || action === 'claimSetCause' || action === 'aiSetTier' || action === 'setErrWebhook' || action === 'driveAutoInterval' || action === 'driveSetPass')) {
       handler(el, e);
     }
   });
@@ -2124,7 +2123,7 @@ window.MMGR = MMGR;
     const action = el.getAttribute('data-action');
     if (!guardReadonly(action)) return;
     const handler = ACTION_MAP[action];
-    if (handler && (action === 'updCharter' || action === 'updClose' || action === 'setUserName' || action === 'updEnvelope' || action === 'wiPreview' || action === 'idPreview' || action === 'regenChartPrompt' || action === 'updField' || action === 'updTaskField' || action === 'updKPI' || action === 'updSpendEntry' || action === 'updRaciTask' || action === 'updRaciPerson' || action === 'updDMAIC' || action === 'updMeetItemNote' || action === 'updMeetField' || action === 'handleCharterUpload' || action === 'aiSetEndpoint' || action === 'aiSetModel' || action === 'aiSetKey' || action === 'setErrWebhook')) {
+    if (handler && (action === 'updCharter' || action === 'updClose' || action === 'setUserName' || action === 'updEnvelope' || action === 'wiPreview' || action === 'idPreview' || action === 'regenChartPrompt' || action === 'updField' || action === 'updTaskField' || action === 'updKPI' || action === 'updSpendEntry' || action === 'updRaciTask' || action === 'updRaciPerson' || action === 'updDMAIC' || action === 'updMeetItemNote' || action === 'updMeetField' || action === 'handleCharterUpload' || action === 'setErrWebhook')) {
       handler(el, e);
     }
   });

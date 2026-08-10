@@ -841,23 +841,38 @@
       <p class="ai-byo-sec">Your API key stays in this browser for this session only. It is never stored on our servers, never included in project exports or backups, and is cleared when you close the tab. Next time you will connect again. Project data still requires your access code.</p>
     </div>
     <div class="mbody ai-body">
-      <!-- Conversation thread (rendered as chat bubbles by js/mmgr-ai.js) -->
+      <!-- AI-WINDOW-LAYOUT-SCROLL-AND-INPUT-BUG-DIRECTIVE DIR-1: Chat/Presets
+           segment — the one-click presets moved out of the scroll-competing
+           thread column into their own pane, always reachable by tab no
+           matter how long the conversation is (previously the stacked layout
+           made them structurally unreachable once the thread filled the
+           modal). Both panes stay in the DOM; switching is a pure class
+           toggle wired in js/mmgr-ai.js. -->
+      <div class="ai-seg" role="tablist" aria-label="AI assistant views">
+        <button class="ai-seg-btn is-on" id="ai-seg-chat" data-tab="chat" role="tab" aria-selected="true" aria-controls="ai-pane-chat"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg> Chat</button>
+        <button class="ai-seg-btn" id="ai-seg-presets" data-tab="presets" role="tab" aria-selected="false" aria-controls="ai-pane-presets"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-zap"></use></svg> Presets</button>
+      </div>
+      <!-- Chat pane: conversation thread (rendered as chat bubbles by js/mmgr-ai.js) -->
+      <div class="ai-pane ai-pane-chat" id="ai-pane-chat" role="tabpanel" aria-labelledby="ai-seg-chat">
       <div class="ai-thread" id="ai-thread" aria-live="polite">
         <div class="ai-bubble ai-bot ai-welcome" id="ai-welcome">
           <div class="ai-bot-avatar"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg></div>
           <div class="ai-bot-body">
-            <div class="ai-text">Hi — I'm your project assistant. Ask anything about this project, or run a one-click preset below.</div>
+            <div class="ai-text">Hi — I'm your project assistant. Ask anything about this project, or open the Presets tab for one-click prompts.</div>
             <div class="ai-tip">Try: “Where are we and what is blocking the critical path?” · “Summarize the top risks” · “Is the budget on track?”</div>
           </div>
         </div>
       </div>
-      <!-- One-click preset prompts (rendered by js/mmgr-ai.js open()) -->
+      </div>
+      <!-- Presets pane: one-click prompt chips (rendered by js/mmgr-ai.js open()) -->
+      <div class="ai-pane ai-pane-presets is-hide" id="ai-pane-presets" role="tabpanel" aria-labelledby="ai-seg-presets">
       <div class="ai-sug-wrap">
         <div class="ai-sug-label"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-zap"></use></svg> One-click presets — generate &amp; save to project state</div>
         <div class="ai-presets" id="ai-presets"></div>
       </div>
-      <!-- Project context + engine settings (collapsed by default — keeps the
-           chat view clean; all ids/actions unchanged for Rank 2.3 wiring) -->
+      </div>
+      <!-- Project context + engine settings (collapsed by default — sits below
+           both panes; all ids/actions unchanged for Rank 2.3 wiring) -->
       <details class="ai-adv">
         <summary><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-settings"></use></svg> Project context &amp; tools</summary>
         <div class="ai-adv-body">

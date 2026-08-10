@@ -18,14 +18,18 @@
        clears the session key.
      - Readonly gating: aiRunPreset / aiSet* stay blocked in
        view-only mode; open/load/copy stay allowed.
+     - DIR-1 layout regression (A17): the one-click presets stay reachable
+       via the Chat/Presets tab even after a long conversation at a short
+       viewport — the condition that originally hid them entirely.
    Exit 0 only when every contract holds.
-   Usage: node qa-ai.cjs  (server must be on :8765)
+   Usage: node qa-ai.cjs  (server must be on :8765; override with
+          QA_BASE=http://host:port to target a different server)
    ============================================================ */
 const { spawn } = require('child_process');
 const path = require('path');
 const CHROME = 'C:\\\\Program Files\\\\Google\\\\Chrome\\\\Application\\\\chrome.exe';
 const PORT = 9237;
-const BASE = 'http://127.0.0.1:8765';
+const BASE = process.env.QA_BASE || 'http://127.0.0.1:8765';
 const PROFILE = path.join(require('os').tmpdir(), 'mmgr-ai-' + Date.now());
 let ws, msgId = 0;
 const pending = new Map();
@@ -474,6 +478,45 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
       label: lbl ? lbl.textContent : null };
   })()`);
   check('A16 api: /api/health badge exists and reports connected against the dev server', u1a.exists && u1a.result === 'connected' && u1a.state === 'connected' && u1a.label === 'API · connected', u1a);
+
+  // ---- 6a2. AI-WINDOW-LAYOUT-SCROLL-AND-INPUT-BUG (DIR-1) regression gate:
+  // the one-click presets must stay reachable via the Chat/Presets tab even
+  // with a LONG conversation on a SHORT viewport — the exact condition that
+  // originally pushed them below the modal's clipped edge. Asserts the thread
+  // really overflowed, the Presets tab reveals the pane fully inside the
+  // modal, and a chip click loads its prompt. ----
+  await send('Emulation.setDeviceMetricsOverride', { width: 1262, height: 420, deviceScaleFactor: 1, mobile: false }); await delay(250);
+  const lay1 = await ev(`(async function(){
+    var q = document.getElementById('ai-q');
+    var th = document.getElementById('ai-thread');
+    for (var i = 0; i < 8; i++) {
+      q.value = 'Regression question ' + i + ' — what is blocking the critical path and how should the team respond to keep the schedule on track?';
+      await MMGR.AiWin.runQuestion();
+    }
+    var threadScrollable = th.scrollHeight > th.clientHeight + 2;
+    var segCount = document.querySelectorAll('.ai-seg-btn').length;
+    document.getElementById('ai-seg-presets').click();
+    await new Promise(function(r){ setTimeout(r, 150); });
+    var p = document.getElementById('ai-pane-presets');
+    var mb = document.querySelector('#ai-win .mb');
+    var pr = p.getBoundingClientRect();
+    var mr = mb.getBoundingClientRect();
+    var onBtn = document.querySelector('.ai-seg-btn.is-on');
+    var chipBtn = document.querySelector('.ai-chip');
+    var chips = document.querySelectorAll('.ai-chip').length;
+    if (chipBtn) chipBtn.click();
+    await new Promise(function(r){ setTimeout(r, 100); });
+    return { threadScrollable: threadScrollable,
+      segCount: segCount,
+      presetsVisible: !p.classList.contains('is-hide'),
+      presetsInsideModal: pr.top >= mr.top - 1 && pr.bottom <= mr.bottom + 1,
+      chipCount: chips,
+      activeTab: onBtn ? onBtn.getAttribute('data-tab') : null,
+      chipClickLoaded: q.value.length > 0,
+      rects: { pTop: Math.round(pr.top), pBottom: Math.round(pr.bottom), mbTop: Math.round(mr.top), mbBottom: Math.round(mr.bottom) } };
+  })()`);
+  check('A17 ui: presets reachable via Chat/Presets tab after a long conversation on a short viewport', lay1.threadScrollable && lay1.segCount === 2 && lay1.presetsVisible && lay1.presetsInsideModal && lay1.chipCount >= 10 && lay1.activeTab === 'presets' && lay1.chipClickLoaded, lay1);
+  await send('Emulation.clearDeviceMetricsOverride'); await delay(200);
 
   // ---- 6b. BYO Connect flow (STEP-2 + DIR-1 real connectivity probe) ----
   // DIR-1: Connect now VERIFIES the key with a cheap models-list request

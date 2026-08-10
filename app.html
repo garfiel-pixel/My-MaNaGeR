@@ -48,6 +48,12 @@ body.glass-premium .wrap{position:relative;z-index:1;}
 .pc-foot{display:flex;justify-content:space-between;align-items:center;}
 .pc-cta{font-size:.72rem;color:var(--slate);}
 .pcard.unlocked .pc-cta{color:var(--green);}
+/* DIR-1 (local-first creator access): chips on cards for projects this device
+   owns (created in admin.html) vs published-only visitor projects. */
+.pc-chips{display:flex;flex-wrap:wrap;gap:6px;}
+.pc-chip{font-size:.62rem;font-weight:700;letter-spacing:.03em;border-radius:100px;padding:2px 9px;white-space:nowrap;}
+.pc-local{color:var(--green);border:1px solid rgba(16,185,129,.35);background:rgba(16,185,129,.1);}
+.pc-note{color:var(--amber);border:1px solid rgba(245,158,11,.3);background:rgba(245,158,11,.07);}
 .empty{grid-column:1/-1;text-align:center;padding:60px 20px;color:var(--slate);font-size:.82rem;}
 .foot{text-align:center;margin-top:60px;}
 .foot a{color:var(--slate);font-size:.7rem;text-decoration:none;border-bottom:1px dotted transparent;}
@@ -170,6 +176,39 @@ body.glass-premium .wrap{position:relative;z-index:1;}
    ============================================================ */
 let activeProject = null;
 
+/* ---- LOCAL-FIRST (ADMIN-PUBLISH-SYNC-AND-PROJECT-SELECT-POLISH DIR-1) ----
+   Projects created on THIS device live in localStorage['mmgr_admin_projects']
+   (admin.html). The creator must never need the publish/deploy step to open
+   what they just made — publishing projects-data.js gates only OTHER people's
+   access. So the grid merges local projects with the published manifest, and
+   a locally-owned project opens instantly with no code re-entry. */
+function localProjects(){
+  try{
+    const raw = localStorage.getItem('mmgr_admin_projects');
+    if(!raw) return [];
+    const list = JSON.parse(raw);
+    return Array.isArray(list) ? list : [];
+  }catch(e){ return []; }
+}
+function isLocalProject(id){
+  if(!id) return false;
+  return localProjects().some(p => p && p.id === id);
+}
+function isPublishedProject(id){
+  return (window.MMGR_PROJECTS || []).some(p => p && p.id === id);
+}
+function allProjects(){
+  const locals = localProjects();
+  const pub = window.MMGR_PROJECTS || [];
+  const seen = {};
+  const merged = [];
+  // Local records first (the creator's freshest view of their own projects),
+  // then published-only projects (the visitor path) with no duplicates.
+  locals.forEach(p => { if(p && p.id && !seen[p.id]){ seen[p.id] = 1; merged.push(Object.assign({}, p)); } });
+  pub.forEach(p => { if(p && p.id && !seen[p.id]){ seen[p.id] = 1; merged.push(Object.assign({}, p)); } });
+  return merged;
+}
+
 async function mmgrHash(str){
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str.trim().toUpperCase()));
   return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
@@ -178,25 +217,38 @@ function isUnlocked(id){ return localStorage.getItem('mmgr_unlocked_'+id) === '1
 
 function renderCards(){
   const grid = document.getElementById('grid');
-  const projects = window.MMGR_PROJECTS || [];
+  const projects = allProjects();
   if(!projects.length){
     grid.innerHTML = '<div class="empty">No projects yet. Add one from the Admin panel.</div>';
     return;
   }
   grid.innerHTML = projects.map(p => {
     const unlocked = isUnlocked(p.id);
+    const local = isLocalProject(p.id);
+    const published = isPublishedProject(p.id);
     const status = (p.status || 'active').toLowerCase();
     const statusLabel = status.replace('-', ' ');
+    // A locally-owned project opens instantly — the creator's own access never
+    // depends on the publish step. Chips explain the state on the card itself.
+    const chips = local
+      ? (published
+          ? '<span class="pc-chip pc-local">On this device</span>'
+          : '<span class="pc-chip pc-local">On this device</span><span class="pc-chip pc-note">Not published — visitors can\'t see this yet</span>')
+      : '';
+    const cta = local
+      ? '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg> Open'
+      : (unlocked ? '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-check"></use></svg> Unlocked — open <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg>' : 'Enter code <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg>');
     return `
       <button class="pcard ${unlocked ? 'unlocked' : ''}" data-id="${p.id}" aria-label="Open ${escapeHtml(p.title)}">
         <div class="pc-head">
           <div class="pc-title">${escapeHtml(p.title)}</div>
-          <div class="pc-lock">${unlocked ? '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-unlock"></use></svg>' : '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-lock"></use></svg>'}</div>
+          <div class="pc-lock">${local || unlocked ? '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-unlock"></use></svg>' : '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-lock"></use></svg>'}</div>
         </div>
+        ${chips ? '<div class="pc-chips">' + chips + '</div>' : ''}
         <div class="pc-desc">${escapeHtml(p.description || '')}</div>
         <div class="pc-foot">
           <span class="badge ${status}">${escapeHtml(statusLabel)}</span>
-          <span class="pc-cta">${unlocked ? '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-check"></use></svg> Unlocked — open <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg>' : 'Enter code <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg>'}</span>
+          <span class="pc-cta">${cta}</span>
         </div>
       </button>`;
   }).join('');
@@ -211,11 +263,20 @@ function escapeHtml(str){
   return d.innerHTML;
 }
 
-function findProject(id){ return (window.MMGR_PROJECTS||[]).find(p=>p.id===id); }
+function findProject(id){ return allProjects().find(p=>p.id===id); }
 
 function handleCardClick(id){
   const project = findProject(id);
   if(!project) return;
+  // LOCAL-FIRST (DIR-1): a project owned on this device (created in
+  // admin.html) opens immediately — no code re-entry, no publish, no remote
+  // check. The publish/deploy step gates only OTHER people's access.
+  if(isLocalProject(id)){
+    localStorage.setItem('mmgr_unlocked_' + id, '1');
+    localStorage.setItem('mmgr_scope_' + id, 'full');
+    window.location.href = project.file;
+    return;
+  }
   if(isUnlocked(id)){
     window.location.href = project.file;
     return;

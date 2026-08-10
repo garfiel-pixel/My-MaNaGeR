@@ -84,6 +84,11 @@ main{max-width:1000px;margin:0 auto;padding:26px 24px 70px;}
   padding:4px 9px;letter-spacing:.08em;color:var(--text);}
 .prow-actions{display:flex;gap:6px;margin-top:12px;flex-wrap:wrap;}
 .demo-tag{font-size:.66rem;color:var(--gold);border:1px solid rgba(245,158,11,.3);border-radius:100px;padding:2px 8px;}
+/* DIR-1 (ADMIN-PUBLISH-SYNC-AND-PROJECT-SELECT-POLISH): per-row publish-state note —
+   a quiet amber marker (downgraded from the draft's urgent banner; creator access is
+   local-first now, so this only informs the admin that VISITORS can't see it yet). */
+.pub-note{display:inline-flex;align-items:center;gap:8px;margin-top:8px;font-size:.68rem;color:var(--amber);border:1px solid rgba(245,158,11,.3);background:rgba(245,158,11,.07);border-radius:100px;padding:4px 10px;}
+.pub-note .btn{padding:2px 10px;font-size:.66rem;}
 .empty{text-align:center;padding:40px 20px;color:var(--slate);font-size:.8rem;}
 
 /* ── modal chrome (overlay only; .mb skeleton is shared) ── */
@@ -195,12 +200,19 @@ pre.snippet{background:#f8fafc;border:1px solid var(--border);border-radius:6px;
     </div>
 
     <div class="card" style="font-size:.74rem;color:var(--slate);line-height:1.6">
-      <strong style="color:var(--text)">Security model (local-only):</strong>
-      The admin password hash, this browser's session flag, and the plaintext project access codes are stored in this
-      device's <code>localStorage</code>/<code>sessionStorage</code> only. This is convenience protection for a personal
-      tool — it is <strong>not</strong> server-side security. Anyone with physical access to this browser can reset the
-      password or reveal the codes. The published <code>projects-data.js</code> contains SHA-256 hashes only, never
-      plaintext codes. Do not use this panel to protect genuinely sensitive data.
+      <strong style="color:var(--text)">Security model (local-first):</strong>
+      By default everything stays on this device: the admin password hash, this browser's session flag, and the plaintext
+      project access codes live in this device's <code>localStorage</code>/<code>sessionStorage</code> only. This is
+      convenience protection for a personal tool — it is <strong>not</strong> server-side security, and anyone with
+      physical access to this browser could reset the password or reveal the codes. The published
+      <code>projects-data.js</code> contains SHA-256 hashes only, never plaintext codes.
+      Signing in with Google is optional and sends nothing by itself — no project data is uploaded or synced just by
+      signing in. <strong>Backup to Drive</strong> / <strong>Restore from Drive</strong> are explicit, opt-in actions
+      (or the Auto backup interval you deliberately enable): they send only this project's workspace data directly from
+      this browser to your own Google Drive (app-scoped, <code>drive.file</code> — never your whole Drive). The admin
+      password hash, session flag, and plaintext access codes are <strong>never</strong> included in Drive backups; an
+      optional passphrase encrypts backups with AES-256-GCM before upload. Do not use this panel to protect genuinely
+      sensitive data.
     </div>
 
     <div id="project-list"></div>
@@ -431,6 +443,13 @@ function saveProjects(){
    data never has plaintext codes, so merged-in projects show code:null
    until you regenerate a code for them. Silently no-ops if the fetch
    fails (opened locally, or the file isn't uploaded yet). */
+/* Published-manifest snapshot for the per-row publish-state notes (DIR-1):
+   liveProjects mirrors the last successfully fetched projects-data.js, and
+   liveFetched is true ONLY when that fetch+parse actually succeeded, so a
+   local-only (file://) admin session never nags about un-comparable state. */
+let liveProjects = [];
+let liveFetched = false;
+
 async function mergeLiveData(){
   try{
     const res = await fetch('projects-data.js', {cache:'no-store'});
@@ -439,6 +458,8 @@ async function mergeLiveData(){
     const match = text.match(/window\.MMGR_PROJECTS\s*=\s*(\[[\s\S]*?\]);/);
     if(!match) return;
     const live = JSON.parse(match[1]);
+    liveProjects = Array.isArray(live) ? live : [];
+    liveFetched = true;
     let added = 0;
     live.forEach(lp=>{
       if(!projects.some(p=>p.id===lp.id)){
@@ -446,8 +467,41 @@ async function mergeLiveData(){
         added++;
       }
     });
-    if(added){ saveProjects(); renderProjects(); toast(`Imported ${added} project(s) found in the live data file.`); }
+    if(added){ saveProjects(); toast(`Imported ${added} project(s) found in the live data file.`); }
+    // Always re-render once the manifest is known: renderProjects() ran at
+    // enterAdmin() BEFORE this fetch resolved, so the per-row publish-state
+    // notes (isPublishedRecord) would otherwise stay stale until the next
+    // edit. A re-render here is idempotent and cheap.
+    renderProjects();
   }catch(e){ /* fine — no live file reachable yet */ }
+}
+
+/* True when the local record exactly matches what visitors currently see in
+   the deployed manifest. Only meaningful once liveFetched — before that every
+   row counts as published (nothing to compare against). */
+function isPublishedRecord(p){
+  if(!liveFetched) return true;
+  return liveProjects.some(function(l){
+    return l.id === p.id &&
+      l.title === p.title &&
+      l.description === (p.description || '') &&
+      (l.status || 'active') === (p.status || 'active') &&
+      l.file === p.file &&
+      l.codeHash === p.codeHash &&
+      (l.roCodeHash || null) === (p.roCodeHash || null);
+  });
+}
+
+/* Mirror case (review pass): a project still published on the live site but
+   missing from THIS list (locally deleted, republish not run) stays visible
+   to visitors with no row to attach a note to — surface it as a quiet line
+   above the list so "I removed it and visitors still see it" can't happen
+   silently. Only meaningful once the live manifest was fetched. */
+function deletedButLiveProjects(){
+  if(!liveFetched) return [];
+  const localIds = {};
+  projects.forEach(function(p){ localIds[p.id] = 1; });
+  return liveProjects.filter(function(l){ return !localIds[l.id]; });
 }
 
 /* ============================================================
@@ -643,8 +697,16 @@ function renderProjects(){
     list.innerHTML = '<div class="empty">No projects yet. Click "+ Add Project" to create your first one.</div>';
     return;
   }
-  list.innerHTML = projects.map((p, i) => {
+  const staleLive = deletedButLiveProjects();
+  const staleLine = staleLive.length
+    ? '<div class="pub-note" style="margin:0 0 12px"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-alert-triangle"></use></svg> ' +
+      staleLive.length + ' published project(s) are not in this list (' +
+      staleLive.map(function(s){ return escapeHtml(s.title); }).join(', ') +
+      ') — still visible to visitors until you publish.</div>'
+    : '';
+  list.innerHTML = staleLine + projects.map((p, i) => {
     const status = (p.status||'active').toLowerCase();
+    const published = isPublishedRecord(p);
     const codeDisplay = p.code
       ? `<span class="code-box" id="code-${i}" data-code="${escapeAttr(p.code)}" data-masked="1">••••••••</span>
          <button class="btn btn-n btn-s" data-action="toggleCode" data-idx="${i}"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-eye"></use></svg> Show</button>
@@ -657,6 +719,7 @@ function renderProjects(){
           <div>
             <div class="prow-title">${escapeHtml(p.title)} ${p.isDemo ? '<span class="demo-tag">DEMO — delete when ready</span>' : ''}</div>
             <div class="prow-desc">${escapeHtml(p.description||'')}</div>
+            ${published ? '' : `<div class="pub-note"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-alert-triangle"></use></svg> Not published — visitors can't open this yet. <button class="btn btn-n btn-s" data-action="downloadPublicData">Download &amp; publish</button></div>`}
           </div>
           <span class="badge ${status}">${escapeHtml(status.replace('-',' '))}</span>
         </div>

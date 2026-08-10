@@ -22,9 +22,28 @@ var MMGR = window.MMGR || {};
   // project opens in a reduced, non-editable view. Both paths are
   // client-side localStorage (simulated backend), matching the existing
   // SHA-256 model; the plaintext code never leaves the browser.
+  // ---- DIR-1 (ADMIN-PUBLISH-SYNC-AND-PROJECT-SELECT-POLISH): local-first
+  // creator access. A project id present in this device's admin working list
+  // (localStorage mmgr_admin_projects) is owned HERE — the creator's own
+  // access must never depend on the publish/deploy step, which gates only
+  // OTHER people's access. Locally-owned projects open with full scope, no
+  // code re-entry, even on a deep link straight to project.html.
+  // Security note: this is exactly equivalent to the pre-existing ability to
+  // set mmgr_unlocked_<id> directly in localStorage — convenience protection
+  // for a personal tool, not server-side security (per the admin banner). ----
+  function isLocallyOwned(id) {
+    try {
+      const raw = localStorage.getItem('mmgr_admin_projects');
+      if (!raw) return false;
+      const list = JSON.parse(raw);
+      return Array.isArray(list) && list.some(function(p) { return p && p.id === id; });
+    } catch (e) { return false; }
+  }
+
   function checkAccess() {
     const projectId = ns.projectId;
-    const unlocked = localStorage.getItem('mmgr_unlocked_' + projectId) === '1';
+    const locallyOwned = isLocallyOwned(projectId);
+    const unlocked = locallyOwned || localStorage.getItem('mmgr_unlocked_' + projectId) === '1';
     if (!unlocked) {
       // The app entry now lives at app.html (index.html is the marketing
       // site). A locked visitor is sent back to the project list + unlock.
@@ -32,8 +51,9 @@ var MMGR = window.MMGR || {};
       return false;
     }
     // If this browser opened the project with a view-only code, drop the
-    // app into read-only mode (reduced view).
-    ns.scope = localStorage.getItem('mmgr_scope_' + projectId) === 'readonly' ? 'readonly' : 'full';
+    // app into read-only mode (reduced view). A locally-owned project is
+    // always full scope — the creator is never gated by a code they set.
+    ns.scope = locallyOwned ? 'full' : (localStorage.getItem('mmgr_scope_' + projectId) === 'readonly' ? 'readonly' : 'full');
     return true;
   }
 

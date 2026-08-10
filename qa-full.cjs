@@ -1456,6 +1456,53 @@ async function check(name, expr, expected, hint) {
   await ev(`localStorage.setItem('mmgr_scope_demo-project','full');`);
   await send('Page.navigate', { url: BASE + '/project.html?id=demo-project' }); await delay(3000);
 
+  // ---- DIR-1 (ADMIN-PUBLISH-SYNC-AND-PROJECT-SELECT-POLISH): local-first
+  // creator access — a project created on THIS device (admin.html's
+  // mmgr_admin_projects) must render on app.html and open instantly with zero
+  // code re-entry. The publish/deploy step gates only OTHER people's access,
+  // never the creator's own. ----
+  await ev(`localStorage.setItem('mmgr_admin_projects', JSON.stringify([{id:'qa-local', title:'QA Local Project', description:'created on this device', status:'planning', file:'project.html?id=qa-local', code:'QLOCAL1', codeHash:'x'}]));`);
+  await send('Page.navigate', { url: BASE + '/app.html' }); await delay(2500);
+  await check('70g v11 local-first: locally-created project renders with On-this-device + Not-published chips', `(function(){
+    var card = document.querySelector('.pcard[data-id="qa-local"]');
+    return {val: !!card && !!card.querySelector('.pc-chip.pc-local') && !!card.querySelector('.pc-chip.pc-note'), hasCard: !!card};
+  })()`);
+  // The click is synchronous up to the navigation assignment, so all side
+  // effects (full-scope unlock, no modal) are readable before unload. The
+  // navigation to project.html?id=qa-local itself is verified by 70j.
+  await check('70h v11 local-first: local project click = instant full unlock, no unlock modal', `(function(){
+    handleCardClick('qa-local');
+    var modalOpen = document.getElementById('om').classList.contains('open');
+    var unlocked = localStorage.getItem('mmgr_unlocked_qa-local') === '1';
+    var scope = localStorage.getItem('mmgr_scope_qa-local');
+    return {val: !modalOpen && unlocked && scope === 'full', modalOpen: modalOpen, unlocked: unlocked, scope: scope};
+  })()`);
+  await send('Page.navigate', { url: BASE + '/app.html' }); await delay(2500);
+  // Visitor path must be unchanged: a published-only (non-local) project still
+  // opens the access-code modal — publish validation still gates strangers.
+  await check('70i v11 local-first: published-only project still opens the unlock modal', `(function(){
+    var prevU = localStorage.getItem('mmgr_unlocked_demo-project');
+    var prevS = localStorage.getItem('mmgr_scope_demo-project');
+    localStorage.removeItem('mmgr_unlocked_demo-project');
+    localStorage.removeItem('mmgr_scope_demo-project');
+    var local = isLocalProject('demo-project');
+    handleCardClick('demo-project');
+    var modalOpen = document.getElementById('om').classList.contains('open');
+    closeModal();
+    if(prevU === null) localStorage.removeItem('mmgr_unlocked_demo-project'); else localStorage.setItem('mmgr_unlocked_demo-project', prevU);
+    if(prevS === null) localStorage.removeItem('mmgr_scope_demo-project'); else localStorage.setItem('mmgr_scope_demo-project', prevS);
+    return {val: modalOpen && !local, modalOpen: modalOpen, local: local};
+  })()`);
+  // Deep-link: project.html?id=qa-local with NO unlock flag set must pass the
+  // gate purely because this device owns the project (mmgr_app checkAccess).
+  await ev(`localStorage.removeItem('mmgr_unlocked_qa-local'); localStorage.removeItem('mmgr_scope_qa-local');`);
+  await send('Page.navigate', { url: BASE + '/project.html?id=qa-local' }); await delay(3000);
+  await check('70j v11 local-first: deep link to a locally-owned project bypasses the gate', `(function(){
+    return {val: location.pathname.indexOf('project.html') > -1 && location.search.indexOf('locked') === -1 && !!window.MMGR && !!MMGR.App, href: location.href};
+  })()`);
+  await ev(`localStorage.removeItem('mmgr_admin_projects'); localStorage.removeItem('mmgr_unlocked_qa-local'); localStorage.removeItem('mmgr_scope_qa-local');`);
+  await send('Page.navigate', { url: BASE + '/app.html' }); await delay(2500);
+
   // ---- DOM-id contract (P2, interaction audit): every literal $('...') /
   // getElementById('...') target in render.js must exist in project.html.
   // This is the regression net for the kanban/import id class of bugs. ----

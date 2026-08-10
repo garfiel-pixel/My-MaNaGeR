@@ -1153,7 +1153,7 @@ Date: ____________  Focus: ____________</pre>
       <div class="grid grid-3">
         <div class="card bracket"><span class="cnum">OFF</span><h4>Off</h4><p>The assistant is disabled and the floating ✦ button is hidden. Everything else in the app is untouched.</p></div>
         <div class="card bracket"><span class="cnum">LOCAL</span><h4>Local — zero-key</h4><p>Runs in your browser, offline, with no API key and no account. "Zero-fabrication by construction": every line it writes traces to a real field in your project state — it derives, it doesn't invent numbers.</p></div>
-        <div class="card bracket"><span class="cnum">CLOUD</span><h4>Cloud — your own key</h4><p>Optional BYO-key tier that calls out to your chosen provider (e.g. OpenAI) from the AI window's connection settings. Your live project data is compiled into the prompt that leaves the browser — nothing else does.</p></div>
+        <div class="card bracket"><span class="cnum">CLOUD</span><h4>Cloud — your own key</h4><p>Optional BYO-key tier that calls out to your chosen provider — OpenAI, Google Gemini, or Anthropic Claude — from the AI window's connection settings; Connect &amp; Test verifies the key live before Send unlocks. Your live project data is compiled into the prompt that leaves the browser — nothing else does. If a provider rate-limits the current model (HTTP 429/503), the app automatically retries on the next smaller model in that provider's fallback ladder — e.g. Gemini 2.0 Flash → Flash Lite → Flash Latest — and shows an amber “Fell back to …” badge naming the model that answered. A rejected key (401/403) is cleared immediately; it never quietly falls through to a smaller model with a bad key.</p></div>
       </div>
       <p class="prose" style="margin-top:14px">The Settings-drawer switch and the header tier selector are the <em>same</em> control: switch the assistant Off and the tier is <strong>off</strong>; switch it On and it restores Local or your last tier. One control, one meaning — the ✦ button can never be visible while the engine is off.</p>
 
@@ -1346,6 +1346,10 @@ Date: ____________  Focus: ____________</pre>
         <div class="acc-item">
           <button class="acc-q">Is DMAIC required?<span class="arrow">▶</span></button>
           <div class="acc-a"><div class="acc-a-inner">No — it's an optional panel for teams running a formal Six Sigma quality process. Most projects will never need to turn it on.</div></div>
+        </div>
+        <div class="acc-item">
+          <button class="acc-q">What happens when the AI provider rate-limits me?<span class="arrow">▶</span></button>
+          <div class="acc-a"><div class="acc-a-inner">The Cloud tier (Sheet A-13) retries automatically on the next smaller model from the same provider — for example Gemini 2.0 Flash → Flash Lite → Flash Latest — and shows an amber “Fell back to …” badge in the chat so you know which model answered. Only capacity rejections (HTTP 429/503) trigger the fallback: a rejected key (401/403) clears your session key immediately instead of trying smaller models.</div></div>
         </div>
       </div>
     </section>

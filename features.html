@@ -178,7 +178,8 @@
           <li>Works fully offline — reports, digests, and schedule audits compile from live project state.</li>
           <li>One-click presets write results straight back into the project (a claim argument, a weekly digest, a status report), or copy the prompt for any external AI you prefer.</li>
           <li>A dated WBS outline comes back through the Import Dates tool, so nothing touches your schedule before you review it.</li>
-          <li>Optional BYO-key cloud tier for heavier reasoning — your live project data is compiled into the prompt and nothing else leaves the browser.</li>
+          <li>Optional BYO-key Cloud tier for heavier reasoning — connect OpenAI, Google Gemini, or Anthropic Claude with your own key; your live project data is compiled into the prompt and nothing else leaves the browser.</li>
+          <li>Automatic model fallback — if a provider rate-limits the current model (HTTP 429/503), the app retries the same question on the next smaller model in that provider's ladder and shows an amber “Fell back to …” badge naming the model that actually answered. A rejected key (401/403) is cleared immediately instead.</li>
         </ul>
       </div>
 

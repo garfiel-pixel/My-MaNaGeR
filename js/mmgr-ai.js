@@ -178,6 +178,7 @@ var MMGR = window.MMGR || {};
     syncSettingsUI();
     checkApiHealth(); // live backend-API status badge (plan §3)
     seedThreadFromState();
+    setAiTab('chat'); // DIR-1: reopen on the Chat view (matches the welcome hint)
     modal.classList.add('open');
     const q = U.$('ai-q');
     if (q) setTimeout(function() { q.focus(); }, 60);
@@ -201,7 +202,7 @@ var MMGR = window.MMGR || {};
     const c = U.$('ai-ctx');
     const o = U.$('ai-out');
     const t = U.$('ai-trace');
-    if (q) { q.value = ''; q.style.height = ''; }
+    if (q) { q.value = ''; q.style.height = ''; q.classList.remove('at-cap'); }
     if (c) c.value = '';
     if (o) o.value = '';
     if (t) t.textContent = '';
@@ -1348,6 +1349,33 @@ var MMGR = window.MMGR || {};
       botMeta(engine + ' · saved ' + (last.at ? new Date(last.at).toLocaleString() : '')), badge));
   }
 
+  // ---- DIR-1 (AI-WINDOW-LAYOUT-SCROLL-AND-INPUT-BUG): Chat/Presets tab ----
+  // segment — swaps which pane is visible. UI-only, wired directly (like the
+  // BYO controls) so it never touches the read-only action lists. Both panes
+  // stay in the DOM, so switching needs no re-render; the presets pane is
+  // reachable regardless of conversation length. open() resets to the Chat
+  // tab so the welcome hint matches the view on first open.
+  function setAiTab(tab) {
+    document.querySelectorAll('.ai-seg-btn').forEach(function(b) {
+      const on = b.getAttribute('data-tab') === tab;
+      b.classList.toggle('is-on', on);
+      b.setAttribute('aria-selected', on ? 'true' : 'false');
+    });
+    const c = U.$('ai-pane-chat');
+    const p = U.$('ai-pane-presets');
+    if (c) c.classList.toggle('is-hide', tab !== 'chat');
+    if (p) p.classList.toggle('is-hide', tab !== 'presets');
+  }
+  (function() {
+    const segBtns = document.querySelectorAll('.ai-seg-btn');
+    if (!segBtns.length) return;
+    segBtns.forEach(function(b) {
+      b.addEventListener('click', function() {
+        setAiTab(b.getAttribute('data-tab') || 'chat');
+      });
+    });
+  })();
+
   // ---- Chat input: Enter sends (Shift+Enter = new line) + auto-grow ------
   (function() {
     const q = U.$('ai-q');
@@ -1361,6 +1389,9 @@ var MMGR = window.MMGR || {};
     const grow = function() {
       q.style.height = 'auto';
       q.style.height = Math.min(q.scrollHeight, 120) + 'px';
+      // DIR-2: when the box is capped at 120px and internally scrollable, mark
+      // it so CSS can show the top-edge fade (scrollable, not clipped).
+      q.classList.toggle('at-cap', q.scrollHeight > q.offsetHeight + 2);
     };
     q.addEventListener('input', grow);
     q.addEventListener('focus', grow);

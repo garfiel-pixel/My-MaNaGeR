@@ -1266,17 +1266,28 @@ body.dark-mode .ai-api-pill[data-state="error"]{background:rgba(239,68,68,.1);}
 .ai-out{display:none;}  /* functional store only — runs render as chat bubbles */
 .ai-trace{display:none;} /* trace is rendered inside the bot bubble */
 .ai-actions{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;}
-.ai-cfg{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:12px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--card);}
-.ai-cfg-label{display:inline-flex;align-items:center;gap:5px;font-size:.7rem;color:var(--gold);font-weight:600;}
-.ai-cfg select,.ai-cfg input{border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:6px;padding:5px 8px;font-size:.7rem;font-family:inherit;}
-.ai-cfg-cloud{display:inline-flex;flex-wrap:wrap;gap:6px;align-items:center;}
-.ai-cfg-cloud input{width:150px;}
+/* AI-CLOUD-CONNECT-UI (DIR-1): the Cloud connection row is promoted OUT of
+   the collapsed details into an always-visible row directly under the tier
+   select — visible the moment tier=Cloud, zero extra clicks. Hidden only by
+   the same is-hide toggle syncSettingsUI drives (tier != cloud). */
+.ai-conn-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:10px 18px;border-bottom:1px solid var(--border);background:var(--tile-bg);}
+.ai-conn-row-label{display:inline-flex;align-items:center;gap:5px;font-size:.7rem;color:var(--gold);font-weight:600;}
+.ai-conn-row .ai-byo-sec{flex-basis:100%;}
+.ai-conn-row .ai-byo-key{width:200px;}
+body.dark-mode .ai-conn-row{background:rgba(0,0,0,.12);}
 /* BYO-AI-KEY-SESSION-ONLY-v1 — Connect flow (STEP-2): status chip,
    session-only key input, security copy, and the send gate. */
 .ai-byo-status{display:inline-flex;align-items:center;gap:6px;font-size:.66rem;font-weight:700;border-radius:100px;padding:3px 10px;border:1px solid var(--border);background:var(--tile-bg);color:var(--slate);white-space:nowrap;transition:color var(--tr),border-color var(--tr),background var(--tr);}
 .ai-byo-dot{width:7px;height:7px;border-radius:50%;background:var(--slate);transition:background var(--tr),box-shadow var(--tr);}
 .ai-byo-status[data-state="on"]{color:var(--green);border-color:var(--green);}
 .ai-byo-status[data-state="on"] .ai-byo-dot{background:var(--green);box-shadow:0 0 6px var(--green);}
+/* AI-CLOUD-CONNECT-UI (DIR-1): 'saved_untested' — a key is present in the
+   session vault but Connect & Test has not yet confirmed it against the
+   provider (or the last probe failed). Distinct from both Disconnected and
+   Connected: a key string present is NOT 'connected' until verified. */
+.ai-byo-status[data-state="untested"]{color:var(--gold);border-color:var(--gold);}
+.ai-byo-status[data-state="untested"] .ai-byo-dot{background:var(--gold);box-shadow:0 0 6px var(--gold);}
+body.dark-mode .ai-byo-status[data-state="untested"]{background:rgba(245,158,11,.08);}
 .ai-byo-key{width:190px;}
 .ai-byo-sec{font-size:.62rem;color:var(--slate);line-height:1.5;margin:6px 0 0;flex-basis:100%;}
 .ai-conn-hint{font-size:.62rem;color:var(--danger);font-weight:600;max-width:130px;line-height:1.35;text-align:right;}
@@ -1299,8 +1310,6 @@ body.dark-mode .ai-bot-body{background:rgba(255,255,255,.05);}
 body.dark-mode .ai-q{background:rgba(0,0,0,.3);}
 body.dark-mode .ai-chip{background:rgba(255,255,255,.05);}
 body.dark-mode .ai-adv .ai-adv-body{background:rgba(0,0,0,.18);}
-body.dark-mode .ai-cfg{background:rgba(255,255,255,.03);}
-body.dark-mode .ai-cfg select,body.dark-mode .ai-cfg input{background:rgba(0,0,0,.25);}
 body.dark-mode .ai-head-tier{background:rgba(0,0,0,.25);border-color:rgba(255,255,255,.14);}
 body.dark-mode .ai-byo-status{background:rgba(255,255,255,.05);}
 body.dark-mode .ai-byo-key{background:rgba(0,0,0,.25);}

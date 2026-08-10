@@ -1752,7 +1752,9 @@ window.MMGR = MMGR;
     'aiSetProvider': (el) => { window.MMGR.AiWin.setAiCfg({ provider: el.value }); window.MMGR.AiWin.syncSettingsUI(); },
     'aiSetEndpoint': (el) => window.MMGR.AiWin.setAiCfg({ endpoint: el.value }),
     'aiSetModel': (el) => window.MMGR.AiWin.setAiCfg({ model: el.value }),
-    'aiSetKey': (el) => window.MMGR.AiWin.setAiCfg({ apiKey: el.value }),
+    // AI-CLOUD-CONNECT-UI (DIR-2): no aiSetKey action. The BYO key is wired
+    // directly in mmgr-ai.js (session vault only) and setAiCfg drops apiKey
+    // patches anyway — a key can never be persisted into project state.
     // Rank 3.4: viewport prompt answers write a device-level preference only
     // (localStorage, never project state) — safe in view-only. toggleFull is
     // a pure DOM class toggle.

@@ -818,6 +818,26 @@
         <button class="dc" data-action="closeAiWin" title="Close"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> </button>
       </div>
     </div>
+    <!-- AI-CLOUD-CONNECT-UI (DIR-1): the Cloud connection fields live in an
+         ALWAYS-VISIBLE row directly under the tier select — the moment the
+         tier is Cloud they are on screen, zero extra clicks. (The old home,
+         inside the collapsed <details>, is exactly why the key input looked
+         missing.) Visibility is still driven by syncSettingsUI toggling
+         is-hide on #ai-cfg-cloud by tier. Wired directly in mmgr-ai.js — no
+         action-map entries, so connecting a key stays available in view-only
+         mode (connecting is not a project mutation). -->
+    <div class="ai-conn-row" id="ai-cfg-cloud">
+      <span class="ai-conn-row-label"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cpu"></use></svg> Cloud connection (your own key)</span>
+      <span class="ai-byo-status" id="ai-byo-status" data-state="off"><span class="ai-byo-dot"></span><span class="ai-byo-status-txt">Disconnected</span></span>
+      <select id="ai-byo-provider" title="AI provider for this session">
+        <option value="openai">OpenAI</option>
+        <option value="google-gemini">Google Gemini</option>
+      </select>
+      <input type="password" id="ai-byo-key" class="ai-byo-key" placeholder="Paste your API key — this session only, never exported" autocomplete="off" spellcheck="false">
+      <button class="btn btn-g btn-s" id="ai-byo-connect" title="Save this session key and verify it with a live provider check"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-link"></use></svg> Connect &amp; Test</button>
+      <button class="btn btn-n btn-s" id="ai-byo-clear" title="Forget the key in this session"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> Clear</button>
+      <p class="ai-byo-sec">Your API key stays in this browser for this session only. It is never stored on our servers, never included in project exports or backups, and is cleared when you close the tab. Next time you will connect again. Project data still requires your access code.</p>
+    </div>
     <div class="mbody ai-body">
       <!-- Conversation thread (rendered as chat bubbles by js/mmgr-ai.js) -->
       <div class="ai-thread" id="ai-thread" aria-live="polite">
@@ -837,7 +857,7 @@
       <!-- Project context + engine settings (collapsed by default — keeps the
            chat view clean; all ids/actions unchanged for Rank 2.3 wiring) -->
       <details class="ai-adv">
-        <summary><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-settings"></use></svg> Project context &amp; cloud connection</summary>
+        <summary><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-settings"></use></svg> Project context &amp; tools</summary>
         <div class="ai-adv-body">
           <div class="dsec">Project context (auto-generated grounding for both tiers)</div>
           <textarea id="ai-ctx" class="ai-ctx" readonly placeholder="Project context appears here — charter, health, EVM, timeline, risks, critical path, weather."></textarea>
@@ -847,27 +867,7 @@
             <button class="btn btn-n btn-s" data-action="aiCopyOut"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy Result</button>
             <button class="btn btn-n btn-s" data-action="aiClear">Clear</button>
           </div>
-          <div class="ai-cfg">
-            <span class="ai-cfg-label"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cpu"></use></svg> Cloud connection (your own key)</span>
-            <span id="ai-cfg-cloud" class="ai-cfg-cloud is-hide">
-              <!-- BYO-AI-KEY-SESSION-ONLY-v1 STEP-2: session-only connect flow.
-                   The key lives ONLY in sessionStorage (mmgr_byo_ai) for this
-                   tab — never in project state, localStorage, exports, or on
-                   the server. Wired directly in mmgr-ai.js (no action-map
-                   entries, so the vault flow stays available in read-only
-                   mode — connecting a key is not a project mutation). -->
-              <span class="ai-byo-status" id="ai-byo-status" data-state="off"><span class="ai-byo-dot"></span><span class="ai-byo-status-txt">Disconnected</span></span>
-              <select id="ai-byo-provider" title="AI provider for this session">
-                <option value="openai">OpenAI</option>
-                <option value="google-gemini">Google Gemini</option>
-              </select>
-              <input type="password" id="ai-byo-key" class="ai-byo-key" placeholder="Paste your API key — this session only" autocomplete="off" spellcheck="false">
-              <button class="btn btn-g btn-s" id="ai-byo-connect" title="Connect for this browser session only"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-link"></use></svg> Connect</button>
-              <button class="btn btn-n btn-s" id="ai-byo-clear" title="Forget the key in this session"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> Clear</button>
-              <p class="ai-byo-sec">Your API key stays in this browser for this session only. It is not stored on our servers. When you close the tab, the key is cleared. Next time you will connect again. Project data still requires your access code.</p>
-            </span>
-          </div>
-          <p class="ai-note">Tier A runs a zero-key engine in this browser — every line traces to a real project field, offline. Tier B uses your own OpenAI / Google Gemini key for this session only (never stored, cleared on close) through the Worker relay or the same circuit-broken network path as weather. The copy-first flow still works for any external tool.</p>
+          <p class="ai-note">Tier A runs a zero-key engine in this browser — every line traces to a real project field, offline. Tier B uses your own OpenAI / Google Gemini key for this session only (never stored, never exported, cleared on close) through the Worker relay or the same circuit-broken network path as weather. Connect &amp; Test verifies the key with a live provider check before Send unlocks. The copy-first flow still works for any external tool.</p>
         </div>
       </details>
       <!-- Result store — hidden; copyOut() reads it and runs render as bubbles -->

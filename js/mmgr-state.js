@@ -481,6 +481,10 @@ var MMGR = window.MMGR || {};
   // Re-migrates, replaces the in-memory state, and persists immediately.
   function adoptExternal(parsedState) {
     try {
+      // Same secret strip as importState — an adopted blob (multi-tab
+      // "keep theirs", storage-event handoff) must not carry a key into
+      // this device's live state either.
+      stripSecrets(parsedState);
       _state = migrate(parsedState);
       _dirty = false;
       save(true);
@@ -800,13 +804,49 @@ var MMGR = window.MMGR || {};
     };
   }
 
+  // AI-CLOUD-CONNECT-UI (DIR-2): provider secrets are stripped from the
+  // OUTGOING portable .json and never re-adopted on import/adopt. The BYO AI
+  // key lives only in the session vault (js/mmgr-ai-key.js); this strip is
+  // the load-bearing guarantee that a stale/legacy apiKey — e.g. one riding
+  // in an old pre-session-vault export — can never leak through the app's
+  // own designed "portable data, single .json export" path. Works on a
+  // passed object; the caller decides whether it's a deep clone (export) or
+  // a freshly parsed incoming blob (import/adopt). Never mutates live state.
+  const SECRET_KEYS = ['apiKey'];
+
+  function stripSecrets(obj) {
+    if (!obj || typeof obj !== 'object') return obj;
+    const cfg = obj.config;
+    if (cfg && typeof cfg === 'object' && !Array.isArray(cfg)) {
+      // state.config.ai — the AI provider block (apiKey is the only secret;
+      // tier/provider/endpoint/model are benign prefs).
+      if (cfg.ai && typeof cfg.ai === 'object' && !Array.isArray(cfg.ai)) {
+        SECRET_KEYS.forEach(function(k) { delete cfg.ai[k]; });
+      }
+      // Config.api.keys — the reserved future provider/backup key object
+      // (e.g. an eventual Google OAuth token / Cloudflare sync token per the
+      // still-open Config.api.keys redesign). If present, never ship it.
+      if (cfg.api && typeof cfg.api === 'object' && !Array.isArray(cfg.api) && cfg.api.keys && typeof cfg.api.keys === 'object') {
+        delete cfg.api.keys;
+      }
+    }
+    return obj;
+  }
+
   function exportState() {
-    return JSON.stringify(getState(), null, 2);
+    // Deep-clone, strip secrets from the CLONE only, serialize. The live
+    // in-memory state is never mutated as a side effect of exporting it.
+    const out = JSON.parse(JSON.stringify(getState()));
+    return JSON.stringify(stripSecrets(out), null, 2);
   }
 
   function importState(jsonStr) {
     try {
       const parsed = JSON.parse(jsonStr);
+      // Strip any secret an old/incoming file may carry (post-fix exports
+      // never include them, but a legacy file can). The session vault is the
+      // only home for keys now — an import must never re-seed state with one.
+      stripSecrets(parsed);
       const migrated = migrate(parsed);
       _state = migrated;
       save(true);

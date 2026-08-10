@@ -366,12 +366,20 @@ var MMGR = window.MMGR || {};
   // MERGED-AI-CONTROL (audit 1.2): whenever a non-off tier is selected, it is
   // remembered as lastTier so the drawer master switch can restore it when
   // flipped back ON (default 'local' when never set).
+  // AI-CLOUD-CONNECT-UI (DIR-2): apiKey is NEVER written to project state —
+  // the session vault (mmgr-ai-key.js) is its only home. Any patch carrying
+  // apiKey is silently dropped here, so no caller (action map, tests, future
+  // UI) can ever persist a secret into state or into an export.
   function setAiCfg(patch) {
+    const safe = {};
+    Object.keys(patch || {}).forEach(function(k) {
+      if (k !== 'apiKey') safe[k] = patch[k];
+    });
     ns.State.updateState(function(s) {
       if (!s.config || typeof s.config !== 'object' || Array.isArray(s.config)) s.config = {};
       if (!s.config.ai || typeof s.config.ai !== 'object' || Array.isArray(s.config.ai)) s.config.ai = {};
-      Object.keys(patch).forEach(function(k) { s.config.ai[k] = patch[k]; });
-      if (patch.tier !== undefined && patch.tier !== 'off') s.config.ai.lastTier = patch.tier;
+      Object.keys(safe).forEach(function(k) { s.config.ai[k] = safe[k]; });
+      if (safe.tier !== undefined && safe.tier !== 'off') s.config.ai.lastTier = safe.tier;
     });
   }
 
@@ -403,14 +411,18 @@ var MMGR = window.MMGR || {};
     if (cloudRow) cloudRow.classList.toggle('is-hide', (cfg.tier || 'off') !== 'cloud');
     syncByoStatus();
     syncSendGate();
-    // Engine-status pill in the chat header.
+    // Engine-status pill in the chat header. AI-CLOUD-CONNECT-UI (DIR-1): the
+    // cloud label reads the SAME canonical status field as the chip and the
+    // Send gate — no two indicators can disagree anymore.
     const pill = U.$('ai-engine-pill');
     if (pill) pill.setAttribute('data-tier', cfg.tier || 'off');
     const pillLbl = U.$('ai-engine-pill-label');
     const tier = cfg.tier || 'off';
     if (pillLbl) {
       pillLbl.textContent = tier === 'local' ? 'Local · zero-key'
-        : tier === 'cloud' ? (BYO.isConnected() ? 'Cloud · connected' : 'Cloud · connect key')
+        : tier === 'cloud' ? (getConnectionState() === 'connected' ? 'Cloud · connected'
+            : getConnectionState() === 'saved_untested' ? 'Cloud · key saved'
+            : 'Cloud · connect key')
         : 'Off · copy-first';
     }
     // MERGED-AI-CONTROL: the fab visibility follows the tier (hidden only
@@ -420,58 +432,142 @@ var MMGR = window.MMGR || {};
   }
 
   // ---- BYO Connect flow (BYO-AI-KEY-SESSION-ONLY-v1 STEP-2) ----
+  //
+  // AI-CLOUD-CONNECT-UI (DIR-1): exactly three states, driven by ONE
+  // canonical field — state.config.ai.connectionStatus:
+  //   'not_connected'  — no key in the session vault (or key was rejected).
+  //   'saved_untested' — a key IS in the vault, but Connect & Test has not
+  //                      confirmed it against the provider yet (or the last
+  //                      probe failed). A key present is NOT 'connected'.
+  //   'connected'      — the last Connect & Test probe returned 2xx.
+  // Plus state.config.ai.lastTestedAt (ISO) set when 'connected' was last
+  // achieved. EVERY visible indicator (engine pill, BYO chip, Send button
+  // state) reads this one field via getConnectionState() — two indicators
+  // can no longer disagree. The vault remains the ground truth: no vault
+  // entry always means 'not_connected', even if a stale 'connected' record
+  // survived in state from a previous session.
+  function getConnectionState() {
+    if (!BYO.isConnected()) return 'not_connected';
+    const cfg = getAiCfg();
+    return (cfg.connectionStatus === 'connected' && cfg.lastTestedAt) ? 'connected' : 'saved_untested';
+  }
+
+  function setConnectionStatus(status) {
+    const patch = { connectionStatus: status };
+    if (status === 'connected') patch.lastTestedAt = new Date().toISOString();
+    setAiCfg(patch);
+  }
+
   function syncByoStatus() {
     const st = U.$('ai-byo-status');
     if (!st) return;
     const txt = st.querySelector('.ai-byo-status-txt');
-    if (BYO.isConnected()) {
+    const status = getConnectionState();
+    if (status === 'connected') {
       st.setAttribute('data-state', 'on');
       if (txt) txt.textContent = 'Connected · ' + (BYO.getProvider() === 'google-gemini' ? 'Google Gemini' : 'OpenAI');
+    } else if (status === 'saved_untested') {
+      st.setAttribute('data-state', 'untested');
+      if (txt) txt.textContent = 'Key saved — not tested';
     } else {
       st.setAttribute('data-state', 'off');
       if (txt) txt.textContent = 'Disconnected';
     }
   }
 
-  // STEP-4: live chat is gated on the session key. Cloud + no key -> Send
-  // disabled with a hint; Off tier also disables Send (presets stay usable).
+  // STEP-4 + DIR-1: live chat is gated on the CANONICAL status, not on key
+  // presence. Cloud Send unlocks only when Connect & Test has verified the
+  // key ('connected'); a saved-but-unverified key keeps Send disabled with
+  // an honest hint. Off tier also disables Send (presets stay usable).
   function syncSendGate() {
     const s = U.$('ai-send');
     const hint = U.$('ai-conn-hint');
     if (!s) return;
     const tier = getAiCfg().tier || 'off';
-    const cloudNoKey = tier === 'cloud' && !BYO.isConnected();
+    const status = getConnectionState();
     const off = tier === 'off';
-    s.disabled = off || cloudNoKey;
+    const cloudNotVerified = tier === 'cloud' && status !== 'connected';
+    s.disabled = off || cloudNotVerified;
     if (hint) {
-      const msg = cloudNoKey ? 'Connect your AI key to send (session-only).' : (off ? 'Engine is Off — choose Local or Cloud.' : '');
+      // NOTE: assigned via textContent — plain '&', not the HTML entity.
+      const msg = (tier === 'cloud' && status === 'not_connected')
+        ? 'Connect your AI key to send (session-only).'
+        : (tier === 'cloud' && status === 'saved_untested')
+          ? 'Key saved — Connect & Test to verify before sending.'
+          : (off ? 'Engine is Off — choose Local or Cloud.' : '');
       hint.textContent = msg;
       hint.classList.toggle('is-hide', !msg);
     }
   }
 
-  // Connect a BYO key for this session only. Empty key -> error, stay
-  // Disconnected. The full key is never rendered again after connect.
-  function connectByo(provider, apiKey) {
+  // DIR-1: the real connectivity check. One minimal, cheap request through
+  // the existing circuit-broken Net path (mmgr-net.js — timeout + zero
+  // retries: a probe must fail fast, not back off): the provider's
+  // models-list endpoint. Only a 2xx means the key is genuinely usable — a
+  // typo'd/revoked/wrong-provider key returns 401/403 and must NOT count as
+  // connected. Returns { ok, status }.
+  async function probeProvider(provider, key) {
+    const def = (ns.Net && ns.Net.PROVIDER_DEFAULTS) ? ns.Net.PROVIDER_DEFAULTS[provider] : null;
+    if (!def) return { ok: false, status: 0 };
+    const isGemini = provider === 'google-gemini';
+    const url = isGemini
+      ? 'https://generativelanguage.googleapis.com/v1beta/models?key=' + encodeURIComponent(key)
+      : 'https://api.openai.com/v1/models';
+    const headers = isGemini ? {} : { 'Authorization': 'Bearer ' + key };
+    try {
+      const res = await ns.Net.get(url, { headers: headers, timeoutMs: 6000, maxRetries: 0 });
+      return { ok: !!(res && res.ok), status: res ? res.status : 0 };
+    } catch (e) {
+      return { ok: false, status: 0 };
+    }
+  }
+
+  // Connect a BYO key for this session only, then VERIFY it with the probe.
+  // Empty key -> error, stay not_connected. The full key is never rendered
+  // again after connect. The chip/pill/Send all follow the probe outcome via
+  // the canonical status field — nothing is fabricated from key presence.
+  async function connectByo(provider, apiKey) {
     if (!apiKey || !String(apiKey).trim()) {
       toast('Paste your API key first — session-only, never stored.', 'err');
-      return { ok: false, error: 'empty key' };
+      return { ok: false, error: 'empty key', status: 'not_connected' };
     }
     try {
       BYO.setKey(provider, apiKey);
     } catch (e) {
       toast('Could not connect — ' + ((e && e.message) || 'invalid key'), 'err');
-      return { ok: false, error: (e && e.message) || 'invalid key' };
+      return { ok: false, error: (e && e.message) || 'invalid key', status: 'not_connected' };
     }
     const k = U.$('ai-byo-key');
     if (k) k.value = ''; // never show the raw key after connect (with_key_ux)
+    // Key is now saved — but that is 'saved_untested', NOT 'connected'.
+    setConnectionStatus('saved_untested');
     syncSettingsUI();
-    toast('Key connected — this session only. Cleared when you close the tab.', 'ok');
-    return { ok: true };
+    const probe = await probeProvider(provider, BYO.getKey());
+    if (probe.ok) {
+      setConnectionStatus('connected');
+      syncSettingsUI();
+      toast('Key connected and verified against ' + (provider === 'google-gemini' ? 'Google Gemini' : 'OpenAI') + ' — this session only. Cleared when you close the tab.', 'ok');
+      return { ok: true, status: 'connected' };
+    }
+    if (probe.status === 401 || probe.status === 403) {
+      // Provider explicitly rejected the key — clear it (auth failure, the
+      // only condition that clears a session key, consistent with runCloud).
+      BYO.clearKey();
+      setConnectionStatus('not_connected');
+      syncSettingsUI();
+      toast('Provider rejected the key (401/403) — check it and connect again.', 'err');
+      return { ok: false, error: 'provider rejected the key', status: 'not_connected' };
+    }
+    // Network failure / timeout / other status: key stays saved but unverified.
+    syncSettingsUI();
+    // NOTE: toast uses textContent — plain '&', not the HTML entity.
+    toast('Key saved for this session, but the provider check could not confirm it — check the key and your connection, then Connect & Test again.', 'err');
+    return { ok: false, error: 'probe failed', status: 'saved_untested' };
   }
 
   function clearByo() {
     BYO.clearKey();
+    setConnectionStatus('not_connected');
     syncSettingsUI();
     toast('Session key cleared — you will paste it again next time.', 'ok');
   }
@@ -829,6 +925,7 @@ var MMGR = window.MMGR || {};
       // key — network/timeout/provider-5xx errors leave it in place.
       if (e && e.status === 401) {
         BYO.clearKey();
+        setConnectionStatus('not_connected');
         syncSettingsUI();
         throw new Error('AI key rejected by the provider — session key cleared. Connect again.');
       }
@@ -1158,11 +1255,14 @@ var MMGR = window.MMGR || {};
     renderOutput: renderOutput,
     copyOut: copyOut,
     syncSettingsUI: syncSettingsUI,
-    // BYO-AI-KEY-SESSION-ONLY-v1
+    // BYO-AI-KEY-SESSION-ONLY-v1 + AI-CLOUD-CONNECT-UI (DIR-1)
     connectByo: connectByo,
     clearByo: clearByo,
     syncByoStatus: syncByoStatus,
     syncSendGate: syncSendGate,
+    getConnectionState: getConnectionState,
+    setConnectionStatus: setConnectionStatus,
+    probeProvider: probeProvider,
     // INTEGRATED-STRUCTURE-API-WINDOW (plan §1/§3)
     checkApiHealth: checkApiHealth,
     setApiStatus: setApiStatus

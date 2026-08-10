@@ -262,22 +262,36 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
   })()`);
   check('A16 api: /api/health badge exists and reports connected against the dev server', u1a.exists && u1a.result === 'connected' && u1a.state === 'connected' && u1a.label === 'API · connected', u1a);
 
-  // ---- 6b. BYO Connect flow (STEP-2) ----
+  // ---- 6b. BYO Connect flow (STEP-2 + DIR-1 real connectivity probe) ----
+  // DIR-1: Connect now VERIFIES the key with a cheap models-list request
+  // through the circuit-broken Net path. Headless run mocks that probe with
+  // a 200 so the flow deterministically reaches the 'connected' state — a
+  // key present is NOT 'connected' until the probe confirms it.
   const u1b = await ev(`(async function(){
-    MMGR.AiWin.setAiCfg({ tier: 'cloud' }); MMGR.AiWin.syncSettingsUI();
-    var p = document.getElementById('ai-byo-provider'); var k = document.getElementById('ai-byo-key');
-    if (p) p.value = 'google-gemini'; if (k) k.value = 'AIza-ui-flow-1';
-    var conn = document.getElementById('ai-byo-connect');
-    if (conn) conn.click();
-    await new Promise(function(r){ setTimeout(r, 120); });
-    var st = document.getElementById('ai-byo-status');
-    var send = document.querySelector('.ai-send');
-    return { connected: MMGR.AiKey.isConnected(),
-      chip: !!(st && st.getAttribute('data-state') === 'on' && st.textContent.indexOf('Connected') === 0 && st.textContent.indexOf('Google Gemini') > -1),
-      inputCleared: !!k && k.value === '',
-      sendEnabled: !!(send && !send.disabled) };
+    var orig = window.fetch;
+    window.fetch = function(url){
+      if (String(url).indexOf('generativelanguage.googleapis.com') > -1 || String(url).indexOf('api.openai.com') > -1) {
+        return Promise.resolve(new Response('{}', { status: 200, headers: { 'Content-Type': 'application/json' } }));
+      }
+      return Promise.resolve(new Response('', { status: 404 }));
+    };
+    try {
+      MMGR.AiWin.setAiCfg({ tier: 'cloud' }); MMGR.AiWin.syncSettingsUI();
+      var p = document.getElementById('ai-byo-provider'); var k = document.getElementById('ai-byo-key');
+      if (p) p.value = 'google-gemini'; if (k) k.value = 'AIza-ui-flow-1';
+      var conn = document.getElementById('ai-byo-connect');
+      if (conn) conn.click();
+      await new Promise(function(r){ setTimeout(r, 300); });
+      var st = document.getElementById('ai-byo-status');
+      var send = document.querySelector('.ai-send');
+      return { connected: MMGR.AiKey.isConnected(),
+        status: MMGR.AiWin.getConnectionState(),
+        chip: !!(st && st.getAttribute('data-state') === 'on' && st.textContent.indexOf('Connected') === 0 && st.textContent.indexOf('Google Gemini') > -1),
+        inputCleared: !!k && k.value === '',
+        sendEnabled: !!(send && !send.disabled) };
+    } finally { window.fetch = orig; }
   })()`);
-  check('B05 ui: Connect -> "Connected · Google Gemini" chip, raw key cleared, cloud Send enabled', u1b.connected && u1b.chip && u1b.inputCleared && u1b.sendEnabled, u1b);
+  check('B05 ui: Connect & Test -> verified "Connected · Google Gemini" chip, raw key cleared, cloud Send enabled', u1b.connected && u1b.status === 'connected' && u1b.chip && u1b.inputCleared && u1b.sendEnabled, u1b);
 
   const u1c = await ev(`(async function(){
     var clr = document.getElementById('ai-byo-clear');
@@ -287,11 +301,83 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
     var send = document.querySelector('.ai-send');
     var hint = document.getElementById('ai-conn-hint');
     return { off: MMGR.AiKey.isConnected() === false,
+      status: MMGR.AiWin.getConnectionState(),
       chip: !!(st && st.getAttribute('data-state') === 'off' && st.textContent.indexOf('Disconnected') === 0),
       sendBlocked: !!(send && send.disabled),
       hintShown: !!(hint && !hint.classList.contains('is-hide') && hint.textContent.length > 0) };
   })()`);
-  check('B06 ui: Clear -> Disconnected chip, session key gone, cloud Send disabled + hint', u1c.off && u1c.chip && u1c.sendBlocked && u1c.hintShown, u1c);
+  check('B06 ui: Clear -> Disconnected chip, session key gone, cloud Send disabled + hint', u1c.off && u1c.status === 'not_connected' && u1c.chip && u1c.sendBlocked && u1c.hintShown, u1c);
+
+  // ---- DIR-1 canonical three states: saved-but-unverified vs rejected ----
+  // B07a: provider unreachable -> key KEPT, status 'saved_untested', chip
+  // "Key saved — not tested", Send stays blocked (no fabricated connected).
+  const u1d = await ev(`(async function(){
+    var orig = window.fetch;
+    window.fetch = function(){ return Promise.reject(new Error('network down')); };
+    try {
+      MMGR.AiKey.clearKey();
+      MMGR.AiWin.setAiCfg({ tier: 'cloud' }); MMGR.AiWin.syncSettingsUI();
+      var k = document.getElementById('ai-byo-key');
+      if (k) k.value = 'sk-offline-1';
+      var res = await MMGR.AiWin.connectByo('openai', 'sk-offline-1');
+      var st = document.getElementById('ai-byo-status');
+      var send = document.querySelector('.ai-send');
+      var hint = document.getElementById('ai-conn-hint');
+      return { ok: res.ok, status: MMGR.AiWin.getConnectionState(),
+        keyKept: MMGR.AiKey.isConnected() === true,
+        chip: !!(st && st.getAttribute('data-state') === 'untested' && st.textContent.indexOf('not tested') > -1),
+        sendBlocked: !!(send && send.disabled),
+        // textContent path: the saved_untested hint must render a plain '&'
+        // (the HTML entity would literally show as "&amp;").
+        hintClean: !!hint && hint.textContent.indexOf('&amp;') === -1 && hint.textContent.indexOf('& Test') > -1 };
+    } finally { window.fetch = orig; }
+  })()`);
+  check('B07a ui: unreachable provider -> key KEPT, "Key saved — not tested", Send stays blocked', u1d.ok === false && u1d.status === 'saved_untested' && u1d.keyKept && u1d.chip && u1d.sendBlocked, u1d);
+  check('B07a hint: saved_untested hint renders plain "&" (no literal &amp;)', u1d.hintClean, u1d);
+
+  // B07b: provider rejects the key (401) -> key CLEARED, back to
+  // 'not_connected', chip Disconnected (auth failure clears, not fabricates).
+  const u1e = await ev(`(async function(){
+    var orig = window.fetch;
+    window.fetch = function(){ return Promise.resolve(new Response('{}', { status: 401 })); };
+    try {
+      MMGR.AiKey.clearKey();
+      MMGR.AiWin.setAiCfg({ tier: 'cloud' }); MMGR.AiWin.syncSettingsUI();
+      var k = document.getElementById('ai-byo-key');
+      if (k) k.value = 'sk-rejected-1';
+      var res = await MMGR.AiWin.connectByo('openai', 'sk-rejected-1');
+      var st = document.getElementById('ai-byo-status');
+      return { ok: res.ok, status: MMGR.AiWin.getConnectionState(),
+        keyCleared: MMGR.AiKey.isConnected() === false,
+        chip: !!(st && st.getAttribute('data-state') === 'off' && st.textContent.indexOf('Disconnected') === 0) };
+    } finally { window.fetch = orig; }
+  })()`);
+  check('B07b ui: 401 from provider -> key CLEARED, Disconnected, status not_connected', u1e.ok === false && u1e.status === 'not_connected' && u1e.keyCleared && u1e.chip, u1e);
+
+  // ---- DIR-2: provider secrets stripped from export AND import ----
+  // The live key is session-vault-only, but the strip is the load-bearing
+  // guard against a legacy apiKey riding in state (old pre-session-vault
+  // exports, direct state writes). exportState must never emit it, and
+  // importState/adoptExternal must never re-seed state with one.
+  const d2 = await ev(`(function(){
+    var s = MMGR.State.getState();
+    if (!s.config || typeof s.config !== 'object') s.config = {};
+    if (!s.config.ai || typeof s.config.ai !== 'object') s.config.ai = {};
+    // Simulate a legacy leak directly in state (bypasses setAiCfg, which
+    // now drops apiKey patches on the way in) and export.
+    s.config.ai.apiKey = 'sk-LEGACY-SECRET-123';
+    var json = MMGR.State.exportState();
+    var stripped = json.indexOf('sk-LEGACY-SECRET-123') === -1 && json.indexOf('"apiKey"') === -1;
+    // Import a legacy file carrying the key — must NOT re-seed state.
+    var legacy = JSON.stringify({ schemaVersion: MMGR.State.SCHEMA_VERSION, config: { ai: { tier: 'cloud', apiKey: 'sk-IMPORT-SECRET-456' } } });
+    MMGR.State.importState(legacy);
+    var reExported = MMGR.State.exportState();
+    var importStripped = reExported.indexOf('sk-IMPORT-SECRET-456') === -1;
+    // Restore clean state for later tests.
+    MMGR.State.updateState(function(st){ if (st.config && st.config.ai) delete st.config.ai.apiKey; });
+    return { stripped: stripped, importStripped: importStripped };
+  })()`);
+  check('DIR-2 export/import: apiKey stripped from outgoing export AND from re-adopted legacy imports', d2.stripped && d2.importStripped, d2);
 
   await ev('MMGR.AiWin.setAiCfg({ tier: "cloud" }); MMGR.AiWin.syncSettingsUI();'); await delay(200);
   const u2 = await ev(`(function(){

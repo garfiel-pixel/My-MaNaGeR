@@ -1242,11 +1242,12 @@ body.dark-mode .ai-api-pill[data-state="error"]{background:rgba(239,68,68,.1);}
    at the top of the AI window body. The presets live in their own pane and are
    reachable by tab regardless of conversation length — the old stacked layout
    made them structurally unreachable once the thread filled the modal. */
-.ai-seg{display:flex;border-bottom:1px solid var(--border);background:var(--tile-bg);flex-shrink:0;}
-.ai-seg-btn{flex:1;min-width:0;padding:9px 12px;border:none;background:none;color:var(--slate);font-size:.72rem;font-weight:700;font-family:inherit;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;border-bottom:2px solid transparent;transition:color var(--tr),border-color var(--tr),background var(--tr);}
+.ai-seg{display:flex;gap:4px;padding:6px 12px;border-bottom:1px solid var(--border);background:var(--tile-bg);flex-shrink:0;}
+.ai-seg-btn{flex:1;min-width:0;padding:7px 12px;border:none;background:none;color:var(--slate);font-size:.72rem;font-weight:700;font-family:inherit;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;border-radius:100px;transition:color var(--tr),background var(--tr),box-shadow var(--tr);}
 .ai-seg-btn .ico{font-size:.8rem;}
-.ai-seg-btn:hover{color:var(--gold);background:rgba(245,158,11,.06);}
-.ai-seg-btn.is-on{color:var(--gold);border-bottom-color:var(--gold);background:rgba(245,158,11,.08);}
+.ai-seg-btn:hover{color:var(--gold);background:rgba(245,158,11,.08);}
+.ai-seg-btn.is-on{color:var(--gold);background:var(--card);box-shadow:0 1px 4px rgba(15,23,42,.14);}
+body.dark-mode .ai-seg-btn.is-on{background:rgba(255,255,255,.08);}
 
 /* conversation thread + bubbles */
 .ai-body{display:flex;flex-direction:column;padding:0;flex:1;min-height:0;overflow:hidden;}
@@ -1262,7 +1263,7 @@ body.dark-mode .ai-api-pill[data-state="error"]{background:rgba(239,68,68,.1);}
 .ai-bot{align-self:flex-start;display:flex;gap:9px;max-width:88%;padding:0;background:none;border:none;box-shadow:none;animation:aiBubbleIn .3s cubic-bezier(.2,.9,.3,1.1);}
 .ai-bot-avatar{flex-shrink:0;width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,#f59e0b,#d97706);color:#0b0c10;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 10px rgba(245,158,11,.35);}
 .ai-bot-avatar .ico{width:16px;height:16px;}
-.ai-bot-body{background:var(--card);border:1px solid var(--border);border-radius:16px;border-bottom-left-radius:5px;padding:11px 14px;min-width:0;box-shadow:0 1px 3px rgba(15,23,42,.06);}
+.ai-bot-body{background:var(--card);border:1px solid transparent;border-radius:14px;border-bottom-left-radius:5px;padding:11px 14px;min-width:0;box-shadow:0 1px 2px rgba(15,23,42,.05);}
 .ai-text{white-space:pre-wrap;word-break:break-word;}
 .ai-tip{font-size:.68rem;color:var(--slate);margin-top:8px;line-height:1.6;}
 .ai-err{color:var(--danger);font-weight:500;}
@@ -1311,8 +1312,13 @@ body.dark-mode .ai-api-pill[data-state="error"]{background:rgba(239,68,68,.1);}
    select — visible the moment tier=Cloud, zero extra clicks. Hidden only by
    the same is-hide toggle syncSettingsUI drives (tier != cloud). */
 .ai-conn-row{display:flex;flex-wrap:wrap;align-items:center;gap:7px;padding:8px 14px;border-bottom:1px solid var(--border);background:var(--tile-bg);}
-.ai-conn-row .ai-byo-key{width:190px;}
+.ai-byo-gear{flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:100px;border:1px solid var(--border);background:var(--card);color:var(--slate);cursor:pointer;transition:color var(--tr),border-color var(--tr),transform var(--tr);}
+.ai-byo-gear .ico{width:13px;height:13px;}
+.ai-byo-gear:hover{color:var(--gold);border-color:var(--gold);transform:rotate(25deg);}
+.ai-byo-pop{flex-basis:100%;display:flex;flex-wrap:wrap;align-items:center;gap:7px;margin-top:6px;padding:9px 10px;border:1px solid var(--border);border-radius:12px;background:var(--card);}
+.ai-byo-pop .ai-byo-key{flex:1;min-width:190px;}
 body.dark-mode .ai-conn-row{background:rgba(0,0,0,.12);}
+body.dark-mode .ai-byo-pop{background:rgba(0,0,0,.18);}
 /* BYO-AI-KEY-SESSION-ONLY-v1 — Connect flow (STEP-2): status chip,
    session-only key input, security copy, and the send gate. */
 .ai-byo-status{display:inline-flex;align-items:center;gap:6px;font-size:.66rem;font-weight:700;border-radius:100px;padding:3px 10px;border:1px solid var(--border);background:var(--tile-bg);color:var(--slate);white-space:nowrap;transition:color var(--tr),border-color var(--tr),background var(--tr);}
@@ -1328,14 +1334,14 @@ body.dark-mode .ai-conn-row{background:rgba(0,0,0,.12);}
 body.dark-mode .ai-byo-status[data-state="untested"]{background:rgba(245,158,11,.08);}
 .ai-byo-key{width:190px;}
 .ai-byo-sec{font-size:.6rem;color:var(--slate);line-height:1.5;margin:3px 0 0;flex-basis:100%;}
-.ai-conn-hint{font-size:.62rem;color:var(--danger);font-weight:600;max-width:130px;line-height:1.35;text-align:right;}
+.ai-send-wrap{display:inline-flex;flex-shrink:0;}
 .ai-send:disabled{opacity:.45;cursor:not-allowed;filter:saturate(.4);box-shadow:none;transform:none;}
 .ai-send:disabled:hover{transform:none;box-shadow:none;}
 .ai-note{font-size:.64rem;color:var(--slate);margin-top:10px;line-height:1.5;}
 
 /* chat input bar (replaces the old footer) */
 .ai-inputbar{padding:12px 16px;border-top:1px solid var(--border);display:flex;gap:10px;align-items:flex-end;background:var(--card);}
-.ai-q{flex:1;background:var(--tile-bg);border:1px solid var(--border);border-radius:20px;color:var(--text);font-size:.8rem;padding:10px 16px;font-family:inherit;resize:none;box-sizing:border-box;min-height:40px;max-height:120px;line-height:1.45;transition:border-color var(--tr),box-shadow var(--tr);}
+.ai-q{flex:1;background:var(--tile-bg);border:1px solid var(--border);border-radius:22px;color:var(--text);font-size:.8rem;padding:10px 44px 10px 16px;font-family:inherit;resize:none;box-sizing:border-box;min-height:40px;max-height:120px;line-height:1.45;transition:border-color var(--tr),box-shadow var(--tr);}
 .ai-q:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 3px rgba(245,158,11,.14);}
 .ai-q::placeholder{color:var(--slate);opacity:.75;}
 .ai-send{flex-shrink:0;border:none;border-radius:100px;padding:9px 18px;background:linear-gradient(135deg,#f59e0b,#d97706);color:#0b0c10;font-size:.76rem;font-weight:800;cursor:pointer;display:inline-flex;align-items:center;gap:6px;box-shadow:0 2px 8px rgba(217,119,6,.3);transition:transform var(--tr),box-shadow var(--tr),filter var(--tr);}
@@ -1351,7 +1357,7 @@ body.dark-mode .ai-q:focus.at-cap{box-shadow:0 0 0 3px rgba(245,158,11,.14), ins
 
 /* dark mode */
 body.dark-mode .ai-user{background:linear-gradient(135deg,#f59e0b,#b45309);}
-body.dark-mode .ai-bot-body{background:rgba(255,255,255,.05);}
+body.dark-mode .ai-bot-body{background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.08);}
 body.dark-mode .ai-q{background:rgba(0,0,0,.3);}
 body.dark-mode .ai-chip{background:rgba(255,255,255,.05);}
 body.dark-mode .ai-adv .ai-adv-body{background:rgba(0,0,0,.18);}

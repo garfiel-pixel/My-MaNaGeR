@@ -555,14 +555,18 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
     await new Promise(function(r){ setTimeout(r, 120); });
     var st = document.getElementById('ai-byo-status');
     var send = document.querySelector('.ai-send');
-    var hint = document.getElementById('ai-conn-hint');
+    var wrap = document.getElementById('ai-send-wrap');
     return { off: MMGR.AiKey.isConnected() === false,
       status: MMGR.AiWin.getConnectionState(),
       chip: !!(st && st.getAttribute('data-state') === 'off' && st.textContent.indexOf('Disconnected') === 0),
       sendBlocked: !!(send && send.disabled),
-      hintShown: !!(hint && !hint.classList.contains('is-hide') && hint.textContent.length > 0) };
+      // UI-DECLUTTER: the red inline hint is gone; the disabled Send button
+      // explains itself through the WRAPPER's native tooltip (Chrome
+      // suppresses title tooltips on disabled buttons).
+      hintGone: !document.getElementById('ai-conn-hint'),
+      tipSet: !!(wrap && wrap.getAttribute('title') && wrap.getAttribute('title').indexOf('Connect your AI key to send') > -1) };
   })()`);
-  check('B06 ui: Clear -> Disconnected chip, session key gone, cloud Send disabled + hint', u1c.off && u1c.status === 'not_connected' && u1c.chip && u1c.sendBlocked && u1c.hintShown, u1c);
+  check('B06 ui: Clear -> Disconnected chip, session key gone, cloud Send disabled + native tooltip (no red hint)', u1c.off && u1c.status === 'not_connected' && u1c.chip && u1c.sendBlocked && u1c.hintGone && u1c.tipSet, u1c);
 
   // ---- DIR-1 canonical three states: saved-but-unverified vs rejected ----
   // B07a: provider unreachable -> key KEPT, status 'saved_untested', chip
@@ -578,18 +582,19 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
       var res = await MMGR.AiWin.connectByo('openai', 'sk-offline-1');
       var st = document.getElementById('ai-byo-status');
       var send = document.querySelector('.ai-send');
-      var hint = document.getElementById('ai-conn-hint');
+      var wrap = document.getElementById('ai-send-wrap');
       return { ok: res.ok, status: MMGR.AiWin.getConnectionState(),
         keyKept: MMGR.AiKey.isConnected() === true,
         chip: !!(st && st.getAttribute('data-state') === 'untested' && st.textContent.indexOf('not tested') > -1),
         sendBlocked: !!(send && send.disabled),
-        // textContent path: the saved_untested hint must render a plain '&'
-        // (the HTML entity would literally show as "&amp;").
-        hintClean: !!hint && hint.textContent.indexOf('&amp;') === -1 && hint.textContent.indexOf('& Test') > -1 };
+        // textContent-equivalent on the wrapper tooltip: the saved_untested
+        // message must render a plain '&' (the HTML entity would literally
+        // show as "&amp;").
+        tipClean: !!(wrap && wrap.getAttribute('title') && wrap.getAttribute('title').indexOf('&amp;') === -1 && wrap.getAttribute('title').indexOf('& Test') > -1) };
     } finally { window.fetch = orig; }
   })()`);
   check('B07a ui: unreachable provider -> key KEPT, "Key saved — not tested", Send stays blocked', u1d.ok === false && u1d.status === 'saved_untested' && u1d.keyKept && u1d.chip && u1d.sendBlocked, u1d);
-  check('B07a hint: saved_untested hint renders plain "&" (no literal &amp;)', u1d.hintClean, u1d);
+  check('B07a tooltip: saved_untested message renders plain "&" (no literal &amp;)', u1d.tipClean, u1d);
 
   // B07b: provider rejects the key (401) -> key CLEARED, back to
   // 'not_connected', chip Disconnected (auth failure clears, not fabricates).

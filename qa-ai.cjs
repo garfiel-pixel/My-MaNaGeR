@@ -222,7 +222,7 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
 
   // ---- GEMINI-MODEL-FALLBACK-LADDER (DIR-3/DIR-4) ----
   // A08c: primary model 429s (rate limited) -> the ladder retries the next,
-  // smaller model (gemini-2.0-flash-lite) and reports WHICH model actually
+  // smaller model (gemini-flash-lite-latest) and reports WHICH model actually
   // answered in res.model + res.trace (DIR-4 transparency).
   const c2c = await ev(`(async function(){
     var calls = [];
@@ -230,20 +230,20 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
     window.fetch = function(url, opts){
       calls.push({ url: url, opts: opts });
       if (String(url).indexOf('/api/ai/chat') === 0) return Promise.resolve(new Response('', { status: 404 })); // no relay -> direct per model
-      if (String(url).indexOf('gemini-2.0-flash:generateContent') > -1) return Promise.resolve(new Response('', { status: 429 })); // primary quota-exhausted
+      if (String(url).indexOf('gemini-flash-latest:generateContent') > -1) return Promise.resolve(new Response('', { status: 429 })); // primary quota-exhausted
       return Promise.resolve(new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: 'LADDER-OK' }] } }] }), { status: 200, headers: { 'Content-Type': 'application/json' } }));
     };
     try {
       MMGR.AiKey.setKey('google-gemini', 'AIza-ladder-1');
       MMGR.AiWin.setAiCfg({ tier: 'cloud', provider: 'openai', endpoint: '', model: '' });
       var res = await MMGR.AiWin.submit('hello', '', { tier: 'cloud' });
-      var liteCalled = calls.some(function(c){ return String(c.url).indexOf('gemini-2.0-flash-lite:generateContent') > -1; });
+      var liteCalled = calls.some(function(c){ return String(c.url).indexOf('gemini-flash-lite-latest:generateContent') > -1; });
       return { ok: res.ok, text: res.text, model: res.model,
         liteCalled: liteCalled,
-        traceFallback: !!(res.trace && res.trace.join(' ').indexOf('fell back from gemini-2.0-flash on 429') > -1) };
+        traceFallback: !!(res.trace && res.trace.join(' ').indexOf('fell back from gemini-flash-latest on 429') > -1) };
     } finally { window.fetch = orig; }
   })()`);
-  check('A08c cloud: 429 on primary -> ladder falls back to flash-lite, reports actual model + fallback trace', c2c.ok && c2c.text === 'LADDER-OK' && c2c.model === 'gemini-2.0-flash-lite' && c2c.liteCalled && c2c.traceFallback, c2c);
+  check('A08c cloud: 429 on primary -> ladder falls back to flash-lite-latest, reports actual model + fallback trace', c2c.ok && c2c.text === 'LADDER-OK' && c2c.model === 'gemini-flash-lite-latest' && c2c.liteCalled && c2c.traceFallback, c2c);
 
   // A08d: 401 on the FIRST model stops the whole ladder (no smaller-model
   // attempt with a rejected key) AND clears the session key (401-only rule).
@@ -260,11 +260,11 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
       MMGR.AiWin.setAiCfg({ tier: 'cloud', provider: 'openai', endpoint: '', model: '' });
       var res = await MMGR.AiWin.submit('hello', '', { tier: 'cloud' });
       var geminiCalls = calls.filter(function(c){ return String(c.url).indexOf('generateContent') > -1; });
-      var onlyPrimary = geminiCalls.length === 1 && String(geminiCalls[0].url).indexOf('gemini-2.0-flash:generateContent') > -1 && String(geminiCalls[0].url).indexOf('gemini-2.0-flash-lite') === -1;
+      var onlyPrimary = geminiCalls.length === 1 && String(geminiCalls[0].url).indexOf('gemini-flash-latest:generateContent') > -1 && String(geminiCalls[0].url).indexOf('gemini-flash-lite-latest') === -1;
       return { ok: res.ok, keyCleared: MMGR.AiKey.isConnected() === false,
         status: MMGR.AiWin.getConnectionState(),
         onlyPrimary: onlyPrimary,
-        noLite: !calls.some(function(c){ return String(c.url).indexOf('gemini-2.0-flash-lite') > -1; }) };
+        noLite: !calls.some(function(c){ return String(c.url).indexOf('gemini-flash-lite-latest') > -1; }) };
     } finally { window.fetch = orig; }
   })()`);
   check('A08d cloud: 401 on first model -> ladder STOPS (no lite attempt), session key cleared', c2d.ok === false && c2d.keyCleared && c2d.status === 'not_connected' && c2d.onlyPrimary && c2d.noLite, c2d);
@@ -280,7 +280,7 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
       calls.push({ url: url, opts: opts });
       if (String(url).indexOf('/api/ai/chat') === 0) {
         var b = opts && opts.body ? JSON.parse(opts.body) : null;
-        if (b && b.model === 'gemini-2.0-flash') return Promise.resolve(new Response('', { status: 429 })); // relay reports capacity on primary
+        if (b && b.model === 'gemini-flash-latest') return Promise.resolve(new Response('', { status: 429 })); // relay reports capacity on primary
         return Promise.resolve(new Response(JSON.stringify({ ok: true, text: 'RELAY-LADDER-OK', model: (b && b.model) || 'unknown' }), { status: 200, headers: { 'Content-Type': 'application/json' } }));
       }
       return Promise.resolve(new Response('', { status: 404 }));
@@ -290,13 +290,13 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
       MMGR.AiWin.setAiCfg({ tier: 'cloud', provider: 'openai', endpoint: '', model: '' });
       var res = await MMGR.AiWin.submit('hello', '', { tier: 'cloud' });
       var relayCalls = calls.filter(function(c){ return String(c.url).indexOf('/api/ai/chat') === 0; });
-      var liteRelay = relayCalls.some(function(c){ var b = c.opts && c.opts.body ? JSON.parse(c.opts.body) : null; return b && b.model === 'gemini-2.0-flash-lite'; });
+      var liteRelay = relayCalls.some(function(c){ var b = c.opts && c.opts.body ? JSON.parse(c.opts.body) : null; return b && b.model === 'gemini-flash-lite-latest'; });
       var noDirect = !calls.some(function(c){ return String(c.url).indexOf('generativelanguage') > -1; });
       return { ok: res.ok, text: res.text, model: res.model, liteRelay: liteRelay, noDirect: noDirect,
-        traceFallback: !!(res.trace && res.trace.join(' ').indexOf('fell back from gemini-2.0-flash on 429') > -1) };
+        traceFallback: !!(res.trace && res.trace.join(' ').indexOf('fell back from gemini-flash-latest on 429') > -1) };
     } finally { window.fetch = orig; }
   })()`);
-  check('A08e cloud: relay 429 on primary -> ladder retries flash-lite THROUGH the relay, reports actual model', c2e.ok && c2e.text === 'RELAY-LADDER-OK' && c2e.model === 'gemini-2.0-flash-lite' && c2e.liteRelay && c2e.noDirect && c2e.traceFallback, c2e);
+  check('A08e cloud: relay 429 on primary -> ladder retries flash-lite-latest THROUGH the relay, reports actual model', c2e.ok && c2e.text === 'RELAY-LADDER-OK' && c2e.model === 'gemini-flash-lite-latest' && c2e.liteRelay && c2e.noDirect && c2e.traceFallback, c2e);
 
   // A08f: OPENAI ladder — 429 on gpt-4o-mini falls back to gpt-5-mini (the
   // first verified cheaper rung) and reports the actual model + fallback trace.
@@ -422,6 +422,29 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
     } finally { window.fetch = orig; }
   })()`);
   check('A08j UI: fallback bubble renders a visible .ai-fallback badge naming both models', c2j.ok && c2j.model === 'claude-3-5-haiku-latest' && c2j.fellBackFrom === 'claude-3-5-sonnet-latest' && c2j.badgeShown, c2j);
+
+  // A08k: STATIC regression guard — the Gemini ladder must never point at a
+  // dead model family. Verified live on 2026-08-10 with a real user key:
+  // gemini-2.0-flash, gemini-2.0-flash-lite, gemini-2.5-flash and
+  // gemini-2.5-flash-lite ALL return 404 "no longer available", and since a
+  // 404 stops the ladder by design (only 429/503 advance), a dead primary
+  // silently kills the entire fallback. This naming-convention gate only
+  // catches families KNOWN to be dead (a static regex cannot predict the
+  // next deprecation — the real verification is the live models-list probe
+  // run with a user key, documented in mmgr-net.js). No rung may be from the
+  // dead 2.0-/2.5- numbered families and at least one rung must be a
+  // `-latest` alias (the aliases Google keeps current).
+  const c2k = await ev(`(function(){
+    var def = MMGR.Net.PROVIDER_DEFAULTS['google-gemini'];
+    var models = [def.model].concat(def.fallbackModels || []);
+    var dead = models.filter(function(m){ return /^gemini-2\.[05]-/.test(m); });
+    return {
+      model: def.model, fallbacks: (def.fallbackModels || []).slice(),
+      noDeadFamily: dead.length === 0,
+      hasLatestAlias: models.some(function(m){ return /-latest$/.test(m); })
+    };
+  })()`);
+  check('A08k static: Gemini ladder avoids the dead 2.0/2.5- families and keeps a -latest alias rung', c2k.noDeadFamily && c2k.hasLatestAlias, c2k);
 
   const c3 = await ev(`(async function(){
     var orig = window.fetch;

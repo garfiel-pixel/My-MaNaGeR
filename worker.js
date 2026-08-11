@@ -189,7 +189,7 @@ const AI_PROVIDERS = {
   // ladder THROUGH this relay (DIR-3): each attempt posts a validated `model`
   // field and the relay forwards to exactly that model; capacity statuses
   // (429/503) pass through with their own status so the client can advance.
-  'google-gemini': { url: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent', model: 'gemini-2.0-flash' }
+  'google-gemini': { url: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent', model: 'gemini-flash-latest' }
 };
 // Strict model-id validation: the value is interpolated into the upstream URL
 // path, so it must be a plain Gemini model id (letters/digits/dash/dot/underscore

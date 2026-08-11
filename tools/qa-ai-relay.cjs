@@ -102,10 +102,10 @@ const check = (name, val, detail) => { results.push({ name, val }); log((val ? '
     return new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: 'GEMINI-OK' }] } }] }), { status: 200, headers: { 'Content-Type': 'application/json' } });
   };
   upstreamCalls = [];
-  const r11 = await run('/api/ai/chat', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-User-Api-Key': 'AIza-secret-3' }, body: JSON.stringify({ provider: 'google-gemini', model: 'gemini-2.0-flash-lite', messages: [{ role: 'user', content: 'hi' }] }) });
+  const r11 = await run('/api/ai/chat', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-User-Api-Key': 'AIza-secret-3' }, body: JSON.stringify({ provider: 'google-gemini', model: 'gemini-flash-lite-latest', messages: [{ role: 'user', content: 'hi' }] }) });
   const d11 = await r11.json();
   const up11 = upstreamCalls[0];
-  check('R11 gemini model field -> per-model upstream URL + model echoed in response', r11.status === 200 && d11.ok === true && d11.model === 'gemini-2.0-flash-lite' && String(up11.url).indexOf('/models/gemini-2.0-flash-lite:generateContent') > -1, { status: r11.status, d11, up: up11 && up11.url });
+  check('R11 gemini model field -> per-model upstream URL + model echoed in response', r11.status === 200 && d11.ok === true && d11.model === 'gemini-flash-lite-latest' && String(up11.url).indexOf('/models/gemini-flash-lite-latest:generateContent') > -1, { status: r11.status, d11, up: up11 && up11.url });
 
   // R12: provider rate limit (429) passes through with its own status so the
   // client's model ladder can detect it and retry the next model.
@@ -124,7 +124,7 @@ const check = (name, val, detail) => { results.push({ name, val }); log((val ? '
   const r13 = await run('/api/ai/chat', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-User-Api-Key': 'AIza-secret-4' }, body: JSON.stringify({ provider: 'google-gemini', model: '../../etc/passwd', messages: [{ role: 'user', content: 'hi' }] }) });
   const d13 = await r13.json();
   const up13 = upstreamCalls[0];
-  check('R13 malicious model field rejected -> default gemini URL + default model echoed', r13.status === 200 && d13.model === 'gemini-2.0-flash' && String(up13.url).indexOf('/models/gemini-2.0-flash:generateContent') > -1 && String(up13.url).indexOf('..') === -1, { status: r13.status, d13, up: up13 && up13.url });
+  check('R13 malicious model field rejected -> default gemini URL + default model echoed', r13.status === 200 && d13.model === 'gemini-flash-latest' && String(up13.url).indexOf('/models/gemini-flash-latest:generateContent') > -1 && String(up13.url).indexOf('..') === -1, { status: r13.status, d13, up: up13 && up13.url });
 
   // 14. Anthropic relay forward — x-api-key + anthropic-version headers,
   //     model + max_tokens + system in the body, content[].text extracted.

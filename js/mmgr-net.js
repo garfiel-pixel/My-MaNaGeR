@@ -57,19 +57,27 @@ var MMGR = window.MMGR || {};
     // then `fallbackModels` from smaller/cheaper to last-resort safety net,
     // matching the semantics of Garfield's own Python fallback (big model
     // first, smaller ones as safety nets, never the reverse). Model IDs were
-    // verified against the LIVE API on 2026-08-09 before hardcoding (DIR-1
-    // verification_before_edit): gemini-2.5-flash and gemini-2.5-flash-lite
-    // BOTH returned 404 "no longer available to new users" (the directive's
-    // illustrative IDs are dead — using them would turn a rate-limit failure
-    // into an instant 404, worse than doing nothing), while gemini-flash-latest
-    // returned a real 200 generation on a quota-starved free key and is the
-    // last-rung safety net. DIR-2: the endpoint below is the DEFAULT-model
-    // URL; every ladder rung builds its own via geminiEndpointFor(modelId)
-    // because the model name lives in the URL path.
+    // verified against the LIVE API with a REAL user key on 2026-08-10 (DIR-1
+    // verification_before_edit): gemini-2.0-flash, gemini-2.0-flash-lite,
+    // gemini-2.5-flash and gemini-2.5-flash-lite ALL returned 404 "no longer
+    // available" — the directive's illustrative IDs are dead, and because a
+    // 404 STOPS the ladder by design (only 429/503 capacity rejections
+    // advance), a dead primary model turned every real Gemini call into an
+    // instant hard failure with no fallback at all. Only gemini-flash-latest
+    // and gemini-flash-lite-latest returned real 200 generations, so the
+    // ladder is built from exactly those two verified-live aliases. The
+    // A08k QA gate guards only families KNOWN to be dead (a static regex
+    // cannot predict the next deprecation) — so whenever the ladder is next
+    // touched, re-run the live probe (models list + one generateContent per
+    // rung, with a real user key) before trusting the IDs, because Google
+    // retires model families without warning and a 404 stops the ladder by
+    // design. DIR-2: the endpoint below is the DEFAULT-model URL; every
+    // ladder rung builds its own via geminiEndpointFor(modelId) because the
+    // model name lives in the URL path.
     'google-gemini': {
-      endpoint: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent',
-      model: 'gemini-2.0-flash',
-      fallbackModels: ['gemini-2.0-flash-lite', 'gemini-flash-latest']
+      endpoint: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent',
+      model: 'gemini-flash-latest',
+      fallbackModels: ['gemini-flash-lite-latest']
     }
   };
 

@@ -108,6 +108,35 @@ var MMGR = window.MMGR || {};
     try { sessionStorage.setItem(escopeKey(), JSON.stringify({ label: label || '', sections: sections || [] })); } catch (e) { /* ignore */ }
   }
 
+  // ---- last-seen cloud time (gap-audit B8/B9: last-synced indicator +
+  // conflict heads-up). The server stamps updatedAt on every save; keeping
+  // the most recent value here lets the app warn when a save we just made
+  // overwrote a snapshot another device wrote since our last sync.
+  function lastSeenKey() { return 'mmgr_cloud_last_seen_' + pid(); }
+  function getLastSeen() {
+    try { return sessionStorage.getItem(lastSeenKey()) || ''; } catch (e) { return ''; }
+  }
+  function setLastSeen(t) {
+    try { sessionStorage.setItem(lastSeenKey(), String(t || '')); } catch (e) { /* ignore */ }
+  }
+
+  // ---- pending just-created editor code (shown-once banner, gap-audit G23) --
+  function pendingCodeKey() { return 'mmgr_cloud_pending_ecode_' + pid(); }
+  function getPendingEditorCode() {
+    try {
+      const raw = sessionStorage.getItem(pendingCodeKey());
+      if (!raw) return null;
+      const p = JSON.parse(raw);
+      return (p && p.code) ? p : null;
+    } catch (e) { return null; }
+  }
+  function setPendingEditorCode(code, label, scope) {
+    try { sessionStorage.setItem(pendingCodeKey(), JSON.stringify({ code: code, label: label || '', scope: scope || [] })); } catch (e) { /* ignore */ }
+  }
+  function clearPendingEditorCode() {
+    try { sessionStorage.removeItem(pendingCodeKey()); } catch (e) { /* ignore */ }
+  }
+
   // ---- status line (reuses the drive-status classes already in mmgr.css) --
   function setStatus(msg, kind) {
     const s = $('cloud-status');
@@ -218,7 +247,7 @@ var MMGR = window.MMGR || {};
         return;
       }
       setCode(data.ownerCode);
-      render();
+      await render();
       setStatus('Cloud project linked — owner/recovery code: ' + data.ownerCode + '. Store it somewhere safe: if lost, only the linked Google account can recover it.', 'ok');
     } catch (e) {
       setStatus('Cloud is unavailable on this host (needs the Worker API).', 'err');
@@ -252,12 +281,16 @@ var MMGR = window.MMGR || {};
       });
       const data = await res.json().catch(function() { return {}; });
       if (!res.ok || !data.ok) {
-        const msg = (data && data.error) || 'Cloud save failed (HTTP ' + res.status + ').';
+        let msg = (data && data.error) || 'Cloud save failed (HTTP ' + res.status + ').';
+        // gap-audit H29: the 8 MB cap deserves a friendly message, not a bare 413.
+        if (res.status === 413) msg = 'Project too large for cloud (8 MB cap) — trim voice/claim data or use export/import instead.';
         if (res.status === 403) { if (cred.header === 'X-Owner-Code') clearCode(); else clearECode(); }
         await render();
         setStatus(msg, 'err');
         return;
       }
+      const prevSeen = getLastSeen();
+      if (data.savedAt) setLastSeen(data.savedAt);
       let statusMsg = 'Saved to cloud — ' + (data.savedAt || '').slice(0, 19).replace('T', ' ') + '.';
       if (data.actor === 'editor') {
         const scopeTxt = (data.scope || []).map(sectionLabel).join(', ');
@@ -266,6 +299,12 @@ var MMGR = window.MMGR || {};
         if (data.blocked && data.blocked.length) statusMsg += ' NOT saved (outside this code\u2019s scope): ' + data.blocked.map(sectionLabel).join(', ') + '.';
       } else {
         statusMsg += ' Snapshot ' + (data.key || '').split('/').pop() + '.';
+      }
+      // gap-audit B9: last-write-wins WITH a heads-up. If the server reports
+      // the previous snapshot was written after our last known sync, someone
+      // else saved in between — say so instead of overwriting silently.
+      if (data.previousUpdatedAt && prevSeen && data.previousUpdatedAt !== prevSeen) {
+        statusMsg += ' ⚠ Another device saved since you last synced — this save overwrote it.';
       }
       setStatus(statusMsg, 'ok');
     } catch (e) {
@@ -304,6 +343,7 @@ var MMGR = window.MMGR || {};
         localStorage.setItem('mmgr_current_project', pid());
       } catch (e) { /* storage blocked — status below still reports the outcome */ }
       if (data.role === 'editor') setEScope(data.editorLabel, data.scope || []);
+      if (data.savedAt) setLastSeen(data.savedAt);
       setStatus('Cloud snapshot restored — reloading.', 'ok');
       setTimeout(function() { window.location.reload(); }, 1200);
     } catch (e) {
@@ -333,8 +373,9 @@ var MMGR = window.MMGR || {};
       }
       setCode(data.ownerCode);
       clearECode();
-      render();
+      await render();
       setStatus('New owner code issued: ' + data.ownerCode + ' — also below + Copy Code. The previous code no longer works.', 'ok');
+      if (data.recoveredAt) setLastSeen(data.recoveredAt);
     } catch (e) {
       setStatus('Cloud is unavailable on this host (needs the Worker API).', 'err');
     }
@@ -438,8 +479,12 @@ var MMGR = window.MMGR || {};
         setStatus((data && data.error) || 'Editor code creation failed (HTTP ' + res.status + ').', 'err');
         return;
       }
+      // gap-audit G23: park the code in a shown-once banner (render renders it
+      // prominently with a Copy button) — matching the owner-code flow's
+      // "copy this now" seriousness.
+      setPendingEditorCode(data.editorCode, data.label, data.scope || []);
       await render();
-      setStatus('Editor code created for \u201C' + data.label + '\u201D (scope: ' + (data.scope || []).map(sectionLabel).join(', ') + '): ' + data.editorCode + '. Copy it now — it is shown once.', 'ok');
+      setStatus('Editor code created for \u201C' + data.label + '\u201D (scope: ' + (data.scope || []).map(sectionLabel).join(', ') + '). Copy it from the banner — it is shown once.', 'ok');
       if (listEditors) listEditors();
     } catch (e) {
       setStatus('Cloud is unavailable on this host (needs the Worker API).', 'err');
@@ -513,13 +558,15 @@ var MMGR = window.MMGR || {};
       wrap.innerHTML = entries.map(function(en) {
         const who = (en.actorType === 'editor' ? 'Editor \u201C' + esc(en.actorLabel || '?') + '\u201D' : 'Owner') + ' · ' + esc(String(en.createdAt || '').slice(0, 19).replace('T', ' '));
         let what = '';
+        let revertBtn = '<button class="btn btn-o btn-s" data-action="cloudLogRevert" data-id="' + en.id + '">Revert</button>';
         if (en.type === 'bulk') what = 'Full-state change (snapshot)';
         else if (en.type === 'revert') what = 'Revert of a previous change';
+        else if (en.type === 'recovery') { what = 'Owner code reissued (recovery)'; revertBtn = ''; } // not a content change — not revertible
         else what = (en.diffs ? en.diffs.length : 0) + ' field(s) changed' + (en.section ? ' · ' + esc(sectionLabel(en.section)) : '');
         return '<div class="sr" style="font-size:.72rem;display:flex;align-items:center;gap:8px;flex-wrap:wrap">' +
           '<span style="color:var(--gold)">' + esc(String(en.id)) + '</span>' +
           '<span>' + esc(who) + '</span><span class="sr-hint" style="margin:0">' + what + '</span>' +
-          '<button class="btn btn-o btn-s" data-action="cloudLogRevert" data-id="' + en.id + '">Revert</button>' +
+          revertBtn +
           '</div>';
       }).join('');
     } catch (e) {
@@ -552,9 +599,25 @@ var MMGR = window.MMGR || {};
   }
 
   // =========================================================================
-  // EDITOR-SCOPE UI — grey out panels an editor code cannot write (UX only;
+  // EDITOR-SCOPE UI — grey out panels an editor code cannot WRITE (UX only;
   // the Worker enforces the scope regardless).
   // =========================================================================
+  // gap-audit B11: the grey-out must mirror the SERVER's writable vocabulary
+  // (worker.js CLOUD_SECTIONS), not block panels indiscriminately. Panels that
+  // are VIEW-ONLY (dash/def/kan/gantt/claim/digest/baselinen/wxlog) read
+  // derived data and are deliberately not scoping targets — an editor can
+  // always VIEW them; the server blocks their writes by construction. When the
+  // canonical list is available (_sections, fetched from the Worker) it IS the
+  // vocabulary, so the two can never drift; the static mirror below only
+  // applies where no editor session can exist anyway (static host).
+  const VIEW_ONLY_PANELS = ['dash', 'def', 'kan', 'gantt', 'claim', 'digest', 'baselinen', 'wxlog'];
+  function isWritableSection(key) {
+    if (_sections) {
+      for (let i = 0; i < _sections.length; i++) if (_sections[i].key === key) return true;
+      return false;
+    }
+    return VIEW_ONLY_PANELS.indexOf(key) === -1;
+  }
   function applyEditorScope() {
     const scope = getEScope();
     const isEditor = !!getECode() && !getCode();
@@ -562,7 +625,7 @@ var MMGR = window.MMGR || {};
     const btns = document.querySelectorAll('.sec-btn[data-section]');
     for (let i = 0; i < btns.length; i++) {
       const sec = btns[i].getAttribute('data-section');
-      const blocked = isEditor && scope && scope.sections.indexOf(sec) === -1;
+      const blocked = isEditor && scope && isWritableSection(sec) && scope.sections.indexOf(sec) === -1;
       btns[i].classList.toggle('scope-blocked', blocked);
       if (blocked) btns[i].setAttribute('title', 'Outside this editor code\u2019s scope — locked');
       else btns[i].removeAttribute('title');
@@ -574,6 +637,26 @@ var MMGR = window.MMGR || {};
   // =========================================================================
   // RENDER
   // =========================================================================
+  // ---- last cloud sync time for the UI (gap-audit B8) --------------------
+  // Fetches /meta with whatever credential is in session and returns a short
+  // human line. Also refreshes the last-seen stamp used by the conflict
+  // heads-up. Never throws; empty string on any failure (the row simply
+  // doesn't render).
+  async function cloudMetaStatus() {
+    const cred = activeCredential();
+    if (!cred) return '';
+    try {
+      const headers = {};
+      headers[cred.header] = cred.code;
+      const res = await fetch('/api/cloud/projects/' + encodeURIComponent(pid()) + '/meta', { credentials: 'same-origin', headers: headers });
+      const data = await res.json().catch(function() { return {}; });
+      if (!res.ok || !data.ok) return '';
+      if (data.updatedAt) setLastSeen(data.updatedAt);
+      const t = String(data.updatedAt || '').slice(0, 19).replace('T', ' ');
+      return t ? ('Last saved to cloud: ' + t) : 'No cloud snapshot yet — save once to start.';
+    } catch (e) { return ''; }
+  }
+
   async function render() {
     const wrap = $('cloud-section');
     if (!wrap) return;
@@ -581,6 +664,18 @@ var MMGR = window.MMGR || {};
     const ecode = getECode();
     const escope = getEScope();
     const signedIn = await checkMe();
+    const pendingCode = getPendingEditorCode();
+    let pendingBanner = '';
+    if (pendingCode) {
+      pendingBanner =
+        '<div class="sr cloud-new-code" style="border:1px solid var(--gold);background:rgba(212,175,55,.1);border-radius:var(--radius);padding:8px 10px;margin:6px 0" role="status">' +
+        '<div class="sr-hint" style="margin:0 0 4px"><strong>NEW editor code for \u201C' + esc(pendingCode.label || 'editor') + '\u201D — copy it now, it is shown once:</strong></div>' +
+        '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">' +
+        '<code style="font-family:ui-monospace,monospace;letter-spacing:.05em;color:var(--gold);font-size:1rem;font-weight:700">' + esc(pendingCode.code) + '</code>' +
+        '<button class="btn btn-g btn-s" data-action="cloudCopyEditorCode" data-code="' + esc(pendingCode.code) + '"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy code</button>' +
+        '<button class="btn btn-n btn-s" data-action="cloudEditorCodeDone">Done</button>' +
+        '</div></div>';
+    }
 
     let body = '';
     if (!code && !ecode) {
@@ -608,7 +703,8 @@ var MMGR = window.MMGR || {};
         '<button class="btn btn-n btn-s" data-action="cloudCopyCode"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy Code</button>' +
         '<button class="btn btn-o btn-s" data-action="cloudDropEditor"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> Use owner code instead</button>' +
         '</div>' +
-        '<div class="sr-hint">Changes you save are attributed to this editor label in the owner\u2019s changelog.</div>';
+        '<div class="sr-hint">Changes you save are attributed to this editor label in the owner\u2019s changelog.</div>' +
+        '<div id="cloud-last-sync" class="sr-hint" role="status" aria-live="polite"></div>';
     } else {
       // OWNER MODE (owner code in session).
       body =
@@ -620,6 +716,10 @@ var MMGR = window.MMGR || {};
         '<button class="btn btn-n btn-s" data-action="cloudCopyCode"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy Code</button>' +
         '<button class="btn btn-o btn-s" data-action="cloudRecover"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> Recover Owner Code</button>' +
         '</div>' +
+        // gap-audit B10: deliberate unlink (keep local copy, stop syncing).
+        '<div class="exp-row"><button class="btn btn-o btn-s" data-action="cloudUnlink"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> Unlink from Cloud (delete cloud copy)</button></div>' +
+        pendingBanner +
+        '<div id="cloud-last-sync" class="sr-hint" role="status" aria-live="polite"></div>' +
         // ---- Phase 2: editor codes ----
         '<div class="sr" style="margin-top:8px"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-user"></use></svg> Editor Codes</span>' +
         '<button class="btn btn-n btn-s" data-action="cloudEditorList" style="margin-left:8px"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> List</button></div>' +
@@ -649,9 +749,23 @@ var MMGR = window.MMGR || {};
         '<div class="exp-row"><button class="btn btn-n btn-s" data-action="cloudSignIn"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-user"></use></svg> Sign in with Google</button></div>' +
         '<div id="cloud-gis-host" class="is-hide"></div>';
     }
-    body += '<div id="cloud-status" class="drive-status"></div>';
+    // gap-audit E18: the cloud status line is a live region so save/load/
+    // recover/unlink outcomes are announced to screen-reader users.
+    body += '<div id="cloud-status" class="drive-status" role="status" aria-live="polite"></div>';
 
     wrap.innerHTML = body;
+
+    // gap-audit B8: fill the last-synced line from /meta (owner + editor modes).
+    if (code || ecode) {
+      const ls = $('cloud-last-sync');
+      if (ls) {
+        ls.textContent = 'Checking cloud sync status…';
+        cloudMetaStatus().then(function(txt) {
+          const el = $('cloud-last-sync');
+          if (el && txt) el.textContent = txt;
+        });
+      }
+    }
 
     const host = $('cloud-gis-host');
     if (host && !host.querySelector('iframe, div[role=button]')) host.classList.add('is-hide');
@@ -686,6 +800,10 @@ var MMGR = window.MMGR || {};
         }
       }
       listEditors();
+    } else if (ecode) {
+      // gap-audit B11: an EDITOR session must also load the canonical section
+      // vocabulary so the scope grey-out uses the SERVER list (never drifts).
+      await fetchSections();
     }
 
     applyEditorScope();
@@ -706,8 +824,52 @@ var MMGR = window.MMGR || {};
   // ---- drop an editor credential (back to the owner-code entry) ----------
   async function dropEditor() {
     clearECode();
-    render();
+    await render();
     setStatus('Editor credential cleared — use the owner code (or Create) to link as owner.', 'warn');
+  }
+
+  // ---- unlink from cloud (gap-audit B10) ---------------------------------
+  // Deletes the CLOUD copy (D1 row, editor codes, changelog, R2 objects).
+  // This device's local project stays untouched — "keep local copy, stop
+  // syncing". Owner-only, explicit confirm since it is irreversible.
+  async function unlinkProject() {
+    const cred = activeCredential();
+    if (!cred) { setStatus('No cloud credential in this session.', 'warn'); return; }
+    if (cred.header !== 'X-Owner-Code') { setStatus('Only the owner can unlink the project from cloud.', 'warn'); return; }
+    if (!window.confirm('Delete the CLOUD copy of this project? Your local data on this device stays — only the cloud snapshot, editor codes, and changelog are removed. This cannot be undone.')) return;
+    setStatus('Unlinking from cloud…', 'busy');
+    try {
+      const res = await fetch('/api/cloud/projects/' + encodeURIComponent(pid()), {
+        method: 'DELETE', credentials: 'same-origin', headers: { 'X-Owner-Code': cred.code }
+      });
+      const data = await res.json().catch(function() { return {}; });
+      if (!res.ok || !data.ok) { setStatus((data && data.error) || 'Unlink failed (HTTP ' + res.status + ').', 'err'); return; }
+      clearCode(); clearECode(); setLastSeen(''); clearPendingEditorCode();
+      await render();
+      setStatus('Unlinked — the cloud copy is deleted. This device keeps its local data.', 'ok');
+    } catch (e) {
+      setStatus('Cloud is unavailable on this host (needs the Worker API).', 'err');
+    }
+  }
+
+  // ---- copy the just-created editor code (shown-once banner, G23) ---------
+  async function copyEditorCode(code) {
+    if (!code) { setStatus('No code to copy.', 'warn'); return; }
+    let copied = false;
+    try {
+      await navigator.clipboard.writeText(code);
+      copied = true;
+    } catch (e) {
+      window.prompt('Editor code (select + copy):', code);
+      copied = true;
+    }
+    clearPendingEditorCode();
+    await render();
+    setStatus(copied ? 'Editor code copied to the clipboard.' : 'Editor code shown — copy it from the prompt.', 'ok');
+  }
+  function editorCodeDone() {
+    clearPendingEditorCode();
+    render();
   }
 
   // ---- keep the sign-in state fresh after sign-in/sign-out ----------------
@@ -730,6 +892,9 @@ var MMGR = window.MMGR || {};
     listLog: listLog,
     revertLog: revertLog,
     dropEditor: dropEditor,
+    unlinkProject: unlinkProject,
+    copyEditorCode: copyEditorCode,
+    editorCodeDone: editorCodeDone,
     applyEditorScope: applyEditorScope,
     getCode: getCode,
     getECode: getECode,

@@ -552,6 +552,93 @@ function cloudForbidden() {
   return json({ ok: false, error: 'invalid project or owner code' }, 403);
 }
 
+// ---- CLOUD RATE LIMITING (gap-audit item A1) -----------------------------
+// Cheap hammer-deterrent + cost-inflation guard for the cloud endpoints.
+// Code entropy is ~80 bits so brute force is not the threat model — the risk
+// is a scripted loop hammering meta/load/save thousands of times a minute
+// against our own D1/R2 usage. This is an IN-MEMORY sliding window, which on
+// Cloudflare Workers is per-isolate and best-effort (isolates are ephemeral)
+// — deliberately noted as such: it deters and smooths abuse, but at true
+// scale the platform rate-limiting product (or D1-level backpressure) is the
+// real control. Limits are generous so legit multi-device flows never trip.
+// Keys: CF-Connecting-IP when present, else a SHA-256 of the presented code
+// (never the raw code in memory beyond the request), else 'anon'.
+const CLOUD_RATE = {
+  general: { max: 120, windowMs: 60000 },
+  recover: { max: 6, windowMs: 60000 } // recovery is the sensitive reissue path
+};
+const _cloudBuckets = new Map();
+async function cloudRateKey(request, headerNames) {
+  const ip = request.headers.get('CF-Connecting-IP');
+  if (ip) return 'ip:' + ip;
+  for (let i = 0; i < headerNames.length; i++) {
+    const code = String(request.headers.get(headerNames[i]) || '').trim();
+    if (code) {
+      try {
+        const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(code));
+        const bytes = new Uint8Array(hash);
+        let hex = '';
+        for (let j = 0; j < bytes.length; j++) hex += bytes[j].toString(16).padStart(2, '0');
+        return 'code:' + hex;
+      } catch (e) { return 'anon'; }
+    }
+  }
+  return 'anon';
+}
+function cloudRateAllow(key, cfg) {
+  const now = Date.now();
+  let list = _cloudBuckets.get(key);
+  if (!list) { list = []; _cloudBuckets.set(key, list); }
+  while (list.length && list[0] <= now - cfg.windowMs) list.shift();
+  if (list.length >= cfg.max) {
+    return { allowed: false, retryAfter: Math.max(1, Math.ceil((list[0] + cfg.windowMs - now) / 1000)) };
+  }
+  list.push(now);
+  // Bound memory: drop buckets that have gone quiet for two windows.
+  if (_cloudBuckets.size > 10000) {
+    for (const [k, v] of _cloudBuckets) {
+      if (!v.length || v[v.length - 1] <= now - cfg.windowMs * 2) _cloudBuckets.delete(k);
+    }
+  }
+  return { allowed: true };
+}
+async function cloudRateCheck(request, bucket) {
+  const cfg = CLOUD_RATE[bucket] || CLOUD_RATE.general;
+  const headers = bucket === 'recover' ? ['X-Owner-Code'] : ['X-Owner-Code', 'X-Editor-Code'];
+  const key = await cloudRateKey(request, headers);
+  const r = cloudRateAllow(key, cfg);
+  if (!r.allowed) return { limited: true, retryAfter: r.retryAfter };
+  return { limited: false };
+}
+function cloudRateLimited(retryAfter) {
+  return new Response(JSON.stringify({ ok: false, error: 'too many requests — slow down and try again in a minute' }), {
+    status: 429,
+    headers: {
+      'Content-Type': 'application/json; charset=utf-8',
+      'Cache-Control': 'no-store',
+      'Retry-After': String(retryAfter || 60)
+    }
+  });
+}
+
+// ---- CORS POLICY (gap-audit item A2) -------------------------------------
+// Deliberate and explicit: the API is SAME-ORIGIN ONLY. Every browser
+// cross-origin fetch sends an Origin header; it must match this Worker's own
+// origin or the request is rejected outright (403), and API responses NEVER
+// carry an Access-Control-Allow-Origin header — so a cross-origin read is
+// impossible even for a request a browser would otherwise let through. This
+// turns the current "fine because the app is same-origin" default into a
+// written, enforced policy that a future refactor cannot accidentally open.
+function sameOriginOnly(request) {
+  const origin = request.headers.get('Origin');
+  if (!origin) return true; // non-browser / same-origin GETs — no CORS involved
+  try {
+    const u = new URL(request.url);
+    const o = new URL(origin);
+    return o.origin === u.origin;
+  } catch (e) { return false; }
+}
+
 // Size-capped body reader (mirror of readAiBody with a larger budget).
 async function readCloudBody(request) {
   const cl = Number(request.headers.get('Content-Length') || 0);
@@ -942,9 +1029,17 @@ function handleCloudSections() {
 // POST /api/cloud/projects/:id/editors  { label, scope: [section...] }
 // Owner-only (owner code or linked session). Generates the editor code,
 // returns it EXACTLY ONCE, stores only salt+hash.
+// Editor codes are capped per project (gap-audit item A6): an unbounded
+// count is not a security hole but lets an automation loop / mistake silently
+// create hundreds of rows. Generous cap, enforced on ACTIVE codes only.
+const CLOUD_MAX_EDITOR_CODES = 25;
 async function handleCloudEditorCreate(request, env, projectId) {
   const auth = await cloudAuthOwnerEither(request, env, projectId);
   if (!auth) return cloudForbidden();
+  const activeRows = await env.DB.prepare('SELECT COUNT(*) AS n FROM cloud_editor_codes WHERE project_id = ? AND active = 1').bind(projectId).first();
+  if (activeRows && Number(activeRows.n) >= CLOUD_MAX_EDITOR_CODES) {
+    return json({ ok: false, error: 'too many active editor codes (max ' + CLOUD_MAX_EDITOR_CODES + ') — revoke unused codes first' }, 400);
+  }
   const read = await readCloudBody(request);
   if (read.tooLarge) return json({ ok: false, error: 'body too large' }, 413);
   if (read.bad || !read.body || typeof read.body !== 'object') return json({ ok: false, error: 'bad request' }, 400);
@@ -978,6 +1073,14 @@ async function handleCloudEditorList(request, env, projectId) {
 }
 
 // DELETE /api/cloud/projects/:id/editors/:editorId — owner-only revoke.
+// In-flight-save guarantee (gap-audit item A5): the DELETE commits atomically
+// in D1, and every editor save authenticates by SELECTing the project's ACTIVE
+// editor rows at request-processing time (cloudAuthEditor). A save whose auth
+// SELECT runs after this commit sees no matching row and returns the generic
+// 403; a save that already authenticated before the commit completes is
+// processed under the permission that was valid when it started — standard
+// request-boundary revocation, no token-lifetime gap beyond the in-flight
+// request itself.
 async function handleCloudEditorRevoke(request, env, projectId, editorId) {
   const auth = await cloudAuthOwnerEither(request, env, projectId);
   if (!auth) return cloudForbidden();
@@ -1116,17 +1219,27 @@ async function handleCloudCreate(request, env) {
 // state.config.ai can never land in the blob even if the client ever ships
 // one. Pure belt-and-suspenders — the live session vault never writes keys
 // into state today, but the blob should not depend on that invariant.
+//
+// ⛔ MAINTENANCE TRAP (gap-audit item A7): this list is the ONLY server-side
+// gate between a future secret-shaped state field and the R2 blob. When any
+// future feature adds a new credential slot to state (Gemini/Anthropic
+// credential-slot work, webhook tokens, etc.), it MUST be added here in the
+// same change — there is no generic key-name scan, by design (state keys are
+// data, not a registry). Treat every new state credential as "add to
+// CLOUD_STATE_SECRET_PATHS or the blob will leak it."
+const CLOUD_STATE_SECRET_PATHS = [
+  'config.ai.apiKey',
+  'config.ai.azureKey',
+  'config.api.keys'
+];
 function stripStateSecrets(obj) {
   if (!obj || typeof obj !== 'object') return obj;
-  const cfg = obj.config;
-  if (cfg && typeof cfg === 'object' && !Array.isArray(cfg)) {
-    if (cfg.ai && typeof cfg.ai === 'object' && !Array.isArray(cfg.ai)) {
-      delete cfg.ai.apiKey;
-      delete cfg.ai.azureKey;
-    }
-    if (cfg.api && typeof cfg.api === 'object' && !Array.isArray(cfg.api) && cfg.api.keys && typeof cfg.api.keys === 'object') {
-      delete cfg.api.keys;
-    }
+  // Iterate the canonical path list — cloudPathDelete is a hoisted function
+  // declaration defined below (Phase 3 helpers), so it is available here at
+  // call time. Adding a new path to CLOUD_STATE_SECRET_PATHS therefore
+  // ACTUALLY strips it: the maintenance trap is real, not documented-only.
+  for (let i = 0; i < CLOUD_STATE_SECRET_PATHS.length; i++) {
+    cloudPathDelete(obj, CLOUD_STATE_SECRET_PATHS[i]);
   }
   return obj;
 }
@@ -1173,6 +1286,10 @@ async function handleCloudSave(request, env, projectId) {
   await env.DB.prepare('UPDATE cloud_projects SET latest_r2_key = ?, updated_at = ? WHERE project_id = ?').bind(key, now, projectId).run();
   const entry = await cloudLogSave(env, projectId, prev, next, actor);
   const resp = { ok: true, savedAt: now, key: key, actor: actor.type };
+  // Gap-audit item B9: report the PREVIOUS snapshot's update time so the
+  // client can warn when another device saved between this device's last
+  // sync and this save (last-write-wins WITH a heads-up, not silently).
+  resp.previousUpdatedAt = (prev && prev.updatedAt) || null;
   if (scopeReport) Object.assign(resp, scopeReport);
   if (entry) resp.changelog = entry;
   return json(resp);
@@ -1221,7 +1338,7 @@ async function handleCloudLoad(request, env, projectId) {
 async function handleCloudRecover(request, env, projectId) {
   const session = await readSession(request, env);
   if (!session || !session.sub) { await cloudTimingSink(); return cloudForbidden(); }
-  const row = await env.DB.prepare('SELECT owner_code_salt, owner_code_hash, google_sub FROM cloud_projects WHERE project_id = ?').bind(projectId).first();
+  const row = await env.DB.prepare('SELECT owner_code_salt, owner_code_hash, google_sub, google_name FROM cloud_projects WHERE project_id = ?').bind(projectId).first();
   if (!row || !row.google_sub || row.google_sub !== session.sub) { await cloudTimingSink(); return cloudForbidden(); }
   const salt = randomSaltHex();
   const ownerCode = randomOwnerCode();
@@ -1229,6 +1346,15 @@ async function handleCloudRecover(request, env, projectId) {
   const now = new Date().toISOString();
   await env.DB.prepare('UPDATE cloud_projects SET owner_code_salt = ?, owner_code_hash = ?, updated_at = ? WHERE project_id = ?')
     .bind(salt, hash, now, projectId).run();
+  // Gap-audit items A3/A4: a recovery is now its own changelog event so the
+  // owner can see IN-APP that a reissue ever happened. Attribution is
+  // preserved — existing rows keep their recorded actor labels; only the
+  // owner-code salt/hash are rotated, never history. entry_type 'recovery'
+  // carries no diffs/snapshot and is not revertible by design (re-issueing
+  // a code is an identity action, not a content change).
+  await env.DB.prepare(
+    'INSERT INTO cloud_changelog (project_id, entry_type, actor_type, actor_label, section, diffs_json, snapshot_key, created_at) VALUES (?,?,?,?,?,?,?,?)'
+  ).bind(projectId, 'recovery', 'owner', row.google_name || 'Owner', null, null, null, now).run();
   return json({ ok: true, ownerCode: ownerCode, recoveredAt: now });
 }
 
@@ -1265,24 +1391,73 @@ async function handleCloudMeta(request, env, projectId) {
   return json(resp);
 }
 
+// ---- owner-only unlink (gap-audit item B10) -------------------------------
+// DELETE /api/cloud/projects/:id — deletes the CLOUD copy of the project:
+// D1 row, all editor codes, the changelog, and every R2 object under the
+// project prefix (latest.json + changelog snapshots). The device's LOCAL
+// project data is untouched — "keep local copy, stop syncing". Owner-only
+// (code or linked session), same generic 403 as everything else.
+async function handleCloudUnlink(request, env, projectId) {
+  const auth = await cloudAuthOwnerEither(request, env, projectId);
+  if (!auth) return cloudForbidden();
+  const now = new Date().toISOString();
+  // The project row is the source of truth for "is this linked" — delete it
+  // FIRST so a mid-way failure leaves at worst orphaned child rows (which are
+  // never queried without the project) rather than a live-looking project
+  // pointing at deleted R2. R2 + D1 cannot be wrapped in one transaction, so
+  // everything after the row delete is deliberately best-effort.
+  const res = await env.DB.prepare('DELETE FROM cloud_projects WHERE project_id = ?').bind(projectId).run();
+  if (!res.meta.changes) return json({ ok: false, error: 'project not found' }, 404);
+  // Delete R2 objects under the project prefix (latest + changelog snapshots).
+  let cursor = undefined;
+  do {
+    const listed = await env.R2.list({ prefix: 'projects/' + projectId + '/', cursor: cursor });
+    for (let i = 0; i < (listed.objects || []).length; i++) {
+      try { await env.R2.delete(listed.objects[i].key); } catch (e) { /* best-effort per object */ }
+    }
+    cursor = listed.truncated ? listed.cursor : undefined;
+  } while (cursor);
+  await env.DB.prepare('DELETE FROM cloud_editor_codes WHERE project_id = ?').bind(projectId).run();
+  await env.DB.prepare('DELETE FROM cloud_changelog WHERE project_id = ?').bind(projectId).run();
+  return json({ ok: true, unlinked: projectId, unlinkedAt: now });
+}
+
 // ---- /api/auth/* routes --------------------------------------------------
 async function handleApi(request, env, url) {
   const path = url.pathname;
+
+  // CORS POLICY (gap-audit item A2): enforce same-origin-only for the whole
+  // API before any route logic runs. Cross-origin requests are rejected with
+  // a plain 403 and no ACAO header is ever emitted on an API response.
+  if (!sameOriginOnly(request)) {
+    return json({ ok: false, error: 'cross-origin requests are not allowed' }, 403);
+  }
 
   // CLOUD-BACKEND-ARCHITECTURE-PLAN Phase 1 — /api/cloud/* routes. These run
   // BEFORE the ASSETS binding, exactly like /api/auth/*, so they can never be
   // swallowed by the SPA fallback.
   if (path === '/api/cloud/projects' && request.method === 'POST') {
+    const rl = await cloudRateCheck(request, 'general');
+    if (rl.limited) return cloudRateLimited(rl.retryAfter);
     return handleCloudCreate(request, env);
   }
   const cloudMatch = path.match(/^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/(save|load|recover|meta)$/);
   if (cloudMatch) {
     const pid = cloudMatch[1];
     const op = cloudMatch[2];
+    const rl = await cloudRateCheck(request, op === 'recover' ? 'recover' : 'general');
+    if (rl.limited) return cloudRateLimited(rl.retryAfter);
     if (op === 'meta' && request.method === 'GET') return handleCloudMeta(request, env, pid);
     if (op === 'save' && request.method === 'POST') return handleCloudSave(request, env, pid);
     if (op === 'load' && request.method === 'POST') return handleCloudLoad(request, env, pid);
     if (op === 'recover' && request.method === 'POST') return handleCloudRecover(request, env, pid);
+  }
+  // DELETE /api/cloud/projects/:id — owner-only unlink (gap-audit item B10).
+  const cloudUnlinkMatch = path.match(/^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})$/);
+  if (cloudUnlinkMatch && request.method === 'DELETE') {
+    const rl = await cloudRateCheck(request, 'general');
+    if (rl.limited) return cloudRateLimited(rl.retryAfter);
+    return handleCloudUnlink(request, env, cloudUnlinkMatch[1]);
   }
 
 
@@ -1290,27 +1465,39 @@ async function handleApi(request, env, url) {
   // and admin cloud visibility. All cloud routes run before the ASSETS
   // binding, exactly like the Phase 1 routes above.
   if (path === '/api/cloud/sections' && request.method === 'GET') {
+    const rl = await cloudRateCheck(request, 'general');
+    if (rl.limited) return cloudRateLimited(rl.retryAfter);
     return handleCloudSections();
   }
   if (path === '/api/cloud/admin/projects' && request.method === 'GET') {
+    const rl = await cloudRateCheck(request, 'general');
+    if (rl.limited) return cloudRateLimited(rl.retryAfter);
     return handleAdminCloudList(request, env);
   }
   const cloudEditorsMatch = path.match(/^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/editors$/);
   if (cloudEditorsMatch) {
     const pid = cloudEditorsMatch[1];
+    const rl = await cloudRateCheck(request, 'general');
+    if (rl.limited) return cloudRateLimited(rl.retryAfter);
     if (request.method === 'POST') return handleCloudEditorCreate(request, env, pid);
     if (request.method === 'GET') return handleCloudEditorList(request, env, pid);
   }
   const cloudEditorDelMatch = path.match(/^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/editors\/(\d+)$/);
   if (cloudEditorDelMatch && request.method === 'DELETE') {
+    const rl = await cloudRateCheck(request, 'general');
+    if (rl.limited) return cloudRateLimited(rl.retryAfter);
     return handleCloudEditorRevoke(request, env, cloudEditorDelMatch[1], cloudEditorDelMatch[2]);
   }
   const cloudLogMatch = path.match(/^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/changelog$/);
   if (cloudLogMatch && request.method === 'GET') {
+    const rl = await cloudRateCheck(request, 'general');
+    if (rl.limited) return cloudRateLimited(rl.retryAfter);
     return handleCloudChangelogList(request, env, cloudLogMatch[1]);
   }
   const cloudRevertMatch = path.match(/^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/changelog\/(\d+)\/revert$/);
   if (cloudRevertMatch && request.method === 'POST') {
+    const rl = await cloudRateCheck(request, 'general');
+    if (rl.limited) return cloudRateLimited(rl.retryAfter);
     return handleCloudChangelogRevert(request, env, cloudRevertMatch[1], cloudRevertMatch[2]);
   }
 

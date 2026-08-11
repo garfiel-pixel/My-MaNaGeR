@@ -451,6 +451,10 @@ var MMGR = window.MMGR || {};
     if (existing) existing.remove();
     const t = document.createElement('div');
     t.className = 'toast ' + (type || 'ok');
+    // GAP-AUDIT-CLOUD-31 (E18): the toast is a polite live region so async
+    // outcomes (AI answers, save confirmations, errors) reach screen readers.
+    t.setAttribute('role', 'status');
+    t.setAttribute('aria-live', 'polite');
     t.textContent = msg;
     Object.assign(t.style, {
       position: 'fixed', bottom: '28px', left: '50%',
@@ -1814,6 +1818,11 @@ window.MMGR = MMGR;
     'cloudSave': () => { const C = window.MMGR.Cloud; if (C && C.saveToCloud) C.saveToCloud(); },
     'cloudLoad': () => { const C = window.MMGR.Cloud; if (C && C.loadFromCloud) C.loadFromCloud(); },
     'cloudRecover': () => { const C = window.MMGR.Cloud; if (C && C.recoverCode) C.recoverCode(); },
+    // GAP-AUDIT-CLOUD-31: unlink (owner-only, deletes the CLOUD copy, keeps
+    // local data) + the shown-once editor-code banner's Copy/Done actions.
+    'cloudUnlink': () => { const C = window.MMGR.Cloud; if (C && C.unlinkProject) C.unlinkProject(); },
+    'cloudCopyEditorCode': (el) => { const C = window.MMGR.Cloud; if (C && C.copyEditorCode && el) C.copyEditorCode(el.getAttribute('data-code')); },
+    'cloudEditorCodeDone': () => { const C = window.MMGR.Cloud; if (C && C.editorCodeDone) C.editorCodeDone(); },
     'cloudCopyCode': () => { const C = window.MMGR.Cloud; if (C && C.copyCode) C.copyCode(); },
     'cloudSignIn': () => { const C = window.MMGR.Cloud; if (C && C.signIn) C.signIn(); },
     'cloudLoadWithCode': () => { const C = window.MMGR.Cloud; if (C && C.loadWithCode) C.loadWithCode(); },
@@ -2080,7 +2089,11 @@ window.MMGR = MMGR;
     // server calls; a revert changes the CLOUD snapshot, not this device) —
     // safe in view-only, like the Phase 1 cloud entries above.
     'cloudEditorCreate': 1, 'cloudEditorList': 1, 'cloudEditorRevoke': 1,
-    'cloudLogList': 1, 'cloudLogRevert': 1, 'cloudDropEditor': 1
+    'cloudLogList': 1, 'cloudLogRevert': 1, 'cloudDropEditor': 1,
+    // GAP-AUDIT-CLOUD-31: unlink only mutates the CLOUD copy (like the other
+    // cloud actions above), and the banner Copy/Done are clipboard/session
+    // only — all safe in view-only.
+    'cloudUnlink': 1, 'cloudCopyEditorCode': 1, 'cloudEditorCodeDone': 1
   };
   function guardReadonly(action) {
     // The ACTION_MAP delegation IIFE has no closure over the App module's

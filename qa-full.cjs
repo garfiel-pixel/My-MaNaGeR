@@ -81,8 +81,13 @@ async function check(name, expr, expected, hint) {
   await check('03b crosshair: mousemove moves #cx/#cy lines', `(function(){var cx=document.getElementById('cx'),cy=document.getElementById('cy');return {val: cx && cy && cx.style.top==='222px' && cy.style.left==='321px'};})()`);
   await ev(`document.querySelector('#ch-tgl').click()`); await delay(200);
   await check('03c crosshair: toggle off -> class gone', `(function(){return {val: !document.body.classList.contains('crosshair-on')};})()`);
-  // Persistence across reload
-  await ev(`MMGR.State.updateState(function(s){s.theme='dark';s.crosshairOn=true;});`); await delay(400);
+  // Persistence across reload. NOTE: theme boot honors the device-level pref
+  // (localStorage mmgr_theme — written by tglTheme and read by the launcher,
+  // admin, and app) as the MASTER, with state.theme only the portable
+  // fallback for a fresh device. The earlier toggle clicks above left the
+  // pref at 'light', so a bare state write would be overridden on reload —
+  // set the pref exactly like the real toggle does (both slots).
+  await ev(`try{localStorage.setItem('mmgr_theme','dark');}catch(e){} MMGR.State.updateState(function(s){s.theme='dark';s.crosshairOn=true;});`); await delay(400);
   await send('Page.navigate', { url: BASE + '/project.html?id=demo-project' }); await delay(3500);
   await check('04 persistence: dark + crosshair survive hard refresh', `(function(){return {val: document.body.classList.contains('dark-mode') && document.body.classList.contains('crosshair-on')};})()`);
   await ev(`MMGR.State.updateState(function(s){s.theme='light';s.crosshairOn=false;});`); await delay(300);

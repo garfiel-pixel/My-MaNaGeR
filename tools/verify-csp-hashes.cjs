@@ -96,6 +96,37 @@ if (w !== s) {
   console.error('[verify-csp-hashes] FAIL: worker.js and serve.cjs hardcoded hash lists have drifted from each other.');
 }
 
+// 3) AUDIT FINDING (2026-08): a page META CSP is enforced IN ADDITION to the
+// header CSP (the browser applies the intersection of all policies), so every
+// inline-script hash must ALSO appear in the page's own <meta http-equiv=
+// "Content-Security-Policy"> script-src. project.html's meta was shipping only
+// ONE of its two inline hashes — silently blocking its theme script in
+// production while worker.js/serve.cjs (and this tool) looked fine. Fail the
+// build if any page meta CSP omits a hash of its own inline script.
+function checkMetaCsp(file, hashes) {
+  if (!hashes.length) return;
+  const src = fs.readFileSync(path.join(ROOT, file), 'utf8');
+  const metaRe = /<meta[^>]+http-equiv=[\"']Content-Security-Policy[\"'][^>]*>/gi;
+  let m;
+  while ((m = metaRe.exec(src)) !== null) {
+    const content = /content=([\"'])([\s\S]*?)\1/i.exec(m[0]);
+    if (!content) continue;
+    const policy = content[2];
+    // Scope the lookup to the script-src directive only (a hash appearing in
+    // another directive must not count as covered).
+    const scriptSrc = /(?:^|;)\s*script-src\s+([^;]+)/i.exec(policy);
+    const allow = scriptSrc ? scriptSrc[1] : '';
+    for (const h of hashes) {
+      if (allow.indexOf(h) === -1) {
+        fail = true;
+        console.error('[verify-csp-hashes] FAIL: ' + file + ' meta CSP is missing its own inline-script hash ' + h + ' — that inline <script> is silently blocked in production (CSP intersection).');
+        console.error('    Fix: add ' + h + ' to the page\u2019s <meta http-equiv="Content-Security-Policy"> script-src (the header policy in worker.js/serve.cjs already lists it).');
+      }
+    }
+  }
+}
+computed.forEach(c => checkMetaCsp(c.file, c.hashes));
+
 if (fail) {
   console.error('    Regenerate with the one-liner in the worker.js header comment, then update');
   console.error('    INLINE_SCRIPT_HASHES in BOTH worker.js and serve.cjs.');

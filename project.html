@@ -840,6 +840,12 @@
          input carries the session-only promise in its title, and the footnote
          is one line. Same ids/classes, so the QA wiring (ai-byo-status,
          ai-byo-provider, ai-byo-connect, ai-byo-clear, .ai-byo-sec) is intact. -->
+    <!-- UI-DECLUTTER: the strip keeps ONE smart status dot (ai-byo-status) + the
+         provider dropdown; the raw key input + Connect & Test + the security
+         footnote live in a popover behind the settings gear (ai-byo-gear /
+         ai-byo-pop), so the window header no longer carries a large key box.
+         Same ids/classes for the QA wiring (ai-byo-status, ai-byo-provider,
+         ai-byo-connect, ai-byo-clear, .ai-byo-sec) — all still in the DOM. -->
     <div class="ai-conn-row" id="ai-cfg-cloud">
       <span class="ai-byo-status" id="ai-byo-status" data-state="off"><span class="ai-byo-dot"></span><span class="ai-byo-status-txt">Disconnected</span></span>
       <!-- Provider list must match MMGR.AiKey.PROVIDERS (js/mmgr-ai-key.js) — keep in sync -->
@@ -848,10 +854,13 @@
         <option value="google-gemini">Google Gemini</option>
         <option value="anthropic">Anthropic Claude</option>
       </select>
-      <input type="password" id="ai-byo-key" class="ai-byo-key" placeholder="Paste your API key (session-only)" autocomplete="off" spellcheck="false" title="Session-only: your key stays in this browser, is never exported, and clears when you close the tab">
-      <button class="btn btn-g btn-s" id="ai-byo-connect" title="Save this session key and verify it with a live provider check"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-link"></use></svg> Connect &amp; Test</button>
-      <button class="btn btn-n btn-s" id="ai-byo-clear" title="Forget the key in this session"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> Clear</button>
-      <p class="ai-byo-sec">Your key stays in this browser for this session only — never stored on our servers, never in exports, cleared when you close the tab.</p>
+      <button class="ai-byo-gear" id="ai-byo-gear" type="button" aria-expanded="false" title="API key settings — paste your key and Connect &amp; Test"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-settings"></use></svg></button>
+      <div class="ai-byo-pop is-hide" id="ai-byo-pop" role="group" aria-label="API key setup">
+        <input type="password" id="ai-byo-key" class="ai-byo-key" placeholder="Paste your API key (session-only)" autocomplete="off" spellcheck="false" title="Session-only: your key stays in this browser, is never exported, and clears when you close the tab">
+        <button class="btn btn-g btn-s" id="ai-byo-connect" title="Save this session key and verify it with a live provider check"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-link"></use></svg> Connect &amp; Test</button>
+        <button class="btn btn-n btn-s" id="ai-byo-clear" title="Forget the key in this session"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> Clear</button>
+        <p class="ai-byo-sec">Your key stays in this browser for this session only — never stored on our servers, never in exports, cleared when you close the tab.</p>
+      </div>
     </div>
     <div class="mbody ai-body">
       <!-- AI-WINDOW-LAYOUT-SCROLL-AND-INPUT-BUG-DIRECTIVE DIR-1: Chat/Presets
@@ -904,10 +913,13 @@
       <textarea id="ai-out" class="ai-out" readonly></textarea>
       <div class="ai-trace" id="ai-trace"></div>
     </div>
+    <!-- UI-DECLUTTER: the red inline connection warning is gone — the Send
+         button stays disabled when no verified key exists and the reason is a
+         native tooltip hosted on the wrapper span (Chrome suppresses title
+         tooltips on disabled buttons). -->
     <div class="mf ai-inputbar">
       <textarea id="ai-q" class="ai-q" rows="1" placeholder="Ask anything about this project…" title="Enter to send · Shift+Enter for a new line"></textarea>
-      <span class="ai-conn-hint is-hide" id="ai-conn-hint" aria-live="polite"></span>
-      <button class="ai-send" id="ai-send" data-action="aiRun" title="Send"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-zap"></use></svg> Send</button>
+      <span class="ai-send-wrap" id="ai-send-wrap" title="Send"><button class="ai-send" id="ai-send" data-action="aiRun" title="Send"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-zap"></use></svg> Send</button></span>
     </div>
   </div>
 </div>

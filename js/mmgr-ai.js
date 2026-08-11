@@ -429,10 +429,12 @@ var MMGR = window.MMGR || {};
     const pillLbl = U.$('ai-engine-pill-label');
     const tier = cfg.tier || 'off';
     if (pillLbl) {
+      // UI-DECLUTTER: the engine pill names the TIER only — the live
+      // connection detail lives in the ONE smart status chip next to the
+      // provider dropdown (ai-byo-status), so no two indicators can read
+      // differently.
       pillLbl.textContent = tier === 'local' ? 'Local · zero-key'
-        : tier === 'cloud' ? (getConnectionState() === 'connected' ? 'Cloud · connected'
-            : getConnectionState() === 'saved_untested' ? 'Cloud · key saved'
-            : 'Cloud · connect key')
+        : tier === 'cloud' ? 'Cloud'
         : 'Off · copy-first';
     }
     // MERGED-AI-CONTROL: the fab visibility follows the tier (hidden only
@@ -491,23 +493,23 @@ var MMGR = window.MMGR || {};
   // an honest hint. Off tier also disables Send (presets stay usable).
   function syncSendGate() {
     const s = U.$('ai-send');
-    const hint = U.$('ai-conn-hint');
     if (!s) return;
     const tier = getAiCfg().tier || 'off';
     const status = getConnectionState();
     const off = tier === 'off';
     const cloudNotVerified = tier === 'cloud' && status !== 'connected';
     s.disabled = off || cloudNotVerified;
-    if (hint) {
-      // NOTE: assigned via textContent — plain '&', not the HTML entity.
-      const msg = (tier === 'cloud' && status === 'not_connected')
-        ? 'Connect your AI key to send (session-only).'
-        : (tier === 'cloud' && status === 'saved_untested')
-          ? 'Key saved — Connect & Test to verify before sending.'
-          : (off ? 'Engine is Off — choose Local or Cloud.' : '');
-      hint.textContent = msg;
-      hint.classList.toggle('is-hide', !msg);
-    }
+    // UI-DECLUTTER: no permanent red warning text in the input bar. The
+    // disabled Send button carries a native tooltip explaining what to do
+    // next — hosted on the WRAPPER because Chrome suppresses title tooltips
+    // on disabled buttons. NOTE: plain '&', not the HTML entity.
+    const msg = (tier === 'cloud' && status === 'not_connected')
+      ? 'Connect your AI key to send (session-only) — open the key settings next to the provider.'
+      : (tier === 'cloud' && status === 'saved_untested')
+        ? 'Key saved — Connect & Test to verify before sending.'
+        : (off ? 'Engine is Off — choose Local or Cloud in the tier select.' : '');
+    const wrap = U.$('ai-send-wrap');
+    if (wrap) wrap.setAttribute('title', msg || 'Send');
   }
 
   // DIR-1: the real connectivity check. One minimal, cheap request through
@@ -1459,6 +1461,22 @@ var MMGR = window.MMGR || {};
         const p = U.$('ai-byo-provider');
         connectByo((p && p.value) || 'openai', pk.value);
       }
+    });
+  })();
+
+  // UI-DECLUTTER: the API-key setup (paste + Connect & Test + security
+  // footnote) lives in a popover toggled by the settings gear — the status
+  // chip and provider select stay visible in the strip, the raw key input is
+  // one click away. Wired directly (like the connect/clear buttons above) so
+  // it stays available in view-only mode.
+  (function() {
+    const gear = U.$('ai-byo-gear');
+    const pop = U.$('ai-byo-pop');
+    if (!gear || !pop) return;
+    gear.addEventListener('click', function() {
+      const open = pop.classList.contains('is-hide');
+      pop.classList.toggle('is-hide', !open);
+      gear.setAttribute('aria-expanded', open ? 'true' : 'false');
     });
   })();
 

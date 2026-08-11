@@ -728,6 +728,30 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
   check('A18b resize: dragging the SE corner grows the modal (mid-drag + final) and persists the new size', rz2.grewW && rz2.grewH && rz2.midW && rz2.persistedW && rz2.persistedH, rz2);
   await ev(`(function(){ try { localStorage.removeItem('mmgr_ai_size'); } catch(e){} MMGR.AiWin.applyAiSizePref(); return true; })()`);
 
+  // ---- A19: enlarged default size regression gate ----
+  // With NO saved size pref the modal must render at the enlarged default
+  // (width:min(1500px,100%) x height:min(92vh,950px), the AI-WINDOW-DOUBLED-
+  // SIZE contract). This catches any regression to the old sizing (760px
+  // wide, and the pre-height-fix modal that collapsed to ~317px tall with a
+  // ~115px thread). No centered assertion: at wide viewports the default
+  // width resolves to 100% (full-bleed within the 18px backdrop padding) so
+  // the modal fills the width by design — it is only centered when narrower
+  // than the viewport. Thresholds hold for the suite's fixed 1440x1200
+  // window (width ~1376px / height ~905px measured) and any reasonably
+  // sized screen.
+  const rz3 = await ev(`(async function(){
+    try { localStorage.removeItem('mmgr_ai_size'); } catch(e){}
+    MMGR.AiWin.applyAiSizePref();
+    MMGR.AiWin.open();
+    await new Promise(function(r){ setTimeout(r, 200); });
+    var modal = document.getElementById('ai-win-mb');
+    var r = modal.getBoundingClientRect();
+    return { w: Math.round(r.width), h: Math.round(r.height),
+      vw: window.innerWidth, vh: window.innerHeight,
+      hasHandles: modal.querySelectorAll('.ai-rz').length === 8 };
+  })()`);
+  check('A19 size: modal renders at the enlarged default (>=1200px wide, >=700px tall, 8 resize handles, no saved pref)', rz3.w >= 1200 && rz3.h >= 700 && rz3.hasHandles, rz3);
+
   await ev(`(function(){ localStorage.setItem('mmgr_scope_demo-project','full'); return true; })()`);
   await send('Page.navigate', { url: BASE + '/project.html?id=demo-project' }); await delay(3500);
 

@@ -13,8 +13,11 @@
   // it, and a 28 MiB git object exceeded the 25 MiB asset limit). Deploy
   // from a clean staging copy instead:
   //   mkdir -p /tmp/mmgr-deploy && tar --exclude='.git' --exclude='.wrangler' \
-  //     --exclude='node_modules' -cf - . | tar -xf - -C /tmp/mmgr-deploy
+  //     --exclude='node_modules' --exclude='.agents' -cf - . | tar -xf - -C /tmp/mmgr-deploy
   //   cd /tmp/mmgr-deploy && npx wrangler deploy
+  // NOTE: .agents/ (the locked AI skill set, AGENTS.md/CLAUDE.md) is dev
+  // tooling, NOT runtime assets — exclude it from the staging copy so the
+  // 320-file cloudflare skill references never bloat the asset upload.
   // GOOGLE-OPERATOR-IDENTITY-v1: public (non-secret) Client ID so the Worker
   // can prefer env.GOOGLE_CLIENT_ID over its constant. The Client Secret is a
   // Wrangler secret ONLY (env.GOOGLE_CLIENT_SECRET) — never a var in this file.

@@ -1,0 +1,9 @@
+# CRITICAL — CSP inline-script hashes are computed over the exact bytes the
+# browser receives (worker.js / serve.cjs hardcode the sha256 list, and
+# tools/verify-csp-hashes.cjs recomputes it). CRLF in a served HTML working
+# copy changes the inline <script> bytes and silently blocks every inline
+# script in production (see commit v30, which re-normalized project.html to
+# LF for exactly this reason). core.autocrlf=true would rewrite HTML working
+# copies to CRLF on checkout — force eol=lf so no checkout can reintroduce
+# the break.
+*.html text eol=lf

@@ -1201,7 +1201,22 @@ body.dark-mode .pcard:hover{box-shadow:var(--glass-rim),0 12px 30px rgba(0,0,0,.
 #ai-win{display:none;position:fixed;inset:0;background:rgba(9,10,15,.62);backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px);z-index:2000;align-items:center;justify-content:center;padding:18px;}
 #ai-win.open{display:flex;animation:aiBackdropIn .22s ease;}
 @keyframes aiBackdropIn{from{opacity:0;}to{opacity:1;}}
-#ai-win .mb{width:min(1500px,100%);height:min(92vh,950px);border-radius:22px;border:1px solid var(--border);box-shadow:0 30px 80px rgba(0,0,0,.5);overflow:hidden;}
+#ai-win .mb{position:relative;width:min(1500px,100%);height:min(92vh,950px);border-radius:22px;border:1px solid var(--border);box-shadow:0 30px 80px rgba(0,0,0,.5);overflow:hidden;}
+/* AI-WINDOW-RESIZE: eight edge/corner drag handles — invisible hit-strips
+   that fade in on modal hover and show the right resize cursor (cursors
+   apply even while invisible). touch-action:none so pointer drags on touch
+   are not hijacked by scrolling. z-index above the thread scroll. */
+.ai-rz{position:absolute;z-index:6;touch-action:none;user-select:none;-webkit-user-drag:none;opacity:0;transition:opacity .15s ease,background-color .15s ease;}
+#ai-win .mb:hover .ai-rz{opacity:.35;}
+.ai-rz:hover{opacity:1;background:rgba(245,158,11,.16);}
+.ai-rz-n{top:0;left:14px;right:14px;height:9px;cursor:ns-resize;border-radius:0 0 8px 8px;}
+.ai-rz-s{bottom:0;left:14px;right:14px;height:9px;cursor:ns-resize;border-radius:8px 8px 0 0;}
+.ai-rz-e{right:0;top:14px;bottom:14px;width:9px;cursor:ew-resize;border-radius:8px 0 0 8px;}
+.ai-rz-w{left:0;top:14px;bottom:14px;width:9px;cursor:ew-resize;border-radius:0 8px 8px 0;}
+.ai-rz-ne{top:0;right:0;width:12px;height:12px;cursor:nesw-resize;}
+.ai-rz-nw{top:0;left:0;width:12px;height:12px;cursor:nwse-resize;}
+.ai-rz-se{bottom:0;right:0;width:12px;height:12px;cursor:nwse-resize;}
+.ai-rz-sw{bottom:0;left:0;width:12px;height:12px;cursor:nesw-resize;}
 #ai-win.open .mb{animation:aiWinIn .3s cubic-bezier(.18,.89,.32,1.08);}
 @keyframes aiWinIn{from{opacity:0;transform:translateY(18px) scale(.97);}to{opacity:1;transform:none;}}
 

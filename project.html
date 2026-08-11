@@ -799,7 +799,18 @@
      later without redesign (see js/mmgr-ai.js). -->
 <button id="ai-fab" class="ai-fab" data-action="openAiWin" title="AI Assistant — preset prompts, free-form question, project context"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg></button>
 <div id="ai-win" data-action="closeAiWinBg">
-  <div class="mb ai-box">
+  <!-- AI-WINDOW-RESIZE: eight edge/corner drag handles (data-edge) wired in
+       js/mmgr-ai.js; the size is persisted per device in localStorage
+       (mmgr_ai_size, same device-pref slot pattern as mmgr_theme). -->
+  <div class="mb ai-box" id="ai-win-mb">
+    <span class="ai-rz ai-rz-n" data-edge="n" title="Drag to resize"></span>
+    <span class="ai-rz ai-rz-s" data-edge="s" title="Drag to resize"></span>
+    <span class="ai-rz ai-rz-e" data-edge="e" title="Drag to resize"></span>
+    <span class="ai-rz ai-rz-w" data-edge="w" title="Drag to resize"></span>
+    <span class="ai-rz ai-rz-ne" data-edge="ne" title="Drag to resize"></span>
+    <span class="ai-rz ai-rz-nw" data-edge="nw" title="Drag to resize"></span>
+    <span class="ai-rz ai-rz-se" data-edge="se" title="Drag to resize"></span>
+    <span class="ai-rz ai-rz-sw" data-edge="sw" title="Drag to resize"></span>
     <div class="mh ai-head">
       <span class="mt"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg> AI Assistant</span>
       <!-- AI-WINDOW-POLISH: engine pills + tier select grouped into one

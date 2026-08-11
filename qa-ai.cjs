@@ -687,6 +687,47 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
   })()`);
   check('A15 readonly: aiCopyOut stays allowed (read-only)', r2.btn && r2.notBlocked, r2);
 
+  // ---- AI-WINDOW-RESIZE: drag handles + per-device size persistence ----
+  // A18a: save/apply round-trip — the size persists to localStorage
+  // (mmgr_ai_size), is applied as inline style, and clearing the pref restores
+  // the CSS default. A18b: a synthetic pointer drag on the SE corner handle
+  // grows the modal AND persists the new size (the drag wiring runs on real
+  // pointer events, so this exercises the actual handlers).
+  const rz1 = await ev(`(async function(){
+    var modal = document.getElementById('ai-win-mb');
+    try { localStorage.removeItem('mmgr_ai_size'); } catch(e){}
+    MMGR.AiWin.applyAiSizePref();
+    await new Promise(function(r){ setTimeout(r, 120); });
+    MMGR.AiWin.saveAiSize(640, 480);
+    MMGR.AiWin.applyAiSizePref();
+    var appliedW = Math.round(parseFloat(modal.style.width));
+    var appliedH = Math.round(parseFloat(modal.style.height));
+    var pref = JSON.parse(localStorage.getItem('mmgr_ai_size') || '{}');
+    try { localStorage.removeItem('mmgr_ai_size'); } catch(e){}
+    MMGR.AiWin.applyAiSizePref();
+    return { appliedW: appliedW, appliedH: appliedH, prefW: pref.w, prefH: pref.h, clearedW: modal.style.width };
+  })()`);
+  check('A18a resize: save/apply round-trip (persisted, applied, default-restorable)', rz1.appliedW === 640 && rz1.appliedH === 480 && rz1.prefW === 640 && rz1.prefH === 480 && rz1.clearedW === '', rz1);
+
+  const rz2 = await ev(`(async function(){
+    var modal = document.getElementById('ai-win-mb');
+    MMGR.AiWin.saveAiSize(800, 600);
+    MMGR.AiWin.applyAiSizePref();
+    await new Promise(function(r){ setTimeout(r, 120); });
+    var before = modal.getBoundingClientRect();
+    var se = modal.querySelector('.ai-rz-se');
+    var cx = Math.round(before.right) - 6, cy = Math.round(before.bottom) - 6;
+    se.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true, pointerId: 7, clientX: cx, clientY: cy }));
+    se.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, cancelable: true, pointerId: 7, clientX: cx + 120, clientY: cy + 80 }));
+    var mid = modal.getBoundingClientRect();
+    se.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, cancelable: true, pointerId: 7, clientX: cx + 120, clientY: cy + 80 }));
+    var after = modal.getBoundingClientRect();
+    var pref = JSON.parse(localStorage.getItem('mmgr_ai_size') || '{}');
+    return { grewW: Math.round(after.width) > Math.round(before.width), grewH: Math.round(after.height) > Math.round(before.height), midW: Math.round(mid.width) > Math.round(before.width), persistedW: Math.round(pref.w) === Math.round(after.width), persistedH: Math.round(pref.h) === Math.round(after.height) };
+  })()`);
+  check('A18b resize: dragging the SE corner grows the modal (mid-drag + final) and persists the new size', rz2.grewW && rz2.grewH && rz2.midW && rz2.persistedW && rz2.persistedH, rz2);
+  await ev(`(function(){ try { localStorage.removeItem('mmgr_ai_size'); } catch(e){} MMGR.AiWin.applyAiSizePref(); return true; })()`);
+
   await ev(`(function(){ localStorage.setItem('mmgr_scope_demo-project','full'); return true; })()`);
   await send('Page.navigate', { url: BASE + '/project.html?id=demo-project' }); await delay(3500);
 

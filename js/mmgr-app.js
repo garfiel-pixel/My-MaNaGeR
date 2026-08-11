@@ -234,6 +234,13 @@ var MMGR = window.MMGR || {};
     // auth-bar controls). Same zero-throw guard as the sync section above.
     if (ns.GoogleAuth && ns.GoogleAuth.renderDriveSection) ns.GoogleAuth.renderDriveSection();
 
+    // CLOUD-BACKEND-ARCHITECTURE-PLAN Phase 1: render the optional Cloud
+    // Backup (D1 + R2 owner-code storage) section into the Controls drawer.
+    // Strictly additive and never gating — the module no-ops without
+    // #cloud-section (project.html only), and the Worker API absence degrades
+    // to a quiet "unavailable here" note.
+    if (ns.Cloud && ns.Cloud.render) ns.Cloud.render();
+
     // Run validation
     const issues = ns.State.validate();
     if (issues.length > 0) {
@@ -1800,6 +1807,26 @@ window.MMGR = MMGR;
     'driveRestore': () => { const G = window.MMGR.GoogleAuth; if (G && G.triggerRestore) G.triggerRestore(); },
     'driveAutoInterval': (el) => { const G = window.MMGR.GoogleAuth; if (G && G.setAutoIntervalFrom) G.setAutoIntervalFrom(el); },
     'driveSetPass': (el) => { const G = window.MMGR.GoogleAuth; if (G && G.setDrivePassFrom) G.setDrivePassFrom(el); },
+    // CLOUD-BACKEND-ARCHITECTURE-PLAN Phase 1: optional Cloud Backup section
+    // (owner-code create/save/load/recover + Google sign-in for recovery).
+    // Same zero-throw pattern as the Drive entries above.
+    'cloudCreate': () => { const C = window.MMGR.Cloud; if (C && C.createProject) C.createProject(); },
+    'cloudSave': () => { const C = window.MMGR.Cloud; if (C && C.saveToCloud) C.saveToCloud(); },
+    'cloudLoad': () => { const C = window.MMGR.Cloud; if (C && C.loadFromCloud) C.loadFromCloud(); },
+    'cloudRecover': () => { const C = window.MMGR.Cloud; if (C && C.recoverCode) C.recoverCode(); },
+    'cloudCopyCode': () => { const C = window.MMGR.Cloud; if (C && C.copyCode) C.copyCode(); },
+    'cloudSignIn': () => { const C = window.MMGR.Cloud; if (C && C.signIn) C.signIn(); },
+    'cloudLoadWithCode': () => { const C = window.MMGR.Cloud; if (C && C.loadWithCode) C.loadWithCode(); },
+    // CLOUD-BACKEND-ARCHITECTURE-PLAN Phase 2/3: editor-code management
+    // (create/list/revoke — owner-only, enforced server-side) and the
+    // changelog view/revert (owner-only). Same zero-throw pattern as the
+    // Phase 1 entries above.
+    'cloudEditorCreate': () => { const C = window.MMGR.Cloud; if (C && C.createEditor) C.createEditor(); },
+    'cloudEditorList': () => { const C = window.MMGR.Cloud; if (C && C.listEditors) C.listEditors(); },
+    'cloudEditorRevoke': (el) => { const C = window.MMGR.Cloud; if (C && C.revokeEditor) C.revokeEditor(el && el.getAttribute('data-id')); },
+    'cloudLogList': () => { const C = window.MMGR.Cloud; if (C && C.listLog) C.listLog(); },
+    'cloudLogRevert': (el) => { const C = window.MMGR.Cloud; if (C && C.revertLog) C.revertLog(el && el.getAttribute('data-id')); },
+    'cloudDropEditor': () => { const C = window.MMGR.Cloud; if (C && C.dropEditor) C.dropEditor(); },
     'cascadeGantt': () => window.MMGR.App.cascadeGantt(),
     'toggleCritical': (el) => window.MMGR.App.toggleCritical(el),
     'tglLeadtimeLane': (el) => window.MMGR.App.tglLeadtimeLane(el),
@@ -2040,7 +2067,20 @@ window.MMGR = MMGR;
     // project state) — safe in view-only, like claimGenerate / digestGenerate
     // / runMonteCarlo above. Restore is DELIBERATELY excluded: it overwrites
     // local workspace, exactly like import, so it stays blocked in view-only.
-    'driveBackup': 1, 'driveAutoInterval': 1, 'driveSetPass': 1
+    'driveBackup': 1, 'driveAutoInterval': 1, 'driveSetPass': 1,
+    // CLOUD-BACKEND-ARCHITECTURE-PLAN Phase 1: cloud create/save/recover/
+    // copy/sign-in never mutate the local workspace (they push to the server
+    // or manage session-only credentials) — safe in view-only, exactly like
+    // driveBackup above. Load is DELIBERATELY excluded: it overwrites the
+    // local workspace like driveRestore/import, so it stays blocked in
+    // view-only.
+    'cloudCreate': 1, 'cloudSave': 1, 'cloudRecover': 1, 'cloudCopyCode': 1, 'cloudSignIn': 1,
+    // CLOUD-BACKEND-ARCHITECTURE-PLAN Phase 2/3: editor-code management and
+    // changelog view/revert never mutate the local workspace (owner-only
+    // server calls; a revert changes the CLOUD snapshot, not this device) —
+    // safe in view-only, like the Phase 1 cloud entries above.
+    'cloudEditorCreate': 1, 'cloudEditorList': 1, 'cloudEditorRevoke': 1,
+    'cloudLogList': 1, 'cloudLogRevert': 1, 'cloudDropEditor': 1
   };
   function guardReadonly(action) {
     // The ACTION_MAP delegation IIFE has no closure over the App module's

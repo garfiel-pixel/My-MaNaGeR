@@ -524,6 +524,14 @@ body.gantt-dragging .gb{cursor:grabbing;}
 /* ACTION-PLAN 4.1: view-only scope — a static amber strip under the header */
 #readonly-banner{position:sticky;top:0;z-index:1500;display:flex;align-items:center;justify-content:center;gap:8px;background:rgba(245,158,11,.12);border-bottom:1px solid rgba(245,158,11,.35);color:var(--gold);font-size:.72rem;padding:6px 14px;letter-spacing:.3px;}
 #readonly-banner.is-hide{display:none;}
+/* CLOUD-BACKEND-ARCHITECTURE-PLAN Phase 2 — scoped-editor workspace chrome.
+   The banner + greyed nav are UX only: the Worker enforces the editor
+   code's section scope server-side on every save, so even a compromised
+   code cannot write outside its grant. */
+#editor-scope-banner{position:sticky;top:0;z-index:1500;display:flex;align-items:center;justify-content:center;gap:8px;background:rgba(59,130,246,.12);border-bottom:1px solid rgba(59,130,246,.35);color:var(--blue);font-size:.72rem;padding:6px 14px;letter-spacing:.3px;}
+#editor-scope-banner.is-hide{display:none;}
+body.editor-scope .sec-btn.scope-blocked{opacity:.35;pointer-events:none;filter:saturate(.4);}
+body.editor-scope .sec-btn.scope-blocked svg{opacity:.5;}
 body.readonly-mode input:not([readonly]),body.readonly-mode textarea:not([readonly]),body.readonly-mode select:not([disabled]){pointer-events:none;opacity:.6;}
 body.readonly-mode .btn[data-action]:not([data-action="showSec"]):not([data-action="cpAllPage"]):not([data-action="print"]):not([data-action="openDrw"]):not([data-action="openDrwToPrompts"]):not([data-action="openDrwToSave"]):not([data-action="runMonteCarlo"]):not([data-action="printCharter"]):not([data-action="emailTpl"]):not([data-action="copyIdTemplate"]):not([data-action="riskMatrixClear"]):not([data-action="copyErrorLog"]):not([data-action="downloadErrorLog"]){opacity:.55;}
 .bs-spin{width:34px;height:34px;border-radius:50%;border:3px solid var(--border);border-top-color:var(--gold);animation:bs-spin .8s linear infinite;}
@@ -1197,11 +1205,15 @@ body.dark-mode .pcard:hover{box-shadow:var(--glass-rim),0 12px 30px rgba(0,0,0,.
 #ai-win.open .mb{animation:aiWinIn .3s cubic-bezier(.18,.89,.32,1.08);}
 @keyframes aiWinIn{from{opacity:0;transform:translateY(18px) scale(.97);}to{opacity:1;transform:none;}}
 
-/* header: title + engine-status pill + actions */
-.ai-head{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;background:linear-gradient(180deg,rgba(245,158,11,.08),transparent);}
-.ai-head .mt{display:inline-flex;align-items:center;gap:8px;font-size:.92rem;font-weight:800;color:var(--gold);}
-.ai-head .mt .ico{font-size:1.02rem;}
-.ai-pill{display:inline-flex;align-items:center;gap:6px;font-size:.64rem;font-weight:600;color:var(--slate);border:1px solid var(--border);border-radius:100px;padding:3px 10px;background:var(--card);white-space:nowrap;}
+/* header: title + compact control cluster (tier select + engine/API pills) */
+.ai-head{padding:10px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:linear-gradient(180deg,rgba(245,158,11,.08),transparent);}
+.ai-head .mt{display:inline-flex;align-items:center;gap:8px;font-size:.88rem;font-weight:800;color:var(--gold);}
+.ai-head .mt .ico{font-size:1rem;}
+/* AI-WINDOW-POLISH: engine status + API badge + tier select grouped into one
+   right-aligned cluster — the header now reads [title] [controls] instead of
+   six loose items scattered across the bar. */
+.ai-head-right{display:flex;align-items:center;gap:7px;margin-left:auto;flex-wrap:wrap;justify-content:flex-end;}
+.ai-pill{display:inline-flex;align-items:center;gap:5px;font-size:.6rem;font-weight:600;color:var(--slate);border:1px solid var(--border);border-radius:100px;padding:2px 9px;background:var(--card);white-space:nowrap;}
 .ai-pill-dot{width:7px;height:7px;border-radius:50%;background:var(--slate);transition:background var(--tr);}
 .ai-pill[data-tier="local"] .ai-pill-dot{background:var(--green);box-shadow:0 0 6px var(--green);}
 .ai-pill[data-tier="cloud"] .ai-pill-dot{background:var(--gold);box-shadow:0 0 6px var(--gold);}
@@ -1217,12 +1229,12 @@ body.dark-mode .pcard:hover{box-shadow:var(--glass-rim),0 12px 30px rgba(0,0,0,.
 .ai-api-pill[data-state="checking"] .ai-pill-dot{animation:aiTyping 1.2s ease-in-out infinite;}
 body.dark-mode .ai-api-pill[data-state="connected"]{background:rgba(16,185,129,.1);}
 body.dark-mode .ai-api-pill[data-state="error"]{background:rgba(239,68,68,.1);}
-.ai-head-actions{display:flex;align-items:center;gap:4px;margin-left:auto;}
+.ai-head-actions{display:flex;align-items:center;gap:4px;}
 .ai-head-actions .dc{font-size:1.15rem;padding:6px;}
 /* MERGED-AI-CONTROL (audit 1.2): the tier selector promoted into the AI
    window header, styled to sit beside the engine pill without expanding the
    collapsed details panel. */
-.ai-head-tier{border:1px solid var(--border);background-color:var(--card);color:var(--text);border-radius:100px;padding:3px 24px 3px 10px;font-size:.64rem;font-weight:600;font-family:inherit;cursor:pointer;white-space:nowrap;}
+.ai-head-tier{border:1px solid var(--border);background-color:var(--card);color:var(--text);border-radius:100px;padding:2px 20px 2px 9px;font-size:.6rem;font-weight:600;font-family:inherit;cursor:pointer;white-space:nowrap;}
 .ai-head-tier:hover{border-color:var(--gold);color:var(--gold);}
 .ai-clear-btn{background:none;border:1px solid var(--border);color:var(--slate);border-radius:100px;padding:4px 11px;font-size:.66rem;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:5px;transition:all var(--tr);}
 .ai-clear-btn:hover{color:var(--danger);border-color:var(--danger);}
@@ -1255,6 +1267,12 @@ body.dark-mode .ai-api-pill[data-state="error"]{background:rgba(239,68,68,.1);}
 .ai-tip{font-size:.68rem;color:var(--slate);margin-top:8px;line-height:1.6;}
 .ai-err{color:var(--danger);font-weight:500;}
 .ai-meta{font-size:.6rem;color:var(--slate);margin-top:9px;padding-top:7px;border-top:1px dashed var(--border);display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+/* AI-WINDOW-POLISH: per-answer Copy button — ghost chip, right-aligned in
+   the meta row; flips to a green Copied state on success. */
+.ai-copy-btn{margin-left:auto;display:inline-flex;align-items:center;gap:4px;border:1px solid transparent;background:none;color:var(--slate);font-size:.6rem;font-weight:600;font-family:inherit;padding:2px 8px;border-radius:100px;cursor:pointer;transition:color var(--tr),border-color var(--tr),background var(--tr);}
+.ai-copy-btn .ico{width:11px;height:11px;}
+.ai-copy-btn:hover{color:var(--gold);border-color:var(--border);background:var(--tile-bg);}
+.ai-copy-btn.is-copied{color:var(--green);border-color:var(--green);background:rgba(16,185,129,.1);}
 .ai-trace-inline{font-size:.6rem;color:var(--slate);margin-top:5px;word-break:break-word;line-height:1.45;}
 .ai-fallback{font-size:.65rem;font-weight:600;color:var(--amber);background:rgba(255,193,7,.14);border:1px solid var(--amber);border-radius:8px;padding:4px 9px;margin-top:7px;display:inline-flex;align-items:center;gap:5px;line-height:1.35;}
 .ai-typing{display:inline-flex;gap:5px;align-items:center;padding:14px 18px;}
@@ -1292,10 +1310,8 @@ body.dark-mode .ai-api-pill[data-state="error"]{background:rgba(239,68,68,.1);}
    the collapsed details into an always-visible row directly under the tier
    select — visible the moment tier=Cloud, zero extra clicks. Hidden only by
    the same is-hide toggle syncSettingsUI drives (tier != cloud). */
-.ai-conn-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:10px 18px;border-bottom:1px solid var(--border);background:var(--tile-bg);}
-.ai-conn-row-label{display:inline-flex;align-items:center;gap:5px;font-size:.7rem;color:var(--gold);font-weight:600;}
-.ai-conn-row .ai-byo-sec{flex-basis:100%;}
-.ai-conn-row .ai-byo-key{width:200px;}
+.ai-conn-row{display:flex;flex-wrap:wrap;align-items:center;gap:7px;padding:8px 14px;border-bottom:1px solid var(--border);background:var(--tile-bg);}
+.ai-conn-row .ai-byo-key{width:190px;}
 body.dark-mode .ai-conn-row{background:rgba(0,0,0,.12);}
 /* BYO-AI-KEY-SESSION-ONLY-v1 — Connect flow (STEP-2): status chip,
    session-only key input, security copy, and the send gate. */
@@ -1311,7 +1327,7 @@ body.dark-mode .ai-conn-row{background:rgba(0,0,0,.12);}
 .ai-byo-status[data-state="untested"] .ai-byo-dot{background:var(--gold);box-shadow:0 0 6px var(--gold);}
 body.dark-mode .ai-byo-status[data-state="untested"]{background:rgba(245,158,11,.08);}
 .ai-byo-key{width:190px;}
-.ai-byo-sec{font-size:.62rem;color:var(--slate);line-height:1.5;margin:6px 0 0;flex-basis:100%;}
+.ai-byo-sec{font-size:.6rem;color:var(--slate);line-height:1.5;margin:3px 0 0;flex-basis:100%;}
 .ai-conn-hint{font-size:.62rem;color:var(--danger);font-weight:600;max-width:130px;line-height:1.35;text-align:right;}
 .ai-send:disabled{opacity:.45;cursor:not-allowed;filter:saturate(.4);box-shadow:none;transform:none;}
 .ai-send:disabled:hover{transform:none;box-shadow:none;}

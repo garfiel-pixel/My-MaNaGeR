@@ -35,10 +35,14 @@
 .gbox .icon{font-size:2rem;margin-bottom:10px;}
 .gbox h1{font-size:1.05rem;margin-bottom:6px;}
 .gbox p{font-size:.78rem;color:var(--slate);margin-bottom:18px;line-height:1.5;}
-.gbox input{width:100%;background:var(--glass-fill-dark);border:1px solid var(--border);border-radius:6px;color:var(--text);
-  font-size:.9rem;padding:11px 12px;font-family:inherit;outline:none;margin-bottom:10px;transition:border-color .15s;}
-.gbox input:focus{border-color:var(--gold);}
+.gbox input{width:100%;background:var(--glass-fill-dark);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);
+  font-size:.9rem;padding:11px 12px;font-family:inherit;outline:none;margin-bottom:10px;transition:border-color .15s,box-shadow .15s;}
+.gbox input:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(245,158,11,.14);}
 body.dark-mode .gbox input{background:rgba(0,0,0,.3);}
+/* UI-DECLUTTER (gates): the primary CTA is a full-width pill, matching the
+   AI window's Send button treatment; the focus ring mirrors the ONE app-wide
+   focus treatment (DIR-3). */
+.gbox .btn{border-radius:100px;padding:11px 22px;}
 /* B-1: reduced transparency / no backdrop-filter — flatten .gbox to solid like
    the shared mmgr.css fallback (this inline rule must come after the .gbox
    rules above to win at equal specificity). */
@@ -140,7 +144,7 @@ pre.snippet{background:#f8fafc;border:1px solid var(--border);border-radius:6px;
   <div class="gbox">
     <div class="icon"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-tool"></use></svg></div>
     <h1>Set Up Admin Access</h1>
-    <p>No admin password is set on this device yet. Choose one now — you'll need it every new browser session to manage projects and codes.</p>
+    <p>No admin password is set on this device yet. Choose one — you'll need it every new browser session to manage projects.</p>
     <input id="setup-pass1" type="password" placeholder="New admin password (min 8 characters)" autocomplete="new-password">
     <input id="setup-pass2" type="password" placeholder="Confirm password" autocomplete="new-password">
     <div class="gerr" id="setup-err"></div>

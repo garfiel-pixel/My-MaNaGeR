@@ -179,6 +179,7 @@ var MMGR = window.MMGR || {};
     checkApiHealth(); // live backend-API status badge (plan §3)
     seedThreadFromState();
     setAiTab('chat'); // DIR-1: reopen on the Chat view (matches the welcome hint)
+    applyAiSizePref(); // AI-WINDOW-RESIZE: restore the saved size (and re-center) before showing
     modal.classList.add('open');
     const q = U.$('ai-q');
     if (q) setTimeout(function() { q.focus(); }, 60);
@@ -1497,6 +1498,123 @@ var MMGR = window.MMGR || {};
     });
   })();
 
+  // ---- AI-WINDOW-RESIZE: edge/corner drag resize + per-device persistence ----
+  // The size lives in localStorage under mmgr_ai_size (the same device-pref
+  // slot pattern as mmgr_theme) — a UI preference, deliberately NOT project
+  // state. Restored on open, clamped to the current viewport, min 480x360.
+  const AI_SIZE_KEY = 'mmgr_ai_size';
+  const AI_SIZE_MIN_W = 480;
+  const AI_SIZE_MIN_H = 360;
+
+  function readAiSizePref() {
+    try {
+      const raw = localStorage.getItem(AI_SIZE_KEY);
+      if (!raw) return null;
+      const d = JSON.parse(raw);
+      const w = Math.round(Number(d && d.w));
+      const h = Math.round(Number(d && d.h));
+      if (!(w > 0) || !(h > 0)) return null;
+      return { w: w, h: h };
+    } catch (e) { return null; }
+  }
+
+  function clampAiSize(w, h) {
+    const maxW = Math.max(AI_SIZE_MIN_W, window.innerWidth - 40);
+    const maxH = Math.max(AI_SIZE_MIN_H, window.innerHeight - 40);
+    return {
+      w: Math.min(Math.max(Math.round(w), AI_SIZE_MIN_W), maxW),
+      h: Math.min(Math.max(Math.round(h), AI_SIZE_MIN_H), maxH)
+    };
+  }
+
+  function saveAiSize(w, h) {
+    try { localStorage.setItem(AI_SIZE_KEY, JSON.stringify({ w: w, h: h })); } catch (e) { /* ignore */ }
+  }
+
+  // Restore the saved size on open: clear any session absolute position so the
+  // modal re-centers, then apply the saved (clamped) size. No saved size ->
+  // the CSS default (min(1500px,100%) x min(92vh,950px)) applies.
+  function applyAiSizePref() {
+    const modal = U.$('ai-win-mb');
+    if (!modal) return;
+    modal.style.position = '';
+    modal.style.left = '';
+    modal.style.top = '';
+    const p = readAiSizePref();
+    if (p) {
+      const c = clampAiSize(p.w, p.h);
+      modal.style.width = c.w + 'px';
+      modal.style.height = c.h + 'px';
+    } else {
+      modal.style.width = '';
+      modal.style.height = '';
+    }
+  }
+
+  (function() {
+    const modal = U.$('ai-win-mb');
+    if (!modal) return;
+    const handles = Array.prototype.slice.call(modal.querySelectorAll('.ai-rz'));
+    if (!handles.length) return;
+    let drag = null;
+    function onDown(e) {
+      const edge = e.currentTarget.getAttribute('data-edge') || 'se';
+      const r = modal.getBoundingClientRect();
+      // Anchor absolutely at the current rect so edge drags track the cursor
+      // 1:1 (flex centering would re-center and halve the delta).
+      modal.style.position = 'absolute';
+      modal.style.left = r.left + 'px';
+      modal.style.top = r.top + 'px';
+      modal.style.width = r.width + 'px';
+      modal.style.height = r.height + 'px';
+      drag = { edge: edge, startX: e.clientX, startY: e.clientY, left: r.left, top: r.top, width: r.width, height: r.height, w: null, h: null };
+      e.preventDefault();
+      try { if (e.currentTarget.setPointerCapture) e.currentTarget.setPointerCapture(e.pointerId); } catch (err) { /* synthetic events */ }
+    }
+    function onMove(e) {
+      if (!drag) return;
+      const dx = e.clientX - drag.startX;
+      const dy = e.clientY - drag.startY;
+      const edge = drag.edge;
+      let width = drag.width;
+      let height = drag.height;
+      if (edge.indexOf('e') > -1) width = drag.width + dx;
+      if (edge.indexOf('s') > -1) height = drag.height + dy;
+      if (edge.indexOf('w') > -1) width = drag.width - dx;
+      if (edge.indexOf('n') > -1) height = drag.height - dy;
+      const c = clampAiSize(width, height);
+      drag.w = c.w;
+      drag.h = c.h;
+      let left = drag.left;
+      let top = drag.top;
+      // Keep the fixed edge pinned when the opposite drag is clamped.
+      if (edge.indexOf('w') > -1) left = drag.left + (drag.width - c.w);
+      if (edge.indexOf('n') > -1) top = drag.top + (drag.height - c.h);
+      modal.style.left = left + 'px';
+      modal.style.top = top + 'px';
+      modal.style.width = c.w + 'px';
+      modal.style.height = c.h + 'px';
+    }
+    function onUp() {
+      if (!drag) return;
+      // Persist the size tracked on the drag object (set by onMove); a press
+      // without a move leaves w/h null and saves nothing.
+      const w = drag.w;
+      const h = drag.h;
+      drag = null;
+      if (w && h && w >= AI_SIZE_MIN_W && h >= AI_SIZE_MIN_H) saveAiSize(w, h);
+    }
+    handles.forEach(function(h) {
+      h.addEventListener('pointerdown', onDown);
+      h.addEventListener('pointermove', onMove);
+      h.addEventListener('pointerup', onUp);
+      h.addEventListener('pointercancel', onUp);
+    });
+    // A release anywhere (not just on the handle) ends the drag.
+    document.addEventListener('pointerup', onUp);
+    document.addEventListener('pointercancel', onUp);
+  })();
+
   // ---- API ----
   ns.AiWin = {
     open: open,
@@ -1529,7 +1647,12 @@ var MMGR = window.MMGR || {};
     probeProvider: probeProvider,
     // INTEGRATED-STRUCTURE-API-WINDOW (plan §1/§3)
     checkApiHealth: checkApiHealth,
-    setApiStatus: setApiStatus
+    setApiStatus: setApiStatus,
+    // AI-WINDOW-RESIZE
+    readAiSizePref: readAiSizePref,
+    saveAiSize: saveAiSize,
+    clampAiSize: clampAiSize,
+    applyAiSizePref: applyAiSizePref
   };
 })(MMGR);
 window.MMGR = MMGR;

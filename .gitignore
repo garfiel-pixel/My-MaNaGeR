@@ -2,3 +2,4 @@
 .wrangler/
 _not-deployed/
 node_modules/
+.dev.vars

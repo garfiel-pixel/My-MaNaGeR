@@ -1,0 +1,18 @@
+# Exclude non-app files from the static-assets bundle (honored by wrangler
+# for both `wrangler dev` and `wrangler deploy`). Without this, the .git
+# directory's large objects (28 MiB pack) blow past the 25 MiB per-asset
+# limit and the Worker refuses to boot (verified locally: `wrangler dev`
+# failed with "Asset too large." pointing at .git/objects/...).
+# NOTE: everything the APP serves at runtime stays included — js/, css/,
+# vendor/whisper (offline transcription), manifests, icons, and pages.
+.git
+.wrangler
+node_modules
+.dev.vars
+serve.cjs
+qa-*.cjs
+tools
+migrations
+CLOUD-BACKEND-ARCHITECTURE-PLAN.md
+universal-ui-architect.md
+monolith html to reference from all features.html

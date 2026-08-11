@@ -21,6 +21,27 @@
   "vars": {
     "GOOGLE_CLIENT_ID": "297970704704-m05hgt93lfaq286q90br8c96ffg1aph3.apps.googleusercontent.com"
   },
+  // CLOUD-BACKEND-ARCHITECTURE-PLAN Phase 1 — D1 (structured project rows) +
+  // R2 (project-state JSON blobs). Local dev (wrangler dev) uses the
+  // miniflare emulation automatically; the database_id here is a LOCAL-DEV
+  // PLACEHOLDER — for a real deploy run:
+  //   npx wrangler d1 create my-manager-db   -> paste the returned id below
+  //   npx wrangler r2 bucket create my-manager-state
+  // and apply migrations with `npx wrangler d1 migrations apply my-manager-db`.
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "my-manager-db",
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "R2",
+      "bucket_name": "my-manager-state"
+    }
+  ],
   "assets": {
     "binding": "ASSETS",
     "directory": ".",

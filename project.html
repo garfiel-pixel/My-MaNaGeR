@@ -57,7 +57,7 @@
       clicks "Connect Google" in Settings > Controls. It is a device label,
       never a gate — offline/CSP-blocked loads degrade to a toast.
 -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' 'sha256-o+0No2XpbES4E5QJh31mY9JsJFqSmE+B4x+z1fNPjVc=' https://accounts.google.com https://unpkg.com; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self' https://api.open-meteo.com https://geocoding-api.open-meteo.com https://api.openai.com https://api.anthropic.com https://generativelanguage.googleapis.com https://github.com https://release-assets.githubusercontent.com https://accounts.google.com https://huggingface.co https://*.cdn.hf.co; base-uri 'self'; form-action 'self';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' 'sha256-o+0No2XpbES4E5QJh31mY9JsJFqSmE+B4x+z1fNPjVc=' https://accounts.google.com https://unpkg.com; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self' https://api.open-meteo.com https://geocoding-api.open-meteo.com https://api.openai.com https://api.anthropic.com https://generativelanguage.googleapis.com https://github.com https://release-assets.githubusercontent.com https://accounts.google.com https://huggingface.co https://*.cdn.hf.co; frame-src https://accounts.google.com; base-uri 'self'; form-action 'self';">
 </head>
 <body>
 <script>
@@ -76,6 +76,10 @@
 <!-- View-only banner (ACTION-PLAN 4.1) — shown when the project was opened
      with a read-only scope code. Static markup, zero inline styles. -->
 <div id="readonly-banner" class="is-hide"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-eye"></use></svg> View-only mode — read-only access. Contact the admin for the full access code.</div>
+    <!-- CLOUD-BACKEND-ARCHITECTURE-PLAN Phase 2: editor-scope banner (toggled
+         by js/mmgr-cloud.js applyEditorScope). Pure UX — the Worker enforces
+         the scope server-side on every editor save. -->
+    <div id="editor-scope-banner" class="is-hide"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-user"></use></svg> Editing as a scoped editor code — some panels are locked for this code (enforced by the server).</div>
 
 <!-- Undo Bar -->
 <div id="ub"><span><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-alert-triangle"></use></svg><span id="ub-msg"> Page cleared.</span></span><button class="btn btn-s btn-warn"  data-action="undoClr"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-corner-down-left"></use></svg> Undo</button><span id="ut" class="amber-b">5</span></div>
@@ -798,21 +802,26 @@
   <div class="mb ai-box">
     <div class="mh ai-head">
       <span class="mt"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg> AI Assistant</span>
-      <span class="ai-pill" id="ai-engine-pill" data-tier="off"><span class="ai-pill-dot"></span><span id="ai-engine-pill-label">Engine</span></span>
-      <!-- INTEGRATED-STRUCTURE-API-WINDOW plan §1/§3: live backend-API status
-           badge — pings the same-origin Worker relay health route
-           (GET /api/health) when the window opens and reports
-           checking / connected / error / disconnected. Wired in
-           mmgr-ai.js checkApiHealth(); click to re-check. -->
-      <span class="ai-pill ai-api-pill" id="ai-api-pill" data-state="checking" title="Backend API connection — click to re-check"><span class="ai-pill-dot"></span><span id="ai-api-pill-label">API · checking</span></span>
-      <!-- MERGED-AI-CONTROL (audit 1.2): the tier selector now lives in the
-           header next to the engine pill — visible without expanding anything.
-           Same id + action as before so syncSettingsUI/action wiring is intact. -->
-      <select id="ai-tier" class="ai-head-tier" data-action="aiSetTier" title="AI engine — Off, Local (zero-key, offline), or Cloud (BYO key)">
-        <option value="off">Off</option>
-        <option value="local">Local</option>
-        <option value="cloud">Cloud</option>
-      </select>
+      <!-- AI-WINDOW-POLISH: engine pills + tier select grouped into one
+           right-side cluster so the header reads as [title] [controls]. All
+           ids/actions unchanged — getElementById wiring is nesting-agnostic. -->
+      <div class="ai-head-right">
+        <!-- MERGED-AI-CONTROL (audit 1.2): the tier selector lives in the
+             header — visible without expanding anything. Same id + action as
+             before so syncSettingsUI/action wiring is intact. -->
+        <select id="ai-tier" class="ai-head-tier" data-action="aiSetTier" title="AI engine — Off, Local (zero-key, offline), or Cloud (BYO key)">
+          <option value="off">Off</option>
+          <option value="local">Local</option>
+          <option value="cloud">Cloud</option>
+        </select>
+        <span class="ai-pill" id="ai-engine-pill" data-tier="off"><span class="ai-pill-dot"></span><span id="ai-engine-pill-label">Engine</span></span>
+        <!-- INTEGRATED-STRUCTURE-API-WINDOW plan §1/§3: live backend-API status
+             badge — pings the same-origin Worker relay health route
+             (GET /api/health) when the window opens and reports
+             checking / connected / error / disconnected. Wired in
+             mmgr-ai.js checkApiHealth(); click to re-check. -->
+        <span class="ai-pill ai-api-pill" id="ai-api-pill" data-state="checking" title="Backend API connection — click to re-check"><span class="ai-pill-dot"></span><span id="ai-api-pill-label">API · checking</span></span>
+      </div>
       <div class="ai-head-actions">
         <button class="ai-clear-btn" data-action="aiClear" title="Start a new conversation"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> New</button>
         <button class="dc" data-action="closeAiWin" title="Close"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> </button>
@@ -826,8 +835,12 @@
          is-hide on #ai-cfg-cloud by tier. Wired directly in mmgr-ai.js — no
          action-map entries, so connecting a key stays available in view-only
          mode (connecting is not a project mutation). -->
+    <!-- AI-WINDOW-POLISH: the verbose label + long security paragraph are
+         gone — the status chip already says Disconnected/Connected, the key
+         input carries the session-only promise in its title, and the footnote
+         is one line. Same ids/classes, so the QA wiring (ai-byo-status,
+         ai-byo-provider, ai-byo-connect, ai-byo-clear, .ai-byo-sec) is intact. -->
     <div class="ai-conn-row" id="ai-cfg-cloud">
-      <span class="ai-conn-row-label"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cpu"></use></svg> Cloud connection (your own key)</span>
       <span class="ai-byo-status" id="ai-byo-status" data-state="off"><span class="ai-byo-dot"></span><span class="ai-byo-status-txt">Disconnected</span></span>
       <!-- Provider list must match MMGR.AiKey.PROVIDERS (js/mmgr-ai-key.js) — keep in sync -->
       <select id="ai-byo-provider" title="AI provider for this session">
@@ -835,10 +848,10 @@
         <option value="google-gemini">Google Gemini</option>
         <option value="anthropic">Anthropic Claude</option>
       </select>
-      <input type="password" id="ai-byo-key" class="ai-byo-key" placeholder="Paste your API key — this session only, never exported" autocomplete="off" spellcheck="false">
+      <input type="password" id="ai-byo-key" class="ai-byo-key" placeholder="Paste your API key (session-only)" autocomplete="off" spellcheck="false" title="Session-only: your key stays in this browser, is never exported, and clears when you close the tab">
       <button class="btn btn-g btn-s" id="ai-byo-connect" title="Save this session key and verify it with a live provider check"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-link"></use></svg> Connect &amp; Test</button>
       <button class="btn btn-n btn-s" id="ai-byo-clear" title="Forget the key in this session"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> Clear</button>
-      <p class="ai-byo-sec">Your API key stays in this browser for this session only. It is never stored on our servers, never included in project exports or backups, and is cleared when you close the tab. Next time you will connect again. Project data still requires your access code.</p>
+      <p class="ai-byo-sec">Your key stays in this browser for this session only — never stored on our servers, never in exports, cleared when you close the tab.</p>
     </div>
     <div class="mbody ai-body">
       <!-- AI-WINDOW-LAYOUT-SCROLL-AND-INPUT-BUG-DIRECTIVE DIR-1: Chat/Presets
@@ -892,7 +905,7 @@
       <div class="ai-trace" id="ai-trace"></div>
     </div>
     <div class="mf ai-inputbar">
-      <textarea id="ai-q" class="ai-q" rows="1" placeholder="Ask anything about this project…  (Enter to send · Shift+Enter for a new line)"></textarea>
+      <textarea id="ai-q" class="ai-q" rows="1" placeholder="Ask anything about this project…" title="Enter to send · Shift+Enter for a new line"></textarea>
       <span class="ai-conn-hint is-hide" id="ai-conn-hint" aria-live="polite"></span>
       <button class="ai-send" id="ai-send" data-action="aiRun" title="Send"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-zap"></use></svg> Send</button>
     </div>
@@ -988,6 +1001,10 @@
     <!-- GOOGLE-DRIVE-BACKUP: optional Drive backup/restore controls — never
          gating. Rendered by js/mmgr-google-auth.js into this slot. -->
     <div id="drive-section"></div>
+    <!-- CLOUD-BACKEND-ARCHITECTURE-PLAN Phase 1: optional Cloud Backup
+         (D1 + R2 owner-code storage) — never gating. Rendered by
+         js/mmgr-cloud.js into this slot. -->
+    <div id="cloud-section"></div>
     <!-- Phase 2: client feature flags — all default on; off hides the optional UI -->
     <div class="sr-hint">Feature flags — switch a module off to hide it from the workspace. All default on.</div>
     <!-- MERGED-AI-CONTROL (audit 1.2): this switch is now the SINGLE AI on/off
@@ -1214,6 +1231,7 @@
   <script src="js/mmgr-glass.js"></script>
   <script src="js/mmgr-sync.js"></script>
   <script src="js/mmgr-google-auth.js"></script>
+  <script src="js/mmgr-cloud.js"></script>
   <script>
 /* Deploy guard: every icon in this app is a <use href="css/mmgr-icons.svg#...">.
    A missing sprite on the live host makes icons vanish silently — surface it

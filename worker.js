@@ -56,9 +56,9 @@ const INLINE_SCRIPT_HASHES = [
   "'sha256-gCwlAVKUNamFRjZeFSwcBd1zxQs+/mZ2GoLF8lqT/II='", // project.html (early-apply theme snippet)
   "'sha256-o+0No2XpbES4E5QJh31mY9JsJFqSmE+B4x+z1fNPjVc='", // project.html
   "'sha256-gCwlAVKUNamFRjZeFSwcBd1zxQs+/mZ2GoLF8lqT/II='", // app.html (early-apply theme snippet)
-  "'sha256-bIpkTV/ycCeAgh6/fTLEWq8ZqmmgJyozAOkOlIjCEkQ='", // app.html
+  "'sha256-gh1pJ1rSyd7LP4eITg17YwZIFfNkKQgLCGxUMAf1tkc='", // app.html
   "'sha256-qbHZHLyhdEDRwWrA8/I8ty4xIjUv+L/+Y6/0cIXdkJo='", // admin.html (early-apply theme snippet)
-  "'sha256-Wfwsw0xQ+akqCt/kDA9FXFLTsnKjJMbDrDO9+HGpqo8='", // admin.html
+  "'sha256-zTSNRzMhnvwuiiAKdVsLTpLHaN9XACR8m4E6jrA8VU0='", // admin.html
   "'sha256-Oa7ON+9A164SSXhnxu08mFn0V9Tj2SlZ2SzFXFoqKNE='", // dashboard.html
   "'sha256-DRiA9m7qJLb4z1QyfjbEUFyubzWHRCl2Cgf+YJkjyi8='", // seed-test.html
   "'sha256-l7T1LLezhae1ZGfmUGxTadrqmveWG2jA4nLGwRkmB3k='", // mymanager-field-guide.html
@@ -442,9 +442,877 @@ async function readSession(request, env) {
   return payload;
 }
 
+/* ============================================================
+   CLOUD-BACKEND-ARCHITECTURE-PLAN Phase 1 — /api/cloud/*
+   ------------------------------------------------------------
+   D1 + R2 cloud project storage. OPT-IN per project: a local-only
+   project never touches these routes (the app's offline-first
+   behavior is unchanged). One D1 row per project:
+
+     - project_id: the sanitized LOCAL project id (same id on every
+       device) — the natural key for "my project lives in the cloud".
+     - owner_code: generated here, hashed (PBKDF2-SHA256, per-project
+       random salt) and NEVER stored or logged in plaintext. The
+       plaintext is returned exactly once, at create/recover time.
+     - google_sub: linked when the create request carries a valid
+       mmgr_session cookie (the owner's Google account). Owner-code
+       recovery is gated on this: only the linked Google account can
+       reissue a lost code (Garfield's decision, plan §9).
+     - latest_r2_key: D1 rows reference the R2 object; the actual
+       state JSON blob lives in R2 (plan §2).
+
+   Existence is not leaked: unknown project id, wrong owner code,
+   missing code, and unlinked recovery all return the SAME generic
+   403 (cloudForbidden). An attacker cannot distinguish "no such
+   project" from "bad code" (user's check 5).
+
+   Session model reuses GOOGLE-OPERATOR-IDENTITY-v1: the HttpOnly
+   mmgr_session cookie is the only proof of Google identity; the
+   frontend never ships the sub claim itself.
+   ============================================================ */
+const CLOUD_CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no 0/O/1/I/L
+const CLOUD_PBKDF2_ITERS = 100000;
+const CLOUD_BODY_LIMIT_BYTES = 8388608; // 8 MB — state can include voice/claim data
+
+// 16 chars from a 32-char unambiguous alphabet -> ~80 bits of entropy,
+// formatted XXXX-XXXX-XXXX-XXXX. crypto.getRandomValues, never Math.random.
+function randomOwnerCode() {
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  let code = '';
+  for (let i = 0; i < bytes.length; i++) code += CLOUD_CODE_ALPHABET[bytes[i] % 32];
+  return code.slice(0, 4) + '-' + code.slice(4, 8) + '-' + code.slice(8, 12) + '-' + code.slice(12, 16);
+}
+
+// The local project id becomes the cloud row's primary key. Only safe slug
+// chars survive; anything else is rejected (never stored).
+function sanitizeProjectId(raw) {
+  const s = String(raw || '').trim();
+  return /^[A-Za-z0-9_-]{1,64}$/.test(s) ? s : null;
+}
+
+// Fresh 16-byte salt per project (hex). Stored next to the hash.
+function randomSaltHex() {
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  let hex = '';
+  for (let i = 0; i < bytes.length; i++) hex += bytes[i].toString(16).padStart(2, '0');
+  return hex;
+}
+
+// PBKDF2-SHA256(salt, code) -> 32-byte hex. The code itself is never
+// retained; only this derived value is persisted.
+async function hashOwnerCode(code, saltHex) {
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(code), 'PBKDF2', false, ['deriveBits']);
+  const bits = await crypto.subtle.deriveBits(
+    { name: 'PBKDF2', salt: new TextEncoder().encode(saltHex), iterations: CLOUD_PBKDF2_ITERS, hash: 'SHA-256' },
+    key, 256
+  );
+  const bytes = new Uint8Array(bits);
+  let hex = '';
+  for (let i = 0; i < bytes.length; i++) hex += bytes[i].toString(16).padStart(2, '0');
+  return hex;
+}
+
+// Constant-time comparison (same XOR-accumulate pattern as readSession).
+function codesEqual(a, b) {
+  if (typeof a !== 'string' || typeof b !== 'string' || a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
+
+// TIMING-SIDE-CHANNEL GUARD (review finding): the unknown-project path must
+// cost the SAME wall-clock as the known-project-wrong-code path. PBKDF2 at
+// 100k iterations takes ~5-50ms; an unknown id that returns instantly would
+// let an attacker distinguish "no such project" from "bad code" by timing
+// alone — the exact leak check 5 forbids. So every "no row" branch runs one
+// dummy PBKDF2 with a fixed code/salt before returning the generic 403.
+const CLOUD_DUMMY_CODE = 'ZZZZ-ZZZZ-ZZZZ-ZZZZ';
+const CLOUD_DUMMY_SALT = '00000000000000000000000000000000';
+// REVIEW FIX (timing existence leak): NEVER cache the dummy hash. A cached
+// promise made repeat unknown-project probes resolve in ~0ms while a
+// known-project wrong-code probe pays a real 100k-iteration PBKDF2 (~5-50ms)
+// — wall-clock then leaks project existence (check 5). Uncached, every
+// failure probe burns the same real PBKDF2 work as the honest path.
+async function cloudDummyHash() {
+  return hashOwnerCode(CLOUD_DUMMY_CODE, CLOUD_DUMMY_SALT);
+}
+// Also drain a fixed deadline on the fast paths so even the dummy-hash
+// shortcut cannot be profiled to sub-millisecond precision.
+const CLOUD_TIMING_FLOOR_MS = 15;
+function cloudTimingSink() {
+  return new Promise(function(resolve) {
+    setTimeout(resolve, CLOUD_TIMING_FLOOR_MS);
+  });
+}
+
+// The ONE 403 shape for every auth failure on cloud routes — unknown
+// project, wrong code, missing code, and unlinked recovery are
+// indistinguishable on purpose (no existence leak).
+function cloudForbidden() {
+  return json({ ok: false, error: 'invalid project or owner code' }, 403);
+}
+
+// Size-capped body reader (mirror of readAiBody with a larger budget).
+async function readCloudBody(request) {
+  const cl = Number(request.headers.get('Content-Length') || 0);
+  if (cl > CLOUD_BODY_LIMIT_BYTES) return { tooLarge: true };
+  if (!request.body) {
+    try { return { body: await request.json() }; } catch (e) { return { bad: true }; }
+  }
+  const reader = request.body.getReader();
+  const chunks = [];
+  let total = 0;
+  let done = false;
+  while (!done) {
+    const res = await reader.read();
+    done = res.done;
+    if (res.value) {
+      total += res.value.byteLength;
+      if (total > CLOUD_BODY_LIMIT_BYTES) return { tooLarge: true };
+      chunks.push(res.value);
+    }
+  }
+  const bytes = new Uint8Array(total);
+  let off = 0;
+  for (const c of chunks) { bytes.set(c, off); off += c.byteLength; }
+  const text = new TextDecoder().decode(bytes);
+  try { return { body: JSON.parse(text) }; } catch (e) { return { bad: true }; }
+}
+
+
+/* ============================================================
+   CLOUD-BACKEND-ARCHITECTURE-PLAN Phase 2 + 3 — editor codes,
+   server-side section scoping, changelog with revert, and admin
+   cloud visibility.
+   ------------------------------------------------------------
+   Phase 2 (editor codes):
+     - CLOUD_SECTIONS is the single source of truth for what a
+       section may WRITE (top-level state keys -> section).
+     - Editor codes are hashed exactly like owner codes (per-code
+       random salt + PBKDF2-SHA256, constant-time compare, never
+       stored or logged in plaintext) and carry a scope: the owner
+       toggles which sections the code can touch.
+     - SCOPE IS ENFORCED HERE, SERVER-SIDE, on every editor save:
+       the Worker merges ONLY the granted sections' state keys
+       into the stored blob and carries everything else over from
+       the previous snapshot. An editor (or an attacker holding a
+       compromised editor code) physically cannot write outside
+       the grant — the UI greying-out is UX only; this is the
+       control. Out-of-grant differences are reported back as
+       `blocked` so the UI can warn honestly.
+   Phase 3 (changelog):
+     - Every save (owner or editor) diffs the previous blob against
+       the new one at LEAF granularity for the content keys and
+       stores field-level before/after diffs (plan §5 option A).
+       When a save touches more than CLOUD_MAX_LEAF_DIFFS leaves
+       (bulk import / paste / AI generation), the pre-save blob is
+       snapshotted to R2 and referenced instead (option B).
+     - Revert is owner-only and never erases history: it applies
+       the recorded before-values (or restores the snapshot) and
+       logs a NEW 'revert' changelog row describing exactly what
+       was changed back. A revert of a revert restores the
+       pre-revert state — every entry is itself reversible.
+   Admin visibility:
+     - GET /api/cloud/admin/projects lists cloud-linked projects
+       for the operator, gated by the ADMIN_CODE Wrangler secret
+       (X-Admin-Code header). When ADMIN_CODE is not configured the
+       endpoint answers 503 and leaks nothing. Owner-code reissue
+       on the admin page reuses /recover, which already enforces
+       plan §9: the requester's Google sub must match the record
+       on file.
+   ============================================================ */
+
+// ---- canonical writable sections (Phase 2 scope vocabulary) ----
+// One top-level state key belongs to EXACTLY one section. View-only
+// panels (dash/def/kan/gantt/claim) read derived data and are not
+// independently writable, so they are not scoping targets.
+const CLOUD_SECTIONS = {
+  charter: { label: 'Charter', keys: ['projectName', 'methodology', 'methodologyLocked', 'charter'] },
+  wbs:     { label: 'WBS / Tasks', keys: ['tasks'] },
+  res:     { label: 'Resources', keys: ['resources'] },
+  bud:     { label: 'Budget', keys: ['budgetLines', 'budgetEnvelope', 'spendLog', 'nspid'] },
+  stk:     { label: 'Stakeholders', keys: ['stakeholders'] },
+  chg:     { label: 'Changes', keys: ['changes'] },
+  log:     { label: 'Decision Log', keys: ['logEntries'] },
+  risk:    { label: 'Risk / Issues', keys: ['risks', 'issues'] },
+  close:   { label: 'Closure', keys: ['closure'] },
+  raci:    { label: 'RACI', keys: ['raci'] },
+  comms:   { label: 'Comms Log', keys: ['commsEntries'] },
+  docs:    { label: 'Documents', keys: ['documents'] },
+  dmaic:   { label: 'DMAIC', keys: ['dmaic'] },
+  meet:    { label: 'Meetings', keys: ['meetings', 'meetingPromises', 'activeMeeting', 'nmeetid', 'sentimentHistory'] }
+};
+const CLOUD_KEY_TO_SECTION = {};
+const CLOUD_CONTENT_KEYS = [];
+Object.keys(CLOUD_SECTIONS).forEach(function(sec) {
+  CLOUD_SECTIONS[sec].keys.forEach(function(k) {
+    CLOUD_KEY_TO_SECTION[k] = sec;
+    CLOUD_CONTENT_KEYS.push(k);
+  });
+});
+const CLOUD_CONTENT_KEY_SET = {};
+CLOUD_CONTENT_KEYS.forEach(function(k) { CLOUD_CONTENT_KEY_SET[k] = 1; });
+
+// Changelog leaf-diff cap: a save touching more leaves than this is a
+// bulk operation and falls back to the snapshot path (plan §5 option B).
+const CLOUD_MAX_LEAF_DIFFS = 40;
+
+function cloudDeepEqual(a, b) {
+  try { return JSON.stringify(a) === JSON.stringify(b); } catch (e) { return a === b; }
+}
+
+// Read the latest state blob for a project (null when none exists).
+async function cloudReadState(env, key) {
+  if (!key) return null;
+  const obj = await env.R2.get(key);
+  if (!obj) return null;
+  const text = await obj.text();
+  try { return JSON.parse(text); } catch (e) { return null; }
+}
+
+// ---- owner identity: owner code OR the linked Google session ----
+// Mirrors the timing discipline of the Phase 1 paths: unknown project,
+// wrong code, missing code, unlinked session all burn the same
+// dummy-PBKDF2 + timing floor before returning null (no existence leak).
+async function cloudAuthOwnerByCode(request, env, projectId, code) {
+  if (!code) { await Promise.all([cloudDummyHash(), cloudTimingSink()]); return null; }
+  const row = await env.DB.prepare('SELECT owner_code_salt, owner_code_hash, google_sub, google_name FROM cloud_projects WHERE project_id = ?').bind(projectId).first();
+  if (!row) { await Promise.all([cloudDummyHash(), cloudTimingSink()]); return null; }
+  const hash = await hashOwnerCode(code, row.owner_code_salt);
+  if (!codesEqual(hash, row.owner_code_hash)) { await cloudTimingSink(); return null; }
+  return { role: 'owner', label: row.google_name || 'Owner', row: row };
+}
+async function cloudAuthOwnerSession(request, env, projectId) {
+  const session = await readSession(request, env);
+  if (!session || !session.sub) { await cloudTimingSink(); return null; }
+  const row = await env.DB.prepare('SELECT google_sub, google_name FROM cloud_projects WHERE project_id = ?').bind(projectId).first();
+  if (!row || !row.google_sub || row.google_sub !== session.sub) { await cloudTimingSink(); return null; }
+  return { role: 'owner', label: row.google_name || session.name || 'Owner', row: row };
+}
+async function cloudAuthOwnerEither(request, env, projectId) {
+  const code = String(request.headers.get('X-Owner-Code') || '').trim();
+  if (code) {
+    const a = await cloudAuthOwnerByCode(request, env, projectId, code);
+    if (a) return a;
+  }
+  return cloudAuthOwnerSession(request, env, projectId);
+}
+
+// ---- editor identity: active editor code for this project ----
+// Every failure path (missing code / no row / revoked / wrong code)
+// returns null after the same dummy-PBKDF2 + timing floor as owner.
+// REVIEW FIX (timing side-channel): the number of PBKDF2 ops must not depend
+// on how many active editor codes exist — that count would be observable in
+// response time and would leak project existence (check 5). Always burn
+// exactly max(active.length, CLOUD_EDITOR_AUTH_SLOTS) hashes: real row salts
+// where rows exist, the dummy salt otherwise (dummy is itself a real hash).
+// The submitted code is compared at every real slot, so a code issued for any
+// active row authenticates; an attacker probing with a wrong code cannot
+// distinguish unknown/1-code/N-code projects by timing.
+const CLOUD_EDITOR_AUTH_SLOTS = 4;
+async function cloudAuthEditor(request, env, projectId, code) {
+  if (!code) { await Promise.all([cloudDummyHash(), cloudTimingSink()]); return null; }
+  const rows = await env.DB.prepare('SELECT id, code_salt, code_hash, label, scope FROM cloud_editor_codes WHERE project_id = ? AND active = 1').bind(projectId).all();
+  const active = (rows && rows.results) || [];
+  const slots = Math.max(active.length, CLOUD_EDITOR_AUTH_SLOTS);
+  for (let i = 0; i < slots; i++) {
+    const row = active[i];
+    const salt = row ? row.code_salt : CLOUD_DUMMY_SALT;
+    const hash = await hashOwnerCode(code, salt);
+    if (row && codesEqual(hash, row.code_hash)) {
+      let scope = [];
+      try { const p = JSON.parse(row.scope); if (Array.isArray(p)) scope = p.filter(function(x) { return !!CLOUD_SECTIONS[x]; }); } catch (e) { scope = []; }
+      return { role: 'editor', editorId: row.id, label: row.label || 'Editor', scope: scope, row: row };
+    }
+  }
+  await cloudTimingSink();
+  return null;
+}
+
+// ---- SERVER-SIDE SCOPE ENFORCEMENT (Phase 2, plan §3) -----------
+// An editor's save is merged, never trusted wholesale: the new blob is
+// the previous blob with ONLY the granted sections' state keys replaced
+// by the submission. Anything outside the grant is carried over from the
+// previous blob (physically impossible to change), and content-key
+// differences outside the grant are reported as `blocked`. Metadata
+// (updatedAt/fieldTs/...) is server-managed, never taken from an editor
+// submission. fieldTs is kept consistent so the app's per-field
+// last-write-wins merge sees the editor's applied keys as fresh.
+function cloudScopeMerge(prev, submitted, scope) {
+  const base = prev && typeof prev === 'object' && !Array.isArray(prev)
+    ? JSON.parse(JSON.stringify(prev)) : {};
+  const writable = {};
+  scope.forEach(function(sec) {
+    (CLOUD_SECTIONS[sec] || { keys: [] }).keys.forEach(function(k) { writable[k] = 1; });
+  });
+  const applied = []; const blocked = [];
+  Object.keys(submitted || {}).forEach(function(k) {
+    if (writable[k]) {
+      base[k] = submitted[k];
+      if (prev === null || prev === undefined || !cloudDeepEqual(prev[k], submitted[k])) {
+        const sec = CLOUD_KEY_TO_SECTION[k];
+        if (sec && applied.indexOf(sec) === -1) applied.push(sec);
+      }
+    } else if (CLOUD_CONTENT_KEY_SET[k]) {
+      const differs = (prev === null || prev === undefined)
+        ? submitted[k] !== undefined
+        : !cloudDeepEqual(prev[k], submitted[k]);
+      if (differs) {
+        const sec = CLOUD_KEY_TO_SECTION[k];
+        if (sec && blocked.indexOf(sec) === -1) blocked.push(sec);
+      }
+    }
+    // non-content keys (fieldTs, updatedAt, config, flags, ...) are
+    // silently ignored — they never flow out of an editor's grant.
+  });
+  // Server-managed metadata: fieldTs carries over, and applied keys get a
+  // fresh stamp so the blob's timestamp map matches what it contains.
+  if (prev && prev.fieldTs && typeof prev.fieldTs === 'object' && !Array.isArray(prev.fieldTs)) {
+    base.fieldTs = JSON.parse(JSON.stringify(prev.fieldTs));
+  }
+  const now = new Date().toISOString();
+  applied.forEach(function(sec) {
+    (CLOUD_SECTIONS[sec] || { keys: [] }).keys.forEach(function(k) {
+      if (base.fieldTs && typeof base.fieldTs === 'object') base.fieldTs[k] = now;
+    });
+  });
+  delete base.updatedAt; // caller stamps a fresh updatedAt
+  return { next: base, applied: applied, blocked: blocked };
+}
+
+// ---- Phase 3 changelog: leaf-level diffing + snapshot fallback ----
+function cloudWalkLeaves(path, v, out) {
+  if (v === null || typeof v !== 'object') { out[path] = v; return; }
+  if (Array.isArray(v)) {
+    if (v.length === 0) { out[path] = []; return; }
+    v.forEach(function(item, i) { cloudWalkLeaves(path + '[' + i + ']', item, out); });
+    return;
+  }
+  const keys = Object.keys(v);
+  if (keys.length === 0) { out[path] = {}; return; }
+  keys.forEach(function(k) { cloudWalkLeaves(path + '.' + k, v[k], out); });
+}
+function cloudFlattenLeaves(obj, out) {
+  CLOUD_CONTENT_KEYS.forEach(function(k) { cloudWalkLeaves(k, obj ? obj[k] : undefined, out); });
+}
+function cloudDiffState(prev, next) {
+  if (!prev || typeof prev !== 'object') return null; // first save — nothing to diff
+  const before = {}; const after = {};
+  cloudFlattenLeaves(prev, before);
+  cloudFlattenLeaves(next, after);
+  const paths = Object.keys(before);
+  Object.keys(after).forEach(function(p) { if (paths.indexOf(p) === -1) paths.push(p); });
+  const diffs = [];
+  for (let i = 0; i < paths.length; i++) {
+    const p = paths[i];
+    const a = before[p]; const b = after[p];
+    if (a === b || cloudDeepEqual(a, b)) continue;
+    diffs.push({
+      path: p,
+      before: a === undefined ? null : a,
+      beforeAbsent: a === undefined,
+      after: b === undefined ? null : b,
+      afterAbsent: b === undefined
+    });
+  }
+  return diffs;
+}
+function cloudSectionOfDiffs(diffs) {
+  let sec = null;
+  for (let i = 0; i < diffs.length; i++) {
+    const s = CLOUD_KEY_TO_SECTION[String(diffs[i].path).split(/[.[]/)[0]];
+    if (s === undefined) continue;
+    if (sec === null) sec = s;
+    else if (sec !== s) return 'multiple';
+  }
+  return sec;
+}
+
+// Record one changelog row for a save. Returns {id,type} or null when
+// nothing changed / first save. Field-level 'edit' for <= cap leaves,
+// snapshot 'bulk' above it.
+async function cloudLogSave(env, projectId, prev, next, actor) {
+  const diffs = cloudDiffState(prev, next);
+  if (diffs === null || diffs.length === 0) return null;
+  const now = new Date().toISOString();
+  if (diffs.length > CLOUD_MAX_LEAF_DIFFS) {
+    const snapKey = 'projects/' + projectId + '/changelog/' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8) + '.json';
+    await env.R2.put(snapKey, JSON.stringify(prev), { httpMetadata: { contentType: 'application/json' } });
+    const res = await env.DB.prepare(
+      'INSERT INTO cloud_changelog (project_id, entry_type, actor_type, actor_label, section, diffs_json, snapshot_key, created_at) VALUES (?,?,?,?,?,?,?,?)'
+    ).bind(projectId, 'bulk', actor.type, actor.label, null, null, snapKey, now).run();
+    return { id: res.meta.last_row_id, type: 'bulk' };
+  }
+  const sec = cloudSectionOfDiffs(diffs);
+  const res = await env.DB.prepare(
+    'INSERT INTO cloud_changelog (project_id, entry_type, actor_type, actor_label, section, diffs_json, snapshot_key, created_at) VALUES (?,?,?,?,?,?,?,?)'
+  ).bind(projectId, 'edit', actor.type, actor.label, sec, JSON.stringify(diffs), null, now).run();
+  return { id: res.meta.last_row_id, type: 'edit' };
+}
+
+// ---- state-path utilities (revert) ------------------------------
+function cloudPathSegments(p) {
+  // Tokenizes 'a.b[2].c' into [{key:'a'},{key:'b'},{idx:2},{key:'c'}].
+  // The '.' separator must be SKIPPED, never treated as an empty key —
+  // the original parser looped forever on any dotted path (found by
+  // qa-cloud-phase2 P3.2c: the revert request hung and the worker wedged).
+  const segs = []; const s = String(p); let i = 0;
+  while (i < s.length) {
+    if (s[i] === '[') {
+      const j = s.indexOf(']', i);
+      if (j < 0) break;
+      segs.push({ idx: Number(s.slice(i + 1, j)) });
+      i = j + 1;
+    } else if (s[i] === '.') {
+      i++; // skip separator
+    } else {
+      let j = s.indexOf('.', i); let k = s.indexOf('[', i);
+      let end = s.length;
+      if (j >= 0 && j < end) end = j;
+      if (k >= 0 && k < end) end = k;
+      segs.push({ key: s.slice(i, end) });
+      i = end;
+    }
+  }
+  return segs;
+}
+function cloudPathGet(obj, p) {
+  let cur = obj;
+  const segs = cloudPathSegments(p);
+  for (let i = 0; i < segs.length; i++) {
+    if (cur === null || cur === undefined) return undefined;
+    const seg = segs[i];
+    cur = seg.idx !== undefined ? cur[seg.idx] : cur[seg.key];
+  }
+  return cur;
+}
+// REVIEW FIX: never fabricate missing intermediate containers. Reverting a
+// leaf whose parent element was deleted (e.g. tasks[0].name after tasks[0]
+// was removed) must not resurrect a partial shell ({name:...} with no
+// id/status/dates). Returns true only when the write actually landed.
+function cloudPathSet(obj, p, val) {
+  const segs = cloudPathSegments(p);
+  let cur = obj;
+  for (let i = 0; i < segs.length - 1; i++) {
+    if (cur === null || cur === undefined) return false;
+    const seg = segs[i];
+    const next = segs[i + 1];
+    if (seg.idx !== undefined) {
+      if (!Array.isArray(cur)) return false;
+      if (cur[seg.idx] === null || cur[seg.idx] === undefined) return false;
+      cur = cur[seg.idx];
+    } else {
+      if (cur[seg.key] === null || cur[seg.key] === undefined) return false;
+      cur = cur[seg.key];
+    }
+  }
+  const last = segs[segs.length - 1];
+  if (last.idx !== undefined) {
+    if (!Array.isArray(cur)) return false;
+    cur[last.idx] = val;
+  } else {
+    if (cur === null || typeof cur !== 'object' || Array.isArray(cur)) return false;
+    cur[last.key] = val;
+  }
+  return true;
+}
+function cloudPathDelete(obj, p) {
+  const segs = cloudPathSegments(p);
+  let cur = obj;
+  for (let i = 0; i < segs.length - 1; i++) {
+    if (cur === null || cur === undefined) return;
+    const seg = segs[i];
+    cur = seg.idx !== undefined ? cur[seg.idx] : cur[seg.key];
+  }
+  const last = segs[segs.length - 1];
+  if (cur === null || cur === undefined) return;
+  if (last.idx !== undefined && Array.isArray(cur)) cur.splice(last.idx, 1);
+  else if (last.key !== undefined && typeof cur === 'object' && !Array.isArray(cur)) delete cur[last.key];
+}
+
+// ---- editor code management (owner-only) -------------------------
+// GET /api/cloud/sections — canonical section vocabulary (public).
+function handleCloudSections() {
+  const sections = Object.keys(CLOUD_SECTIONS).map(function(k) {
+    return { key: k, label: CLOUD_SECTIONS[k].label, keys: CLOUD_SECTIONS[k].keys.slice() };
+  });
+  return json({ ok: true, sections: sections });
+}
+
+// POST /api/cloud/projects/:id/editors  { label, scope: [section...] }
+// Owner-only (owner code or linked session). Generates the editor code,
+// returns it EXACTLY ONCE, stores only salt+hash.
+async function handleCloudEditorCreate(request, env, projectId) {
+  const auth = await cloudAuthOwnerEither(request, env, projectId);
+  if (!auth) return cloudForbidden();
+  const read = await readCloudBody(request);
+  if (read.tooLarge) return json({ ok: false, error: 'body too large' }, 413);
+  if (read.bad || !read.body || typeof read.body !== 'object') return json({ ok: false, error: 'bad request' }, 400);
+  const label = typeof read.body.label === 'string' ? read.body.label.trim().slice(0, 60) : '';
+  const scope = Array.isArray(read.body.scope)
+    ? read.body.scope.filter(function(s) { return typeof s === 'string' && !!CLOUD_SECTIONS[s]; })
+    : [];
+  const seen = {}; const unique = scope.filter(function(s) { if (seen[s]) return false; seen[s] = 1; return true; });
+  if (unique.length === 0) return json({ ok: false, error: 'at least one section is required' }, 400);
+  const salt = randomSaltHex();
+  const code = randomOwnerCode();
+  const hash = await hashOwnerCode(code, salt);
+  const now = new Date().toISOString();
+  const res = await env.DB.prepare(
+    'INSERT INTO cloud_editor_codes (project_id, label, scope, code_salt, code_hash, active, created_at) VALUES (?,?,?,?,?,1,?)'
+  ).bind(projectId, label, JSON.stringify(unique), salt, hash, now).run();
+  return json({ ok: true, editorCode: code, editorId: res.meta.last_row_id, label: label, scope: unique, createdAt: now });
+}
+
+// GET /api/cloud/projects/:id/editors — owner-only list (never codes/hashes).
+async function handleCloudEditorList(request, env, projectId) {
+  const auth = await cloudAuthOwnerEither(request, env, projectId);
+  if (!auth) return cloudForbidden();
+  const rows = await env.DB.prepare('SELECT id, label, scope, active, created_at FROM cloud_editor_codes WHERE project_id = ? ORDER BY id DESC').bind(projectId).all();
+  const editors = (rows.results || []).map(function(r) {
+    let scope = [];
+    try { const p = JSON.parse(r.scope); if (Array.isArray(p)) scope = p; } catch (e) { scope = []; }
+    return { id: r.id, label: r.label, scope: scope, active: r.active === 1, createdAt: r.created_at };
+  });
+  return json({ ok: true, editors: editors });
+}
+
+// DELETE /api/cloud/projects/:id/editors/:editorId — owner-only revoke.
+async function handleCloudEditorRevoke(request, env, projectId, editorId) {
+  const auth = await cloudAuthOwnerEither(request, env, projectId);
+  if (!auth) return cloudForbidden();
+  const res = await env.DB.prepare('DELETE FROM cloud_editor_codes WHERE id = ? AND project_id = ?').bind(editorId, projectId).run();
+  if (!res.meta.changes) return json({ ok: false, error: 'editor code not found' }, 404);
+  return json({ ok: true, revokedEditorId: editorId });
+}
+
+// ---- changelog (Phase 3) -----------------------------------------
+// GET /api/cloud/projects/:id/changelog — owner-only (code or session).
+async function handleCloudChangelogList(request, env, projectId) {
+  const auth = await cloudAuthOwnerEither(request, env, projectId);
+  if (!auth) return cloudForbidden();
+  const rows = await env.DB.prepare('SELECT id, entry_type, actor_type, actor_label, section, diffs_json, snapshot_key, created_at FROM cloud_changelog WHERE project_id = ? ORDER BY id DESC LIMIT 100').bind(projectId).all();
+  const entries = (rows.results || []).map(function(r) {
+    let diffs = null;
+    try { if (r.diffs_json) diffs = JSON.parse(r.diffs_json); } catch (e) { diffs = null; }
+    return { id: r.id, type: r.entry_type, actorType: r.actor_type, actorLabel: r.actor_label, section: r.section, diffs: diffs, hasSnapshot: !!r.snapshot_key, createdAt: r.created_at };
+  });
+  return json({ ok: true, entries: entries });
+}
+
+// POST /api/cloud/projects/:id/changelog/:entryId/revert — owner-only.
+async function handleCloudChangelogRevert(request, env, projectId, entryId) {
+  const auth = await cloudAuthOwnerEither(request, env, projectId);
+  if (!auth) return cloudForbidden();
+  const entry = await env.DB.prepare('SELECT id, entry_type, section, diffs_json, snapshot_key FROM cloud_changelog WHERE id = ? AND project_id = ?').bind(entryId, projectId).first();
+  if (!entry) return json({ ok: false, error: 'entry not found' }, 404);
+  const key = 'projects/' + projectId + '/latest.json';
+  const cur = await cloudReadState(env, key);
+  if (!cur) return json({ ok: false, error: 'no snapshot to revert against' }, 400);
+  const now = new Date().toISOString();
+  let next; let logDiffs = null; let logSnapKey = null;
+  if (entry.entry_type === 'edit' || (entry.entry_type === 'revert' && !entry.snapshot_key)) {
+    let diffs = [];
+    try { if (entry.diffs_json) diffs = JSON.parse(entry.diffs_json); } catch (e) { diffs = []; }
+    const pre = JSON.parse(JSON.stringify(cur));
+    const revDiffs = [];
+    diffs.forEach(function(d) {
+      const curVal = cloudPathGet(pre, d.path);
+      const applied = d.beforeAbsent ? (cloudPathDelete(pre, d.path), true) : cloudPathSet(pre, d.path, d.before);
+      // REVIEW FIX: only record diffs that actually applied — a path whose
+      // container vanished (element deleted by a later change) is skipped
+      // rather than fabricated, and must not be claimed in the log entry.
+      if (!applied) return;
+      revDiffs.push({
+        path: d.path,
+        before: curVal === undefined ? null : curVal,
+        beforeAbsent: curVal === undefined,
+        after: d.before,
+        afterAbsent: !!d.beforeAbsent
+      });
+    });
+    next = pre;
+    logDiffs = revDiffs;
+  } else if (entry.entry_type === 'bulk' || (entry.entry_type === 'revert' && entry.snapshot_key)) {
+    if (!entry.snapshot_key) return json({ ok: false, error: 'entry has no snapshot' }, 400);
+    const snap = await env.R2.get(entry.snapshot_key);
+    if (!snap) return json({ ok: false, error: 'snapshot missing' }, 410);
+    let snapState = null;
+    try { snapState = JSON.parse(await snap.text()); } catch (e) { snapState = null; }
+    if (!snapState) return json({ ok: false, error: 'snapshot corrupt' }, 410);
+    // Keep the CURRENT blob as a snapshot so this revert is itself reversible.
+    logSnapKey = 'projects/' + projectId + '/changelog/' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8) + '.json';
+    await env.R2.put(logSnapKey, JSON.stringify(cur), { httpMetadata: { contentType: 'application/json' } });
+    next = snapState;
+  } else {
+    return json({ ok: false, error: 'unsupported entry type' }, 400);
+  }
+  next.updatedAt = now;
+  await env.R2.put(key, JSON.stringify(next), { httpMetadata: { contentType: 'application/json' } });
+  await env.DB.prepare('UPDATE cloud_projects SET latest_r2_key = ?, updated_at = ? WHERE project_id = ?').bind(key, now, projectId).run();
+  const res = await env.DB.prepare(
+    'INSERT INTO cloud_changelog (project_id, entry_type, actor_type, actor_label, section, diffs_json, snapshot_key, created_at) VALUES (?,?,?,?,?,?,?,?)'
+  ).bind(projectId, 'revert', 'owner', auth.label, entry.section || null, logDiffs ? JSON.stringify(logDiffs) : null, logSnapKey, now).run();
+  return json({ ok: true, revertedEntryId: entry.id, revertEntryId: res.meta.last_row_id, savedAt: now });
+}
+
+// ---- admin cloud visibility (operator-gated listing) --------------
+async function cloudAdminAuth(request, env) {
+  const expected = env && typeof env.ADMIN_CODE === 'string' ? env.ADMIN_CODE.trim() : '';
+  if (!expected) return { disabled: true };
+  const code = String(request.headers.get('X-Admin-Code') || '').trim();
+  if (!code || !codesEqual(code, expected)) return null;
+  return { ok: true };
+}
+async function handleAdminCloudList(request, env) {
+  const auth = await cloudAdminAuth(request, env);
+  if (auth && auth.disabled) return json({ ok: false, error: 'admin API not configured — set the ADMIN_CODE secret' }, 503);
+  if (!auth) return json({ ok: false, error: 'invalid admin code' }, 403);
+  const rows = await env.DB.prepare('SELECT project_id, owner_label, google_name, latest_r2_key, created_at, updated_at FROM cloud_projects ORDER BY updated_at DESC').all();
+  const projects = (rows.results || []).map(function(r) {
+    return { projectId: r.project_id, label: r.owner_label || null, linkedName: r.google_name || null, hasSnapshot: !!r.latest_r2_key, createdAt: r.created_at, updatedAt: r.updated_at };
+  });
+  return json({ ok: true, projects: projects });
+}
+
+// POST /api/cloud/projects  { projectId, name? }
+// Creates the D1 row, generates the owner code (returned ONCE), links the
+// Google account when a valid session cookie rides along. 409 if the
+// project id is already linked.
+async function handleCloudCreate(request, env) {
+  const read = await readCloudBody(request);
+  if (read.tooLarge) return json({ ok: false, error: 'body too large' }, 413);
+  if (read.bad || !read.body || typeof read.body !== 'object') return json({ ok: false, error: 'bad request' }, 400);
+  const projectId = sanitizeProjectId(read.body.projectId);
+  if (!projectId) return json({ ok: false, error: 'bad project id' }, 400);
+  const name = typeof read.body.name === 'string' ? read.body.name.slice(0, 120) : '';
+  const existing = await env.DB.prepare('SELECT project_id FROM cloud_projects WHERE project_id = ?').bind(projectId).first();
+  if (existing) return json({ ok: false, error: 'project already linked' }, 409);
+  const session = await readSession(request, env);
+  const salt = randomSaltHex();
+  const ownerCode = randomOwnerCode();
+  const hash = await hashOwnerCode(ownerCode, salt);
+  const now = new Date().toISOString();
+  // CREATE-RACE GUARD (review finding): two concurrent creates for the same
+  // id can both pass the SELECT above and then both INSERT — the second
+  // duplicate-key throw would bubble to the outer fetch catch and answer
+  // 404 Not Found instead of the intended 409. Catching the insert and
+  // re-checking turns that race into the same "already linked" 409.
+  try {
+    await env.DB.prepare(
+      'INSERT INTO cloud_projects (project_id, owner_code_salt, owner_code_hash, owner_label, google_sub, google_name, latest_r2_key, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?)'
+    ).bind(projectId, salt, hash, name, session ? session.sub : null, session ? session.name : null, null, now, now).run();
+  } catch (e) {
+    const raced = await env.DB.prepare('SELECT project_id FROM cloud_projects WHERE project_id = ?').bind(projectId).first();
+    if (raced) return json({ ok: false, error: 'project already linked' }, 409);
+    throw e; // genuine DB failure — let the outer guard 404 it
+  }
+  return json({ ok: true, projectId: projectId, ownerCode: ownerCode, linked: !!session });
+}
+
+// SECRET STRIP (review finding): the state blob stored in R2 is access-
+// controlled by the owner code, not encrypted. Mirror the client export
+// convention (mmgr-state.js stripSecrets) so a stale/legacy apiKey riding in
+// state.config.ai can never land in the blob even if the client ever ships
+// one. Pure belt-and-suspenders — the live session vault never writes keys
+// into state today, but the blob should not depend on that invariant.
+function stripStateSecrets(obj) {
+  if (!obj || typeof obj !== 'object') return obj;
+  const cfg = obj.config;
+  if (cfg && typeof cfg === 'object' && !Array.isArray(cfg)) {
+    if (cfg.ai && typeof cfg.ai === 'object' && !Array.isArray(cfg.ai)) {
+      delete cfg.ai.apiKey;
+      delete cfg.ai.azureKey;
+    }
+    if (cfg.api && typeof cfg.api === 'object' && !Array.isArray(cfg.api) && cfg.api.keys && typeof cfg.api.keys === 'object') {
+      delete cfg.api.keys;
+    }
+  }
+  return obj;
+}
+
+// POST /api/cloud/projects/:id/save  { state }  (X-Owner-Code header or
+// body.ownerCode). Verifies the code, writes the state JSON to R2 as
+// projects/{id}/latest.json, points the D1 row at it, bumps updated_at.
+
+// POST /api/cloud/projects/:id/save
+// Auth: X-Owner-Code (owner, full-replace — Phase 1 semantics unchanged)
+//   OR X-Editor-Code (editor, server-side section-scope merge — Phase 2).
+// Body: { state } (+ optional ownerCode/editorCode fallback).
+// On every successful save a changelog row is recorded (Phase 3).
+async function handleCloudSave(request, env, projectId) {
+  const read = await readCloudBody(request);
+  if (read.tooLarge) return json({ ok: false, error: 'body too large' }, 413);
+  if (read.bad || !read.body || typeof read.body !== 'object') return json({ ok: false, error: 'bad request' }, 400);
+  if (read.body.state === undefined || read.body.state === null) return json({ ok: false, error: 'missing state' }, 400);
+  const ownerCode = String(request.headers.get('X-Owner-Code') || '').trim()
+    || (typeof read.body.ownerCode === 'string' ? read.body.ownerCode.trim() : '');
+  const editorCode = String(request.headers.get('X-Editor-Code') || '').trim()
+    || (typeof read.body.editorCode === 'string' ? read.body.editorCode.trim() : '');
+  if (!ownerCode && !editorCode) { await Promise.all([cloudDummyHash(), cloudTimingSink()]); return cloudForbidden(); }
+  const now = new Date().toISOString();
+  const key = 'projects/' + projectId + '/latest.json';
+  const prev = await cloudReadState(env, key);
+  let next; let actor; let scopeReport = null;
+  if (ownerCode) {
+    const a = await cloudAuthOwnerByCode(request, env, projectId, ownerCode);
+    if (!a) return cloudForbidden();
+    actor = { type: 'owner', label: a.label };
+    next = JSON.parse(JSON.stringify(read.body.state));
+    stripStateSecrets(next);
+  } else {
+    const a = await cloudAuthEditor(request, env, projectId, editorCode);
+    if (!a) return cloudForbidden();
+    actor = { type: 'editor', label: a.label };
+    const merged = cloudScopeMerge(prev, read.body.state, a.scope);
+    next = merged.next;
+    scopeReport = { scope: a.scope, editorLabel: a.label, applied: merged.applied, blocked: merged.blocked };
+  }
+  next.updatedAt = now;
+  await env.R2.put(key, JSON.stringify(next), { httpMetadata: { contentType: 'application/json' } });
+  await env.DB.prepare('UPDATE cloud_projects SET latest_r2_key = ?, updated_at = ? WHERE project_id = ?').bind(key, now, projectId).run();
+  const entry = await cloudLogSave(env, projectId, prev, next, actor);
+  const resp = { ok: true, savedAt: now, key: key, actor: actor.type };
+  if (scopeReport) Object.assign(resp, scopeReport);
+  if (entry) resp.changelog = entry;
+  return json(resp);
+}
+
+// POST /api/cloud/projects/:id/load  (X-Owner-Code header or body.ownerCode)
+// Verifies the code, streams the latest R2 snapshot back. A project with no
+// snapshot yet returns state:null (still ok).
+
+// POST /api/cloud/projects/:id/load
+// Auth: X-Owner-Code OR X-Editor-Code (headers only — the client always
+// sends the credential in the header). Owner loads are unchanged. An
+// EDITOR load additionally returns role/editorLabel/scope so the app can
+// grey out (UX) what the server already enforces. No blob yet -> state:null.
+async function handleCloudLoad(request, env, projectId) {
+  const ownerCode = String(request.headers.get('X-Owner-Code') || '').trim();
+  const editorCode = String(request.headers.get('X-Editor-Code') || '').trim();
+  if (!ownerCode && !editorCode) { await Promise.all([cloudDummyHash(), cloudTimingSink()]); return cloudForbidden(); }
+  const row = await env.DB.prepare('SELECT owner_code_salt, owner_code_hash, latest_r2_key, updated_at FROM cloud_projects WHERE project_id = ?').bind(projectId).first();
+  if (!row) { await Promise.all([cloudDummyHash(), cloudTimingSink()]); return cloudForbidden(); }
+  let editorAuth = null;
+  if (ownerCode) {
+    const hash = await hashOwnerCode(ownerCode, row.owner_code_salt);
+    if (!codesEqual(hash, row.owner_code_hash)) { await cloudTimingSink(); return cloudForbidden(); }
+  } else {
+    editorAuth = await cloudAuthEditor(request, env, projectId, editorCode);
+    if (!editorAuth) return cloudForbidden();
+  }
+  if (!row.latest_r2_key) {
+    const base = { ok: true, state: null, savedAt: null };
+    if (editorAuth) { base.role = 'editor'; base.editorLabel = editorAuth.label; base.scope = editorAuth.scope; }
+    return json(base);
+  }
+  const state = await cloudReadState(env, row.latest_r2_key);
+  const resp = { ok: true, state: state, savedAt: row.updated_at };
+  if (editorAuth) { resp.role = 'editor'; resp.editorLabel = editorAuth.label; resp.scope = editorAuth.scope; }
+  return json(resp);
+}
+
+// POST /api/cloud/projects/:id/recover  (session-cookie gated)
+// Owner-code reissue. The requester MUST hold a valid mmgr_session whose
+// sub matches the row's google_sub (Garfield's decision: recovery requires
+// the Google account on file). Unknown id / unlinked / wrong account are
+// all the SAME generic 403. Issues a brand-new code, re-hashes, returns it
+// once.
+async function handleCloudRecover(request, env, projectId) {
+  const session = await readSession(request, env);
+  if (!session || !session.sub) { await cloudTimingSink(); return cloudForbidden(); }
+  const row = await env.DB.prepare('SELECT owner_code_salt, owner_code_hash, google_sub FROM cloud_projects WHERE project_id = ?').bind(projectId).first();
+  if (!row || !row.google_sub || row.google_sub !== session.sub) { await cloudTimingSink(); return cloudForbidden(); }
+  const salt = randomSaltHex();
+  const ownerCode = randomOwnerCode();
+  const hash = await hashOwnerCode(ownerCode, salt);
+  const now = new Date().toISOString();
+  await env.DB.prepare('UPDATE cloud_projects SET owner_code_salt = ?, owner_code_hash = ?, updated_at = ? WHERE project_id = ?')
+    .bind(salt, hash, now, projectId).run();
+  return json({ ok: true, ownerCode: ownerCode, recoveredAt: now });
+}
+
+// GET /api/cloud/projects/:id/meta  (X-Owner-Code header OR linked session)
+// Lightweight status for the UI: is it linked, does a snapshot exist, when
+// was it last updated, what label was stored. Same generic 403 on failure.
+
+// GET /api/cloud/projects/:id/meta  (X-Owner-Code / X-Editor-Code / session)
+// Lightweight status for the UI: linked, snapshot, updated, label. Editor
+// loads additionally return the editor's scope. Same generic 403 on failure.
+async function handleCloudMeta(request, env, projectId) {
+  const code = String(request.headers.get('X-Owner-Code') || '').trim();
+  const ecode = String(request.headers.get('X-Editor-Code') || '').trim();
+  const session = await readSession(request, env);
+  const row = await env.DB.prepare('SELECT owner_code_salt, owner_code_hash, google_sub, google_name, owner_label, latest_r2_key, updated_at FROM cloud_projects WHERE project_id = ?').bind(projectId).first();
+  if (!row) { await Promise.all([cloudDummyHash(), cloudTimingSink()]); return cloudForbidden(); }
+  let authorized = false;
+  let isEditor = false; let editorScope = null; let editorLabel = null;
+  if (code) {
+    const hash = await hashOwnerCode(code, row.owner_code_salt);
+    authorized = codesEqual(hash, row.owner_code_hash);
+  } else if (ecode) {
+    const ea = await cloudAuthEditor(request, env, projectId, ecode);
+    if (ea) { authorized = true; isEditor = true; editorScope = ea.scope; editorLabel = ea.label; }
+  }
+  if (!authorized && session && session.sub && row.google_sub && row.google_sub === session.sub) authorized = true;
+  if (!authorized) return cloudForbidden();
+  const resp = {
+    ok: true, projectId: projectId, linked: !!row.google_sub,
+    linkedName: row.google_name || null, label: row.owner_label || null,
+    hasSnapshot: !!row.latest_r2_key, updatedAt: row.updated_at
+  };
+  if (isEditor) { resp.role = 'editor'; resp.editorLabel = editorLabel; resp.scope = editorScope; }
+  return json(resp);
+}
+
 // ---- /api/auth/* routes --------------------------------------------------
 async function handleApi(request, env, url) {
   const path = url.pathname;
+
+  // CLOUD-BACKEND-ARCHITECTURE-PLAN Phase 1 — /api/cloud/* routes. These run
+  // BEFORE the ASSETS binding, exactly like /api/auth/*, so they can never be
+  // swallowed by the SPA fallback.
+  if (path === '/api/cloud/projects' && request.method === 'POST') {
+    return handleCloudCreate(request, env);
+  }
+  const cloudMatch = path.match(/^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/(save|load|recover|meta)$/);
+  if (cloudMatch) {
+    const pid = cloudMatch[1];
+    const op = cloudMatch[2];
+    if (op === 'meta' && request.method === 'GET') return handleCloudMeta(request, env, pid);
+    if (op === 'save' && request.method === 'POST') return handleCloudSave(request, env, pid);
+    if (op === 'load' && request.method === 'POST') return handleCloudLoad(request, env, pid);
+    if (op === 'recover' && request.method === 'POST') return handleCloudRecover(request, env, pid);
+  }
+
+
+  // CLOUD-BACKEND-ARCHITECTURE-PLAN Phase 2/3 — editor codes, changelog,
+  // and admin cloud visibility. All cloud routes run before the ASSETS
+  // binding, exactly like the Phase 1 routes above.
+  if (path === '/api/cloud/sections' && request.method === 'GET') {
+    return handleCloudSections();
+  }
+  if (path === '/api/cloud/admin/projects' && request.method === 'GET') {
+    return handleAdminCloudList(request, env);
+  }
+  const cloudEditorsMatch = path.match(/^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/editors$/);
+  if (cloudEditorsMatch) {
+    const pid = cloudEditorsMatch[1];
+    if (request.method === 'POST') return handleCloudEditorCreate(request, env, pid);
+    if (request.method === 'GET') return handleCloudEditorList(request, env, pid);
+  }
+  const cloudEditorDelMatch = path.match(/^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/editors\/(\d+)$/);
+  if (cloudEditorDelMatch && request.method === 'DELETE') {
+    return handleCloudEditorRevoke(request, env, cloudEditorDelMatch[1], cloudEditorDelMatch[2]);
+  }
+  const cloudLogMatch = path.match(/^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/changelog$/);
+  if (cloudLogMatch && request.method === 'GET') {
+    return handleCloudChangelogList(request, env, cloudLogMatch[1]);
+  }
+  const cloudRevertMatch = path.match(/^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/changelog\/(\d+)\/revert$/);
+  if (cloudRevertMatch && request.method === 'POST') {
+    return handleCloudChangelogRevert(request, env, cloudRevertMatch[1], cloudRevertMatch[2]);
+  }
 
   // GET /api/health — liveness probe (INTEGRATED-STRUCTURE-API-WINDOW plan
   // §1: the plan's client.py check_connection() pings /health; the Worker

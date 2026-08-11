@@ -40,22 +40,24 @@ var MMGR = window.MMGR || {};
   }
 
   // ---- Greeting ----
+  // SINGLE-WRITE (CLOUD-BACKEND-ARCHITECTURE-PLAN §10 self-overwrite bug):
+  // the old implementation wrote "Welcome, {userName}" into #greeting-text,
+  // then IMMEDIATELY overwrote the parent #greeting's innerHTML with a
+  // time-of-day-only message — destroying the name on every render (this is
+  // why the personalized greeting never appeared). Now the icon (time of
+  // day) + text (time label + name suffix) are composed ONCE and written as
+  // a single innerHTML assignment. The name is escapeHtml'd because it is
+  // interpolated into markup, not set via textContent.
   function renderGreeting() {
-    const el = $('greeting-text');
-    if (!el) return;
-    const s = S();
-    if (s && s.userName) {
-      el.textContent = `Welcome, ${s.userName}`;
-    } else {
-      el.textContent = 'Welcome';
-    }
     const g = $('greeting');
-    if (g) {
-      const hour = new Date().getHours();
-      if (hour < 12) g.innerHTML = '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sun"></use></svg> <span id="greeting-text">Good Morning</span>';
-      else if (hour < 18) g.innerHTML = '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sun"></use></svg> <span id="greeting-text">Good Afternoon</span>';
-      else g.innerHTML = '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-moon"></use></svg> <span id="greeting-text">Good Evening</span>';
-    }
+    if (!g) return;
+    const s = S();
+    const hour = new Date().getHours();
+    let icon = 'i-moon', timeLabel = 'Good Evening';
+    if (hour < 12) { icon = 'i-sun'; timeLabel = 'Good Morning'; }
+    else if (hour < 18) { icon = 'i-sun'; timeLabel = 'Good Afternoon'; }
+    const nameSuffix = (s && s.userName) ? ', ' + U.escapeHtml(String(s.userName)) : '';
+    g.innerHTML = '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#' + icon + '"></use></svg> <span id="greeting-text">' + timeLabel + nameSuffix + '</span>';
   }
 
   // ---- Methodology ----

@@ -8,6 +8,7 @@
     "verify:csp": "node tools/verify-csp-hashes.cjs",
     "verify:sw": "node tools/verify-sw-cache.cjs",
     "verify": "npm run verify:csp && npm run verify:sw",
+    "qa:cloud": "node tools/qa-cloud-phase1.cjs",
     "predeploy": "npm run verify",
     "deploy": "npm run predeploy && npx wrangler deploy"
   }

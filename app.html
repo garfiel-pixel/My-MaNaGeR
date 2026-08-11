@@ -339,6 +339,34 @@ function tglGlassMode(el){
     eff === 'premium' ? 'ok' : 'warn');
 }
 
+/* CLOUD-BACKEND-ARCHITECTURE-PLAN Phase 2 — editor-code unlock.
+   A cloud EDITOR code is not in the published manifest (it lives only in the
+   Worker's D1 table), so the local hash check can never accept it. Probe the
+   Worker's /load with X-Editor-Code: on success the cloud snapshot becomes
+   this device's workspace, the project is unlocked, and the editor's scope is
+   remembered in sessionStorage so project.html can grey out (UX) what the
+   server enforces. Returns true only when the Worker confirmed the code. */
+async function tryCloudEditorUnlock(id, code){
+  try{
+    const res = await fetch('/api/cloud/projects/' + encodeURIComponent(id) + '/load', {
+      method:'POST', credentials:'same-origin',
+      headers:{'Content-Type':'application/json','X-Editor-Code': String(code || '').trim()},
+      body: JSON.stringify({})
+    });
+    if(!res.ok) return false;
+    const data = await res.json();
+    if(!data || !data.ok || !data.state || data.role !== 'editor') return false;
+    localStorage.setItem('mmgr_unlocked_' + id, '1');
+    localStorage.setItem('mmgr_scope_' + id, 'full');
+    localStorage.setItem('mmgr_state_' + id, JSON.stringify(data.state));
+    try{
+      sessionStorage.setItem('mmgr_cloud_ecode_' + id, String(code || '').trim());
+      sessionStorage.setItem('mmgr_cloud_escope_' + id, JSON.stringify({label: data.editorLabel || '', sections: data.scope || []}));
+    }catch(e){ /* session storage blocked — editing still works this session */ }
+    return true;
+  }catch(e){ return false; }
+}
+
 async function attemptUnlock(){
   if(!activeProject) return;
   const input = document.getElementById('code-input');
@@ -367,6 +395,16 @@ async function attemptUnlock(){
     }
     setTimeout(()=>{ window.location.href = activeProject.file; }, 400);
   }else{
+    // Cloud editor code probe (not in the local manifest): if the Worker
+    // accepts it, the project opens with the editor's scope instead of
+    // showing "Incorrect code".
+    btn.disabled = true; btn.textContent = 'Checking…';
+    const cloud = await tryCloudEditorUnlock(activeProject.id, val);
+    if(cloud){
+      btn.textContent = 'Unlocked — opening…';
+      setTimeout(()=>{ window.location.href = activeProject.file; }, 400);
+      return;
+    }
     btn.disabled = false; btn.textContent = 'Unlock Project';
     document.getElementById('gerr').textContent = 'Incorrect code. Please try again.';
     const mb = document.getElementById('mb');
@@ -402,6 +440,24 @@ document.addEventListener('click', function(e){
 });
 
 renderCards();
+/* CLOUD-BACKEND-ARCHITECTURE-PLAN Phase 2 — direct-link unlock for cloud
+   codes. project.html bounces a locked visitor here as app.html?locked=<id>.
+   If that project has a card in the grid, the user clicks it as usual; if it
+   has NO card (the owner shared a cloud-linked project that is not in this
+   device's manifest or local list yet — exactly the editor-code case), open
+   the unlock modal for that id immediately so an owner or editor code can be
+   entered. Never blocks boot. */
+(function(){
+  try{
+    const qp = new URLSearchParams(location.search);
+    const lockedId = qp.get('locked');
+    if(!lockedId) return;
+    if(isUnlocked(lockedId)){ return; }
+    const known = (window.MMGR_PROJECTS || []).find(function(p){ return p && p.id === lockedId; });
+    const record = known || { id: lockedId, title: lockedId, description: 'Enter the code shared with you to open this project.', file: 'project.html?id=' + encodeURIComponent(lockedId) };
+    openModal(record);
+  }catch(e){ /* never block boot */ }
+})();
 // Reflect the device-level theme + glass preferences on the launcher's toggles
 // (the early-apply snippet already handled the body class before paint) and
 // boot the premium engine if the preference + capability floor allow it.

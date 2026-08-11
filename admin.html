@@ -215,6 +215,25 @@ pre.snippet{background:#f8fafc;border:1px solid var(--border);border-radius:6px;
       sensitive data.
     </div>
 
+    <!-- CLOUD-BACKEND-ARCHITECTURE-PLAN Phase 2/3 — cloud projects visibility.
+         Operator-gated by the Worker's ADMIN_CODE secret (typed once per
+         session here, held in sessionStorage only). Owner-code reissue reuses
+         /recover, which enforces plan §9: the signed-in Google account must
+         match the record on file — no code is ever issued to a stranger. -->
+    <div class="card" id="cloud-admin-section" style="margin-top:16px">
+      <div class="prow-title" style="margin-bottom:10px"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-folder"></use></svg> Cloud Projects (D1 + R2)</div>
+      <div class="field">
+        <label>Admin API code <span style="font-weight:400;color:var(--slate)">(the ADMIN_CODE secret set on the Worker — stored in this session only)</span></label>
+        <div class="code-row">
+          <input id="cloud-admin-code" type="password" autocomplete="off" placeholder="ADMIN_CODE" style="flex:1">
+          <button class="btn btn-g" data-action="cloudAdminList"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Load cloud projects</button>
+        </div>
+        <div class="hint">Visibility into cloud-linked projects (labels, linked Google accounts, snapshot state). Codes are never shown. A new owner code is only ever issued to the Google account linked to that project — sign in with Google above as that account first (plan §9).</div>
+      </div>
+      <div id="cloud-admin-status" style="font-size:.72rem;color:var(--slate);margin-bottom:8px"></div>
+      <div id="cloud-admin-list"></div>
+    </div>
+
     <div id="project-list"></div>
   </main>
 </div>
@@ -917,6 +936,91 @@ function downloadAdminBackup(){
   toast('Backup downloaded. Keep this file private — it contains plaintext codes.');
 }
 
+/* ============================================================
+   CLOUD ADMIN — visibility into cloud-linked projects (Phase 2/3)
+   ------------------------------------------------------------
+   The ADMIN_CODE Wrangler secret is the operator credential for the
+   listing API (GET /api/cloud/admin/projects). Reissue reuses the
+   existing /recover route: the Worker only reissues when the signed-in
+   Google session's sub matches the project record's google_sub (plan
+   §9), so a lost code can never be handed to a stranger even by an
+   operator.
+   ============================================================ */
+let _cloudAdminCode = null;
+function cloudAdminCode(){
+  if(_cloudAdminCode) return _cloudAdminCode;
+  try{ _cloudAdminCode = sessionStorage.getItem('mmgr_admin_cloud_code') || ''; }catch(e){ _cloudAdminCode = ''; }
+  return _cloudAdminCode;
+}
+function cloudAdminSetCode(v){
+  _cloudAdminCode = v;
+  try{ if(v) sessionStorage.setItem('mmgr_admin_cloud_code', v); else sessionStorage.removeItem('mmgr_admin_cloud_code'); }catch(e){}
+}
+function cloudAdminStatus(msg, kind){
+  const el = document.getElementById('cloud-admin-status');
+  if(!el) return;
+  el.textContent = msg || '';
+  el.style.color = kind === 'err' ? 'var(--danger)' : kind === 'ok' ? 'var(--green)' : 'var(--slate)';
+}
+async function cloudAdminList(){
+  const inp = document.getElementById('cloud-admin-code');
+  const code = (inp && inp.value.trim()) || cloudAdminCode();
+  if(!code){ cloudAdminStatus('Enter the ADMIN_CODE first.', 'err'); return; }
+  cloudAdminSetCode(code);
+  cloudAdminStatus('Loading cloud projects…', '');
+  try{
+    const res = await fetch('/api/cloud/admin/projects', { headers:{ 'X-Admin-Code': code } });
+    const data = await res.json().catch(()=>({}));
+    if(!res.ok || !data.ok){
+      cloudAdminStatus((data && data.error) || 'Failed (HTTP ' + res.status + '). ' + (res.status === 503 ? 'The Worker has no ADMIN_CODE configured.' : res.status === 403 ? 'Wrong admin code.' : ''), 'err');
+      return;
+    }
+    const list = document.getElementById('cloud-admin-list');
+    const projects = data.projects || [];
+    if(!projects.length){ list.innerHTML = '<div class="empty">No cloud-linked projects yet.</div>'; cloudAdminStatus(''); return; }
+    list.innerHTML = projects.map(function(p){
+      return '<div class="prow"><div class="prow-top"><div><div class="prow-title">' + escapeHtml(p.label || p.projectId) + '</div>' +
+        '<div class="prow-desc">ID: <code>' + escapeHtml(p.projectId) + '</code> · linked account: ' + (p.linkedName ? escapeHtml(p.linkedName) : '<em>none</em>') + ' · snapshot: ' + (p.hasSnapshot ? 'yes' : 'no') + '</div></div>' +
+        '<span class="badge ' + (p.hasSnapshot ? 'active' : 'planning') + '">' + (p.hasSnapshot ? 'snapshot' : 'no snapshot') + '</span></div>' +
+        '<div class="prow-meta"><span>Created: ' + escapeHtml(String(p.createdAt||'').slice(0,10)) + '</span><span>Updated: ' + escapeHtml(String(p.updatedAt||'').slice(0,19).replace('T',' ')) + '</span></div>' +
+        '<div class="prow-actions"><button class="btn btn-o btn-s" data-action="cloudAdminReissue" data-id="' + escapeAttr(p.projectId) + '"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> Reissue owner code</button></div></div>';
+    }).join('');
+    cloudAdminStatus(projects.length + ' cloud project(s) loaded.', 'ok');
+  }catch(e){
+    cloudAdminStatus('Cloud API unreachable on this host.', 'err');
+  }
+}
+async function cloudAdminReissue(projectId){
+  let label = projectId;
+  const row = document.querySelector('#cloud-admin-list [data-action="cloudAdminReissue"][data-id="' + String(projectId).replace(/"/g,'&quot;') + '"]');
+  if(row && row.closest('.prow')){
+    const t = row.closest('.prow').querySelector('.prow-title');
+    if(t) label = t.textContent;
+  }
+  admConfirm({
+    title: 'Reissue owner code?',
+    message: 'Reissue the owner code for "' + label + '"? The OLD owner code stops working immediately. This browser must be signed in to the Google account linked to the project, or the Worker rejects the reissue (recovery requires the account on file).',
+    danger: true,
+    confirmLabel: 'Reissue',
+    onOk: async function(){
+      cloudAdminStatus('Reissuing owner code…', '');
+      try{
+        const res = await fetch('/api/cloud/projects/' + encodeURIComponent(projectId) + '/recover', {
+          method:'POST', credentials:'same-origin', headers:{'Content-Type':'application/json'}, body: JSON.stringify({})
+        });
+        const data = await res.json().catch(()=>({}));
+        if(!res.ok || !data.ok || !data.ownerCode){
+          cloudAdminStatus('Reissue rejected — sign in to the Google account linked to this project (the Worker enforces the match), then try again.', 'err');
+          return;
+        }
+        cloudAdminStatus('New owner code: ' + data.ownerCode + ' — copy it now, it is shown once.', 'ok');
+      }catch(e){
+        cloudAdminStatus('Cloud API unreachable on this host.', 'err');
+      }
+    }
+  });
+}
+
 /* ── wire up Enter-to-submit on the two gate screens ── */
 document.getElementById('setup-pass2').addEventListener('keydown', e=>{ if(e.key==='Enter') handleSetupPassword(); });
 document.getElementById('login-pass').addEventListener('keydown', e=>{ if(e.key==='Enter') handleLogin(); });
@@ -967,7 +1071,9 @@ const ADMIN_ACTION_MAP = {
   'openSnippetModal': (el) => openSnippetModal(_admIdx(el)),
   'deleteProject': (el) => deleteProject(_admIdx(el)),
   'tglTheme': (el) => tglTheme(el),
-  'tglGlassMode': (el) => tglGlassMode(el)
+  'tglGlassMode': (el) => tglGlassMode(el),
+  'cloudAdminList': () => cloudAdminList(),
+  'cloudAdminReissue': (el) => cloudAdminReissue(el.getAttribute('data-id'))
 };
 document.addEventListener('click', function(e){
   const el = e.target.closest('[data-action]');

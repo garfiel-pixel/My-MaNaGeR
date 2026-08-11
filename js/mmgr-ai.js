@@ -1281,13 +1281,14 @@ var MMGR = window.MMGR || {};
       await new Promise(function(r) { setTimeout(r, MIN_TYPING_MS - elapsed); });
     }
   }
-  function addBubble(role, innerHtml) {
+  function addBubble(role, innerHtml, copyText) {
     const th = U.$('ai-thread');
     if (!th) return;
     hideWelcome();
     const b = document.createElement('div');
     b.className = role === 'user' ? 'ai-bubble ai-user' : 'ai-bubble ai-bot';
     b.innerHTML = innerHtml;
+    if (copyText !== undefined && copyText !== null) b.dataset.copyText = String(copyText);
     th.appendChild(b);
     scrollThread();
   }
@@ -1307,8 +1308,16 @@ var MMGR = window.MMGR || {};
   function botBubbleHtml(textHtml, metaHtml, badgeHtml, traceHtml) {
     return botAvatar() + '<div class="ai-bot-body"><div class="ai-text">' + textHtml + '</div>' + (metaHtml || '') + (badgeHtml || '') + (traceHtml || '') + '</div>';
   }
-  function botMeta(engine) {
-    return '<div class="ai-meta"><span>⚡ ' + escHtml(engine) + '</span></div>';
+  function botMeta(engine, copyHtml) {
+    return '<div class="ai-meta"><span>⚡ ' + escHtml(engine) + '</span>' + (copyHtml || '') + '</div>';
+  }
+  // AI-WINDOW-POLISH: every assistant bubble carries a per-answer Copy button
+  // in its meta row. The raw text rides on the bubble's dataset (set via DOM
+  // property — never interpolated into markup), so the clipboard copy is exact
+  // while the rendered bubble stays fully escaped. Delegated click handling
+  // below; no per-bubble listeners.
+  function copyBtnHtml() {
+    return '<button type="button" class="ai-copy-btn" title="Copy this answer" aria-label="Copy this answer"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy</button>';
   }
   // Render one exchange: prompt = user bubble, res = submit() result shape.
   function renderThread(prompt, res) {
@@ -1326,7 +1335,7 @@ var MMGR = window.MMGR || {};
       const trace = (res.trace && res.trace.length)
         ? '<div class="ai-trace-inline">Traceable to: ' + escHtml(res.trace.join(', ')) + '</div>'
         : '';
-      addBubble('bot', botBubbleHtml(escHtml(res.text).replace(/\n/g, '<br>'), botMeta(engine), fallback, trace));
+      addBubble('bot', botBubbleHtml(escHtml(res.text).replace(/\n/g, '<br>'), botMeta(engine, copyBtnHtml()), fallback, trace), res.text);
     } else {
       addBubble('bot', botAvatar() + '<div class="ai-bot-body ai-err">' + escHtml(res.error || 'Something went wrong.') + '</div>');
     }
@@ -1346,7 +1355,7 @@ var MMGR = window.MMGR || {};
     const engine = (last.tier === 'local') ? 'Local engine' : (last.tier === 'cloud' ? 'Cloud' : last.tier);
     const badge = fallbackBadgeHtml(last.tier, last.model, last.fellBackFrom);
     addBubble('bot', botBubbleHtml(escHtml(last.text).replace(/\n/g, '<br>'),
-      botMeta(engine + ' · saved ' + (last.at ? new Date(last.at).toLocaleString() : '')), badge));
+      botMeta(engine + ' · saved ' + (last.at ? new Date(last.at).toLocaleString() : ''), copyBtnHtml()), badge), last.text);
   }
 
   // ---- DIR-1 (AI-WINDOW-LAYOUT-SCROLL-AND-INPUT-BUG): Chat/Presets tab ----
@@ -1373,6 +1382,39 @@ var MMGR = window.MMGR || {};
       b.addEventListener('click', function() {
         setAiTab(b.getAttribute('data-tab') || 'chat');
       });
+    });
+  })();
+
+  // AI-WINDOW-POLISH: per-bubble Copy — delegated on the thread so bubbles
+  // added at any time (live chat or state seed) pick it up without rebinding.
+  // The exact answer text is read from the bubble's dataset.copyText.
+  (function() {
+    const th = U.$('ai-thread');
+    if (!th) return;
+    // REVIEW FIX: a single shared timer — rapid re-clicks clear the pending
+    // restore instead of stacking stale captures (double-click used to leave
+    // the label stuck on "Copied" without the green styling). The reset also
+    // restores the static known HTML + aria-label, never a captured snapshot.
+    let resetTimer = null;
+    th.addEventListener('click', function(e) {
+      const t = e.target;
+      const btn = (t && t.closest) ? t.closest('.ai-copy-btn') : null;
+      if (!btn) return;
+      const bubble = btn.closest('.ai-bubble');
+      const text = (bubble && bubble.dataset) ? bubble.dataset.copyText : '';
+      if (!text) { toast('Nothing to copy here yet.', 'err'); return; }
+      U.copyToClipboard(text);
+      toast('Answer copied.');
+      if (resetTimer) clearTimeout(resetTimer);
+      btn.classList.add('is-copied');
+      btn.setAttribute('aria-label', 'Copied');
+      btn.innerHTML = '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-check"></use></svg> Copied';
+      resetTimer = setTimeout(function() {
+        btn.classList.remove('is-copied');
+        btn.setAttribute('aria-label', 'Copy this answer');
+        btn.innerHTML = '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy';
+        resetTimer = null;
+      }, 1600);
     });
   })();
 

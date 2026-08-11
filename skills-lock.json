@@ -1,11 +1,59 @@
 {
   "version": 1,
   "skills": {
+    "cloudflare": {
+      "source": "cloudflare/skills",
+      "sourceType": "github",
+      "skillPath": "skills/cloudflare/SKILL.md",
+      "computedHash": "8581f52e9f307d6ae298e016f93720bae2739d13a2169fa96d47df516c38f63c"
+    },
+    "cloudflare-api": {
+      "source": "jezweb/claude-skills",
+      "sourceType": "github",
+      "skillPath": "plugins/cloudflare/skills/cloudflare-api/SKILL.md",
+      "computedHash": "1fd40c2acf3ce3f6e96a5b3e9cbbffa608d01b178722647fdb61776c9fd2538a"
+    },
+    "d1-migration": {
+      "source": "jezweb/claude-skills",
+      "sourceType": "github",
+      "skillPath": "plugins/cloudflare/skills/d1-migration/SKILL.md",
+      "computedHash": "9269ee07fa9962fc447879306b33a7355331f2bd95de8783d812d9b388f0b6a9"
+    },
     "google-drive": {
       "source": "membranedev/application-skills",
       "sourceType": "github",
       "skillPath": "skills/google-drive/SKILL.md",
       "computedHash": "b196f35c48ba05979d81edea1b4031939e17dbeb9874fa23f96e68bfe6eb45cc"
+    },
+    "qa-expert": {
+      "source": "daymade/claude-code-skills",
+      "sourceType": "github",
+      "skillPath": "qa-expert/SKILL.md",
+      "computedHash": "208709ef97520c07d78151d928d39f9fd188056b370ed14c23cbbc095b6a4478"
+    },
+    "security-audit": {
+      "source": "cloudflare/security-audit-skill",
+      "sourceType": "github",
+      "skillPath": "skills/security-audit/SKILL.md",
+      "computedHash": "0f858feecab83071b81e658c32f361bb8af34b5bf567ba0a86ff94383c055e7f"
+    },
+    "web-perf": {
+      "source": "cloudflare/skills",
+      "sourceType": "github",
+      "skillPath": "skills/web-perf/SKILL.md",
+      "computedHash": "a411d7a1d052e39069ad7c898d6b7e22100945a3f104794e0b76e3af480d3f44"
+    },
+    "workers-best-practices": {
+      "source": "cloudflare/skills",
+      "sourceType": "github",
+      "skillPath": "skills/workers-best-practices/SKILL.md",
+      "computedHash": "c919a93c9db826a0ee2818f6f7977c40c1a43bb87abc848b22181fdbabe2ef80"
+    },
+    "wrangler": {
+      "source": "cloudflare/skills",
+      "sourceType": "github",
+      "skillPath": "skills/wrangler/SKILL.md",
+      "computedHash": "d2094f7a5a76414fc0cd365fd8ddba3258c2135a1d468b78213c0fa02c309b9b"
     }
   }
 }

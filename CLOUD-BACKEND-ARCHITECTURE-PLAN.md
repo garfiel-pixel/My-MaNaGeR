@@ -1,10 +1,11 @@
 # My MaNaGeR — Cloud Backend Architecture Plan
-**Status:** Decisions settled through conversation with Garfield. This is a plan and
-technical shape document for a genuinely new capability — there is currently NO backend
-storage in the app (`worker.js`/`wrangler.jsonc` confirmed: the Worker today only
-injects security headers and relays Google OAuth; no D1/KV/R2 binding exists). Nothing
-below has been built. This document exists so the build has a clear, agreed shape before
-anyone writes code.
+**Status (2026-08-10):** Phases 1–3 are BUILT and gated — owner/editor codes with
+server-side section scoping and the changelog-with-revert live in `worker.js`/D1/R2,
+verified by `tools/qa-cloud-phase1.cjs` (29 checks) and `tools/qa-cloud-phase2.cjs`
+(73+ checks incl. the gap-audit hardening). The sections below remain the design
+record of the decisions that shaped the implementation (this doc was originally
+written when the Worker had no D1/R2 bindings at all). §11 records the resolutions of
+the 2026-08-10 gap-audit open questions (H27–H31).
 
 ---
 
@@ -262,8 +263,51 @@ SECOND issue (name never being saved to state in the first place) stacked undern
 If the name displays correctly immediately after this fix, the state-side flow was fine
 all along and this was the only issue.
 
+---*This document is a plan only. No backend code, D1 schema, or R2 wiring has
+been written. It exists to lock in the architecture decisions already made in
+conversation so implementation has a clear, agreed target.*
+
 ---
 
-*This document is a plan only. No backend code, D1 schema, or R2 wiring has been
-written. It exists to lock in the architecture decisions already made in conversation so
-implementation has a clear, agreed target.*
+## 11. Gap-audit decisions (H27–H31) — settled, not bugs
+
+Resolved on paper during the 31-item gap audit pass (2026-08-10) so these never
+become "oh, we never decided this" surprises at scale. The other audit items
+(A1–A7 security, B8–B11 UX, D16–D17 cleanup, E18 a11y, G23 copy-now treatment)
+were implemented as code in that same pass; the five below are policy choices.
+
+- **H27 — Changelog retention/pruning: KEEP EVERYTHING for v1.** D1 rows are
+  tiny (leaf before/after values; bulk events just reference an R2 snapshot
+  key), so the table is cheap to keep unbounded. The only real growth is the
+  R2 snapshot objects under `projects/<id>/changelog/`. Decision: no pruning
+  yet; if snapshot volume becomes measurable in production, prune snapshots
+  older than N days (snapshots are referenced by rows, so pruning must keep
+  any snapshot a revertable row still points at — never prune the newest
+  snapshot per project). Revisit after real usage.
+- **H28 — Abandoned projects / deleted Google account: NO automatic
+  deletion for v1.** A project's cloud data persists until the owner
+  deliberately unlinks (the audit's B10 feature — DELETE /api/cloud/projects
+  removes the D1 row, editor codes, changelog, and all R2 objects) or an
+  operator removes it via the ADMIN_CODE admin view. A deleted Google account
+  only disables code *recovery* (recovery is gated on the linked sub); the
+  owner code itself keeps working. No data-rentention timer, no cron —
+  deliberate, documented, and revisit-at-scale.
+- **H29 — Max project size: 8 MB cap stands; failure mode is now friendly.**
+  The cap is generous for a state blob that references (not embeds) voice
+  recordings. When a save would exceed it the Worker returns 413 and the app
+  now shows a human message ("Project too large for cloud (8 MB cap) — trim
+  voice/claim data or use export/import instead") instead of a bare HTTP
+  status. If voice/claim binaries are ever pushed to the cloud wholesale,
+  revisit the cap and the storage shape together.
+- **H30 — Multi-project dashboard: NOT built for v1, by decision.** Each
+  cloud project surfaces individually through its own code/record; the
+  operator has the ADMIN_CODE admin list as the only cross-project view.
+  Revisit when a single account actually holds 5+ cloud-linked projects
+  (that's the moment the per-project-only view becomes a real gap, not a
+  hypothetical).
+- **H31 — Source of truth: LOCAL is primary; cloud is a snapshot.** Between an
+  edit and its next auto-save, the local state is authoritative; a crash in
+  that window loses only the unsaved edits — exactly the same guarantee the
+  app has always had without cloud. The cloud blob never receives an edit
+  until a save happens, so there is no window where the cloud "wins" over
+  local. This is already how the code behaves; now it is also written down.*

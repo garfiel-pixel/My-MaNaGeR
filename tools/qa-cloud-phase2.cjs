@@ -572,7 +572,8 @@ function baseState(pid, name) {
       body: JSON.stringify({ label: 'Field Editor', scope: ['wbs', 'risk'] })
     });
     check('P2.10x fresh editor code created for the UI run', edCreate2.status === 200 && edCreate2.body && edCreate2.body.ok === true, edCreate2.text);
-    await phaseE(PID, edCreate2.body ? edCreate2.body.editorCode : '');
+    const EC2 = edCreate2.body ? edCreate2.body.editorCode : '';
+    await phaseE(PID, EC2);
 
     // ==================================================================
     // PHASE C — admin cloud listing
@@ -585,6 +586,62 @@ function baseState(pid, name) {
     check('P4.2a admin list with wrong code -> 403', admWrong.status === 403, admWrong.status);
     const admNone = await api('/api/cloud/admin/projects');
     check('P4.2b admin list without code -> 403', admNone.status === 403, admNone.status);
+
+    // ==================================================================
+    // PHASE D — 2026-08-10 gap-audit hardening (CORS, editor cap, unlink,
+    // rate limiting). Added as PERMANENT gate coverage for the audit fixes.
+    // ==================================================================
+    // D1: CORS — a cross-origin request must be rejected with the explicit
+    // message and NO Access-Control-Allow-Origin header ever emitted.
+    const corsRes = await fetch(BASE + '/api/cloud/projects/' + PID + '/meta', { headers: { 'Origin': 'https://evil.example', 'X-Owner-Code': OC } });
+    let corsBody = null;
+    try { corsBody = await corsRes.json(); } catch (e) {}
+    check('P5.1a cross-origin cloud request rejected (403, explicit message)', corsRes.status === 403 && corsBody && corsBody.error === 'cross-origin requests are not allowed', corsRes.status);
+    check('P5.1b no Access-Control-Allow-Origin on the rejected response', corsRes.headers.get('Access-Control-Allow-Origin') === null, corsRes.headers.get('Access-Control-Allow-Origin'));
+    const corsSame = await api('/api/cloud/projects/' + PID + '/meta', { headers: { 'Origin': BASE, 'X-Owner-Code': OC } });
+    check('P5.1c same-origin Origin accepted', corsSame.status === 200 && corsSame.body.ok, corsSame.status);
+
+    // D2: editor-code cap (fresh throwaway project so counts are clean).
+    const PIDC = 'qa-gapcap-' + Date.now().toString(36);
+    const createC = await api('/api/cloud/projects', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ projectId: PIDC, name: 'Cap' }) });
+    const OCC = createC.body ? createC.body.ownerCode : '';
+    let capStatus = null;
+    for (let i = 1; i <= 26; i++) {
+      const r = await api('/api/cloud/projects/' + PIDC + '/editors', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Owner-Code': OCC },
+        body: JSON.stringify({ label: 'Cap ' + i, scope: ['wbs'] })
+      });
+      if (i === 26) capStatus = r;
+    }
+    check('P5.2 editor-code cap: 26th create rejected with the cap error', capStatus && capStatus.status === 400 && capStatus.body && capStatus.body.error.indexOf('too many active editor codes') !== -1, capStatus.text);
+
+    // D3: owner-only unlink deletes the whole cloud copy (D1 rows + R2).
+    const stU = { schemaVersion: 17, projectId: PIDC, projectName: 'Cap', tasks: [], risks: [], charter: { name: 'Cap' }, updatedAt: new Date().toISOString() };
+    await api('/api/cloud/projects/' + PIDC + '/save', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Owner-Code': OCC }, body: JSON.stringify({ state: stU }) });
+    const unlink = await api('/api/cloud/projects/' + PIDC, { method: 'DELETE', headers: { 'X-Owner-Code': OCC } });
+    check('P5.3a unlink ok (owner)', unlink.status === 200 && unlink.body && unlink.body.ok === true, unlink.text);
+    const afterUnlink = await api('/api/cloud/projects/' + PIDC + '/load', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Owner-Code': OCC }, body: JSON.stringify({}) });
+    check('P5.3b load after unlink -> generic 403 (cloud copy gone)', afterUnlink.status === 403 && afterUnlink.body && afterUnlink.body.error === 'invalid project or owner code', afterUnlink.text);
+    const unlinkRows = queryD1('SELECT COUNT(*) AS n FROM cloud_projects WHERE project_id = ' + q(PIDC));
+    const unlinkEdRows = queryD1('SELECT COUNT(*) AS n FROM cloud_editor_codes WHERE project_id = ' + q(PIDC));
+    check('P5.3c unlink removed D1 rows (project + editor codes)', unlinkRows && unlinkRows[0] && unlinkRows[0].n === 0 && unlinkEdRows && unlinkEdRows[0] && unlinkEdRows[0].n === 0, { unlinkRows, unlinkEdRows });
+    const unlinkByEditor = await api('/api/cloud/projects/' + PID, { method: 'DELETE', headers: { 'X-Editor-Code': EC2 } });
+    check('P5.3d an editor code cannot unlink (generic 403)', unlinkByEditor.status === 403 && unlinkByEditor.body && unlinkByEditor.body.error === 'invalid project or owner code', unlinkByEditor.text);
+
+    // D4: rate limiting — a burst on ONE owner-code bucket trips 429 with a
+    // Retry-After header. Run LAST (it consumes the bucket's budget).
+    // Note: PID still exists, so authorized requests below the budget return
+    // 200 — the property that matters is that valid usage is NOT throttled
+    // until the burst actually exceeds the limit.
+    let saw429 = false; let sawOk = false; let hasRetryAfter = false;
+    for (let i = 1; i <= 140; i++) {
+      const r = await fetch(BASE + '/api/cloud/projects/' + PID + '/meta', { headers: { 'X-Owner-Code': OC } });
+      if (r.status === 200) sawOk = true;
+      if (r.status === 429 && !saw429) { saw429 = true; hasRetryAfter = !!r.headers.get('Retry-After'); }
+      if (saw429 && i > 100) break;
+    }
+    check('P5.4a burst trips 429 with a Retry-After header', saw429 === true && hasRetryAfter === true, { saw429, hasRetryAfter });
+    check('P5.4b authorized requests below the budget are not throttled', sawOk === true, { sawOk });
 
     // Phase 1 regression within the same run: identical generic 403s on owner paths
     const metaNoAuth = await api('/api/cloud/projects/' + PID + '/meta');

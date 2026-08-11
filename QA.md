@@ -53,6 +53,16 @@ node qa-sync.cjs   # RANK 4.5 gate — optional Google identity for sync: never
                    #   gating, identity = pairing label only, merge + JSON
                    #   export/import fully working signed-out, single
                    #   dismissible suggestion after multi-device use (13)
+node qa-drive-smoke.cjs
+                   # GOOGLE-DRIVE-BACKUP smoke — app.html auth-bar wiring,
+                   #   module API surface (backup/restore/token, drive.file
+                   #   scope), project.html Controls-drawer section, and
+                   #   no-session graceful degradation. HARNESS LIMITATION
+                   #   (DIR-3): no live Google credentials, so the REAL
+                   #   sign-in → Drive round-trip is verified MANUALLY on
+                   #   the deployed URL with a real Google account — this
+                   #   harness is a wiring/regression gate only, not proof
+                   #   of the live Drive path.
 node qa-oauth.cjs  # GOOGLE-OPERATOR-IDENTITY-v1 gate — optional operator
                    #   identity on app.html/admin.html: auth-bar mount points,
                    #   GIS wiring (mock GIS injected, real GIS blocked),

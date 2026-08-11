@@ -76,13 +76,17 @@ async function check(name, expr, hint) {
     var cta = Array.prototype.slice.call(document.querySelectorAll('.hero-cta a')).map(a => a.textContent.trim());
     return {val: !!hero && cta.indexOf('Open App') > -1 && cta.indexOf('View Field Guide') > -1};
   })()`);
-  await check('mkt-03 homepage: 8 feature cards (solid content layer)', `(function(){
+  await check('mkt-03 homepage: 9 feature cards (solid content layer)', `(function(){
     var cards = document.querySelectorAll('.fcard');
     // backdropFilter is the standard property; webkitBackdropFilter may be
     // undefined in some Chrome builds, which is NOT glass.
     var glass = function(el){ var v = getComputedStyle(el).backdropFilter || ''; return v !== '' && v !== 'none'; };
     var glassOnCards = Array.prototype.slice.call(cards).some(glass);
-    return {val: cards.length === 8 && !glassOnCards, n: cards.length, glassOnCards: glassOnCards};
+    // CARD-COUNT (2026-08-11): index.html ships NINE distinct feature cards
+    // (WBS+Gantt, Kanban, RACI, Risk+Monte Carlo, Budget/EVM, Built-In AI,
+    // Voice→Notes, Weather-Aware, Offline-First) — verified none are
+    // duplicates; the old 8-count was stale after the AI card was added.
+    return {val: cards.length === 9 && !glassOnCards, n: cards.length, glassOnCards: glassOnCards};
   })()`);
   await check('mkt-04 homepage: 4 how-it-works steps', `(function(){var s = document.querySelectorAll('.step');return {val: s.length === 4, n: s.length};})()`);
   await check('mkt-05 homepage: guide teaser band + FAQ + footer', `(function(){

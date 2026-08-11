@@ -1209,7 +1209,7 @@ Date: ____________  Focus: ____________</pre>
         <div class="tblock-right"><div><b>Scale</b>1 : 1 detail</div></div>
       </div>
       <span class="kicker">Your project lives on your device — and goes where you go</span>
-      <p class="lede">Every change autosaves to this browser's LocalStorage the moment you make it — no save button, no network call. By default one project lives on one browser, on one device. Three deliberate paths move it anywhere else: the portable .json file, a USB/sync transfer, or — if you want it — optional Google sign-in. The app never requires an account; everything below is a choice.</p>
+      <p class="lede">Every change autosaves to this browser's LocalStorage the moment you make it — no save button, no network call. By default one project lives on one browser, on one device. Three deliberate paths move it anywhere else: the portable .json file, a USB/sync transfer, or — if you want it — the optional cloud backup. The app never requires an account; everything below is a choice.</p>
 
       <div class="grid grid-3">
         <div class="card bracket"><span class="cnum">EXPORT</span><h4>Save Project to File</h4><p>Settings ▸ Controls ▸ Save Project to File writes a portable .json — your ticket to a new device, a teammate's laptop, or just peace of mind. Works everywhere, account or not.</p></div>
@@ -1221,11 +1221,28 @@ Date: ____________  Focus: ____________</pre>
       <div class="grid grid-3">
         <div class="card"><span class="cnum">USB</span><h4>Moving devices</h4><p>Export to .json, carry it on a stick or email it to yourself, open the new browser, Load Project from File. Done — no account needed.</p></div>
         <div class="card"><span class="cnum">MOBILE</span><h4>Viewing on the phone</h4><p>The same .json opens in any browser. Since every field carries a per-field edit timestamp, when you take a copy back to the office, edits merge — newest write wins per field, not whole-file last-save.</p></div>
-        <div class="card"><span class="cnum">LOSS</span><h4>Device lost or wiped</h4><p>If a copy was exported or synced, the project survives the device. This is the single most important habit: a closed tab is fine, a wiped browser is not — export before anything drastic.</p></div>
+        <div class="card"><span class="cnum">LOSS</span><h4>Device lost or wiped</h4><p>If a copy was exported, saved to the cloud, or synced, the project survives the device. This is the single most important habit: a closed tab is fine, a wiped browser is not — back it up before anything drastic.</p></div>
       </div>
 
-      <h3 class="h-sub">Optional Google identity — gates the backup, not the app</h3>
-      <p class="prose">Signing in with Google is entirely optional and unlocks only convenience: Google Drive backup/restore and cross-device sync of your project files. It never gates anything. The app stays 100% usable with zero account forever — the JSON export/import path above is the guaranteed sync route on every device, signed in or not. You can sign in later, or never.</p>
+      <h3 class="h-sub">Optional cloud backup — an owner code, an editor code, or a view-only code</h3>
+      <p class="prose">The <strong>Cloud Backup</strong> section in Settings ▸ Controls (right beside Drive) links a project to the backend (D1 + R2) so its state JSON lives off-device and can be pulled back on any device. It is strictly opt-in per project, never required, and never gates a feature — the JSON export/import path above remains the guaranteed route on every device, signed in or not.</p>
+      <div class="grid grid-3">
+        <div class="card bracket"><span class="cnum">OWNER</span><h4>Owner code (create)</h4><p>Create Cloud Project generates a 16-character owner/recovery code shown EXACTLY ONCE — copy it and store it somewhere safe. You authenticate saves/loads with it; the plaintext is never stored server-side (only a salted hash), so a lost code is unrecoverable without the linked Google account.</p></div>
+        <div class="card bracket"><span class="cnum">EDITOR</span><h4>Editor codes (scoped)</h4><p>The owner can generate editor codes with a label and tick which sections each code may WRITE (WBS, Budget, Risks, Meetings…). Scope is enforced SERVER-SIDE on every save — an editor (or a leaked code) physically cannot touch anything outside its grant, and out-of-scope panels grey out as a visual hint. Revoke a code anytime; it stops working immediately.</p></div>
+        <div class="card bracket"><span class="cnum">VIEWER</span><h4>View-only access codes</h4><p>Access codes on app.html unlock projects read-only (view-only code = read-only project), independent of cloud — the app gate that protects every project. Cloud editor codes are about who may WRITE which sections; view codes are about who may OPEN the project at all.</p></div>
+      </div>
+
+      <h3 class="h-sub">Save, load, recover, and unlink</h3>
+      <div class="flow">
+        <div class="flow-item"><div class="flow-num"></div><div class="flow-body"><h4>Save to Cloud / Load from Cloud</h4><p>With the owner (or an editor) code in session, Save to Cloud pushes the current state; Load from Cloud replaces this device's workspace with the stored snapshot (it asks first — current local data would be overwritten). Each save records a changelog entry with field-level before/after values (or a snapshot for bulk changes).</p></div></div>
+        <div class="flow-item"><div class="flow-num"></div><div class="flow-body"><h4>On another device? Enter the code</h4><p>Load with Code accepts a 16-character owner or editor code, pulls the snapshot, and keeps the credential for this session only. A fresh device just needs the code typed in — no account required for owner or editor access.</p></div></div>
+        <div class="flow-item"><div class="flow-num"></div><div class="flow-body"><h4>Recover Owner Code (lost code)</h4><p>Recovery is gated on the Google account that was linked when the project was created: sign in with Google (optional identity, never required) and Recover Owner Code issues a NEW owner code — the old one stops working immediately, and the recovery itself is logged. Without the linked account, a lost owner code cannot be recovered; editor codes can always be re-issued by the owner.</p></div></div>
+        <div class="flow-item"><div class="flow-num"></div><div class="flow-body"><h4>Changelog — view and revert</h4><p>The owner can open the changelog to see who changed what and when (Owner or "Editor — label", field-level diffs, or "Full-state change" for bulk operations). Revert is owner-only and never erases history: it writes the recorded before-values back (or restores the snapshot) and logs the revert itself as a new entry — so a revert of a revert restores the pre-revert state.</p></div></div>
+        <div class="flow-item"><div class="flow-num"></div><div class="flow-body"><h4>Unlink from Cloud</h4><p>Unlink from Cloud deletes the CLOUD copy (snapshot, editor codes, changelog) and stops syncing — this device keeps its local data, so nothing you have here is lost. It is owner-only and irreversible for the cloud side; re-create the cloud project later if you change your mind.</p></div></div>
+      </div>
+
+      <h3 class="h-sub">Optional Google identity — gates recovery, not the app</h3>
+      <p class="prose">Signing in with Google is entirely optional. It unlocks two conveniences: Google Drive backup/restore of your project files, and owner-code recovery for cloud projects. It never gates anything — create, save, load, and editor access all work with zero account. You can sign in later, or never.</p>
 
       <h3 class="h-sub">Copy All — your fastest way into Word</h3>
       <p class="prose">Navigate to any panel and click <strong>Copy All</strong>. Everything visible on that view is compiled, timestamped, and placed on your clipboard — ready to paste straight into a Word document, an email, or a client report. It works the same way on every panel: WBS, Budget, Risk, RACI, Charter, all of it.</p>

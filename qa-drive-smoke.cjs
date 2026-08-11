@@ -5,6 +5,16 @@
    that clicking Backup without a Google session degrades
    gracefully (status line, no crash).
    Usage: node qa-drive-smoke.cjs (server on :8765)
+
+   HARNESS LIMITATION (FINAL-PRE-DEPLOY-DIRECTIVE DIR-3, 2026-08-11):
+   this harness has NO live Google credentials, so it can only verify
+   the wiring, the module surface, and the no-session degradation
+   paths. The REAL sign-in → Drive backup/restore round-trip requires
+   a live OAuth identity and is covered MANUALLY against the deployed
+   production URL (Part 1 item 5 of the directive: live click-through
+   with a real Google account). Do not treat this harness's green run
+   as proof of the live Drive path; run it in CI as a wiring/regression
+   gate, and do the live pass separately.
    ============================================================ */
 const { spawn } = require('child_process');
 const path = require('path');

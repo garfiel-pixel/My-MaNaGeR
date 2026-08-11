@@ -200,11 +200,19 @@ function hardKill(proc) {
   check('S05 tie: identical timestamp keeps LOCAL value (never loses local on a tie)', tie.before === '2026-09-30' && tie.after === '2026-09-30' && tie.adopted === 0, tie);
 
   // Merge is undoable back to the exact pre-merge state.
+  // TIME-BOMB FIX (2026-08-11): the incoming stamp was a hardcoded past date
+  // (2026-08-09) that the real clock eventually overtook, so "incoming newer"
+  // no longer held and the merge (correctly) kept local — the test then
+  // failed and its undo() popped an OLDER stack entry. The stamp is now
+  // relative to the running clock (+1 min), so the merge always adopts and
+  // its own undo point is the one restored. The merge CODE was verified
+  // correct by S03/S04/S05 (the LWW conflict/tie checks); this was a test
+  // artifact, not an app bug.
   const undoCheck = await ev(`(function(){
     MMGR.State.updateState(function(s){ s.projectName = 'Harbor View (pre-undo)'; });
     var inc = JSON.parse(MMGR.State.exportState());
     inc.projectName = 'Harbor View (merged in)';
-    inc.fieldTs.projectName = '2026-08-09T10:00:00.000Z';
+    inc.fieldTs.projectName = new Date(Date.now() + 60000).toISOString();
     MMGR.State.mergeExternal(inc);
     var merged = MMGR.State.getState().projectName;
     var undone = MMGR.State.undo();
@@ -216,11 +224,19 @@ function hardKill(proc) {
   // Round-trip / no stamp inflation: B edits the same field again (newer),
   // A merges, A does its own save in between, then merges again — B's
   // second edit must still win.
+  // TIME-BOMB FIX (2026-08-11): B's stamps were hardcoded to 2026-08-10/11,
+  // so once the real clock passed them the "newer" side stopped being newer
+  // (o1=o2=0, nothing adopted). Stamps are now Date.now()-relative (+1h,
+  // +2h) so B edit 1 is always newer than the base and B edit 2 always newer
+  // than B edit 1 AND A's intervening workWeek save — the round-trip and
+  // no-stamp-inflation contract still holds on any run date.
   const roundTrip = await ev(`(function(){
     MMGR.State.updateState(function(s){ s.projectName = 'Harbor View (base)'; });
-    var out1 = MMGR.State.mergeExternal(JSON.parse('{"schemaVersion":' + MMGR.State.SCHEMA_VERSION + ',"updatedAt":"2026-08-10T10:00:00.000Z","fieldTs":{"projectName":"2026-08-10T10:00:00.000Z"},"projectName":"Harbor View (B edit 1)"}'));
+    var b1 = new Date(Date.now() + 3600000).toISOString();
+    var out1 = MMGR.State.mergeExternal(JSON.parse('{"schemaVersion":' + MMGR.State.SCHEMA_VERSION + ',"updatedAt":"' + b1 + '","fieldTs":{"projectName":"' + b1 + '"},"projectName":"Harbor View (B edit 1)"}'));
     MMGR.State.updateState(function(s){ s.workWeek = 5; }); // A works on in between
-    var out2 = MMGR.State.mergeExternal(JSON.parse('{"schemaVersion":' + MMGR.State.SCHEMA_VERSION + ',"updatedAt":"2026-08-11T10:00:00.000Z","fieldTs":{"projectName":"2026-08-11T10:00:00.000Z"},"projectName":"Harbor View (B edit 2)"}'));
+    var b2 = new Date(Date.now() + 7200000).toISOString();
+    var out2 = MMGR.State.mergeExternal(JSON.parse('{"schemaVersion":' + MMGR.State.SCHEMA_VERSION + ',"updatedAt":"' + b2 + '","fieldTs":{"projectName":"' + b2 + '"},"projectName":"Harbor View (B edit 2)"}'));
     var final = MMGR.State.getState().projectName;
     return { o1: out1.adopted, o2: out2.adopted, final: final };
   })()`);

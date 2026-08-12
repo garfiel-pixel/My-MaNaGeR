@@ -61,6 +61,7 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' 'sha256-o+0No2XpbES4E5QJh31mY9JsJFqSmE+B4x+z1fNPjVc=' 'sha256-gCwlAVKUNamFRjZeFSwcBd1zxQs+/mZ2GoLF8lqT/II=' https://accounts.google.com https://unpkg.com; style-src 'self' 'unsafe-inline' https://accounts.google.com https://fonts.googleapis.com; img-src 'self' data:; font-src 'self' data:; connect-src 'self' https://api.open-meteo.com https://geocoding-api.open-meteo.com https://api.openai.com https://api.anthropic.com https://generativelanguage.googleapis.com https://github.com https://release-assets.githubusercontent.com https://accounts.google.com https://huggingface.co https://*.cdn.hf.co; frame-src https://accounts.google.com; base-uri 'self'; form-action 'self';">
 </head>
 <body>
+<script src="js/mmgr-theme.js" data-sync="1"></script>
 <script>
 /* Device-level theme (shared across launcher, admin, and app): applied before
    first paint from the same localStorage slot every theme toggle writes, so a
@@ -94,6 +95,7 @@
     <button class="tab-btn" data-action="swMeth" data-meth="hybrid" data-mlc="hybrid">Hybrid</button>
   </div>
   <div class="hdr-right">
+    <button class="nav-btn" id="nav-btn" data-action="tglNav" aria-label="Open navigation menu" aria-expanded="false" aria-controls="sec-nav"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-menu"></use></svg></button>
     <div class="dirty-ind" id="dirty-ind" data-action="openDrwToSave" title="Changes save to this browser automatically. Click to back up to a file — recommended before closing or switching devices.">● Not backed up</div>
     <div class="timeline-ind" id="timeline-ind" data-action="jumpToDashTimeline" title="Current planned finish vs the Target Completion Date set in Charter. Click to view on the Dashboard."></div>
     <div class="lock-ind" id="lk-ind"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-lock"></use></svg> <span id="lk-lbl">Methodology</span> Locked</div>
@@ -140,6 +142,8 @@
     <button class="sec-btn" data-action="showSec" data-section="meet" data-pack="field"><svg class="ic-svg" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8" stroke="#22C55E" stroke-width="2"/><path d="M9 12L11 14L15 9" stroke="#22C55E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Meetings</button>
     </div>
   </nav>
+  <!-- Mobile nav scrim (closes the drawer on tap-out; see tglNav) -->
+  <div id="nav-scrim" data-action="tglNav" aria-hidden="true"></div>
 
   <!-- Methodology Learning Card -->
   <div id="meth-learn-card" class="mlc-card is-hide">
@@ -1018,6 +1022,7 @@
     </div>
     <div class="sr-hint">Shown in the header greeting. Leave blank for a generic welcome.</div>
     <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-moon"></use></svg> Light / Dark Theme</span><label class="tgl"><input type="checkbox" id="thm-tgl" aria-label="Light / Dark Theme" data-action="tglTheme"><span class="tsl"></span></label></div>
+    <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-palette"></use></svg> Color Theme</span><span class="pal-switch" role="group" aria-label="Color theme"><button type="button" class="pal-btn" data-pal="default" aria-pressed="true">Default</button><button type="button" class="pal-btn" data-pal="cyan" aria-pressed="false">Cyan</button></span></div>
     <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-crosshair"></use></svg> Crosshair Cursor</span><label class="tgl"><input type="checkbox" id="ch-tgl" aria-label="Crosshair Cursor" data-action="tglCh"><span class="tsl"></span></label></div>
     <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-lock"></use></svg> Lock Active Methodology</span><button class="btn btn-n btn-s toggle-chip is-off" data-action="tglLock">Lock / Unlock</button></div>
     <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-calendar"></use></svg> Work Week (days)</span><select id="ww-sel" data-action="setWorkWeek" class="ctl-in" aria-label="Work week (days)"><option value="3">3-day</option><option value="4">4-day</option><option value="5" selected>5-day (default)</option><option value="6">6-day</option><option value="7">7-day</option></select></div>

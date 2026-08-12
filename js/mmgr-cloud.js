@@ -556,21 +556,95 @@ var MMGR = window.MMGR || {};
       const entries = data.entries || [];
       if (!entries.length) { wrap.innerHTML = '<div class="sr-hint">No cloud changes logged yet — save once from any device to start the log.</div>'; return; }
       wrap.innerHTML = entries.map(function(en) {
-        const who = (en.actorType === 'editor' ? 'Editor \u201C' + esc(en.actorLabel || '?') + '\u201D' : 'Owner') + ' · ' + esc(String(en.createdAt || '').slice(0, 19).replace('T', ' '));
+        // MCP-CHANGELOG-UI (backlog, 2026-08-12): entries imported from the MCP
+        // AI sidecar (source === 'mcp', set server-side from import_key) render
+        // with a distinct purple AI badge + "MCP AI" actor so AI-made changes
+        // never masquerade as the owner. Revert stays available — recordId
+        // reverts were the whole point of the import pipeline.
+        const isMCP = en.source === 'mcp';
+        const hasDiffs = Array.isArray(en.diffs) && en.diffs.length > 0;
+        const who = (isMCP ? 'MCP AI' : (en.actorType === 'editor' ? 'Editor \u201C' + esc(en.actorLabel || '?') + '\u201D' : 'Owner')) + ' · ' + esc(String(en.createdAt || '').slice(0, 19).replace('T', ' '));
         let what = '';
         let revertBtn = '<button class="btn btn-o btn-s" data-action="cloudLogRevert" data-id="' + en.id + '">Revert</button>';
         if (en.type === 'bulk') what = 'Full-state change (snapshot)';
         else if (en.type === 'revert') what = 'Revert of a previous change';
         else if (en.type === 'recovery') { what = 'Owner code reissued (recovery)'; revertBtn = ''; } // not a content change — not revertible
         else what = (en.diffs ? en.diffs.length : 0) + ' field(s) changed' + (en.section ? ' · ' + esc(sectionLabel(en.section)) : '');
+        if (isMCP) what = 'Imported from AI (MCP) — ' + what;
+        // Click-to-expand diffs (backlog, 2026-08-12): any entry carrying
+        // field-level diffs (edit + revert entries; bulk rows only hold a
+        // snapshot key) gets a caret that reveals the before/after panel —
+        // pure DOM, view-only, never a server call.
+        const toggleBtn = hasDiffs
+          ? '<button type="button" class="cl-toggle" data-action="cloudLogToggleDiffs" data-id="' + en.id + '" aria-expanded="false" aria-controls="cl-diffs-' + en.id + '" aria-label="Show field diffs for entry ' + en.id + '" title="Show field-level before/after values"></button>'
+          : '';
+        const panelHtml = hasDiffs
+          ? '<div id="cl-diffs-' + en.id + '" class="cl-diffs is-hide" role="region" aria-label="Field-level diffs for entry ' + en.id + '">' + renderDiffPanel(en) + '</div>'
+          : '';
         return '<div class="sr" style="font-size:.72rem;display:flex;align-items:center;gap:8px;flex-wrap:wrap">' +
           '<span style="color:var(--gold)">' + esc(String(en.id)) + '</span>' +
+          (isMCP ? '<span class="badge-ai" title="Imported from the MCP AI changelog — reverts resolve by stable record id"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg> AI · MCP</span>' : '') +
           '<span>' + esc(who) + '</span><span class="sr-hint" style="margin:0">' + what + '</span>' +
+          toggleBtn +
           revertBtn +
+          panelHtml +
           '</div>';
       }).join('');
     } catch (e) {
       wrap.innerHTML = '<div class="sr-hint">Cloud unavailable here.</div>';
+    }
+  }
+
+  // ---- click-to-expand diff panel (view-only) ----------------------------
+  // One diff value cell: primitives render as-is; whole-record values (MCP
+  // imports diff entire records on add/delete) become compact JSON. Long
+  // strings are ellipsis-truncated on screen with the full value in the
+  // title attribute. Everything is escaped — the values are server state.
+  function clVal(v, absent, cls) {
+    if (absent) return '<em class="cl-absent">absent</em>';
+    let s;
+    if (v === undefined) v = null; // defensive: absent-but-unflagged renders as null, never "undefined"
+    if (v === null) s = 'null';
+    else if (typeof v === 'object') {
+      try { s = JSON.stringify(v); } catch (e) { s = String(v); }
+    } else s = String(v);
+    const title = s.length > 140 ? ' title="' + esc(s) + '"' : '';
+    const shown = s.length > 140 ? s.slice(0, 137) + '…' : s;
+    return '<code class="cl-val ' + cls + '"' + title + '>' + esc(shown) + '</code>';
+  }
+
+  // Build the field-level before/after panel markup for one entry (pure
+  // string builder — no DOM access, exposed as a test hook). Capped at 60
+  // rows; the server's leaf-diff cap (40) makes the cap a sanity guard.
+  function renderDiffPanel(en) {
+    const diffs = (Array.isArray(en.diffs) ? en.diffs : []).slice(0, 60);
+    const n = Array.isArray(en.diffs) ? en.diffs.length : 0;
+    if (!diffs.length) return '';
+    let rows = '';
+    for (let i = 0; i < diffs.length; i++) {
+      const d = diffs[i] || {};
+      rows += '<div class="cl-diff">' +
+        '<code class="cl-diff-path" title="' + esc(String(d.path || '')) + '">' + esc(String(d.path || '?')) + '</code>' +
+        clVal(d.before, d.beforeAbsent === true, 'cl-old') +
+        '<span class="cl-arr">→</span>' +
+        clVal(d.after, d.afterAbsent === true, 'cl-new') +
+        '</div>';
+    }
+    if (n > diffs.length) rows += '<div class="cl-more">… and ' + (n - diffs.length) + ' more field(s)</div>';
+    return '<div class="cl-diffs-head"><span>Field</span><span>Before</span><span></span><span>After</span></div>' + rows;
+  }
+
+  // Toggle an entry's diff panel open/closed (no server call, nothing
+  // mutated — safe in view-only mode, hence in READONLY_SAFE_ACTIONS).
+  function toggleDiffs(id) {
+    const panel = $('cl-diffs-' + id);
+    if (!panel) return;
+    const show = panel.classList.contains('is-hide');
+    panel.classList.toggle('is-hide');
+    const btn = document.querySelector('#cloud-log-list [data-action="cloudLogToggleDiffs"][data-id="' + String(id).replace(/"/g, '&quot;') + '"]');
+    if (btn) {
+      btn.classList.toggle('open', show);
+      btn.setAttribute('aria-expanded', show ? 'true' : 'false');
     }
   }
 
@@ -668,7 +742,7 @@ var MMGR = window.MMGR || {};
     let pendingBanner = '';
     if (pendingCode) {
       pendingBanner =
-        '<div class="sr cloud-new-code" style="border:1px solid var(--gold);background:rgba(212,175,55,.1);border-radius:var(--radius);padding:8px 10px;margin:6px 0" role="status">' +
+        '<div class="sr cloud-new-code" style="border:1px solid var(--gold);background:rgba(var(--gold-rgb),.1);border-radius:var(--radius);padding:8px 10px;margin:6px 0" role="status">' +
         '<div class="sr-hint" style="margin:0 0 4px"><strong>NEW editor code for \u201C' + esc(pendingCode.label || 'editor') + '\u201D — copy it now, it is shown once:</strong></div>' +
         '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">' +
         '<code style="font-family:ui-monospace,monospace;letter-spacing:.05em;color:var(--gold);font-size:1rem;font-weight:700">' + esc(pendingCode.code) + '</code>' +
@@ -891,6 +965,8 @@ var MMGR = window.MMGR || {};
     revokeEditor: revokeEditor,
     listLog: listLog,
     revertLog: revertLog,
+    toggleDiffs: toggleDiffs,
+    _renderDiffPanel: renderDiffPanel, // test hook (diff panel is a pure string builder)
     dropEditor: dropEditor,
     unlinkProject: unlinkProject,
     copyEditorCode: copyEditorCode,

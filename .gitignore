@@ -3,3 +3,6 @@
 _not-deployed/
 node_modules/
 .dev.vars
+
+# Stray terminal capture from a server-failure session (not project content)
+Windows PowerShell from last session due to server failures.txt

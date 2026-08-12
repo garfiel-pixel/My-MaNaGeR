@@ -63,7 +63,7 @@ const INLINE_SCRIPT_HASHES = [
   "'sha256-gCwlAVKUNamFRjZeFSwcBd1zxQs+/mZ2GoLF8lqT/II='", // app.html (early-apply theme snippet)
   "'sha256-gh1pJ1rSyd7LP4eITg17YwZIFfNkKQgLCGxUMAf1tkc='", // app.html
   "'sha256-qbHZHLyhdEDRwWrA8/I8ty4xIjUv+L/+Y6/0cIXdkJo='", // admin.html (early-apply theme snippet)
-  "'sha256-zTSNRzMhnvwuiiAKdVsLTpLHaN9XACR8m4E6jrA8VU0='", // admin.html
+  "'sha256-8lwCeRgYvYC5TLNo6P1WdZVi6Vt06j2/Q3MVsOXuWyc='", // admin.html
   "'sha256-Oa7ON+9A164SSXhnxu08mFn0V9Tj2SlZ2SzFXFoqKNE='", // dashboard.html
   "'sha256-DRiA9m7qJLb4z1QyfjbEUFyubzWHRCl2Cgf+YJkjyi8='", // seed-test.html
   "'sha256-l7T1LLezhae1ZGfmUGxTadrqmveWG2jA4nLGwRkmB3k='", // mymanager-field-guide.html
@@ -1076,6 +1076,74 @@ function cloudPathDelete(obj, p) {
   else if (last.key !== undefined && typeof cur === 'object' && !Array.isArray(cur)) delete cur[last.key];
 }
 
+// ---- recordId-aware diff revert (CLOUD-MCP-IMPORT, 2026-08-11) ----------
+// Apply the INVERSE of one stored changelog diff to a state object
+// (MUTATES s). Mirrors the MCP sidecar's applyInverseDiffs semantics
+// (mcp/lib/changelog.mjs): record diffs resolve by STABLE recordId when the
+// diff carries one (MCP-imported entries, so reverts survive later index
+// drift), falling back to the recorded array index for cloud-native leaf
+// diffs. A delete-restore re-INSERTS the record at a clamped position —
+// never overwriting a possibly-drifted neighbor — and a diff whose target
+// record was removed by a LATER edit is SKIPPED rather than written onto
+// whatever record sits there now. Returns true when the write actually
+// landed (so the revert log only claims applied diffs).
+function cloudRevertDiff(s, d) {
+  // field may itself be dotted for object content keys (raci.matrix.<key>).
+  const m = String(d.path || '').match(/^([a-zA-Z]+)(?:\[(\d+)\])?(?:\.(.+))?$/);
+  if (!m) return false;
+  const listKey = m[1];
+  const idxStr = m[2];
+  const field = m[3];
+  const list = s[listKey];
+  // Object content keys (charter, closure, raci, dmaic, activeMeeting, ...)
+  // and any nested leaf are diffed by the app's own saves too — revert them
+  // with the generic path helpers, exactly like the pre-recordId code did.
+  // REVIEW FIX (2026-08-11 #2): the first rewrite only special-cased
+  // charter + arrays, silently no-opping every other object key's revert.
+  if (!Array.isArray(list) || (field !== undefined && field.indexOf('.') !== -1)) {
+    if (d.beforeAbsent) { cloudPathDelete(s, d.path); return true; }
+    return cloudPathSet(s, d.path, d.before);
+  }
+  // A delete diff records the id of the record that WAS there — on revert it
+  // is intentionally absent, so delete-restores resolve by the recorded
+  // index, never by id lookup.
+  const isDeleteRestore = d.afterAbsent === true && d.beforeAbsent !== true && !field;
+  let idx = -1;
+  if (!isDeleteRestore && d.recordId !== undefined) {
+    idx = list.findIndex(function(r) { return r && String(r.id) === String(d.recordId); });
+    if (idx < 0) return false; // target record gone — skip rather than clobber
+  } else if (idxStr !== undefined) {
+    idx = Number(idxStr);
+  }
+  if (d.beforeAbsent) {
+    // A FIELD-level add (leaf diff — the field was undefined before the
+    // change) reverts to deleting just that field; only a WHOLE-RECORD add
+    // removes the record. REVIEW FIX (2026-08-11): the previous version
+    // spliced for every beforeAbsent diff, which turned cloud-native leaf
+    // reverts into corruption — reverting a record-add (leaf diffs at the
+    // same index) repeatedly removed the shifted FOLLOWING records.
+    const rec = idx >= 0 && idx < list.length ? list[idx] : null;
+    if (field) {
+      if (!rec) return false;
+      delete rec[field];
+      return true;
+    }
+    if (idx >= 0 && idx < list.length) { list.splice(idx, 1); return true; }
+    return false;
+  }
+  if (isDeleteRestore) {
+    // record was deleted by the logged change -> re-insert at a clamped
+    // position (never overwrite a possibly-drifted neighbor)
+    list.splice(Math.min(idx < 0 ? 0 : idx, list.length), 0, d.before);
+    return true;
+  }
+  const rec = idx >= 0 && idx < list.length ? list[idx] : null;
+  if (!rec) return false;
+  if (field) { rec[field] = d.before; return true; }
+  list[idx] = d.before;
+  return true;
+}
+
 // ---- editor code management (owner-only) -------------------------
 // GET /api/cloud/sections — canonical section vocabulary (public).
 function handleCloudSections() {
@@ -1153,11 +1221,15 @@ async function handleCloudEditorRevoke(request, env, projectId, editorId) {
 async function handleCloudChangelogList(request, env, projectId) {
   const auth = await cloudAuthOwnerEither(request, env, projectId);
   if (!auth) return cloudForbidden();
-  const rows = await env.DB.prepare('SELECT id, entry_type, actor_type, actor_label, section, diffs_json, snapshot_key, created_at FROM cloud_changelog WHERE project_id = ? ORDER BY id DESC LIMIT 100').bind(projectId).all();
+  // MCP-CHANGELOG-UI (backlog, 2026-08-12): import_key is selected so the
+  // client can tell MCP-imported entries from native ones — the changelog UI
+  // renders imported AI entries with a distinct badge. The import_key value
+  // itself is never exposed, only the derived source flag.
+  const rows = await env.DB.prepare('SELECT id, entry_type, actor_type, actor_label, section, diffs_json, snapshot_key, import_key, created_at FROM cloud_changelog WHERE project_id = ? ORDER BY id DESC LIMIT 100').bind(projectId).all();
   const entries = (rows.results || []).map(function(r) {
     let diffs = null;
     try { if (r.diffs_json) diffs = JSON.parse(r.diffs_json); } catch (e) { diffs = null; }
-    return { id: r.id, type: r.entry_type, actorType: r.actor_type, actorLabel: r.actor_label, section: r.section, diffs: diffs, hasSnapshot: !!r.snapshot_key, createdAt: r.created_at };
+    return { id: r.id, type: r.entry_type, actorType: r.actor_type, actorLabel: r.actor_label, section: r.section, diffs: diffs, hasSnapshot: !!r.snapshot_key, source: r.import_key ? 'mcp' : 'cloud', createdAt: r.created_at };
   });
   return json({ ok: true, entries: entries });
 }
@@ -1180,7 +1252,11 @@ async function handleCloudChangelogRevert(request, env, projectId, entryId) {
     const revDiffs = [];
     diffs.forEach(function(d) {
       const curVal = cloudPathGet(pre, d.path);
-      const applied = d.beforeAbsent ? (cloudPathDelete(pre, d.path), true) : cloudPathSet(pre, d.path, d.before);
+      // CLOUD-MCP-IMPORT: cloudRevertDiff resolves record diffs by stable
+      // recordId (MCP-imported entries) with the recorded-index fallback for
+      // cloud-native leaf diffs — behavior identical to the old inline
+      // cloudPathSet/cloudPathDelete when no recordId is present.
+      const applied = cloudRevertDiff(pre, d);
       // REVIEW FIX: only record diffs that actually applied — a path whose
       // container vanished (element deleted by a later change) is skipped
       // rather than fabricated, and must not be claimed in the log entry.
@@ -1218,6 +1294,155 @@ async function handleCloudChangelogRevert(request, env, projectId, entryId) {
   return json({ ok: true, revertedEntryId: entry.id, revertEntryId: res.meta.last_row_id, savedAt: now });
 }
 
+// ---- MCP changelog importer (CLOUD-MCP-IMPORT, 2026-08-11) --------
+// POST /api/cloud/projects/:id/changelog/import — owner-only.
+// The MCP server (mcp/) records AI edits in a cloud-shaped sidecar
+// changelog (<project>.mcp-changelog.json). This endpoint imports those
+// entries into the D1 changelog so AI edits become cloud-auditable AND
+// cloud-revertible through the existing revert route.
+//
+// Honesty gate: every diff in an imported entry is VERIFIED against the
+// current cloud blob — the blob must already be in the state the MCP edit
+// produced (record diffs resolve by recordId, field diffs by recorded
+// path). An entry whose diffs no longer match the blob (the cloud moved on,
+// or the exported file was edited after the AI run) is SKIPPED and reported
+// as stale, NEVER stored: a stale diff would write the wrong value on a
+// later revert. A project with no snapshot yet has nothing to verify
+// against, so every entry is skipped with that reason.
+//
+// Idempotency: each stored row carries import_key 'mcp:<projectId>:<localId>'
+// (UNIQUE, migration 0005) — re-importing the same local entry is a silent
+// no-op (ON CONFLICT DO NOTHING), so a lost CLI ledger can never duplicate
+// audit rows.
+//
+// Normalization: MCP 'bulk' entries carry field diffs but NO R2 snapshot
+// (the sidecar has no snapshot machinery) — they are stored as 'edit' so
+// the revert route can undo them; 'bulk' without diffs and 'recovery' are
+// rejected (nothing reversible).
+const CLOUD_IMPORT_MAX_ENTRIES = 500;
+const CLOUD_IMPORT_MAX_DIFFS = 1000;
+
+// Sanitize + validate ONE submitted entry. The sidecar's diffs_json may be
+// a JSON string or an array; note that JSON round-trip DROPS undefined
+// before/after values, so only path/beforeAbsent/afterAbsent are required
+// structural invariants (recordId is optional but always present on MCP
+// record diffs). Returns { ok:true, entry } or { ok:false, reason }.
+function sanitizeImportEntry(raw) {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return { ok: false, reason: 'malformed entry' };
+  const localId = Number(raw.localId !== undefined ? raw.localId : raw.id);
+  if (!Number.isInteger(localId) || localId < 1) return { ok: false, reason: 'localId must be a positive integer' };
+  const type = String(raw.entry_type || '');
+  if (type !== 'edit' && type !== 'bulk' && type !== 'revert') return { ok: false, reason: 'unsupported entry_type "' + type + '"' };
+  const actorType = raw.actor_type === 'editor' ? 'editor' : 'owner';
+  const label = typeof raw.actor_label === 'string' && raw.actor_label.trim()
+    ? raw.actor_label.trim().slice(0, 60) : 'mcp-ai';
+  const createdAt = String(raw.created_at || '');
+  if (!createdAt || Number.isNaN(Date.parse(createdAt))) return { ok: false, reason: 'created_at must be an ISO date' };
+  let diffs = null;
+  if (raw.diffs_json !== undefined && raw.diffs_json !== null) {
+    if (typeof raw.diffs_json === 'string') {
+      try { diffs = JSON.parse(raw.diffs_json); } catch (e) { return { ok: false, reason: 'diffs_json is not valid JSON' }; }
+    } else {
+      diffs = raw.diffs_json;
+    }
+    if (!Array.isArray(diffs)) return { ok: false, reason: 'diffs_json must be an array' };
+    if (diffs.length > CLOUD_IMPORT_MAX_DIFFS) return { ok: false, reason: 'too many diffs (max ' + CLOUD_IMPORT_MAX_DIFFS + ')' };
+    for (let i = 0; i < diffs.length; i++) {
+      const d = diffs[i];
+      if (!d || typeof d !== 'object' || typeof d.path !== 'string' || !d.path) return { ok: false, reason: 'diff missing path' };
+      if (typeof d.beforeAbsent !== 'boolean' || typeof d.afterAbsent !== 'boolean') return { ok: false, reason: 'diff missing beforeAbsent/afterAbsent' };
+    }
+  }
+  return { ok: true, entry: { localId: localId, type: type, actorType: actorType, label: label, createdAt: createdAt, diffs: diffs } };
+}
+
+// Verify one entry's diffs against the current blob (the MCP edit's AFTER
+// state). Record diffs resolve by recordId — an add must be present and
+// equal to d.after, a delete must be absent, an update must equal d.after
+// (whole-record or field) — exactly the resolution the revert route will
+// use, so a verified entry reverts correctly by construction. Charter/leaf
+// diffs compare by path. Returns { ok:true } or { ok:false, reason }.
+function cloudVerifyImportedDiffs(blob, diffs) {
+  for (let i = 0; i < diffs.length; i++) {
+    const d = diffs[i];
+    const m = String(d.path).match(/^([a-zA-Z]+)(?:\[(\d+)\])?(?:\.([a-zA-Z]+))?$/);
+    if (!m) return { ok: false, reason: 'malformed diff path ' + d.path };
+    const listKey = m[1];
+    const field = m[3];
+    if (listKey === 'charter') {
+      const v = cloudPathGet(blob, d.path);
+      if (d.afterAbsent ? v !== undefined : !cloudDeepEqual(v, d.after)) {
+        return { ok: false, reason: 'blob diverged from the MCP edit at ' + d.path };
+      }
+      continue;
+    }
+    const list = blob[listKey];
+    if (!Array.isArray(list)) return { ok: false, reason: 'no "' + listKey + '" in the cloud blob (blob diverged from the MCP edit)' };
+    if (d.recordId !== undefined) {
+      const rec = list.find(function(r) { return r && String(r.id) === String(d.recordId); });
+      if (d.afterAbsent) {
+        if (rec !== undefined) return { ok: false, reason: 'deleted record ' + d.recordId + ' still exists in the cloud (blob diverged from the MCP edit)' };
+      } else if (d.beforeAbsent) {
+        if (rec === undefined || !cloudDeepEqual(rec, d.after)) return { ok: false, reason: 'added record ' + d.recordId + ' missing from the cloud (blob diverged from the MCP edit)' };
+      } else if (field) {
+        if (rec === undefined || !cloudDeepEqual(rec[field], d.after)) return { ok: false, reason: 'field ' + d.path + ' diverged from the MCP edit' };
+      } else {
+        if (rec === undefined || !cloudDeepEqual(rec, d.after)) return { ok: false, reason: 'record ' + d.recordId + ' diverged from the MCP edit' };
+      }
+      continue;
+    }
+    // Defensive fallback (cloud-native leaf diff, no recordId): index compare.
+    const v = cloudPathGet(blob, d.path);
+    if (d.afterAbsent ? v !== undefined : !cloudDeepEqual(v, d.after)) {
+      return { ok: false, reason: 'blob diverged from the MCP edit at ' + d.path };
+    }
+  }
+  return { ok: true };
+}
+
+async function handleCloudChangelogImport(request, env, projectId) {
+  const auth = await cloudAuthOwnerEither(request, env, projectId);
+  if (!auth) return cloudForbidden();
+  const read = await readCloudBody(request);
+  if (read.tooLarge) return json({ ok: false, error: 'body too large' }, 413);
+  if (read.bad || !read.body || typeof read.body !== 'object') return json({ ok: false, error: 'bad request' }, 400);
+  const submitted = Array.isArray(read.body.entries) ? read.body.entries : null;
+  if (!submitted || submitted.length === 0) return json({ ok: false, error: 'entries required' }, 400);
+  if (submitted.length > CLOUD_IMPORT_MAX_ENTRIES) return json({ ok: false, error: 'too many entries (max ' + CLOUD_IMPORT_MAX_ENTRIES + ')' }, 400);
+  const key = 'projects/' + projectId + '/latest.json';
+  const cur = await cloudReadState(env, key);
+  const imported = [];
+  const skipped = [];
+  for (let i = 0; i < submitted.length; i++) {
+    const s = sanitizeImportEntry(submitted[i]);
+    if (!s.ok) { skipped.push({ localId: submitted[i] && submitted[i].localId !== undefined ? submitted[i].localId : (submitted[i] && submitted[i].id !== undefined ? submitted[i].id : null), reason: s.reason }); continue; }
+    const e = s.entry;
+    if (!e.diffs || e.diffs.length === 0) {
+      // Nothing to verify, nothing the revert route can undo.
+      skipped.push({ localId: e.localId, reason: 'entry has no diffs' });
+      continue;
+    }
+    if (!cur) {
+      skipped.push({ localId: e.localId, reason: 'no cloud snapshot to verify against' });
+      continue;
+    }
+    const v = cloudVerifyImportedDiffs(cur, e.diffs);
+    if (!v.ok) { skipped.push({ localId: e.localId, reason: v.reason }); continue; }
+    // MCP 'bulk' entries carry field diffs, not an R2 snapshot — store them
+    // as 'edit' so the existing revert route can undo them.
+    const type = e.type === 'bulk' ? 'edit' : e.type;
+    const sec = cloudSectionOfDiffs(e.diffs);
+    const res = await env.DB.prepare(
+      "INSERT INTO cloud_changelog (project_id, entry_type, actor_type, actor_label, section, diffs_json, snapshot_key, created_at, import_key) VALUES (?,?,?,?,?,?,?,?,?) ON CONFLICT(import_key) DO NOTHING"
+    ).bind(projectId, type, e.actorType, e.label, sec, JSON.stringify(e.diffs), null, e.createdAt, 'mcp:' + projectId + ':' + e.localId).run();
+    if (!res.meta.changes) { skipped.push({ localId: e.localId, reason: 'already imported' }); continue; }
+    imported.push({ localId: e.localId, cloudId: res.meta.last_row_id, type: type, section: sec });
+  }
+  // An import is the owner proving presence — refresh the purge window.
+  if (imported.length) await cloudTouchOwner(env, projectId);
+  return json({ ok: true, projectId: projectId, imported: imported, skipped: skipped, total: submitted.length });
+}
+
 // ---- admin cloud visibility (operator-gated listing) --------------
 async function cloudAdminAuth(request, env) {
   const expected = env && typeof env.ADMIN_CODE === 'string' ? env.ADMIN_CODE.trim() : '';
@@ -1230,10 +1455,30 @@ async function handleAdminCloudList(request, env) {
   const auth = await cloudAdminAuth(request, env);
   if (auth && auth.disabled) return json({ ok: false, error: 'admin API not configured — set the ADMIN_CODE secret' }, 503);
   if (!auth) return json({ ok: false, error: 'invalid admin code' }, 403);
-  const rows = await env.DB.prepare('SELECT project_id, owner_label, google_name, latest_r2_key, created_at, updated_at FROM cloud_projects ORDER BY updated_at DESC').all();
-  const projects = (rows.results || []).map(function(r) {
-    return { projectId: r.project_id, label: r.owner_label || null, linkedName: r.google_name || null, hasSnapshot: !!r.latest_r2_key, createdAt: r.created_at, updatedAt: r.updated_at };
-  });
+  // PREF-SURFACING (backlog, 2026-08-12): the linked account's stored theme
+  // preference (R2 prefs/<sub>.json) rides along per project so the operator
+  // can see the prefs store in use from the admin cloud listing. google_sub is
+  // selected INTERNALLY only — the raw sub is never exposed in the response,
+  // just the derived themePrefs (palette/dark/updatedAt).
+  const rows = await env.DB.prepare('SELECT project_id, owner_label, google_name, google_sub, latest_r2_key, created_at, updated_at FROM cloud_projects ORDER BY updated_at DESC').all();
+  const projects = [];
+  for (const r of (rows.results || [])) {
+    let themePrefs = null;
+    if (r.google_sub) {
+      try {
+        const obj = await env.R2.get(cloudPrefsKey(r.google_sub));
+        if (obj) {
+          const p = JSON.parse(await obj.text());
+          if (p) themePrefs = {
+            palette: cloudSanitizePalette(p.palette) || 'default',
+            dark: !!p.dark,
+            updatedAt: p.updatedAt || null
+          };
+        }
+      } catch (e) { themePrefs = null; }
+    }
+    projects.push({ projectId: r.project_id, label: r.owner_label || null, linkedName: r.google_name || null, hasSnapshot: !!r.latest_r2_key, createdAt: r.created_at, updatedAt: r.updated_at, themePrefs: themePrefs });
+  }
   return json({ ok: true, projects: projects });
 }
 
@@ -1261,6 +1506,54 @@ async function handleCloudProjectList(request, env) {
     };
   });
   return json({ ok: true, projects: projects });
+}
+
+// ---- account theme preference (THEME-SYSTEM-AND-MOBILE-UI-ACTION-PLAN §2.3) ----
+// GET/PUT /api/cloud/prefs/theme — session-gated (the signed-in Google
+// account), stored as a tiny JSON blob in R2 (prefs/<sub>.json). No D1
+// migration needed and offline-first is untouched: the client always applies
+// localStorage instantly and treats this endpoint as the preferred-but-
+// optional source of truth. A 403 here (no valid session) simply means the
+// client keeps its local cache. Same generic forbidden as the rest of the
+// API — nothing leaks about whether the account exists.
+const CLOUD_PREFS_PREFIX = 'prefs/';
+function cloudPrefsKey(sub) { return CLOUD_PREFS_PREFIX + sub + '.json'; }
+function cloudSanitizePalette(v) { return v === 'cyan' || v === 'default' ? v : null; }
+
+async function handleCloudPrefsGet(request, env) {
+  const session = await readSession(request, env);
+  if (!session || !session.sub) return cloudForbidden();
+  const obj = await env.R2.get(cloudPrefsKey(session.sub));
+  if (!obj) return json({ ok: true, theme: { palette: 'default', dark: false } });
+  let parsed = null;
+  try { parsed = JSON.parse(await obj.text()); } catch (e) { parsed = null; }
+  const palette = cloudSanitizePalette(parsed && parsed.palette) || 'default';
+  return json({ ok: true, theme: { palette: palette, dark: !!(parsed && parsed.dark) } });
+}
+
+async function handleCloudPrefsPut(request, env) {
+  const session = await readSession(request, env);
+  if (!session || !session.sub) return cloudForbidden();
+  // The payload is at most two tiny fields — reject anything bigger up front
+  // so a session-holding client can't stuff the endpoint (cheap hardening).
+  const cl = Number(request.headers.get('content-length') || 0);
+  if (cl > 2048) return json({ ok: false, error: 'payload too large' }, 413);
+  let body = null;
+  try { body = await request.json(); } catch (e) { return json({ ok: false, error: 'invalid JSON body' }, 400); }
+  const palette = cloudSanitizePalette(body && body.palette);
+  const dark = body && typeof body.dark === 'boolean' ? body.dark : null;
+  if (palette === null && dark === null) return json({ ok: false, error: 'nothing to save (palette must be "default"|"cyan", dark a boolean)' }, 400);
+  const key = cloudPrefsKey(session.sub);
+  let cur = { palette: 'default', dark: false };
+  const existing = await env.R2.get(key);
+  if (existing) { try { const p = JSON.parse(await existing.text()); if (p) cur = p; } catch (e) { /* keep defaults */ } }
+  const next = {
+    palette: palette === null ? (cloudSanitizePalette(cur.palette) || 'default') : palette,
+    dark: dark === null ? !!cur.dark : dark,
+    updatedAt: new Date().toISOString()
+  };
+  await env.R2.put(key, JSON.stringify(next), { httpMetadata: { contentType: 'application/json' } });
+  return json({ ok: true, theme: { palette: next.palette, dark: next.dark } });
 }
 
 // POST /api/cloud/projects  { projectId, name? }
@@ -1580,6 +1873,16 @@ async function handleApi(request, env, url) {
     if (rl.limited) return cloudRateLimited(rl.retryAfter);
     return handleCloudUnlink(request, env, cloudUnlinkMatch[1]);
   }
+  // THEME-SYSTEM-AND-MOBILE-UI-ACTION-PLAN §2.3 — session-gated account
+  // theme preference (GET returns the stored pref, PUT accepts { palette,
+  // dark }); R2-backed, no D1 migration. Runs before the ASSETS binding
+  // like every /api/cloud route.
+  if (path === '/api/cloud/prefs/theme') {
+    const rl = await cloudRateCheck(request, 'general');
+    if (rl.limited) return cloudRateLimited(rl.retryAfter);
+    if (request.method === 'GET') return handleCloudPrefsGet(request, env);
+    if (request.method === 'PUT') return handleCloudPrefsPut(request, env);
+  }
 
 
   // CLOUD-BACKEND-ARCHITECTURE-PLAN Phase 2/3 — editor codes, changelog,
@@ -1614,6 +1917,12 @@ async function handleApi(request, env, url) {
     const rl = await cloudRateCheck(request, 'general');
     if (rl.limited) return cloudRateLimited(rl.retryAfter);
     return handleCloudChangelogList(request, env, cloudLogMatch[1]);
+  }
+  const cloudImportMatch = path.match(/^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/changelog\/import$/);
+  if (cloudImportMatch && request.method === 'POST') {
+    const rl = await cloudRateCheck(request, 'general');
+    if (rl.limited) return cloudRateLimited(rl.retryAfter);
+    return handleCloudChangelogImport(request, env, cloudImportMatch[1]);
   }
   const cloudRevertMatch = path.match(/^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/changelog\/(\d+)\/revert$/);
   if (cloudRevertMatch && request.method === 'POST') {

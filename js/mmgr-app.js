@@ -299,6 +299,35 @@ var MMGR = window.MMGR || {};
       effective === 'premium' ? 'ok' : 'warn');
   }
 
+  // ---- THEME-SYSTEM-AND-MOBILE-UI-ACTION-PLAN §4.2: mobile nav drawer ----
+  // Hamburger + scrim toggle body.nav-open, which slides the .sec-nav off-canvas
+  // drawer in/out on ≤768px (desktop ignores the class — the nav stays sticky).
+  // Pure device-UI chrome, never project state: safe in view-only. The drawer
+  // closes on: scrim tap (same action), any section button, Escape, and a
+  // viewport resize back to desktop width.
+  let _navBound = false;
+  function closeNav() {
+    document.body.classList.remove('nav-open');
+    const btn = U.$('nav-btn');
+    if (btn) btn.setAttribute('aria-expanded', 'false');
+  }
+  function tglNav() {
+    if (!_navBound) {
+      _navBound = true;
+      document.addEventListener('click', function (e) {
+        const t = e.target;
+        if (t && t.closest && t.closest('.sec-btn')) closeNav();
+      });
+      document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeNav(); });
+      window.addEventListener('resize', function () {
+        if (window.innerWidth > 768) closeNav();
+      });
+    }
+    const open = document.body.classList.toggle('nav-open');
+    const btn = U.$('nav-btn');
+    if (btn) btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+  }
+
   // ---- PLAN-OF-ACTION-AI-VOICE-SYNC-v1 4.5: optional Google identity ----
   function syncConnect() {
     if (ns.Sync && ns.Sync.connect) ns.Sync.connect();
@@ -1620,6 +1649,7 @@ var MMGR = window.MMGR || {};
     setWorkWeek: setWorkWeek,
     // PLAN-OF-ACTION-LIQUID-GLASS-UI 3.5.3 + PLAN-OF-ACTION-AI-VOICE-SYNC-v1 4.5
     tglGlassMode: tglGlassMode,
+    tglNav: tglNav,
     syncConnect: syncConnect,
     syncSignOut: syncSignOut,
     syncClientId: syncClientId,
@@ -1830,6 +1860,8 @@ window.MMGR = MMGR;
     // writes a device-level preference only (localStorage, never project
     // state), so it is safe in view-only, exactly like the viewport prefs.
     'tglGlassMode': () => window.MMGR.App.tglGlassMode(),
+    // THEME-SYSTEM-AND-MOBILE-UI-ACTION-PLAN §4.2: mobile nav drawer toggle.
+    'tglNav': () => window.MMGR.App.tglNav(),
     // Rank 4.5 (PLAN-OF-ACTION-AI-VOICE-SYNC-v1): optional Google identity
     // for sync — device-level label only, never a gate, safe in view-only.
     'syncConnect': () => window.MMGR.App.syncConnect(),
@@ -1870,6 +1902,7 @@ window.MMGR = MMGR;
     'cloudEditorRevoke': (el) => { const C = window.MMGR.Cloud; if (C && C.revokeEditor) C.revokeEditor(el && el.getAttribute('data-id')); },
     'cloudLogList': () => { const C = window.MMGR.Cloud; if (C && C.listLog) C.listLog(); },
     'cloudLogRevert': (el) => { const C = window.MMGR.Cloud; if (C && C.revertLog) C.revertLog(el && el.getAttribute('data-id')); },
+    'cloudLogToggleDiffs': (el) => { const C = window.MMGR.Cloud; if (C && C.toggleDiffs) C.toggleDiffs(el && el.getAttribute('data-id')); },
     'cloudDropEditor': () => { const C = window.MMGR.Cloud; if (C && C.dropEditor) C.dropEditor(); },
     'cascadeGantt': () => window.MMGR.App.cascadeGantt(),
     'toggleCritical': (el) => window.MMGR.App.toggleCritical(el),
@@ -2104,6 +2137,9 @@ window.MMGR = MMGR;
     // allowed in view-only like glass mode. tglTheme writes only the device
     // pref + body class in view-only; the per-project state write is skipped.
     'tglTheme': 1,
+    // THEME-SYSTEM-AND-MOBILE-UI-ACTION-PLAN §4.2: the mobile nav drawer is
+    // pure device-UI chrome (body.nav-open class only) — never project state.
+    'tglNav': 1,
     // DIR-1a/1b: copying/downloading the error log is read-only; the
     // remote-reporting toggle + webhook URL are device-level preferences
     // (localStorage, like the glass mode toggle) — never project state.
@@ -2130,7 +2166,7 @@ window.MMGR = MMGR;
     // server calls; a revert changes the CLOUD snapshot, not this device) —
     // safe in view-only, like the Phase 1 cloud entries above.
     'cloudEditorCreate': 1, 'cloudEditorList': 1, 'cloudEditorRevoke': 1,
-    'cloudLogList': 1, 'cloudLogRevert': 1, 'cloudDropEditor': 1,
+    'cloudLogList': 1, 'cloudLogRevert': 1, 'cloudLogToggleDiffs': 1, 'cloudDropEditor': 1,
     // GAP-AUDIT-CLOUD-31: unlink only mutates the CLOUD copy (like the other
     // cloud actions above), and the banner Copy/Done are clipboard/session
     // only — all safe in view-only.
@@ -2201,7 +2237,11 @@ window.MMGR = MMGR;
     const action = el.getAttribute('data-action');
     if (!guardReadonly(action)) return;
     const handler = ACTION_MAP[action];
-    if (handler && (action === 'updEnvelope' || action === 'saveSprint' || action === 'setWorkWeek' || action === 'setRegion' || action === 'loadProjectFile' || action === 'mergeProjectFile' || action === 'updCharter' || action === 'updClose' || action === 'setUserName' || action === 'addRaciTaskFromPicker' || action === 'addRaciPersonFromPicker' || action === 'updField' || action === 'updTaskField' || action === 'updKPI' || action === 'updKPILink' || action === 'updKPIDir' || action === 'updSpendEntry' || action === 'updRaciTask' || action === 'updRaciPerson' || action === 'claimSetCause' || action === 'aiSetTier' || action === 'setErrWebhook' || action === 'driveAutoInterval' || action === 'driveSetPass')) {
+    // CLAUDE-BUG-AUDIT (2026-08-11) #1: syncClientId is a type-then-blur text
+    // field (Google OAuth Client ID) — it was missing from this change
+    // whitelist, so the value sat in the box but was never persisted.
+    // `change` is the correct event for a one-time paste/type-then-blur field.
+    if (handler && (action === 'updEnvelope' || action === 'saveSprint' || action === 'setWorkWeek' || action === 'setRegion' || action === 'loadProjectFile' || action === 'mergeProjectFile' || action === 'updCharter' || action === 'updClose' || action === 'setUserName' || action === 'addRaciTaskFromPicker' || action === 'addRaciPersonFromPicker' || action === 'updField' || action === 'updTaskField' || action === 'updKPI' || action === 'updKPILink' || action === 'updKPIDir' || action === 'updSpendEntry' || action === 'updRaciTask' || action === 'updRaciPerson' || action === 'claimSetCause' || action === 'aiSetTier' || action === 'setErrWebhook' || action === 'driveAutoInterval' || action === 'driveSetPass' || action === 'syncClientId')) {
       handler(el, e);
     }
   });

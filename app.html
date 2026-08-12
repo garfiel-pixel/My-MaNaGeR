@@ -98,6 +98,7 @@ body.glass-premium .wrap{position:relative;z-index:1;}
 </style>
 </head>
 <body>
+<script src="js/mmgr-theme.js" data-sync="1"></script>
 <script>
 /* Device-level theme (shared across launcher, admin, and app): applied before
    first paint from the same localStorage slot every theme toggle writes, so a
@@ -116,6 +117,8 @@ body.glass-premium .wrap{position:relative;z-index:1;}
       <span class="ctl-item"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-moon"></use></svg> Dark theme <label class="tgl"><input type="checkbox" id="thm-tgl" data-action="tglTheme" aria-label="Toggle dark theme"><span class="tsl"></span></label></span>
       <span class="ctl-sep"></span>
       <span class="ctl-item"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-orb"></use></svg> Premium glass <label class="tgl"><input type="checkbox" id="glass-tgl" data-action="tglGlassMode" aria-label="Toggle premium liquid-glass backdrop"><span class="tsl"></span></label></span>
+      <span class="ctl-sep"></span>
+      <span class="ctl-item"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-palette"></use></svg> Color theme <span class="pal-switch" role="group" aria-label="Color theme"><button type="button" class="pal-btn" data-pal="default" aria-pressed="true">Default</button><button type="button" class="pal-btn" data-pal="cyan" aria-pressed="false">Cyan</button></span></span>
     </div>
   </div>
 

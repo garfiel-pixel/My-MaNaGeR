@@ -1,0 +1,276 @@
+{
+  "schemaVersion": 18,
+  "projectId": "demo-riverwalk",
+  "projectName": "Riverwalk Retail Fit-Out",
+  "methodology": "waterfall",
+  "methodologyLocked": false,
+  "workWeek": 5,
+  "userName": "QA Harness",
+  "charter": {
+    "name": "Riverwalk Retail Fit-Out",
+    "sponsor": "Alex Rivera",
+    "objective": "Fit out 2,400 m² ground-floor retail space: demolition, MEP, finishes, handover.",
+    "targetCompletion": "2026-10-30",
+    "end": "2026-10-30",
+    "budgetEnvelope": 850000,
+    "constraints": "Night-shift restrictions after 19:00; loading bay shared with tenant 4.",
+    "assumptions": "Structural steel is delivered by week 6; landlord approves MEP route at week 2."
+  },
+  "tasks": [
+    {
+      "id": "t-1",
+      "name": "Demolition & Strip-Out",
+      "level": 0,
+      "indent": 0,
+      "isPhase": false,
+      "status": "completed",
+      "startDate": "2026-06-01",
+      "endDate": "2026-06-19",
+      "duration": 15,
+      "assignee": "J. Mensah",
+      "critical": false,
+      "leadTime": false,
+      "recurring": false,
+      "weatherExposed": false,
+      "confidence": "high",
+      "predecessors": [],
+      "notes": "Asbestos survey clear.",
+      "weatherSensitive": false
+    },
+    {
+      "id": "t-2",
+      "name": "MEP Rough-In",
+      "level": 1,
+      "indent": 1,
+      "isPhase": false,
+      "status": "inprogress",
+      "startDate": "2026-06-22",
+      "endDate": "2026-07-31",
+      "duration": 29,
+      "assignee": "S. Okafor",
+      "critical": true,
+      "leadTime": false,
+      "recurring": false,
+      "weatherExposed": false,
+      "confidence": "medium",
+      "predecessors": ["t-1"],
+      "notes": "MEP route awaiting landlord sign-off.",
+      "weatherSensitive": false
+    },
+    {
+      "id": "t-3",
+      "name": "Drywall & Ceiling Grid",
+      "level": 1,
+      "indent": 1,
+      "isPhase": false,
+      "status": "todo",
+      "startDate": "2026-08-03",
+      "endDate": "2026-09-04",
+      "duration": 24,
+      "assignee": "P. Dubois",
+      "critical": false,
+      "leadTime": false,
+      "recurring": false,
+      "weatherExposed": false,
+      "confidence": "high",
+      "predecessors": ["t-2"],
+      "notes": "",
+      "weatherSensitive": false
+    },
+    {
+      "id": "t-4",
+      "name": "Storefront Glazing Install",
+      "level": 0,
+      "indent": 0,
+      "isPhase": true,
+      "status": "todo",
+      "startDate": "2026-09-07",
+      "endDate": "2026-10-02",
+      "duration": 19,
+      "assignee": "G. Li",
+      "critical": false,
+      "leadTime": true,
+      "recurring": false,
+      "weatherExposed": true,
+      "confidence": "low",
+      "predecessors": ["t-3"],
+      "notes": "Weather-exposed; glass delivery lead time 6 weeks.",
+      "weatherSensitive": true
+    },
+    {
+      "id": "t-5",
+      "name": "FF&E Install & Handover",
+      "level": 0,
+      "indent": 0,
+      "isPhase": false,
+      "status": "todo",
+      "startDate": "2026-10-05",
+      "endDate": "2026-10-28",
+      "duration": 18,
+      "assignee": "A. Whitfield",
+      "critical": false,
+      "leadTime": false,
+      "recurring": false,
+      "weatherExposed": false,
+      "confidence": "medium",
+      "predecessors": ["t-4"],
+      "notes": "",
+      "weatherSensitive": false
+    },
+    {
+      "id": "t-6",
+      "name": "Snagging & Defects Close-Out",
+      "level": 0,
+      "indent": 0,
+      "isPhase": false,
+      "status": "todo",
+      "startDate": "2026-10-26",
+      "endDate": "2026-10-30",
+      "duration": 5,
+      "assignee": "QA Team",
+      "critical": false,
+      "leadTime": false,
+      "recurring": false,
+      "weatherExposed": false,
+      "confidence": "high",
+      "predecessors": ["t-5"],
+      "notes": "",
+      "weatherSensitive": false
+    }
+  ],
+  "risks": [
+    {
+      "id": "r-1",
+      "description": "Storefront glazing delivery slip due to 6-week fabrication lead time",
+      "probability": "High",
+      "impact": "High",
+      "mitigation": "Order glass at contract award; weekly factory chase with supplier.",
+      "issueId": null
+    },
+    {
+      "id": "r-2",
+      "description": "MEP route rejection by landlord delays rough-in start",
+      "probability": "Medium",
+      "impact": "High",
+      "mitigation": "Pre-agreed fallback route documented in tender; fast-track resubmission.",
+      "issueId": null
+    },
+    {
+      "id": "r-3",
+      "description": "Night-shift restrictions compress finishes window",
+      "probability": "Low",
+      "impact": "Medium",
+      "mitigation": "Two-shift day pattern approved; dust screens partition works.",
+      "issueId": null
+    }
+  ],
+  "issues": [
+    {
+      "id": "i-1",
+      "description": "Landlord MEP route comment overdue by 9 days — critical-path impact if unresolved",
+      "status": "open"
+    },
+    {
+      "id": "i-2",
+      "description": "Glazing submittal not yet approved by architect",
+      "status": "inprogress"
+    }
+  ],
+  "changes": [
+    {
+      "id": "c-1",
+      "title": "Tenant 4 requests relocated fire-stopper penetrations",
+      "status": "review",
+      "schedImpact": "+2 days",
+      "costImpact": "$4,200"
+    }
+  ],
+  "budgetLines": [
+    { "id": "b-1", "name": "Demolition & Strip-Out", "planned": 42000, "actual": 41850, "linkedTaskId": "t-1" },
+    { "id": "b-2", "name": "MEP Rough-In", "planned": 210000, "actual": 96000, "linkedTaskId": "t-2" },
+    { "id": "b-3", "name": "Drywall & Ceiling Grid", "planned": 118000, "actual": 0, "linkedTaskId": "t-3" },
+    { "id": "b-4", "name": "Storefront Glazing", "planned": 175000, "actual": 0, "linkedTaskId": "t-4" },
+    { "id": "b-5", "name": "FF&E Install", "planned": 160000, "actual": 0, "linkedTaskId": "t-5" },
+    { "id": "b-6", "name": "Snagging & Close-Out", "planned": 145000, "actual": 0, "linkedTaskId": "t-6" }
+  ],
+  "budgetEnvelope": 850000,
+  "spendLog": [],
+  "stakeholders": [],
+  "resources": [
+    { "id": "res-1", "name": "J. Mensah", "role": "Demolition Lead" },
+    { "id": "res-2", "name": "S. Okafor", "role": "MEP Engineer" },
+    { "id": "res-3", "name": "P. Dubois", "role": "Drywall Foreman" }
+  ],
+  "weatherRegion": "northern-temperate",
+  "siteLat": 51.5074,
+  "siteLon": -0.1278,
+  "sitePlace": "London, United Kingdom",
+  "wxCache": {
+    "cachedAt": "2026-08-11T06:00:00.000Z",
+    "days": [
+      { "date": "2026-08-11", "code": 3, "precip": 70, "tMax": 18, "tMin": 11 },
+      { "date": "2026-08-12", "code": 2, "precip": 30, "tMax": 20, "tMin": 12 },
+      { "date": "2026-08-13", "code": 1, "precip": 10, "tMax": 22, "tMin": 13 }
+    ]
+  },
+  "weatherLog": [
+    { "date": "2026-07-14", "reason": "Heavy rain — glazing crane unsafe", "affectedTaskIds": ["t-4"], "days": 1 }
+  ],
+  "ldRate": 1500,
+  "baseline": {
+    "capturedAt": "2026-06-01T08:00:00.000Z",
+    "tasks": [
+      { "id": "t-1", "name": "Demolition & Strip-Out", "status": "todo", "startDate": "2026-06-01", "endDate": "2026-06-19" },
+      { "id": "t-2", "name": "MEP Rough-In", "status": "todo", "startDate": "2026-06-22", "endDate": "2026-07-31" },
+      { "id": "t-3", "name": "Drywall & Ceiling Grid", "status": "todo", "startDate": "2026-08-03", "endDate": "2026-09-04" },
+      { "id": "t-4", "name": "Storefront Glazing Install", "status": "todo", "startDate": "2026-09-07", "endDate": "2026-09-25" },
+      { "id": "t-5", "name": "FF&E Install & Handover", "status": "todo", "startDate": "2026-10-05", "endDate": "2026-10-28" },
+      { "id": "t-6", "name": "Snagging & Defects Close-Out", "status": "todo", "startDate": "2026-10-26", "endDate": "2026-10-30" }
+    ],
+    "budgetLines": [
+      { "id": "b-1", "name": "Demolition & Strip-Out", "planned": 42000, "actual": 0 },
+      { "id": "b-2", "name": "MEP Rough-In", "planned": 210000, "actual": 0 },
+      { "id": "b-3", "name": "Drywall & Ceiling Grid", "planned": 118000, "actual": 0 },
+      { "id": "b-4", "name": "Storefront Glazing", "planned": 175000, "actual": 0 },
+      { "id": "b-5", "name": "FF&E Install", "planned": 160000, "actual": 0 },
+      { "id": "b-6", "name": "Snagging & Close-Out", "planned": 145000, "actual": 0 }
+    ]
+  },
+  "meetings": [],
+  "meetingPromises": {},
+  "activeMeeting": null,
+  "nmeetid": 1,
+  "nspid": 1,
+  "logEntries": [],
+  "commsEntries": [],
+  "documents": [],
+  "closure": { "items": [], "well": "", "imp": "", "rec": "" },
+  "raci": { "tasks": [], "persons": [], "matrix": {} },
+  "sprint": { "name": "Sprint 1", "start": "", "end": "" },
+  "dailySnapshots": [],
+  "defExpanded": {},
+  "dmaic": { "active": false, "define": { "problem": "", "goal": "", "scope": "", "sponsor": "", "voice": "", "done": false }, "measure": { "baseline": "", "defects": "", "unit": "", "opportunity": "", "dpmo": "", "sigmaNow": "", "done": false }, "analyze": { "rootCauses": "", "fishbone": "", "paretoTop": "", "done": false }, "improve": { "solutions": "", "pilot": "", "results": "", "done": false }, "control": { "plan": "", "metrics": "", "handover": "", "done": false } },
+  "dailySnapshot": null,
+  "focusMode": false,
+  "streak": 0,
+  "sentimentHistory": [],
+  "scheduleSlips": [],
+  "slipCauses": [],
+  "digestSnapshot": null,
+  "aiOutputs": {},
+  "packs": { "core": true, "field": false, "cloud": false, "ai": false, "export": false, "voice": false },
+  "packsCalloutDismissed": false,
+  "packsEverEnabled": true,
+  "wxViewDays": 7,
+  "wxWindow": "northern-temperate",
+  "kbShowLeadtime": true,
+  "hlCritical": true,
+  "fieldTs": {
+    "projectName": "2026-08-11T06:00:00.000Z",
+    "tasks": "2026-08-11T06:00:00.000Z",
+    "risks": "2026-08-11T06:00:00.000Z",
+    "charter": "2026-08-11T06:00:00.000Z",
+    "budgetLines": "2026-08-11T06:00:00.000Z"
+  },
+  "updatedAt": "2026-08-11T06:00:00.000Z"
+}

@@ -34,6 +34,8 @@ How to load: use your skill-loading mechanism on the skill **name** below
 |---|---|
 | `.agents/skills/skeptical-code-audit` | Auditing the app for broken wiring (CSS classes toggled by JS, `data-action` handlers with no map entry, DOM ids referenced but missing, features that silently no-op). |
 | `.agents/skills/universal-ui-architect` | Any UI/UX work: design tokens, WCAG 2.2/APCA contrast gates, Liquid Glass surfaces, responsive/interaction polish. Hard gates block ship. |
+| `.agents/skills/accessibility-rules` | WCAG 2.2 accessibility rules reference — note: oriented to documents (Word/Excel/PPT/PDF); for web pages rely on `universal-ui-architect`'s gates instead. |
+| `.agents/skills/pwa-development` | PWA work: `sw.js` caching strategy, `manifest.webmanifest`, offline-first behavior, install/update flows. |
 | `.agents/skills/security-audit` | Security reviews / vulnerability audits of `worker.js`, the cloud API, CSP, session/owner-code flows. Pair with `skeptical-code-audit`. |
 | `.agents/skills/wrangler` | Running wrangler commands (deploy, `d1`, `r2`, secrets, dev). |
 | `.agents/skills/workers-best-practices` | Writing or reviewing any Worker code / `wrangler.jsonc` config. |
@@ -43,6 +45,9 @@ How to load: use your skill-loading mechanism on the skill **name** below
 | `.agents/skills/web-perf` | Auditing/profiling page load, Core Web Vitals, PWA performance. |
 | `.agents/skills/qa-expert` | Establishing QA process, test plans, bug triage (P0–P4), coverage metrics. Complements the `qa-*.cjs` battery. |
 | `.agents/skills/google-drive` | Anything touching Google Drive integration. |
+| `.agents/skills/gemini-api-dev` | Anything touching the Gemini API: `js/mmgr-ai.js` / `mmgr-ai-key.js`, the model fallback ladder, `/api/ai/chat` relay, prompt/model selection. |
+| `.agents/skills/oauth` | OAuth 2.0/2.1 authorization-code/PKCE flow reference (Fastify-oriented — apply the RFC/flow gotchas only; the Worker's Google sign-in uses its own HMAC cookie flow). |
+| `.agents/skills/landing-page-generator` | Marketing page work: `index.html`, `features.html`, `about.html`, `contact.html`, CTA/hero/SEO copy structure. |
 
 ### When in doubt, load
 `cloudflare` (platform), `workers-best-practices` (worker.js), and
@@ -63,7 +68,10 @@ How to load: use your skill-loading mechanism on the skill **name** below
    (`/api/cloud/*`) is OPT-IN per project and must stay that way.
 4. **`skills-lock.json` is the source of truth** for installed skills
    (source, path, content hash). Re-run `npx skills add` to update; never hand-edit
-   the hashes. Skills run with full agent permissions — review before use.
+   the hashes. Exception: project-authored skills with no registry source
+   (`skeptical-code-audit`, `universal-ui-architect`) are registered with hashes
+   computed via `tools/hash-skill-folder.cjs` (same algorithm as the verify script).
+   Skills run with full agent permissions — review before use.
 5. **Run `npm run verify`** (CSP + service-worker checks) before deploying, and
    relevant `qa-*.cjs` harnesses after non-trivial changes.
 

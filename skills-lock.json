@@ -1,6 +1,12 @@
 {
   "version": 1,
   "skills": {
+    "accessibility-rules": {
+      "source": "community-access/accessibility-agents",
+      "sourceType": "github",
+      "skillPath": ".github/skills/accessibility-rules/SKILL.md",
+      "computedHash": "3fe12d39fb115dcfde017f40ae5c41a4e9138d95e9efe09ca73f6417ed23c288"
+    },
     "cloudflare": {
       "source": "cloudflare/skills",
       "sourceType": "github",
@@ -19,11 +25,35 @@
       "skillPath": "plugins/cloudflare/skills/d1-migration/SKILL.md",
       "computedHash": "9269ee07fa9962fc447879306b33a7355331f2bd95de8783d812d9b388f0b6a9"
     },
+    "gemini-api-dev": {
+      "source": "google-gemini/gemini-skills",
+      "sourceType": "github",
+      "skillPath": "skills/gemini-api-dev/SKILL.md",
+      "computedHash": "f9c8540a0264c641f993286e714723571bfafb216a4db00c214e9234740b0351"
+    },
     "google-drive": {
       "source": "membranedev/application-skills",
       "sourceType": "github",
       "skillPath": "skills/google-drive/SKILL.md",
       "computedHash": "b196f35c48ba05979d81edea1b4031939e17dbeb9874fa23f96e68bfe6eb45cc"
+    },
+    "landing-page-generator": {
+      "source": "kostja94/marketing-skills",
+      "sourceType": "github",
+      "skillPath": "skills/pages/marketing/landing-page/SKILL.md",
+      "computedHash": "6f35c987f0c690f48283a8385d4c347fb440f7cf6d8f2ed23ce89d210e9f8143"
+    },
+    "oauth": {
+      "source": "mcollina/skills",
+      "sourceType": "github",
+      "skillPath": "skills/oauth/SKILL.md",
+      "computedHash": "0911bf3d2d4fd8d6ef567b91f60a34e34bfd7887f506f4a4c37a198ee0020865"
+    },
+    "pwa-development": {
+      "source": "alinaqi/maggy",
+      "sourceType": "github",
+      "skillPath": "skills/pwa-development/SKILL.md",
+      "computedHash": "2219041ce92f6361ba77eb06c9a927dc7a1ba48f40ff5132321a29c4154ebc7a"
     },
     "qa-expert": {
       "source": "daymade/claude-code-skills",
@@ -36,6 +66,18 @@
       "sourceType": "github",
       "skillPath": "skills/security-audit/SKILL.md",
       "computedHash": "0f858feecab83071b81e658c32f361bb8af34b5bf567ba0a86ff94383c055e7f"
+    },
+    "skeptical-code-audit": {
+      "source": "local/project-authored",
+      "sourceType": "local",
+      "skillPath": "skeptical-code-audit/SKILL.md",
+      "computedHash": "d50ee47f3df22bb73bbcea85f193c1986f68f92de3ed123e091e81edd47bebf0"
+    },
+    "universal-ui-architect": {
+      "source": "local/project-authored",
+      "sourceType": "local",
+      "skillPath": "universal-ui-architect/SKILL.md",
+      "computedHash": "3db2fc5619ea353ed36ca6bbf963b0129133fb74630f9a87f47c98b8a246c464"
     },
     "web-perf": {
       "source": "cloudflare/skills",

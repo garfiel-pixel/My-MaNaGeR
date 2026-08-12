@@ -175,7 +175,7 @@ body.focus-mode .focus-ind{display:flex;position:fixed;top:10px;right:10px;backg
    Dense tables inside stay flat/opaque — readability is never traded. */
 .card{background:var(--glass-fill-dark);border:var(--glass-border);border-radius:var(--squircle-md);padding:18px;margin-bottom:18px;box-shadow:var(--glass-rim),var(--glass-shadow);backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturate));-webkit-backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturate));transition:border-color var(--tr),background var(--tr);}
 .card:hover{border-color:#cbd5e1;}
-.card-title{font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--slate);margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;}
+.card-title{font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--slate);margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;min-width:0;}
 
 /* ---- Grids ---- */
 .g2{display:grid;grid-template-columns:1fr 1fr;gap:18px;}
@@ -320,9 +320,10 @@ body.hl-critical #gantt-labels .gr.hl-dim{opacity:.3;}
 /* ---- Dashboard secondary panels (V3.3 monolith port) ---- */
 .ct-sub{font-size:.65rem;font-weight:400;color:var(--slate);margin-left:8px;vertical-align:middle;}
 .wx-controls{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:8px;font-size:.72rem;}
-.wx-field{display:flex;align-items:center;gap:4px;color:var(--slate);}
-.wx-field input{font-size:.7rem;background:var(--canvas);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:3px 6px;}
+.wx-field{display:flex;align-items:center;gap:4px;color:var(--slate);min-width:0;}
+.wx-field input{font-size:.7rem;background:var(--canvas);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:3px 6px;min-width:0;}
 .wx-field input[type=number]{width:65px;}
+.wx-field input[type=text]{flex:0 1 220px;}
 .wx-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:10px;}
 .wx-stat{text-align:center;padding:8px;background:var(--tile-bg);border-radius:var(--radius);}
 .wx-stat .k{font-size:.6rem;color:var(--slate);text-transform:uppercase;letter-spacing:.4px;}
@@ -859,10 +860,10 @@ hr.div{border:none;border-top:1px solid var(--border);margin:14px 0;}
 .btn.full{width:100%;justify-content:center;}
 .btn:disabled{opacity:.55;cursor:default;}
 /* small flex rows */
-.g6{display:flex;gap:6px;}
+.g6{display:flex;gap:6px;flex-wrap:wrap;}
 .g6c{display:flex;align-items:center;gap:6px;}
 .g12{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
-.g18{display:flex;align-items:center;gap:18px;}
+.g18{display:flex;align-items:center;gap:18px;flex-wrap:wrap;}
 .col-g8{display:flex;flex-direction:column;gap:8px;}
 .fb-sm{display:flex;justify-content:space-between;align-items:center;font-size:.78rem;}
 .fb-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;}

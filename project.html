@@ -13,6 +13,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#D4AF37">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
 <link rel="icon" type="image/png" href="high contrast icon.png">
 <link rel="apple-touch-icon" href="high contrast icon.png">
 <link rel="stylesheet" href="css/mmgr.css">
@@ -57,7 +58,7 @@
       clicks "Connect Google" in Settings > Controls. It is a device label,
       never a gate — offline/CSP-blocked loads degrade to a toast.
 -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' 'sha256-o+0No2XpbES4E5QJh31mY9JsJFqSmE+B4x+z1fNPjVc=' 'sha256-gCwlAVKUNamFRjZeFSwcBd1zxQs+/mZ2GoLF8lqT/II=' https://accounts.google.com https://unpkg.com; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self' https://api.open-meteo.com https://geocoding-api.open-meteo.com https://api.openai.com https://api.anthropic.com https://generativelanguage.googleapis.com https://github.com https://release-assets.githubusercontent.com https://accounts.google.com https://huggingface.co https://*.cdn.hf.co; frame-src https://accounts.google.com; base-uri 'self'; form-action 'self';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' 'sha256-o+0No2XpbES4E5QJh31mY9JsJFqSmE+B4x+z1fNPjVc=' 'sha256-gCwlAVKUNamFRjZeFSwcBd1zxQs+/mZ2GoLF8lqT/II=' https://accounts.google.com https://unpkg.com; style-src 'self' 'unsafe-inline' https://accounts.google.com https://fonts.googleapis.com; img-src 'self' data:; font-src 'self' data:; connect-src 'self' https://api.open-meteo.com https://geocoding-api.open-meteo.com https://api.openai.com https://api.anthropic.com https://generativelanguage.googleapis.com https://github.com https://release-assets.githubusercontent.com https://accounts.google.com https://huggingface.co https://*.cdn.hf.co; frame-src https://accounts.google.com; base-uri 'self'; form-action 'self';">
 </head>
 <body>
 <script>
@@ -96,7 +97,7 @@
     <div class="dirty-ind" id="dirty-ind" data-action="openDrwToSave" title="Changes save to this browser automatically. Click to back up to a file — recommended before closing or switching devices.">● Not backed up</div>
     <div class="timeline-ind" id="timeline-ind" data-action="jumpToDashTimeline" title="Current planned finish vs the Target Completion Date set in Charter. Click to view on the Dashboard."></div>
     <div class="lock-ind" id="lk-ind"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-lock"></use></svg> <span id="lk-lbl">Methodology</span> Locked</div>
-    <button class="settings-btn" data-action="openDrw"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-settings"></use></svg> </button>
+    <button class="settings-btn" data-action="openDrw" aria-label="Open settings"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-settings"></use></svg> </button>
   </div>
 </header>
 
@@ -144,7 +145,7 @@
   <div id="meth-learn-card" class="mlc-card is-hide">
     <div class="fb-top">
       <div class="mlc-t" id="mlc-title"></div>
-      <button data-action="closeMLC" class="dc"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> </button>
+      <button data-action="closeMLC" class="dc" aria-label="Close tip"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> </button>
     </div>
     <div class="mlc-body" id="mlc-body"></div>
     <div class="mlc-when" id="mlc-when"></div>
@@ -153,6 +154,18 @@
 
   <!-- ═══ DASHBOARD ═══ -->
   <div class="panel active" id="panel-dash">
+    <!-- PROJECT-UX-NAV-WEATHER-EXPORT-DIRECTIVE DIR-3: one-time Core-Mode
+         onboarding nudge. Rendered by Render.renderCoreCallout() (mmgr-render.js)
+         only while a project has zero Advanced Packs enabled AND none have ever
+         been toggled on AND the user hasn't dismissed it. Hidden forever after
+         any pack is toggled on or "Not now" is clicked. -->
+    <div class="core-callout is-hide" id="core-callout" role="note">
+      <div class="core-callout-txt"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-orb"></use></svg> <strong>Core Mode is on.</strong> Only the essential sections are shown (Dashboard, Definitions, Charter, WBS, Kanban). Turn on Risk, Budget, RACI, Meetings, Claim Pack and more — one click, nothing hidden is ever lost.</div>
+      <div class="core-callout-actions">
+        <button class="btn btn-g btn-s" data-action="openPacks"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-settings"></use></svg> Turn on Advanced Packs</button>
+        <button class="btn btn-n btn-s" data-action="dismissPacksCallout" aria-label="Dismiss this tip — never show it again">Not now</button>
+      </div>
+    </div>
     <div class="g3">
       <div class="card" id="completion-card">
         <div class="card-title">Project Completion</div>
@@ -304,7 +317,7 @@
     <div class="card mt-lg" id="weather-forecast-card">
       <div class="card-title" data-def="Weather-Sensitive Task"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cloud-rain"></use></svg> Weather Risk Forecast<span class="ct-sub">Open-Meteo · cached 3h · thresholds: rain ≥60%, heat ≥32°C, cold ≤0°C</span>
         <div class="g6">
-          <input type="text" id="wx-place-in" placeholder="Site city (geocode once)">
+          <input type="text" id="wx-place-in" placeholder="City or town, Parish/State, Country — more specific = more accurate" aria-label="Site location — city or town, parish/state, country">
           <button class="btn btn-g btn-s" data-action="wxGeocode">Locate</button>
           <button class="btn btn-n btn-s" data-action="wxRefresh">Refresh</button>
           <span class="wx-view-tgl">
@@ -349,17 +362,17 @@
       <div class="card-title">Project Charter<div><button class="btn btn-g btn-s" data-action="saveCharter"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-save"></use></svg> Save</button><button class="btn btn-o btn-s" data-action="uploadCharterDoc"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-upload"></use></svg> Upload Charter</button><button class="btn btn-o btn-s" data-action="openChartUp"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-edit"></use></svg> Auto-Fill</button><button class="btn btn-n btn-s" data-action="printCharter"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-printer"></use></svg> Print</button></div></div>
       <p class="t-xs mb14">Define the project's identity, objectives, KPIs, and constraints before work begins. The Charter is the single source of truth for scope, budget, and success criteria.</p>
       <div class="charter-grid">
-        <div class="cf-field full"><label class="cf-label">Project Name</label><input class="cf-input" id="ch-name" placeholder="e.g. Riverside Tower Renovation" data-action="updCharter" data-charter-field="name"></div>
-        <div class="cf-field"><label class="cf-label">Project Sponsor</label><input class="cf-input" id="ch-sponsor" placeholder="Sponsor name" data-action="updCharter" data-charter-field="sponsor"></div>
-        <div class="cf-field"><label class="cf-label">Target Start Date</label><input class="cf-input" type="date" id="ch-target-start" data-action="updCharter" data-charter-field="targetStart"></div>
-        <div class="cf-field"><label class="cf-label">Target Completion Date</label><input class="cf-input" type="date" id="ch-target-end" data-action="updCharter" data-charter-field="targetCompletion"></div>
-        <div class="cf-field full"><label class="cf-label">Project Objective</label><textarea class="cf-ta" id="ch-obj" placeholder="What is the primary business objective this project delivers?" data-action="updCharter" data-charter-field="objective"></textarea></div>
-        <div class="cf-field full"><label class="cf-label">Scope — In Scope</label><textarea class="cf-ta" id="ch-scope" placeholder="What is included in the project scope?" data-action="updCharter" data-charter-field="scope"></textarea></div>
-        <div class="cf-field full"><label class="cf-label">Key Deliverables</label><textarea class="cf-ta" id="ch-deliverables" placeholder="Tangible outputs the project will produce" data-action="updCharter" data-charter-field="deliverables"></textarea></div>
-        <div class="cf-field full"><label class="cf-label">Constraints</label><textarea class="cf-ta" id="ch-constraints" placeholder="Budget caps, regulatory deadlines, resource limits" data-action="updCharter" data-charter-field="constraints"></textarea></div>
-        <div class="cf-field full"><label class="cf-label">Assumptions</label><textarea class="cf-ta" id="ch-assumptions" placeholder="What must remain true for success" data-action="updCharter" data-charter-field="assumptions"></textarea></div>
-        <div class="cf-field full"><label class="cf-label">Exclusions</label><textarea class="cf-ta" id="ch-exclusions" placeholder="What is explicitly out of scope" data-action="updCharter" data-charter-field="exclusions"></textarea></div>
-        <div class="cf-field"><label class="cf-label">Budget Envelope</label><input class="cf-input" type="number" id="ch-budget" min="0" step="100" placeholder="0" data-action="updCharter" data-charter-field="budgetEnvelope"></div>
+        <div class="cf-field full"><label class="cf-label" for="ch-name">Project Name</label><input class="cf-input" id="ch-name" placeholder="e.g. Riverside Tower Renovation" data-action="updCharter" data-charter-field="name"></div>
+        <div class="cf-field"><label class="cf-label" for="ch-sponsor">Project Sponsor</label><input class="cf-input" id="ch-sponsor" placeholder="Sponsor name" data-action="updCharter" data-charter-field="sponsor"></div>
+        <div class="cf-field"><label class="cf-label" for="ch-target-start">Target Start Date</label><input class="cf-input" type="date" id="ch-target-start" data-action="updCharter" data-charter-field="targetStart"></div>
+        <div class="cf-field"><label class="cf-label" for="ch-target-end">Target Completion Date</label><input class="cf-input" type="date" id="ch-target-end" data-action="updCharter" data-charter-field="targetCompletion"></div>
+        <div class="cf-field full"><label class="cf-label" for="ch-obj">Project Objective</label><textarea class="cf-ta" id="ch-obj" placeholder="What is the primary business objective this project delivers?" data-action="updCharter" data-charter-field="objective"></textarea></div>
+        <div class="cf-field full"><label class="cf-label" for="ch-scope">Scope — In Scope</label><textarea class="cf-ta" id="ch-scope" placeholder="What is included in the project scope?" data-action="updCharter" data-charter-field="scope"></textarea></div>
+        <div class="cf-field full"><label class="cf-label" for="ch-deliverables">Key Deliverables</label><textarea class="cf-ta" id="ch-deliverables" placeholder="Tangible outputs the project will produce" data-action="updCharter" data-charter-field="deliverables"></textarea></div>
+        <div class="cf-field full"><label class="cf-label" for="ch-constraints">Constraints</label><textarea class="cf-ta" id="ch-constraints" placeholder="Budget caps, regulatory deadlines, resource limits" data-action="updCharter" data-charter-field="constraints"></textarea></div>
+        <div class="cf-field full"><label class="cf-label" for="ch-assumptions">Assumptions</label><textarea class="cf-ta" id="ch-assumptions" placeholder="What must remain true for success" data-action="updCharter" data-charter-field="assumptions"></textarea></div>
+        <div class="cf-field full"><label class="cf-label" for="ch-exclusions">Exclusions</label><textarea class="cf-ta" id="ch-exclusions" placeholder="What is explicitly out of scope" data-action="updCharter" data-charter-field="exclusions"></textarea></div>
+        <div class="cf-field"><label class="cf-label" for="ch-budget">Budget Envelope</label><input class="cf-input" type="number" id="ch-budget" min="0" step="100" placeholder="0" data-action="updCharter" data-charter-field="budgetEnvelope"></div>
       </div>
       <hr class="div">
       <div class="def-section-title">Key Performance Indicators (KPIs)</div>
@@ -413,8 +426,8 @@
       <div class="card-title" data-def="Monte Carlo Simulation">Monte Carlo Schedule Simulation</div>
       <p class="t-xs mb14">Runs 1,000 simulated schedules using triangular per-task duration distributions (optimistic/likely/pessimistic) to produce a probability distribution of project completion dates.</p>
       <div class="g6 align-end">
-        <div><label class="mc-field-label">Target Completion Date</label><input type="date" id="mc-target" class="mc-input"></div>
-        <div><label class="mc-field-label">Risk Factor (1.0 base — 2.0 high)</label><input type="number" id="mc-risk-factor" value="1.2" min="1.0" max="2.0" step="0.1" class="mc-input"></div>
+        <div><label class="mc-field-label" for="mc-target">Target Completion Date</label><input type="date" id="mc-target" class="mc-input"></div>
+        <div><label class="mc-field-label" for="mc-risk-factor">Risk Factor (1.0 base — 2.0 high)</label><input type="number" id="mc-risk-factor" value="1.2" min="1.0" max="2.0" step="0.1" class="mc-input"></div>
         <button class="btn btn-g btn-s" data-action="runMonteCarlo"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-activity"></use></svg> Run Simulation</button>
       </div>
       <div id="mc-result" class="is-hide">
@@ -439,9 +452,9 @@
         </div>
       </div>
       <div class="sp" id="sprint-p">
-        <div><div class="slb">Sprint Name</div><input id="sp-nm" placeholder="Sprint 1" data-action="saveSprint" class="sp-in-bb"></div>
-        <div><div class="slb">Start</div><input type="date" id="sp-st" data-action="saveSprint" class="sp-in"></div>
-        <div><div class="slb">End</div><input type="date" id="sp-en" data-action="saveSprint" class="sp-in"></div>
+        <div><label class="slb" for="sp-nm">Sprint Name</label><input id="sp-nm" placeholder="Sprint 1" data-action="saveSprint" class="sp-in-bb"></div>
+        <div><label class="slb" for="sp-st">Start</label><input type="date" id="sp-st" data-action="saveSprint" class="sp-in"></div>
+        <div><label class="slb" for="sp-en">End</label><input type="date" id="sp-en" data-action="saveSprint" class="sp-in"></div>
       </div>
       <div class="kb">
         <div class="kcol col-todo" id="col-todo" data-action="dragDrop" data-drop-status="todo">
@@ -504,7 +517,7 @@
             <div class="lbl-up">Total Authorized Budget</div>
             <div class="g6c">
               <span class="stat-sm">$</span>
-              <input type="number" id="bud-envelope" min="0" step="100" class="bud-in" placeholder="0" data-action="updEnvelope">
+              <input type="number" id="bud-envelope" min="0" step="100" class="bud-in" placeholder="0" aria-label="Budget envelope amount" data-action="updEnvelope">
             </div>
           </div>
           <div class="bud-note">Set the total authorized project budget here.</div>
@@ -685,9 +698,9 @@
         </div>
         <div>
           <div class="card-title">Lessons Learned</div>
-          <div class="cf-field"><label class="cf-label">What Went Well</label><textarea class="cf-ta" id="ll-well" data-action="updClose" data-close-field="well"></textarea></div>
-          <div class="cf-field mt-md" ><label class="cf-label">Improvements</label><textarea class="cf-ta" id="ll-imp" data-action="updClose" data-close-field="imp"></textarea></div>
-          <div class="cf-field mt-md" ><label class="cf-label">Recommendations</label><textarea class="cf-ta" id="ll-rec" data-action="updClose" data-close-field="rec"></textarea></div>
+          <div class="cf-field"><label class="cf-label" for="ll-well">What Went Well</label><textarea class="cf-ta" id="ll-well" data-action="updClose" data-close-field="well"></textarea></div>
+          <div class="cf-field mt-md" ><label class="cf-label" for="ll-imp">Improvements</label><textarea class="cf-ta" id="ll-imp" data-action="updClose" data-close-field="imp"></textarea></div>
+          <div class="cf-field mt-md" ><label class="cf-label" for="ll-rec">Recommendations</label><textarea class="cf-ta" id="ll-rec" data-action="updClose" data-close-field="rec"></textarea></div>
         </div>
       </div>
     </div>
@@ -698,8 +711,8 @@
     <div class="card">
       <div class="card-title" data-def="RACI Matrix">RACI Responsibility Matrix
         <div class="g6">
-          <select id="raci-task-picker" class="btn btn-g btn-s cur-pt"  data-action="addRaciTaskFromPicker"><option value="">+ Task Row…</option></select>
-          <select id="raci-person-picker" class="btn btn-n btn-s cur-pt"  data-action="addRaciPersonFromPicker"><option value="">+ Person Col…</option></select>
+          <select id="raci-task-picker" class="btn btn-g btn-s cur-pt" aria-label="Add RACI task row" data-action="addRaciTaskFromPicker"><option value="">+ Task Row…</option></select>
+          <select id="raci-person-picker" class="btn btn-n btn-s cur-pt" aria-label="Add RACI person column" data-action="addRaciPersonFromPicker"><option value="">+ Person Col…</option></select>
           <button class="btn btn-n btn-s" data-action="cpAllPage" data-section="raci"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy All</button>
         </div>
       </div>
@@ -797,7 +810,7 @@
      Preset prompts, free-form question, automatic project-context dump.
      Copy-to-clipboard first; a generative API-key path can be dropped in
      later without redesign (see js/mmgr-ai.js). -->
-<button id="ai-fab" class="ai-fab" data-action="openAiWin" title="AI Assistant — preset prompts, free-form question, project context"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg></button>
+<button id="ai-fab" class="ai-fab" data-action="openAiWin" aria-label="Open AI Assistant" title="AI Assistant — preset prompts, free-form question, project context"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg></button>
 <div id="ai-win" data-action="closeAiWinBg">
   <!-- AI-WINDOW-RESIZE: eight edge/corner drag handles (data-edge) wired in
        js/mmgr-ai.js; the size is persisted per device in localStorage
@@ -835,7 +848,7 @@
       </div>
       <div class="ai-head-actions">
         <button class="ai-clear-btn" data-action="aiClear" title="Start a new conversation"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> New</button>
-        <button class="dc" data-action="closeAiWin" title="Close"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> </button>
+        <button class="dc" data-action="closeAiWin" aria-label="Close AI Assistant" title="Close"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> </button>
       </div>
     </div>
     <!-- AI-CLOUD-CONNECT-UI (DIR-1): the Cloud connection fields live in an
@@ -865,7 +878,7 @@
         <option value="google-gemini">Google Gemini</option>
         <option value="anthropic">Anthropic Claude</option>
       </select>
-      <button class="ai-byo-gear" id="ai-byo-gear" type="button" aria-expanded="false" title="API key settings — paste your key and Connect &amp; Test"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-settings"></use></svg></button>
+      <button class="ai-byo-gear" id="ai-byo-gear" type="button" aria-expanded="false" aria-label="API key settings" title="API key settings — paste your key and Connect &amp; Test"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-settings"></use></svg></button>
       <div class="ai-byo-pop is-hide" id="ai-byo-pop" role="group" aria-label="API key setup">
         <input type="password" id="ai-byo-key" class="ai-byo-key" placeholder="Paste your API key (session-only)" autocomplete="off" spellcheck="false" title="Session-only: your key stays in this browser, is never exported, and clears when you close the tab">
         <button class="btn btn-g btn-s" id="ai-byo-connect" title="Save this session key and verify it with a live provider check"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-link"></use></svg> Connect &amp; Test</button>
@@ -910,7 +923,7 @@
         <summary><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-settings"></use></svg> Project context &amp; tools</summary>
         <div class="ai-adv-body">
           <div class="dsec">Project context (auto-generated grounding for both tiers)</div>
-          <textarea id="ai-ctx" class="ai-ctx" readonly placeholder="Project context appears here — charter, health, EVM, timeline, risks, critical path, weather."></textarea>
+          <textarea id="ai-ctx" class="ai-ctx" readonly aria-label="AI project context (read-only)" placeholder="Project context appears here — charter, health, EVM, timeline, risks, critical path, weather."></textarea>
           <div class="ai-actions">
             <button class="btn btn-n btn-s" data-action="aiAttachContext"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-file-text"></use></svg> Attach Project Context</button>
             <button class="btn btn-n btn-s" data-action="aiCopy"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-file-text"></use></svg> Copy Prompt + Context</button>
@@ -921,7 +934,7 @@
         </div>
       </details>
       <!-- Result store — hidden; copyOut() reads it and runs render as bubbles -->
-      <textarea id="ai-out" class="ai-out" readonly></textarea>
+      <textarea id="ai-out" class="ai-out" readonly aria-label="AI response output"></textarea>
       <div class="ai-trace" id="ai-trace"></div>
     </div>
     <!-- UI-DECLUTTER: the red inline connection warning is gone — the Send
@@ -937,7 +950,7 @@
 
 <!-- Drawer -->
 <div id="drw">
-  <div class="dh"><span class="dt2"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-settings"></use></svg> Settings</span><button class="dc" data-action="closeDrw"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> </button></div>
+  <div class="dh"><span class="dt2"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-settings"></use></svg> Settings</span><button class="dc" data-action="closeDrw" aria-label="Close settings"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> </button></div>
   <div class="dtabs">
     <button class="dtab active" data-action="swDtab" data-tab="feat">Features</button>
     <button class="dtab" data-action="swDtab" data-tab="qa">Q &amp; A</button>
@@ -983,7 +996,7 @@
     <button class="btn btn-o full mb7"  data-action="openPrompt" data-type="daily"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sun"></use></svg> Daily Field Report Prompt</button>
   </div>
   <div class="db is-hide" id="db-ctrl">
-    <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-user"></use></svg> Your Name</span><input type="text" id="user-name-in" placeholder="Your name" data-action="setUserName" class="ctl-in w150"></div>
+    <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-user"></use></svg> Your Name</span><input type="text" id="user-name-in" placeholder="Your name" aria-label="Your name (shown in the header greeting)" data-action="setUserName" class="ctl-in w150"></div>
     <!-- ACTION-PLAN 5.1: multi-format Copy All (Slack / email / client) -->
     <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy As…</span></div>
     <div class="sr-hint">Same live state, three share formats — Slack digest, email digest, and a printable client summary.</div>
@@ -1004,18 +1017,18 @@
       <button class="btn btn-n btn-s" data-action="emailTpl" data-kind="closure" title="Closure sign-off email">Closure Sign-Off</button>
     </div>
     <div class="sr-hint">Shown in the header greeting. Leave blank for a generic welcome.</div>
-    <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-moon"></use></svg> Light / Dark Theme</span><label class="tgl"><input type="checkbox" id="thm-tgl" data-action="tglTheme"><span class="tsl"></span></label></div>
-    <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-crosshair"></use></svg> Crosshair Cursor</span><label class="tgl"><input type="checkbox" id="ch-tgl" data-action="tglCh"><span class="tsl"></span></label></div>
+    <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-moon"></use></svg> Light / Dark Theme</span><label class="tgl"><input type="checkbox" id="thm-tgl" aria-label="Light / Dark Theme" data-action="tglTheme"><span class="tsl"></span></label></div>
+    <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-crosshair"></use></svg> Crosshair Cursor</span><label class="tgl"><input type="checkbox" id="ch-tgl" aria-label="Crosshair Cursor" data-action="tglCh"><span class="tsl"></span></label></div>
     <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-lock"></use></svg> Lock Active Methodology</span><button class="btn btn-n btn-s toggle-chip is-off" data-action="tglLock">Lock / Unlock</button></div>
-    <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-calendar"></use></svg> Work Week (days)</span><select id="ww-sel" data-action="setWorkWeek" class="ctl-in"><option value="3">3-day</option><option value="4">4-day</option><option value="5" selected>5-day (default)</option><option value="6">6-day</option><option value="7">7-day</option></select></div>
+    <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-calendar"></use></svg> Work Week (days)</span><select id="ww-sel" data-action="setWorkWeek" class="ctl-in" aria-label="Work week (days)"><option value="3">3-day</option><option value="4">4-day</option><option value="5" selected>5-day (default)</option><option value="6">6-day</option><option value="7">7-day</option></select></div>
     <div class="sr-hint">Used for resource utilization &amp; budget cost calculations. Monthly capacity ≈ days × 4 weeks × 8h.</div>
-    <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cloud-rain"></use></svg> Weather Region</span><select id="weather-region-sel" data-action="setRegion" class="ctl-in"></select></div>
+    <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cloud-rain"></use></svg> Weather Region</span><select id="weather-region-sel" data-action="setRegion" class="ctl-in" aria-label="Weather region"></select></div>
     <!-- PLAN-OF-ACTION-LIQUID-GLASS-UI 3.5.3: Premium visual mode settings
          toggle — off by default, user-initiated only, never a popup. The
          preference is a device-level slot (same family as the viewport and
          sync-identity prefs), not project state. Capability floor still
          overrides it: a low-end device stays on CSS glass no matter what. -->
-    <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-orb"></use></svg> Premium Visual Mode</span><label class="tgl"><input type="checkbox" id="glass-tgl" data-action="tglGlassMode"><span class="tsl"></span></label></div>
+    <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-orb"></use></svg> Premium Visual Mode</span><label class="tgl"><input type="checkbox" id="glass-tgl" aria-label="Premium Visual Mode" data-action="tglGlassMode"><span class="tsl"></span></label></div>
     <div class="sr-hint">Premium visual mode — uses more graphics power (WebGL liquid-glass backdrop). Off by default; requires a capable device. CSS glass is the universal default for everyone else.</div>
     <!-- PLAN-OF-ACTION-AI-VOICE-SYNC-v1 4.5: optional Google identity for
          sync — never gating. Rendered by js/mmgr-sync.js into this slot. -->
@@ -1033,24 +1046,24 @@
     <!-- MERGED-AI-CONTROL (audit 1.2): this switch is now the SINGLE AI on/off
          control — it reads/writes state.config.ai.tier (OFF -> 'off', ON ->
          restore last non-off tier, default 'local'). flags.aiWindow is gone. -->
-    <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg> AI Assistant</span><label class="tgl"><input type="checkbox" data-action="tglAiTier"><span class="tsl"></span></label></div>
+    <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg> AI Assistant</span><label class="tgl"><input type="checkbox" id="ai-tgl" aria-label="AI Assistant" data-action="tglAiTier"><span class="tsl"></span></label></div>
     <div class="sr-hint">AI Assistant is the engine master switch — Off disables the assistant (fab hidden); On restores Local or your last engine tier.</div>
-    <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-activity"></use></svg> Monte Carlo Simulation</span><label class="tgl"><input type="checkbox" data-action="tglFlag" data-flag="monteCarlo"><span class="tsl"></span></label></div>
-    <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-printer"></use></svg> Gantt PNG Export</span><label class="tgl"><input type="checkbox" data-action="tglFlag" data-flag="ganttExport"><span class="tsl"></span></label></div>
-    <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clock"></use></svg> Kanban Lead-Time Lane</span><label class="tgl"><input type="checkbox" data-action="tglFlag" data-flag="leadtimeLane"><span class="tsl"></span></label></div>
-    <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cloud-rain"></use></svg> Weather Forecast Panel</span><label class="tgl"><input type="checkbox" data-action="tglFlag" data-flag="weatherForecast"><span class="tsl"></span></label></div>
+    <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-activity"></use></svg> Monte Carlo Simulation</span><label class="tgl"><input type="checkbox" id="fl-monte-carlo" aria-label="Monte Carlo Simulation" data-action="tglFlag" data-flag="monteCarlo"><span class="tsl"></span></label></div>
+    <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-printer"></use></svg> Gantt PNG Export</span><label class="tgl"><input type="checkbox" id="fl-gantt-export" aria-label="Gantt PNG Export" data-action="tglFlag" data-flag="ganttExport"><span class="tsl"></span></label></div>
+    <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clock"></use></svg> Kanban Lead-Time Lane</span><label class="tgl"><input type="checkbox" id="fl-leadtime-lane" aria-label="Kanban Lead-Time Lane" data-action="tglFlag" data-flag="leadtimeLane"><span class="tsl"></span></label></div>
+    <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cloud-rain"></use></svg> Weather Forecast Panel</span><label class="tgl"><input type="checkbox" id="fl-weather" aria-label="Weather Forecast Panel" data-action="tglFlag" data-flag="weatherForecast"><span class="tsl"></span></label></div>
     <!-- Rank 3.1 (MASTER-ACTION-PLAN Rank 3.1): Core Mode vs Advanced Packs —
          progressive disclosure. New projects start Core-only; each advanced
          pack is a single-action toggle here. Toggling a pack on reveals its
          nav sections instantly; off hides them (never destroys data). -->
     <hr class="div">
-    <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-orb"></use></svg> Advanced Packs</span></div>
+    <div class="sr" id="adv-packs-section"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-orb"></use></svg> Advanced Packs</span></div>
     <div class="sr-hint">New projects open Core-only (Dashboard, Definitions, Charter, WBS, Kanban). Turn a pack on to reveal its sections — one action, nothing hidden is ever lost.</div>
-    <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-bar-chart"></use></svg> Schedule Science</span><label class="tgl"><input type="checkbox" data-action="tglPack" data-pack="schedule"><span class="tsl"></span></label></div>
-    <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-dollar"></use></svg> Money</span><label class="tgl"><input type="checkbox" data-action="tglPack" data-pack="money"><span class="tsl"></span></label></div>
-    <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-users"></use></svg> Governance</span><label class="tgl"><input type="checkbox" data-action="tglPack" data-pack="governance"><span class="tsl"></span></label></div>
-    <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cloud-rain"></use></svg> Field</span><label class="tgl"><input type="checkbox" data-action="tglPack" data-pack="field"><span class="tsl"></span></label></div>
-    <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-activity"></use></svg> Quality</span><label class="tgl"><input type="checkbox" data-action="tglPack" data-pack="quality"><span class="tsl"></span></label></div>
+    <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-bar-chart"></use></svg> Schedule Science</span><label class="tgl"><input type="checkbox" id="pk-schedule" aria-label="Schedule Science pack" data-action="tglPack" data-pack="schedule"><span class="tsl"></span></label></div>
+    <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-dollar"></use></svg> Money</span><label class="tgl"><input type="checkbox" id="pk-money" aria-label="Money pack" data-action="tglPack" data-pack="money"><span class="tsl"></span></label></div>
+    <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-users"></use></svg> Governance</span><label class="tgl"><input type="checkbox" id="pk-governance" aria-label="Governance pack" data-action="tglPack" data-pack="governance"><span class="tsl"></span></label></div>
+    <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cloud-rain"></use></svg> Field</span><label class="tgl"><input type="checkbox" id="pk-field" aria-label="Field pack" data-action="tglPack" data-pack="field"><span class="tsl"></span></label></div>
+    <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-activity"></use></svg> Quality</span><label class="tgl"><input type="checkbox" id="pk-quality" aria-label="Quality pack" data-action="tglPack" data-pack="quality"><span class="tsl"></span></label></div>
     <hr class="div">
     <!-- Phase 2: client-side error surface (last 20 errors, timestamp + action) -->
     <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-alert-triangle"></use></svg> Client Error Log</span><span class="g6"><button class="btn btn-n btn-s" data-action="copyErrorLog" title="Copy the error log to the clipboard as plain text"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy</button><button class="btn btn-n btn-s" data-action="downloadErrorLog" title="Download the error log as a .txt file"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Download</button><button class="btn btn-n btn-s" data-action="clearErrorLog">Clear</button></span></div>
@@ -1059,9 +1072,9 @@
     <!-- DIR-1b: opt-in remote error reporting — OFF by default, device-level
          slot (never project state), POSTs routed through MMGR.Net's
          circuit-breaker. Zero network activity while off. -->
-    <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-upload"></use></svg> Remote Error Reporting</span><label class="tgl"><input type="checkbox" id="err-report-tgl" data-action="tglErrReport"><span class="tsl"></span></label></div>
+    <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-upload"></use></svg> Remote Error Reporting</span><label class="tgl"><input type="checkbox" id="err-report-tgl" aria-label="Remote Error Reporting" data-action="tglErrReport"><span class="tsl"></span></label></div>
     <div class="sr-hint">Optional and off by default. When enabled with a webhook URL, new client errors are posted to your own endpoint — never to a third-party service. A failed send stays logged locally only.</div>
-    <input type="url" id="err-webhook" class="ctl-in" data-action="setErrWebhook" placeholder="https://your-webhook.example.com/hook (optional)" autocomplete="off">
+    <input type="url" id="err-webhook" class="ctl-in" data-action="setErrWebhook" placeholder="https://your-webhook.example.com/hook (optional)" aria-label="Error reporting webhook URL (optional)" autocomplete="off">
     <div class="sr-kbd">
       <div class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-lightbulb"></use></svg> Keyboard Shortcuts</div>
       <div class="kbd-grid">
@@ -1092,8 +1105,8 @@
 <!-- Output Modal -->
 <div id="om">
   <div class="mb">
-    <div class="mh"><span class="mt" id="om-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-upload"></use></svg> Output</span><button class="dc" data-action="closeOM"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> </button></div>
-    <div class="mbody"><textarea class="mout" id="om-txt" readonly></textarea></div>
+    <div class="mh"><span class="mt" id="om-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-upload"></use></svg> Output</span><button class="dc" data-action="closeOM" aria-label="Close output"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> </button></div>
+    <div class="mbody"><textarea class="mout" id="om-txt" readonly aria-label="Full output JSON (read-only)"></textarea></div>
     <div class="mf"><button class="btn btn-n btn-s" data-action="closeOM">Close</button><button class="btn btn-g btn-s" data-action="cpOut"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy</button></div>
   </div>
 </div>
@@ -1118,12 +1131,12 @@
       <div id="cu-pane-paste" class="is-hide">
         <div class="cu-hint cu-hint-mt">Paste raw charter text copied from Word, PDF, email, or any document.</div>
       </div>
-      <textarea id="cu-source" data-action="regenChartPrompt" placeholder="Text extracted from your uploaded charter (or pasted directly) will appear here. You can edit before generating the prompt."></textarea>
+      <textarea id="cu-source" aria-label="Charter source text" data-action="regenChartPrompt" placeholder="Text extracted from your uploaded charter (or pasted directly) will appear here. You can edit before generating the prompt."></textarea>
       <div class="cu-hint cu-hint2">Edit freely before regenerating the prompt. Plain-text files (.txt / .md) are read directly. Word (.docx) and PDF files can&rsquo;t be parsed in-browser under this app&rsquo;s security policy — if you pick one, open it in Word/Adobe and paste its text here instead.</div>
     </div>
     <div class="cu-step">
       <div class="dsec4">2. AI Prompt</div>
-      <textarea id="cu-prompt" readonly></textarea>
+      <textarea id="cu-prompt" readonly aria-label="Generated charter prompt (read-only)"></textarea>
       <div class="cu-actions">
         <button class="btn btn-n btn-s" data-action="regenChartPrompt"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> Regenerate</button>
         <button class="btn btn-g btn-s" data-action="copyChartPrompt"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy Prompt</button>
@@ -1131,7 +1144,7 @@
     </div>
     <div class="cu-step">
       <div class="dsec4">3. Paste AI Output</div>
-      <textarea id="cu-output" placeholder='Paste the JSON the AI returns'></textarea>
+      <textarea id="cu-output" aria-label="AI charter output JSON" placeholder='Paste the JSON the AI returns'></textarea>
       <div class="cu-actions">
         <button class="btn btn-d btn-s" data-action="closeChartUp">Cancel</button>
         <button class="btn btn-g btn-s" data-action="applyChartAIOutput"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-check-circle"></use></svg> Apply to Charter</button>
@@ -1146,7 +1159,7 @@
     <h3><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Import WBS from Text</h3>
     <div class="wi-step">
       <div class="wi-lbl">1. Paste your outline</div>
-      <textarea id="wi-source" data-action="wiPreview" placeholder="Main task 1&#10;  Subtask 1.1&#10;  Subtask 1.2&#10;&#10;Main task 2&#10;  Subtask 2.1"></textarea>
+      <textarea id="wi-source" aria-label="WBS import source text" data-action="wiPreview" placeholder="Main task 1&#10;  Subtask 1.1&#10;  Subtask 1.2&#10;&#10;Main task 2&#10;  Subtask 2.1"></textarea>
     </div>
     <div class="wi-step">
       <div class="wi-lbl">2. Preview</div>
@@ -1165,14 +1178,14 @@
     <h3><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-calendar"></use></svg> Import Dates</h3>
     <div class="wi-step">
       <div class="wi-lbl">1. Copy this list</div>
-      <textarea id="id-template" readonly></textarea>
+      <textarea id="id-template" readonly aria-label="Import dates template (read-only)"></textarea>
       <div class="wi-actions wi-actions-left">
         <button class="btn btn-n btn-s" data-action="copyIdTemplate"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy List</button>
       </div>
     </div>
     <div class="wi-step">
       <div class="wi-lbl">2. Paste durations</div>
-      <textarea id="id-source" data-action="idPreview" placeholder="Five days&#10;Six days&#10;Two days"></textarea>
+      <textarea id="id-source" aria-label="Import dates source text" data-action="idPreview" placeholder="Five days&#10;Six days&#10;Two days"></textarea>
     </div>
     <div class="wi-step">
       <div class="wi-lbl">3. Preview</div>
@@ -1195,7 +1208,7 @@
 <!-- Confirmation dialog (Phase A: cascade / destructive ops) -->
 <div id="cfm-modal">
   <div class="mb cfm-box">
-    <div class="mh"><span class="mt" id="cfm-title">Confirm</span><button class="dc" data-action="cfmCancel"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg></button></div>
+    <div class="mh"><span class="mt" id="cfm-title">Confirm</span><button class="dc" data-action="cfmCancel" aria-label="Cancel"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg></button></div>
     <div class="mbody">
       <p class="modal-txt" id="cfm-msg"></p>
       <div id="cfm-items" class="mt10 is-hide"></div>

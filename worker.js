@@ -30,6 +30,11 @@
        bundled-model fallback passes the model via a blob URL).
      - style-src 'unsafe-inline': admin.html ships inline
        style attributes; hashing them all is not feasible.
+       https://accounts.google.com + https://fonts.googleapis.com
+       are ALSO allowed so Google Identity Services can load its own
+       sign-in button/popup stylesheet (see DIR-1 of
+       PROJECT-UX-NAV-WEATHER-EXPORT-DIRECTIVE — without them the GIS
+       popup fails with a style-src violation).
      - GOOGLE-OPERATOR-IDENTITY-v1 (optional operator identity):
        script-src allows the Google Identity Services hosts
        (accounts.google.com, apis.google.com); connect-src allows
@@ -69,7 +74,7 @@ const INLINE_SCRIPT_HASHES = [
 const CSP = [
   "default-src 'self'",
   "script-src 'self' 'wasm-unsafe-eval' https://unpkg.com https://accounts.google.com https://apis.google.com " + INLINE_SCRIPT_HASHES,
-  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com",
   "img-src 'self' data: blob:",
   "media-src 'self' data: blob:",
   "font-src 'self' data: https://fonts.gstatic.com",
@@ -619,6 +624,60 @@ function cloudRateLimited(retryAfter) {
       'Retry-After': String(retryAfter || 60)
     }
   });
+}
+
+// ---- ORPHAN-PURGE (A5-2 decision, 2026-08-11) ----------------------------
+// Auto-delete cloud projects after a retention window with NO owner
+// activity (see migration 0004). The window is measured on
+// last_owner_seen_at — stamped on owner-authenticated requests only — so an
+// abandoned project cannot be kept alive by an editor's saves. The purge
+// runs on the Worker's scheduled (cron) handler; it is intentionally
+// conservative: a project whose last_owner_seen_at is null is never purged
+// (legacy rows are back-filled by the migration, and the null guard is a
+// belt-and-suspenders so a schema race can never delete a live project).
+const CLOUD_ORPHAN_RETENTION_MS = 365 * 24 * 60 * 60 * 1000; // 12 months
+
+// Stamp last_owner_seen_at on an owner-authenticated request. Fire-and-
+// forget semantics: this is a maintenance bump, never a failure point —
+// callers await it only when they want the write ordered with their own
+// response (recover, save); meta/load can await it too since it is a single
+// cheap UPDATE and D1 batches it with their own row read on the same conn.
+async function cloudTouchOwner(env, projectId) {
+  try {
+    await env.DB.prepare('UPDATE cloud_projects SET last_owner_seen_at = ? WHERE project_id = ?')
+      .bind(new Date().toISOString(), projectId).run();
+  } catch (e) { /* maintenance stamp must never fail a user request */ }
+}
+
+// Purge every cloud project whose owner has been absent for longer than the
+// retention window: D1 row + editor codes + changelog + every R2 object under
+// the project prefix (mirrors handleCloudUnlink's cleanup, minus auth).
+async function purgeStaleCloudProjects(env) {
+  const cutoff = new Date(Date.now() - CLOUD_ORPHAN_RETENTION_MS).toISOString();
+  // Review pass (2026-08-11): cap the batch so one oversized sweep cannot
+  // blow the cron CPU-time budget — the daily cadence catches the rest
+  // tomorrow. The cap applies AFTER selection so ordering stays stable.
+  const rows = await env.DB.prepare(
+    'SELECT project_id, owner_label FROM cloud_projects WHERE last_owner_seen_at IS NOT NULL AND last_owner_seen_at < ? ORDER BY last_owner_seen_at ASC LIMIT 200'
+  ).bind(cutoff).all();
+  const stale = (rows && rows.results) || [];
+  const purged = [];
+  for (let i = 0; i < stale.length; i++) {
+    const pid = stale[i].project_id;
+    let cursor = undefined;
+    do {
+      const listed = await env.R2.list({ prefix: 'projects/' + pid + '/', cursor: cursor });
+      for (let j = 0; j < (listed.objects || []).length; j++) {
+        try { await env.R2.delete(listed.objects[j].key); } catch (e) { /* best-effort per object */ }
+      }
+      cursor = listed.truncated ? listed.cursor : undefined;
+    } while (cursor);
+    await env.DB.prepare('DELETE FROM cloud_editor_codes WHERE project_id = ?').bind(pid).run();
+    await env.DB.prepare('DELETE FROM cloud_changelog WHERE project_id = ?').bind(pid).run();
+    await env.DB.prepare('DELETE FROM cloud_projects WHERE project_id = ?').bind(pid).run();
+    purged.push({ projectId: pid, label: stale[i].owner_label || null, purgedAt: new Date().toISOString() });
+  }
+  return { purged: purged, checked: stale.length };
 }
 
 // ---- CORS POLICY (gap-audit item A2) -------------------------------------
@@ -1178,6 +1237,32 @@ async function handleAdminCloudList(request, env) {
   return json({ ok: true, projects: projects });
 }
 
+// GET /api/cloud/projects — session-gated list of the SIGNED-IN OWNER'S
+// cloud-linked projects (A5-3 decision, 2026-08-11: the multi-project
+// "all my cloud projects" dashboard). Lists only rows whose google_sub
+// matches the session — never another account's projects, and never leaks
+// existence of ids the session does not own (same generic 403 as the rest
+// of the API when no valid session rides along). No codes, no hashes.
+async function handleCloudProjectList(request, env) {
+  const session = await readSession(request, env);
+  if (!session || !session.sub) return cloudForbidden();
+  const rows = await env.DB.prepare(
+    'SELECT project_id, owner_label, google_name, latest_r2_key, created_at, updated_at, last_owner_seen_at FROM cloud_projects WHERE google_sub = ? ORDER BY updated_at DESC'
+  ).bind(session.sub).all();
+  const projects = ((rows && rows.results) || []).map(function(r) {
+    return {
+      projectId: r.project_id,
+      label: r.owner_label || null,
+      linkedName: r.google_name || null,
+      hasSnapshot: !!r.latest_r2_key,
+      createdAt: r.created_at,
+      updatedAt: r.updated_at,
+      lastOwnerSeenAt: r.last_owner_seen_at || null
+    };
+  });
+  return json({ ok: true, projects: projects });
+}
+
 // POST /api/cloud/projects  { projectId, name? }
 // Creates the D1 row, generates the owner code (returned ONCE), links the
 // Google account when a valid session cookie rides along. 409 if the
@@ -1202,9 +1287,13 @@ async function handleCloudCreate(request, env) {
   // 404 Not Found instead of the intended 409. Catching the insert and
   // re-checking turns that race into the same "already linked" 409.
   try {
+    // A5-2: the owner is provably present at creation — stamp the purge
+    // window immediately so a created-but-never-saved project is not exempt
+    // from the retention policy forever (NULL would be treated as immortal
+    // by the purge's IS NOT NULL guard).
     await env.DB.prepare(
-      'INSERT INTO cloud_projects (project_id, owner_code_salt, owner_code_hash, owner_label, google_sub, google_name, latest_r2_key, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?)'
-    ).bind(projectId, salt, hash, name, session ? session.sub : null, session ? session.name : null, null, now, now).run();
+      'INSERT INTO cloud_projects (project_id, owner_code_salt, owner_code_hash, owner_label, google_sub, google_name, latest_r2_key, created_at, updated_at, last_owner_seen_at) VALUES (?,?,?,?,?,?,?,?,?,?)'
+    ).bind(projectId, salt, hash, name, session ? session.sub : null, session ? session.name : null, null, now, now, now).run();
   } catch (e) {
     const raced = await env.DB.prepare('SELECT project_id FROM cloud_projects WHERE project_id = ?').bind(projectId).first();
     if (raced) return json({ ok: false, error: 'project already linked' }, 409);
@@ -1273,6 +1362,8 @@ async function handleCloudSave(request, env, projectId) {
     actor = { type: 'owner', label: a.label };
     next = JSON.parse(JSON.stringify(read.body.state));
     stripStateSecrets(next);
+    // A5-2: an owner save is owner activity — refresh the purge window.
+    await cloudTouchOwner(env, projectId);
   } else {
     const a = await cloudAuthEditor(request, env, projectId, editorCode);
     if (!a) return cloudForbidden();
@@ -1286,6 +1377,10 @@ async function handleCloudSave(request, env, projectId) {
   await env.DB.prepare('UPDATE cloud_projects SET latest_r2_key = ?, updated_at = ? WHERE project_id = ?').bind(key, now, projectId).run();
   const entry = await cloudLogSave(env, projectId, prev, next, actor);
   const resp = { ok: true, savedAt: now, key: key, actor: actor.type };
+  // A5-2 (review pass): only the owner path needs the touch — and it was
+  // already stamped above. The earlier version probed the session on EVERY
+  // save (including editor saves), adding a D1 SELECT to the hottest path.
+  // No extra work here: the owner branch already called cloudTouchOwner.
   // Gap-audit item B9: report the PREVIOUS snapshot's update time so the
   // client can warn when another device saved between this device's last
   // sync and this save (last-write-wins WITH a heads-up, not silently).
@@ -1300,24 +1395,43 @@ async function handleCloudSave(request, env, projectId) {
 // snapshot yet returns state:null (still ok).
 
 // POST /api/cloud/projects/:id/load
-// Auth: X-Owner-Code OR X-Editor-Code (headers only — the client always
-// sends the credential in the header). Owner loads are unchanged. An
-// EDITOR load additionally returns role/editorLabel/scope so the app can
-// grey out (UX) what the server already enforces. No blob yet -> state:null.
+// Auth: X-Owner-Code OR X-Editor-Code (headers — the client always sends
+// the credential in the header), OR the linked owner's Google session
+// (A5-3: the multi-project dashboard lets a signed-in owner load any of
+// their own projects without re-entering the code — same sub-match gate
+// handleCloudMeta uses). An EDITOR load additionally returns
+// role/editorLabel/scope so the app can grey out (UX) what the server
+// already enforces. No blob yet -> state:null.
 async function handleCloudLoad(request, env, projectId) {
   const ownerCode = String(request.headers.get('X-Owner-Code') || '').trim();
   const editorCode = String(request.headers.get('X-Editor-Code') || '').trim();
-  if (!ownerCode && !editorCode) { await Promise.all([cloudDummyHash(), cloudTimingSink()]); return cloudForbidden(); }
+  // Review pass (2026-08-11): resolve the session fallback ONCE up front and
+  // reuse it — the earlier version verified the session twice (two row reads
+  // + two timing sinks per session-only load). The no-credential failure path
+  // still runs the same dummy-hash + timing-floor composite as every other
+  // "no row / wrong code" branch.
+  let sessFallback = null;
+  if (!ownerCode && !editorCode) {
+    sessFallback = await cloudAuthOwnerSession(request, env, projectId);
+    if (!sessFallback) { await Promise.all([cloudDummyHash(), cloudTimingSink()]); return cloudForbidden(); }
+  }
   const row = await env.DB.prepare('SELECT owner_code_salt, owner_code_hash, latest_r2_key, updated_at FROM cloud_projects WHERE project_id = ?').bind(projectId).first();
   if (!row) { await Promise.all([cloudDummyHash(), cloudTimingSink()]); return cloudForbidden(); }
   let editorAuth = null;
+  let ownerAuth = false;
   if (ownerCode) {
     const hash = await hashOwnerCode(ownerCode, row.owner_code_salt);
     if (!codesEqual(hash, row.owner_code_hash)) { await cloudTimingSink(); return cloudForbidden(); }
-  } else {
+    ownerAuth = true;
+  } else if (editorCode) {
     editorAuth = await cloudAuthEditor(request, env, projectId, editorCode);
     if (!editorAuth) return cloudForbidden();
+  } else {
+    if (!sessFallback) { await cloudTimingSink(); return cloudForbidden(); }
+    ownerAuth = true;
   }
+  // A5-2: an owner load (code or session) is owner activity.
+  if (ownerAuth) await cloudTouchOwner(env, projectId);
   if (!row.latest_r2_key) {
     const base = { ok: true, state: null, savedAt: null };
     if (editorAuth) { base.role = 'editor'; base.editorLabel = editorAuth.label; base.scope = editorAuth.scope; }
@@ -1355,6 +1469,9 @@ async function handleCloudRecover(request, env, projectId) {
   await env.DB.prepare(
     'INSERT INTO cloud_changelog (project_id, entry_type, actor_type, actor_label, section, diffs_json, snapshot_key, created_at) VALUES (?,?,?,?,?,?,?,?)'
   ).bind(projectId, 'recovery', 'owner', row.google_name || 'Owner', null, null, null, now).run();
+  // A5-2: a recovery is the owner proving they are present — refresh the
+  // purge window.
+  await cloudTouchOwner(env, projectId);
   return json({ ok: true, ownerCode: ownerCode, recoveredAt: now });
 }
 
@@ -1382,6 +1499,8 @@ async function handleCloudMeta(request, env, projectId) {
   }
   if (!authorized && session && session.sub && row.google_sub && row.google_sub === session.sub) authorized = true;
   if (!authorized) return cloudForbidden();
+  // A5-2: an owner meta probe (session or code) is owner activity.
+  await cloudTouchOwner(env, projectId);
   const resp = {
     ok: true, projectId: projectId, linked: !!row.google_sub,
     linkedName: row.google_name || null, label: row.owner_label || null,
@@ -1436,10 +1555,12 @@ async function handleApi(request, env, url) {
   // CLOUD-BACKEND-ARCHITECTURE-PLAN Phase 1 — /api/cloud/* routes. These run
   // BEFORE the ASSETS binding, exactly like /api/auth/*, so they can never be
   // swallowed by the SPA fallback.
-  if (path === '/api/cloud/projects' && request.method === 'POST') {
+  if (path === '/api/cloud/projects') {
     const rl = await cloudRateCheck(request, 'general');
     if (rl.limited) return cloudRateLimited(rl.retryAfter);
-    return handleCloudCreate(request, env);
+    // POST = create (Phase 1); GET = session-gated owner project list (A5-3).
+    if (request.method === 'POST') return handleCloudCreate(request, env);
+    if (request.method === 'GET') return handleCloudProjectList(request, env);
   }
   const cloudMatch = path.match(/^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/(save|load|recover|meta)$/);
   if (cloudMatch) {
@@ -1570,6 +1691,21 @@ async function handleApi(request, env, url) {
 }
 
 export default {
+  // A5-2 (2026-08-11): daily orphan-purge sweep — deletes cloud projects
+  // whose owner has been absent for the retention window (12 months). Runs
+  // on the cron trigger declared in wrangler.jsonc. Never touches asset
+  // serving; a purge failure is logged-and-ignored, never surfaced to a
+  // user request.
+  async scheduled(event, env) {
+    // The runtime ignores a scheduled handler's return value — this is
+    // fire-and-forget by design; log the outcome only.
+    try {
+      const result = await purgeStaleCloudProjects(env);
+      console.log('cloud orphan purge: checked=' + result.checked + ' purged=' + result.purged.length);
+    } catch (e) {
+      console.error('cloud orphan purge failed:', e && e.message);
+    }
+  },
   async fetch(request, env) {
     try {
       const url = new URL(request.url);

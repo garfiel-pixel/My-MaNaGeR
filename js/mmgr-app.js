@@ -133,6 +133,14 @@ var MMGR = window.MMGR || {};
     R.renderAll();
     updateUndoUi();
 
+    // DIR-2 (PROJECT-UX-NAV-WEATHER-EXPORT-DIRECTIVE): measure the header so
+    // the sticky section nav sits exactly below it; re-measure on resize (the
+    // header wraps on narrow screens).
+    if (ns.Viewport && ns.Viewport.syncHeaderStack) {
+      ns.Viewport.syncHeaderStack();
+      window.addEventListener('resize', function() { ns.Viewport.syncHeaderStack(); });
+    }
+
     // Phase 2: hook the client error surface (window error + unhandledrejection)
     if (ns.Errors && ns.Errors.hookGlobals) ns.Errors.hookGlobals();
 
@@ -443,6 +451,31 @@ var MMGR = window.MMGR || {};
       const el = U.$('db-' + t);
       if (el) el.classList.toggle('is-hide', t !== tab);
     });
+  }
+
+  // DIR-3 (PROJECT-UX-NAV-WEATHER-EXPORT-DIRECTIVE): jump the user straight
+  // to the Advanced Packs toggles — open the Controls drawer, switch to the
+  // Controls tab (the packs live there), and bring the section into view.
+  // Instant scroll (behavior 'auto'): zero motion, motion-preference safe.
+  function openPacks() {
+    openDrw();
+    swDtab('ctrl', document.querySelector('.dtab[data-tab="ctrl"]'));
+    const el = U.$('adv-packs-section');
+    if (el) {
+      requestAnimationFrame(function() {
+        try { el.scrollIntoView({ block: 'center', behavior: 'auto' }); }
+        catch (e) { el.scrollIntoView(); }
+        // Keyboard users land on a focused control, not a blind tab-through.
+        const firstPack = U.$('pk-schedule');
+        if (firstPack) { try { firstPack.focus({ preventScroll: true }); } catch (e2) { /* ignore */ } }
+      });
+    }
+  }
+
+  // DIR-3: dismiss the Core-Mode nudge forever for this project.
+  function dismissPacksCallout() {
+    ns.State.updateState(function(s) { s.packsCalloutDismissed = true; });
+    if (ns.Render && ns.Render.renderCoreCallout) ns.Render.renderCoreCallout();
   }
 
   // ---- Toast ----
@@ -1597,6 +1630,8 @@ var MMGR = window.MMGR || {};
     openDrw: openDrw,
     closeDrw: closeDrw,
     swDtab: swDtab,
+    openPacks: openPacks,
+    dismissPacksCallout: dismissPacksCallout,
     showToast: showToast,
     showMLC: showMLC,
     closeMLC: closeMLC,
@@ -1859,6 +1894,9 @@ window.MMGR = MMGR;
     'loadClip': () => window.MMGR.App.loadClip(),
     'openDrw': () => window.MMGR.App.openDrw(),
     'closeDrw': () => window.MMGR.App.closeDrw(),
+    // DIR-3: Core-Mode onboarding callout — jump to the pack toggles / dismiss.
+    'openPacks': () => window.MMGR.App.openPacks(),
+    'dismissPacksCallout': () => window.MMGR.App.dismissPacksCallout(),
     'undoClr': () => window.MMGR.App.undoClr(),
     'closeMLC': () => window.MMGR.App.closeMLC(),
     'closeWbsImport': () => window.MMGR.Tasks.closeWbsImport(),
@@ -1895,6 +1933,9 @@ window.MMGR = MMGR;
       window.MMGR.State.updateState(function(s) {
         if (!s.packs) s.packs = {};
         s.packs[pack] = on;
+        // DIR-3: once any pack has EVER been turned on, the Core-Mode nudge
+        // stays hidden forever even if every pack is switched off again.
+        if (on) s.packsEverEnabled = true;
       });
       if (window.MMGR.Render && window.MMGR.Render.renderPacks) window.MMGR.Render.renderPacks();
       if (window.MMGR.Render && window.MMGR.Render.syncPackChips) window.MMGR.Render.syncPackChips();

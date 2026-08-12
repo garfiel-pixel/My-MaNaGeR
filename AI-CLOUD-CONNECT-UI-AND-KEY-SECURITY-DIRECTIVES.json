@@ -1,0 +1,58 @@
+{
+  "document_type": "execution_directive",
+  "title": "AI-CLOUD-CONNECT-UI-AND-KEY-SECURITY-DIRECTIVES",
+  "audited_against": "mymanager-fixed - Copy (3), plus one live screenshot showing a newer, already-locally-edited build (pill text 'Cloud · connect key' does not match this zip's 'Cloud · BYO key' — your local build has moved past this zip; verification_before_edit below is mandatory for that reason, not optional boilerplate.",
+  "context_for_executor": "The person reported: 'It did generate the area... but there is no actual tab that I paste the API into to connect it.' Direct code review of the zip shows the API key input DOES exist and IS wired end-to-end — it is just invisible, buried inside a collapsed <details> panel the user never expanded. That is finding DIR-1 below. While tracing this, a second, more serious issue was found: the API key is never excluded from the project's portable .json export, so sharing/backing up a project file also leaks the person's private API key in plain text. That is DIR-2, and it is the higher-priority item of the two even though it wasn't what was asked about.",
+
+  "DIR-1": {
+    "name": "Make the Cloud API connection an always-visible, unambiguous panel",
+    "severity": "high — direct cause of the reported bug",
+    "finding": {
+      "what_exists_already": "project.html, inside <details class=\"ai-adv\"> (collapsed by default): a #ai-tier select (Off/Local/Cloud), and — only revealed once tier is switched to Cloud via #ai-cfg-cloud (class is-hide toggled by JS) — #ai-provider select, #ai-endpoint input, #ai-model input, and #ai-key password input. All four already fire real actions (aiSetProvider/aiSetEndpoint/aiSetModel/aiSetKey) into js/mmgr-ai.js:setAiCfg(), which writes to state.config.ai. This is fully functional code. The problem is 100% visibility/discoverability, not wiring.",
+      "why_it_reads_as_broken": "A user has to: open the AI window -> notice a collapsed settings summary line -> click to expand it -> switch a dropdown to 'Cloud' -> THEN see the key field appear. Four hidden steps before the one field they need is visible. Combined with a status pill and an 'API' badge both rendered in the header claiming states ('Cloud · connect key' vs 'API · connected') that can disagree because they're driven by two different signals (see must_check below), the whole area reads as broken rather than just hidden."
+    },
+    "verification_before_edit": [
+      "Confirm in the CURRENT local build (not this zip) whether #ai-cfg-cloud is still inside the collapsed <details>, or whether it was already partially promoted during earlier work — the screenshot's pill text differs from this zip, meaning local edits already happened. Do not assume this zip's exact structure is still current.",
+      "Confirm what currently drives the green 'API · connected' badge visible in the screenshot. It does not exist in this zip's traced code (only #ai-engine-pill / #ai-engine-pill-label exist here). Find its real source in the current build before editing it, or you will edit the wrong element and the bug will persist unfixed."
+    ],
+    "required_change": [
+      "Move the Cloud connection fields (#ai-provider, #ai-endpoint, #ai-model, #ai-key) OUT of the collapsed <details>, into an always-visible row directly under the #ai-tier select in the AI window header area — visible the moment tier is set to Cloud, with zero additional clicks.",
+      "Add a single, explicit 'Connect' or 'Save & Test' button next to the key field. Do not treat 'a key string is present' as equivalent to 'connected.' A key can be present and wrong (typo, revoked, wrong provider selected).",
+      "Add a real connectivity check: on 'Connect', fire one minimal, cheap request to the selected provider's endpoint (e.g. a lightweight models-list or a 1-token completion) through the existing circuit-broken network path in mmgr-net.js. Do not fabricate a 'connected' state from the mere presence of a non-empty key field.",
+      "Define exactly three states, driven by ONE canonical field (not two independent UI elements guessing at each other): 'not_connected' (no key saved), 'saved_untested' (key present, connect/test not yet run or failed), 'connected' (last test call succeeded). Store which state as part of state.config.ai (e.g. state.config.ai.connectionStatus + state.config.ai.lastTestedAt), and drive EVERY visible indicator (pill, badge, Send button state) from that one field. Two independently-computed status indicators that can disagree, as seen in the screenshot, is the direct mechanism of the reported bug and must not be reintroduced under a different name."
+    ],
+    "must_not_change": [
+      "Do not touch the existing local-tier (zero-key) logic or its 'traces to real state fields' guarantee.",
+      "Do not change the underlying setAiCfg()/getAiCfg() merge-over-defaults mechanism — only what triggers it and what it feeds back into the UI."
+    ]
+  },
+
+  "DIR-2": {
+    "name": "Exclude the API key from the project's exported .json — real, confirmed security issue",
+    "severity": "critical — confirmed data-leak path, higher priority than DIR-1",
+    "finding": {
+      "confirmed_by_direct_inspection": "js/mmgr-state.js exportState() (line 798-800 in this zip) is literally `return JSON.stringify(getState(), null, 2);` — the ENTIRE state object, with zero field exclusion. state.config.ai.apiKey is a normal field on that object. Any project export — the app's own core 'portable data, single .json export' architecture guarantee — currently includes the person's raw, plaintext API key.",
+      "why_this_matters_more_than_it_looks": "This app's own non-negotiable architecture constraint #5 is 'portable data — single .json export, no server dependency to read it back.' That is a designed, encouraged, everyday action (backup, device transfer, sharing a copy with a client or teammate). Every single time it happens with Cloud tier configured, the owner's private AI provider key goes with it, in plain text, to whoever receives that file. This is not a hypothetical edge case — it is the app's primary designed data-portability feature actively leaking a secret.",
+      "copy_inconsistency_also_found": "The #ai-key input's own placeholder text says 'stored in this project's state only' (project.html line 838, this zip). The screenshot shows a DIFFERENT claim: a red warning reading 'Connect your AI key to send (session-only).' These two claims contradict each other — one says persisted-to-project-state, the other says session-only/not persisted. Whichever is actually true must be verified in the current build, and the losing claim's copy must be deleted, because right now the app is telling the user two different, contradictory things about whether their key is being saved."
+    },
+    "verification_before_edit": [
+      "Determine, in the CURRENT build, which claim is actually true: does the key currently survive a page reload (implying it's in localStorage/state and WILL be exported), or does it only live in memory for the current tab session (implying it's NOT part of state and the export leak may already be partially mitigated)? Do not guess — check by setting a key, reloading, and observing whether #ai-key repopulates.",
+      "If it currently persists (matches this zip's setAiCfg()-writes-to-state.config.ai.apiKey path), the export leak is real and DIR-2's fix is mandatory before anything else in this document."
+    ],
+    "required_change_if_key_persists_in_state": [
+      "In exportState() (or wherever the export payload is finally assembled), explicitly strip state.config.ai.apiKey (and any other provider secret fields added later, e.g. an eventual Google OAuth token or Cloudflare sync token per the still-open Config.api.keys redesign) from the OUTGOING export payload only. Do this on a deep-cloned copy — never mutate the live in-memory state as a side effect of exporting it.",
+      "On importState(), if an incoming file is missing the key (as it now always will be, post-fix), leave whatever key is already configured on THIS device untouched — do not null it out on import. A restored/shared project should still require re-entering the key locally, which is correct behavior, not a regression.",
+      "Update the #ai-key placeholder and any status copy to say something true and specific, e.g. 'Stored on this device only — never included in project exports or shared with anyone.' Make sure this is the ONE claim made everywhere the key is discussed — kill the contradictory 'session-only' framing unless that is actually the true, chosen behavior instead of persistence (see decision point below)."
+    ],
+    "decision_point_for_garfield": "Two legitimate designs exist here — pick one deliberately, don't leave it ambiguous: (A) Key persists in project state on this device (survives reload, convenient), but is stripped from every export/share/backup path (DIR-2's fix above). (B) Key is genuinely session-only, held in a JS variable, never written to state or localStorage at all — safer by default, but the user must re-paste it every browser session, which may be exactly the annoyance the 'session-only' warning text was trying to preempt. Whichever you choose, the placeholder text, the warning banner, and the actual code must all say the same thing."
+  },
+
+  "suggested_execution_order": [
+    "1. Run DIR-2's verification_before_edit step first — you need to know which persistence model is ACTUALLY live before touching any UI, since it changes what DIR-1's panel should even say next to the key field.",
+    "2. Fix DIR-2 (security) before DIR-1 (visibility/UX) if the key does persist in state — a prominent, always-visible key-entry panel that ALSO leaks into every export is worse than the current hidden-but-leaking version, since promoting it will get MORE keys entered and exported before this is fixed.",
+    "3. Then execute DIR-1's panel promotion and single-source-of-truth status field.",
+    "4. Re-run the CSP inline-script hash regen and the sw.js CACHE-version bump (per the prior audit's build guards) if this work touches any inline <script> block or changes any js/*.js file, since both guards from the last pass will now correctly fail the build if either is forgotten."
+  ],
+
+  "closing_note": "No code was changed in producing this directive. Every finding is either cited to an exact file/line in the uploaded zip, or explicitly marked as needing verification against your current, already-further-edited local build before anyone touches it."
+}

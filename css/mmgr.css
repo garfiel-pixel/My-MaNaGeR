@@ -126,7 +126,14 @@ body.focus-mode .focus-ind{display:flex;position:fixed;top:10px;right:10px;backg
 
 /* ---- Section Navigation ---- */
 #app-main{padding:18px 24px;max-width:1600px;margin:0 auto;}
-.sec-nav{display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap;}
+.sec-nav{display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap;
+  /* PROJECT-UX-NAV-WEATHER-EXPORT-DIRECTIVE DIR-2: the tab bar (Dashboard
+     included) stays reachable from anywhere in a long section. Sticky
+     directly below the already-sticky #app-header; --hdr-h is the header's
+     measured height (Viewport.syncHeaderStack, mmgr-viewport.js). The
+     glass-premium rules further down keep position:relative here, matching
+     that mode's intentionally non-sticky glass header. */
+  position:sticky;top:var(--hdr-h,0px);z-index:90;background:var(--canvas);}
 /* STRUCTURAL-IA §2: grouped nav (Option A) — eyebrow labels + divider */
 .nav-group{display:inline-flex;align-items:center;gap:6px;}
 .nav-group + .nav-group{position:relative;padding-left:14px;margin-left:4px;}
@@ -138,6 +145,17 @@ body.focus-mode .focus-ind{display:flex;position:fixed;top:10px;right:10px;backg
 .sec-nav .sec-btn.active{box-shadow:0 0 0 1px var(--green);background:rgba(16,185,129,.08);}
 .ic-svg{width:18px;height:18px;flex-shrink:0;vertical-align:-3px;}
 .ic-ct{width:20px;height:20px;flex-shrink:0;margin-right:4px;vertical-align:-4px;}
+/* ---- DIR-3 (PROJECT-UX-NAV-WEATHER-EXPORT-DIRECTIVE): Core-Mode onboarding
+       callout on the Dashboard. Solid card surface (Gate 6.1 — never glass
+       over content), gold-tinted border, no motion (instant show/hide via
+       .is-hide). Hidden permanently after any pack is toggled on or dismiss. */
+.core-callout{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;
+  background:linear-gradient(180deg,rgba(212,175,55,.09),var(--card) 55%);
+  border:1px solid rgba(212,175,55,.38);border-radius:var(--radius-lg);
+  padding:14px 18px;margin-bottom:18px;}
+.core-callout-txt{display:flex;align-items:center;gap:10px;font-size:.8rem;line-height:1.5;color:var(--text);max-width:660px;}
+.core-callout-txt .ico{color:var(--gold);flex-shrink:0;}
+.core-callout-actions{display:flex;gap:8px;align-items:center;flex-shrink:0;flex-wrap:wrap;}
 .panel{display:none;}
 .panel.active{display:block;}
 
@@ -560,7 +578,7 @@ body.readonly-mode .btn[data-action]:not([data-action="showSec"]):not([data-acti
 
 /* ---- Sprint Panel ---- */
 .sp{background:rgba(212,175,55,.05);border:1px solid rgba(212,175,55,.2);border-radius:var(--radius);padding:14px;margin-bottom:14px;display:flex;align-items:center;gap:18px;flex-wrap:wrap;}
-.slb{font-size:.7rem;color:var(--slate);text-transform:uppercase;letter-spacing:.5px;}
+.slb{font-size:.7rem;color:var(--slate);text-transform:uppercase;letter-spacing:.5px;display:block;}
 .slv{font-size:.88rem;font-weight:700;color:var(--gold);}
 
 /* ---- Risk Section ---- */
@@ -763,7 +781,7 @@ hr.div{border:none;border-top:1px solid var(--border);margin:14px 0;}
    blocks, light background with dark text so the page is readable on paper. */
 @media print{
   #app-header,#drw,#om,#ub,#cx,#cy,.sec-nav,.toolbar,.btn,.focus-ind,
-  #meth-learn-card,#gantt-tip,#hp,#boot-splash,#snap-daily-btn{display:none!important;}
+  #meth-learn-card,#gantt-tip,#hp,#boot-splash,#snap-daily-btn,.core-callout{display:none!important;}
   body{background:#fff!important;color:#111!important;}
   .panel{display:block!important;position:static!important;margin:0 0 24px!important;}
   .card{box-shadow:none!important;border:1px solid #ccc!important;break-inside:avoid;background:#fff!important;color:#111!important;}

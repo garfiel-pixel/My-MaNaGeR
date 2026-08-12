@@ -98,6 +98,10 @@ var MMGR = window.MMGR || {};
   function renderDash() {
     const s = S();
     if (!s || !s.tasks) return;
+    // DIR-3: keep the Core-Mode onboarding callout in sync with pack state
+    // (a pack toggled on elsewhere must hide it the moment the user returns
+    // to the Dashboard).
+    renderCoreCallout();
     const tasks = s.tasks;
     const total = tasks.length;
     const done = tasks.filter(t => t.status === 'completed').length;
@@ -1066,6 +1070,10 @@ var MMGR = window.MMGR || {};
   }
 
   function showSection(section, btn) {
+    // PROJECT-UX-NAV-WEATHER-EXPORT-DIRECTIVE DIR-2: every section switch
+    // starts from a consistent top position — a carried-over scroll offset
+    // from a long section reads as a "jump" into unrelated content.
+    window.scrollTo(0, 0);
     // Update nav buttons
     document.querySelectorAll('.sec-btn').forEach(b => b.classList.remove('active'));
     if (btn) btn.classList.add('active');
@@ -1076,6 +1084,8 @@ var MMGR = window.MMGR || {};
     // Render section-specific content
     const renderer = SECTION_RENDERERS[section];
     if (renderer) renderer();
+    // DIR-7a: give the freshly rendered table inputs their accessible names.
+    labelDynamicFields();
     // Rank 3.4: viewport-aware layout detection — offer the one-time
     // simplified-view prompt for dense sections on narrow screens.
     if (ns.Viewport && ns.Viewport.maybePrompt) ns.Viewport.maybePrompt(section);
@@ -2358,6 +2368,112 @@ var MMGR = window.MMGR || {};
         showSection('dash', document.querySelector('.sec-btn[data-section="dash"]'));
       }
     }
+    // DIR-3: pack state changed — re-evaluate the Core-Mode callout (toggling
+    // a pack on hides it even if the user is inside the drawer, not the Dash).
+    renderCoreCallout();
+  }
+
+  // ---- DIR-3 (PROJECT-UX-NAV-WEATHER-EXPORT-DIRECTIVE): Core-Mode onboarding
+  // callout. Shown only while NO advanced pack is enabled AND none has EVER
+  // been toggled on AND the user hasn't dismissed it. Toggling any pack on or
+  // dismissing hides it forever (per-project state).
+  function renderCoreCallout() {
+    const s = S();
+    const el = $('core-callout');
+    if (!s || !el) return;
+    const packs = s.packs || {};
+    const anyOn = PACK_ORDER.some(function(p) { return packs[p] !== false; });
+    const show = !anyOn && !s.packsEverEnabled && !s.packsCalloutDismissed;
+    el.classList.toggle('is-hide', !show);
+  }
+
+  // ---- DIR-7a (PROJECT-UX-NAV-WEATHER-EXPORT-DIRECTIVE, DYNAMIC half): the
+  // JS-rendered updField/updSpendEntry table inputs (Budget / Resources /
+  // Changes / Risks / Issues / Comms / Log / Documents / Stakeholders /
+  // CloseItems / spend log) carry no accessible name — the static a11y pass
+  // can't reach them. This pass derives one from the column header + the
+  // row's first text cell, e.g. "Planned, Demolition", and runs after every
+  // section render. External accessible names (aria-label / title / label[for]
+  // written without our marker) are skipped so static labels and future
+  // per-field fixes are never clobbered — but labels THIS pass writes are
+  // stamped data-a11y-auto="1" and refreshed on every pass, so an in-place
+  // row update (task rename in one cell while a later column's input survives)
+  // never leaves a stale derived label behind (review finding, 2026-08-11).
+  function columnHeaderFor(row, inp) {
+    const cells = Array.prototype.slice.call(row.cells || []);
+    const idx = cells.findIndex(function(c) { return c.contains(inp); });
+    if (idx < 0) return null;
+    const table = row.closest('table');
+    const thead = table && table.querySelector('thead');
+    if (!thead) return null;
+    const ths = thead.querySelectorAll('th');
+    const th = ths[idx];
+    if (!th) return null;
+    const t = (th.textContent || '').replace(/\s+/g, ' ').trim();
+    return t || null;
+  }
+
+  function rowLabelFor(row, inp) {
+    const cells = Array.prototype.slice.call(row.cells || []);
+    for (let c = 0; c < cells.length; c++) {
+      if (cells[c].contains(inp)) continue; // never name a control after itself
+      // A cell whose text lives in interactive children (a <select>'s option
+      // list, an <input>'s value, a <button>'s label) is not a stable row
+      // label — skip it and look for a plain text cell (row id, task name).
+      if (cells[c].querySelector('input,select,textarea,button')) continue;
+      const t = (cells[c].textContent || '').replace(/\s+/g, ' ').trim();
+      if (t) return t.slice(0, 60);
+    }
+    return null;
+  }
+
+  function labelDynamicFields() {
+    document.querySelectorAll(
+      'input[data-action="updField"], select[data-action="updField"], ' +
+      'input[data-action="updSpendEntry"], select[data-action="updSpendEntry"]'
+    ).forEach(function(inp) {
+      // Skip EXTERNAL accessible names only (truthy aria-label WITHOUT our
+      // marker, or any title). A label this pass wrote itself carries
+      // data-a11y-auto="1", so it is re-derived on the next pass instead of
+      // going stale when the row's text changes in place. Truthy check on
+      // aria-label keeps parity with verify-dynamic-labels' "named" rule and
+      // the old behaviour: an empty-string aria-label is NOT a name and may
+      // be (re)derived (review finding, 2026-08-11).
+      const external = (inp.getAttribute('aria-label') && inp.getAttribute('data-a11y-auto') === null) || !!inp.getAttribute('title');
+      if (external) return;
+      const own = inp.getAttribute('data-a11y-auto') !== null;
+      const setLabel = function(label) {
+        inp.setAttribute('aria-label', label);
+        inp.setAttribute('data-a11y-auto', '1');
+      };
+      const clearLabel = function() {
+        inp.removeAttribute('aria-label');
+        inp.removeAttribute('data-a11y-auto');
+      };
+      const id = inp.id;
+      if (id && /^[A-Za-z][A-Za-z0-9:_-]*$/.test(id) && document.querySelector('label[for="' + id + '"]')) return;
+      const row = inp.closest('tr');
+      if (!row) {
+        // Non-table row layouts (e.g. closure items render as flex rows): name
+        // the control from its container's own non-interactive text (the item
+        // label), never from buttons/inputs it sits beside.
+        const container = inp.parentElement;
+        if (!container) return;
+        const clone = container.cloneNode(true);
+        clone.querySelectorAll('input,select,textarea,button').forEach(function(n) { n.remove(); });
+        const t = (clone.textContent || '').replace(/\s+/g, ' ').trim();
+        if (t) setLabel(t.slice(0, 80));
+        else if (own) clearLabel(); // row lost its labelable text — drop the stale name
+        return;
+      }
+      const parts = [];
+      const th = columnHeaderFor(row, inp);
+      if (th) parts.push(th);
+      const rl = rowLabelFor(row, inp);
+      if (rl) parts.push(rl);
+      if (parts.length) setLabel(parts.join(', '));
+      else if (own) clearLabel(); // nothing derivable now — drop the stale name
+    });
   }
 
   // Sync the Controls drawer pack toggle chips with state.
@@ -2390,6 +2506,11 @@ var MMGR = window.MMGR || {};
       const renderer = SECTION_RENDERERS[active.id.replace('panel-', '')];
       if (renderer && renderer !== renderDash) renderer();
     }
+    // DIR-7a: label any inputs the re-render just (re)created.
+    labelDynamicFields();
+    // DIR-2: the sticky nav's offset tracks the header's real height — the
+    // greeting line changes height, so re-measure on every full render.
+    if (ns.Viewport && ns.Viewport.syncHeaderStack) ns.Viewport.syncHeaderStack();
   }
 
 
@@ -2825,7 +2946,11 @@ var MMGR = window.MMGR || {};
     PACK_LABELS: PACK_LABELS,
     PACK_ORDER: PACK_ORDER,
     renderPacks: renderPacks,
-    syncPackChips: syncPackChips
+    syncPackChips: syncPackChips,
+    // DIR-3: Core-Mode onboarding callout visibility.
+    renderCoreCallout: renderCoreCallout,
+    // DIR-7a (dynamic half): accessible names for rendered table inputs.
+    labelDynamicFields: labelDynamicFields
   };
 })(MMGR);
 window.MMGR = MMGR;

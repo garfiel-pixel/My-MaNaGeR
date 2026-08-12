@@ -190,6 +190,22 @@ var MMGR = window.MMGR || {};
     removePrompt(section);
   }
 
+  // ---- PROJECT-UX-NAV-WEATHER-EXPORT-DIRECTIVE DIR-2: sticky section nav ----
+  // The app header is position:sticky (top:0) and the section tab bar sticks
+  // directly below it. Its exact offset is the header's REAL rendered height
+  // (the header wraps on narrow screens, and the greeting line height can
+  // change), so measure it and publish it as a CSS custom property that the
+  // .sec-nav rule consumes. Called on boot after first render and on every
+  // resize; harmless on pages without #app-header.
+  function syncHeaderStack() {
+    try {
+      const hdr = document.getElementById('app-header');
+      const root = document.documentElement;
+      if (!hdr || !root) return;
+      root.style.setProperty('--hdr-h', Math.ceil(hdr.getBoundingClientRect().height) + 'px');
+    } catch (e) { /* measurement must never throw */ }
+  }
+
   // ---- API ----
   ns.Viewport = {
     DENSE_SECTIONS: DENSE_SECTIONS.slice(),
@@ -205,6 +221,8 @@ var MMGR = window.MMGR || {};
     getPref: getPref,
     // Rank 3.5 (PLAN-OF-ACTION-LIQUID-GLASS-UI): shared capability signal
     // + glass mode preference. One detection path, two consumers.
+    // DIR-2: sticky section-nav offset below the header.
+    syncHeaderStack: syncHeaderStack,
     hasWebGL: hasWebGL,
     isHighEnd: isHighEnd,
     getGlassMode: getGlassMode,

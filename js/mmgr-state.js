@@ -8,7 +8,7 @@ var MMGR = window.MMGR || {};
   'use strict';
 
   const STORAGE_KEY = 'mmgr_state';
-  const SCHEMA_VERSION = 17;
+  const SCHEMA_VERSION = 18;
 
   // ---- Default State ----
   function getDefaultState() {
@@ -170,6 +170,14 @@ var MMGR = window.MMGR || {};
         field: false,      // Field: Weather / Meetings / Claim
         quality: false     // Quality: DMAIC
       },
+      // PROJECT-UX-NAV-WEATHER-EXPORT-DIRECTIVE DIR-3: Core-Mode onboarding
+      // callout memory. packsCalloutDismissed — the user clicked "Not now"
+      // and is never asked again; packsEverEnabled — any pack has been
+      // toggled on at least once, so a later toggle-OFF must not resurrect
+      // the nudge (the directive: "once any pack has ever been toggled on
+      // for that project, never show this callout again").
+      packsCalloutDismissed: false,
+      packsEverEnabled: false,
       // Timestamp
       updatedAt: new Date().toISOString()
     };
@@ -398,6 +406,15 @@ var MMGR = window.MMGR || {};
         state.fieldTs = {};
       }
       return state;
+    },
+    18: function(state) {
+      // V17 -> V18: PROJECT-UX-NAV-WEATHER-EXPORT-DIRECTIVE DIR-3 — Core-Mode
+      // onboarding callout memory. Additive back-fill: pre-v16 saved projects
+      // already migrated with all packs ON, so the callout stays hidden for
+      // them; brand-new projects start at false and show the nudge once.
+      if (state.packsCalloutDismissed === undefined) state.packsCalloutDismissed = false;
+      if (state.packsEverEnabled === undefined) state.packsEverEnabled = false;
+      return state;
     }
   };
 
@@ -582,7 +599,7 @@ var MMGR = window.MMGR || {};
   // the current updatedAt (plus nested charter keys — those are edited as
   // subfields). The merge module (MMGR.Merge) reads these to decide
   // last-write-wins per field instead of replacing the whole document.
-  const FIELD_KEYS = ['projectName', 'methodology', 'workWeek', 'theme', 'crosshairOn', 'userName', 'charter', 'tasks', 'meetings', 'meetingPromises', 'activeMeeting', 'resources', 'budgetLines', 'budgetEnvelope', 'spendLog', 'stakeholders', 'risks', 'issues', 'changes', 'logEntries', 'commsEntries', 'documents', 'closure', 'raci', 'sprint', 'dailySnapshots', 'dmaic', 'baseline', 'weatherRegion', 'siteLat', 'siteLon', 'sitePlace', 'wxCache', 'weatherLog', 'ldRate', 'wxViewDays', 'wxWindow', 'kbShowLeadtime', 'hlCritical', 'dailySnapshot', 'focusMode', 'streak', 'sentimentHistory', 'scheduleSlips', 'slipCauses', 'digestSnapshot', 'aiOutputs', 'packs'];
+  const FIELD_KEYS = ['projectName', 'methodology', 'workWeek', 'theme', 'crosshairOn', 'userName', 'charter', 'tasks', 'meetings', 'meetingPromises', 'activeMeeting', 'resources', 'budgetLines', 'budgetEnvelope', 'spendLog', 'stakeholders', 'risks', 'issues', 'changes', 'logEntries', 'commsEntries', 'documents', 'closure', 'raci', 'sprint', 'dailySnapshots', 'dmaic', 'baseline', 'weatherRegion', 'siteLat', 'siteLon', 'sitePlace', 'wxCache', 'weatherLog', 'ldRate', 'wxViewDays', 'wxWindow', 'kbShowLeadtime', 'hlCritical', 'dailySnapshot', 'focusMode', 'streak', 'sentimentHistory', 'scheduleSlips', 'slipCauses', 'digestSnapshot', 'aiOutputs', 'packs', 'packsCalloutDismissed', 'packsEverEnabled'];
   let _lastSaveFingerprint = null;
 
   function fingerprintOf(s) {

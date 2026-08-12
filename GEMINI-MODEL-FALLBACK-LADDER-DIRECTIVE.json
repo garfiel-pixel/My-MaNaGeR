@@ -1,0 +1,69 @@
+{
+  "document_type": "execution_directive",
+  "title": "GEMINI-MODEL-FALLBACK-LADDER-DIRECTIVE",
+  "audited_against": "mymanager-fixed.zip (latest upload — this build is further ahead than everything audited previously: real Google Gemini support, session-only key vault (BYO.getKey/getProvider/clearKey), a Worker-relay-first-then-direct-fallback call path, and a 401-only key-clear rule already exist).",
+  "context_for_executor": "Garfield wants the same pattern his own Python tooling already uses: when a higher-tier model call fails (specifically hitting a rate limit), automatically retry with a smaller/cheaper model instead of just failing outright. Confirmed live in the screenshot he shared: 'AI call failed — HTTP 429. The app is unaffected; check Settings > AI Engine and try again.' That 429 is currently a hard failure with no model-level fallback. This directive adds one, scoped to what's actually feasible today.",
+
+  "current_state_confirmed_by_code": {
+    "single_model_per_provider": "js/mmgr-net.js PROVIDER_DEFAULTS currently maps each provider to exactly ONE model: openai -> gpt-4o-mini, anthropic -> claude-3-5-sonnet-latest, google-gemini -> gemini-2.0-flash. There is no list of fallback models anywhere.",
+    "existing_retry_is_not_a_fallback": "js/mmgr-net.js already retries with exponential backoff on 429/408/5xx (see PROVIDER_DEFAULTS block comments + the retriable check at 'res.status >= 500 || res.status === 429 || res.status === 408'). This retries the SAME model against the SAME endpoint. It is not a model fallback — if the account-level quota on gemini-2.0-flash is genuinely exhausted, retrying gemini-2.0-flash again will keep failing no matter how many backoff attempts run. A real fallback needs to try a DIFFERENT, smaller model, not just retry the same one.",
+    "two_call_paths_both_need_the_change": "js/mmgr-ai.js has TWO places that actually call Gemini and would each need the fallback ladder: (1) relayChat() at line ~879, which posts to the same-origin Worker route /api/ai/chat first; (2) directChat() at line ~857, used when the relay route 404s/405s (e.g. local static hosting) or when relayChat's own catch block falls through to it. A fallback that only lives in one of these two paths will silently not work depending on which hosting mode is active — both must be covered, and the logic should live in ONE shared place both call into, not be duplicated."
+  },
+
+  "DIR-1": {
+    "name": "Add a per-provider ordered model list, with Gemini as the first implementation",
+    "required_change": [
+      "In js/mmgr-net.js, change PROVIDER_DEFAULTS['google-gemini'] from a single { endpoint, model } to include an ordered fallback list, e.g.: { endpoint: <same as now, but parameterized by model — see DIR-2>, model: 'gemini-2.0-flash', fallbackModels: ['gemini-2.0-flash-lite', 'gemini-1.5-flash-8b'] } — verify these exact model IDs against Google's current AI Studio/API docs before hardcoding, since Google renames/deprecates these regularly and the ones listed here are illustrative, not guaranteed current.",
+      "Keep this as an array ordered from 'preferred/highest-quality' to 'smallest/cheapest,' matching the semantics of Garfield's own Python fallback (big model first, smaller ones as safety nets, never the reverse)."
+    ],
+    "verification_before_edit": [
+      "Confirm the exact current valid Gemini model IDs and their relative cost/quota tiers directly from Google's own model list before hardcoding a fallback ladder — do not carry forward the illustrative names above without checking, since an invalid model ID would turn a rate-limit failure into an instant 404 failure instead, which is worse than doing nothing."
+    ]
+  },
+
+  "DIR-2": {
+    "name": "Parameterize the Gemini endpoint by model, since the model name is embedded in the URL path today",
+    "finding": "js/mmgr-net.js currently hardcodes the model INTO the endpoint URL string: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent'. A fallback to a different model cannot just reuse 'def.endpoint' as-is — the URL itself has to change per attempted model.",
+    "required_change": [
+      "Change the Gemini endpoint definition to a template/function rather than a fixed string, e.g. a helper `geminiEndpointFor(modelId)` that returns 'https://generativelanguage.googleapis.com/v1beta/models/' + modelId + ':generateContent', so each fallback attempt builds the correct URL for whichever model it's currently trying.",
+      "Apply this in BOTH directChat() and relayChat()'s eventual call sites (see DIR-3) — do not leave one still reading a static endpoint string."
+    ]
+  },
+
+  "DIR-3": {
+    "name": "Implement the actual fallback loop, in ONE shared function both call paths use",
+    "required_change": [
+      "Add a single new function, e.g. `callGeminiWithFallback(key, messages, ctx)`, that: (a) builds the ordered model list = [def.model].concat(def.fallbackModels || []); (b) tries each model in order via the existing single-model call logic (whatever directChat's Gemini branch already does, refactored out into a reusable per-attempt call); (c) on a 429 (or 503, since that's also a capacity-style rejection worth falling back on — confirm this classification is what Garfield's Python does before copying it) from one model, moves to the next model in the list; (d) on any OTHER error (401/403 key rejection, 400 bad request, network failure after normal retries) does NOT fall through to a smaller model — those aren't capacity problems and silently trying a different model would mask a real configuration bug.",
+      "Both directChat() and relayChat()'s fallback-into-directChat path must route through this same shared function for the Gemini provider — do not implement the ladder twice.",
+      "If the relay route (/api/ai/chat) is the active path (not directChat), the SAME fallback logic needs to either live server-side in the Worker route, or the client needs to detect a relay-reported 429 and retry through the relay with the next model in the list. Decide and document which of these two it is — do not leave the relay path silently uncovered while only directChat gets the fallback, since which path is active depends on hosting mode and Garfield may not always know which one a given deploy is using."
+    ],
+    "must_not_change": [
+      "The existing 401-only key-clear rule (BYO.clearKey() on status 401) must still apply per model attempt — an auth failure on the FIRST model in the ladder means the key itself is bad, so stop the whole ladder immediately and clear the key; do not continue trying smaller models with a key that's already confirmed rejected.",
+      "The existing 'key never appears in the request body / never logged' guarantees must hold identically across every model attempt in the ladder, not just the first one."
+    ]
+  },
+
+  "DIR-4": {
+    "name": "Tell the user which model actually answered",
+    "finding": "runCloud()'s return object currently reports `model: model` — the ORIGINAL configured model, not necessarily the one that actually produced the response once a fallback ladder exists.",
+    "required_change": [
+      "Update the fallback function to return which model in the ladder actually succeeded, and have runCloud() report THAT model in its returned `model` and `trace` fields — e.g. trace: ['cloud:google-gemini:gemini-2.0-flash-lite (fell back from gemini-2.0-flash on 429)', ...]. Silently succeeding on a smaller model without telling the user is a transparency regression — Garfield should be able to see in the response, or in the error/status area, that a fallback happened and to which model, the same way he can presumably see it in his Python tool's output."
+    ]
+  },
+
+  "DIR-5": {
+    "name": "Scope decision — Gemini only for now, or generalize to OpenAI/Anthropic too?",
+    "decision_point_for_garfield": "This directive is scoped to Gemini only, since that's what was asked for and it's the provider with a documented smaller-sibling model lineup readily available (flash -> flash-lite -> flash-8b). OpenAI and Anthropic could get the same ladder treatment later (e.g. gpt-4o -> gpt-4o-mini, or claude-3-5-sonnet -> claude-3-5-haiku) but that's a separate, smaller follow-up, not bundled into this one — confirm whether you want that queued as a fast-follow or left alone for now."
+  },
+
+  "suggested_execution_order": [
+    "1. DIR-1's verification_before_edit — confirm real, current Gemini model IDs before writing anything.",
+    "2. DIR-2 (parameterize the endpoint) — this is a prerequisite; the fallback loop in DIR-3 can't work without it.",
+    "3. DIR-3 (the actual fallback loop, one shared function, both call paths) — the core of this feature.",
+    "4. DIR-4 (report which model actually answered) — cheap, do it in the same pass as DIR-3 since it touches the same return object.",
+    "5. DIR-5 — a scoping conversation with Garfield, not code, can happen anytime.",
+    "6. Re-run the existing build guards (verify-sw-cache, verify-csp-hashes) before deploying, since this touches js/mmgr-ai.js and js/mmgr-net.js."
+  ],
+
+  "closing_note": "No code was changed in producing this directive. The fallback concept is sound and matches a legitimate, common pattern (graceful degradation across a model tier ladder on capacity errors specifically, not on all errors) — the two things that need care are: (1) not confusing the existing same-model backoff retry with a real cross-model fallback, and (2) making sure whichever call path is actually active in a given deploy (relay vs direct) both get the same behavior, since this app has both and which one runs depends on hosting mode."
+}

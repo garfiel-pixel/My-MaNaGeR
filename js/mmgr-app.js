@@ -129,6 +129,18 @@ var MMGR = window.MMGR || {};
     const env = U.$('bud-envelope');
     if (env) env.value = s.budgetEnvelope || 0;
 
+    // SIDEBAR-HAMBURGER-TOGGLE-PLAN: build the desktop sidebar (a clone of
+    // the .sec-nav groups) BEFORE the first render so the pack/methodology
+    // gates land on both navs together; then apply the saved layout pref,
+    // install the drawer/sidebar dismiss bindings, and start the one-per-load
+    // backend pull for the signed-in account's saved layout.
+    buildSidebar();
+    // Boot the rail to the saved pref's open state (pref on → open).
+    document.body.classList.toggle('sidebar-open', sidebarEnabled());
+    syncSidebarChrome();
+    bindNavDismiss();
+    pullSidebarBackend();
+
     // Initial render
     R.renderAll();
     updateUndoUi();
@@ -308,25 +320,181 @@ var MMGR = window.MMGR || {};
   let _navBound = false;
   function closeNav() {
     document.body.classList.remove('nav-open');
+    // Mobile drawer only: the desktop sidebar's expanded state is owned by
+    // syncSidebarChrome (viewport-aware), so this never touches it.
     const btn = U.$('nav-btn');
-    if (btn) btn.setAttribute('aria-expanded', 'false');
+    if (btn && window.innerWidth <= 768) btn.setAttribute('aria-expanded', 'false');
   }
+  // Dismiss bindings are installed once at init (not lazily on first click),
+  // so Escape/resize/section-click always close the drawer AND the desktop
+  // sidebar even when the pref opened the sidebar at boot without a click.
+  function bindNavDismiss() {
+    if (_navBound) return;
+    _navBound = true;
+    document.addEventListener('click', function (e) {
+      const t = e.target;
+      if (t && t.closest && t.closest('.sec-btn')) closeNav();
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key !== 'Escape') return;
+      closeNav();
+      // Desktop: Escape dismisses an OPEN rail temporarily — the layout pref
+      // stays on, so the hamburger remains available to reopen it.
+      if (window.innerWidth > 768 && document.body.classList.contains('sidebar-open')) {
+        setSidebarOpen(false);
+      }
+    });
+    window.addEventListener('resize', function () {
+      closeNav();
+      // Re-sync the hamburger's aria state when crossing the desktop/mobile
+      // breakpoint (the rail may be open while CSS hides it on mobile).
+      syncSidebarChrome();
+    });
+  }
+  // The one hamburger drives both navigations by viewport: ≤768px the mobile
+  // off-canvas drawer (body.nav-open), desktop the opt-in sidebar (temporary
+  // open/close — the preference itself is untouched).
   function tglNav() {
-    if (!_navBound) {
-      _navBound = true;
-      document.addEventListener('click', function (e) {
-        const t = e.target;
-        if (t && t.closest && t.closest('.sec-btn')) closeNav();
-      });
-      document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeNav(); });
-      window.addEventListener('resize', function () {
-        if (window.innerWidth > 768) closeNav();
-      });
-    }
-    const open = document.body.classList.toggle('nav-open');
+    bindNavDismiss();
     const btn = U.$('nav-btn');
-    if (btn) btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    if (window.innerWidth <= 768) {
+      const open = document.body.classList.toggle('nav-open');
+      if (btn) btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      return;
+    }
+    setSidebarOpen(!document.body.classList.contains('sidebar-open'));
   }
+
+  // ---- SIDEBAR-HAMBURGER-TOGGLE-PLAN (2026-08-12): opt-in desktop sidebar ----
+  // A fixed left rail (~240px) that mirrors the horizontal .sec-nav groups.
+  // It is a DEVICE preference (localStorage mmgr_sidebar = 'on'|'off', default
+  // 'off' — current users see zero change until they opt in), persisted to the
+  // same session-gated R2 prefs blob as the theme (worker.js /api/cloud/prefs/
+  // theme gains a sidebar field) so a signed-in account's layout follows across
+  // devices. The sidebar itself is desktop-only (≤768px the existing .sec-nav
+  // drawer remains the only mobile nav). Pure device-UI chrome — never project
+  // state, safe in view-only mode.
+  const SIDEBAR_KEY = 'mmgr_sidebar';
+  let _sidebarUserTouched = false;
+
+  function readDevicePref(key) { try { return localStorage.getItem(key); } catch (e) { return null; } }
+  function writeDevicePref(key, v) { try { localStorage.setItem(key, v); } catch (e) {} }
+
+  function sidebarEnabled() { return readDevicePref(SIDEBAR_KEY) === 'on'; }
+
+  // Reflect the pref onto <body> + the header hamburger + the settings toggle
+  // (all three must never disagree). aria-expanded is VIEWPORT-AWARE: on
+  // mobile it tracks the drawer (always false here — tglNav owns it there);
+  // on desktop it tracks the rail's temporary open state.
+  function syncSidebarChrome() {
+    const on = sidebarEnabled();
+    document.body.classList.toggle('sidebar-on', on);
+    const btn = U.$('nav-btn');
+    if (btn) {
+      const mobile = window.innerWidth <= 768;
+      btn.setAttribute('aria-expanded', mobile ? 'false' : (document.body.classList.contains('sidebar-open') ? 'true' : 'false'));
+      btn.setAttribute('aria-controls', mobile ? 'sec-nav' : 'app-sidebar');
+    }
+    const tgl = U.$('sb-tgl');
+    if (tgl) tgl.checked = on;
+  }
+
+  // Temporary open/close of the rail (hamburger on desktop, × button, Escape).
+  // Only the VISIBLE state changes — the persisted layout preference is
+  // untouched, so the hamburger stays available and the next load re-opens
+  // the rail whenever the pref is on. No-op while the layout is off.
+  function setSidebarOpen(open) {
+    if (open && !sidebarEnabled()) return;
+    document.body.classList.toggle('sidebar-open', !!open);
+    syncSidebarChrome();
+  }
+
+  // Preference toggle (settings switch): turning the layout on opens the rail,
+  // turning it off closes it. Local write first (instant), then a best-effort
+  // backend push when signed in.
+  function toggleSidebar() {
+    _sidebarUserTouched = true;
+    const on = !sidebarEnabled();
+    writeDevicePref(SIDEBAR_KEY, on ? 'on' : 'off');
+    document.body.classList.toggle('sidebar-open', on);
+    syncSidebarChrome();
+    pushSidebarBackend(on);
+  }
+
+  function pushSidebarBackend(on) {
+    try {
+      fetch('/api/cloud/prefs/theme', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sidebar: on ? 'on' : 'off' })
+      }).then(function (r) {
+        // Same arming flag the theme helper uses: any successful round trip
+        // enables the one-per-load backend pull on this device.
+        if (r.ok) writeDevicePref('mmgr_palette_backend', '1');
+      }).catch(function () { /* offline / no worker — localStorage is the cache */ });
+    } catch (e) { /* ignore */ }
+  }
+
+  // One-per-load backend pull (mirrors js/mmgr-theme.js): only on a device
+  // that has already synced SOME pref, and only until a LOCAL sidebar pref
+  // exists — the signed-in account's saved layout then follows across devices
+  // without ever clobbering a fresh local choice.
+  function pullSidebarBackend() {
+    if (_sidebarUserTouched) return;
+    if (readDevicePref('mmgr_palette_backend') !== '1') return; // never synced — nothing to pull
+    if (readDevicePref(SIDEBAR_KEY) != null) return;            // local pref wins
+    try {
+      fetch('/api/cloud/prefs/theme', { headers: { 'Accept': 'application/json' } })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (d) {
+          if (!d || !d.ok || !d.theme) return;
+          if (_sidebarUserTouched) return; // user chose mid-flight — their pick wins
+          const v = d.theme.sidebar;
+          if (v !== 'on' && v !== 'off') return;
+          writeDevicePref(SIDEBAR_KEY, v);
+          document.body.classList.toggle('sidebar-open', v === 'on');
+          syncSidebarChrome();
+        }).catch(function () { /* backend unreachable — keep local cache */ });
+    } catch (e) { /* ignore */ }
+  }
+
+  // Build the sidebar content by CLONING the horizontal .sec-nav groups (one
+  // source of truth — the links/actions can never drift), stripping the ids
+  // (the originals own them: gnav/knav/dmaic-nav), and keeping every clone's
+  // pack/methodology visibility mirrored to its original forever. Active-state
+  // sync needs no mirror: showSection's global .sec-btn query already covers
+  // both navs. Placement after <main> keeps document.querySelector first-
+  // matches on the ORIGINAL top nav, so programmatic showSection calls
+  // highlight the top pill exactly as before.
+  function buildSidebar() {
+    const sb = U.$('app-sidebar');
+    const nav = U.$('sec-nav');
+    if (!sb || !nav) return;
+    const groups = nav.querySelectorAll('.nav-group');
+    for (let i = 0; i < groups.length; i++) {
+      const c = groups[i].cloneNode(true);
+      c.querySelectorAll('[id]').forEach(function (el) { el.removeAttribute('id'); });
+      sb.appendChild(c);
+    }
+    // Mirror .is-hide (pack/methodology gates) from the originals to the
+    // clones. The render gates in mmgr-render.js already use global .sec-btn
+    // selectors (renderPacks/renderMethodology) that cover the clones too, so
+    // this observer is a drift-proofing safety net, not the driver.
+    const mo = new MutationObserver(function (muts) {
+      for (let i = 0; i < muts.length; i++) {
+        const m = muts[i];
+        if (m.type !== 'attributes' || m.attributeName !== 'class') continue;
+        const orig = m.target;
+        if (!orig.classList || !orig.classList.contains('sec-btn')) continue;
+        const sec = orig.getAttribute('data-section');
+        if (!sec) continue;
+        const twin = sb.querySelector('.sec-btn[data-section="' + sec + '"]');
+        if (twin) twin.classList.toggle('is-hide', orig.classList.contains('is-hide'));
+      }
+    });
+    mo.observe(nav, { subtree: true, attributes: true, attributeFilter: ['class'] });
+  }
+
 
   // ---- PLAN-OF-ACTION-AI-VOICE-SYNC-v1 4.5: optional Google identity ----
   function syncConnect() {
@@ -1650,6 +1818,8 @@ var MMGR = window.MMGR || {};
     // PLAN-OF-ACTION-LIQUID-GLASS-UI 3.5.3 + PLAN-OF-ACTION-AI-VOICE-SYNC-v1 4.5
     tglGlassMode: tglGlassMode,
     tglNav: tglNav,
+    tglSidebar: toggleSidebar,
+    tglSidebarOpen: function () { setSidebarOpen(!document.body.classList.contains('sidebar-open')); },
     syncConnect: syncConnect,
     syncSignOut: syncSignOut,
     syncClientId: syncClientId,
@@ -1862,6 +2032,8 @@ window.MMGR = MMGR;
     'tglGlassMode': () => window.MMGR.App.tglGlassMode(),
     // THEME-SYSTEM-AND-MOBILE-UI-ACTION-PLAN §4.2: mobile nav drawer toggle.
     'tglNav': () => window.MMGR.App.tglNav(),
+    'tglSidebar': () => window.MMGR.App.tglSidebar(),
+    'tglSidebarOpen': () => window.MMGR.App.tglSidebarOpen(),
     // Rank 4.5 (PLAN-OF-ACTION-AI-VOICE-SYNC-v1): optional Google identity
     // for sync — device-level label only, never a gate, safe in view-only.
     'syncConnect': () => window.MMGR.App.syncConnect(),
@@ -2139,7 +2311,9 @@ window.MMGR = MMGR;
     'tglTheme': 1,
     // THEME-SYSTEM-AND-MOBILE-UI-ACTION-PLAN §4.2: the mobile nav drawer is
     // pure device-UI chrome (body.nav-open class only) — never project state.
-    'tglNav': 1,
+    // SIDEBAR-HAMBURGER-TOGGLE-PLAN: the sidebar toggle is the same kind of
+    // pure device-UI chrome (body.sidebar-on + localStorage pref).
+    'tglNav': 1, 'tglSidebar': 1, 'tglSidebarOpen': 1,
     // DIR-1a/1b: copying/downloading the error log is read-only; the
     // remote-reporting toggle + webhook URL are device-level preferences
     // (localStorage, like the glass mode toggle) — never project state.

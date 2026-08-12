@@ -217,7 +217,11 @@ body.focus-mode #om,body.focus-mode #cx,body.focus-mode #cy,
 body.focus-mode #meth-learn-card,body.focus-mode #gantt-tip,
 body.focus-mode #cfm-modal,body.focus-mode #conflict-modal,
 body.focus-mode #chartup-modal,body.focus-mode #wbsimport-modal,
-body.focus-mode #importdates-modal,body.focus-mode #nav-scrim,body.focus-mode .hp{display:none!important;}
+body.focus-mode #importdates-modal,body.focus-mode #nav-scrim,
+body.focus-mode #app-sidebar,body.focus-mode .hp{display:none!important;}
+/* Focus Mode owns the whole viewport: a sidebar-on left margin must not leave
+   a dead band beside the focused panel. */
+body.focus-mode #app-main{margin-left:0;}
 body.focus-mode .panel{display:none!important;}
 body.focus-mode .panel.active{display:block!important;}
 .focus-ind{display:none;}
@@ -232,6 +236,47 @@ body.focus-mode .focus-ind{display:flex;position:fixed;top:10px;right:10px;backg
 .nav-btn:hover{color:var(--gold);border-color:var(--gold);}
 #nav-scrim{position:fixed;inset:0;background:rgba(0,22,25,.45);opacity:0;pointer-events:none;transition:opacity var(--tr);z-index:94;}
 body.nav-open #nav-scrim{opacity:1;pointer-events:auto;}
+
+/* ---- Opt-in desktop sidebar (SIDEBAR-HAMBURGER-TOGGLE-PLAN, 2026-08-12) ----
+   A fixed left rail (~240px) below the sticky header, mirroring the .sec-nav
+   groups (js/mmgr-app.js buildSidebar clones them — one source of truth).
+   TWO body classes: `sidebar-on` = the persisted layout PREFERENCE
+   (localStorage mmgr_sidebar, default 'off' — zero change for existing
+   users; mirrored to the R2 prefs blob when signed in) which shows the
+   hamburger on desktop, and `sidebar-open` = the TEMPORARY visible state
+   (hamburger/×/Escape toggle it; the next load re-opens whenever the pref is
+   on). The rail + 240px content shift follow sidebar-open; the hamburger
+   follows sidebar-on. Solid card surface (Gate 6.1 — chrome, never content).
+   Desktop-only: ≤768px the existing off-canvas .sec-nav drawer stays the
+   mobile nav and this rail is hidden entirely. */
+#app-sidebar{position:fixed;top:var(--hdr-h,64px);left:0;bottom:0;width:240px;z-index:96;
+  background:var(--card);border-right:1px solid var(--border);
+  transform:translateX(-105%);visibility:hidden; /* closed rail leaves the tab order + a11y tree */
+  transition:transform .24s var(--ease-ios),visibility .24s;
+  box-shadow:0 12px 40px rgba(0,0,0,.18);
+  display:flex;flex-direction:column;overflow-y:auto;}
+body.sidebar-open #app-sidebar{transform:translateX(0);visibility:visible;}
+/* The hamburger becomes the sidebar toggle on desktop once the layout is on
+   (mobile keeps its existing always-visible drawer button). Visibility is
+   keyed on the PREF (sidebar-on) — after a temporary ×/Escape close the
+   hamburger stays, so the rail is always one click away. The content shift
+   and rail follow the TEMPORARY open state (sidebar-open). */
+body.sidebar-on .nav-btn{display:inline-flex;}
+body.sidebar-open #app-main{margin-left:240px;}
+.sb-head{display:flex;align-items:center;justify-content:space-between;padding:14px 16px 10px;border-bottom:1px solid var(--border);margin-bottom:12px;flex-shrink:0;position:sticky;top:0;background:var(--card);z-index:1;}
+.sb-title{display:inline-flex;align-items:center;gap:8px;font-size:.72rem;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--gold);}
+.sb-title .ico{font-size:.8rem;}
+.sb-close{background:none;border:1px solid var(--border);color:var(--slate);width:26px;height:26px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;font-size:.7rem;transition:all var(--tr);flex-shrink:0;}
+.sb-close:hover{color:var(--danger);border-color:var(--danger);}
+.sb-close:focus-visible{outline:2px solid var(--gold);outline-offset:1px;}
+/* The sidebar stacks each nav group vertically (the shared .nav-group rules
+   are built for the horizontal pill row; the drawer media-query below applies
+   the same vertical treatment to the off-canvas drawer). */
+#app-sidebar .nav-group{display:block;margin:0 0 14px;padding:0 12px;}
+#app-sidebar .nav-group + .nav-group{padding-left:12px;margin-left:0;}
+#app-sidebar .nav-group + .nav-group::before{display:none;}
+#app-sidebar .nav-group-label{display:block;margin:0 4px 6px;}
+#app-sidebar .sec-btn{width:100%;justify-content:flex-start;padding:8px 12px;border-radius:var(--radius);margin-bottom:4px;}
 
 /* ---- Section Navigation ---- */
 #app-main{padding:18px 24px;max-width:1600px;margin:0 auto;}
@@ -290,6 +335,22 @@ body.nav-open #nav-scrim{opacity:1;pointer-events:auto;}
 .g2{display:grid;grid-template-columns:1fr 1fr;gap:18px;}
 .g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px;}
 .g4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:16px;}
+
+/* ---- Dashboard top-row alignment pass (SIDEBAR-HAMBURGER-TOGGLE-PLAN) ----
+   The status list + progress ring + Next-3 cards were cramped and poorly
+   aligned. Each card becomes an equal-height flex column; the health rows get
+   consistent vertical rhythm with right-aligned badge numbers; the Next-3
+   list gains breathing room. Data untouched — spacing/alignment only. */
+#panel-dash .g3{grid-template-columns:repeat(auto-fit,minmax(250px,1fr));}
+#panel-dash .g3>.card{display:flex;flex-direction:column;height:100%;}
+#panel-dash .g3>.card>.card-title{flex-shrink:0;}
+#completion-card .g18{flex:1;align-items:center;}
+#completion-card .g18>div:last-child{display:flex;flex-direction:column;gap:3px;}
+#health-card .col-g8{flex:1;}
+#health-card .fb-sm{padding:5px 2px;gap:12px;}
+#health-card .fb-sm .badge{min-width:36px;justify-content:center;}
+.n3{gap:10px;}
+.n3 li{padding:5px 2px;line-height:1.45;}
 
 /* ---- Progress Ring ---- */
 .pring{position:relative;width:96px;height:96px;}
@@ -917,7 +978,8 @@ hr.div{border:none;border-top:1px solid var(--border);margin:14px 0;}
    blocks, light background with dark text so the page is readable on paper. */
 @media print{
   #app-header,#drw,#om,#ub,#cx,#cy,.sec-nav,.toolbar,.btn,.focus-ind,
-  #meth-learn-card,#gantt-tip,#hp,#boot-splash,#snap-daily-btn,.core-callout{display:none!important;}
+  #meth-learn-card,#gantt-tip,#hp,#boot-splash,#snap-daily-btn,.core-callout,
+  #app-sidebar{display:none!important;}
   body{background:#fff!important;color:#111!important;}
   .panel{display:block!important;position:static!important;margin:0 0 24px!important;}
   .card{box-shadow:none!important;border:1px solid #ccc!important;break-inside:avoid;background:#fff!important;color:#111!important;}
@@ -963,6 +1025,13 @@ hr.div{border:none;border-top:1px solid var(--border);margin:14px 0;}
   /* THEME-SYSTEM-AND-MOBILE-UI-ACTION-PLAN §4.2: the section nav becomes the
      off-canvas drawer under the header; the hamburger + scrim toggle it. */
   .nav-btn{display:inline-flex;}
+  /* The desktop sidebar is mobile-hidden: the off-canvas .sec-nav drawer is
+     the ONLY mobile nav, and the sidebar's 240px margin must never apply. */
+  #app-sidebar{display:none;}
+  body.sidebar-open #app-main{margin-left:0;}
+  /* Same-specificity override of the dashboard alignment base (a plain .g3
+     media rule would lose to #panel-dash .g3 in the cascade). */
+  #panel-dash .g3{grid-template-columns:1fr 1fr;}
   .sec-nav{position:fixed;top:0;left:0;bottom:0;width:min(84vw,320px);margin:0;padding:70px 12px 20px;
     flex-direction:column;align-items:stretch;gap:12px;overflow-y:auto;background:var(--card);
     border-right:1px solid var(--border);z-index:95;transform:translateX(-105%);
@@ -977,6 +1046,8 @@ hr.div{border:none;border-top:1px solid var(--border);margin:14px 0;}
 @media(max-width:520px){
   .kb{grid-template-columns:1fr;}
   .g3,.g4{grid-template-columns:1fr;}
+  /* Same-specificity override of the dashboard alignment base (see ≤768). */
+  #panel-dash .g3{grid-template-columns:1fr;}
   #app-header{padding:10px 12px;flex-wrap:wrap;}
   .tab-btn{padding:6px 12px;font-size:.78rem;}
 }
@@ -1267,6 +1338,10 @@ body.dark-mode .btn-warn:hover{background:#d97706;}
   .btn,.pcard,.tab-btn,.sec-btn,.settings-btn,.dc,.toggle-chip,.tgl .tsl{
     transition:none!important;transform:none!important;
   }
+  /* The sidebar's slide is a motion affordance only — instant toggle under
+     reduced motion. (transform:none is deliberately NOT applied here: the
+     rail's open state is transform-driven.) */
+  #app-sidebar{transition:none!important;}
   .pcard:hover{transform:none;}
 }
 

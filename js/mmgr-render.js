@@ -75,8 +75,12 @@ var MMGR = window.MMGR || {};
     // Sprint visibility (is-hide class, not inline style)
     const sprintPanel = $('sprint-p');
     if (sprintPanel) sprintPanel.classList.toggle('is-hide', meth !== 'agile');
-    const dmaicNav = $('dmaic-nav');
-    if (dmaicNav) dmaicNav.classList.toggle('is-hide', meth !== 'hybrid');
+    // SIDEBAR-HAMBURGER-TOGGLE-PLAN: the gate targets EVERY .sec-btn for the
+    // section (top pill nav + desktop sidebar clones), not just #dmaic-nav by
+    // id — the sidebar mirrors the same visibility by construction.
+    document.querySelectorAll('.sec-btn[data-section="dmaic"]').forEach(function (el) {
+      el.classList.toggle('is-hide', meth !== 'hybrid');
+    });
   }
 
   // ---- Lock Indicator ----
@@ -2356,7 +2360,10 @@ var MMGR = window.MMGR || {};
     document.querySelectorAll('.sec-btn[data-pack]').forEach(function(btn) {
       const pack = btn.getAttribute('data-pack');
       const on = packs[pack] !== false;
-      const dualGated = btn.id === 'dmaic-nav';
+      // SIDEBAR-HAMBURGER-TOGGLE-PLAN: gate by the data attribute (carried by
+      // the sidebar clones too) instead of the id (originals only), so the
+      // desktop sidebar's DMAIC clone gets the same methodology-vs-pack split.
+      const dualGated = btn.getAttribute('data-dual-gate') === '1';
       if (on && dualGated) return; // leave to the other gate (methodology)
       btn.classList.toggle('is-hide', !on);
     });

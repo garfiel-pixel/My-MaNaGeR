@@ -1519,16 +1519,23 @@ async function handleCloudProjectList(request, env) {
 const CLOUD_PREFS_PREFIX = 'prefs/';
 function cloudPrefsKey(sub) { return CLOUD_PREFS_PREFIX + sub + '.json'; }
 function cloudSanitizePalette(v) { return v === 'cyan' || v === 'default' ? v : null; }
+// SIDEBAR-HAMBURGER-TOGGLE-PLAN: the desktop sidebar layout lives in the SAME
+// R2 prefs blob as palette/dark — one session-gated endpoint serves the whole
+// device-preference set, so a signed-in account's layout follows across devices.
+function cloudSanitizeSidebar(v) { return v === 'on' || v === 'off' ? v : null; }
 
 async function handleCloudPrefsGet(request, env) {
   const session = await readSession(request, env);
   if (!session || !session.sub) return cloudForbidden();
   const obj = await env.R2.get(cloudPrefsKey(session.sub));
-  if (!obj) return json({ ok: true, theme: { palette: 'default', dark: false } });
+  if (!obj) return json({ ok: true, theme: { palette: 'default', dark: false, sidebar: null } });
   let parsed = null;
   try { parsed = JSON.parse(await obj.text()); } catch (e) { parsed = null; }
   const palette = cloudSanitizePalette(parsed && parsed.palette) || 'default';
-  return json({ ok: true, theme: { palette: palette, dark: !!(parsed && parsed.dark) } });
+  // sidebar is nullable — a pre-sidebar blob or an untouched account simply
+  // has no layout preference yet (client keeps its local default).
+  const sidebar = cloudSanitizeSidebar(parsed && parsed.sidebar);
+  return json({ ok: true, theme: { palette: palette, dark: !!(parsed && parsed.dark), sidebar: sidebar } });
 }
 
 async function handleCloudPrefsPut(request, env) {
@@ -1542,18 +1549,20 @@ async function handleCloudPrefsPut(request, env) {
   try { body = await request.json(); } catch (e) { return json({ ok: false, error: 'invalid JSON body' }, 400); }
   const palette = cloudSanitizePalette(body && body.palette);
   const dark = body && typeof body.dark === 'boolean' ? body.dark : null;
-  if (palette === null && dark === null) return json({ ok: false, error: 'nothing to save (palette must be "default"|"cyan", dark a boolean)' }, 400);
+  const sidebar = cloudSanitizeSidebar(body && body.sidebar);
+  if (palette === null && dark === null && sidebar === null) return json({ ok: false, error: 'nothing to save (palette must be "default"|"cyan", dark a boolean, sidebar "on"|"off")' }, 400);
   const key = cloudPrefsKey(session.sub);
-  let cur = { palette: 'default', dark: false };
+  let cur = { palette: 'default', dark: false, sidebar: null };
   const existing = await env.R2.get(key);
   if (existing) { try { const p = JSON.parse(await existing.text()); if (p) cur = p; } catch (e) { /* keep defaults */ } }
   const next = {
     palette: palette === null ? (cloudSanitizePalette(cur.palette) || 'default') : palette,
     dark: dark === null ? !!cur.dark : dark,
+    sidebar: sidebar === null ? (cloudSanitizeSidebar(cur.sidebar) || null) : sidebar,
     updatedAt: new Date().toISOString()
   };
   await env.R2.put(key, JSON.stringify(next), { httpMetadata: { contentType: 'application/json' } });
-  return json({ ok: true, theme: { palette: next.palette, dark: next.dark } });
+  return json({ ok: true, theme: { palette: next.palette, dark: next.dark, sidebar: next.sidebar } });
 }
 
 // POST /api/cloud/projects  { projectId, name? }

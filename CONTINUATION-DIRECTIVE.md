@@ -358,6 +358,61 @@ in-progress and exactly where it stopped, what's next.
 
 ### Log entries (most recent at top)
 
+**2026-08-12 — Session: SIDEBAR-HAMBURGER-TOGGLE — the SIDEBAR-HAMBURGER-TOGGLE-PLAN.md executed in full.**
+Per Garfield ("read the plan and the continuation directive, then execute the plan"): added the
+opt-in desktop sidebar + unified hamburger, wired the device preference end-to-end, and applied
+the dashboard alignment pass. Scope stayed exactly as the plan states — no theme work, no feature
+removal, the existing horizontal .sec-nav pill nav is untouched and stays primary by default.
+DESKTOP SIDEBAR: new `#app-sidebar` rail (~240px, below the sticky header, solid card surface per
+Gate 6.1) in project.html AFTER `</main>` (so document.querySelector first-matches keep pointing
+at the original top nav — programmatic showSection still highlights the top pill). Its content is
+built by new `buildSidebar()` in js/mmgr-app.js: it CLONES the .sec-nav `.nav-group`s (one source
+of truth — links/actions can never drift), strips ids (originals keep gnav/knav/dmaic-nav), and a
+MutationObserver mirrors `.is-hide` from originals to clones forever (active-state sync is already
+global via showSection). Pack/methodology gates now cover the clones: mmgr-render.js renderPacks
+uses `data-dual-gate` (added to the dmaic button) instead of `id === 'dmaic-nav'`, and
+renderMethodology toggles every `.sec-btn[data-section="dmaic"]` instead of the id only.
+PREFERENCE (plan §5-6): localStorage `mmgr_sidebar` = 'on'|'off', default 'off' (current users see
+zero change). TWO body classes per code review: `sidebar-on` = the persisted layout PREF (shows the
+hamburger on desktop; drives the settings switch) and `sidebar-open` = the TEMPORARY visible state
+(the rail + #app-main 240px shift follow this — the hamburger, × button, and Escape toggle only the
+temporary state, so closing never disables the preference and the hamburger stays one click away;
+next load re-opens whenever the pref is on). ≤768px the rail is display:none and the EXISTING
+off-canvas .sec-nav drawer remains the only mobile nav. a11y: the hamburger's aria-expanded is
+VIEWPORT-AWARE (mobile tracks the drawer, desktop tracks sidebar-open — the code-review catch that
+closeNav/syncSidebarChrome were pref-blind left it stale on mobile with the pref on). Backend: the session-gated R2 prefs blob (worker.js
+/api/cloud/prefs/theme) gains a nullable `sidebar` field (cloudSanitizeSidebar; GET returns it in
+theme.sidebar, PUT accepts 'on'|'off' and merges — palette/dark untouched; qa-prefs-roundtrip
+contract preserved since P5-P12 only assert palette/dark presence). Client push on toggle
+(PUT {sidebar}), one-per-load pull mirroring mmgr-theme.js (only when mmgr_palette_backend==='1'
+AND no local mmgr_sidebar yet, with a _sidebarUserTouched race guard). HAMBURGER: tglNav now
+dispatches by viewport — ≤768px toggles the drawer (unchanged), desktop toggles the sidebar pref;
+bindNavDismiss installs Escape/resize/section-click closes at init (not lazily) so Escape also
+closes a boot-opened sidebar. SETTINGS: Controls drawer gains a "Sidebar Layout" .tgl switch
+(#sb-tgl, i-menu icon) next to the Color Theme row + hint; sidebar rail has a close button
+(data-action tglSidebar). Focus Mode hides #app-sidebar and resets the margin (dead-band fix);
+print hides it too; reduced-motion kills only its transition (transform:none deliberately NOT
+applied — the rail's open state is transform-driven). DASHBOARD ALIGNMENT (plan's ready-to-paste
+item): #panel-dash .g3 wraps via auto-fit minmax(250px,1fr), each top card is an equal-height
+flex column, health rows gain consistent padding + right-aligned badge min-widths, Next-3 list
+gets breathing room — data untouched. The mobile media blocks re-assert #panel-dash .g3 with
+SAME specificity (a plain .g3 media rule would lose to #panel-dash .g3 in the cascade — the
+second code-review catch), so ≤768 stays 2-col and ≤520 stays 1-col. sw.js mmgr-shell-v64→v65. CODE REVIEW (Nit-Pick pass) closed 3 findings, all fixed in-place: (1) aria-expanded stale on
+mobile when the pref was on — now viewport-aware everywhere; (2) #panel-dash .g3 specificity
+silently killed the mobile .g3 media rules — same-specificity re-asserts added; (3) ×/Escape were
+turning the preference OFF (and hiding the hamburger, leaving no quick reopen) — replaced with
+the sidebar-on/sidebar-open two-state model above. VERIFICATION: node --check clean (all touched
+JS), npm run verify GREEN (CSP 11/11 hashes unchanged — no inline scripts touched, SW v65 > 45
+SHELL assets, 16/16 skills), tools/qa-prefs-roundtrip.cjs 15/15 PASS (worker prefs contract
+intact with the new sidebar field, clean stop-file teardown), browser smoke via serve.cjs:8765
+(browser-use, two rounds): boot-with-pref-on, hamburger/×/Escape temporary close keeping
+mmgr_sidebar='on', settings switch off/on ('off' persisted), mobile drawer at 480px with correct
+aria-expanded, 500px dashboard renders 1 column, sidebar clones keep pack-gated visibility
+(Money pack off hides Budget/Resources in BOTH navs), active-state sync between both navs,
+reload persistence, zero functional console errors. NEXT
+(unchanged, optional): deploy (migration 0005 already applied remotely is required before the
+worker deploy), real-Google round-trip of /api/cloud/prefs/theme incl. the new sidebar field.
+
 **2026-08-12 — Session: PREFS-ROUNDTRIP — /api/cloud/prefs/theme exercised with REAL (cryptographically valid) Google sessions, cross-device sync proven in-browser. EXECUTED.**
 Per Garfield: exercise the theme-prefs round-trip with a real Google session and confirm the palette syncs across devices. A real login is POST /api/auth/google {idToken} -> Set-Cookie mmgr_session (HttpOnly HMAC-SHA256 keyed by GOOGLE_CLIENT_SECRET). Can't click Google's consent screen without credentials, so the new committed harness tools/qa-prefs-roundtrip.cjs (`npm run qa:prefs-roundtrip`) mints session cookies that are BYTE-IDENTICAL to a real login — base64url(JSON{sub,email,name,picture,exp}) + '.' + base64url(HMAC-SHA256 over the exact payload string), matching worker.js signSession/readSession exactly (valid accepted, expired + tampered rejected proves the minting is byte-identical) — and passes the known secret to `wrangler dev --var GOOGLE_CLIENT_SECRET` (same env var a real deploy gets from the Wrangler secret store). API phase (wrangler dev on :8795, own D1/R2 persist, migrations applied): 15/15 gates — P1-P4 every auth failure is the SAME generic 403 body (no cookie / expired / tampered sig — nothing distinguishes them, closing the response-shape loop per review), P5-P6 PUT cyan + GET persists (GET contract is palette+dark only — no updatedAt on GET), P7 palette whitelist 400, P8-P9 sequential writes land (dark-only PUT merges, keeps cyan), P10 account isolation (acct B reads defaults), P11 oversized body 413, P11b reset, P12 idempotent re-save, P13 create project WITH session cookie -> linked:true (google_sub recorded), P14 admin list surfaces themePrefs {cyan, dark:false, updatedAt ISO} for the linked project and NEVER exposes the raw sub. BROWSER PHASE (browser-use vs the live wrangler origin, real cookie via CDP): DEVICE A fresh profile -> default -> click Cyan -> data-theme=cyan + aria-pressed + localStorage, fetch GET confirms the click's PUT reached R2, reload keeps cyan (backend pull). DEVICE B fresh profile, SAME account cookie, STALE local palette 'default' + light + mmgr_palette_backend flag -> load -> one-per-load pull OVERRIDES stale local to cyan (data-theme=cyan, picker cyan pressed, no dark-mode) — the cross-device sync proof. Zero console errors both devices (only the documented GSI localhost-origin notice). Code review clean (1 tightening applied: P3/P4 now assert the generic body too; re-run still 15/15). Harness tears down cleanly via its stop file. Deploy note unchanged: prefs endpoint is R2-backed, no migration. NEXT (optional): run the same round-trip against a deployed origin with a real Google account, or surface the prefs write time in the app's own UI.
 

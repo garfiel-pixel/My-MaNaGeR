@@ -138,7 +138,7 @@
     <button class="sec-btn" data-action="showSec" data-section="docs" data-pack="governance"><svg class="ic-svg" viewBox="0 0 24 24" fill="none"><path d="M14 2H6C4.89543 2 4 2.89543 4 4V20C4 21.1046 4.89543 22 6 22H18C19.1046 22 20 21.1046 20 20V8L14 2Z" stroke="#64748B" stroke-width="2"/><path d="M14 2V8H20" stroke="#64748B" stroke-width="2"/></svg>Documents</button>
     </div>
     <div class="nav-group"><span class="nav-group-label">DMAIC</span>
-    <button class="sec-btn is-hide" data-action="showSec" data-section="dmaic" data-pack="quality" id="dmaic-nav"><svg class="ic-svg" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8" stroke="#8B5CF6" stroke-width="2"/><circle cx="12" cy="12" r="4" stroke="#8B5CF6" stroke-width="2"/><circle cx="12" cy="12" r="0.6" stroke="#8B5CF6" stroke-width="2"/></svg>DMAIC</button>
+    <button class="sec-btn is-hide" data-action="showSec" data-section="dmaic" data-pack="quality" id="dmaic-nav" data-dual-gate="1"><svg class="ic-svg" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8" stroke="#8B5CF6" stroke-width="2"/><circle cx="12" cy="12" r="4" stroke="#8B5CF6" stroke-width="2"/><circle cx="12" cy="12" r="0.6" stroke="#8B5CF6" stroke-width="2"/></svg>DMAIC</button>
     <button class="sec-btn" data-action="showSec" data-section="meet" data-pack="field"><svg class="ic-svg" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8" stroke="#22C55E" stroke-width="2"/><path d="M9 12L11 14L15 9" stroke="#22C55E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Meetings</button>
     </div>
   </nav>
@@ -810,6 +810,24 @@
 
 </main>
 
+<!-- SIDEBAR-HAMBURGER-TOGGLE-PLAN (2026-08-12): opt-in desktop sidebar.
+     Fixed left rail (~240px) below the sticky header, mirroring the .sec-nav
+     groups. js/mmgr-app.js buildSidebar() clones the nav groups into this
+     shell (one source of truth — links/actions can never drift), and the
+     drawer/pill nav keeps working exactly as before. Shown when the device
+     preference localStorage mmgr_sidebar === 'on' (body.sidebar-on; default
+     'off', so existing users see zero change until they opt in). Desktop-only:
+     ≤768px the existing off-canvas .sec-nav drawer remains the mobile nav.
+     Placed after <main> so document.querySelector first-matches stay on the
+     ORIGINAL top nav (programmatic showSection highlights the top pill, as
+     before). Focus Mode hides it with the rest of the chrome. -->
+<aside id="app-sidebar" aria-label="Section navigation">
+  <div class="sb-head">
+    <span class="sb-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-menu"></use></svg> Sections</span>
+    <button type="button" class="sb-close" data-action="tglSidebarOpen" aria-label="Close sidebar navigation"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg></button>
+  </div>
+</aside>
+
 <!-- AI Assistant (parallel track) — floating entry point + modal.
      Preset prompts, free-form question, automatic project-context dump.
      Copy-to-clipboard first; a generative API-key path can be dropped in
@@ -1023,6 +1041,11 @@
     <div class="sr-hint">Shown in the header greeting. Leave blank for a generic welcome.</div>
     <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-moon"></use></svg> Light / Dark Theme</span><label class="tgl"><input type="checkbox" id="thm-tgl" aria-label="Light / Dark Theme" data-action="tglTheme"><span class="tsl"></span></label></div>
     <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-palette"></use></svg> Color Theme</span><span class="pal-switch" role="group" aria-label="Color theme"><button type="button" class="pal-btn" data-pal="default" aria-pressed="true">Default</button><button type="button" class="pal-btn" data-pal="cyan" aria-pressed="false">Cyan</button></span></div>
+    <!-- SIDEBAR-HAMBURGER-TOGGLE-PLAN: device-level layout preference (like the
+         palette picker above) — never project state. Off by default so the
+         current horizontal pill nav stays primary until the user opts in. -->
+    <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-menu"></use></svg> Sidebar Layout</span><label class="tgl"><input type="checkbox" id="sb-tgl" aria-label="Sidebar Layout" data-action="tglSidebar"><span class="tsl"></span></label></div>
+    <div class="sr-hint">Desktop layout: on = fixed left sidebar with every section; off = the current horizontal menu (default). On phones the hamburger drawer is always used.</div>
     <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-crosshair"></use></svg> Crosshair Cursor</span><label class="tgl"><input type="checkbox" id="ch-tgl" aria-label="Crosshair Cursor" data-action="tglCh"><span class="tsl"></span></label></div>
     <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-lock"></use></svg> Lock Active Methodology</span><button class="btn btn-n btn-s toggle-chip is-off" data-action="tglLock">Lock / Unlock</button></div>
     <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-calendar"></use></svg> Work Week (days)</span><select id="ww-sel" data-action="setWorkWeek" class="ctl-in" aria-label="Work week (days)"><option value="3">3-day</option><option value="4">4-day</option><option value="5" selected>5-day (default)</option><option value="6">6-day</option><option value="7">7-day</option></select></div>

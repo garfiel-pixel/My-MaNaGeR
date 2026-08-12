@@ -1,0 +1,62 @@
+{
+  "document_type": "execution_directive",
+  "title": "ADMIN-PUBLISH-SYNC-AND-PROJECT-SELECT-POLISH-DIRECTIVES",
+  "audited_against": "Three screenshots only (admin.html project list, public project-select page, a git push log referencing AI-CLOUD-CONNECT-UI-AND-KEY-SECURITY work already merged). Your live build has moved well past the last zip I have access to — it already has Google Drive sign-in, Backup/Restore to Drive, and a backup passphrase, none of which exist in the file I audited earlier. Every finding below is either read directly off the screenshots or explicitly marked verification-required against your actual current source, since I cannot trace code I don't have.",
+
+  "DIR-1": {
+    "name": "CORRECTED FRAMING (superseded the version of this directive first drafted — read this version): the creator's own access to a project they just made must never depend on the publish step. Publish should only gate OTHER people's access.",
+    "severity": "critical",
+    "garfields_correction_to_the_original_framing": "The first draft of this directive treated the missing 'unpublished' badge as the fix. That was wrong. Per Garfield directly: publishing/deploying should have nothing to do with the creator being able to open their own project. If a project was just created on this device, this device already has everything needed to open it — full data, access code, all of it — locally, right now, with zero deploy step. The publish/deploy flow should exist ONLY to let a DIFFERENT person, on a different device/browser, validate an access code against the public site. It was never supposed to be a gate the creator has to pass too.",
+    "finding": {
+      "what_the_screenshots_show": "Screenshot 1 (admin.html) lists TWO projects: 'Demo Project — Riverside Tower Renovation' and 'The New WAVE'. Screenshot 2 (the project-select/unlock page) shows ONLY the Demo Project — and critically, this appears to be happening even on the SAME browser/device that created 'The New WAVE' in admin.",
+      "most_likely_real_root_cause": "The project-select/unlock page's gate check almost certainly validates an access code against the PUBLISHED projects-data.js hash file ONLY, with no earlier 'does this device already have this project locally, as its own creator' check. That ordering is backwards. It should check local-device ownership FIRST (instant, always works, no publish needed) and only fall back to the published hash file for a code typed in by someone who is NOT the local creator.",
+      "what_publish_should_actually_be_for": "Publishing/deploying projects-data.js should exist solely so that a stranger's browser — someone who was given an access code by the admin, but whose device has never seen this project before — can validate that code and, from there, either get the project via sync (Drive, if the admin opted in) or be told to get a data export from the admin. It should never be in the critical path for the creator's own access."
+    },
+    "verification_before_edit": [
+      "Confirm exactly what project.html's unlock/gate logic checks, in order, on the CURRENT live build: does it check local storage/IndexedDB for a matching project id FIRST, before checking any published/remote hash list? If local-first checking already exists and is simply broken, that's a bug fix. If it was never built at all, that's a missing feature, not a regression — treat it as the primary fix either way.",
+      "Confirm whether 'The New WAVE' truly fails to open even on the exact same browser/profile that created it in admin (this is the critical test — if it opens fine locally and the screenshot 2 gap is ONLY about a different browser/visitor's view, the bug is narrower than described here and DIR-1 should be scoped down accordingly)."
+    ],
+    "required_change": [
+      "Make the project-select/unlock flow check local-device data FIRST: if this device/browser has this project id in its own storage (i.e. it was created or previously unlocked here), open it immediately — no code re-entry, no publish, no remote check, full stop.",
+      "Only fall back to validating against the published projects-data.js hash list when the project is NOT already present locally — i.e. for a genuinely new device/browser/person entering a code for the first time.",
+      "Sync (Google Drive sign-in, backup, restore) stays exactly as optional as already designed: creator has local access by default, always; Drive is opt-in for backing up or moving to a second device; nothing here should force an upload or make local access conditional on signing in to anything.",
+      "Once local-first access is fixed, the 'unpublished' visibility concern from the original draft of this directive becomes much lower stakes (creator was never blocked — only OTHER people were, correctly, until you publish) — so the loud 'Unpublished' badge is now a nice-to-have for admin clarity, not a blocking fix. Downgrade it accordingly: a small status note is enough, not an urgent banner."
+    ]
+  },
+
+  "DIR-2": {
+    "name": "Remove or rewrite the now-stale 'legacy' admin notes",
+    "severity": "medium — actively misleading copy, not just outdated",
+    "finding": {
+      "what_the_screenshot_shows": "Screenshot 1's 'Security model (local-only)' banner states: 'The admin password hash, this browser's session flag, and the plaintext project access codes are stored in this device's localStorage/sessionStorage only... it is not server-side security.' Screenshot 2 shows Sign in with Google, Backup to Drive, Restore from Drive, and a backup passphrase field — all clearly involving data leaving the device.",
+      "why_this_matters": "This is the exact same class of problem flagged in the last directive (the AI-key 'stored in project state only' vs 'session-only' contradiction, now confirmed fixed per screenshot 3's push log). This banner now makes a blanket 'local-only, nothing leaves this device' security claim that is no longer fully true once Google sign-in and Drive backup are active. An admin (or worse, a client evaluating trust) reading this banner is being told something false about where their data goes."
+    },
+    "verification_before_edit": [
+      "Confirm exactly what Google sign-in / Drive backup actually sends off-device: is it only an opt-in, explicitly-triggered action (user clicks 'Backup to Drive' -> data goes to Drive), or does anything sync automatically once signed in? The rewritten copy must describe the REAL current behavior, not the pre-Drive-sync behavior, and not a guessed behavior either."
+    ],
+    "required_change": [
+      "Rewrite the 'Security model (local-only)' banner to accurately describe the current, real state: what stays local-only by default (password hash, session flag, access codes — if still true), and what an admin is opting into by signing in with Google (Drive backup/restore, presumably gated behind explicit action per the app's own 'gate the backup, not the app' principle documented earlier). Do not just delete the banner — replace it with an accurate one; removing security-relevant copy entirely is worse than updating it.",
+      "Same treatment for the 'Publishing changes' banner if DIR-1's decision point resolves toward option (B) above — if the public list ever stops being purely static-file-driven, this banner's instructions become wrong and must be rewritten to match whatever the new real flow is."
+    ]
+  },
+
+  "DIR-3": {
+    "name": "Visual polish — bring the public project-select page in line with the rest of the product's Liquid Glass treatment",
+    "severity": "low-medium — professionalism/first-impression issue, not a functional bug",
+    "finding": "Screenshot 2 (the page a real visitor/client sees, gated behind the project access code) reads as flat, unstyled dark boxes — plain borders, no glass/blur treatment, no visual hierarchy distinguishing it from a bare debug page. This is inconsistent with the Liquid Glass Premium tier already built and shipped elsewhere in the app (per the earlier marketing-pages audit, this UI treatment isn't even being marketed — and here it's not even being applied on a page a client will actually see).",
+    "required_change": [
+      "Apply the existing Liquid Glass CSS system (the same one already used elsewhere in the app, per prior audit — js/mmgr-glass.js + the glass CSS classes) to the project cards, the toggle switches ('Dark theme', 'Premium glass'), and the Google/Backup/Restore button row on this page, respecting the same Premium-glass-on/off toggle already visible in the screenshot so it degrades correctly for users who have it off or on prefers-reduced-transparency.",
+      "Give the 'Contact the admin to get an access code for this project' warning banner the same amber/warning visual treatment already established elsewhere in the app (per the earlier gate-screen audit) rather than a plain bordered box, for visual consistency."
+    ]
+  },
+
+  "suggested_execution_order": [
+    "1. DIR-1's verification_before_edit first — confirm exactly what order the unlock gate currently checks things in, and confirm whether 'The New WAVE' fails to open even on its own creating device. This is the highest-priority fix in this document.",
+    "2. Fix DIR-1: add the local-first check to the unlock/gate flow so a creator's own device never depends on publish/deploy to access what it just made. This is the actual bug — treat the 'unpublished badge' idea as optional polish only, not the fix.",
+    "3. Fix DIR-2's stale security copy — quick, but do the verification step first so the rewrite is accurate rather than another guess that goes stale again.",
+    "4. DIR-3 visual polish last — purely cosmetic, no risk of blocking a deploy, do it once the above are settled so the polish pass isn't done twice.",
+    "5. Before deploying: re-run the build guards already in place (verify-sw-cache, verify-csp-hashes per your last push log) since this work will touch admin.html/project.html and possibly their inline scripts."
+  ],
+
+  "closing_note": "This was the right call to stop before deploying. A visitor-facing project list silently missing a project you just added, with no indicator that it was ever unpublished, is exactly the kind of thing that erodes trust the first time a client hits it. Nothing here was fixed or edited — this is findings and required changes only, sourced from the three screenshots plus the architecture already on record from earlier sessions."
+}

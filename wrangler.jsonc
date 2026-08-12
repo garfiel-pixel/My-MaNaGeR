@@ -46,6 +46,12 @@
       "bucket_name": "my-manager-state"
     }
   ],
+  // A5-2 (GAP-AUDIT decision, 2026-08-11): daily orphan-purge sweep — the
+  // Worker's scheduled() handler deletes cloud projects whose owner has
+  // been absent for the 12-month retention window (last_owner_seen_at).
+  "triggers": {
+    "crons": ["0 6 * * *"]
+  },
   "assets": {
     "binding": "ASSETS",
     "directory": ".",

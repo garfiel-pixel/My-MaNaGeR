@@ -1,0 +1,70 @@
+{
+  "document_type": "execution_directive",
+  "title": "MINOR-UI-MODERNIZATION-POLISH-DIRECTIVE",
+  "audited_against": "mymanager-fixed.zip, css/mmgr.css (1454 lines) — direct read, no code changed.",
+  "context_for_executor": "Requested: small adjustments to make the UI feel more modern, not a redesign. Good news first: most of the hard modern-UI work is already done here — CSS custom-property-driven glass system, iOS-style spring easing (--spring-press with overshoot), consistent press/hover micro-interactions on most buttons (transform:scale on :active, translateY lift on :hover), backdrop-filter blur+saturate, prefers-reduced-motion and prefers-reduced-transparency fallbacks. This directive is four small, genuinely-scoped inconsistencies found against that otherwise-modern baseline — not a list of generic 'modernize your app' advice.",
+
+  "DIR-1": {
+    "name": "Unify the border-radius scale — several components are still on an older, smaller-radius system",
+    "severity": "low-medium — a real, visible inconsistency, cheap to fix",
+    "finding": "Most of the app uses a modern radius scale: 100px pills (.tab-ctrl, .sec-btn, .badge, .drive-auto-select) or var(--squircle-md) (.card). But a scattered set of components are still hardcoded to old-style small radii that don't match: base `select{border-radius:4px}` (css/mmgr.css:635), `.raci-legend-swatch{border-radius:5px}`, `.evm-tile/.evm-tile-sm{border-radius:6px}`, `.mc-input{border-radius:5px}`, `.wx-stat/.sc-cell{border-radius:6px}`, `.gb{border-radius:3px}`. Small, sharp-cornered boxes sitting next to squircle cards and pill buttons is exactly the kind of detail that reads as 'not fully modern' even when everything else is right.",
+    "required_change": [
+      "Replace hardcoded small-radius values (3px/4px/5px/6px) on the components listed above with the existing var(--squircle-md) (or var(--radius) if that's the smaller-component token already defined in :root) so every rounded rectangle in the app comes from the same scale.",
+      "Leave pill-shaped elements (100px) alone — those are already correct and shouldn't be converted to squircle."
+    ],
+    "must_not_change": ["Do not touch .raci-cell's radius or sizing — that's a deliberately small, dense grid cell and a bigger radius would look wrong there specifically."]
+  },
+
+  "DIR-2": {
+    "name": "Style the native <select> to match the app's own component language instead of looking like a bare OS control",
+    "severity": "medium — this is the single biggest 'looks dated' tell in the file",
+    "finding": "css/mmgr.css:635 — the base `select{...}` rule is minimal: solid border, 4px radius, no custom dropdown arrow, no hover/focus treatment beyond a border-color change on a few specific instances. Every other interactive control in this app (buttons, toggles, chips) has a deliberate glass/pill treatment; the plain select stands out as the one control that still looks like a default browser widget dropped into a premium UI.",
+    "required_change": [
+      "Add a custom chevron icon via `appearance:none` + a background-image (SVG data-URI, matching the existing icon style used elsewhere) so selects don't show the browser's native arrow.",
+      "Give the base select the same radius fix as DIR-1, plus a hover state (border-color shift to var(--gold), matching the hover treatment already used on inputs like .cf-input/.wx-field) and a consistent focus ring — see DIR-3, since select focus states currently vary across the file.",
+      "Apply this once to the base `select{}` rule so every select in the app inherits it, rather than patching each individual select variant (#ai-tier, #ai-provider, .kpi-link-row select, .drive-auto-select, etc.) separately — several of those already override radius/background individually and should be checked for conflicts after the base rule changes."
+    ]
+  },
+
+  "DIR-3": {
+    "name": "Standardize focus-visible treatment across all form controls",
+    "severity": "low-medium — accessibility and consistency issue",
+    "finding": "Focus styling is inconsistent across the file: some controls use only `outline:none` + a border-color change (.cf-input, .wx-field input, .kpi-row input, .cause-sel), some use a full glow ring via box-shadow (.ai-q:focus at line 1301 — box-shadow:0 0 0 3px rgba(245,158,11,.14)), and .raci-cell/.wbs-row correctly use outline+outline-offset for focus-visible. A modern, cohesive UI has ONE focus treatment reused everywhere, not three different ones depending on which component you tab into.",
+    "required_change": [
+      "Pick ONE focus treatment as the app-wide standard — the .ai-q glow-ring pattern (border-color shift + a soft box-shadow ring) is the most 'modern-feeling' of the three already in use, and is recommended as the one to standardize on.",
+      "Apply it to every text input, select, and textarea in the app via a single shared rule (e.g. a `.field:focus` class or a broad `input:focus,select:focus,textarea:focus` base rule with per-component overrides removed), rather than leaving each component's focus style hand-rolled independently."
+    ]
+  },
+
+  "DIR-4": {
+    "name": "Replace hardcoded light-gray backgrounds with the existing CSS variable system",
+    "severity": "medium — will actively look broken in dark mode, not just 'less modern'",
+    "finding": "Several components hardcode a literal light-gray hex instead of using the app's own theme variables: `.tab-ctrl{background:#eef1f6}` (line 98), `.wx-stat{background:#f8fafc}` (line 311), `.wfr-day{background:#f8fafc}` (line 324), `.kpi-link-row select{background:#f8fafc}` (line 674), `.float-badge{background:#eef1f6}` (line 238). The app has a full variable system for exactly this (--card, --tile-bg, --glass-fill-dark, --canvas) that already adapts correctly across light/dark/glass-on/glass-off states. A hardcoded #f8fafc will sit there looking like a flat light-mode leftover box in the middle of dark mode or the glass theme — this is the kind of detail that makes a UI feel unfinished rather than modern, independent of whether the radius/focus items above are fixed.",
+    "required_change": [
+      "Replace each hardcoded hex background listed above with the appropriate existing variable (--tile-bg for stat/data tiles, --card for select/control backgrounds, matching whatever similar already-variable-driven component is closest in function).",
+      "Spot-check each replacement in dark mode after the change — these are exactly the components that would currently look wrong there and should visibly improve once fixed."
+    ]
+  },
+
+  "DIR-5": {
+    "name": "Firefox scrollbar parity",
+    "severity": "cosmetic, cheap",
+    "finding": "The custom gold-gradient scrollbar (css/mmgr.css:628-631) is webkit-only (::-webkit-scrollbar). Firefox users currently see the browser's plain default scrollbar, which will look inconsistent with the rest of the branded UI.",
+    "required_change": ["Add `scrollbar-width:thin;scrollbar-color:<gold tone> var(--canvas);` to the same selector scope, so Firefox gets a visually consistent (if less customizable) equivalent."]
+  },
+
+  "not_flagged_because_already_good": [
+    "Button/interactive-element micro-interactions (press-scale on :active, hover-lift via translateY, spring easing) are already consistently implemented across .btn, .pcard, .tab-btn, .sec-btn, .settings-btn, .ai-fab, .ai-send, .ai-chip — no change needed here.",
+    "The glass/blur system, reduced-motion and reduced-transparency fallbacks, and the squircle card treatment are all already modern and consistently applied to the .card component and its variants."
+  ],
+
+  "suggested_execution_order": [
+    "1. DIR-4 (hardcoded backgrounds) first — actively wrong in dark mode, not just a style preference.",
+    "2. DIR-2 (custom select styling) — the single biggest visible 'looks dated' item.",
+    "3. DIR-1 (radius unification) — quick, mechanical, do alongside DIR-2 since both touch selects.",
+    "4. DIR-3 (focus-state standardization) — do last since it touches the widest number of selectors; easiest to verify once the other three are settled and stable.",
+    "5. DIR-5 (Firefox scrollbar) — anytime, no dependencies on the others."
+  ],
+
+  "closing_note": "No code was changed in producing this directive. Every item above is a cited, specific line or rule in the actual CSS file — this is not a generic 'add more shadows and rounded corners' list, since most of that work is already done well in this codebase."
+}

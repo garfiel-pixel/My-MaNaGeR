@@ -12,6 +12,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#D4AF37">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
 <link rel="icon" type="image/png" href="primary icon.png">
 <link rel="apple-touch-icon" href="primary icon.png">
 <link rel="stylesheet" href="css/mmgr.css">
@@ -73,6 +74,19 @@ body.glass-premium .wrap{position:relative;z-index:1;}
 .btn-n:hover{border-color:var(--slate);color:var(--text);}
 .contact-hint{font-size:.68rem;color:var(--slate);text-align:center;}
 @media(max-width:520px){.top h1{font-size:1.3rem;}}
+/* A5-3 (2026-08-11): multi-project "My Cloud Projects" dashboard — the
+   signed-in owner's cloud-linked projects, session-gated, each loadable
+   without re-entering the code. Mirrors the .pf-card language. */
+.cloud-dash{max-width:1040px;margin:0 auto 28px;}
+.cloud-dash .cd-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:10px;}
+.cloud-dash .cd-head h2{font-size:.85rem;font-weight:700;margin:0;}
+.cloud-dash .cd-head .cd-sub{font-size:.66rem;color:var(--slate);}
+.cloud-dash .cd-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;}
+.cd-card{display:flex;flex-direction:column;gap:8px;background:var(--glass-fill-dark);backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturate));-webkit-backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturate));border:var(--glass-border);border-radius:var(--squircle-md);padding:14px 16px;box-shadow:var(--glass-rim),var(--glass-shadow);}
+.cd-title{font-size:.82rem;font-weight:700;line-height:1.35;word-break:break-word;}
+.cd-meta{font-size:.66rem;color:var(--slate);line-height:1.5;}
+.cd-empty{grid-column:1/-1;text-align:center;color:var(--slate);font-size:.76rem;padding:18px 10px;}
+.cd-card .btn{width:auto;align-self:flex-start;}
 /* ACTION-PLAN 6.1 portfolio rollup strip */
 .pf-strip{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;margin:0 auto 28px;max-width:1040px;}
 .pf-card{display:flex;gap:12px;background:var(--glass-fill-dark);backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturate));-webkit-backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturate));border:var(--glass-border);border-radius:var(--squircle-md);padding:14px 16px;box-shadow:var(--glass-rim),var(--glass-shadow);}
@@ -135,6 +149,18 @@ body.glass-premium .wrap{position:relative;z-index:1;}
     </div>
   </div>
 
+  <!-- A5-3 (2026-08-11): My Cloud Projects — the signed-in owner's cloud-
+       linked projects, session-gated, rendered by js/mmgr-cloud-dash.js.
+       Hidden until a valid Google session exists AND the Worker is present. -->
+  <div class="cloud-dash" id="cloud-dash" hidden aria-label="My cloud projects">
+    <div class="cd-head">
+      <h2><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cloud"></use></svg> My Cloud Projects</h2>
+      <span class="cd-sub">Linked to your Google account — click Load to open one</span>
+    </div>
+    <div class="cd-list" id="cloud-dash-list" role="list"></div>
+    <div class="cd-status" id="cloud-dash-status" role="status" aria-live="polite"></div>
+  </div>
+
   <div class="notice"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-lock"></use></svg> Contact the admin to get an access code for this project.</div>
 
   <!-- ACTION-PLAN 6.1: cross-project portfolio health rollup, ranked by
@@ -165,6 +191,7 @@ body.glass-premium .wrap{position:relative;z-index:1;}
 <script src="projects-data.js"></script>
 <script src="js/mmgr-portfolio.js"></script>
 <script src="js/mmgr-google-auth.js"></script>
+<script src="js/mmgr-cloud-dash.js"></script>
 <!-- Premium liquid-glass engine (same modules the project viewer uses).
      Loaded for the launcher's glass toggle + backdrop preview; Three.js is
      only fetched from the pinned CDN when the engine actually activates. -->

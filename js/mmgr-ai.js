@@ -1201,12 +1201,30 @@ var MMGR = window.MMGR || {};
     renderThread(prompt, res);
     if (res.ok) {
       renderOutput(null, res);
+      // AI-WINDOW-SEND-CLEAR: the sent question leaves the input box and lives
+      // in the thread — the box empties (and collapses its grown height) so a
+      // follow-up can be typed immediately. The answer stays in the thread AND
+      // in #ai-out, each with its own copy affordance.
+      clearQuestionBox();
       toast('Answer generated (' + res.tier + ').', 'ok');
     } else {
       renderOutput(null, res);
+      // Keep the user's text on failure so they can fix/retry without retyping.
       toast(res.error || 'AI call failed.', 'err');
     }
     return res;
+  }
+
+  // ---- AI-WINDOW-SEND-CLEAR: empty the question box after a successful send
+  // (mirrors the clear() reset — value, grown height, at-cap marker) and put
+  // focus back in it so the next question can be typed immediately.
+  function clearQuestionBox() {
+    const q = U.$('ai-q');
+    if (!q) return;
+    q.value = '';
+    q.style.height = '';
+    q.classList.remove('at-cap');
+    q.focus();
   }
 
   // ---- Render the result panel (#ai-out) ----

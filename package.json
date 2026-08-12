@@ -5,11 +5,17 @@
   "description": "My MaNaGeR — offline-first construction PM workspace (Cloudflare Workers static assets).",
   "scripts": {
     "serve": "node serve.cjs",
+    "mcp": "node mcp/server.mjs",
+    "qa:mcp": "node mcp/qa-mcp.cjs",
     "verify:csp": "node tools/verify-csp-hashes.cjs",
     "verify:sw": "node tools/verify-sw-cache.cjs",
     "verify:skills": "node tools/verify-skills-lock.cjs",
     "verify": "npm run verify:csp && npm run verify:sw && npm run verify:skills",
     "qa:cloud": "node tools/qa-cloud-phase1.cjs",
+    "qa:cloud-import": "node tools/qa-cloud-import.cjs",
+    "qa:changelog-diffs": "node tools/qa-changelog-diffs.cjs",
+    "qa:ai-badge-e2e": "node tools/qa-ai-badge-e2e.cjs",
+    "import:mcp": "node tools/import-mcp-changelog.cjs",
     "predeploy": "npm run verify",
     "deploy": "npm run predeploy && npx wrangler deploy"
   }

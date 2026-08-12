@@ -129,6 +129,7 @@ pre.snippet{background:#f8fafc;border:1px solid var(--border);border-radius:6px;
 </style>
 </head>
 <body>
+<script src="js/mmgr-theme.js" data-sync="1"></script>
 <script>
 /* Device-level theme (shared across launcher, admin, and app): applied before
    first paint from the same localStorage slot every theme toggle writes, so a
@@ -169,6 +170,7 @@ pre.snippet{background:#f8fafc;border:1px solid var(--border);border-radius:6px;
 <div class="pref-row" id="gate-prefs">
   <span class="pref"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-moon"></use></svg> Dark<label class="tgl"><input type="checkbox" id="thm-tgl" data-action="tglTheme" aria-label="Toggle dark theme"><span class="tsl"></span></label></span>
   <span class="pref"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-orb"></use></svg> Glass<label class="tgl"><input type="checkbox" id="glass-tgl" data-action="tglGlassMode" aria-label="Toggle premium liquid-glass backdrop"><span class="tsl"></span></label></span>
+  <span class="pref"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-palette"></use></svg> Theme<span class="pal-switch" role="group" aria-label="Color theme"><button type="button" class="pal-btn" data-pal="default" aria-pressed="true">Default</button><button type="button" class="pal-btn" data-pal="cyan" aria-pressed="false">Cyan</button></span></span>
 </div>
 
 <!-- ═══ MAIN ADMIN UI ═══ -->
@@ -180,6 +182,7 @@ pre.snippet{background:#f8fafc;border:1px solid var(--border);border-radius:6px;
         <div id="google-signin-button"></div>
         <div id="google-user-chip" hidden></div>
       </div>
+      <span class="pal-switch" role="group" aria-label="Color theme"><button type="button" class="pal-btn" data-pal="default" aria-pressed="true">Default</button><button type="button" class="pal-btn" data-pal="cyan" aria-pressed="false">Cyan</button></span>
       <label class="tgl" title="Light / dark theme — applies to the launcher, admin, and every project on this device"><input type="checkbox" aria-label="Toggle dark theme" data-action="tglTheme"><span class="tsl"></span></label>
       <label class="tgl" title="Premium liquid-glass backdrop — applies on capable devices"><input type="checkbox" aria-label="Toggle premium glass" data-action="tglGlassMode"><span class="tsl"></span></label>
       <a href="app.html" target="_blank">View Dashboard <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg></a>
@@ -232,7 +235,7 @@ pre.snippet{background:#f8fafc;border:1px solid var(--border);border-radius:6px;
           <input id="cloud-admin-code" type="password" autocomplete="off" placeholder="ADMIN_CODE" style="flex:1">
           <button class="btn btn-g" data-action="cloudAdminList"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Load cloud projects</button>
         </div>
-        <div class="hint">Visibility into cloud-linked projects (labels, linked Google accounts, snapshot state). Codes are never shown. A new owner code is only ever issued to the Google account linked to that project — sign in with Google above as that account first (plan §9).</div>
+        <div class="hint">Visibility into cloud-linked projects (labels, linked Google accounts, snapshot state). Codes are never shown. A new owner code is only ever issued to the Google account linked to that project — sign in with Google above as that account first (plan §9). Linked accounts' stored theme preference (the R2-backed prefs store behind /api/cloud/prefs/theme) is shown per row when one exists.</div>
       </div>
       <div id="cloud-admin-status" style="font-size:.72rem;color:var(--slate);margin-bottom:8px"></div>
       <div id="cloud-admin-list"></div>
@@ -986,7 +989,7 @@ async function cloudAdminList(){
       return '<div class="prow"><div class="prow-top"><div><div class="prow-title">' + escapeHtml(p.label || p.projectId) + '</div>' +
         '<div class="prow-desc">ID: <code>' + escapeHtml(p.projectId) + '</code> · linked account: ' + (p.linkedName ? escapeHtml(p.linkedName) : '<em>none</em>') + ' · snapshot: ' + (p.hasSnapshot ? 'yes' : 'no') + '</div></div>' +
         '<span class="badge ' + (p.hasSnapshot ? 'active' : 'planning') + '">' + (p.hasSnapshot ? 'snapshot' : 'no snapshot') + '</span></div>' +
-        '<div class="prow-meta"><span>Created: ' + escapeHtml(String(p.createdAt||'').slice(0,10)) + '</span><span>Updated: ' + escapeHtml(String(p.updatedAt||'').slice(0,19).replace('T',' ')) + '</span></div>' +
+        '<div class="prow-meta"><span>Created: ' + escapeHtml(String(p.createdAt||'').slice(0,10)) + '</span><span>Updated: ' + escapeHtml(String(p.updatedAt||'').slice(0,19).replace('T',' ')) + '</span>' + (p.themePrefs ? '<span>Theme: ' + escapeHtml(p.themePrefs.palette) + (p.themePrefs.dark ? ' · dark' : '') + (p.themePrefs.updatedAt ? ' · saved ' + escapeHtml(String(p.themePrefs.updatedAt).slice(0,10)) : '') + '</span>' : '') + '</div>' +
         '<div class="prow-actions"><button class="btn btn-o btn-s" data-action="cloudAdminReissue" data-id="' + escapeAttr(p.projectId) + '"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> Reissue owner code</button></div></div>';
     }).join('');
     cloudAdminStatus(projects.length + ' cloud project(s) loaded.', 'ok');

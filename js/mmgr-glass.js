@@ -87,6 +87,7 @@ var MMGR = window.MMGR || {};
     'uniform float uTime;',
     'uniform vec2 uRes;',
     'uniform float uDark;',
+    'uniform float uCyan;',
     // Cheap high-quality hash (no transcendentals) — the backdrop stays fast even
     // at high pixel ratios.
     'float hash(vec2 p){',
@@ -121,12 +122,15 @@ var MMGR = window.MMGR || {};
     '}',
     // Constrained palette — cool slate is the only hue, with a warm-gold accent
     // at very low weight (0.22 max), so the field never shows the old iridescent
-    // purple/green/orange wash. Theme-compatible in both light and dark.
+    // purple/green/orange wash. Theme-compatible in both light and dark. The
+    // cyan palette swaps the accent to a fluorescent-cyan vector (uCyan uniform,
+    // driven by <html data-theme> so premium glass respects the active theme).
     'vec3 palette(float t){',
     '  vec3 slate = vec3(0.32, 0.36, 0.46);',
     '  vec3 gold  = vec3(0.72, 0.56, 0.30);',
+    '  vec3 cyan  = vec3(0.30, 0.84, 0.92);',
     '  float w = 0.5 + 0.5 * sin(6.2831 * t * 0.4 + 1.7);',
-    '  return mix(slate, gold, 0.22 * w);',
+    '  return mix(slate, mix(gold, cyan, uCyan), 0.22 * w);',
     '}', 
     'void main(){',
     '  vec2 uv = gl_FragCoord.xy / uRes;',
@@ -258,7 +262,8 @@ var MMGR = window.MMGR || {};
       const uniforms = {
         uTime: { value: 0 },
         uRes: { value: new THREE.Vector2(window.innerWidth, window.innerHeight) },
-        uDark: { value: (document.body.classList.contains('dark-mode') ? 1 : 0) }
+        uDark: { value: (document.body.classList.contains('dark-mode') ? 1 : 0) },
+        uCyan: { value: (document.documentElement.getAttribute('data-theme') === 'cyan' ? 1 : 0) }
       };
       const mat = new THREE.ShaderMaterial({ uniforms: uniforms, vertexShader: VERT, fragmentShader: FRAG, transparent: true, depthWrite: false });
       const mesh = new THREE.Mesh(geo, mat);
@@ -328,10 +333,13 @@ var MMGR = window.MMGR || {};
     }
   }
 
-  // Theme change: update the shader's dark flag without a full reload.
+  // Theme change: update the shader's dark + palette flags without a full
+  // reload (uCyan follows <html data-theme> so premium glass respects the
+  // active palette, exactly like uDark follows body.dark-mode).
   function refreshTheme() {
     if (_state.active && _state.uniforms) {
       _state.uniforms.uDark.value = (document.body.classList.contains('dark-mode') ? 1 : 0);
+      _state.uniforms.uCyan.value = (document.documentElement.getAttribute('data-theme') === 'cyan' ? 1 : 0);
     }
   }
 

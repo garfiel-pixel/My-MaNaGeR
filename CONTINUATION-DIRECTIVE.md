@@ -3,6 +3,48 @@
 `FULL-GAP-AUDIT.md` and `CLOUD-BACKEND-ARCHITECTURE-PLAN.md`. Sessions reset roughly
 hourly, so this file is the memory between sessions — read it, work it, update it.
 
+---
+
+## LOCKED SKILL SET — READ THIS BEFORE ANY WORK (added 2026-08-11)
+
+**The full agent skill set lives in `.agents/skills/` and is registered in
+`skills-lock.json` (source of truth — path, source, content hash).** AGENTS.md is the
+canonical "load before editing" instruction; this section is the quick reference so
+this file is self-sufficient if AGENTS.md is not at hand.
+
+**Standing rule:** before editing any code, read the SKILL.md of every skill relevant
+to the task (load by skill `name`, or read `.agents/skills/<dir>/SKILL.md`) and follow
+it. Ignoring a skill risks violating this project's hard gates. After any skill-set
+change, run `npm run verify` (CSP + SW + `verify:skills` — it re-checks every locked
+hash against the on-disk folders).
+
+### The 16 locked skills (as of 2026-08-11)
+
+| Skill dir | Use for… |
+|---|---|
+| `.agents/skills/cloudflare` | Any Cloudflare platform task (Workers, Pages, KV, D1, R2, AI). Comprehensive fallback. |
+| `.agents/skills/cloudflare-api` | Direct Cloudflare REST API ops (D1 queries, R2 bulk, cache purge, WAF). |
+| `.agents/skills/d1-migration` | D1 schema changes / migrations (repo uses raw SQL migrations — apply the SQL gotchas only). |
+| `.agents/skills/wrangler` | Running wrangler commands (deploy, `d1`, `r2`, secrets, dev). |
+| `.agents/skills/workers-best-practices` | Writing/reviewing any Worker code or `wrangler.jsonc` config. |
+| `.agents/skills/security-audit` | Security reviews of `worker.js`, cloud API, CSP, session/owner-code flows. |
+| `.agents/skills/web-perf` | Page-load/Core Web Vitals/PWA performance audits. |
+| `.agents/skills/qa-expert` | QA process, test plans, P0–P4 triage, coverage metrics (complements `qa-*.cjs`). |
+| `.agents/skills/google-drive` | Anything touching Google Drive integration. |
+| `.agents/skills/skeptical-code-audit` | Auditing for broken wiring (CSS/JS/DOM drift, dead handlers, silent no-ops). Project-authored, registered as `local` in the lock. |
+| `.agents/skills/universal-ui-architect` | Any UI/UX work — design tokens, WCAG 2.2/APCA gates, Liquid Glass, polish. Hard gates block ship. Project-authored, registered as `local`. |
+| `.agents/skills/gemini-api-dev` | Gemini API work: `js/mmgr-ai.js` / `mmgr-ai-key.js`, model fallback ladder, `/api/ai/chat` relay, prompt/model selection. NEW 2026-08-11 (google-gemini/gemini-skills). |
+| `.agents/skills/pwa-development` | PWA work: `sw.js` caching strategy, `manifest.webmanifest`, offline-first behavior. NEW 2026-08-11 (alinaqi/maggy). |
+| `.agents/skills/oauth` | OAuth 2.0/2.1 authz-code/PKCE flow reference — Fastify-oriented; apply RFC/flow gotchas only (Worker's Google sign-in uses its own HMAC cookie flow). NEW 2026-08-11 (mcollina/skills). |
+| `.agents/skills/landing-page-generator` | Marketing page work: `index/features/about/contact.html`, CTA/hero/SEO copy. NEW 2026-08-11 (kostja94/marketing-skills). |
+| `.agents/skills/accessibility-rules` | WCAG 2.2 rule reference — NOTE: document-oriented (Word/Excel/PPT/PDF); for web pages use `universal-ui-architect` gates instead. NEW 2026-08-11 (community-access/accessibility-agents). |
+
+**When in doubt, load** `cloudflare`, `workers-best-practices`, and
+`skeptical-code-audit` — they cover most edits in this repo. New skills: review their
+contents before first use (skills run with full agent permissions).
+
+---
+
 ## REFERENCED FILES — STATUS
 
 **Per Garfield: all files below have now been added to the codebase locally.** I have
@@ -315,6 +357,344 @@ Format: date/session marker, what was completed (with file/line specifics), what
 in-progress and exactly where it stopped, what's next.
 
 ### Log entries (most recent at top)
+
+**2026-08-12 — Session: QA-STRESS-COMPLETED — qa-stress.cjs run to completion, STRESS_GATE PASS.**
+Per Garfield ("run qa-stress.cjs to completion"): full run against serve.cjs:8765 finished
+within the 10-min watchdog (did NOT trip). RESULT: STRESS_GATE PASS, PAGE ERRORS: none.
+All executed checks green: S-suite two-device merge semantics (S04 conflict-reverse LWW
+adopts genuinely newer edit, S05 timestamp tie keeps local, S06 undo to exact pre-merge
+state, S07 no stamp inflation across intervening saves, S08 Merge Project .json UI wiring),
+M-suite messy voice-to-claim (M01/M02 action+decision recovery from garbled transcript,
+M03/M04 land in Decision Log + Meeting-to-Action, M05 slips with cause tag never blank),
+P-suite AI presets (P01 all 9 presets run local-tier + write state, P02 every output carries
+a zero-fabrication trace, P03 audit catches reversed start/end, P04 risk resilience, P05
+budget honesty, P06 grounded free-form lookup, P07 cloud-no-key circuit-break leaves state
+untouched), D-suite crash safety (D01 unload flush survives reload-mid-edit, D02 journal
+restore on real hard-kill relaunch). This closes the long-standing "finish/observe the
+qa-stress run to completion" backlog item from the PRE-LAUNCH VERIFICATION session — no
+code changes were needed (the merge/journal logic was already verified correct in the C8
+session; this confirms the full suite end-to-end on the current tree incl. the
+MCP-CHANGELOG-UI/DIFF-EXPAND changes). NEXT (unchanged, optional): deploy (migration 0005
+first), real-Google /api/cloud/prefs/theme round-trip.
+
+**2026-08-12 — Session: AI-BADGE-E2E — imported-AI changelog exercised end-to-end against a LIVE local backend, all verified.**
+Per Garfield ("exercise the imported-AI changelog badge end-to-end"): full chain of
+import → badge → diff panel → browser-driven revert → snapshot verification, all against a
+REAL wrangler dev origin (not mocks). New committed harness tools/qa-ai-badge-e2e.cjs (npm
+run qa:ai-badge-e2e): starts wrangler dev on :8794 (own persist dir, migrations incl. 0005),
+creates cloud project ai-e2e-*, saves a blob whose state IS the MCP-AFTER of the diffs (the
+honesty gate requires it), imports ONE MCP entry (recordId add/delete/field: t9 added,
+r1 deleted, t1.status todo→done), asserts the changelog list exposes source='mcp' /
+actorLabel 'mcp-ai' / type edit / 3 recordId diffs (A1–A5, 5/5 PASS), writes
+{TMP}/mmgr-ai-e2e-state.json, prints a READY banner, and stays alive until the stop file
+appears (15-min watchdog). BROWSER PHASE (browser-use against the live origin, local-owner
+bypass + the REAL owner code): project.html?id=ai-e2e-* boots → Controls drawer → Cloud
+Backup → View hits the real /changelog → entry 1 renders the PURPLE AI · MCP badge, actor
+'MCP AI · <timestamp>', 'Imported from AI (MCP) — 3 field(s) changed · multiple'; caret
+expands the diff panel showing tasks[1] (added), risks[0] (absent), tasks[0].status
+todo→done; clicking Revert (confirm auto-accepted) reports success and the list re-renders
+with a NEW 'Revert of a previous change' entry at top (Owner actor, NO AI badge); ZERO
+console errors. POST-REVERT VERIFICATION: /load with the real code → SNAPSHOT-REVERT-
+VERIFIED (t9 removed, r1 re-inserted as Risk One, t1.status back to 'todo') — proving the
+browser's Revert click mutated the cloud snapshot exactly, including the recordId
+delete-restore path. Harness torn down cleanly via the stop file. No code changes were
+needed — the badge + revert flows shipped in the prior sessions work as designed.
+NEXT (unchanged, optional): deploy (migration 0005 first, then npm run deploy — predeploy
+verify), real-Google round-trip of /api/cloud/prefs/theme, qa-stress to completion.
+
+**2026-08-12 — Session: CHANGELOG-DIFF-EXPAND — click-to-expand before/after diff panel on every changelog entry EXECUTED.**
+Per Garfield (follow-up to the MCP-CHANGELOG-UI session): every cloud changelog entry that
+carries field-level diffs now has a caret toggle revealing the before/after panel — inspect
+what changed without reverting. js/mmgr-cloud.js: listLog adds a .cl-toggle button
+(data-action cloudLogToggleDiffs, aria-expanded + aria-controls, caret ▸ rotating 90° via
+.open) + a hidden #cl-diffs-<id> panel per entry with diffs; new clVal (primitives as-is,
+whole-record values → compact JSON, long strings ellipsis-truncated on screen with the FULL
+value in the title attribute, undefined→null defensive guard, everything esc()'d incl. title
+attrs) + renderDiffPanel (4-col grid: Field | Before | → | After, 60-row cap with "… and N
+more" footer; solid --tile-bg surface per Gate 6.1) + toggleDiffs (pure DOM, no server call;
+syncs .open + aria-expanded). Recovery/bulk entries get no toggle (no diffs by construction);
+revert entries DO (they store inverse diffs). Wired in mmgr-app.js ACTION_MAP +
+READONLY_SAFE_ACTIONS (view-only expansion works in readonly mode). css/mmgr.css: token-
+driven .cl-toggle/.cl-diffs/.cl-diffs-head/.cl-diff/.cl-diff-path/.cl-val/.cl-old
+(danger)/.cl-new (green)/.cl-absent/.cl-arr/.cl-more — adapt to both palettes + dark.
+sw.js mmgr-shell-v62→v63. NEW committed gate tools/qa-changelog-diffs.cjs (17 gates: paths/values/absent/JSON/escaping incl. quotes/truncation+title/empty/
+60-cap+footer; stubs window/document and drives the pure-string _renderDiffPanel test hook)
++ npm run qa:changelog-diffs. VERIFICATION: qa-changelog-diffs 17/17 PASS (first run's 4
+FAILs were harness assertion bugs — escaped-JSON form, wrong sample path, title-by-design
+conflict, regex over-matching cl-diff-head/path — fixed in the harness, code was correct),
+npm run verify green (CSP 11/11, SW v63, skills), node --check clean, browser E2E via
+serve.cjs:8765 with a CDP fetch mock + local-owner bypass (localStorage mmgr_unlocked_/
+scope_/state_/current_project/admin_projects + sessionStorage owner code): project.html
+?id=e2e-diff boots, Controls drawer → Cloud Backup → View renders both rows, entry 41
+expands showing charter.name/Old Project Name/New Project Name with aria-expanded true →
+collapses to false, row 42 shows the purple AI · MCP badge, ZERO console errors. Code review
+closed 0 bugs; 2 minor items applied: aria-controls on the toggle (disclosure pattern) and
+the undefined→null guard in clVal. NEXT (unchanged, optional): deploy (migration 0005 first),
+real-Google round-trip of /api/cloud/prefs/theme, qa-stress to completion.
+
+**2026-08-12 — Session: MCP-CHANGELOG-UI + ADMIN-PREF-SURFACING — two backlog items EXECUTED, all gates green.**
+Per Garfield ("read the continuation directive and follow suite"): the directive's Parts A–D
+were already closed; the remaining actionable backlog items were (1) surface mcp-ai entries
+distinctly in the changelog UI and (2) surface the prefs endpoint in the admin cloud listing.
+Both shipped this session, plus the required verification pass.
+ITEM 1 — MCP-CHANGELOG-UI: worker.js handleCloudChangelogList now SELECTs import_key and
+exposes a derived `source: 'mcp'|'cloud'` per entry (the raw import_key is NEVER returned —
+only the boolean-ish flag); js/mmgr-cloud.js listLog renders MCP-imported entries with a
+purple `.badge-ai` chip (i-sparkle icon, title tooltip) + "MCP AI" actor + "Imported from AI
+(MCP) — …" prefix instead of masquerading as "Owner"; Revert stays (recordId reverts were
+the point of the import pipeline). css/mmgr.css gains `--purple-rgb` tokens in all four theme
+blocks (default light/dark + cyan light/dark, values checked against each block's --purple
+hex) + the `.badge-ai` rule using rgba(var(--purple-rgb),…) — the same tokenization pattern
+as --gold-rgb/--amber-rgb.
+ITEM 2 — ADMIN-PREF-SURFACING: worker.js handleAdminCloudList selects google_sub INTERNALLY
+(never exposed in the response) and reads R2 prefs/<sub>.json per project to add
+themePrefs {palette, dark, updatedAt} to each row (best-effort try/catch → null); admin.html
+shows a "Theme: cyan · dark · saved YYYY-MM-DD" line in each project row (only when prefs
+exist) + the admin hint now mentions the prefs store. The admin listing is operator-scoped
+and small, so the sequential per-row R2 reads are fine (reviewer noted Promise.all would be
+marginally faster at scale — not required).
+HOUSEKEEPING: admin.html inline-script hash regenerated (2x during the session as the row
+markup gained the saved-date — final 'sha256-8lwCeR…') and synced into worker.js +
+serve.cjs INLINE_SCRIPT_HASHES; sw.js bumped mmgr-shell-v61→v62 with the change comment.
+VERIFICATION (all pass): npm run verify GREEN (CSP 11/11 hashes match worker.js + serve.cjs,
+SW v62 > 45 SHELL assets, 16/16 skill hashes); node --check clean (worker.js, serve.cjs,
+sw.js, js/mmgr-cloud.js); tools/qa-cloud-import.cjs 35/35 (import pipeline + recordId reverts
+regression-free); tools/qa-cloud-phase2.cjs 79/79 (this run even passed the two previously-
+documented failures P2.10f + browser-phase crash — fresh persist dir); browser smoke
+(serve.cjs:8765) admin/project/app all render with ZERO CSP violations, admin gate screen +
+palette picker present. One environment lesson logged: an OLD serve.cjs kept running in the
+background held port 8765 with stale in-memory CSP hashes after a mid-session hash regen —
+verify-csp passing against disk does not mean the RUNNING dev server matches; after any
+inline-script hash change, restart the dev server (kill the exact PID on the port via
+netstat+taskkill, never a blanket node.exe kill — two live node procs are the Freebuff
+client).
+REMAINING (unchanged, all optional): deploy (apply migrations 0005 to remote D1 first, then
+npm run deploy); end-to-end round-trip of /api/cloud/prefs/theme with a real Google session;
+observe qa-stress to completion. NOTE for deploy restated per code review: the changelog
+list endpoint now hard-references the import_key column — migration 0005 must be applied to
+remote D1 before/with this worker deploy (already the documented order).
+
+**2026-08-11 — Session: THEME-SYSTEM-AND-MOBILE-UI — cyan theme + drawer + 4 bug fixes EXECUTED.**
+Executed the `new update do everything dont stop and ask for nothing/` folder in full: the
+Claude bug audit (4/4), the Theme System + Mobile UI action plan (Phases A–E), and the parts
+of the cyan-dashboard plan that were NOT superseded. Skills loaded per AGENTS.md:
+universal-ui-architect (tokens/contrast gates) — the skeptical-code-audit skill was used only
+for the wiring verification of the final state, not as the task driver.
+BUG FIXES (CLAUDE-BUG-AUDIT-2026-08-11): (1) `syncClientId` added to the change whitelist
++ change-listener condition in js/mmgr-app.js — Google OAuth Client ID now persists. (2)
+`@keyframes shake` + `.shake` class (reduced-motion guard) added to css/mmgr.css — wrong-code
+modal now animates. (3)+(4) `#i-plus` + `#i-shield` (plus `#i-menu` + `#i-palette` for the new
+UI) added to css/mmgr-icons.svg.
+THEME SYSTEM (THEME-SYSTEM-AND-MOBILE-UI-ACTION-PLAN, default-gold preserved): new early-load
+helper js/mmgr-theme.js on ALL 7 pages (app, project, admin + 4 marketing), external script so
+CSP inline hashes needed zero changes (verify-csp still 11/11). Two independent axes: palette
+(`default|cyan`) → <html data-theme> + dark (existing body.dark-mode). **DELIBERATE DEVIATION
+from the plan's literal naming: the palette lives in localStorage `mmgr_palette`, NOT
+`mmgr_theme`** — the shipped dark toggle already owns `mmgr_theme` ('dark'|'light'); writing
+'cyan' into it would clobber dark mode. Backend path (plan §2.3, backend-preferred): new
+session-gated GET/PUT /api/cloud/prefs/theme in worker.js (handleCloudPrefsGet/Put), stored as
+R2 prefs/<google-sub>.json — NO D1 migration needed for deploy; client writes localStorage
+instantly, PUTs on change (data-sync="1" script tag on app pages), pulls once per load after a
+successful round-trip (mmgr_palette_backend flag) — marketing pages are localStorage-only so
+anonymous traffic never hits the Worker. theme-color meta syncs per palette/dark. Cyan token
+blocks (light+dark) added to css/mmgr.css + css/marketing.css mapping the fluorescent-blue
+palette onto existing token names (light accent #0f766e teal-700 — AA-passing text accent on
+white; #50e8f4 fluorescent reserved for dark mode where it passes AA ~13:1); default marketing
+dark token block added (was none). Phase D-17 tokenization: 33 gold/amber rgba fills in
+mmgr.css + 22 in marketing.css → rgba(var(--gold-rgb)/var(--amber-rgb),…); new --gold-rgb/
+--amber-rgb/--purple tokens in all four theme blocks; inline-SVG sec-nav icon strokes
+(stroke="#D4AF37" etc.) now follow tokens via attribute selectors; js/mmgr-cloud.js + 
+js/mmgr-raci.js inline gold rgba tokenized too. Deliberate exception: the timeline chart
+palette in mmgr-app.js (~886-893) stays constant (canvas fills can't read CSS vars). Picker UI:
+.pal-switch/.pal-btn segmented controls next to every dark-mode control (project.html Controls
+drawer, app.html theme-ctl, admin.html gate pill + header, 4 marketing headers), driven by ONE
+delegated [data-pal] click listener in the helper (no inline JS, no hash churn).
+MOBILE SHELL (plan §4.2): hamburger (#nav-btn, i-menu icon) in project.html header + #nav-scrim;
+≤768px the SAME .sec-nav element becomes a fixed off-canvas drawer (transform translateX,
+body.nav-open toggle) — no duplicated nav, active states stay in sync; closes on scrim tap /
+any section button / Escape / resize>768 (tglNav action in mmgr-app.js ACTION_MAP +
+READONLY_SAFE); #nav-scrim added to the focus-mode hide list. AI entry point, lock indicator,
+settings remain in the header.
+VERIFICATION: node --check clean (all touched JS), npm run verify GREEN (CSP 11/11, SW v61 > 45
+SHELL assets incl. new js/mmgr-theme.js, 16/16 skill hashes). Browser smoke (serve.cjs:8765,
+browser-use): app.html Cyan switch/aria-pressed/localStorage persistence across reload/Default
+reset/dark toggle all PASS; project.html 8/8 PASS (hamburger hidden desktop, visible + drawer
+opens at 480px with translateX(0) + scrim, scrim closes, .shake rule present, picker present,
+zero console errors); index.html 7/7 PASS (palette switch, data-theme, body bg → #eefafc,
+Gold reset, layout intact). Code review closed 3 real findings, all fixed: marketing pages
+never applied body.dark-mode (helper in <head>, body null at boot — now re-applies on
+DOMContentLoaded), JS-embedded gold rgba tokenized, scrim added to focus-mode hide list.
+NEXT (optional): end-to-end browser pass against a deployed origin to exercise the R2 prefs
+round-trip with a real Google session; or surface the prefs endpoint in the admin cloud listing.
+
+**2026-08-11 — Session: PRE-LAUNCH VERIFICATION — full QA battery green, harness flakes identified, deploy checklist confirmed.**
+Per Garfield ("earn another check before launching"): ran the ENTIRE QA battery against the
+theme/drawer build on serve.cjs:8765 (distinct CDP ports checked for parallel safety; qa-p0 /
+qa-obs-verify share 9230 so they ran in separate waves). RESULTS: qa-full 171/171 (0 console
+errors, 0 page exceptions), qa-p0 PASS, qa-p1 PASS (incl. theme+crosshair persist after hard
+refresh), qa-ai AI23 PASS, qa-ai-visual AIVIS PASS, tools/qa-ai-polish 11/11, qa-marketing 17/17
+(0 console errors across all 6 pages — covers the new palette pickers + theme script),
+qa-obs-verify 14/14, qa-pwa 13/13, qa-restore-verify 14/14, qa-focus PASS, qa-typing PASS,
+qa-glass 12/12 (with the uCyan uniform), qa-sync PASS, qa-voice VOICE_GATE PASS, qa-v11 V11 PASS,
+qa-r3 R3 PASS, qa-oauth 11/11, qa-stress 13/13-so-far with 0 failures (long multi-section
+AI/voice stress run, still mid-flight when the sweep concluded — NOT part of the deploy gate).
+qa-drive-smoke passes gates A+B then WATCHDOG-exits at the real-Google-Drive step (needs
+credentials — expected in sandbox, not a regression). KEY LESSON logged for future sessions:
+4 harnesses (qa-pwa, qa-restore-verify, qa-typing, tools/qa-ai-polish) each failed ONCE under
+parallel load — all showed `undefined` state = the page hadn't finished booting when the probe
+fired (timing flake), and EVERY one passed on clean re-run. Do NOT treat a single failed CDP
+harness run as a regression: re-run it solo before investigating. Verify gates: npm run verify
+green (CSP 11/11, SW v61 > 45 assets, 16/16 skills), node --check clean on all touched JS.
+Repo state confirmed as exactly the intended 20-file change set (project.html LF intact — its
+inline-script hashes still match, proving byte-identity). DEPLOY CHECKLIST (all that remains
+before/at launch): (1) apply migrations/0005 to REMOTE D1 first — `npx wrangler d1 migrations
+apply my-manager-db --remote` (from the CLOUD-MCP-IMPORT session); (2) the theme-prefs endpoint
+is R2-backed — no migration, worker.js deploys as-is; (3) deploy via the wrangler.jsonc staging
+recipe (exclude .git/.wrangler/node_modules/.agents — 25 MiB asset limit); `npm run deploy`
+(predeploy = npm run verify) is unblocked. Dev server left running on :8765 for manual poking.
+NEXT (optional): deploy + live round-trip of /api/cloud/prefs/theme with a real Google session;
+finish/observe the qa-stress run to completion; surface mcp-ai entries distinctly in the
+changelog UI (older backlog item).
+
+**2026-08-11 — Session: WHAT-IF ADVERSARIAL PASS on the theme/drawer build — 3 real findings fixed, all gates re-green.**
+Per Garfield ("what if it breaks / find reasons to distrust it"): ran a hostile review of the
+just-shipped theme system + mobile drawer, fixing every real hole before handing back.
+FOUND + FIXED: (1) Premium-glass GLSL shader hardcoded a warm-gold accent vector — cyan palette
++ premium glass showed a GOLD glow. Added a `uCyan` uniform (declared in FRAG, registered in the
+uniforms object at material creation, set in refreshTheme alongside uDark) and `mix(gold, cyan,
+uCyan)` in palette() — uCyan=0 reproduces the old gold path exactly, qa-glass.cjs GLASS35 gate
+still 12/12. (2) Backend-pull race: with data-sync enabled, a stale GET /api/cloud/prefs/theme
+resolving AFTER a fresh user click could clobber the user's pick. Added `_userTouched` in
+js/mmgr-theme.js — setPalette sets it; pullBackend bails at entry AND re-checks in .then before
+any write. (3) PUT /api/cloud/prefs/theme accepted unbounded bodies — content-length guard
+(>2048 → 413) added. Also: syncGlass() hooks palette changes into MMGR.Glass.refreshTheme so an
+ACTIVE glass backdrop re-tints instantly (dark toggle already refreshed it); #nav-scrim added to
+the focus-mode hide list; mmgr-cloud.js + mmgr-raci.js inline gold rgba tokenized. VERIFIED
+CLEAN under hostile testing (browser, serve.cjs:8765): wrong-code modal shake fires live (class +
+'Incorrect code' + modal stays usable); cyan+dark combo → body bg exactly rgb(0,22,25); all 4
+sprite symbols resolve; drawer at 375px opens/closes via scrim + Escape + section-button (which
+also switches sections); syncClientId LIVE-persists to localStorage (bug-1 fix proven); admin
+3-control gate pill fits 1200px (515px) and 480px (476px ≤ viewport, wraps cleanly) with zero
+console errors on every page. Harness note: qa-glass.cjs fails with 'MMGR undefined' if the
+:8765 server isn't running — that is harness-environment, not a code regression (restarted
+server → GLASS35 12/12 PASS, SYNC45 PASS). Final: npm run verify green (CSP 11/11, SW v61 > 45
+assets, 16/16 skills). Deliberate non-fixes (documented, low risk): timeline-chart canvas
+palette in mmgr-app.js stays constant (canvas fills can't read CSS vars); chunked/NaN
+content-length can bypass the 413 (route is session-gated + rate-limited — cheap hardening only);
+premium glass requires the pinned three.js CDN, so it cannot be exercised in this sandbox.
+
+**2026-08-11 — Session: CLOUD-MCP-IMPORT — changelog importer (MCP → D1).**
+Per Garfield's next-step from the MCP build: push mcp changelog entries into the D1
+cloud_changelog. Built end to end: (1) migrations/0005_cloud_changelog_import_key.sql —
+nullable UNIQUE import_key so re-imports can never duplicate audit rows (SQLite
+gotchas per the d1-migration skill: ALTER TABLE ADD COLUMN once-only, unique index
+IF NOT EXISTS, NULLs never collide). (2) worker.js new owner-only endpoint POST
+/api/cloud/projects/:id/changelog/import (handleCloudChangelogImport ~1230+,
+router entry after the changelog-list match): sanitizes each entry (localId positive
+int, entry_type edit|bulk|revert only, ISO created_at, diff shape path +
+beforeAbsent/afterAbsent), runs an HONESTY GATE (cloudVerifyImportedDiffs) — every
+diff is verified against the live R2 blob (record diffs by recordId: add must exist
++ equal after, delete must be absent, field/whole-record update must equal after;
+charter/leaf diffs by path) — entries whose diffs diverged are skipped and reported,
+NEVER stored; no blob ⇒ all skipped ('no cloud snapshot to verify against'); MCP
+'bulk' with diffs stored as 'edit' (sidecar has no R2 snapshot); insert via ON
+CONFLICT(import_key) DO NOTHING with fresh D1 ids, import_key 'mcp:<pid>:<localId>'
+(project-scoped — localIds repeat across projects); section computed server-side via
+cloudSectionOfDiffs; cloudTouchOwner on successful import. (3) worker.js revert
+route upgrade: cloudRevertDiff (port of the MCP sidecar's applyInverseDiffs) —
+record diffs resolve by stable recordId (fallback: recorded index for cloud-native
+leaf diffs), delete-restore re-INSERTS at a clamped index, gone-target skips instead
+of clobbering; cloud-native behavior unchanged when no recordId present (phase-2 P3
+gates still green). (4) tools/import-mcp-changelog.cjs — zero-dep CLI: --file/--dir+
+--project-name, cloud id from state.projectId (--project-id override), --dry-run,
+--max-id, ledger <sidecar>.imported.json (skip-ahead; server UNIQUE is the real
+guard), exit codes 0/1/2. (5) tools/qa-cloud-import.cjs — 29/29 gates against local
+wrangler dev (migrations applied): owner-only auth incl. generic 403 parity, happy
+path + D1 row shape + fresh ids, honesty gate rejects divergent diffs, no-snapshot
+reject, idempotent re-import, recordId add/delete/field import + owner revert
+restores exactly (t9 removed, r1 re-inserted, status→todo) + revert-of-revert, bulk
+→edit normalization, entry validation, CLI dry-run/live/ledger/re-run e2e. npm
+scripts qa:cloud-import + import:mcp. Docs: mcp/README.md new "Cloud changelog
+importer" section (honesty gate, idempotency, revertibility, normalization) +
+suggestions updated. Verification: node --check clean (worker.js + both tools),
+qa-cloud-import 29/29, qa-cloud-phase2 61/63 — the 2 failures (P2.10f + harness
+crash, '(r.impact||"").toLowerCase' TypeError in the browser flow) are PRE-EXISTING
+and reproducible on a pristine stashed worker.js (front-end fixture issue: phase-2
+baseState risks use numeric impact:3; untouched by this work), npm run verify green
+(CSP 11/11, SW v60, 16/16 skill hashes).
+TWO REVIEW-FIX ROUNDS after the first pass (both real data-integrity bugs found by
+code review, both now gated): (1) cloudRevertDiff spliced the whole record for ANY
+beforeAbsent diff — cloud-native leaf reverts turned into corruption (a field-add
+revert deleted the record; a record-add revert with leaf diffs at one index
+repeatedly spliced away the FOLLOWING records). Fixed: beforeAbsent+field deletes
+just the field; only whole-record adds splice. Same fix ported to the MCP sidecar
+mcp/lib/changelog.mjs applyInverseDiffs. Gates: qa-cloud-import Q11/Q12 (field-add
++ record-add reverts keep every neighbor), mcp/qa-mcp.cjs W10 (field-add revert
+keeps the record). (2) cloudRevertDiff only special-cased charter + arrays, so
+object content keys (closure.*, raci.* incl. raci.matrix.<key> with its two-dot
+path, dmaic.*, activeMeeting.*) silently no-opped on revert — the pre-recordId
+code was generic cloudPathSet/cloudPathDelete. Fixed: regex widened to allow
+dotted fields + a generic path-helper fallback for non-array list keys (charter
+included). Gate: Q13 (closure change save→revert restores the field). FINAL:
+qa-cloud-import 35/35, qa-mcp 38/38, npm run verify green. NOTE for deploy: apply
+migration 0005 to remote D1 (npx wrangler d1 migrations apply my-manager-db
+--remote) before/with the worker deploy. NEXT (optional): surface imported mcp-ai
+entries distinctly in the app's changelog UI, or an end-to-end browser pass of the
+importer against the deployed origin.
+
+**2026-08-11 — Session: MCP SERVER BUILT (zero-dep, owner-approved writes).**
+Per Garfield: build an MCP server for the product, cloud-model-only unless the local
+engine can handle it — and it can handle the fixed intents, so the design is
+LOCAL-FIRST with cloud fallback. New `mcp/` directory (zero-dependency, Node .mjs,
+stdio JSON-RPC): server.mjs (20 tools: 16 read/analytics + mmgr_answer_question
+local-first→cloud + 4 write tools), lib/engine.mjs (faithful ports of the app's
+localLookup/buildContext/Health/EVM/riskDays/computeSlips with the same
+zero-fabrication trace discipline), lib/validate.mjs (per-record-type field
+whitelists + enum checks — model output is untrusted input), lib/changelog.mjs
+(sidecar changelog mirroring the D1 cloud_changelog shape exactly: entry_type /
+actor_type / actor_label / section / diffs_json [{path,before,after,beforeAbsent,
+afterAbsent}] / created_at), lib/store.mjs (atomic tmp+rename writes, pre-change
+backups <project>.pre-<id>.json, fingerprint stale-guard), lib/cloud.mjs (provider
+ladder port: google-gemini gemini-flash-latest→gemini-flash-lite-latest, openai
+gpt-4o-mini→gpt-5-mini/nano, anthropic claude-3-5-sonnet-latest→haiku→haiku3;
+429/503 advance, 401/403 stops; MMGR_MCP_AI_KEY env-only, never in files). WRITES
+ARE TWO-PHASE OWNER-APPROVED: propose_change returns a preview + single-use TTL'd
+token; approve_change is the only file-writing path (stale-file guard refuses if the
+disk changed since propose); reject discards; revert_change undoes MCP-AI changes
+by id and logs a NEW revert row (history never erased). Env: MMGR_MCP_DIR,
+MMGR_MCP_PROJECT, MMGR_MCP_AI_KEY, MMGR_MCP_PROVIDER, MMGR_MCP_ALLOW_WRITES=1,
+MMGR_MCP_TOKEN_TTL_MS. QA: mcp/qa-mcp.cjs = 34/34 gates (handshake H1-H2, read
+R1-R6, write/approval W1-W9 incl. review-fix regressions: real pre-change backup,
+real (non-phantom) add ids in the changelog, revert-by-id under index drift, plus
+a real validate.mjs bug the new gates caught — delete ops crashed on the 'id'
+field-schema lookup). npm scripts: mcp / qa:mcp. Fixture: mcp/fixtures/sample-
+project.json (Riverwalk Retail Fit-Out, schema v18). Code review (deepseek-flash)
+closed 3 real findings: phantom add-ids logged in changelog (now logs approve-time
+diffs), promised pre-change backup was never written (now written with the
+pre-computed entry id), revert-by-index drifted after later edits (now resolves by
+stable recordId); dead exports removed (opToDiffs/isWritableField/removeChangelog).
+All gates green: node --check on all mcp files, qa-mcp 34/34, npm run verify
+(CSP/SW/skills). NEXT (optional): push changelog entries into the D1 cloud_changelog
+(shapes already match), or a browser-use smoke test wiring the server into Claude
+Desktop.
+
+**2026-08-11 — Session: SKILL-SET EXPANSION + LOCKED-SKILL-SET SECTION.**
+Per Garfield: installed all product-related community skills and recorded the skill
+set in this file so every future session knows what to load. Installed 5 new skills
+via `npx skills add` into `.agents/skills/`: gemini-api-dev (google-gemini/gemini-
+skills), pwa-development (alinaqi/maggy), oauth (mcollina/skills), landing-page-
+generator (kostja94/marketing-skills), accessibility-rules (community-access/
+accessibility-agents). Registered the two project-authored skills that were on disk
+but never locked — skeptical-code-audit + universal-ui-architect — into
+skills-lock.json with hashes computed via new helper tools/hash-skill-folder.cjs
+(identical algorithm to verify-skills-lock.cjs; sourceType "local"). Updated AGENTS.md
+skill map (16 rows, incl. accuracy notes: accessibility-rules is document-oriented,
+oauth is Fastify-oriented) + rule 4 local-skill exception. This file gained the
+"LOCKED SKILL SET" quick-reference section above. Verification: `npm run verify`
+green — ALL 16 LOCKED SKILL HASHES MATCH, CSP 11/11, SW mmgr-shell-v60 > 44 assets.
+Safety scan of the 5 new skill contents: clean. NOTE: `npx skills add` regenerates
+lock entries automatically; only project-authored skills need
+`tools/hash-skill-folder.cjs`.
 
 **2026-08-11 — Session: A5 DECISIONS EXECUTED — all Parts A–D closed.**
 Per Garfield's three decisions (unbounded changelog / auto-purge 12mo / build the

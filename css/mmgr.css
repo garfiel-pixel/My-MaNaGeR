@@ -15,6 +15,10 @@ svg.ico use{fill:inherit;stroke:inherit;}
      (body.dark-mode) — never the default presentation. */
   --canvas:#f4f5f7;--card:#ffffff;--border:#e5e7eb;--text:#0f172a;--slate:#64748b;
   --gold:#b45309;--green:#047857;--danger:#dc2626;--amber:#c2410c;--blue:#2563eb;
+  --purple:#8b5cf6;   /* DMAIC/quality accents */
+  --gold-rgb:180,83,9;    /* rgba(var(--gold-rgb),a) — tokenized gold fills */
+  --amber-rgb:194,65,12;  /* rgba(var(--amber-rgb),a) — tokenized amber fills */
+  --purple-rgb:139,92,246;  /* rgba(var(--purple-rgb),a) — tokenized purple fills (AI badge) */
   --on-gold:#ffffff;   /* foreground placed on gold surfaces (light) */
   --tile-bg:#f8fafc;    /* dashboard stat tiles (EVM etc.) */
   --track-bg:#eef1f6;   /* progress-bar track wells */
@@ -58,6 +62,10 @@ svg.ico use{fill:inherit;stroke:inherit;}
 body.dark-mode{
   --canvas:#090a0f;--card:#12141c;--border:#222533;--text:#e2e8f0;--slate:#64748b;
   --gold:#f59e0b;--green:#10b981;--danger:#ef4444;--amber:#f59e0b;--blue:#3b82f6;
+  --purple:#a78bfa;
+  --gold-rgb:245,158,11;
+  --amber-rgb:245,158,11;
+  --purple-rgb:167,139,250;
   --on-gold:#0b0c10;
   --tile-bg:rgba(0,0,0,.2);
   --track-bg:rgba(255,255,255,.06);
@@ -77,6 +85,71 @@ body.dark-mode{
   --toggle-off-fg:#e2e8f0;
 }
 
+/* ============================================================
+   CYAN THEME (optional palette) — THEME-SYSTEM-AND-MOBILE-UI-ACTION-PLAN §3
+   ------------------------------------------------------------
+   The active palette lives on <html data-theme="default|cyan"> (applied
+   pre-paint by js/mmgr-theme.js). Cyan maps the fluorescent-blue palette
+   onto the EXISTING token names — every component that already uses
+   var(--gold)/var(--canvas)/… follows automatically. Default = current
+   gold system; cyan is an alternative, never a replacement.
+
+   FUTURE THEME RECIPE (plan §8): copy one of these two blocks, rename the
+   selector to [data-theme="name"], override the same token names, add a
+   <button data-pal="name"> to the pickers, and let the backend accept the
+   new string. No component CSS changes needed.
+   ============================================================ */
+html[data-theme="cyan"]{
+  --canvas:#eefafc;--card:#ffffff;--border:#b8e8ef;--text:#001619;--slate:#3d6b73;
+  --gold:#0f766e;--green:#047857;--danger:#dc2626;--amber:#c2410c;--blue:#0d9488;
+  --purple:#7c3aed;
+  --gold-rgb:15,118,110;
+  --amber-rgb:194,65,12;
+  --purple-rgb:124,58,237;
+  --on-gold:#ffffff;
+  --tile-bg:#f2fcfd;
+  --track-bg:#e2f6f9;
+  /* cyan light keeps the retired-glass solid surfaces; hairline goes cyan */
+  --glass-blur:0px;
+  --glass-saturate:100%;
+  --glass-fill-dark:#ffffff;
+  --glass-fill-dark-hover:#eefafc;
+  --glass-fill-dark-active:#e2f6f9;
+  --glass-rim:inset 0 1px 0 rgba(0,22,25,0.04);
+  --glass-rim-strong:inset 0 1px 0 #ffffff;
+  --glass-border:1px solid #b8e8ef;
+  --glass-shadow:0 1px 2px rgba(0,22,25,0.05),0 6px 18px rgba(0,22,25,0.07);
+  --toggle-on-bg:#0f766e;
+  --toggle-on-fg:#ffffff;
+  --toggle-off-bg:rgba(0,22,25,0.07);
+  --toggle-off-fg:#0f172a;
+}
+html[data-theme="cyan"] body.dark-mode{
+  --canvas:#001619;--card:#0a2a2e;--border:rgba(80,232,244,0.18);--text:#c7f8fe;--slate:#7ab8c0;
+  --gold:#50e8f4;--green:#2dd4bf;--danger:#f87171;--amber:#fbbf24;--blue:#22d3ee;
+  --purple:#a78bfa;
+  --gold-rgb:80,232,244;
+  --amber-rgb:251,191,36;
+  --purple-rgb:167,139,250;
+  --on-gold:#001619;
+  --tile-bg:rgba(0,0,0,.2);
+  --track-bg:rgba(80,232,244,.08);
+  /* frosted glass reads cyan-tinted over the blue-charcoal canvas */
+  --glass-blur:20px;
+  --glass-saturate:180%;
+  --glass-fill-dark:rgba(80,232,244,0.07);
+  --glass-fill-dark-hover:rgba(80,232,244,0.11);
+  --glass-fill-dark-active:rgba(80,232,244,0.15);
+  --glass-rim:inset 0 1px 0 rgba(80,232,244,0.18);
+  --glass-rim-strong:inset 0 1px 0 rgba(80,232,244,0.3);
+  --glass-border:1px solid rgba(80,232,244,0.18);
+  --glass-shadow:0 8px 24px rgba(0,0,0,0.4);
+  --toggle-on-bg:#50e8f4;
+  --toggle-on-fg:#001619;
+  --toggle-off-bg:rgba(80,232,244,0.12);
+  --toggle-off-fg:#c7f8fe;
+}
+
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 
 body{
@@ -85,9 +158,35 @@ body{
   cursor:default;letter-spacing:-0.01em;
 }
 
+/* ---- Wrong-code modal shake (CLAUDE-BUG-AUDIT-2026-08-11 #2) ---- */
+@keyframes shake{0%,100%{transform:translateX(0);}20%,60%{transform:translateX(-6px);}40%,80%{transform:translateX(6px);}}
+.shake{animation:shake .4s ease-in-out;}
+@media (prefers-reduced-motion:reduce){.shake{animation:none;}}
+
+/* ---- Icon strokes that shipped hardcoded now follow the theme tokens ----
+   (Phase D-17 of THEME-SYSTEM-AND-MOBILE-UI-ACTION-PLAN: no gold/amber hex
+   may bypass the token layer). The project.html sec-nav icons carry inline
+   stroke="#D4AF37" etc. presentation attributes — CSS attribute selectors
+   override those (presentation attrs are the lowest-priority source), so the
+   icons re-tint live when the palette/dark theme switches. */
+.sec-btn path[stroke="#D4AF37"]{stroke:var(--gold);}
+.sec-btn path[stroke="#22C55E"]{stroke:var(--green);}
+.sec-btn path[stroke="#3B82F6"]{stroke:var(--blue);}
+.sec-btn path[stroke="#F59E0B"]{stroke:var(--amber);}
+.sec-btn path[stroke="#EF4444"]{stroke:var(--danger);}
+.sec-btn path[stroke="#64748B"]{stroke:var(--slate);}
+.sec-btn path[stroke="#8B5CF6"]{stroke:var(--purple);}
+
+/* ---- Color-theme palette picker (THEME-SYSTEM-AND-MOBILE-UI-ACTION-PLAN §4.1) ---- */
+.pal-switch{display:inline-flex;align-items:center;gap:2px;padding:2px;background:var(--track-bg);border:1px solid var(--border);border-radius:100px;}
+.pal-btn{appearance:none;border:none;background:transparent;color:var(--slate);font:inherit;font-size:.7rem;font-weight:600;line-height:1;padding:5px 12px;border-radius:100px;cursor:pointer;transition:color var(--tr),background var(--tr);}
+.pal-btn:hover{color:var(--text);}
+.pal-btn:focus-visible{outline:2px solid var(--gold);outline-offset:1px;}
+.pal-btn[aria-pressed="true"]{color:var(--on-gold);background:var(--gold);}
+
 /* ---- Crosshair cursor (opt-in only) ---- */
 body.crosshair-on{cursor:crosshair;}
-#cx,#cy{position:fixed;pointer-events:none;z-index:9999;background:rgba(212,175,55,0.15);}
+#cx,#cy{position:fixed;pointer-events:none;z-index:9999;background:rgba(var(--gold-rgb),0.15);}
 #cx{width:100vw;height:1px;left:0;top:0;}
 #cy{width:1px;height:100vh;left:0;top:0;}
 body:not(.crosshair-on) #cx,body:not(.crosshair-on) #cy{display:none;}
@@ -118,11 +217,21 @@ body.focus-mode #om,body.focus-mode #cx,body.focus-mode #cy,
 body.focus-mode #meth-learn-card,body.focus-mode #gantt-tip,
 body.focus-mode #cfm-modal,body.focus-mode #conflict-modal,
 body.focus-mode #chartup-modal,body.focus-mode #wbsimport-modal,
-body.focus-mode #importdates-modal,body.focus-mode .hp{display:none!important;}
+body.focus-mode #importdates-modal,body.focus-mode #nav-scrim,body.focus-mode .hp{display:none!important;}
 body.focus-mode .panel{display:none!important;}
 body.focus-mode .panel.active{display:block!important;}
 .focus-ind{display:none;}
-body.focus-mode .focus-ind{display:flex;position:fixed;top:10px;right:10px;background:rgba(212,175,55,.1);border:1px solid var(--gold);border-radius:100px;padding:5px 14px;font-size:.7rem;color:var(--gold);z-index:200;align-items:center;gap:6px;box-shadow:var(--glass-rim);}
+body.focus-mode .focus-ind{display:flex;position:fixed;top:10px;right:10px;background:rgba(var(--gold-rgb),.1);border:1px solid var(--gold);border-radius:100px;padding:5px 14px;font-size:.7rem;color:var(--gold);z-index:200;align-items:center;gap:6px;box-shadow:var(--glass-rim);}
+
+/* ---- Mobile nav drawer (THEME-SYSTEM-AND-MOBILE-UI-ACTION-PLAN §4.2) ----
+   The hamburger (.nav-btn, header) + scrim (#nav-scrim) toggle body.nav-open
+   (mmgr-app.js tglNav). On ≤768px the SAME .sec-nav element becomes a fixed
+   off-canvas drawer — no duplicated nav, active states stay in sync by
+   construction, and Focus Mode's existing .sec-nav hide rule covers it. */
+.nav-btn{display:none;align-items:center;justify-content:center;width:38px;height:38px;border:1px solid var(--border);background:var(--card);color:var(--slate);border-radius:10px;cursor:pointer;transition:all var(--tr);flex-shrink:0;}
+.nav-btn:hover{color:var(--gold);border-color:var(--gold);}
+#nav-scrim{position:fixed;inset:0;background:rgba(0,22,25,.45);opacity:0;pointer-events:none;transition:opacity var(--tr);z-index:94;}
+body.nav-open #nav-scrim{opacity:1;pointer-events:auto;}
 
 /* ---- Section Navigation ---- */
 #app-main{padding:18px 24px;max-width:1600px;margin:0 auto;}
@@ -150,8 +259,8 @@ body.focus-mode .focus-ind{display:flex;position:fixed;top:10px;right:10px;backg
        over content), gold-tinted border, no motion (instant show/hide via
        .is-hide). Hidden permanently after any pack is toggled on or dismiss. */
 .core-callout{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;
-  background:linear-gradient(180deg,rgba(212,175,55,.09),var(--card) 55%);
-  border:1px solid rgba(212,175,55,.38);border-radius:var(--radius-lg);
+  background:linear-gradient(180deg,rgba(var(--gold-rgb),.09),var(--card) 55%);
+  border:1px solid rgba(var(--gold-rgb),.38);border-radius:var(--radius-lg);
   padding:14px 18px;margin-bottom:18px;}
 .core-callout-txt{display:flex;align-items:center;gap:10px;font-size:.8rem;line-height:1.5;color:var(--text);max-width:660px;}
 .core-callout-txt .ico{color:var(--gold);flex-shrink:0;}
@@ -192,10 +301,36 @@ body.focus-mode .focus-ind{display:flex;position:fixed;top:10px;right:10px;backg
 /* ---- Badges ---- */
 .badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:100px;font-size:.72rem;font-weight:600;}
 .bg{background:rgba(0,155,58,.2);color:var(--green);border:1px solid var(--green);}
-.ba{background:rgba(255,193,7,.2);color:var(--amber);border:1px solid var(--amber);}
+.ba{background:rgba(var(--amber-rgb),.2);color:var(--amber);border:1px solid var(--amber);}
 .br{background:rgba(220,53,69,.2);color:var(--danger);border:1px solid var(--danger);}
-.bo{background:rgba(212,175,55,.2);color:var(--gold);border:1px solid var(--gold);}
+.bo{background:rgba(var(--gold-rgb),.2);color:var(--gold);border:1px solid var(--gold);}
 .bs{background:rgba(138,149,165,.15);color:var(--slate);border:1px solid var(--slate);}
+/* .badge-ai — cloud changelog entries imported from the MCP AI sidecar
+   (backlog, 2026-08-12). Purple token badge so AI-made changes read distinctly
+   from owner/editor saves; token-driven so it adapts to both palettes + dark
+   mode. */
+.badge-ai{display:inline-flex;align-items:center;gap:3px;padding:1px 8px;border-radius:999px;font-size:.6rem;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--purple);border:1px solid rgba(var(--purple-rgb),.45);background:rgba(var(--purple-rgb),.12);white-space:nowrap;}
+.badge-ai .ico{width:10px;height:10px;}
+/* ---- Changelog click-to-expand diff panel (backlog, 2026-08-12) ----
+   Every changelog entry carrying field-level diffs gets a caret toggle that
+   reveals the before/after panel. Panel is a solid tile surface (Gate 6.1 —
+   never glass over data), token-driven, capped rows inside. */
+.cl-toggle{appearance:none;border:1px solid var(--border);background:transparent;color:var(--slate);width:22px;height:22px;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;padding:0;transition:all var(--tr);flex-shrink:0;}
+.cl-toggle:hover{color:var(--gold);border-color:var(--gold);}
+.cl-toggle::before{content:'\25B8';font-size:.62rem;line-height:1;transition:transform var(--tr);}
+.cl-toggle.open::before{transform:rotate(90deg);}
+.cl-toggle:focus-visible{outline:2px solid var(--gold);outline-offset:1px;}
+.cl-diffs{flex-basis:100%;min-width:0;margin:2px 0 6px;padding:8px 10px;border:1px dashed var(--border);border-radius:var(--radius);background:var(--tile-bg);font-size:.68rem;}
+.cl-diffs-head{display:grid;grid-template-columns:minmax(120px,1.1fr) minmax(110px,1fr) 16px minmax(110px,1fr);gap:8px;color:var(--slate);font-weight:700;text-transform:uppercase;font-size:.58rem;letter-spacing:.4px;padding-bottom:4px;border-bottom:1px solid var(--border);margin-bottom:4px;}
+.cl-diff{display:grid;grid-template-columns:minmax(120px,1.1fr) minmax(110px,1fr) 16px minmax(110px,1fr);gap:8px;padding:3px 0;border-bottom:1px solid rgba(var(--gold-rgb),.08);align-items:center;}
+.cl-diff:last-of-type{border-bottom:none;}
+.cl-diff-path{font-family:ui-monospace,Consolas,monospace;font-size:.66rem;color:var(--slate);word-break:break-all;min-width:0;}
+.cl-val{font-family:ui-monospace,Consolas,monospace;font-size:.66rem;display:block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;}
+.cl-old{color:var(--danger);opacity:.85;}
+.cl-new{color:var(--green);}
+.cl-absent{font-style:italic;color:var(--slate);opacity:.8;font-size:.64rem;}
+.cl-arr{color:var(--slate);text-align:center;font-size:.6rem;}
+.cl-more{color:var(--slate);font-size:.62rem;font-style:italic;padding:4px 0 0;}
 
 /* ---- RACI ---- */
 .raci-cell{width:46px;height:34px;border-radius:8px;font-weight:800;font-size:.85rem;cursor:pointer;transition:all var(--tr);font-family:inherit;}
@@ -244,11 +379,11 @@ body.focus-mode .focus-ind{display:flex;position:fixed;top:10px;right:10px;backg
 .gb{position:absolute;height:20px;border-radius:var(--radius);background:var(--green);display:flex;align-items:center;padding:0 6px;font-size:.63rem;color:#fff;white-space:nowrap;overflow:hidden;transition:all var(--tr);cursor:pointer;}
 .gb.crit{background:var(--gold);color:var(--on-gold);}
 .gb.od{background:#7f1d1d;color:#fee2e2;}
-@keyframes pulse-a{0%,100%{box-shadow:0 0 0 0 rgba(255,193,7,.4);}50%{box-shadow:0 0 0 6px rgba(255,193,7,0);}}
+@keyframes pulse-a{0%,100%{box-shadow:0 0 0 0 rgba(var(--amber-rgb),.4);}50%{box-shadow:0 0 0 6px rgba(var(--amber-rgb),0);}}
 .gb.pls,.kc.pls{animation:pulse-a 1.5s ease-in-out infinite;}
 .gb.pls{border:1px solid var(--amber);}
 .gb.dn{opacity:.45;}
-.gb.leadtime{background:repeating-linear-gradient(45deg,rgba(212,175,55,.45) 0 6px,rgba(212,175,55,.15) 6px 12px)!important;border:1px dashed var(--gold)!important;color:#0b0c10!important;}
+.gb.leadtime{background:repeating-linear-gradient(45deg,rgba(var(--gold-rgb),.45) 0 6px,rgba(var(--gold-rgb),.15) 6px 12px)!important;border:1px dashed var(--gold)!important;color:#0b0c10!important;}
 .gb.recurring{background:repeating-linear-gradient(-45deg,rgba(59,130,246,.4) 0 6px,rgba(59,130,246,.12) 6px 12px)!important;border:1px dotted #3B82F6!important;color:#0b0c10!important;}
 .gb.lowconf{outline:1.5px dotted var(--amber);outline-offset:1px;}
 .gb.wex{background:repeating-linear-gradient(90deg,rgba(56,189,248,.35) 0 8px,rgba(56,189,248,.12) 8px 16px)!important;border:1px solid rgba(56,189,248,.5)!important;color:#0b0c10!important;}
@@ -355,8 +490,8 @@ body.hl-critical #gantt-labels .gr.hl-dim{opacity:.3;}
 .fw-h.cc{color:var(--gold);}
 .fw-row{display:flex;justify-content:space-between;gap:10px;padding:5px 8px;border-left:3px solid;margin-bottom:3px;font-size:.72rem;align-items:baseline;}
 .fw-row.crit{background:rgba(220,53,69,.05);border-color:var(--danger);}
-.fw-row.nc{background:rgba(255,193,7,.05);border-color:var(--amber);}
-.fw-row.cc{background:rgba(212,175,55,.05);border-color:var(--gold);}
+.fw-row.nc{background:rgba(var(--amber-rgb),.05);border-color:var(--amber);}
+.fw-row.cc{background:rgba(var(--gold-rgb),.05);border-color:var(--gold);}
 .fw-meta{color:var(--slate);font-size:.66rem;white-space:nowrap;}
 .fw-note{font-size:.65rem;color:var(--slate);margin-top:4px;font-style:italic;}
 .fw-empty{font-size:.72rem;color:var(--slate);}
@@ -444,7 +579,7 @@ body.dark-mode .dmaic-chip{background:rgba(255,255,255,.06);}
 .sr-kbd{margin:10px 0;padding:10px 12px;border:1px dashed var(--border);border-radius:8px;font-size:.74rem;color:var(--slate);}
 .sr-kbd .sl{display:flex;align-items:center;gap:6px;color:var(--gold);font-weight:700;margin-bottom:8px;font-size:.76rem;}
 .kbd-grid{display:grid;grid-template-columns:auto 1fr;gap:4px 10px;align-items:center;font-size:.72rem;line-height:1.6;}
-.kbd{display:inline-block;background:rgba(212,175,55,.12);border:1px solid rgba(212,175,55,.35);color:var(--gold);border-radius:4px;padding:0 6px;font-size:.66rem;font-weight:700;font-family:ui-monospace,Consolas,monospace;white-space:nowrap;}
+.kbd{display:inline-block;background:rgba(var(--gold-rgb),.12);border:1px solid rgba(var(--gold-rgb),.35);color:var(--gold);border-radius:4px;padding:0 6px;font-size:.66rem;font-weight:700;font-family:ui-monospace,Consolas,monospace;white-space:nowrap;}
 .meet-empty{font-size:.78rem;color:var(--slate);}
 
 /* ---- DMAIC / KPI / resources-leveling / misc class pass ---- */
@@ -526,12 +661,12 @@ body.gantt-dragging .gb{cursor:grabbing;}
 
 /* ---- WBS keyboard-first (Phase F) ---- */
 .wbs-row{cursor:default;}
-.wbs-row:focus-visible,.wbs-row.wbs-sel{outline:2px solid var(--gold);outline-offset:-2px;background:rgba(212,175,55,.06);}
+.wbs-row:focus-visible,.wbs-row.wbs-sel{outline:2px solid var(--gold);outline-offset:-2px;background:rgba(var(--gold-rgb),.06);}
 .wbs-name-input{width:100%;background:#f8fafc;border:1px solid var(--gold);border-radius:4px;color:var(--text);font-size:.82rem;padding:4px 6px;font-family:inherit;}
 .wbs-empty{text-align:center;color:var(--slate);padding:24px;}
 .wbs-empty>div:first-child{margin-bottom:10px;font-size:.8rem;}
 .btn-wx{background:rgba(56,189,248,.15)!important;border:1px solid rgba(56,189,248,.5)!important;color:#38bdf8!important;}
-.btn-lt{background:rgba(212,175,55,.16)!important;border:1px solid rgba(212,175,55,.55)!important;color:var(--gold)!important;}
+.btn-lt{background:rgba(var(--gold-rgb),.16)!important;border:1px solid rgba(var(--gold-rgb),.55)!important;color:var(--gold)!important;}
 /* WBS lead-time row: Submitted/Expected date cells + explanatory note */
 .wbs-lt-lbl{display:block;font-size:.55rem;color:var(--slate);text-transform:uppercase;letter-spacing:.4px;margin-bottom:2px;}
 .wbs-lt-note{font-size:.64rem;color:var(--slate);font-style:italic;white-space:normal;line-height:1.35;}
@@ -570,7 +705,7 @@ body.readonly-mode .btn[data-action]:not([data-action="showSec"]):not([data-acti
 .kc.pls{border-left-color:var(--amber);}
 .kc.overdue{border-left-color:var(--danger);background:rgba(239,68,68,.06);}
 .kc.drag{opacity:.4;}
-.kc.leadtime{border:1.5px dashed var(--gold)!important;background:rgba(212,175,55,.06)!important;}
+.kc.leadtime{border:1.5px dashed var(--gold)!important;background:rgba(var(--gold-rgb),.06)!important;}
 .kc.recurring{border:1.5px dotted var(--blue)!important;background:rgba(59,130,246,.05)!important;}
 .kc.wex{border-left:3px solid rgba(56,189,248,.7)!important;}
 .kcol.dov{border-color:var(--green);background:rgba(0,155,58,.05);}
@@ -578,7 +713,7 @@ body.readonly-mode .btn[data-action]:not([data-action="showSec"]):not([data-acti
 .cm{font-size:.68rem;color:var(--slate);display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
 
 /* ---- Sprint Panel ---- */
-.sp{background:rgba(212,175,55,.05);border:1px solid rgba(212,175,55,.2);border-radius:var(--radius);padding:14px;margin-bottom:14px;display:flex;align-items:center;gap:18px;flex-wrap:wrap;}
+.sp{background:rgba(var(--gold-rgb),.05);border:1px solid rgba(var(--gold-rgb),.2);border-radius:var(--radius);padding:14px;margin-bottom:14px;display:flex;align-items:center;gap:18px;flex-wrap:wrap;}
 .slb{font-size:.7rem;color:var(--slate);text-transform:uppercase;letter-spacing:.5px;display:block;}
 .slv{font-size:.88rem;font-weight:700;color:var(--gold);}
 
@@ -652,11 +787,11 @@ body.readonly-mode .btn[data-action]:not([data-action="showSec"]):not([data-acti
 /* ---- Scrollbar ---- */
 ::-webkit-scrollbar{width:6px;height:6px;}
 ::-webkit-scrollbar-track{background:var(--canvas);}
-::-webkit-scrollbar-thumb{background:linear-gradient(180deg,rgba(212,175,55,0.45),rgba(212,175,55,0.2));border-radius:3px;}
+::-webkit-scrollbar-thumb{background:linear-gradient(180deg,rgba(var(--gold-rgb),0.45),rgba(var(--gold-rgb),0.2));border-radius:3px;}
 ::-webkit-scrollbar-thumb:hover{background:var(--slate);}
 /* Firefox parity: no ::-webkit-scrollbar there — thin branded scrollbar
    with the same gold thumb / canvas track. */
-*{scrollbar-width:thin;scrollbar-color:rgba(212,175,55,.45) var(--canvas);}
+*{scrollbar-width:thin;scrollbar-color:rgba(var(--gold-rgb),.45) var(--canvas);}
 
 /* ---- Form Elements ---- */
 textarea{resize:vertical;}
@@ -677,7 +812,7 @@ hr.div{border:none;border-top:1px solid var(--border);margin:14px 0;}
 
 /* ---- Notes Expand ---- */
 .nexp{background:none;border:none;color:var(--slate);cursor:pointer;font-size:.72rem;padding:2px 5px;border-radius:4px;}
-.nexp:hover{color:var(--gold);background:rgba(212,175,55,.1);}
+.nexp:hover{color:var(--gold);background:rgba(var(--gold-rgb),.1);}
 .nf{width:100%;background:#f8fafc;border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:.72rem;padding:5px 7px;font-family:inherit;resize:none;margin-top:4px;}
 
 /* ---- Definitions Panel ---- */
@@ -710,31 +845,31 @@ hr.div{border:none;border-top:1px solid var(--border);margin:14px 0;}
 
 /* ---- Badge tags ---- */
 .tt-rec-badge{display:inline-block;background:rgba(59,130,246,.15);color:#3B82F6;border:1px solid #3B82F6;border-radius:3px;padding:0 5px;font-size:.55rem;font-weight:700;margin-left:5px;letter-spacing:.3px;}
-.tt-lead-badge{display:inline-block;background:rgba(212,175,55,.18);color:var(--gold);border:1px solid var(--gold);border-radius:3px;padding:0 5px;font-size:.55rem;font-weight:700;margin-left:5px;letter-spacing:.3px;}
+.tt-lead-badge{display:inline-block;background:rgba(var(--gold-rgb),.18);color:var(--gold);border:1px solid var(--gold);border-radius:3px;padding:0 5px;font-size:.55rem;font-weight:700;margin-left:5px;letter-spacing:.3px;}
 .tt-work-badge{display:inline-block;background:rgba(0,155,58,.15);color:var(--green);border:1px solid var(--green);border-radius:3px;padding:0 5px;font-size:.55rem;font-weight:700;margin-left:5px;letter-spacing:.3px;}
 .float-consumed{color:var(--amber);}
 .float-critical{color:var(--danger);font-weight:700;}
 .wbs-lowconf{border-left:2px dotted var(--amber)!important;}
 .raci-gate{display:inline-block;background:rgba(220,53,69,.20);color:var(--danger);border:1px solid var(--danger);border-radius:50%;padding:0 4px;margin-left:3px;font-size:.6rem;font-weight:700;line-height:1;cursor:help;}
-.wi-sub-upd{color:var(--amber)!important;background:rgba(255,193,7,.08);}
-.wi-date-tag{font-family:ui-monospace,monospace;font-size:.62rem;color:var(--gold);margin-left:6px;background:rgba(212,175,55,.10);padding:1px 5px;border-radius:3px;}
+.wi-sub-upd{color:var(--amber)!important;background:rgba(var(--amber-rgb),.08);}
+.wi-date-tag{font-family:ui-monospace,monospace;font-size:.62rem;color:var(--gold);margin-left:6px;background:rgba(var(--gold-rgb),.10);padding:1px 5px;border-radius:3px;}
 .wi-conf{font-size:.58rem;padding:1px 4px;border-radius:3px;margin-left:4px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;}
-.wi-conf-low{background:rgba(255,193,7,.20);color:var(--amber);border:1px solid var(--amber);}
+.wi-conf-low{background:rgba(var(--amber-rgb),.20);color:var(--amber);border:1px solid var(--amber);}
 .wi-conf-high{background:rgba(0,155,58,.20);color:var(--green);border:1px solid var(--green);}
 .wi-missing-date{color:var(--danger);font-size:.6rem;margin-left:6px;}
 
 /* ---- Indicator ---- */
 .var-pos{color:var(--green);font-weight:700;}
 .var-neg{color:var(--danger);font-weight:700;}
-.dirty-ind{display:none;align-items:center;gap:5px;font-size:.7rem;color:var(--amber);padding:3px 9px;border:1px solid var(--amber);border-radius:100px;background:rgba(255,193,7,0.08);cursor:pointer;transition:all var(--tr);}
-.dirty-ind:hover{background:rgba(255,193,7,0.2);}
-@keyframes pulseAttn{0%,100%{box-shadow:0 0 0 0 rgba(212,175,55,.55);}50%{box-shadow:0 0 0 7px rgba(212,175,55,0);}}
+.dirty-ind{display:none;align-items:center;gap:5px;font-size:.7rem;color:var(--amber);padding:3px 9px;border:1px solid var(--amber);border-radius:100px;background:rgba(var(--amber-rgb),0.08);cursor:pointer;transition:all var(--tr);}
+.dirty-ind:hover{background:rgba(var(--amber-rgb),0.2);}
+@keyframes pulseAttn{0%,100%{box-shadow:0 0 0 0 rgba(var(--gold-rgb),.55);}50%{box-shadow:0 0 0 7px rgba(var(--gold-rgb),0);}}
 .pulse-attn{animation:pulseAttn .6s ease-out 2;}
 @media (prefers-reduced-motion: reduce){.pulse-attn{animation:none;outline:2px solid var(--gold);}}
 .dirty-ind.on{display:inline-flex;}
 .timeline-ind{display:none;align-items:center;gap:5px;font-size:.7rem;padding:3px 9px;border-radius:100px;cursor:pointer;transition:all var(--tr);}
 .timeline-ind.on{display:inline-flex;}
-.timeline-ind.ti-ba{color:var(--amber);border:1px solid var(--amber);background:rgba(255,193,7,.08);}
+.timeline-ind.ti-ba{color:var(--amber);border:1px solid var(--amber);background:rgba(var(--amber-rgb),.08);}
 .timeline-ind.ti-br{color:var(--danger);border:1px solid var(--danger);background:rgba(220,53,69,.08);}
 .timeline-ind:hover{filter:brightness(1.2);}
 
@@ -823,6 +958,21 @@ hr.div{border:none;border-top:1px solid var(--border);margin:14px 0;}
   #app-main{padding:12px;}
   .gw{grid-template-columns:1fr;}
   #drw{width:100%;right:-100%;}
+}
+@media(max-width:768px){
+  /* THEME-SYSTEM-AND-MOBILE-UI-ACTION-PLAN §4.2: the section nav becomes the
+     off-canvas drawer under the header; the hamburger + scrim toggle it. */
+  .nav-btn{display:inline-flex;}
+  .sec-nav{position:fixed;top:0;left:0;bottom:0;width:min(84vw,320px);margin:0;padding:70px 12px 20px;
+    flex-direction:column;align-items:stretch;gap:12px;overflow-y:auto;background:var(--card);
+    border-right:1px solid var(--border);z-index:95;transform:translateX(-105%);
+    transition:transform .24s var(--ease-ios);box-shadow:0 12px 40px rgba(0,0,0,.18);}
+  body.nav-open .sec-nav{transform:translateX(0);}
+  .nav-group{display:flex;flex-direction:column;align-items:stretch;gap:3px;}
+  .nav-group + .nav-group{padding-left:0;margin-left:0;}
+  .nav-group + .nav-group::before{display:none;}
+  .nav-group-label{font-size:.62rem;margin:7px 6px 3px;}
+  .sec-btn{justify-content:flex-start;width:100%;padding:9px 12px;font-size:.85rem;border-radius:10px;}
 }
 @media(max-width:520px){
   .kb{grid-template-columns:1fr;}
@@ -913,7 +1063,7 @@ hr.div{border:none;border-top:1px solid var(--border);margin:14px 0;}
 .sp-in-bb{background:transparent;border:none;border-bottom:1px solid var(--border);color:var(--gold);font-weight:700;font-size:.88rem;width:110px;}
 /* budget envelope input + tint card */
 .bud-in{background:#f8fafc;border:1px solid var(--border);border-radius:5px;color:var(--gold);font-size:1.1rem;font-weight:700;padding:7px 12px;width:180px;}
-.card-tint{background:rgba(212,175,55,.06);border-color:rgba(212,175,55,.3);margin-bottom:14px;}
+.card-tint{background:rgba(var(--gold-rgb),.06);border-color:rgba(var(--gold-rgb),.3);margin-bottom:14px;}
 .bud-grid5{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:14px;}
 .lbl-up{font-size:.68rem;color:var(--slate);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;}
 .bud-note{font-size:.72rem;color:var(--slate);max-width:340px;line-height:1.5;}
@@ -1309,7 +1459,7 @@ body.dark-mode .ai-seg-btn.is-on{background:rgba(255,255,255,.08);}
 .ai-copy-btn:hover{color:var(--gold);border-color:var(--border);background:var(--tile-bg);}
 .ai-copy-btn.is-copied{color:var(--green);border-color:var(--green);background:rgba(16,185,129,.1);}
 .ai-trace-inline{font-size:.6rem;color:var(--slate);margin-top:5px;word-break:break-word;line-height:1.45;}
-.ai-fallback{font-size:.65rem;font-weight:600;color:var(--amber);background:rgba(255,193,7,.14);border:1px solid var(--amber);border-radius:8px;padding:4px 9px;margin-top:7px;display:inline-flex;align-items:center;gap:5px;line-height:1.35;}
+.ai-fallback{font-size:.65rem;font-weight:600;color:var(--amber);background:rgba(var(--amber-rgb),.14);border:1px solid var(--amber);border-radius:8px;padding:4px 9px;margin-top:7px;display:inline-flex;align-items:center;gap:5px;line-height:1.35;}
 .ai-typing{display:inline-flex;gap:5px;align-items:center;padding:14px 18px;}
 .ai-typing span{width:7px;height:7px;border-radius:50%;background:var(--slate);animation:aiTyping 1.2s ease-in-out infinite;}
 .ai-typing span:nth-child(2){animation-delay:.16s;}
@@ -1401,7 +1551,7 @@ body.dark-mode .ai-byo-key{background:rgba(0,0,0,.25);}
 /* Rank 3.4 — viewport-aware layout detection: the one-time dismissible
    prompt bar + the simplified stacked presentation (never hides function,
    restructures presentation; .vp-full restores the wide layout). */
-.vp-prompt{display:flex;flex-wrap:wrap;align-items:center;gap:10px;justify-content:space-between;padding:10px 14px;border:1px solid var(--gold);border-radius:8px;background:rgba(212,175,55,.08);margin-bottom:14px;font-size:.74rem;}
+.vp-prompt{display:flex;flex-wrap:wrap;align-items:center;gap:10px;justify-content:space-between;padding:10px 14px;border:1px solid var(--gold);border-radius:8px;background:rgba(var(--gold-rgb),.08);margin-bottom:14px;font-size:.74rem;}
 .vp-prompt-txt{flex:1 1 auto;color:var(--text);}
 .vp-prompt-actions{display:flex;gap:8px;}
 .panel.vp-simple .vp-prompt{margin-bottom:10px;}
@@ -1420,7 +1570,7 @@ body.dark-mode .ai-byo-key{background:rgba(0,0,0,.25);}
 .panel.vp-full table.dt tr{display:table-row;border:none;padding:0;}
 .panel.vp-full table.dt td{display:table-cell;text-align:left;}
 .panel.vp-full table.dt td::before{content:none;}
-body.dark-mode .vp-prompt{background:rgba(212,175,55,.12);}
+body.dark-mode .vp-prompt{background:rgba(var(--gold-rgb),.12);}
 body.dark-mode .panel.vp-simple table.dt tr{background:rgba(255,255,255,.04);}
 .ai-ctx{min-height:150px;}
 .ai-actions{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;}
@@ -1531,7 +1681,7 @@ body.glass-premium.dark-mode .mouse-glow{background:radial-gradient(circle,rgba(
 .sync-suggest{
   display:flex;align-items:center;gap:8px;flex-wrap:wrap;
   margin:6px 0 4px;padding:8px 10px;font-size:.72rem;line-height:1.5;
-  background:rgba(212,175,55,.08);border:1px solid rgba(212,175,55,.35);
+  background:rgba(var(--gold-rgb),.08);border:1px solid rgba(var(--gold-rgb),.35);
   border-radius:var(--radius);color:var(--text);
 }
 body.dark-mode .sync-suggest{background:rgba(245,158,11,.10);border-color:rgba(245,158,11,.4);}

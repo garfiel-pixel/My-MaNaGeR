@@ -26,9 +26,11 @@
   --gold:          #E8B84A;
   --gold-hover:    #F5C84A;
   --gold-deep:     #D4A017;
+  --gold-rgb:      232,184,74;  /* rgba(var(--gold-rgb),a) — tokenized gold fills */
   --teal:          #14B8A6;
   --teal-deep:     #0D9488;
   --danger:        #EF4444;
+  --purple:        #8B5CF6;
 
   /* text */
   --text-primary:  #0F172A;
@@ -60,6 +62,58 @@
   --fs-tiny: .74rem;
 }
 
+/* ============================================================
+   PALETTE + DARK THEMES — THEME-SYSTEM-AND-MOBILE-UI-ACTION-PLAN §2.2/§3
+   ------------------------------------------------------------
+   The active palette lives on <html data-theme="default|cyan"> (applied
+   pre-paint by js/mmgr-theme.js — loaded on every marketing page). Cyan maps
+   the fluorescent-blue palette onto the SAME token names below, so no
+   component rule changes. Device dark mode (body.dark-mode, same localStorage
+   slot the app uses) gets its own coherent token set. Default = current gold
+   system; cyan is an alternative, never a replacement.
+
+   FUTURE THEME RECIPE (plan §8): copy a block below, rename the selector to
+   [data-theme="name"], override the same tokens, add a <button data-pal="name">
+   to the header picker. Nothing else changes.
+   ============================================================ */
+html[data-theme="cyan"]{
+  --bg:#eefafc;--bg-warm:#e2f5f8;--header-navy:#001619;--card:#ffffff;--border:#b8e8ef;
+  --gold:#0f766e;--gold-hover:#0d9488;--gold-deep:#0b5d57;--gold-rgb:15,118,110;
+  --teal:#0d9488;--teal-deep:#0f766e;--danger:#dc2626;--purple:#7c3aed;
+  --text-primary:#001619;--text-secondary:#3d6b73;--on-navy:#f8fafc;--on-gold:#ffffff;
+  --glass-tint:rgba(0,22,25,.72);--glass-tint-soft:rgba(0,22,25,.55);
+  --glass-specular:linear-gradient(180deg,rgba(255,255,255,.16),rgba(255,255,255,.03) 42%,rgba(255,255,255,0));
+  --glass-edge:1px solid rgba(255,255,255,.16);
+}
+html[data-theme="cyan"] body.dark-mode{
+  --bg:#001619;--bg-warm:#06262b;--header-navy:#001013;--card:#0a2a2e;--border:rgba(80,232,244,.18);
+  --gold:#50e8f4;--gold-hover:#7beef9;--gold-deep:#2bc4d4;--gold-rgb:80,232,244;
+  --teal:#2dd4bf;--teal-deep:#14b8a6;--danger:#f87171;--purple:#a78bfa;
+  --text-primary:#c7f8fe;--text-secondary:#7ab8c0;--on-navy:#c7f8fe;--on-gold:#001619;
+  --glass-tint:rgba(0,22,25,.78);--glass-tint-soft:rgba(0,22,25,.62);
+  --glass-specular:linear-gradient(180deg,rgba(80,232,244,.10),rgba(80,232,244,.02) 42%,rgba(80,232,244,0));
+  --glass-edge:1px solid rgba(80,232,244,.22);
+}
+/* Device dark mode for the public pages (helper applies body.dark-mode when the
+   shared mmgr_theme slot is 'dark') — coherent slate set, gold accent retained. */
+body.dark-mode{
+  --bg:#0b1120;--bg-warm:#0f172a;--header-navy:#0b1120;--card:#131c2e;--border:#243349;
+  --gold:#f5c84a;--gold-hover:#ffd970;--gold-deep:#d4a017;--gold-rgb:245,200,74;
+  --teal:#2dd4bf;--teal-deep:#14b8a6;--danger:#f87171;--purple:#a78bfa;
+  --text-primary:#e2e8f0;--text-secondary:#94a3b8;--on-navy:#e2e8f0;--on-gold:#0f172a;
+  --glass-tint:rgba(2,6,17,.8);--glass-tint-soft:rgba(2,6,17,.6);
+  --glass-specular:linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,.02) 42%,rgba(255,255,255,0));
+  --glass-edge:1px solid rgba(255,255,255,.12);
+}
+
+/* Color-theme palette picker (header, next to the CTA) */
+.pal-switch{display:inline-flex;align-items:center;gap:2px;padding:3px;margin-right:6px;border-radius:100px;background:rgba(255,255,255,.08);border:var(--glass-edge);}
+.pal-btn{appearance:none;border:none;background:transparent;color:rgba(248,250,252,.72);font:inherit;font-size:.72rem;font-weight:600;line-height:1;padding:5px 12px;border-radius:100px;cursor:pointer;transition:color var(--tr),background var(--tr);}
+.pal-btn:hover{color:#fff;}
+.pal-btn:focus-visible{outline:2px solid var(--gold);outline-offset:1px;}
+.pal-btn[aria-pressed="true"]{background:var(--gold);color:var(--on-gold);}
+@media (max-width:560px){.header-inner .pal-switch{display:none;}}
+
 /* ---------- 2. Reset + base ---------- */
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 html{scroll-behavior:smooth;scroll-snap-type:none;}
@@ -77,7 +131,7 @@ a{color:inherit;text-decoration:none;}
 ul,ol{list-style:none;}
 button{font:inherit;cursor:pointer;}
 :focus-visible{outline:2px solid var(--gold);outline-offset:2px;border-radius:4px;}
-::selection{background:rgba(232,184,74,.35);color:var(--text-primary);}
+::selection{background:rgba(var(--gold-rgb),.35);color:var(--text-primary);}
 
 .skip-link{
   position:absolute;left:-9999px;top:0;z-index:200;
@@ -127,7 +181,7 @@ svg.ico use{fill:inherit;stroke:inherit;}
 /* specular top hairline — the "lit edge" of the pane */
 .site-header::before{
   content:"";position:absolute;top:0;left:0;right:0;height:1px;
-  background:linear-gradient(90deg,transparent,rgba(255,255,255,.55),rgba(232,184,74,.55),transparent);
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.55),rgba(var(--gold-rgb),.55),transparent);
   pointer-events:none;
 }
 .header-inner{
@@ -141,7 +195,7 @@ svg.ico use{fill:inherit;stroke:inherit;}
   width:38px;height:38px;border-radius:11px;flex-shrink:0;
   display:grid;place-items:center;
   color:var(--on-gold);background:var(--gold);
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.5),0 4px 12px rgba(232,184,74,.35);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.5),0 4px 12px rgba(var(--gold-rgb),.35);
 }
 .brand-mark svg{width:21px;height:21px;}
 .brand b{font-weight:800;}
@@ -183,12 +237,12 @@ svg.ico use{fill:inherit;stroke:inherit;}
 .btn:active{transform:scale(.96);}
 .btn-gold{
   background:var(--gold);color:var(--on-gold);
-  box-shadow:0 6px 18px rgba(232,184,74,.35),inset 0 1px 0 rgba(255,255,255,.45);
+  box-shadow:0 6px 18px rgba(var(--gold-rgb),.35),inset 0 1px 0 rgba(255,255,255,.45);
 }
 .btn-gold:hover{
   background:var(--gold-hover);
   transform:translateY(-1px);
-  box-shadow:0 10px 26px rgba(232,184,74,.45),inset 0 1px 0 rgba(255,255,255,.55);
+  box-shadow:0 10px 26px rgba(var(--gold-rgb),.45),inset 0 1px 0 rgba(255,255,255,.55);
 }
 .btn-gold:active{transform:translateY(0) scale(.97);}
 .btn-ghost-light{
@@ -267,7 +321,7 @@ svg.ico use{fill:inherit;stroke:inherit;}
 .hero-overlay{
   position:absolute;inset:0;pointer-events:none;z-index:1;
   background:
-    radial-gradient(52% 70% at 82% 6%,rgba(232,184,74,.18),transparent 62%),
+    radial-gradient(52% 70% at 82% 6%,rgba(var(--gold-rgb),.18),transparent 62%),
     radial-gradient(44% 64% at 12% 90%,rgba(20,184,166,.14),transparent 60%),
     linear-gradient(90deg,rgba(15,23,42,.94) 0%,rgba(15,23,42,.85) 38%,rgba(15,23,42,.68) 74%,rgba(15,23,42,.82) 100%);
 }
@@ -342,7 +396,7 @@ svg.ico use{fill:inherit;stroke:inherit;}
   padding:20px 18px;text-align:center;
   transition:transform var(--tr),border-color var(--tr),box-shadow var(--tr);
 }
-.aud-item:hover{transform:translateY(-3px);border-color:rgba(232,184,74,.6);box-shadow:0 12px 28px rgba(15,23,42,.08);}
+.aud-item:hover{transform:translateY(-3px);border-color:rgba(var(--gold-rgb),.6);box-shadow:0 12px 28px rgba(15,23,42,.08);}
 .aud-item .ico{width:24px;height:24px;color:var(--gold-deep);margin:0 auto 10px;}
 .aud-item b{display:block;font-size:.9rem;font-weight:700;margin-bottom:4px;}
 .aud-item span{font-size:.76rem;color:var(--text-secondary);line-height:1.45;display:block;}
@@ -360,15 +414,15 @@ svg.ico use{fill:inherit;stroke:inherit;}
 }
 .fcard:hover{
   transform:translateY(-5px);
-  border-color:rgba(232,184,74,.65);
+  border-color:rgba(var(--gold-rgb),.65);
   box-shadow:0 4px 8px rgba(15,23,42,.05),0 22px 44px rgba(15,23,42,.1);
 }
 .fcard .fc-icon{
   width:46px;height:46px;border-radius:13px;
   display:grid;place-items:center;
   color:var(--gold-deep);
-  background:rgba(232,184,74,.14);
-  border:1px solid rgba(232,184,74,.28);
+  background:rgba(var(--gold-rgb),.14);
+  border:1px solid rgba(var(--gold-rgb),.28);
   transition:background var(--tr),color var(--tr),transform var(--tr);
 }
 .fcard .fc-icon .ico{width:22px;height:22px;}
@@ -390,13 +444,13 @@ svg.ico use{fill:inherit;stroke:inherit;}
   box-shadow:0 1px 2px rgba(15,23,42,.04),0 10px 26px rgba(15,23,42,.05);
   transition:transform var(--tr),border-color var(--tr);
 }
-.step:hover{transform:translateY(-4px);border-color:rgba(232,184,74,.55);}
+.step:hover{transform:translateY(-4px);border-color:rgba(var(--gold-rgb),.55);}
 .step::before{
   counter-increment:step;
   content:counter(step,decimal-leading-zero);
   position:absolute;top:-16px;right:22px;
   font-size:3rem;font-weight:800;letter-spacing:-.03em;line-height:1;
-  color:rgba(232,184,74,.22);
+  color:rgba(var(--gold-rgb),.22);
 }
 .step .st-icon{
   width:40px;height:40px;border-radius:11px;margin-bottom:16px;
@@ -412,7 +466,7 @@ svg.ico use{fill:inherit;stroke:inherit;}
 .guide-band{
   position:relative;overflow:hidden;
   background:
-    radial-gradient(50% 90% at 88% 10%,rgba(232,184,74,.14),transparent 60%),
+    radial-gradient(50% 90% at 88% 10%,rgba(var(--gold-rgb),.14),transparent 60%),
     radial-gradient(45% 80% at 8% 100%,rgba(20,184,166,.12),transparent 60%),
     var(--header-navy);
   color:var(--on-navy);border-radius:var(--radius-lg);
@@ -471,7 +525,7 @@ svg.ico use{fill:inherit;stroke:inherit;}
   margin-bottom:12px;overflow:hidden;
   transition:border-color var(--tr),box-shadow var(--tr);
 }
-.faq details[open]{border-color:rgba(232,184,74,.55);box-shadow:0 12px 30px rgba(15,23,42,.07);}
+.faq details[open]{border-color:rgba(var(--gold-rgb),.55);box-shadow:0 12px 30px rgba(15,23,42,.07);}
 .faq summary{
   list-style:none;cursor:pointer;
   display:flex;align-items:center;justify-content:space-between;gap:16px;
@@ -481,7 +535,7 @@ svg.ico use{fill:inherit;stroke:inherit;}
 .faq summary .plus{
   width:26px;height:26px;border-radius:8px;flex-shrink:0;
   display:grid;place-items:center;
-  background:rgba(232,184,74,.16);color:var(--gold-deep);
+  background:rgba(var(--gold-rgb),.16);color:var(--gold-deep);
   transition:transform var(--tr),background var(--tr);
 }
 .faq summary .plus svg{width:14px;height:14px;transition:transform var(--tr);}
@@ -515,7 +569,7 @@ svg.ico use{fill:inherit;stroke:inherit;}
 /* ---------- 13. Inner pages (about / features / contact) ---------- */
 .page-hero{
   background:
-    radial-gradient(46% 70% at 85% 0%,rgba(232,184,74,.14),transparent 62%),
+    radial-gradient(46% 70% at 85% 0%,rgba(var(--gold-rgb),.14),transparent 62%),
     var(--header-navy);
   color:var(--on-navy);padding:74px 0 60px;
 }
@@ -546,10 +600,10 @@ svg.ico use{fill:inherit;stroke:inherit;}
   padding:26px;display:flex;gap:16px;align-items:flex-start;
   transition:transform var(--tr),border-color var(--tr),box-shadow var(--tr);
 }
-.contact-tile:hover{transform:translateY(-3px);border-color:rgba(232,184,74,.55);box-shadow:0 14px 34px rgba(15,23,42,.08);}
+.contact-tile:hover{transform:translateY(-3px);border-color:rgba(var(--gold-rgb),.55);box-shadow:0 14px 34px rgba(15,23,42,.08);}
 .contact-tile .ct-icon{
   width:44px;height:44px;border-radius:12px;flex-shrink:0;
-  display:grid;place-items:center;background:rgba(232,184,74,.14);color:var(--gold-deep);
+  display:grid;place-items:center;background:rgba(var(--gold-rgb),.14);color:var(--gold-deep);
 }
 .contact-tile .ct-icon .ico{width:21px;height:21px;}
 .contact-tile h3{font-size:.98rem;font-weight:700;margin-bottom:5px;}
@@ -558,7 +612,7 @@ svg.ico use{fill:inherit;stroke:inherit;}
 .contact-tile a:hover{text-decoration:underline;}
 .placeholder-note{
   margin-top:18px;font-size:.8rem;color:var(--text-secondary);
-  background:rgba(232,184,74,.1);border:1px dashed rgba(212,160,23,.4);
+  background:rgba(var(--gold-rgb),.1);border:1px dashed rgba(212,160,23,.4);
   border-radius:var(--radius-sm);padding:12px 16px;
 }
 
@@ -573,7 +627,7 @@ svg.ico use{fill:inherit;stroke:inherit;}
 .feature-head .f-icon{
   width:46px;height:46px;border-radius:13px;flex-shrink:0;
   display:grid;place-items:center;
-  color:var(--gold-deep);background:rgba(232,184,74,.14);border:1px solid rgba(232,184,74,.28);
+  color:var(--gold-deep);background:rgba(var(--gold-rgb),.14);border:1px solid rgba(var(--gold-rgb),.28);
 }
 .feature-head .f-icon .ico{width:22px;height:22px;}
 .feature h2{font-size:1.28rem;font-weight:800;letter-spacing:-.01em;line-height:1.2;margin:0 0 4px;}
@@ -660,7 +714,7 @@ svg.ico use{fill:inherit;stroke:inherit;}
 .scroll-spy a.active .spy-stick{
   height:28px;
   background:var(--gold);
-  box-shadow:0 0 12px rgba(232,184,74,.45);
+  box-shadow:0 0 12px rgba(var(--gold-rgb),.45);
 }
 .spy-label{
   font-size:.68rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;

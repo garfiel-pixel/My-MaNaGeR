@@ -62,5 +62,10 @@
 <symbol id="i-compass" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/></symbol>
 <symbol id="i-cursor" viewBox="0 0 24 24"><path d="M5 3l6.5 17 2.2-6.8L20.5 11z"/></symbol>
 <symbol id="i-phone" viewBox="0 0 24 24"><path d="M6.5 3.5h3l1.5 4-2 1.7a12 12 0 0 0 5.3 5.3l1.7-2 4 1.5v3a1.5 1.5 0 0 1-1.6 1.5A16.5 16.5 0 0 1 5 6.1 1.5 1.5 0 0 1 6.5 3.5z"/></symbol>
+<symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+<symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 8.5-7 10-4-1.5-7-5.5-7-10V6l7-3z"/><path d="M9.5 12.5l2 2 3.5-4"/></symbol>
+<symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+<symbol id="i-palette" viewBox="0 0 24 24"><path d="M12 3a9 9 0 0 0 0 18c1.5 0 2-1 2-2 0-1.5-1.5-1.5-1.5-3 0-1.5 1-2.5 2.5-2.5H16a5 5 0 0 0 5-5c0-3-4-5.5-9-5.5z"/><circle cx="7.5" cy="11" r="1"/><circle cx="10" cy="7.5" r="1"/><circle cx="14.5" cy="7.5" r="1"/></symbol>
+<symbol id="i-palette" viewBox="0 0 24 24"><path d="M12 3a9 9 0 0 0 0 18h1.5a2 2 0 0 0 0-4H12a2 2 0 0 1 0-4h7a2 2 0 0 0 2-2A9 9 0 0 0 12 3z"/><circle cx="7.5" cy="10.5" r="0.6" fill="currentColor" stroke="none"/><circle cx="10.5" cy="7.5" r="0.6" fill="currentColor" stroke="none"/><circle cx="14.5" cy="7.5" r="0.6" fill="currentColor" stroke="none"/></symbol>
 </defs>
 </svg>

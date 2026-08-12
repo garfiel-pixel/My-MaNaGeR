@@ -70,7 +70,7 @@ var MMGR = window.MMGR || {};
   };
 
   function raciCellBg(v) {
-    return { R: 'rgba(0,155,58,.18)', A: 'rgba(212,175,55,.20)', C: 'rgba(59,130,246,.18)', I: 'rgba(138,149,165,.16)', '': 'rgba(0,0,0,.15)' }[v] || 'rgba(0,0,0,.15)';
+    return { R: 'rgba(0,155,58,.18)', A: 'rgba(var(--gold-rgb),.20)', C: 'rgba(59,130,246,.18)', I: 'rgba(138,149,165,.16)', '': 'rgba(0,0,0,.15)' }[v] || 'rgba(0,0,0,.15)';
   }
 
   function raciCellFg(v) {

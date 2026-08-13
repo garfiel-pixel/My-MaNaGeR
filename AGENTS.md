@@ -74,6 +74,12 @@ How to load: use your skill-loading mechanism on the skill **name** below
    Skills run with full agent permissions — review before use.
 5. **Run `npm run verify`** (CSP + service-worker checks) before deploying, and
    relevant `qa-*.cjs` harnesses after non-trivial changes.
+6. **Commit messages follow Conventional Commits** — `type(scope): short
+   professional subject` (types: `feat`, `fix`, `chore`, `test`, `docs`,
+   `refactor`, `perf`, `build`, `ci`, `revert`; subject ≤ 72 chars, imperative
+   mood, no trailing period, detail goes in the body). Enforced by the
+   `.githooks/commit-msg` hook — see `CONTRIBUTING.md` for the full convention
+   and the `--no-verify` escape hatch.
 
 ## Editing workflow
 

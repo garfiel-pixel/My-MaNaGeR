@@ -1,0 +1,54 @@
+#!/usr/bin/env sh
+# commit-msg hook — enforce the Conventional Commits convention.
+# See CONTRIBUTING.md ("Commit messages"). Zero dependencies: plain POSIX sh.
+# One-off bypass:  git commit --no-verify
+
+msg_file="$1"
+[ -r "$msg_file" ] || exit 0
+
+subject="$(sed -n '1p' "$msg_file")"
+
+# Skip merge / revert / fixup! / squash! commits and empty subjects.
+case "$subject" in
+  "Merge "*|"Revert "*|"fixup! "*|"squash! "*|"") exit 0 ;;
+esac
+
+fail() {
+  echo "commit-msg: $1" >&2
+  echo "commit-msg: expected 'type(scope): subject' — e.g. 'fix: clear AI question input after successful send'." >&2
+  echo "commit-msg: types: feat, fix, chore, test, docs, refactor, perf, build, ci, revert. See CONTRIBUTING.md." >&2
+  echo "commit-msg: bypass for a one-off with:  git commit --no-verify" >&2
+  exit 1
+}
+
+len="$(printf '%s' "$subject" | wc -c)"
+[ "$len" -le 72 ] || fail "subject line is $len chars (max 72)."
+
+case "$subject" in
+  *.) fail "subject must not end with a period." ;;
+esac
+
+# Type must be one of the allowed words, with an optional lowercase scope,
+# e.g. feat(cloud): ... or feat(cloud)!: ...
+base="${subject%%:*}"
+case "$base" in
+  *"("*)
+    base="${base%%\(*}"
+    ;;
+esac
+base="${base%%!*}"
+
+case "$base" in
+  feat|fix|chore|test|docs|refactor|perf|build|ci|revert) ;;
+  *) fail "unknown or missing type in '$base'." ;;
+esac
+
+case "$subject" in
+  *": "*) ;;
+  *) fail "missing ': ' separator after the type." ;;
+esac
+
+rest="${subject#*: }"
+[ -n "$rest" ] || fail "missing subject after 'type: '."
+
+exit 0

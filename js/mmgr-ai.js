@@ -1339,14 +1339,14 @@ var MMGR = window.MMGR || {};
   // with a ladder).
   function fallbackBadgeHtml(tier, model, fellBackFrom) {
     if (tier !== 'cloud' || !fellBackFrom || !model || fellBackFrom === model) return '';
-    return '<div class="ai-fallback" role="status">⬇ Fell back to <strong>' + escHtml(model) + '</strong> — ' + escHtml(fellBackFrom) + ' hit its rate limit</div>';
+    return '<div class="ai-fallback" role="status"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-down"></use></svg> Fell back to <strong>' + escHtml(model) + '</strong> — ' + escHtml(fellBackFrom) + ' hit its rate limit</div>';
   }
 
   function botBubbleHtml(textHtml, metaHtml, badgeHtml, traceHtml) {
     return botAvatar() + '<div class="ai-bot-body"><div class="ai-text">' + textHtml + '</div>' + (metaHtml || '') + (badgeHtml || '') + (traceHtml || '') + '</div>';
   }
   function botMeta(engine, copyHtml) {
-    return '<div class="ai-meta"><span>⚡ ' + escHtml(engine) + '</span>' + (copyHtml || '') + '</div>';
+    return '<div class="ai-meta"><span><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-zap"></use></svg> ' + escHtml(engine) + '</span>' + (copyHtml || '') + '</div>';
   }
   // AI-WINDOW-POLISH: every assistant bubble carries a per-answer Copy button
   // in its meta row. The raw text rides on the bubble's dataset (set via DOM

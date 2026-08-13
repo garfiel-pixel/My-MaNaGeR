@@ -95,6 +95,16 @@ where you left off, the same level of precision used throughout this project's o
 directive documents.
 
 **Follow the same standing rules already established for this project:**
+- ⛔ **NO EMOJI ON ANY WEB PAGE — HARD RULE (owner, 2026-08-13).** Every served page
+  (index/features/about/contact/app/project/admin/dashboard/seed-test/field-guide/monolith)
+  and every JS string that renders into a page must contain ZERO emoji glyphs. Icons are
+  SVG only — sprite symbols (`<svg class="ico"><use href="css/mmgr-icons.svg#i-..."></use></svg>`)
+  on the app pages, explicit inline `<svg>` on standalone pages (field-guide), and the
+  monolith's own inlined sprite. The "higher form of SVG" = a centralized symbol sprite,
+  never per-icon duplicated paths. Prose describing a button names it ("the run button"),
+  it does not draw a glyph. When a page gains an icon that doesn't exist yet, ADD a symbol
+  to the sprite — never an emoji. Emojis in internal docs (md/json) are fine; served pages
+  are not. New pages must pass the emoji scan before merging.
 - A passed verification check is not a pause point — proceed to the next item once a
   check passes, don't stop to ask again.
 - Run local `wrangler dev` end-to-end tests plus the full `qa-*.cjs` battery before
@@ -537,6 +547,16 @@ Format: date/session marker, what was completed (with file/line specifics), what
 in-progress and exactly where it stopped, what's next.
 
 ### Log entries (most recent at top)
+
+**2026-08-13 — Session: NO-EMOJI-SVG-ONLY — every emoji glyph scrubbed from the served pages; icons are SVG sprite symbols; the rule is now a hard standing rule.**
+Per the owner ("no emojis in my web page, none at all. I wanna see SVG and if there's a higher form of SVG that exists, we're going to need that as well. See ya."): audited all served pages + page-rendering JS for emoji glyphs (scan covers U+1F000–1FAFF, 2600–27BF, 2B00–2BFF, FE0F, 1F1E6–1F1FF). Result: marketing pages were already clean; 26 page-facing glyphs found and ALL replaced:
+- **app.html** — backup-passphrase placeholder "🔒 backup passphrase" → "Backup passphrase" (a placeholder cannot hold SVG; the lock affordance lives in the field's title).
+- **js/mmgr-ai.js** — AI-window meta ⚡ → sprite `i-zap`; fallback chip ⬇ → sprite `i-arrow-down` (both .ai-meta/.ai-fallback flex chips — verified aligned).
+- **js/mmgr-cloud.js** — overwrite heads-up ⚠ → clean text (setStatus writes via textContent — a live region; text-only is more accessible than an aria-hidden glyph + text).
+- **worker.js** — ⛔ in the stripStateSecrets comment → plain text (comment only).
+- **mymanager-field-guide.html** — ☰ menu button → inline SVG hamburger (the page's own convention: explicit-size inline `<svg>`); two "⚠ ALERT" cards → inline alert-triangle SVG + ALERT; ✦/⚡ prose → "floating AI button" / "run button"; "Copied ✓" → "Copied" (inline-script change → CSP hash regenerated).
+- **monolith reference** — 🆕 changelog rows → inlined-sprite `i-sparkle`; 🌧/⚠/🔄/✓/🖨/🔗/📝/✕/🟡/🏁 → sprite icons (where a UI glyph) or plain text/prose (FAQ, comments, exports) → inline-script changes → CSP hash regenerated.
+CSP: mymanager-field-guide #1 `l7T1…Bk=`→`Axkd…bCc=` and monolith #2 `3Tjc…nk=`→`Mvj9…DHQ=` synced in worker.js + serve.cjs (verify:csp 11/11). SW mmgr-shell-v80→v81. VERIFICATION: re-scan shows ZERO emoji in every .html/.js (remaining hits are internal docs only); node --check clean; npm run verify GREEN (CSP 11/11, SW v81, 16/16 skills); qa-full 171/171; qa-ai AI23_GATE PASS (AI-window meta/fallback paths); browser (field-guide menu SVG + 2 alert icons + Copy button, app.html placeholder, zero console errors). Standing rule recorded above (MANDATORY INSTRUCTION) + AGENTS.md rule 7.
 
 **2026-08-13 — Session: SEC-NAV-ANCHOR — the section-nav tab row was floating in mid-air; grounded as a cohesive card under the caption line.**
 Per the owner's UI-gap report (the row of small tabs like Stakeholders/Changes/Decision Log sat detached — anchored to neither the horizontal line under the "…View" caption nor a containing block): the geometry confirmed it — `.vl` caption line ended at y=108 and `.sec-nav` started 14px below on bare canvas (nav bg = page canvas, no border/container). FIXED (css/mmgr.css): desktop-only `@media(min-width:769px)` gives `.sec-nav` a solid card — `background:var(--card)` (Gate 6.1 dense-content surface), `1px solid var(--border)`, `var(--radius)`, `padding:10px 12px` — and `.vl` margin-bottom 14→10px so the card sits snug against the caption line (the tabs now read as one enclosed block with the line above, in light AND dark mode — dark card rgb(18,20,28) matches the dark theme). Mobile untouched by construction: the ≤768px off-canvas drawer rule (own background/border-right/radius 0) still wins — verified at 375px (position fixed, translateX off-canvas, radius 0). Desktop sidebar #app-sidebar has no .sec-nav class — unaffected. sw.js mmgr-shell-v79→v80. VERIFICATION: geometry re-measured in browser (gap 14→10px, navBg #ffffff light / rgb(18,20,28) dark, border 1px solid, radius 8px); sticky pin still flush at top:64px (= header bottom) on scroll; zero console errors; npm run verify GREEN (CSP 11/11 unchanged, SW v80 > 47 assets, 16/16 skills); qa-full.cjs 171/171 (nav-groups/sec-btns/active-pill gates all pass with the card treatment). Committed + pushed.

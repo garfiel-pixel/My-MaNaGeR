@@ -495,7 +495,7 @@ footer{padding:70px 64px 46px;position:relative;}
 
 <div class="mobile-bar">
   <b>MY MANAGER — FIELD GUIDE</b>
-  <button id="menuBtn" aria-label="Open sheet index">☰</button>
+  <button id="menuBtn" aria-label="Open sheet index"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 7H20M4 12H20M4 17H20" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
 </div>
 <div class="sidebar-scrim" id="scrim"></div>
 
@@ -892,8 +892,8 @@ footer{padding:70px 64px 46px;position:relative;}
         <p class="prose">Rows and columns pull live from your WBS tasks and your Resources/Stakeholders lists — add a person or task elsewhere and it appears here with nothing to re-enter.</p>
         <div class="grid grid-3" style="margin-top:16px">
           <div class="card"><span class="cnum">CLICK</span><h4>Cycle a cell</h4><p>Click to move Responsible → Accountable → Consulted → Informed → blank. Right-click, or Backspace with the cell focused, steps back.</p></div>
-          <div class="card"><span class="cnum">⚠ ALERT</span><h4>External Accountable</h4><p>Flags when the person marked Accountable on a task is an external Stakeholder rather than an internal Resource — usually worth double-checking.</p></div>
-          <div class="card"><span class="cnum">⚠ ALERT</span><h4>Overload warning</h4><p>Flags any task with nobody Accountable, and any person Accountable for more than 5 tasks — a possible bottleneck worth redistributing.</p></div>
+          <div class="card"><span class="cnum"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3.5L21.5 20H2.5L12 3.5Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M12 10V14.6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="17.4" r="0.7" fill="currentColor"/></svg> ALERT</span><h4>External Accountable</h4><p>Flags when the person marked Accountable on a task is an external Stakeholder rather than an internal Resource — usually worth double-checking.</p></div>
+          <div class="card"><span class="cnum"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3.5L21.5 20H2.5L12 3.5Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M12 10V14.6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="17.4" r="0.7" fill="currentColor"/></svg> ALERT</span><h4>Overload warning</h4><p>Flags any task with nobody Accountable, and any person Accountable for more than 5 tasks — a possible bottleneck worth redistributing.</p></div>
         </div>
       </div>
     </section>
@@ -1151,11 +1151,11 @@ Date: ____________  Focus: ____________</pre>
 
       <h3 class="h-sub">The three tiers</h3>
       <div class="grid grid-3">
-        <div class="card bracket"><span class="cnum">OFF</span><h4>Off</h4><p>The assistant is disabled and the floating ✦ button is hidden. Everything else in the app is untouched.</p></div>
+        <div class="card bracket"><span class="cnum">OFF</span><h4>Off</h4><p>The assistant is disabled and the floating AI button is hidden. Everything else in the app is untouched.</p></div>
         <div class="card bracket"><span class="cnum">LOCAL</span><h4>Local — zero-key</h4><p>Runs in your browser, offline, with no API key and no account. "Zero-fabrication by construction": every line it writes traces to a real field in your project state — it derives, it doesn't invent numbers.</p></div>
         <div class="card bracket"><span class="cnum">CLOUD</span><h4>Cloud — your own key</h4><p>Optional BYO-key tier that calls out to your chosen provider — OpenAI, Google Gemini, or Anthropic Claude — from the AI window's connection settings; Connect &amp; Test verifies the key live before Send unlocks. Your live project data is compiled into the prompt that leaves the browser — nothing else does. If a provider rate-limits the current model (HTTP 429/503), the app automatically retries on the next smaller model in that provider's fallback ladder — e.g. Gemini 2.0 Flash → Flash Lite → Flash Latest — and shows an amber “Fell back to …” badge naming the model that answered. A rejected key (401/403) is cleared immediately; it never quietly falls through to a smaller model with a bad key.</p></div>
       </div>
-      <p class="prose" style="margin-top:14px">The Settings-drawer switch and the header tier selector are the <em>same</em> control: switch the assistant Off and the tier is <strong>off</strong>; switch it On and it restores Local or your last tier. One control, one meaning — the ✦ button can never be visible while the engine is off.</p>
+      <p class="prose" style="margin-top:14px">The Settings-drawer switch and the header tier selector are the <em>same</em> control: switch the assistant Off and the tier is <strong>off</strong>; switch it On and it restores Local or your last tier. One control, one meaning — the floating AI button can never be visible while the engine is off.</p>
 
       <h3 class="h-sub">Thirteen presets</h3>
       <div class="grid grid-4">
@@ -1175,7 +1175,7 @@ Date: ____________  Focus: ____________</pre>
       </div>
 
       <h3 class="h-sub">Copy-first and agent-style — both still work</h3>
-      <p class="prose">Every preset offers both flows. The chip loads the compiled prompt into the chat box — send it on the Cloud tier, or copy prompt + context to use any AI tool you already have; that copy path never goes away. The ⚡ run button is agent-style: it generates the result and writes it back into project state under the preset's name, where it travels with the project file. Ten presets have a built-in Local generator that needs no key; the other three (Visual Output, Charter Dates, Generate Dates) need the Cloud tier for the ⚡ button — on Local they'll say so and stay copy-first. Generate Dates' returned outline is merged into your WBS through the <strong>Import Dates</strong> modal in the WBS panel (Sheet A-04), so nothing overwrites your schedule without you reviewing it.</p>
+      <p class="prose">Every preset offers both flows. The chip loads the compiled prompt into the chat box — send it on the Cloud tier, or copy prompt + context to use any AI tool you already have; that copy path never goes away. The run button is agent-style: it generates the result and writes it back into project state under the preset's name, where it travels with the project file. Ten presets have a built-in Local generator that needs no key; the other three (Visual Output, Charter Dates, Generate Dates) need the Cloud tier for the run button — on Local they'll say so and stay copy-first. Generate Dates' returned outline is merged into your WBS through the <strong>Import Dates</strong> modal in the WBS panel (Sheet A-04), so nothing overwrites your schedule without you reviewing it.</p>
 
       <div class="divider-note" style="margin-top:32px">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M3 9L7 5L11 9M7 5V19" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 15L17 19L13 15M17 19V5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -1290,7 +1290,7 @@ Date: ____________  Focus: ____________</pre>
       <h3 class="h-sub">Feature flags — the Settings drawer switches</h3>
       <p class="prose">The Settings drawer's Feature flags section toggles optional UI modules. All default on; switch one off and it hides from the workspace. Nothing is ever deleted by flipping one.</p>
       <div class="grid grid-3">
-        <div class="card"><span class="cnum">FLAG</span><h4>AI Assistant</h4><p>The master AI switch (Sheet A-13): Off disables the assistant and hides the ✦ button; On restores Local or your last engine tier.</p></div>
+        <div class="card"><span class="cnum">FLAG</span><h4>AI Assistant</h4><p>The master AI switch (Sheet A-13): Off disables the assistant and hides the floating AI button; On restores Local or your last engine tier.</p></div>
         <div class="card"><span class="cnum">FLAG</span><h4>Monte Carlo Simulation</h4><p>Hides the simulation panel and its Dashboard hit-probability card (Sheet A-07).</p></div>
         <div class="card"><span class="cnum">FLAG</span><h4>Gantt PNG Export</h4><p>Hides the Gantt panel's PNG export button when you don't need image handouts.</p></div>
         <div class="card"><span class="cnum">FLAG</span><h4>Kanban Lead-Time Lane</h4><p>Toggles the dedicated procurement/permits swimlane (Sheet A-05).</p></div>
@@ -1530,7 +1530,7 @@ Date: ____________  Focus: ____________</pre>
       var text = target.innerText;
       var done = function(){
         var original = btn.textContent;
-        btn.textContent = 'Copied ✓';
+        btn.textContent = 'Copied';
         btn.classList.add('copied');
         setTimeout(function(){ btn.textContent = original; btn.classList.remove('copied'); }, 1800);
       };

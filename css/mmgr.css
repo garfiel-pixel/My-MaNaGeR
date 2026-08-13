@@ -745,6 +745,18 @@ body.gantt-dragging .gb{cursor:grabbing;}
    code cannot write outside its grant. */
 #editor-scope-banner{position:sticky;top:0;z-index:1500;display:flex;align-items:center;justify-content:center;gap:8px;background:rgba(59,130,246,.12);border-bottom:1px solid rgba(59,130,246,.35);color:var(--blue);font-size:.72rem;padding:6px 14px;letter-spacing:.3px;}
 #editor-scope-banner.is-hide{display:none;}
+/* Rank 10 item 21 — Heat/Cold SAFETY banner (promoted 2026-08-13): full-width
+   page-top alert, deliberately distinct (danger/blue tint + i-alert-triangle)
+   from the amber schedule-risk flags so a safety concern never reads as a
+   schedule concern. Shares the bar language of the mode banners above but is
+   NOT sticky (transient alert — avoids stacking with the sticky scope bars).
+   Hues reuse the in-panel wfr-heat/wfr-cold tints; tokens re-tint per theme. */
+#safety-banner{display:flex;align-items:center;justify-content:center;gap:8px;font-size:.72rem;padding:7px 14px;letter-spacing:.3px;line-height:1.5;}
+#safety-banner.is-hide{display:none;}
+#safety-banner .ico{flex-shrink:0;margin-top:1px;}
+#safety-banner.safety-heat{background:rgba(220,53,69,.10);border-bottom:1px solid rgba(220,53,69,.35);color:var(--danger);}
+#safety-banner.safety-cold{background:rgba(59,130,246,.10);border-bottom:1px solid rgba(59,130,246,.35);color:var(--blue);}
+body.dark-mode #safety-banner.safety-heat,body.dark-mode #safety-banner.safety-cold{background:rgba(0,0,0,.35);}
 body.editor-scope .sec-btn.scope-blocked{opacity:.35;pointer-events:none;filter:saturate(.4);}
 body.editor-scope .sec-btn.scope-blocked svg{opacity:.5;}
 body.readonly-mode input:not([readonly]),body.readonly-mode textarea:not([readonly]),body.readonly-mode select:not([disabled]){pointer-events:none;opacity:.6;}

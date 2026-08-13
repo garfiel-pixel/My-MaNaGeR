@@ -341,6 +341,7 @@ var MMGR = window.MMGR || {};
     renderStreak();
     renderBaselineNarrative();
     // ACTION-PLAN Phase 7: Open-Meteo forecast + delay log + LD/SRI
+    renderSafetyBanner();
     renderWeatherForecast();
     renderWeatherLog();
     // Meetings (MEETING_TRACKING_SPEC)
@@ -788,6 +789,33 @@ var MMGR = window.MMGR || {};
   // geocode/forecast exists — the static regional windows stay the
   // fallback.
   // ==================================================================
+
+  // ---- Heat/Cold SAFETY banner (Rank 10 item 21, promoted 2026-08-13) ----
+  // Full-width page-top banner when a heat or cold risk day is in the cached
+  // forecast. Deliberately distinct from the amber schedule-risk flags so a
+  // safety concern never reads as a schedule concern. Uses the SAME source as
+  // the in-panel wfr-alert (Fc.heatColdAlert) so the two can never disagree.
+  // Degrades gracefully: no location / no forecast / no heat-cold risk ->
+  // hidden (.is-hide), exactly like the readonly/editor-scope banners.
+  function renderSafetyBanner() {
+    const el = $('safety-banner');
+    if (!el) return;
+    const s = S();
+    const Fc = ns.Forecast;
+    if (!Fc) { el.classList.add('is-hide'); return; }
+    const hc = Fc.heatColdAlert(s);
+    const txt = $('safety-banner-text');
+    if (!hc) {
+      el.classList.remove('safety-heat', 'safety-cold');
+      el.classList.add('is-hide');
+      if (txt) txt.textContent = '';
+      return;
+    }
+    el.classList.remove('safety-heat', 'safety-cold');
+    el.classList.add('safety-' + hc.kind);
+    if (txt) txt.textContent = hc.text;
+    el.classList.remove('is-hide');
+  }
 
   function renderWeatherForecast() {
     const el = $('weather-forecast-body');
@@ -2931,6 +2959,7 @@ var MMGR = window.MMGR || {};
     renderStreak: renderStreak,
     computeBaselineNarrative: computeBaselineNarrative,
     renderBaselineNarrative: renderBaselineNarrative,
+    renderSafetyBanner: renderSafetyBanner,
     renderWeatherForecast: renderWeatherForecast,
     renderWeatherLog: renderWeatherLog,
     renderClaimPanel: renderClaimPanel,

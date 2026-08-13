@@ -75,6 +75,13 @@
 <!-- Boot loading skeleton (hidden by App.init after first paint) -->
 <div id="boot-splash"><div class="bs-inner"><div class="bs-spin"></div><div>Loading project...</div></div></div>
 
+<!-- Heat/Cold SAFETY alert (Rank 10 item 21, promoted 2026-08-13) — full-width
+     page-top banner when a heat or cold risk day is in the cached forecast.
+     Deliberately distinct (danger/blue tint, i-alert-triangle) from the amber
+     schedule-risk flags so a safety concern never reads as a schedule concern.
+     Rendered by renderSafetyBanner() in js/mmgr-render.js; hidden (.is-hide)
+     when clear. Static markup, zero inline styles. -->
+<div id="safety-banner" class="is-hide" role="status" aria-live="polite"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-alert-triangle"></use></svg><span id="safety-banner-text"></span></div>
 <!-- View-only banner (ACTION-PLAN 4.1) — shown when the project was opened
      with a read-only scope code. Static markup, zero inline styles. -->
 <div id="readonly-banner" class="is-hide"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-eye"></use></svg> View-only mode — read-only access. Contact the admin for the full access code.</div>

@@ -1,0 +1,29 @@
+{
+  "document_type": "execution_directive",
+  "title": "FINAL-PRE-DEPLOY-DIRECTIVE",
+  "reconstruction_note": "⚠️ RECONSTRUCTED 2026-08-12 per the owner's rule (directive files are records — reconstruct, never drop). The original file was never committed. Built from CONTINUATION-DIRECTIVE.md Part C (C8-C9), sw.js version comments (mmgr-shell-v49), and qa-drive-smoke.cjs's DIR-3 reference. Lossy risks: original wording/extra items not preserved in the session records.",
+  "context_for_executor": "The pre-deploy close-out pass: the last two Part C verification items (C8 qa-stress S06/S07, C9 qa-marketing mkt-03) plus the index.html headline-hero swap and the field-guide A-15 rewrite that shipped with SW v49. All items EXECUTED or RESOLVED as of 2026-08-11-12.",
+
+  "C8": {
+    "name": "qa-stress S06/S07 — undo/merge timestamp behavior in local sync",
+    "status": "RESOLVED — TEST TIME-BOMB FIX, NOT AN APP BUG (verified 2026-08-11)",
+    "evidence": "qa-stress.cjs hardcoded past dates as the 'incoming newer' stamps; once the real clock passed them the merge correctly kept local and the assertions failed (S06's undo then popped an OLDER stack entry). Fixed in commit d1ef578 — stamps are now Date.now()-relative (+60s/+1h/+2h) with TIME-BOMB FIX comments. Merge code (mergeExternal in js/mmgr-state.js: field-level LWW + pushUndo-at-first-adoption + post-merge _lastSaveFingerprint alignment) verified correct by S03/S04/S05 and passes fresh: STRESS_GATE PASS, S01-S08 + M/P/D suites. Re-verified on the current tree (schema v18) in later sessions."
+  },
+  "C9": {
+    "name": "qa-marketing mkt-03 — feature-card count drift (index.html 9 cards vs gate expecting 8)",
+    "status": "RESOLVED — GATE ALREADY CURRENT (verified 2026-08-11)",
+    "evidence": "The gate was updated to expect 9 in this directive's SW v49 commit — qa-marketing.cjs mkt-03 asserts cards.length === 9 with a dated CARD-COUNT comment ('the old 8-count was stale after the AI card was added'); index.html ships exactly 9 distinct .fcard articles. Live gate: 17/17 PASS incl. mkt-03."
+  },
+  "DIR-3": {
+    "name": "qa-drive-smoke harness limitation note",
+    "status": "DOCUMENTED (2026-08-11)",
+    "evidence": "qa-drive-smoke.cjs header: 'HARNESS LIMITATION (FINAL-PRE-DEPLOY-DIRECTIVE DIR-3, 2026-08-11)' — the harness passes gates A+B then WATCHDOG-exits at the real-Google-Drive step (needs credentials; expected in the sandbox, not a regression)."
+  },
+  "v49_hero_and_field_guide": {
+    "name": "index.html headline-hero swap + field-guide A-15 rewrite (attributed to this directive by the SW v49 comment)",
+    "status": "EXECUTED + VERIFIED — content absorbed by later tracked files",
+    "evidence": "SW v49: 'index.html hero promotes AI to a headline hero card (swap Weather & Claims) with its own hero-sub sentence; mkt-03 card count 8->9; field-guide A-15 Data/Backup/Access rewritten for cloud owner/editor/viewer codes, recovery, changelog, unlink.' The hero copy is ALSO verified complete under MARKETING-AND-ACCESS-GATE-UPDATE-PLAN.md (Part D) and the field-guide A-15 rewrite under CLOUD-BACKEND-ARCHITECTURE-PLAN.md Part B — kept in this record for attribution completeness; no open work remains."
+  },
+
+  "closing_note": "All items resolved/verified as of 2026-08-12. The only remaining pre-deploy step is the OPERATIONAL deploy itself (apply migrations 0005-0007 to remote D1, then npm run deploy) — tracked in CONTINUATION-DIRECTIVE.md Part E, not an open code item of this directive."
+}

@@ -67,6 +67,7 @@ document, which were only ever a stand-in for when these files didn't exist in-r
 | `GEMINI-MODEL-FALLBACK-LADDER-DIRECTIVE.json` | Added locally by Garfield — not yet re-verified | Reference directly by path. Believed already implemented per a prior push log (commit `5c976cd`) — confirm against the file's own content and the actual code, don't assume. |
 | `MINOR-UI-MODERNIZATION-POLISH-DIRECTIVE.json` | Added locally by Garfield — not yet re-verified | Reference directly by path. Status previously unknown — now trackable for real. See Part D below. |
 | `ADMIN-PUBLISH-SYNC-AND-PROJECT-SELECT-POLISH-DIRECTIVES.json` | Added locally by Garfield — not yet re-verified | Reference directly by path. The core local-first-access fix discussed at length needs verification against actual current code. See Part D below. |
+| `OWNER-REVIEW.md` | ✅ in-repo (created 2026-08-12) | **Owner-only checklist** — secrets/credentials, deploys, product decisions, and visual review items that need Garfield in person. Agents: do not execute these; leave them for the owner (see PART E — OPERATIONAL). Owner: work through it and report back so the STATUS LOG updates. |
 
 **Working instruction for whichever session picks this up:** open each file above by its
 real path in the repo and work from ITS content directly — the Parts A/B/C summaries
@@ -224,10 +225,20 @@ confirm it for THIS session.**
   (1205+): rewritten with owner/editor/viewer codes, EXACTLY-ONCE owner code display,
   recovery gated on the linked Google account, changelog with field-level before/after,
   and unlink semantics. SW v49 confirms the A-15 rewrite.
-- [ ] Explicitly deferred, NOT in scope unless re-opened: real-time presence
-  (Durable Objects), additional sign-in providers (Yahoo/Microsoft/email+password),
-  billing/subscription tier. Do not build these unless a future session's log entry
-  says otherwise.
+- [x] Real-time presence (Durable Objects) — RE-OPENED AND EXECUTED by Garfield
+  (2026-08-12, "start on that isn't implemented"). Shipped: Presence DO
+  (WebSocket Collab/Hibernation, per-project idFromName, roster of {id, name,
+  since} only — never content), /api/cloud/presence with generic-403 auth
+  (linked session / D1 owner+editor code / published-manifest sha256 code),
+  wrangler.jsonc durable_objects binding + migration v1-presence, new
+  js/mmgr-presence.js (project.html chip, backoff reconnect, 3-try 403 give-up,
+  visibility-aware) + .presence-chip CSS. Verified: tools/qa-presence.cjs 11/11
+  (npm run qa:presence) against real wrangler dev. Deploy note: the DO binding
+  + migration deploy with the worker (auto-applied).
+- [ ] Still deferred (explicitly, do not build unless re-opened): additional
+  sign-in providers (Yahoo/Microsoft need their OAuth client IDs/secrets from
+  the owner; email+password is self-contained and can be built on request),
+  billing/subscription tier (needs a payment-provider decision + keys).
 
 ---
 
@@ -334,9 +345,166 @@ to be worked from directly and their completion status determined fresh:
   mmgr_admin_projects into the grid and opens locally-owned projects instantly with zero
   code re-entry (publish gates only OTHER people's access); project.html gate treats
   locally-owned ids as unlocked full-scope; admin rows show quiet "Not published" note +
-  Download & publish button; security banner rewritten to describe real opt-in Drive
+  Download & publish button; security  banner rewritten to describe real opt-in Drive
   behavior (admin codes never leave the device). DIR-3 gate glass: GATE-DECLUTTER commit
   (a8d69ee) applied the same header/setup treatment to both gate screens.
+
+---
+
+## PART E — Open Work Registry (added 2026-08-12)
+
+> Source: an audit run 2026-08-12 comparing every action plan/directive against the
+> repo. **The audit compared against committed HEAD — the working tree already carried
+> the implementations below as UNCOMMITTED changes (sw v67–v69), so several of its
+> "zero code exists" findings were stale. Real status per item, checked against the
+> actual code, supersedes the audit text.**
+
+### OPEN — the audit's two open items (both now closed, both verified this session)
+
+- [x] **DASHBOARD-UI-REFRESH-SPEC.md** — dark portfolio-dashboard for `app.html`.
+  IMPLEMENTED (sw v67, uncommitted) + DRIVEN TO 100% VERIFIED THIS SESSION. The audit's
+  "Confirmed zero code exists (no --db-* tokens…)" was stale — the working tree has
+  the full `--db-*` token block (css/mmgr.css:1776+), `body.db-page` + `#db-sidebar` /
+  `#db-nav-btn` hamburger / `#db-scrim` / `#db-metrics` in app.html, `renderMetrics()`
+  in js/mmgr-portfolio.js, and `toggleSidebar` in app.html's `DASH_ACTION_MAP` + aria
+  sync + Escape close. **§0 scope ("app.html only") WAS owner-confirmed 2026-08-12** —
+  recorded in the spec itself ("Scope CONFIRMED (2026-08-12, per owner: 'start on that
+  isn't implemented')"); the audit's "never confirmed" is superseded, and the build is
+  scoped exactly that way (`body.dark-mode.db-page`, light mode byte-untouched per §5).
+  VERIFIED THIS SESSION: `tools/qa-dashboard-spec.cjs` 58/58 (tokens, markup wiring,
+  no dead links, sprite icon refs, 9 measured WCAG pairs 11.07–17.24:1, CSP hash
+  parity); `npm run verify` green (CSP 11/11, SW v69 > 46 assets, 16/16 skills);
+  node --check clean on all touched JS; browser (agent-browser vs serve.cjs:8765) —
+  §4 320px gate: no horizontal scroll (scrollW=320), drawer slides via transform with
+  hamburger + scrim + aria-expanded + Escape close, metric row single-col @320 /
+  3-col @1000, renderMetrics computed Active 2 / At-Risk 1 / Avg 62 from REAL rank()
+  data, sidebar links all resolve, light mode: rail display:none + wrap margin 0, zero
+  console errors on boot.
+- [x] **BACKLOG.md B-N (AI-upgraded email templates / 'email' preset family)** —
+  IMPLEMENTED (sw v68, uncommitted; owner go-ahead 2026-08-12 per BACKLOG.md). The
+  audit's "logged only, not approved, not started" was stale. mmgr-prompts.js `email`
+  generator (grounded, zero-fabrication prompt), mmgr-ai.js `PRESET_LABELS.email` +
+  `LOCAL_BUILDERS.email` (returns static `App.emailTplText('status')` verbatim on the
+  LOCAL tier — the guaranteed no-model fallback), js/mmgr-app.js `emailTplText(kind)`
+  extracted as a pure getter under `emailTpl` (the one-click static buttons are
+  unchanged). VERIFIED THIS SESSION: node --check clean, `npm run verify` green,
+  `node qa-ai.cjs` → AI23_GATE PASS (incl. A17 presets reachable after a long
+  conversation on a short viewport, A11 run-button/chip count ≥10 with the new preset).
+
+### DEFERRED — do NOT start without the user explicitly naming one
+
+- [x] Real-time presence (Durable Objects) — RE-OPENED + EXECUTED by Garfield
+  2026-08-12 (see Part B): Presence DO + /api/cloud/presence + js/mmgr-presence.js +
+  .presence-chip, sw v69, wrangler durable_objects binding + migration v1-presence,
+  tools/qa-presence.cjs 11/11 (claimed vs real wrangler dev). DONE — no longer deferred.
+- [x] Additional sign-in providers — **email + password COMPLETED + VERIFIED
+  2026-08-12** (this session; see STATUS LOG — the "De Riviot" session's interrupted
+  work finished end-to-end): worker.js routes wired for `/api/auth/register` +
+  `/api/auth/login` (auth rate bucket 30/min — brute-force deterrent on the
+  credential-guessing surface; PBKDF2-SHA256 100k iters via hashOwnerCode, per-account
+  salt, timing-side-channel + create-race guards, `sub='email:<addr>'` namespace),
+  migration 0007 auth_users, js/mmgr-google-auth.js email sign-in form (app.html +
+  admin.html auth bars; same mmgr_session cookie; dispatches mmgr:google-signed-in),
+  tools/qa-email-auth.cjs 26/26 gates. Yahoo/Microsoft still blocked (need their
+  OAuth client IDs/secrets from the owner).
+- [x] Billing/subscription tier — **server-side COMPLETE + VERIFIED 2026-08-12**: routes
+  wired for `/api/billing/status` (session-gated) + `/api/billing/checkout` (session-
+  gated) + the signature-verified `/api/billing/webhook` (the ONLY writer of
+  cloud_subscriptions, migration 0006) + the session-linked FREE_PROJECT_CAP create
+  gate in handleCloudCreate (HTTP 402 {upgrade:true} for free accounts over the cap,
+  with the ACTIVE-SUBSCRIPTION exemption — qa-email-auth B5 caught a missing check).
+  DORMANT until configured: with no LEMONSQUEEZY_* secrets set, status reports
+  configured:false, checkout answers 503, and the cap is off — byte-for-byte unchanged
+  behavior. **CLIENT UPGRADE UI COMPLETED + VERIFIED 2026-08-12** (same session):
+  js/mmgr-cloud.js surfaces a real server 402 {upgrade:true} as a gold Upgrade-plan
+  banner (i-zap, data-action=cloudUpgrade) instead of a bare error, and cloudUpgrade()
+  POSTs the session-gated /api/billing/checkout and opens the checkout URL in a new
+  tab (clears the banner only on 503 — billing genuinely unconfigured); mmgr-app.js
+  ACTION_MAP + READONLY_SAFE_ACTIONS gain cloudUpgrade (opens a checkout tab — no
+  local mutation). Inert when unconfigured — the server never 402s then, so the banner
+  never renders. Browser-verified against the configured-phase harness origin (:8796,
+  cap=2): register via the email form → create u1/u2 ok → u3 gets the banner +
+  Upgrade button + "free plan limit reached" status; Upgrade click fires the checkout
+  POST (upstream 401 with fake secrets — surfaced, banner persists); qa-email-auth
+  26/26; npm run verify green (SW v73, CSP 11/11 unchanged).
+- [x] UI-REDESIGN-CYAN-DASHBOARD-PLAN.md — **§7 decision points FORMALLY CLOSED
+  2026-08-12** (superseded by the theme system; archived to `_archive/`): (1) full cyan
+  pivot → theme system resolved it as HYBRID — cyan is an optional theme, gold stays
+  default (`html[data-theme="cyan"]` + `mmgr_palette`, mmgr-theme.js); (2) light mode
+  → BOTH light and dark remain (`data-theme=cyan` + `body.dark-mode` cyan block in
+  css/mmgr.css:102,127); (3) sidebar grouping → SIDEBAR-HAMBURGER-TOGGLE-PLAN shipped
+  grouped nav (Overview/Planning/Execution/Governance/Closeout/DMAIC — the dashboard
+  refresh added its own app.html rail); (4) glass → universal-ui-architect Gate 6.1
+  resolved it: glass chrome only, dense content solid; (5) priority → executed as
+  bug-fixes-first (Claude audit Phase A), then theme tokens, then the mobile shell.
+  File archived (not deleted) per the owner's keep-records rule.
+
+### MASTER-ACTION-PLAN-v3-STRICT rank status (audited against shipped code 2026-08-12)
+
+- [x] Phase 0 foundation — unload flush (mmgr-state.js; qa-stress D01) + Today/Meeting-to-Action (mmgr-meetings.js) + Narrative Health (mmgr-health.js) — all verified present.
+- [x] Rank 1 Evidence/Claim Pack — js/mmgr-claim.js (1.1 claimPackText one-click export, 1.2 cause-tagged slips defaulting to "unknown", 1.3 LD exposure rollup avoided/incurred).
+- [x] Rank 2 Digest Engine — js/mmgr-digest.js (2.1 weekly digest) + AI presets (2.2: PRESET_LABELS digest/audit/claim/client…, zero-fabrication discipline).
+- [x] Rank 3 Progressive Disclosure — Core Mode vs packs (schema v18 packsEverEnabled), data-def inline glossary (project.html ×15 + mmgr-defs.js).
+- [x] Rank 4 PWA/offline durability — SW mmgr-shell-v72, crash-safe journal (qa-stress DIR-4), offline gate harnesses (qa-pwa etc.).
+- [x] Rank 5 Portfolio Explainability — mmgr-portfolio.js urgency score + plain-English reasons + weather-risk input (verified in the DASHBOARD-UI-REFRESH session).
+- [x] **Rank 6.1 sanitized Report Issue export — EXECUTED 2026-08-12 (see STATUS LOG): new js/mmgr-report.js (counts-only by default, hard exclusion of budget figures/risk descriptions/names, per-report Include-project-context opt-in, never AI keys), project.html Controls-drawer Report Issue row (i-flag, Copy report/Download + toggle), tools/verify-report-issue.cjs 27/27.** Rank 6.2 (replay via qa-*.cjs fixtures) is satisfied by the existing fixture pattern — no separate patch-store product per the plan's own STOP clause.
+- [x] Rank 7 Weather-Aware — mmgr-weather/forecast + daily log + wxCache risk days (feeds Rank 1/5).
+- [x] **Rank 8 Projects-list visual weight — EXECUTED 2026-08-12 (see STATUS LOG): the
+  LIGHT-mode flat-page gap fixed with the spec's option 1 (subtle radial glow behind
+  #grid using the EXISTING --gold-rgb token at <10% alpha, three layered washes at
+  different positions — no new colors per 8.1's constraint, no motion; scoped to
+  body.db-page:not(.dark-mode), display:none in dark where the dashboard treatment owns
+  the canvas, every other page untouched). Verified: glow computed-style confirmed in
+  light, suppressed in dark, cards keep their own opaque surface + full text contrast
+  (8.2), 4-card grid renders, zero console errors, qa-dashboard-spec 58/58, verify green
+  (SW v74)."
+- [x] **Rank 9 API/Webhook — EXECUTED 2026-08-12 (owner re-opened the plan's gate; see STATUS LOG): 9.1 read-only resource shapes (GET /api/cloud/projects/:id/api/:shape — tasks|baseline|risks|weather|evm|portfolio; owner-gated code/session; faithful worker ports of the app's EVM/health/wxRiskDays math; secrets can never leak — they're stripped at save + shapes only read whitelisted fields; editor codes 403; empty project → exists:false) + 9.2 opt-in webhooks (migration 0008 webhook_subscriptions; owner-gated POST/GET/DELETE /api/cloud/projects/:id/webhooks; scheduled() evaluator fires health_dropped + weather_risk_tomorrow with an HMAC-SHA256 X-MMGR-Signature header; reference-point last_value semantics for health drops + once-per-day guard for weather; ZERO rows = no-op — off by default; project.html Cloud drawer Webhooks section with event select + URL + List/Add/Remove + one-time secret display; mmgr-app.js cloudWebhookList/Add/Del wired). tools/qa-rank9-api.cjs 31/31 incl. real cron-driven deliveries via wrangler dev --test-scheduled.
+- [ ] Rank 10 backlog — opportunistic, nothing pulled yet (owner picks from OWNER-REVIEW §3).
+
+### OPERATIONAL — not a code task, needs the user present for deploy
+
+> **OWNER-ONLY WORK IS TRACKED IN `OWNER-REVIEW.md`** (added 2026-08-12) — the
+> single checklist of everything that needs the owner in person: secrets/credentials
+> (LemonSqueezy ×3, Yahoo/Microsoft OAuth, GOOGLE_CLIENT_SECRET, ADMIN_CODE), the
+> deploy sequence, product decisions, and visual review items. Agents: leave it for
+> the owner; when the owner completes an item, update the STATUS LOG + this section
+> and check it off there. The short list below mirrors it for quick reference.
+
+- [ ] Apply migrations 0005 + 0006 + 0007 to remote D1: `npx wrangler d1 migrations
+  apply my-manager-db --remote` — required before the worker deploy (0005: the
+  changelog list hard-references import_key; 0006: cloud_subscriptions, 0007:
+  auth_users — both now completed and part of the deploy). The presence DO binding +
+  v1-presence migration deploy with the worker (auto-applied).
+- [ ] `npm run deploy` — local verify is green (re-confirmed this session).
+- [ ] Optional: real-Google round-trip of /api/cloud/prefs/theme.
+- [ ] Set the LEMONSQUEEZY_API_KEY / LEMONSQUEEZY_WEBHOOK_SECRET / LEMONSQUEEZY_VARIANT_ID
+  secrets to activate the (complete, verified, dormant) billing tier — see OWNER-REVIEW.md §1.1.
+- [ ] Provide Yahoo + Microsoft OAuth client IDs/secrets to unblock those sign-in
+  providers (email+password is done) — see OWNER-REVIEW.md §1.2.
+
+### HOUSEKEEPING — no code impact, do in one small pass whenever convenient
+
+- [x] **RECONSTRUCT (never drop) the missing directive files — ALL DONE 2026-08-12.**
+  The 4 missing files (PROJECT-UX-NAV-WEATHER-EXPORT-DIRECTIVE.json,
+  FINAL-PRE-DEPLOY-DIRECTIVE.json, FIELD-GUIDE-UPDATE-PLAN.md,
+  MONOLITH-FEATURE-PARITY-DIRECTIVES.json) were reconstructed in the RANK-6.1 session;
+  the chat-only base ACTION-PLAN-COMPETITIVE-GAPS.md was RECONSTRUCTED this session
+  as a faithful flagged record from the addendum's phase cross-refs + master-plan
+  Rank 10 absorption notes. All four others exist untracked (MASTER-ACTION-PLAN,
+  GLASS-UI-DESIGN-SPEC, STRUCTURAL-IA-FIXES-SPEC, MONOLITH-PORTING-GUIDE) —
+  reconciled in the skill §2 registry.
+- [x] Consolidate the DUPLICATE root universal-ui-architect.md — DONE (byte-identical
+  to the locked `.agents/skills/universal-ui-architect/SKILL.md`; root copy removed).
+- [x] Archive the stray txts — DONE: both "this is where vthe last chat ended.txt"
+  (its captured email+password work is completed + logged) and the old
+  "Windows PowerShell from last session…" file moved to `_archive/` (kept, not
+  deleted, per the owner's keep-records rule).
+- [x] Confirm the "new update do everything…" folder's contents are fully executed —
+  DONE + ARCHIVED to `_archive/`: CLAUDE-BUG-AUDIT-2026-08-11 (all 4 bugs verified
+  fixed in shipped code: syncClientId whitelist, .shake keyframes, i-plus + i-shield
+  sprite symbols), THEME-SYSTEM-AND-MOBILE-UI-ACTION-PLAN (theme system + cyan theme +
+  hamburger/sidebar all shipped), UI-REDESIGN-CYAN-DASHBOARD-PLAN (§7 closed above).
+  `_archive/` is excluded from deploy staging (`--exclude='_archive'` in wrangler.jsonc).
 
 ---
 
@@ -357,6 +525,59 @@ Format: date/session marker, what was completed (with file/line specifics), what
 in-progress and exactly where it stopped, what's next.
 
 ### Log entries (most recent at top)
+
+**2026-08-12 — Session: RANK-9-API-WEBHOOK — MASTER-ACTION-PLAN Rank 9 (API/webhook layer) implemented + verified; the plan's own deferral gate ("do not start until Rank 2 digest has real use") was explicitly re-opened by the owner naming the task.**
+SHIPPED (worker.js): 9.1 — owner-gated GET /api/cloud/projects/:id/api/:shape with six stable READ-ONLY shapes (tasks/baseline/risks/weather/evm/portfolio) projected from the saved R2 state, built by pure dependency-free ports of the app's own math (apiEVM mirrors mmgr-evm computeEVM incl. spendLog actuals + curve-shape time-phased PV; apiPortfolio mirrors the 5-factor health formula; apiWeather mirrors wxRiskDays thresholds precip>=60||tMax>=32||tMin<=0). Secrets cannot leak by construction: stripStateSecrets runs at save, and the builders read only enumerated whitelisted fields. Auth = cloudAuthOwnerEither (owner code OR linked session) with the same generic-403 discipline; editor codes are rejected (R10). Empty project → 200 {exists:false, data:null}. 9.2 — OPT-IN webhooks (migration 0008 webhook_subscriptions): owner-gated POST/GET/DELETE /api/cloud/projects/:id/webhooks (event whitelist health_dropped|weather_risk_tomorrow, targetUrl must be http(s), per-subscription crypto.getRandomValues secret shown ONCE at create and never in the list); the scheduled() cron now calls evaluateWebhooks() — health_dropped stores last_value on EVERY run (a drop is a real comparison, never a first-run surprise) and weather_risk_tomorrow fires at most once per calendar day; delivery is a POST with an HMAC-SHA256 X-MMGR-Signature header + 10s timeout. ZERO subscription rows = the evaluator no-ops → dormant-until-configured, byte-for-byte unchanged behavior on the current deploy.
+CLIENT: project.html Cloud drawer (owner mode) gains the Webhooks section — event select (Health score dropped / Weather-risk day tomorrow) + target URL input + Add Webhook (i-plus), List (i-refresh), per-row Remove with last-fired stamp, and the one-time signing secret in the status live region; mmgr-app.js ACTION_MAP + READONLY_SAFE_ACTIONS gain cloudWebhookList/Add/Del (server-table-only mutation, like the other cloud actions). sw.js mmgr-shell-v75→v76. package.json gains qa:rank9-api.
+VERIFICATION: node --check clean (worker.js, mmgr-cloud.js, mmgr-app.js, sw.js, harness); npm run verify GREEN (CSP 11/11 — no inline scripts touched; SW v76 > 47 assets; 16/16 skills); tools/qa-rank9-api.cjs 31/31 against REAL wrangler dev (all migrations incl. 0008, --test-scheduled so the harness drives the ACTUAL scheduled() handler): R1 unknown shape 404, R2/R3 generic 403 (identical bodies), R4 tasks shape + secret-free payload, R5 baseline, R6 risks, R7 weather riskDays incl. tomorrow, R8 evm (spi/cpi finite), R9 portfolio score, R10 editor 403, R11 empty project; W1-W7 CRUD/validation/owner-only + list-never-leaks-secret; W8 first eval stores reference (weather fires — correct, the fixture's tomorrow IS a risk day) then a genuinely-lower health state fires a signed delivery (previousScore>currentScore asserted), W8b/W8c HMAC verifies with the returned secret and fails with a wrong one, W9 second eval same day fires nothing (once-per-day + no new drop), W9b weather delivered at least once, W10-W12 delete/404/label. BROWSER (agent-browser vs a persistent wrangler dev on the harness persist dir): signed in as the linked owner via the email form, recovered the owner code through the linked session, drawer rendered the Webhooks section; List showed the harness's weather webhook with its last-fired stamp; Add posted a new health_dropped webhook and displayed the one-time secret; Remove deleted it (rows 2→1, "Webhook removed."); GET /api/cloud/projects/rank9proj/api/portfolio returned score 36 / atRisk true from the browser; zero console errors.
+NOTE (harness learnings): (a) wrangler dev --test-scheduled is the honest way to exercise the cron evaluator — the first draft simulated delivery instead and that was wrong; (b) adding budget-backed tasks to "worsen" a fixture can RAISE the health score (f3 via cpi) and mask a drop — the worse state added open issues only; (c) the email form mounts on app.html not project.html, and the recover rate bucket needs a 60s window before the owner code can be fetched via session.
+NEXT per the sweep: the MASTER-ACTION-PLAN is now executed through Rank 9 — only Rank 10 (backlog, owner-picked per OWNER-REVIEW §3) and the owner-blocked items remain (deploy: migrations 0005-0008 + v1-presence to remote D1 then npm run deploy; LemonSqueezy secrets; Yahoo/Microsoft OAuth; digest real-use before any Rank-9-adjacent extension).
+
+**2026-08-12 — Session: BILLING-UPGRADE-APP-DASH — free-plan status + Upgrade button surfaced on the app.html projects page (not just the project drawer); the OWNER-REVIEW §1.1 placement decision resolved.**
+Per the owner's follow-up to the OWNER-REVIEW file ("surface the free-plan limit and upgrade button on the app.html projects page"): SHIPPED — js/mmgr-cloud-dash.js gains loadPlan() (fetches the session-gated /api/billing/status after the project list, renders the #cloud-dash-plan strip: "Free plan — N of M linked projects" + i-zap Upgrade button; "Pro plan — unlimited linked projects" line when active; gold .at-limit state when count >= cap) and upgradePlan() (POST /api/billing/checkout, opens checkoutUrl in a new tab, 503 → "billing not configured" warn, other failures surfaced in the existing live-region status line) — both wired through the module's existing delegated click handler (data-cd-upgrade), keeping the module self-contained (no MMGR deps — it loads before mmgr-utils.js). app.html: #cloud-dash-plan slot between the cloud-dash head and list + .cd-plan styles in its inline style block (token-driven: --border/--slate/--text/--tile-bg/--gold-rgb, .at-limit gold wash; .btn width:auto — app.html's dashboard .btn is width:100%). css/mmgr.css: dark db-page override (solid --db-surface, --db-text-secondary, cyan .at-limit rgba(80,232,244,…) — matches the existing .cd-* treatment). sw.js mmgr-shell-v74→v75.
+VERIFICATION: node --check clean; npm run verify GREEN (CSP 11/11 — no inline scripts touched; SW v75 > 47 assets; 16/16 skills); qa-email-auth 26/26 (B1 already asserts the exact /api/billing/status shape the strip reads: configured:true, plan free, projectCap 2, projectCount); BROWSER E2E vs the harness's configured origin (:8796, cap=2): fresh account registered via the email form → strip renders "Free plan — 0 of 2 linked projects" + Upgrade button (dash visible, plan visible); created 2 cloud projects → reload → "Free plan — 2 of 2 linked projects — limit reached" + .at-limit gold border/bg (rgba(180,83,9,.45)/.08 light; rgba(80,232,244,.4)/.08 + cyan text in dark db-page — after unregistering the stale SW cache from the earlier harness run, which had served pre-edit CSS); Upgrade click → checkout POST fired → upstream 401 with fake secrets surfaced in the status line (expected; the 503/unconfigured path hides the strip entirely — verified dormant origin :8765 shows plan hidden + dash hidden); zero console errors. NOTE: an active SW from the PREVIOUS harness run served stale CSS on :8796 — unregister/refresh needed after any harness restart; not a code bug (production SW bump handles it).
+NEXT: the billing tier is now fully surfaced client-side (drawer banner + app.html strip). Remaining owner-blocked: the deploy (migrations 0005–0007 + v1-presence to remote D1, then npm run deploy), LemonSqueezy secrets to activate the tier, Yahoo/Microsoft OAuth credentials, and the Rank 9 digest real-use gate — all tracked in OWNER-REVIEW.md.
+
+**2026-08-12 — Session: OWNER-REVIEW-FILE — new OWNER-REVIEW.md tracks everything only the owner can do; the directive now references it from PART E (OPERATIONAL) + the REFERENCED FILES table.**
+Per the owner ("there are things only I can review — create a file connected to the continuous directive, listing what only the owner can do; I'll go review it"): created `OWNER-REVIEW.md` — a single self-maintaining checklist that future sessions read and the owner works through. Sections: §1 secrets/credentials (LemonSqueezy ×3: API key/webhook secret/variant id — activates the complete-but-dormant billing tier; Yahoo + Microsoft OAuth client IDs/secrets — the only blockers to those sign-in providers since email+password is done; confirm GOOGLE_CLIENT_SECRET + ADMIN_CODE Wrangler secrets); §2 deploy operations (migrations 0005–0007 + v1-presence to remote D1, then npm run deploy — nothing committed/deployed yet, all work uncommitted in the tree); §3 product decisions (Rank 9 digest real-use gate, Rank 10 backlog picks, Rank 8 glow treatment confirmation, presence chip visibility, 12-month auto-purge vs paying accounts, email+password on marketing site); §4 visual/UX review items the owner should eyeball (dark dashboard, light-mode glow, Report Issue, billing banner, email form, presence chip); §5 housekeeping closes (reconstructed directive files, _archive/ restore). Wire-in: CONTINUATION-DIRECTIVE.md PART E — OPERATIONAL now opens with a pointer block ("OWNER-ONLY WORK IS TRACKED IN OWNER-REVIEW.md") and mirrors the top 3 deploy/secret items for quick reference; REFERENCED FILES table gains the OWNER-REVIEW.md row (agents: do not execute — leave for the owner; owner: report back so STATUS LOG updates). Nothing committed per the owner's standing rule. NEXT: owner reviews OWNER-REVIEW.md; agents resume with whatever the owner directs (deploy, secrets, or new code items).
+
+**2026-08-12 — Session: RANK-8-VISUAL-WEIGHT — MASTER-ACTION-PLAN Rank 8 (projects-list visual gap, light mode) implemented + verified; the plan's only remaining rank was the cosmetic light-page gap.**
+Per the owner's standing instruction (keep pulling uncompleted registry items, update the directive after each, make conventional choices — pick the recommended option — instead of stopping to ask): MASTER-ACTION-PLAN Rank 8.1's three options are (a) radial glow in existing accent tokens, (b) blueprint-grid texture, (c) per-card thumbnails. The owner's recommended-option rule + the plan's own "pick one, don't stack" + "no new colors" constraint → chose (a): a STATIC three-layer radial glow behind #grid, using ONLY the existing --gold-rgb token (light theme 180,83,9 — verified in computed style) at .10/.07/.05 alpha, positioned top-left / top-right / bottom so it reads as depth not a blob. SHIPPED: css/mmgr.css new scoped block — body.db-page:not(.dark-mode) #grid{position:relative;isolation:isolate} + #grid::before{z-index:-1;pointer-events:none} with the three radial washes; body.db-page.dark-mode #grid::before{display:none} (the dark dashboard treatment owns that canvas — its .db-side rail + solid surfaces + --db-canvas already carry the weight); prefers-reduced-motion guard. No markup, no JS, no new colors, no tokens — the SW shell needed only a bump (mmgr-shell-v73→v74) because css/mmgr.css is a shell asset. Scoped so EVERY other page (and every other theme block) is byte-for-byte untouched.
+VERIFICATION: node --check clean (no JS touched); npm run verify GREEN (CSP 11/11 — CSS-only, no inline scripts touched; SW v74 > 47 assets; 16/16 skills); tools/qa-dashboard-spec.cjs 58/58 (the dashboard CSS block + app.html inline scripts untouched); BROWSER (agent-browser vs serve.cjs:8765): app.html boots, #grid::before computed backgroundImage is the gold radial-gradient in LIGHT mode (rgba(180,83,9,.1) — the token, not a hardcoded hex), flips to none when body.dark-mode is added (suppressed), cards render with their own opaque rgb(255,255,255) surface + rgb(15,23,42) text (8.2 readability untouched — the <10% wash never sits between text and background), a 4-card grid renders under the glow, zero console errors. (Note: renderCards() reads window.MMGR_PROJECTS at boot — the reseed had to call renderCards() directly after setting the global; that's the page's existing contract, not a bug.)
+NEXT per the sweep: the plan is now fully executed through Rank 8 — the remaining ranks (9 API/webhook, 10 backlog) are EXPLICITLY deferred by the plan itself (Rank 9 waits until the digest engine has been used manually for a real project cycle; Rank 10 is opportunistic). Registry status: all OPEN code items are done; what remains genuinely needs the owner — the deploy (migrations 0005–0007 to remote D1, then npm run deploy; local verify green), Yahoo/Microsoft OAuth client IDs/secrets, and the Rank 2 digest-engine real-use gate before Rank 9 can start.
+
+**2026-08-12 — Session: BILLING-UPGRADE-UI — the client half of the billing tier shipped: a 402 is now surfaced as an Upgrade-plan affordance in the cloud drawer (the last server-completed-but-client-missing piece from the email+password session).**
+Per the owner's standing instruction (keep pulling uncompleted registry items one at a time, update the directive after each, make conventional choices instead of stopping to ask): the remaining billing item was "the client upgrade UI — surface a 402 into the cloud drawer's checkout flow." SHIPPED: js/mmgr-cloud.js — new module flag _upgradePending set only when createProject() receives a real server 402 {ok:false, upgrade:true} (the session-linked FREE_PROJECT_CAP gate); render() then injects a gold Upgrade-plan banner into the cloud section (existing .sr/.sr-hint styling + i-zap + data-action=cloudUpgrade + role=status) with copy "Free plan limit reached — you've used all the linked cloud projects on the free plan"; new cloudUpgrade() POSTs the session-gated /api/billing/checkout (credentials same-origin) and window.open()s the returned checkoutUrl (noopener, new tab), clearing the banner only on a 503 (billing genuinely unconfigured — "no upgrade is available" warn) and surfacing other checkout errors in the live-region status line. js/mmgr-app.js: ACTION_MAP + READONLY_SAFE_ACTIONS gain 'cloudUpgrade' (it opens a checkout tab — never mutates the local workspace, matching the cloud-actions precedent). sw.js mmgr-shell-v72→v73. Dormant-until-configured is preserved BY CONSTRUCTION: the banner only appears when the server actually answers 402, which requires all three LEMONSQUEEZY_* secrets — on the current unconfigured deploy the path is inert, byte-for-byte unchanged.
+VERIFICATION: node --check clean; npm run verify GREEN (CSP 11/11 unchanged — JS-rendered, no inline scripts touched; SW v73 > 47 assets; 16/16 skills); qa-email-auth 26/26 (B2 already asserts the exact 402 {upgrade:true} contract the client keys off; B5 the active-sub exemption; re-run green with clean teardown); BROWSER E2E against the harness's configured-phase origin (:8796, FREE_PROJECT_CAP=2): registered a fresh account through the real email form (session confirmed via /api/auth/me — sub email:upgrade.tester.e2e@example.com), created cloud projects u1 + u2 ok (owner codes issued), u3 → 402 → **gold banner rendered with Upgrade plan button** + status "free plan limit reached — upgrade to create more linked projects"; clicked Upgrade → checkout POST fired → upstream 401 with fake secrets surfaced in the status line (expected) and the banner correctly persisted (only 503 clears it); zero console errors. (The checkout-open-success path itself can't be exercised without real LemonSqueezy credentials — covered by the worker handler + harness's own checkout route tests.)
+NEXT per the sweep: MASTER-ACTION-PLAN Rank 8 (projects-list visual weight in LIGHT mode — the dark dashboard treatment covered dark; pick ONE of radial glow / blueprint texture / card thumbnails per the plan's own constraint), then the remaining owner-blocked items (deploy with migrations 0005–0007 to remote D1, Yahoo/Microsoft OAuth credentials).
+
+**2026-08-12 — Session: STRUCTURAL-IA-VERIFIED + HOUSEKEEPING-CLOSED — STRUCTURAL-IA-FIXES-SPEC fully verified against shipped code; UI-REDESIGN §7 formally closed; archive + reconstruction pass done.**
+Per the owner's standing instruction (keep pulling uncompleted registry items, update the directive after each, repeat until something genuinely needs the user):
+1) **STRUCTURAL-IA-FIXES-SPEC.md audited against shipped code — FULLY VERIFIED IMPLEMENTED (CLOSED):** §1 empty states (ring says "No tasks yet" on a fresh project — never a bare 0 or "All tasks completed"; N3 gives a real + Add Task action; budget/util/pending/base cards quiet to '—' with var(--slate) + explanatory subtext, .tier3 CSS); §2 grouped nav (12 .nav-group blocks with eyebrow labels + dividers in project.html, .nav-group-label, active-pill clarity via .sec-nav .sec-btn.active box-shadow+green — verified strongest signal); §3 session timer REMOVED (no updateSessionTimer / #sess-t anywhere; grep clean); §4 tiering (health-card.has-danger for non-zero Blocked/Overdue/Live-Issues — existing --danger token, no motion per §4.3; .has-danger + .health-empty CSS in mmgr.css:320-323); §5 progressive disclosure (10+ emptyStateRow call sites — risks/issues/resources/budget/stakeholders/changes/decisions/comms/docs with direct data-action buttons, plus wbs-empty, meet-empty, .es kanban, RACI empty state — every panel covered); §6 copy pass ("No risks logged yet." plain-voice, exact-verb buttons). §8 TESTING CHECKLIST verified in-browser (agent-browser vs serve.cjs:8765): 12 nav groups / 38 sec-btns all reachable / active pill clear / sess-t absent; seeded a BRAND-NEW project (?id=p1, zero tasks) — ring "No tasks yet", N3 "No tasks yet — add your first task…", budget '—' + "No budget lines yet — add one in Budget", health-empty=true, has-danger=false. No code changes needed — the spec's work was already fully shipped (by the earlier THEME-SYSTEM + IA sessions).
+2) **UI-REDESIGN-CYAN-DASHBOARD-PLAN §7 decision points FORMALLY CLOSED** (5/5, each resolved by shipped code — see Part E): cyan pivot → hybrid via theme system; light mode → both modes retained; sidebar grouping → shipped nav groups; glass → Gate 6.1 chrome-only; priority → bugs-first execution confirmed. Plan archived (never dropped).
+3) **HOUSEKEEPING COMPLETE:** `_archive/` created — moved the fully-executed "new update do everything…" folder (CLAUDE-BUG-AUDIT 4/4 bugs verified fixed: syncClientId change-whitelist js/mmgr-app.js:2463, .shake keyframes mmgr.css:161-164, i-plus + i-shield in sprite; theme system + cyan + hamburger/sidebar verified) and both stray session txts. wrangler.jsonc staging recipe now excludes `_archive`. Base ACTION-PLAN-COMPETITIVE-GAPS.md RECONSTRUCTED as a faithful flagged record (from the v2 addendum's phase cross-references — Phase 1.1 Today Decision Engine, 2.3 Procurement Lead-Time, 3.3 PM Consistency, 6.1 Portfolio Rollup — and MASTER-ACTION-PLAN Rank 10 absorption notes); skill §2 registry synced with STRUCTURAL-IA (CLOSED) + archive rows.
+VERIFICATION: node --check not needed (no code changed — pure audit/archive/documentation pass); grep evidence above; browser checks live. NEXT per the sweep: the billing client upgrade UI (surface a 402 into the cloud drawer — the one remaining server-completed-but-client-missing piece), then Rank 8 light-mode visual weight.
+
+**2026-08-12 — Session: RANK-6.1-REPORT-ISSUE — MASTER-ACTION-PLAN Rank 6.1 (sanitized Report Issue export) built + verified; the plan's rank registry established in Part E.**
+Per the owner's standing instruction (keep pulling uncompleted registry items one at a time, update the directive after each, make conventional choices instead of stopping to ask): first AUDITED MASTER-ACTION-PLAN-v3-STRICT.md against shipped code — Phase 0 (unload flush mmgr-state.js/qa-stress D01 + Today/Meeting-to-Action mmgr-meetings.js + Narrative Health mmgr-health.js) verified; Rank 1 (js/mmgr-claim.js: 1.1 claimPackText export, 1.2 cause-tagged slips defaulting to "unknown", 1.3 LD exposure rollup avoided/incurred); Rank 2 (mmgr-digest.js + PRESET_LABELS digest/audit/claim/client); Rank 3 (Core Mode packs schema v18 + data-def glossary ×15 in project.html); Rank 4 (PWA v72 + crash journal); Rank 5 (portfolio urgency + reasons); Rank 7 (weather/forecast/daily log) — ALL PRESENT. **THE GAP: Rank 6.1 (sanitized "Report Issue") had zero implementation anywhere.**
+SHIPPED: new js/mmgr-report.js (self-contained, zero-network, mirrors the mmgr-presence.js module pattern): PURE reportIssueText(state, errs, opts) builder — schema/app version, active panel, packs ON/OFF, NON-SENSITIVE COUNTS only (tasks/issues/risks/budget-lines/changes/meetings/decisions), client error-log slice (last 20, ts+action+msg); HARD RULE per the plan: the default payload NEVER includes budget dollar figures, risk descriptions, or personal names — a per-report Include-project-context opt-in (session-only, default OFF) adds project name, task/risk/issue lists, and budget totals; AI keys never appear in either mode (only enumerated fields are read). buildPackage() reads live state + DOM (active panel, viewport, theme, UA); copyPackage/downloadPackage reuse the existing clipboard + Blob-download patterns. project.html: Controls drawer gains the Report Issue row (i-flag icon — the conventional report glyph per the owner's recommended-option rule; Copy report / Download buttons + Include project context toggle) — READONLY_SAFE (reporting mutates nothing). mmgr-app.js wires reportIssueCopy / reportIssueDownload / tglReportContext (exports + ACTION_MAP + READONLY_SAFE_ACTIONS). sw.js mmgr-shell-v71→v72 (+js/mmgr-report.js in the SHELL). NEW gate tools/verify-report-issue.cjs (npm run qa:report-issue): 27/27 — R1 skeleton (header/schema/panel/packs/counts/error-log + canonical 5-pack order), R2 HARD EXCLUSIONS (a planted set of name/sponsor/task-name/risk-description/issue-description/budget-figures/meeting/stakeholder/API-key strings — every one absent from the sanitized payload), R3 opt-in includes names + figures but STILL never the AI key, R4 zero-fabrication on an empty project.
+VERIFICATION: node --check clean (all touched JS); npm run verify GREEN (CSP 11/11 unchanged — no inline scripts touched, SW v72 > 47 assets, 16/16 skills); tools/verify-report-issue.cjs 27/27; BROWSER (agent-browser vs serve.cjs:8765, local-owner bypass project): Controls drawer renders the Report Issue row + toggle, buildPackage(false) excludes the project name + budget figures while buildPackage(true) includes them, a REAL Copy report click through the delegated data-action handler fires the success toast, zero console errors. (First eval attempt tripped on a stale page — the project.html gate redirects to app.html when no state is seeded at first load; re-opened after seeding localStorage, page booted fine. Not a bug.)
+NEXT per the sweep: reconstruct the 4 missing directive files (owner rule: reconstruct, never drop), then the billing client upgrade UI (surface a 402 into the cloud drawer), then consolidate the duplicate root universal-ui-architect.md. Remaining user-required items after that: deploy (migrations 0005–0007 to remote D1), Yahoo/Microsoft OAuth credentials, Rank 8 light-mode visual-gap decision.
+
+**2026-08-12 — Session: EMAIL-PASSWORD-AUTH-COMPLETED — De Riviot's interrupted email+password sign-in + billing-tier work finished end-to-end, verified against real code.**
+Per the owner ("complete what was left from the last chat"): the last session's capture ("this is where vthe last chat ended.txt") stopped mid-edit right after `authHashPassword` in worker.js — the handlers existed but were NEVER WIRED: /api/auth/register + /api/auth/login had no routes, /api/billing/status + /api/billing/checkout had no routes, and the billing FREE_PROJECT_CAP create gate was comment-only. COMPLETED THIS SESSION:
+WORKER.JS: register/login routes wired behind the same-origin gate with a new CLOUD_RATE.auth bucket (30/min — the brute-force deterrent for the credential-guessing surface; register shares it for spam parity); /api/billing/status (session-gated) + /api/billing/checkout (session-gated) on the general bucket; the webhook keeps its pre-gate exemption (HMAC, not origin, is its auth); handleCloudCreate now enforces the cap — session-linked FREE accounts over FREE_PROJECT_CAP (default 3, env-overridable) get HTTP 402 {upgrade:true} with the ACTIVE-SUBSCRIPTION EXEMPTION (qa-email-auth B5 caught my first version missing it — a cap must gate free accounts, never block a paying one). Dormant-until-configured: with no LEMONSQUEEZY_* secrets set, status → configured:false, checkout → 503, cap off — byte-for-byte unchanged.
+CLIENT: js/mmgr-google-auth.js gains the EMAIL+PASSWORD form (toggle + login/register modes, name field in register, autocomplete email/current-password|new-password, password cleared after every attempt, role=status live region incl. the 429 message, focus-on-open) mounted next to #google-signin-button on the app.html + admin.html auth bars — JS-rendered, so ZERO CSP hash churn (11/11 unchanged). Success path reuses showUser's chip and dispatches mmgr:google-signed-in, so the project.html cloud drawer (which re-reads /api/auth/me) refreshes; sign-out resets the form to login mode (review fix). css/mmgr.css: token-driven .email-auth block (solid --tile-bg per Gate 6.1, app-wide gold focus ring, .email-auth .btn width override for app.html's dashboard width:100%). js/mmgr-cloud.js: drawer "Signed in with Google" → provider-neutral "Signed in —" (email sessions land there too; recovery is sub-match gated, provider-agnostic). sw.js mmgr-shell-v70→v71 (v70 was the feature; v71 the review pass — reset-login-mode + btn width).
+HARNESS: NEW tools/qa-email-auth.cjs (npm run qa:email-auth) — 26/26 gates, TWO phases against real wrangler dev (local D1+R2, migrations incl. 0006/0007, GOOGLE_CLIENT_SECRET var): PHASE 1 dormant (no LS secrets — matches current prod): validation 400s, register → 200 + Set-Cookie + sub 'email:<addr>' + NO password_hash/password in the response, duplicate 409, unknown-email vs wrong-password 401s byte-identical (timing guard), /me, mixed-case+spaces normalization, no-cookie 403 generic, email session creates a cloud project (linked:true) + loads it (sub-match accepts the email namespace), account isolation (bob can't see/load alice's), billing dormant (status configured:false, checkout 503), name >80 sliced to 80, logout → /me null, prefs R2 round-trip on the email sub, 40-login rate burst → ≥1 401 then ≥1 429 with Retry-After. PHASE 2 configured (fake LS secrets + FREE_PROJECT_CAP=2): status configured:true projectCap 2 plan free, 2 creates ok → 3rd 402 {upgrade:true}, HMAC-signed subscription_created webhook upserts (the ONLY writer of cloud_subscriptions), status flips active/plan pro, active sub clears the cap (the B5 fix), bad signature 401 + test_request 200 ignored. Harness tears down cleanly via its stop file.
+VERIFICATION: node --check clean (worker.js, mmgr-google-auth.js, mmgr-cloud.js, sw.js, harness); npm run verify GREEN (CSP 11/11 — no inline scripts touched; SW v71 > 46 assets; 16/16 skills); qa-dashboard-spec 58/58 (no regression from the CSS addition); BROWSER E2E (agent-browser vs the harness's live wrangler origin :8796): app.html toggle → register mode (name field + new-password) → submit → chip "Dave Browser" + /api/auth/me confirms sub email:dave.browser.e2e@example.com + password cleared + form collapses; sign out → form reappears in LOGIN mode; login → chip again; admin.html mounts the form too; ZERO console errors.
+REMAINING (all recorded, none blocking): the billing tier's CLIENT upgrade UI (surface a 402 into the cloud drawer with an upgrade/checkout affordance) is a product decision for the owner — the server is fully gated and dormant-until-configured, so nothing ships broken; Yahoo/Microsoft sign-in still needs their OAuth client IDs/secrets; deploy must now apply migrations 0005 + 0006 + 0007 to remote D1 before the worker deploy; the Part E HOUSEKEEPING pass (reconstruct-or-drop the missing directive files, duplicate universal-ui-architect.md, stray txt, old folder) is still open.
+
+**2026-08-12 — Session: PART-E-OPEN-WORK-REGISTRY — audit findings folded in with REAL statuses; picked DASHBOARD-UI-REFRESH-SPEC from the OPEN list and drove it to 100% verified.**
+Per the audit instruction passed in (add Part E with exact checkbox items, update the STATUS LOG, pick ONE OPEN item, work it to 100% verified, touch nothing deferred): Part E is now in this file (above VERIFICATION WORKFLOW) recording REAL status per item — the audit itself ran against committed HEAD and its "zero code exists / logged only, not started" findings were STALE vs the uncommitted working tree (sw v67–v69). VERIFIED ACTUAL STATE: both OPEN items are implemented + uncommitted (DASHBOARD-UI-REFRESH-SPEC sw v67 incl. --db-* token block css/mmgr.css:1776+, app.html body.db-page/#db-sidebar/#db-nav-btn/#db-scrim/#db-metrics + DASH_ACTION_MAP toggleSidebar, js/mmgr-portfolio.js renderMetrics; BACKLOG B-N sw v68 incl. mmgr-prompts.js email generator, mmgr-ai.js PRESET_LABELS/LOCAL_BUILDERS.email, mmgr-app.js emailTplText pure getter) and real-time presence is DONE (sw v69, Part B — re-opened by Garfield, no longer deferred). §0 scope of the dashboard spec WAS owner-confirmed 2026-08-12 (recorded in the spec itself) — the audit's "never confirmed" is superseded, implementation is app.html-only scoped, light mode byte-untouched.
+PICKED: DASHBOARD-UI-REFRESH-SPEC (first OPEN item). Driven to 100% this session: tools/qa-dashboard-spec.cjs 58/58 (tokens, no dead links, sprite refs, 9 WCAG pairs 11.07–17.24:1, CSP hash parity); npm run verify GREEN (CSP 11/11, SW v69 > 46 assets, 16/16 skills); node --check clean on all touched JS; BROWSER (agent-browser 0.33.2 vs serve.cjs:8765, viewport via CDP Emulation.setDeviceMetricsOverride): @320px — no horizontal scroll (scrollW==clientW==320, the spec §4 hard gate), drawer off-canvas → transform slide-in to left:0, hamburger + scrim + aria-expanded + Escape close all work, metric row single-col; renderMetrics rendered Active 2 / At-Risk 1 / Avg 62/100 from REAL rank() data (localStorage mmgr_unlocked_/mmgr_state_ fixtures — earlier 0/0/— was my thin fixture reading as locked, not a code bug) — no invented numbers; @1000px — fixed 240px rail, .wrap margin-left 264px, hamb hidden, metrics 3-col, all 3 db-links resolve; light mode — rail display:none + margin 0 (spec §5); zero console errors on boot.
+B-N (second OPEN item) also re-verified this session while the server was up: node qa-ai.cjs → AI23_GATE PASS (A17 presets reachable, A11 chip count ≥10 with the new email preset). BOTH OPEN ITEMS NOW CLOSED in Part E.
+⚠️ FLAGGED FOR OWNER (recorded in Part E, NOT touched per the DEFERRED rule): the interrupted last session left PARTIALLY-BUILT, UNCOMMITTED deferred work in the tree — email+password auth (worker.js /api/auth/register|login ~1852+, migration 0007 auth_users.sql, server-side only, NO client UI, NO harness) and the billing tier (migration 0006 cloud_subscriptions.sql + worker.js /api/billing/webhook|status|checkout + free cap, DORMANT until LEMONSQUEEZY_* secrets are set — behavior unchanged while unconfigured). Decide: finish them (wire UI + harnesses, deploy with 0006/0007) or revert the worker.js/migration deltas.
+NEXT (all optional, none blocking): owner decision on the auth/billing question above; npm run deploy (apply migration 0005 to remote D1 first — `npx wrangler d1 migrations apply my-manager-db --remote`); real-Google round-trip of /api/cloud/prefs/theme; the Part E HOUSEKEEPING pass (reconstruct-or-drop the 4 missing directive files + the chat-only plans, remove the duplicate root universal-ui-architect.md, delete the stray txt once the auth decision is made, archive the "new update do everything…" folder). Dev server left running on :8765.
 
 **2026-08-12 — Session: SIDEBAR-HAMBURGER-TOGGLE — the SIDEBAR-HAMBURGER-TOGGLE-PLAN.md executed in full.**
 Per Garfield ("read the plan and the continuation directive, then execute the plan"): added the

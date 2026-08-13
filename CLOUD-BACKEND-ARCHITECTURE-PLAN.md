@@ -199,8 +199,15 @@ behavior rather than a guess.
    the minimum viable version of "my project lives in the cloud and I can get it back."
 2. **Editor code generation with section-level scoping**, enforced server-side.
 3. **Changelog with field-level diffs (or snapshot fallback) + owner revert.**
-4. *(Explicitly deferred, not scheduled)* Real-time presence, additional sign-in
-   providers (Yahoo/Microsoft/email+password), billing/subscription tier.
+4. *(Previously deferred; re-opened + EXECUTED 2026-08-12)* Real-time presence —
+   Presence Durable Object (per-project WebSocket roster, Hibernation API),
+   /api/cloud/presence with generic-403 auth, wrangler durable_objects binding +
+   migration v1-presence, js/mmgr-presence.js header chip. See
+   tools/qa-presence.cjs (11/11) + CONTINUATION-DIRECTIVE.md STATUS LOG.
+   *(Still deferred, not scheduled)* Additional sign-in providers
+   (Yahoo/Microsoft need their OAuth client IDs/secrets; email+password is
+   self-contained and buildable on request), billing/subscription tier (needs a
+   payment-provider decision + keys).
 
 ---
 

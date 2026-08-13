@@ -1,0 +1,39 @@
+{
+  "document_type": "execution_directive",
+  "title": "MONOLITH-FEATURE-PARITY-DIRECTIVES",
+  "reconstruction_note": "⚠️ RECONSTRUCTED 2026-08-12 per the owner's rule (directive files are records — reconstruct, never drop). The original file was never committed. Built from qa-restore-verify.cjs (the committed RESTORE verification harness, which enumerates RESTORE-1/2/3/5/6/7 with per-item end-to-end gates) and BACKLOG.md B-N (which cites RESTORE-3 as its source). Lossy risks: the original may have listed more RESTORE items than the harness covers; numbering gaps (no RESTORE-4 in the harness) are preserved as-is rather than invented.",
+  "context_for_executor": "Restore the old monolith build's signature features in the modular SPA — feature parity, not a port of the architecture. Each RESTORE item is gated end-to-end by qa-restore-verify.cjs (headless Chrome vs serve.cjs:8765, seeded demo project).",
+
+  "RESTORE-1": {
+    "name": "Risk matrix (probability x impact) with click-to-filter + clear",
+    "status": "EXECUTED + VERIFIED (qa-restore-verify.cjs R1a/R1b/R1c)",
+    "evidence": "#risk-matrix populated (Very High tier, data-action=\"riskMatrixCell\"); cell click filters the risk list to matching prob/impact rows; riskMatrixClear removes the filter and restores full rows."
+  },
+  "RESTORE-2": {
+    "name": "Import Dates — Copy List button",
+    "status": "EXECUTED + VERIFIED (qa-restore-verify.cjs R2/R2b)",
+    "evidence": "copyIdTemplate action present in the Import Dates modal ('Copy List'); click copies the template and shows a 'Copied' toast."
+  },
+  "RESTORE-3": {
+    "name": "Email templates (Status Update / Change Request / Risk Escalation / Closure Sign-Off)",
+    "status": "EXECUTED — STATIC BASELINE (verified qa-restore-verify.cjs R3a/R3b) + AI-UPGRADE PATH COMPLETED (2026-08-12)",
+    "evidence": "Four [data-action=emailTpl] buttons (kinds status..closure) copy ready-to-send drafts built live from state (App.emailTpl). Owner decision (2026-08-08): static baseline FIRST as the guaranteed zero-model fallback; the AI-upgrade path tracked separately as BACKLOG.md B-N — which is now IMPLEMENTED (2026-08-12): 'email' AI preset in mmgr-prompts.js + mmgr-ai.js LOCAL_BUILDERS.email returning App.emailTplText('status') verbatim on the local tier, cloud tier drafts a polished version. Static buttons unchanged and never depend on a model."
+  },
+  "RESTORE-5": {
+    "name": "Print Charter wiring",
+    "status": "EXECUTED + VERIFIED (qa-restore-verify.cjs R5a/R5b)",
+    "evidence": "#charter-root carries charter-print-root; MMGR.Charter.printCharter function + [data-action=printCharter] wired."
+  },
+  "RESTORE-6": {
+    "name": "Save Charter",
+    "status": "EXECUTED + VERIFIED (qa-restore-verify.cjs R6a/R6b)",
+    "evidence": "saveCharter action wired; writes charter.name to state and shows a 'Charter saved' toast."
+  },
+  "RESTORE-7": {
+    "name": "WBS alerts banner (schedule-logic issues) with expand/collapse",
+    "status": "EXECUTED + VERIFIED (qa-restore-verify.cjs R7a/R7b/R7c)",
+    "evidence": "#wbs-alerts renders when the schedule has issues ('schedule logic issue', tglWbsIssues); the toggle expands #wbs-issues-detail and collapses it again."
+  },
+
+  "closing_note": "All known RESTORE items verified end-to-end by qa-restore-verify.cjs (14/14 gates: R1a-R1c, R2/R2b, R3a/R3b, R5a/R5b, R6a/R6b, R7a-R7c — re-run against serve.cjs:8765). No open items remain from this directive."
+}

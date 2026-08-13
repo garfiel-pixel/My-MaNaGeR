@@ -235,10 +235,11 @@ confirm it for THIS session.**
   visibility-aware) + .presence-chip CSS. Verified: tools/qa-presence.cjs 11/11
   (npm run qa:presence) against real wrangler dev. Deploy note: the DO binding
   + migration deploy with the worker (auto-applied).
-- [ ] Still deferred (explicitly, do not build unless re-opened): additional
-  sign-in providers (Yahoo/Microsoft need their OAuth client IDs/secrets from
-  the owner; email+password is self-contained and can be built on request),
-  billing/subscription tier (needs a payment-provider decision + keys).
+- [x] Still-deferred items, re-verified 2026-08-13: email+password auth and the
+  billing/subscription tier are BOTH DONE + verified (see Part E). Yahoo + Microsoft
+  sign-in providers are **PAUSED by the owner (2026-08-13)** — they need their OAuth
+  client IDs/secrets and the owner explicitly deferred them; revisit only when the
+  owner re-opens.
 
 ---
 
@@ -459,16 +460,24 @@ to be worked from directly and their completion status determined fresh:
   (8.2), 4-card grid renders, zero console errors, qa-dashboard-spec 58/58, verify green
   (SW v74)."
 - [x] **Rank 9 API/Webhook — EXECUTED 2026-08-12 (owner re-opened the plan's gate; see STATUS LOG): 9.1 read-only resource shapes (GET /api/cloud/projects/:id/api/:shape — tasks|baseline|risks|weather|evm|portfolio; owner-gated code/session; faithful worker ports of the app's EVM/health/wxRiskDays math; secrets can never leak — they're stripped at save + shapes only read whitelisted fields; editor codes 403; empty project → exists:false) + 9.2 opt-in webhooks (migration 0008 webhook_subscriptions; owner-gated POST/GET/DELETE /api/cloud/projects/:id/webhooks; scheduled() evaluator fires health_dropped + weather_risk_tomorrow with an HMAC-SHA256 X-MMGR-Signature header; reference-point last_value semantics for health drops + once-per-day guard for weather; ZERO rows = no-op — off by default; project.html Cloud drawer Webhooks section with event select + URL + List/Add/Remove + one-time secret display; mmgr-app.js cloudWebhookList/Add/Del wired). tools/qa-rank9-api.cjs 31/31 incl. real cron-driven deliveries via wrangler dev --test-scheduled.
-- [ ] Rank 10 backlog — opportunistic, nothing pulled yet (owner picks from OWNER-REVIEW §3).
+- [x] **Rank 10 backlog — CLOSED 2026-08-13 (owner go-ahead).** The surviving backlog
+  items 21–25 (the v2 addendum's weather pass; the original 1–20 content is not
+  preserved in-repo and was absorbed into Ranks 1–9) are ALL verified shipped in code:
+  Heat/Cold Safety Alert (`heatColdAlert()` — now also promoted to a page-top
+  `#safety-banner` this session), SRI card (`sri()` + `#ld-sri-strip`), rolling
+  lead-time (`tglLeadtimeReview` + `renderLeadtimeTracker`), subcontractor notice
+  (`subcontractorNotice()` + `wxCopyNotice`), manual weather override
+  (`logWeatherDay({manual:true})`). See MASTER-ACTION-PLAN-v3-STRICT.md Rank 10 notes.
 
 ### OPERATIONAL — not a code task, needs the user present for deploy
 
 > **OWNER-ONLY WORK IS TRACKED IN `OWNER-REVIEW.md`** (added 2026-08-12) — the
 > single checklist of everything that needs the owner in person: secrets/credentials
-> (LemonSqueezy ×3, Yahoo/Microsoft OAuth, GOOGLE_CLIENT_SECRET, ADMIN_CODE), the
-> deploy sequence, product decisions, and visual review items. Agents: leave it for
-> the owner; when the owner completes an item, update the STATUS LOG + this section
-> and check it off there. The short list below mirrors it for quick reference.
+> (Yahoo/Microsoft OAuth — LemonSqueezy ×3, GOOGLE_CLIENT_SECRET + ADMIN_CODE are DONE,
+> confirmed via `wrangler secret list` 2026-08-13), the deploy sequence, product
+> decisions, and visual review items. Agents: leave it for the owner; when the owner
+> completes an item, update the STATUS LOG + this section and check it off there. The
+> short list below mirrors it for quick reference.
 
 - [ ] Apply migrations 0005 + 0006 + 0007 to remote D1: `npx wrangler d1 migrations
   apply my-manager-db --remote` — required before the worker deploy (0005: the
@@ -477,10 +486,13 @@ to be worked from directly and their completion status determined fresh:
   v1-presence migration deploy with the worker (auto-applied).
 - [ ] `npm run deploy` — local verify is green (re-confirmed this session).
 - [ ] Optional: real-Google round-trip of /api/cloud/prefs/theme.
-- [ ] Set the LEMONSQUEEZY_API_KEY / LEMONSQUEEZY_WEBHOOK_SECRET / LEMONSQUEEZY_VARIANT_ID
-  secrets to activate the (complete, verified, dormant) billing tier — see OWNER-REVIEW.md §1.1.
+- [x] Set the LEMONSQUEEZY_API_KEY / LEMONSQUEEZY_WEBHOOK_SECRET / LEMONSQUEEZY_VARIANT_ID
+  secrets to activate the (complete, verified, dormant) billing tier — DONE 2026-08-13
+  (owner uploaded all three; confirmed via `npx wrangler secret list`). GOOGLE_CLIENT_SECRET
+  + ADMIN_CODE also confirmed set. The tier activates on the next deploy. See OWNER-REVIEW.md §1.1.
 - [ ] Provide Yahoo + Microsoft OAuth client IDs/secrets to unblock those sign-in
-  providers (email+password is done) — see OWNER-REVIEW.md §1.2.
+  providers (email+password is done) — **PAUSED by the owner 2026-08-13** (deferred;
+  revisit when re-opened) — see OWNER-REVIEW.md §1.2.
 
 ### HOUSEKEEPING — no code impact, do in one small pass whenever convenient
 
@@ -525,6 +537,19 @@ Format: date/session marker, what was completed (with file/line specifics), what
 in-progress and exactly where it stopped, what's next.
 
 ### Log entries (most recent at top)
+
+**2026-08-13 — Session: RANK-10-CLOSED + SAFETY-BANNER — the owner greenlit the Rank 10 backlog and named "the banner"; audit found every backlog item already shipped, so Rank 10 was closed as verified and the Heat/Cold SAFETY alert was PROMOTED to a page-top banner. Yahoo/Microsoft marked PAUSED; no archive restore.**
+Per the owner ("work on the banner … go on with the 10 backlog … pausing Yahoo and Microsoft … only restore archived items if they are of value — they are redundant, do not restore … then just commit and push, I can handle deployment"):
+1) **RANK 10 AUDIT — ALL ITEMS 21-25 ALREADY SHIPPED** (verified against code, not claims): 21 Heat/Cold Safety Alert = `js/mmgr-forecast.js` `heatColdAlert()` (HEAT_C=32/COLD_C=0) → `.wfr-alert.wfr-heat/.wfr-cold` in `renderWeatherForecast()` (mmgr-render.js:812-834); 22 SRI = `sri()` → `#ld-sri-strip` (renderWeatherLog) + mmgr-defs.js glossary entry; 23 rolling lead-time = `tglLeadtimeReview` (mmgr-tasks.js) + `renderLeadtimeTracker()` 3-month window + `stale` badge; 24 sub notice = `subcontractorNotice()` + `wxCopyNotice` action (mmgr-app.js:1196); 25 manual override = `logWeatherDay({manual:true})` feeding weatherLog. qa-full gates 58-61 already cover the panel/thresholds/SRI/toggle. The original 1-20 gap content is NOT preserved in-repo (reconstruction record) and was absorbed into Ranks 1-9 — nothing concrete remains unbuilt. **Rank 10 marked CLOSED** in MASTER-ACTION-PLAN-v3-STRICT.md + ACTION-PLAN-COMPETITIVE-GAPS.md + Part E.
+2) **SAFETY BANNER PROMOTED (the "banner" item 21)** — SHIPPED: project.html `#safety-banner` (role=status aria-live=polite, .is-hide pattern, sits first in the body before the readonly/editor-scope bars — static markup, zero inline styles → CSP 11/11 unchanged); js/mmgr-render.js `renderSafetyBanner()` — reads the SAME `Fc.heatColdAlert(s)` as the in-panel wfr-alert so the two can never disagree, sets `safety-heat`/`safety-cold` class + textContent (no HTML), hides (.is-hide) when clear; wired into the render pipeline next to renderWeatherForecast + Render exports; css/mmgr.css `#safety-banner` block (non-sticky — transient alert avoids stacking with the sticky scope bars; heat = danger tint rgba(220,53,69,.10)/var(--danger), cold = blue tint rgba(59,130,246,.10)/var(--blue) — same wfr-heat/wfr-cold hues, dark-mode black-bar override; token-driven, no new tokens; kind classes stripped on hide so the element is pristine). sw.js mmgr-shell-v77→v79 (v78 + the v79 re-bump predating the final class-strip polish — project.html + mmgr.css + mmgr-render.js are shell assets). VERIFICATION: node --check clean (mmgr-render.js, sw.js); npm run verify GREEN (CSP 11/11 unchanged — no inline scripts touched; SW v79 > 47 assets; 16/16 skills); qa-full.cjs 171/171 ×2 (incl. gates 58–61 forecast/heat-alert/SRI — zero console errors, zero page exceptions); BROWSER (agent-browser vs serve.cjs:8765, after unregistering a stale SW that was serving the pre-polish JS): boot (no location/forecast) → banner hidden; seeded heat day (tMax 35 tomorrow) → visible with class safety-heat + "Heat alert: 35C … schedule outdoor work for early hours." + in-panel .wfr-alert.wfr-heat consistent; seeded cold day (tMin −2) → safety-cold + "…concrete/water work at freeze risk."; cleared → hidden, no lingering kind class. Screenshot saved for the owner's visual review.
+3) **YAHOO/MICROSOFT PAUSED** — no UI exists to disable (the providers were never built — they're comments/migration-0007 note only), so the pause is recorded in docs: OWNER-REVIEW §1.2, Part B + Part E operational line + this log. Revisit when the owner provides OAuth credentials.
+4) **HOUSEKEEPING — NO ARCHIVE RESTORE** per the owner's rule (only restore if of value; the archived executed plans are redundant — keep archived). Recorded in OWNER-REVIEW §5.
+NEXT per the sweep: the deploy is the ONLY remaining owner action (remote D1 already fully migrated — verified 2026-08-13; all 5 secrets set; `npm run deploy` via the tar staging recipe; FREE_PROJECT_CAP default-3 confirmation open). Owner visual review items in OWNER-REVIEW §4 now include the new safety banner. Commit + push done this session per the owner's instruction.
+
+**2026-08-13 — Session: COMMIT-PUSH + LS-SECRETS-CONFIRMED — the entire 2026-08-12 wave committed + pushed to origin/main, and the owner's LemonSqueezy secrets verified on the worker.**
+Per the owner ("you may commit and push" then "I have completed the API for Lemon Squeezy — all three uploaded"): (1) COMMITTED + PUSHED the full uncommitted wave as two commits: `7ee863e` docs (CONTINUATION-DIRECTIVE Part E + STATUS LOG, OWNER-REVIEW.md, reconstructed directive/plan records, _archive/ moves incl. the executed-plans folder + stray txt, duplicate root universal-ui-architect.md removed) and `2e20562` feat (presence DO + js/mmgr-presence.js chip, email+password auth + migration 0007 + mmgr-google-auth.js forms, billing tier + migration 0006 + client Upgrade banner/plan strip, Rank 9 API/webhooks + migration 0008 + project.html Webhooks section, dark portfolio dashboard app.html + qa-dashboard-spec 58/58, sanitized Report Issue js/mmgr-report.js + 27/27, email preset with static fallback, light-mode #grid glow, harnesses qa-presence 11/11 + qa-email-auth 26/26 + qa-rank9-api 31/31). Pre-push gate: npm run verify GREEN (CSP 11/11, SW mmgr-shell-v77 > 47 assets, 16/16 skills). Working tree clean after push (a5c27b9..2e20562). (2) VERIFIED SECRETS: `npx wrangler whoami` (owner account, OAuth token, wrangler 4.120.0) + `npx wrangler secret list` on `my-manager` — ALL FIVE secrets present: LEMONSQUEEZY_API_KEY, LEMONSQUEEZY_WEBHOOK_SECRET, LEMONSQUEEZY_VARIANT_ID (owner's upload, 2026-08-13) AND GOOGLE_CLIENT_SECRET + ADMIN_CODE (also confirmed — closes OWNER-REVIEW §1.3/§1.4). OWNER-REVIEW.md updated: §1.1 marked DONE (three LS secrets set; variant decision closed; FREE_PROJECT_CAP default-3 confirmation still open), §1.3/§1.4 confirmed, §2 note corrected (wave IS committed, deploy still pending). CONTINUATION-DIRECTIVE Part E — OPERATIONAL updated to match.
+IMPORTANT DEPLOY NUANCE: the secrets are set on the worker NOW, but the CURRENT DEPLOYED worker predates the billing/presence/auth/API code — the tier stays dormant until the next deploy (which still needs the remote D1 migrations first). Once deployed, FREE_PROJECT_CAP=3 becomes ACTIVE by default — free accounts over 3 linked cloud projects will get the 402 Upgrade flow (unless the owner overrides via env FREE_PROJECT_CAP).
+NEXT per the sweep: (1) owner decision on FREE_PROJECT_CAP default (3) before/at deploy; (2) apply remote D1 migrations (`npx wrangler d1 migrations apply my-manager-db --remote` — 0005–0008 + v1-presence via the DO migration tag); (3) `npm run deploy`; (4) owner product decisions still open: digest real-use gate (Rank 9 is already DONE — the gate is now moot for Rank 9 but remains relevant for any Rank-9-adjacent extension), Rank 10 backlog pick, Rank 8 glow confirmation, presence chip visibility, 12-month auto-purge vs paying accounts, email+password on marketing site; (5) Yahoo/Microsoft OAuth credentials still needed for those providers.
 
 **2026-08-12 — Session: RANK-9-API-WEBHOOK — MASTER-ACTION-PLAN Rank 9 (API/webhook layer) implemented + verified; the plan's own deferral gate ("do not start until Rank 2 digest has real use") was explicitly re-opened by the owner naming the task.**
 SHIPPED (worker.js): 9.1 — owner-gated GET /api/cloud/projects/:id/api/:shape with six stable READ-ONLY shapes (tasks/baseline/risks/weather/evm/portfolio) projected from the saved R2 state, built by pure dependency-free ports of the app's own math (apiEVM mirrors mmgr-evm computeEVM incl. spendLog actuals + curve-shape time-phased PV; apiPortfolio mirrors the 5-factor health formula; apiWeather mirrors wxRiskDays thresholds precip>=60||tMax>=32||tMin<=0). Secrets cannot leak by construction: stripStateSecrets runs at save, and the builders read only enumerated whitelisted fields. Auth = cloudAuthOwnerEither (owner code OR linked session) with the same generic-403 discipline; editor codes are rejected (R10). Empty project → 200 {exists:false, data:null}. 9.2 — OPT-IN webhooks (migration 0008 webhook_subscriptions): owner-gated POST/GET/DELETE /api/cloud/projects/:id/webhooks (event whitelist health_dropped|weather_risk_tomorrow, targetUrl must be http(s), per-subscription crypto.getRandomValues secret shown ONCE at create and never in the list); the scheduled() cron now calls evaluateWebhooks() — health_dropped stores last_value on EVERY run (a drop is a real comparison, never a first-run surprise) and weather_risk_tomorrow fires at most once per calendar day; delivery is a POST with an HMAC-SHA256 X-MMGR-Signature header + 10s timeout. ZERO subscription rows = the evaluator no-ops → dormant-until-configured, byte-for-byte unchanged behavior on the current deploy.

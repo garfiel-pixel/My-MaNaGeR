@@ -312,6 +312,36 @@ Ranks 1–9 above remains valid and un-discarded. Pull from backlog opportunisti
 Rank 1–5 are done. Do not let backlog items jump the queue without an explicit,
 deliberate re-ranking decision — no silent scope creep.
 
+**✅ EXECUTED (2026-08-13, owner go-ahead):** the surviving backlog items 21–25 (the v2
+addendum's weather pass — the original 1–20 content is not preserved in-repo and was
+absorbed into Ranks 1–9) are ALL verified shipped in code, and item 21 was additionally
+promoted this session (see below). Rank 10 is CLOSED.
+
+- 21. **Heat/Cold Safety Alert** — `js/mmgr-forecast.js` `heatColdAlert()` (HEAT_C=32 /
+  COLD_C=0, first heat/cold risk day) rendered in-panel as `.wfr-alert.wfr-heat/wfr-cold`
+  (visually distinct danger/blue tints + i-alert-triangle vs the amber schedule flags)
+  in `js/mmgr-render.js` `renderWeatherForecast()`. **PROMOTED 2026-08-13:** a full-width
+  page-top `#safety-banner` (role=status polite live region, `.is-hide` pattern, non-sticky)
+  rendered by new `renderSafetyBanner()` from the SAME `heatColdAlert()` source so the two
+  can never disagree; degrades gracefully (no location/forecast → hidden).
+- 22. **Schedule Reliability Index (SRI) card** — `mmgr-forecast.js` `sri()` (weather-delay
+  days vs elapsed scheduled days) rendered in the LD/SRI strip (`#ld-sri-strip`,
+  `renderWeatherLog()`), documented in `js/mmgr-defs.js` (Schedule Reliability Index).
+- 23. **Rolling Material Lead-Time Forecast** — `js/mmgr-tasks.js` lead-time review stamp
+  (`tglLeadtimeReview`, `lastLeadtimeReview` in schema) + `js/mmgr-render.js`
+  `renderLeadtimeTracker()` rolling 3-month window with a weekly-cadence `stale` badge.
+- 24. **Subcontractor Weather Notification** — `mmgr-forecast.js` `subcontractorNotice()`
+  (next 3 risk days + affected tasks, copy-paste text) wired as the `wxCopyNotice` action
+  in `js/mmgr-app.js` (manual-trigger first, per the plan's own v1 constraint).
+- 25. **On-Site Manual Weather Override** — `mmgr-forecast.js` `logWeatherDay()` with
+  `manual:true` (manual entry when no forecast / hyperlocal reality beats the API) feeding
+  the same `weatherLog` the export + LD/SRI read.
+
+QA evidence: qa-full.cjs gates 58–61 (forecast panel, thresholds incl. heat alert, SRI
+strip, 7d/16d toggle) + the standing two-tier verification (npm run verify GREEN, CSP
+11/11, SW mmgr-shell-v78, 16/16 skills; node --check clean; browser smoke 2026-08-13).
+See CONTINUATION-DIRECTIVE.md STATUS LOG 2026-08-13 (RANK-10-CLOSED + SAFETY-BANNER).
+
 ---
 
 ## STANDING VERIFICATION PROTOCOL (applies at every phase boundary)

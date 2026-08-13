@@ -46,15 +46,18 @@ differentiators worth building. **Superseded in ranking by MASTER-ACTION-PLAN-v3
   Ranks 1–9 remains valid and un-discarded, pulled from the backlog
   opportunistically — no silent scope creep.
 - **21–25** — added by the v2 addendum (2026-08-12, weather research pass):
-  21. Heat/Cold Safety Alert (LTIR reduction angle)
-  22. Schedule Reliability Index (SRI) card
-  23. Rolling Material Lead-Time Forecast (extends Phase 2.3)
-  24. Subcontractor Weather Notification (closes BuilderTrend's actual gap)
-  25. On-Site Manual Weather Override
+  21. Heat/Cold Safety Alert (LTIR reduction angle) — ✅ IMPLEMENTED + PROMOTED 2026-08-13
+  22. Schedule Reliability Index (SRI) card — ✅ IMPLEMENTED
+  23. Rolling Material Lead-Time Forecast (extends Phase 2.3) — ✅ IMPLEMENTED
+  24. Subcontractor Weather Notification (closes BuilderTrend's actual gap) — ✅ IMPLEMENTED
+  25. On-Site Manual Weather Override — ✅ IMPLEMENTED
   Weather workstream (Phase 7) is absorbed into MASTER-ACTION-PLAN-v3 **Rank 7** —
   implemented (`js/mmgr-weather.js`, weather-exposed task tagging, forecast panel,
   daily log). Remaining backlog items (safety alerts, SRI, sub notifications, manual
-  override) sit in Rank 10 per the master plan.
+  override) sit in Rank 10 per the master plan. **Rank 10 CLOSED 2026-08-13** — every
+  item verified shipped in code (see MASTER-ACTION-PLAN-v3-STRICT.md Rank 10 notes);
+  the safety alert is now also a page-top `#safety-banner` (project.html +
+  `renderSafetyBanner()` in js/mmgr-render.js).
 
 ## Status
 

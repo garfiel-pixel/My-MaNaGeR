@@ -8,7 +8,9 @@
 > owner confirms them in chat. Owner: review top-to-bottom, tick what you've done,
 > and tell the next session what you decided.
 >
-> Last updated: 2026-08-12 (after the RANK-8-VISUAL-WEIGHT session).
+> Last updated: 2026-08-13 (LemonSqueezy secrets confirmed set — §1.1 done; the
+> 2026-08-12 wave was committed + pushed: `7ee863e` docs, `2e20562` feat; Rank 10
+> closed + Heat/Cold safety banner promoted — §1.2 PAUSED, §3/§4/§5 updated).
 
 ---
 
@@ -27,9 +29,14 @@ npx wrangler secret put LEMONSQUEEZY_WEBHOOK_SECRET   # webhook signing secret (
 npx wrangler secret put LEMONSQUEEZY_VARIANT_ID       # the checkout variant id (numeric)
 ```
 
+✅ **ALL THREE SECRETS SET — CONFIRMED 2026-08-13** via `npx wrangler secret list` on
+`my-manager`: `LEMONSQUEEZY_API_KEY`, `LEMONSQUEEZY_WEBHOOK_SECRET`,
+`LEMONSQUEEZY_VARIANT_ID` all present. The tier activates on the NEXT deploy (the
+current deployed worker predates the billing code — secrets sit dormant until then).
+
 Owner decisions needed once configured:
 - [ ] Confirm the default `FREE_PROJECT_CAP` (currently 3 linked projects for free accounts — override via env `FREE_PROJECT_CAP` if you want a different number).
-- [ ] Pick the paid plan's variant/price in LemonSqueezy and set `LEMONSQUEEZY_VARIANT_ID`.
+- [x] Pick the paid plan's variant/price in LemonSqueezy and set `LEMONSQUEEZY_VARIANT_ID` — DONE 2026-08-13 (owner set the variant; secret confirmed).
 - [x] Confirm where the Upgrade banner should live — RESOLVED 2026-08-12: the
   app.html projects page now has its own free-plan strip ("Free plan — N of M
   linked projects" + Upgrade button, gold .at-limit state at/over cap) rendered
@@ -39,26 +46,31 @@ Owner decisions needed once configured:
   gold state + checkout click, dark-mode cyan treatment, dormant unconfigured =
   hidden, zero console errors).
 
-### 1.2 Yahoo + Microsoft sign-in (both blocked on your OAuth credentials)
-Email+password is DONE (register/login, migration 0007). Yahoo and Microsoft need
-their own OAuth client IDs + secrets from you — they cannot be guessed:
+### 1.2 Yahoo + Microsoft sign-in (⏸️ PAUSED 2026-08-13 by the owner — revisit later)
+Email+password is DONE (register/login, migration 0007). Yahoo and Microsoft were
+**paused by the owner (2026-08-13)** — no OAuth credentials needed right now; nothing
+was built or disabled (the providers were never wired — they exist only as docs/
+comments). When re-opened, they still need their own OAuth client IDs + secrets:
 
 - [ ] Yahoo: create an OAuth app → provide client id + secret (+ redirect URI) → I wire the flow.
 - [ ] Microsoft (Entra): create an app registration → provide client id + secret (+ redirect URI) → I wire the flow.
 
 ### 1.3 Verify Google sign-in secret is set (deploy prerequisite)
-- [ ] Confirm `GOOGLE_CLIENT_SECRET` is set as a Wrangler secret (the public Client ID is already in wrangler.jsonc). Without it, Google sign-in + owner-code recovery are inert in production.
+- [x] Confirm `GOOGLE_CLIENT_SECRET` is set as a Wrangler secret — CONFIRMED 2026-08-13
+  (`npx wrangler secret list` shows it on `my-manager`).
 
 ### 1.4 Admin API secret
-- [ ] Confirm `ADMIN_CODE` is set as a Wrangler secret (gates the admin cloud listing API). If unset, the admin cloud page answers 503 with a clear message.
+- [x] Confirm `ADMIN_CODE` is set as a Wrangler secret — CONFIRMED 2026-08-13
+  (`npx wrangler secret list` shows it on `my-manager`).
 
 ---
 
 ## 2. 🚀 Deploy operations (real-world side effects — owner runs these)
 
-All local verification is GREEN (npm run verify: CSP 11/11, SW v74, 16/16 skills;
-qa-dashboard-spec 58/58; qa-email-auth 26/26; qa-presence 11/11; verify-report-issue 27/27).
-Nothing has been committed or deployed yet — all work is uncommitted in the working tree.
+All local verification is GREEN (npm run verify: CSP 11/11, SW v77, 16/16 skills;
+qa-dashboard-spec 58/58; qa-email-auth 26/26; qa-presence 11/11; verify-report-issue 27/27;
+qa-rank9-api 31/31). The 2026-08-12 wave IS committed + pushed (`7ee863e` docs,
+`2e20562` feat — `origin/main`). **Deploy itself has NOT happened yet.**
 
 - [ ] **Apply migrations to remote D1** (required before the worker deploy, in order):
   ```bash
@@ -83,10 +95,11 @@ Nothing has been committed or deployed yet — all work is uncommitted in the wo
   (API/webhook layer) is explicitly deferred until the Rank 2 digest engine has been
   used manually for at least one real project cycle. Use the Weekly/Daily Digest +
   the AI presets on a real project, then tell the next session — that's the unlock.
-- [ ] **Rank 10 backlog pulls.** The plan's Rank 10 backlog (original 25-gap items
-  like Heat/Cold Safety Alerts, Schedule Reliability Index, Subcontractor Weather
-  Notification, On-Site Weather Override) is opportunistic — pick one to prioritize,
-  or leave it.
+- [x] **Rank 10 backlog — CLOSED 2026-08-13 (owner go-ahead).** All surviving items
+  (21–25: Heat/Cold Safety Alert, SRI, rolling lead-time, subcontractor notice, manual
+  weather override) were audit-verified already shipped in code; the Heat/Cold safety
+  alert was additionally promoted to a page-top `#safety-banner` this session. Nothing
+  remains on the backlog unless you add new ideas.
 - [ ] **Rank 8 treatment confirmation.** The light-mode projects page now has a
   subtle gold radial glow (spec option 1 of 3 — glow over blueprint texture /
   card thumbnails, chosen per your recommended-option rule). Open app.html in light
@@ -119,6 +132,9 @@ Each was programmatically verified, but the owner's eye is the final gate:
 - [ ] **Email+password sign-in form** (app.html/admin.html auth bar): toggle,
   login/register modes, error line.
 - [ ] **Presence chip** (project.html header, when a second viewer is open).
+- [ ] **Heat/Cold safety banner** (NEW 2026-08-13 — project.html top-of-page red/blue
+  bar when a heat/cold risk day is in the forecast): confirm the copy/tints read as
+  SAFETY, not just another schedule flag.
 
 ---
 
@@ -129,9 +145,9 @@ Each was programmatically verified, but the owner's eye is the final gate:
   FIELD-GUIDE-UPDATE-PLAN.md, MONOLITH-FEATURE-PARITY-DIRECTIVES.json,
   ACTION-PLAN-COMPETITIVE-GAPS.md) read faithfully — they were rebuilt from
   in-directive records after the originals were found missing.
-- [ ] `_archive/` now holds the executed plans + session txts (kept, never deleted,
-  excluded from deploys). Tell the next session if you want any of them restored to
-  the root.
+- [x] `_archive/` restore decision — **NO RESTORE (owner, 2026-08-13):** the archived
+  executed plans + session txts are redundant records, not of further value; keep them
+  archived (they're excluded from deploys).
 
 ---
 

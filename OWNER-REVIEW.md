@@ -8,9 +8,10 @@
 > owner confirms them in chat. Owner: review top-to-bottom, tick what you've done,
 > and tell the next session what you decided.
 >
-> Last updated: 2026-08-13 (LemonSqueezy secrets confirmed set — §1.1 done; the
-> 2026-08-12 wave was committed + pushed: `7ee863e` docs, `2e20562` feat; Rank 10
-> closed + Heat/Cold safety banner promoted — §1.2 PAUSED, §3/§4/§5 updated).
+> Last updated: 2026-08-13 (DEPLOYED to production — §2 done; the full wave is
+> live: billing tier ACTIVE, email+password auth, presence, Rank 9 API/webhooks,
+> safety banner, emoji-free pages. §1.1 troubleshooting notes now apply to the
+> LIVE origin. §1.2 still PAUSED, §3/§4/§5 updated).
 
 ---
 
@@ -34,13 +35,14 @@ npx wrangler secret put LEMONSQUEEZY_VARIANT_ID       # the checkout variant id 
 `LEMONSQUEEZY_VARIANT_ID` all present. **Variant ID: `2013675`** (logged 2026-08-13
 per the owner — variant ids are public checkout identifiers, not secrets).
 
-⚠️ **NOT LIVE YET — and this is the most likely cause of any "billing issues" you're
-seeing right now:** the LAST WORKER CODE DEPLOY was 2026-08-12T02:10 (pre-wave).
-Production currently has NO `/api/billing/*`, `/api/auth/*`, presence, or Rank-9
-routes — any billing call against the deployed origin 404s. The secrets sit dormant
-until the next deploy (remote D1 is already migrated). See §2.
+✅ **LIVE — DEPLOYED 2026-08-13** (version `2ca85916-f309-483b-a7ee-1c8fdcc6e302`,
+`my-manager.garfieldprocis.workers.dev`). Verified on the live origin immediately
+after deploy: `/api/billing/status` returns the session-gated generic 403 (route
+exists — no more 404), `/api/auth/me` returns `{ok:false,user:null}`, cloud API +
+presence routes respond. The billing tier is now ACTIVE: free accounts over
+`FREE_PROJECT_CAP` (3) hit the Upgrade flow, and the Upgrade banner appears.
 
-**Troubleshooting AFTER the deploy (if checkout/webhook still misbehave):**
+**Troubleshooting on the LIVE origin (if checkout/webhook misbehave):**
 - Checkout 502: the response body now includes LemonSqueezy's own error detail
   (harden added 2026-08-13). Common real causes: (a) the LS API key is invalid or
   belongs to a different store than the variant; (b) the variant `2013675` belongs
@@ -85,24 +87,18 @@ comments). When re-opened, they still need their own OAuth client IDs + secrets:
 
 ## 2. 🚀 Deploy operations (real-world side effects — owner runs these)
 
-All local verification is GREEN (npm run verify: CSP 11/11, SW v77, 16/16 skills;
-qa-dashboard-spec 58/58; qa-email-auth 26/26; qa-presence 11/11; verify-report-issue 27/27;
-qa-rank9-api 31/31). The 2026-08-12 wave IS committed + pushed (`7ee863e` docs,
-`2e20562` feat — `origin/main`). **Deploy itself has NOT happened yet.**
+All local verification was GREEN before the deploy (npm run verify: CSP 11/11,
+SW v81, 16/16 skills; qa-email-auth 26/26; qa-full 171/171). The 2026-08-12/13 wave
+is committed + pushed (`7ee863e` docs, `2e20562` feat, `3c0e62b` emoji-free,
+`74e0839` checkout harden). **Deploy DONE 2026-08-13** via the tar staging recipe.
 
-- [ ] **Apply migrations to remote D1** (required before the worker deploy, in order):
-  ```bash
-  npx wrangler d1 migrations apply my-manager-db --remote
-  ```
-  This applies ALL pending migrations including 0005 (changelog `import_key`), 0006
-  (`cloud_subscriptions`), 0007 (`auth_users`), and v1-presence (the Presence DO
-  binding + migration deploy with the worker — auto-applied).
-- [ ] **Deploy**:
-  ```bash
-  npm run deploy
-  ```
-  (runs `npm run verify` first; uses the tar staging recipe in wrangler.jsonc — the
-  new `_archive/` folder is excluded so it never bloats the asset upload).
+- [x] **Apply migrations to remote D1** — ALREADY APPLIED (verified 2026-08-13 before
+  deploy: all 8 migrations incl. 0006/0007/0008 present in `d1_migrations`, remote
+  tables exist). The Presence DO migration v1-presence auto-applied with the deploy.
+- [x] **Deploy** — DONE 2026-08-13 (staging copy excluded `.git .wrangler
+  node_modules .agents _archive`; 234 files; version `2ca85916-f309-483b-a7ee-1c8fdcc6e302`;
+  https://my-manager.garfieldprocis.workers.dev). Post-deploy curl verified the
+  billing/auth/cloud/presence routes answer (no 404s).
 - [ ] Optional: real-Google round-trip of `/api/cloud/prefs/theme` against the deployed origin (the local harness already proves the flow with byte-identical session cookies).
 
 ---

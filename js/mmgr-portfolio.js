@@ -153,8 +153,30 @@ var MMGR = window.MMGR || {};
     return { high: 'Urgent', medium: 'Watch', low: 'On Track', locked: 'Locked', none: 'No Data' }[t] || t;
   }
 
+  // ---- DASHBOARD-UI-REFRESH-SPEC §3: 3 metric summary cards ----
+  // Active / At-Risk / Avg Health, computed from the SAME rank() data the
+  // strip uses — no invented numbers. Rendered ONLY when the page is in
+  // dark dashboard mode (spec §5: light mode stays untouched; the container
+  // is display:none there anyway).
+  function renderMetrics() {
+    const el = document.getElementById('db-metrics');
+    if (!el) return;
+    const projects = window.MMGR_PROJECTS || [];
+    if (!projects.length || !document.body.classList.contains('dark-mode')) { el.innerHTML = ''; return; }
+    const ranked = rank(projects);
+    const unlocked = ranked.filter(r => r.unlocked);
+    const withHealth = unlocked.filter(r => r.health && r.health.score !== null);
+    const atRisk = unlocked.filter(r => r.urgency.tier === 'high' || r.urgency.tier === 'medium').length;
+    const avg = withHealth.length ? Math.round(withHealth.reduce((n, r) => n + r.health.score, 0) / withHealth.length) : null;
+    el.innerHTML =
+      '<div class="db-metric"><div class="dm-label">Active Projects</div><div class="dm-value">' + unlocked.length + '</div></div>' +
+      '<div class="db-metric"><div class="dm-label">At-Risk Projects</div><div class="dm-value">' + atRisk + '</div></div>' +
+      '<div class="db-metric"><div class="dm-label">Avg Health Score</div><div class="dm-value">' + (avg === null ? '&mdash;' : avg) + '<span class="dm-unit">/100</span></div></div>';
+  }
+
   // ---- Render into the dashboard's portfolio strip ----
   function render() {
+    renderMetrics();
     const el = document.getElementById('portfolio-strip');
     if (!el) return;
     const projects = window.MMGR_PROJECTS || [];
@@ -191,6 +213,7 @@ var MMGR = window.MMGR || {};
     computeUrgency: computeUrgency,
     rank: rank,
     render: render,
+    renderMetrics: renderMetrics,
     wxRiskDays: wxRiskDays
   };
 })(MMGR);

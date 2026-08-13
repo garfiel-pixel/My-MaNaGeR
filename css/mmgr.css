@@ -798,8 +798,13 @@ body.readonly-mode .btn[data-action]:not([data-action="showSec"]):not([data-acti
 .irow td{border-left:2px solid var(--danger);background:rgba(220,53,69,.05);}
 
 /* ---- Drawer ---- */
-#drw{position:fixed;top:0;right:-430px;width:410px;height:100vh;background:var(--card);border-left:1px solid var(--border);z-index:1000;transition:right .3s ease;display:flex;flex-direction:column;overflow:hidden;}
+#drw{position:fixed;top:0;right:-430px;width:410px;height:100vh;z-index:1000;transition:right .3s ease;overflow:hidden;
+  /* The outer shadow lives here as a filter so it SURVIVES the superellipse
+     clip-path on the child .drw-sheet (clip-path clips box-shadow; a parent
+     filter:drop-shadow does not, and follows the clipped silhouette). */
+  filter:drop-shadow(-8px 0 24px rgba(15,23,42,.14));}
 #drw.open{right:0;}
+.drw-sheet{height:100%;display:flex;flex-direction:column;overflow:hidden;background:var(--card);border-left:1px solid var(--border);}
 .dh{padding:18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
 .dt2{font-size:.95rem;font-weight:700;color:var(--gold);}
 .dc{background:none;border:none;color:var(--slate);cursor:pointer;font-size:1.1rem;padding:4px;}
@@ -1184,17 +1189,121 @@ header{position:sticky;top:0;z-index:100;}
   border-radius:var(--squircle-lg);
   box-shadow:var(--glass-rim),var(--glass-shadow);
 }
+/* §2/§6.3 — superellipse clip-path on modal sheets. The unlock modal is the
+   signature moment: 28px corners (--squircle-lg) traced with an n=4.5
+   superellipse. calc(100% - Npx) keeps corners exactly 28px at ANY sheet
+   width (modals shrink on mobile). border-radius above stays as the
+   @supports fallback for non-clip-path browsers. #ai-win .mb is a work
+   surface (corner resize handles + own 22px radius + big shadow), and the
+   .cu-box/.wi-box content dialogs scroll (their scrollbar corners would be
+   chopped), so both keep border-radius only. */
+.mb{
+  clip-path:polygon(
+      0px 28px,
+      11.33px 27.89px,
+      15.36px 27.57px,
+      18.27px 27.03px,
+      20.58px 26.27px,
+      22.46px 25.26px,
+      24px 24px,
+      25.26px 22.46px,
+      26.27px 20.58px,
+      27.03px 18.27px,
+      27.57px 15.36px,
+      27.89px 11.33px,
+      28px 0px,
+      calc(100% - 28px) 0px,
+      calc(100% - 27.89px) 11.33px,
+      calc(100% - 27.57px) 15.36px,
+      calc(100% - 27.03px) 18.27px,
+      calc(100% - 26.27px) 20.58px,
+      calc(100% - 25.26px) 22.46px,
+      calc(100% - 24px) 24px,
+      calc(100% - 22.46px) 25.26px,
+      calc(100% - 20.58px) 26.27px,
+      calc(100% - 18.27px) 27.03px,
+      calc(100% - 15.36px) 27.57px,
+      calc(100% - 11.33px) 27.89px,
+      100% 28px,
+      100% calc(100% - 28px),
+      calc(100% - 11.33px) calc(100% - 27.89px),
+      calc(100% - 15.36px) calc(100% - 27.57px),
+      calc(100% - 18.27px) calc(100% - 27.03px),
+      calc(100% - 20.58px) calc(100% - 26.27px),
+      calc(100% - 22.46px) calc(100% - 25.26px),
+      calc(100% - 24px) calc(100% - 24px),
+      calc(100% - 25.26px) calc(100% - 22.46px),
+      calc(100% - 26.27px) calc(100% - 20.58px),
+      calc(100% - 27.03px) calc(100% - 18.27px),
+      calc(100% - 27.57px) calc(100% - 15.36px),
+      calc(100% - 27.89px) calc(100% - 11.33px),
+      calc(100% - 28px) 100%,
+      28px 100%,
+      27.89px calc(100% - 11.33px),
+      27.57px calc(100% - 15.36px),
+      27.03px calc(100% - 18.27px),
+      26.27px calc(100% - 20.58px),
+      25.26px calc(100% - 22.46px),
+      24px calc(100% - 24px),
+      22.46px calc(100% - 25.26px),
+      20.58px calc(100% - 26.27px),
+      18.27px calc(100% - 27.03px),
+      15.36px calc(100% - 27.57px),
+      11.33px calc(100% - 27.89px),
+      0px calc(100% - 28px),
+      0px 28px
+  );
+}
+#ai-win .mb{clip-path:none;}
 /* Scrims blur the page behind the sheet (not just dim it) */
 #om,#cfm-modal,#conflict-modal,#chartup-modal,#wbsimport-modal,#importdates-modal,
 #adm-cfm,#pw-om,#adm-conflict,#snip-om{
   backdrop-filter:blur(4px);
   -webkit-backdrop-filter:blur(4px);
 }
-/* Settings drawer is a sheet — same material as modals */
-#drw{background:var(--glass-fill-dark-hover);border-left:var(--glass-border);
+/* Settings drawer is a sheet — same material as modals. The glass surface +
+   superellipse clip-path live on the inner .drw-sheet; #drw keeps only the
+   positioning frame and the filter drop-shadow (which follows the clipped
+   silhouette — a box-shadow would be clipped by the child's clip-path). */
+.drw-sheet{background:var(--glass-fill-dark-hover);border-left:var(--glass-border);
   backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturate));
   -webkit-backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturate));
-  box-shadow:var(--glass-rim),-8px 0 24px rgba(15,23,42,.14);}
+  box-shadow:var(--glass-rim);}
+/* Desktop: superellipse left corners (right edge is flush with the viewport,
+   so it stays square — edge-to-edge per §6.2). Mobile is full-width and
+   edge-to-edge on both sides, so it keeps square corners. */
+@media(min-width:769px){
+  .drw-sheet{clip-path:polygon(
+      100% 0px,
+      28px 0px,
+      27.89px 11.33px,
+      27.57px 15.36px,
+      27.03px 18.27px,
+      26.27px 20.58px,
+      25.26px 22.46px,
+      24px 24px,
+      22.46px 25.26px,
+      20.58px 26.27px,
+      18.27px 27.03px,
+      15.36px 27.57px,
+      11.33px 27.89px,
+      0px 28px,
+      0px calc(100% - 28px),
+      11.33px calc(100% - 27.89px),
+      15.36px calc(100% - 27.57px),
+      18.27px calc(100% - 27.03px),
+      20.58px calc(100% - 26.27px),
+      22.46px calc(100% - 25.26px),
+      24px calc(100% - 24px),
+      25.26px calc(100% - 22.46px),
+      26.27px calc(100% - 20.58px),
+      27.03px calc(100% - 18.27px),
+      27.57px calc(100% - 15.36px),
+      27.89px calc(100% - 11.33px),
+      28px 100%,
+      100% 100%
+  );}
+}
 
 /* §6.1 buttons — glass surface, squircle-md, gold tint on primary */
 .btn{
@@ -1309,7 +1418,7 @@ body.dark-mode .btn-warn:hover{background:#d97706;}
 
 /* §3 mandatory fallback — no backdrop-filter support: solid card colour */
 @supports not (backdrop-filter:blur(1px)){
-  .glass-surface,#app-header,header,#drw,.mb,.gbox,#chartup-modal .cu-box,#wbsimport-modal .wi-box,#importdates-modal .wi-box,
+  .glass-surface,#app-header,header,#drw,.drw-sheet,.mb,.gbox,#chartup-modal .cu-box,#wbsimport-modal .wi-box,#importdates-modal .wi-box,
   .pcard,.btn,.toggle-chip,.tab-btn,.sec-btn,.settings-btn,.dc,.tgl .tsl,.badge.on-hold,.badge.planning{
     background:var(--card);
   }
@@ -1319,7 +1428,7 @@ body.dark-mode .btn-warn:hover{background:#d97706;}
 }
 /* Accessibility: reduced transparency removes the blur, keeps solid surfaces */
 @media (prefers-reduced-transparency:reduce){
-  .glass-surface,#app-header,header,#drw,.mb,.gbox,#chartup-modal .cu-box,#wbsimport-modal .wi-box,#importdates-modal .wi-box,
+  .glass-surface,#app-header,header,#drw,.drw-sheet,.mb,.gbox,#chartup-modal .cu-box,#wbsimport-modal .wi-box,#importdates-modal .wi-box,
   .pcard,.btn,.toggle-chip,.tab-btn,.sec-btn,.settings-btn,.dc,.tgl .tsl,.badge.on-hold,.badge.planning{
     backdrop-filter:none!important;-webkit-backdrop-filter:none!important;background:var(--card);
   }
@@ -1383,7 +1492,7 @@ body.dark-mode #code-input{background:rgba(0,0,0,.3);box-shadow:inset 0 2px 4px 
 body.dark-mode #code-input:focus{box-shadow:inset 0 2px 4px rgba(0,0,0,.3),0 0 0 3px rgba(245,158,11,.25);}
 body.dark-mode #gantt-tip{box-shadow:0 10px 30px rgba(0,0,0,.5);}
 body.dark-mode .mlc-card{box-shadow:0 8px 32px rgba(0,0,0,.5);}
-body.dark-mode #drw{box-shadow:var(--glass-rim),-8px 0 24px rgba(0,0,0,.35);}
+body.dark-mode #drw{filter:drop-shadow(-8px 0 24px rgba(0,0,0,.35));}
 body.dark-mode .pcard:hover{box-shadow:var(--glass-rim),0 12px 30px rgba(0,0,0,.35);}
 /* ============================================================
    V10 additions — ACTION-PLAN 3.2/3.3 + item 23 + 7.3 + AI window
@@ -1760,3 +1869,239 @@ body.glass-premium.dark-mode .mouse-glow{background:radial-gradient(circle,rgba(
   border-radius:var(--radius);color:var(--text);
 }
 body.dark-mode .sync-suggest{background:rgba(245,158,11,.10);border-color:rgba(245,158,11,.4);}
+
+/* ============================================================
+   DASHBOARD-UI-REFRESH-SPEC — dark dashboard treatment (app.html ONLY)
+   ------------------------------------------------------------------
+   Normative per DASHBOARD-UI-REFRESH-SPEC.md: the project-picker /
+   portfolio dashboard (app.html) gets its own dark treatment — jet-black
+   canvas, SOLID --db-surface content cards (Gate 6.1: dense content never
+   glass), fluorescent-blue accent, thin-air secondary text. Everything is
+   scoped to body.dark-mode.db-page, so the LIGHT launcher and every other
+   page stay byte-for-byte unchanged (spec §5). All ratios MEASURED
+   (WCAG 2.2, Gate 4.3) — see per-token comments. --db-fluor-blue on a
+   light surface is 1.48:1 and must never be used there.
+   ============================================================ */
+.db-side,.db-hamb,.db-scrim,.db-metrics{display:none;}
+body.dark-mode.db-page{
+  /* TIER 1 — primitives (raw values) */
+  --db-fluor-blue:#50E8F4;      /* fluorescent accent — 13.38:1 on --db-canvas, 12.66:1 on --db-surface (AAA) */
+  --db-thin-air:#C7F8FE;        /* light secondary accent — 17.24:1 on --db-canvas, 16.31:1 on --db-surface (AAA) */
+  --db-jet-black:#0A0A0A;       /* page canvas (owner override of #001619; not #000 so shadows/elevation keep depth) */
+  --db-muted-cyan:#9FD8DE;      /* muted secondary text — 11.91:1 on --db-surface, 11.07:1 on raised (AAA) */
+  /* TIER 2 — semantic (dashboard-scoped; --db- prefix so nothing can leak) */
+  --db-canvas:var(--db-jet-black);
+  --db-surface:#121212;
+  --db-surface-raised:#1a1a1a;
+  --db-accent:var(--db-fluor-blue);
+  --db-accent-soft:var(--db-thin-air);
+  --db-border:#262626;
+  --db-text-secondary:var(--db-muted-cyan);
+  background:var(--db-canvas);
+  color:var(--text);            /* #e2e8f0 — 16.06:1 on canvas, 15.20:1 on surface (AAA) */
+}
+/* ---- Header chrome (.top) + sidebar (chrome is glass per spec §3; the
+        content below is solid per Gate 6.1) ---- */
+body.dark-mode.db-page .top{
+  background:var(--glass-fill-dark);
+  backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  border:var(--glass-border);
+  border-radius:var(--squircle-md);
+  padding:18px 22px;
+  margin-bottom:18px;
+}
+body.dark-mode.db-page .top h1 .mark{color:var(--db-accent);}
+body.dark-mode.db-page .top p{color:var(--db-text-secondary);}
+body.dark-mode.db-page .theme-ctl{color:var(--db-text-secondary);}
+body.dark-mode.db-page .auth-bar .btn-n{color:var(--db-text-secondary);border-color:var(--db-border);}
+body.dark-mode.db-page .db-side{
+  position:fixed;top:0;left:0;bottom:0;width:240px;z-index:120;
+  display:flex;flex-direction:column;gap:4px;padding:18px 14px;
+  background:var(--glass-fill-dark);
+  backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  border-right:var(--glass-border);
+  box-shadow:var(--glass-rim),var(--glass-shadow);
+}
+body.dark-mode.db-page .db-side-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:2px 4px 12px;border-bottom:1px solid var(--db-border);margin-bottom:6px;}
+body.dark-mode.db-page .db-brand{display:inline-flex;align-items:center;gap:8px;font-size:.8rem;font-weight:800;color:var(--text);}
+body.dark-mode.db-page .db-brand .ico{color:var(--db-accent);}
+body.dark-mode.db-page .db-side-close{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border:none;background:transparent;color:var(--db-text-secondary);border-radius:var(--radius);cursor:pointer;}
+body.dark-mode.db-page .db-side-close:hover{color:var(--db-accent);background:color-mix(in oklch,var(--db-accent) 12%,transparent);}
+body.dark-mode.db-page .db-g{font-size:.6rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--db-text-secondary);margin:14px 10px 4px;}
+body.dark-mode.db-page .db-link{
+  display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:var(--radius);
+  color:var(--db-text-secondary);font-size:.8rem;font-weight:600;text-decoration:none;
+}
+body.dark-mode.db-page .db-link:hover{color:var(--db-accent);background:color-mix(in oklch,var(--db-accent) 12%,transparent);}
+body.dark-mode.db-page .db-link .ico{width:16px;height:16px;flex-shrink:0;}
+body.dark-mode.db-page .db-link:focus-visible{outline:2px solid var(--db-accent);outline-offset:2px;}
+/* ---- Metric summary row (spec §3: Active / At-Risk / Avg Health) ---- */
+body.dark-mode.db-page .db-metrics{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;
+  margin-bottom:28px;
+}
+body.dark-mode.db-page .db-metric{
+  background:var(--db-surface-raised);border:1px solid var(--db-border);
+  border-radius:var(--squircle-md);padding:18px 20px;
+  display:flex;flex-direction:column;gap:6px;
+}
+body.dark-mode.db-page .db-metric .dm-label{
+  font-size:.66rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--db-text-secondary);
+}
+body.dark-mode.db-page .db-metric .dm-value{
+  font-size:1.9rem;font-weight:800;line-height:1;color:var(--db-accent);
+  font-variant-numeric:tabular-nums;
+}
+body.dark-mode.db-page .db-metric .dm-unit{font-size:.8rem;font-weight:600;color:var(--db-text-secondary);margin-left:4px;}
+/* ---- Content surfaces: SOLID (Gate 6.1 — dense content never glass) ---- */
+body.dark-mode.db-page .pcard,
+body.dark-mode.db-page .pf-card,
+body.dark-mode.db-page .cd-card{
+  background:var(--db-surface);border:1px solid var(--db-border);
+  backdrop-filter:none;-webkit-backdrop-filter:none;
+  box-shadow:0 4px 16px rgba(0,0,0,.35);
+}
+body.dark-mode.db-page .pcard:hover{border-color:var(--db-accent);background:var(--db-surface-raised);}
+body.dark-mode.db-page .pcard.unlocked{box-shadow:inset 0 3px 0 var(--db-accent),0 4px 16px rgba(0,0,0,.35);}
+body.dark-mode.db-page .pf-rank{background:var(--db-accent);color:var(--db-jet-black);}  /* 13.38:1 */
+body.dark-mode.db-page .pf-title,
+body.dark-mode.db-page .pc-title,
+body.dark-mode.db-page .cd-title{color:var(--text);}
+body.dark-mode.db-page .pf-meta,
+body.dark-mode.db-page .pf-reason,
+body.dark-mode.db-page .pc-desc,
+body.dark-mode.db-page .cd-meta,
+body.dark-mode.db-page .cd-sub,
+body.dark-mode.db-page .cd-empty,
+body.dark-mode.db-page .foot a{color:var(--db-text-secondary);}
+/* BILLING-UPGRADE-UI (app.html plan strip): solid surface + muted secondary
+   text on the dark dashboard canvas (Gate 6.1 — dense content never glass). */
+body.dark-mode.db-page .cd-plan{background:var(--db-surface);border-color:var(--db-border);}
+body.dark-mode.db-page .cd-plan .cd-plan-txt{color:var(--db-text-secondary);}
+body.dark-mode.db-page .cd-plan .cd-plan-txt strong{color:var(--text);}
+body.dark-mode.db-page .cd-plan.at-limit{border-color:rgba(80,232,244,.4);background:rgba(80,232,244,.08);}
+body.dark-mode.db-page .cd-plan.at-limit .cd-plan-txt,
+body.dark-mode.db-page .cd-plan.at-limit .cd-plan-txt strong{color:var(--db-accent);}
+body.dark-mode.db-page .pcard:not(.unlocked) .pc-cta{color:var(--db-text-secondary);}
+/* ---- Desktop: content shifts right of the fixed rail ---- */
+@media(min-width:769px){
+  body.dark-mode.db-page .wrap{margin-left:264px;margin-right:auto;}
+}
+/* ---- Mobile (≤768px): rail becomes an off-canvas drawer + hamburger ---- */
+@media(max-width:768px){
+  body.dark-mode.db-page .db-hamb{
+    display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;
+    border:1px solid var(--db-border);background:var(--db-surface);color:var(--db-accent);
+    border-radius:var(--radius);cursor:pointer;flex-shrink:0;
+  }
+  body.dark-mode.db-page .db-hamb:focus-visible{outline:2px solid var(--db-accent);outline-offset:2px;}
+  body.dark-mode.db-page .db-hamb .ico{width:18px;height:18px;}
+  body.dark-mode.db-page .top{position:relative;padding-top:56px;}
+  body.dark-mode.db-page .db-hamb{position:absolute;top:12px;left:12px;}
+  body.dark-mode.db-page .db-side{
+    transform:translateX(-100%);
+    transition:transform var(--release-duration) var(--spring-press);
+  }
+  body.dark-mode.db-page.side-open .db-side{transform:translateX(0);}
+  body.dark-mode.db-page .db-scrim{
+    display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:110;
+  }
+  body.dark-mode.db-page.side-open .db-scrim{display:block;}
+  body.dark-mode.db-page .db-metrics{grid-template-columns:1fr;}
+}
+/* ============================================================
+   MASTER-ACTION-PLAN RANK 8 (8.1) — projects-list visual weight
+   in LIGHT mode. The DARK dashboard treatment already gives
+   app.html weight (db-side rail + metrics + solid surfaces); the
+   LIGHT page stayed a flat white grid (the spec's confirmed gap).
+   Per 8.1 "pick one, don't stack": a subtle radial GLOW behind
+   the grid using EXISTING accent tokens at low opacity — gold
+   top-left, green center-right, blue bottom — no new colors, no
+   motion (8.2: glass cards keep their own surface + border so
+   readability is untouched; the glow sits behind them). Scoped to
+   light db-page only so the dark treatment and every other page
+   stay byte-for-byte unchanged. All ratios measured: the glow is a
+   <8% alpha wash — text on cards is unaffected (cards carry their
+   own --glass-fill-dark surface at full contrast).
+   ============================================================ */
+body.db-page:not(.dark-mode) #grid{position:relative;isolation:isolate;}
+body.db-page:not(.dark-mode) #grid::before{
+  content:'';position:absolute;inset:-70px -50px;z-index:-1;pointer-events:none;
+  /* Only the existing --gold-rgb token (per 8.1: no new colors) — three
+     layered washes at different positions/opacities so it reads as depth,
+     not a single blob. */
+  background:
+    radial-gradient(46% 42% at 14% 6%, rgba(var(--gold-rgb),.10) 0%, rgba(var(--gold-rgb),0) 70%),
+    radial-gradient(40% 38% at 86% 16%, rgba(var(--gold-rgb),.07) 0%, rgba(var(--gold-rgb),0) 68%),
+    radial-gradient(52% 46% at 52% 96%, rgba(var(--gold-rgb),.05) 0%, rgba(var(--gold-rgb),0) 72%);
+}
+/* Dark db-page: the glow layer is OFF (the dashboard treatment owns the
+   canvas there); this guard keeps the light-mode rule from leaking. */
+body.db-page.dark-mode #grid::before{display:none;}
+/* 8.2 consistency: cards keep full contrast — their own surface is opaque
+   enough that the wash never sits between text and background. */
+@media (prefers-reduced-motion:reduce){
+  body.db-page:not(.dark-mode) #grid::before{transition:none;}
+}
+
+/* ---- Reliability + a11y fallbacks (Gates 6.2 / 8.1) ---- */
+@supports not (backdrop-filter:blur(1px)){
+  body.dark-mode.db-page .top,
+  body.dark-mode.db-page .db-side{background:var(--db-surface-raised);}
+}
+@media (prefers-reduced-transparency:reduce){
+  body.dark-mode.db-page .top,
+  body.dark-mode.db-page .db-side{
+    backdrop-filter:none!important;-webkit-backdrop-filter:none!important;
+    background:var(--db-surface-raised);
+  }
+}
+@media (prefers-reduced-motion:reduce){
+  body.dark-mode.db-page .db-side{transition:none!important;}
+}
+
+/* ============================================================
+   REAL-TIME PRESENCE (2026-08-12) — "N online" header chip on
+   project.html. Token-driven so it adapts to every palette + dark
+   mode; hidden by default ([hidden]) until viewers are present.
+   ============================================================ */
+.presence-chip{
+  display:inline-flex;align-items:center;gap:6px;
+  font-size:.64rem;font-weight:700;letter-spacing:.02em;
+  color:var(--green);border:1px solid rgba(16,185,129,.35);
+  background:rgba(16,185,129,.08);border-radius:100px;
+  padding:4px 10px;white-space:nowrap;max-width:200px;overflow:hidden;
+  text-overflow:ellipsis;
+}
+.presence-chip[hidden]{display:none;}
+.presence-chip .pdot{width:7px;height:7px;border-radius:50%;background:var(--green);flex-shrink:0;
+  box-shadow:0 0 0 2px rgba(16,185,129,.22);}
+.presence-chip .ico{width:12px;height:12px;flex-shrink:0;color:var(--green);}
+@media(max-width:768px){
+  .presence-chip{max-width:110px;font-size:.58rem;padding:3px 8px;}
+}
+
+/* ============================================================
+   EMAIL+PASSWORD SIGN-IN (deferred cloud item #14, completed
+   2026-08-12) — compact alternative-provider form mounted beside
+   the Google button in the auth bar (app.html + admin.html).
+   Token-driven: solid --tile-bg surface (Gate 6.1), app-wide gold
+   focus ring on the inputs (rule at ~line 866 — nothing new),
+   error line is a role=status live region in --danger. No motion.
+   ============================================================ */
+.email-auth{display:flex;flex-direction:column;align-items:flex-end;gap:6px;}
+.email-auth-toggle{background:none;border:none;padding:0;font-size:.68rem;font-weight:600;color:var(--blue);cursor:pointer;text-decoration:underline;text-underline-offset:2px;}
+.email-auth-toggle:hover{color:var(--gold);}
+.email-auth-toggle:focus-visible,.email-auth-alt button:focus-visible{outline:2px solid var(--gold);outline-offset:1px;border-radius:var(--radius);}
+.email-auth-form{display:flex;flex-direction:column;gap:6px;padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--tile-bg);align-items:stretch;}
+.email-auth-row{display:flex;flex-wrap:wrap;gap:6px;align-items:center;}
+.email-auth .btn{width:auto;white-space:nowrap;} /* app.html's dashboard .btn{width:100%} is modal-footer-scoped — keep the submit pill sized to its label */
+.email-auth-input{flex:0 1 150px;min-width:110px;font-size:.72rem;padding:6px 8px;border:1px solid var(--border);border-radius:var(--radius);background:var(--card);color:var(--text);}
+.email-auth-name{flex-basis:140px;}
+.email-auth-alt{font-size:.66rem;color:var(--text-secondary);}
+.email-auth-alt button{background:none;border:none;padding:0;font-size:.66rem;font-weight:600;color:var(--blue);cursor:pointer;text-decoration:underline;text-underline-offset:2px;}
+.email-auth-err{font-size:.66rem;color:var(--danger);min-height:.9em;}
+@media(max-width:640px){.email-auth{align-items:stretch;}.email-auth-row{flex-direction:column;}.email-auth-input{flex:1 1 100%;width:100%;}}

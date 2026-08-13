@@ -577,6 +577,33 @@ var MMGR = window.MMGR || {};
     }
   }
 
+  // ---- MASTER-ACTION-PLAN Rank 6.1: Report Issue (sanitized) ----
+  // Zero-network diagnostic package (js/mmgr-report.js). The payload is
+  // COUNTS-ONLY by default — budget figures, risk descriptions, and names
+  // are never included (hard rule from the plan). The Include-project-
+  // context toggle opts THIS report in to names + budget totals; the pref
+  // is session-only and each report defaults back to sanitized on reload.
+  let _reportCtx = false;
+
+  function tglReportContext() {
+    const tgl = U.$('report-ctx-tgl');
+    _reportCtx = tgl ? tgl.checked : false;
+    showToast(_reportCtx
+      ? 'Report will include project context (names + budget totals).'
+      : 'Report is counts-only (sanitized).', _reportCtx ? 'warn' : 'ok');
+  }
+
+  async function reportIssueCopy() {
+    if (!ns.Report || typeof ns.Report.copyPackage !== 'function') { showToast('Report module unavailable.', 'err'); return; }
+    const ok = await ns.Report.copyPackage(_reportCtx);
+    showToast(ok ? 'Report copied — paste it wherever you file the issue.' : 'Could not copy the report.', ok ? 'ok' : 'err');
+  }
+
+  function reportIssueDownload() {
+    if (!ns.Report || typeof ns.Report.downloadPackage !== 'function') { showToast('Report module unavailable.', 'err'); return; }
+    showToast(ns.Report.downloadPackage(_reportCtx) ? 'Report downloaded.' : 'Could not download the report.', 'ok');
+  }
+
   // ---- DIR-1b: opt-in remote error reporting ----
   // Device-level preference (localStorage, never project state), off by
   // default. The actual POST lives in mmgr-errors.js (routed through
@@ -950,10 +977,12 @@ var MMGR = window.MMGR || {};
   // Closure Sign-Off). Restored as the monolith's ORIGINAL static, zero-AI
   // version — every button copies a ready-to-send email draft built from
   // live project state, so it works with no model configured and remains the
-  // guaranteed fallback. (The AI-upgrade path — richer versions of the same
-  // templates through the mmgr-prompts.js preset system — is logged as a
-  // separate tracked follow-up in BACKLOG.md, deliberately not folded in.)
-  function emailTpl(kind) {
+  // guaranteed fallback. BACKLOG B-N (2026-08-12): the same body is now also
+  // exposed as a pure emailTplText(kind) getter so the AI window's LOCAL
+  // tier can return it verbatim (zero-fabrication baseline) while the Cloud
+  // tier drafts an AI-polished 'email' preset on top — the buttons below are
+  // unchanged and never depend on a model.
+  function emailTplText(kind) {
     const s = ns.State.getState();
     const f = s.charter || {};
     const pn = f.name || '[Project Name]';
@@ -980,7 +1009,11 @@ var MMGR = window.MMGR || {};
       const items = (s.closure && s.closure.items) || [];
       body = 'Subject: ' + pn + ' — Closure Sign-Off Request\n\nHi ' + sp + ',\n\n' + pn + ' is ready for formal closure. Summary:\n• Overall: ' + pct + '% Completed\n• Deliverables checklist: ' + items.filter(c => c.done).length + '/' + items.length + ' complete\n\nLessons learned and final report attached. Please confirm sign-off.\n\nRegards,\n' + pm;
     }
-    U.copyToClipboard(body);
+    return body;
+  }
+
+  function emailTpl(kind) {
+    U.copyToClipboard(emailTplText(kind));
     showToast('Email template copied!', 'ok');
   }
 
@@ -1843,10 +1876,15 @@ var MMGR = window.MMGR || {};
     errLogText: errLogText,
     tglErrReport: tglErrReport,
     setErrWebhook: setErrWebhook,
+    // MASTER-ACTION-PLAN Rank 6.1
+    reportIssueCopy: reportIssueCopy,
+    reportIssueDownload: reportIssueDownload,
+    tglReportContext: tglReportContext,
     clearMlcTimer: clearMlcTimer,
     cpAllPage: cpAllPage,
     cpFormats: cpFormats,
     emailTpl: emailTpl,
+    emailTplText: emailTplText,
     wxGeocode: wxGeocode,
     wxRefresh: wxRefresh,
     wxSetView: wxSetView,
@@ -2054,12 +2092,16 @@ window.MMGR = MMGR;
     // (owner-code create/save/load/recover + Google sign-in for recovery).
     // Same zero-throw pattern as the Drive entries above.
     'cloudCreate': () => { const C = window.MMGR.Cloud; if (C && C.createProject) C.createProject(); },
+    'cloudUpgrade': () => { const C = window.MMGR.Cloud; if (C && C.cloudUpgrade) C.cloudUpgrade(); },
     'cloudSave': () => { const C = window.MMGR.Cloud; if (C && C.saveToCloud) C.saveToCloud(); },
     'cloudLoad': () => { const C = window.MMGR.Cloud; if (C && C.loadFromCloud) C.loadFromCloud(); },
     'cloudRecover': () => { const C = window.MMGR.Cloud; if (C && C.recoverCode) C.recoverCode(); },
     // GAP-AUDIT-CLOUD-31: unlink (owner-only, deletes the CLOUD copy, keeps
     // local data) + the shown-once editor-code banner's Copy/Done actions.
     'cloudUnlink': () => { const C = window.MMGR.Cloud; if (C && C.unlinkProject) C.unlinkProject(); },
+    'cloudWebhookList': () => { const C = window.MMGR.Cloud; if (C && C.webhookList) C.webhookList(); },
+    'cloudWebhookAdd': () => { const C = window.MMGR.Cloud; if (C && C.webhookAdd) C.webhookAdd(); },
+    'cloudWebhookDel': (el) => { const C = window.MMGR.Cloud; if (C && C.webhookDel) C.webhookDel(el && el.getAttribute('data-id')); },
     'cloudCopyEditorCode': (el) => { const C = window.MMGR.Cloud; if (C && C.copyEditorCode && el) C.copyEditorCode(el.getAttribute('data-code')); },
     'cloudEditorCodeDone': () => { const C = window.MMGR.Cloud; if (C && C.editorCodeDone) C.editorCodeDone(); },
     'cloudCopyCode': () => { const C = window.MMGR.Cloud; if (C && C.copyCode) C.copyCode(); },
@@ -2126,6 +2168,10 @@ window.MMGR = MMGR;
     'copyErrorLog': () => window.MMGR.App.copyErrorLog(),
     'downloadErrorLog': () => window.MMGR.App.downloadErrorLog(),
     'tglErrReport': (el) => window.MMGR.App.tglErrReport(),
+    // MASTER-ACTION-PLAN Rank 6.1 — sanitized report package (read-only).
+    'reportIssueCopy': () => window.MMGR.App.reportIssueCopy(),
+    'reportIssueDownload': () => window.MMGR.App.reportIssueDownload(),
+    'tglReportContext': () => window.MMGR.App.tglReportContext(),
     'setErrWebhook': (el) => window.MMGR.App.setErrWebhook(el),
     // Rank 3.1: Core Mode vs Advanced Packs — toggling a pack mutates
     // state.packs (blocked in view-only, like every other write). Same
@@ -2318,6 +2364,9 @@ window.MMGR = MMGR;
     // remote-reporting toggle + webhook URL are device-level preferences
     // (localStorage, like the glass mode toggle) — never project state.
     'copyErrorLog': 1, 'downloadErrorLog': 1, 'tglErrReport': 1, 'setErrWebhook': 1,
+    // MASTER-ACTION-PLAN Rank 6.1: building/copying/downloading the report
+    // is read-only; the context toggle is a session-only UI pref.
+    'reportIssueCopy': 1, 'reportIssueDownload': 1, 'tglReportContext': 1,
     // Rank 4.5: Google identity is a device-level label, never a gate to
     // project data — signing in/out/dismissing never mutates project state.
     'syncConnect': 1, 'syncSignOut': 1, 'syncClientId': 1, 'syncDismissSuggest': 1,
@@ -2334,7 +2383,7 @@ window.MMGR = MMGR;
     // driveBackup above. Load is DELIBERATELY excluded: it overwrites the
     // local workspace like driveRestore/import, so it stays blocked in
     // view-only.
-    'cloudCreate': 1, 'cloudSave': 1, 'cloudRecover': 1, 'cloudCopyCode': 1, 'cloudSignIn': 1,
+    'cloudCreate': 1, 'cloudUpgrade': 1, 'cloudSave': 1, 'cloudRecover': 1, 'cloudCopyCode': 1, 'cloudSignIn': 1,
     // CLOUD-BACKEND-ARCHITECTURE-PLAN Phase 2/3: editor-code management and
     // changelog view/revert never mutate the local workspace (owner-only
     // server calls; a revert changes the CLOUD snapshot, not this device) —
@@ -2344,7 +2393,10 @@ window.MMGR = MMGR;
     // GAP-AUDIT-CLOUD-31: unlink only mutates the CLOUD copy (like the other
     // cloud actions above), and the banner Copy/Done are clipboard/session
     // only — all safe in view-only.
-    'cloudUnlink': 1, 'cloudCopyEditorCode': 1, 'cloudEditorCodeDone': 1
+    'cloudUnlink': 1, 'cloudCopyEditorCode': 1, 'cloudEditorCodeDone': 1,
+    // MASTER-ACTION-PLAN RANK 9.2: webhook CRUD only mutates the SERVER
+    // subscription table (like the other cloud actions) — safe in view-only.
+    'cloudWebhookList': 1, 'cloudWebhookAdd': 1, 'cloudWebhookDel': 1
   };
   function guardReadonly(action) {
     // The ACTION_MAP delegation IIFE has no closure over the App module's

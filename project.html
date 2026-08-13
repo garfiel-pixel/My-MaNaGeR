@@ -98,6 +98,7 @@
     <button class="nav-btn" id="nav-btn" data-action="tglNav" aria-label="Open navigation menu" aria-expanded="false" aria-controls="sec-nav"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-menu"></use></svg></button>
     <div class="dirty-ind" id="dirty-ind" data-action="openDrwToSave" title="Changes save to this browser automatically. Click to back up to a file — recommended before closing or switching devices.">● Not backed up</div>
     <div class="timeline-ind" id="timeline-ind" data-action="jumpToDashTimeline" title="Current planned finish vs the Target Completion Date set in Charter. Click to view on the Dashboard."></div>
+    <div class="presence-chip" id="presence-chip" hidden role="status" aria-live="polite"><span class="pdot" aria-hidden="true"></span><span data-presence-label>0 online</span></div>
     <div class="lock-ind" id="lk-ind"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-lock"></use></svg> <span id="lk-lbl">Methodology</span> Locked</div>
     <button class="settings-btn" data-action="openDrw" aria-label="Open settings"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-settings"></use></svg> </button>
   </div>
@@ -972,6 +973,7 @@
 
 <!-- Drawer -->
 <div id="drw">
+  <div class="drw-sheet">
   <div class="dh"><span class="dt2"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-settings"></use></svg> Settings</span><button class="dc" data-action="closeDrw" aria-label="Close settings"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> </button></div>
   <div class="dtabs">
     <button class="dtab active" data-action="swDtab" data-tab="feat">Features</button>
@@ -1097,6 +1099,13 @@
     <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-alert-triangle"></use></svg> Client Error Log</span><span class="g6"><button class="btn btn-n btn-s" data-action="copyErrorLog" title="Copy the error log to the clipboard as plain text"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy</button><button class="btn btn-n btn-s" data-action="downloadErrorLog" title="Download the error log as a .txt file"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Download</button><button class="btn btn-n btn-s" data-action="clearErrorLog">Clear</button></span></div>
     <div class="sr-hint">Last 20 client-side errors with timestamp and source action — for debugging on static hosting where no server log exists. Copy or download the log to share it.</div>
     <div id="errlog-body" class="errlog"></div>
+    <!-- MASTER-ACTION-PLAN Rank 6.1: sanitized Report Issue package. Zero
+         network — the user copies/downloads it themselves. Default payload
+         is counts-only (no names, no figures — hard rule); the opt-in
+         below adds project context per report. -->
+    <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-flag"></use></svg> Report Issue</span><span class="g6"><button class="btn btn-n btn-s" data-action="reportIssueCopy" title="Copy a sanitized diagnostic package to the clipboard"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy report</button><button class="btn btn-n btn-s" data-action="reportIssueDownload" title="Download the diagnostic package as a .txt file"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Download</button></span></div>
+    <div class="sr"><span class="sl">Include project context</span><label class="tgl"><input type="checkbox" id="report-ctx-tgl" aria-label="Include project context in the report" data-action="tglReportContext"><span class="tsl"></span></label></div>
+    <div class="sr-hint">Packages a sanitized snapshot: active panel, packs, non-sensitive counts, and the client error log. Budget figures, risk descriptions, and names are NEVER included unless you check <strong>Include project context</strong> (adds project name, task/risk/issue lists, and budget totals). Nothing is sent anywhere — you copy or download it yourself.</div>
     <!-- DIR-1b: opt-in remote error reporting — OFF by default, device-level
          slot (never project state), POSTs routed through MMGR.Net's
          circuit-breaker. Zero network activity while off. -->
@@ -1127,6 +1136,7 @@
     <button class="btn btn-o full mb7"  data-action="openOM"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-upload"></use></svg> Generate Full Output (JSON)</button>
     <button class="btn btn-n full"  data-action="loadClip"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Load from Clipboard</button>
     <button class="btn btn-n full mt7"  data-action="print"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-printer"></use></svg> Print / PDF</button>
+  </div>
   </div>
 </div>
 
@@ -1277,7 +1287,9 @@
 <script src="js/mmgr-dmaic.js"></script>  <script src="js/mmgr-meetings.js"></script>
   <script src="js/mmgr-voice.js"></script>
   <script src="js/mmgr-errors.js"></script>
+  <script src="js/mmgr-report.js"></script>
 <script src="js/mmgr-app.js"></script>
+<script src="js/mmgr-presence.js"></script>
 <script src="js/mmgr-tasks.js"></script>
 <script src="js/mmgr-risks.js"></script>
 <script src="js/mmgr-stakeholders.js"></script>

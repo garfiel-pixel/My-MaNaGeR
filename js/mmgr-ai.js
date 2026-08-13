@@ -80,7 +80,8 @@ var MMGR = window.MMGR || {};
     charterdates: 'Charter Dates',
     gendates: 'Generate Dates',
     daily: 'Daily Field Report',
-    claim: 'Claim Pack'
+    claim: 'Claim Pack',
+    email: 'Stakeholder Email'
   };
 
   // Rank 2.3 tier metadata — shown in the AI window settings row.
@@ -829,6 +830,21 @@ var MMGR = window.MMGR || {};
       L.push('Blocked: ' + (bl.length ? bl.map(t => t.name + (t.notes ? ' — ' + t.notes : '')).join('; ') : 'none'));
       L.push('Critical: ' + (crit.length ? crit.map(t => t.name).join(', ') : 'none'));
       return { text: L.join('\n'), trace: TRACE.fields.slice() };
+    },
+    // BACKLOG B-N: the email preset's LOCAL tier returns the static
+    // App.emailTpl('status') template VERBATIM — zero-fabrication by
+    // construction, the guaranteed no-model fallback the backlog requires.
+    // The Cloud tier drafts a richer, AI-polished version on top.
+    email: function(s) {
+      TRACE.fields = [];
+      _t('charter.name'); _t('charter.sponsor'); _t('tasks[].status'); _t('tasks[].endDate');
+      _t('issues[].status'); _t('risks[].probability'); _t('risks[].impact');
+      _t('budgetLines[].planned'); _t('budgetLines[].actual');
+      const base = (ns.App && ns.App.emailTplText) ? ns.App.emailTplText('status') : 'Static email template unavailable.';
+      return {
+        text: base + '\n\n(Static template from My MaNaGeR — run the Cloud tier for an AI-polished stakeholder email.)',
+        trace: TRACE.fields.slice()
+      };
     }
   };
 

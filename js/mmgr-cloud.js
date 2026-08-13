@@ -231,6 +231,15 @@ var MMGR = window.MMGR || {};
   }
 
   // ---- create -------------------------------------------------------------
+  // ---- billing upgrade affordance (server: /api/billing/*, 2026-08-12) ---
+  // When the create gate answers HTTP 402 {upgrade:true} (session-linked free
+  // account over FREE_PROJECT_CAP), we set _upgradePending so render() shows an
+  // upgrade banner + button; cloudUpgrade() opens the LemonSqueezy checkout.
+  // Dormant when billing is unconfigured — the server never 402s then, so the
+  // banner never appears and this whole path is inert (byte-for-byte unchanged
+  // behavior on the current deploy).
+  let _upgradePending = false;
+
   async function createProject() {
     if (getCode()) { setStatus('This project is already linked to the cloud — use Save / Load below.', 'warn'); return; }
     setStatus('Creating cloud project…', 'busy');
@@ -243,12 +252,47 @@ var MMGR = window.MMGR || {};
       });
       const data = await res.json().catch(function() { return {}; });
       if (!res.ok || !data.ok || !data.ownerCode) {
-        setStatus((data && data.error) || 'Cloud create failed (HTTP ' + res.status + ').', 'err');
+        if (res.status === 402 && data && data.upgrade) {
+          // Over the free linked-project cap: surface the upgrade affordance
+          // instead of a bare error (the client half of the billing tier).
+          _upgradePending = true;
+          await render();
+          setStatus((data && data.error) || 'Free plan limit reached — upgrade to link more projects.', 'err');
+        } else {
+          setStatus((data && data.error) || 'Cloud create failed (HTTP ' + res.status + ').', 'err');
+        }
         return;
       }
+      _upgradePending = false;
       setCode(data.ownerCode);
       await render();
       setStatus('Cloud project linked — owner/recovery code: ' + data.ownerCode + '. Store it somewhere safe: if lost, only the linked Google account can recover it.', 'ok');
+    } catch (e) {
+      setStatus('Cloud is unavailable on this host (needs the Worker API).', 'err');
+    }
+  }
+
+  // ---- upgrade to a paid plan: opens the session-gated checkout -----------
+  // POST /api/billing/checkout returns { checkoutUrl }; we open it in a new
+  // tab and clear the pending banner (the drawer re-renders on the
+  // mmgr:google-signed-in event after the purchase webhook lands).
+  async function cloudUpgrade() {
+    setStatus('Opening checkout…', 'busy');
+    try {
+      const res = await fetch('/api/billing/checkout', { method: 'POST', credentials: 'same-origin' });
+      const data = await res.json().catch(function() { return {}; });
+      if (!res.ok || !data.ok || !data.checkoutUrl) {
+        if (res.status === 503) {
+          _upgradePending = false;
+          await render();
+          setStatus('Billing isn\u2019t configured on this server yet — no upgrade is available.', 'warn');
+        } else {
+          setStatus((data && data.error) || 'Checkout failed (HTTP ' + res.status + ').', 'err');
+        }
+        return;
+      }
+      window.open(data.checkoutUrl, '_blank', 'noopener');
+      setStatus('Checkout opened in a new tab — complete the purchase there, then create the project again.', 'ok');
     } catch (e) {
       setStatus('Cloud is unavailable on this host (needs the Worker API).', 'err');
     }
@@ -811,13 +855,29 @@ var MMGR = window.MMGR || {};
         '<div class="sr" style="margin-top:8px"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-calendar"></use></svg> Changelog</span>' +
         '<button class="btn btn-n btn-s" data-action="cloudLogList" style="margin-left:8px"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> View</button></div>' +
         '<div class="sr-hint">Every save is logged with field-level before/after values (or a snapshot for bulk changes). Revert is owner-only and itself logged — history is never erased.</div>' +
-        '<div id="cloud-log-list"></div>';
+        '<div id="cloud-log-list"></div>' +
+        // ---- MASTER-ACTION-PLAN RANK 9.2: opt-in webhooks (owner-only) ----
+        '<div class="sr" style="margin-top:8px"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-zap"></use></svg> Webhooks</span>' +
+        '<button class="btn btn-n btn-s" data-action="cloudWebhookList" style="margin-left:8px"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> List</button></div>' +
+        '<div class="sr-hint">Opt-in notifications: when this project\u2019s health score drops, or tomorrow is a weather-risk day, My MaNaGeR POSTs a signed event to your URL (X-MMGR-Signature HMAC header). Off by default — nothing fires until you add one.</div>' +
+        '<div class="exp-row" style="flex-wrap:wrap">' +
+        '<select id="cloud-webhook-event" class="ctl-in" aria-label="Webhook event">' +
+        '<option value="health_dropped">Health score dropped</option>' +
+        '<option value="weather_risk_tomorrow">Weather-risk day tomorrow</option>' +
+        '</select>' +
+        '<input type="url" id="cloud-webhook-url" class="ctl-in" placeholder="https://hooks.example.com/mmgr" style="min-width:220px" autocomplete="off" spellcheck="false">' +
+        '<button class="btn btn-g btn-s" data-action="cloudWebhookAdd"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-plus"></use></svg> Add Webhook</button>' +
+        '</div>' +
+        '<div id="cloud-webhook-list"></div>';
     }
 
     // Google sign-in strip (recovery only; create/save/load never need it).
     body += '<div class="sr" style="margin-top:8px"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-user"></use></svg> Google</span></div>';
     if (signedIn) {
-      body += '<div class="sr-hint">Signed in with Google — owner-code recovery is available for a linked project.</div>';
+      // Provider-neutral: the session may be Google OR email+password —
+      // both issue the same mmgr_session cookie (sub='email:…' vs a
+      // numeric Google sub), and recovery is gated on the sub match alone.
+      body += '<div class="sr-hint">Signed in — owner-code recovery is available for a linked project.</div>';
     } else {
       body += '<div class="sr-hint">Optional — sign in with Google to enable owner-code recovery if the code is ever lost.</div>' +
         '<div class="exp-row"><button class="btn btn-n btn-s" data-action="cloudSignIn"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-user"></use></svg> Sign in with Google</button></div>' +
@@ -825,6 +885,13 @@ var MMGR = window.MMGR || {};
     }
     // gap-audit E18: the cloud status line is a live region so save/load/
     // recover/unlink outcomes are announced to screen-reader users.
+    // Billing upgrade banner (only set by a real server 402 — see above).
+    if (_upgradePending) {
+      body += '<div class="sr" style="border:1px solid var(--gold);background:rgba(var(--gold-rgb),.1);border-radius:var(--radius);padding:8px 10px;margin:6px 0" role="status">' +
+        '<div class="sr-hint" style="margin:0 0 6px"><strong>Free plan limit reached</strong> — you\u2019ve used all the linked cloud projects on the free plan. Upgrade to keep linking projects to the cloud.</div>' +
+        '<button class="btn btn-g btn-s" data-action="cloudUpgrade"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-zap"></use></svg> Upgrade plan</button>' +
+        '</div>';
+    }
     body += '<div id="cloud-status" class="drive-status" role="status" aria-live="polite"></div>';
 
     wrap.innerHTML = body;
@@ -946,6 +1013,78 @@ var MMGR = window.MMGR || {};
     render();
   }
 
+  // ---- MASTER-ACTION-PLAN RANK 9.2: webhook management (owner-only) ------
+  // Opt-in notification endpoints (off by default — nothing exists until the
+  // owner adds one). All three mirror the editor/changelog patterns: owner
+  // code in session, fetch, escape, render into a dedicated container.
+  async function webhookList() {
+    const wrap = $('cloud-webhook-list');
+    if (!wrap) return;
+    const code = getCode();
+    if (!code) { wrap.innerHTML = '<div class="sr-hint">Owner code required.</div>'; return; }
+    try {
+      const res = await fetch('/api/cloud/projects/' + encodeURIComponent(pid()) + '/webhooks', {
+        method: 'GET', credentials: 'same-origin', headers: { 'X-Owner-Code': code }
+      });
+      const data = await res.json().catch(function() { return {}; });
+      if (!res.ok || !data.ok) { wrap.innerHTML = '<div class="sr-hint">Could not load webhooks.</div>'; return; }
+      const list = data.webhooks || [];
+      if (!list.length) { wrap.innerHTML = '<div class="sr-hint">No webhooks yet — add one above (health drop or weather-risk tomorrow).</div>'; return; }
+      wrap.innerHTML = list.map(function(w) {
+        const label = w.event === 'health_dropped' ? 'Health score dropped' : 'Weather-risk day tomorrow';
+        return '<div class="sr" style="border:1px solid var(--border);border-radius:var(--radius);padding:7px 10px;margin:4px 0;display:flex;align-items:center;gap:8px;flex-wrap:wrap">' +
+          '<span class="sl" style="font-size:.68rem">' + esc(label) + '</span>' +
+          '<code style="font-size:.66rem;color:var(--slate);word-break:break-all">' + esc(w.targetUrl) + '</code>' +
+          '<span class="sr-hint" style="margin:0 0 0 auto;font-size:.6rem">' + (w.lastFiredAt ? 'last fired ' + esc(String(w.lastFiredAt).slice(0, 10)) : 'never fired') + '</span>' +
+          '<button class="btn btn-o btn-s" data-action="cloudWebhookDel" data-id="' + w.id + '"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> Remove</button>' +
+          '</div>';
+      }).join('');
+    } catch (e) {
+      wrap.innerHTML = '<div class="sr-hint">Could not reach the cloud service.</div>';
+    }
+  }
+
+  async function webhookAdd() {
+    const code = getCode();
+    if (!code) { setStatus('Owner code required.', 'warn'); return; }
+    const event = $('cloud-webhook-event');
+    const urlEl = $('cloud-webhook-url');
+    const targetUrl = urlEl ? urlEl.value.trim() : '';
+    if (!targetUrl) { setStatus('Enter a target URL for the webhook.', 'warn'); return; }
+    setStatus('Adding webhook…', 'busy');
+    try {
+      const res = await fetch('/api/cloud/projects/' + encodeURIComponent(pid()) + '/webhooks', {
+        method: 'POST', credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json', 'X-Owner-Code': code },
+        body: JSON.stringify({ event: event ? event.value : 'health_dropped', targetUrl: targetUrl })
+      });
+      const data = await res.json().catch(function() { return {}; });
+      if (!res.ok || !data.ok) { setStatus((data && data.error) || 'Add webhook failed (HTTP ' + res.status + ').', 'err'); return; }
+      if (urlEl) urlEl.value = '';
+      // The signing secret is shown exactly once — tell the owner to keep it.
+      setStatus('Webhook added. Signing secret (shown once, store it): ' + data.secret, 'ok');
+      webhookList();
+    } catch (e) {
+      setStatus('Cloud is unavailable on this host (needs the Worker API).', 'err');
+    }
+  }
+
+  async function webhookDel(id) {
+    const code = getCode();
+    if (!code) { setStatus('Owner code required.', 'warn'); return; }
+    try {
+      const res = await fetch('/api/cloud/projects/' + encodeURIComponent(pid()) + '/webhooks/' + encodeURIComponent(id), {
+        method: 'DELETE', credentials: 'same-origin', headers: { 'X-Owner-Code': code }
+      });
+      const data = await res.json().catch(function() { return {}; });
+      if (!res.ok || !data.ok) { setStatus((data && data.error) || 'Remove webhook failed (HTTP ' + res.status + ').', 'err'); return; }
+      setStatus('Webhook removed.', 'ok');
+      webhookList();
+    } catch (e) {
+      setStatus('Cloud is unavailable on this host (needs the Worker API).', 'err');
+    }
+  }
+
   // ---- keep the sign-in state fresh after sign-in/sign-out ----------------
   document.addEventListener('mmgr:google-signed-in', function() { _signedIn = true; render(); });
   document.addEventListener('mmgr:google-signed-out', function() { _signedIn = false; render(); });
@@ -954,6 +1093,7 @@ var MMGR = window.MMGR || {};
   ns.Cloud = {
     render: render,
     createProject: createProject,
+    cloudUpgrade: cloudUpgrade,
     saveToCloud: saveToCloud,
     loadFromCloud: loadFromCloud,
     loadWithCode: loadWithCode,
@@ -964,6 +1104,9 @@ var MMGR = window.MMGR || {};
     listEditors: listEditors,
     revokeEditor: revokeEditor,
     listLog: listLog,
+    webhookList: webhookList,
+    webhookAdd: webhookAdd,
+    webhookDel: webhookDel,
     revertLog: revertLog,
     toggleDiffs: toggleDiffs,
     _renderDiffPanel: renderDiffPanel, // test hook (diff panel is a pure string builder)

@@ -2096,7 +2096,18 @@ async function handleBillingCheckout(request, env) {
     });
     const data = await res.json().catch(function() { return {}; });
     const url = data && data.data && data.data.attributes && data.data.attributes.url;
-    if (!res.ok || !url) return json({ ok: false, error: 'checkout creation failed (LemonSqueezy HTTP ' + res.status + ')' }, 502);
+    if (!res.ok || !url) {
+      // Surface LemonSqueezy's own JSON:API error detail (this route is session-
+      // gated to the owner only, so the upstream text is safe to show) — a bare
+      // 'HTTP 4xx' hides whether the real cause is a bad API key, a payment-link
+      // variant that can't create API checkouts, or a variant on another store.
+      let detail = '';
+      try {
+        const err = (data && data.errors && data.errors[0]) || {};
+        detail = String(err.detail || err.title || '').slice(0, 300);
+      } catch (e) { /* keep detail empty */ }
+      return json({ ok: false, error: 'checkout creation failed (LemonSqueezy HTTP ' + res.status + ')' + (detail ? ' — ' + detail : '') }, 502);
+    }
     return json({ ok: true, checkoutUrl: url });
   } catch (e) {
     return json({ ok: false, error: 'checkout creation failed (upstream unreachable)' }, 502);

@@ -31,12 +31,30 @@ npx wrangler secret put LEMONSQUEEZY_VARIANT_ID       # the checkout variant id 
 
 ✅ **ALL THREE SECRETS SET — CONFIRMED 2026-08-13** via `npx wrangler secret list` on
 `my-manager`: `LEMONSQUEEZY_API_KEY`, `LEMONSQUEEZY_WEBHOOK_SECRET`,
-`LEMONSQUEEZY_VARIANT_ID` all present. The tier activates on the NEXT deploy (the
-current deployed worker predates the billing code — secrets sit dormant until then).
+`LEMONSQUEEZY_VARIANT_ID` all present. **Variant ID: `2013675`** (logged 2026-08-13
+per the owner — variant ids are public checkout identifiers, not secrets).
+
+⚠️ **NOT LIVE YET — and this is the most likely cause of any "billing issues" you're
+seeing right now:** the LAST WORKER CODE DEPLOY was 2026-08-12T02:10 (pre-wave).
+Production currently has NO `/api/billing/*`, `/api/auth/*`, presence, or Rank-9
+routes — any billing call against the deployed origin 404s. The secrets sit dormant
+until the next deploy (remote D1 is already migrated). See §2.
+
+**Troubleshooting AFTER the deploy (if checkout/webhook still misbehave):**
+- Checkout 502: the response body now includes LemonSqueezy's own error detail
+  (harden added 2026-08-13). Common real causes: (a) the LS API key is invalid or
+  belongs to a different store than the variant; (b) the variant `2013675` belongs
+  to a **payment-link-style product** — API-created checkouts require a standard
+  product/variant (payment-link variants can't create API checkouts); (c) store in
+  test mode produces a test checkout URL (expected).
+- Webhook 401: the webhook URL + signing secret in the LemonSqueezy dashboard
+  (Settings → Webhooks) must match the Wrangler secret and point at
+  `https://<your-domain>/api/billing/webhook`, subscribed to the `subscription_*`
+  events. Signature is HMAC-SHA256 of the RAW body with `LEMONSQUEEZY_WEBHOOK_SECRET`.
 
 Owner decisions needed once configured:
 - [ ] Confirm the default `FREE_PROJECT_CAP` (currently 3 linked projects for free accounts — override via env `FREE_PROJECT_CAP` if you want a different number).
-- [x] Pick the paid plan's variant/price in LemonSqueezy and set `LEMONSQUEEZY_VARIANT_ID` — DONE 2026-08-13 (owner set the variant; secret confirmed).
+- [x] Pick the paid plan's variant/price in LemonSqueezy and set `LEMONSQUEEZY_VARIANT_ID` — DONE 2026-08-13: variant **2013675** set + confirmed.
 - [x] Confirm where the Upgrade banner should live — RESOLVED 2026-08-12: the
   app.html projects page now has its own free-plan strip ("Free plan — N of M
   linked projects" + Upgrade button, gold .at-limit state at/over cap) rendered

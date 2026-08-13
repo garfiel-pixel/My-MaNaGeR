@@ -16,6 +16,11 @@
     "qa:changelog-diffs": "node tools/qa-changelog-diffs.cjs",
     "qa:ai-badge-e2e": "node tools/qa-ai-badge-e2e.cjs",
     "qa:prefs-roundtrip": "node tools/qa-prefs-roundtrip.cjs",
+    "qa:dashboard-spec": "node tools/qa-dashboard-spec.cjs",
+    "qa:presence": "node tools/qa-presence.cjs",
+    "qa:rank9-api": "node tools/qa-rank9-api.cjs",
+    "qa:email-auth": "node tools/qa-email-auth.cjs",
+    "qa:report-issue": "node tools/verify-report-issue.cjs",
     "import:mcp": "node tools/import-mcp-changelog.cjs",
     "predeploy": "npm run verify",
     "deploy": "npm run predeploy && npx wrangler deploy"

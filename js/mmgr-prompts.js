@@ -418,6 +418,49 @@ Generate a client-facing status update in plain language (no PM jargon):
 6. Keep it professional but accessible — this is for the paying client`;
     },
 
+    email: function() {
+      // BACKLOG B-N (2026-08-12): richer stakeholder-email draft through the
+      // AI window — an upgrade layered ON TOP of the static App.emailTpl
+      // templates, never a replacement. The local tier returns the static
+      // template verbatim; the Cloud tier drafts a polished version.
+      const s = S();
+      const f = (s && s.charter) || {};
+      const pn = f.name || '[Project Name]';
+      const sp = f.sponsor || '[Sponsor]';
+      const tasks = (s && s.tasks) || [];
+      const dn = tasks.filter(t => t.status === 'completed').length;
+      const pct = tasks.length ? Math.round(dn / tasks.length * 100) : 0;
+      const ip = tasks.filter(t => t.status === 'inprogress').length;
+      const bl = tasks.filter(t => t.status === 'blocked').length;
+      const od = tasks.filter(t => t.endDate && new Date(t.endDate) < new Date() && t.status !== 'completed').length;
+      const issues = ((s && s.issues) || []).filter(i => i.status !== 'resolved' && i.status !== 'closed');
+      const high = ((s && s.risks) || []).filter(r => !r.issueId && (/high/i.test(r.probability || '') || /high/i.test(r.impact || '')));
+      const next = tasks.filter(t => t.status !== 'completed').slice(0, 3).map(t => '- ' + (t.name || t.id));
+      const planned = ((s && s.budgetLines) || []).reduce((n, l) => n + (+l.planned || 0), 0);
+      const actual = ((s && s.budgetLines) || []).reduce((n, l) => n + (+l.actual || 0), 0);
+      return ['# DRAFT A POLISHED STAKEHOLDER EMAIL', '',
+        'You are a construction project manager writing a professional stakeholder email for ' + pn + '. Use ONLY the facts below — never invent dates, amounts, task names, or people.',
+        '',
+        'Project: ' + pn,
+        'Sponsor: ' + sp,
+        'Progress: ' + pct + '% complete (' + dn + '/' + tasks.length + ' tasks) | In progress: ' + ip + ' | Blocked: ' + bl + ' | Overdue: ' + od,
+        'Budget: $' + Math.round(actual || 0).toLocaleString() + ' actual / $' + Math.round(planned || 0).toLocaleString() + ' planned',
+        'Open issues: ' + (issues.length ? issues.map(i => '- ' + (i.description || '(untitled)') + (i.owner ? ' (' + i.owner + ')' : '')).join('\n') : '(none)'),
+        'High risks: ' + (high.length ? high.map(r => '- ' + (r.description || '(untitled)')).join('\n') : '(none)'),
+        'Next priorities: ' + (next.length ? next.join('\n') : '(none)'),
+        '',
+        '=== INSTRUCTIONS ===',
+        'Write ONE complete, send-ready email:',
+        '1. A clear subject line naming the project and the update period',
+        '2. A short greeting to ' + sp,
+        '3. Status highlights in plain, confident language (no PM jargon)',
+        '4. Anything needing attention (blocked work, open issues, high risks, budget overrun) — only what the data shows',
+        '5. The specific asks / decisions needed from the sponsor',
+        '6. Next steps for the coming period',
+        '7. A professional closing with a sign-off name placeholder ([PM])',
+        'If the project has no data yet, say so honestly and draft a short introductory note instead — never fabricate progress.'].join('\n');
+    },
+
     charterdates: function() {
       // Exact port of the monolith promptCharterDates() — this deliberately
       // runs BEFORE WBS dating: commit to a realistic Target Start/Completion

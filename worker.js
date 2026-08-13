@@ -61,7 +61,7 @@ const INLINE_SCRIPT_HASHES = [
   "'sha256-gCwlAVKUNamFRjZeFSwcBd1zxQs+/mZ2GoLF8lqT/II='", // project.html (early-apply theme snippet)
   "'sha256-o+0No2XpbES4E5QJh31mY9JsJFqSmE+B4x+z1fNPjVc='", // project.html
   "'sha256-gCwlAVKUNamFRjZeFSwcBd1zxQs+/mZ2GoLF8lqT/II='", // app.html (early-apply theme snippet)
-  "'sha256-gh1pJ1rSyd7LP4eITg17YwZIFfNkKQgLCGxUMAf1tkc='", // app.html
+  "'sha256-d6AOvdWdfG+TyNYrUZmP6Bi1DeQYbAOpcfNH5L7Iy/M='", // app.html
   "'sha256-qbHZHLyhdEDRwWrA8/I8ty4xIjUv+L/+Y6/0cIXdkJo='", // admin.html (early-apply theme snippet)
   "'sha256-8lwCeRgYvYC5TLNo6P1WdZVi6Vt06j2/Q3MVsOXuWyc='", // admin.html
   "'sha256-Oa7ON+9A164SSXhnxu08mFn0V9Tj2SlZ2SzFXFoqKNE='", // dashboard.html
@@ -570,7 +570,14 @@ function cloudForbidden() {
 // (never the raw code in memory beyond the request), else 'anon'.
 const CLOUD_RATE = {
   general: { max: 120, windowMs: 60000 },
-  recover: { max: 6, windowMs: 60000 } // recovery is the sensitive reissue path
+  recover: { max: 6, windowMs: 60000 }, // recovery is the sensitive reissue path
+  // email+password register/login (deferred cloud item #14, 2026-08-12):
+  // login is the CREDENTIAL-GUESSING surface — a scripted loop trying
+  // passwords is the one auth path with no platform OAuth to stop it, so
+  // it gets a tighter bucket than general. Register shares it so account-
+  // creation spam gets the same hammer deterrent. 30/min per key is
+  // generous for any legit flow (one click per sign-in).
+  auth: { max: 30, windowMs: 60000 }
 };
 const _cloudBuckets = new Map();
 async function cloudRateKey(request, headerNames) {
@@ -1579,6 +1586,26 @@ async function handleCloudCreate(request, env) {
   const existing = await env.DB.prepare('SELECT project_id FROM cloud_projects WHERE project_id = ?').bind(projectId).first();
   if (existing) return json({ ok: false, error: 'project already linked' }, 409);
   const session = await readSession(request, env);
+  // BILLING TIER (deferred cloud item #15, 2026-08-12): a session-LINKED
+  // free account is capped at FREE_PROJECT_CAP linked projects (default 3);
+  // over the cap requires an active subscription (HTTP 402 + upgrade flag).
+  // Only enforced when the tier is configured (all three LEMONSQUEEZY_*
+  // secrets present) and only for session-linked creates — code-only
+  // (unlinked) creates are never capped, so the dormant/unconfigured path
+  // behaves byte-for-byte as before.
+  if (session && session.sub && billingConfigured(env)) {
+    const cnt = await env.DB.prepare('SELECT COUNT(*) AS c FROM cloud_projects WHERE google_sub = ?').bind(session.sub).first();
+    const owned = (cnt && cnt.c) || 0;
+    if (owned >= billingFreeCap(env)) {
+      // Over the free cap: allowed only while an ACTIVE subscription exists
+      // (qa-email-auth B5 caught the missing active-check — the cap must
+      // gate FREE accounts, never block a paying one).
+      const sub = await env.DB.prepare('SELECT status FROM cloud_subscriptions WHERE owner_sub = ?').bind(session.sub).first();
+      if (!(sub && billingStatusActive(sub.status))) {
+        return json({ ok: false, error: 'free plan limit reached — upgrade to create more linked projects', upgrade: true }, 402);
+      }
+    }
+  }
   const salt = randomSaltHex();
   const ownerCode = randomOwnerCode();
   const hash = await hashOwnerCode(ownerCode, salt);
@@ -1843,9 +1870,605 @@ async function handleCloudUnlink(request, env, projectId) {
   return json({ ok: true, unlinked: projectId, unlinkedAt: now });
 }
 
+/* ============================================================
+   ADDITIONAL SIGN-IN PROVIDER (deferred cloud item #14,
+   EXECUTED 2026-08-12) — email + password
+   ------------------------------------------------------------
+   Self-contained provider (Yahoo/Microsoft need their own OAuth
+   client IDs/secrets — user credentials, not buildable without
+   them). Register/login validate against D1 auth_users and issue
+   the SAME mmgr_session cookie as Google, with
+   sub = 'email:<address>' — a namespace that can never collide
+   with Google's numeric subs, so every downstream system
+   (cloud_projects.google_sub, prefs R2 keys, presence roster,
+   billing owner_sub) treats the account identically.
+   Passwords: PBKDF2-SHA256, 100k iterations, per-account random
+   salt stored 'salt:hex' next to the hash — the exact KDF the
+   owner-code path uses. Never stored or logged in plaintext.
+   ============================================================ */
+const AUTH_MIN_PASSWORD = 8;
+
+function authNormalizeEmail(raw) {
+  return String(raw || '').trim().toLowerCase();
+}
+
+function authEmailValid(email) {
+  return email.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email);
+}
+
+// hashOwnerCode IS the PBKDF2-SHA256 (iterations, salt) helper — reuse it
+// verbatim so the password path and the owner-code path share one KDF.
+async function authHashPassword(password, saltHex) {
+  return hashOwnerCode(password, saltHex);
+}
+
+// Sign a session for an email account and return the Set-Cookie response,
+// mirroring the /api/auth/google response shape exactly.
+async function authSessionResponse(user, env) {
+  const exp = Math.floor(Date.now() / 1000) + SESSION_MAX_AGE;
+  const token = await signSession(
+    { sub: 'email:' + user.email, email: user.email, name: user.name, picture: '', exp },
+    await sessionKey(env)
+  );
+  return new Response(JSON.stringify({ ok: true, user: { sub: 'email:' + user.email, email: user.email, name: user.name } }), {
+    status: 200,
+    headers: {
+      'Content-Type': 'application/json; charset=utf-8',
+      'Cache-Control': 'no-store',
+      'Set-Cookie': SESSION_COOKIE + '=' + token + '; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=' + SESSION_MAX_AGE
+    }
+  });
+}
+
+// POST /api/auth/register { email, password, name? }
+async function handleAuthRegister(request, env) {
+  let body;
+  try { body = await request.json(); } catch (e) { return json({ ok: false, error: 'bad request' }, 400); }
+  const email = authNormalizeEmail(body && body.email);
+  if (!authEmailValid(email)) return json({ ok: false, error: 'invalid email address' }, 400);
+  const password = String((body && body.password) || '');
+  if (password.length < AUTH_MIN_PASSWORD) return json({ ok: false, error: 'password must be at least ' + AUTH_MIN_PASSWORD + ' characters' }, 400);
+  const name = String((body && body.name) || '').slice(0, 80);
+  const existing = await env.DB.prepare('SELECT email FROM auth_users WHERE email = ?').bind(email).first();
+  if (existing) return json({ ok: false, error: 'account already exists — sign in instead' }, 409);
+  const salt = randomSaltHex();
+  const hash = await authHashPassword(password, salt);
+  const now = new Date().toISOString();
+  try {
+    // CREATE-RACE GUARD (same pattern as handleCloudCreate): a concurrent
+    // duplicate register throws on the PK — re-check and answer 409, not 404.
+    await env.DB.prepare('INSERT INTO auth_users (email, password_hash, name, created_at) VALUES (?,?,?,?)')
+      .bind(email, salt + ':' + hash, name, now).run();
+  } catch (e) {
+    const raced = await env.DB.prepare('SELECT email FROM auth_users WHERE email = ?').bind(email).first();
+    if (raced) return json({ ok: false, error: 'account already exists — sign in instead' }, 409);
+    throw e;
+  }
+  return authSessionResponse({ email: email, name: name }, env);
+}
+
+// POST /api/auth/login { email, password }
+async function handleAuthLogin(request, env) {
+  let body;
+  try { body = await request.json(); } catch (e) { return json({ ok: false, error: 'bad request' }, 400); }
+  const email = authNormalizeEmail(body && body.email);
+  const password = String((body && body.password) || '');
+  const row = await env.DB.prepare('SELECT email, password_hash, name FROM auth_users WHERE email = ?').bind(email).first();
+  if (!row) {
+    // TIMING-SIDE-CHANNEL GUARD: an unknown email returns after a real PBKDF2
+    // (the same work a known-email wrong-password probe costs) so a wall-clock
+    // difference cannot reveal which emails have accounts.
+    await cloudTimingSink();
+    await authHashPassword('x'.repeat(AUTH_MIN_PASSWORD), CLOUD_DUMMY_SALT);
+    return json({ ok: false, error: 'invalid email or password' }, 401);
+  }
+  const sep = row.password_hash.indexOf(':');
+  if (sep <= 0) return json({ ok: false, error: 'invalid email or password' }, 401);
+  const hash = await authHashPassword(password, row.password_hash.slice(0, sep));
+  if (!codesEqual(hash, row.password_hash.slice(sep + 1))) {
+    return json({ ok: false, error: 'invalid email or password' }, 401);
+  }
+  return authSessionResponse({ email: row.email, name: row.name }, env);
+}
+
+/* ============================================================
+   BILLING TIER (deferred cloud item #15, EXECUTED 2026-08-12)
+   ------------------------------------------------------------
+   Provider: LemonSqueezy — merchant of record (LS collects and
+   remits sales tax/VAT itself, so the app never computes or
+   files tax; chosen over a raw processor for exactly that
+   reason). The tier is DORMANT until configured: with none of
+   LEMONSQUEEZY_WEBHOOK_SECRET / LEMONSQUEEZY_API_KEY /
+   LEMONSQUEEZY_VARIANT_ID set, the status endpoint reports
+   "not configured", checkout returns 503, and the cloud-create
+   gate is OFF — behavior is byte-for-byte unchanged (offline-
+   first untouched). When configured:
+     - POST /api/billing/webhook   signature-verified lifecycle
+       events upsert cloud_subscriptions (the ONLY writer).
+     - GET  /api/billing/status    session-gated plan/entitlement.
+     - POST /api/billing/checkout  session-gated LS checkout URL
+       with custom_data.sub so the webhook can attribute it.
+     - Cloud create gate: a session-linked free account is capped
+       at FREE_PROJECT_CAP linked projects (default 3); over the
+       cap requires an active subscription (HTTP 402 + upgrade
+       flag). Unlinked (code-only) creates are never capped.
+   ============================================================ */
+const LS_API_BASE = 'https://api.lemonsqueezy.com/v1';
+
+function billingConfigured(env) {
+  return !!(env && env.LEMONSQUEEZY_WEBHOOK_SECRET && env.LEMONSQUEEZY_API_KEY && env.LEMONSQUEEZY_VARIANT_ID);
+}
+
+function billingFreeCap(env) {
+  const v = Number(env && env.FREE_PROJECT_CAP);
+  return Number.isFinite(v) && v > 0 ? v : 3;
+}
+
+function billingStatusActive(status) {
+  return status === 'active' || status === 'on_trial';
+}
+
+// LS signs the RAW body: X-Signature = lowercase hex HMAC-SHA256(body,
+// webhook_secret). Constant-time compare (codesEqual) against the header.
+async function billingVerifySignature(env, rawBody, sigHeader) {
+  if (!env || !env.LEMONSQUEEZY_WEBHOOK_SECRET) return false;
+  try {
+    const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(env.LEMONSQUEEZY_WEBHOOK_SECRET), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+    const sigBytes = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(rawBody));
+    let hex = '';
+    const arr = new Uint8Array(sigBytes);
+    for (let i = 0; i < arr.length; i++) hex += arr[i].toString(16).padStart(2, '0');
+    return codesEqual(hex, String(sigHeader || '').toLowerCase());
+  } catch (e) { return false; }
+}
+
+// POST /api/billing/webhook — the ONLY writer of cloud_subscriptions.
+// Authenticated by HMAC signature, NOT a session cookie (LS servers don't
+// hold one). Lifecycle events upsert the row keyed on custom_data.sub.
+async function handleBillingWebhook(request, env) {
+  if (!env || !env.LEMONSQUEEZY_WEBHOOK_SECRET) return json({ ok: false, error: 'webhook not configured' }, 503);
+  const rawBody = await request.text();
+  const sig = request.headers.get('X-Signature') || '';
+  if (!(await billingVerifySignature(env, rawBody, sig))) return json({ ok: false, error: 'invalid signature' }, 401);
+  let payload;
+  try { payload = JSON.parse(rawBody); } catch (e) { return json({ ok: false, error: 'bad payload' }, 400); }
+  const meta = (payload && payload.meta) || {};
+  const event = String(meta.event_name || '');
+  const custom = (meta.custom_data && typeof meta.custom_data === 'object') ? meta.custom_data : {};
+  const ownerSub = String(custom.sub || '');
+  const lsId = String((payload && payload.data && payload.data.id) || '');
+  const attrs = (payload && payload.data && payload.data.attributes) || {};
+  const lifecycle = ['subscription_created', 'subscription_updated', 'subscription_cancelled', 'subscription_expired', 'subscription_paused', 'subscription_resumed'];
+  if (lifecycle.indexOf(event) === -1) return json({ ok: true, ignored: event }); // test_request & friends: 200, no row
+  if (!ownerSub || !lsId) return json({ ok: false, error: 'missing owner identity in custom_data' }, 400);
+  const status = String(attrs.status || '');
+  const periodEndRaw = attrs.renews_at || attrs.ends_at;
+  const periodEnd = periodEndRaw ? Math.floor(new Date(periodEndRaw).getTime() / 1000) : null;
+  const now = new Date().toISOString();
+  await env.DB.prepare(
+    'INSERT INTO cloud_subscriptions (owner_sub, ls_subscription_id, status, plan, current_period_end, created_at, updated_at) VALUES (?,?,?,?,?,?,?) ' +
+    'ON CONFLICT(owner_sub) DO UPDATE SET ls_subscription_id = excluded.ls_subscription_id, status = excluded.status, ' +
+    'current_period_end = excluded.current_period_end, updated_at = excluded.updated_at'
+  ).bind(ownerSub, lsId, status, 'pro', periodEnd, now, now).run();
+  return json({ ok: true, event: event, status: status });
+}
+
+// GET /api/billing/status — session-gated plan + entitlement.
+async function handleBillingStatus(request, env) {
+  const session = await readSession(request, env);
+  if (!session || !session.sub) return cloudForbidden();
+  const configured = billingConfigured(env);
+  const cap = billingFreeCap(env);
+  const cnt = await env.DB.prepare('SELECT COUNT(*) AS c FROM cloud_projects WHERE google_sub = ?').bind(session.sub).first();
+  const projectCount = (cnt && cnt.c) || 0;
+  if (!configured) return json({ ok: true, configured: false, plan: 'free', active: false, projectCap: null, projectCount: projectCount });
+  const sub = await env.DB.prepare('SELECT status, plan, current_period_end FROM cloud_subscriptions WHERE owner_sub = ?').bind(session.sub).first();
+  const active = !!(sub && billingStatusActive(sub.status));
+  return json({
+    ok: true, configured: true, plan: active ? (sub.plan || 'pro') : 'free', active: active,
+    currentPeriodEnd: (sub && sub.current_period_end) || null, projectCap: cap, projectCount: projectCount
+  });
+}
+
+// POST /api/billing/checkout — session-gated LS checkout with custom_data.sub
+// so the webhook can attribute the resulting subscription to this account.
+async function handleBillingCheckout(request, env) {
+  const session = await readSession(request, env);
+  if (!session || !session.sub) return cloudForbidden();
+  if (!billingConfigured(env)) return json({ ok: false, error: 'billing not configured' }, 503);
+  try {
+    const variantId = Number(env.LEMONSQUEEZY_VARIANT_ID);
+    const res = await fetch(LS_API_BASE + '/checkouts', {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/vnd.api+json',
+        'Content-Type': 'application/vnd.api+json',
+        'Authorization': 'Bearer ' + env.LEMONSQUEEZY_API_KEY
+      },
+      body: JSON.stringify({
+        data: {
+          type: 'checkouts',
+          attributes: {
+            checkout_data: { email: session.email || '', custom: { sub: session.sub } },
+            product_options: { enabled_variants: [variantId] }
+          }
+        }
+      })
+    });
+    const data = await res.json().catch(function() { return {}; });
+    const url = data && data.data && data.data.attributes && data.data.attributes.url;
+    if (!res.ok || !url) return json({ ok: false, error: 'checkout creation failed (LemonSqueezy HTTP ' + res.status + ')' }, 502);
+    return json({ ok: true, checkoutUrl: url });
+  } catch (e) {
+    return json({ ok: false, error: 'checkout creation failed (upstream unreachable)' }, 502);
+  }
+}
+
+// ===========================================================================
+// MASTER-ACTION-PLAN RANK 9 (2026-08-12) — API / webhook layer
+// ---------------------------------------------------------------------------
+// 9.1 — stable JSON resource shapes (READ-ONLY): GET
+//   /api/cloud/projects/:id/api/:shape  (tasks|baseline|risks|weather|evm|
+//   portfolio). Owner-gated (code or linked session) like every cloud read.
+//   Every shape is a projection of the SAVED R2 state (secrets already
+//   stripped at save time) — no new computation lives in the client, and the
+//   shapes are deliberately flat/stable so an integration (Zapier/Make,
+//   owner portal, accounting export) never depends on the app's internal
+//   schema. Only enumerated fields are read — AI keys and passwords can
+//   never appear because they're stripped before R2 storage (stripStateSecrets
+//   on save) AND these builders only touch the whitelisted arrays below.
+//
+// 9.2 — webhook triggers (OPT-IN, off by default): owner-gated CRUD on
+//   /api/cloud/projects/:id/webhooks (+ /:id) backed by migration 0008, and
+//   the scheduled() evaluator fires matching subscriptions with an
+//   HMAC-SHA256 signature header (X-MMGR-Signature). With no subscription
+//   rows (the default) the evaluator does nothing — dormant-until-configured,
+//   byte-for-byte unchanged behavior.
+// ===========================================================================
+
+// ---- 9.1 pure shape builders (worker-side ports of the app's math) --------
+// These are dependency-free ports of mmgr-evm.js computeEVM / mmgr-health.js
+// computeHealthScore / mmgr-portfolio.js wxRiskDays — kept faithful so the
+// API shape and the in-app number never disagree. Date handling mirrors
+// mmgr-utils.js (DL strings are YYYY-MM-DD; compare via day buckets).
+function apiDaysBetween(a, b) {
+  const A = Date.UTC(a.getUTCFullYear(), a.getUTCMonth(), a.getUTCDate());
+  const B = Date.UTC(b.getUTCFullYear(), b.getUTCMonth(), b.getUTCDate());
+  return Math.round((B - A) / 86400000);
+}
+function apiIsOverdue(endDate) {
+  if (!endDate) return false;
+  const d = new Date(String(endDate).replace(/-/g, '/') + ' 00:00:00');
+  if (isNaN(d)) return false;
+  return d < new Date();
+}
+function apiDayStart(d) { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; }
+
+// tasks — counts + the raw list (id/name/status/dates/critical only).
+function apiTasks(state) {
+  const tasks = Array.isArray(state.tasks) ? state.tasks : [];
+  const now = new Date();
+  const in7 = new Date(now.getTime() + 7 * 86400000);
+  const done = tasks.filter(t => t.status === 'completed').length;
+  const overdue = tasks.filter(t => t.status !== 'completed' && apiIsOverdue(t.endDate));
+  const dueSoon = tasks.filter(t => t.status !== 'completed' && t.endDate && !apiIsOverdue(t.endDate) && new Date(String(t.endDate).replace(/-/g, '/')) <= in7);
+  const blocked = tasks.filter(t => t.status === 'blocked').length;
+  return {
+    shape: 'tasks', count: tasks.length, completed: done, inProgress: tasks.filter(t => t.status === 'inprogress').length,
+    blocked: blocked, overdueCount: overdue.length, dueSoonCount: dueSoon.length,
+    overdue: overdue.map(t => ({ id: t.id, name: t.name || t.id, endDate: t.endDate || null })),
+    dueSoon: dueSoon.map(t => ({ id: t.id, name: t.name || t.id, endDate: t.endDate || null })),
+    tasks: tasks.map(t => ({ id: t.id, name: t.name || t.id, status: t.status || 'todo', startDate: t.startDate || null, endDate: t.endDate || null, critical: !!t.critical }))
+  };
+}
+
+// baseline — saved baseline vs current completion.
+function apiBaseline(state) {
+  const base = state.baseline || null;
+  const tasks = Array.isArray(state.tasks) ? state.tasks : [];
+  const baseTasks = (base && Array.isArray(base.tasks)) ? base.tasks : [];
+  const curDone = tasks.filter(t => t.status === 'completed').length;
+  const baseDone = baseTasks.filter(t => t.status === 'completed').length;
+  return {
+    shape: 'baseline', saved: !!base, capturedAt: (base && base.capturedAt) || null,
+    currentTotal: tasks.length, currentCompleted: curDone, currentPct: tasks.length ? Math.round(curDone / tasks.length * 100) : 0,
+    baselineTotal: baseTasks.length, baselineCompleted: baseDone, baselinePct: baseTasks.length ? Math.round(baseDone / baseTasks.length * 100) : null
+  };
+}
+
+// risks — open vs resolved + high/critical flags. issueId means the risk was
+// promoted to an issue (no longer a pure risk).
+function apiRisks(state) {
+  const risks = Array.isArray(state.risks) ? state.risks : [];
+  const issues = Array.isArray(state.issues) ? state.issues : [];
+  const open = risks.filter(r => !r.issueId);
+  const high = open.filter(r => /high/i.test(r.probability || '') || /high/i.test(r.impact || ''));
+  return {
+    shape: 'risks', count: risks.length, openCount: open.length,
+    highCount: high.length, issuesCount: issues.length,
+    risks: risks.map(r => ({ id: r.id, description: r.description || '(untitled)', probability: r.probability || null, impact: r.impact || null, status: r.status || 'open', promoted: !!r.issueId })),
+    issues: issues.map(i => ({ id: i.id, description: i.description || '(untitled)', status: i.status || 'open', owner: i.owner || null }))
+  };
+}
+
+// weather — cached forecast risk days (same thresholds as wxRiskDays:
+// precip>=60 || tMax>=32 || tMin<=0, next 7 days) + the delay log.
+function apiWeather(state) {
+  const cache = state.wxCache || null;
+  const days = (cache && Array.isArray(cache.days)) ? cache.days : [];
+  const today = apiDayStart(new Date());
+  const in7 = new Date(today.getTime() + 7 * 86400000);
+  const riskDays = days.filter(d => {
+    const dateObj = new Date(String(d.date).replace(/-/g, '/') + ' 00:00:00');
+    if (isNaN(dateObj) || dateObj < today || dateObj > in7) return false;
+    return (+d.precip || 0) >= 60 || (+d.tMax || 0) >= 32 || (+d.tMin || 0) <= 0;
+  }).map(d => ({ date: d.date, precip: +d.precip || 0, tMax: +d.tMax || 0, tMin: +d.tMin || 0 }));
+  const log = Array.isArray(state.weatherLog) ? state.weatherLog : [];
+  return {
+    shape: 'weather', cachedAt: (cache && cache.at) ? new Date(cache.at).toISOString() : null,
+    riskDayCount: riskDays.length, riskDays: riskDays,
+    logCount: log.length,
+    log: log.map(w => ({ date: w.date || null, condition: w.condition || null, delayDays: +w.delayDays || 0, cause: w.cause || null })).slice(-30)
+  };
+}
+
+// evm — faithful port of computeEVM (Spend math: spendLog-driven actuals,
+// time-phased planned value via linked-task windows + curve shapes). Returns
+// nulls where the app would (no tasks / no planned budget = no fabricated
+// numbers).
+function apiEVM(state) {
+  const tasks = Array.isArray(state.tasks) ? state.tasks : [];
+  const tot = tasks.length;
+  if (!tot) return { shape: 'evm', available: false };
+  const dn = tasks.filter(t => t.status === 'completed').length;
+  const pct = dn / tot;
+  const lines = Array.isArray(state.budgetLines) ? state.budgetLines : [];
+  const spendLog = Array.isArray(state.spendLog) ? state.spendLog : [];
+  const lineActual = function(line) {
+    const log = spendLog.filter(e => e.budgetLineId === line.id);
+    if (log.length) return log.reduce((s, e) => s + (+e.amount || 0), 0);
+    return +line.actual || 0;
+  };
+  const tp = lines.reduce((sum, l) => sum + (+l.planned || 0), 0);
+  const ta = lines.reduce((sum, l) => sum + lineActual(l), 0);
+  if (!tp) return { shape: 'evm', available: false };
+  // budget line window: linked task dates, else project span.
+  const windowOf = function(line) {
+    const linkId = line.linkedTaskId || line.taskId || null;
+    if (linkId) {
+      const t = tasks.find(x => String(x.id) === String(linkId));
+      if (t && t.startDate && t.endDate) return { start: new Date(String(t.startDate).replace(/-/g, '/')), end: new Date(String(t.endDate).replace(/-/g, '/')) };
+    }
+    const dated = tasks.filter(t => t.startDate && t.endDate);
+    if (!dated.length) return null;
+    const starts = dated.map(t => new Date(String(t.startDate).replace(/-/g, '/')).getTime());
+    const ends = dated.map(t => new Date(String(t.endDate).replace(/-/g, '/')).getTime());
+    return { start: new Date(Math.min.apply(null, starts)), end: new Date(Math.max.apply(null, ends)) };
+  };
+  const curveFraction = function(t, shape) {
+    t = Math.max(0, Math.min(1, t));
+    const s = shape === 'bell' ? 'scurve' : shape === 'front-loaded' ? 'front' : shape === 'back-loaded' ? 'back' : shape;
+    if (s === 'scurve') return t * t * (3 - 2 * t);
+    if (s === 'front') return 1 - Math.pow(1 - t, 2);
+    if (s === 'back') return t * t;
+    return t;
+  };
+  const today = apiDayStart(new Date());
+  const pv = lines.reduce((sum, l) => {
+    const planned = +l.planned || 0;
+    const w = windowOf(l);
+    if (!w) return sum + planned * pct;
+    const span = w.end - w.start;
+    if (today <= w.start) return sum;
+    if (today >= w.end || span <= 0) return sum + planned;
+    return sum + planned * curveFraction((today - w.start) / span, l.curveShape || l.curve || 'linear');
+  }, 0);
+  const ev = lines.reduce((sum, l) => {
+    const planned = +l.planned || 0;
+    const linkId = l.linkedTaskId || l.taskId || null;
+    if (linkId) {
+      const t = tasks.find(x => String(x.id) === String(linkId));
+      if (t) return sum + planned * (t.status === 'completed' ? 1 : 0);
+    }
+    return sum + planned * pct;
+  }, 0);
+  const ac = ta;
+  const spi = pv ? ev / pv : null;
+  const cpi = ac ? ev / ac : null;
+  const bac = tp;
+  const eac = cpi ? ac + (bac - ev) / cpi : null;
+  const etc = (eac !== null) ? eac - ac : null;
+  const vac = (eac !== null) ? bac - eac : null;
+  const tden = bac - ac;
+  const tcpi = (tden !== 0) ? (bac - ev) / tden : null;
+  return { shape: 'evm', available: true, pct: Math.round(pct * 100), planned: tp, actual: ta, pv: Math.round(pv), ev: Math.round(ev), ac: Math.round(ac), spi: spi !== null ? +spi.toFixed(3) : null, cpi: cpi !== null ? +cpi.toFixed(3) : null, sv: Math.round(ev - pv), cv: Math.round(ev - ac), bac: bac, eac: eac !== null ? Math.round(eac) : null, etc: etc !== null ? Math.round(etc) : null, vac: vac !== null ? Math.round(vac) : null, tcpi: tcpi !== null ? +tcpi.toFixed(3) : null };
+}
+
+// portfolio — health score (faithful 5-factor port) + derived summary.
+function apiPortfolio(state) {
+  const tasks = Array.isArray(state.tasks) ? state.tasks : [];
+  const tot = tasks.length;
+  if (!tot) return { shape: 'portfolio', available: false };
+  const dn = tasks.filter(t => t.status === 'completed').length;
+  const overdue = tasks.filter(t => apiIsOverdue(t.endDate) && t.status !== 'completed').length;
+  const liveIssues = (Array.isArray(state.issues) ? state.issues : []).filter(i => i.status !== 'resolved' && i.status !== 'closed').length;
+  const highRisks = (Array.isArray(state.risks) ? state.risks : []).filter(r => !r.issueId && /^high$/i.test(r.probability || '') && /^high$/i.test(r.impact || '')).length;
+  const pendingChg = (Array.isArray(state.changes) ? state.changes : []).filter(c => c.status === 'submitted' || c.status === 'review' || !c.status).length;
+  const lines = Array.isArray(state.budgetLines) ? state.budgetLines : [];
+  const spendLog = Array.isArray(state.spendLog) ? state.spendLog : [];
+  const lineActual = function(line) {
+    const log = spendLog.filter(e => e.budgetLineId === line.id);
+    if (log.length) return log.reduce((s, e) => s + (+e.amount || 0), 0);
+    return +line.actual || 0;
+  };
+  const tp = lines.reduce((sum, b) => sum + (+b.planned || 0), 0);
+  const ta = lines.reduce((sum, b) => sum + lineActual(b), 0);
+  const pct = dn / tot;
+  const cpi = (ta && tp) ? (tp * pct) / ta : null;
+  const hasSchedule = tasks.some(t => t.startDate && t.endDate);
+  const hasBudget = !!(ta && tp);
+  const hasRisks = (Array.isArray(state.risks) ? state.risks : []).length > 0;
+  const hasChanges = (Array.isArray(state.changes) ? state.changes : []).length > 0;
+  const f1 = (dn / tot) * 100;
+  const f2 = hasSchedule ? Math.max(0, 100 - (overdue / tot) * 100) : null;
+  const f3 = hasBudget ? Math.max(0, 100 - Math.abs(cpi - 1) * 200) : null;
+  const f4 = hasRisks ? Math.max(0, 100 - (liveIssues * 15) - (highRisks * 5)) : null;
+  const f5 = hasChanges ? Math.max(0, 100 - (pendingChg * 10)) : null;
+  const weights = { f1: 0.30, f2: 0.25, f3: 0.20, f4: 0.15, f5: 0.10 };
+  let weightSum = 0, scoreSum = 0;
+  [f1, f2, f3, f4, f5].forEach((v, i) => {
+    if (v !== null) { weightSum += weights['f' + (i + 1)]; scoreSum += v * weights['f' + (i + 1)]; }
+  });
+  const score = weightSum ? Math.round(scoreSum / weightSum) : Math.round(f1);
+  const atRisk = score < 60;
+  return { shape: 'portfolio', available: true, healthScore: score, atRisk: atRisk, completion: Math.round(pct * 100), overdueCount: overdue, liveIssues: liveIssues, highRisks: highRisks, pendingChanges: pendingChg };
+}
+
+// ---- route: GET /api/cloud/projects/:id/api/:shape (owner-gated, read-only)
+const API_SHAPES = { tasks: apiTasks, baseline: apiBaseline, risks: apiRisks, weather: apiWeather, evm: apiEVM, portfolio: apiPortfolio };
+async function handleApiShape(request, env, projectId, shape) {
+  const auth = await cloudAuthOwnerEither(request, env, projectId);
+  if (!auth) return cloudForbidden();
+  const row = await env.DB.prepare('SELECT latest_r2_key FROM cloud_projects WHERE project_id = ?').bind(projectId).first();
+  const state = row && row.latest_r2_key ? await cloudReadState(env, row.latest_r2_key) : null;
+  if (!state) return json({ ok: true, shape: shape, exists: false, data: null });
+  const builder = API_SHAPES[shape];
+  return json({ ok: true, shape: shape, exists: true, generatedAt: new Date().toISOString(), data: builder(state) });
+}
+
+// ---- 9.2 webhook subscriptions (owner-gated CRUD) -------------------------
+// Events: health_dropped | weather_risk_tomorrow. target_url must be http(s).
+const WEBHOOK_EVENTS = ['health_dropped', 'weather_risk_tomorrow'];
+async function webhookCryptoSecret() {
+  const bytes = new Uint8Array(24);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+async function handleWebhookCreate(request, env, projectId) {
+  const auth = await cloudAuthOwnerEither(request, env, projectId);
+  if (!auth) return cloudForbidden();
+  const read = await readCloudBody(request);
+  if (read.tooLarge) return json({ ok: false, error: 'body too large' }, 413);
+  if (read.bad || !read.body || typeof read.body !== 'object') return json({ ok: false, error: 'bad request' }, 400);
+  const event = String(read.body.event || '').trim();
+  const targetUrl = String(read.body.targetUrl || '').trim();
+  if (WEBHOOK_EVENTS.indexOf(event) === -1) return json({ ok: false, error: 'unknown event — use health_dropped or weather_risk_tomorrow' }, 400);
+  let u;
+  try { u = new URL(targetUrl); } catch (e) { return json({ ok: false, error: 'targetUrl must be a valid URL' }, 400); }
+  if (u.protocol !== 'https:' && u.protocol !== 'http:') return json({ ok: false, error: 'targetUrl must be http(s)' }, 400);
+  const secret = await webhookCryptoSecret();
+  const now = new Date().toISOString();
+  const res = await env.DB.prepare('INSERT INTO webhook_subscriptions (project_id, event, target_url, secret, enabled, created_at) VALUES (?, ?, ?, ?, 1, ?)').bind(projectId, event, targetUrl, secret, now).run();
+  return json({ ok: true, id: res.meta.last_row_id, event: event, targetUrl: targetUrl, secret: secret, created: true });
+}
+
+async function handleWebhookList(request, env, projectId) {
+  const auth = await cloudAuthOwnerEither(request, env, projectId);
+  if (!auth) return cloudForbidden();
+  const rows = await env.DB.prepare('SELECT id, project_id, event, target_url, enabled, last_fired_at, created_at FROM webhook_subscriptions WHERE project_id = ? ORDER BY id').bind(projectId).all();
+  // The secret is NEVER returned after creation (shown once at create).
+  return json({ ok: true, webhooks: (rows.results || []).map(r => ({ id: r.id, event: r.event, targetUrl: r.target_url, enabled: !!r.enabled, lastFiredAt: r.last_fired_at || null, createdAt: r.created_at })) });
+}
+
+async function handleWebhookDelete(request, env, projectId, subId) {
+  const auth = await cloudAuthOwnerEither(request, env, projectId);
+  if (!auth) return cloudForbidden();
+  const res = await env.DB.prepare('DELETE FROM webhook_subscriptions WHERE id = ? AND project_id = ?').bind(Number(subId) || 0, projectId).run();
+  if (!res.meta.changes) return json({ ok: false, error: 'webhook not found' }, 404);
+  return json({ ok: true, deleted: true });
+}
+
+// ---- webhook delivery: HMAC-SHA256 signature + POST -----------------------
+async function webhookDeliver(env, sub, payload) {
+  const body = JSON.stringify(payload);
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(sub.secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const sigBuf = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(body));
+  const sig = Array.from(new Uint8Array(sigBuf)).map(b => b.toString(16).padStart(2, '0')).join('');
+  try {
+    const res = await fetch(sub.target_url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-MMGR-Signature': 'sha256=' + sig, 'User-Agent': 'My-MaNaGeR-Rank9/1.0' },
+      body: body,
+      signal: AbortSignal.timeout(10000)
+    });
+    return { delivered: true, status: res.status };
+  } catch (e) {
+    return { delivered: false, error: (e && e.message) || 'delivery failed' };
+  }
+}
+
+// ---- scheduled evaluator (called from the cron; never touches user requests)
+// Reads the state snapshot for every project with enabled subscriptions and
+// fires the matching event. Failures are logged, never surfaced.
+async function evaluateWebhooks(env) {
+  const rows = await env.DB.prepare('SELECT * FROM webhook_subscriptions WHERE enabled = 1').all();
+  const subs = rows.results || [];
+  if (!subs.length) return { checked: 0, fired: [] };
+  const fired = [];
+  const todayKey = new Date().toISOString().slice(0, 10);
+  const seen = {};
+  for (let i = 0; i < subs.length; i++) {
+    const sub = subs[i];
+    try {
+      const row = await env.DB.prepare('SELECT latest_r2_key FROM cloud_projects WHERE project_id = ?').bind(sub.project_id).first();
+      const state = row && row.latest_r2_key ? await cloudReadState(env, row.latest_r2_key) : null;
+      if (!state) continue;
+      let fire = false; let payload = null;
+      if (sub.event === 'health_dropped') {
+        const p = apiPortfolio(state);
+        if (p.available) {
+          const prev = sub.last_value !== null && sub.last_value !== undefined ? +sub.last_value : null;
+          // Store the current score on EVERY run so a drop is a real
+          // comparison, not a first-run surprise.
+          if (prev !== null && p.healthScore < prev) {
+            fire = true;
+            payload = { event: 'health_dropped', projectId: sub.project_id, at: new Date().toISOString(), previousScore: prev, currentScore: p.healthScore };
+          }
+          await env.DB.prepare('UPDATE webhook_subscriptions SET last_value = ? WHERE id = ?').bind(String(p.healthScore), sub.id).run();
+        }
+      } else if (sub.event === 'weather_risk_tomorrow') {
+        // Tomorrow is a risk day per the cached forecast (same thresholds as
+        // the app's wxRiskDays). Fire at most once per calendar day.
+        if (sub.last_fired_at !== todayKey) {
+          const cache = state.wxCache;
+          const days = (cache && Array.isArray(cache.days)) ? cache.days : [];
+          const tm = new Date(Date.now() + 86400000);
+          const tmKey = tm.toISOString().slice(0, 10);
+          const day = days.find(d => String(d.date).slice(0, 10) === tmKey);
+          if (day && ((+day.precip || 0) >= 60 || (+day.tMax || 0) >= 32 || (+day.tMin || 0) <= 0)) {
+            fire = true;
+            payload = { event: 'weather_risk_tomorrow', projectId: sub.project_id, at: new Date().toISOString(), date: tmKey, precip: +day.precip || 0, tMax: +day.tMax || 0, tMin: +day.tMin || 0 };
+          }
+        }
+        if (fire || sub.last_fired_at !== todayKey) {
+          // Record the evaluation date regardless so the once-per-day guard holds.
+          await env.DB.prepare('UPDATE webhook_subscriptions SET last_fired_at = ? WHERE id = ?').bind(todayKey, sub.id).run();
+        }
+      }
+      if (fire && payload) {
+        const outcome = await webhookDeliver(env, sub, payload);
+        fired.push({ id: sub.id, event: sub.event, projectId: sub.project_id, outcome: outcome });
+      }
+      seen[sub.id] = true;
+    } catch (e) {
+      console.error('rank9 webhook eval failed for sub ' + sub.id + ':', e && e.message);
+    }
+  }
+  return { checked: Object.keys(seen).length, fired: fired };
+}
+
 // ---- /api/auth/* routes --------------------------------------------------
 async function handleApi(request, env, url) {
   const path = url.pathname;
+
+  // WEBHOOK EXEMPTION (billing tier): LemonSqueezy posts server-to-server
+  // with no browser Origin (sameOriginOnly would pass anyway), but if an
+  // Origin ever rides along it must not 403 — the HMAC signature, not origin,
+  // is the webhook's auth. Routed before the same-origin gate on purpose.
+  if (path === '/api/billing/webhook' && request.method === 'POST') {
+    return handleBillingWebhook(request, env);
+  }
 
   // CORS POLICY (gap-audit item A2): enforce same-origin-only for the whole
   // API before any route logic runs. Cross-origin requests are rejected with
@@ -1882,6 +2505,31 @@ async function handleApi(request, env, url) {
     if (rl.limited) return cloudRateLimited(rl.retryAfter);
     return handleCloudUnlink(request, env, cloudUnlinkMatch[1]);
   }
+  // MASTER-ACTION-PLAN RANK 9 (2026-08-12) — read-only resource shapes +
+  // opt-in webhook subscriptions. Runs before the ASSETS binding like every
+  // /api/cloud route; both are owner-gated.
+  const apiShapeMatch = path.match(/^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/api\/([a-z]+)$/);
+  if (apiShapeMatch && request.method === 'GET') {
+    const rl = await cloudRateCheck(request, 'general');
+    if (rl.limited) return cloudRateLimited(rl.retryAfter);
+    const shape = apiShapeMatch[2];
+    if (!API_SHAPES[shape]) return json({ ok: false, error: 'unknown shape — use tasks, baseline, risks, weather, evm or portfolio' }, 404);
+    return handleApiShape(request, env, apiShapeMatch[1], shape);
+  }
+  const webhookListMatch = path.match(/^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/webhooks$/);
+  if (webhookListMatch) {
+    const rl = await cloudRateCheck(request, 'general');
+    if (rl.limited) return cloudRateLimited(rl.retryAfter);
+    if (request.method === 'POST') return handleWebhookCreate(request, env, webhookListMatch[1]);
+    if (request.method === 'GET') return handleWebhookList(request, env, webhookListMatch[1]);
+  }
+  const webhookDelMatch = path.match(/^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/webhooks\/(\d+)$/);
+  if (webhookDelMatch && request.method === 'DELETE') {
+    const rl = await cloudRateCheck(request, 'general');
+    if (rl.limited) return cloudRateLimited(rl.retryAfter);
+    return handleWebhookDelete(request, env, webhookDelMatch[1], webhookDelMatch[2]);
+  }
+
   // THEME-SYSTEM-AND-MOBILE-UI-ACTION-PLAN §2.3 — session-gated account
   // theme preference (GET returns the stored pref, PUT accepts { palette,
   // dark }); R2-backed, no D1 migration. Runs before the ASSETS binding
@@ -1891,6 +2539,16 @@ async function handleApi(request, env, url) {
     if (rl.limited) return cloudRateLimited(rl.retryAfter);
     if (request.method === 'GET') return handleCloudPrefsGet(request, env);
     if (request.method === 'PUT') return handleCloudPrefsPut(request, env);
+  }
+  // REAL-TIME PRESENCE (deferred cloud item, EXECUTED 2026-08-12): WebSocket
+  // upgrade. Access is validated HERE with the same generic-403 discipline as
+  // every cloud route, then the validated handshake is forwarded to the
+  // per-project Presence Durable Object (wrangler.jsonc durable_objects
+  // binding + migrations v1-presence).
+  if (path === '/api/cloud/presence') {
+    const rl = await cloudRateCheck(request, 'general');
+    if (rl.limited) return cloudRateLimited(rl.retryAfter);
+    return handlePresenceUpgrade(request, env, url);
   }
 
 
@@ -1980,6 +2638,44 @@ async function handleApi(request, env, url) {
     return json({ ok: true, user: { sub: session.sub, email: session.email, name: session.name, picture: session.picture } });
   }
 
+  // ADDITIONAL SIGN-IN PROVIDER (deferred cloud item #14, EXECUTED
+  // 2026-08-12) — email + password. Register/login validate against D1
+  // auth_users and issue the SAME mmgr_session cookie as Google, with
+  // sub = 'email:<address>' — a namespace that can never collide with
+  // Google's numeric subs, so every downstream system (cloud_projects.
+  // google_sub, prefs R2 keys, presence roster, billing owner_sub) treats
+  // the account identically. Routed here behind the same-origin gate like
+  // every /api/auth/* route; the auth rate bucket covers the brute-force
+  // surface (see CLOUD_RATE above).
+  if (path === '/api/auth/register' && request.method === 'POST') {
+    const rl = await cloudRateCheck(request, 'auth');
+    if (rl.limited) return cloudRateLimited(rl.retryAfter);
+    return handleAuthRegister(request, env);
+  }
+  if (path === '/api/auth/login' && request.method === 'POST') {
+    const rl = await cloudRateCheck(request, 'auth');
+    if (rl.limited) return cloudRateLimited(rl.retryAfter);
+    return handleAuthLogin(request, env);
+  }
+
+  // BILLING TIER (deferred cloud item #15, EXECUTED 2026-08-12) —
+  // session-gated plan/entitlement + LemonSqueezy checkout. DORMANT until
+  // configured: with no LEMONSQUEEZY_* secrets the status endpoint reports
+  // configured:false and checkout answers 503, so behavior is byte-for-byte
+  // unchanged (offline-first untouched). The webhook (signature-verified,
+  // the ONLY writer of cloud_subscriptions) is routed before the same-
+  // origin gate at the top of handleApi.
+  if (path === '/api/billing/status' && request.method === 'GET') {
+    const rl = await cloudRateCheck(request, 'general');
+    if (rl.limited) return cloudRateLimited(rl.retryAfter);
+    return handleBillingStatus(request, env);
+  }
+  if (path === '/api/billing/checkout' && request.method === 'POST') {
+    const rl = await cloudRateCheck(request, 'general');
+    if (rl.limited) return cloudRateLimited(rl.retryAfter);
+    return handleBillingCheckout(request, env);
+  }
+
   // POST /api/ai/chat (BYO-AI-KEY-SESSION-ONLY-v1 STEP-5) — stateless relay.
   if (path === '/api/ai/chat' && request.method === 'POST') {
     return handleAiChat(request);
@@ -2008,6 +2704,151 @@ async function handleApi(request, env, url) {
   return json({ ok: false, error: 'not found' }, 404);
 }
 
+/* ============================================================
+   REAL-TIME PRESENCE (deferred cloud item, EXECUTED 2026-08-12)
+   ------------------------------------------------------------
+   OPT-IN, purely additive collaboration: a quiet "who else is viewing"
+   chip on project.html. Architecture:
+     - The browser opens a WebSocket to /api/cloud/presence?project=<id>
+       (an owner/editor code may ride the query string; the linked Google
+       session rides the cookie automatically).
+     - handlePresenceUpgrade() validates access with the SAME generic-403 +
+       timing-sink discipline as every cloud route — linked session, D1
+       owner code, D1 editor code, or a published-manifest access code
+       (sha256 of trim().toUpperCase(), mirroring app.html's unlock check) —
+       then forwards the validated handshake to the Presence DO.
+     - One DO per project (idFromName(projectId), WebSocket Collab pattern,
+       Hibernation API). It tracks ONLY {id, name, since} per open socket —
+       never project content — and broadcasts init/join/leave so every
+       viewer sees the roster. Stale sockets are swept on activity.
+   Offline-first is untouched: an unavailable/failed socket leaves the app
+   byte-for-byte as before (the frontend chip simply stays hidden).
+   ============================================================ */
+
+async function sha256Hex(str) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(function(b) { return b.toString(16).padStart(2, '0'); }).join('');
+}
+
+// Verify an access code against the PUBLISHED manifest (projects-data.js) —
+// the exact check app.html performs client-side (sha256 of trimmed-uppercased
+// code vs codeHash / roCodeHash). Read through the ASSETS binding; any
+// read/parse failure returns false (presence simply unavailable, nothing leaks).
+async function cloudManifestCodeOk(env, projectId, code) {
+  try {
+    const res = await env.ASSETS.fetch('/projects-data.js');
+    if (!res.ok) return false;
+    const text = await res.text();
+    const start = text.indexOf('[');
+    const end = text.lastIndexOf(']');
+    if (start < 0 || end <= start) return false;
+    const projects = JSON.parse(text.slice(start, end + 1));
+    const p = (projects || []).find(function(x) { return x && x.id === projectId; });
+    if (!p) return false;
+    const hash = await sha256Hex(String(code || '').trim().toUpperCase());
+    return hash === p.codeHash || hash === (p.roCodeHash || p.readOnlyCodeHash || '');
+  } catch (e) { return false; }
+}
+
+// GET /api/cloud/presence?project=<id>[&code=<owner|editor code>]
+// Validates access, then hands the upgrade to the Presence DO. Every failure
+// is the same generic 403 (cloudForbidden) — never a distinction leak.
+async function handlePresenceUpgrade(request, env, url) {
+  const projectId = String(url.searchParams.get('project') || '').slice(0, 64);
+  if (!/^[A-Za-z0-9_-]{1,64}$/.test(projectId)) { await cloudTimingSink(); return cloudForbidden(); }
+  let name = 'Viewer';
+  let authed = false;
+  // (a) Linked Google session — the cookie rides the handshake automatically.
+  const session = await readSession(request, env);
+  if (session && session.sub) {
+    const row = await env.DB.prepare('SELECT google_sub FROM cloud_projects WHERE project_id = ?').bind(projectId).first();
+    if (row) {
+      if (row.google_sub === session.sub) { authed = true; name = session.name || 'Owner'; }
+      else { await cloudTimingSink(); return cloudForbidden(); } // linked to another account
+    }
+  }
+  // (b) Owner/editor code from the D1 row, or (c) published-manifest code.
+  if (!authed) {
+    const code = String(url.searchParams.get('code') || '').trim();
+    if (code) {
+      const row = await env.DB.prepare('SELECT owner_code_salt, owner_code_hash FROM cloud_projects WHERE project_id = ?').bind(projectId).first();
+      if (row) {
+        const hash = await hashOwnerCode(code, row.owner_code_salt);
+        if (codesEqual(hash, row.owner_code_hash)) { authed = true; name = 'Owner'; }
+        else {
+          const ed = await cloudAuthEditor(request, env, projectId, code);
+          if (ed) { authed = true; name = ed.label || 'Editor'; }
+        }
+      } else if (await cloudManifestCodeOk(env, projectId, code)) {
+        authed = true; // published local project — anonymous viewer
+      }
+    }
+  }
+  if (!authed) { await cloudTimingSink(); return cloudForbidden(); }
+  const headers = new Headers(request.headers);
+  headers.set('X-Presence-Name', encodeURIComponent(name));
+  const upgraded = new Request(request.url, { method: request.method, headers: headers });
+  return env.PRESENCE.get(env.PRESENCE.idFromName(projectId)).fetch(upgraded);
+}
+
+// Presence Durable Object — WebSocket Collab per project (Hibernation API).
+// One instance per project (idFromName(projectId)); in-memory roster only,
+// no persistent storage of any kind.
+export class Presence {
+  constructor(state, env) { this.state = state; this.env = env; }
+
+  async fetch(request) {
+    const name = decodeURIComponent(request.headers.get('X-Presence-Name') || 'Viewer');
+    const pair = new WebSocketPair();
+    const id = crypto.randomUUID();
+    const server = pair[1];
+    server.serializeAttachment({ id: id, name: name, since: Date.now(), lastSeen: Date.now() });
+    this.state.acceptWebSocket(server);
+    const members = [];
+    for (const ws of this.state.getWebSockets()) {
+      const a = ws.deserializeAttachment();
+      if (a && a.id !== id) members.push({ id: a.id, name: a.name, since: a.since });
+    }
+    server.send(JSON.stringify({ type: 'init', self: id, members: members }));
+    this.broadcast(JSON.stringify({ type: 'join', id: id, name: name, since: Date.now() }), id);
+    return new Response(null, { status: 101, webSocket: pair[0] });
+  }
+
+  async webSocketMessage(ws, msg) {
+    const now = Date.now();
+    const att = ws.deserializeAttachment() || {};
+    att.lastSeen = now;
+    ws.serializeAttachment(att);
+    // Sweep stale sockets (client died without a close frame) on activity.
+    for (const w of this.state.getWebSockets()) {
+      const a = w.deserializeAttachment();
+      if (a && now - (a.lastSeen || 0) > 75000) { try { w.close(4000, 'stale'); } catch (e) { /* already gone */ } }
+    }
+    try {
+      const data = JSON.parse(msg);
+      if (data && data.type === 'ping') { ws.send(JSON.stringify({ type: 'pong' })); }
+    } catch (e) { /* non-JSON frames are ignored */ }
+  }
+
+  async webSocketClose(ws, code, reason, wasClean) {
+    const a = ws.deserializeAttachment() || {};
+    if (a && a.id) this.broadcast(JSON.stringify({ type: 'leave', id: a.id }), null);
+  }
+
+  async webSocketError(ws, err) {
+    const a = ws.deserializeAttachment() || {};
+    if (a && a.id) this.broadcast(JSON.stringify({ type: 'leave', id: a.id }), null);
+  }
+
+  broadcast(message, exceptId) {
+    for (const ws of this.state.getWebSockets()) {
+      const a = ws.deserializeAttachment();
+      if (exceptId && a && a.id === exceptId) continue;
+      try { ws.send(message); } catch (e) { /* closing socket */ }
+    }
+  }
+}
+
 export default {
   // A5-2 (2026-08-11): daily orphan-purge sweep — deletes cloud projects
   // whose owner has been absent for the retention window (12 months). Runs
@@ -2022,6 +2863,15 @@ export default {
       console.log('cloud orphan purge: checked=' + result.checked + ' purged=' + result.purged.length);
     } catch (e) {
       console.error('cloud orphan purge failed:', e && e.message);
+    }
+    // MASTER-ACTION-PLAN RANK 9.2 — opt-in webhook evaluation. With no
+    // subscription rows the evaluator no-ops (off by default). Fire-and-
+    // forget like the purge: log the outcome, never surface to a user.
+    try {
+      const w = await evaluateWebhooks(env);
+      console.log('rank9 webhooks: checked=' + w.checked + ' fired=' + w.fired.length);
+    } catch (e) {
+      console.error('rank9 webhook evaluation failed:', e && e.message);
     }
   },
   async fetch(request, env) {

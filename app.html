@@ -82,6 +82,14 @@ body.glass-premium .wrap{position:relative;z-index:1;}
 .cloud-dash .cd-head h2{font-size:.85rem;font-weight:700;margin:0;}
 .cloud-dash .cd-head .cd-sub{font-size:.66rem;color:var(--slate);}
 .cloud-dash .cd-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;}
+.cd-plan{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:0 0 14px;padding:12px 16px;border:1px solid var(--border);border-radius:var(--radius);background:var(--tile-bg);}
+.cd-plan[hidden]{display:none;}
+.cd-plan .cd-plan-txt{font-size:.78rem;color:var(--slate);}
+.cd-plan .cd-plan-txt strong{color:var(--text);font-weight:700;}
+.cd-plan .btn{width:auto;flex-shrink:0;}
+.cd-plan.at-limit{border-color:rgba(var(--gold-rgb),.45);background:rgba(var(--gold-rgb),.08);}
+.cd-plan.at-limit .cd-plan-txt{color:var(--gold);}
+.cd-plan.at-limit .cd-plan-txt strong{color:var(--gold);}
 .cd-card{display:flex;flex-direction:column;gap:8px;background:var(--glass-fill-dark);backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturate));-webkit-backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturate));border:var(--glass-border);border-radius:var(--squircle-md);padding:14px 16px;box-shadow:var(--glass-rim),var(--glass-shadow);}
 .cd-title{font-size:.82rem;font-weight:700;line-height:1.35;word-break:break-word;}
 .cd-meta{font-size:.66rem;color:var(--slate);line-height:1.5;}
@@ -97,7 +105,7 @@ body.glass-premium .wrap{position:relative;z-index:1;}
 .pf-reason{font-size:.66rem;color:var(--slate);margin-top:4px;font-style:italic;}
 </style>
 </head>
-<body>
+<body class="db-page">
 <script src="js/mmgr-theme.js" data-sync="1"></script>
 <script>
 /* Device-level theme (shared across launcher, admin, and app): applied before
@@ -109,8 +117,28 @@ body.glass-premium .wrap{position:relative;z-index:1;}
 } catch (e) {} })();
 </script>
 
+<!-- DASHBOARD-UI-REFRESH-SPEC: dark-dashboard nav rail (app.html only —
+     visible in dark mode; ≤768px it becomes an off-canvas drawer opened by
+     the hamburger in the header). Solid-content cards stay solid (Gate 6.1). -->
+<aside class="db-side" id="db-sidebar" aria-label="Dashboard navigation">
+  <div class="db-side-head">
+    <span class="db-brand"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg> My MaNaGeR</span>
+    <button type="button" class="db-side-close" data-action="toggleSidebar" aria-label="Close menu"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg></button>
+  </div>
+  <nav>
+    <div class="db-g">Overview</div>
+    <a class="db-link" href="#top"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-orb"></use></svg> Dashboard</a>
+    <div class="db-g">Projects</div>
+    <a class="db-link" href="#grid"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-folder"></use></svg> All Projects</a>
+    <div class="db-g">Admin</div>
+    <a class="db-link" href="admin.html"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-shield"></use></svg> Admin panel</a>
+  </nav>
+</aside>
+<div class="db-scrim" id="db-scrim" data-action="toggleSidebar"></div>
+
 <div class="wrap">
-  <div class="top">
+  <div class="top" id="top">
+    <button type="button" id="db-nav-btn" class="db-hamb" data-action="toggleSidebar" aria-label="Open menu" aria-expanded="false" aria-controls="db-sidebar"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-menu"></use></svg></button>
     <h1><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg> <span class="mark">My</span> MaNaGeR — Projects</h1>
     <p>Select a project to view its dashboard, schedule, risk register, and budget. Each project is protected by its own access code.</p>
     <div class="theme-ctl" title="Preferences apply to the launcher, admin, and every project on this device">
@@ -160,11 +188,21 @@ body.glass-premium .wrap{position:relative;z-index:1;}
       <h2><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cloud"></use></svg> My Cloud Projects</h2>
       <span class="cd-sub">Linked to your Google account — click Load to open one</span>
     </div>
+    <!-- BILLING-UPGRADE-UI (app.html): free-plan status + Upgrade button,
+         rendered by js/mmgr-cloud-dash.js loadPlan() from the session-gated
+         /api/billing/status. Hidden unless billing is configured; dormant
+         deploy = invisible (the current prod behavior, unchanged). -->
+    <div class="cd-plan" id="cloud-dash-plan" hidden aria-label="Plan status"></div>
     <div class="cd-list" id="cloud-dash-list" role="list"></div>
     <div class="cd-status" id="cloud-dash-status" role="status" aria-live="polite"></div>
   </div>
 
   <div class="notice"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-lock"></use></svg> Contact the admin to get an access code for this project.</div>
+
+  <!-- DASHBOARD-UI-REFRESH-SPEC §3: portfolio summary metrics (Active /
+       At-Risk / Avg Health), rendered by mmgr-portfolio.js renderMetrics()
+       only in dark dashboard mode — light mode stays untouched (§5). -->
+  <div class="db-metrics" id="db-metrics" aria-label="Portfolio summary"></div>
 
   <!-- ACTION-PLAN 6.1: cross-project portfolio health rollup, ranked by
        urgency (reads each unlocked project's saved state locally). -->
@@ -447,17 +485,38 @@ async function attemptUnlock(){
 }
 document.getElementById('code-input').addEventListener('keydown', e=>{ if(e.key==='Enter') attemptUnlock(); });
 document.getElementById('om').addEventListener('click', e=>{ if(e.target.id==='om') closeModal(); });
-document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeModal(); });
+document.addEventListener('keydown', e=>{
+  if(e.key==='Escape'){
+    closeModal();
+    if (document.body.classList.contains('side-open')){ document.body.classList.remove('side-open'); syncSidebarAria(); }
+  }
+});
 
 /* ============================================================
    Phase B — data-action event delegation.
    Zero inline onclick handlers remain in this page.
    ============================================================ */
+/* DASHBOARD-UI-REFRESH-SPEC: dark-dashboard sidebar toggle (off-canvas
+   drawer on ≤768px; the desktop rail is always open). One action drives the
+   hamburger, the drawer's × close, and the scrim tap. */
+function toggleSidebar(){
+  document.body.classList.toggle('side-open');
+  syncSidebarAria();
+}
+function syncSidebarAria(){
+  const btn = document.getElementById('db-nav-btn');
+  if (btn) btn.setAttribute('aria-expanded', document.body.classList.contains('side-open') ? 'true' : 'false');
+}
+document.getElementById('db-sidebar').addEventListener('click', e=>{
+  if (e.target.closest('a')) { document.body.classList.remove('side-open'); syncSidebarAria(); }
+});
+
 const DASH_ACTION_MAP = {
   'closeModal': () => closeModal(),
   'attemptUnlock': () => attemptUnlock(),
   'tglTheme': (el) => tglTheme(el),
-  'tglGlassMode': (el) => tglGlassMode(el)
+  'tglGlassMode': (el) => tglGlassMode(el),
+  'toggleSidebar': () => toggleSidebar()
 };
 document.addEventListener('click', function(e){
   const el = e.target.closest('[data-action]');

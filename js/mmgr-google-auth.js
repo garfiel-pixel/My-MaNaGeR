@@ -77,6 +77,26 @@ var MMGR = window.MMGR || {};
     const chip = $('google-user-chip');
     if (btn) btn.hidden = false;
     if (chip) chip.hidden = true;
+    // Signed out -> the email+password alternative is available again, and
+    // the form returns to LOGIN mode (signing back in is the common intent
+    // after a sign-out; register stays one click away).
+    resetEmailAuthMode();
+    const eb = $('email-auth-block');
+    if (eb) eb.hidden = false;
+  }
+
+  function resetEmailAuthMode() {
+    _emailMode = 'login';
+    const block = $('email-auth-block');
+    if (!block) return;
+    const nameEl = emailAuthQ(block, '.email-auth-name');
+    const pass = emailAuthQ(block, '.email-auth-pass');
+    const submitBtn = emailAuthQ(block, '.email-auth-submit');
+    const modeBtn = emailAuthQ(block, '.email-auth-mode');
+    if (nameEl) nameEl.hidden = true;
+    if (pass) pass.autocomplete = 'current-password';
+    if (submitBtn) submitBtn.textContent = 'Sign in';
+    if (modeBtn) modeBtn.textContent = 'Create an account instead';
   }
 
   // Render the signed-in chip. Google-supplied fields are always written via
@@ -85,6 +105,9 @@ var MMGR = window.MMGR || {};
     const btn = $('google-signin-button');
     const chip = $('google-user-chip');
     if (btn) btn.hidden = true;
+    // Signed in (Google OR email) -> the email form collapses behind the chip.
+    const eb = $('email-auth-block');
+    if (eb) eb.hidden = true;
     if (!chip) return;
     chip.hidden = false;
     chip.innerHTML = '';
@@ -167,6 +190,153 @@ var MMGR = window.MMGR || {};
     } catch (e) { /* still clear the local chip */ }
     showButton();
     document.dispatchEvent(new CustomEvent('mmgr:google-signed-out'));
+  }
+
+  /* ============================================================
+     EMAIL + PASSWORD SIGN-IN (deferred cloud item #14, completed
+     2026-08-12) — alternative provider beside Google.
+     ------------------------------------------------------------
+     Register/login validate against D1 auth_users and issue the SAME
+     mmgr_session cookie as Google, with sub = 'email:<address>' — a
+     namespace that can never collide with Google's numeric subs, so
+     every downstream system (cloud owner identity, prefs R2 keys,
+     presence roster, billing owner_sub) treats the account identically.
+
+     UI: a compact "Sign in with email instead" toggle + form mounted
+     right after #google-signin-button (the app.html + admin.html auth
+     bars). Zero inline handlers (module binds directly); the password
+     field is cleared after every attempt (never echoed); failures land
+     in a role="status" live region; on success the SAME
+     mmgr:google-signed-in event fires so the project.html cloud drawer
+     (which re-reads /api/auth/me) and any other listener refresh.
+     ============================================================ */
+  let _emailMode = 'login'; // 'login' | 'register' (one mount per page)
+
+  function emailAuthMarkup() {
+    return '<div class="email-auth" id="email-auth-block">' +
+      '<button type="button" class="email-auth-toggle">Sign in with email instead</button>' +
+      '<form class="email-auth-form" novalidate hidden>' +
+      '<div class="email-auth-row">' +
+      '<input type="email" class="email-auth-input" placeholder="Email" autocomplete="email" aria-label="Email" required>' +
+      '<input type="password" class="email-auth-input email-auth-pass" placeholder="Password (8+ chars)" autocomplete="current-password" aria-label="Password" minlength="8" required>' +
+      '<input type="text" class="email-auth-input email-auth-name" placeholder="Name (optional)" autocomplete="name" aria-label="Name" hidden>' +
+      '<button type="submit" class="btn btn-n btn-s email-auth-submit">Sign in</button>' +
+      '</div>' +
+      '<div class="email-auth-alt"><button type="button" class="email-auth-mode">Create an account instead</button></div>' +
+      '<div class="email-auth-err" role="status" aria-live="polite"></div>' +
+      '</form></div>';
+  }
+
+  function emailAuthQ(block, sel) { return block ? block.querySelector(sel) : null; }
+
+  function setEmailAuthError(block, msg) {
+    const err = emailAuthQ(block, '.email-auth-err');
+    if (err) err.textContent = msg || '';
+  }
+
+  // POST to the Worker and resolve with the signed-in user on success.
+  // Rejects with a user-facing message on any failure (incl. the auth
+  // rate-limit 429). Never throws on network errors — same zero-throw
+  // discipline as the Google path.
+  async function emailAuthPost(path, payload) {
+    let res;
+    try {
+      res = await fetch(path, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+    } catch (e) {
+      throw new Error('Sign-in is unavailable on this host (needs the Worker API).');
+    }
+    let data = null;
+    try { data = await res.json(); } catch (e) { /* non-JSON failure */ }
+    if (!res.ok || !data || !data.ok) {
+      if (res.status === 429) throw new Error('Too many attempts — wait a minute and try again.');
+      throw new Error((data && data.error) || 'Sign-in failed (HTTP ' + res.status + ').');
+    }
+    return data.user;
+  }
+
+  function emailLogin(email, password) {
+    return emailAuthPost('/api/auth/login', { email: email, password: password });
+  }
+
+  function emailRegister(email, password, name) {
+    return emailAuthPost('/api/auth/register', { email: email, password: password, name: name });
+  }
+
+  // Mount the toggle + form next to #google-signin-button. Idempotent:
+  // a second call next to the same host is a no-op. No-ops entirely when
+  // the host doesn't exist (project.html has no auth bar).
+  function mountEmailAuth() {
+    const host = $('google-signin-button');
+    if (!host) return;
+    if (host.nextElementSibling && host.nextElementSibling.id === 'email-auth-block') return;
+    const wrap = document.createElement('div');
+    wrap.innerHTML = emailAuthMarkup();
+    const block = wrap.firstElementChild;
+    host.insertAdjacentElement('afterend', block);
+    wireEmailAuth(block);
+  }
+
+  function wireEmailAuth(block) {
+    const form = emailAuthQ(block, '.email-auth-form');
+    const toggle = emailAuthQ(block, '.email-auth-toggle');
+    const modeBtn = emailAuthQ(block, '.email-auth-mode');
+    const errEl = emailAuthQ(block, '.email-auth-err');
+    const nameEl = emailAuthQ(block, '.email-auth-name');
+    const submitBtn = emailAuthQ(block, '.email-auth-submit');
+    if (!form || !toggle || !modeBtn) return;
+
+    toggle.addEventListener('click', function() {
+      form.hidden = !form.hidden;
+      if (errEl) errEl.textContent = '';
+      if (!form.hidden) {
+        const em = emailAuthQ(form, 'input[type=email]');
+        if (em) { try { em.focus(); } catch (e) { /* focus is a hint, never fatal */ } }
+      }
+    });
+
+    modeBtn.addEventListener('click', function() {
+      _emailMode = (_emailMode === 'login') ? 'register' : 'login';
+      const isReg = _emailMode === 'register';
+      if (nameEl) nameEl.hidden = !isReg;
+      const pass = emailAuthQ(form, '.email-auth-pass');
+      if (pass) pass.autocomplete = isReg ? 'new-password' : 'current-password';
+      if (submitBtn) submitBtn.textContent = isReg ? 'Create account' : 'Sign in';
+      modeBtn.textContent = isReg ? 'Already have an account? Sign in' : 'Create an account instead';
+      if (errEl) errEl.textContent = '';
+    });
+
+    form.addEventListener('submit', function(e) {
+      e.preventDefault();
+      if (errEl) errEl.textContent = '';
+      const em = emailAuthQ(form, 'input[type=email]');
+      const pass = emailAuthQ(form, 'input[type=password]');
+      const nm = emailAuthQ(form, '.email-auth-name');
+      const email = (em && em.value) ? em.value.trim() : '';
+      const password = (pass && pass.value) ? pass.value : '';
+      const name = (nm && nm.value) ? nm.value.trim() : '';
+      if (!email || !password) { setEmailAuthError(block, 'Enter your email and password.'); return; }
+      if (password.length < 8) { setEmailAuthError(block, 'Password must be at least 8 characters.'); return; }
+      if (pass) pass.value = ''; // never echo the password in the DOM
+      const p = (_emailMode === 'register')
+        ? emailRegister(email, password, name)
+        : emailLogin(email, password);
+      p.then(function(user) {
+        // Same success path as Google: chip replaces the auth surface, and
+        // the identical event fires so the cloud drawer / hooks refresh.
+        showUser(user);
+        document.dispatchEvent(new CustomEvent('mmgr:google-signed-in', { detail: user }));
+        if (typeof window.mmgrOnGoogleSignIn === 'function') {
+          try { window.mmgrOnGoogleSignIn(user); } catch (e) { /* optional hook */ }
+        }
+      }).catch(function(err) {
+        setEmailAuthError(block, (err && err.message) || 'Sign-in failed.');
+      });
+    });
   }
 
   /* ============================================================
@@ -874,6 +1044,7 @@ var MMGR = window.MMGR || {};
   }
 
   function boot() {
+    mountEmailAuth();
     wireDriveControls();
     // The GIS script tag is async+defer in the page head, so it may still be
     // loading. Initialize the moment it's present; if it never loads
@@ -907,6 +1078,10 @@ var MMGR = window.MMGR || {};
     restoreSession: restoreSession,
     handleCredentialResponse: handleCredentialResponse,
     signOut: signOut,
+    // EMAIL + PASSWORD (deferred cloud item #14, completed 2026-08-12)
+    emailLogin: emailLogin,
+    emailRegister: emailRegister,
+    mountEmailAuth: mountEmailAuth,
     // GOOGLE-DRIVE-BACKUP API (optional; safe to call from console too)
     DRIVE_SCOPE: DRIVE_SCOPE,
     DRIVE_FILE: DRIVE_FILE,

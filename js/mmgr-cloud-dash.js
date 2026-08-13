@@ -38,6 +38,8 @@
     if (el) { el.textContent = msg || ''; el.style.color = isErr ? 'var(--danger)' : ''; }
   }
 
+  const PLAN = 'cloud-dash-plan';
+
   // ---- fetch the session-gated project list ----
   async function loadList() {
     const dash = $(DASH);
@@ -58,6 +60,7 @@
     if (!projects) { dash.hidden = true; return; }
     dash.hidden = false;
     setStatus('');
+    loadPlan();
     if (!projects.length) {
       list.innerHTML = '<div class="cd-empty">No cloud-linked projects under this account yet — link one from any project\'s Cloud section (Create Cloud Project).</div>';
       return;
@@ -73,6 +76,60 @@
         '<button type="button" class="btn btn-g btn-s" data-cd-load="' + escapeHtml(p.projectId) + '" title="Open this project from the cloud snapshot">Load</button>' +
         '</div>';
     }).join('');
+  }
+
+  // ---- BILLING-UPGRADE-UI (app.html plan strip, 2026-08-12) ----
+  // Free-plan status + Upgrade button, fed by the session-gated
+  // /api/billing/status (same origin + cookie as the project list above).
+  // Dormant-when-unconfigured: with no LEMONSQUEEZY_* secrets the worker
+  // answers configured:false and this strip stays hidden — byte-for-byte
+  // unchanged on the current deploy. The button opens the checkout via
+  // POST /api/billing/checkout (session-gated) and reports outcomes in the
+  // existing live-region status line.
+  async function loadPlan() {
+    const plan = $(PLAN);
+    if (!plan) return;
+    let res;
+    try {
+      res = await fetch('/api/billing/status', { method: 'GET', credentials: 'same-origin' });
+    } catch (e) { plan.hidden = true; return; }
+    if (!res.ok) { plan.hidden = true; return; }
+    let data = null;
+    try { data = await res.json(); } catch (e) { plan.hidden = true; return; }
+    if (!data || !data.ok || !data.configured) { plan.hidden = true; return; }
+    const count = data.projectCount || 0;
+    const cap = data.projectCap;
+    const atLimit = cap !== null && cap !== undefined && count >= cap;
+    let strip;
+    if (data.active) {
+      strip = '<span class="cd-plan-txt"><strong>' + escapeHtml(data.plan || 'Pro') + ' plan</strong> — unlimited linked projects</span>';
+    } else {
+      strip = '<span class="cd-plan-txt"><strong>Free plan</strong> — ' + count + ' of ' + cap + ' linked projects' +
+        (atLimit ? ' — limit reached' : '') + '</span>' +
+        '<button type="button" class="btn btn-g btn-s" data-cd-upgrade="1"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-zap"></use></svg> Upgrade plan</button>';
+    }
+    plan.classList.toggle('at-limit', !data.active && atLimit);
+    plan.innerHTML = strip;
+    plan.hidden = false;
+  }
+
+  // ---- open the LemonSqueezy checkout (same contract as the drawer's
+  //      cloudUpgrade in mmgr-cloud.js — session-gated POST, open URL) ----
+  async function upgradePlan() {
+    setStatus('Opening checkout…');
+    try {
+      const res = await fetch('/api/billing/checkout', { method: 'POST', credentials: 'same-origin' });
+      const data = await res.json().catch(function() { return {}; });
+      if (!res.ok || !data.ok || !data.checkoutUrl) {
+        if (res.status === 503) setStatus('Billing isn\u2019t configured on this server yet — no upgrade is available.', true);
+        else setStatus((data && data.error) || 'Checkout failed (HTTP ' + res.status + ').', true);
+        return;
+      }
+      window.open(data.checkoutUrl, '_blank', 'noopener');
+      setStatus('Checkout opened in a new tab — complete the purchase there, then refresh this page.');
+    } catch (e) {
+      setStatus('Could not reach the cloud service.', true);
+    }
   }
 
   // ---- Load a project via the linked owner session ----
@@ -126,10 +183,17 @@
   // ---- events ----
   document.addEventListener('click', function(e) {
     const el = e.target && e.target.closest ? e.target.closest('[data-cd-load]') : null;
-    if (!el) return;
-    e.preventDefault();
-    const id = el.getAttribute('data-cd-load');
-    if (id) loadProject(id);
+    if (el) {
+      e.preventDefault();
+      const id = el.getAttribute('data-cd-load');
+      if (id) loadProject(id);
+      return;
+    }
+    const up = e.target && e.target.closest ? e.target.closest('[data-cd-upgrade]') : null;
+    if (up) {
+      e.preventDefault();
+      upgradePlan();
+    }
   });
   document.addEventListener('mmgr:google-signed-in', function() { loadList(); });
   document.addEventListener('mmgr:google-signed-out', function() {

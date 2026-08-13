@@ -489,17 +489,22 @@ to be worked from directly and their completion status determined fresh:
 > completes an item, update the STATUS LOG + this section and check it off there. The
 > short list below mirrors it for quick reference.
 
-- [ ] Apply migrations 0005 + 0006 + 0007 to remote D1: `npx wrangler d1 migrations
-  apply my-manager-db --remote` — required before the worker deploy (0005: the
-  changelog list hard-references import_key; 0006: cloud_subscriptions, 0007:
-  auth_users — both now completed and part of the deploy). The presence DO binding +
-  v1-presence migration deploy with the worker (auto-applied).
-- [ ] `npm run deploy` — local verify is green (re-confirmed this session).
+- [x] Apply migrations 0005 + 0006 + 0007 to remote D1 — ALREADY APPLIED before
+  deploy (verified 2026-08-13: all 8 migrations in `d1_migrations` incl. 0006
+  cloud_subscriptions, 0007 auth_users, 0008 webhook_subscriptions; remote tables
+  exist). The presence DO binding + v1-presence migration auto-applied with the deploy.
+- [x] `npm run deploy` — **DONE 2026-08-13** via the tar staging recipe (excluded
+  `.git .wrangler node_modules .agents _archive`; 234 files, 107 KiB worker script;
+  version `2ca85916-f309-483b-a7ee-1c8fdcc6e302`;
+  https://my-manager.garfieldprocis.workers.dev). Post-deploy curl verified the
+  billing/auth/cloud/presence routes answer — no more 404s. The billing tier is now
+  ACTIVE (FREE_PROJECT_CAP default 3).
 - [ ] Optional: real-Google round-trip of /api/cloud/prefs/theme.
 - [x] Set the LEMONSQUEEZY_API_KEY / LEMONSQUEEZY_WEBHOOK_SECRET / LEMONSQUEEZY_VARIANT_ID
   secrets to activate the (complete, verified, dormant) billing tier — DONE 2026-08-13
   (owner uploaded all three; confirmed via `npx wrangler secret list`). GOOGLE_CLIENT_SECRET
-  + ADMIN_CODE also confirmed set. The tier activates on the next deploy. See OWNER-REVIEW.md §1.1.
+  + ADMIN_CODE also confirmed set. **The tier is now LIVE — deployed 2026-08-13.**
+  See OWNER-REVIEW.md §1.1.
 - [ ] Provide Yahoo + Microsoft OAuth client IDs/secrets to unblock those sign-in
   providers (email+password is done) — **PAUSED by the owner 2026-08-13** (deferred;
   revisit when re-opened) — see OWNER-REVIEW.md §1.2.
@@ -547,6 +552,9 @@ Format: date/session marker, what was completed (with file/line specifics), what
 in-progress and exactly where it stopped, what's next.
 
 ### Log entries (most recent at top)
+
+**2026-08-13 — Session: PRODUCTION-DEPLOY — the full 2026-08-12/13 wave is now LIVE on https://my-manager.garfieldprocis.workers.dev (version `2ca85916-f309-483b-a7ee-1c8fdcc6e302`).**
+Per the owner ("make a commitment and push the gate and then deploy to wrangler"): after the checkout-error hardening commit `74e0839` (push done), ran the deploy sequence from a clean staging copy per wrangler.jsonc's recipe (excluded `.git .wrangler node_modules .agents _archive` — staged 234 files, largest file 4.1 MB well under limits; dry-run green, then `npx wrangler deploy`, 110 assets already uploaded + 14 new, worker script 107 KiB, startup 4 ms). Post-deploy curl against the LIVE origin: `/api/billing/status` → session-gated generic 403 (route exists — no more 404), `/api/auth/me` → `{ok:false,user:null}`, `/api/cloud/projects` + `/api/cloud/presence` → generic 403, root → HTTP 200. **This means the billing tier is now ACTIVE in production**: free accounts over `FREE_PROJECT_CAP` (3) hit the Upgrade flow + gold banner; email+password auth, presence, and Rank 9 API/webhooks are all live. Remote D1 was already fully migrated (verified pre-deploy); v1-presence auto-applied with the DO binding. Docs updated: OWNER-REVIEW.md §1.1 marked LIVE (troubleshooting notes now apply to the live origin — checkout 502 surfaces LS's own error detail incl. payment-link-variant incompatibility; webhook 401 → check dashboard URL/secret) + §2 deploy checklist checked; CONTINUATION-DIRECTIVE.md PART E operational list checked. Remaining owner items unchanged: FREE_PROJECT_CAP default-3 confirmation, Yahoo/Microsoft (paused), visual review §4, optional real-Google prefs round-trip. Committed + pushed.
 
 **2026-08-13 — Session: NO-EMOJI-SVG-ONLY — every emoji glyph scrubbed from the served pages; icons are SVG sprite symbols; the rule is now a hard standing rule.**
 Per the owner ("no emojis in my web page, none at all. I wanna see SVG and if there's a higher form of SVG that exists, we're going to need that as well. See ya."): audited all served pages + page-rendering JS for emoji glyphs (scan covers U+1F000–1FAFF, 2600–27BF, 2B00–2BFF, FE0F, 1F1E6–1F1FF). Result: marketing pages were already clean; 26 page-facing glyphs found and ALL replaced:

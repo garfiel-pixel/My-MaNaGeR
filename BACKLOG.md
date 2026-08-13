@@ -21,8 +21,14 @@ project owner's explicit go-ahead before any file is touched.
   versions of the same templates through the AI window — as a genuine
   upgrade layered ON TOP of `emailTpl`, never a replacement. The static copy
   must keep working with no model configured.
-- **Status:** LOGGED ONLY — not approved, not started. Do not implement
-  without the owner's explicit go-ahead.
+- **Status:** IMPLEMENTED (owner go-ahead, 2026-08-12). New `email`
+  preset ('Stakeholder Email') in js/mmgr-prompts.js (grounded, zero-fabrication
+  prompt) + js/mmgr-ai.js (`PRESET_LABELS` + `LOCAL_BUILDERS.email`), with
+  js/mmgr-app.js `emailTplText(kind)` extracted as a pure getter so the LOCAL
+  tier returns the static template verbatim — the static `emailTpl` buttons
+  are unchanged and keep working with no model configured. Cloud tier drafts
+  the richer AI-polished version on top. Verified: node --check clean, qa-ai
+  gates green (incl. A17 chip count), npm run verify green.
 
 ---
 

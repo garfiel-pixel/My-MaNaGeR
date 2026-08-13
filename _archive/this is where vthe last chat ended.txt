@@ -1,0 +1,41 @@
+    +    EXECUTED 2026-08-12) — email + password
+    +    ------------------------------------------------------------
+    +    Self-contained provider (Yahoo/Microsoft need their own OAuth
+    +    client IDs/secrets — user credentials, not buildable without
+    +    them). Register/login validate against D1 auth_users and issue
+    +    the SAME mmgr_session cookie as Google, with
+    +    sub = 'email:<address>' — a namespace that can never collide
+    +    with Google's numeric subs, so every downstream system
+    +    (cloud_projects.google_sub, prefs R2 keys, presence roster,
+    +    billing owner_sub) treats the account identically.
+    +    Passwords: PBKDF2-SHA256, 100k iterations, per-account random
+    +    salt stored 'salt:hex' next to the hash — the exact KDF the
+    +    owner-code path uses. Never stored or logged in plaintext.
+    +    ============================================================ */
+    + const AUTH_MIN_PASSWORD = 8;
+    +
+    + function authNormalizeEmail(raw) {
+    +   return String(raw || '').trim().toLowerCase();
+    + }
+    +
+    + function authEmailValid(email) {
+    +   return email.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email);
+    + }
+    +
+    + // hashOwnerCode IS the PBKDF2-SHA256 (iterations, salt) helper — reuse it
+    + // verbatim so the password path and the owner-code path share one KDF.
+    + async function authHashPassword(password, saltHex) {
+    +   return hashOwnerCode(password, saltHex);                                                                                                           ▄
+    + }
+    +
+                                                                              ↓
+ ╭────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+ │ Scale your technical roadmap with ArcTouch end-to-end engineering and professional product strategy.                                                Ad │
+ │                                                                                                                                                        │
+ │  Build Now  arctouch.com                                                                                                                               │
+ ╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭───────────────────────────────────────────────────────Session ended  ·  3 of 7 sessions used today───────────────────────────────────────────────────────╮
+│                                                                                                                                   ╭────────────────────╮ │
+│ Press Enter to continue in a new session                                                                                          │ Change model   Esc │ │
+│                                                                                                                                   ╰────────────────────╯ │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯

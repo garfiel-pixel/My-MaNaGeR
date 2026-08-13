@@ -1,0 +1,39 @@
+{
+  "document_type": "execution_directive",
+  "title": "PROJECT-UX-NAV-WEATHER-EXPORT-DIRECTIVE",
+  "reconstruction_note": "⚠️ RECONSTRUCTED 2026-08-12 per the owner's rule (directive files are records — reconstruct, never drop). The original file was delivered in a past chat session and never committed to the repo. This reconstruction is built from CONTINUATION-DIRECTIVE.md Part C (C1-C7, the in-repo session records), sw.js version comments (mmgr-shell-v50), and the 2026-08-11 session log. Lossy risks: the original may have contained additional items or exact wording that did not survive the session summaries. Every item below is VERIFIED against shipped code per the recorded evidence.",
+  "context_for_executor": "One consolidated UX pass over project.html (the project workspace) + app.html: Google sign-in styling under CSP, sticky section navigation, a11y labeling, the deprecated Apple meta tag, the Core-Mode onboarding callout, and the weather location hint. All items were executed 2026-08-11 (see evidence per item) and re-verified in later sessions.",
+
+  "C1": {
+    "name": "CSP fix for Google sign-in inside a project",
+    "status": "EXECUTED + VERIFIED (2026-08-11)",
+    "evidence": "project.html meta CSP style-src now allows https://accounts.google.com + https://fonts.googleapis.com; worker.js + serve.cjs style-src updated to match (parity confirmed by qa-obs-verify D2d 14/14 and npm run verify). Browser-verified: zero style-src violations in DevTools on project.html. Currently re-gated by tools/verify-csp-hashes.cjs (11/11)."
+  },
+  "C2": {
+    "name": "Sticky section nav + scroll reset",
+    "status": "EXECUTED + VERIFIED (2026-08-11)",
+    "evidence": "showSection() (js/mmgr-render.js ~1068) calls window.scrollTo(0,0) on every switch; .sec-nav sticky below the header (top:var(--hdr-h,0px), z-index 90); --hdr-h measured by Viewport.syncHeaderStack() (js/mmgr-viewport.js), wired into App.init + renderAll tail."
+  },
+  "C3_C4": {
+    "name": "Unlabeled form fields + missing id/name (consolidated pass)",
+    "status": "EXECUTED + VERIFIED (2026-08-11)",
+    "evidence": "14 toggle checkboxes gained aria-label + ids; label[for] added to charter (11) + closure (3) + Monte Carlo (2) fields; sprint .slb divs converted to real labels (3); aria-labels on wx-place-in / user-name-in / err-webhook / ww-sel / weather-region-sel / raci pickers / bud-envelope / modal textareas. Static rescan: 0 unnamed controls remain. JS-rendered table inputs covered separately by tools/verify-dynamic-labels.cjs (data-a11y-auto)."
+  },
+  "C5": {
+    "name": "Deprecated Apple meta tag",
+    "status": "EXECUTED (2026-08-11)",
+    "evidence": "<meta name=\"mobile-web-app-capable\" content=\"yes\"> added alongside the apple tag in project.html + app.html (the only two pages carrying it)."
+  },
+  "C6": {
+    "name": "Onboarding callout for Core Mode",
+    "status": "EXECUTED + VERIFIED (2026-08-11)",
+    "evidence": ".core-callout (#core-callout) at the top of panel-dash, shown only while zero packs on AND packsEverEnabled false AND not dismissed. Schema v18 adds packsCalloutDismissed + packsEverEnabled (both in FIELD_KEYS for merge). tglPack sets packsEverEnabled. Actions openPacks + dismissPacksCallout. Browser-verified: shows on fresh project, dismiss persists, does not reappear."
+  },
+  "C7": {
+    "name": "Weather location input hint",
+    "status": "EXECUTED (2026-08-11)",
+    "evidence": "#wx-place-in placeholder is now 'City or town, Parish/State, Country — more specific = more accurate' (+ aria-label)."
+  },
+
+  "closing_note": "All seven items verified complete in CONTINUATION-DIRECTIVE.md Part C (2026-08-11 sessions) and re-confirmed by later full-battery runs (npm run verify, qa-obs-verify 14/14, qa-r3, qa-pwa 13/13). No open items remain from this directive."
+}

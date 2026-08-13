@@ -333,7 +333,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",sa
     background:#eee!important;color:#000!important;border:1px solid #999!important;
     -webkit-print-color-adjust:exact;print-color-adjust:exact;
   }
-  /* Action buttons (+ Add KPI, ✕ remove) are interactive-only — not part of
+  /* Action buttons (+ Add KPI, x remove) are interactive-only — not part of
      the document. The toolbar row is already hidden via .card-title>div
      above; this catches the ones inside the KPI list itself. */
   body.print-charter .charter-print-root button{display:none!important;}
@@ -503,8 +503,8 @@ Two days
   </div>
   <div class="db" id="db-feat">
     <div class="fi" style="border:1px solid var(--danger);background:rgba(220,53,69,.06)"><div class="fn"><svg class="ico" aria-hidden="true"><use href="#i-tool"></use></svg> V3.3.1 Hotfix</div><div class="fd">• <b>Critical fix</b>: a missing closing tag on the Kanban toolbar was silently nesting every other panel (RACI, Resources, Budget, Stakeholders, Changes, Log, Risk, DMAIC, Comms, Docs, Definitions, Charter, Closure) inside the Kanban card title — this was the "broken" behavior. Verified with a full structural parse: 0 mismatches, every panel now a proper sibling.<br>• Fixed the header greeting: a "Your Name" field now exists in Controls (Settings ▸ Controls) so the personalization is actually settable — it was defaulting to a generic "Welcome" with no way to change it back.<br>• Removed a redundant duplicate migration block that re-ran the full render cycle a second time on every page load.<br>• Verified with realistic project data (predecessor cycles, lead-time tasks, weather-exposed tasks, RACI cleanup, all 9 prompts) — zero runtime exceptions.</div></div>
-    <div class="fi" style="border:1px solid var(--gold);background:rgba(212,175,55,.06)"><div class="fn">🆕 V3.3 Changelog</div><div class="fd">• <b>V3.3 additions</b>: Lead-Time task type (dashed cards, own Kanban swimlane, hatched Gantt bars, Dashboard tracker); Float / Slack tracking with Float Watch panel (near-critical + baseline consumption); Weather-exposure 🌧 tag with hurricane-window variance panel; WBS Text Import now reads [YYYY-MM-DD → YYYY-MM-DD] and [conf:high|low] tags — round-trip through the new <b>Generate Dates for WBS Outline</b> prompt; <b>Daily Field Status Report</b> prompt with snapshot-diff; RACI ⚠ badge on Accountable cells where the person is an external Stakeholder; KPI auto-suggested links for LTIFR / Defects at Handover / NEPA findings; timezone + cascade off-by-one + predecessor-cycle guard fixes.<br>• Previous V3.2: RACI matrix: cells are now click-to-cycle badges (click = R→A→C→I→blank, right-click = go back) instead of dropdowns, with a color legend — same live Task/Resource/Stakeholder linkage as before.<br>• New Timeline Target Tracker on the Dashboard: compares the Charter's Target Completion Date against the Current Planned Finish from your Gantt, with a header badge that appears app-wide once a project slips past target. Linkable as a KPI.<br>• Two new prompts: Change Impact Assessment and Client-Facing Status Update. Visual Output Prompt now also generates a RACI accountability grid when RACI data exists. All schedule/health/report/digest/audit prompts now include the Timeline Target line.<br>• Definitions glossary: added RACI, WBS, Gantt Chart, Monte Carlo Simulation, DMAIC, and Timeline Target Variance (36 terms total).</div></div>
-    <div class="fi" style="border:1px solid var(--gold);background:rgba(212,175,55,.06)"><div class="fn">🆕 V3.1 Changelog</div><div class="fd">• Configurable Work Week (3–7 days) in Controls, feeds resource utilization & budget cost math.<br>• Charter Auto-Fill modal now has "Upload File" and "Paste Text" tabs.<br>• Bug sweep: DOM IDs, dirty indicator, JSON import/export, drag-drop all verified.</div></div>
+    <div class="fi" style="border:1px solid var(--gold);background:rgba(212,175,55,.06)"><div class="fn"><svg class="ico" aria-hidden="true"><use href="#i-sparkle"></use></svg> V3.3 Changelog</div><div class="fd">• <b>V3.3 additions</b>: Lead-Time task type (dashed cards, own Kanban swimlane, hatched Gantt bars, Dashboard tracker); Float / Slack tracking with Float Watch panel (near-critical + baseline consumption); Weather-exposure tag with hurricane-window variance panel; WBS Text Import now reads [YYYY-MM-DD → YYYY-MM-DD] and [conf:high|low] tags — round-trip through the new <b>Generate Dates for WBS Outline</b> prompt; <b>Daily Field Status Report</b> prompt with snapshot-diff; RACI warning badge on Accountable cells where the person is an external Stakeholder; KPI auto-suggested links for LTIFR / Defects at Handover / NEPA findings; timezone + cascade off-by-one + predecessor-cycle guard fixes.<br>• Previous V3.2: RACI matrix: cells are now click-to-cycle badges (click = R→A→C→I→blank, right-click = go back) instead of dropdowns, with a color legend — same live Task/Resource/Stakeholder linkage as before.<br>• New Timeline Target Tracker on the Dashboard: compares the Charter's Target Completion Date against the Current Planned Finish from your Gantt, with a header badge that appears app-wide once a project slips past target. Linkable as a KPI.<br>• Two new prompts: Change Impact Assessment and Client-Facing Status Update. Visual Output Prompt now also generates a RACI accountability grid when RACI data exists. All schedule/health/report/digest/audit prompts now include the Timeline Target line.<br>• Definitions glossary: added RACI, WBS, Gantt Chart, Monte Carlo Simulation, DMAIC, and Timeline Target Variance (36 terms total).</div></div>
+    <div class="fi" style="border:1px solid var(--gold);background:rgba(212,175,55,.06)"><div class="fn"><svg class="ico" aria-hidden="true"><use href="#i-sparkle"></use></svg> V3.1 Changelog</div><div class="fd">• Configurable Work Week (3–7 days) in Controls, feeds resource utilization & budget cost math.<br>• Charter Auto-Fill modal now has "Upload File" and "Paste Text" tabs.<br>• Bug sweep: DOM IDs, dirty indicator, JSON import/export, drag-drop all verified.</div></div>
     <div class="fi"><div class="fn"><svg class="ico" aria-hidden="true"><use href="#i-target"></use></svg> Methodology Tabs</div><div class="fd">Switch between Waterfall, Agile, and Hybrid views. Lock once committed to prevent mid-project switching.</div></div>
     <div class="fi"><div class="fn"><svg class="ico" aria-hidden="true"><use href="#i-book"></use></svg> Definitions & Charter</div><div class="fd">Full PM glossary with plain-language definitions, real-world examples, and a fillable Project Charter to document your project's identity before work begins.</div></div>
     <div class="fi"><div class="fn"><svg class="ico" aria-hidden="true"><use href="#i-clipboard"></use></svg> WBS Tool</div><div class="fd">Hierarchical task breakdown with indent/outdent and collapsible phases. Feeds the Gantt automatically.</div></div>
@@ -545,7 +545,7 @@ Two days
     <div class="fd" style="margin-bottom:10px">Step 1, before the WBS exists — proposes a Target Start/Completion Date for the Charter, reasoning through base duration, weather-season contingency, and management reserve together in one pass, so weather isn't checked as an afterthought.</div>
     <button class="btn btn-o" style="width:100%;justify-content:center;margin-bottom:7px" onclick="openPrompt('gendates')"><svg class="ico" aria-hidden="true"><use href="#i-calendar"></use></svg> Generate Dates for WBS Outline Prompt</button>
     <button class="btn btn-o" style="width:100%;justify-content:center;margin-bottom:7px" onclick="openPrompt('daily')"><svg class="ico" aria-hidden="true"><use href="#i-sun"></use></svg> Daily Field Status Report Prompt</button>
-    <div class="fi" style="border:1px solid var(--gold);background:rgba(212,175,55,.06);margin-top:8px"><div class="fn"><svg class="ico" aria-hidden="true"><use href="#i-refresh"></use></svg> Audit → Correct → Reimport Loop</div><div class="fd">A manual, user-triggered workflow — NOT automatic:<br>1. Run <b>Schedule Logic Audit Prompt</b>, copy findings.<br>2. Open <b>Generate Dates Prompt</b>, paste findings as extra input, ask AI to fix sequencing and regenerate the dated outline.<br>3. Paste the new dated outline into <b>WBS Text Import</b> — matching subtasks with different dates will update (🔄), not skip.<br>4. Repeat as the schedule evolves. The app doesn't self-monitor — you drive each step.</div></div>
+    <div class="fi" style="border:1px solid var(--gold);background:rgba(212,175,55,.06);margin-top:8px"><div class="fn"><svg class="ico" aria-hidden="true"><use href="#i-refresh"></use></svg> Audit → Correct → Reimport Loop</div><div class="fd">A manual, user-triggered workflow — NOT automatic:<br>1. Run <b>Schedule Logic Audit Prompt</b>, copy findings.<br>2. Open <b>Generate Dates Prompt</b>, paste findings as extra input, ask AI to fix sequencing and regenerate the dated outline.<br>3. Paste the new dated outline into <b>WBS Text Import</b> — matching subtasks with different dates will update in place, not skip.<br>4. Repeat as the schedule evolves. The app doesn't self-monitor — you drive each step.</div></div>
     <div class="fd" style="margin-bottom:10px">Plain-language update written FOR the paying client/sponsor (no PM jargon) — what's done, what's next, and what needs a decision from them.</div>
   </div>
   <div class="db" id="db-ctrl" style="display:none">
@@ -1606,7 +1606,7 @@ function mmgrBuildGate(){
     const h = await mmgrHash(val);
     if(h === ACCESS_HASH){
       err.textContent='';
-      btn.textContent='✓ Unlocked — loading…';
+      btn.textContent='Unlocked — loading…';
       localStorage.setItem(GATE_KEY,'1');
       setTimeout(()=>location.reload(), 400);
     }else{
@@ -1736,7 +1736,7 @@ function initQA(){
     ['What does Populate Sprint do?','Set a Sprint Start/End date, then it clamps every "In Progress" task\'s dates to fall inside that sprint window — a quick way to timebox your current push.'],
     {h:'<svg class="ico" aria-hidden="true"><use href="#i-link"></use></svg> RACI Matrix'},
     ['How do I set R/A/C/I on the RACI matrix?','Click a cell to cycle Responsible → Accountable → Consulted → Informed → blank. Right-click (or Backspace with the cell focused) goes back a step. Rows and columns are pulled live from your WBS tasks and Resources/Stakeholders — add a person or task there and it appears here automatically.'],
-    ['Why does a cell show a ⚠ next to an Accountable person?','That flags when the person marked Accountable on a task is an external Stakeholder rather than an internal Resource — worth double-checking, since Accountable usually should sit with someone on your team, not a third party.'],
+    ['Why does a cell show a warning next to an Accountable person?','That flags when the person marked Accountable on a task is an external Stakeholder rather than an internal Resource — worth double-checking, since Accountable usually should sit with someone on your team, not a third party.'],
     ['What do the automatic RACI alerts mean?','The app flags any task with no one marked Accountable (every task should have exactly one), and any person Accountable for more than 5 tasks (a possible overload/bottleneck worth redistributing).'],
     {h:'<svg class="ico" aria-hidden="true"><use href="#i-hardhat"></use></svg> Resources & Budget'},
     ['What is the Resource Utilization strip?','A visual bar per resource showing how much of their available capacity (based on your Work Week setting) is booked across active tasks — over 100% means they\'re over-allocated.'],
@@ -1752,7 +1752,7 @@ function initQA(){
     ['What is the Project Charter for?','Your project identity document. Fill it out before work begins — it locks the Sponsor, Stakeholders, Requirements, Deliverables, KPIs, scope, and budget on record.'],
     ['What are KPIs in the Charter?','Key Performance Indicators. Add a name, target value, and how it\'s measured — optionally link one to a live in-app metric (Health Score, Timeline Variance, Open Risks, etc.) so its current value and status show automatically instead of you tracking it by hand.'],
     ['How do I fill the Charter from an existing document instead of retyping it?','"Upload Existing Charter" reads a .docx, .pdf, or .txt file and auto-fills the fields (needs an internet connection the first time, to load the parsing libraries). "Paste Charter Text" works fully offline — paste in the text and the same auto-fill logic runs on it.'],
-    ['How do I get a clean printout of just the Charter?','🖨 Print Charter — opens your browser\'s print dialog with just the Charter (not the whole app) formatted for paper: buttons hidden, full text expanded even if a field looked scrolled/cut-off on screen, legible dark text on white regardless of your Dark/Light theme setting.'],
+    ['How do I get a clean printout of just the Charter?','Print Charter — opens your browser\'s print dialog with just the Charter (not the whole app) formatted for paper: buttons hidden, full text expanded even if a field looked scrolled/cut-off on screen, legible dark text on white regardless of your Dark/Light theme setting.'],
     ['What is the Definitions tab?','A 36-term plain-language PM/construction glossary — RACI, WBS, CPM, EVM, Monte Carlo, DMAIC, and more — each with a why-it-matters note tied to how that concept is actually used inside this app, plus a worked example.'],
     {h:'<svg class="ico" aria-hidden="true"><use href="#i-settings"></use></svg> Data, Settings & Backup'},
     ['How is my data saved?','Every change auto-saves to browser LocalStorage — nothing leaves your device. For a portable backup: Settings ▸ Controls ▸ Save Project to File (.json).'],
@@ -2312,7 +2312,7 @@ function updKPIDir(i,dir){S.kpis[i].dir=dir;saveS();renderKPIs();}
 // not just on screen.
 function kpiExportLine(k){
   let s=`- ${k.name||'(unnamed)'} | Target: ${k.target||'—'} | Measure: ${k.measure||'—'}`;
-  if(k.linkedMetric){const st=kpiStatus(k);s+=` | 🔗 Live ${kpiMetricLabel(k.linkedMetric)}: ${st.live===null?'no data yet':st.live}${st.txt?' ('+st.txt+')':''}`;}
+  if(k.linkedMetric){const st=kpiStatus(k);s+=` | Live ${kpiMetricLabel(k.linkedMetric)}: ${st.live===null?'no data yet':st.live}${st.txt?' ('+st.txt+')':''}`;}
   return s;
 }
 function renderKPIs(){
@@ -2424,7 +2424,7 @@ function cpAllPage(sec){
   let txt=ts+'\n\n';
   if(sec==='wbs'){
     txt+='WORK BREAKDOWN STRUCTURE\n'+'='.repeat(40)+'\n';
-    S.tasks.forEach(t=>{const ind='  '.repeat(t.level);txt+=`${ind}[${t.wbs}] ${t.name} | ${t.start||'--'} → ${t.end||'--'} | ${t.status} | ${t.done}% Completed${(Array.isArray(t.pred)?t.pred:[]).length?' | Pred: '+predListStr(t):''}\n`;if(t.notes)txt+=`${ind}  📝 ${t.notes}\n`;});
+    S.tasks.forEach(t=>{const ind='  '.repeat(t.level);txt+=`${ind}[${t.wbs}] ${t.name} | ${t.start||'--'} → ${t.end||'--'} | ${t.status} | ${t.done}% Completed${(Array.isArray(t.pred)?t.pred:[]).length?' | Pred: '+predListStr(t):''}\n`;if(t.notes)txt+=`${ind}  Notes: ${t.notes}\n`;});
   } else if(sec==='gantt'){
     txt+='GANTT TIMELINE\n'+'='.repeat(40)+'\n';
     S.tasks.filter(t=>t.start&&t.end).forEach(t=>{txt+=`[ID ${t.id}] ${t.name} | ${t.start} → ${t.end} | Pred: ${(Array.isArray(t.pred)?t.pred:[]).length?predListStr(t):'None'} | ${t.status} | ${t.done}% Completed\n`;});
@@ -4280,7 +4280,7 @@ function renderHealthScore(){
   if(suffix)suffix.style.display='';
   const {score,f1,f2,f3,f4,f5,hasSchedule,hasBudget,hasRisks,hasChanges,weightSum}=h;
   // Bug fix: a brand-new project with only Completion + Schedule active
-  // (the common day-one state) was showing "🟡 Needs Attention" in
+  // (the common day-one state) was showing "Needs Attention" in
   // alarming orange purely because Completion starts near 0% — not
   // because anything is actually wrong. That's a real UX problem: it
   // reads as a warning about a genuine issue when it's really just "you
@@ -4820,10 +4820,10 @@ getCritical=function(){
   return _origGetCritical();
 };
 
-// ─── V3.3 renderWBS — adds taskType dropdown, weather 🌧 checkbox,
+// ─── V3.3 renderWBS — adds taskType dropdown, weather checkbox,
 //     leadtime submitted/expected inputs, lowconf marker.
 //     Preserves 11-column table structure (all new controls go INSIDE
-//     the Name cell, matching the existing 🏁 milestone pattern).
+//     the Name cell, matching the existing milestone pattern).
 // ─────────────────────────────────────────────────────────────
 renderWBS=function(){
   renderWbsAlerts&&renderWbsAlerts();
@@ -5003,7 +5003,7 @@ function dropCardLeadtime(ev){
   saveS();renderAll();
 }
 
-// ─── RACI — external stakeholder gate ⚠ on Accountable cells
+// ─── RACI — external stakeholder gate warning on Accountable cells
 // ─────────────────────────────────────────────────────────────
 const _origRenderRaci=renderRaci;
 renderRaci=function(){

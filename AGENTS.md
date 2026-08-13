@@ -80,6 +80,18 @@ How to load: use your skill-loading mechanism on the skill **name** below
    mood, no trailing period, detail goes in the body). Enforced by the
    `.githooks/commit-msg` hook — see `CONTRIBUTING.md` for the full convention
    and the `--no-verify` escape hatch.
+7. **NO EMOJI ON ANY SERVED PAGE — HARD GATE (owner, 2026-08-13).** Zero emoji
+   glyphs in any served HTML page or any JS string that renders into a page
+   (toasts, status lines, AI-window chips, prompts, exports). Icons are SVG
+   only: centralized sprite symbols
+   (`<svg class="ico"><use href="css/mmgr-icons.svg#i-..."></use></svg>`),
+   explicit inline `<svg>` on standalone pages, the monolith's inlined sprite.
+   The "higher form of SVG" = one shared symbol sprite — never per-icon
+   duplicated paths, never an emoji stand-in. Missing icon → ADD a symbol to
+   the sprite; prose describing a button names it ("the run button"), it does
+   not draw a glyph. Internal docs (md/json) may keep emojis; served pages may
+   not. New/changed pages must pass the emoji scan before merging (regex over
+   U+1F000–1FAFF, 2600–27BF, 2B00–2BFF, FE0F, 1F1E6–1F1FF).
 
 ## Editing workflow
 

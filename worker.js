@@ -66,9 +66,9 @@ const INLINE_SCRIPT_HASHES = [
   "'sha256-8lwCeRgYvYC5TLNo6P1WdZVi6Vt06j2/Q3MVsOXuWyc='", // admin.html
   "'sha256-Oa7ON+9A164SSXhnxu08mFn0V9Tj2SlZ2SzFXFoqKNE='", // dashboard.html
   "'sha256-DRiA9m7qJLb4z1QyfjbEUFyubzWHRCl2Cgf+YJkjyi8='", // seed-test.html
-  "'sha256-l7T1LLezhae1ZGfmUGxTadrqmveWG2jA4nLGwRkmB3k='", // mymanager-field-guide.html
+  "'sha256-AxkduQ155AQ7I921Ow+mZyri0uQY4ygsDy1i/x/xbCc='", // mymanager-field-guide.html
   "'sha256-c2U+m5SzyupzeOrPEiOjlnaSgS1KdAxZTFnYA5dW/Rk='", // monolith ref (block 1)
-  "'sha256-3TjcOBgQeATMpPC1MUJPRDjeq7SvgohH62pIViDmtnk='"  // monolith ref (block 2)
+  "'sha256-Mvj9ZjVlVJ2yrW230N22X9aZl7s8NDVU8mXyscP1DHQ='"  // monolith ref (block 2)
 ].join(' ');
 
 const CSP = [
@@ -1637,8 +1637,7 @@ async function handleCloudCreate(request, env) {
 // state.config.ai can never land in the blob even if the client ever ships
 // one. Pure belt-and-suspenders — the live session vault never writes keys
 // into state today, but the blob should not depend on that invariant.
-//
-// ⛔ MAINTENANCE TRAP (gap-audit item A7): this list is the ONLY server-side
+//  // MAINTENANCE TRAP (gap-audit item A7): this list is the ONLY server-side
 // gate between a future secret-shaped state field and the R2 blob. When any
 // future feature adds a new credential slot to state (Gemini/Anthropic
 // credential-slot work, webhook tokens, etc.), it MUST be added here in the

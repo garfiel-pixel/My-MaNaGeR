@@ -348,7 +348,7 @@ var MMGR = window.MMGR || {};
       // the previous snapshot was written after our last known sync, someone
       // else saved in between — say so instead of overwriting silently.
       if (data.previousUpdatedAt && prevSeen && data.previousUpdatedAt !== prevSeen) {
-        statusMsg += ' ⚠ Another device saved since you last synced — this save overwrote it.';
+        statusMsg += ' Another device saved since you last synced — this save overwrote it.';
       }
       setStatus(statusMsg, 'ok');
     } catch (e) {

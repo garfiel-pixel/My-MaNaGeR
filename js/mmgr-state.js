@@ -8,7 +8,7 @@ var MMGR = window.MMGR || {};
   'use strict';
 
   const STORAGE_KEY = 'mmgr_state';
-  const SCHEMA_VERSION = 18;
+  const SCHEMA_VERSION = 19;
 
   // ---- Default State ----
   function getDefaultState() {
@@ -414,6 +414,14 @@ var MMGR = window.MMGR || {};
       // them; brand-new projects start at false and show the nudge once.
       if (state.packsCalloutDismissed === undefined) state.packsCalloutDismissed = false;
       if (state.packsEverEnabled === undefined) state.packsEverEnabled = false;
+      return state;
+    },
+    19: function(state) {
+      // V18 -> V19: ensure risks and issues arrays exist (seed-test fixture
+      // and very old saved projects may lack them, triggering validation
+      // warnings on every boot).
+      if (!state.risks || !Array.isArray(state.risks)) state.risks = [];
+      if (!state.issues || !Array.isArray(state.issues)) state.issues = [];
       return state;
     }
   };
@@ -899,8 +907,8 @@ var MMGR = window.MMGR || {};
   function validate() {
     const s = getState();
     const issues = [];
-    if (!s.tasks) issues.push('Missing tasks array');
-    if (!s.risks) issues.push('Missing risks array');
+    if (!s.tasks || !Array.isArray(s.tasks)) issues.push('Missing tasks array');
+    if (!s.risks || !Array.isArray(s.risks)) issues.push('Missing risks array');
     if (s.schemaVersion !== SCHEMA_VERSION) issues.push(`Schema version ${s.schemaVersion} != expected ${SCHEMA_VERSION}`);
     // Check for circular references in predecessors
     try {

@@ -239,9 +239,12 @@ var MMGR = window.MMGR || {};
   // banner never appears and this whole path is inert (byte-for-byte unchanged
   // behavior on the current deploy).
   let _upgradePending = false;
+  let _createInFlight = false;
 
   async function createProject() {
+    if (_createInFlight) return; // BUG-1: debounce rapid clicks
     if (getCode()) { setStatus('This project is already linked to the cloud — use Save / Load below.', 'warn'); return; }
+    _createInFlight = true;
     setStatus('Creating cloud project…', 'busy');
     try {
       const res = await fetch('/api/cloud/projects', {
@@ -258,6 +261,11 @@ var MMGR = window.MMGR || {};
           _upgradePending = true;
           await render();
           setStatus((data && data.error) || 'Free plan limit reached — upgrade to link more projects.', 'err');
+        } else if (res.status === 409) {
+          // BUG-1: project already linked — reload the drawer to show the
+          // existing code instead of a confusing error.
+          setStatus('This project is already linked to the cloud.', 'warn');
+          await render();
         } else {
           setStatus((data && data.error) || 'Cloud create failed (HTTP ' + res.status + ').', 'err');
         }
@@ -269,6 +277,8 @@ var MMGR = window.MMGR || {};
       setStatus('Cloud project linked — owner/recovery code: ' + data.ownerCode + '. Store it somewhere safe: if lost, only the linked Google account can recover it.', 'ok');
     } catch (e) {
       setStatus('Cloud is unavailable on this host (needs the Worker API).', 'err');
+    } finally {
+      _createInFlight = false;
     }
   }
 

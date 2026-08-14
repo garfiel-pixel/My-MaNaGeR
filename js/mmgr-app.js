@@ -314,46 +314,42 @@ var MMGR = window.MMGR || {};
   // ---- THEME-SYSTEM-AND-MOBILE-UI-ACTION-PLAN §4.2: mobile nav drawer ----
   // Hamburger + scrim toggle body.nav-open, which slides the .sec-nav off-canvas
   // drawer in/out on ≤768px (desktop ignores the class — the nav stays sticky).
-  // Pure device-UI chrome, never project state: safe in view-only. The drawer
-  // closes on: scrim tap (same action), any section button, Escape, and a
-  // viewport resize back to desktop width.
+  // BUG-9: on desktop, the hamburger opens the #app-sidebar overlay instead.
+  // The drawer closes on: scrim tap (same action), any section button, Escape,
+  // and a viewport resize back to desktop width.
   let _navBound = false;
   function closeNav() {
     document.body.classList.remove('nav-open');
-    // Mobile drawer only: the desktop sidebar's expanded state is owned by
-    // syncSidebarChrome (viewport-aware), so this never touches it.
+    // BUG-9: also close the desktop sidebar overlay when closing the nav.
+    if (window.innerWidth > 768 && document.body.classList.contains('sidebar-open')) {
+      setSidebarOpen(false);
+    }
     const btn = U.$('nav-btn');
-    if (btn && window.innerWidth <= 768) btn.setAttribute('aria-expanded', 'false');
+    if (btn) btn.setAttribute('aria-expanded', 'false');
   }
   // Dismiss bindings are installed once at init (not lazily on first click),
   // so Escape/resize/section-click always close the drawer AND the desktop
-  // sidebar even when the pref opened the sidebar at boot without a click.
+  // sidebar overlay even when the pref opened the sidebar at boot without a click.
   function bindNavDismiss() {
     if (_navBound) return;
     _navBound = true;
     document.addEventListener('click', function (e) {
       const t = e.target;
+      // BUG-9: section buttons close both the mobile drawer and the desktop overlay.
       if (t && t.closest && t.closest('.sec-btn')) closeNav();
     });
     document.addEventListener('keydown', function (e) {
       if (e.key !== 'Escape') return;
       closeNav();
-      // Desktop: Escape dismisses an OPEN rail temporarily — the layout pref
-      // stays on, so the hamburger remains available to reopen it.
-      if (window.innerWidth > 768 && document.body.classList.contains('sidebar-open')) {
-        setSidebarOpen(false);
-      }
     });
     window.addEventListener('resize', function () {
       closeNav();
-      // Re-sync the hamburger's aria state when crossing the desktop/mobile
-      // breakpoint (the rail may be open while CSS hides it on mobile).
       syncSidebarChrome();
     });
   }
   // The one hamburger drives both navigations by viewport: ≤768px the mobile
-  // off-canvas drawer (body.nav-open), desktop the opt-in sidebar (temporary
-  // open/close — the preference itself is untouched).
+  // off-canvas drawer (body.nav-open), desktop the overlay sidebar (BUG-9:
+  // always available, no pref gate — the overlay is transient, not pinned).
   function tglNav() {
     bindNavDismiss();
     const btn = U.$('nav-btn');
@@ -362,6 +358,7 @@ var MMGR = window.MMGR || {};
       if (btn) btn.setAttribute('aria-expanded', open ? 'true' : 'false');
       return;
     }
+    // BUG-9: desktop always toggles the overlay sidebar (no pref check).
     setSidebarOpen(!document.body.classList.contains('sidebar-open'));
   }
 
@@ -382,10 +379,10 @@ var MMGR = window.MMGR || {};
 
   function sidebarEnabled() { return readDevicePref(SIDEBAR_KEY) === 'on'; }
 
-  // Reflect the pref onto <body> + the header hamburger + the settings toggle
-  // (all three must never disagree). aria-expanded is VIEWPORT-AWARE: on
-  // mobile it tracks the drawer (always false here — tglNav owns it there);
-  // on desktop it tracks the rail's temporary open state.
+  // Reflect the pref onto <body> + the settings toggle. aria-expanded is
+  // VIEWPORT-AWARE: on mobile it tracks the drawer (tglNav owns it there);
+  // on desktop it tracks the overlay's temporary open state.
+  // BUG-9: the hamburger is always visible on desktop regardless of pref.
   function syncSidebarChrome() {
     const on = sidebarEnabled();
     document.body.classList.toggle('sidebar-on', on);
@@ -399,18 +396,19 @@ var MMGR = window.MMGR || {};
     if (tgl) tgl.checked = on;
   }
 
-  // Temporary open/close of the rail (hamburger on desktop, × button, Escape).
-  // Only the VISIBLE state changes — the persisted layout preference is
-  // untouched, so the hamburger stays available and the next load re-opens
-  // the rail whenever the pref is on. No-op while the layout is off.
+  // BUG-9: temporary open/close of the overlay sidebar (hamburger, × button,
+  // Escape, section click). The overlay is always available on desktop — no
+  // pref gate. The persisted layout preference (sidebar-on) is kept for
+  // backward compat but no longer controls hamburger visibility.
   function setSidebarOpen(open) {
-    if (open && !sidebarEnabled()) return;
     document.body.classList.toggle('sidebar-open', !!open);
     syncSidebarChrome();
   }
 
-  // Preference toggle (settings switch): turning the layout on opens the rail,
-  // turning it off closes it. Local write first (instant), then a best-effort
+  // BUG-9: Preference toggle (settings switch) now controls whether the
+  // sidebar overlay opens by DEFAULT on page load. Turning it on opens the
+  // overlay; turning it off closes it. The hamburger is always available
+  // regardless of this pref. Local write first (instant), then a best-effort
   // backend push when signed in.
   function toggleSidebar() {
     _sidebarUserTouched = true;

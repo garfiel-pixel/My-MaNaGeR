@@ -65,7 +65,7 @@ const INLINE_SCRIPT_HASHES = [
   "'sha256-qbHZHLyhdEDRwWrA8/I8ty4xIjUv+L/+Y6/0cIXdkJo='", // admin.html (early-apply theme snippet)
   "'sha256-8lwCeRgYvYC5TLNo6P1WdZVi6Vt06j2/Q3MVsOXuWyc='", // admin.html
   "'sha256-Oa7ON+9A164SSXhnxu08mFn0V9Tj2SlZ2SzFXFoqKNE='", // dashboard.html
-  "'sha256-DRiA9m7qJLb4z1QyfjbEUFyubzWHRCl2Cgf+YJkjyi8='", // seed-test.html
+  "'sha256-bNdw0+64xL2//htoz+u3InKWYZNEHO/CnuZqtcJIBgU='", // seed-test.html
   "'sha256-AxkduQ155AQ7I921Ow+mZyri0uQY4ygsDy1i/x/xbCc='", // mymanager-field-guide.html
   "'sha256-c2U+m5SzyupzeOrPEiOjlnaSgS1KdAxZTFnYA5dW/Rk='", // monolith ref (block 1)
   "'sha256-Mvj9ZjVlVJ2yrW230N22X9aZl7s8NDVU8mXyscP1DHQ='"  // monolith ref (block 2)
@@ -1978,10 +1978,10 @@ async function handleAuthLogin(request, env) {
    files tax; chosen over a raw processor for exactly that
    reason). The tier is DORMANT until configured: with none of
    LEMONSQUEEZY_WEBHOOK_SECRET / LEMONSQUEEZY_API_KEY /
-   LEMONSQUEEZY_VARIANT_ID set, the status endpoint reports
-   "not configured", checkout returns 503, and the cloud-create
-   gate is OFF — behavior is byte-for-byte unchanged (offline-
-   first untouched). When configured:
+   LEMONSQUEEZY_VARIANT_ID / LEMONSQUEEZY_STORE_ID set, the
+   status endpoint reports "not configured", checkout returns 503,
+   and the cloud-create gate is OFF — behavior is byte-for-byte
+   unchanged (offline-first untouched). When configured:
      - POST /api/billing/webhook   signature-verified lifecycle
        events upsert cloud_subscriptions (the ONLY writer).
      - GET  /api/billing/status    session-gated plan/entitlement.
@@ -1994,8 +1994,11 @@ async function handleAuthLogin(request, env) {
    ============================================================ */
 const LS_API_BASE = 'https://api.lemonsqueezy.com/v1';
 
+// All four are required: the Checkouts API relationships block pins the
+// checkout to a specific store + variant, so a missing store ID must keep
+// the tier dormant rather than send a malformed request.
 function billingConfigured(env) {
-  return !!(env && env.LEMONSQUEEZY_WEBHOOK_SECRET && env.LEMONSQUEEZY_API_KEY && env.LEMONSQUEEZY_VARIANT_ID);
+  return !!(env && env.LEMONSQUEEZY_WEBHOOK_SECRET && env.LEMONSQUEEZY_API_KEY && env.LEMONSQUEEZY_VARIANT_ID && env.LEMONSQUEEZY_STORE_ID);
 }
 
 function billingFreeCap(env) {
@@ -2071,6 +2074,10 @@ async function handleBillingStatus(request, env) {
 
 // POST /api/billing/checkout — session-gated LS checkout with custom_data.sub
 // so the webhook can attribute the resulting subscription to this account.
+// The Checkouts API (POST /v1/checkouts) requires the JSON:API relationships
+// block — store + variant (string ids per the JSON:API spec, per LS's own
+// docs example) — alongside the attributes; without it LS rejects the
+// checkout. enabled_variants keeps only the paid variant selectable.
 async function handleBillingCheckout(request, env) {
   const session = await readSession(request, env);
   if (!session || !session.sub) return cloudForbidden();
@@ -2090,6 +2097,10 @@ async function handleBillingCheckout(request, env) {
           attributes: {
             checkout_data: { email: session.email || '', custom: { sub: session.sub } },
             product_options: { enabled_variants: [variantId] }
+          },
+          relationships: {
+            store: { data: { type: 'stores', id: String(env.LEMONSQUEEZY_STORE_ID) } },
+            variant: { data: { type: 'variants', id: String(env.LEMONSQUEEZY_VARIANT_ID) } }
           }
         }
       })
@@ -2100,7 +2111,7 @@ async function handleBillingCheckout(request, env) {
       // Surface LemonSqueezy's own JSON:API error detail (this route is session-
       // gated to the owner only, so the upstream text is safe to show) — a bare
       // 'HTTP 4xx' hides whether the real cause is a bad API key, a payment-link
-      // variant that can't create API checkouts, or a variant on another store.
+      // variant that can't create API checkouts, or a store/variant ID mismatch.
       let detail = '';
       try {
         const err = (data && data.errors && data.errors[0]) || {};

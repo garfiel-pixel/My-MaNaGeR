@@ -135,24 +135,23 @@ var MMGR = window.MMGR || {};
   // slow earlier probe.
   async function checkApiHealth(force) {
     if (_apiCheckInFlight && !force) return null;
-    _apiCheckInFlight = true;
-    setApiStatus('checking', 'API · checking');
+    _apiCheckInFlight = true;        setApiStatus('checking', 'Backend · checking');
     let result = 'disconnected';
     try {
       const res = await ns.Net.get('/api/health', { timeoutMs: 4000, maxRetries: 0 });
       if (res && res.ok) {
         result = 'connected';
-        setApiStatus('connected', 'API · connected');
+        setApiStatus('connected', 'Backend · online');
       } else if (res && (res.status === 404 || res.status === 405)) {
         result = 'disconnected';
-        setApiStatus('disconnected', 'API · offline');
+        setApiStatus('disconnected', 'Backend · offline');
       } else {
         result = 'error';
-        setApiStatus('error', 'API · error' + (res ? ' ' + res.status : ''));
+        setApiStatus('error', 'Backend · error' + (res ? ' ' + res.status : ''));
       }
     } catch (e) {
       result = 'disconnected';
-      setApiStatus('disconnected', 'API · offline');
+      setApiStatus('disconnected', 'Backend · offline');
       if (ns.Errors && ns.Errors.log) ns.Errors.log('api health check failed: ' + ((e && e.message) || 'unreachable'), 'apiHealth');
     } finally {
       _apiCheckInFlight = false;
@@ -432,9 +431,11 @@ var MMGR = window.MMGR || {};
     const tier = cfg.tier || 'off';
     if (pillLbl) {
       // UI-DECLUTTER: the engine pill names the TIER only — the live
-      // connection detail lives in the ONE smart status chip next to the
-      // provider dropdown (ai-byo-status), so no two indicators can read
-      // differently.
+      // BYO key connection detail lives in the ONE smart status chip
+      // next to the provider dropdown (ai-byo-status). The backend
+      // health pill (ai-api-pill) is independent — it checks server
+      // reachability, not key connection, so they can legitimately
+      // show different states (e.g. 'Backend · online' + 'Disconnected').
       pillLbl.textContent = tier === 'local' ? 'Local · zero-key'
         : tier === 'cloud' ? 'Cloud'
         : 'Off · copy-first';

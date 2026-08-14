@@ -40,13 +40,46 @@ var MMGR = window.MMGR || {};
   // Public Client ID — safe to ship (also mirrored in worker.js / wrangler
   // vars). The Client Secret lives ONLY in the Worker's env.
   const CLIENT_ID = '297970704704-m05hgt93lfaq286q90br8c96ffg1aph3.apps.googleusercontent.com';
-  const GIS_SRC = 'https://accounts.google.com/gsi/client';
-
-  let _gisInit = false;   // GIS initialized exactly once
+  const GIS_SRC = 'https://accounts.google.com/gsi/client';  let _gisInit = false;   // GIS initialized exactly once
   let _restored = false;  // /api/auth/me consulted at most once per boot
+  let _popupWarnShown = false; // BUG-2: popup-blocked warning shown at most once
 
   function $(id) { return document.getElementById(id); }
   function gisReady() { return !!(window.google && window.google.accounts && window.google.accounts.id); }
+
+
+  // BUG-2: detect when the GIS popup is blocked by the browser. The GIS
+  // library logs to console.error (GSI_LOGGER) but provides no callback for
+  // popup failure. We intercept window.open during the GIS button click —
+  // if it returns null, the popup was blocked — and show a user-facing
+  // message instead of a silent console error.
+  function installPopupBlockDetector() {
+    const host = $('google-signin-button');
+    if (!host) return;
+    host.addEventListener('click', function onGisClick() {
+      const origOpen = window.open;
+      window.open = function() {
+        window.open = origOpen; // restore immediately
+        const w = origOpen.apply(this, arguments);
+        if (!w && !_popupWarnShown) {
+          _popupWarnShown = true;
+          // Surface a clear, actionable message. The toast function may not
+          // be available on all pages, so fall back to a visible DOM element.
+          if (typeof toast === 'function') {
+            toast('Your browser blocked the Google sign-in popup. Allow popups for this site, or use the email sign-in below.', 'err');
+          } else {
+            const statusEl = $('google-signin-status') || $('drive-sync-status');
+            if (statusEl) {
+              statusEl.textContent = 'Popup blocked — allow popups for this site, or use email sign-in.';
+              statusEl.classList.add('is-err');
+            }
+          }
+        }
+        return w;
+      };
+    }, { capture: true, once: true });
+  }
+
 
   // Render the GIS sign-in button into #google-signin-button. Safe to call
   // only when the element exists AND GIS is present; never throws.
@@ -63,6 +96,7 @@ var MMGR = window.MMGR || {};
           shape: 'rectangular',
           text: 'signin_with'
         });
+        installPopupBlockDetector();
       }
       _gisInit = true;
       return true;

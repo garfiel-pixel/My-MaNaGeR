@@ -500,7 +500,7 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
       state: pill ? pill.getAttribute('data-state') : null,
       label: lbl ? lbl.textContent : null };
   })()`);
-  check('A16 api: /api/health badge exists and reports connected against the dev server', u1a.exists && u1a.result === 'connected' && u1a.state === 'connected' && u1a.label === 'API · connected', u1a);
+  check('A16 api: /api/health badge exists and reports online against the dev server', u1a.exists && u1a.result === 'connected' && u1a.state === 'connected' && u1a.label === 'Backend \u00b7 online', u1a);
 
   // ---- 6a2. AI-WINDOW-LAYOUT-SCROLL-AND-INPUT-BUG (DIR-1) regression gate:
   // the one-click presets must stay reachable via the Chat/Presets tab even

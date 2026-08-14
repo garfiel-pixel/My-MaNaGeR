@@ -151,14 +151,13 @@ body.glass-premium .wrap{position:relative;z-index:1;}
   </div>
 
   <!-- GOOGLE-OPERATOR-IDENTITY-v1: optional operator identity bar. Pure mount
-       point — signing in is optional and never affects the project grid, the
-       portfolio strip, or the access-code unlock modal below. -->
+       point -- signing in is optional and never affects the project grid, the
+       portfolio strip, or the access-code unlock modal below.
+       UI-MODERNIZATION: backup controls hidden behind settings gear (clean entry gateway). -->
   <div class="auth-bar">
     <div id="google-signin-button"></div>
     <div id="google-user-chip" hidden></div>
-    <!-- GOOGLE-DRIVE-BACKUP: optional Drive backup/restore buttons, wired by
-         js/mmgr-google-auth.js (zero inline onclick — matches the page rule). -->
-    <div class="cloud-sync-controls">
+    <div class="cloud-sync-controls" id="cloud-sync-controls" hidden>
       <button type="button" id="btn-drive-backup" class="btn btn-n btn-s" title="Save all workspace data to your Google Drive">
         <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-upload"></use></svg> Backup to Drive
       </button>
@@ -175,9 +174,12 @@ body.glass-premium .wrap{position:relative;z-index:1;}
           <option value="60">60 min</option>
         </select>
       </label>
-      <input type="password" id="drive-pass" class="drive-pass-in" placeholder="Backup passphrase" title="Encrypt backups with a passphrase (optional) — enter once per browser session" autocomplete="new-password">
+      <input type="password" id="drive-pass" class="drive-pass-in" placeholder="Backup passphrase" title="Encrypt backups with a passphrase (optional) -- enter once per browser session" autocomplete="new-password">
       <span id="drive-sync-status" class="drive-status" role="status" aria-live="polite"></span>
     </div>
+    <button type="button" class="settings-btn" id="settings-toggle" data-action="toggleSettings" aria-label="Toggle settings" title="Backup, theme, and preferences">
+      <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-settings"></use></svg>
+    </button>
   </div>
 
   <!-- A5-3 (2026-08-11): My Cloud Projects — the signed-in owner's cloud-
@@ -197,7 +199,7 @@ body.glass-premium .wrap{position:relative;z-index:1;}
     <div class="cd-status" id="cloud-dash-status" role="status" aria-live="polite"></div>
   </div>
 
-  <div class="notice"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-lock"></use></svg> Contact the admin to get an access code for this project.</div>
+  <div class="notice" style="display:flex;align-items:center;gap:10px;justify-content:center;"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-lock"></use></svg> Contact the admin to get an access code for this project.</div>
 
   <!-- DASHBOARD-UI-REFRESH-SPEC §3: portfolio summary metrics (Active /
        At-Risk / Avg Health), rendered by mmgr-portfolio.js renderMetrics()
@@ -516,7 +518,11 @@ const DASH_ACTION_MAP = {
   'attemptUnlock': () => attemptUnlock(),
   'tglTheme': (el) => tglTheme(el),
   'tglGlassMode': (el) => tglGlassMode(el),
-  'toggleSidebar': () => toggleSidebar()
+  'toggleSidebar': () => toggleSidebar(),
+  'toggleSettings': () => {
+    const el = document.getElementById('cloud-sync-controls');
+    if (el) el.hidden = !el.hidden;
+  }
 };
 document.addEventListener('click', function(e){
   const el = e.target.closest('[data-action]');

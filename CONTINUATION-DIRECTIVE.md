@@ -1163,6 +1163,32 @@ on the current tree (incl. schema v18) = STRESS_GATE PASS, S01–S08 + M/P/D sui
 PASS. NEXT: C9 (qa-marketing mkt-03 — index.html 9 cards vs gate's 8), then Part D
 files.
 
+**2026-08-14 — Session: UI-MODERNIZATION DASHBOARD-ALIGNMENT (owner request: apply the
+ui-modernization skill; token-first, dark-mode parity, SVG icons only, minimal changes,
+zero feature removal).** COMPLETED: P1 dashboard top row (project.html + css/mmgr.css) —
+status rows now share ONE consistent 33px rhythm (labels left via flex:1 + ellipsis so a
+long label can't shove the count; counts right-pinned with fixed badge width so every
+number column right-aligns; `.has-danger` badge tiering preserved), the completion progress
+ring + Next-3 list share the SAME top line as the status rows (ring no longer floats
+mid-card; nowrap so ring + figure never stack on narrow cards), Next-3 fills its card
+height like the health column, and at ≤768px (2-col) the Next-3 card spans the full row
+instead of sitting as a stubby orphan (≤520px single column unchanged). P2 cards: app.html
+.pc-title weight 800 + .pcard:hover .pc-cta turns green (gold/green hover interplay);
+admin.html .prow-title weight 800. P3 nav: grouped .sec-nav pills, #app-sidebar overlay +
+hamburger, and Focus Mode (hides header/sec-nav/sidebar) all untouched — browser-verified
+intact. P4 marketing: css/marketing.css audited — .fcard/.contact-tile already consistent,
+glass already functional-layer-only; NO changes needed. Rules honored: no emoji (gate scan
+clean on all 12 served pages), no new CSS file, no hardcoded hex outside tokens (all edits
+use existing tokens; light/dark/cyan verified in-browser with computed styles). sw.js
+v91→v92 (css/mmgr.css is a shell asset). ALSO: re-hashed ui-modernization skill folder
+(examples appended to SKILL.md in the prior session) and updated skills-lock.json
+computedHash so verify:skills passes. VERIFICATION: npm run verify GREEN (CSP 11/11, SW
+v92 > 47 assets, 17/17 skill hashes), qa-r3 13/13 R3_GATE PASS, qa-glass 12/12 GLASS35_GATE
+PASS, qa-marketing 19/19, emoji scan clean. NOTE: the pre-existing serve.cjs on :8765 was a
+stale process from a prior session (in-memory CSP had a stale app.html hash that silently
+blocked its inline script — the app still worked in prod because worker.js is rebuilt on
+deploy) — killed and restarted fresh for local testing.
+
 ---
 
 *This file is the working source of truth for continuing this project across sessions.

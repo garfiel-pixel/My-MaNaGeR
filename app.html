@@ -47,11 +47,12 @@ body.glass-premium .wrap{position:relative;z-index:1;}
 .pcard.unlocked{box-shadow:inset 0 3px 0 var(--gold),var(--glass-rim),var(--glass-shadow);}
 .pcard:focus-visible{outline:2px solid var(--gold);outline-offset:2px;}
 .pc-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;}
-.pc-title{font-size:.95rem;font-weight:700;line-height:1.35;}
+.pc-title{font-size:.95rem;font-weight:800;line-height:1.35;}
 .pc-lock{font-size:1rem;flex-shrink:0;opacity:.8;}
 .pc-desc{font-size:.78rem;color:var(--slate);line-height:1.5;flex:1;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
 .pc-foot{display:flex;justify-content:space-between;align-items:center;}
 .pc-cta{font-size:.72rem;color:var(--slate);}
+.pcard:hover .pc-cta{color:var(--green);}
 .pcard.unlocked .pc-cta{color:var(--green);}
 /* DIR-1 (local-first creator access): chips on cards for projects this device
    owns (created in admin.html) vs published-only visitor projects. */

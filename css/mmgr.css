@@ -342,21 +342,34 @@ body.sidebar-on .nav-btn{display:inline-flex;}
 .g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px;}
 .g4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:16px;}
 
-/* ---- Dashboard top-row alignment pass (SIDEBAR-HAMBURGER-TOGGLE-PLAN) ----
+/* ---- Dashboard top-row alignment pass (SIDEBAR-HAMBURGER-TOGGLE-PLAN +
+       UI-MODERNIZATION 2026-08-14) ----
    The status list + progress ring + Next-3 cards were cramped and poorly
-   aligned. Each card becomes an equal-height flex column; the health rows get
-   consistent vertical rhythm with right-aligned badge numbers; the Next-3
-   list gains breathing room. Data untouched — spacing/alignment only. */
+   aligned. Each card is an equal-height flex column; health rows share ONE
+   consistent height with labels left and counts pinned right; the completion
+   ring and the Next-3 list share the SAME top rhythm as the status rows; the
+   Next-3 card fills its height like the health column so no area floats with
+   dead space. Data untouched — spacing/alignment only. */
 #panel-dash .g3{grid-template-columns:repeat(auto-fit,minmax(250px,1fr));}
 #panel-dash .g3>.card{display:flex;flex-direction:column;height:100%;}
 #panel-dash .g3>.card>.card-title{flex-shrink:0;}
-#completion-card .g18{flex:1;align-items:center;}
-#completion-card .g18>div:last-child{display:flex;flex-direction:column;gap:3px;}
+/* Completion ring block: top-aligned to the same line as the status/task
+   rows, ring + figure stay on one line (no wrap stack on narrow cards). */
+#completion-card .g18{flex-wrap:nowrap;gap:16px;justify-content:center;}
+#completion-card .g18>div:last-child{display:flex;flex-direction:column;gap:3px;align-items:flex-start;}
+/* Health rows: one consistent height; labels left (shrink + ellipsis so a
+   long label can never shove the count), counts right-pinned with a fixed
+   badge width so every number column right-aligns. */
 #health-card .col-g8{flex:1;}
-#health-card .fb-sm{padding:5px 2px;gap:12px;}
-#health-card .fb-sm .badge{min-width:36px;justify-content:center;}
-.n3{gap:10px;}
-.n3 li{padding:5px 2px;line-height:1.45;}
+#health-card .fb-sm{min-height:33px;padding:4px 2px;gap:12px;}
+#health-card .fb-sm>span:first-child{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+#health-card .fb-sm .badge{flex-shrink:0;min-width:36px;justify-content:center;}
+/* Next-3: fills the card height (like the health column) and its rows use
+   the status-row rhythm (30px min-height, 4px vertical padding) so all three
+   areas share one vertical grid. */
+#panel-dash .g3 .card .n3{flex:1;}
+.n3{gap:8px;}
+.n3 li{min-height:33px;display:flex;align-items:center;gap:6px;padding:4px 2px;line-height:1.45;}
 
 /* ---- Progress Ring ---- */
 .pring{position:relative;width:96px;height:96px;}
@@ -1091,6 +1104,11 @@ hr.div{border:none;border-top:1px solid var(--border);margin:14px 0;}
   /* Same-specificity override of the dashboard alignment base (a plain .g3
      media rule would lose to #panel-dash .g3 in the cascade). */
   #panel-dash .g3{grid-template-columns:1fr 1fr;}
+  /* UI-MODERNIZATION 2026-08-14: with 2 columns the completion + health
+     cards fill row 1 and the Next-3 card used to sit alone on row 2 as a
+     stubby orphan. It now spans the full row so the dashboard keeps its
+     three-area rhythm (≤520px below is already a single column). */
+  #panel-dash .g3>.card:last-child{grid-column:1/-1;}
   .sec-nav{position:fixed;top:0;left:0;bottom:0;width:min(84vw,320px);margin:0;padding:70px 12px 20px;
     flex-direction:column;align-items:stretch;gap:12px;overflow-y:auto;background:var(--card);
     border-right:1px solid var(--border);z-index:95;transform:translateX(-105%);

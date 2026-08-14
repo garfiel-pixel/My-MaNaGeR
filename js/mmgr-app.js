@@ -356,6 +356,13 @@ var MMGR = window.MMGR || {};
     if (window.innerWidth <= 768) {
       const open = document.body.classList.toggle('nav-open');
       if (btn) btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      // BUG-10: the mobile off-canvas drawer is the same overflow scroll
+      // container as the desktop sidebar — reset it to the top on open too,
+      // so the first section is always the first thing visible.
+      if (open) {
+        const nav = U.$('sec-nav');
+        if (nav) nav.scrollTop = 0;
+      }
       return;
     }
     // BUG-9: desktop always toggles the overlay sidebar (no pref check).
@@ -386,6 +393,16 @@ var MMGR = window.MMGR || {};
   function syncSidebarChrome() {
     const on = sidebarEnabled();
     document.body.classList.toggle('sidebar-on', on);
+    // BUG-10 (2026-08-14): the overlay sidebar must ALWAYS open at the top.
+    // visibility:hidden does NOT reset an overflow scroll container, so a
+    // previously-scrolled sidebar would re-open mid-list (Governance/Closeout/
+    // DMAIC visible, Overview hidden above the fold). Reset whenever the
+    // overlay is open — covers every open path (hamburger, settings toggle,
+    // backend pull, boot-with-pref) in one place, idempotently.
+    if (document.body.classList.contains('sidebar-open')) {
+      const sb = U.$('app-sidebar');
+      if (sb) sb.scrollTop = 0;
+    }
     const btn = U.$('nav-btn');
     if (btn) {
       const mobile = window.innerWidth <= 768;

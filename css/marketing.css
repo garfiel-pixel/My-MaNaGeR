@@ -271,6 +271,78 @@ svg.ico use{fill:inherit;stroke:inherit;}
   color:#fff;align-items:center;justify-content:center;
 }
 .nav-toggle .ico{width:20px;height:20px;}
+
+/* ---------- Header email sign-in (OWNER 2026-08-14: "at the side of the hamburger or where appropriate") ----------
+   A compact "Sign in" button beside the hamburger on every viewport. It toggles
+   a Liquid Glass sheet holding the SHARED email+password form (mounted from
+   js/mmgr-google-auth.js — never a duplicate auth implementation). The sheet is
+   chrome (glass allowed); the form itself sits on a solid --card surface per
+   Gate 6.1 (glass never carries dense interactive content). All colors are the
+   existing marketing tokens, so cyan + device-dark variants swap automatically. */
+.signin-btn{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:9px 14px;border-radius:9px;
+  border:var(--glass-edge);background:rgba(255,255,255,.08);
+  color:#fff;font-size:.84rem;font-weight:600;cursor:pointer;
+  transition:background var(--tr),border-color var(--tr);
+  -webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);
+}
+.signin-btn:hover{background:rgba(255,255,255,.16);border-color:rgba(255,255,255,.5);}
+.signin-btn:focus-visible{outline:2px solid var(--gold);outline-offset:1px;}
+.signin-btn[aria-expanded="true"]{background:rgba(255,255,255,.16);}
+
+.signin-sheet{
+  position:fixed;top:calc(var(--header-h) + 10px);right:16px;
+  width:min(340px,calc(100vw - 24px));z-index:99;
+  padding:14px;border-radius:16px;
+  background:var(--glass-specular),var(--glass-tint-soft);
+  -webkit-backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  border:var(--glass-edge);box-shadow:var(--glass-shadow);
+}
+/* Solid content card inside the glass sheet (Gate 6.1 — the form is dense
+   interactive content, never glass-on-content). */
+.signin-sheet .email-auth{
+  display:flex;flex-direction:column;gap:8px;
+  padding:12px;border-radius:12px;
+  background:var(--card);border:1px solid var(--border);
+}
+.signin-sheet .email-auth-form{display:flex;flex-direction:column;gap:8px;}
+.signin-sheet .email-auth-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
+.signin-sheet .email-auth-input{
+  flex:1 1 150px;min-width:120px;padding:9px 10px;border-radius:9px;
+  border:1px solid var(--border);background:var(--card);color:var(--text-primary);
+  font:inherit;font-size:.86rem;
+}
+.signin-sheet .email-auth-input:focus-visible{outline:2px solid var(--gold);outline-offset:1px;}
+.signin-sheet .email-auth-submit{
+  display:inline-flex;align-items:center;justify-content:center;
+  padding:9px 16px;border-radius:9px;border:1px solid transparent;
+  background:var(--gold);color:var(--on-gold);
+  font-size:.84rem;font-weight:700;line-height:1;cursor:pointer;
+  transition:background var(--tr);
+}
+.signin-sheet .email-auth-submit:hover{background:var(--gold-hover);}
+.signin-sheet .email-auth-submit:focus-visible{outline:2px solid var(--gold);outline-offset:1px;}
+.signin-sheet .email-auth-alt{font-size:.74rem;color:var(--text-secondary);}
+.signin-sheet .email-auth-alt button{
+  background:none;border:none;padding:0;color:var(--text-secondary);
+  text-decoration:underline;text-underline-offset:2px;cursor:pointer;font:inherit;
+}
+.signin-sheet .email-auth-alt button:focus-visible{outline:2px solid var(--gold);outline-offset:1px;border-radius:var(--radius-sm);}
+.signin-sheet .email-auth-err{font-size:.76rem;color:var(--danger);}
+.signin-sheet .email-auth-note{font-size:.76rem;color:var(--text-secondary);line-height:1.5;}
+.signin-sheet .signin-user{display:flex;flex-direction:column;gap:8px;align-items:flex-start;}
+.signin-sheet .signin-user-name{font-size:.9rem;font-weight:700;color:var(--text-primary);}
+.signin-sheet .signin-user-sub{font-size:.76rem;color:var(--text-secondary);word-break:break-all;}
+.signin-sheet .signin-out{
+  padding:8px 14px;border-radius:9px;border:1px solid var(--border);
+  background:var(--card);color:var(--text-primary);
+  font-size:.82rem;font-weight:600;cursor:pointer;transition:border-color var(--tr),color var(--tr);
+}
+.signin-sheet .signin-out:hover{border-color:var(--danger);color:var(--danger);}
+.signin-sheet .signin-out:focus-visible{outline:2px solid var(--gold);outline-offset:1px;}
+
 .mobile-menu{
   display:none;
   top:var(--header-h);

@@ -4,8 +4,10 @@
    ------------------------------------------------------------
    Loaded by app.html, admin.html, and project.html (the project
    Controls drawer mounts the optional Drive backup section there
-   via #drive-section). This is an OPTIONAL operator-identity layer
-   ONLY:
+   via #drive-section), plus the marketing pages (index/about/
+   features/contact — the header email sign-in sheet mounts only
+   the email+password form via mountEmailAuth('marketing-email-auth')).
+   This is an OPTIONAL operator-identity layer ONLY:
 
    - It NEVER replaces, bypasses, or weakens per-project access
      codes. No code path in this module opens project data — the
@@ -142,6 +144,11 @@ var MMGR = window.MMGR || {};
     // Signed in (Google OR email) -> the email form collapses behind the chip.
     const eb = $('email-auth-block');
     if (eb) eb.hidden = true;
+    // Page-level notification covering EVERY signed-in path (session
+    // restore, Google, email) so a page without a chip (the marketing
+    // sign-in sheet) can render its own signed-in state. App pages listen
+    // to mmgr:google-signed-in and ignore this event.
+    document.dispatchEvent(new CustomEvent('mmgr:user-changed', { detail: user }));
     if (!chip) return;
     chip.hidden = false;
     chip.innerHTML = '';
@@ -301,17 +308,34 @@ var MMGR = window.MMGR || {};
     return emailAuthPost('/api/auth/register', { email: email, password: password, name: name });
   }
 
-  // Mount the toggle + form next to #google-signin-button. Idempotent:
-  // a second call next to the same host is a no-op. No-ops entirely when
-  // the host doesn't exist (project.html has no auth bar).
-  function mountEmailAuth() {
-    const host = $('google-signin-button');
+  // Mount the toggle + form. Default host is #google-signin-button (app.html /
+  // admin.html auth bars — the block is inserted right after it, preserving the
+  // existing layout). Marketing pages pass their own container host (e.g.
+  // 'marketing-email-auth'): the block is then appended INSIDE that container
+  // and, with opts.showToggle === false, the "Sign in with email instead" toggle
+  // is hidden and the form shown directly (there is no Google button there).
+  // Idempotent per host: a second call next to the same host is a no-op.
+  // No-ops entirely when the host doesn't exist (project.html has no auth bar).
+  function mountEmailAuth(hostId, opts) {
+    const custom = typeof hostId === 'string' && hostId !== 'google-signin-button';
+    const host = $(custom ? hostId : 'google-signin-button');
     if (!host) return;
-    if (host.nextElementSibling && host.nextElementSibling.id === 'email-auth-block') return;
+    if (host.querySelector && host.querySelector('#email-auth-block')) return;
     const wrap = document.createElement('div');
     wrap.innerHTML = emailAuthMarkup();
     const block = wrap.firstElementChild;
-    host.insertAdjacentElement('afterend', block);
+    if (custom) {
+      host.appendChild(block);
+    } else {
+      if (host.nextElementSibling && host.nextElementSibling.id === 'email-auth-block') return;
+      host.insertAdjacentElement('afterend', block);
+    }
+    if (opts && opts.showToggle === false) {
+      const tg = block.querySelector('.email-auth-toggle');
+      if (tg) tg.hidden = true;
+      const f = block.querySelector('.email-auth-form');
+      if (f) f.hidden = false;
+    }
     wireEmailAuth(block);
   }
 

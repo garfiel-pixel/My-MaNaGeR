@@ -149,6 +149,46 @@ async function check(name, expr, hint) {
     var overflow = document.documentElement.scrollWidth > document.documentElement.clientWidth + 1;
     return {val: opened && !overflow, opened: opened, overflowX: overflow};
   })()`);
+
+  // ---- 6b. Mobile sign-in (OWNER 2026-08-14: "at the side of the hamburger") ----
+  // Still at 390px: the header Sign-in button must sit beside the hamburger,
+  // open the shared email-auth sheet within the viewport, and close on Escape
+  // with aria-expanded reset. Then the same wiring on the field-guide's
+  // mobile-bar (its own Sign-in button beside #menuBtn).
+  await check('mkt-16 mobile: header Sign in beside hamburger, sheet opens + Escape closes', `(function(){
+    var btn = document.querySelector('.signin-trigger');
+    var tog = document.getElementById('nav-toggle');
+    var cta = document.querySelector('.header-cta-desktop');
+    if (!btn || getComputedStyle(btn).display === 'none') return {val: false, why: 'signin hidden'};
+    if (!tog || getComputedStyle(tog).display === 'none') return {val: false, why: 'hamburger hidden'};
+    if (!cta || getComputedStyle(cta).display !== 'none') return {val: false, why: 'desktop CTA not hidden'};
+    if (document.documentElement.scrollWidth > document.documentElement.clientWidth + 1) return {val: false, why: 'horizontal overflow'};
+    btn.click();
+    var sheet = document.getElementById('signin-sheet');
+    var form = document.querySelector('#marketing-email-auth .email-auth-form');
+    var toggle = document.querySelector('#marketing-email-auth .email-auth-toggle');
+    var inViewport = sheet.getBoundingClientRect().right <= window.innerWidth + 1;
+    if (sheet.hidden || !form || form.hidden || !toggle.hidden || !inViewport) {
+      return {val: false, why: 'sheet did not open correctly', hidden: sheet.hidden, form: !!form, formHidden: form && form.hidden, toggleHidden: toggle && toggle.hidden, inViewport: inViewport};
+    }
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    var closed = sheet.hidden && btn.getAttribute('aria-expanded') === 'false';
+    return {val: closed, closed: closed, aria: btn.getAttribute('aria-expanded')};
+  })()`);
+  await send('Page.navigate', { url: BASE + '/mymanager-field-guide.html' }); await delay(2400);
+  await check('mkt-17 mobile guide: Sign in beside mobile-bar hamburger opens the sheet', `(function(){
+    var bar = document.querySelector('.mobile-bar');
+    var signin = bar ? bar.querySelector('.signin-trigger') : null;
+    var menu = document.getElementById('menuBtn');
+    if (!signin || getComputedStyle(signin).display === 'none') return {val: false, why: 'mobile-bar signin hidden'};
+    if (!menu || getComputedStyle(menu).display === 'none') return {val: false, why: 'menuBtn hidden'};
+    if (document.documentElement.scrollWidth > document.documentElement.clientWidth + 1) return {val: false, why: 'horizontal overflow'};
+    signin.click();
+    var sheet = document.getElementById('signin-sheet');
+    var form = document.querySelector('#marketing-email-auth .email-auth-form');
+    var inViewport = sheet.getBoundingClientRect().right <= window.innerWidth + 1;
+    return {val: !sheet.hidden && !!form && !form.hidden && inViewport, hidden: sheet.hidden, form: !!form, inViewport: inViewport};
+  })()`);
   await send('Emulation.clearDeviceMetricsOverride');
   await delay(300);
 

@@ -88,6 +88,7 @@ const ADMIN_CODE = 'qa-admin-email-e2e-51f0';
 const LS_SECRET = 'qa-ls-webhook-secret-8d2c44aa';
 const LS_KEY = 'qa-ls-api-key-00000000000000000000000000000000';
 const LS_VARIANT = '654321';
+const LS_STORE = '451253';
 
 const log = (s) => { process.stdout.write('[email-auth] ' + s + '\n'); };
 const delay = ms => new Promise(r => setTimeout(r, ms));
@@ -138,6 +139,7 @@ async function startWrangler(configured) {
       '--var', 'LEMONSQUEEZY_WEBHOOK_SECRET:' + LS_SECRET,
       '--var', 'LEMONSQUEEZY_API_KEY:' + LS_KEY,
       '--var', 'LEMONSQUEEZY_VARIANT_ID:' + LS_VARIANT,
+      '--var', 'LEMONSQUEEZY_STORE_ID:' + LS_STORE,
       '--var', 'FREE_PROJECT_CAP:2'
     );
   }

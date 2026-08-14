@@ -8,10 +8,10 @@
 > owner confirms them in chat. Owner: review top-to-bottom, tick what you've done,
 > and tell the next session what you decided.
 >
-> Last updated: 2026-08-13 (DEPLOYED to production — §2 done; the full wave is
-> live: billing tier ACTIVE, email+password auth, presence, Rank 9 API/webhooks,
-> safety banner, emoji-free pages. §1.1 troubleshooting notes now apply to the
-> LIVE origin. §1.2 still PAUSED, §3/§4/§5 updated).
+> Last updated: 2026-08-14 (owner decisions recorded in §2/§3; FREE_PROJECT_CAP
+> default now 8 and LIVE (deployed 2026-08-14, version `21a508b8…`); the
+> marketing + field-guide email sign-in and the BUG-10 sidebar fix are deployed.
+> §1.1 troubleshooting notes apply to the LIVE origin; §1.2 still PAUSED).
 
 ---
 
@@ -40,7 +40,8 @@ per the owner — variant ids are public checkout identifiers, not secrets).
 after deploy: `/api/billing/status` returns the session-gated generic 403 (route
 exists — no more 404), `/api/auth/me` returns `{ok:false,user:null}`, cloud API +
 presence routes respond. The billing tier is now ACTIVE: free accounts over
-`FREE_PROJECT_CAP` (3) hit the Upgrade flow, and the Upgrade banner appears.
+`FREE_PROJECT_CAP` (8, owner decision 2026-08-14) hit the Upgrade flow, and the
+Upgrade banner appears.
 
 **Troubleshooting on the LIVE origin (if checkout/webhook misbehave):**
 - Checkout 502: the response body now includes LemonSqueezy's own error detail
@@ -55,7 +56,11 @@ presence routes respond. The billing tier is now ACTIVE: free accounts over
   events. Signature is HMAC-SHA256 of the RAW body with `LEMONSQUEEZY_WEBHOOK_SECRET`.
 
 Owner decisions needed once configured:
-- [ ] Confirm the default `FREE_PROJECT_CAP` (currently 3 linked projects for free accounts — override via env `FREE_PROJECT_CAP` if you want a different number).
+- [x] Confirm the default `FREE_PROJECT_CAP` — RESOLVED 2026-08-14 (owner): the
+  default is now **8 linked projects** for free accounts (worker.js
+  `billingFreeCap()` default changed 3→8; env `FREE_PROJECT_CAP` still overrides).
+  **LIVE — deployed 2026-08-14** (version `21a508b8-b7d1-4f62-b95c-c8ea4c79da34`):
+  the production origin now enforces the 8-project cap.
 - [x] Pick the paid plan's variant/price in LemonSqueezy and set `LEMONSQUEEZY_VARIANT_ID` — DONE 2026-08-13: variant **2013675** set + confirmed.
 - [x] Confirm where the Upgrade banner should live — RESOLVED 2026-08-12: the
   app.html projects page now has its own free-plan strip ("Free plan — N of M
@@ -99,7 +104,21 @@ is committed + pushed (`7ee863e` docs, `2e20562` feat, `3c0e62b` emoji-free,
   node_modules .agents _archive`; 234 files; version `2ca85916-f309-483b-a7ee-1c8fdcc6e302`;
   https://my-manager.garfieldprocis.workers.dev). Post-deploy curl verified the
   billing/auth/cloud/presence routes answer (no 404s).
-- [ ] Optional: real-Google round-trip of `/api/cloud/prefs/theme` against the deployed origin (the local harness already proves the flow with byte-identical session cookies).
+- [x] **Deploy (2026-08-14 wave: FREE_PROJECT_CAP 3→8, BUG-10 sidebar scroll fix,
+  marketing + field-guide email sign-in, glow verified)** — DONE 2026-08-14 via the
+  tar staging recipe (excluded `.git .wrangler node_modules .agents _archive`; 235
+  files read, worker script 107.47 KiB, startup 4 ms; version
+  `21a508b8-b7d1-4f62-b95c-c8ea4c79da34`, cron `0 6 * * *` preserved). Post-deploy
+  curl vs the LIVE origin: root 200 with the NEW index (signin-trigger +
+  signin-sheet markup), /mymanager-field-guide serves the new sign-in wiring,
+  css/marketing.css carries the .signin-sheet styles, sw.js = `mmgr-shell-v89`
+  (incl. the v89 FIELD-GUIDE-EMAIL-SIGNIN comment), /api/auth/me →
+  `{ok:false,user:null}`, /api/billing/status + /api/cloud/projects +
+  /api/cloud/presence → session-gated generic 403, /app 200.
+  NOTE: the worker canonicalizes `*.html` URLs with a 307 to the extension-less
+  path (/index.html → /, /mymanager-field-guide.html → /mymanager-field-guide) —
+  pre-existing behavior, verified the canonical paths serve the new content.
+- [x] Optional: real-Google round-trip of `/api/cloud/prefs/theme` against the deployed origin — **CLOSED 2026-08-14 (owner: "no need user can easily customize at their expense")** — the local harness already proves the flow with byte-identical session cookies.
 
 ---
 
@@ -114,20 +133,31 @@ is committed + pushed (`7ee863e` docs, `2e20562` feat, `3c0e62b` emoji-free,
   weather override) were audit-verified already shipped in code; the Heat/Cold safety
   alert was additionally promoted to a page-top `#safety-banner` this session. Nothing
   remains on the backlog unless you add new ideas.
-- [ ] **Rank 8 treatment confirmation.** The light-mode projects page now has a
-  subtle gold radial glow (spec option 1 of 3 — glow over blueprint texture /
-  card thumbnails, chosen per your recommended-option rule). Open app.html in light
-  mode and confirm you like it; the other two options remain available if you'd
-  rather have texture or thumbnails.
+- [x] **Rank 8 treatment confirmation — RESOLVED 2026-08-14 (owner: "make it so that when
+  a new file is created the glow naturally applies to it").** Verified in-browser:
+  the glow is a container-level 3-layer radial wash on `#grid::before` (z-index -1,
+  `isolation:isolate`) in light db-page mode only, so EVERY card — including a newly
+  created file added to `mmgr_admin_projects` — automatically sits above the glow;
+  cards keep their opaque `--glass-fill-dark` surface (full text contrast, 8.2
+  intact) and dark mode suppresses it (`display:none`). No code change needed — it
+  works by construction; the browser check confirmed a brand-new project card
+  renders under the glow.
 - [ ] **Presence chip** is on by default on project.html ("N online"). Confirm you
   want it always-visible when viewers are present (vs. behind a toggle).
-- [ ] **Auto-purge retention** (already decided 2026-08-11): orphaned cloud projects
-  auto-purge after 12 months with no owner activity. Confirm the 12-month window
-  still feels right now that billing exists (a paying account should arguably never
-  purge — say the word and I'll gate purge on active subscription).
-- [ ] **Email+password auth on the public app**: the email form currently mounts on
-  the app.html/admin.html auth bars. Confirm whether you also want it on the
-  marketing site (index.html) or keep registration app-only.
+- [x] **Auto-purge retention — CONFIRMED 2026-08-14 (owner: "i agree to this").** The
+  12-month no-owner-activity window stays as-is (no change to the purge gate).
+- [x] **Email+password auth on the public app — DONE 2026-08-14 (owner: "put at the side
+  of the hamburger or where appropriate").** index.html / about.html / features.html /
+  contact.html now have a header "Sign in" button beside the hamburger (all
+  viewports) — and mymanager-field-guide.html has one in the sidebar (desktop)
+  plus one beside its mobile-bar hamburger — opening a sheet mounting the SAME
+  shared email+password form
+  from js/mmgr-google-auth.js (`mountEmailAuth('marketing-email-auth', {showToggle:false})`)
+  — never a duplicate auth implementation; same worker endpoints + `mmgr_session`
+  cookie as the app bars; signed-in state shows name/email + Sign out. Browser-
+  verified desktop + 390px mobile (no overflow), sheet toggle/Escape/click-outside,
+  graceful failure on a worker-less host, and qa-email-auth 26/26 incl. a real
+  register→chip→sign-out round-trip against wrangler dev.
 
 ---
 
@@ -143,8 +173,8 @@ Each was programmatically verified, but the owner's eye is the final gate:
   with the Include-project-context toggle.
 - [ ] **Billing upgrade banner** (only visible once LemonSqueezy is configured and
   a free account exceeds the cap): project.html → Cloud drawer.
-- [ ] **Email+password sign-in form** (app.html/admin.html auth bar): toggle,
-  login/register modes, error line.
+- [ ] **Email+password sign-in form** (app.html/admin.html auth bar + the new
+  marketing-site sheet): toggle, login/register modes, error line.
 - [ ] **Presence chip** (project.html header, when a second viewer is open).
 - [ ] **Heat/Cold safety banner** (NEW 2026-08-13 — project.html top-of-page red/blue
   bar when a heat/cold risk day is in the forecast): confirm the copy/tints read as

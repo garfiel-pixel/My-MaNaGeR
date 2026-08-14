@@ -162,7 +162,7 @@ svg.ico use{fill:inherit;stroke:inherit;}
 .section-head{max-width:640px;margin-bottom:46px;}
 .section-head h2{
   font-size:clamp(1.7rem,3.4vw,2.4rem);
-  font-weight:800;letter-spacing:-.02em;line-height:1.15;
+  font-weight:800;letter-spacing:-.025em;line-height:1.12;
   margin:14px 0 12px;
 }
 .section-head p{color:var(--text-secondary);font-size:1.04rem;}
@@ -427,7 +427,7 @@ svg.ico use{fill:inherit;stroke:inherit;}
   margin-top:48px;padding-top:26px;
   border-top:1px solid rgba(255,255,255,.12);
 }
-.hero-stats b{display:block;font-size:1.5rem;font-weight:800;color:var(--gold);line-height:1.1;}
+.hero-stats b{display:block;font-size:1.5rem;font-weight:800;color:var(--gold);line-height:1.1;font-variant-numeric:tabular-nums;}
 .hero-stats span{font-size:.76rem;letter-spacing:.06em;text-transform:uppercase;color:rgba(248,250,252,.6);}
 
 /* hero visual — solid mock of the app's project cards */
@@ -646,17 +646,17 @@ svg.ico use{fill:inherit;stroke:inherit;}
     var(--header-navy);
   color:var(--on-navy);padding:74px 0 60px;
 }
-.page-hero h1{font-size:clamp(1.9rem,4vw,2.7rem);font-weight:800;letter-spacing:-.02em;line-height:1.1;margin:14px 0 12px;}
-.page-hero p{color:rgba(248,250,252,.75);max-width:56ch;font-size:1.04rem;}
+.page-hero h1{font-size:clamp(1.9rem,4vw,2.7rem);font-weight:800;letter-spacing:-.025em;line-height:1.08;margin:14px 0 12px;}
+.page-hero p{color:rgba(248,250,252,.75);max-width:56ch;font-size:1.04rem;line-height:1.55;}
 .crumbs{font-size:.74rem;letter-spacing:.08em;text-transform:uppercase;color:var(--gold);font-weight:700;}
 .crumbs a:hover{text-decoration:underline;}
 .prose-card{
   background:var(--card);border:1px solid var(--border);border-radius:var(--radius-md);
   padding:36px 38px;box-shadow:0 2px 8px rgba(15,23,42,.04),0 10px 30px rgba(15,23,42,.05);
 }
-.prose-card h2{font-size:1.35rem;font-weight:800;letter-spacing:-.01em;margin:26px 0 10px;}
+.prose-card h2{font-size:1.35rem;font-weight:800;letter-spacing:-.015em;margin:26px 0 10px;}
 .prose-card h2:first-child{margin-top:0;}
-.prose-card p{color:var(--text-secondary);font-size:.95rem;margin-bottom:14px;}
+.prose-card p{color:var(--text-secondary);font-size:.95rem;line-height:1.6;margin-bottom:14px;}
 .prose-card p:last-child{margin-bottom:0;}
 .prose-card ul{margin:0 0 14px 4px;}
 .prose-card li{
@@ -679,7 +679,7 @@ svg.ico use{fill:inherit;stroke:inherit;}
   display:grid;place-items:center;background:rgba(var(--gold-rgb),.14);color:var(--gold-deep);
 }
 .contact-tile .ct-icon .ico{width:21px;height:21px;}
-.contact-tile h3{font-size:.98rem;font-weight:700;margin-bottom:5px;}
+.contact-tile h3{font-size:.98rem;font-weight:800;letter-spacing:-.01em;margin-bottom:5px;}
 .contact-tile p{font-size:.85rem;color:var(--text-secondary);}
 .contact-tile a{color:var(--teal-deep);font-weight:600;}
 .contact-tile a:hover{text-decoration:underline;}
@@ -703,7 +703,7 @@ svg.ico use{fill:inherit;stroke:inherit;}
   color:var(--gold-deep);background:rgba(var(--gold-rgb),.14);border:1px solid rgba(var(--gold-rgb),.28);
 }
 .feature-head .f-icon .ico{width:22px;height:22px;}
-.feature h2{font-size:1.28rem;font-weight:800;letter-spacing:-.01em;line-height:1.2;margin:0 0 4px;}
+.feature h2{font-size:1.28rem;font-weight:800;letter-spacing:-.015em;line-height:1.2;margin:0 0 4px;}
 .feature .f-tag{
   display:inline-block;font-size:.62rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
   color:var(--text-secondary);border:1px solid var(--border);padding:3px 10px;border-radius:100px;

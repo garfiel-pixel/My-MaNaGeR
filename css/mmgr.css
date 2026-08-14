@@ -955,19 +955,10 @@ hr.div{border:none;border-top:1px solid var(--border);margin:14px 0;}
 
 /* ---- Empty State ---- */
 .hp{position:fixed;bottom:0;left:0;height:3px;background:var(--danger);width:0;z-index:9999;}
-.vl{font-size:.68rem;color:var(--slate);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;padding:5px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;}
+.vl{font-size:.68rem;color:var(--slate);text-transform:uppercase;letter-spacing:1px;margin-bottom:14px;padding:5px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;}
 .vl span{color:var(--gold);}
-/* Sec-nav grounded as a cohesive container (2026-08-13): the tab row sat
-   14px below the .vl caption line with no background/border of its own —
-   floating in mid-air, anchored to neither the line above nor the content
-   below. Desktop: the row becomes a solid card (--card surface per Gate
-   6.1 — dense nav content never goes glass) with a 1px --border enclosure
-   + var(--radius), pulled snug against the caption line so the tabs read
-   as part of the layout. Mobile keeps the off-canvas drawer treatment
-   (its own background/border-right at ≤768px) — this block is desktop-only. */
-@media(min-width:769px){
-  .sec-nav{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;}
-}
+/* Sec-nav: plain pill row (reference alignment) — no card wrapper,
+   tabs sit directly under the .vl caption line with natural spacing. */
 .es{text-align:center;padding:36px 18px;color:var(--slate);font-size:.82rem;}
 .es.es-row{padding:24px;font-size:.78rem;line-height:1.7;}
 .es-actions{display:flex;gap:6px;justify-content:center;margin-top:12px;}

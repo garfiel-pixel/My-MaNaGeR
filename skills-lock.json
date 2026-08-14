@@ -73,6 +73,12 @@
       "skillPath": "skeptical-code-audit/SKILL.md",
       "computedHash": "d50ee47f3df22bb73bbcea85f193c1986f68f92de3ed123e091e81edd47bebf0"
     },
+    "ui-modernization": {
+      "source": "local/project-authored",
+      "sourceType": "local",
+      "skillPath": "ui-modernization/SKILL.md",
+      "computedHash": "673e3e7a3e7cffc077ed44e6fdfa69802dbc33db1fd553076be3bff26a0f3b65"
+    },
     "universal-ui-architect": {
       "source": "local/project-authored",
       "sourceType": "local",

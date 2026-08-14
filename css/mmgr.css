@@ -153,9 +153,9 @@ html[data-theme="cyan"] body.dark-mode{
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 
 body{
-  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",Roboto,sans-serif;
+  font-family:"Inter",-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",Roboto,sans-serif;
   background:var(--canvas);color:var(--text);min-height:100vh;overflow-x:hidden;
-  cursor:default;letter-spacing:-0.01em;
+  cursor:default;letter-spacing:-0.01em;font-feature-settings:"cv02","cv03","cv04","cv11";
 }
 
 /* ---- Wrong-code modal shake (CLAUDE-BUG-AUDIT-2026-08-11 #2) ---- */
@@ -329,8 +329,8 @@ body.sidebar-on .nav-btn{display:inline-flex;}
    for card/panel styling — the recipe below is the SAME glass-panel recipe,
    driven by the design tokens (light: blur 0, crisp solid; dark: frosted).
    Dense tables inside stay flat/opaque — readability is never traded. */
-.card{background:var(--glass-fill-dark);border:var(--glass-border);border-radius:var(--squircle-md);padding:18px;margin-bottom:18px;box-shadow:var(--glass-rim),var(--glass-shadow);backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturate));-webkit-backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturate));transition:border-color var(--tr),background var(--tr);}
-.card:hover{border-color:#cbd5e1;}
+.card{background:var(--glass-fill-dark);border:var(--glass-border);border-radius:var(--squircle-md);padding:20px;margin-bottom:18px;box-shadow:var(--glass-rim),var(--glass-shadow);backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturate));-webkit-backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturate));transition:border-color var(--tr),background var(--tr),box-shadow var(--tr);}
+.card:hover{border-color:#cbd5e1;box-shadow:var(--glass-rim),0 4px 20px rgba(16,24,40,.08);}
 .card-title{font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--slate);margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;min-width:0;}
 
 /* ---- Grids ---- */
@@ -413,13 +413,35 @@ body.sidebar-on .nav-btn{display:inline-flex;}
 .dt tbody tr.overdue td:not(:first-child){border-left:none;}
 
 /* ---- Buttons ---- */
-.btn{display:inline-flex;align-items:center;gap:5px;padding:7px 14px;border-radius:6px;border:none;font-size:.78rem;font-weight:600;cursor:pointer;transition:background var(--tr),border-color var(--tr),color var(--tr),filter var(--tr);}
-.btn:active,.kc:active{filter:brightness(1.15);}
-.btn-g{background:var(--green);color:#fff;}.btn-g:hover{background:#03644f;}
-.btn-o{background:var(--gold);color:var(--on-gold);}.btn-o:hover{background:#92400e;}
-.btn-n{background:transparent;border:1px solid var(--border);color:var(--slate);}.btn-n:hover{border-color:var(--green);color:var(--green);}
-.btn-d{background:transparent;border:1px solid var(--danger);color:var(--danger);}.btn-d:hover{background:var(--danger);color:#fff;}
-.btn-s{padding:4px 9px;font-size:.72rem;}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:var(--radius);border:none;font-size:.8rem;font-weight:600;cursor:pointer;transition:all var(--tr);line-height:1.4;}
+.btn:active,.kc:active{filter:brightness(1.1);transform:scale(.98);}
+.btn-g{background:var(--green);color:#fff;box-shadow:0 1px 3px rgba(4,120,87,.25);}.btn-g:hover{background:#03644f;box-shadow:0 2px 8px rgba(4,120,87,.35);}
+.btn-o{background:var(--gold);color:var(--on-gold);box-shadow:0 1px 3px rgba(var(--gold-rgb),.3);}.btn-o:hover{background:#92400e;box-shadow:0 2px 8px rgba(var(--gold-rgb),.4);}
+.btn-n{background:transparent;border:1px solid var(--border);color:var(--slate);}.btn-n:hover{border-color:var(--gold);color:var(--gold);background:rgba(var(--gold-rgb),.04);}
+.btn-d{background:transparent;border:1px solid rgba(220,53,69,.3);color:var(--danger);}.btn-d:hover{background:rgba(220,53,69,.08);border-color:var(--danger);}
+.btn-s{padding:5px 10px;font-size:.72rem;}
+.btn-full{width:100%;justify-content:center;}
+.btn-pill{border-radius:100px;padding:8px 20px;}
+.btn-icon{padding:6px;border-radius:var(--radius);}
+.btn-ghost{background:transparent;border:none;color:var(--slate);padding:6px 10px;}.btn-ghost:hover{color:var(--gold);background:rgba(var(--gold-rgb),.06);}
+/* Modern admin toolbar */
+.toolbar{display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap;align-items:center;}
+.toolbar .btn{white-space:nowrap;}
+/* Modern accordion for tech docs */
+.accordion{border:1px solid var(--border);border-radius:var(--radius);margin-bottom:14px;overflow:hidden;}
+.accordion-head{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--tile-bg);cursor:pointer;font-size:.74rem;font-weight:600;color:var(--slate);transition:background var(--tr);}
+.accordion-head:hover{background:var(--glass-fill-dark-hover);}
+.accordion-head::after{content:'';width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:5px solid var(--slate);transition:transform var(--tr);}
+.accordion.open .accordion-head::after{transform:rotate(180deg);}
+.accordion-body{display:none;padding:12px 14px;font-size:.74rem;color:var(--slate);line-height:1.6;border-top:1px solid var(--border);}
+.accordion.open .accordion-body{display:block;}
+/* Modern masked code display */
+.code-masked{display:inline-flex;align-items:center;gap:6px;font-family:ui-monospace,monospace;background:var(--tile-bg);border:1px solid var(--border);border-radius:var(--radius);padding:5px 10px;font-size:.72rem;color:var(--text);}
+.code-masked .masked-val{letter-spacing:.08em;}
+.code-masked .toggle-vis{background:none;border:none;color:var(--slate);cursor:pointer;padding:2px;display:inline-flex;align-items:center;}
+.code-masked .toggle-vis:hover{color:var(--gold);}
+.code-masked .copy-btn{background:none;border:none;color:var(--slate);cursor:pointer;padding:2px;display:inline-flex;align-items:center;}
+.code-masked .copy-btn:hover{color:var(--green);}
 
 /* ---- Toolbar ---- */
 .toolbar{display:flex;gap:7px;margin-bottom:14px;flex-wrap:wrap;align-items:center;}

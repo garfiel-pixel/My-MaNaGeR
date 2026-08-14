@@ -203,6 +203,9 @@ body:not(.crosshair-on) #cx,body:not(.crosshair-on) #cy{display:none;}
 .lock-ind.on{opacity:1;}
 .settings-btn{background:none;border:1px solid var(--border);color:var(--slate);width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:.95rem;transition:all var(--tr);}
 .settings-btn:hover{color:var(--gold);border-color:var(--gold);transform:rotate(45deg);}
+.hdr-back{display:inline-flex;align-items:center;gap:4px;font-size:.72rem;color:var(--slate);text-decoration:none;padding:4px 8px;border:1px solid var(--border);border-radius:var(--radius);background:var(--card);transition:all var(--tr);flex-shrink:0;white-space:nowrap;}
+.hdr-back:hover{color:var(--gold);border-color:var(--gold);}
+.hdr-back .ico{width:14px;height:14px;}
 
 /* ---- Focus Mode ---- */
 /* Only the active panel + the exit chip remain. Everything else — header,
@@ -232,37 +235,36 @@ body.focus-mode .focus-ind{display:flex;position:fixed;top:10px;right:10px;backg
    (mmgr-app.js tglNav). On ≤768px the SAME .sec-nav element becomes a fixed
    off-canvas drawer — no duplicated nav, active states stay in sync by
    construction, and Focus Mode's existing .sec-nav hide rule covers it. */
-.nav-btn{display:none;align-items:center;justify-content:center;width:38px;height:38px;border:1px solid var(--border);background:var(--card);color:var(--slate);border-radius:10px;cursor:pointer;transition:all var(--tr);flex-shrink:0;}
+/* BUG-9: hamburger is ALWAYS visible on desktop (overlay sidebar pattern).
+   On mobile (≤768px) it stays visible too — it opens the off-canvas .sec-nav
+   drawer. The old sidebar-on gate is removed: the hamburger is now a permanent
+   header element on every viewport. */
+.nav-btn{display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;border:1px solid var(--border);background:var(--card);color:var(--slate);border-radius:10px;cursor:pointer;transition:all var(--tr);flex-shrink:0;}
 .nav-btn:hover{color:var(--gold);border-color:var(--gold);}
 #nav-scrim{position:fixed;inset:0;background:rgba(0,22,25,.45);opacity:0;pointer-events:none;transition:opacity var(--tr);z-index:94;}
 body.nav-open #nav-scrim{opacity:1;pointer-events:auto;}
+/* BUG-9: sidebar scrim reuses #nav-scrim for the desktop overlay. */
+body.sidebar-open #nav-scrim{opacity:1;pointer-events:auto;}
 
-/* ---- Opt-in desktop sidebar (SIDEBAR-HAMBURGER-TOGGLE-PLAN, 2026-08-12) ----
-   A fixed left rail (~240px) below the sticky header, mirroring the .sec-nav
-   groups (js/mmgr-app.js buildSidebar clones them — one source of truth).
-   TWO body classes: `sidebar-on` = the persisted layout PREFERENCE
-   (localStorage mmgr_sidebar, default 'off' — zero change for existing
-   users; mirrored to the R2 prefs blob when signed in) which shows the
-   hamburger on desktop, and `sidebar-open` = the TEMPORARY visible state
-   (hamburger/×/Escape toggle it; the next load re-opens whenever the pref is
-   on). The rail + 240px content shift follow sidebar-open; the hamburger
-   follows sidebar-on. Solid card surface (Gate 6.1 — chrome, never content).
-   Desktop-only: ≤768px the existing off-canvas .sec-nav drawer stays the
-   mobile nav and this rail is hidden entirely. */
+/* ---- BUG-9: overlay sidebar (2026-08-13) ----
+   The sidebar is now an OVERLAY, not a pinned rail. It slides in from the left,
+   covers the content (no margin-left push), and is dismissed by clicking a
+   section, clicking the scrim, or pressing Escape. The .sec-nav pill row is
+   hidden when the overlay is open to reduce clutter. Mobile (≤768px) is
+   unchanged — the existing off-canvas .sec-nav drawer stays the mobile nav. */
 #app-sidebar{position:fixed;top:var(--hdr-h,64px);left:0;bottom:0;width:240px;z-index:96;
   background:var(--card);border-right:1px solid var(--border);
-  transform:translateX(-105%);visibility:hidden; /* closed rail leaves the tab order + a11y tree */
+  transform:translateX(-105%);visibility:hidden;
   transition:transform .24s var(--ease-ios),visibility .24s;
   box-shadow:0 12px 40px rgba(0,0,0,.18);
   display:flex;flex-direction:column;overflow-y:auto;}
 body.sidebar-open #app-sidebar{transform:translateX(0);visibility:visible;}
-/* The hamburger becomes the sidebar toggle on desktop once the layout is on
-   (mobile keeps its existing always-visible drawer button). Visibility is
-   keyed on the PREF (sidebar-on) — after a temporary ×/Escape close the
-   hamburger stays, so the rail is always one click away. The content shift
-   and rail follow the TEMPORARY open state (sidebar-open). */
+/* BUG-9: overlay — no content push, just the scrim + rail. */
+/* Hide .sec-nav pill row when sidebar overlay is open (reduces clutter). */
+body.sidebar-open .sec-nav{display:none!important;}
+/* Legacy pref class still applied for the settings toggle sync, but no longer
+   controls hamburger visibility (hamburger is always shown). */
 body.sidebar-on .nav-btn{display:inline-flex;}
-body.sidebar-open #app-main{margin-left:240px;}
 .sb-head{display:flex;align-items:center;justify-content:space-between;padding:14px 16px 10px;border-bottom:1px solid var(--border);margin-bottom:12px;flex-shrink:0;position:sticky;top:0;background:var(--card);z-index:1;}
 .sb-title{display:inline-flex;align-items:center;gap:8px;font-size:.72rem;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--gold);}
 .sb-title .ico{font-size:.8rem;}

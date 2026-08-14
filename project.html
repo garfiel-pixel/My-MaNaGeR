@@ -102,6 +102,7 @@
     <button class="tab-btn" data-action="swMeth" data-meth="hybrid" data-mlc="hybrid">Hybrid</button>
   </div>
   <div class="hdr-right">
+    <a class="hdr-back" href="app.html" title="Back to projects list"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-left"></use></svg> Projects</a>
     <button class="nav-btn" id="nav-btn" data-action="tglNav" aria-label="Open navigation menu" aria-expanded="false" aria-controls="sec-nav"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-menu"></use></svg></button>
     <div class="dirty-ind" id="dirty-ind" data-action="openDrwToSave" title="Changes save to this browser automatically. Click to back up to a file — recommended before closing or switching devices.">● Not backed up</div>
     <div class="timeline-ind" id="timeline-ind" data-action="jumpToDashTimeline" title="Current planned finish vs the Target Completion Date set in Charter. Click to view on the Dashboard."></div>
@@ -333,8 +334,8 @@
           <button class="btn btn-g btn-s" data-action="wxGeocode">Locate</button>
           <button class="btn btn-n btn-s" data-action="wxRefresh">Refresh</button>
           <span class="wx-view-tgl">
-            <button class="btn btn-s" data-action="wxSetView" data-days="7">7d</button>
-            <button class="btn btn-s" data-action="wxSetView" data-days="16">16d</button>
+            <button class="btn btn-s" data-action="wxSetView" data-days="7" aria-label="Show 7-day weather forecast">7d</button>
+            <button class="btn btn-s" data-action="wxSetView" data-days="16" aria-label="Show 16-day weather forecast">16d</button>
           </span>
         </div>
       </div>
@@ -869,12 +870,14 @@
           <option value="cloud">Cloud</option>
         </select>
         <span class="ai-pill" id="ai-engine-pill" data-tier="off"><span class="ai-pill-dot"></span><span id="ai-engine-pill-label">Engine</span></span>
-        <!-- INTEGRATED-STRUCTURE-API-WINDOW plan §1/§3: live backend-API status
-             badge — pings the same-origin Worker relay health route
+        <!-- INTEGRATED-STRUCTURE-API-WINDOW plan §1/§3: backend health badge
+             — pings the same-origin Worker relay health route
              (GET /api/health) when the window opens and reports
-             checking / connected / error / disconnected. Wired in
-             mmgr-ai.js checkApiHealth(); click to re-check. -->
-        <span class="ai-pill ai-api-pill" id="ai-api-pill" data-state="checking" title="Backend API connection — click to re-check"><span class="ai-pill-dot"></span><span id="ai-api-pill-label">API · checking</span></span>
+             checking / online / error / offline. Wired in
+             mmgr-ai.js checkApiHealth(); click to re-check.
+             NOTE: this is the BACKEND server health, not the user's
+             AI key connection — that lives in ai-byo-status below. -->
+        <span class="ai-pill ai-api-pill" id="ai-api-pill" data-state="checking" title="Backend API connection — click to re-check"><span class="ai-pill-dot"></span><span id="ai-api-pill-label">Backend · checking</span></span>
       </div>
       <div class="ai-head-actions">
         <button class="ai-clear-btn" data-action="aiClear" title="Start a new conversation"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> New</button>

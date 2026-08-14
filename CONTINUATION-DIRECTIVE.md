@@ -105,6 +105,11 @@ directive documents.
   it does not draw a glyph. When a page gains an icon that doesn't exist yet, ADD a symbol
   to the sprite — never an emoji. Emojis in internal docs (md/json) are fine; served pages
   are not. New pages must pass the emoji scan before merging.
+- **NEVER push a commit carrying a Codebuff attribution footer (owner, 2026-08-14).**
+  No commit may include "Generated with Codebuff" or "Co-Authored-By: Codebuff
+  <noreply@codebuff.com>" — commit messages are plain Conventional Commits with no
+  third-party co-author trailer. Already-pushed commits that carry it are left
+  unrewritten (no history rewrite); this rule applies to every commit from now on.
 - A passed verification check is not a pause point — proceed to the next item once a
   check passes, don't stop to ask again.
 - Run local `wrangler dev` end-to-end tests plus the full `qa-*.cjs` battery before
@@ -553,6 +558,9 @@ Format: date/session marker, what was completed (with file/line specifics), what
 in-progress and exactly where it stopped, what's next.
 
 ### Log entries (most recent at top)
+
+**2026-08-14 — Session: NO-CODEBUFF-ATTRIBUTION — standing rule added; commits in this repo never carry the Codebuff co-author footer again.**
+Per the owner ("were you programmed to put co authored by codebuff? … ensure it states never upload with co authored by codebuff"): confirmed the footer is the agent's default commit template; the MANDATORY INSTRUCTION standing rules now forbid it — plain Conventional Commits only, no "Generated with Codebuff" / "Co-Authored-By: Codebuff" trailer, existing commits left unrewritten (no history rewrite). Committed + pushed WITHOUT the footer.
 
 **2026-08-14 — Session: RESUME-COMPLETION — the cut-off ALIGNMENT-FIX/OVERLAY-SIDEBAR browser verification finished end-to-end; the handoff txt archived.**
 Per the owner ("read where last chat ended and continue where it left off to completion"): the saved handoff transcript stopped mid-browser-verification (`.sec-nav` sticky top:64px + header 64px confirmed at 1262px desktop; next step was clicking the hamburger). RESUMED + COMPLETED against serve.cjs:8765 via agent-browser (project.html?id=p1, unlocked via `mmgr_unlocked_p1`): (1) **ALIGNMENT-FIX state re-measured** — `.vl` margin-bottom 14px; `.sec-nav` page-canvas background (`var(--canvas)` rgb(244,245,247) in light — the card treatment is gone; the solid bg is the sticky-bar requirement, not a card), border 0 none, padding 0, margin-bottom 18px — matches the reference layout; (2) **hamburger click opens the overlay sidebar** — `body.sidebar-open`, `#app-sidebar` transform `matrix(1,0,0,1,0,0)`, `#nav-scrim` opacity 1, `.nav-btn` aria-expanded=true, `.sec-nav` pill row display:none while open (BUG-9 design); (3) **all three close paths verified** — section click / Escape / scrim click, aria-expanded resets to false each way, `.sec-nav` returns to flex; (4) **BUG-10 scroll-reset re-verified with a real before/after** at 1262x500 (sidebar max-scrolled 19px → close → reopen scrollTop 0, first group "Overview"); (5) **zero console errors** across the whole interaction. Standing gates: `npm run verify` GREEN (CSP 11/11, SW mmgr-shell-v89, skills 16/16). HOUSEKEEPING: the handoff txt moved to `_archive/` (kept, not deleted — same pattern as the earlier stray txts). NO CODE CHANGES — the ALIGNMENT-FIX / OVERLAY-SIDEBAR / BUG-10 work was already committed (bf2fc4f / 4d3c73e / 23581f5) and is now verified end-to-end in-browser.

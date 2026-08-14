@@ -1587,7 +1587,8 @@ async function handleCloudCreate(request, env) {
   if (existing) return json({ ok: false, error: 'project already linked' }, 409);
   const session = await readSession(request, env);
   // BILLING TIER (deferred cloud item #15, 2026-08-12): a session-LINKED
-  // free account is capped at FREE_PROJECT_CAP linked projects (default 3);
+  // free account is capped at FREE_PROJECT_CAP linked projects (default 8,
+  // per the owner's decision 2026-08-14);
   // over the cap requires an active subscription (HTTP 402 + upgrade flag).
   // Only enforced when the tier is configured (all three LEMONSQUEEZY_*
   // secrets present) and only for session-linked creates — code-only
@@ -1988,9 +1989,10 @@ async function handleAuthLogin(request, env) {
      - POST /api/billing/checkout  session-gated LS checkout URL
        with custom_data.sub so the webhook can attribute it.
      - Cloud create gate: a session-linked free account is capped
-       at FREE_PROJECT_CAP linked projects (default 3); over the
-       cap requires an active subscription (HTTP 402 + upgrade
-       flag). Unlinked (code-only) creates are never capped.
+       at FREE_PROJECT_CAP linked projects (default 8, owner
+       decision 2026-08-14); over the cap requires an active
+       subscription (HTTP 402 + upgrade flag). Unlinked
+       (code-only) creates are never capped.
    ============================================================ */
 const LS_API_BASE = 'https://api.lemonsqueezy.com/v1';
 
@@ -2003,7 +2005,9 @@ function billingConfigured(env) {
 
 function billingFreeCap(env) {
   const v = Number(env && env.FREE_PROJECT_CAP);
-  return Number.isFinite(v) && v > 0 ? v : 3;
+  // Default 8 free linked projects (owner decision 2026-08-14). Env
+  // override FREE_PROJECT_CAP still wins when set.
+  return Number.isFinite(v) && v > 0 ? v : 8;
 }
 
 function billingStatusActive(status) {

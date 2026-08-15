@@ -1230,6 +1230,22 @@ changes. sw.js v93→v94 (css/mmgr.css shell asset). VERIFICATION: npm run verif
 (CSP 11/11, SW v94 > 47 assets, 17/17 skills), qa-r3 R3_GATE PASS, qa-full 171/171 (incl.
 09 confidence 3-way card + EVM checks), zero console/page errors.
 
+**2026-08-14 — Session extension: UI-MODERNIZATION RHYTHM QA HARNESS (owner
+follow-up: "add a qa harness that asserts the 33px row rhythm and ring/list alignment
+so future CSS edits can't regress it").** Added `qa-rhythm.cjs` (repo-root harness,
+qa-*.cjs convention — drives headless Chrome via CDP against serve.cjs:8765, exits 0
+only when every contract holds, 300s watchdog, seeded project state injected via
+Page.addScriptToEvaluateOnNewDocument so the gate never redirects). Covers the
+v91–v94 invariants: R01 boot (6 health rows + >=3 Next-3 rows), R02 health rows ONE
+consistent height ~33px, R03 Next-3 rows ~33px, R04 ring + Next-3 list on the SAME top
+line (<=2px drift), R05 Today's Decision rows >=33px consistent, R06 Schedule
+Confidence 3 equal cells ~88px, R07 4 equal stat cards, R08 EVM big+small tiles
+equal-height, R09 no horizontal overflow, R10 <=768px Next-3 card spans full row,
+R11 dark parity (heights unchanged + tokens re-tint). VERIFICATION: qa-rhythm
+RHYTHM_GATE PASS 11/11 (fresh run vs :8765); no served asset touched (qa-*.cjs is in
+.assetsignore → NOT part of the wrangler bundle, so NO deploy needed). Committed +
+pushed.
+
 ---
 
 *This file is the working source of truth for continuing this project across sessions.

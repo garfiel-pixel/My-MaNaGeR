@@ -2645,3 +2645,63 @@ body.dark-mode.db-page #siom .email-auth-alt{color:var(--db-text-secondary);}
   body.db-page .db-btn,body.db-page .db-link,body.db-page .db-project,body.db-page .db-avatar{transition:none!important;}
   body.db-page .db-hamb .ico{transition:none!important;}
 }
+/* ============================================================
+   NEW-UI-CONTRAST-AND-RHYTHM (owner's visual-analysis fixes,
+   2026-08-14): light secondary text darkened (.top p, card meta,
+   section subs, empty states) — the analysis flagged gray-on-gray;
+   notice banner text darkened to high-contrast brick; explicit
+   section headers separate local Projects from Cloud; cloud cards
+   share the grid card language (same padding/radius/hover); steady
+   vertical rhythm between hero/notice/strip/grid/cloud; rail footer
+   identity bottom-aligned with a circular profile icon; backup panel
+   grouped as one tidy unit. Token-driven (color-mix on existing
+   tokens), dark/cyan parity via the theme blocks, no emoji,
+   reduced-motion safe.
+   ============================================================ */
+/* ---- light secondary text: darken on the launcher ---- */
+body.db-page:not(.dark-mode) .top p{color:color-mix(in oklch,var(--text) 78%,var(--slate) 22%);}
+body.db-page:not(.dark-mode) .cd-meta,
+body.db-page:not(.dark-mode) .cd-sub,
+body.db-page:not(.dark-mode) .cd-empty,
+body.db-page:not(.dark-mode) .db-sec-sub,
+body.db-page:not(.dark-mode) .pc-desc,
+body.db-page:not(.dark-mode) .pf-meta,
+body.db-page:not(.dark-mode) .pf-reason,
+body.db-page:not(.dark-mode) .db-sub-empty{color:color-mix(in oklch,var(--text) 70%,var(--slate) 30%);}
+/* ---- notice banner: darker high-contrast brick + steady rhythm ---- */
+body.db-page:not(.dark-mode) .notice{
+  color:color-mix(in oklch,var(--amber) 55%,var(--text) 45%);
+  background:color-mix(in oklch,var(--amber) 8%,var(--card));
+  border-color:color-mix(in oklch,var(--amber) 30%,var(--border));
+  margin:0 auto 26px;
+}
+/* ---- section header (Projects) ---- */
+body.db-page .db-sec{display:flex;flex-direction:column;gap:3px;margin:18px 0 14px;}
+body.db-page .db-sec-title{display:inline-flex;align-items:center;gap:8px;font-size:.82rem;font-weight:800;color:var(--text);letter-spacing:.01em;}
+body.db-page .db-sec-title .ico{width:16px;height:16px;color:var(--gold);}
+body.db-page .db-sec-sub{font-size:.68rem;color:var(--slate);}
+body.dark-mode.db-page .db-sec-title .ico{color:var(--db-accent);}
+body.dark-mode.db-page .db-sec-sub{color:var(--db-text-secondary);}
+/* ---- cloud cards share the grid card language ---- */
+body.db-page .cd-card{
+  padding:var(--pad-card);
+  transition:transform var(--release-duration) var(--spring-press),border-color var(--tr),box-shadow var(--tr),background var(--tr);
+}
+body.db-page .cd-card:hover{transform:translateY(-3px);border-color:var(--gold);background:var(--glass-fill-dark-hover);box-shadow:var(--glass-rim),0 12px 30px rgba(16,24,40,.14);}
+body.db-page .cd-card .cd-title{color:var(--text);}
+body.db-page .cloud-dash{margin-top:34px;}
+/* ---- rail footer identity: circular profile icon, bottom-aligned ---- */
+body.db-page .db-user{min-height:38px;align-items:center;}
+body.db-page .db-user-name .ico{
+  width:16px;height:16px;padding:4px;box-sizing:content-box;border-radius:50%;
+  background:color-mix(in oklch,var(--gold) 12%,transparent);color:var(--gold);flex-shrink:0;
+}
+/* ---- backup panel: one tidy group ---- */
+body.db-page .db-backup{gap:8px;}
+body.db-page .db-backup-btns{gap:8px;}
+body.db-page .db-backup-auto{justify-content:space-between;}
+body.db-page .db-auto-lbl{font-size:.68rem;font-weight:700;color:var(--slate);flex-shrink:0;}
+/* ---- dark overrides ---- */
+body.dark-mode.db-page .cd-card:hover{border-color:var(--db-accent);background:var(--db-surface-raised);}
+body.dark-mode.db-page .db-user-name .ico{background:color-mix(in oklch,var(--db-accent) 13%,transparent);color:var(--db-accent);}
+body.dark-mode.db-page .db-auto-lbl{color:var(--db-text-secondary);}

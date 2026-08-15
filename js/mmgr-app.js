@@ -1774,18 +1774,42 @@ var MMGR = window.MMGR || {};
 
   // Background cloud auto-sync debounce (see the State.onChange wiring):
   // after CLOUD_AUTO_IDLE_MS of quiet, push the snapshot to the cloud for
-  // linked projects. Never throws; failures just wait for the next cycle.
+  // linked projects. Works for ANY cloud credential (owner OR editor — the
+  // Worker scopes an editor's merge server-side), so every edit in a linked
+  // project eventually reaches the cloud without a manual Save. Never throws;
+  // failures just wait for the next cycle.
   let _cloudAutoTimer = null;
   const CLOUD_AUTO_IDLE_MS = 25000;
-  function scheduleCloudAutoSave() {
+  function cloudLinked() {
     const C = window.MMGR.Cloud;
-    if (!C || !C.getCode || !C.getCode()) return; // not cloud-linked
+    if (!C) return false;
+    if (C.getCode && C.getCode()) return true;
+    if (C.getECode && C.getECode()) return true;
+    return false;
+  }
+  function scheduleCloudAutoSave() {
+    if (!cloudLinked()) return; // not cloud-linked
     if (_cloudAutoTimer) clearTimeout(_cloudAutoTimer);
     _cloudAutoTimer = setTimeout(function() {
       _cloudAutoTimer = null;
-      if (C.autoSaveToCloud) { try { C.autoSaveToCloud(); } catch (e) { /* never throws */ } }
+      const C = window.MMGR.Cloud;
+      if (C && C.autoSaveToCloud) { try { C.autoSaveToCloud(); } catch (e) { /* never throws */ } }
     }, CLOUD_AUTO_IDLE_MS);
   }
+
+  // OWNER 2026-08-15: flush a pending cloud save when the tab is hidden or
+  // closed so the final edits aren't lost — the auto-save uses keepalive so
+  // it survives pagehide; large states defer to the idle debounce (already
+  // fired in the common walk-away case).
+  function flushCloudAutoSave() {
+    if (!_cloudAutoTimer) return;
+    clearTimeout(_cloudAutoTimer);
+    _cloudAutoTimer = null;
+    if (!cloudLinked()) return;
+    const C = window.MMGR.Cloud;
+    if (C && C.autoSaveToCloud) { try { C.autoSaveToCloud({ keepalive: true }); } catch (e) { /* never throws */ } }
+  }
+  window.addEventListener('pagehide', flushCloudAutoSave);
 
   function bkToggle() {
     const pop = U.$('bk-pop');

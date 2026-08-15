@@ -170,6 +170,11 @@ var MMGR = window.MMGR || {};
       window.google.accounts.id.initialize({ client_id: clientId, callback: onConnectCredential });
       const btn = U.$('sync-gis-btn');
       if (btn) window.google.accounts.id.renderButton(btn, { theme: 'outline', size: 'medium', text: 'continue_with' });
+      // OWNER 2026-08-15: pop the Google prompt immediately (one motion —
+      // the rendered button is the fallback when the prompt API is blocked).
+      if (window.google.accounts.id && typeof window.google.accounts.id.prompt === 'function') {
+        try { window.google.accounts.id.prompt(); } catch (e) { /* button stays rendered */ }
+      }
       return true;
     } catch (e) {
       if (ns.Errors && ns.Errors.log) ns.Errors.log('gis: ' + (e && e.message), 'sync');

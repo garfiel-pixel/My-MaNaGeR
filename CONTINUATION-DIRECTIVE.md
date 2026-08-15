@@ -18,7 +18,7 @@ it. Ignoring a skill risks violating this project's hard gates. After any skill-
 change, run `npm run verify` (CSP + SW + `verify:skills` — it re-checks every locked
 hash against the on-disk folders).
 
-### The 16 locked skills (as of 2026-08-11)
+### The 17 locked skills (as of 2026-08-14)
 
 | Skill dir | Use for… |
 |---|---|
@@ -33,6 +33,7 @@ hash against the on-disk folders).
 | `.agents/skills/google-drive` | Anything touching Google Drive integration. |
 | `.agents/skills/skeptical-code-audit` | Auditing for broken wiring (CSS/JS/DOM drift, dead handlers, silent no-ops). Project-authored, registered as `local` in the lock. |
 | `.agents/skills/universal-ui-architect` | Any UI/UX work — design tokens, WCAG 2.2/APCA gates, Liquid Glass, polish. Hard gates block ship. Project-authored, registered as `local`. |
+| `.agents/skills/ui-modernization` | Modernizing existing UI — typography, cards, buttons, banners, admin panels, marketing pages; token-first, dark-mode parity, SVG icons only, minimal changes, zero feature removal. Complements `universal-ui-architect` (gates) with a concrete step-by-step process. Project-authored, registered as `local`. |
 | `.agents/skills/gemini-api-dev` | Gemini API work: `js/mmgr-ai.js` / `mmgr-ai-key.js`, model fallback ladder, `/api/ai/chat` relay, prompt/model selection. NEW 2026-08-11 (google-gemini/gemini-skills). |
 | `.agents/skills/pwa-development` | PWA work: `sw.js` caching strategy, `manifest.webmanifest`, offline-first behavior. NEW 2026-08-11 (alinaqi/maggy). |
 | `.agents/skills/oauth` | OAuth 2.0/2.1 authz-code/PKCE flow reference — Fastify-oriented; apply RFC/flow gotchas only (Worker's Google sign-in uses its own HMAC cookie flow). NEW 2026-08-11 (mcollina/skills). |
@@ -114,12 +115,29 @@ directive documents.
   check passes, don't stop to ask again.
 - Run local `wrangler dev` end-to-end tests plus the full `qa-*.cjs` battery before
   marking any item complete, same two-tier verification used for the cloud backend work.
-- Report pass/fail per check, not a single "green" summary.
-- Stop and report back only for: a security-relevant failure, a genuinely new test
+- Report pass/fail per check, not a single "green" summary.- Stop and report back only for: a security-relevant failure, a genuinely new test
   failure not already known/tracked, or a real decision point not already answered
   somewhere in this file or its source documents.
 
 ---
+
+
+## PHASE NOTE — UI FIX-FORWARD: PUSH TO GIT, NO FINAL COMMIT (owner, 2026-08-14)
+
+**We are in a multi-increment UI-fix phase on the projects area (launcher) and more
+areas to follow. Owner's rule (corrected 2026-08-14): "We're pushing, but we're not
+committing." — push every session's work to git so the remote stays updated and
+deploy to production freely; but NO final/approved commit of the phase until ALL
+features are fixed and the owner reviews — the eventual release commit happens when
+the owner clears the whole phase ("Then we push the gate and commit").** In practice:
+WIP commits (clean Conventional Commits, no Codebuff footer) + `git push` + wrangler
+deploy are all expected at the end of each session; the standing "final commit"
+covers the approved release commit that closes the phase. The owner reviews each area
+with visuals/directives and we adjust going along — the launcher work (I1 rail rebuild
++ v2/v3 polish) is increment 1; further directives with visuals will follow for the
+other areas. Each increment gets fully verified locally (harnesses + browser) before
+deploy, and the STATUS LOG below is updated every session.
+
 
 ## PART A — Open items from FULL-GAP-AUDIT.md
 
@@ -558,6 +576,34 @@ Format: date/session marker, what was completed (with file/line specifics), what
 in-progress and exactly where it stopped, what's next.
 
 ### Log entries (most recent at top)
+
+**2026-08-14 — Session: I1-LAUNCHER-V3-POLISH — launcher polish pass deployed (version `223d910d`); git push per the corrected phase rule.**
+Per the owner's review of the v2 deploy ("the UI looks sloppy; everything works fine — polish it 100x; then push to git AND deploy; we're pushing but we're not committing (final) until all features are fixed"): SHIPPED launcher v3. CHANGED (all committed + pushed + deployed this session):
+- **Hamburger never an X** — the toggle stays the hamburger in both states (owner: "should not be an AX icon"); .is-open rotates it 90deg, the rail slides with a springier cubic-bezier, and `body.side-open .db-hamb{z-index:130}` keeps the SAME button clickable above the drawer/scrim on mobile so it always closes what it opened (the rail-head close is now an i-arrow-left, not an X). The "can't close the sidebar" bug was the hamburger sitting UNDER the scrim on mobile (z-index 2 vs scrim 110) — fixed.
+- **Liquid glass behind the brand in EVERY palette** — light `.top` becomes a frosted glass panel (blur 14px + accent radial + hairline border + inner highlight + logo drop-shadow glow); dark `.top` gains an accent rim + logo glow + slow brand pulse; mobile keeps a 56px top row so the h1 never sits under the corner controls.
+- **Rail footer PINNED to the bottom** — `.db-foot` flex-shrink:0 + margin-top:auto (never scrolls with the nav); plan status sits directly ABOVE the identity: Premium badge (`#rail-plan`, i-check) when paid, Upgrade to Premium button when free (`loadPlan()` in js/mmgr-cloud-dash.js reworked to drive the rail ONLY).
+- **Dashboard shows only cloud projects** — `#cloud-dash-plan` strip REMOVED (plan moved to the rail footer); `#cloud-dash` moved BELOW the regular project grid (local-first: your projects first, cloud follows); the standalone Admin link removed from the main screen (admin lives in the rail).
+- **Circular signed-in avatar** at the hero top-right (`#db-user-avatar`): person icon + "Sign in" when signed out (click opens #siom); Google picture or initial + green dot + "Signed in" label when signed in (renderUserAvatar, fed by the same mmgr:user-changed / mmgr:google-signed-out events as the rail footer).
+- **De-boxified rail** — accordion panels borderless; links/project rows/backup buttons get an INSET hover ring (box-shadow inset 1px, zero layout shift) instead of persistent borders; Backup/Restore buttons redesigned: accent icon tile + borderless pill + hover ring; passphrase input + auto-backup select tidied.
+- **#siom sign-in modal text** raised to full-contrast tokens (si-hint --text 600, inputs/placeholders stronger, solid card in light + dark).
+- **Ambient motion** — card entrance stagger (dbCardIn, backwards fill so hover still lifts), brand pulse; all killed under prefers-reduced-motion; reduced-transparency + @supports fallbacks for the light glass.
+VERIFICATION: node --check clean; `npm run verify` GREEN (CSP 11/11 — app.html inline-script #2 re-hashed to `xR/SxXucuvD48PzfvPzT+CMbwgRX2lBlFNNA88d5/GY=` in worker.js + serve.cjs; SW mmgr-shell-v98→v100; skills 17/17); qa-dashboard-spec 73/73; qa-drive-smoke A+B PASS (watchdog exit by design); qa-full 171/171; qa-rhythm RHYTHM_GATE PASS; emoji scan clean; BROWSER harness 36/36 (desktop: rail open default, hamburger i-menu both states + close/reopen, liquid-glass backdrop-filter on .top, grid-before-cloud order, no Admin foot link, no plan strip, footer pinned, all 4 accordions open, borderless backup buttons with icon tiles, rail Sign in + avatar both open #siom, signed-in simulation flips avatar to initial+dot+"Signed in" + rail shows name/Sign out, moon/sun flips dark; mobile 375px: drawer opens/closes via the hamburger above the scrim, no horizontal overflow with accordion open, avatar label hidden; zero console errors). DEPLOYED via the wrangler.jsonc staging recipe (6 assets; version `223d910d-9485-46bb-ac7e-5d601b1c3efb`, worker 107.60 KiB, startup 4 ms, cron preserved) + POST-DEPLOY curl: /app serves #db-user-avatar + #db-avatar-box + #rail-plan + #db-nav-btn + 8 data-rail-toggle, NO cloud-dash-plan, sw.js = mmgr-shell-v100. Review screenshots: tools/newui-launcher-{light,dark,cyan}.png. GIT: per the corrected phase rule, this session's work was COMMITTED (clean Conventional Commits, no Codebuff footer) and PUSHED — remote now in sync; no final release commit until the owner clears the whole phase. NEXT: owner views the live site + screenshots; any adjustments get fixed + redeployed; then the next area directive with visuals.
+
+**2026-08-14 — Session: I1-LAUNCHER-V2-DEPLOYED — increment 1 is LIVE for owner review; git push still on hold.**
+Per the owner ("deploy it with Wrangler and I will view the website"): deployed via the wrangler.jsonc tar staging recipe (`/tmp/mmgr-deploy`, excludes `.git/.wrangler/node_modules/.agents/_archive`; 244 files read, 7 new/modified assets uploaded — app.html, css/mmgr.css, js/mmgr-cloud-dash.js, worker.js, sw.js + the 2 doc files; worker 107.58 KiB / 24.56 KiB gzip, startup 5 ms, cron `0 6 * * *` preserved; **version `f9a9b658-f83e-4aa8-810e-f71ca2d76864`**). POST-DEPLOY CURL vs https://my-manager.garfieldprocis.workers.dev: /app serves the rail-v2 markup — `id="db-nav-btn"` (hamburger), 8× `data-rail-toggle` (All Projects / Cloud Projects / Backup & Restore / Customize accordions), `id="rail-cloud-list"`, `id="rail-backup"` + `id="btn-drive-backup"`, `id="rail-customize"`, `id="rail-upgrade"` (Upgrade to Premium), `id="rail-user"` (signed-in-by footer), `id="siom"` (centered sign-in modal, both Google + email), `id="db-sidebar"` rail; sw.js = mmgr-shell-v98; CSP header intact (default-src 'self'; script-src 'self' 'wasm-unsafe-eval' …). NOT pushed to git (phase rule — waits for owner approval of all increments). NEXT: owner views the live site; any adjustments get fixed and redeployed; then the next area directive with visuals. If the owner approves, the phase's fix-forward continues and git push happens only when the owner clears the whole phase.
+
+**2026-08-14 — Session: I1-LAUNCHER-V2 — projects-area rail rebuilt per MMGR-NEW-UI-CREATION-BRIEF (increment 1 of the UI fix-forward phase; git push on hold until all increments approved).**
+Per the owner's directive (fix the hamburger open/close; All Projects must HOLD the projects — not live on the screen — and pop out on click; move all sign-in into the hamburger with both Google + email options in a centered modal; add Backup/Auto-backup/restore, Cloud Projects, and Customize sections in the rail; signed-in-by at the rail bottom with Upgrade-to-premium above it; moon/sun quick toggle top-right plus in Customize; no git push until all phase increments are fixed): rebuilt the app.html launcher rail and chrome. CHANGED (all UNCOMMITTED):
+- **app.html** — rail v2: brand block + hamburger (visible on all viewports, morphs between menu/X, aria-synced at boot), "All Projects" accordion (collapsed by default — projects live INSIDE it; click pops the project list out; on mobile the accordion opens as the in-view rail drawer with project cards + the project page opens on top); "Cloud Projects" section (populated from the cloud API list via the new `renderRailCloudProjects` — click opens the project naturally); "Backup & Restore" section holding the Drive backup/restore/auto-backup controls (moved in from the old gear-hidden settings block, keeping the same element ids the drive harness checks); "Customize" section (theme edit: dark/light preset + moon/sun quick toggle lives top-right in the hero AND inside Customize); rail footer — "Upgrade to premium" action button (renders the existing upgrade flow) above the signed-in-by identity line ("Signed in as …"); old `#auth-bar`/`#google-signin-button` strip REMOVED; centered sign-in modal added (Google button + email form, both options in one popup in the screen center, Escape/× close).
+- **js/mmgr-cloud-dash.js** — `renderRailCloudProjects()` (cloud list → rail) + `renderRailUpgrade()` (footer upgrade button → same plan/upgrade flow); both wired from the launcher boot.
+- **css/mmgr.css** — rail v2 chrome (accordion, cloud list, backup section, customize, footer/upgrade/sign-in line), hero corner moon/sun toggle, centered `.signin-modal` (light + dark tokens, focus/contrast, reduced-motion), mobile rail drawer slide; desktop wrap margins now gated on `body.side-open`; `#grid::before` glow bleed constrained on small screens (was a real mobile horizontal-overflow defect).
+- **qa-drive-smoke.cjs** — check A updated for the relocated drive controls (still `#btn-drive-backup` etc., now inside the rail Backup & Restore section).
+- **worker.js + serve.cjs** — app.html inline-script CSP SHA-256 hashes regenerated (hash tool output: `gCwlAVKUNamFRjZeFSwcBd1zxQs` and `wjha4rFXA6t`… replaced by the new `1Fq0…`/`pZZG…` pairs — exact values in the files).
+- **sw.js** — bump `mmgr-shell-v96 → v98` (two bumps this session: v97 after the rail rebuild + hash regen, v98 after the CSS glow fix; app.html/css/mmgr.css/js/mmgr-cloud-dash.js are all shell assets).
+VERIFICATION: node --check clean; `npm run verify` GREEN (CSP 11/11, SW mmgr-shell-v98, skills 17/17); qa-dashboard-spec PASS; qa-drive-smoke A+B PASS (watchdog exit by design); qa-full 171/171; qa-rhythm PASS; emoji scan clean on app.html + js/mmgr-cloud-dash.js; BROWSER via serve.cjs:8765 — desktop harness 26/26 (rail accordion open/close, hamburger morph + aria, cloud list renders, upgrade + sign-in modal open/close, moon/sun toggle flips `data-theme`, zero console errors) + mobile 375px harness 10/10 (rail drawer slides, accordion scrolls inside viewport, no horizontal overflow). NEXT: owner review of increment 1 (screenshots available); then further area directives with visuals — nothing pushed to git until the phase completes.
+
+**2026-08-14 — Session: ALL-SKILLS-EQUIPPED — all 17 locked skills verified on disk + locked + loadable; AGENTS.md + this section updated to document the full set.**
+Per the owner ("equip all skill in the code base in agents"): audited the skill set end-to-end — `.agents/skills/` holds 17 skill dirs, `skills-lock.json` locks all 17 (verify:skills = ALL LOCKED SKILL HASHES MATCH, every entry OK), and all 17 are loadable by name in-session (accessibility-rules, cloudflare, cloudflare-api, d1-migration, gemini-api-dev, google-drive, landing-page-generator, oauth, pwa-development, qa-expert, security-audit, skeptical-code-audit, ui-modernization, universal-ui-architect, web-perf, workers-best-practices, wrangler). THE GAP: the AGENTS.md skill map + rule-4 local-skill exception list and this file's LOCKED SKILL SET quick-reference still said 16 and omitted `ui-modernization` (project-authored, sourceType local, added to the lock after the 2026-08-11 snapshot). FIXED: AGENTS.md skill map gains the ui-modernization row (after universal-ui-architect — token-first, dark-mode parity, SVG icons only, minimal changes, zero feature removal; complements the architect gates) and rule 4's exception list now names it alongside skeptical-code-audit + universal-ui-architect; this file's LOCKED SKILL SET header → "The 17 locked skills (as of 2026-08-14)" with the ui-modernization row added (registered as `local`). No skill folder content touched (hashes untouched by construction); no served asset touched — docs-only change, no SW bump, no deploy needed. VERIFICATION: `node tools/verify-skills-lock.cjs` 17/17 OK; `npm run verify` GREEN (CSP 11/11, SW mmgr-shell-v96, 17/17 skill hashes). NEXT per the sweep: whatever the owner directs — the UI-REVERT-OR-REBUILD decision (URGENT, last log) is still open and must precede any further UI deploy.
 
 **2026-08-14 — Session: NO-CODEBUFF-ATTRIBUTION — standing rule added; commits in this repo never carry the Codebuff co-author footer again.**
 Per the owner ("were you programmed to put co authored by codebuff? … ensure it states never upload with co authored by codebuff"): confirmed the footer is the agent's default commit template; the MANDATORY INSTRUCTION standing rules now forbid it — plain Conventional Commits only, no "Generated with Codebuff" / "Co-Authored-By: Codebuff" trailer, existing commits left unrewritten (no history rewrite). Committed + pushed WITHOUT the footer.

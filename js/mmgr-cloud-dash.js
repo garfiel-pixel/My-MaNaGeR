@@ -19,6 +19,13 @@
   const DASH = 'cloud-dash';
   const LIST = 'cloud-dash-list';
   const STATUS = 'cloud-dash-status';
+  // NEW-UI-CREATION-BRIEF I1 follow-up (2026-08-14): the launcher rail also
+  // carries a compact Cloud Projects accordion + an Upgrade to Premium button
+  // in the rail footer — both fed by the SAME fetches as the main dashboard
+  // (one network round-trip, two surfaces).
+  const RAIL_CLOUD = 'rail-cloud-list';
+  const RAIL_UPGRADE = 'rail-upgrade';
+  const RAIL_PLAN = 'rail-plan';
 
   function $(id) { return document.getElementById(id); }
   function escapeHtml(s) {
@@ -38,7 +45,27 @@
     if (el) { el.textContent = msg || ''; el.style.color = isErr ? 'var(--danger)' : ''; }
   }
 
-  const PLAN = 'cloud-dash-plan';
+  // Rail Cloud Projects accordion content. Compact rows; clicking one loads
+  // the project through the SAME data-cd-load path as the dashboard cards.
+  function renderRailCloud(projects) {
+    const list = $(RAIL_CLOUD);
+    if (!list) return;
+    if (!projects || !projects.length) {
+      list.innerHTML = '<div class="db-sub-empty">No cloud projects yet — link one from any project\'s Cloud section.</div>';
+      return;
+    }
+    list.innerHTML = projects.map(function(p) {
+      const title = p.label || p.projectId || 'Unnamed project';
+      return '<button type="button" class="db-project" data-cd-load="' + escapeHtml(p.projectId) + '" title="Open ' + escapeHtml(title) + ' from the cloud">' +
+        '<span class="db-project-ico"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cloud"></use></svg></span>' +
+        '<span class="db-project-name">' + escapeHtml(title) + '</span>' +
+        '</button>';
+    }).join('');
+  }
+  function setRailCloudEmpty(msg) {
+    const list = $(RAIL_CLOUD);
+    if (list) list.innerHTML = '<div class="db-sub-empty">' + escapeHtml(msg || 'No cloud projects.') + '</div>';
+  }
 
   // ---- fetch the session-gated project list ----
   async function loadList() {
@@ -51,16 +78,18 @@
     } catch (e) {
       // Static host / offline — no Worker API. Leave the section hidden.
       dash.hidden = true;
+      setRailCloudEmpty('Cloud sync is unavailable on this host.');
       return;
     }
-    if (!res.ok) { dash.hidden = true; return; }
+    if (!res.ok) { dash.hidden = true; setRailCloudEmpty('Sign in to see your cloud projects.'); return; }
     let data = null;
-    try { data = await res.json(); } catch (e) { dash.hidden = true; return; }
+    try { data = await res.json(); } catch (e) { dash.hidden = true; setRailCloudEmpty('Could not load cloud projects.'); return; }
     const projects = (data && data.ok && Array.isArray(data.projects)) ? data.projects : null;
-    if (!projects) { dash.hidden = true; return; }
+    if (!projects) { dash.hidden = true; setRailCloudEmpty('Could not load cloud projects.'); return; }
     dash.hidden = false;
     setStatus('');
     loadPlan();
+    renderRailCloud(projects);
     if (!projects.length) {
       list.innerHTML = '<div class="cd-empty">No cloud-linked projects under this account yet — link one from any project\'s Cloud section (Create Cloud Project).</div>';
       return;
@@ -78,39 +107,49 @@
     }).join('');
   }
 
-  // ---- BILLING-UPGRADE-UI (app.html plan strip, 2026-08-12) ----
-  // Free-plan status + Upgrade button, fed by the session-gated
-  // /api/billing/status (same origin + cookie as the project list above).
-  // Dormant-when-unconfigured: with no LEMONSQUEEZY_* secrets the worker
-  // answers configured:false and this strip stays hidden — byte-for-byte
+  // ---- BILLING-UPGRADE-UI (app.html RAIL FOOTER, 2026-08-12/14) ----
+  // Plan status lives in the rail footer where it is always visible (owner
+  // polish 2026-08-14: the main dashboard shows ONLY cloud projects — the
+  // plan/upgrade strip was removed from there). Paid plan -> a "Premium"
+  // badge; free plan -> an "Upgrade to Premium" button. Both fed by the
+  // session-gated /api/billing/status (same origin + cookie as the project
+  // list above). Dormant-when-unconfigured: with no LEMONSQUEEZY_* secrets
+  // the worker answers configured:false and both stay hidden — byte-for-byte
   // unchanged on the current deploy. The button opens the checkout via
   // POST /api/billing/checkout (session-gated) and reports outcomes in the
   // existing live-region status line.
   async function loadPlan() {
-    const plan = $(PLAN);
-    if (!plan) return;
+    const plan = $(RAIL_PLAN);
+    const railUp = $(RAIL_UPGRADE);
+    if (!plan && !railUp) return;
     let res;
     try {
       res = await fetch('/api/billing/status', { method: 'GET', credentials: 'same-origin' });
-    } catch (e) { plan.hidden = true; return; }
-    if (!res.ok) { plan.hidden = true; return; }
+    } catch (e) { if (plan) plan.hidden = true; if (railUp) railUp.hidden = true; return; }
+    if (!res.ok) { if (plan) plan.hidden = true; if (railUp) railUp.hidden = true; return; }
     let data = null;
-    try { data = await res.json(); } catch (e) { plan.hidden = true; return; }
-    if (!data || !data.ok || !data.configured) { plan.hidden = true; return; }
+    try { data = await res.json(); } catch (e) { if (plan) plan.hidden = true; if (railUp) railUp.hidden = true; return; }
+    if (!data || !data.ok || !data.configured) { if (plan) plan.hidden = true; if (railUp) railUp.hidden = true; return; }
     const count = data.projectCount || 0;
     const cap = data.projectCap;
     const atLimit = cap !== null && cap !== undefined && count >= cap;
-    let strip;
     if (data.active) {
-      strip = '<span class="cd-plan-txt"><strong>' + escapeHtml(data.plan || 'Pro') + ' plan</strong> — unlimited linked projects</span>';
+      // Paid plan -> Premium badge (visible whenever billing is on).
+      if (plan) {
+        plan.innerHTML = '<span class="db-plan-badge"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-check"></use></svg> Premium</span>';
+        plan.hidden = false;
+      }
+      if (railUp) railUp.hidden = true;
     } else {
-      strip = '<span class="cd-plan-txt"><strong>Free plan</strong> — ' + count + ' of ' + cap + ' linked projects' +
-        (atLimit ? ' — limit reached' : '') + '</span>' +
-        '<button type="button" class="btn btn-g btn-s" data-cd-upgrade="1"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-zap"></use></svg> Upgrade plan</button>';
+      // Free plan -> a simple Upgrade to Premium button (owner: "something
+      // simple like upgrade to premium"), with a small note at the cap.
+      if (plan) plan.hidden = true;
+      if (railUp) {
+        railUp.hidden = false;
+        railUp.innerHTML = '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-zap"></use></svg> Upgrade to Premium' +
+          (atLimit ? '<span class="db-upgrade-note">' + count + ' of ' + cap + ' used</span>' : '');
+      }
     }
-    plan.classList.toggle('at-limit', !data.active && atLimit);
-    plan.innerHTML = strip;
-    plan.hidden = false;
   }
 
   // ---- open the LemonSqueezy checkout (same contract as the drawer's
@@ -199,6 +238,8 @@
   document.addEventListener('mmgr:google-signed-out', function() {
     const dash = $(DASH);
     if (dash) dash.hidden = true;
+    const rl = $(RAIL_CLOUD);
+    if (rl) rl.innerHTML = '<div class="db-sub-empty">Sign in to see your cloud projects.</div>';
   });
 
   // Boot: render once the session state is known. restoreSession() in

@@ -56,21 +56,24 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
   const results = [];
   const check = (name, val, detail) => { results.push({ name, val, detail }); log((val ? 'PASS' : 'FAIL') + ' ' + name + (val ? '' : '  <-- ' + JSON.stringify(detail))); };
 
-  // ---- A: buttons + status element present in the auth bar ----------------
+  // ---- A: buttons + status element present in the rail Backup & Restore
+  //      section (NEW-UI-CREATION-BRIEF I1 follow-up 2026-08-14: the Drive
+  //      controls moved from the old auth bar into the #db-sidebar rail;
+  //      the ids are unchanged so mmgr-google-auth.js wiring still binds) ---
   const a = await ev(`(function(){
-    var bar = document.querySelector('.auth-bar');
+    var rail = document.querySelector('#db-sidebar');
     var b = document.getElementById('btn-drive-backup');
     var r = document.getElementById('btn-drive-restore');
     var s = document.getElementById('drive-sync-status');
     return {
-      inBar: !!bar && !!b && !!r && bar.contains(b) && bar.contains(r),
+      inRail: !!rail && !!b && !!r && rail.contains(b) && rail.contains(r),
       backupText: b ? b.textContent.trim() : '',
       restoreText: r ? r.textContent.trim() : '',
       statusPresent: !!s,
       wired: b && r && (typeof b.onclick === 'function' || b.dataset.mmgrWired === '1')
     };
   })()`);
-  check('A buttons + status in auth bar', a.inBar && a.backupText.indexOf('Backup to Drive') > -1 && a.restoreText.indexOf('Restore from Drive') > -1 && a.statusPresent, a);
+  check('A buttons + status in the rail Backup section', a.inRail && a.backupText.indexOf('Backup') > -1 && a.restoreText.indexOf('Restore') > -1 && a.statusPresent, a);
 
   // ---- B: module API surface exposed --------------------------------------
   const b = await ev(`(function(){

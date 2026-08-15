@@ -23,6 +23,10 @@ svg.ico use{fill:inherit;stroke:inherit;}
   --tile-bg:#f8fafc;    /* dashboard stat tiles (EVM etc.) */
   --track-bg:#eef1f6;   /* progress-bar track wells */
   --radius:8px;
+  /* MMGR-NEW-UI-CREATION-BRIEF §4.1 — Law of Nested Radii: outer = inner + padding */
+  --radius-control:8px;   /* inner controls: buttons, inputs, rail links */
+  --pad-card:16px;        /* card padding */
+  --radius-card:24px;     /* outer card radius = control + pad (8 + 16) */
   --tr:120ms cubic-bezier(0.25,1,0.5,1);
   --ease-ios:cubic-bezier(0.25,1,0.5,1);
   --spring:cubic-bezier(0.25,1,0.5,1);
@@ -281,7 +285,35 @@ body.sidebar-on .nav-btn{display:inline-flex;}
 #app-sidebar .nav-group + .nav-group{padding-left:12px;margin-left:0;}
 #app-sidebar .nav-group + .nav-group::before{display:none;}
 #app-sidebar .nav-group-label{display:block;margin:0 4px 6px;}
-#app-sidebar .sec-btn{width:100%;justify-content:flex-start;padding:8px 12px;border-radius:var(--radius);margin-bottom:4px;}
+#app-sidebar .sec-btn{width:100%;justify-content:flex-start;padding:8px 12px;border-radius:var(--radius-control);margin-bottom:4px;}
+/* MMGR-NEW-UI-CREATION-BRIEF I1: rail-link component (shared shell chrome).
+   Used by admin.html's rail (and app.html's light rail) so every surface
+   shares the same left-rail visual language: flat, calm, accent only on
+   hover/active (semantic color — brief §4.3). Nested radii: links use
+   --radius-control inside the rail surface. */
+.rail-group{display:block;margin:0 0 14px;padding:0 12px;}
+.rail-label{display:block;font-size:.58rem;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--slate);margin:0 4px 6px;}
+.rail-link{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:var(--radius-control);
+  color:var(--slate);font-weight:600;font-size:.84rem;width:100%;justify-content:flex-start;
+  background:none;border:none;cursor:pointer;font-family:inherit;text-align:left;text-decoration:none;
+  transition:background var(--tr),color var(--tr);}
+.rail-link .ico{width:18px;height:18px;flex-shrink:0;color:currentColor;}
+.rail-link:hover{color:var(--text);background:color-mix(in oklch,var(--gold) 8%,transparent);}
+.rail-link:focus-visible{outline:2px solid var(--gold);outline-offset:2px;border-radius:var(--radius-control);}
+.rail-link.active{color:var(--on-gold);background:var(--gold);}
+.rail-link + .rail-link{margin-top:2px;}
+/* MMGR-NEW-UI-CREATION-BRIEF §2.1: desktop PINNED rail when the sidebar
+   preference is on (localStorage mmgr_sidebar='on' → body.sidebar-on). The
+   rail becomes the primary nav (horizontal pills hidden on desktop so there
+   is never a second competing primary nav — brief §6.3), content shifts
+   right. Pref off keeps the existing overlay drawer (BUG-9). Mobile drawer
+   behavior is untouched by construction. */
+@media(min-width:769px){
+  body.sidebar-on #app-sidebar{transform:none;visibility:visible;box-shadow:none;border-right:1px solid var(--border);}
+  body.sidebar-on #app-main{margin-left:248px;}
+  body.sidebar-on .sec-nav{display:none!important;}
+  body.sidebar-on #nav-scrim{display:none;}
+}
 
 /* ---- Section Navigation ---- */
 #app-main{padding:18px 24px;max-width:1600px;margin:0 auto;}
@@ -2168,6 +2200,64 @@ body.db-page.dark-mode #grid::before{display:none;}
 }
 @media (prefers-reduced-motion:reduce){
   body.dark-mode.db-page .db-side{transition:none!important;}
+}
+/* ============================================================
+   MMGR-NEW-UI-CREATION-BRIEF I1 — app.html LIGHT-mode rail.
+   The dark dashboard rail (--db-*) stays exactly as-is above; this
+   block gives the LIGHT launcher the same shared-shell treatment
+   (pinned 240px rail on desktop, off-canvas drawer + scrim on
+   mobile) using the standard tokens — so the shell is one product
+   in both themes. Same markup (#db-sidebar / #db-nav-btn /
+   #db-scrim / body.side-open) is already in app.html; light mode
+   was display:none before this block. No pure #000 text: light
+   rail uses --card/--border/--slate/--gold tokens only.
+   ============================================================ */
+body.db-page:not(.dark-mode) .db-side{
+  position:fixed;top:0;left:0;bottom:0;width:240px;z-index:120;
+  display:flex;flex-direction:column;gap:4px;padding:18px 14px;
+  background:var(--card);border-right:1px solid var(--border);
+  box-shadow:0 1px 2px rgba(16,24,40,.04),0 6px 18px rgba(16,24,40,.06);
+}
+body.db-page:not(.dark-mode) .db-side-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:2px 4px 12px;border-bottom:1px solid var(--border);margin-bottom:6px;}
+body.db-page:not(.dark-mode) .db-brand{display:inline-flex;align-items:center;gap:8px;font-size:.8rem;font-weight:800;color:var(--text);}
+body.db-page:not(.dark-mode) .db-brand .ico{color:var(--gold);}
+body.db-page:not(.dark-mode) .db-side-close{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border:none;background:transparent;color:var(--slate);border-radius:var(--radius-control);cursor:pointer;}
+body.db-page:not(.dark-mode) .db-side-close:hover{color:var(--gold);background:color-mix(in oklch,var(--gold) 8%,transparent);}
+body.db-page:not(.dark-mode) .db-g{font-size:.6rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--slate);margin:14px 10px 4px;}
+body.db-page:not(.dark-mode) .db-link{
+  display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:var(--radius-control);
+  color:var(--slate);font-size:.8rem;font-weight:600;text-decoration:none;
+}
+body.db-page:not(.dark-mode) .db-link:hover{color:var(--gold);background:color-mix(in oklch,var(--gold) 8%,transparent);}
+body.db-page:not(.dark-mode) .db-link .ico{width:16px;height:16px;flex-shrink:0;}
+body.db-page:not(.dark-mode) .db-link:focus-visible{outline:2px solid var(--gold);outline-offset:2px;border-radius:var(--radius-control);}
+/* Desktop: content shifts right of the fixed light rail. */
+@media(min-width:769px){
+  body.db-page:not(.dark-mode) .wrap{margin-left:264px;margin-right:auto;}
+}
+/* Mobile (≤768px): rail becomes off-canvas drawer + hamburger + scrim. */
+@media(max-width:768px){
+  body.db-page:not(.dark-mode) .db-hamb{
+    display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;
+    border:1px solid var(--border);background:var(--card);color:var(--gold);
+    border-radius:var(--radius-control);cursor:pointer;flex-shrink:0;
+  }
+  body.db-page:not(.dark-mode) .db-hamb:focus-visible{outline:2px solid var(--gold);outline-offset:2px;}
+  body.db-page:not(.dark-mode) .db-hamb .ico{width:18px;height:18px;}
+  body.db-page:not(.dark-mode) .top{position:relative;padding-top:56px;}
+  body.db-page:not(.dark-mode) .db-hamb{position:absolute;top:12px;left:12px;}
+  body.db-page:not(.dark-mode) .db-side{
+    transform:translateX(-100%);
+    transition:transform .24s var(--ease-ios);
+  }
+  body.db-page:not(.dark-mode).side-open .db-side{transform:translateX(0);}
+  body.db-page:not(.dark-mode) .db-scrim{
+    display:none;position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:110;
+  }
+  body.db-page:not(.dark-mode).side-open .db-scrim{display:block;}
+}
+@media (prefers-reduced-motion:reduce){
+  body.db-page:not(.dark-mode) .db-side{transition:none!important;}
 }
 
 /* ============================================================

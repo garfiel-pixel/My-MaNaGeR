@@ -1,30 +1,27 @@
-  mmgr-deploy && cd /tmp/mmgr-deploy && npx wrangler deploy 2>&1 | tail -4 (5m timeout)
-  To https://github.com/garfiel-pixel/My-MaNaGeR.git
-     fcb166b..bb5ed53  main -> main
-  Deployed my-manager triggers (1.22 sec)
-    https://my-manager.garfieldprocis.workers.dev
-    schedule: 0 6 * * *
-  Show 1 more line
-  $ sleep 4; for i in 1 2; do echo "attempt $i:"; echo "  project autoSaveToCloud: $(curl -s "https://my-manager.
-  garfieldprocis.workers.dev/project?cb=$i" | grep -c 'autoSaveToCloud')"; echo "  mmgr-cloud.js autoSaveToCloud: $(
-  curl -s "https://my-manager.garfieldprocis.workers.dev/js/mmgr-cloud.js?cb=$i" | grep -c 'autoSaveToCloud')"; echo
-  "  mmgr-render.js ci-cloud: $(curl -s "https://my-manager.garfieldprocis.workers.dev/js/mmgr-render.js?cb=$i" |
-  grep -c 'ci-cloud')"; echo "  sw: $(curl -s "https://my-manager.garfieldprocis.workers.dev/sw.js" | grep -o "const
-  CACHE = 'mmgr-shell-v[0-9]*'")"; sleep 3; done (2m timeout)
-  attempt 1:
-    project autoSaveToCloud: 0
-    mmgr-cloud.js autoSaveToCloud: 2
-    mmgr-render.js ci-cloud: 2
-    sw: const CACHE = 'mmgr-shell-v109'
-  Show 5 more lines
-                                                                                                              ⎘ • △▽   ▄
- ╭────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
- │ Optimize your production datasets with Eon's multi-region storage and cost optimization.                        Ad │
- │                                                                                                                    │
- │  Learn More  eon.io                                                                                                │
- ╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
-╭─────────────────────────────────────Session ended  ·  2 of 7 sessions used today─────────────────────────────────────╮
-│                                                                                               ╭────────────────────╮ │
-│ Press Enter to continue in a new session                                                      │ Change model   Esc │ │
-│                                                                                               ╰────────────────────╯ │
-╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+  const CHROME = 'C:/Program Files/Google/Chrome/Application/chrome.exe';
+  const PORT = 9361;
+  const userDir = 'C:/tmp/chrome-m3-' + Date.now();
+  const delay = ms => new Promise(r => setTimeout(r, ms));
+  const proc = spawn(CHROME, ['--headless=new','--disable-gpu','--no-first-run','--no-sandbox','--remote-allow-origins=*','--remote-debugging-
+  port='+PORT,'--user-data-dir='+userDir,'--window-size=1280,1000','about:blank'], { stdio:'ignore' });
+  (async () => {
+    for (let i = 0; i < 60; i++) { try { const r = await fetch('http://127.0.0.1:'+PORT+'/json/version'); if (r.ok) break; } catch (e) {} await delay(
+  300); }
+    const targets = await (await fetch('http://127.0.0.1:'+PORT+'/json')).json();
+    const ws = new WebSocket(targets.find(t => t.type === 'page').webSocketDebuggerUrl);
+    const pending = new Map(); let id = 0;
+    ws.onmessage = e => { const m = JSON.parse(e.data); if (m.id && pending.has(m.id)) { pending.get(m.id)(m); pending.delete(m.id); } };
+    await new Promise((res, rej) => { ws.onopen = res; ws.onerror = () => rej(new Error('ws fail')); });
+    const send = (method, params={}) => new Promise(res => { const mid=++id; pending.set(mid,res); ws.send(JSON.stringify({id:mid,method,params})); });    const ev = async expr => { const r = await send('Runtime.evaluate', { expression: expr, returnByValue:true, awaitPromise:true }); return r.result &&  r.result.result ? r.result.result.value : JSON.stringify(r); };    await send('Runtime.enable'); await send('Page.enable');    await send('Page.navigate', { url: 'http://127.0.0.1:8765/project.html?id=qa-ctrl' });    await delay(5000);    const m = await ev('(function(){ return { title: document.title, ready: document.readyState, hasCtrl: !!document.getElementById(\"db-ctrl\"), hasDrw:   !!document.getElementById(\"drw\"), bodyLen: document.body.children.length }; })()');    console.log(JSON.stringify(m, null, 2));    try { proc.kill(); } catch(e) {}    process.exit(0);  })().catch(e => { console.log('ERR', e && e.stack || e); try { proc.kill(); } catch(x){} process.exit(1); });  " 2>&1 | head -20 (2m timeout)  I've made quite a few responses in a row. Let me pause here to make sure we're still on the right track. Please let me know if you'd like me to
+  continue or if you'd like to guide me in a different direction.
+                                                                                                                                        ⎘ • 44m 27s • △▽   ▄
+ ╭────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+ │ Ensure data continuity and recovery with Eon's threat detection and granular recovery at the table level.                                           Ad │
+ │                                                                                                                                                        │
+ │  Learn More  eon.io                                                                                                                                    │
+ ╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭───────────────────────────────────────────────────────Session ended  ·  3 of 7 sessions used today───────────────────────────────────────────────────────╮
+│                                                                                                                                   ╭────────────────────╮ │
+│ Press Enter to continue in a new session                                                                                          │ Change model   Esc │ │
+│                                                                                                                                   ╰────────────────────╯ │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯

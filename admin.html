@@ -192,11 +192,6 @@ pre.snippet{background:#f8fafc;border:1px solid var(--border);border-radius:6px;
       <h1><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-shield"></use></svg> <span class="mark">Admin</span> Panel</h1>
     </div>
     <div class="hdr-actions">
-      <div class="auth-bar">
-        <div id="google-signin-button"></div>
-        <div id="google-user-chip" hidden></div>
-      </div>
-      <label class="tgl" title="Light / dark theme"><input type="checkbox" aria-label="Toggle dark theme" data-action="tglTheme"><span class="tsl"></span></label>
       <a class="btn btn-n btn-s" href="app.html" target="_blank"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg> Dashboard</a>
       <button class="btn btn-n btn-s" data-action="changePassword"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-lock"></use></svg> Password</button>
       <button class="btn btn-d btn-s" data-action="lockAdmin"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> Lock</button>
@@ -206,6 +201,8 @@ pre.snippet{background:#f8fafc;border:1px solid var(--border);border-radius:6px;
   <main>
     <div class="toolbar">
       <button class="btn btn-g" data-action="openProjectModal"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-plus"></use></svg> New Project</button>
+      <button class="btn btn-n" data-action="importProject"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-upload"></use></svg> Import Project</button>
+      <input type="file" id="import-project-file" accept=".json,.js,application/json,application/javascript,text/plain" style="display:none" aria-hidden="true">
       <button class="btn btn-n" data-action="downloadPublicData"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Download Public Data</button>
       <button class="btn btn-n" data-action="downloadAdminBackup"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Export Backup (CSV)</button>
     </div>
@@ -260,6 +257,7 @@ pre.snippet{background:#f8fafc;border:1px solid var(--border);border-radius:6px;
     </div>
     <div class="rail-group"><span class="rail-label">Projects</span>
       <button type="button" class="rail-link" data-action="openProjectModal"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-plus"></use></svg> New Project</button>
+      <button type="button" class="rail-link" data-action="importProject"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-upload"></use></svg> Import Project</button>
       <a class="rail-link" href="#project-list"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-folder"></use></svg> Project List</a>
       <a class="rail-link" href="#cloud-admin-section"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cloud"></use></svg> Cloud Admin</a>
     </div>
@@ -269,6 +267,21 @@ pre.snippet{background:#f8fafc;border:1px solid var(--border);border-radius:6px;
     </div>
     <div class="rail-group"><span class="rail-label">Go</span>
       <a class="rail-link" href="app.html"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg> Projects / Dashboard</a>
+    </div>
+    <!-- OWNER 2026-08-15: Google sign-in + theme moved out of the header
+         into the rail (declutter pass). The .auth-bar wrapper keeps the
+         qa-oauth mount contract; mmgr-google-auth.js renders the GIS button
+         and the signed-in chip into these ids wherever they live. -->
+    <div class="rail-group"><span class="rail-label">Account</span>
+      <div class="auth-bar" style="justify-content:flex-start;padding:2px 4px 4px;flex-wrap:wrap">
+        <div id="google-signin-button"></div>
+        <div id="google-user-chip" hidden></div>
+      </div>
+    </div>
+    <div class="rail-group"><span class="rail-label">Customize</span>
+      <span class="rail-ctl-row"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-moon"></use></svg> Dark theme <label class="tgl"><input type="checkbox" data-action="tglTheme" aria-label="Toggle dark theme"><span class="tsl"></span></label></span>
+      <span class="rail-ctl-row"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-palette"></use></svg> Color theme <span class="pal-switch" role="group" aria-label="Color theme"><button type="button" class="pal-btn" data-pal="default" aria-pressed="true">Default</button><button type="button" class="pal-btn" data-pal="cyan" aria-pressed="false">Cyan</button></span></span>
+      <span class="rail-ctl-row"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-orb"></use></svg> Premium glass <label class="tgl"><input type="checkbox" data-action="tglGlassMode" aria-label="Toggle premium liquid-glass backdrop"><span class="tsl"></span></label></span>
     </div>
   </aside>
   <div id="nav-scrim" data-action="tglNav" aria-hidden="true"></div>
@@ -789,7 +802,7 @@ function renderProjects(){
           <div>
             <div class="prow-title">${escapeHtml(p.title)} ${p.isDemo ? '<span class="demo-tag">DEMO</span>' : ''}</div>
             <div class="prow-desc">${escapeHtml(p.description||'')}</div>
-            ${published ? '' : `<div class="pub-note"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-alert-triangle"></use></svg> Not published <button class="btn btn-n btn-s" data-action="downloadPublicData">Publish</button></div>`}
+            ${published ? '' : `<div class="pub-note"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-alert-triangle"></use></svg> Not published ${p.cloudId ? '<span class="hint" style="margin:0">in the live data file — republish to update visitors</span>' : ''} <button class="btn btn-n btn-s" data-action="downloadPublicData">Update Public File</button></div>`}
           </div>
           <span class="badge ${status}">${escapeHtml(status.replace('-',' '))}</span>
         </div>
@@ -798,11 +811,13 @@ function renderProjects(){
           <span>File: <code>${escapeHtml(p.file)}</code></span>
           <span>Code: ${codeDisplay}</span>
           <span>View-only: ${p.roCode ? '<code class="code-box">' + escapeHtml(p.roCode) + '</code>' : '<span class="hint" style="margin:0">--</span>'}</span>
+          ${p.cloudId ? `<span>Cloud: <code>${escapeHtml(p.cloudId)}</code> <button class="btn btn-n btn-s" data-action="copyCloudCode" data-idx="${i}" title="Copy the cloud owner code to share access"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy code</button></span>` : ''}
         </div>
         <div class="prow-actions">
           <button class="btn btn-n btn-s" data-action="openProjectModal" data-idx="${i}"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-edit"></use></svg> Edit</button>
           <button class="btn btn-n btn-s" data-action="regenerateCode" data-idx="${i}"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> New Code</button>
           <button class="btn btn-n btn-s" data-action="openSnippetModal" data-idx="${i}"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-link"></use></svg> URL</button>
+          ${p.cloudId ? `<button class="btn btn-g btn-s" data-action="publishToCloud" data-idx="${i}"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cloud"></use></svg> Published</button>` : `<button class="btn btn-o btn-s" data-action="publishToCloud" data-idx="${i}"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-upload"></use></svg> Publish to Cloud</button>`}
           <button class="btn btn-d btn-s" data-action="deleteProject" data-idx="${i}"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-trash"></use></svg> Delete</button>
         </div>
       </div>`;
@@ -988,6 +1003,132 @@ function downloadAdminBackup(){
 }
 
 /* ============================================================
+   IMPORT PROJECT (owner directive 2026-08-15)
+   ------------------------------------------------------------
+   Accepts a .json or .js file dropped/selected from disk and adds the
+   project(s) to this admin list — the local companion to "Download Public
+   Data". Accepted shapes:
+     - projects-data.js manifest   (window.MMGR_PROJECTS = [ ... ])
+     - a .json ARRAY of project records { id,title,description,status,file,
+       code,codeHash,roCode,roCodeHash }
+     - a single project record object (same fields)
+     - a project STATE export from project.html (has projectId/projectName)
+   Records without a code get a fresh one generated so the project is
+   immediately openable — same behaviour as adding it by hand.
+   ============================================================ */
+function importProject(){
+  const input = document.getElementById('import-project-file');
+  if (input) input.click();
+}
+function importProjectParse(text, fileName){
+  let data = null;
+  try {
+    // .js manifest: window.MMGR_PROJECTS = [...] — pull the array literal out.
+    const m = String(text).match(/window\.MMGR_PROJECTS\s*=\s*([\s\S]*?);?\s*$/);
+    if (m) {
+      data = JSON.parse(m[1]);
+    } else {
+      data = JSON.parse(text);
+    }
+  } catch(e){
+    toast('Could not read that file as project data (' + String(fileName||'') + ').', 'error');
+    return;
+  }
+  if (data && !Array.isArray(data) && typeof data === 'object') {
+    // Single record — or a project.html state export (projectId/projectName).
+    data = [data];
+  }
+  if (!Array.isArray(data) || !data.length){ toast('No project records found in that file.', 'error'); return; }
+  let added = 0;
+  const seen = {};
+  data.forEach(function(raw){
+    if (!raw || typeof raw !== 'object') return;
+    const isStateExport = raw.projectId && !raw.id;
+    const id = isStateExport ? String(raw.projectId) : String(raw.id || '');
+    const title = (isStateExport ? raw.projectName : raw.title) || '';
+    if (!id || !title){ return; }
+    // Never duplicate an existing id — skip silently (keeps re-imports safe).
+    if (projects.some(function(p){ return p.id === id; }) || seen[id]) return;
+    seen[id] = true;
+    let code = raw.code || '';
+    if (!code) code = generateCode(10);
+    projects.push({
+      id: id,
+      title: title,
+      description: raw.description || '',
+      status: raw.status || 'active',
+      file: raw.file || ('project.html?id=' + encodeURIComponent(id)),
+      code: code,
+      codeHash: raw.codeHash || null,
+      roCode: raw.roCode || '',
+      roCodeHash: raw.roCodeHash || null
+    });
+    added++;
+  });
+  if (!added){ toast('Nothing to import — every record in that file already exists here.', 'warn'); return; }
+  saveProjects();
+  renderProjects();
+  toast('Imported ' + added + ' project(s). New codes were generated for records that had none.');
+}
+
+/* ============================================================
+   PUBLISH TO CLOUD (owner directive 2026-08-15)
+   ------------------------------------------------------------
+   One click per project: POST /api/cloud/projects creates the D1 row and
+   returns the OWNER code once (linked to the signed-in Google account when
+   a session cookie rides along — sign in via the rail first to get the
+   recover-lost-code guarantee). The cloud ID lands beside the project in
+   the list and the owner code is copied to the clipboard. Opening that
+   project on this device adopts the recorded code automatically, so
+   publish → open → auto-sync works with zero re-typing.
+   ============================================================ */
+async function publishToCloud(i){
+  const p = projects[i];
+  if (!p){ return; }
+  if (p.cloudId && p.cloudOwnerCode){
+    toast('Already in the cloud — ID ' + p.cloudId + '. Use Copy Cloud Code to share it again.');
+    return;
+  }
+  const btn = document.querySelector('#project-list [data-action="publishToCloud"][data-idx="' + i + '"]');
+  if (btn){ btn.disabled = true; btn.textContent = 'Publishing…'; }
+  try{
+    const res = await fetch('/api/cloud/projects', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ projectId: p.id, name: p.title })
+    });
+    const data = await res.json().catch(()=>({}));
+    if (!res.ok || !data.ok){
+      toast(((data && data.error) || 'Publish failed (HTTP ' + res.status + ').') + (res.status === 402 ? ' — upgrade needed.' : ''), 'error');
+      return;
+    }
+    p.cloudId = data.projectId;
+    p.cloudOwnerCode = data.ownerCode;
+    saveProjects();
+    renderProjects();
+    toast('Published to cloud — cloud ID ' + data.projectId + '. Owner code copied to the clipboard.');
+    if (data.ownerCode && navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(data.ownerCode).catch(()=>{});
+    }
+    if (!data.linked){
+      toast('Tip: sign in with Google (hamburger menu ▸ Account) before publishing so a lost code can be recovered.', 'warn');
+    }
+  }catch(e){
+    toast('Publish failed — is the cloud backend reachable?', 'error');
+  }finally{
+    if (btn){ btn.disabled = false; btn.textContent = 'Publish to Cloud'; }
+  }
+}
+function copyCloudCode(i){
+  const p = projects[i];
+  if (!p || !p.cloudOwnerCode){ toast('No cloud owner code recorded for this project.', 'warn'); return; }
+  navigator.clipboard.writeText(p.cloudOwnerCode)
+    .then(()=>toast('Cloud owner code copied — share it to grant access.'))
+    .catch(()=>toast('Could not access clipboard — the code is stored with this project.','error'));
+}
+
+/* ============================================================
    CLOUD ADMIN — visibility into cloud-linked projects (Phase 2/3)
    ------------------------------------------------------------
    The ADMIN_CODE Wrangler secret is the operator credential for the
@@ -1110,9 +1251,13 @@ function closeAdminNav(){
   if (btn) btn.setAttribute('aria-expanded', 'false');
 }
 // Rail navigation closes the drawer (mobile) / overlay (desktop) after use.
+// Customize controls (theme/glass toggles + palette buttons) stay open so
+// the user can try them live — same contract as the app.html rail.
 document.addEventListener('click', function(e){
   const rail = e.target.closest('#app-sidebar');
-  if (rail && (e.target.closest('a') || e.target.closest('[data-action]'))) closeAdminNav();
+  if (!rail) return;
+  if (e.target.closest('.rail-ctl-row')) return;
+  if (e.target.closest('a') || e.target.closest('[data-action]')) closeAdminNav();
 });
 // Keep the rail aligned under the sticky header (it starts below --hdr-h).
 function syncAdminHdr(){
@@ -1133,6 +1278,9 @@ const ADMIN_ACTION_MAP = {
   'admLoadTheirs': () => admLoadTheirs(),
   'lockAdmin': () => lockAdmin(),
   'openProjectModal': (el) => openProjectModal(_admIdx(el)),
+  'importProject': () => importProject(),
+  'publishToCloud': (el) => publishToCloud(_admIdx(el)),
+  'copyCloudCode': (el) => copyCloudCode(_admIdx(el)),
   'downloadPublicData': () => downloadPublicData(),
   'downloadAdminBackup': () => downloadAdminBackup(),
   'closeProjectModal': () => closeProjectModal(),
@@ -1174,6 +1322,18 @@ document.addEventListener('input', function(e){
     const fn = ADMIN_ACTION_MAP[action];
     if (fn) fn(el, e);
   }
+});
+// Import Project file picker — read the chosen file and add its projects.
+document.getElementById('import-project-file').addEventListener('change', function(e){
+  const file = e.target.files && e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(){
+    importProjectParse(reader.result, file.name);
+    e.target.value = ''; // allow re-importing the same file next time
+  };
+  reader.onerror = function(){ toast('Could not read that file.', 'error'); };
+  reader.readAsText(file);
 });
 
 initGate();

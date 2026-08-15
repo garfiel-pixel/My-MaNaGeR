@@ -1064,41 +1064,80 @@
     <button class="btn btn-o full mb7"  data-action="openPrompt" data-type="daily"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sun"></use></svg> Daily Field Report Prompt</button>
   </div>
   <div class="db is-hide" id="db-ctrl">
+    <!-- OWNER 2026-08-15: Controls tab grouped into labelled sections with
+         breathing room. Profile first, then Share & Access (rendered by
+         mmgr-cloud.js into #ctrl-share), then the explain-before-copy cards. -->
+    <div class="ctl-sec"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-user"></use></svg> Profile</div>
     <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-user"></use></svg> Your Name</span><input type="text" id="user-name-in" placeholder="Your name" aria-label="Your name (shown in the header greeting)" data-action="setUserName" class="ctl-in w150"></div>
-    <!-- ACTION-PLAN 5.1: multi-format Copy All (Slack / email / client) -->
-    <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy As…</span></div>
-    <div class="sr-hint">Same live state, three share formats — Slack digest, email digest, and a printable client summary.</div>
-    <div class="exp-row">
-      <button class="btn btn-n btn-s" data-action="cpFormats" data-kind="slack" title="Slack-formatted digest">Slack</button>
-      <button class="btn btn-n btn-s" data-action="cpFormats" data-kind="email" title="Email digest">Email</button>
-      <button class="btn btn-n btn-s" data-action="cpFormats" data-kind="client" title="Printable client summary">Client</button>
+    <div class="sr-hint">Shown in the header greeting. Leave blank for a generic welcome.</div>
+
+    <!-- Share & Access — rendered by js/mmgr-cloud.js: owner code, editor
+         codes with section-scope toggles (view-only / edit-budget / etc). -->
+    <div class="ctl-sec"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-shield"></use></svg> Share &amp; Access</div>
+    <div id="ctrl-share" role="region" aria-label="Sharing and access codes"></div>
+
+    <!-- ACTION-PLAN 5.1: multi-format Copy All (Slack / email / client) —
+         rebuilt as explain-before-copy cards: what each format is for, a
+         live preview of what will be copied, then the Copy button. -->
+    <div class="ctl-sec"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy As…</div>
+    <div class="sr-hint ctl-lead">The same live project state, in three share formats. Read what each one is for — then copy it.</div>
+    <div class="fmt-card">
+      <div class="fmt-head"><span class="fmt-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-users"></use></svg> Slack Digest</span><button class="btn btn-g btn-s" data-action="cpFormats" data-kind="slack" title="Copy the Slack-formatted digest"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy</button></div>
+      <p class="fmt-desc">Slack is the team chat app many crews use for quick updates. This format uses Slack's bold <code>*asterisks*</code> markup so headings and warnings stand out when pasted into a channel.</p>
+      <pre class="fmt-preview" id="pv-slack" aria-label="Slack digest preview (live)"></pre>
     </div>
+    <div class="fmt-card">
+      <div class="fmt-head"><span class="fmt-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-mail"></use></svg> Email Digest</span><button class="btn btn-g btn-s" data-action="cpFormats" data-kind="email" title="Copy the email digest"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy</button></div>
+      <p class="fmt-desc">A ready-to-paste email for your sponsor or team: subject line included, plain text, no chat markup. Paste it straight into your mail client.</p>
+      <pre class="fmt-preview" id="pv-email" aria-label="Email digest preview (live)"></pre>
+    </div>
+    <div class="fmt-card">
+      <div class="fmt-head"><span class="fmt-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-file-text"></use></svg> Client Summary</span><button class="btn btn-g btn-s" data-action="cpFormats" data-kind="client" title="Copy the printable client summary"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy</button></div>
+      <p class="fmt-desc">A clean, printable one-page summary for a client or stakeholder: progress, key metrics, open issues. No internal risk detail — just what a client needs to know.</p>
+      <pre class="fmt-preview" id="pv-client" aria-label="Client summary preview (live)"></pre>
+    </div>
+
     <!-- MONOLITH-FEATURE-PARITY-DIRECTIVES RESTORE-3: one-click email templates
          (static, zero-AI baseline restored from the monolith — the guaranteed
-         fallback). AI-upgrade path tracked separately in BACKLOG.md. -->
-    <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-mail"></use></svg> Copy Email Template</span></div>
-    <div class="sr-hint">Ready-to-send drafts built from live project data — copy and paste into your mail client.</div>
-    <div class="exp-row">
-      <button class="btn btn-n btn-s" data-action="emailTpl" data-kind="status" title="Weekly status update email">Status Update</button>
-      <button class="btn btn-n btn-s" data-action="emailTpl" data-kind="change" title="Change request approval email">Change Request</button>
-      <button class="btn btn-n btn-s" data-action="emailTpl" data-kind="risk" title="Risk / issue escalation email">Risk Escalation</button>
-      <button class="btn btn-n btn-s" data-action="emailTpl" data-kind="closure" title="Closure sign-off email">Closure Sign-Off</button>
+         fallback). AI-upgrade path tracked separately in BACKLOG.md. Each
+         template is its own full card: what it is, a live preview, copy. -->
+    <div class="ctl-sec"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-mail"></use></svg> Email Templates</div>
+    <div class="sr-hint ctl-lead">Ready-to-send drafts built from live project data — each is a full email with subject line. Read the preview, then copy and paste into your mail client.</div>
+    <div class="fmt-card">
+      <div class="fmt-head"><span class="fmt-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-calendar"></use></svg> Status Update</span><button class="btn btn-n btn-s" data-action="emailTpl" data-kind="status" title="Copy the weekly status update email"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy</button></div>
+      <p class="fmt-desc">The regular weekly update to your sponsor: overall progress, tasks in progress, blockers, live issues, and next priorities.</p>
+      <pre class="fmt-preview" id="pv-tpl-status" aria-label="Status update email preview (live)"></pre>
     </div>
-    <div class="sr-hint">Shown in the header greeting. Leave blank for a generic welcome.</div>
+    <div class="fmt-card">
+      <div class="fmt-head"><span class="fmt-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> Change Request</span><button class="btn btn-n btn-s" data-action="emailTpl" data-kind="change" title="Copy the change request approval email"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy</button></div>
+      <p class="fmt-desc">Asks for approval on pending change requests, with the schedule and cost impact of each one so the decision is informed.</p>
+      <pre class="fmt-preview" id="pv-tpl-change" aria-label="Change request email preview (live)"></pre>
+    </div>
+    <div class="fmt-card">
+      <div class="fmt-head"><span class="fmt-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-alert-triangle"></use></svg> Risk Escalation</span><button class="btn btn-n btn-s" data-action="emailTpl" data-kind="risk" title="Copy the risk / issue escalation email"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy</button></div>
+      <p class="fmt-desc">Escalates open issues and high risks that need attention, each with its owner and target date so nothing slips through.</p>
+      <pre class="fmt-preview" id="pv-tpl-risk" aria-label="Risk escalation email preview (live)"></pre>
+    </div>
+    <div class="fmt-card">
+      <div class="fmt-head"><span class="fmt-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-check-circle"></use></svg> Closure Sign-Off</span><button class="btn btn-n btn-s" data-action="emailTpl" data-kind="closure" title="Copy the closure sign-off email"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy</button></div>
+      <p class="fmt-desc">Formally asks the sponsor to sign off the project: overall completion and the deliverables checklist status.</p>
+      <pre class="fmt-preview" id="pv-tpl-closure" aria-label="Closure sign-off email preview (live)"></pre>
+    </div>
+
+    <div class="ctl-sec"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-palette"></use></svg> Appearance</div>
     <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-moon"></use></svg> Light / Dark Theme</span><label class="tgl"><input type="checkbox" id="thm-tgl" aria-label="Light / Dark Theme" data-action="tglTheme"><span class="tsl"></span></label></div>
     <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-palette"></use></svg> Color Theme</span><span class="pal-switch" role="group" aria-label="Color theme"><button type="button" class="pal-btn" data-pal="default" aria-pressed="true">Default</button><button type="button" class="pal-btn" data-pal="cyan" aria-pressed="false">Cyan</button></span></div>
     <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-crosshair"></use></svg> Crosshair Cursor</span><label class="tgl"><input type="checkbox" id="ch-tgl" aria-label="Crosshair Cursor" data-action="tglCh"><span class="tsl"></span></label></div>
+    <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-orb"></use></svg> Premium Visual Mode</span><label class="tgl"><input type="checkbox" id="glass-tgl" aria-label="Premium Visual Mode" data-action="tglGlassMode"><span class="tsl"></span></label></div>
+    <div class="sr-hint">Premium visual mode — uses more graphics power (WebGL liquid-glass backdrop). Off by default; requires a capable device. CSS glass is the universal default for everyone else.</div>
+
+    <div class="ctl-sec"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-settings"></use></svg> Workspace</div>
     <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-lock"></use></svg> Lock Active Methodology</span><button class="btn btn-n btn-s toggle-chip is-off" data-action="tglLock">Lock / Unlock</button></div>
     <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-calendar"></use></svg> Work Week (days)</span><select id="ww-sel" data-action="setWorkWeek" class="ctl-in" aria-label="Work week (days)"><option value="3">3-day</option><option value="4">4-day</option><option value="5" selected>5-day (default)</option><option value="6">6-day</option><option value="7">7-day</option></select></div>
     <div class="sr-hint">Used for resource utilization &amp; budget cost calculations. Monthly capacity ≈ days × 4 weeks × 8h.</div>
     <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cloud-rain"></use></svg> Weather Region</span><select id="weather-region-sel" data-action="setRegion" class="ctl-in" aria-label="Weather region"></select></div>
-    <!-- PLAN-OF-ACTION-LIQUID-GLASS-UI 3.5.3: Premium visual mode settings
-         toggle — off by default, user-initiated only, never a popup. The
-         preference is a device-level slot (same family as the viewport and
-         sync-identity prefs), not project state. Capability floor still
-         overrides it: a low-end device stays on CSS glass no matter what. -->
-    <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-orb"></use></svg> Premium Visual Mode</span><label class="tgl"><input type="checkbox" id="glass-tgl" aria-label="Premium Visual Mode" data-action="tglGlassMode"><span class="tsl"></span></label></div>
-    <div class="sr-hint">Premium visual mode — uses more graphics power (WebGL liquid-glass backdrop). Off by default; requires a capable device. CSS glass is the universal default for everyone else.</div>
+
+    <div class="ctl-sec"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cloud"></use></svg> Cloud &amp; Sync</div>
     <!-- PLAN-OF-ACTION-AI-VOICE-SYNC-v1 4.5: optional Google identity for
          sync — never gating. Rendered by js/mmgr-sync.js into this slot. -->
     <div id="sync-section"></div>
@@ -1110,7 +1149,8 @@
          (D1 + R2 owner-code storage) — never gating. Rendered by
          js/mmgr-cloud.js into this slot. -->
     <div id="cloud-section"></div>
-    <!-- Phase 2: client feature flags — all default on; off hides the optional UI -->
+
+    <div class="ctl-sec"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg> Features</div>
     <div class="sr-hint">Feature flags — switch a module off to hide it from the workspace. All default on.</div>
     <!-- MERGED-AI-CONTROL (audit 1.2): this switch is now the SINGLE AI on/off
          control — it reads/writes state.config.ai.tier (OFF -> 'off', ON ->
@@ -1125,15 +1165,14 @@
          progressive disclosure. New projects start Core-only; each advanced
          pack is a single-action toggle here. Toggling a pack on reveals its
          nav sections instantly; off hides them (never destroys data). -->
-    <hr class="div">
-    <div class="sr" id="adv-packs-section"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-orb"></use></svg> Advanced Packs</span></div>
+    <div class="ctl-sec" id="adv-packs-section"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-orb"></use></svg> Advanced Packs</div>
     <div class="sr-hint">New projects open Core-only (Dashboard, Definitions, Charter, WBS, Kanban). Turn a pack on to reveal its sections — one action, nothing hidden is ever lost.</div>
     <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-bar-chart"></use></svg> Schedule Science</span><label class="tgl"><input type="checkbox" id="pk-schedule" aria-label="Schedule Science pack" data-action="tglPack" data-pack="schedule"><span class="tsl"></span></label></div>
     <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-dollar"></use></svg> Money</span><label class="tgl"><input type="checkbox" id="pk-money" aria-label="Money pack" data-action="tglPack" data-pack="money"><span class="tsl"></span></label></div>
     <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-users"></use></svg> Governance</span><label class="tgl"><input type="checkbox" id="pk-governance" aria-label="Governance pack" data-action="tglPack" data-pack="governance"><span class="tsl"></span></label></div>
     <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cloud-rain"></use></svg> Field</span><label class="tgl"><input type="checkbox" id="pk-field" aria-label="Field pack" data-action="tglPack" data-pack="field"><span class="tsl"></span></label></div>
     <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-activity"></use></svg> Quality</span><label class="tgl"><input type="checkbox" id="pk-quality" aria-label="Quality pack" data-action="tglPack" data-pack="quality"><span class="tsl"></span></label></div>
-    <hr class="div">
+    <div class="ctl-sec"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-tool"></use></svg> Support &amp; Diagnostics</div>
     <!-- Phase 2: client-side error surface (last 20 errors, timestamp + action) -->
     <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-alert-triangle"></use></svg> Client Error Log</span><span class="g6"><button class="btn btn-n btn-s" data-action="copyErrorLog" title="Copy the error log to the clipboard as plain text"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy</button><button class="btn btn-n btn-s" data-action="downloadErrorLog" title="Download the error log as a .txt file"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Download</button><button class="btn btn-n btn-s" data-action="clearErrorLog">Clear</button></span></div>
     <div class="sr-hint">Last 20 client-side errors with timestamp and source action — for debugging on static hosting where no server log exists. Copy or download the log to share it.</div>
@@ -1151,6 +1190,7 @@
     <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-upload"></use></svg> Remote Error Reporting</span><label class="tgl"><input type="checkbox" id="err-report-tgl" aria-label="Remote Error Reporting" data-action="tglErrReport"><span class="tsl"></span></label></div>
     <div class="sr-hint">Optional and off by default. When enabled with a webhook URL, new client errors are posted to your own endpoint — never to a third-party service. A failed send stays logged locally only.</div>
     <input type="url" id="err-webhook" class="ctl-in" data-action="setErrWebhook" placeholder="https://your-webhook.example.com/hook (optional)" aria-label="Error reporting webhook URL (optional)" autocomplete="off">
+    <div class="ctl-sec"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-save"></use></svg> Backup &amp; Transfer</div>
     <div class="sr-kbd">
       <div class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-lightbulb"></use></svg> Keyboard Shortcuts</div>
       <div class="kbd-grid">

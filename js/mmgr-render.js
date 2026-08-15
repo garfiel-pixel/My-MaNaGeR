@@ -1059,30 +1059,49 @@ var MMGR = window.MMGR || {};
   }
 
   // ---- Dirty Indicator ----
-  // "● Not backed up" is driven by the FILE-backup watermark, not the
-  // 300ms autosave debounce: it stays visible from the first edit until the
-  // user saves the project to a .json file (saveProjectFile stamps
-  // state.lastBackedUpAt). On load, an old project that has never been
-  // backed up in this browser shows the badge immediately.
+  // OWNER 2026-08-15: THREE states, driven by the cloud link + the FILE-
+  // backup watermark (state.lastBackedUpAt, stamped by saveProjectFile).
+  //   1. Cloud-linked (Cloud.getCode()) -> GREEN "Cloud backed up" chip —
+  //      the durable backup lives in the cloud and auto-syncs as the user
+  //      works, so the alarming amber state is replaced entirely. Casual
+  //      users who just add a task no longer get the "huh?" trigger.
+  //   2. Not linked + never file-backed-up -> amber "Not backed up" — with
+  //      softened copy: autosave already keeps changes safe in this browser;
+  //      a file backup is optional, save one whenever you're ready.
+  //   3. Not linked + file-backed-up -> indicator hidden (clean).
   function renderDirtyIndicator() {
     const ind = $('dirty-ind');
     if (!ind) return;
     const s = S();
     if (!s || !ns.State) return;
-    const backedUp = s.lastBackedUpAt && s.updatedAt && s.lastBackedUpAt >= s.updatedAt;
-    if (!backedUp) {
-      ind.classList.add('on');
-      ind.setAttribute('title', 'Changes are saved to this browser automatically, but not yet backed up to a file. Click to back up — to the cloud (automatic once linked) or to a .json file.');
+    const C = window.MMGR.Cloud;
+    const linked = !!(C && C.getCode && C.getCode());
+    let backedUp = false;
+    if (linked) {
+      ind.classList.add('on', 'ci-cloud');
+      ind.innerHTML = '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cloud"></use></svg> Cloud backed up';
+      ind.setAttribute('title', 'This project is backed up to the cloud — snapshots auto-sync as you work. Click for backup options (cloud or a portable .json file).');
     } else {
-      ind.classList.remove('on');
-      ind.setAttribute('title', 'Changes save to this browser automatically. Click to back up — to the cloud (automatic once linked) or to a .json file.');
+      ind.classList.remove('ci-cloud');
+      backedUp = !!(s.lastBackedUpAt && s.updatedAt && s.lastBackedUpAt >= s.updatedAt);
+      if (!backedUp) {
+        ind.classList.add('on');
+        ind.innerHTML = '● Not backed up';
+        ind.setAttribute('title', 'Your changes are safe in this browser (autosave). A file backup is optional — save one whenever you\u2019re ready, e.g. at the end of a task. Click for backup options.');
+      } else {
+        ind.classList.remove('on');
+        ind.innerHTML = '● Not backed up';
+        ind.setAttribute('title', 'Changes save to this browser automatically. Click for backup options (cloud or a .json file).');
+      }
     }
-    // Backup popover footer: last file-backup watermark (OWNER 2026-08-15).
+    // Backup popover footer (OWNER 2026-08-15).
     const foot = $('bk-foot');
     if (foot) {
-      foot.textContent = backedUp && s.lastBackedUpAt
-        ? 'Last file backup: ' + new Date(s.lastBackedUpAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) + '.'
-        : 'No file backup yet — autosave keeps your changes on this device.';
+      foot.textContent = linked
+        ? 'Cloud backup active — a .json file copy is optional (e.g. to keep in your file manager).'
+        : (backedUp && s.lastBackedUpAt
+          ? 'Last file backup: ' + new Date(s.lastBackedUpAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) + '.'
+          : 'No file backup yet — autosave keeps your changes on this device.');
     }
   }
 

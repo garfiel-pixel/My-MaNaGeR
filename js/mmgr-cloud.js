@@ -366,6 +366,46 @@ var MMGR = window.MMGR || {};
     }
   }
 
+  // ---- SILENT background auto-sync (OWNER 2026-08-15) ---------------------
+  // Fired by the app's debounced auto-save once the user goes idle; keeps
+  // the cloud snapshot current so the header's green "Cloud backed up" chip
+  // is honest. OWNER-code only — editor scope writes stay manual, because a
+  // silent push could step outside an editor's granted sections. Never
+  // toasts; failures land quietly in the drawer status line and are retried
+  // on the next edit cycle. Zero-throw like the rest of the module.
+  let _autoBusy = false;
+  async function autoSaveToCloud() {
+    const cred = activeCredential();
+    if (!cred || cred.header !== 'X-Owner-Code') return false;
+    if (_autoBusy) return false;
+    const state = readProjectState();
+    if (!state) return false;
+    _autoBusy = true;
+    try {
+      const headers = { 'Content-Type': 'application/json' };
+      headers[cred.header] = cred.code;
+      const res = await fetch('/api/cloud/projects/' + encodeURIComponent(pid()) + '/save', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: headers,
+        body: JSON.stringify({ state: state })
+      });
+      const data = await res.json().catch(function() { return {}; });
+      if (!res.ok || !data.ok) {
+        if (res.status === 403) clearCode(); // stale owner code — drop the link
+        setStatus('Auto cloud backup failed — open Cloud Backup and Save manually.', 'err');
+        return false;
+      }
+      if (data.savedAt) setLastSeen(data.savedAt);
+      return true;
+    } catch (e) {
+      // offline / Worker unavailable — retry on the next edit cycle
+      return false;
+    } finally {
+      _autoBusy = false;
+    }
+  }
+
   // ---- load (uses whichever credential is in session) ---------------------
   async function loadFromCloud() {
     const cred = activeCredential();
@@ -1105,6 +1145,7 @@ var MMGR = window.MMGR || {};
     createProject: createProject,
     cloudUpgrade: cloudUpgrade,
     saveToCloud: saveToCloud,
+    autoSaveToCloud: autoSaveToCloud,
     loadFromCloud: loadFromCloud,
     loadWithCode: loadWithCode,
     recoverCode: recoverCode,

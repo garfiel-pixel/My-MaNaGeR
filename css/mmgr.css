@@ -2131,6 +2131,8 @@ body.dark-mode.db-page .pcard:not(.unlocked) .pc-cta{color:var(--db-text-seconda
         follows the open state). ---- */
 @media(min-width:769px){
   body.dark-mode.db-page.side-open .wrap{margin-left:264px;margin-right:auto;}
+  body.dark-mode.db-page .db-side{transition:transform var(--release-duration) var(--ease-ios);}
+  body.dark-mode.db-page .wrap{transition:margin-left var(--release-duration) var(--ease-ios);}
 }
 /* ---- Mobile (≤768px): rail becomes an off-canvas drawer + hamburger ---- */
 @media(max-width:768px){
@@ -2145,7 +2147,7 @@ body.dark-mode.db-page .pcard:not(.unlocked) .pc-cta{color:var(--db-text-seconda
   body.dark-mode.db-page .db-hamb{position:absolute;top:12px;left:12px;}
   body.dark-mode.db-page .db-side{
     transform:translateX(-100%);
-    transition:transform var(--release-duration) var(--spring-press);
+    transition:transform var(--release-duration) var(--ease-ios);
   }
   body.dark-mode.db-page.side-open .db-side{transform:translateX(0);}
   body.dark-mode.db-page .db-scrim{
@@ -2259,7 +2261,7 @@ body.db-page:not(.dark-mode) .db-link:focus-visible{outline:2px solid var(--gold
   body.db-page:not(.dark-mode) .db-hamb{position:absolute;top:12px;left:12px;}
   body.db-page:not(.dark-mode) .db-side{
     transform:translateX(-100%);
-    transition:transform .24s var(--ease-ios);
+    transition:transform var(--release-duration) var(--ease-ios);
   }
   body.db-page:not(.dark-mode).side-open .db-side{transform:translateX(0);}
   body.db-page:not(.dark-mode) .db-scrim{
@@ -2351,21 +2353,28 @@ body.db-page .db-hamb{
 body.db-page .db-hamb .ico{width:18px;height:18px;transition:transform .18s ease;}
 body.db-page .db-hamb.is-open .ico{transform:rotate(180deg);}
 body.db-page .db-hamb:focus-visible{outline:2px solid var(--gold);outline-offset:2px;}
+/* Moon/sun quick toggle (owner 2026-08-15): the square box around the icon
+   is gone — it is just the icon now, keeping a generous 38px tap target
+   (Fitts) with a transparent hit area, hover/focus color + ring only. */
 body.db-page .db-quick{
   display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;
-  border:1px solid var(--border);background:var(--card);color:var(--slate);
+  border:none;background:transparent;color:var(--slate);
   border-radius:var(--radius-control);cursor:pointer;flex-shrink:0;
   position:absolute;top:12px;right:12px;z-index:2;
+  transition:color var(--tr);
 }
-body.db-page .db-quick .ico{width:18px;height:18px;}
-body.db-page .db-quick:hover{color:var(--gold);border-color:var(--gold);}
+body.db-page .db-quick .ico{width:20px;height:20px;}
+body.db-page .db-quick:hover{color:var(--gold);}
 body.db-page .db-quick:focus-visible{outline:2px solid var(--gold);outline-offset:2px;}
 /* ---- desktop: rail pinned open by default; closed = slides away + full
-        width content. Mobile (≤768px) keeps the existing drawer behavior. ---- */
+        width content. Mobile (≤768px) keeps the existing drawer behavior.
+        One smooth 1x curve everywhere (owner 2026-08-15): the rail + wrap
+        use the same --release-duration/--ease-ios pair in every theme and
+        breakpoint so open/close always feels the same. ---- */
 @media(min-width:769px){
-  body.db-page .db-side{transition:transform .24s ease;}
+  body.db-page .db-side{transition:transform var(--release-duration) var(--ease-ios);}
   body.db-page:not(.side-open) .db-side{transform:translateX(-100%);}
-  body.db-page .wrap{transition:margin-left .24s ease;}
+  body.db-page .wrap{transition:margin-left var(--release-duration) var(--ease-ios);}
 }
 /* ---- rail body: nav scrolls, footer pinned to the bottom ---- */
 body.db-page .db-side nav{flex:1;overflow-y:auto;min-height:0;display:flex;flex-direction:column;}
@@ -2444,8 +2453,8 @@ body.db-page .db-signout:focus-visible{outline:2px solid var(--danger);outline-o
 @media print{#siom{display:none!important;}}
 /* ---- dark dashboard overrides (existing --db-* rail convention) ---- */
 body.dark-mode.db-page .db-hamb{background:var(--db-surface);border-color:var(--db-border);color:var(--db-accent);}
-body.dark-mode.db-page .db-quick{background:var(--db-surface);border-color:var(--db-border);color:var(--db-text-secondary);}
-body.dark-mode.db-page .db-quick:hover{color:var(--db-accent);border-color:var(--db-accent);}
+body.dark-mode.db-page .db-quick{background:transparent;border-color:transparent;color:var(--db-text-secondary);}
+body.dark-mode.db-page .db-quick:hover{color:var(--db-accent);}
 body.dark-mode.db-page .db-foot{border-top-color:var(--db-border);}
 body.dark-mode.db-page .db-sub-empty{color:var(--db-text-secondary);}
 body.dark-mode.db-page .db-project{color:var(--db-text-secondary);}
@@ -2468,7 +2477,7 @@ body.dark-mode.db-page .db-signout:hover{color:var(--danger);border-color:var(--
 body.dark-mode.db-page [data-rail-toggle] .ico-caret{color:var(--db-text-secondary);}
 /* ---- reliability fallbacks (Gates 6.2 / 8.1) ---- */
 @media (prefers-reduced-motion:reduce){
-  body.db-page .db-hamb .ico,body.db-page [data-rail-toggle] .ico-caret,body.db-page .db-side,body.db-page .wrap{transition:none!important;}
+  body.db-page .db-hamb .ico,body.db-page .db-side-close .ico,body.db-page [data-rail-toggle] .ico-caret,body.db-page .db-side,body.db-page .wrap{transition:none!important;}
 }
 /* ============================================================
    NEW-UI-POLISH (owner directive 2026-08-14, launcher v3):
@@ -2523,13 +2532,20 @@ body.dark-mode.db-page .top h1 .ico{
 @media(max-width:768px){
   body.db-page .top{padding:56px 18px 18px;}
 }
-/* ---- hamburger: never an X, always closable, springy slide ---- */
+/* ---- hamburger: never an X, always closable, smooth 1x slide ---- */
 body.db-page.side-open .db-hamb{z-index:130;}
 body.db-page .db-hamb .ico{transition:transform .3s cubic-bezier(.34,1.56,.64,1);}
 body.db-page .db-hamb.is-open .ico{transform:rotate(90deg);}
+/* Rail-head close control (owner 2026-08-15): it is a HAMBURGER now (was a
+   back arrow) — same icon, same rotation language as the hero button, and
+   syncSidebarAria() keeps both in step, so clicking it closes the rail with
+   the icon returning to the plain hamburger and clicking again slides the
+   rail back out. */
+body.db-page .db-side-close .ico{transition:transform .3s cubic-bezier(.34,1.56,.64,1);}
+body.db-page .db-side-close.is-open .ico{transform:rotate(90deg);}
 @media(min-width:769px){
-  body.db-page .db-side{transition:transform .3s cubic-bezier(.22,1,.36,1);}
-  body.db-page .wrap{transition:margin-left .3s cubic-bezier(.22,1,.36,1);}
+  body.db-page .db-side{transition:transform var(--release-duration) var(--ease-ios);}
+  body.db-page .wrap{transition:margin-left var(--release-duration) var(--ease-ios);}
 }
 /* ---- rail: nav scrolls, footer PINNED to the bottom ---- */
 body.db-page .db-side{overflow:hidden;}
@@ -2642,8 +2658,8 @@ body.dark-mode.db-page #siom .email-auth-alt{color:var(--db-text-secondary);}
 }
 @media (prefers-reduced-motion:reduce){
   body.db-page .pcard,body.db-page .top h1 .ico{animation:none!important;}
-  body.db-page .db-btn,body.db-page .db-link,body.db-page .db-project,body.db-page .db-avatar{transition:none!important;}
-  body.db-page .db-hamb .ico{transition:none!important;}
+  body.db-page .db-btn,body.db-page .db-link,body.db-page .db-project,body.db-page .db-avatar,body.db-page .db-quick{transition:none!important;}
+  body.db-page .db-hamb .ico,body.db-page .db-side-close .ico{transition:none!important;}
 }
 /* ============================================================
    NEW-UI-CONTRAST-AND-RHYTHM (owner's visual-analysis fixes,
@@ -2668,12 +2684,24 @@ body.db-page:not(.dark-mode) .pc-desc,
 body.db-page:not(.dark-mode) .pf-meta,
 body.db-page:not(.dark-mode) .pf-reason,
 body.db-page:not(.dark-mode) .db-sub-empty{color:color-mix(in oklch,var(--text) 70%,var(--slate) 30%);}
-/* ---- notice banner: darker high-contrast brick + steady rhythm ---- */
+/* ---- notice banner (owner 2026-08-15): on the same scale as the page —
+        the same glass card surface/radius/padding as the project cards, with
+        an amber accent border + icon tile and full-contrast text. The old
+        flat amber strip read as a plain little box; it now reads as a real
+        card. Dark db-page gets the solid --db-surface treatment the other
+        cards use (Gate 6.1 — dense content never glass). ---- */
 body.db-page:not(.dark-mode) .notice{
-  color:color-mix(in oklch,var(--amber) 55%,var(--text) 45%);
-  background:color-mix(in oklch,var(--amber) 8%,var(--card));
-  border-color:color-mix(in oklch,var(--amber) 30%,var(--border));
+  border-color:color-mix(in oklch,var(--amber) 32%,var(--border));
   margin:0 auto 26px;
+}
+body.dark-mode.db-page .notice{
+  background:var(--db-surface);
+  border:1px solid var(--db-border);
+  color:var(--text);
+}
+body.dark-mode.db-page .notice .nt-ico{
+  background:color-mix(in oklch,var(--db-accent) 15%,transparent);
+  color:var(--db-accent);
 }
 /* ---- section header (Projects) ---- */
 body.db-page .db-sec{display:flex;flex-direction:column;gap:3px;margin:18px 0 14px;}

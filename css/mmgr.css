@@ -370,6 +370,11 @@ body.sidebar-on .nav-btn{display:inline-flex;}
 #panel-dash .g3 .card .n3{flex:1;}
 .n3{gap:8px;}
 .n3 li{min-height:33px;display:flex;align-items:center;gap:6px;padding:4px 2px;line-height:1.45;}
+/* UI-MODERNIZATION 2026-08-14: the dashboard stat cards (Budget Variance /
+   Resource Utilization / Pending Changes / Baseline Variance) had their big
+   figure flush against the sub-label (0px). A 4px breathing gap restores
+   the label-figure-sub rhythm used everywhere else. */
+#panel-dash .g4 .card .stat + .t-xxs{margin-top:4px;}
 
 /* ---- Progress Ring ---- */
 .pring{position:relative;width:96px;height:96px;}
@@ -513,7 +518,10 @@ body.sidebar-on .nav-btn{display:inline-flex;}
 #health-score-label{font-size:.82rem;font-weight:700;}
 #health-breakdown{font-size:.7rem;color:var(--slate);display:flex;flex-direction:column;gap:3px;margin-top:8px;}
 .evm-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;}
-.evm-tile{text-align:center;padding:12px;background:var(--tile-bg);border-radius:var(--radius);transition:border-color var(--tr),box-shadow var(--tr);border:1px solid transparent;}
+/* UI-MODERNIZATION 2026-08-14: EVM tiles get the sc-cell rhythm — flex
+   column, centered, with a small gap between label / figure / sub-label so
+   the values no longer sit flush-stacked (was 0px gap). */
+.evm-tile{display:flex;flex-direction:column;align-items:center;gap:3px;text-align:center;padding:12px;background:var(--tile-bg);border-radius:var(--radius);transition:border-color var(--tr),box-shadow var(--tr);border:1px solid transparent;}
 .evm-tile:hover{border-color:rgba(var(--gold-rgb),.25);box-shadow:0 2px 8px rgba(16,24,40,.04);}
 .evm-tile-label{font-size:.65rem;color:var(--slate);text-transform:uppercase;letter-spacing:.5px;}
 .evm-tile-val{font-size:1.4rem;font-weight:700;font-variant-numeric:tabular-nums;}
@@ -522,7 +530,7 @@ body.sidebar-on .nav-btn{display:inline-flex;}
 .evm-grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:6px;font-size:.76rem;margin-top:10px;}
 .fw-b{font-weight:700;}
 .evm-grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-top:12px;}
-.evm-tile-sm{text-align:center;padding:10px 6px;background:var(--tile-bg);border-radius:var(--radius);transition:border-color var(--tr);border:1px solid transparent;}
+.evm-tile-sm{display:flex;flex-direction:column;align-items:center;gap:2px;text-align:center;padding:10px 6px;background:var(--tile-bg);border-radius:var(--radius);transition:border-color var(--tr);border:1px solid transparent;}
 .evm-tile-sm:hover{border-color:rgba(var(--gold-rgb),.2);}
 .evm-tile-label-sm{font-size:.6rem;color:var(--slate);text-transform:uppercase;letter-spacing:.5px;}
 .evm-tile-val-sm{font-size:1.1rem;font-weight:700;font-variant-numeric:tabular-nums;}

@@ -366,6 +366,34 @@ body.sidebar-open .nav-btn .ico,body.sidebar-open .sb-close .ico{transform:rotat
   .sec-nav::-webkit-scrollbar-track{background:transparent;}
   .sec-nav .nav-group{flex-shrink:0;}
 }
+/* MARKET-FEATURE-ROADMAP A1: expiring-compliance count pill on the
+   Stakeholders nav button (sec-nav + sidebar clone share the same span).
+   Tiny red dot-style badge; hidden at zero via .is-hide. */
+.sec-badge{display:inline-flex;align-items:center;justify-content:center;min-width:16px;height:16px;
+  padding:0 4px;border-radius:999px;background:var(--danger);color:#fff;
+  font-size:.58rem;font-weight:800;line-height:1;margin-left:2px;}
+.sec-badge.is-hide{display:none;}
+.stk-exp-bad{border-color:rgba(239,68,68,.65)!important;background:rgba(239,68,68,.08);}
+/* A1 heads-up banner on the Stakeholder Register — card language, amber
+   accent border + icon tile per UI doctrine 1, hidden until something is due. */
+.stk-cmp{display:flex;align-items:center;gap:10px;background:linear-gradient(180deg,rgba(245,158,11,.1),var(--card) 60%);
+  border:1px solid rgba(245,158,11,.4);border-radius:var(--radius-lg);padding:10px 14px;margin-bottom:14px;font-size:.76rem;color:var(--text);}
+.stk-cmp .ico{color:var(--amber);flex-shrink:0;}
+.stk-cmp.is-hide{display:none;}
+/* MARKET-FEATURE-ROADMAP A3/A4: Bid Leveling + Go/No-Go scorecards
+   (Stakeholders panel). Reuses the .dt table / .badge / .card language. */
+.bid-pkg{border:1px solid var(--border);border-radius:var(--radius-lg);padding:12px 14px;margin-bottom:14px;background:var(--tile-bg);}
+.bid-pkg-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px;}
+.bid-pkg-head input[type=text]{font-weight:700;font-size:.78rem;}
+.bid-min{font-size:.7rem;color:var(--green);font-weight:700;margin-bottom:6px;}
+.bid-tbl{margin-top:4px;}
+.bid-tbl th,.bid-tbl td{padding:4px 6px;font-size:.72rem;}
+.gn-card{border:1px solid var(--border);border-radius:var(--radius-lg);padding:12px 14px;margin-bottom:14px;background:var(--tile-bg);}
+.gn-crit{display:flex;align-items:center;gap:8px;margin:6px 0;flex-wrap:wrap;}
+.gn-crit select{width:92px;}
+.gn-score{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:8px;}
+.gn-score-txt{font-size:.72rem;color:var(--slate);}
+.gn-badge{font-size:.62rem;}
 /* ---- DIR-3 (PROJECT-UX-NAV-WEATHER-EXPORT-DIRECTIVE): Core-Mode onboarding
        callout on the Dashboard. Solid card surface (Gate 6.1 — never glass
        over content), gold-tinted border, no motion (instant show/hide via
@@ -388,6 +416,9 @@ body.sidebar-open .nav-btn .ico,body.sidebar-open .sb-close .ico{transform:rotat
 #health-card.has-danger #h-od,#health-card.has-danger #h-bl,#health-card.has-danger #h-is{box-shadow:0 0 0 1px var(--danger);}
 /* §1: brand-new project — the whole health card reads quieter */
 #health-card.health-empty .fb-sm{opacity:.55;}
+/* MARKET-FEATURE-ROADMAP A1: compliance badge on the Project Health card —
+   same treatment as the Blocked/Overdue/Live-Issues danger counts. */
+#health-card.has-compliance #h-coi{box-shadow:0 0 0 1px var(--danger);background:rgba(239,68,68,.3);}
 
 /* ---- Cards ---- */
 /* PLAN-OF-ACTION-LIQUID-GLASS-UI 3.5.1: CSS glass is the universal default
@@ -845,6 +876,16 @@ body.dark-mode .dmaic-chip{background:rgba(255,255,255,.06);}
 .tf-due{font-size:.68rem;color:var(--slate);margin-left:8px;display:inline-flex;align-items:center;gap:4px;flex-shrink:0;}
 .tf-due svg{font-size:.7rem;}
 .tf-status{font-size:.68rem;padding:2px 5px;background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:4px;}
+/* ---- PPC card (MARKET-FEATURE-ROADMAP C8) ---- */
+.ppc-now{display:flex;align-items:baseline;gap:10px;margin-bottom:10px;}
+.ppc-bars{display:flex;flex-direction:column;gap:5px;margin-bottom:8px;}
+.ppc-bar-row{display:flex;align-items:center;gap:10px;font-size:.7rem;color:var(--slate);}
+.ppc-bar-lbl{min-width:64px;font-variant-numeric:tabular-nums;}
+.ppc-bar-track{flex:1;height:12px;background:var(--track-bg);border-radius:4px;overflow:hidden;}
+.ppc-bar-fill{height:100%;border-radius:4px;transition:width .3s var(--ease-ios);}
+.ppc-bar-val{min-width:74px;text-align:right;font-variant-numeric:tabular-nums;color:var(--text);}
+.ppc-note{display:flex;align-items:center;gap:6px;font-size:.72rem;color:var(--amber);margin:6px 0;}
+.ppc-basis{font-size:.66rem;color:var(--slate);margin-top:6px;}
 .gantt-arrows{position:absolute;top:0;left:0;pointer-events:none;overflow:visible;z-index:5;}
 
 /* ---- Gantt interactions (drag / tooltip / baseline overlay) ---- */
@@ -2445,6 +2486,12 @@ body.db-page .db-upgrade{
   padding:9px 10px;border:none;border-radius:100px;cursor:pointer;
   background:var(--gold);color:var(--on-gold);font-size:.74rem;font-weight:700;
 }
+/* The display:flex above would defeat the hidden attribute (a `[hidden]`
+   element with an author display rule is still rendered) — which is exactly
+   the Premium-pill-vs-Upgrade-button contradiction: loadPlan() hid the
+   button for paid accounts but the browser kept painting it. Guard it like
+   .db-sub[hidden] so the JS decision takes effect. */
+body.db-page .db-upgrade[hidden]{display:none;}
 body.db-page .db-upgrade .ico{width:14px;height:14px;}
 body.db-page .db-upgrade:hover{filter:brightness(1.08);}
 body.db-page .db-upgrade:focus-visible{outline:2px solid var(--gold);outline-offset:2px;}

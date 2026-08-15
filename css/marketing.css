@@ -334,6 +334,10 @@ svg.ico use{fill:inherit;stroke:inherit;}
 .signin-sheet .email-auth-err{font-size:.76rem;color:var(--danger);}
 .signin-sheet .email-auth-note{font-size:.76rem;color:var(--text-secondary);line-height:1.5;}
 .signin-sheet .signin-user{display:flex;flex-direction:column;gap:8px;align-items:flex-start;}
+/* display:flex above defeats the `hidden` attribute (author display rules
+   outrank the UA [hidden]{display:none}) — the signed-in row was painted
+   inside the closed sign-in sheet. Guard it so hidden really hides. */
+.signin-sheet .signin-user[hidden]{display:none;}
 .signin-sheet .signin-user-name{font-size:.9rem;font-weight:700;color:var(--text-primary);}
 .signin-sheet .signin-user-sub{font-size:.76rem;color:var(--text-secondary);word-break:break-all;}
 .signin-sheet .signin-out{

@@ -89,7 +89,14 @@ var MMGR = window.MMGR || {};
       if (!s.budgetLines) s.budgetLines = [];
       s.budgetLines.push({
         id: U.genShortId('B'), category: '', planned: 0, actual: 0,
-        notes: '', taskId: '', curve: 'linear'
+        notes: '', taskId: '', curve: 'linear',
+        // MARKET-FEATURE-ROADMAP A2: lien-waiver status tracking — US-convention
+        // labels per the roadmap (Jamaica legal verification is B7, still open).
+        waiverStatus: 'pending', waiverReceivedAt: '',
+        // MARKET-FEATURE-ROADMAP C12: committed-but-not-spent bucket. Null =
+        // unset (falls back to planned, preserving pre-C12 behavior); set 0
+        // for a planning-stage line that isn't a contractual commitment yet.
+        committed: null
       });
     });
     R.renderBudget();
@@ -98,7 +105,7 @@ var MMGR = window.MMGR || {};
   function updBudgetLine(index, field, value, evtType) {
     ns.State.updateState(function(s) {
       if (s.budgetLines && s.budgetLines[index]) {
-        s.budgetLines[index][field] = (field === 'planned' || field === 'actual')
+        s.budgetLines[index][field] = (field === 'planned' || field === 'actual' || field === 'committed')
           ? parseFloat(value) || 0 : value;
       }
     });
@@ -255,6 +262,55 @@ var MMGR = window.MMGR || {};
     R.renderBudget();
   }
 
+  // ---- Pay Applications (MARKET-FEATURE-ROADMAP C13) ----
+  // Draw-request register: a generated draft carries the live spend figure
+  // (sum of budget-line actuals, the same source the Budget panel shows) so
+  // the amount is never hand-typed twice. Zero third-party — plain records.
+  function currentPeriodLabel() {
+    const d = new Date();
+    const m = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.getMonth()];
+    return m + ' ' + d.getFullYear();
+  }
+
+  function liveSpendTotal() {
+    const s = ns.State ? ns.State.getState() : null;
+    const lines = (s && s.budgetLines) || [];
+    return lines.reduce((sum, l) => sum + budgetLineActual(l, s), 0);
+  }
+
+  function addPayApp(manual) {
+    ns.State.updateState(function(s) {
+      if (!s.payApps) s.payApps = [];
+      const n = s.payApps.length + 1;
+      const amount = manual ? 0 : Math.round(liveSpendTotal());
+      s.payApps.push({
+        id: U.genShortId('PA'), number: 'PA-' + n, period: currentPeriodLabel(),
+        amount: amount, status: 'draft', dateSubmitted: '', dateApproved: '', notes: ''
+      });
+    });
+    R.renderBudget();
+    if (!manual) ns.App.showToast('Pay application draft generated from live spend.', 'ok');
+  }
+
+  function genPayApp() { addPayApp(false); }
+
+  function updPayApp(index, field, value, evtType) {
+    ns.State.updateState(function(s) {
+      if (s.payApps && s.payApps[index]) {
+        s.payApps[index][field] = field === 'amount' ? (parseFloat(value) || 0) : value;
+      }
+    });
+    if (evtType === 'input') return;
+    R.renderBudget();
+  }
+
+  function delPayApp(index) {
+    ns.State.updateState(function(s) {
+      if (s.payApps) s.payApps.splice(index, 1);
+    });
+    R.renderBudget();
+  }
+
   // ---- API ----
   ns.Resources = {
     addResource: addResource,
@@ -271,6 +327,15 @@ var MMGR = window.MMGR || {};
     updBudgetLine: updBudgetLine,
     delBudgetLine: delBudgetLine,
     updEnvelope: updEnvelope
+  };
+
+  ns.PayApps = {
+    addPayApp: addPayApp,
+    genPayApp: genPayApp,
+    updPayApp: updPayApp,
+    delPayApp: delPayApp,
+    currentPeriodLabel: currentPeriodLabel,
+    liveSpendTotal: liveSpendTotal
   };
 
   ns.Spend = {

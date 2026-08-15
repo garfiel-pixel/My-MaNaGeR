@@ -766,8 +766,63 @@ var MMGR = window.MMGR || {};
     }
   }
 
+  // ---- MARKET-FEATURE-ROADMAP C7: Lookahead ----
+  // Tasks that matter in the next N days (default 14): anything still open
+  // that starts or finishes inside the horizon, PLUS overdue carryover that
+  // should already have finished. Pure function of tasks — no new state.
+  function lookaheadTasks(tasks, days) {
+    const d = (days === undefined || days === null) ? 14 : +days;
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const horizon = new Date(today); horizon.setDate(today.getDate() + d);
+    // U.parseDL is the app's canonical date parser (local midnight for
+    // YYYY-MM-DD) — never new Date('YYYY-MM-DD'), which is UTC and drifts
+    // across midnight boundaries on non-UTC machines.
+    const p = (str) => U.parseDL(str);
+    return (tasks || []).filter(function(t) {
+      if (t.status === 'completed') return false;
+      const s = t.startDate ? p(t.startDate) : null;
+      const e = t.endDate ? p(t.endDate) : null;
+      if (!e && !s) return false;
+      if (e && e < today) return true;    // overdue carryover
+      if (e && e <= horizon) return true; // finishing within horizon
+      if (s && s <= horizon) return true; // starting within horizon
+      return false;
+    }).sort(function(a, b) {
+      return p(a.endDate || a.startDate) - p(b.endDate || b.startDate);
+    });
+  }
+
+  // ---- MARKET-FEATURE-ROADMAP C8: Percent Plan Complete (PPC) ----
+  // Lean metric: of the tasks planned to finish in a given ISO week (Mon-Sun,
+  // by endDate), how many are actually completed. weekOffset 0 = current week,
+  // -1 = last week, etc. pct is null when nothing was planned that week —
+  // never a fabricated 0%. Zero new state; pure function of task dates.
+  function isoWeekStart(offset) {
+    const d = new Date(); d.setHours(0, 0, 0, 0);
+    const day = (d.getDay() + 6) % 7; // Monday = 0
+    d.setDate(d.getDate() - day - ((offset || 0) * 7));
+    return d;
+  }
+
+  function computePpc(tasks, weekOffset) {
+    const start = isoWeekStart(weekOffset);
+    const end = new Date(start); end.setDate(start.getDate() + 6);
+    // Same parseDL discipline as lookaheadTasks — local-midnight parsing.
+    const due = (tasks || []).filter(function(t) {
+      if (!t.endDate) return false;
+      const e = U.parseDL(t.endDate);
+      return e && e >= start && e <= end;
+    });
+    if (!due.length) return { planned: 0, completed: 0, pct: null, start: start, end: end };
+    const completed = due.filter(function(t) { return t.status === 'completed'; }).length;
+    return { planned: due.length, completed: completed, pct: Math.round((completed / due.length) * 100), start: start, end: end };
+  }
+
   // ---- API ----
   ns.Schedule = {
+    lookaheadTasks: lookaheadTasks,
+    computePpc: computePpc,
+    isoWeekStart: isoWeekStart,
     cascade: cascade,
     findCycles: findCycles,
     topologicalSort: topologicalSort,

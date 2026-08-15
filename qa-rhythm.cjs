@@ -99,14 +99,17 @@ const SEED_STATE = `(function(){
       healthRows: document.querySelectorAll('#health-card .fb-sm').length,
       n3Rows: document.querySelectorAll('#n3 li').length };
   })()`);
-  check('R01 boot: dashboard active, 6 health rows + >=3 Next-3 rows present', b1.active && b1.healthRows === 6 && b1.n3Rows >= 3, b1);
+  // MARKET-FEATURE-ROADMAP A1 (2026-08-15) added a 7th row to the Project
+  // Health card — "Compliance Expiring" (same .fb-sm pattern as the risk
+  // counts, per the roadmap's own UI instruction). Expectations bumped 6→7.
+  check('R01 boot: dashboard active, 7 health rows + >=3 Next-3 rows present', b1.active && b1.healthRows === 7 && b1.n3Rows >= 3, b1);
 
-  // ---- R02 health rows: exactly 6, ONE consistent height, ~33px ----
+  // ---- R02 health rows: exactly 7, ONE consistent height, ~33px ----
   const m = await ev(`(function(){
     const hs = [...document.querySelectorAll('#health-card .fb-sm')].map(r => Math.round(r.getBoundingClientRect().height));
     return { heights: hs, allEqual: hs.every(h => h === hs[0]), target: hs[0] };
   })()`);
-  const r02ok = m.heights.length === 6 && m.allEqual && m.target >= 32 && m.target <= 34;
+  const r02ok = m.heights.length === 7 && m.allEqual && m.target >= 32 && m.target <= 34;
   check('R02 health rows: one consistent height ~33px (was 33px at v91+)', r02ok, m);
 
   // ---- R03 Next-3 rows: all ONE height, ~33px ----

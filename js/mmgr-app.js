@@ -2192,6 +2192,20 @@ window.MMGR = MMGR;
     'updEnvelope': (el, e) => window.MMGR.Budget.updEnvelope(el.value, e && e.type),
     'addStake': () => window.MMGR.Stakeholders.addStake(),
     'delStake': (el) => window.MMGR.Stakeholders.delStake(parseInt(el.getAttribute('data-idx'))),
+    // MARKET-FEATURE-ROADMAP A3/A4: bid leveling + Go/No-Go scoring actions
+    // (state mutations — deliberately NOT in READONLY_SAFE_ACTIONS).
+    'bidAdd': () => window.MMGR.Bids.addBidPackage(),
+    'bidAddRow': (el) => window.MMGR.Bids.addBid(parseInt(el.getAttribute('data-pkg'))),
+    'bidDelRow': (el) => window.MMGR.Bids.delBid(parseInt(el.getAttribute('data-pkg')), parseInt(el.getAttribute('data-idx'))),
+    'bidDelPkg': (el) => window.MMGR.Bids.delBidPackage(parseInt(el.getAttribute('data-pkg'))),
+    'updBid': (el, e) => window.MMGR.Bids.updBid(parseInt(el.getAttribute('data-pkg')), parseInt(el.getAttribute('data-idx')), el.getAttribute('data-field'), el.value, e && e.type),
+    'updBidPkg': (el, e) => window.MMGR.Bids.updBidPackage(parseInt(el.getAttribute('data-pkg')), el.value, e && e.type),
+    'gonogoAdd': () => window.MMGR.Bids.addGoNoGo(),
+    'gonogoAddCrit': (el) => window.MMGR.Bids.addGoNoGoCriterion(parseInt(el.getAttribute('data-idx'))),
+    'gonogoDelCrit': (el) => window.MMGR.Bids.delGoNoGoCriterion(parseInt(el.getAttribute('data-idx')), parseInt(el.getAttribute('data-cidx'))),
+    'gonogoDel': (el) => window.MMGR.Bids.delGoNoGo(parseInt(el.getAttribute('data-idx'))),
+    'updGoNoGo': (el, e) => window.MMGR.Bids.updGoNoGo(parseInt(el.getAttribute('data-idx')), el.getAttribute('data-field'), el.value, e && e.type),
+    'updGoNoGoCrit': (el, e) => window.MMGR.Bids.updGoNoGoCriterion(parseInt(el.getAttribute('data-idx')), parseInt(el.getAttribute('data-cidx')), el.getAttribute('data-field'), el.value, e && e.type),
     'addChange': () => window.MMGR.Changes.addChange(),
     'delChange': (el) => window.MMGR.Changes.delChange(parseInt(el.getAttribute('data-idx'))),
     'addLog': () => window.MMGR.Log.addLog(),
@@ -2202,6 +2216,35 @@ window.MMGR = MMGR;
     'delComms': (el) => window.MMGR.Comms.delComms(parseInt(el.getAttribute('data-idx'))),
     'addDoc': () => window.MMGR.Documents.addDoc(),
     'delDoc': (el) => window.MMGR.Documents.delDoc(parseInt(el.getAttribute('data-idx'))),
+    // MARKET-FEATURE-ROADMAP C1/C2/C3: RFI + Submittal + Punch List actions.
+    'addRfi': () => window.MMGR.Rfis.addRfi(),
+    'delRfi': (el) => window.MMGR.Rfis.delRfi(parseInt(el.getAttribute('data-idx'))),
+    'addSubmittal': () => window.MMGR.Submittals.addSubmittal(),
+    'delSubmittal': (el) => window.MMGR.Submittals.delSubmittal(parseInt(el.getAttribute('data-idx'))),
+    'addPunch': () => window.MMGR.PunchList.addPunch(),
+    'delPunch': (el) => window.MMGR.PunchList.delPunch(parseInt(el.getAttribute('data-idx'))),
+    // MARKET-FEATURE-ROADMAP Section C batch 2 (state mutations — never
+    // READONLY_SAFE): pay applications, inspections, incidents, handover,
+    // warranty, drawing distribution log, permits.
+    'addPayApp': () => window.MMGR.PayApps.addPayApp(true),
+    'genPayApp': () => window.MMGR.PayApps.genPayApp(),
+    'delPayApp': (el) => window.MMGR.PayApps.delPayApp(parseInt(el.getAttribute('data-idx'))),
+    'addInspection': () => window.MMGR.Inspections.addInspection(),
+    'delInspection': (el) => window.MMGR.Inspections.delInspection(parseInt(el.getAttribute('data-idx'))),
+    'addInspItem': (el) => window.MMGR.Inspections.addInspItem(parseInt(el.getAttribute('data-idx'))),
+    'delInspItem': (el) => window.MMGR.Inspections.delInspItem(parseInt(el.getAttribute('data-idx')), parseInt(el.getAttribute('data-iidx'))),
+    'inspItemToggle': (el) => window.MMGR.Inspections.toggleInspItem(parseInt(el.getAttribute('data-idx')), parseInt(el.getAttribute('data-iidx'))),
+    'updInspItem': (el) => window.MMGR.Inspections.updInspItem(parseInt(el.getAttribute('data-idx')), parseInt(el.getAttribute('data-iidx')), el.getAttribute('data-field'), el.value),
+    'addIncident': () => window.MMGR.Incidents.addIncident(),
+    'delIncident': (el) => window.MMGR.Incidents.delIncident(parseInt(el.getAttribute('data-idx'))),
+    'addHandoverItem': () => window.MMGR.Handover.addHandoverItem(),
+    'delHandoverItem': (el) => window.MMGR.Handover.delHandoverItem(parseInt(el.getAttribute('data-idx'))),
+    'addWarranty': () => window.MMGR.Warranty.addWarranty(),
+    'delWarranty': (el) => window.MMGR.Warranty.delWarranty(parseInt(el.getAttribute('data-idx'))),
+    'addDrawLog': () => window.MMGR.DrawingLog.addDrawLog(),
+    'delDrawLog': (el) => window.MMGR.DrawingLog.delDrawLog(parseInt(el.getAttribute('data-idx'))),
+    'addPermit': () => window.MMGR.Permits.addPermit(),
+    'delPermit': (el) => window.MMGR.Permits.delPermit(parseInt(el.getAttribute('data-idx'))),
     'addKPI': () => window.MMGR.Charter.addKPI(),
     'delKPI': (el) => window.MMGR.Charter.delKPI(parseInt(el.getAttribute('data-idx'))),
     'openChartUp': () => window.MMGR.Charter.openChartUp(),
@@ -2494,7 +2537,21 @@ window.MMGR = MMGR;
         // CloseItems' updater takes (index, done) — no field parameter.
         'CloseItems':   { ns: 'Closure', fn: 'updCloseItem', doneOnly: true },
         'Comms':        { ns: 'Comms', fn: 'updComms' },
-        'Documents':    { ns: 'Documents', fn: 'updDoc' }
+        'Documents':    { ns: 'Documents', fn: 'updDoc' },
+        // MARKET-FEATURE-ROADMAP C1/C2/C3: RFI + Submittal + Punch List
+        // registries (state mutations — never READONLY_SAFE).
+        'Rfis':         { ns: 'Rfis', fn: 'updRfi' },
+        'Submittals':   { ns: 'Submittals', fn: 'updSubmittal' },
+        'PunchList':    { ns: 'PunchList', fn: 'updPunch' },
+        // MARKET-FEATURE-ROADMAP Section C batch 2 (state mutations — never
+        // READONLY_SAFE).
+        'PayApps':      { ns: 'PayApps', fn: 'updPayApp' },
+        'Inspections':  { ns: 'Inspections', fn: 'updInspection' },
+        'Incidents':    { ns: 'Incidents', fn: 'updIncident' },
+        'Handover':     { ns: 'Handover', fn: 'updHandoverItem' },
+        'Warranty':     { ns: 'Warranty', fn: 'updWarranty' },
+        'DrawingLog':   { ns: 'DrawingLog', fn: 'updDrawLog' },
+        'Permits':      { ns: 'Permits', fn: 'updPermit' }
       };
       const target = MODULE_UPDATERS[module];
       if (!target) { console.warn('updField: no updater mapped for module "' + module + '"'); return; }
@@ -2671,7 +2728,7 @@ window.MMGR = MMGR;
     // field (Google OAuth Client ID) — it was missing from this change
     // whitelist, so the value sat in the box but was never persisted.
     // `change` is the correct event for a one-time paste/type-then-blur field.
-    if (handler && (action === 'updEnvelope' || action === 'saveSprint' || action === 'setWorkWeek' || action === 'setRegion' || action === 'loadProjectFile' || action === 'mergeProjectFile' || action === 'updCharter' || action === 'updClose' || action === 'setUserName' || action === 'addRaciTaskFromPicker' || action === 'addRaciPersonFromPicker' || action === 'updField' || action === 'updTaskField' || action === 'updKPI' || action === 'updKPILink' || action === 'updKPIDir' || action === 'updSpendEntry' || action === 'updRaciTask' || action === 'updRaciPerson' || action === 'claimSetCause' || action === 'aiSetTier' || action === 'setErrWebhook' || action === 'driveAutoInterval' || action === 'driveSetPass' || action === 'syncClientId')) {
+    if (handler && (action === 'updEnvelope' || action === 'saveSprint' || action === 'setWorkWeek' || action === 'setRegion' || action === 'loadProjectFile' || action === 'mergeProjectFile' || action === 'updCharter' || action === 'updClose' || action === 'setUserName' || action === 'addRaciTaskFromPicker' || action === 'addRaciPersonFromPicker' || action === 'updField' || action === 'updTaskField' || action === 'updKPI' || action === 'updKPILink' || action === 'updKPIDir' || action === 'updSpendEntry' || action === 'updRaciTask' || action === 'updRaciPerson' || action === 'claimSetCause' || action === 'aiSetTier' || action === 'setErrWebhook' || action === 'driveAutoInterval' || action === 'driveSetPass' || action === 'syncClientId' || action === 'updBid' || action === 'updBidPkg' || action === 'updGoNoGo' || action === 'updGoNoGoCrit' || action === 'updInspItem')) {
       handler(el, e);
     }
   });
@@ -2687,7 +2744,7 @@ window.MMGR = MMGR;
     const action = el.getAttribute('data-action');
     if (!guardReadonly(action)) return;
     const handler = ACTION_MAP[action];
-    if (handler && (action === 'updCharter' || action === 'updClose' || action === 'setUserName' || action === 'updEnvelope' || action === 'wiPreview' || action === 'idPreview' || action === 'regenChartPrompt' || action === 'updField' || action === 'updTaskField' || action === 'updKPI' || action === 'updSpendEntry' || action === 'updRaciTask' || action === 'updRaciPerson' || action === 'updDMAIC' || action === 'updMeetItemNote' || action === 'updMeetField' || action === 'handleCharterUpload' || action === 'setErrWebhook')) {
+    if (handler && (action === 'updCharter' || action === 'updClose' || action === 'setUserName' || action === 'updEnvelope' || action === 'wiPreview' || action === 'idPreview' || action === 'regenChartPrompt' || action === 'updField' || action === 'updTaskField' || action === 'updKPI' || action === 'updSpendEntry' || action === 'updRaciTask' || action === 'updRaciPerson' || action === 'updDMAIC' || action === 'updMeetItemNote' || action === 'updMeetField' || action === 'handleCharterUpload' || action === 'setErrWebhook' || action === 'updBid' || action === 'updBidPkg' || action === 'updGoNoGo' || action === 'updGoNoGoCrit' || action === 'updInspItem')) {
       handler(el, e);
     }
   });

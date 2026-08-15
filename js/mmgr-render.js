@@ -134,6 +134,15 @@ var MMGR = window.MMGR || {};
     const setVal = (id, val) => { const el = $(id); if (el) el.textContent = val; };
     setVal('h-ip', ip); setVal('h-ar', atRisk); setVal('h-bl', blocked);
     setVal('h-dn', done); setVal('h-od', overdue); setVal('h-is', issues);
+    // MARKET-FEATURE-ROADMAP A1: subcontractor compliance count on the
+    // Dashboard Project Health card (same badge pattern as the risk counts).
+    // renderDash runs on every renderAll, so this is ALSO where the
+    // Stakeholders nav-badge count stays fresh — the nav pill must reflect
+    // compliance even before the Stakeholders section is ever opened.
+    const stkCmp = (ns.Stakeholders && ns.Stakeholders.getExpiringCompliance)
+      ? ns.Stakeholders.getExpiringCompliance(s.stakeholders || [], 30).length
+      : 0;
+    syncStakeComplianceBadges(stkCmp);
     // §4 tiering: a non-zero Blocked/Overdue/Live-Issues count gets the
     // strongest static treatment — existing --danger token, no motion.
     const healthCard = $('health-card');
@@ -330,6 +339,11 @@ var MMGR = window.MMGR || {};
     if (ns.Evm && ns.Evm.render) ns.Evm.render();
     // Today's Focus (feature 10)
     renderTodayView();
+    // MARKET-FEATURE-ROADMAP C7/C8: 2-week Lookahead + Percent Plan Complete
+    renderLookahead();
+    renderPpc();
+    // MARKET-FEATURE-ROADMAP C29: expiry & renewal rollup card.
+    renderExpiryCard();
     // Today's Decision Engine (ACTION-PLAN 1.1) — impact-scored ranking
     if (ns.Decisions && ns.Decisions.render) ns.Decisions.render();
     // Milestone Timeline + Timeline Target status (feature 11)
@@ -390,6 +404,106 @@ var MMGR = window.MMGR || {};
       renderGroup('In Progress', inProgress, 'var(--green)', 'i-tool')
     ].join('');
     el.innerHTML = content || '<div class="es es-ok"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-check"></use></svg> Nothing urgent. All tasks on track.</div>';
+  }
+
+  // ---- Lookahead (MARKET-FEATURE-ROADMAP C7) ----
+  // Short-horizon field view: every open task starting or finishing in the
+  // next 2 weeks (plus overdue carryover), grouped by week — distinct from
+  // the full Gantt. Status changes go through the same updTaskField the WBS
+  // and Today's Focus use.
+  function renderLookahead() {
+    const s = S();
+    if (!s) return;
+    const el = $('lookahead-body');
+    if (!el) return;
+    const tasks = (ns.Schedule && ns.Schedule.lookaheadTasks) ? ns.Schedule.lookaheadTasks(s.tasks || [], 14) : [];
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const wkLabel = (d) => 'Week of ' + d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const group = (label, list, color) => {
+      if (!list.length) return '';
+      const rows = list.map(t => `<div class="tf-row" style="border-left-color:${color}">
+        <div><span class="tf-name">${U.escapeHtml(t.name)}</span><span class="tf-due">${t.startDate ? U.fmtDateShort(t.startDate) : '?'} → ${t.endDate ? U.fmtDateShort(t.endDate) : '?'}${t.assignee ? ' · ' + U.escapeHtml(t.assignee) : ''}${t.weatherExposed ? ' <svg class="ico" aria-hidden="true" style="color:var(--blue)"><use href="css/mmgr-icons.svg#i-cloud"></use></svg>' : ''}</span></div>
+        <select class="tf-status" data-action="updTaskField" data-id="${U.escapeHtml(t.id)}" data-field="status"><option value="todo" ${t.status === 'todo' ? 'selected' : ''}>To Do</option><option value="inprogress" ${t.status === 'inprogress' ? 'selected' : ''}>In Progress</option><option value="blocked" ${t.status === 'blocked' ? 'selected' : ''}>Blocked</option><option value="completed" ${t.status === 'completed' ? 'selected' : ''}>Completed</option></select>
+      </div>`).join('');
+      return `<div class="tf-group"><div class="tf-head" style="color:${color}"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-calendar"></use></svg> ${label} (${list.length})</div>${rows}</div>`;
+    };
+    const overdue = tasks.filter(t => t.endDate && new Date(t.endDate) < today);
+    const wkStart = new Date(today); wkStart.setDate(today.getDate() + (7 - ((today.getDay() + 6) % 7)) % 7); // next Monday
+    const thisWk = tasks.filter(t => t.endDate && new Date(t.endDate) >= today && new Date(t.endDate) < wkStart);
+    const nextWk = tasks.filter(t => t.endDate && new Date(t.endDate) >= wkStart);
+    const noEnd = tasks.filter(t => !t.endDate);
+    const content = group('Overdue Carryover', overdue, 'var(--danger)')
+      + group('This Week', thisWk, 'var(--gold)')
+      + group('Next Week', nextWk, 'var(--green)')
+      + (noEnd.length ? group('Starting Soon (no end date)', noEnd, 'var(--slate)') : '');
+    el.innerHTML = content || '<div class="es" style="padding:14px;font-size:.78rem">No tasks starting or finishing in the next 2 weeks — the schedule ahead is clear.</div>';
+  }
+
+  // ---- Percent Plan Complete (MARKET-FEATURE-ROADMAP C8) ----
+  // Lean metric: of the tasks planned to finish in each ISO week, how many
+  // are completed. Current week figure + last 4 weeks as quiet history bars.
+  function renderPpc() {
+    const s = S();
+    if (!s) return;
+    const el = $('ppc-body');
+    if (!el) return;
+    const tasks = s.tasks || [];
+    const now = computePpcSafe(tasks, 0);
+    const hist = [1, 2, 3, 4].map(o => computePpcSafe(tasks, o)).reverse();
+    const head = $('ppc-head');
+    if (head) {
+      if (now.planned === 0) head.textContent = 'No tasks planned to finish this week — add end dates to schedule work.';
+      else head.textContent = now.completed + ' of ' + now.planned + ' tasks planned this week completed (' + now.pct + '%)';
+    }
+    const overdue = tasks.filter(t => U.isOverdue(t.endDate) && t.status !== 'completed').length;
+    const bars = hist.map(h => {
+      const lbl = h.start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      const pct = h.pct === null ? 0 : h.pct;
+      const w = h.planned ? pct : 2;
+      const col = h.pct === null ? 'var(--border)' : pct >= 80 ? 'var(--green)' : pct >= 50 ? 'var(--amber)' : 'var(--danger)';
+      return `<div class="ppc-bar-row"><span class="ppc-bar-lbl">${lbl}</span><div class="ppc-bar-track"><div class="ppc-bar-fill" style="width:${Math.max(2, w)}%;background:${col}"></div></div><span class="ppc-bar-val">${h.pct === null ? '—' : pct + '%'}${h.planned ? ' (' + h.completed + '/' + h.planned + ')' : ''}</span></div>`;
+    }).join('');
+    el.innerHTML = `<div class="ppc-now">${now.planned ? `<span class="stat-xl" style="font-size:1.6rem;color:${now.pct >= 80 ? 'var(--green)' : now.pct >= 50 ? 'var(--amber)' : 'var(--danger)'}">${now.pct}%</span>` : '<span class="stat-xl" style="font-size:1.2rem;color:var(--slate)">—</span>'}</div>` +
+      '<div class="ppc-bars">' + bars + '</div>' +
+      (overdue ? `<div class="ppc-note"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-alert-triangle"></use></svg> ${overdue} task${overdue === 1 ? ' is' : 's are'} overdue from earlier weeks.</div>` : '') +
+      '<div class="ppc-basis">Basis: tasks whose end date falls in each week, by completion status.</div>';
+  }
+
+  // Safe wrapper — computePpc lives on Schedule; never let a missing module
+  // kill the dashboard render.
+  function computePpcSafe(tasks, offset) {
+    if (ns.Schedule && ns.Schedule.computePpc) return ns.Schedule.computePpc(tasks, offset);
+    return { planned: 0, completed: 0, pct: null, start: new Date(), end: new Date() };
+  }
+
+  // ---- Expiry & Renewals dashboard card (MARKET-FEATURE-ROADMAP C29) ----
+  // Single rollup across COI/license/EMR, warranties, and permits — anything
+  // with a date coming due in the next 60 days (or already past).
+  function renderExpiryCard() {
+    const s = S();
+    if (!s) return;
+    const el = $('expiry-body');
+    if (!el) return;
+    const wrap = $('expiry-card');
+    const list = (ns.Compliance && ns.Compliance.getExpiryRollup)
+      ? ns.Compliance.getExpiryRollup(60) : [];
+    if (list.length === 0) {
+      if (wrap) wrap.classList.add('is-hide');
+      return;
+    }
+    if (wrap) wrap.classList.remove('is-hide');
+    const setVal = (id, val) => { const x = $(id); if (x) x.textContent = val; };
+    setVal('expiry-count', list.length + (list.length === 1 ? ' item' : ' items') + ' due');
+    const kindColor = (k) => k === 'COI' || k === 'License' ? 'var(--gold)' : k === 'Warranty' ? 'var(--cyan)' : k === 'Permit' ? 'var(--amber)' : 'var(--danger)';
+    el.innerHTML = list.map(x => {
+      const dlTxt = x.daysLeft === null ? 'overdue' : x.daysLeft < 0 ? Math.abs(x.daysLeft) + 'd overdue' : x.daysLeft === 0 ? 'today' : x.daysLeft + 'd left';
+      const dlColor = x.daysLeft === null || x.daysLeft < 0 ? 'var(--danger)' : x.daysLeft <= 14 ? 'var(--danger)' : x.daysLeft <= 30 ? 'var(--amber)' : 'var(--slate)';
+      return `<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.04)">
+        <span class="badge" style="color:${kindColor(x.kind)};border-color:${kindColor(x.kind)}">${x.kind}</span>
+        <span style="flex:1;font-size:.8rem">${U.escapeHtml(x.label)}${x.date ? ' <span style="color:var(--slate)">' + U.escapeHtml(x.date) + '</span>' : ''}</span>
+        <span class="badge" style="color:${dlColor};border-color:${dlColor}">${dlTxt}</span>
+      </div>`;
+    }).join('');
   }
 
   // ---- Timeline Target status (feature 11) ----
@@ -1794,6 +1908,81 @@ var MMGR = window.MMGR || {};
       }
     }
     renderRiskMatrix();
+    // MARKET-FEATURE-ROADMAP C16/C17: inspection checklists + incident
+    // register live in the Risk & Issue panel (quality/safety compliance hub).
+    renderInspections();
+    renderIncidents();
+  }
+
+  // ---- Inspection Checklists (MARKET-FEATURE-ROADMAP C16) ----
+  // One card per inspection: pass/fail item rows + a status select that
+  // auto-advances to 'passed' when every item checks. Zero third-party.
+  function renderInspections() {
+    const s = S();
+    if (!s) return;
+    const body = $('insp-body');
+    if (!body) return;
+    const list = s.inspections || [];
+    const sum = $('insp-sum');
+    const passed = list.filter(x => x.status === 'passed' || x.status === 'closed').length;
+    if (sum) sum.textContent = list.length ? (passed + ' passed · ' + (list.length - passed) + ' open') : '';
+    if (list.length === 0) {
+      body.innerHTML = emptyStateRow(8, 'No inspection checklists yet.', '<button class="btn btn-g btn-s" data-action="addInspection">+ Add Inspection</button>');
+      return;
+    }
+    const statusColor = (st) => st === 'passed' || st === 'closed' ? 'var(--green)' : st === 'failed' ? 'var(--danger)' : 'var(--amber)';
+    body.innerHTML = list.map((x, i) => {
+      const items = x.items || [];
+      const itemRows = items.map((it, j) => `<div style="display:flex;align-items:center;gap:8px;padding:3px 0">
+        <input type="checkbox" ${it.pass ? 'checked' : ''} data-action="inspItemToggle" data-idx="${i}" data-iidx="${j}" title="Pass / fail">
+        <input type="text" value="${U.escapeHtml(it.text)}" data-action="updInspItem" data-field="text" data-idx="${i}" data-iidx="${j}" placeholder="Checklist item" style="flex:1;min-width:120px">
+        <input type="text" value="${U.escapeHtml(it.notes || '')}" data-action="updInspItem" data-field="notes" data-idx="${i}" data-iidx="${j}" placeholder="—" style="width:130px">
+        <button class="btn btn-s btn-d" data-action="delInspItem" data-idx="${i}" data-iidx="${j}" title="Remove item">×</button>
+      </div>`).join('');
+      return `<tr>
+        <td>${U.escapeHtml(x.id || 'INSP' + (i+1))}</td>
+        <td><input type="text" value="${U.escapeHtml(x.title)}" data-action="updField" data-module="Inspections" data-field="title" data-idx="${i}" style="min-width:130px" placeholder="Inspection title"></td>
+        <td><input type="text" value="${U.escapeHtml(x.trade || '')}" data-action="updField" data-module="Inspections" data-field="trade" data-idx="${i}" style="width:90px" placeholder="Trade"></td>
+        <td><input type="text" value="${U.escapeHtml(x.area || '')}" data-action="updField" data-module="Inspections" data-field="area" data-idx="${i}" style="width:100px" placeholder="Area"></td>
+        <td><input type="date" value="${x.date || ''}" data-action="updField" data-module="Inspections" data-field="date" data-idx="${i}"></td>
+        <td style="min-width:220px">${itemRows}
+          <button class="btn btn-s btn-g" data-action="addInspItem" data-idx="${i}">+ item</button>
+        </td>
+        <td><select data-action="updField" data-module="Inspections" data-field="status" data-idx="${i}" style="color:${statusColor(x.status)}">${['open','passed','failed','closed'].map(v => `<option ${x.status === v ? 'selected' : ''}>${v}</option>`).join('')}</select></td>
+        <td><button class="btn btn-s btn-d" data-action="delInspection" data-idx="${i}">×</button></td>
+      </tr>`;
+    }).join('');
+  }
+
+  // ---- Incident Register w/ corrective-action loop (MARKET-FEATURE-ROADMAP
+  // C17) ----
+  // Quality/safety incidents with root cause + corrective action closure.
+  function renderIncidents() {
+    const s = S();
+    if (!s) return;
+    const body = $('inc-body');
+    if (!body) return;
+    const list = s.incidents || [];
+    const sum = $('inc-sum');
+    const open = list.filter(x => x.status !== 'closed').length;
+    if (sum) sum.textContent = list.length ? (open + ' open · ' + (list.length - open) + ' closed') : '';
+    if (list.length === 0) {
+      body.innerHTML = emptyStateRow(10, 'No incidents logged.', '<button class="btn btn-g btn-s" data-action="addIncident">+ Log Incident</button>');
+      return;
+    }
+    const statusColor = (st) => st === 'closed' ? 'var(--green)' : st === 'action' ? 'var(--gold)' : st === 'investigation' ? 'var(--amber)' : 'var(--danger)';
+    body.innerHTML = list.map((x, i) => `<tr>
+      <td>${U.escapeHtml(x.id || 'INC' + (i+1))}</td>
+      <td><input type="date" value="${x.date || ''}" data-action="updField" data-module="Incidents" data-field="date" data-idx="${i}"></td>
+      <td><select data-action="updField" data-module="Incidents" data-field="type" data-idx="${i}">${['Safety','Quality','Environmental'].map(v => `<option ${x.type === v ? 'selected' : ''}>${v}</option>`).join('')}</select></td>
+      <td><select data-action="updField" data-module="Incidents" data-field="severity" data-idx="${i}" style="color:${x.severity === 'High' ? 'var(--danger)' : x.severity === 'Medium' ? 'var(--amber)' : 'var(--slate)'}">${['Low','Medium','High','Critical'].map(v => `<option ${x.severity === v ? 'selected' : ''}>${v}</option>`).join('')}</select></td>
+      <td><input type="text" value="${U.escapeHtml(x.description)}" data-action="updField" data-module="Incidents" data-field="description" data-idx="${i}" style="min-width:150px" placeholder="What happened"></td>
+      <td><input type="text" value="${U.escapeHtml(x.owner || '')}" data-action="updField" data-module="Incidents" data-field="owner" data-idx="${i}" style="width:90px" placeholder="Owner"></td>
+      <td><select data-action="updField" data-module="Incidents" data-field="status" data-idx="${i}" style="color:${statusColor(x.status)}">${(ns.Incidents && ns.Incidents.statuses || ['open','investigation','action','closed']).map(v => `<option ${x.status === v ? 'selected' : ''}>${v}</option>`).join('')}</select></td>
+      <td><input type="text" value="${U.escapeHtml(x.rootCause || '')}" data-action="updField" data-module="Incidents" data-field="rootCause" data-idx="${i}" style="width:120px" placeholder="Root cause"></td>
+      <td><input type="text" value="${U.escapeHtml(x.correctiveAction || '')}" data-action="updField" data-module="Incidents" data-field="correctiveAction" data-idx="${i}" style="width:120px" placeholder="Corrective action"></td>
+      <td><button class="btn btn-s btn-d" data-action="delIncident" data-idx="${i}">×</button></td>
+    </tr>`).join('');
   }
 
   // ---- Resources ----
@@ -1947,12 +2136,22 @@ var MMGR = window.MMGR || {};
     const actual = lines.reduce((sum, l) => sum + (+l.actual || 0), 0);
     const remaining = envelope - actual;
     const unallocated = envelope - planned;
+    // MARKET-FEATURE-ROADMAP C12: committed-but-not-spent bucket. A line's
+    // committed figure defaults to planned when unset (preserving pre-C12
+    // behavior); set 0 on a line to drop it out of the commitment total.
+    const lineCommitted = (l) => (l.committed !== null && l.committed !== undefined && l.committed !== '')
+      ? +l.committed || 0 : +l.planned || 0;
+    const committed = lines.reduce((sum, l) => sum + lineCommitted(l), 0);
+    const committedGap = Math.max(0, committed - actual);
 
     // Update summary cards
     const setVal = (id, val) => { const el = $(id); if (el) el.textContent = val; };
     setVal('bud-envelope-disp', '$' + Number(envelope).toLocaleString());
-    setVal('bud-committed', '$' + planned.toLocaleString());
-    setVal('bud-committed-pct', envelope ? Math.round((planned/envelope)*100) + '% of envelope' : '0%');
+    setVal('bud-committed', '$' + committed.toLocaleString());
+    setVal('bud-committed-pct', envelope ? Math.round((committed/envelope)*100) + '% of envelope' : '0%');
+    setVal('bud-committed-gap', committedGap > 0 ? '$' + committedGap.toLocaleString() + ' committed, not yet spent' : 'All committed spend is out');
+    const gapEl = $('bud-committed-gap');
+    if (gapEl) gapEl.style.color = committedGap > 0 ? 'var(--amber)' : 'var(--slate)';
     setVal('bud-ta', '$' + actual.toLocaleString());
     setVal('bud-spent-pct', envelope ? Math.round((actual/envelope)*100) + '% of envelope' : '0%');
     setVal('bud-remaining', '$' + Math.max(0, remaining).toLocaleString());
@@ -1984,19 +2183,33 @@ var MMGR = window.MMGR || {};
     renderCashFlowChart();
 
     if (lines.length === 0) {
-      body.innerHTML = emptyStateRow(11, 'No budget lines yet.', '<button class="btn btn-g btn-s" data-action="addBudgetLine">+ Add Budget Line</button>');
+      body.innerHTML = emptyStateRow(14, 'No budget lines yet.', '<button class="btn btn-g btn-s" data-action="addBudgetLine">+ Add Budget Line</button>');
       return;
     }
+    // MARKET-FEATURE-ROADMAP A2: lien-waiver rollup for the summary strip.
+    const wTotal = lines.length;
+    const wRecv = lines.filter(l => l.waiverStatus === 'unconditional' || l.waiverStatus === 'conditional').length;
+    const wPending = lines.filter(l => !l.waiverStatus || l.waiverStatus === 'pending').length;
+    const wReq = lines.filter(l => l.waiverStatus === 'not_required').length;
+    const waiverTxt = wTotal
+      ? (wRecv + ' received · ' + wPending + ' pending · ' + wReq + ' not required')
+      : '';
+    setVal('bud-waivers', waiverTxt);
+    const waiverEl = $('bud-waivers-wrap');
+    if (waiverEl) waiverEl.classList.toggle('is-hide', !waiverTxt);
     body.innerHTML = lines.map((l, i) => `<tr>
       <td>${U.escapeHtml(l.id || 'B' + (i+1))}</td>
       <td><input type="text" value="${U.escapeHtml(l.category)}" data-action="updField" data-module="Budget" data-field="category" data-idx="${i}"></td>
       <td><input type="number" value="${l.planned || 0}" min="0" step="100" data-action="updField" data-module="Budget" data-field="planned" data-idx="${i}" style="width:90px"></td>
+      <td><input type="number" value="${l.committed !== null && l.committed !== undefined && l.committed !== '' ? l.committed : ''}" min="0" step="100" data-action="updField" data-module="Budget" data-field="committed" data-idx="${i}" style="width:90px" placeholder="${l.planned || 0}" title="Committed $ — blank defaults to Planned (C12)"></td>
       <td><input type="number" value="${l.actual || 0}" min="0" step="100" data-action="updField" data-module="Budget" data-field="actual" data-idx="${i}" style="width:90px"></td>
       <td style="color:${((l.planned || 0) - (l.actual || 0)) >= 0 ? 'var(--green)' : 'var(--danger)'}">${((l.planned || 0) - (l.actual || 0)) >= 0 ? '+' : ''}$${Math.abs((l.planned || 0) - (l.actual || 0)).toLocaleString()}</td>
       <td>${envelope ? Math.round(((l.actual || 0) / envelope) * 100) + '%' : '0%'}</td>
       <td><select data-action="updField" data-module="Budget" data-field="taskId" data-idx="${i}"><option value="">—</option>${(s.tasks || []).map(t => `<option ${t.id === l.taskId ? 'selected' : ''}>${U.escapeHtml(t.id)}</option>`).join('')}</select></td>
       <td><select data-action="updField" data-module="Budget" data-field="curve" data-idx="${i}">${['linear','front-loaded','back-loaded','bell'].map(c => `<option ${l.curve === c ? 'selected' : ''}>${c}</option>`).join('')}</select></td>
       <td><input type="checkbox" ${l.isContingency ? 'checked' : ''} data-action="updField" data-module="Budget" data-field="isContingency" data-idx="${i}" title="Contingency reserve — compared against risk exposure (2.5)"></td>
+      <td><select data-action="updField" data-module="Budget" data-field="waiverStatus" data-idx="${i}" title="Lien waiver status (US-convention labels — Jamaica verification pending, roadmap B7)">${['pending','conditional','unconditional','not_required'].map(w => `<option ${(l.waiverStatus || 'pending') === w ? 'selected' : ''}>${w}</option>`).join('')}</select></td>
+      <td><input type="date" value="${U.escapeHtml(l.waiverReceivedAt || '')}" data-action="updField" data-module="Budget" data-field="waiverReceivedAt" data-idx="${i}" title="Date the waiver was received (set once status is conditional/unconditional)"></td>
       <td><input type="text" value="${U.escapeHtml(l.notes || '')}" data-action="updField" data-module="Budget" data-field="notes" data-idx="${i}" placeholder="—"></td>
       <td><button class="btn btn-s btn-d" data-action="delBudgetLine" data-idx="${i}">×</button></td>
     </tr>`).join('');
@@ -2021,6 +2234,37 @@ var MMGR = window.MMGR || {};
     // tab — avoided (weather cause) vs incurred (every other cause), driven
     // by 1.2's cause tags, not weather tags alone.
     if (ns.Claim && ns.Claim.renderLdRollup) ns.Claim.renderLdRollup();
+    // MARKET-FEATURE-ROADMAP C13: pay application register.
+    renderPayApps();
+  }
+
+  // ---- Pay Applications (MARKET-FEATURE-ROADMAP C13) ----
+  // Draw-request register card in the Budget panel. Generated drafts carry
+  // the live spend figure; statuses walk draft → submitted → approved.
+  function renderPayApps() {
+    const s = S();
+    if (!s) return;
+    const body = $('payapp-body');
+    if (!body) return;
+    const apps = s.payApps || [];
+    const sum = $('payapp-sum');
+    const billed = apps.filter(a => a.status === 'approved' || a.status === 'submitted').reduce((t, a) => t + (+a.amount || 0), 0);
+    if (sum) sum.textContent = apps.length ? (apps.length + ' on file · $' + billed.toLocaleString() + ' billed') : '';
+    if (apps.length === 0) {
+      body.innerHTML = emptyStateRow(8, 'No pay applications yet.', '<button class="btn btn-g btn-s" data-action="addPayApp">+ Add Pay App</button><button class="btn btn-n btn-s" data-action="genPayApp"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-zap"></use></svg> Generate from live spend</button>');
+      return;
+    }
+    const statusColor = (st) => st === 'approved' ? 'var(--green)' : st === 'submitted' ? 'var(--gold)' : st === 'rejected' ? 'var(--danger)' : 'var(--slate)';
+    body.innerHTML = apps.map((a, i) => `<tr>
+      <td>${U.escapeHtml(a.number || a.id || 'PA' + (i+1))}</td>
+      <td><input type="text" value="${U.escapeHtml(a.period)}" data-action="updField" data-module="PayApps" data-field="period" data-idx="${i}" placeholder="e.g. Aug 2026"></td>
+      <td><input type="number" value="${a.amount || 0}" min="0" step="100" data-action="updField" data-module="PayApps" data-field="amount" data-idx="${i}" style="width:100px"></td>
+      <td><select data-action="updField" data-module="PayApps" data-field="status" data-idx="${i}" style="color:${statusColor(a.status)}">${['draft','submitted','approved','rejected'].map(v => `<option ${a.status === v ? 'selected' : ''}>${v}</option>`).join('')}</select></td>
+      <td><input type="date" value="${a.dateSubmitted || ''}" data-action="updField" data-module="PayApps" data-field="dateSubmitted" data-idx="${i}"></td>
+      <td><input type="date" value="${a.dateApproved || ''}" data-action="updField" data-module="PayApps" data-field="dateApproved" data-idx="${i}"></td>
+      <td><input type="text" value="${U.escapeHtml(a.notes || '')}" data-action="updField" data-module="PayApps" data-field="notes" data-idx="${i}" placeholder="—"></td>
+      <td><button class="btn btn-s btn-d" data-action="delPayApp" data-idx="${i}">×</button></td>
+    </tr>`).join('');
   }
 
   // ---- Stakeholders ----
@@ -2030,11 +2274,46 @@ var MMGR = window.MMGR || {};
     const body = $('stk-body');
     if (!body) return;
     const stks = s.stakeholders || [];
+    const soon = 30; // MARKET-FEATURE-ROADMAP A1: 30-day compliance horizon
+    const expiring = (ns.Stakeholders && ns.Stakeholders.getExpiringCompliance)
+      ? ns.Stakeholders.getExpiringCompliance(stks, soon)
+      : [];
+    // Compliance heads-up banner — card language, not a bare strip (UI doctrine 1).
+    const banner = $('stk-compliance');
+    if (banner) {
+      const n = expiring.length;
+      const txt = n
+        ? n + ' stakeholder' + (n === 1 ? ' has' : 's have') + ' COI or license documentation expiring within ' + soon + ' days — see the Compliance columns below.'
+        : '';
+      banner.classList.toggle('is-hide', !n);
+      const btxt = banner.querySelector('.stk-cmp-txt');
+      if (btxt) btxt.textContent = txt;
+    }
+    syncStakeComplianceBadges(expiring.length);
+    // MARKET-FEATURE-ROADMAP A3/A4: bid leveling + Go/No-Go scorecards live
+    // in the Stakeholders panel — rendered by the same entry point so every
+    // re-render of this section refreshes all three blocks together.
+    if (ns.Bids) {
+      if (ns.Bids.render) ns.Bids.render();
+      if (ns.Bids.renderGoNoGo) ns.Bids.renderGoNoGo();
+    }
     if (stks.length === 0) {
-      body.innerHTML = emptyStateRow(8, 'No stakeholders registered yet.', '<button class="btn btn-g btn-s" data-action="addStake">+ Add Stakeholder</button>');
+      body.innerHTML = emptyStateRow(12, 'No stakeholders registered yet.', '<button class="btn btn-g btn-s" data-action="addStake">+ Add Stakeholder</button>');
       return;
     }
-    body.innerHTML = stks.map((stk, i) => `<tr>
+    body.innerHTML = stks.map((stk, i) => {
+      const coi = stk.coiExpiry ? new Date(stk.coiExpiry) : null;
+      const lic = stk.licenseExpiry ? new Date(stk.licenseExpiry) : null;
+      const coiBad = coi && coi <= new Date(Date.now() + soon * 86400000);
+      const licBad = lic && lic <= new Date(Date.now() + soon * 86400000);
+      const emrStale = ns.Stakeholders && ns.Stakeholders.isEmrStale ? ns.Stakeholders.isEmrStale(stk) : false;
+      // Always-editable date inputs (the app's inline-edit pattern); the
+      // expiring/current state rides alongside as a quiet flag, never a
+      // read-only span that traps the value.
+      const coiCell = `<input type="date" value="${U.escapeHtml(stk.coiExpiry || '')}" class="${coiBad ? 'stk-exp-bad' : ''}" data-action="updField" data-module="Stakeholders" data-field="coiExpiry" data-idx="${i}" title="COI expiry${coiBad ? ' — expires within ' + soon + ' days' : ''}">${coiBad ? `<span class="badge br" title="Expires within ${soon} days">soon</span>` : ''}`;
+      const licCell = `<input type="date" value="${U.escapeHtml(stk.licenseExpiry || '')}" class="${licBad ? 'stk-exp-bad' : ''}" data-action="updField" data-module="Stakeholders" data-field="licenseExpiry" data-idx="${i}" title="Trade license expiry${licBad ? ' — expires within ' + soon + ' days' : ''}">${licBad ? `<span class="badge br" title="Expires within ${soon} days">soon</span>` : ''}`;
+      const emrCell = `<input type="text" value="${U.escapeHtml(stk.emr || '')}" data-action="updField" data-module="Stakeholders" data-field="emr" data-idx="${i}" style="width:52px" placeholder="0.00">${emrStale ? `<span class="badge br" title="EMR stale — verify or set a verification date">stale</span>` : ''}`;
+      return `<tr>
       <td>${U.escapeHtml(stk.id || 'S' + (i+1))}</td>
       <td><input type="text" value="${U.escapeHtml(stk.name)}" data-action="updField" data-module="Stakeholders" data-field="name" data-idx="${i}"></td>
       <td><input type="text" value="${U.escapeHtml(stk.role || '')}" data-action="updField" data-module="Stakeholders" data-field="role" data-idx="${i}"></td>
@@ -2042,8 +2321,27 @@ var MMGR = window.MMGR || {};
       <td><select data-action="updField" data-module="Stakeholders" data-field="interest" data-idx="${i}">${['Low','Medium','High'].map(v => `<option ${stk.interest === v ? 'selected' : ''}>${v}</option>`).join('')}</select></td>
       <td><input type="text" value="${U.escapeHtml(stk.strategy || '')}" data-action="updField" data-module="Stakeholders" data-field="strategy" data-idx="${i}"></td>
       <td><input type="text" value="${U.escapeHtml(stk.contact || '')}" data-action="updField" data-module="Stakeholders" data-field="contact" data-idx="${i}"></td>
+      <td>${coiCell}</td>
+      <td>${licCell}</td>
+      <td>${emrCell}</td>
+      <td><input type="date" value="${U.escapeHtml(stk.emrVerifiedAt || '')}" data-action="updField" data-module="Stakeholders" data-field="emrVerifiedAt" data-idx="${i}" title="EMR verification date — used for staleness (A5)"></td>
       <td><button class="btn btn-s btn-d" data-action="delStake" data-idx="${i}">×</button></td>
-    </tr>`).join('');
+    </tr>`;
+    }).join('');
+  }
+
+  // MARKET-FEATURE-ROADMAP A1: keep the Dashboard Project Health badge and the
+  // Stakeholders nav badge (sec-nav + its sidebar clone) in step with the
+  // expiring-compliance count. Hidden at zero; red pill when anything is due.
+  function syncStakeComplianceBadges(count) {
+    const h = $('h-coi');
+    if (h) h.textContent = count;
+    const card = $('health-card');
+    if (card) card.classList.toggle('has-compliance', count > 0);
+    document.querySelectorAll('[data-section="stk"] .sec-badge').forEach(function(b) {
+      b.textContent = count;
+      b.classList.toggle('is-hide', count === 0);
+    });
   }
 
   // ---- Changes ----
@@ -2106,9 +2404,109 @@ var MMGR = window.MMGR || {};
   }
 
   // ---- Closure ----
+  // ---- Punch List (MARKET-FEATURE-ROADMAP C3) ----
+  // Dedicated defect/closeout items with location + assignee + category +
+  // priority. Lives in the Closure panel as its own card (separate from the
+  // simple Closeout Checklist, which stays for broad closeout items).
+  function renderPunchList() {
+    const s = S();
+    if (!s) return;
+    const body = $('punch-body');
+    if (!body) return;
+    const items = s.punchList || [];
+    const open = items.filter(i => i.status !== 'done').length;
+    const done = items.length - open;
+    const sum = $('punch-sum');
+    if (sum) sum.textContent = items.length ? (done + ' done · ' + open + ' open') : '';
+    if (items.length === 0) {
+      body.innerHTML = emptyStateRow(9, 'No punch-list items yet.', '<button class="btn btn-g btn-s" data-action="addPunch">+ Add Punch Item</button>');
+      return;
+    }
+    const p = (v) => v === 'High' ? 'var(--danger)' : v === 'Medium' ? 'var(--amber)' : 'var(--slate)';
+    body.innerHTML = items.map((it, i) => `<tr>
+      <td>${U.escapeHtml(it.id || 'P' + (i+1))}</td>
+      <td><input type="text" value="${U.escapeHtml(it.item)}" data-action="updField" data-module="PunchList" data-field="item" data-idx="${i}" style="min-width:160px"></td>
+      <td><input type="text" value="${U.escapeHtml(it.location || '')}" data-action="updField" data-module="PunchList" data-field="location" data-idx="${i}" placeholder="e.g. Level 2, Room 204"></td>
+      <td><input type="text" value="${U.escapeHtml(it.assignee || '')}" data-action="updField" data-module="PunchList" data-field="assignee" data-idx="${i}"></td>
+      <td><select data-action="updField" data-module="PunchList" data-field="category" data-idx="${i}">${['Defect','Snag','Touch-up','Safety','Other'].map(v => `<option ${it.category === v ? 'selected' : ''}>${v}</option>`).join('')}</select></td>
+      <td><select data-action="updField" data-module="PunchList" data-field="priority" data-idx="${i}" style="color:${p(it.priority)}">${['Low','Medium','High'].map(v => `<option ${it.priority === v ? 'selected' : ''}>${v}</option>`).join('')}</select></td>
+      <td><select data-action="updField" data-module="PunchList" data-field="status" data-idx="${i}">${['open','inprogress','done'].map(v => `<option ${it.status === v ? 'selected' : ''}>${v}</option>`).join('')}</select></td>
+      <td><input type="text" value="${U.escapeHtml(it.notes || '')}" data-action="updField" data-module="PunchList" data-field="notes" data-idx="${i}" placeholder="—"></td>
+      <td><button class="btn btn-s btn-d" data-action="delPunch" data-idx="${i}">×</button></td>
+    </tr>`).join('');
+  }
+
+  // ---- Handover / Closeout Package (MARKET-FEATURE-ROADMAP C18) ----
+  function renderHandover() {
+    const s = S();
+    if (!s) return;
+    const body = $('handover-body');
+    if (!body) return;
+    const list = s.handover || [];
+    const filed = list.filter(x => x.status === 'filed').length;
+    const sum = $('handover-sum');
+    if (sum) sum.textContent = list.length ? (filed + ' of ' + list.length + ' filed') : '';
+    if (list.length === 0) {
+      body.innerHTML = emptyStateRow(6, 'No handover items yet. Bundle O&M manuals, as-builts, warranties, certificates and sign-offs for handover.', '<button class="btn btn-g btn-s" data-action="addHandoverItem">+ Add Item</button>');
+      return;
+    }
+    body.innerHTML = list.map((x, i) => `<tr>
+      <td>${U.escapeHtml(x.id || 'HO' + (i+1))}</td>
+      <td><input type="text" value="${U.escapeHtml(x.item)}" data-action="updField" data-module="Handover" data-field="item" data-idx="${i}" style="min-width:150px" placeholder="Item / document"></td>
+      <td><select data-action="updField" data-module="Handover" data-field="category" data-idx="${i}">${['O&M Manual','Warranty','As-Built','Certificates','Sign-off','Other'].map(v => `<option ${x.category === v ? 'selected' : ''}>${v}</option>`).join('')}</select></td>
+      <td><select data-action="updField" data-module="Handover" data-field="status" data-idx="${i}" style="color:${x.status === 'filed' ? 'var(--green)' : x.status === 'ready' ? 'var(--gold)' : 'var(--amber)'}">${['required','ready','filed'].map(v => `<option ${x.status === v ? 'selected' : ''}>${v}</option>`).join('')}</select></td>
+      <td><input type="text" value="${U.escapeHtml(x.notes || '')}" data-action="updField" data-module="Handover" data-field="notes" data-idx="${i}" placeholder="—"></td>
+      <td><button class="btn btn-s btn-d" data-action="delHandoverItem" data-idx="${i}">×</button></td>
+    </tr>`).join('');
+  }
+
+  // ---- Warranty Tracker (MARKET-FEATURE-ROADMAP C26) ----
+  function renderWarranty() {
+    const s = S();
+    if (!s) return;
+    const body = $('warranty-body');
+    if (!body) return;
+    const list = s.warrantyItems || [];
+    const sum = $('warranty-sum');
+    if (sum) sum.textContent = list.length ? (list.length + ' tracked') : '';
+    if (list.length === 0) {
+      body.innerHTML = emptyStateRow(8, 'No warranty items yet.', '<button class="btn btn-g btn-s" data-action="addWarranty">+ Add Warranty</button>');
+      return;
+    }
+    function dl(d) {
+      if (!d) return null;
+      const dt = new Date(d);
+      if (isNaN(dt.getTime())) return null;
+      return Math.round((dt.getTime() - Date.now()) / 86400000);
+    }
+    body.innerHTML = list.map((x, i) => {
+      const left = dl(x.warrantyEnd);
+      const leftTxt = left === null ? '—' : left < 0 ? (Math.abs(left) + 'd ago') : left + 'd left';
+      const leftColor = left === null ? 'var(--slate)' : left < 0 ? 'var(--danger)' : left <= 60 ? 'var(--amber)' : 'var(--green)';
+      return `<tr>
+      <td>${U.escapeHtml(x.id || 'WR' + (i+1))}</td>
+      <td><input type="text" value="${U.escapeHtml(x.item)}" data-action="updField" data-module="Warranty" data-field="item" data-idx="${i}" style="min-width:150px" placeholder="Item / system"></td>
+      <td><input type="text" value="${U.escapeHtml(x.provider || '')}" data-action="updField" data-module="Warranty" data-field="provider" data-idx="${i}" placeholder="Provider"></td>
+      <td><input type="date" value="${x.warrantyStart || ''}" data-action="updField" data-module="Warranty" data-field="warrantyStart" data-idx="${i}"></td>
+      <td><input type="date" value="${x.warrantyEnd || ''}" data-action="updField" data-module="Warranty" data-field="warrantyEnd" data-idx="${i}"></td>
+      <td style="color:${leftColor}">${leftTxt}</td>
+      <td><input type="text" value="${U.escapeHtml(x.notes || '')}" data-action="updField" data-module="Warranty" data-field="notes" data-idx="${i}" placeholder="—"></td>
+      <td><button class="btn btn-s btn-d" data-action="delWarranty" data-idx="${i}">×</button></td>
+    </tr>`;
+    }).join('');
+  }
+
   function renderClosure() {
     const s = S();
-    if (!s || !s.closure) return;
+    if (!s) return;
+    // Punch List renders even when the closure object is unset (fresh/seed
+    // projects may never have touched Closure) — it is its own state.
+    renderPunchList();
+    // Handover + Warranty are their own state keys too — never gated on the
+    // closure object existing.
+    renderHandover();
+    renderWarranty();
+    if (!s.closure) return;
     const items = s.closure.items || [];
     const chk = $('close-chk');
     if (chk) {
@@ -2279,9 +2677,161 @@ var MMGR = window.MMGR || {};
   }
 
   // ---- Documents ----
+  // ---- RFI Register (MARKET-FEATURE-ROADMAP C1) ----
+  function renderRfis() {
+    const s = S();
+    if (!s) return;
+    const body = $('rfi-body');
+    if (!body) return;
+    const list = s.rfis || [];
+    const open = list.filter(r => r.status !== 'closed').length;
+    const sum = $('rfi-sum');
+    if (sum) sum.textContent = list.length ? (open + ' open · ' + (list.length - open) + ' closed') : '';
+    if (list.length === 0) {
+      body.innerHTML = emptyStateRow(11, 'No RFIs yet.', '<button class="btn btn-g btn-s" data-action="addRfi">+ Add RFI</button>');
+      return;
+    }
+    const statusColor = (st) => st === 'closed' ? 'var(--green)' : st === 'responded' ? 'var(--gold)' : st === 'routed' ? 'var(--amber)' : 'var(--danger)';
+    body.innerHTML = list.map((r, i) => `<tr>
+      <td>${U.escapeHtml(r.number || r.id || 'R' + (i+1))}</td>
+      <td><input type="text" value="${U.escapeHtml(r.question)}" data-action="updField" data-module="Rfis" data-field="question" data-idx="${i}" style="min-width:180px" placeholder="The question / discrepancy"></td>
+      <td><input type="text" value="${U.escapeHtml(r.from || '')}" data-action="updField" data-module="Rfis" data-field="from" data-idx="${i}" placeholder="From"></td>
+      <td><input type="text" value="${U.escapeHtml(r.to || '')}" data-action="updField" data-module="Rfis" data-field="to" data-idx="${i}" placeholder="To (designer / engineer)"></td>
+      <td><input type="date" value="${r.dateIssued || ''}" data-action="updField" data-module="Rfis" data-field="dateIssued" data-idx="${i}"></td>
+      <td><input type="date" value="${r.dueDate || ''}" data-action="updField" data-module="Rfis" data-field="dueDate" data-idx="${i}" title="Response due"></td>
+      <td><select data-action="updField" data-module="Rfis" data-field="status" data-idx="${i}" style="color:${statusColor(r.status)}">${['open','routed','responded','closed'].map(v => `<option ${r.status === v ? 'selected' : ''}>${v}</option>`).join('')}</select></td>
+      <td><input type="text" value="${U.escapeHtml(r.ballInCourt || '')}" data-action="updField" data-module="Rfis" data-field="ballInCourt" data-idx="${i}" placeholder="Whose turn is it" title="Ball-in-court — whose turn to respond"></td>
+      <td><input type="text" value="${U.escapeHtml(r.response || '')}" data-action="updField" data-module="Rfis" data-field="response" data-idx="${i}" style="min-width:140px" placeholder="Response / answer"></td>
+      <td><button class="btn btn-s btn-d" data-action="delRfi" data-idx="${i}">×</button></td>
+    </tr>`).join('');
+  }
+
+  // ---- Submittal Register (MARKET-FEATURE-ROADMAP C2) ----
+  function renderSubmittals() {
+    const s = S();
+    if (!s) return;
+    const body = $('sub-body');
+    if (!body) return;
+    const list = s.submittals || [];
+    const approved = list.filter(x => x.status === 'approved' || x.status === 'approved-comments').length;
+    const pending = list.filter(x => x.status === 'pending' || x.status === 'review').length;
+    const sum = $('sub-sum');
+    if (sum) sum.textContent = list.length ? (approved + ' approved · ' + pending + ' pending') : '';
+    if (list.length === 0) {
+      body.innerHTML = emptyStateRow(10, 'No submittals yet.', '<button class="btn btn-g btn-s" data-action="addSubmittal">+ Add Submittal</button>');
+      return;
+    }
+    const statusColor = (st) => st === 'approved' ? 'var(--green)' : st === 'approved-comments' ? 'var(--gold)' : st === 'rejected' ? 'var(--danger)' : 'var(--amber)';
+    body.innerHTML = list.map((x, i) => `<tr>
+      <td>${U.escapeHtml(x.number || x.id || 'S' + (i+1))}</td>
+      <td><input type="text" value="${U.escapeHtml(x.item)}" data-action="updField" data-module="Submittals" data-field="item" data-idx="${i}" style="min-width:180px" placeholder="Material / shop drawing"></td>
+      <td><input type="text" value="${U.escapeHtml(x.trade || '')}" data-action="updField" data-module="Submittals" data-field="trade" data-idx="${i}" placeholder="Trade"></td>
+      <td><input type="text" value="${U.escapeHtml(x.submittedTo || '')}" data-action="updField" data-module="Submittals" data-field="submittedTo" data-idx="${i}" placeholder="Architect / engineer"></td>
+      <td><input type="date" value="${x.dateSubmitted || ''}" data-action="updField" data-module="Submittals" data-field="dateSubmitted" data-idx="${i}"></td>
+      <td><select data-action="updField" data-module="Submittals" data-field="status" data-idx="${i}" style="color:${statusColor(x.status)}">${['pending','review','approved','approved-comments','rejected'].map(v => `<option ${x.status === v ? 'selected' : ''}>${v}</option>`).join('')}</select></td>
+      <td><input type="date" value="${x.responseDate || ''}" data-action="updField" data-module="Submittals" data-field="responseDate" data-idx="${i}" title="Response date"></td>
+      <td><input type="text" value="${U.escapeHtml(x.ballInCourt || '')}" data-action="updField" data-module="Submittals" data-field="ballInCourt" data-idx="${i}" placeholder="Whose turn is it" title="Ball-in-court"></td>
+      <td><input type="text" value="${U.escapeHtml(x.notes || '')}" data-action="updField" data-module="Submittals" data-field="notes" data-idx="${i}" placeholder="—"></td>
+      <td><button class="btn btn-s btn-d" data-action="delSubmittal" data-idx="${i}">×</button></td>
+    </tr>`).join('');
+  }
+
+  // ---- Ball-in-court rollup (MARKET-FEATURE-ROADMAP C6) ----
+  // Cross-module "whose turn is it" — every open RFI / submittal / issue
+  // with the person whose action is awaited, sorted by due date.
+  function renderBallInCourt() {
+    const s = S();
+    if (!s) return;
+    const body = $('blc-body');
+    if (!body) return;
+    const list = (ns.BallInCourt && ns.BallInCourt.getBallInCourt)
+      ? ns.BallInCourt.getBallInCourt() : [];
+    const sum = $('blc-sum');
+    if (sum) sum.textContent = list.length ? (list.length + ' items awaiting action') : '';
+    if (list.length === 0) {
+      body.innerHTML = '<div class="es" style="padding:14px;font-size:.78rem">Nothing awaiting action — every open item has a named next step or none is open.</div>';
+      return;
+    }
+    const kindColor = (k) => k === 'RFI' ? 'var(--gold)' : k === 'Submittal' ? 'var(--cyan)' : 'var(--amber)';
+    body.innerHTML = list.map((x) => `<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.04)">
+      <span class="badge" style="color:${kindColor(x.kind)};border-color:${kindColor(x.kind)}">${x.kind}</span>
+      <span style="flex:1;font-size:.8rem">${U.escapeHtml(x.ref)} — ${U.escapeHtml(x.who)}${x.due ? ' <span style="color:var(--slate)">due ' + U.escapeHtml(x.due) + '</span>' : ''}</span>
+    </div>`).join('');
+  }
+
+  // ---- Drawing Distribution Log (MARKET-FEATURE-ROADMAP C11) ----
+  function renderDrawLog() {
+    const s = S();
+    if (!s) return;
+    const body = $('drawlog-body');
+    if (!body) return;
+    const list = s.drawingLog || [];
+    const sum = $('drawlog-sum');
+    if (sum) sum.textContent = list.length ? (list.length + ' distributions') : '';
+    if (list.length === 0) {
+      body.innerHTML = emptyStateRow(8, 'No drawing distributions logged yet.', '<button class="btn btn-g btn-s" data-action="addDrawLog">+ Add Distribution</button>');
+      return;
+    }
+    body.innerHTML = list.map((x, i) => `<tr>
+      <td>${U.escapeHtml(x.id || 'DL' + (i+1))}</td>
+      <td><input type="date" value="${x.date || ''}" data-action="updField" data-module="DrawingLog" data-field="date" data-idx="${i}"></td>
+      <td><input type="text" value="${U.escapeHtml(x.drawingNo)}" data-action="updField" data-module="DrawingLog" data-field="drawingNo" data-idx="${i}" style="min-width:100px" placeholder="Drawing no."></td>
+      <td><input type="text" value="${U.escapeHtml(x.rev || '')}" data-action="updField" data-module="DrawingLog" data-field="rev" data-idx="${i}" style="width:50px" placeholder="Rev"></td>
+      <td><input type="text" value="${U.escapeHtml(x.distributedTo || '')}" data-action="updField" data-module="DrawingLog" data-field="distributedTo" data-idx="${i}" style="min-width:120px" placeholder="Distributed to"></td>
+      <td><select data-action="updField" data-module="DrawingLog" data-field="method" data-idx="${i}">${['Email','Print','Portal','Hand'].map(v => `<option ${x.method === v ? 'selected' : ''}>${v}</option>`).join('')}</select></td>
+      <td><input type="text" value="${U.escapeHtml(x.notes || '')}" data-action="updField" data-module="DrawingLog" data-field="notes" data-idx="${i}" placeholder="—"></td>
+      <td><button class="btn btn-s btn-d" data-action="delDrawLog" data-idx="${i}">×</button></td>
+    </tr>`).join('');
+  }
+
+  // ---- Permit Register (MARKET-FEATURE-ROADMAP C30) ----
+  function renderPermits() {
+    const s = S();
+    if (!s) return;
+    const body = $('permit-body');
+    if (!body) return;
+    const list = s.permits || [];
+    const sum = $('permit-sum');
+    const active = list.filter(x => x.status === 'active').length;
+    if (sum) sum.textContent = list.length ? (active + ' active') : '';
+    if (list.length === 0) {
+      body.innerHTML = emptyStateRow(9, 'No permits tracked yet.', '<button class="btn btn-g btn-s" data-action="addPermit">+ Add Permit</button>');
+      return;
+    }
+    function dl(d) {
+      if (!d) return null;
+      const dt = new Date(d);
+      if (isNaN(dt.getTime())) return null;
+      return Math.round((dt.getTime() - Date.now()) / 86400000);
+    }
+    const statusColor = (st) => st === 'active' ? 'var(--green)' : st === 'applied' ? 'var(--amber)' : st === 'expiring' ? 'var(--amber)' : st === 'expired' ? 'var(--danger)' : 'var(--slate)';
+    body.innerHTML = list.map((x, i) => {
+      const left = dl(x.expires);
+      const expiryTxt = left === null ? '' : left < 0 ? ' <span style="color:var(--danger)">expired ' + Math.abs(left) + 'd ago</span>' : left <= 30 ? ' <span style="color:var(--amber)">' + left + 'd left</span>' : '';
+      return `<tr>
+      <td>${U.escapeHtml(x.id || 'PM' + (i+1))}</td>
+      <td><input type="text" value="${U.escapeHtml(x.permitNo)}" data-action="updField" data-module="Permits" data-field="permitNo" data-idx="${i}" style="min-width:90px" placeholder="Permit no."></td>
+      <td><input type="text" value="${U.escapeHtml(x.type || '')}" data-action="updField" data-module="Permits" data-field="type" data-idx="${i}" style="width:110px" placeholder="Type"></td>
+      <td><input type="text" value="${U.escapeHtml(x.agency || '')}" data-action="updField" data-module="Permits" data-field="agency" data-idx="${i}" style="min-width:110px" placeholder="Agency"></td>
+      <td><input type="date" value="${x.dateIssued || ''}" data-action="updField" data-module="Permits" data-field="dateIssued" data-idx="${i}"></td>
+      <td><input type="date" value="${x.expires || ''}" data-action="updField" data-module="Permits" data-field="expires" data-idx="${i}">${expiryTxt}</td>
+      <td><select data-action="updField" data-module="Permits" data-field="status" data-idx="${i}" style="color:${statusColor(x.status)}">${['applied','active','expiring','expired','closed'].map(v => `<option ${x.status === v ? 'selected' : ''}>${v}</option>`).join('')}</select></td>
+      <td><input type="text" value="${U.escapeHtml(x.notes || '')}" data-action="updField" data-module="Permits" data-field="notes" data-idx="${i}" placeholder="—"></td>
+      <td><button class="btn btn-s btn-d" data-action="delPermit" data-idx="${i}">×</button></td>
+    </tr>`;
+    }).join('');
+  }
+
   function renderDocuments() {
     const s = S();
     if (!s) return;
+    // RFI + Submittal registers render even when the document table is empty.
+    renderRfis();
+    renderSubmittals();
+    // C6 rollup + C11 distribution log + C30 permit register (own state).
+    renderBallInCourt();
+    renderDrawLog();
+    renderPermits();
     const body = $('doc-body');
     if (!body) return;
     const docs = s.documents || [];
@@ -2974,6 +3524,9 @@ var MMGR = window.MMGR || {};
     renderChanges: renderChanges,
     renderLog: renderLog,
     renderClosure: renderClosure,
+    renderPunchList: renderPunchList,
+    renderRfis: renderRfis,
+    renderSubmittals: renderSubmittals,
     renderRaci: renderRaci,
     renderRaciHeatmap: renderRaciHeatmap,
     renderComms: renderComms,
@@ -2982,6 +3535,8 @@ var MMGR = window.MMGR || {};
     renderDefs: renderDefs,
     renderMeetingsPanel: renderMeetingsPanel,
     renderTodayView: renderTodayView,
+    renderLookahead: renderLookahead,
+    renderPpc: renderPpc,
     renderMilestoneTimeline: renderMilestoneTimeline,
     computeTimelineStatus: computeTimelineStatus,
     renderTimelineStatus: renderTimelineStatus,

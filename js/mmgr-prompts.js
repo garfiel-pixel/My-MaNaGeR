@@ -705,6 +705,64 @@ Using ONLY the evidence above (do not invent facts, dates, or amounts):
 5. End with a plain-English executive summary for the client/insurer
 
 Be precise with dates and amounts from the data. Where evidence is missing, say so explicitly rather than assuming.`;
+    },
+
+    complianceCheck: function() {
+      // MARKET-FEATURE-ROADMAP A7: AI-drafted clause-compliance check — the
+      // lighter VisibleThread: review the assembled claim package against a
+      // standard element checklist. Grounded in the SAME evidence sources as
+      // the claim preset so the two can never disagree.
+      const s = S();
+      const f = (s && s.charter) || {};
+      let slipsBlock = '(no schedule slips detected — project is on or ahead of baseline)';
+      let ldBlock = '(no LD exposure data — set an LD rate in the Budget panel)';
+      try {
+        if (ns.Claim && ns.Claim.computeSlips) {
+          const slips = ns.Claim.computeSlips(s) || [];
+          if (slips.length) {
+            slipsBlock = slips.map(x => `- [${x.taskId}] ${x.taskName}: ${x.days}d slip (baseline ${x.baselineEnd || '?'} → current ${x.currentEnd || '?'}) | cause: ${x.cause || 'unknown'}`).join('\n');
+          }
+        }
+        if (ns.Claim && ns.Claim.ldRollup) {
+          const ld = ns.Claim.ldRollup(s);
+          if (ld) {
+            ldBlock = `LD rate: $${(+s.ldRate || 0).toLocaleString()}/day | Weather-caused (avoidable/defensible): $${(ld.avoidedLd || 0).toLocaleString()} | All other causes (exposure): $${(ld.incurredLd || 0).toLocaleString()}`;
+          }
+        }
+      } catch (e) { /* grounding is best-effort — never block the prompt */ }
+      return `CLAIM PACKAGE COMPLIANCE CHECK — GENERATED FROM My MaNaGeR DATA
+
+Project: ${f.name || '(unnamed)'} | Sponsor: ${f.sponsor || '(not set)'}
+
+${buildContext()}
+
+=== SCHEDULE SLIPS (baseline vs actual, cause-tagged) ===
+${slipsBlock}
+
+=== LIQUIDATED DAMAGES EXPOSURE ===
+${ldBlock}
+
+=== WEATHER DELAY LOG ===
+${(() => {
+  const wl = (s && s.weatherLog) || [];
+  if (!wl.length) return '(no weather delays logged)';
+  return wl.map(e => `- ${e.date}: ${e.condition || 'weather'}${e.note ? ' — ' + e.note : ''}${(e.affectedTaskIds || []).length ? ' | affected tasks: ' + e.affectedTaskIds.join(', ') : ''}`).join('\n');
+})()}
+
+=== PENDING CHANGES ===
+${buildChangeSummary()}
+
+=== DECISION LOG (recent) ===
+${buildLogSummary()}
+
+=== INSTRUCTIONS ===
+Review this claim package against a standard submission checklist and report, element by element, whether each is PRESENT, MISSING, or UNCLEAR — using ONLY the data above, never inventing content:
+1. DELAY NARRATIVE — is there a plain-language story of what happened, which baseline dates were missed, and the cause for each slip?
+2. SUPPORTING EVIDENCE REFERENCES — do the slips point to concrete evidence (weather-log entries, change orders, decision-log entries)?
+3. COST IMPACT BREAKDOWN — is the LD exposure / cost impact quantified and separated by cause (defensible vs exposure)?
+4. CONTRACTUAL BASIS — is there a stated basis for relief (which contract terms, notices, or obligations apply)?
+5. REQUESTED RELIEF — is the ask explicit (extension of time, LD waiver, amount)?
+End with: a one-line verdict on submission readiness, and a short list of exactly what to add before submitting. Where a required element is genuinely absent from the data, say "MISSING — add ..." rather than assuming it exists.`;
     }
   };
 

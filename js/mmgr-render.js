@@ -776,7 +776,7 @@ var MMGR = window.MMGR || {};
     }
     const cc = crashCandidates();
     const riskHtml = cc.length
-      ? `<div class="sc-cell"><div class="big" style="font-size:.85rem;font-weight:700;color:var(--gold)">${U.escapeHtml(cc[0].task.name)}</div><div class="lbl">biggest crash candidate — up to ~${cc[0].recoverable}d recoverable</div></div>`
+      ? `<div class="sc-cell"><div class="big sc-crash">${U.escapeHtml(cc[0].task.name)}</div><div class="lbl">biggest crash candidate — up to ~${cc[0].recoverable}d recoverable</div></div>`
       : '<div class="sc-cell"><div class="lbl" style="color:var(--slate)">No crash candidates identified yet.</div></div>';
     el.innerHTML = `<div class="sc-grid">${probHtml}${wxHtml}${riskHtml}</div>`;
   }

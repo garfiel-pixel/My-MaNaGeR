@@ -32,9 +32,8 @@
 .ctl-item .tgl,.theme-ctl .tgl{margin:0;}
 /* Premium backdrop layers above the fixed z-0 canvas on this page. */
 body.glass-premium .wrap{position:relative;z-index:1;}
-.toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%);background:var(--card);border-radius:8px;padding:10px 20px;font-size:.78rem;z-index:9999;transition:opacity .3s;box-shadow:0 8px 24px rgba(0,0,0,.4);}
-.toast.ok{border:1px solid var(--green);color:var(--green);}
-.toast.err{border:1px solid var(--danger);color:var(--danger);}
+/* .toast styles live in the shared css/mmgr.css (owner 2026-08-15: polished
+   pill notifications — same on launcher, admin, and project viewer). */
 .notice{margin:22px auto 40px;max-width:560px;display:flex;align-items:center;gap:14px;justify-content:center;text-align:left;background:var(--glass-fill-dark);border:var(--glass-border);border-radius:var(--squircle-md);padding:var(--pad-card);box-shadow:var(--glass-rim),var(--glass-shadow);}
 .notice .nt-ico{width:38px;height:38px;flex-shrink:0;border-radius:var(--radius-control);background:color-mix(in oklch,var(--amber) 14%,transparent);color:var(--amber);display:inline-flex;align-items:center;justify-content:center;}
 .notice .nt-ico .ico{width:18px;height:18px;}
@@ -416,11 +415,25 @@ function closeModal(){
 }
 
 function toast(msg, type){
+  // Owner 2026-08-15: pill-shaped notification — icon circle + label +
+  // message, slide-up + fade-out. Shared markup/CSS with admin + project.
+  const existing = document.querySelector('.toast');
+  if (existing) existing.remove();
+  const isErr = type === 'error' || type === 'err';
+  const isWarn = type === 'warn';
   const t = document.createElement('div');
-  t.className = 'toast ' + (type === 'error' ? 'err' : 'ok');
-  t.textContent = msg;
+  t.className = 'toast ' + (isErr ? 'err' : (isWarn ? 'warn' : 'ok'));
+  t.setAttribute('role', isErr ? 'alert' : 'status');
+  t.setAttribute('aria-live', isErr ? 'assertive' : 'polite');
+  const icon = isErr ? 'i-x' : (isWarn ? 'i-alert-triangle' : 'i-check-circle');
+  const label = isErr ? 'Error' : (isWarn ? 'Note' : 'Done');
+  t.innerHTML = '<span class="toast-ico"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#' + icon + '"></use></svg></span>' +
+                '<span class="toast-body"><b></b><span></span></span>';
+  t.querySelector('b').textContent = label;
+  t.querySelector('.toast-body > span').textContent = msg;
   document.body.appendChild(t);
-  setTimeout(()=>{ t.style.opacity='0'; setTimeout(()=>t.remove(),300); }, 2400);
+  setTimeout(()=>{ t.classList.add('is-out'); }, 2600);
+  setTimeout(()=>{ t.remove(); }, 3100);
 }
 
 // Device-level theme toggle — writes the same localStorage slot (mmgr_theme)

@@ -2733,3 +2733,54 @@ body.db-page .db-auto-lbl{font-size:.68rem;font-weight:700;color:var(--slate);fl
 body.dark-mode.db-page .cd-card:hover{border-color:var(--db-accent);background:var(--db-surface-raised);}
 body.dark-mode.db-page .db-user-name .ico{background:color-mix(in oklch,var(--db-accent) 13%,transparent);color:var(--db-accent);}
 body.dark-mode.db-page .db-auto-lbl{color:var(--db-text-secondary);}
+
+/* ============================================================
+   TOAST / NOTIFICATION (owner 2026-08-15) — confirmations, errors,
+   and warnings are no longer plain rectangles popping up at the
+   bottom of the screen: they are pill-shaped glass chips (circular
+   border) with a tinted circular icon tile (check-circle / x /
+   alert-triangle), a one-word label (Done / Error / Note), the
+   message in full-contrast text, and a smooth slide-up + hold +
+   fade-out. ONE shared implementation — the launcher (app.html),
+   admin (admin.html), and the project viewer (mmgr-app.js
+   showToast) all build this same DOM and consume this same CSS, so
+   no page can drift. Theme-adaptive via tokens; dark mode gets the
+   frosted dark glass surface automatically.
+   ============================================================ */
+.toast{
+  position:fixed;bottom:28px;left:50%;transform:translateX(-50%);
+  z-index:9999;display:flex;align-items:center;gap:11px;
+  max-width:min(92vw,520px);padding:9px 18px 9px 10px;
+  border-radius:999px; /* the circular border */
+  background:var(--glass-fill-dark-hover);
+  border:var(--glass-border);
+  box-shadow:var(--glass-rim),0 14px 34px rgba(16,24,40,.22);
+  backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  color:var(--text);font-size:.78rem;line-height:1.4;
+  animation:toast-in var(--release-duration) var(--ease-ios) both;
+}
+.toast.is-out{animation:toast-out .42s var(--ease-ios) both;}
+/* circular icon tile — tinted per type */
+.toast-ico{
+  width:30px;height:30px;flex-shrink:0;border-radius:50%;
+  display:inline-flex;align-items:center;justify-content:center;
+  background:color-mix(in oklch,var(--green) 13%,transparent);
+  color:var(--green);
+}
+.toast-ico .ico{width:17px;height:17px;}
+.toast.err .toast-ico{background:color-mix(in oklch,var(--danger) 13%,transparent);color:var(--danger);}
+.toast.warn .toast-ico{background:color-mix(in oklch,var(--amber) 13%,transparent);color:var(--amber);}
+/* label + message */
+.toast-body{display:flex;align-items:baseline;gap:8px;min-width:0;}
+.toast-body b{font-weight:700;letter-spacing:.01em;flex-shrink:0;color:var(--green);}
+.toast.err .toast-body b{color:var(--danger);}
+.toast.warn .toast-body b{color:var(--amber);}
+.toast-body > span{overflow-wrap:anywhere;}
+@keyframes toast-in{from{opacity:0;transform:translate(-50%,14px);}to{opacity:1;transform:translate(-50%,0);}}
+@keyframes toast-out{from{opacity:1;transform:translate(-50%,0);}to{opacity:0;transform:translate(-50%,10px);}}
+/* reduced motion: no slide, instant appearance + hard fade */
+@media (prefers-reduced-motion:reduce){
+  .toast{animation:none;}
+  .toast.is-out{animation:none;opacity:0;}
+}

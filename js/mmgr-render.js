@@ -2578,6 +2578,11 @@ var MMGR = window.MMGR || {};
     // DIR-2: the sticky nav's offset tracks the header's real height — the
     // greeting line changes height, so re-measure on every full render.
     if (ns.Viewport && ns.Viewport.syncHeaderStack) ns.Viewport.syncHeaderStack();
+    // OWNER 2026-08-15: Controls-tab live previews (Copy As + Email Templates)
+    // must mirror the current state — App is loaded after Render, so guard.
+    if (window.MMGR && window.MMGR.App && window.MMGR.App.renderCtrlPreviews) {
+      window.MMGR.App.renderCtrlPreviews();
+    }
   }
 
 

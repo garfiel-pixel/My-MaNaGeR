@@ -306,6 +306,10 @@ body.sidebar-open .nav-btn .ico,body.sidebar-open .sb-close .ico{transform:rotat
   transition:background var(--tr),color var(--tr);}
 .rail-link .ico{width:18px;height:18px;flex-shrink:0;color:currentColor;}
 .rail-link:hover{color:var(--text);background:color-mix(in oklch,var(--gold) 8%,transparent);}
+.rail-ctl-row{display:flex;align-items:center;gap:8px;padding:6px 8px;font-size:.72rem;color:var(--slate);}
+.rail-ctl-row > .ico{width:15px;height:15px;color:var(--gold);flex-shrink:0;}
+.rail-ctl-row .tgl{margin:0 0 0 auto;}
+.rail-ctl-row .pal-switch{margin-left:auto;}
 .rail-link:focus-visible{outline:2px solid var(--gold);outline-offset:2px;border-radius:var(--radius-control);}
 .rail-link.active{color:var(--on-gold);background:var(--gold);}
 .rail-link + .rail-link{margin-top:2px;}
@@ -979,6 +983,29 @@ body.readonly-mode .btn[data-action]:not([data-action="showSec"]):not([data-acti
 /* ---- Settings Row ---- */
 .sr{display:flex;align-items:center;justify-content:space-between;padding:11px;border:1px solid var(--border);border-radius:6px;margin-bottom:7px;}
 .sl{font-size:.78rem;color:var(--text);}
+
+/* ---- Controls tab sections (owner 2026-08-15: decluttered, room to breathe) ---- */
+.ctl-sec{display:flex;align-items:center;gap:7px;font-size:.68rem;font-weight:800;text-transform:uppercase;letter-spacing:.6px;color:var(--gold);margin:20px 0 9px;padding-top:14px;border-top:1px solid var(--border);}
+#db-ctrl .ctl-sec:first-child{margin-top:0;padding-top:0;border-top:none;}
+.ctl-sec .ico{width:14px;height:14px;color:var(--gold);}
+.ctl-lead{font-size:.7rem;color:var(--slate);margin:0 0 10px;}
+/* Explain-before-copy cards: what the format is, a live preview, then copy. */
+.fmt-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:13px 14px;margin-bottom:12px;box-shadow:0 1px 2px rgba(15,23,42,.04);}
+.fmt-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:7px;}
+.fmt-title{display:flex;align-items:center;gap:7px;font-size:.8rem;font-weight:800;color:var(--text);}
+.fmt-title .ico{width:16px;height:16px;color:var(--gold);}
+.fmt-desc{font-size:.72rem;line-height:1.55;color:var(--slate);margin:0 0 9px;}
+.fmt-desc code{font-size:.68rem;color:var(--gold);background:rgba(var(--gold-rgb),.07);padding:1px 4px;border-radius:4px;}
+.fmt-preview{display:block;width:100%;max-height:150px;overflow:auto;margin:0 0 2px;padding:9px 10px;background:var(--canvas);border:1px solid var(--border);border-radius:8px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.66rem;line-height:1.6;white-space:pre-wrap;word-break:break-word;color:var(--text);}
+.fmt-preview:empty{display:none;}
+/* Share & Access card (mmgr-cloud.js renderShare) */
+.share-card{border:1px solid var(--border);border-radius:10px;padding:13px 14px;margin-bottom:12px;background:var(--card);}
+.share-card .sr{border:none;padding:8px 0;margin:0 0 4px;}
+.share-card .share-code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;letter-spacing:.05em;color:var(--gold);font-weight:700;font-size:.82rem;}
+.share-scope{display:flex;flex-wrap:wrap;gap:4px 10px;margin:8px 0;font-size:.7rem;color:var(--text);}
+.share-scope label{display:inline-flex;align-items:center;gap:4px;}
+body.dark-mode .ctl-sec{border-top-color:var(--border);}
+body.dark-mode .fmt-card,body.dark-mode .share-card{background:var(--card);}
 
 /* ---- Client Error Log (Phase 2) ---- */
 .errlog{max-height:220px;overflow-y:auto;border:1px solid var(--border);border-radius:6px;margin-bottom:8px;}

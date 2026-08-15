@@ -825,25 +825,103 @@ var MMGR = window.MMGR || {};
     } catch (e) { return ''; }
   }
 
+  // ---- shown-once NEW-editor-code banner (gap-audit G23) -----------------
+  function pendingBannerHtml(pendingCode) {
+    if (!pendingCode) return '';
+    return '<div class="sr cloud-new-code" style="border:1px solid var(--gold);background:rgba(var(--gold-rgb),.1);border-radius:var(--radius);padding:8px 10px;margin:10px 0 4px" role="status">' +
+      '<div class="sr-hint" style="margin:0 0 4px"><strong>NEW editor code for \u201C' + esc(pendingCode.label || 'editor') + '\u201D — copy it now, it is shown once:</strong></div>' +
+      '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">' +
+      '<code style="font-family:ui-monospace,monospace;letter-spacing:.05em;color:var(--gold);font-size:1rem;font-weight:700">' + esc(pendingCode.code) + '</code>' +
+      '<button class="btn btn-g btn-s" data-action="cloudCopyEditorCode" data-code="' + esc(pendingCode.code) + '"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy code</button>' +
+      '<button class="btn btn-n btn-s" data-action="cloudEditorCodeDone">Done</button>' +
+      '</div></div>';
+  }
+
+  // OWNER 2026-08-15: Share & Access card in the Controls tab (#ctrl-share).
+  // Single home for the owner code + editor-code manager (moved out of the
+  // cloud section so the sharing feature is visible and not buried). The ids
+  // cloud-editor-* stay unchanged — createEditor/listEditors/revokeEditor
+  // keep working against them wherever they live.
+  function renderShare() {
+    const wrap = $('ctrl-share');
+    if (!wrap) return;
+    const code = getCode();
+    const ecode = getECode();
+    const escope = getEScope();
+    const pendingCode = getPendingEditorCode();
+    let body = '';
+    if (!code && !ecode) {
+      body =
+        '<div class="share-card">' +
+        '<div class="sr" style="border:none;padding:0 0 6px"><span class="sl" style="font-size:.8rem;font-weight:800">Link this project to the cloud to share it</span></div>' +
+        '<div class="sr-hint" style="margin:0 0 10px">Sharing runs through the cloud backend: link the project once, get an <strong>owner code</strong>, then hand out <strong>editor codes</strong> that can only edit the sections you tick (view-only, budget-only, etc.). Codes work on any device — a colleague just opens this project and enters the code.</div>' +
+        '<div class="exp-row"><button class="btn btn-g btn-s" data-action="cloudCreate"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-upload"></use></svg> Create Cloud Project</button></div>' +
+        '<div class="sr-hint" style="margin:8px 0 0">Already have a code from someone? Open <strong>Cloud &amp; Sync ▸ Cloud Backup</strong> and enter it under “On another device?”.</div>' +
+        '</div>';
+    } else if (ecode && !code) {
+      const scopeTxt = escope && escope.sections && escope.sections.length
+        ? escope.sections.map(sectionLabel).join(', ')
+        : 'unknown';
+      body =
+        '<div class="share-card">' +
+        '<div class="sr" style="border:none;padding:0 0 6px"><span class="sl" style="font-size:.8rem;font-weight:800">You are an editor</span></div>' +
+        '<div class="sr-hint" style="margin:0">Editor code active: <code class="share-code">' + esc(escope && escope.label || 'editor') + '</code> — you can edit: <strong>' + esc(scopeTxt) + '</strong>. Codes can only touch what the owner granted; generating and revoking codes is owner-only.</div>' +
+        '</div>';
+    } else {
+      body =
+        '<div class="share-card">' +
+        '<div class="sr" style="border:none;padding:0 0 6px"><span class="sl" style="font-size:.8rem;font-weight:800"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-lock"></use></svg> Owner code</span><button class="btn btn-n btn-s" data-action="cloudCopyCode"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy code</button></div>' +
+        '<div class="sr-hint" style="margin:0 0 8px">Anyone with this code opens the project as <strong>owner</strong> on any device. Keep it safe — if lost, only the linked Google account can recover it.</div>' +
+        '<code class="share-code">' + esc(code) + '</code>' +
+        pendingBannerHtml(pendingCode) +
+        '<div class="sr" style="margin-top:12px;padding:0 0 4px"><span class="sl" style="font-size:.72rem;font-weight:700">Editor codes — edit only what you tick</span><button class="btn btn-n btn-s" data-action="cloudEditorList" style="margin-left:auto"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> List</button></div>' +
+        '<div class="sr-hint" style="margin:0 0 6px">Give someone a code that can edit ONLY the sections you tick (e.g. Budget only). Scope is enforced server-side on every save — a shared or leaked code cannot touch anything else.</div>' +
+        '<div class="exp-row" style="flex-wrap:wrap">' +
+        '<input type="text" id="cloud-editor-label-in" class="ctl-in" placeholder="Label, e.g. Site Super — Riverside" style="min-width:200px" autocomplete="off">' +
+        '<button class="btn btn-g btn-s" data-action="cloudEditorCreate"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-plus"></use></svg> Create Editor Code</button>' +
+        '</div>' +
+        '<div id="cloud-editor-scope-box" class="share-scope">' +
+        '<span class="sr-hint" style="margin:0">Sections this code may edit:</span>' +
+        '<span id="cloud-editor-scope-load" class="sr-hint" style="margin:0">loading…</span>' +
+        '</div>' +
+        '<div id="cloud-editor-list"></div>' +
+        '</div>';
+    }
+    wrap.innerHTML = body;
+  }
+
+  // OWNER 2026-08-15: adopt a cloud code recorded by the ADMIN panel for
+  // this project (mmgr_admin_projects → record.cloudOwnerCode). Publishing
+  // from the admin panel stores the owner code beside the project; when the
+  // owner opens that project here, this seeds it into the session store so
+  // publish → open → auto-sync works with zero re-typing. Runs silently,
+  // never overrides a code the user already entered this session, and only
+  // reads the admin's own record — the code still lives in sessionStorage
+  // (same security posture as every other credential in this module).
+  function adoptAdminRecordedCode() {
+    if (getCode() || getECode()) return;
+    try {
+      const raw = localStorage.getItem('mmgr_admin_projects');
+      if (!raw) return;
+      const recs = JSON.parse(raw);
+      if (!Array.isArray(recs)) return;
+      const rec = recs.find(function (r) { return r && String(r.id) === pid(); });
+      if (!rec || !rec.cloudOwnerCode) return;
+      setCode(String(rec.cloudOwnerCode));
+    } catch (e) { /* read-only best effort — never throws */ }
+  }
+
   async function render() {
+    adoptAdminRecordedCode();
     const wrap = $('cloud-section');
     if (!wrap) return;
     const code = getCode();
     const ecode = getECode();
     const escope = getEScope();
     const signedIn = await checkMe();
-    const pendingCode = getPendingEditorCode();
-    let pendingBanner = '';
-    if (pendingCode) {
-      pendingBanner =
-        '<div class="sr cloud-new-code" style="border:1px solid var(--gold);background:rgba(var(--gold-rgb),.1);border-radius:var(--radius);padding:8px 10px;margin:6px 0" role="status">' +
-        '<div class="sr-hint" style="margin:0 0 4px"><strong>NEW editor code for \u201C' + esc(pendingCode.label || 'editor') + '\u201D — copy it now, it is shown once:</strong></div>' +
-        '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">' +
-        '<code style="font-family:ui-monospace,monospace;letter-spacing:.05em;color:var(--gold);font-size:1rem;font-weight:700">' + esc(pendingCode.code) + '</code>' +
-        '<button class="btn btn-g btn-s" data-action="cloudCopyEditorCode" data-code="' + esc(pendingCode.code) + '"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy code</button>' +
-        '<button class="btn btn-n btn-s" data-action="cloudEditorCodeDone">Done</button>' +
-        '</div></div>';
-    }
+    // The Controls-tab Share & Access card must mirror the same credential
+    // state — render it alongside the cloud section on every render pass.
+    renderShare();
 
     let body = '';
     if (!code && !ecode) {
@@ -874,10 +952,12 @@ var MMGR = window.MMGR || {};
         '<div class="sr-hint">Changes you save are attributed to this editor label in the owner\u2019s changelog.</div>' +
         '<div id="cloud-last-sync" class="sr-hint" role="status" aria-live="polite"></div>';
     } else {
-      // OWNER MODE (owner code in session).
+      // OWNER MODE (owner code in session). The owner code + editor-code
+      // manager live in the Controls tab's Share & Access section
+      // (renderShare) — the cloud section keeps backup + changelog + webhooks.
       body =
         '<div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-folder"></use></svg> Cloud Backup — linked (owner)</span></div>' +
-        '<div class="sr-hint">Owner/recovery code for this project: <code class="cloud-code" style="font-family:ui-monospace,monospace;letter-spacing:.05em;color:var(--gold)">' + esc(code) + '</code> — stored in this session only (sessionStorage, never localStorage). <strong>Copy it and keep it safe:</strong> if lost, only the linked Google account can recover it.</div>' +
+        '<div class="sr-hint">Your owner code and editor codes are in <strong>Controls ▸ Share &amp; Access</strong> above. This section is the backup + history side: save snapshots, view the changelog, and wire webhooks.</div>' +
         '<div class="exp-row">' +
         '<button class="btn btn-n btn-s" data-action="cloudSave"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-upload"></use></svg> Save to Cloud</button>' +
         '<button class="btn btn-n btn-s" data-action="cloudLoad"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Load from Cloud</button>' +
@@ -886,21 +966,7 @@ var MMGR = window.MMGR || {};
         '</div>' +
         // gap-audit B10: deliberate unlink (keep local copy, stop syncing).
         '<div class="exp-row"><button class="btn btn-o btn-s" data-action="cloudUnlink"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> Unlink from Cloud (delete cloud copy)</button></div>' +
-        pendingBanner +
         '<div id="cloud-last-sync" class="sr-hint" role="status" aria-live="polite"></div>' +
-        // ---- Phase 2: editor codes ----
-        '<div class="sr" style="margin-top:8px"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-user"></use></svg> Editor Codes</span>' +
-        '<button class="btn btn-n btn-s" data-action="cloudEditorList" style="margin-left:8px"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> List</button></div>' +
-        '<div class="sr-hint">Give someone an editor code that can edit ONLY the sections you tick. Scope is enforced server-side on every save — a shared or leaked code cannot touch anything else.</div>' +
-        '<div class="exp-row" style="flex-wrap:wrap">' +
-        '<input type="text" id="cloud-editor-label-in" class="ctl-in" placeholder="Label, e.g. Site Super — Riverside" style="min-width:200px" autocomplete="off">' +
-        '<button class="btn btn-g btn-s" data-action="cloudEditorCreate"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-plus"></use></svg> Create Editor Code</button>' +
-        '</div>' +
-        '<div id="cloud-editor-scope-box" style="display:flex;flex-wrap:wrap;gap:4px 10px;margin:6px 0;font-size:.72rem">' +
-        '<span class="sr-hint" style="margin:0">Sections this code may edit:</span>' +
-        '<span id="cloud-editor-scope-load" class="sr-hint" style="margin:0">loading…</span>' +
-        '</div>' +
-        '<div id="cloud-editor-list"></div>' +
         // ---- Phase 3: changelog ----
         '<div class="sr" style="margin-top:8px"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-calendar"></use></svg> Changelog</span>' +
         '<button class="btn btn-n btn-s" data-action="cloudLogList" style="margin-left:8px"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> View</button></div>' +

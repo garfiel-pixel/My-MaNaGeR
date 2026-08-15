@@ -140,7 +140,7 @@ body.glass-premium .wrap{position:relative;z-index:1;}
         <button type="button" id="btn-drive-backup" class="db-btn" title="Save all workspace data to your Google Drive"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-upload"></use></svg> Backup</button>
         <button type="button" id="btn-drive-restore" class="db-btn" title="Pull the workspace backup back from Google Drive"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Restore</button>
       </div>
-      <label class="db-backup-auto" for="drive-auto-interval"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> Auto <select id="drive-auto-interval" class="drive-auto-select" aria-label="Automatic backup interval"><option value="off">Off</option><option value="15">15 min</option><option value="30">30 min</option><option value="60">60 min</option></select></label>
+      <label class="db-backup-auto" for="drive-auto-interval"><span class="db-auto-lbl">Auto</span><select id="drive-auto-interval" class="drive-auto-select" aria-label="Automatic backup interval"><option value="off">Off</option><option value="15">15 min</option><option value="30">30 min</option><option value="60">60 min</option></select></label>
       <input type="password" id="drive-pass" class="db-pass" placeholder="Backup passphrase" title="Encrypt backups with a passphrase (optional) -- enter once per browser session" autocomplete="new-password">
       <span id="drive-sync-status" class="drive-status" role="status" aria-live="polite"></span>
     </div>
@@ -204,6 +204,13 @@ body.glass-premium .wrap{position:relative;z-index:1;}
        urgency (reads each unlocked project's saved state locally). -->
   <div class="pf-strip" id="portfolio-strip" aria-label="Portfolio health rollup"></div>
 
+  <!-- SECTION HEADER (visual-analysis fix 2026-08-14): the local/published
+       grid and the cloud section below are explicitly labeled so the two
+       project lists can never be confused (Cloud vs Local). -->
+  <div class="db-sec" aria-label="Projects">
+    <h2 class="db-sec-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-folder"></use></svg> Projects</h2>
+    <span class="db-sec-sub">On this device and published — open one to get to work</span>
+  </div>
   <div class="grid" id="grid"><!-- cards render here --></div>
 
   <!-- A5-3 (2026-08-11): My Cloud Projects — the signed-in owner's cloud-

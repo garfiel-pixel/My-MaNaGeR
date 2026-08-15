@@ -116,8 +116,10 @@ var MMGR = window.MMGR || {};
     const issues = (s.issues || []).filter(i => i.status !== 'resolved' && i.status !== 'closed').length;
 
     // Ring (STRUCTURAL-IA §1: brand-new project ≠ 0% — quiet the empty zero)
+    // circ = 2πr with r=39 — matches the ring markup (thicker 18px stroke,
+    // owner 2026-08-15).
     const pct = total ? Math.round((done / total) * 100) : 0;
-    const circ = 251.2;
+    const circ = 245;
     const offset = circ - (circ * pct / 100);
     const rf = $('rf');
     if (rf) rf.style.strokeDashoffset = offset;

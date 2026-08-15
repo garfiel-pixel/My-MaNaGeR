@@ -714,7 +714,7 @@ footer{padding:70px 64px 46px;position:relative;}
 
       <div class="divider-note" style="margin-top:32px">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 3L19 6V11C19 15.5 16 19.5 12 21C8 19.5 5 15.5 5 11V6L12 3Z" stroke="currentColor" stroke-width="1.6"/></svg>
-        <p><strong>Core Mode first, Advanced Packs when you need them.</strong> New projects open Core-only: Dashboard, Definitions, Charter, WBS, and Kanban. The heavier panels — Gantt &amp; critical path, Budget, RACI, Risk, Meetings, Claim Pack, DMAIC — are grouped into five <strong>Advanced Packs</strong> (Schedule Science, Money, Governance, Field, Quality) that start hidden. Turn any pack on in <strong>Settings ▸ Advanced Packs</strong>; its sections appear instantly, and nothing you enter while a pack is off is ever lost. If a panel you expected isn't in the top nav, that's the first thing to check — Sheet A-17 covers it.</p>
+        <p><strong>Core Mode first, Advanced Packs when you need them.</strong> New projects open Core-only: Dashboard, Definitions, Charter, WBS, and Kanban. The heavier panels — Gantt &amp; critical path, Budget, RACI, Risk, Meetings, Claim Pack, DMAIC — are grouped into five <strong>Advanced Packs</strong> (Schedule Science, Money, Governance, Field, Quality) that start hidden. Turn any pack on in <strong>Settings ▸ Advanced Packs</strong>; its sections appear instantly, and nothing you enter while a pack is off is ever lost. If a panel you expected isn't in the sidebar navigation, that's the first thing to check — Sheet A-17 covers it.</p>
       </div>
 
       <div class="divider-note" style="margin-top:32px">
@@ -1288,8 +1288,11 @@ Date: ____________  Focus: ____________</pre>
       <span class="kicker">Your project lives on your device — and goes where you go</span>
       <p class="lede">Every change autosaves to this browser's LocalStorage the moment you make it — no save button, no network call. By default one project lives on one browser, on one device. Three deliberate paths move it anywhere else: the portable .json file, a USB/sync transfer, or — if you want it — the optional cloud backup. The app never requires an account; everything below is a choice.</p>
 
+      <h3 class="h-sub">Backup from the header — click the red “Not backed up” indicator</h3>
+      <p class="prose">The <strong>“Not backed up”</strong> pill in the header is the one-click backup door. Click it and a small backup card opens with the two routes: <strong>Backup to cloud</strong> — once a project is linked to the cloud (Settings ▸ Controls ▸ Cloud Backup), <em>Save to Cloud</em> keeps the off-device snapshot current, and the card saves straight to the cloud when the project is already linked — and <strong>Backup to local (.json)</strong>, the portable file described below. The card's footer line tells you when the last file backup happened.</p>
+
       <div class="grid grid-3">
-        <div class="card bracket"><span class="cnum">EXPORT</span><h4>Save Project to File</h4><p>Settings ▸ Controls ▸ Save Project to File writes a portable .json — your ticket to a new device, a teammate's laptop, or just peace of mind. Works everywhere, account or not.</p></div>
+        <div class="card bracket"><span class="cnum">EXPORT</span><h4>Save Project to File</h4><p>Settings ▸ Controls ▸ Save Project to File (or the header's “Not backed up” indicator ▸ <strong>Backup to local (.json)</strong>) writes a portable .json — your ticket to a new device, a teammate's laptop, or just peace of mind. Works everywhere, account or not.</p></div>
         <div class="card bracket"><span class="cnum">IMPORT</span><h4>Load Project from File</h4><p>Settings ▸ Controls ▸ Load Project from File, then pick a previously saved .json to restore it.</p></div>
         <div class="card bracket"><span class="cnum">SNAPSHOT</span><h4>Save Baseline</h4><p>A point-in-time snapshot of schedule and budget, feeding the Dashboard's Baseline Variance card (Sheet A-02).</p></div>
       </div>
@@ -1359,7 +1362,8 @@ Date: ____________  Focus: ____________</pre>
       </div>
       <div class="grid grid-4">
         <div class="card"><span class="cnum">KEY: F</span><h4>Focus Mode</h4><p>Collapses everything except your active panel. Press F again to restore; an indicator confirms it's on.</p></div>
-        <div class="card"><span class="cnum">HEADER</span><h4>Status indicators</h4><p>The header always shows backup status, timeline status, and methodology lock at a glance — click any to jump to the relevant panel.</p></div>
+        <div class="card"><span class="cnum">HEADER</span><h4>Status indicators</h4><p>The header shows backup status, timeline status, and methodology lock at a glance. The red <strong>“Not backed up”</strong> indicator is the backup door — click it for the two backup routes, cloud or local .json (Sheet A-15).</p></div>
+        <div class="card"><span class="cnum">NAV</span><h4>Sidebar navigation</h4><p>On desktop the left sidebar <em>is</em> the navigation — every section lives there, grouped by phase (Overview, Planning, Execution, Governance, Closeout, DMAIC). The hamburger in the header (or the one at the top of the sidebar) slides it away so the workspace takes the full screen — click again to bring it back. On phones the same hamburger opens the drawer.</p></div>
         <div class="card"><span class="cnum">SETTING</span><h4>Theme</h4><p>Switch between the light (default) and dark theme. Your choice is saved per device and applies everywhere — the launcher, the admin panel, and every project — not just the project you happen to be in. Printouts (Sheet A-03) stay legible either way.</p></div>
         <div class="card"><span class="cnum">SETTING</span><h4>Your Name</h4><p>Settings ▸ Controls ▸ Your Name personalizes the header greeting. Leave it blank for a generic welcome.</p></div>
       </div>

@@ -104,7 +104,26 @@
   <div class="hdr-right">
     <a class="hdr-back" href="app.html" title="Back to projects list"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-left"></use></svg> Projects</a>
     <button class="nav-btn" id="nav-btn" data-action="tglNav" aria-label="Open navigation menu" aria-expanded="false" aria-controls="sec-nav"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-menu"></use></svg></button>
-    <div class="dirty-ind" id="dirty-ind" data-action="openDrwToSave" title="Changes save to this browser automatically. Click to back up to a file — recommended before closing or switching devices.">● Not backed up</div>
+    <!-- OWNER 2026-08-15: the red "Not backed up" indicator now opens the
+         backup popover (#bk-pop) — Backup to cloud (automatic once linked)
+         and Backup to local (.json) — instead of jumping to the Settings
+         drawer. Toggled by bkToggle in mmgr-app.js; closed on outside
+         click / Escape / choosing an option. -->
+    <span class="bk-anchor"><div class="dirty-ind" id="dirty-ind" data-action="bkToggle" aria-haspopup="true" aria-expanded="false" aria-controls="bk-pop" title="Changes save to this browser automatically. Click to back up — to the cloud (automatic once linked) or to a .json file.">● Not backed up</div>
+    <div class="bk-pop" id="bk-pop" hidden role="dialog" aria-label="Backup options">
+      <div class="bk-pop-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-save"></use></svg> Backup</div>
+      <button type="button" class="bk-opt" data-action="bkCloud">
+        <span class="bk-opt-ico"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cloud"></use></svg></span>
+        <span class="bk-opt-txt"><b>Backup to cloud</b><small id="bk-cloud-hint">Link this project once — then every Save to Cloud keeps the snapshot current.</small></span>
+        <svg class="ico bk-caret" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg>
+      </button>
+      <button type="button" class="bk-opt" data-action="saveProjectFile">
+        <span class="bk-opt-ico"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg></span>
+        <span class="bk-opt-txt"><b>Backup to local (.json)</b><small>Download a portable backup file to this device.</small></span>
+        <svg class="ico bk-caret" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg>
+      </button>
+      <div class="bk-pop-foot" id="bk-foot"></div>
+    </div></span>
     <div class="timeline-ind" id="timeline-ind" data-action="jumpToDashTimeline" title="Current planned finish vs the Target Completion Date set in Charter. Click to view on the Dashboard."></div>
     <div class="presence-chip" id="presence-chip" hidden role="status" aria-live="polite"><span class="pdot" aria-hidden="true"></span><span data-presence-label>0 online</span></div>
     <div class="lock-ind" id="lk-ind"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-lock"></use></svg> <span id="lk-lbl">Methodology</span> Locked</div>
@@ -833,7 +852,11 @@
 <aside id="app-sidebar" aria-label="Section navigation">
   <div class="sb-head">
     <span class="sb-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-menu"></use></svg> Sections</span>
-    <button type="button" class="sb-close" data-action="tglSidebarOpen" aria-label="Close sidebar navigation"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg></button>
+    <!-- OWNER 2026-08-15: the rail-head close control is the SAME hamburger
+         as the header button (never an X — UI DOCTRINE rule 3). It rotates
+         90deg while the rail is open; clicking it closes the rail so the
+         content takes the full screen, and the header hamburger reopens it. -->
+    <button type="button" class="sb-close" data-action="tglSidebarOpen" aria-label="Close menu" title="Close menu"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-menu"></use></svg></button>
   </div>
 </aside>
 
@@ -1053,11 +1076,6 @@
     <div class="sr-hint">Shown in the header greeting. Leave blank for a generic welcome.</div>
     <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-moon"></use></svg> Light / Dark Theme</span><label class="tgl"><input type="checkbox" id="thm-tgl" aria-label="Light / Dark Theme" data-action="tglTheme"><span class="tsl"></span></label></div>
     <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-palette"></use></svg> Color Theme</span><span class="pal-switch" role="group" aria-label="Color theme"><button type="button" class="pal-btn" data-pal="default" aria-pressed="true">Default</button><button type="button" class="pal-btn" data-pal="cyan" aria-pressed="false">Cyan</button></span></div>
-    <!-- SIDEBAR-HAMBURGER-TOGGLE-PLAN: device-level layout preference (like the
-         palette picker above) — never project state. Off by default so the
-         current horizontal pill nav stays primary until the user opts in. -->
-    <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-menu"></use></svg> Sidebar Layout</span><label class="tgl"><input type="checkbox" id="sb-tgl" aria-label="Sidebar Layout" data-action="tglSidebar"><span class="tsl"></span></label></div>
-    <div class="sr-hint">Desktop layout: on = fixed left sidebar with every section; off = the current horizontal menu (default). On phones the hamburger drawer is always used.</div>
     <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-crosshair"></use></svg> Crosshair Cursor</span><label class="tgl"><input type="checkbox" id="ch-tgl" aria-label="Crosshair Cursor" data-action="tglCh"><span class="tsl"></span></label></div>
     <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-lock"></use></svg> Lock Active Methodology</span><button class="btn btn-n btn-s toggle-chip is-off" data-action="tglLock">Lock / Unlock</button></div>
     <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-calendar"></use></svg> Work Week (days)</span><select id="ww-sel" data-action="setWorkWeek" class="ctl-in" aria-label="Work week (days)"><option value="3">3-day</option><option value="4">4-day</option><option value="5" selected>5-day (default)</option><option value="6">6-day</option><option value="7">7-day</option></select></div>

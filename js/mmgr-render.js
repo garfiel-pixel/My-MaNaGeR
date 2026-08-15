@@ -164,7 +164,11 @@ var MMGR = window.MMGR || {};
             return aDue - bDue;
           })
           .slice(0, 3);
-        n3.innerHTML = sorted.map(t => `<li>${U.escapeHtml(t.name)}${t.critical ? ' <svg class="ico" aria-hidden="true" style="color:var(--gold)"><use href="css/mmgr-icons.svg#i-target"></use></svg>' : ''}${t.endDate ? ' — due ' + U.fmtDateShort(t.endDate) : ''}</li>`).join('');
+        // The row text sits in a single-line ellipsis span (same pattern as
+        // the health-row labels) so a long priority name can never wrap and
+        // break the 33px row rhythm — at any sidebar width (OWNER 2026-08-15
+        // sidebar-only view narrowed the content column).
+        n3.innerHTML = sorted.map(t => `<li><span title="${U.escapeHtml(t.name)}">${U.escapeHtml(t.name)}${t.critical ? ' <svg class="ico" aria-hidden="true" style="color:var(--gold)"><use href="css/mmgr-icons.svg#i-target"></use></svg>' : ''}${t.endDate ? ' — due ' + U.fmtDateShort(t.endDate) : ''}</span></li>`).join('');
       }
     }
 
@@ -1066,10 +1070,17 @@ var MMGR = window.MMGR || {};
     const backedUp = s.lastBackedUpAt && s.updatedAt && s.lastBackedUpAt >= s.updatedAt;
     if (!backedUp) {
       ind.classList.add('on');
-      ind.setAttribute('title', 'Changes are saved to this browser automatically, but not yet backed up to a file. Click to save a .json backup — recommended before closing or switching devices.');
+      ind.setAttribute('title', 'Changes are saved to this browser automatically, but not yet backed up to a file. Click to back up — to the cloud (automatic once linked) or to a .json file.');
     } else {
       ind.classList.remove('on');
-      ind.setAttribute('title', 'Changes save to this browser automatically. Click to back up to a file — recommended before closing or switching devices.');
+      ind.setAttribute('title', 'Changes save to this browser automatically. Click to back up — to the cloud (automatic once linked) or to a .json file.');
+    }
+    // Backup popover footer: last file-backup watermark (OWNER 2026-08-15).
+    const foot = $('bk-foot');
+    if (foot) {
+      foot.textContent = backedUp && s.lastBackedUpAt
+        ? 'Last file backup: ' + new Date(s.lastBackedUpAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) + '.'
+        : 'No file backup yet — autosave keeps your changes on this device.';
     }
   }
 

@@ -248,36 +248,44 @@ body.focus-mode .focus-ind{display:flex;position:fixed;top:10px;right:10px;backg
 .nav-btn{display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;border:1px solid var(--border);background:var(--card);color:var(--slate);border-radius:10px;cursor:pointer;transition:all var(--tr);flex-shrink:0;}
 .nav-btn:focus-visible{outline:2px solid var(--gold);outline-offset:2px;}
 .nav-btn:hover{color:var(--gold);border-color:var(--gold);}
+/* Owner 2026-08-15: the header hamburger was too thin — it is now a bigger,
+   bolder icon (18px, stroke 4 = roughly 3x the old 2px lines) so it reads as
+   a robust navigation control in the header bar. Same language on the
+   launcher hamburgers (see the db-page blocks below). */
+.nav-btn .ico{width:18px;height:18px;stroke-width:4;transition:transform var(--release-duration) var(--ease-ios);}
 #nav-scrim{position:fixed;inset:0;background:rgba(0,22,25,.45);opacity:0;pointer-events:none;transition:opacity var(--tr);z-index:94;}
 body.nav-open #nav-scrim{opacity:1;pointer-events:auto;}
-/* BUG-9: sidebar scrim reuses #nav-scrim for the desktop overlay. */
-body.sidebar-open #nav-scrim{opacity:1;pointer-events:auto;}
-
-/* ---- BUG-9: overlay sidebar (2026-08-13) ----
-   The sidebar is now an OVERLAY, not a pinned rail. It slides in from the left,
-   covers the content (no margin-left push), and is dismissed by clicking a
-   section, clicking the scrim, or pressing Escape. The .sec-nav pill row is
-   hidden when the overlay is open to reduce clutter. Mobile (≤768px) is
-   unchanged — the existing off-canvas .sec-nav drawer stays the mobile nav. */
+/* ---- SIDEBAR IS THE ONLY VIEW on desktop (owner 2026-08-15) ----
+   The left sidebar is the primary (and only) navigation on desktop: the top
+   .sec-nav pill bar is DEMOLISHED (it stays in the DOM only as the source
+   for buildSidebar's clone + the mobile drawer). body.sidebar-on is now
+   ALWAYS applied (sidebarEnabled() → true); body.sidebar-open is the
+   transient open/closed state of the pinned rail (default open at boot).
+   The hamburger (header + rail head) toggles it — click to close the rail
+   and take the full screen, click again to slide it back out: the launcher's
+   exact pattern (UI DOCTRINE rule 3: hamburger = toggle, never an X).
+   Mobile (≤768px) is unchanged: the off-canvas .sec-nav drawer stays the
+   mobile nav. */
+#nav-scrim{position:fixed;inset:0;background:rgba(0,22,25,.45);opacity:0;pointer-events:none;transition:opacity var(--tr);z-index:94;}
+body.nav-open #nav-scrim{opacity:1;pointer-events:auto;}
 #app-sidebar{position:fixed;top:var(--hdr-h,64px);left:0;bottom:0;width:240px;z-index:96;
   background:var(--card);border-right:1px solid var(--border);
   transform:translateX(-105%);visibility:hidden;
-  transition:transform .24s var(--ease-ios),visibility .24s;
+  transition:transform var(--release-duration) var(--ease-ios),visibility var(--release-duration);
   box-shadow:0 12px 40px rgba(0,0,0,.18);
   display:flex;flex-direction:column;overflow-y:auto;}
-body.sidebar-open #app-sidebar{transform:translateX(0);visibility:visible;}
-/* BUG-9: overlay — no content push, just the scrim + rail. */
-/* Hide .sec-nav pill row when sidebar overlay is open (reduces clutter). */
-body.sidebar-open .sec-nav{display:none!important;}
-/* Legacy pref class still applied for the settings toggle sync, but no longer
-   controls hamburger visibility (hamburger is always shown). */
-body.sidebar-on .nav-btn{display:inline-flex;}
+/* Rail head: same hamburger as the header button, bare icon (no box),
+   rotated 90deg while the rail is open — one smooth spring (doctrine 3). */
 .sb-head{display:flex;align-items:center;justify-content:space-between;padding:14px 16px 10px;border-bottom:1px solid var(--border);margin-bottom:12px;flex-shrink:0;position:sticky;top:0;background:var(--card);z-index:1;}
 .sb-title{display:inline-flex;align-items:center;gap:8px;font-size:.72rem;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--gold);}
-.sb-title .ico{font-size:.8rem;}
-.sb-close{background:none;border:1px solid var(--border);color:var(--slate);width:26px;height:26px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;font-size:.7rem;transition:all var(--tr);flex-shrink:0;}
-.sb-close:hover{color:var(--danger);border-color:var(--danger);}
+.sb-title .ico{width:15px;height:15px;stroke-width:4;}
+.sb-close{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;
+  border:none;background:transparent;color:var(--slate);border-radius:var(--radius);
+  cursor:pointer;flex-shrink:0;transition:color var(--tr),background var(--tr);}
+.sb-close .ico{width:17px;height:17px;stroke-width:4;transition:transform var(--release-duration) var(--ease-ios);}
+.sb-close:hover{color:var(--gold);background:color-mix(in oklch,var(--gold) 10%,transparent);}
 .sb-close:focus-visible{outline:2px solid var(--gold);outline-offset:1px;}
+body.sidebar-open .nav-btn .ico,body.sidebar-open .sb-close .ico{transform:rotate(90deg);}
 /* The sidebar stacks each nav group vertically (the shared .nav-group rules
    are built for the horizontal pill row; the drawer media-query below applies
    the same vertical treatment to the off-canvas drawer). */
@@ -302,15 +310,16 @@ body.sidebar-on .nav-btn{display:inline-flex;}
 .rail-link:focus-visible{outline:2px solid var(--gold);outline-offset:2px;border-radius:var(--radius-control);}
 .rail-link.active{color:var(--on-gold);background:var(--gold);}
 .rail-link + .rail-link{margin-top:2px;}
-/* MMGR-NEW-UI-CREATION-BRIEF §2.1: desktop PINNED rail when the sidebar
-   preference is on (localStorage mmgr_sidebar='on' → body.sidebar-on). The
-   rail becomes the primary nav (horizontal pills hidden on desktop so there
-   is never a second competing primary nav — brief §6.3), content shifts
-   right. Pref off keeps the existing overlay drawer (BUG-9). Mobile drawer
+/* MMGR-NEW-UI-CREATION-BRIEF §2.1 (repurposed 2026-08-15): desktop PINNED
+   rail — the sidebar IS the view. body.sidebar-on (always on, see
+   sidebarEnabled()) hides the top pill bar + scrim on desktop; the rail is
+   pinned open when body.sidebar-open is set (default at boot) and slides
+   away (content full-width) when the hamburger closes it. Mobile drawer
    behavior is untouched by construction. */
 @media(min-width:769px){
-  body.sidebar-on #app-sidebar{transform:none;visibility:visible;box-shadow:none;border-right:1px solid var(--border);}
-  body.sidebar-on #app-main{margin-left:248px;}
+  body.sidebar-on #app-sidebar{box-shadow:none;border-right:1px solid var(--border);}
+  body.sidebar-on.sidebar-open #app-sidebar{transform:translateX(0);visibility:visible;}
+  body.sidebar-on.sidebar-open #app-main{margin-left:248px;}
   body.sidebar-on .sec-nav{display:none!important;}
   body.sidebar-on #nav-scrim{display:none;}
 }
@@ -372,7 +381,7 @@ body.sidebar-on .nav-btn{display:inline-flex;}
 .tier3 .stat{font-size:.95rem;color:var(--slate);font-weight:600;}
 /* §4 Tier 1: non-zero Blocked / Overdue / Live Issues get the strongest
    static treatment — existing --danger token, size only, no motion. */
-#health-card.has-danger .fb-sm .badge.br{font-size:.82rem;font-weight:800;background:rgba(239,68,68,.22);}
+#health-card.has-danger .fb-sm .badge.br{background:rgba(239,68,68,.3);}
 #health-card.has-danger #h-od,#health-card.has-danger #h-bl,#health-card.has-danger #h-is{box-shadow:0 0 0 1px var(--danger);}
 /* §1: brand-new project — the whole health card reads quieter */
 #health-card.health-empty .fb-sm{opacity:.55;}
@@ -410,15 +419,22 @@ body.sidebar-on .nav-btn{display:inline-flex;}
    long label can never shove the count), counts right-pinned with a fixed
    badge width so every number column right-aligns. */
 #health-card .col-g8{flex:1;}
-#health-card .fb-sm{min-height:33px;padding:4px 2px;gap:12px;}
+#health-card .fb-sm{min-height:33px;padding:2px;gap:12px;}
 #health-card .fb-sm>span:first-child{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-#health-card .fb-sm .badge{flex-shrink:0;min-width:36px;justify-content:center;}
+/* Owner 2026-08-15: health counts are now CIRCULAR badges — a fixed 28px
+   circle with a bolder 800-weight figure, so the number reads as a solid,
+   polished count that mirrors the project's state color (the old thin pills
+   were "just thin, nothing to them"). Row height stays 33px (28px badge +
+   2px padding top/bottom) so the qa-rhythm gate holds. */
+#health-card .fb-sm .badge{width:28px;height:28px;min-width:0;padding:0;border-radius:50%;
+  justify-content:center;font-size:.8rem;font-weight:800;line-height:1;}
 /* Next-3: fills the card height (like the health column) and its rows use
    the status-row rhythm (30px min-height, 4px vertical padding) so all three
    areas share one vertical grid. */
 #panel-dash .g3 .card .n3{flex:1;}
 .n3{gap:8px;}
 .n3 li{min-height:33px;display:flex;align-items:center;gap:6px;padding:4px 2px;line-height:1.45;}
+.n3 li>span{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 /* UI-MODERNIZATION 2026-08-14: the dashboard stat cards (Budget Variance /
    Resource Utilization / Pending Changes / Baseline Variance) had their big
    figure flush against the sub-label (0px). A 4px breathing gap restores
@@ -931,9 +947,10 @@ body.readonly-mode .btn[data-action]:not([data-action="showSec"]):not([data-acti
 
 /* ---- Drawer ---- */
 #drw{position:fixed;top:0;right:-430px;width:410px;height:100vh;z-index:1000;transition:right .3s ease;overflow:hidden;
-  /* The outer shadow lives here as a filter so it SURVIVES the superellipse
-     clip-path on the child .drw-sheet (clip-path clips box-shadow; a parent
-     filter:drop-shadow does not, and follows the clipped silhouette). */
+  /* The outer shadow lives here as a filter:drop-shadow so it follows the
+     ROUNDED silhouette of the child .drw-sheet (left corners rounded on
+     desktop — a box-shadow on the child would be clipped by its own
+     overflow:hidden). */
   filter:drop-shadow(-8px 0 24px rgba(15,23,42,.14));}
 #drw.open{right:0;}
 .drw-sheet{height:100%;display:flex;flex-direction:column;overflow:hidden;background:var(--card);border-left:1px solid var(--border);}
@@ -1059,12 +1076,48 @@ hr.div{border:none;border-top:1px solid var(--border);margin:14px 0;}
 /* ---- Indicator ---- */
 .var-pos{color:var(--green);font-weight:700;}
 .var-neg{color:var(--danger);font-weight:700;}
+/* The backup popover anchors to this wrapper so it opens DIRECTLY under the
+   indicator (the indicator itself is the position:relative context). */
+.bk-anchor{position:relative;display:inline-flex;}
 .dirty-ind{display:none;align-items:center;gap:5px;font-size:.7rem;color:var(--amber);padding:3px 9px;border:1px solid var(--amber);border-radius:100px;background:rgba(var(--amber-rgb),0.08);cursor:pointer;transition:all var(--tr);}
 .dirty-ind:hover{background:rgba(var(--amber-rgb),0.2);}
 @keyframes pulseAttn{0%,100%{box-shadow:0 0 0 0 rgba(var(--gold-rgb),.55);}50%{box-shadow:0 0 0 7px rgba(var(--gold-rgb),0);}}
 .pulse-attn{animation:pulseAttn .6s ease-out 2;}
 @media (prefers-reduced-motion: reduce){.pulse-attn{animation:none;outline:2px solid var(--gold);}}
 .dirty-ind.on{display:inline-flex;}
+
+/* ---- Backup popover (owner 2026-08-15) ----
+   Clicking the "Not backed up" indicator opens a small glass card under it
+   with the two backup routes: Backup to cloud (automatic once the project is
+   linked — Save to Cloud keeps the snapshot current) and Backup to local
+   (a portable .json file). Anchored to the indicator inside the sticky
+   header so it stays put while the page scrolls. Same card language as
+   everywhere: glass surface, squircle radius, full-contrast text. */
+.bk-pop{position:absolute;top:calc(100% + 8px);right:0;z-index:300;width:292px;max-width:calc(100vw - 24px);
+  background:var(--glass-fill-dark-hover);backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  border:var(--glass-border);border-radius:var(--squircle-md);
+  box-shadow:var(--glass-rim),0 12px 32px rgba(0,0,0,.22);
+  padding:12px;display:flex;flex-direction:column;gap:8px;}
+.bk-pop[hidden]{display:none;}
+.bk-pop-title{display:flex;align-items:center;gap:7px;font-size:.68rem;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--gold);padding:0 4px;}
+.bk-pop-title .ico{width:14px;height:14px;}
+.bk-opt{display:flex;align-items:center;gap:10px;width:100%;text-align:left;
+  padding:9px 10px;border:none;background:transparent;border-radius:var(--radius);
+  cursor:pointer;font-family:inherit;transition:background var(--tr);}
+.bk-opt:hover{background:color-mix(in oklch,var(--gold) 10%,transparent);}
+.bk-opt:focus-visible{outline:2px solid var(--gold);outline-offset:1px;}
+.bk-opt-ico{flex-shrink:0;width:30px;height:30px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;
+  background:color-mix(in oklch,var(--gold) 14%,transparent);color:var(--gold);}
+.bk-opt-ico .ico{width:15px;height:15px;}
+.bk-opt-txt{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;}
+.bk-opt-txt b{font-size:.78rem;font-weight:700;color:var(--text);line-height:1.3;}
+.bk-opt-txt small{font-size:.66rem;color:var(--slate);line-height:1.35;}
+.bk-caret{width:14px;height:14px;color:var(--slate);flex-shrink:0;}
+.bk-pop-foot{font-size:.64rem;color:var(--slate);border-top:1px solid var(--border);padding:7px 4px 2px;line-height:1.4;}
+body.dark-mode .bk-pop{background:var(--glass-fill-dark-hover);}
+@media (prefers-reduced-motion: reduce){.bk-pop{animation:none;}}
+
 .timeline-ind{display:none;align-items:center;gap:5px;font-size:.7rem;padding:3px 9px;border-radius:100px;cursor:pointer;transition:all var(--tr);}
 .timeline-ind.on{display:inline-flex;}
 .timeline-ind.ti-ba{color:var(--amber);border:1px solid var(--amber);background:rgba(var(--amber-rgb),.08);}
@@ -1328,120 +1381,33 @@ header{position:sticky;top:0;z-index:100;}
   border-radius:var(--squircle-lg);
   box-shadow:var(--glass-rim),var(--glass-shadow);
 }
-/* §2/§6.3 — superellipse clip-path on modal sheets. The unlock modal is the
-   signature moment: 28px corners (--squircle-lg) traced with an n=4.5
-   superellipse. calc(100% - Npx) keeps corners exactly 28px at ANY sheet
-   width (modals shrink on mobile). border-radius above stays as the
-   @supports fallback for non-clip-path browsers. #ai-win .mb is a work
-   surface (corner resize handles + own 22px radius + big shadow), and the
-   .cu-box/.wi-box content dialogs scroll (their scrollbar corners would be
-   chopped), so both keep border-radius only. */
-.mb{
-  clip-path:polygon(
-      0px 28px,
-      11.33px 27.89px,
-      15.36px 27.57px,
-      18.27px 27.03px,
-      20.58px 26.27px,
-      22.46px 25.26px,
-      24px 24px,
-      25.26px 22.46px,
-      26.27px 20.58px,
-      27.03px 18.27px,
-      27.57px 15.36px,
-      27.89px 11.33px,
-      28px 0px,
-      calc(100% - 28px) 0px,
-      calc(100% - 27.89px) 11.33px,
-      calc(100% - 27.57px) 15.36px,
-      calc(100% - 27.03px) 18.27px,
-      calc(100% - 26.27px) 20.58px,
-      calc(100% - 25.26px) 22.46px,
-      calc(100% - 24px) 24px,
-      calc(100% - 22.46px) 25.26px,
-      calc(100% - 20.58px) 26.27px,
-      calc(100% - 18.27px) 27.03px,
-      calc(100% - 15.36px) 27.57px,
-      calc(100% - 11.33px) 27.89px,
-      100% 28px,
-      100% calc(100% - 28px),
-      calc(100% - 11.33px) calc(100% - 27.89px),
-      calc(100% - 15.36px) calc(100% - 27.57px),
-      calc(100% - 18.27px) calc(100% - 27.03px),
-      calc(100% - 20.58px) calc(100% - 26.27px),
-      calc(100% - 22.46px) calc(100% - 25.26px),
-      calc(100% - 24px) calc(100% - 24px),
-      calc(100% - 25.26px) calc(100% - 22.46px),
-      calc(100% - 26.27px) calc(100% - 20.58px),
-      calc(100% - 27.03px) calc(100% - 18.27px),
-      calc(100% - 27.57px) calc(100% - 15.36px),
-      calc(100% - 27.89px) calc(100% - 11.33px),
-      calc(100% - 28px) 100%,
-      28px 100%,
-      27.89px calc(100% - 11.33px),
-      27.57px calc(100% - 15.36px),
-      27.03px calc(100% - 18.27px),
-      26.27px calc(100% - 20.58px),
-      25.26px calc(100% - 22.46px),
-      24px calc(100% - 24px),
-      22.46px calc(100% - 25.26px),
-      20.58px calc(100% - 26.27px),
-      18.27px calc(100% - 27.03px),
-      15.36px calc(100% - 27.57px),
-      11.33px calc(100% - 27.89px),
-      0px calc(100% - 28px),
-      0px 28px
-  );
-}
-#ai-win .mb{clip-path:none;}
+/* §2/§6.3 — modal sheets use PLAIN rounded corners (owner 2026-08-15: "only
+   square and round edges — any other edges is useless"). The old n=4.5
+   superellipse clip-path traced corners that read as cut-in / "eating out";
+   border-radius:var(--squircle-lg) above is the whole corner treatment now.
+   #ai-win .mb is a work surface (corner resize handles + own 22px radius +
+   big shadow) and the .cu-box/.wi-box content dialogs scroll — both keep
+   border-radius only, unchanged. */
 /* Scrims blur the page behind the sheet (not just dim it) */
 #om,#cfm-modal,#conflict-modal,#chartup-modal,#wbsimport-modal,#importdates-modal,
 #adm-cfm,#pw-om,#adm-conflict,#snip-om{
   backdrop-filter:blur(4px);
   -webkit-backdrop-filter:blur(4px);
 }
-/* Settings drawer is a sheet — same material as modals. The glass surface +
-   superellipse clip-path live on the inner .drw-sheet; #drw keeps only the
-   positioning frame and the filter drop-shadow (which follows the clipped
-   silhouette — a box-shadow would be clipped by the child's clip-path). */
+/* Settings drawer is a sheet — same material as modals. PLAIN rounded
+   corners (owner 2026-08-15: square edges + round corners only — the old
+   superellipse clip-path corners read as cut-in / "eating out" and are gone).
+   #drw keeps the positioning frame + a filter drop-shadow that follows the
+   rounded silhouette. */
 .drw-sheet{background:var(--glass-fill-dark-hover);border-left:var(--glass-border);
   backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturate));
   -webkit-backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturate));
   box-shadow:var(--glass-rim);}
-/* Desktop: superellipse left corners (right edge is flush with the viewport,
-   so it stays square — edge-to-edge per §6.2). Mobile is full-width and
-   edge-to-edge on both sides, so it keeps square corners. */
+/* Desktop: round the drawer's LEFT corners (the right edge is flush with the
+   viewport, so it stays square — edge-to-edge per §6.2). Mobile is full-width
+   and edge-to-edge on both sides, so it keeps square corners. */
 @media(min-width:769px){
-  .drw-sheet{clip-path:polygon(
-      100% 0px,
-      28px 0px,
-      27.89px 11.33px,
-      27.57px 15.36px,
-      27.03px 18.27px,
-      26.27px 20.58px,
-      25.26px 22.46px,
-      24px 24px,
-      22.46px 25.26px,
-      20.58px 26.27px,
-      18.27px 27.03px,
-      15.36px 27.57px,
-      11.33px 27.89px,
-      0px 28px,
-      0px calc(100% - 28px),
-      11.33px calc(100% - 27.89px),
-      15.36px calc(100% - 27.57px),
-      18.27px calc(100% - 27.03px),
-      20.58px calc(100% - 26.27px),
-      22.46px calc(100% - 25.26px),
-      24px calc(100% - 24px),
-      25.26px calc(100% - 22.46px),
-      26.27px calc(100% - 20.58px),
-      27.03px calc(100% - 18.27px),
-      27.57px calc(100% - 15.36px),
-      27.89px calc(100% - 11.33px),
-      28px 100%,
-      100% 100%
-  );}
+  .drw-sheet{border-top-left-radius:var(--squircle-lg);border-bottom-left-radius:var(--squircle-lg);}
 }
 
 /* §6.1 buttons — glass surface, squircle-md, gold tint on primary */
@@ -1590,6 +1556,8 @@ body.dark-mode .btn-warn:hover{background:#d97706;}
      reduced motion. (transform:none is deliberately NOT applied here: the
      rail's open state is transform-driven.) */
   #app-sidebar{transition:none!important;}
+  /* Hamburger + rail-head rotation: same instant-toggle rule. */
+  .nav-btn .ico,.sb-close .ico{transition:none!important;transform:none!important;}
   .pcard:hover{transform:none;}
 }
 
@@ -2142,7 +2110,7 @@ body.dark-mode.db-page .pcard:not(.unlocked) .pc-cta{color:var(--db-text-seconda
     border-radius:var(--radius);cursor:pointer;flex-shrink:0;
   }
   body.dark-mode.db-page .db-hamb:focus-visible{outline:2px solid var(--db-accent);outline-offset:2px;}
-  body.dark-mode.db-page .db-hamb .ico{width:18px;height:18px;}
+  body.dark-mode.db-page .db-hamb .ico{width:18px;height:18px;stroke-width:4;}
   body.dark-mode.db-page .top{position:relative;padding-top:56px;}
   body.dark-mode.db-page .db-hamb{position:absolute;top:12px;left:12px;}
   body.dark-mode.db-page .db-side{
@@ -2256,7 +2224,7 @@ body.db-page:not(.dark-mode) .db-link:focus-visible{outline:2px solid var(--gold
     border-radius:var(--radius-control);cursor:pointer;flex-shrink:0;
   }
   body.db-page:not(.dark-mode) .db-hamb:focus-visible{outline:2px solid var(--gold);outline-offset:2px;}
-  body.db-page:not(.dark-mode) .db-hamb .ico{width:18px;height:18px;}
+  body.db-page:not(.dark-mode) .db-hamb .ico{width:18px;height:18px;stroke-width:4;}
   body.db-page:not(.dark-mode) .top{position:relative;padding-top:56px;}
   body.db-page:not(.dark-mode) .db-hamb{position:absolute;top:12px;left:12px;}
   body.db-page:not(.dark-mode) .db-side{
@@ -2350,7 +2318,7 @@ body.db-page .db-hamb{
   border-radius:var(--radius-control);cursor:pointer;flex-shrink:0;
   position:absolute;top:12px;left:12px;z-index:2;
 }
-body.db-page .db-hamb .ico{width:18px;height:18px;transition:transform .18s ease;}
+body.db-page .db-hamb .ico{width:18px;height:18px;stroke-width:4;transition:transform .18s ease;}
 body.db-page .db-hamb.is-open .ico{transform:rotate(180deg);}
 body.db-page .db-hamb:focus-visible{outline:2px solid var(--gold);outline-offset:2px;}
 /* Moon/sun quick toggle (owner 2026-08-15): the square box around the icon

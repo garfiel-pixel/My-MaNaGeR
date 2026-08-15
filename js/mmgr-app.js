@@ -1194,6 +1194,50 @@ var MMGR = window.MMGR || {};
     R.renderAll();
   }
 
+  // OWNER 2026-08-15: "Use my current location" — browser geolocation pins
+  // the exact coordinates where the user is right now and fetches the
+  // Open-Meteo forecast for them, so the weather is tailored to their
+  // location. Reverse-geocodes a friendly place label when it can. Never
+  // throws: denied permission / no coverage / insecure context all degrade
+  // to a toast pointing at the type-a-city path (the offline-safe fallback).
+  async function wxUseLocation() {
+    if (!navigator.geolocation) {
+      showToast('Location lookup is unavailable in this browser — type your site city instead.', 'err');
+      return;
+    }
+    showToast('Locating you…', 'ok');
+    let pos;
+    try {
+      pos = await new Promise(function(res, rej) {
+        navigator.geolocation.getCurrentPosition(res, rej, { enableHighAccuracy: true, timeout: 15000, maximumAge: 300000 });
+      });
+    } catch (e) {
+      showToast('Could not get your location (permission or coverage) — type your site city instead.', 'err');
+      return;
+    }
+    const lat = pos.coords.latitude;
+    const lon = pos.coords.longitude;
+    ns.State.updateState(function(s) {
+      s.siteLat = lat;
+      s.siteLon = lon;
+      s.sitePlace = '';
+    });
+    // Best-effort reverse label (Open-Meteo's geo API has no true reverse
+    // lookup, so this usually returns ''); fall back to a readable coordinate
+    // pair so the forecast header always shows where the weather is pinned.
+    let place = '';
+    try { place = (await ns.Forecast.reverseGeocode(lat, lon)) || ''; } catch (e) { place = ''; }
+    if (!place) place = lat.toFixed(2) + ', ' + lon.toFixed(2);
+    ns.State.updateState(function(s) { s.sitePlace = place; });
+    try {
+      await ns.Forecast.fetchForecast(lat, lon);
+      showToast('Forecast set for your current location' + (place ? ' — ' + place : '') + '.', 'ok');
+    } catch (e) {
+      showToast('Location saved, but the forecast could not be fetched (offline?) — regional windows remain.', 'err');
+    }
+    R.renderAll();
+  }
+
   function wxLogToday() {
     const s = S();
     const today = U.todayStr();
@@ -1963,6 +2007,7 @@ var MMGR = window.MMGR || {};
     emailTpl: emailTpl,
     emailTplText: emailTplText,
     wxGeocode: wxGeocode,
+    wxUseLocation: wxUseLocation,
     wxRefresh: wxRefresh,
     wxSetView: wxSetView,
     wxLogToday: wxLogToday,
@@ -2101,6 +2146,7 @@ window.MMGR = MMGR;
     'emailTpl': (el) => window.MMGR.App.emailTpl(el.getAttribute('data-kind')),
     'exportGanttPNG': () => window.MMGR.App.exportGanttPNG(),
     'wxGeocode': () => window.MMGR.App.wxGeocode(),
+    'wxUseLocation': () => window.MMGR.App.wxUseLocation(),
     'wxRefresh': () => window.MMGR.App.wxRefresh(),
     'wxSetView': (el) => window.MMGR.App.wxSetView(el),
     'wxLogToday': () => window.MMGR.App.wxLogToday(),

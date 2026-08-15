@@ -248,11 +248,10 @@ body.focus-mode .focus-ind{display:flex;position:fixed;top:10px;right:10px;backg
 .nav-btn{display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;border:1px solid var(--border);background:var(--card);color:var(--slate);border-radius:10px;cursor:pointer;transition:all var(--tr);flex-shrink:0;}
 .nav-btn:focus-visible{outline:2px solid var(--gold);outline-offset:2px;}
 .nav-btn:hover{color:var(--gold);border-color:var(--gold);}
-/* Owner 2026-08-15: the header hamburger was too thin — it is now a bigger,
-   bolder icon (18px, stroke 4 = roughly 3x the old 2px lines) so it reads as
-   a robust navigation control in the header bar. Same language on the
-   launcher hamburgers (see the db-page blocks below). */
-.nav-btn .ico{width:18px;height:18px;stroke-width:4;transition:transform var(--release-duration) var(--ease-ios);}
+/* Owner 2026-08-15 (corrected): the thin icon was the Project Completion
+   RING, not the hamburger — the hamburger keeps its normal 2px weight but
+   is a bit LARGER (20px) so it's easily visible in the header bar. */
+.nav-btn .ico{width:20px;height:20px;transition:transform var(--release-duration) var(--ease-ios);}
 #nav-scrim{position:fixed;inset:0;background:rgba(0,22,25,.45);opacity:0;pointer-events:none;transition:opacity var(--tr);z-index:94;}
 body.nav-open #nav-scrim{opacity:1;pointer-events:auto;}
 /* ---- SIDEBAR IS THE ONLY VIEW on desktop (owner 2026-08-15) ----
@@ -278,11 +277,11 @@ body.nav-open #nav-scrim{opacity:1;pointer-events:auto;}
    rotated 90deg while the rail is open — one smooth spring (doctrine 3). */
 .sb-head{display:flex;align-items:center;justify-content:space-between;padding:14px 16px 10px;border-bottom:1px solid var(--border);margin-bottom:12px;flex-shrink:0;position:sticky;top:0;background:var(--card);z-index:1;}
 .sb-title{display:inline-flex;align-items:center;gap:8px;font-size:.72rem;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--gold);}
-.sb-title .ico{width:15px;height:15px;stroke-width:4;}
+.sb-title .ico{font-size:.8rem;}
 .sb-close{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;
   border:none;background:transparent;color:var(--slate);border-radius:var(--radius);
   cursor:pointer;flex-shrink:0;transition:color var(--tr),background var(--tr);}
-.sb-close .ico{width:17px;height:17px;stroke-width:4;transition:transform var(--release-duration) var(--ease-ios);}
+.sb-close .ico{width:20px;height:20px;transition:transform var(--release-duration) var(--ease-ios);}
 .sb-close:hover{color:var(--gold);background:color-mix(in oklch,var(--gold) 10%,transparent);}
 .sb-close:focus-visible{outline:2px solid var(--gold);outline-offset:1px;}
 body.sidebar-open .nav-btn .ico,body.sidebar-open .sb-close .ico{transform:rotate(90deg);}
@@ -444,8 +443,13 @@ body.sidebar-open .nav-btn .ico,body.sidebar-open .sb-close .ico{transform:rotat
 /* ---- Progress Ring ---- */
 .pring{position:relative;width:96px;height:96px;}
 .pring svg{transform:rotate(-90deg);}
-.ring-bg{fill:none;stroke:var(--border);stroke-width:6;}
-.ring-fill{fill:none;stroke:var(--green);stroke-width:6;stroke-linecap:round;transition:stroke-dashoffset .5s ease;}
+/* Owner 2026-08-15: the Project Completion ring was too thin — the stroke
+   is now THREE TIMES thicker (6 → 18). The circle radius is 39 (was 40) so
+   the thicker ring still sits exactly inside the 96px box (outer edge at
+   48px, inner hole 60px), and the dash math below uses the matching 245px
+   circumference. "No tasks yet" / "N% Completed" still fit the hole. */
+.ring-bg{fill:none;stroke:var(--border);stroke-width:18;}
+.ring-fill{fill:none;stroke:var(--green);stroke-width:18;stroke-linecap:round;transition:stroke-dashoffset .5s ease;}
 .ring-txt{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:.82rem;font-weight:700;color:var(--gold);text-align:center;line-height:1.15;padding:4px;}
 
 /* ---- Badges ---- */
@@ -2110,7 +2114,7 @@ body.dark-mode.db-page .pcard:not(.unlocked) .pc-cta{color:var(--db-text-seconda
     border-radius:var(--radius);cursor:pointer;flex-shrink:0;
   }
   body.dark-mode.db-page .db-hamb:focus-visible{outline:2px solid var(--db-accent);outline-offset:2px;}
-  body.dark-mode.db-page .db-hamb .ico{width:18px;height:18px;stroke-width:4;}
+  body.dark-mode.db-page .db-hamb .ico{width:18px;height:18px;}
   body.dark-mode.db-page .top{position:relative;padding-top:56px;}
   body.dark-mode.db-page .db-hamb{position:absolute;top:12px;left:12px;}
   body.dark-mode.db-page .db-side{
@@ -2224,7 +2228,7 @@ body.db-page:not(.dark-mode) .db-link:focus-visible{outline:2px solid var(--gold
     border-radius:var(--radius-control);cursor:pointer;flex-shrink:0;
   }
   body.db-page:not(.dark-mode) .db-hamb:focus-visible{outline:2px solid var(--gold);outline-offset:2px;}
-  body.db-page:not(.dark-mode) .db-hamb .ico{width:18px;height:18px;stroke-width:4;}
+  body.db-page:not(.dark-mode) .db-hamb .ico{width:18px;height:18px;}
   body.db-page:not(.dark-mode) .top{position:relative;padding-top:56px;}
   body.db-page:not(.dark-mode) .db-hamb{position:absolute;top:12px;left:12px;}
   body.db-page:not(.dark-mode) .db-side{
@@ -2318,7 +2322,7 @@ body.db-page .db-hamb{
   border-radius:var(--radius-control);cursor:pointer;flex-shrink:0;
   position:absolute;top:12px;left:12px;z-index:2;
 }
-body.db-page .db-hamb .ico{width:18px;height:18px;stroke-width:4;transition:transform .18s ease;}
+body.db-page .db-hamb .ico{width:18px;height:18px;transition:transform .18s ease;}
 body.db-page .db-hamb.is-open .ico{transform:rotate(180deg);}
 body.db-page .db-hamb:focus-visible{outline:2px solid var(--gold);outline-offset:2px;}
 /* Moon/sun quick toggle (owner 2026-08-15): the square box around the icon

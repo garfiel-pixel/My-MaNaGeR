@@ -149,8 +149,8 @@ var MMGR = window.MMGR || {};
   // Independent of GoogleAuth's chip (which only mounts on app.html/admin.html
   // hosts) — the cloud section reports its own state so recovery availability
   // is visible on project.html too.
-  async function checkMe() {
-    if (_meChecked) return _signedIn;
+  async function checkMe(force) {
+    if (_meChecked && !force) return _signedIn;
     _meChecked = true;
     try {
       const res = await fetch('/api/auth/me', { credentials: 'same-origin' });
@@ -367,16 +367,18 @@ var MMGR = window.MMGR || {};
   }
 
   // ---- SILENT background auto-sync (OWNER 2026-08-15) ---------------------
-  // Fired by the app's debounced auto-save once the user goes idle; keeps
-  // the cloud snapshot current so the header's green "Cloud backed up" chip
-  // is honest. OWNER-code only — editor scope writes stay manual, because a
-  // silent push could step outside an editor's granted sections. Never
-  // toasts; failures land quietly in the drawer status line and are retried
-  // on the next edit cycle. Zero-throw like the rest of the module.
+  // Fired by the app's debounced auto-save once the user goes idle (or on
+  // pagehide for the final edits), keeping the cloud snapshot current so the
+  // header's green "Cloud backed up" chip is honest. Works for BOTH owner
+  // and editor sessions — the Worker merges an editor's save through their
+  // section scope server-side (cloudScopeMerge), so a silent push can only
+  // ever touch the sections that editor is granted. Never toasts; failures
+  // land quietly in the drawer status line and are retried on the next edit
+  // cycle. Zero-throw like the rest of the module.
   let _autoBusy = false;
-  async function autoSaveToCloud() {
+  async function autoSaveToCloud(opts) {
     const cred = activeCredential();
-    if (!cred || cred.header !== 'X-Owner-Code') return false;
+    if (!cred) return false;
     if (_autoBusy) return false;
     const state = readProjectState();
     if (!state) return false;
@@ -384,11 +386,17 @@ var MMGR = window.MMGR || {};
     try {
       const headers = { 'Content-Type': 'application/json' };
       headers[cred.header] = cred.code;
+      const body = JSON.stringify({ state: state });
+      // keepalive:true lets a pagehide flush survive tab close, but keepalive
+      // requests are size-capped (~64 KiB), so only use it for small states;
+      // large states rely on the idle debounce (which normally already fired).
+      const useKeepalive = !!(opts && opts.keepalive) && body.length < 48000;
       const res = await fetch('/api/cloud/projects/' + encodeURIComponent(pid()) + '/save', {
         method: 'POST',
         credentials: 'same-origin',
         headers: headers,
-        body: JSON.stringify({ state: state })
+        body: body,
+        keepalive: useKeepalive
       });
       const data = await res.json().catch(function() { return {}; });
       if (!res.ok || !data.ok) {
@@ -445,11 +453,37 @@ var MMGR = window.MMGR || {};
     }
   }
 
+  // ---- route-to-sign-in (OWNER 2026-08-15) --------------------------------
+  // A cloud action that needs the Google session pops the sign-in prompt at
+  // that exact moment instead of leaving the user to hunt for Settings, then
+  // resumes the action automatically once the session exists. The GIS prompt
+  // runs inside the click gesture (openSignInPrompt); the in-drawer GIS host
+  // is the fallback when GoogleAuth's helper is unavailable.
+  let _pendingSignInAction = null;
+  function queueAfterSignIn(label, action) {
+    _pendingSignInAction = { label: label, action: action };
+    setStatus('Sign in to continue — ' + label + ' runs automatically once you are signed in.', 'warn');
+    const GA = window.MMGR.GoogleAuth;
+    if (GA && typeof GA.openSignInPrompt === 'function') {
+      if (GA.openSignInPrompt()) return;
+    }
+    signIn(); // fallback: reveal the in-drawer GIS host right there
+  }
+  function resumePendingSignIn() {
+    if (!_pendingSignInAction) return;
+    const p = _pendingSignInAction;
+    _pendingSignInAction = null;
+    _meChecked = false; // checkMe cached "not signed in" — re-query the session
+    try { p.action(); } catch (e) { /* the action guards itself */ }
+  }
+  document.addEventListener('mmgr:google-signed-in', resumePendingSignIn);
+  document.addEventListener('mmgr:user-changed', resumePendingSignIn);
+
   // ---- recover owner code -------------------------------------------------
   async function recoverCode() {
     const linked = await checkMe();
     if (!linked) {
-      setStatus('Recovery requires the Google account linked to this project — sign in above first.', 'warn');
+      queueAfterSignIn('owner-code recovery', recoverCode);
       return;
     }
     setStatus('Recovering owner code…', 'busy');
@@ -957,7 +991,7 @@ var MMGR = window.MMGR || {};
       // (renderShare) — the cloud section keeps backup + changelog + webhooks.
       body =
         '<div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-folder"></use></svg> Cloud Backup — linked (owner)</span></div>' +
-        '<div class="sr-hint">Your owner code and editor codes are in <strong>Controls ▸ Share &amp; Access</strong> above. This section is the backup + history side: save snapshots, view the changelog, and wire webhooks.</div>' +
+        '<div class="sr-hint">Your owner code and editor codes are in <strong>Controls ▸ Share &amp; Access</strong> above. This section is the backup + history side: snapshots auto-sync to the cloud in the background as you work — Save now just pushes immediately; view the changelog, and wire webhooks.</div>' +
         '<div class="exp-row">' +
         '<button class="btn btn-n btn-s" data-action="cloudSave"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-upload"></use></svg> Save to Cloud</button>' +
         '<button class="btn btn-n btn-s" data-action="cloudLoad"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Load from Cloud</button>' +
@@ -1067,6 +1101,8 @@ var MMGR = window.MMGR || {};
   }
 
   // ---- sign-in entry (data-action) ----------------------------------------
+  // Reveals the in-drawer GIS button AND pops the Google prompt immediately
+  // (one motion — no second click on a rendered button required).
   async function signIn() {
     const host = $('cloud-gis-host');
     if (!host) return;
@@ -1075,6 +1111,11 @@ var MMGR = window.MMGR || {};
     if (!ok) {
       host.classList.add('is-hide');
       setStatus('Google sign-in unavailable (offline or blocked) — recovery can wait.', 'warn');
+      return;
+    }
+    const GA = window.MMGR.GoogleAuth;
+    if (GA && typeof GA.openSignInPrompt === 'function') {
+      try { GA.openSignInPrompt(); } catch (e) { /* button stays rendered */ }
     }
   }
 

@@ -247,6 +247,34 @@ var MMGR = window.MMGR || {};
     document.dispatchEvent(new CustomEvent('mmgr:google-signed-out'));
   }
 
+  // OWNER 2026-08-15: programmatic sign-in prompt for cloud actions that
+  // need a Google session (owner-code recovery, admin publish-linking).
+  // Must run inside a user gesture (a click handler). Shows the GIS One Tap
+  // / account chooser immediately — "pop the Google sign-in prompt right
+  // there" — and falls back to clicking the rendered GIS button when the
+  // prompt API is unavailable (blocked / iframe). Returns true when a prompt
+  // path was attempted, false when GIS is genuinely unavailable. If already
+  // signed in, it's a no-op success.
+  function openSignInPrompt() {
+    if (isSignedIn()) return true;
+    if (!gisReady() && !initGIS()) return false;
+    try {
+      const id = window.google && window.google.accounts && window.google.accounts.id;
+      if (id && typeof id.prompt === 'function') {
+        id.prompt();
+        return true;
+      }
+    } catch (e) { /* fall through to the button-click fallback */ }
+    const host = $('google-signin-button');
+    if (host) {
+      const btn = host.querySelector('div[role="button"], button, iframe');
+      if (btn) {
+        try { btn.click(); return true; } catch (e) { /* last resort */ }
+      }
+    }
+    return false;
+  }
+
   /* ============================================================
      EMAIL + PASSWORD SIGN-IN (deferred cloud item #14, completed
      2026-08-12) — alternative provider beside Google.
@@ -1173,6 +1201,9 @@ var MMGR = window.MMGR || {};
     emailLogin: emailLogin,
     emailRegister: emailRegister,
     mountEmailAuth: mountEmailAuth,
+    // OWNER 2026-08-15: pop the sign-in prompt at a user gesture (used by
+    // cloud actions that need the session — recovery, admin publish-linking).
+    openSignInPrompt: openSignInPrompt,
     // GOOGLE-DRIVE-BACKUP API (optional; safe to call from console too)
     DRIVE_SCOPE: DRIVE_SCOPE,
     DRIVE_FILE: DRIVE_FILE,

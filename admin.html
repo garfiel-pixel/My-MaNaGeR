@@ -1082,6 +1082,33 @@ function importProjectParse(text, fileName){
    project on this device adopts the recorded code automatically, so
    publish → open → auto-sync works with zero re-typing.
    ============================================================ */
+// OWNER 2026-08-15: publishing while not signed in pops the Google sign-in
+// prompt RIGHT THERE (the rail Account group's GIS button) instead of a
+// post-hoc tip, and the publish resumes automatically once the session
+// exists — so the project links to the account and the owner code is
+// recoverable. Clicking Publish again while the prompt is up skips sign-in
+// and publishes unsigned (the tip below then explains the trade-off).
+let _publishAfterSignIn = null;
+function publishNeedsSignIn(i, id){
+  const GA = window.MMGR && window.MMGR.GoogleAuth;
+  if (GA && GA.isSignedIn && GA.isSignedIn()) return false;
+  if (_publishAfterSignIn !== null){ _publishAfterSignIn = null; return false; } // second click = skip
+  _publishAfterSignIn = { id: id };
+  toast('Sign in to link this project to your account — publishing continues automatically. (Click Publish again to skip sign-in.)', 'warn');
+  if (GA && GA.openSignInPrompt){
+    if (GA.openSignInPrompt()) return true;
+  }
+  _publishAfterSignIn = null;
+  toast('Sign in from the hamburger menu ▸ Account, then click Publish again.', 'warn');
+  return true;
+}
+document.addEventListener('mmgr:google-signed-in', function(){
+  if (_publishAfterSignIn === null) return;
+  const q = _publishAfterSignIn; _publishAfterSignIn = null;
+  const idx = projects.findIndex(function(x){ return x && x.id === q.id; });
+  if (idx > -1) publishToCloud(idx);
+});
+
 async function publishToCloud(i){
   const p = projects[i];
   if (!p){ return; }
@@ -1089,6 +1116,7 @@ async function publishToCloud(i){
     toast('Already in the cloud — ID ' + p.cloudId + '. Use Copy Cloud Code to share it again.');
     return;
   }
+  if (publishNeedsSignIn(i, p.id)) return;
   const btn = document.querySelector('#project-list [data-action="publishToCloud"][data-idx="' + i + '"]');
   if (btn){ btn.disabled = true; btn.textContent = 'Publishing…'; }
   try{

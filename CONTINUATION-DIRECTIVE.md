@@ -1189,6 +1189,27 @@ stale process from a prior session (in-memory CSP had a stale app.html hash that
 blocked its inline script — the app still worked in prod because worker.js is rebuilt on
 deploy) — killed and restarted fresh for local testing.
 
+**2026-08-14 — Session extension: UI-MODERNIZATION RHYTHM-EXTENSION (owner follow-up:
+"extend the same row-rhythm alignment to the Today's Decision and Schedule Confidence
+dashboard cards").** COMPLETED: Today's Decision rows (js/mmgr-decisions.js markup reused —
+shared `.tf-row` also styles Today's Focus, so both cards inherit the fix): `.tf-row` gets
+min-height 33px + gap 12px, labels left via `.tf-row>div:first-child{flex:1;min-width:0}`
+with `.tf-name` shrink + ellipsis so a long title can never shove the detail, values/
+controls right-pinned (`.tf-due` flex-shrink:0). Schedule Confidence (`.sc-cell`): cells
+are now equal-height top-aligned flex columns (big figure above label, centered, min-height
+88px, gap 4px, `.lbl` line-height 1.4) so the three cells read as one row — incl. the
+empty/partial states; the crash-candidate task name moved from an inline font-size/weight
+style to a token-driven `.sc-cell .big.sc-crash` class (js/mmgr-render.js — matches the
+repo's named-classes-over-inline-styles convention; the dynamic per-value color inline
+styles in the other two cells are untouched). sw.js v92→v93 (mmgr-render.js + mmgr.css are
+shell assets). Rules honored: existing tokens only, dark + cyan computed-style verified
+(crash gold re-tints per theme, sc-cell uses --tile-bg incl. the existing dark-mode
+override), no emoji in added content, no new CSS file, data untouched. VERIFICATION:
+npm run verify GREEN (CSP 11/11, SW v93 > 47 assets, 17/17 skills), node --check
+mmgr-render.js clean, qa-full 171/171 (incl. 09 confidence 3-way card), zero console/page
+errors, in-browser measurements: tf-rows 35px consistent, sc-cells all exactly 88px,
+crash cell 13.6px gold token in light/dark/cyan.
+
 ---
 
 *This file is the working source of truth for continuing this project across sessions.

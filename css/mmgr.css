@@ -611,10 +611,16 @@ body.hl-critical #gantt-labels .gr.hl-dim{opacity:.3;}
 .fw-ok svg{font-size:.7rem;}
 
 .sc-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;}
-.sc-cell{padding:10px;background:var(--tile-bg);border-radius:var(--radius);text-align:center;transition:border-color var(--tr);border:1px solid transparent;}
+/* UI-MODERNIZATION 2026-08-14: cells are equal-height, top-aligned flex
+   columns with one internal rhythm (big figure above label, centered) so
+   the three Schedule Confidence cells read as one row. */
+.sc-cell{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:88px;padding:10px;background:var(--tile-bg);border-radius:var(--radius);text-align:center;transition:border-color var(--tr);border:1px solid transparent;}
 .sc-cell:hover{border-color:rgba(var(--gold-rgb),.2);}
 .sc-cell .big{font-size:1.7rem;font-weight:900;line-height:1.15;font-variant-numeric:tabular-nums;}
-.sc-cell .lbl{font-size:.65rem;color:var(--slate);margin-top:3px;}
+.sc-cell .lbl{font-size:.65rem;color:var(--slate);line-height:1.4;}
+/* Crash-candidate cell: the task name is the "big" figure — class-based
+   (not inline) so it shares the cell rhythm without stretching the row. */
+.sc-cell .big.sc-crash{font-size:.85rem;font-weight:700;color:var(--gold);}
 
 .lt-table{width:100%;font-size:.72rem;border-collapse:collapse;}
 .lt-table th{text-align:left;color:var(--slate);font-size:.62rem;text-transform:uppercase;letter-spacing:.4px;padding:4px 6px;border-bottom:1px solid var(--border);font-weight:600;}
@@ -749,9 +755,13 @@ body.dark-mode .dmaic-chip{background:rgba(255,255,255,.06);}
 /* ---- Today's Focus card (no-inline-style pass) ---- */
 .tf-group{margin-bottom:12px;}
 .tf-head{font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;display:flex;align-items:center;gap:5px;}
-.tf-row{display:flex;justify-content:space-between;align-items:center;padding:7px 10px;border:1px solid var(--border);border-left-width:3px;border-radius:4px;margin-bottom:4px;font-size:.78rem;}
-.tf-name{font-weight:600;}
-.tf-due{font-size:.68rem;color:var(--slate);margin-left:8px;display:inline-flex;align-items:center;gap:4px;}
+/* UI-MODERNIZATION 2026-08-14: Today's Decision + Today's Focus rows share
+   the 33px status-row rhythm — labels left (shrink + ellipsis so a long
+   title can't shove the detail), values/controls right-pinned. */
+.tf-row{display:flex;justify-content:space-between;align-items:center;gap:12px;min-height:33px;padding:5px 10px;border:1px solid var(--border);border-left-width:3px;border-radius:4px;margin-bottom:4px;font-size:.78rem;}
+.tf-row>div:first-child{flex:1;min-width:0;display:flex;align-items:center;gap:6px;}
+.tf-name{font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.tf-due{font-size:.68rem;color:var(--slate);margin-left:8px;display:inline-flex;align-items:center;gap:4px;flex-shrink:0;}
 .tf-due svg{font-size:.7rem;}
 .tf-status{font-size:.68rem;padding:2px 5px;background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:4px;}
 .gantt-arrows{position:absolute;top:0;left:0;pointer-events:none;overflow:visible;z-index:5;}

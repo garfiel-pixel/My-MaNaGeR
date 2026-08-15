@@ -60,8 +60,8 @@
 const INLINE_SCRIPT_HASHES = [
   "'sha256-gCwlAVKUNamFRjZeFSwcBd1zxQs+/mZ2GoLF8lqT/II='", // project.html (early-apply theme snippet)
   "'sha256-o+0No2XpbES4E5QJh31mY9JsJFqSmE+B4x+z1fNPjVc='", // project.html
-  "'sha256-gCwlAVKUNamFRjZeFSwcBd1zxQs+/mZ2GoLF8lqT/II='", // app.html (early-apply theme snippet)
-  "'sha256-wjha4rFXA6t/qiU1sKz6muBBnzbPBRGnrdSI0Vo3Qtg='", // app.html
+  "'sha256-Jd4HFQYDoZo8X42G7dwI7h9WPPvRgUYBtXk8UPdTY3Q='", // app.html (early-apply theme snippet + desktop rail-open default)
+  "'sha256-xR/SxXucuvD48PzfvPzT+CMbwgRX2lBlFNNA88d5/GY='", // app.html (launcher v3 polish: no-X hamburger, avatar, pinned rail footer, plan badge, reordered cloud-dash)
   "'sha256-qbHZHLyhdEDRwWrA8/I8ty4xIjUv+L/+Y6/0cIXdkJo='", // admin.html (early-apply theme snippet)
   "'sha256-nn/rDSYepAEHC9+VX0oni8PfjGac88/iy5Lxhx5E52U='", // admin.html
   "'sha256-Oa7ON+9A164SSXhnxu08mFn0V9Tj2SlZ2SzFXFoqKNE='", // dashboard.html

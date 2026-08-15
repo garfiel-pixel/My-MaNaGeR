@@ -84,14 +84,6 @@ body.glass-premium .wrap{position:relative;z-index:1;}
 .cloud-dash .cd-head h2{font-size:.85rem;font-weight:700;margin:0;}
 .cloud-dash .cd-head .cd-sub{font-size:.66rem;color:var(--slate);}
 .cloud-dash .cd-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;}
-.cd-plan{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:0 0 14px;padding:12px 16px;border:1px solid var(--border);border-radius:var(--radius);background:var(--tile-bg);}
-.cd-plan[hidden]{display:none;}
-.cd-plan .cd-plan-txt{font-size:.78rem;color:var(--slate);}
-.cd-plan .cd-plan-txt strong{color:var(--text);font-weight:800;}
-.cd-plan .btn{width:auto;flex-shrink:0;}
-.cd-plan.at-limit{border-color:rgba(var(--gold-rgb),.45);background:rgba(var(--gold-rgb),.08);}
-.cd-plan.at-limit .cd-plan-txt{color:var(--gold);}
-.cd-plan.at-limit .cd-plan-txt strong{color:var(--gold);}
 .cd-card{display:flex;flex-direction:column;gap:8px;background:var(--glass-fill-dark);backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturate));-webkit-backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturate));border:var(--glass-border);border-radius:var(--squircle-md);padding:14px 16px;box-shadow:var(--glass-rim),var(--glass-shadow);}
 .cd-title{font-size:.82rem;font-weight:800;line-height:1.35;word-break:break-word;}
 .cd-meta{font-size:.66rem;color:var(--slate);line-height:1.5;}
@@ -113,9 +105,14 @@ body.glass-premium .wrap{position:relative;z-index:1;}
 /* Device-level theme (shared across launcher, admin, and app): applied before
    first paint from the same localStorage slot every theme toggle writes, so a
    dark choice made anywhere persists everywhere with no flash. Kept inline on
-   purpose — these pages don't load the shared mmgr-*.js suite. */
+   purpose — these pages don't load the shared mmgr-*.js suite.
+   NEW-UI-CREATION-BRIEF I1 follow-up: on desktop (>=769px) the launcher rail
+   is PINNED OPEN by default — body.side-open is set pre-paint here so there
+   is no layout flash; the hamburger toggles it (closes/reopens) on every
+   viewport. Mobile stays drawer-closed by default. */
 (function(){ try {
   if (localStorage.getItem('mmgr_theme') === 'dark') document.body.classList.add('dark-mode');
+  if (window.matchMedia && window.matchMedia('(min-width:769px)').matches) document.body.classList.add('side-open');
 } catch (e) {} })();
 </script>
 
@@ -125,81 +122,76 @@ body.glass-premium .wrap{position:relative;z-index:1;}
 <aside class="db-side" id="db-sidebar" aria-label="Dashboard navigation">
   <div class="db-side-head">
     <span class="db-brand"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg> My MaNaGeR</span>
-    <button type="button" class="db-side-close" data-action="toggleSidebar" aria-label="Close menu"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg></button>
+    <button type="button" class="db-side-close" data-action="toggleSidebar" aria-label="Close menu" title="Close menu"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-left"></use></svg></button>
   </div>
-  <nav>
+  <nav class="db-nav" id="db-nav">
     <div class="db-g">Overview</div>
     <a class="db-link" href="#top"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-orb"></use></svg> Dashboard</a>
     <div class="db-g">Projects</div>
-    <a class="db-link" href="#grid"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-folder"></use></svg> All Projects</a>
-    <div class="db-g">Admin</div>
+    <a class="db-link" href="#grid" data-rail-toggle="rail-projects-list" aria-expanded="false" aria-controls="rail-projects-list"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-folder"></use></svg> All Projects <svg class="ico ico-caret" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg></a>
+    <div class="db-sub" id="rail-projects-list" hidden></div>
     <a class="db-link" href="admin.html"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-shield"></use></svg> Admin panel</a>
+    <div class="db-g">Cloud</div>
+    <button type="button" class="db-link" data-rail-toggle="rail-cloud-list" aria-expanded="false" aria-controls="rail-cloud-list"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cloud"></use></svg> Cloud Projects <svg class="ico ico-caret" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg></button>
+    <div class="db-sub" id="rail-cloud-list" hidden></div>
+    <button type="button" class="db-link" data-rail-toggle="rail-backup" aria-expanded="false" aria-controls="rail-backup"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> Backup &amp; Restore <svg class="ico ico-caret" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg></button>
+    <div class="db-sub db-backup" id="rail-backup" hidden>
+      <div class="db-backup-btns">
+        <button type="button" id="btn-drive-backup" class="db-btn" title="Save all workspace data to your Google Drive"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-upload"></use></svg> Backup</button>
+        <button type="button" id="btn-drive-restore" class="db-btn" title="Pull the workspace backup back from Google Drive"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Restore</button>
+      </div>
+      <label class="db-backup-auto" for="drive-auto-interval"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> Auto <select id="drive-auto-interval" class="drive-auto-select" aria-label="Automatic backup interval"><option value="off">Off</option><option value="15">15 min</option><option value="30">30 min</option><option value="60">60 min</option></select></label>
+      <input type="password" id="drive-pass" class="db-pass" placeholder="Backup passphrase" title="Encrypt backups with a passphrase (optional) -- enter once per browser session" autocomplete="new-password">
+      <span id="drive-sync-status" class="drive-status" role="status" aria-live="polite"></span>
+    </div>
+    <div class="db-g">Customize</div>
+    <button type="button" class="db-link" data-rail-toggle="rail-customize" aria-expanded="false" aria-controls="rail-customize"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-palette"></use></svg> Customize <svg class="ico ico-caret" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg></button>
+    <div class="db-sub db-customize" id="rail-customize" hidden>
+      <span class="db-ctl-row"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-moon"></use></svg> Dark theme <label class="tgl"><input type="checkbox" id="thm-tgl" data-action="tglTheme" aria-label="Toggle dark theme"><span class="tsl"></span></label></span>
+      <span class="db-ctl-row"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-palette"></use></svg> Color theme <span class="pal-switch" role="group" aria-label="Color theme"><button type="button" class="pal-btn" data-pal="default" aria-pressed="true">Default</button><button type="button" class="pal-btn" data-pal="cyan" aria-pressed="false">Cyan</button></span></span>
+      <span class="db-ctl-row"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-orb"></use></svg> Premium glass <label class="tgl"><input type="checkbox" id="glass-tgl" data-action="tglGlassMode" aria-label="Toggle premium liquid-glass backdrop"><span class="tsl"></span></label></span>
+    </div>
   </nav>
+  <div class="db-foot">
+    <!-- PLAN STATUS (NEW-UI-POLISH 2026-08-14): Premium badge when the
+         account is on a paid plan, Upgrade to Premium button when on the
+         free plan — rendered by js/mmgr-cloud-dash.js loadPlan(); both
+         hidden when billing is unconfigured. Pinned to the rail bottom so
+         the plan + identity never scroll away with the nav. -->
+    <div class="db-plan" id="rail-plan" hidden></div>
+    <button type="button" id="rail-upgrade" class="db-upgrade" data-cd-upgrade="1" hidden><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-zap"></use></svg> Upgrade to Premium</button>
+    <div class="db-user" id="rail-user">
+      <button type="button" class="db-signin" data-action="openSignIn"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-user"></use></svg> Sign in</button>
+    </div>
+  </div>
 </aside>
 <div class="db-scrim" id="db-scrim" data-action="toggleSidebar"></div>
 
 <div class="wrap">
   <div class="top" id="top">
     <button type="button" id="db-nav-btn" class="db-hamb" data-action="toggleSidebar" aria-label="Open menu" aria-expanded="false" aria-controls="db-sidebar"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-menu"></use></svg></button>
+    <button type="button" id="db-theme-quick" class="db-quick" data-action="tglThemeQuick" aria-label="Switch to dark theme" title="Switch to dark theme"><svg class="ico" aria-hidden="true"><use id="db-theme-quick-ico" href="css/mmgr-icons.svg#i-moon"></use></svg></button>
+    <!-- SIGNED-IN INDICATOR (NEW-UI-POLISH 2026-08-14): circular avatar at
+         the hero top-right — person icon when signed out (click opens the
+         #siom sign-in modal), photo/initial + green dot + "Signed in" label
+         when signed in (click opens the modal where sign-out lives). -->
+    <button type="button" id="db-user-avatar" class="db-avatar" data-action="openSignIn" aria-label="Sign in" title="Sign in">
+      <span class="db-avatar-box"><span class="db-avatar-ring"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-user"></use></svg></span><span class="db-avatar-dot" hidden></span></span>
+      <span class="db-avatar-txt">Sign in</span>
+    </button>
     <h1><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg> <span class="mark">My</span> MaNaGeR — Projects</h1>
     <p>Select a project to view its dashboard, schedule, risk register, and budget. Each project is protected by its own access code.</p>
-    <div class="theme-ctl" title="Preferences apply to the launcher, admin, and every project on this device">
-      <span class="ctl-item"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-moon"></use></svg> Dark theme <label class="tgl"><input type="checkbox" id="thm-tgl" data-action="tglTheme" aria-label="Toggle dark theme"><span class="tsl"></span></label></span>
-      <span class="ctl-sep"></span>
-      <span class="ctl-item"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-orb"></use></svg> Premium glass <label class="tgl"><input type="checkbox" id="glass-tgl" data-action="tglGlassMode" aria-label="Toggle premium liquid-glass backdrop"><span class="tsl"></span></label></span>
-      <span class="ctl-sep"></span>
-      <span class="ctl-item"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-palette"></use></svg> Color theme <span class="pal-switch" role="group" aria-label="Color theme"><button type="button" class="pal-btn" data-pal="default" aria-pressed="true">Default</button><button type="button" class="pal-btn" data-pal="cyan" aria-pressed="false">Cyan</button></span></span>
-    </div>
   </div>
 
-  <!-- GOOGLE-OPERATOR-IDENTITY-v1: optional operator identity bar. Pure mount
-       point -- signing in is optional and never affects the project grid, the
-       portfolio strip, or the access-code unlock modal below.
-       UI-MODERNIZATION: backup controls hidden behind settings gear (clean entry gateway). -->
-  <div class="auth-bar">
-    <div id="google-signin-button"></div>
-    <div id="google-user-chip" hidden></div>
-    <div class="cloud-sync-controls" id="cloud-sync-controls" hidden>
-      <button type="button" id="btn-drive-backup" class="btn btn-n btn-s" title="Save all workspace data to your Google Drive">
-        <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-upload"></use></svg> Backup to Drive
-      </button>
-      <button type="button" id="btn-drive-restore" class="btn btn-n btn-s" title="Pull the workspace backup back from Google Drive">
-        <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Restore from Drive
-      </button>
-      <label class="drive-auto" for="drive-auto-interval">
-        <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg>
-        <span>Auto</span>
-        <select id="drive-auto-interval" class="drive-auto-select" aria-label="Automatic backup interval">
-          <option value="off">Off</option>
-          <option value="15">15 min</option>
-          <option value="30">30 min</option>
-          <option value="60">60 min</option>
-        </select>
-      </label>
-      <input type="password" id="drive-pass" class="drive-pass-in" placeholder="Backup passphrase" title="Encrypt backups with a passphrase (optional) -- enter once per browser session" autocomplete="new-password">
-      <span id="drive-sync-status" class="drive-status" role="status" aria-live="polite"></span>
-    </div>
-    <button type="button" class="settings-btn" id="settings-toggle" data-action="toggleSettings" aria-label="Toggle settings" title="Backup, theme, and preferences">
-      <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-settings"></use></svg>
-    </button>
-  </div>
-
-  <!-- A5-3 (2026-08-11): My Cloud Projects — the signed-in owner's cloud-
-       linked projects, session-gated, rendered by js/mmgr-cloud-dash.js.
-       Hidden until a valid Google session exists AND the Worker is present. -->
-  <div class="cloud-dash" id="cloud-dash" hidden aria-label="My cloud projects">
-    <div class="cd-head">
-      <h2><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cloud"></use></svg> My Cloud Projects</h2>
-      <span class="cd-sub">Linked to your Google account — click Load to open one</span>
-    </div>
-    <!-- BILLING-UPGRADE-UI (app.html): free-plan status + Upgrade button,
-         rendered by js/mmgr-cloud-dash.js loadPlan() from the session-gated
-         /api/billing/status. Hidden unless billing is configured; dormant
-         deploy = invisible (the current prod behavior, unchanged). -->
-    <div class="cd-plan" id="cloud-dash-plan" hidden aria-label="Plan status"></div>
-    <div class="cd-list" id="cloud-dash-list" role="list"></div>
-    <div class="cd-status" id="cloud-dash-status" role="status" aria-live="polite"></div>
-  </div>
+  <!-- GOOGLE-OPERATOR-IDENTITY-v1: the optional operator identity surface
+       moved into the left rail (NEW-UI-CREATION-BRIEF I1 follow-up): the
+       Google button + email form live in the centered #siom sign-in modal
+       (opened by the rail's Sign in button), the Drive backup/restore/auto
+       controls live in the rail's Backup & Restore section, and the
+       signed-in chip renders in the rail footer. The mount-point ids below
+       (#google-signin-button / #google-user-chip / #drive-sync-status /
+       #btn-drive-backup / ...) are unchanged so js/mmgr-google-auth.js
+       wiring keeps working as-is. -->
 
   <div class="notice" style="display:flex;align-items:center;gap:10px;justify-content:center;"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-lock"></use></svg> Contact the admin to get an access code for this project.</div>
 
@@ -214,7 +206,39 @@ body.glass-premium .wrap{position:relative;z-index:1;}
 
   <div class="grid" id="grid"><!-- cards render here --></div>
 
-  <div class="foot"><a href="admin.html">Admin</a></div>
+  <!-- A5-3 (2026-08-11): My Cloud Projects — the signed-in owner's cloud-
+       linked projects, session-gated, rendered by js/mmgr-cloud-dash.js.
+       NEW-UI-POLISH (2026-08-14): moved BELOW the regular project grid
+       (local-first platform — your projects come first, cloud follows) and
+       the plan/upgrade strip was removed from here — the plan status now
+       lives in the rail footer where it is always visible. Hidden until a
+       valid session exists AND the Worker is present. -->
+  <div class="cloud-dash" id="cloud-dash" hidden aria-label="My cloud projects">
+    <div class="cd-head">
+      <h2><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cloud"></use></svg> My Cloud Projects</h2>
+      <span class="cd-sub">Linked to your account — click Load to open one</span>
+    </div>
+    <div class="cd-list" id="cloud-dash-list" role="list"></div>
+    <div class="cd-status" id="cloud-dash-status" role="status" aria-live="polite"></div>
+  </div>
+</div>
+
+<!-- Sign-in modal (NEW-UI-CREATION-BRIEF I1 follow-up, 2026-08-14): the
+     rail's Sign in button opens this CENTERED sheet with BOTH providers — the
+     Google button (#google-signin-button, rendered by GIS into the mount
+     point) and the email/password form (mounted after it by
+     js/mmgr-google-auth.js mountEmailAuth). Reuses the shared #om modal
+     sheet classes (.mb/.mh/.mbody). Optional identity — never gates the
+     project grid or access-code unlock. -->
+<div id="siom" role="dialog" aria-modal="true" aria-label="Sign in">
+  <div class="mb">
+    <div class="mh"><span class="mt"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-user"></use></svg> Sign in</span><button type="button" class="dc" data-action="closeSignIn"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg></button></div>
+    <div class="mbody">
+      <p class="si-hint">Sign in with Google or use your email — optional, for cloud sync, backups, and your cloud projects.</p>
+      <div id="google-signin-button"></div>
+      <div id="google-user-chip" hidden></div>
+    </div>
+  </div>
 </div>
 
 <!-- Access code modal -->
@@ -492,6 +516,7 @@ document.getElementById('om').addEventListener('click', e=>{ if(e.target.id==='o
 document.addEventListener('keydown', e=>{
   if(e.key==='Escape'){
     closeModal();
+    closeSignIn();
     if (document.body.classList.contains('side-open')){ document.body.classList.remove('side-open'); syncSidebarAria(); }
   }
 });
@@ -500,19 +525,168 @@ document.addEventListener('keydown', e=>{
    Phase B — data-action event delegation.
    Zero inline onclick handlers remain in this page.
    ============================================================ */
-/* DASHBOARD-UI-REFRESH-SPEC: dark-dashboard sidebar toggle (off-canvas
-   drawer on ≤768px; the desktop rail is always open). One action drives the
-   hamburger, the drawer's × close, and the scrim tap. */
+document.getElementById('db-sidebar').addEventListener('click', e=>{
+  // Accordion toggles (All Projects / Cloud / Backup / Customize) stay open —
+  // only plain navigation links close the drawer.
+  if (e.target.closest('a') && !e.target.closest('[data-rail-toggle]')) { document.body.classList.remove('side-open'); syncSidebarAria(); }
+});
+
+/* NEW-UI-CREATION-BRIEF I1 follow-up — hamburger on ALL viewports. The
+   rail is pinned open by default on desktop (body.side-open set in the
+   early snippet); the hamburger closes and reopens it everywhere. Mobile
+   (≤768px) keeps the off-canvas drawer behavior — side-open shows the
+   drawer + scrim, and the hamburger stays clickable ABOVE the scrim (CSS
+   z-index) so the same button always closes what it opened.
+   NEW-UI-POLISH (2026-08-14): the icon stays the HAMBURGER in both states
+   — it never morphs into an X (owner: "should not be an X icon"). The
+   .is-open class rotates the lines 90deg and the rail slides in/out, so
+   open/close is always obvious and always reversible from this button. */
 function toggleSidebar(){
   document.body.classList.toggle('side-open');
   syncSidebarAria();
 }
 function syncSidebarAria(){
+  const open = document.body.classList.contains('side-open');
   const btn = document.getElementById('db-nav-btn');
-  if (btn) btn.setAttribute('aria-expanded', document.body.classList.contains('side-open') ? 'true' : 'false');
+  if (btn){
+    btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    btn.classList.toggle('is-open', open);
+    btn.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
+    btn.setAttribute('title', open ? 'Close menu' : 'Open menu');
+  }
 }
-document.getElementById('db-sidebar').addEventListener('click', e=>{
-  if (e.target.closest('a')) { document.body.classList.remove('side-open'); syncSidebarAria(); }
+
+/* Quick moon/sun theme toggle (hero top-right): flips the same device-level
+   mmgr_theme slot the dark checkboxes write, keeps every toggle instance in
+   step, and swaps its own icon (moon in light → sun in dark). */
+function tglThemeQuick(){
+  const dark = localStorage.getItem('mmgr_theme') !== 'dark';
+  document.body.classList.toggle('dark-mode', dark);
+  try { localStorage.setItem('mmgr_theme', dark ? 'dark' : 'light'); } catch(e){}
+  document.querySelectorAll('[data-action="tglTheme"]').forEach(t => { t.checked = !dark; });
+  if (window.MMGR && MMGR.Glass && MMGR.Glass.refreshTheme) MMGR.Glass.refreshTheme();
+  syncThemeQuick();
+}
+function syncThemeQuick(){
+  const btn = document.getElementById('db-theme-quick');
+  const ico = document.getElementById('db-theme-quick-ico');
+  if (!btn || !ico) return;
+  const dark = document.body.classList.contains('dark-mode');
+  const href = dark ? 'css/mmgr-icons.svg#i-sun' : 'css/mmgr-icons.svg#i-moon';
+  if (ico.getAttribute('href') !== href) ico.setAttribute('href', href);
+  btn.setAttribute('aria-label', dark ? 'Switch to light theme' : 'Switch to dark theme');
+  btn.setAttribute('title', dark ? 'Switch to light theme' : 'Switch to dark theme');
+}
+
+/* Centered sign-in modal (rail Sign in → #siom). The Google button renders
+   into a hidden modal at boot; if its surface is empty when the modal opens
+   (GIS sized it at 0px while hidden), render it again now that it is
+   visible. The email form mounts after #google-signin-button on boot. */
+function openSignIn(){
+  const m = document.getElementById('siom');
+  if (!m) return;
+  m.classList.add('open');
+  try {
+    const host = document.getElementById('google-signin-button');
+    if (host && window.google && window.google.accounts && window.google.accounts.id &&
+        !host.querySelector('iframe, [id^=g_id_onload], div[role=button]')) {
+      const cid = (window.MMGR && MMGR.GoogleAuth && MMGR.GoogleAuth.CLIENT_ID) || '';
+      if (cid) window.google.accounts.id.renderButton(host, { theme:'outline', size:'medium', shape:'rectangular', text:'signin_with' });
+    }
+  } catch(e){ /* GIS quirk — the boot render is the fallback */ }
+  const f = document.querySelector('#siom input, #siom .email-auth-toggle, #siom iframe');
+  if (f && f.focus) { try { f.focus(); } catch(e){} }
+}
+function closeSignIn(){
+  const m = document.getElementById('siom');
+  if (m) m.classList.remove('open');
+}
+document.getElementById('siom').addEventListener('click', function(e){ if (e.target && e.target.id === 'siom') closeSignIn(); });
+
+/* Rail — All Projects accordion: every project (local + published) as a row;
+   clicking one opens it through the SAME unlock flow as the grid cards. */
+function renderRailProjects(){
+  const list = document.getElementById('rail-projects-list');
+  if (!list) return;
+  const projects = allProjects();
+  if (!projects.length){
+    list.innerHTML = '<div class="db-sub-empty">No projects yet — add one from the Admin panel.</div>';
+    return;
+  }
+  list.innerHTML = projects.map(function(p){
+    const unlocked = isUnlocked(p.id);
+    const local = isLocalProject(p.id);
+    const icon = (local || unlocked) ? 'i-unlock' : 'i-lock';
+    return '<button type="button" class="db-project" data-open-project="' + escapeHtml(p.id) + '" title="Open ' + escapeHtml(p.title) + '">' +
+      '<span class="db-project-ico"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#' + icon + '"></use></svg></span>' +
+      '<span class="db-project-name">' + escapeHtml(p.title) + '</span>' +
+      '</button>';
+  }).join('');
+}
+
+/* Rail footer — user area: signed out = Sign in (opens #siom); signed in =
+   name + Sign out. Rendered from the same events the auth module dispatches. */
+function renderRailUser(user){
+  const area = document.getElementById('rail-user');
+  if (!area) return;
+  if (!user){
+    area.innerHTML = '<button type="button" class="db-signin" data-action="openSignIn"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-user"></use></svg> Sign in</button>';
+    return;
+  }
+  const name = user.name || user.email || 'Operator';
+  const title = escapeHtml(user.email || name);
+  area.innerHTML = '<span class="db-user-name" title="' + title + '"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-user"></use></svg> ' + escapeHtml(name) + '</span>' +
+    '<button type="button" class="db-signout" data-action="signOutRail">Sign out</button>';
+}
+
+/* Hero top-right signed-in indicator (NEW-UI-POLISH 2026-08-14): a circular
+   avatar button. Signed out = person icon + "Sign in" (click opens #siom).
+   Signed in = Google picture or name initial inside the circle + a green
+   status dot + "Signed in" label; click still opens #siom where sign-out
+   lives. Rendered from the same events as the rail footer. */
+function renderUserAvatar(user){
+  const btn = document.getElementById('db-user-avatar');
+  if (!btn) return;
+  const ring = btn.querySelector('.db-avatar-ring');
+  const dot = btn.querySelector('.db-avatar-dot');
+  const txt = btn.querySelector('.db-avatar-txt');
+  if (!user){
+    if (ring) ring.innerHTML = '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-user"></use></svg>';
+    if (dot) dot.hidden = true;
+    if (txt) txt.textContent = 'Sign in';
+    btn.setAttribute('aria-label', 'Sign in');
+    btn.setAttribute('title', 'Sign in');
+    btn.classList.remove('is-in');
+    return;
+  }
+  const initial = escapeHtml((user.name || user.email || '?').charAt(0).toUpperCase());
+  const pic = user.picture ? '<img class="db-avatar-img" src="' + escapeHtml(user.picture) + '" alt="" referrerpolicy="no-referrer">' : '';
+  if (ring) ring.innerHTML = pic || '<span class="db-avatar-init">' + initial + '</span>';
+  if (dot) dot.hidden = false;
+  if (txt) txt.textContent = 'Signed in';
+  const who = user.email || user.name || 'operator';
+  btn.setAttribute('aria-label', 'Signed in as ' + who + ' — manage account');
+  btn.setAttribute('title', 'Signed in as ' + who);
+  btn.classList.add('is-in');
+}
+document.addEventListener('mmgr:user-changed', function(e){ renderRailUser(e && e.detail); renderUserAvatar(e && e.detail); closeSignIn(); });
+document.addEventListener('mmgr:google-signed-out', function(){ renderRailUser(null); renderUserAvatar(null); });
+
+/* One delegated handler serves every rail accordion toggle ([data-rail-toggle]). */
+document.addEventListener('click', function(e){
+  const t = e.target && e.target.closest ? e.target.closest('[data-rail-toggle]') : null;
+  if (!t) return;
+  const panel = document.getElementById(t.getAttribute('data-rail-toggle'));
+  if (!panel) return;
+  const open = panel.hidden;
+  panel.hidden = !open;
+  t.classList.toggle('open', open);
+  t.setAttribute('aria-expanded', open ? 'true' : 'false');
+});
+/* Rail project rows open through the existing card-unlock flow. */
+document.addEventListener('click', function(e){
+  const row = e.target && e.target.closest ? e.target.closest('[data-open-project]') : null;
+  if (row) handleCardClick(row.getAttribute('data-open-project'));
 });
 
 const DASH_ACTION_MAP = {
@@ -521,10 +695,10 @@ const DASH_ACTION_MAP = {
   'tglTheme': (el) => tglTheme(el),
   'tglGlassMode': (el) => tglGlassMode(el),
   'toggleSidebar': () => toggleSidebar(),
-  'toggleSettings': () => {
-    const el = document.getElementById('cloud-sync-controls');
-    if (el) el.hidden = !el.hidden;
-  }
+  'tglThemeQuick': () => tglThemeQuick(),
+  'openSignIn': () => openSignIn(),
+  'closeSignIn': () => closeSignIn(),
+  'signOutRail': () => { if (window.MMGR && MMGR.GoogleAuth && MMGR.GoogleAuth.signOut) MMGR.GoogleAuth.signOut(); }
 };
 document.addEventListener('click', function(e){
   const el = e.target.closest('[data-action]');
@@ -569,6 +743,16 @@ renderCards();
   if (window.MMGR && MMGR.Glass && MMGR.Glass.sync) MMGR.Glass.sync();
 })();
 if (window.MMGR && window.MMGR.Portfolio) window.MMGR.Portfolio.render();
+
+/* NEW-UI-CREATION-BRIEF I1 follow-up — boot the rail v2 surface: render the
+   All Projects accordion list, set the moon/sun icon to the current theme,
+   and sync the hamburger icon/aria with the early-apply side-open default
+   (the desktop rail is pinned open pre-paint, so the hamburger must show the
+   X from first render; keep it in step across the desktop/mobile breakpoint). */
+renderRailProjects();
+syncThemeQuick();
+syncSidebarAria();
+window.addEventListener('resize', function(){ syncSidebarAria(); });
 
 /* Deploy guard: every icon on this page is a <use href="css/mmgr-icons.svg#...">.
    A missing sprite on the live host makes icons vanish silently — surface it

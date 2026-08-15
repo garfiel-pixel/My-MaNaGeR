@@ -2125,9 +2125,12 @@ body.dark-mode.db-page .cd-plan.at-limit{border-color:rgba(80,232,244,.4);backgr
 body.dark-mode.db-page .cd-plan.at-limit .cd-plan-txt,
 body.dark-mode.db-page .cd-plan.at-limit .cd-plan-txt strong{color:var(--db-accent);}
 body.dark-mode.db-page .pcard:not(.unlocked) .pc-cta{color:var(--db-text-secondary);}
-/* ---- Desktop: content shifts right of the fixed rail ---- */
+/* ---- Desktop: content shifts right of the fixed rail ONLY while it is
+        open (body.side-open — NEW-UI-CREATION-BRIEF I1 follow-up: the
+        hamburger closes/reopens the rail on desktop too, so the wrap margin
+        follows the open state). ---- */
 @media(min-width:769px){
-  body.dark-mode.db-page .wrap{margin-left:264px;margin-right:auto;}
+  body.dark-mode.db-page.side-open .wrap{margin-left:264px;margin-right:auto;}
 }
 /* ---- Mobile (≤768px): rail becomes an off-canvas drawer + hamburger ---- */
 @media(max-width:768px){
@@ -2180,6 +2183,13 @@ body.db-page:not(.dark-mode) #grid::before{
 /* Dark db-page: the glow layer is OFF (the dashboard treatment owns the
    canvas there); this guard keeps the light-mode rule from leaking. */
 body.db-page.dark-mode #grid::before{display:none;}
+/* Mobile overflow guard (NEW-UI-CREATION-BRIEF I1 follow-up, 2026-08-14):
+   the glow's -50px side bleed pushed scrollWidth past the viewport on small
+   screens (phantom 26px horizontal scroll). Keep a subtle wash on mobile by
+   clamping the bleed to the grid's own box — no overflow, same tokens. */
+@media(max-width:768px){
+  body.db-page:not(.dark-mode) #grid::before{inset:-40px -6px;}
+}
 /* 8.2 consistency: cards keep full contrast — their own surface is opaque
    enough that the wash never sits between text and background. */
 @media (prefers-reduced-motion:reduce){
@@ -2231,9 +2241,10 @@ body.db-page:not(.dark-mode) .db-link{
 body.db-page:not(.dark-mode) .db-link:hover{color:var(--gold);background:color-mix(in oklch,var(--gold) 8%,transparent);}
 body.db-page:not(.dark-mode) .db-link .ico{width:16px;height:16px;flex-shrink:0;}
 body.db-page:not(.dark-mode) .db-link:focus-visible{outline:2px solid var(--gold);outline-offset:2px;border-radius:var(--radius-control);}
-/* Desktop: content shifts right of the fixed light rail. */
+/* Desktop: content shifts right of the fixed light rail ONLY while it is
+   open (body.side-open — the hamburger closes/reopens it on desktop too). */
 @media(min-width:769px){
-  body.db-page:not(.dark-mode) .wrap{margin-left:264px;margin-right:auto;}
+  body.db-page:not(.dark-mode).side-open .wrap{margin-left:264px;margin-right:auto;}
 }
 /* Mobile (≤768px): rail becomes off-canvas drawer + hamburger + scrim. */
 @media(max-width:768px){
@@ -2302,3 +2313,335 @@ body.db-page:not(.dark-mode) .db-link:focus-visible{outline:2px solid var(--gold
 .email-auth-alt button{background:none;border:none;padding:0;font-size:.66rem;font-weight:600;color:var(--blue);cursor:pointer;text-decoration:underline;text-underline-offset:2px;}
 .email-auth-err{font-size:.66rem;color:var(--danger);min-height:.9em;}
 @media(max-width:640px){.email-auth{align-items:stretch;}.email-auth-row{flex-direction:column;}.email-auth-input{flex:1 1 100%;width:100%;}}
+
+/* ============================================================
+   MMGR-NEW-UI-CREATION-BRIEF I1 follow-up — app.html launcher
+   rail v2 (owner directive 2026-08-14, projects area only).
+   ------------------------------------------------------------
+   - Hamburger (#db-nav-btn) is now visible on ALL viewports and
+     toggles the rail open/closed everywhere: desktop defaults to
+     PINNED OPEN (body.side-open set pre-paint in the early inline
+     snippet), closing slides the rail away and the content takes
+     the full width; the icon morphs menu -> X (aria + href swap).
+   - The rail now holds: All Projects (accordion -> every project,
+     click opens through the existing unlock flow), Admin, Cloud
+     Projects (accordion -> session-gated list), Backup & Restore
+     (accordion -> the Drive backup/restore/auto controls moved
+     from the old auth bar; ids unchanged so mmgr-google-auth.js
+     wiring keeps working), Customize (accordion -> dark / color /
+     glass), and a footer with Upgrade to Premium + the sign-in
+     user area.
+   - Sign-in lives in a CENTERED modal (#siom) with BOTH providers
+     (Google button + email form).
+   - Moon/sun quick theme toggle at the hero top-right.
+   Token-driven (light uses --card/--border/--slate/--gold/--tile-bg;
+   body.dark-mode.db-page overrides map to the --db-* dashboard
+   tokens, matching the existing rail convention — no pure #000
+   text, Gate 4.1 pairs measured in the dark block). No emoji, SVG
+   sprite icons only. Reduced-motion kills the transforms.
+   ============================================================ */
+/* ---- hero corner chrome: hamburger + moon/sun (Fitts edges) ---- */
+body.db-page .top{position:relative;}
+body.db-page .db-hamb{
+  display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;
+  border:1px solid var(--border);background:var(--card);color:var(--gold);
+  border-radius:var(--radius-control);cursor:pointer;flex-shrink:0;
+  position:absolute;top:12px;left:12px;z-index:2;
+}
+body.db-page .db-hamb .ico{width:18px;height:18px;transition:transform .18s ease;}
+body.db-page .db-hamb.is-open .ico{transform:rotate(180deg);}
+body.db-page .db-hamb:focus-visible{outline:2px solid var(--gold);outline-offset:2px;}
+body.db-page .db-quick{
+  display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;
+  border:1px solid var(--border);background:var(--card);color:var(--slate);
+  border-radius:var(--radius-control);cursor:pointer;flex-shrink:0;
+  position:absolute;top:12px;right:12px;z-index:2;
+}
+body.db-page .db-quick .ico{width:18px;height:18px;}
+body.db-page .db-quick:hover{color:var(--gold);border-color:var(--gold);}
+body.db-page .db-quick:focus-visible{outline:2px solid var(--gold);outline-offset:2px;}
+/* ---- desktop: rail pinned open by default; closed = slides away + full
+        width content. Mobile (≤768px) keeps the existing drawer behavior. ---- */
+@media(min-width:769px){
+  body.db-page .db-side{transition:transform .24s ease;}
+  body.db-page:not(.side-open) .db-side{transform:translateX(-100%);}
+  body.db-page .wrap{transition:margin-left .24s ease;}
+}
+/* ---- rail body: nav scrolls, footer pinned to the bottom ---- */
+body.db-page .db-side nav{flex:1;overflow-y:auto;min-height:0;display:flex;flex-direction:column;}
+body.db-page .db-foot{margin-top:12px;padding-top:12px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:8px;}
+/* ---- accordion rows ---- */
+body.db-page [data-rail-toggle]{width:100%;text-align:left;cursor:pointer;border:none;background:none;font:inherit;}
+body.db-page [data-rail-toggle] .ico-caret{margin-left:auto;width:14px;height:14px;flex-shrink:0;transition:transform .18s ease;}
+body.db-page [data-rail-toggle].open .ico-caret{transform:rotate(90deg);}
+body.db-page .db-sub{padding:2px 6px 6px;display:flex;flex-direction:column;gap:4px;}
+body.db-page .db-sub[hidden]{display:none;}
+body.db-page .db-sub-empty{font-size:.66rem;color:var(--slate);padding:6px 8px;line-height:1.45;}
+body.db-page .db-project{
+  display:flex;align-items:center;gap:8px;width:100%;text-align:left;border:none;background:none;font:inherit;
+  padding:7px 8px;border-radius:var(--radius-control);color:var(--slate);font-size:.74rem;font-weight:600;cursor:pointer;min-width:0;
+}
+body.db-page .db-project:hover{color:var(--text);background:color-mix(in oklch,var(--gold) 8%,transparent);}
+body.db-page .db-project:focus-visible{outline:2px solid var(--gold);outline-offset:2px;}
+body.db-page .db-project .db-project-ico{display:inline-flex;width:16px;height:16px;flex-shrink:0;color:var(--gold);}
+body.db-page .db-project .db-project-ico .ico{width:14px;height:14px;}
+body.db-page .db-project .db-project-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+/* ---- backup panel ---- */
+body.db-page .db-backup{background:var(--tile-bg);border:1px solid var(--border);border-radius:var(--radius);padding:8px;gap:8px;}
+body.db-page .db-backup-btns{display:flex;gap:6px;}
+body.db-page .db-btn{
+  flex:1;display:inline-flex;align-items:center;justify-content:center;gap:5px;
+  padding:7px 8px;border:1px solid var(--border);background:transparent;color:var(--slate);
+  border-radius:var(--radius-control);font-size:.7rem;font-weight:600;cursor:pointer;
+}
+body.db-page .db-btn:hover{color:var(--gold);border-color:var(--gold);}
+body.db-page .db-btn:focus-visible{outline:2px solid var(--gold);outline-offset:2px;}
+body.db-page .db-btn .ico{width:14px;height:14px;}
+body.db-page .db-backup-auto{display:flex;align-items:center;gap:6px;font-size:.68rem;color:var(--slate);}
+body.db-page .db-backup-auto .ico{width:13px;height:13px;color:var(--gold);flex-shrink:0;}
+body.db-page .db-backup-auto select{flex:1;min-width:0;}
+body.db-page .db-pass{width:100%;font-size:.7rem;padding:6px 8px;border:1px solid var(--border);border-radius:var(--radius-control);background:var(--card);color:var(--text);}
+body.db-page .db-pass:focus-visible{outline:2px solid var(--gold);outline-offset:2px;}
+body.db-page .db-backup .drive-status{font-size:.64rem;color:var(--slate);line-height:1.4;}
+/* ---- customize panel ---- */
+body.db-page .db-customize{gap:10px;}
+body.db-page .db-ctl-row{display:flex;align-items:center;gap:8px;font-size:.72rem;color:var(--slate);}
+body.db-page .db-ctl-row > .ico{width:15px;height:15px;color:var(--gold);flex-shrink:0;}
+body.db-page .db-ctl-row .tgl{margin:0 0 0 auto;}
+body.db-page .db-ctl-row .pal-switch{margin-left:auto;}
+/* ---- footer: upgrade + user ---- */
+body.db-page .db-upgrade{
+  display:flex;align-items:center;justify-content:center;gap:6px;width:100%;
+  padding:9px 10px;border:none;border-radius:100px;cursor:pointer;
+  background:var(--gold);color:var(--on-gold);font-size:.74rem;font-weight:700;
+}
+body.db-page .db-upgrade .ico{width:14px;height:14px;}
+body.db-page .db-upgrade:hover{filter:brightness(1.08);}
+body.db-page .db-upgrade:focus-visible{outline:2px solid var(--gold);outline-offset:2px;}
+body.db-page .db-user{display:flex;align-items:center;gap:8px;min-height:32px;}
+body.db-page .db-user-name{flex:1;min-width:0;display:inline-flex;align-items:center;gap:6px;font-size:.72rem;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+body.db-page .db-user-name .ico{width:14px;height:14px;color:var(--gold);flex-shrink:0;}
+body.db-page .db-signin{
+  flex:1;display:inline-flex;align-items:center;justify-content:center;gap:6px;
+  padding:8px 10px;border:1px solid var(--border);background:transparent;color:var(--slate);
+  border-radius:100px;font-size:.72rem;font-weight:700;cursor:pointer;
+}
+body.db-page .db-signin:hover{color:var(--gold);border-color:var(--gold);}
+body.db-page .db-signin:focus-visible{outline:2px solid var(--gold);outline-offset:2px;}
+body.db-page .db-signin .ico{width:14px;height:14px;}
+body.db-page .db-signout{background:none;border:1px solid var(--border);color:var(--slate);font-size:.64rem;font-weight:600;border-radius:100px;padding:5px 10px;cursor:pointer;flex-shrink:0;}
+body.db-page .db-signout:hover{color:var(--danger);border-color:var(--danger);}
+body.db-page .db-signout:focus-visible{outline:2px solid var(--danger);outline-offset:1px;}
+/* ---- sign-in modal (#siom, centered, both providers) ---- */
+#siom{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:2000;align-items:center;justify-content:center;}
+#siom.open{display:flex;}
+#siom .mb{width:440px;max-width:100%;max-height:82vh;}
+#siom .mbody{padding:18px 22px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:12px;}
+#siom .si-hint{font-size:.72rem;color:var(--slate);line-height:1.5;max-width:340px;margin:0 auto;}
+#siom .email-auth{align-items:stretch;width:100%;}
+#siom .email-auth-row{flex-direction:column;align-items:stretch;}
+#siom .email-auth-input{flex:1 1 100%;width:100%;}
+@media print{#siom{display:none!important;}}
+/* ---- dark dashboard overrides (existing --db-* rail convention) ---- */
+body.dark-mode.db-page .db-hamb{background:var(--db-surface);border-color:var(--db-border);color:var(--db-accent);}
+body.dark-mode.db-page .db-quick{background:var(--db-surface);border-color:var(--db-border);color:var(--db-text-secondary);}
+body.dark-mode.db-page .db-quick:hover{color:var(--db-accent);border-color:var(--db-accent);}
+body.dark-mode.db-page .db-foot{border-top-color:var(--db-border);}
+body.dark-mode.db-page .db-sub-empty{color:var(--db-text-secondary);}
+body.dark-mode.db-page .db-project{color:var(--db-text-secondary);}
+body.dark-mode.db-page .db-project:hover{color:var(--text);background:color-mix(in oklch,var(--db-accent) 10%,transparent);}
+body.dark-mode.db-page .db-project .db-project-ico{color:var(--db-accent);}
+body.dark-mode.db-page .db-backup{background:var(--db-surface);border-color:var(--db-border);}
+body.dark-mode.db-page .db-btn{color:var(--db-text-secondary);border-color:var(--db-border);}
+body.dark-mode.db-page .db-btn:hover{color:var(--db-accent);border-color:var(--db-accent);}
+body.dark-mode.db-page .db-backup-auto{color:var(--db-text-secondary);}
+body.dark-mode.db-page .db-backup-auto .ico{color:var(--db-accent);}
+body.dark-mode.db-page .db-pass{background:var(--db-surface-raised);border-color:var(--db-border);color:var(--text);}
+body.dark-mode.db-page .db-backup .drive-status{color:var(--db-text-secondary);}
+body.dark-mode.db-page .db-ctl-row{color:var(--db-text-secondary);}
+body.dark-mode.db-page .db-ctl-row > .ico{color:var(--db-accent);}
+body.dark-mode.db-page .db-user-name .ico{color:var(--db-accent);}
+body.dark-mode.db-page .db-signin{color:var(--db-text-secondary);border-color:var(--db-border);}
+body.dark-mode.db-page .db-signin:hover{color:var(--db-accent);border-color:var(--db-accent);}
+body.dark-mode.db-page .db-signout{color:var(--db-text-secondary);border-color:var(--db-border);}
+body.dark-mode.db-page .db-signout:hover{color:var(--danger);border-color:var(--danger);}
+body.dark-mode.db-page [data-rail-toggle] .ico-caret{color:var(--db-text-secondary);}
+/* ---- reliability fallbacks (Gates 6.2 / 8.1) ---- */
+@media (prefers-reduced-motion:reduce){
+  body.db-page .db-hamb .ico,body.db-page [data-rail-toggle] .ico-caret,body.db-page .db-side,body.db-page .wrap{transition:none!important;}
+}
+/* ============================================================
+   NEW-UI-POLISH (owner directive 2026-08-14, launcher v3):
+   - Brand/hero block gets a LIQUID-GLASS treatment in EVERY palette
+     (light gets a frosted panel + accent rim so it pops like the cyan
+     dark glass; dark keeps its glass and gains an accent rim + glow).
+   - Hamburger NEVER morphs into an X (stays the hamburger; rotates
+     90deg when open) and stays clickable ABOVE the drawer/scrim on
+     mobile so the same button always closes what it opened.
+   - Rail footer is pinned to the bottom (margin-top:auto) with the
+     plan status (Premium badge / Upgrade to Premium) directly above
+     the signed-in identity — nothing scrolls away.
+   - Accordion panels are borderless (no boxiness); interactive rows
+     (links, project rows, backup/restore buttons) get an INSET RING
+     on hover instead of a persistent border — zero layout shift.
+   - Backup/Restore buttons redesigned: icon in an accent tile, no
+     border, hover ring + tint.
+   - Sign-in modal (#siom) text raised to full-contrast tokens.
+   - Hero: circular signed-in avatar (dot + label), accent glow on the
+     logo icon, subtle card entrance stagger.
+   All token-driven (--gold/--slate/--card/--border/--db-accent/...),
+   dark + cyan parity via the existing theme blocks, no emoji (SVG
+   sprite only), reduced-motion + reduced-transparency fallbacks.
+   ============================================================ */
+/* ---- hero brand: liquid glass in every palette ---- */
+body.db-page:not(.dark-mode) .top{
+  background:
+    radial-gradient(120% 90% at 16% 0%, color-mix(in oklch,var(--gold) 8%,transparent) 0%, transparent 55%),
+    linear-gradient(180deg, color-mix(in oklch,var(--card) 97%,transparent), color-mix(in oklch,var(--card) 84%,transparent));
+  backdrop-filter:blur(14px) saturate(150%);
+  -webkit-backdrop-filter:blur(14px) saturate(150%);
+  border:1px solid color-mix(in oklch,var(--border) 65%,var(--gold) 35%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.7),0 14px 34px -22px rgba(16,24,40,.3);
+  border-radius:var(--squircle-md);
+  padding:56px 22px 18px; /* top row = corner controls (hamburger / avatar / theme) — h1 sits below */
+  margin-bottom:18px;
+}
+body.db-page:not(.dark-mode) .top h1 .ico{filter:drop-shadow(0 0 7px color-mix(in oklch,var(--gold) 45%,transparent));}
+body.db-page:not(.dark-mode) .top p{max-width:520px;}
+body.dark-mode.db-page .top{padding:56px 22px 18px;}
+body.dark-mode.db-page .top{
+  border:1px solid color-mix(in oklch,var(--db-accent) 28%,var(--db-border));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.06),0 14px 34px -18px rgba(0,0,0,.55);
+}
+body.dark-mode.db-page .top h1 .ico{
+  color:var(--db-accent);
+  filter:drop-shadow(0 0 9px color-mix(in oklch,var(--db-accent) 55%,transparent));
+  animation:dbBrandPulse 3.2s ease-in-out infinite;
+}
+/* mobile: tighten the hero panel sides a touch; the 56px top row stays so
+   the h1 never sits under the corner controls. */
+@media(max-width:768px){
+  body.db-page .top{padding:56px 18px 18px;}
+}
+/* ---- hamburger: never an X, always closable, springy slide ---- */
+body.db-page.side-open .db-hamb{z-index:130;}
+body.db-page .db-hamb .ico{transition:transform .3s cubic-bezier(.34,1.56,.64,1);}
+body.db-page .db-hamb.is-open .ico{transform:rotate(90deg);}
+@media(min-width:769px){
+  body.db-page .db-side{transition:transform .3s cubic-bezier(.22,1,.36,1);}
+  body.db-page .wrap{transition:margin-left .3s cubic-bezier(.22,1,.36,1);}
+}
+/* ---- rail: nav scrolls, footer PINNED to the bottom ---- */
+body.db-page .db-side{overflow:hidden;}
+body.db-page .db-foot{flex-shrink:0;margin-top:auto;}
+/* ---- accordion panels: flat, no boxiness; hover = inset ring ---- */
+body.db-page .db-sub{padding:2px 8px 10px;}
+body.db-page .db-backup{background:transparent;border:none;padding:4px 2px 8px;gap:10px;}
+body.db-page .db-link,body.db-page .db-project{
+  box-shadow:inset 0 0 0 1px transparent;
+  transition:color .15s ease,background .15s ease,box-shadow .15s ease;
+}
+body.db-page .db-link:hover,body.db-page .db-project:hover{
+  box-shadow:inset 0 0 0 1px color-mix(in oklch,var(--gold) 32%,transparent);
+}
+/* ---- backup/restore: icon tiles, borderless, hover ring ---- */
+body.db-page .db-btn{
+  flex:1;display:inline-flex;align-items:center;justify-content:center;gap:7px;
+  padding:8px 10px;border:none;background:transparent;color:var(--slate);
+  border-radius:var(--radius-control);font-size:.7rem;font-weight:700;cursor:pointer;
+  box-shadow:inset 0 0 0 1px transparent;
+  transition:color .15s ease,background .15s ease,box-shadow .15s ease;
+}
+body.db-page .db-btn .ico{
+  width:16px;height:16px;padding:5px;box-sizing:content-box;border-radius:7px;flex-shrink:0;
+  background:color-mix(in oklch,var(--gold) 12%,transparent);color:var(--gold);
+  transition:background .15s ease,color .15s ease;
+}
+body.db-page .db-btn:hover{color:var(--text);background:color-mix(in oklch,var(--gold) 6%,transparent);box-shadow:inset 0 0 0 1px color-mix(in oklch,var(--gold) 35%,transparent);}
+body.db-page .db-btn:hover .ico{background:color-mix(in oklch,var(--gold) 20%,transparent);}
+body.db-page .db-btn:focus-visible{outline:2px solid var(--gold);outline-offset:2px;}
+body.db-page .db-pass{border-color:color-mix(in oklch,var(--border) 55%,var(--slate) 45%);}
+body.db-page .db-backup-auto select{border:1px solid var(--border);border-radius:var(--radius-control);background:var(--card);color:var(--text);font-size:.68rem;padding:4px 6px;}
+/* ---- hero avatar (circular signed-in indicator) ---- */
+body.db-page .db-avatar{
+  display:inline-flex;align-items:center;gap:7px;
+  position:absolute;top:12px;right:58px;z-index:2;
+  border:none;background:transparent;cursor:pointer;font:inherit;
+  padding:4px 6px 4px 4px;border-radius:100px;
+  transition:background .15s ease;
+}
+body.db-page .db-avatar:hover{background:color-mix(in oklch,var(--gold) 9%,transparent);}
+body.db-page .db-avatar:focus-visible{outline:2px solid var(--gold);outline-offset:2px;border-radius:100px;}
+body.db-page .db-avatar-box{position:relative;width:32px;height:32px;flex-shrink:0;}
+body.db-page .db-avatar-ring{
+  width:32px;height:32px;border-radius:50%;
+  display:inline-flex;align-items:center;justify-content:center;
+  background:var(--card);border:1px solid var(--border);color:var(--slate);
+  box-shadow:0 1px 3px rgba(16,24,40,.08);
+}
+body.db-page .db-avatar .ico{width:16px;height:16px;}
+body.db-page .db-avatar-init{font-size:.8rem;font-weight:800;color:var(--gold);}
+body.db-page .db-avatar-img{width:100%;height:100%;border-radius:50%;object-fit:cover;display:block;}
+body.db-page .db-avatar-dot{
+  position:absolute;right:-2px;bottom:-2px;width:11px;height:11px;border-radius:50%;
+  background:var(--green);border:2px solid var(--card);
+}
+body.db-page .db-avatar-txt{font-size:.68rem;font-weight:700;color:var(--slate);}
+body.db-page .db-avatar.is-in .db-avatar-txt{color:var(--green);}
+@media(max-width:430px){body.db-page .db-avatar-txt{display:none;}}
+/* ---- rail footer: plan status ---- */
+body.db-page .db-plan-badge{
+  display:inline-flex;align-items:center;justify-content:center;gap:6px;width:100%;
+  padding:9px 10px;border-radius:100px;font-size:.74rem;font-weight:800;
+  color:var(--gold);background:color-mix(in oklch,var(--gold) 10%,transparent);
+  border:1px solid color-mix(in oklch,var(--gold) 32%,transparent);
+}
+body.db-page .db-plan-badge .ico{width:14px;height:14px;}
+body.db-page .db-upgrade-note{font-size:.58rem;font-weight:600;opacity:.85;margin-left:2px;}
+/* ---- sign-in modal (#siom): full-contrast text ---- */
+#siom .mb{background:var(--card);border:1px solid var(--border);}
+#siom .si-hint{color:var(--text);font-weight:600;}
+#siom .email-auth-form{border-color:color-mix(in oklch,var(--border) 55%,var(--slate) 45%);background:var(--tile-bg);}
+#siom .email-auth-input{color:var(--text);border-color:color-mix(in oklch,var(--border) 55%,var(--slate) 45%);background:var(--card);}
+#siom .email-auth-input::placeholder{color:var(--slate);opacity:1;}
+#siom .email-auth-alt{color:var(--slate);}
+/* ---- entrance + ambient motion (reduced-motion safe below) ---- */
+body.db-page .pcard{animation:dbCardIn .42s ease backwards;}
+body.db-page .pcard:nth-child(2){animation-delay:.05s;}
+body.db-page .pcard:nth-child(3){animation-delay:.1s;}
+body.db-page .pcard:nth-child(4){animation-delay:.15s;}
+body.db-page .pcard:nth-child(5){animation-delay:.2s;}
+body.db-page .pcard:nth-child(6){animation-delay:.25s;}
+@keyframes dbCardIn{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:none;}}
+@keyframes dbBrandPulse{0%,100%{opacity:.8;}50%{opacity:1;}}
+/* ---- dark dashboard overrides for the new chrome ---- */
+body.dark-mode.db-page .db-avatar:hover{background:color-mix(in oklch,var(--db-accent) 10%,transparent);}
+body.dark-mode.db-page .db-avatar-ring{background:var(--db-surface);border-color:var(--db-border);color:var(--db-text-secondary);}
+body.dark-mode.db-page .db-avatar-init{color:var(--db-accent);}
+body.dark-mode.db-page .db-avatar-dot{border-color:var(--db-surface);}
+body.dark-mode.db-page .db-avatar-txt{color:var(--db-text-secondary);}
+body.dark-mode.db-page .db-avatar.is-in .db-avatar-txt{color:var(--db-accent);}
+body.dark-mode.db-page .db-btn .ico{background:color-mix(in oklch,var(--db-accent) 13%,transparent);color:var(--db-accent);}
+body.dark-mode.db-page .db-btn:hover{color:var(--text);background:color-mix(in oklch,var(--db-accent) 8%,transparent);box-shadow:inset 0 0 0 1px color-mix(in oklch,var(--db-accent) 40%,transparent);}
+body.dark-mode.db-page .db-btn:hover .ico{background:color-mix(in oklch,var(--db-accent) 22%,transparent);}
+body.dark-mode.db-page .db-link:hover,body.dark-mode.db-page .db-project:hover{box-shadow:inset 0 0 0 1px color-mix(in oklch,var(--db-accent) 35%,transparent);}
+body.dark-mode.db-page .db-backup{background:transparent;border-color:transparent;}
+body.dark-mode.db-page .db-plan-badge{color:var(--db-accent);background:color-mix(in oklch,var(--db-accent) 10%,transparent);border-color:color-mix(in oklch,var(--db-accent) 35%,transparent);}
+body.dark-mode.db-page .db-backup-auto select{background:var(--db-surface-raised);border-color:var(--db-border);color:var(--text);}
+body.dark-mode.db-page #siom .mb{background:var(--db-surface-raised);border-color:var(--db-border);}
+body.dark-mode.db-page #siom .si-hint{color:var(--text);}
+body.dark-mode.db-page #siom .email-auth-form{background:var(--db-surface);border-color:var(--db-border);}
+body.dark-mode.db-page #siom .email-auth-input{background:var(--db-surface-raised);border-color:var(--db-border);color:var(--text);}
+body.dark-mode.db-page #siom .email-auth-alt{color:var(--db-text-secondary);}
+/* ---- reliability fallbacks for the new surfaces (Gates 6.2 / 8.1) ---- */
+@supports not (backdrop-filter:blur(1px)){
+  body.db-page:not(.dark-mode) .top{background:var(--card);}
+}
+@media (prefers-reduced-transparency:reduce){
+  body.db-page:not(.dark-mode) .top{background:var(--card);backdrop-filter:none;-webkit-backdrop-filter:none;}
+}
+@media (prefers-reduced-motion:reduce){
+  body.db-page .pcard,body.db-page .top h1 .ico{animation:none!important;}
+  body.db-page .db-btn,body.db-page .db-link,body.db-page .db-project,body.db-page .db-avatar{transition:none!important;}
+  body.db-page .db-hamb .ico{transition:none!important;}
+}

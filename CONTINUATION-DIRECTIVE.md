@@ -1210,6 +1210,26 @@ mmgr-render.js clean, qa-full 171/171 (incl. 09 confidence 3-way card), zero con
 errors, in-browser measurements: tf-rows 35px consistent, sc-cells all exactly 88px,
 crash cell 13.6px gold token in light/dark/cyan.
 
+**2026-08-14 — Session extension: UI-MODERNIZATION DASHBOARD SPACING AUDIT (owner
+follow-up: "audit the remaining dashboard sections — Today's Focus, EVM, Budget — for
+spacing consistency with the new rhythm").** AUDIT METHOD: seeded a rich project state
+(5 tasks with planned/actual + float, risks, issues, budget lines, resources, wx window,
+baseline, charter target) and measured every section's internal gaps + row/tile heights in
+browser (skeptical-code-audit: measured computed boxes, not eyeballs). FINDINGS: (1)
+Today's Focus — ALREADY consistent (tf-head 6px → 33px rows → 12px group gap; rows 33px
+via the v92 .tf-row rhythm). (2) EVM tiles (.evm-tile + .evm-tile-sm, dashboard-only
+classes) — label/figure/sub-label were flush-stacked at 0px inside an 84px/69px tile
+(CRAMPED); fixed with the sc-cell rhythm: flex column centered + 3px (big) / 2px (small)
+gaps; heights now 90px/73px, all equal. (3) Dashboard stat cards (#panel-dash .g4 .card —
+Budget Variance / Resource Utilization / Pending Changes / Baseline Variance) — the big
+figure sat 0px above its sub-label; fixed with #panel-dash .g4 .card .stat + .t-xxs{margin-top:4px}
+(dashboard-scoped sibling selector; .stat/.t-xxs are shared classes elsewhere, left
+untouched). All fixes token-driven (--tile-bg etc.), dark + cyan computed-style verified,
+equal-height tiles/cards confirmed at 1262px + 980px, no emoji, zero markup/JS/data
+changes. sw.js v93→v94 (css/mmgr.css shell asset). VERIFICATION: npm run verify GREEN
+(CSP 11/11, SW v94 > 47 assets, 17/17 skills), qa-r3 R3_GATE PASS, qa-full 171/171 (incl.
+09 confidence 3-way card + EVM checks), zero console/page errors.
+
 ---
 
 *This file is the working source of truth for continuing this project across sessions.

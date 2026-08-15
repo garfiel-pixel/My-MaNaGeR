@@ -356,12 +356,18 @@
         <div class="g6">
           <input type="text" id="wx-place-in" placeholder="City or town, Parish/State, Country — more specific = more accurate" aria-label="Site location — city or town, parish/state, country">
           <button class="btn btn-g btn-s" data-action="wxGeocode">Locate</button>
+          <!-- OWNER 2026-08-15: "Use my current location" — browser geolocation
+               pins the exact coordinates where you are and fetches the forecast
+               for them (tailored to your location). Falls back gracefully to the
+               type-a-city path when permission is denied or unavailable. -->
+          <button class="btn btn-n btn-s" data-action="wxUseLocation" title="Use my current location — the forecast is then tailored to exactly where you are"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-crosshair"></use></svg> Use my current location</button>
           <button class="btn btn-n btn-s" data-action="wxRefresh">Refresh</button>
           <span class="wx-view-tgl">
             <button class="btn btn-s" data-action="wxSetView" data-days="7" aria-label="Show 7-day weather forecast">7d</button>
             <button class="btn btn-s" data-action="wxSetView" data-days="16" aria-label="Show 16-day weather forecast">16d</button>
           </span>
         </div>
+        <div class="wx-hint">The site is looked up online for its exact coordinates — type your site city or address (more specific = more accurate), or tap <strong>Use my current location</strong> to tailor the forecast to exactly where you are. Needs an internet connection; when offline the regional weather windows remain the fallback.</div>
       </div>
       <div id="weather-forecast-body"></div>
     </div>

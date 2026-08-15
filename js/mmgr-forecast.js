@@ -61,6 +61,27 @@ var MMGR = window.MMGR || {};
     }
   }
 
+  // ---- Reverse-geocode exact coordinates into a friendly place label ----
+  // Used by "Use my current location": the browser hands us raw lat/lon and
+  // we turn it into "City, Region" so the forecast header reads as a place
+  // instead of a coordinate pair. Open-Meteo's reverse search, same zero-key
+  // API family as geocode(). Fails quietly -> '' (caller keeps a plain label).
+  async function reverseGeocode(lat, lon) {
+    try {
+      const url = GEO + '?latitude=' + encodeURIComponent(lat) + '&longitude=' + encodeURIComponent(lon) +
+        '&count=1&language=en&format=json';
+      const res = await ns.Net.get(url, { maxRetries: 2 });
+      if (!res.ok) return '';
+      const data = await res.json();
+      const hit = data && data.results && data.results[0];
+      if (!hit) return '';
+      const parts = [hit.name, hit.admin1, hit.country].filter(Boolean);
+      return parts.join(', ');
+    } catch (e) {
+      return '';
+    }
+  }
+
   // ---- Fetch a 16-day daily forecast (cached, TTL) ----
   // Pure on-request: never called on load; the dashboard triggers it on
   // demand or after geocode. localStorage cache keyed by lat,lon.
@@ -211,6 +232,7 @@ var MMGR = window.MMGR || {};
     GEO: GEO,
     CACHE_TTL_MS: CACHE_TTL_MS,
     geocode: geocode,
+    reverseGeocode: reverseGeocode,
     fetchForecast: fetchForecast,
     getForecast: getForecast,
     riskDays: riskDays,

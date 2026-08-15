@@ -1890,6 +1890,12 @@ body.dark-mode .sent-bar{border:1px solid rgba(0,0,0,.2);}
 .wx-view-tgl .btn{border-radius:6px;padding:3px 9px;font-size:.66rem;}
 .wx-view-tgl .btn.is-on{border-color:var(--gold);color:var(--gold);}
 
+/* OWNER 2026-08-15: guidance line under the weather card's location row —
+   tells users the site is looked up online for exact coordinates and that
+   "Use my current location" tailors the forecast to exactly where they are. */
+.wx-hint{font-size:.64rem;color:var(--slate);line-height:1.45;margin:7px 2px 0;max-width:760px;}
+.wx-hint strong{color:var(--gold);font-weight:700;}
+
 /* Interaction audit: the WBS task name is click-to-edit — signal editability. */
 .wbs-name{cursor:text;}
 .wbs-name:hover{color:var(--gold);}

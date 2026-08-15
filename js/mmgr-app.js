@@ -131,15 +131,15 @@ var MMGR = window.MMGR || {};
 
     // SIDEBAR-HAMBURGER-TOGGLE-PLAN: build the desktop sidebar (a clone of
     // the .sec-nav groups) BEFORE the first render so the pack/methodology
-    // gates land on both navs together; then apply the saved layout pref,
-    // install the drawer/sidebar dismiss bindings, and start the one-per-load
-    // backend pull for the signed-in account's saved layout.
+    // gates land on both navs together; then boot the rail open and install
+    // the drawer/sidebar dismiss bindings.
     buildSidebar();
-    // Boot the rail to the saved pref's open state (pref on → open).
-    document.body.classList.toggle('sidebar-open', sidebarEnabled());
+    // OWNER 2026-08-15: the sidebar IS the view on desktop — boot the pinned
+    // rail OPEN (body.sidebar-open). Mobile keeps the off-canvas drawer
+    // (sidebar-open is never set there, so the scrim can't flash at boot).
+    if (window.innerWidth > 768) document.body.classList.add('sidebar-open');
     syncSidebarChrome();
     bindNavDismiss();
-    pullSidebarBackend();
 
     // Initial render
     R.renderAll();
@@ -320,10 +320,8 @@ var MMGR = window.MMGR || {};
   let _navBound = false;
   function closeNav() {
     document.body.classList.remove('nav-open');
-    // BUG-9: also close the desktop sidebar overlay when closing the nav.
-    if (window.innerWidth > 768 && document.body.classList.contains('sidebar-open')) {
-      setSidebarOpen(false);
-    }
+    // OWNER 2026-08-15: on desktop the sidebar is the pinned primary nav —
+    // section clicks do NOT close it (only the hamburger / Escape does).
     const btn = U.$('nav-btn');
     if (btn) btn.setAttribute('aria-expanded', 'false');
   }
@@ -335,12 +333,21 @@ var MMGR = window.MMGR || {};
     _navBound = true;
     document.addEventListener('click', function (e) {
       const t = e.target;
-      // BUG-9: section buttons close both the mobile drawer and the desktop overlay.
+      // Section buttons close the mobile drawer; on desktop the pinned rail
+      // stays open (the hamburger is its close control).
       if (t && t.closest && t.closest('.sec-btn')) closeNav();
+      // Outside-click closes the backup popover (not on the indicator itself
+      // or anything inside the popover).
+      const pop = U.$('bk-pop');
+      if (pop && !pop.hidden && !(t && t.closest && (t.closest('#bk-pop') || t.closest('#dirty-ind')))) bkClose();
     });
     document.addEventListener('keydown', function (e) {
       if (e.key !== 'Escape') return;
       closeNav();
+      bkClose();
+      // Escape also closes the desktop pinned rail — full-screen work, the
+      // hamburger reopens it.
+      if (window.innerWidth > 768 && document.body.classList.contains('sidebar-open')) setSidebarOpen(false);
     });
     window.addEventListener('resize', function () {
       closeNav();
@@ -384,7 +391,10 @@ var MMGR = window.MMGR || {};
   function readDevicePref(key) { try { return localStorage.getItem(key); } catch (e) { return null; } }
   function writeDevicePref(key, v) { try { localStorage.setItem(key, v); } catch (e) {} }
 
-  function sidebarEnabled() { return readDevicePref(SIDEBAR_KEY) === 'on'; }
+  // OWNER 2026-08-15: the sidebar is the ONLY desktop view — the legacy
+  // mmgr_sidebar pref no longer gates it. body.sidebar-on is therefore always
+  // applied; body.sidebar-open is the rail's transient open/closed state.
+  function sidebarEnabled() { return true; }
 
   // Reflect the pref onto <body> + the settings toggle. aria-expanded is
   // VIEWPORT-AWARE: on mobile it tracks the drawer (tglNav owns it there);
@@ -1677,6 +1687,51 @@ var MMGR = window.MMGR || {};
     openDrw();
   }
 
+  // ---- OWNER 2026-08-15: backup popover (header "Not backed up") ----
+  // The red indicator opens a small glass card with the two backup routes:
+  // Backup to cloud (automatic once the project is linked — an existing
+  // session code saves immediately; unlinked projects route to the drawer's
+  // Cloud Backup section to link first) and Backup to local (.json export).
+  // Closed by outside click / Escape / choosing an option.
+  function bkToggle() {
+    const pop = U.$('bk-pop');
+    const ind = U.$('dirty-ind');
+    if (!pop) return;
+    if (pop.hidden) {
+      bkSyncHint();
+      pop.hidden = false;
+      if (ind) ind.setAttribute('aria-expanded', 'true');
+    } else {
+      pop.hidden = true;
+      if (ind) ind.setAttribute('aria-expanded', 'false');
+    }
+  }
+  function bkClose() {
+    const pop = U.$('bk-pop');
+    const ind = U.$('dirty-ind');
+    if (pop && !pop.hidden) pop.hidden = true;
+    if (ind) ind.setAttribute('aria-expanded', 'false');
+  }
+  function bkSyncHint() {
+    const el = U.$('bk-cloud-hint');
+    if (!el) return;
+    const C = window.MMGR.Cloud;
+    el.textContent = (C && C.getCode && C.getCode())
+      ? 'This project is linked — Save to Cloud keeps the snapshot current.'
+      : 'Link this project once in Settings — then every Save to Cloud backs it up.';
+  }
+  function bkCloud() {
+    const C = window.MMGR.Cloud;
+    bkClose();
+    if (C && C.getCode && C.getCode()) {
+      if (C.saveToCloud) C.saveToCloud();
+    } else {
+      // Not linked yet — open the drawer at the Cloud Backup section so the
+      // project can be linked (Create Cloud Project, then Save to Cloud).
+      openDrwToSave();
+    }
+  }
+
   function openDrwToPrompts(type) {
     swDtab('prompt', null);
     openDrw();
@@ -1942,6 +1997,9 @@ var MMGR = window.MMGR || {};
     openPrompt: openPrompt,
     openDrwToSave: openDrwToSave,
     openDrwToPrompts: openDrwToPrompts,
+    bkToggle: bkToggle,
+    bkClose: bkClose,
+    bkCloud: bkCloud,
     jumpToDashTimeline: jumpToDashTimeline,
     openOM: openOM,
     closeOM: closeOM,
@@ -2147,6 +2205,8 @@ window.MMGR = MMGR;
     'openPrompt': (el) => window.MMGR.App.openPrompt(el.getAttribute('data-type')),
     'openDrwToSave': () => window.MMGR.App.openDrwToSave(),
     'openDrwToPrompts': (el) => window.MMGR.App.openDrwToPrompts(el.getAttribute('data-type')),
+    'bkToggle': () => window.MMGR.App.bkToggle(),
+    'bkCloud': () => window.MMGR.App.bkCloud(),
     'saveProjectFile': () => window.MMGR.App.saveProjectFile(),
     'saveBaseline': () => window.MMGR.App.saveBaseline(),
     'restoreBaseline': () => window.MMGR.App.restoreBaseline(),
@@ -2381,7 +2441,7 @@ window.MMGR = MMGR;
     // pure device-UI chrome (body.nav-open class only) — never project state.
     // SIDEBAR-HAMBURGER-TOGGLE-PLAN: the sidebar toggle is the same kind of
     // pure device-UI chrome (body.sidebar-on + localStorage pref).
-    'tglNav': 1, 'tglSidebar': 1, 'tglSidebarOpen': 1,
+    'tglNav': 1, 'tglSidebar': 1, 'tglSidebarOpen': 1, 'bkToggle': 1, 'bkCloud': 1,
     // DIR-1a/1b: copying/downloading the error log is read-only; the
     // remote-reporting toggle + webhook URL are device-level preferences
     // (localStorage, like the glass mode toggle) — never project state.

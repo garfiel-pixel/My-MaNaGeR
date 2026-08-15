@@ -16,9 +16,11 @@
        multi-device use is detected (a merge); dismissing it
        persists on the device and it is never re-prompted
        (no notification spam).
-     - Client ID is BYO (device slot), circuit-broken: a blank
-       client ID or an offline GIS load degrades to a toast,
-       never an error.
+     - Client ID is the SHARED public ID (mmgr-google-auth.js /
+       worker.js) — the old BYO "paste your client ID" requirement
+       is gone (OWNER 2026-08-15). A legacy mmgr_sync_clientid
+       device slot still overrides when present. An offline GIS
+       load degrades to a toast, never an error.
      - Identity is never a data-access gate: merge / save /
        load / CRUD all work identically signed out or in.
    Exit 0 only when every contract holds.
@@ -82,14 +84,16 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
   await ev('document.querySelector("[data-action=openDrw]").click();'); await delay(300);
   const d1 = await ev(`(function(){
     var sec = document.getElementById('sync-section');
-    return { sec: !!sec, hasConnect: sec ? sec.innerHTML.indexOf('Connect Google') > -1 : false,
+    return { sec: !!sec, hasConnect: sec ? sec.innerHTML.indexOf('Sign in with Google') > -1 : false,
+      noByoField: sec ? sec.innerHTML.indexOf('Google OAuth Client ID') === -1 : false,
       suggest: sec ? (sec.querySelector('.sync-suggest') ? true : false) : false };
   })()`);
-  check('S04 ui: sync section renders in drawer with Connect button, NO suggestion yet', d1.sec && d1.hasConnect && d1.suggest === false, d1);
+  check('S04 ui: sync section renders in drawer with Sign-in button, NO BYO client-ID field, NO suggestion yet', d1.sec && d1.hasConnect && d1.noByoField && d1.suggest === false, d1);
 
   // ---- 2. GIS lazy load + credential -> device label --------------------
-  // Mock GIS in-page (headless has no real Google): a blank client ID must
-  // circuit-break cleanly (toast, no throw, no crash).
+  // Mock GIS in-page (headless has no real Google): a blank BYO slot falls
+  // back to the SHARED public Client ID (the same one the main site uses) —
+  // signing in from the project works with no per-device paste.
   const c1 = await ev(`(async function(){
     window.google = { accounts: { id: {
       initialize: function(cfg){ window.__gcfg = cfg; },
@@ -97,9 +101,10 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
     } } };
     window.MMGR.Sync.setClientId('');
     var r = await window.MMGR.Sync.connect();
-    return { ok: r, noCrash: true };
+    var shared = (window.MMGR.GoogleAuth && window.MMGR.GoogleAuth.CLIENT_ID) || null;
+    return { ok: r, noCrash: true, cfgClientId: window.__gcfg ? window.__gcfg.client_id : null, shared: shared };
   })()`);
-  check('S05 gis: blank client ID -> circuit-broken false, no throw', c1.ok === false && c1.noCrash, c1);
+  check('S05 gis: blank BYO slot -> shared public client ID used (no paste needed)', c1.ok === true && c1.cfgClientId === c1.shared && !!c1.shared && c1.noCrash, c1);
 
   // Set a BYO client ID (device slot) and connect with the mock: initialize
   // + renderButton must be driven with the client id.
@@ -136,7 +141,7 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
     var idAfter = window.MMGR.Sync.getIdentity();
     window.MMGR.Sync.renderSyncSection();
     var sec2 = document.getElementById('sync-section');
-    var hasConnectAfter = sec2 ? sec2.innerHTML.indexOf('Connect Google') > -1 : false;
+    var hasConnectAfter = sec2 ? sec2.innerHTML.indexOf('Sign in with Google') > -1 : false;
     return { showsEmail: showsEmail, cleared: idAfter === null, connectBack: hasConnectAfter };
   })()`);
   check('S09 signout: UI shows signed-in identity, signOut clears label, Connect returns', c4.showsEmail && c4.cleared && c4.connectBack, c4);

@@ -85,7 +85,10 @@ const PRELOAD = `(function(){
   const b1 = await ev(`(function(){
     var btn = document.getElementById('google-signin-button');
     var chip = document.getElementById('google-user-chip');
-    var bar = document.querySelector('.auth-bar');
+    // The launcher's sign-in moved from a .auth-bar strip into the #siom
+    // sheet (NEW-UI-CREATION-BRIEF I1, 2026-08-14) — the mount points inside
+    // it ARE the auth bar now.
+    var bar = document.getElementById('siom');
     return { mod: !!(window.MMGR && window.MMGR.GoogleAuth), btn: !!btn, chip: !!chip,
       chipHidden: chip ? chip.hidden : null, barInDoc: !!bar };
   })()`);

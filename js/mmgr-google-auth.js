@@ -45,6 +45,7 @@ var MMGR = window.MMGR || {};
   const GIS_SRC = 'https://accounts.google.com/gsi/client';  let _gisInit = false;   // GIS initialized exactly once
   let _restored = false;  // /api/auth/me consulted at most once per boot
   let _popupWarnShown = false; // BUG-2: popup-blocked warning shown at most once
+  let _user = null;  // signed-in operator (session restore, Google, or email) — display-only, never gates anything
 
   function $(id) { return document.getElementById(id); }
   function gisReady() { return !!(window.google && window.google.accounts && window.google.accounts.id); }
@@ -109,10 +110,14 @@ var MMGR = window.MMGR || {};
   }
 
   function showButton() {
+    _user = null;
     const btn = $('google-signin-button');
     const chip = $('google-user-chip');
     if (btn) btn.hidden = false;
     if (chip) chip.hidden = true;
+    // OWNER 2026-08-15: project.html header chip hides when signed out.
+    const hc = $('hdr-signin');
+    if (hc) hc.hidden = true;
     // Signed out -> the email+password alternative is available again, and
     // the form returns to LOGIN mode (signing back in is the common intent
     // after a sign-out; register stays one click away).
@@ -148,6 +153,15 @@ var MMGR = window.MMGR || {};
     // restore, Google, email) so a page without a chip (the marketing
     // sign-in sheet) can render its own signed-in state. App pages listen
     // to mmgr:google-signed-in and ignore this event.
+    _user = user;
+    // OWNER 2026-08-15: project.html header chip — a compact "Signed in"
+    // indicator next to the "Not backed up" control. Clicking it opens the
+    // Settings drawer at the Controls tab (where sign-in/sign-out live).
+    const hc = $('hdr-signin');
+    if (hc) {
+      hc.hidden = false;
+      hc.title = 'Signed in as ' + (user.email || user.name || user.sub || 'Operator');
+    }
     document.dispatchEvent(new CustomEvent('mmgr:user-changed', { detail: user }));
     if (!chip) return;
     chip.hidden = false;
@@ -1101,8 +1115,23 @@ var MMGR = window.MMGR || {};
     startAutoTimer();
   }
 
+  // OWNER 2026-08-15: the project.html "Signed in" chip opens the Settings
+  // drawer at the Controls tab (the sign-in section). Zero inline handlers.
+  function wireHeaderChip() {
+    const hc = $('hdr-signin');
+    if (!hc || hc.getAttribute('data-wired') === '1') return;
+    hc.setAttribute('data-wired', '1');
+    hc.addEventListener('click', function() {
+      const od = document.querySelector('[data-action="openDrw"]');
+      if (od) { try { od.click(); } catch (e) { /* optional */ } }
+      const tab = document.querySelector('[data-action="swDtab"][data-tab="ctrl"]');
+      if (tab) { try { tab.click(); } catch (e) { /* optional */ } }
+    });
+  }
+
   function boot() {
     mountEmailAuth();
+    wireHeaderChip();
     wireDriveControls();
     // The GIS script tag is async+defer in the page head, so it may still be
     // loading. Initialize the moment it's present; if it never loads
@@ -1135,6 +1164,10 @@ var MMGR = window.MMGR || {};
     initGIS: initGIS,
     restoreSession: restoreSession,
     handleCredentialResponse: handleCredentialResponse,
+    // OWNER 2026-08-15: session state getters (display-only) so other
+    // modules (mmgr-sync) and the header chip can reflect real sign-in.
+    getUser: function() { return _user; },
+    isSignedIn: function() { return !!_user; },
     signOut: signOut,
     // EMAIL + PASSWORD (deferred cloud item #14, completed 2026-08-12)
     emailLogin: emailLogin,

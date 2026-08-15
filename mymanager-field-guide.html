@@ -211,6 +211,7 @@ ul,ol{list-style:none;}
 .signin-sheet .email-auth-err{font-size:.76rem;color:#ff9d9d;}
 .signin-sheet .email-auth-note{font-size:.76rem;color:var(--text-dimmer);line-height:1.5;}
 .signin-sheet .signin-user{display:flex;flex-direction:column;gap:8px;align-items:flex-start;}
+.signin-sheet .signin-user[hidden]{display:none;}
 .signin-sheet .signin-user-name{font-size:.9rem;font-weight:700;color:var(--text);}
 .signin-sheet .signin-user-sub{font-size:.76rem;color:var(--text-dimmer);word-break:break-all;}
 .signin-sheet .signin-out{
@@ -581,7 +582,7 @@ footer{padding:70px 64px 46px;position:relative;}
       </div>
       <div class="brand-tblock">
         <div><b>Drawn for</b>V3.3.8</div>
-        <div><b>Sheets</b>21</div>
+        <div><b>Sheets</b>24</div>
         <div><b>Scale</b>As noted</div>
         <div><b>Status</b>Current</div>
       </div>
@@ -635,10 +636,12 @@ footer{padding:70px 64px 46px;position:relative;}
         <a class="nav-link" href="#interface"><span class="idx">A-17</span>Interface &amp; Shortcuts</a>
         <a class="nav-link" href="#trouble"><span class="idx">A-18</span>When Something Looks Off</a>
         <a class="nav-link" href="#faq"><span class="idx">A-19</span>FAQ</a>
-      </div>
-      <div class="nav-group">
+      </div>        <div class="nav-group">
         <div class="nav-group-label">Projects &amp; Admin</div>
         <a class="nav-link" href="#projects-admin"><span class="idx">A-20</span>Projects, Admin &amp; Create Your Own</a>
+        <a class="nav-link" href="#bids-compliance"><span class="idx">A-21</span>Bids, Compliance &amp; Go/No-Go</a>
+        <a class="nav-link" href="#rfi-field-metrics"><span class="idx">A-22</span>RFIs, Submittals &amp; Field Metrics</a>
+        <a class="nav-link" href="#registers-compliance"><span class="idx">A-23</span>Registers, Compliance &amp; Handover</a>
       </div>
     </nav>
   </aside>
@@ -1486,15 +1489,104 @@ Date: ____________  Focus: ____________</pre>
       </div>
     </section>
 
+    <!-- ============ A-21 BIDS, COMPLIANCE & GO/NO-GO ============ -->
+    <section class="sheet reveal" id="bids-compliance">
+      <div class="tblock">
+        <div class="tblock-left"><span class="sheet-no">A-21</span><h2>Bids, Compliance &amp; Go/No-Go</h2></div>
+        <div class="tblock-right"><div><b>Scale</b>1 : 1 detail</div></div>
+      </div>
+      <span class="kicker">Pre-award rigor and proof-of-cover — all on the Stakeholders &amp; Budget panels, zero third-party setup</span>
+      <p class="lede">Four market-research features shipped together in the Stakeholders and Budget panels: subcontractor prequalification tracking (COI/license expiry and EMR staleness), lien-waiver status on budget lines, side-by-side bid leveling, and Go/No-Go opportunity scoring — plus an AI claim-compliance check. None of them need an account, an API key, or a subscription.</p>
+
+      <div class="grid grid-3">
+        <div class="card bracket"><span class="cnum">A1</span><h4>Prequalification tracking</h4><p>Every Stakeholder row now carries <strong>COI Expiry</strong>, <strong>License Expiry</strong>, <strong>EMR</strong> and <strong>EMR Verified</strong> columns. A date within the next 30 days turns red and gains a <strong>soon</strong> badge; an EMR with no verification date (or one older than a year) reads <strong>stale</strong>. The Stakeholders tab shows a red count pill when anything is due, and the Dashboard's Project Health card adds a <strong>Compliance Expiring</strong> line — the insurance-certificate pain point, surfaced before it bites.</p></div>
+        <div class="card bracket"><span class="cnum">A2</span><h4>Lien-waiver status</h4><p>The Budget table gains <strong>Waiver Status</strong> (pending / conditional / unconditional / not required) and <strong>Waiver Received</strong> date columns, plus a Lien Waivers rollup line under the summary cards counting received / pending / not-required. Note: the labels follow US construction convention — the Jamaica-specific legal mapping (roadmap B7) is still pending legal review, so treat the categories as tracking buckets, not legal advice.</p></div>
+        <div class="card bracket"><span class="cnum">A3 + A4</span><h4>Bid leveling &amp; Go/No-Go</h4><p>The Stakeholders panel now hosts two extra cards. <strong>Bid Leveling</strong> groups subcontractor quotes into packages (vendor, amount, scope notes, qualified?) and flags the <strong>lowest</strong> bid and any <strong>scope gap</strong> — different-scope bids are never presented as directly comparable. <strong>Go / No-Go Scorecard</strong> scores an opportunity against criteria (Yes / Maybe / No) and shows a live verdict: 75%+ GO, 50%+ REVIEW, below NO-GO.</p></div>
+      </div>
+
+      <h3 class="h-sub">Claim compliance check</h3>
+      <div class="flow">
+        <div class="flow-item"><div class="flow-num"></div><div class="flow-body"><h4>Open the AI window, Presets tab</h4><p>The new <strong>Claim Compliance</strong> chip sits beside Claim Pack. It reviews the assembled claim package against a standard five-element checklist: delay narrative, supporting evidence references, cost impact breakdown, contractual basis, and requested relief — reporting each as present, missing, or unclear.</p></div></div>
+        <div class="flow-item"><div class="flow-num"></div><div class="flow-body"><h4>No key? Still works</h4><p>On the zero-key Local tier it runs a deterministic element audit of the same evidence the Claim Pack preset reads — slips, LD rollup, weather log, changes, decisions — and tells you honestly what is missing. On the Cloud tier the model writes the full element-by-element review.</p></div></div>
+        <div class="flow-item"><div class="flow-num"></div><div class="flow-body"><h4>Same evidence, never invented</h4><p>Both tiers read the same state fields the Claim Pack uses, so the compliance check and the claim draft can never disagree — and neither ever fabricates dates, amounts, or causes.</p></div></div>
+      </div>
+
+      <div class="divider-note">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 8V12M12 16H12.01M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="currentColor" stroke-width="2"/></svg>
+        <p><strong>Tracked locally, decided with evidence.</strong> Every field here is plain project state — exportable, offline-first, and backward-compatible with existing records. Empty fields simply don't flag; nothing nags until a real date or missing verification makes it true.</p>
+      </div>
+    </section>
+
+    <!-- ============ A-22 RFIs, SUBMITTALS & FIELD METRICS ============ -->
+    <section class="sheet sheet-alt reveal" id="rfi-field-metrics">
+      <div class="tblock">
+        <div class="tblock-left"><span class="sheet-no">A-22</span><h2>RFIs, Submittals &amp; Field Metrics</h2></div>
+        <div class="tblock-right"><div><b>Scale</b>1 : 1 detail</div></div>
+      </div>
+      <span class="kicker">Baseline communication workflows and the numbers that tell the field truth</span>
+      <p class="lede">Five core-competitor features shipped as plain in-app registers and dashboard cards — RFI tracking, submittal approvals, a dedicated punch list, a 2-week lookahead, and the lean Percent Plan Complete metric. All zero-dependency: they run on task/dates/status data already in the project, with no account or API key.</p>
+
+      <div class="grid grid-3">
+        <div class="card bracket"><span class="cnum">C1</span><h4>RFI Register</h4><p>In the <strong>Documents</strong> panel. Every Request for Information gets a lifecycle — open → routed → responded → closed — plus From / To, issued and due dates, the question, the response, and a <strong>Ball in Court</strong> field naming whose turn it is. The register header counts open vs closed. That "verbal clarification" that loses disputes now has its paper trail.</p></div>
+        <div class="card bracket"><span class="cnum">C2</span><h4>Submittal Register</h4><p>Beside the RFIs, also in <strong>Documents</strong>. Material and shop-drawing approvals track item, trade, submitted-to, submitted and response dates, and an approval status: pending → review → approved / approved-with-comments / rejected. Distinct from RFIs on purpose — approvals are not questions.</p></div>
+        <div class="card bracket"><span class="cnum">C3</span><h4>Punch List</h4><p>A dedicated card at the top of the <strong>Closure</strong> panel, separate from the simple closeout checklist. Each punch item carries a <strong>location</strong> (e.g. Level 2, Room 204), an <strong>assigned to</strong>, a category (Defect / Snag / Touch-up / Safety / Other), a priority, and an open → in progress → done status. The card header shows done vs open at a glance.</p></div>
+      </div>
+
+      <h3 class="h-sub">Field metrics on the Dashboard</h3>
+      <div class="flow">
+        <div class="flow-item"><div class="flow-num"></div><div class="flow-body"><h4>2-Week Lookahead</h4><p>Right under Today's Focus. Every open task starting or finishing in the next 14 days, grouped as Overdue Carryover / This Week / Next Week, with assignee and weather-exposed flags and a status dropdown so you can flip a task to done without leaving the view — the short-horizon "what's actually happening next" the field needs, distinct from the full Gantt.</p></div></div>
+        <div class="flow-item"><div class="flow-num"></div><div class="flow-body"><h4>Percent Plan Complete (PPC)</h4><p>Beside the lookahead. The lean metric: of the tasks planned to finish this week (by end date), how many are actually completed — shown as a big percentage with a four-week history of bars. Overdue carryover from earlier weeks is called out, and the card states its basis honestly: end-date-in-week vs completion status. No planned work that week shows a dash, never a fabricated 0%.</p></div></div>
+        <div class="flow-item"><div class="flow-num"></div><div class="flow-body"><h4>No new setup</h4><p>All five features read data you already keep — task dates and statuses, documents, closeout. Empty registers just show an empty state and a + button; nothing nags until you add rows.</p></div></div>
+      </div>
+
+      <div class="divider-note">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M9 6H20M9 12H20M9 18H20" stroke="currentColor" stroke-width="2"/><path d="M4 6L5 7L7 5M4 12L5 13L7 11M4 18L5 19L7 17" stroke="currentColor" stroke-width="2"/></svg>
+        <p><strong>Same workspace, one more layer of rigor.</strong> RFIs and submittals give the communication workflow a register; the punch list keeps closeout defects honest; lookahead and PPC turn the schedule into a weekly commitment you can measure — all offline-first, all in your existing project file.</p>
+      </div>
+    </section>
+
+    <!-- ============ A-23 REGISTERS, COMPLIANCE & HANDOVER ============ -->
+    <section class="sheet reveal" id="registers-compliance">
+      <div class="tblock">
+        <div class="tblock-left"><span class="sheet-no">A-23</span><h2>Registers, Compliance &amp; Handover</h2></div>
+        <div class="tblock-right"><div><b>Scale</b>1 : 1 detail</div></div>
+      </div>
+      <span class="kicker">Every remaining zero-setup register: money, inspections, incidents, paperwork, handover</span>
+      <p class="lede">Ten more core-competitor features shipped as plain in-app registers and dashboard cards — the ball-in-court rollup, a drawing distribution log, committed cost, pay applications, inspection checklists, an incident corrective-action loop, a handover package, a warranty tracker, a permit register, and one dashboard that watches every expiry. All zero-dependency, all offline-first, all reading data already in the project.</p>
+
+      <div class="grid grid-3">
+        <div class="card bracket"><span class="cnum">C12</span><h4>Committed Cost</h4><p>In the <strong>Budget</strong> panel. Every line gains its own <strong>Committed</strong> figure — the contractual bucket distinct from planned and spent. Leave it blank and it tracks the plan; set it to zero for a planning-stage line that isn't a commitment yet. The summary card shows the committed total and the <strong>committed-but-not-spent</strong> gap underneath.</p></div>
+        <div class="card bracket"><span class="cnum">C13</span><h4>Pay Applications</h4><p>Below the budget table. A draw-request register with a <strong>Generate from live spend</strong> button that drafts the current period's pay app at the exact figure the Budget panel shows — never hand-typed twice. Walk each one draft → submitted → approved, with submitted and approved dates on file.</p></div>
+        <div class="card bracket"><span class="cnum">C16</span><h4>Inspection Checklists</h4><p>In the <strong>Risk / Issues</strong> panel. Trade and phase inspections with their own pass/fail item rows — check every item and the inspection auto-advances to <strong>passed</strong>; fail one and it reopens. Deliberately separate from DMAIC (continuous improvement) and from the task list.</p></div>
+        <div class="card bracket"><span class="cnum">C17</span><h4>Incident Register</h4><p>Beside the inspections, same panel. Quality and safety incidents walk a corrective-action loop: open → investigation → action → closed. Closing stamps the date; root cause and corrective action ride along so an incident can't be marked done without the loop on record.</p></div>
+        <div class="card bracket"><span class="cnum">C6</span><h4>Ball in Court</h4><p>Top of the <strong>Documents</strong> panel. One cross-module rollup of every open RFI, submittal, and issue with the person whose action is awaited, sorted by due date — the "whose turn is it" answer across the whole project, not module by module.</p></div>
+        <div class="card bracket"><span class="cnum">C11</span><h4>Drawing Distribution Log</h4><p>In <strong>Documents</strong>. Who received which drawing revision, when, and by what method (email / print / portal / hand) — the trail that keeps version disputes honest.</p></div>
+        <div class="card bracket"><span class="cnum">C30</span><h4>Permit Register</h4><p>Also in <strong>Documents</strong>. Permit numbers, types, agencies, issue and expiry dates, and a status walk applied → active → expiring → expired. Active permits that are running down get a days-left flag right in the row.</p></div>
+        <div class="card bracket"><span class="cnum">C18</span><h4>Handover Package</h4><p>In the <strong>Closure</strong> panel. The bundled O&amp;M manual / warranty / as-built / certificate / sign-off package, each item walking required → ready → filed. The roadmap's closeout-package ask, separate from the simple checklist.</p></div>
+        <div class="card bracket"><span class="cnum">C26</span><h4>Warranty Tracker</h4><p>Beside the handover package. Warranty periods with start and end dates and a live <strong>time-left</strong> badge — green while healthy, amber inside 60 days, red once it lapses. Feeds the expiry rollup below.</p></div>
+      </div>
+
+      <h3 class="h-sub">The expiry dashboard</h3>
+      <div class="flow">
+        <div class="flow-item"><div class="flow-num"></div><div class="flow-body"><h4>Expiry &amp; Renewals</h4><p>On the <strong>Dashboard</strong>. One card watches everything with a date on it — subcontractor COI and license expiries, EMR re-verification staleness, warranty end dates, and permit expiries — anything due inside 60 days (or already past), each with a days-left badge. Nothing due, the card hides itself entirely.</p></div></div>
+        <div class="flow-item"><div class="flow-num"></div><div class="flow-body"><h4>Same-file rigor</h4><p>All ten features live in the existing project file — same export, same backup, same cloud sync, same offline behavior as every other panel. Nothing nags until a real date or a real row makes it true.</p></div></div>
+      </div>
+
+      <div class="divider-note">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 8V12M12 16H12.01M21 12C21 16.97 16.97 21 12 21C7.03 21 3 16.97 3 12C3 7.03 7.03 3 12 3C16.97 3 21 7.03 21 12Z" stroke="currentColor" stroke-width="1.6"/></svg>
+        <p><strong>Compliance you can see, paperwork you can hand over.</strong> The registers turn money, inspections, incidents, drawings, permits and warranties into plain editable rows; the expiry dashboard turns them into one honest look-ahead. All of it stays in your project file.</p>
+      </div>
+    </section>
+
     <!-- ============ CLOSING CTA BAND ============ -->
     <!-- Local photo (completed kitchen) — the finished job. -->
     <div class="band reveal" style="min-height:420px">
       <div class="band-bg" style="background-image:url('images/completed-kitchen.webp')"></div>
       <div class="band-overlay"></div>
       <div class="band-content" style="max-width:680px">
-        <span class="kicker">Sheet A-20 and beyond</span>
+        <span class="kicker">Sheet A-23 and beyond</span>
         <h3>This index has room for what's next.</h3>
-        <p>New panels and features get their own sheet, numbered and slotted in — the guide grows the same way the app does. Twenty-one sheets so far, from Welcome (A-00) through Projects, Admin &amp; Create Your Own (A-20). For now: open My MaNaGeR in the next tab over, start with the Charter, and keep this page bookmarked.</p>
+        <p>New panels and features get their own sheet, numbered and slotted in — the guide grows the same way the app does. Twenty-four sheets so far, from Welcome (A-00) through Registers, Compliance &amp; Handover (A-23). For now: open My MaNaGeR in the next tab over, start with the Charter, and keep this page bookmarked.</p>
         <div class="hero-cta" style="margin-top:28px">
           <a href="#top" class="btn btn-brass">Back to the top ↑</a>
           <a href="#quickstart" class="btn btn-ghost">Revisit Quick Start</a>
@@ -1507,7 +1599,7 @@ Date: ____________  Focus: ____________</pre>
       <div class="footer-grid">
         <div class="footer-brand">
           <h4>My MaNaGeR — Field Guide</h4>
-          <p>An unofficial companion guide to the My MaNaGeR workspace — twenty-one sheets, one per panel or workflow, built to sit open in a second tab while you learn the app.</p>
+          <p>An unofficial companion guide to the My MaNaGeR workspace — twenty-four sheets, one per panel or workflow, built to sit open in a second tab while you learn the app.</p>
         </div>
         <div class="footer-cols">
           <div class="footer-col">
@@ -1531,6 +1623,9 @@ Date: ____________  Focus: ____________</pre>
             <a href="#data">A-15 Data &amp; Backup</a>
             <a href="#faq">A-19 FAQ</a>
             <a href="#projects-admin">A-20 Projects &amp; Admin</a>
+            <a href="#bids-compliance">A-21 Bids &amp; Compliance</a>
+            <a href="#rfi-field-metrics">A-22 RFIs &amp; Field Metrics</a>
+            <a href="#registers-compliance">A-23 Registers &amp; Handover</a>
           </div>
           <div class="footer-col">
             <b>Site</b>

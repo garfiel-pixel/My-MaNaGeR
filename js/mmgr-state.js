@@ -607,7 +607,14 @@ var MMGR = window.MMGR || {};
   // the current updatedAt (plus nested charter keys — those are edited as
   // subfields). The merge module (MMGR.Merge) reads these to decide
   // last-write-wins per field instead of replacing the whole document.
-  const FIELD_KEYS = ['projectName', 'methodology', 'workWeek', 'theme', 'crosshairOn', 'userName', 'charter', 'tasks', 'meetings', 'meetingPromises', 'activeMeeting', 'resources', 'budgetLines', 'budgetEnvelope', 'spendLog', 'stakeholders', 'risks', 'issues', 'changes', 'logEntries', 'commsEntries', 'documents', 'closure', 'raci', 'sprint', 'dailySnapshots', 'dmaic', 'baseline', 'weatherRegion', 'siteLat', 'siteLon', 'sitePlace', 'wxCache', 'weatherLog', 'ldRate', 'wxViewDays', 'wxWindow', 'kbShowLeadtime', 'hlCritical', 'dailySnapshot', 'focusMode', 'streak', 'sentimentHistory', 'scheduleSlips', 'slipCauses', 'digestSnapshot', 'aiOutputs', 'packs', 'packsCalloutDismissed', 'packsEverEnabled'];
+  const FIELD_KEYS = ['projectName', 'methodology', 'workWeek', 'theme', 'crosshairOn', 'userName', 'charter', 'tasks', 'meetings', 'meetingPromises', 'activeMeeting', 'resources', 'budgetLines', 'budgetEnvelope', 'spendLog', 'stakeholders', 'risks', 'issues', 'changes', 'logEntries', 'commsEntries', 'documents', 'closure', 'raci', 'sprint', 'dailySnapshots', 'dmaic', 'baseline', 'weatherRegion', 'siteLat', 'siteLon', 'sitePlace', 'wxCache', 'weatherLog', 'ldRate', 'wxViewDays', 'wxWindow', 'kbShowLeadtime', 'hlCritical', 'dailySnapshot', 'focusMode', 'streak', 'sentimentHistory', 'scheduleSlips', 'slipCauses', 'digestSnapshot', 'aiOutputs', 'packs', 'packsCalloutDismissed', 'packsEverEnabled',
+    // MARKET-FEATURE-ROADMAP Section C registries (C1/C2/C3 shipped in
+    // batch 1 — these were missing from the whitelist, so their per-field
+    // timestamps were never stamped and cloud-merge conflict resolution
+    // could silently drop an editor's RFI/Submittal/Punch edits; C13/C16/
+    // C17/C18/C26/C30/C11 registries ship in batch 2).
+    'rfis', 'submittals', 'punchList', 'payApps', 'inspections', 'incidents',
+    'handover', 'warrantyItems', 'permits', 'drawingLog'];
   let _lastSaveFingerprint = null;
 
   function fingerprintOf(s) {

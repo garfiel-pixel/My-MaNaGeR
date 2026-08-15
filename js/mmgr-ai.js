@@ -81,7 +81,8 @@ var MMGR = window.MMGR || {};
     gendates: 'Generate Dates',
     daily: 'Daily Field Report',
     claim: 'Claim Pack',
-    email: 'Stakeholder Email'
+    email: 'Stakeholder Email',
+    complianceCheck: 'Claim Compliance'
   };
 
   // Rank 2.3 tier metadata — shown in the AI window settings row.
@@ -846,6 +847,41 @@ var MMGR = window.MMGR || {};
         text: base + '\n\n(Static template from My MaNaGeR — run the Cloud tier for an AI-polished stakeholder email.)',
         trace: TRACE.fields.slice()
       };
+    },
+    // MARKET-FEATURE-ROADMAP A7: zero-key local tier for the compliance check.
+    // Deterministic element-by-element audit of the assembled claim-pack data
+    // — no model call, zero fabrication. Each element is PRESENT / MISSING /
+    // N/A judged only from real state fields.
+    complianceCheck: function(s) {
+      TRACE.fields = [];
+      _t('Claim.computeSlips(s)'); _t('Claim.ldRollup(s)'); _t('weatherLog');
+      _t('changes[].status'); _t('logEntries');
+      const L = ['CLAIM PACKAGE COMPLIANCE CHECK (local engine)'];
+      const slips = (ns.Claim && ns.Claim.computeSlips) ? (ns.Claim.computeSlips(s) || []) : [];
+      const ld = (ns.Claim && ns.Claim.ldRollup) ? ns.Claim.ldRollup(s) : null;
+      const weatherLog = (s.weatherLog || []).length;
+      const pendingChg = (s.changes || []).filter(c => c.status === 'submitted' || c.status === 'review').length;
+      const decLog = (s.logEntries || []).length;
+      // 1. Delay narrative — slips with a cause tag are the narrative core.
+      const narrative = slips.filter(x => x.cause && x.cause !== 'unknown').length;
+      L.push(narrative ? '1. DELAY NARRATIVE — PRESENT (' + narrative + ' cause-tagged slip' + (narrative === 1 ? '' : 's') + ')'
+        : '1. DELAY NARRATIVE — MISSING (no cause-tagged schedule slips captured; record slip causes in the Claim Pack tab)');
+      // 2. Supporting evidence references — weather log / changes / decisions.
+      const evidence = (weatherLog > 0 ? 1 : 0) + (pendingChg > 0 ? 1 : 0) + (decLog > 0 ? 1 : 0);
+      L.push(evidence >= 2 ? '2. SUPPORTING EVIDENCE — PRESENT (weather log ' + weatherLog + ', pending changes ' + pendingChg + ', decisions ' + decLog + ')'
+        : '2. SUPPORTING EVIDENCE — ' + (evidence === 0 ? 'MISSING' : 'THIN') + ' (only ' + evidence + ' of 3 evidence types present: weather log ' + weatherLog + ', changes ' + pendingChg + ', decisions ' + decLog + ' — add the missing ones)');
+      // 3. Cost impact breakdown — LD rollup with both buckets.
+      L.push(ld && (ld.incurredLd > 0 || ld.avoidedLd > 0)
+        ? '3. COST IMPACT — PRESENT (LD ' + fmt$(ld.incurredLd || 0) + ' exposure / ' + fmt$(ld.avoidedLd || 0) + ' defensible)'
+        : '3. COST IMPACT — MISSING (no LD exposure computed; set an LD rate in the Budget panel and tag slip causes)');
+      // 4. Contractual basis — no state field exists; honest N/A.
+      L.push('4. CONTRACTUAL BASIS — N/A locally (no contract-terms field exists yet; the Cloud tier can assess a pasted contract basis)');
+      // 5. Requested relief — the claim narrative draft is the ask.
+      L.push('5. REQUESTED RELIEF — see the Claim Pack preset: draft the explicit ask (EoT / LD waiver / amount) once 1-3 are present');
+      const present = (narrative ? 1 : 0) + (evidence >= 2 ? 1 : 0) + (ld && (ld.incurredLd > 0 || ld.avoidedLd > 0) ? 1 : 0);
+      L.push('');
+      L.push('VERDICT: ' + (present >= 3 ? 'ready to draft — run the Cloud tier for the full element-by-element review.' : (present === 2 ? 'nearly ready — close the one gap above, then run the Cloud tier.' : 'not submission-ready — ' + (3 - present) + ' of 3 core elements missing; fix the gaps above first.')));
+      return { text: L.join('\n'), trace: TRACE.fields.slice() };
     }
   };
 

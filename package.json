@@ -10,7 +10,8 @@
     "verify:csp": "node tools/verify-csp-hashes.cjs",
     "verify:sw": "node tools/verify-sw-cache.cjs",
     "verify:skills": "node tools/verify-skills-lock.cjs",
-    "verify": "npm run verify:csp && npm run verify:sw && npm run verify:skills",
+    "verify:hidden": "node tools/verify-hidden-attr.cjs",
+    "verify": "npm run verify:csp && npm run verify:sw && npm run verify:hidden && npm run verify:skills",
     "qa:cloud": "node tools/qa-cloud-phase1.cjs",
     "qa:cloud-import": "node tools/qa-cloud-import.cjs",
     "qa:changelog-diffs": "node tools/qa-changelog-diffs.cjs",
@@ -21,6 +22,7 @@
     "qa:rank9-api": "node tools/qa-rank9-api.cjs",
     "qa:email-auth": "node tools/qa-email-auth.cjs",
     "qa:report-issue": "node tools/verify-report-issue.cjs",
+    "qa:market-features": "node tools/qa-market-features.cjs",
     "import:mcp": "node tools/import-mcp-changelog.cjs",
     "predeploy": "npm run verify",
     "deploy": "npm run predeploy && npx wrangler deploy"

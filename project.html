@@ -158,7 +158,7 @@
     <button class="sec-btn" data-action="showSec" data-section="bud" data-pack="money"><svg class="ic-svg" viewBox="0 0 24 24" fill="none"><path d="M21 7H3V17H21V7Z" stroke="#D4AF37" stroke-width="2" stroke-linejoin="round"/><path d="M17 10H7" stroke="#D4AF37" stroke-width="2"/><path d="M3 7L12 12L21 7" stroke="#D4AF37" stroke-width="2"/></svg>Budget</button>
     </div>
     <div class="nav-group"><span class="nav-group-label">Governance</span>
-    <button class="sec-btn" data-action="showSec" data-section="stk" data-pack="governance"><svg class="ic-svg" viewBox="0 0 24 24" fill="none"><circle cx="9" cy="8" r="3" stroke="#3B82F6" stroke-width="2"/><path d="M3 20C3 16.5 5.5 14 9 14C12.5 14 15 16.5 15 20" stroke="#3B82F6" stroke-width="2"/><circle cx="17" cy="7" r="2.3" stroke="#3B82F6" stroke-width="2"/><path d="M14.5 13.2C17.5 13.6 20 15.7 20 19" stroke="#3B82F6" stroke-width="2"/></svg>Stakeholders</button>
+    <button class="sec-btn" data-action="showSec" data-section="stk" data-pack="governance"><svg class="ic-svg" viewBox="0 0 24 24" fill="none"><circle cx="9" cy="8" r="3" stroke="#3B82F6" stroke-width="2"/><path d="M3 20C3 16.5 5.5 14 9 14C12.5 14 15 16.5 15 20" stroke="#3B82F6" stroke-width="2"/><circle cx="17" cy="7" r="2.3" stroke="#3B82F6" stroke-width="2"/><path d="M14.5 13.2C17.5 13.6 20 15.7 20 19" stroke="#3B82F6" stroke-width="2"/></svg>Stakeholders<span class="sec-badge is-hide" title="Stakeholder compliance expiring within 30 days">0</span></button>
     <button class="sec-btn" data-action="showSec" data-section="chg" data-pack="governance"><svg class="ic-svg" viewBox="0 0 24 24" fill="none"><path d="M4 12C4 7.6 7.6 4 12 4C15 4 17.6 5.7 19 8.2M20 12C20 16.4 16.4 20 12 20C9 20 6.4 18.3 5 15.8" stroke="#F59E0B" stroke-width="2" stroke-linecap="round"/><path d="M19 4V8.2H14.8M5 20V15.8H9.2" stroke="#F59E0B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Changes</button>
     <button class="sec-btn" data-action="showSec" data-section="log" data-pack="governance"><svg class="ic-svg" viewBox="0 0 24 24" fill="none"><path d="M9 6H20M9 12H20M9 18H20" stroke="#D4AF37" stroke-width="2" stroke-linecap="round"/><path d="M4 6L5 7L7 5" stroke="#D4AF37" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 12L5 13L7 11" stroke="#D4AF37" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 18L5 19L7 17" stroke="#D4AF37" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Decision Log</button>
     <button class="sec-btn" data-action="showSec" data-section="risk" data-pack="governance"><svg class="ic-svg" viewBox="0 0 24 24" fill="none"><path d="M12 8V12M12 16H12.01M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="#EF4444" stroke-width="2"/></svg>Risk / Issues</button>
@@ -223,6 +223,7 @@
           <div class="fb-sm"><span>Completed</span><span class="badge bo" id="h-dn">0</span></div>
           <div class="fb-sm"><span>Overdue</span><span class="badge br" id="h-od">0</span></div>
           <div class="fb-sm"><span>Live Issues</span><span class="badge br" id="h-is">0</span></div>
+          <div class="fb-sm"><span>Compliance Expiring</span><span class="badge br" id="h-coi">0</span></div>
         </div>
         <!-- Weighted Health Score (MONOLITH-PORTING-GUIDE feature 1) -->
         <div class="health-section">
@@ -279,6 +280,23 @@
     <div class="card mt-lg">
       <div class="card-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-calendar"></use></svg> Today's Focus View<span class="ct-sub" id="today-date-lbl"></span></div>
       <div id="today-body"></div>
+    </div>
+    <!-- Lookahead (MARKET-FEATURE-ROADMAP C7) — 2-week rolling field view -->
+    <div class="card mt-lg" id="lookahead-card">
+      <div class="card-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg> 2-Week Lookahead<span class="ct-sub">What's actually happening next — overdue carryover, this week, next week</span></div>
+      <div id="lookahead-body"></div>
+    </div>
+    <!-- Percent Plan Complete (MARKET-FEATURE-ROADMAP C8) — lean metric -->
+    <div class="card mt-lg" id="ppc-card">
+      <div class="card-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-bar-chart"></use></svg> Percent Plan Complete (PPC)<span class="ct-sub">Planned-to-finish this week vs actually completed — 4-week history</span></div>
+      <div id="ppc-head" class="t78 mb10"></div>
+      <div id="ppc-body"></div>
+    </div>
+    <!-- Expiry & Renewals (MARKET-FEATURE-ROADMAP C29) — one rollup across
+         COI/licenses/EMR, warranties and permits; hidden until something is due. -->
+    <div class="card mt-lg is-hide" id="expiry-card">
+      <div class="card-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-alert-triangle"></use></svg> Expiry &amp; Renewals<span class="ct-sub" id="expiry-count"></span></div>
+      <div id="expiry-body"></div>
     </div>
     <!-- EVM (feature 4) -->
     <div class="card mt-lg" id="evm-card">
@@ -568,10 +586,15 @@
       </div>
       <div class="bud-grid5">
         <div class="card m0a" ><div class="card-title ct-sm" >Budget Envelope</div><div class="stat-md-g" id="bud-envelope-disp">$0</div></div>
-        <div class="card m0a" ><div class="card-title ct-sm" >Committed</div><div class="stat-md" id="bud-committed">$0</div><div class="stat-sm" id="bud-committed-pct">0%</div></div>
+        <div class="card m0a" ><div class="card-title ct-sm" >Committed</div><div class="stat-md" id="bud-committed">$0</div><div class="stat-sm" id="bud-committed-pct">0%</div><div class="stat-sm" id="bud-committed-gap"></div></div>
         <div class="card m0a" ><div class="card-title ct-sm" >Spent</div><div class="stat-md" id="bud-ta">$0</div><div class="stat-sm" id="bud-spent-pct">0%</div></div>
         <div class="card m0a" ><div class="card-title ct-sm" >Remaining</div><div class="stat-md" id="bud-remaining">$0</div><div class="stat-sm" id="bud-remaining-pct">On budget</div></div>
         <div class="card m0a" ><div class="card-title ct-sm" >Unallocated</div><div class="stat-md" id="bud-unallocated">$0</div></div>
+      </div>
+      <!-- MARKET-FEATURE-ROADMAP A2: lien-waiver rollup — one line under the
+           summary cards; hidden until at least one budget line exists. -->
+      <div class="card m0a is-hide" id="bud-waivers-wrap">
+        <div class="card-title ct-sm">Lien Waivers<span class="ct-sub" id="bud-waivers"></span></div>
       </div>
       <div class="card m0a mb14">
         <div class="bud-bar-head">
@@ -591,7 +614,7 @@
       <div class="ox"><table class="dt"><thead><tr>
         <th class="w38">ID</th><th>Category</th><th class="w110">Planned</th><th class="w110">Actual</th>
         <th class="w100">Variance</th><th class="w80">% of Env</th><th class="w90">Task</th><th class="w100">Curve</th>
-        <th class="w60">Contingency</th><th>Notes</th><th class="w50"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> </th>
+        <th class="w60">Contingency</th><th class="w110">Committed</th><th class="w120">Waiver Status</th><th class="w130">Waiver Received</th><th>Notes</th><th class="w50"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> </th>
       </tr></thead><tbody id="bud-body"></tbody></table></div>
       <!-- Cash-Flow S-Curve + Spend Log (MONOLITH-PORTING-GUIDE feature 2) -->
       <div class="card m0a mt16">
@@ -608,6 +631,20 @@
       <div class="card m0a mt16">
         <div class="card-title">Liquidated Damages Rollup<span class="ct-sub">Avoided vs incurred — driven by slip cause tags (Claim Pack tab)</span></div>
         <div id="ld-rollup-body"></div>
+      </div>
+      <!-- Pay Applications (MARKET-FEATURE-ROADMAP C13) — draw requests,
+           generated from live spend or entered manually. -->
+      <div class="card m0a mt16">
+        <div class="card-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-file-text"></use></svg> Pay Applications<span class="ct-sub" id="payapp-sum"></span>
+          <div class="g6">
+            <button class="btn btn-g btn-s" data-action="addPayApp">+ Add Pay App</button>
+            <button class="btn btn-n btn-s" data-action="genPayApp"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-zap"></use></svg> Generate from live spend</button>
+          </div>
+        </div>
+        <div class="ox"><table class="dt"><thead><tr>
+          <th class="w70">Number</th><th class="w110">Period</th><th class="w110">Amount</th><th class="w100">Status</th>
+          <th class="w120">Submitted</th><th class="w120">Approved</th><th>Notes</th><th class="w50"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> </th>
+        </tr></thead><tbody id="payapp-body"></tbody></table></div>
       </div>
       <div class="card m0a mt16">
         <div class="card-title">Spend Log — Dated Actuals<div class="g6"><button class="btn btn-g btn-s" data-action="addSpendEntry">+ Add Spend Entry</button></div></div>
@@ -627,11 +664,36 @@
           <button class="btn btn-n btn-s" data-action="cpAllPage" data-section="stk"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy All</button>
         </div>
       </div>
+      <!-- MARKET-FEATURE-ROADMAP A1: expiring-compliance heads-up (card
+           language per UI doctrine — hidden until something is due). -->
+      <div class="stk-cmp is-hide" id="stk-compliance" role="note">
+        <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-alert-triangle"></use></svg>
+        <span class="stk-cmp-txt"></span>
+      </div>
       <div class="ox"><table class="dt"><thead><tr>
         <th class="w38">ID</th><th>Name</th><th>Role</th>
         <th class="w100">Influence</th><th class="w100">Interest</th>
-        <th>Engagement Strategy</th><th>Contact</th><th class="w60"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> </th>
+        <th>Engagement Strategy</th><th>Contact</th>
+        <th class="w110">COI Expiry</th><th class="w110">License Expiry</th>
+        <th class="w90">EMR</th><th class="w130">EMR Verified</th>
+        <th class="w60"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> </th>
       </tr></thead><tbody id="stk-body"></tbody></table></div>
+    </div>
+    <!-- MARKET-FEATURE-ROADMAP A3: bid leveling — side-by-side sub-bid
+         comparison per package. Rendered by js/mmgr-bids.js. -->
+    <div class="card m0a mt16">
+      <div class="card-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Bid Leveling<span class="ct-sub">Compare subcontractor quotes per package — lowest bid and scope gaps flagged</span>
+        <div class="g6"><button class="btn btn-g btn-s" data-action="bidAdd">+ Add Bid Package</button></div>
+      </div>
+      <div id="bid-body"></div>
+    </div>
+    <!-- MARKET-FEATURE-ROADMAP A4: Go/No-Go bid scoring — scored checklist
+         deciding whether an opportunity is worth pursuing. -->
+    <div class="card m0a mt16">
+      <div class="card-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-target"></use></svg> Go / No-Go Scorecard<span class="ct-sub">Scored criteria — 75%+ GO, 50%+ REVIEW, below NO-GO</span>
+        <div class="g6"><button class="btn btn-g btn-s" data-action="gonogoAdd">+ Add Scorecard</button></div>
+      </div>
+      <div id="gonogo-body"></div>
     </div>
   </div>
 
@@ -702,6 +764,30 @@
         </tr></thead><tbody id="issue-body"></tbody></table></div>
       </div>
     </div>
+    <!-- Inspection Checklists (MARKET-FEATURE-ROADMAP C16) — trade/phase
+         inspection checklists, distinct from DMAIC continuous improvement. -->
+    <div class="card m0a mt16">
+      <div class="card-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-check-circle"></use></svg> Inspection Checklists<span class="ct-sub" id="insp-sum"></span>
+        <div class="g6"><button class="btn btn-g btn-s" data-action="addInspection">+ Add Inspection</button></div>
+      </div>
+      <div class="ox"><table class="dt"><thead><tr>
+        <th class="w50">ID</th><th>Title</th><th class="w90">Trade</th><th class="w100">Area</th>
+        <th class="w110">Date</th><th>Checklist Items</th><th class="w100">Status</th><th class="w50"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> </th>
+      </tr></thead><tbody id="insp-body"></tbody></table></div>
+    </div>
+    <!-- Incident Register w/ corrective-action loop (MARKET-FEATURE-ROADMAP
+         C17) — quality/safety incidents: report → investigation → action →
+         closed, with root cause + corrective action on record. -->
+    <div class="card m0a mt16">
+      <div class="card-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-alert-triangle"></use></svg> Incident Register<span class="ct-sub" id="inc-sum"></span>
+        <div class="g6"><button class="btn btn-g btn-s" data-action="addIncident">+ Log Incident</button></div>
+      </div>
+      <div class="ox"><table class="dt"><thead><tr>
+        <th class="w50">ID</th><th class="w110">Date</th><th class="w90">Type</th><th class="w90">Severity</th>
+        <th>Description</th><th class="w90">Owner</th><th class="w110">Status</th>
+        <th class="w130">Root Cause</th><th class="w130">Corrective Action</th><th class="w50"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> </th>
+      </tr></thead><tbody id="inc-body"></tbody></table></div>
+    </div>
   </div>
 
   <!-- ═══ CLAIM PACK (MASTER-ACTION-PLAN-v3-STRICT Rank 1) ═══ -->
@@ -732,6 +818,37 @@
     <div class="card">
       <div class="card-title">Project Closure
         <div class="g6"><button class="btn btn-n btn-s" data-action="cpAllPage" data-section="close"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy All</button></div>
+      </div>
+      <!-- Punch List (MARKET-FEATURE-ROADMAP C3) — dedicated defect/closeout
+           items with location + assignee + category + priority. -->
+      <div class="card m0a mt16">
+        <div class="card-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-check-circle"></use></svg> Punch List<span class="ct-sub" id="punch-sum"></span>
+          <div class="g6"><button class="btn btn-g btn-s" data-action="addPunch">+ Add Punch Item</button></div>
+        </div>
+        <div class="ox"><table class="dt"><thead><tr>
+          <th class="w38">ID</th><th>Item</th><th class="w130">Location</th><th class="w110">Assigned To</th>
+          <th class="w100">Category</th><th class="w90">Priority</th><th class="w100">Status</th><th>Notes</th><th class="w50"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> </th>
+        </tr></thead><tbody id="punch-body"></tbody></table></div>
+      </div>
+      <!-- Handover / Closeout Package (MARKET-FEATURE-ROADMAP C18) — bundled
+           O&M / warranty / as-built / certificates / sign-off package. -->
+      <div class="card m0a mt16">
+        <div class="card-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-file-text"></use></svg> Handover Package<span class="ct-sub" id="handover-sum"></span>
+          <div class="g6"><button class="btn btn-g btn-s" data-action="addHandoverItem">+ Add Item</button></div>
+        </div>
+        <div class="ox"><table class="dt"><thead><tr>
+          <th class="w50">ID</th><th>Item / Document</th><th class="w130">Category</th><th class="w100">Status</th><th>Notes</th><th class="w50"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> </th>
+        </tr></thead><tbody id="handover-body"></tbody></table></div>
+      </div>
+      <!-- Warranty Tracker (MARKET-FEATURE-ROADMAP C26) — warranty periods
+           with end dates; feeds the dashboard Expiry & Renewals rollup. -->
+      <div class="card m0a mt16">
+        <div class="card-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-shield"></use></svg> Warranty Tracker<span class="ct-sub" id="warranty-sum"></span>
+          <div class="g6"><button class="btn btn-g btn-s" data-action="addWarranty">+ Add Warranty</button></div>
+        </div>
+        <div class="ox"><table class="dt"><thead><tr>
+          <th class="w50">ID</th><th>Item / System</th><th class="w130">Provider</th><th class="w120">Warranty Start</th><th class="w120">Warranty End</th><th class="w100">Time Left</th><th>Notes</th><th class="w50"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> </th>
+        </tr></thead><tbody id="warranty-body"></tbody></table></div>
       </div>
       <div class="g2">
         <div>
@@ -798,6 +915,55 @@
         <th class="w130">Type</th><th class="w70">Ver</th><th class="w130">Status</th>
         <th>Responsible</th><th>Notes</th><th class="w60"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> </th>
       </tr></thead><tbody id="doc-body"></tbody></table></div>
+    </div>
+    <!-- RFI Register (MARKET-FEATURE-ROADMAP C1) — question → routing →
+         response, with ball-in-court status. -->
+    <div class="card m0a mt16">
+      <div class="card-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-help"></use></svg> RFI Register<span class="ct-sub" id="rfi-sum"></span>
+        <div class="g6"><button class="btn btn-g btn-s" data-action="addRfi">+ Add RFI</button></div>
+      </div>
+      <div class="ox"><table class="dt"><thead><tr>
+        <th class="w70">Number</th><th>Question / Discrepancy</th><th class="w100">From</th><th class="w120">To</th>
+        <th class="w110">Issued</th><th class="w110">Due</th><th class="w100">Status</th><th class="w120">Ball in Court</th><th class="w140">Response</th><th class="w50"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> </th>
+      </tr></thead><tbody id="rfi-body"></tbody></table></div>
+    </div>
+    <!-- Submittal Register (MARKET-FEATURE-ROADMAP C2) — material/shop-drawing
+         approval workflow, distinct from RFIs. -->
+    <div class="card m0a mt16">
+      <div class="card-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-file-text"></use></svg> Submittal Register<span class="ct-sub" id="sub-sum"></span>
+        <div class="g6"><button class="btn btn-g btn-s" data-action="addSubmittal">+ Add Submittal</button></div>
+      </div>
+      <div class="ox"><table class="dt"><thead><tr>
+        <th class="w70">Number</th><th>Item / Drawing</th><th class="w100">Trade</th><th class="w120">Submitted To</th>
+        <th class="w110">Submitted</th><th class="w130">Status</th><th class="w110">Response</th><th class="w120">Ball in Court</th><th>Notes</th><th class="w50"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> </th>
+      </tr></thead><tbody id="sub-body"></tbody></table></div>
+    </div>
+    <!-- Ball-in-court rollup (MARKET-FEATURE-ROADMAP C6) — cross-module
+         "whose turn is it" across RFIs, submittals and open issues. -->
+    <div class="card m0a mt16">
+      <div class="card-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-dot"></use></svg> Ball in Court<span class="ct-sub" id="blc-sum"></span></div>
+      <div id="blc-body"></div>
+    </div>
+    <!-- Drawing Distribution Log (MARKET-FEATURE-ROADMAP C11) — who received
+         which drawing revision, when, and by what method. -->
+    <div class="card m0a mt16">
+      <div class="card-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-file-text"></use></svg> Drawing Distribution Log<span class="ct-sub" id="drawlog-sum"></span>
+        <div class="g6"><button class="btn btn-g btn-s" data-action="addDrawLog">+ Add Distribution</button></div>
+      </div>
+      <div class="ox"><table class="dt"><thead><tr>
+        <th class="w50">ID</th><th class="w110">Date</th><th>Drawing No.</th><th class="w60">Rev</th><th>Distributed To</th><th class="w90">Method</th><th>Notes</th><th class="w50"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> </th>
+      </tr></thead><tbody id="drawlog-body"></tbody></table></div>
+    </div>
+    <!-- Permit Register (MARKET-FEATURE-ROADMAP C30) — dedicated permit
+         status/expiry tracking; feeds the Expiry & Renewals rollup. -->
+    <div class="card m0a mt16">
+      <div class="card-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-shield"></use></svg> Permit Register<span class="ct-sub" id="permit-sum"></span>
+        <div class="g6"><button class="btn btn-g btn-s" data-action="addPermit">+ Add Permit</button></div>
+      </div>
+      <div class="ox"><table class="dt"><thead><tr>
+        <th class="w50">ID</th><th>Permit No.</th><th class="w110">Type</th><th>Agency</th>
+        <th class="w110">Issued</th><th class="w110">Expires</th><th class="w100">Status</th><th>Notes</th><th class="w50"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> </th>
+      </tr></thead><tbody id="permit-body"></tbody></table></div>
     </div>
   </div>
 
@@ -1372,6 +1538,7 @@
 <script src="js/mmgr-tasks.js"></script>
 <script src="js/mmgr-risks.js"></script>
 <script src="js/mmgr-stakeholders.js"></script>
+<script src="js/mmgr-bids.js"></script>
 <script src="js/mmgr-closure.js"></script>
 <script src="js/mmgr-raci.js"></script>  <script src="js/mmgr-charter.js"></script>
   <script src="js/mmgr-defs.js"></script>

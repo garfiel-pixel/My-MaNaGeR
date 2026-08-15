@@ -61,9 +61,9 @@ const INLINE_SCRIPT_HASHES = [
   "'sha256-gCwlAVKUNamFRjZeFSwcBd1zxQs+/mZ2GoLF8lqT/II='", // project.html (early-apply theme snippet)
   "'sha256-o+0No2XpbES4E5QJh31mY9JsJFqSmE+B4x+z1fNPjVc='", // project.html
   "'sha256-Jd4HFQYDoZo8X42G7dwI7h9WPPvRgUYBtXk8UPdTY3Q='", // app.html (early-apply theme snippet + desktop rail-open default)
-  "'sha256-j1kL9lvfG8lKWrm8nbam3UhoANPR+UyV/HzDR4xFxqg='", // app.html (launcher v3 polish + 2026-08-15: rail-head hamburger toggle — syncSidebarAria syncs every [data-action=toggleSidebar] button, back-arrow close removed)
+  "'sha256-dzEAHrucmBNK2HmiaeWdglH+swLqh1JzaGTqF1gFlHw='", // app.html (launcher + 2026-08-15: rail-head hamburger toggle + pill toast() — icon circle + label + slide-up/fade-out, shared .toast CSS in mmgr.css)
   "'sha256-qbHZHLyhdEDRwWrA8/I8ty4xIjUv+L/+Y6/0cIXdkJo='", // admin.html (early-apply theme snippet)
-  "'sha256-nn/rDSYepAEHC9+VX0oni8PfjGac88/iy5Lxhx5E52U='", // admin.html
+  "'sha256-EzuNIWwqBzgpIBGkvYZi1bJApIOVjz+FGC3C9budKOU='", // admin.html (2026-08-15: pill toast() — icon circle + label + slide-up/fade-out, shared .toast CSS in mmgr.css)
   "'sha256-Oa7ON+9A164SSXhnxu08mFn0V9Tj2SlZ2SzFXFoqKNE='", // dashboard.html
   "'sha256-bNdw0+64xL2//htoz+u3InKWYZNEHO/CnuZqtcJIBgU='", // seed-test.html
   "'sha256-AxkduQ155AQ7I921Ow+mZyri0uQY4ygsDy1i/x/xbCc='", // mymanager-field-guide.html

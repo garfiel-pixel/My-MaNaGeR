@@ -718,25 +718,32 @@ var MMGR = window.MMGR || {};
   }
 
   // ---- Toast ----
+  // Owner directive 2026-08-15: notifications are polished pills, not plain
+  // rectangles — circular border, tinted circular icon tile (check-circle /
+  // x / alert-triangle), one-word label (Done / Error / Note), full-contrast
+  // message, slide-up + hold + graceful fade-out. Shared markup + the .toast
+  // CSS in css/mmgr.css (same as app.html / admin.html) — one look everywhere.
   function showToast(msg, type) {
     const existing = document.querySelector('.toast');
     if (existing) existing.remove();
+    const isErr = type === 'err' || type === 'error';
+    const isWarn = type === 'warn';
     const t = document.createElement('div');
-    t.className = 'toast ' + (type || 'ok');
-    // GAP-AUDIT-CLOUD-31 (E18): the toast is a polite live region so async
-    // outcomes (AI answers, save confirmations, errors) reach screen readers.
-    t.setAttribute('role', 'status');
-    t.setAttribute('aria-live', 'polite');
-    t.textContent = msg;
-    Object.assign(t.style, {
-      position: 'fixed', bottom: '28px', left: '50%',
-      transform: 'translateX(-50%)', background: 'var(--card)',
-      borderRadius: '8px', padding: '10px 20px', fontSize: '.78rem',
-      zIndex: '9999', border: '1px solid ' + (type === 'err' ? 'var(--danger)' : 'var(--green)'),
-      color: type === 'err' ? 'var(--danger)' : 'var(--green)'
-    });
+    t.className = 'toast ' + (isErr ? 'err' : (isWarn ? 'warn' : 'ok'));
+    // GAP-AUDIT-CLOUD-31 (E18): the toast is a live region so async outcomes
+    // (AI answers, save confirmations, errors) reach screen readers. Errors
+    // are assertive; confirmations/warnings stay polite.
+    t.setAttribute('role', isErr ? 'alert' : 'status');
+    t.setAttribute('aria-live', isErr ? 'assertive' : 'polite');
+    const icon = isErr ? 'i-x' : (isWarn ? 'i-alert-triangle' : 'i-check-circle');
+    const label = isErr ? 'Error' : (isWarn ? 'Note' : 'Done');
+    t.innerHTML = '<span class="toast-ico"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#' + icon + '"></use></svg></span>' +
+                  '<span class="toast-body"><b></b><span></span></span>';
+    t.querySelector('b').textContent = label;
+    t.querySelector('.toast-body > span').textContent = msg;
     document.body.appendChild(t);
-    setTimeout(() => t.remove(), 3000);
+    setTimeout(() => t.classList.add('is-out'), 2600);
+    setTimeout(() => t.remove(), 3100);
   }
 
   // ---- Methodology Learning Card ----

@@ -175,6 +175,13 @@ var MMGR = window.MMGR || {};
     // updates the header badge immediately without a full re-render.
     ns.State.onChange(function() { R.renderDirtyIndicator(); });
 
+    // OWNER 2026-08-15: background cloud auto-sync — once the user goes
+    // idle (~25s), a cloud-linked project's snapshot is pushed silently so
+    // the header's green "Cloud backed up" chip stays honest. No-op for
+    // unlinked / editor-only / readonly projects (Cloud.autoSaveToCloud
+    // guards on the owner credential). The timer resets on every edit.
+    ns.State.onChange(function() { scheduleCloudAutoSave(); });
+
     // Multi-tab conflict detection: storage events fire in OTHER tabs, so
     // this tab is notified whenever a peer overwrites the shared key.
     window.addEventListener('storage', function(e) {
@@ -1731,12 +1738,29 @@ var MMGR = window.MMGR || {};
     openDrw();
   }
 
-  // ---- OWNER 2026-08-15: backup popover (header "Not backed up") ----
-  // The red indicator opens a small glass card with the two backup routes:
-  // Backup to cloud (automatic once the project is linked — an existing
-  // session code saves immediately; unlinked projects route to the drawer's
-  // Cloud Backup section to link first) and Backup to local (.json export).
-  // Closed by outside click / Escape / choosing an option.
+  // ---- OWNER 2026-08-15: backup popover (header backup indicator) ----
+  // The indicator (green "Cloud backed up" when linked, amber "Not backed
+  // up" when not) opens a small glass card with the two backup routes:
+  // Backup to cloud (linked projects save immediately; unlinked projects
+  // route to the drawer's Cloud Backup section to link first) and Backup to
+  // local (.json export). Closed by outside click / Escape / choosing an
+  // option.
+
+  // Background cloud auto-sync debounce (see the State.onChange wiring):
+  // after CLOUD_AUTO_IDLE_MS of quiet, push the snapshot to the cloud for
+  // linked projects. Never throws; failures just wait for the next cycle.
+  let _cloudAutoTimer = null;
+  const CLOUD_AUTO_IDLE_MS = 25000;
+  function scheduleCloudAutoSave() {
+    const C = window.MMGR.Cloud;
+    if (!C || !C.getCode || !C.getCode()) return; // not cloud-linked
+    if (_cloudAutoTimer) clearTimeout(_cloudAutoTimer);
+    _cloudAutoTimer = setTimeout(function() {
+      _cloudAutoTimer = null;
+      if (C.autoSaveToCloud) { try { C.autoSaveToCloud(); } catch (e) { /* never throws */ } }
+    }, CLOUD_AUTO_IDLE_MS);
+  }
+
   function bkToggle() {
     const pop = U.$('bk-pop');
     const ind = U.$('dirty-ind');
@@ -1761,8 +1785,8 @@ var MMGR = window.MMGR || {};
     if (!el) return;
     const C = window.MMGR.Cloud;
     el.textContent = (C && C.getCode && C.getCode())
-      ? 'This project is linked — Save to Cloud keeps the snapshot current.'
-      : 'Link this project once in Settings — then every Save to Cloud backs it up.';
+      ? 'Cloud-backed project — snapshots auto-sync to the cloud as you work.'
+      : 'File backup is optional — save a .json copy whenever you\u2019re ready (e.g. at the end of a task). Link to the cloud once in Settings for automatic backups.';
   }
   function bkCloud() {
     const C = window.MMGR.Cloud;

@@ -1098,6 +1098,13 @@ hr.div{border:none;border-top:1px solid var(--border);margin:14px 0;}
 .pulse-attn{animation:pulseAttn .6s ease-out 2;}
 @media (prefers-reduced-motion: reduce){.pulse-attn{animation:none;outline:2px solid var(--gold);}}
 .dirty-ind.on{display:inline-flex;}
+/* OWNER 2026-08-15: cloud-linked projects show a GREEN "Cloud backed up"
+   chip instead of the amber "Not backed up" — the cloud snapshot auto-syncs
+   as the user works, so there is nothing to be alarmed about. Same pill
+   shape; the .ico is the i-cloud sprite symbol. */
+.dirty-ind .ico{width:12px;height:12px;flex-shrink:0;}
+.dirty-ind.ci-cloud{color:var(--green);border-color:var(--green);background:rgba(16,185,129,.12);}
+.dirty-ind.ci-cloud:hover{background:rgba(16,185,129,.24);}
 
 /* ---- Backup popover (owner 2026-08-15) ----
    Clicking the "Not backed up" indicator opens a small glass card under it

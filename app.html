@@ -35,7 +35,10 @@ body.glass-premium .wrap{position:relative;z-index:1;}
 .toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%);background:var(--card);border-radius:8px;padding:10px 20px;font-size:.78rem;z-index:9999;transition:opacity .3s;box-shadow:0 8px 24px rgba(0,0,0,.4);}
 .toast.ok{border:1px solid var(--green);color:var(--green);}
 .toast.err{border:1px solid var(--danger);color:var(--danger);}
-.notice{margin:22px auto 40px;max-width:520px;background:rgba(245,158,11,.07);border:1px solid rgba(245,158,11,.25);border-radius:var(--radius);padding:12px 16px;font-size:.76rem;color:var(--gold);text-align:center;}
+.notice{margin:22px auto 40px;max-width:560px;display:flex;align-items:center;gap:14px;justify-content:center;text-align:left;background:var(--glass-fill-dark);border:var(--glass-border);border-radius:var(--squircle-md);padding:var(--pad-card);box-shadow:var(--glass-rim),var(--glass-shadow);}
+.notice .nt-ico{width:38px;height:38px;flex-shrink:0;border-radius:var(--radius-control);background:color-mix(in oklch,var(--amber) 14%,transparent);color:var(--amber);display:inline-flex;align-items:center;justify-content:center;}
+.notice .nt-ico .ico{width:18px;height:18px;}
+.notice .nt-txt{font-size:.78rem;font-weight:600;color:var(--text);line-height:1.5;}
 /* UI-DECLUTTER (unlock gate): pill CTAs matching the AI window treatment;
    the modal footer is now just the two buttons — the redundant contact hint
    was removed (the page notice + #om-desc already carry it). */
@@ -122,7 +125,7 @@ body.glass-premium .wrap{position:relative;z-index:1;}
 <aside class="db-side" id="db-sidebar" aria-label="Dashboard navigation">
   <div class="db-side-head">
     <span class="db-brand"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg> My MaNaGeR</span>
-    <button type="button" class="db-side-close" data-action="toggleSidebar" aria-label="Close menu" title="Close menu"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-left"></use></svg></button>
+    <button type="button" class="db-side-close" data-action="toggleSidebar" aria-label="Close menu" title="Close menu"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-menu"></use></svg></button>
   </div>
   <nav class="db-nav" id="db-nav">
     <div class="db-g">Overview</div>
@@ -193,7 +196,7 @@ body.glass-premium .wrap{position:relative;z-index:1;}
        #btn-drive-backup / ...) are unchanged so js/mmgr-google-auth.js
        wiring keeps working as-is. -->
 
-  <div class="notice" style="display:flex;align-items:center;gap:10px;justify-content:center;"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-lock"></use></svg> Contact the admin to get an access code for this project.</div>
+  <div class="notice"><span class="nt-ico"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-lock"></use></svg></span><span class="nt-txt">Contact the admin to get an access code for this project.</span></div>
 
   <!-- DASHBOARD-UI-REFRESH-SPEC §3: portfolio summary metrics (Active /
        At-Risk / Avg Health), rendered by mmgr-portfolio.js renderMetrics()
@@ -554,13 +557,17 @@ function toggleSidebar(){
 }
 function syncSidebarAria(){
   const open = document.body.classList.contains('side-open');
-  const btn = document.getElementById('db-nav-btn');
-  if (btn){
+  // Both toggle buttons in step: the hero hamburger (#db-nav-btn) and the
+  // rail-head hamburger (.db-side-close — owner directive 2026-08-15: the
+  // rail closes via a hamburger, not a back arrow; it rotates 90deg while
+  // open and returns to the plain hamburger when closed, exactly like the
+  // hero button, so one gesture always reads the state).
+  document.querySelectorAll('[data-action="toggleSidebar"]').forEach(function(btn){
     btn.setAttribute('aria-expanded', open ? 'true' : 'false');
     btn.classList.toggle('is-open', open);
     btn.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
     btn.setAttribute('title', open ? 'Close menu' : 'Open menu');
-  }
+  });
 }
 
 /* Quick moon/sun theme toggle (hero top-right): flips the same device-level

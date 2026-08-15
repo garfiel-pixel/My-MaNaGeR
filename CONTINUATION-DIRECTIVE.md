@@ -118,6 +118,51 @@ directive documents.
 - Report pass/fail per check, not a single "green" summary.- Stop and report back only for: a security-relevant failure, a genuinely new test
   failure not already known/tracked, or a real decision point not already answered
   somewhere in this file or its source documents.
+- **ALWAYS UPDATE THE CONTINUATION DIRECTIVE AFTER EVERY COMPLETED PROJECT (owner,
+  2026-08-15).** "Update the continuous directive... you should ensure that it's
+  documented... that they should always update the continuous directive after every
+  completed project." Every completed project/increment/session ends with a STATUS LOG
+  entry here — no exceptions. A session that finishes work without logging it here is
+  an unfinished session.
+
+---
+
+
+## UI DOCTRINE — THE TYPE OF UI THE OWNER WANTS (owner, 2026-08-15)
+
+> This section is the owner's standing answer to "what type of UI are we looking for
+> throughout all the processes". Read it before ANY UI change and follow it — it
+> records the corrective assessment the owner gave after reviewing the live launcher.
+> When the owner says the UI "looks good" and then lists fixes, those fixes become
+> doctrine: they define the bar for every future surface, not just the one reviewed.
+
+1. **Every control/notice must match the page's card language.** A plain little box
+   with light text is not acceptable — e.g. the "Contact the admin to get an access
+   code" notice was a flat amber strip; it is now a real glass card (same
+   `--glass-fill-dark` surface, `--squircle-md` radius, `--pad-card` padding as the
+   project cards) with an accent icon tile + border and full-contrast text. Anything
+   that looks like a "bare little rectangle" is under-built — give it the surface,
+   radius, padding, iconography, and text contrast of the cards around it.
+2. **Icons are icons, not boxes.** No square/board/frame around a bare icon button
+   (the moon/sun toggle had a bordered box — removed). Keep the generous tap target
+   (Fitts) but make the hit area transparent; only hover/focus color + focus ring
+   communicate interactivity. Never wrap an icon in a visual box just to make it
+   clickable.
+3. **Hamburger = toggle, in both places.** The rail's close control is the SAME
+   hamburger as the hero button (never a back arrow, never an X): open = rotated 90deg,
+   closed = plain hamburger, one smooth spring. Clicking it closes what it opened and
+   clicking again slides it back out. `syncSidebarAria()` keeps every
+   `[data-action="toggleSidebar"]` button in step (aria-expanded + is-open + label).
+4. **Animations at 1x device scale, smooth.** The owner runs Android at 1x for window /
+   transition / animator duration scale — the app must feel like that: one consistent
+   smooth curve (`--release-duration` + `--ease-ios`) for rail + wrap slides in every
+   theme and breakpoint, the same spring for every hamburger icon, no element that
+   snaps instantly where a sibling animates, and always a `prefers-reduced-motion`
+   kill. If something "isn't animated" while the rail around it animates, that's a bug.
+5. **Premium glass stays off by default and light on the GPU.** The owner's machine
+   lagged rendering premium glass — keep the capability floor + opt-in gate, and keep
+   optimizing the renderer (render-loop pause on tab hide, capped pixel ratio) so that
+   when it IS on it never locks a device.
 
 ---
 
@@ -576,6 +621,9 @@ Format: date/session marker, what was completed (with file/line specifics), what
 in-progress and exactly where it stopped, what's next.
 
 ### Log entries (most recent at top)
+
+**2026-08-15 — Session: OWNER-CORRECTIVE-PASS (owner: "the UI and the app looks good now and everything works the way I want it" + corrective list) — launcher fixes shipped, pushed, deployed.**
+Per the owner's corrective assessment of the live launcher ("reference this inside of the continuous directive as to the type of UI we're looking for throughout all the processes" + "push and upload to wrangler so I can view the web page and give another corrective assessment"): (1) **NOTICE CARD** — the "Contact the admin to get an access code" box was a plain flat amber strip; it is now a real glass card matching the page's card language: `--glass-fill-dark` surface + `--glass-border` + `--squircle-md` radius + `--pad-card` padding + `--glass-rim/--glass-shadow`, amber icon tile (`.nt-ico`, i-lock) + full-contrast `--text` copy, light border-tint override + dark db-page solid `--db-surface` parity. Markup simplified (`<span class="nt-ico">` + `<span class="nt-txt">`, inline flex style removed); base CSS in app.html inline `<style>`, overrides in css/mmgr.css. (2) **MOON/SUN DE-BOXED** — `#db-theme-quick` (`.db-quick`) lost its bordered box: bare icon (20px), transparent hit area keeping the 38px Fitts target, hover/focus color + ring only, dark override cleaned (no `--db-surface` box). (3) **RAIL-HEAD HAMBURGER** — the rail's close control was a back arrow (`i-arrow-left`); it is now the SAME hamburger as the hero button (`i-menu`): `syncSidebarAria()` (app.html inline script #2) now syncs EVERY `[data-action="toggleSidebar"]` button (aria-expanded + `.is-open` + label/title), and `.db-side-close .ico` shares the hero hamburger's spring + 90deg rotation — click closes the rail with the icon returning to the plain hamburger, click again slides it back out. (4) **ANIMATIONS AT 1X, SMOOTH** — owner runs Android at 1x (window/transition/animator duration scale): the rail + wrap slide is now ONE curve everywhere (`var(--release-duration)` + `var(--ease-ios)`, replacing the mixed `.24s ease` / `.3s cubic-bezier(.22,1,.36,1)` / `--spring-press` desktop/mobile/theme split); hamburger + side-close icons share the same `.3s` spring; `.db-quick` added to the reduced-motion transition kill. (5) **PREMIUM GLASS PERF** — owner's machine lagged with premium glass on: render loop now pauses on `visibilitychange` (tab hidden → cancel rAF, visible → resume) and the pixel-ratio cap dropped 1.5 → 1.25 (~44% fewer fragments on high-DPI); capability floor + opt-in gate untouched. (6) **UI DOCTRINE** — this file gained the "UI DOCTRINE — THE TYPE OF UI THE OWNER WANTS" section (5 rules: card-language parity for every control/notice, icons-not-boxes, hamburger-toggles-everywhere, 1x smooth animations, GPU-light premium glass) + the standing rule "ALWAYS UPDATE THE CONTINUATION DIRECTIVE AFTER EVERY COMPLETED PROJECT (owner, 2026-08-15)" in MANDATORY INSTRUCTION. VERIFICATION: node --check clean (mmgr-glass.js); `npm run verify` GREEN (CSP 11/11 — app.html inline-script #2 re-hashed to `j1kL9lvfG8lKWrm8nbam3UhoANPR+UyV/HzDR4xFxqg=` in worker.js + serve.cjs; SW mmgr-shell-v101→v102; skills 17/17); qa-dashboard-spec PASS; qa-rhythm RHYTHM_GATE PASS; emoji scan clean on app.html + new CSS/JS strings; BROWSER harness (serve.cjs:8765): notice renders as a glass card with icon tile + dark text, moon toggle borderless with 20px icon, rail-head hamburger rotates 90deg when open + closes/reopens the rail, aria-expanded syncs on both toggle buttons, zero console errors. GIT: committed (plain Conventional Commits, no Codebuff footer) + pushed per the phase rule; DEPLOYED via the wrangler.jsonc staging recipe (version + asset list below). NEXT: owner views the live site + screenshots; further area directives with visuals as they come.
 
 **2026-08-14 — Session: VISUAL-ANALYSIS-FIXES — the owner's pasted UI analysis implemented and deployed (version `632bc357`).**
 Per the owner's visual-analysis review of the launcher ("take it into mind and implement the necessary fixes"): addressed every point — (1) **Top header text**: `.top p` in light darkened from `--slate` (4.7:1) to `color-mix(--text 78% / --slate 22%)` ≈ #26364a (~11:1); (2) **Card status/meta text**: cloud card meta/sub/empty + pc-desc/pf-meta/pf-reason/db-sub-empty all darkened in light via `color-mix(--text 70% / --slate 30%)`; (3) **Notice banner**: light text darkened to a high-contrast brick (`color-mix(--amber 55% / --text 45%)`) + stronger bg/border, margin normalized; (4) **Sidebar cleanup**: Backup & Restore grouped as one tidy borderless unit (consistent 8px gaps, auto row label/select right-aligned, icon decluttered), rail footer identity bottom-aligned with a circular profile icon tile (`--gold`/`--db-accent` tint, border-radius 50%); (5) **Content spacing**: `Projects` section header (`.db-sec`, i-folder + sub-label) added above the grid so local vs cloud lists are explicitly separated (analysis's de-duplication point), cloud section gets margin-top 34px, consistent vertical rhythm; (6) **Card consistency**: `.cd-card` now shares the grid card language — `--pad-card` (16px) padding + hover lift/border like `.pcard`, `.cd-title` explicit `--text`; (7) **Action icons simplified**: removed the redundant i-refresh icon from the Auto row (text label only). VERIFICATION: `npm run verify` GREEN (CSP 11/11 — no inline-script edits so hashes unchanged; SW mmgr-shell-v100→v101; skills 17/17); qa-dashboard-spec 72/72 PASS; qa-full 171/171; qa-rhythm RHYTHM_GATE PASS; emoji scan clean; BROWSER harness 13/13 (light: top-p lightness 0.28 + not slate, notice non-gold, section header before grid, cloud after grid, auto row icon-free, cloud cards 16px padding + hover transition + darkened meta, rail user icon circular, footer pinned; dark: top-p + sec-sub use --db-text-secondary). DEPLOYED (4 assets; version `632bc357-2c68-4359-a532-1317cffd3f9b`) + curl: /app serves `db-sec-title` + `db-auto-lbl`, sw.js = mmgr-shell-v101. Screenshots refreshed: tools/newui-launcher-{light,dark,cyan}.png. GIT: committed + pushed (see below). NEXT: owner views the site + screenshots; then the next area directive with visuals.

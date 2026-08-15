@@ -222,6 +222,20 @@ var MMGR = window.MMGR || {};
     }
   }
 
+  // PERF (owner 2026-08-15): the premium engine keeps pumping frames even
+  // when the tab is hidden — a full-viewport WebGL shader burning GPU for a
+  // page nobody is looking at. Pause the loop on visibilitychange and resume
+  // it when the tab comes back; the mouse-glow RAF is cancelled the same way
+  // (its mousemove listener still re-arms it, which is fine while hidden).
+  function _onVisibility() {
+    if (!_state.active) return;
+    if (document.hidden || document.visibilityState === 'hidden') {
+      if (_state.rafId) { cancelAnimationFrame(_state.rafId); _state.rafId = 0; }
+    } else if (!_state.rafId) {
+      _frame();
+    }
+  }
+
   function _onResize() {
     if (!_state.active || !_state.renderer) return;
     try {
@@ -253,7 +267,11 @@ var MMGR = window.MMGR || {};
       document.body.appendChild(canvas);
       _mountGlow(); // mouse-tracking glow above the canvas, below the app
       const renderer = new THREE.WebGLRenderer({ canvas: canvas, alpha: false, antialias: false, powerPreference: 'high-performance' });
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
+      // PERF (owner 2026-08-15): cap the render scale at 1.25 instead of 1.5 —
+      // a 44% fragment reduction on high-DPI screens with no perceptible
+      // softness for a blurred backdrop; the shader is the single most
+      // expensive thing on the page, and the owner's machine lagged with it on.
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.25));
       renderer.setSize(window.innerWidth, window.innerHeight);
       const scene = new THREE.Scene();
       const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 10);
@@ -276,6 +294,7 @@ var MMGR = window.MMGR || {};
       }, false);
       _state = { active: true, renderer: renderer, scene: scene, camera: camera, mesh: mesh, uniforms: uniforms, clock: new THREE.Clock(), canvas: canvas, rafId: 0, ctxLost: false };
       window.addEventListener('resize', _onResize);
+      document.addEventListener('visibilitychange', _onVisibility);
       document.body.classList.add('glass-premium');
       _frame();
       if (ns.App && ns.App.showToast) ns.App.showToast('Premium liquid-glass mode on — toggle off in Settings to return to CSS glass.', 'ok');
@@ -304,6 +323,7 @@ var MMGR = window.MMGR || {};
     _unmountGlow();
     if (_state.rafId) cancelAnimationFrame(_state.rafId);
     window.removeEventListener('resize', _onResize);
+    document.removeEventListener('visibilitychange', _onVisibility);
     try {
       if (_state.renderer) {
         const gl = _state.renderer.getContext && _state.renderer.getContext();

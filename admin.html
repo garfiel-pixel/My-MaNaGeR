@@ -64,9 +64,17 @@ body.glass-premium header{position:relative;z-index:1;}
 body.glass-premium main{position:relative;z-index:1;}
 
 /* ── app shell (admin layout) ── */
+/* MMGR-NEW-UI-CREATION-BRIEF I1: hamburger + h1 sit together on the left
+   (F-pattern — brief §3). The shared .nav-btn chrome comes from css/mmgr.css;
+   this block only groups the two. */
+.hdr-left{display:flex;align-items:center;gap:12px;min-width:0;}
 header{display:flex;align-items:center;justify-content:space-between;padding:16px 28px;border-bottom:1px solid var(--border);background:var(--card);position:sticky;top:0;z-index:100;
   flex-wrap:wrap;gap:10px;}
-header h1{font-size:1rem;display:flex;align-items:center;gap:8px;font-weight:800;letter-spacing:-.01em;}
+header h1{font-size:1rem;display:flex;align-items:center;gap:8px;font-weight:800;letter-spacing:-.01em;white-space:nowrap;}
+/* The shared #app-sidebar (css/mmgr.css) anchors at top:var(--hdr-h,64px);
+   admin's sticky header is a few px shorter, so pin the rail to the header's
+   actual height once the panel is unlocked (syncAdminHdr sets --hdr-h). */
+#admin-app #app-sidebar{top:var(--hdr-h,64px);}
 header h1 .mark{color:var(--gold);}
 .hdr-actions{display:flex;gap:6px;align-items:center;flex-wrap:wrap;}
 .hdr-actions a{font-size:.74rem;color:var(--slate);text-decoration:none;margin-right:4px;transition:color var(--tr);}
@@ -179,7 +187,13 @@ pre.snippet{background:#f8fafc;border:1px solid var(--border);border-radius:6px;
 <!-- ═══ MAIN ADMIN UI ═══ -->
 <div class="hidden" id="admin-app">
   <header>
-    <h1><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-shield"></use></svg> <span class="mark">Admin</span> Panel</h1>
+    <div class="hdr-left">
+      <!-- MMGR-NEW-UI-CREATION-BRIEF I1: shared shell — hamburger (i-menu)
+           opens the left rail/drawer. Theme stays theme-only (never reused
+           as the menu control — brief §2.1). -->
+      <button type="button" class="nav-btn" id="nav-btn" data-action="tglNav" aria-label="Open navigation menu" aria-expanded="false" aria-controls="app-sidebar"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-menu"></use></svg></button>
+      <h1><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-shield"></use></svg> <span class="mark">Admin</span> Panel</h1>
+    </div>
     <div class="hdr-actions">
       <div class="auth-bar">
         <div id="google-signin-button"></div>
@@ -236,6 +250,31 @@ pre.snippet{background:#f8fafc;border:1px solid var(--border);border-radius:6px;
 
     <div id="project-list"></div>
   </main>
+
+  <!-- MMGR-NEW-UI-CREATION-BRIEF I1: shared shell — left rail (reuses the
+       shared #app-sidebar overlay/drawer chrome from css/mmgr.css; the
+       rail-link component is defined there too). Desktop: overlay drawer via
+       hamburger (pref-off path). Mobile: off-canvas drawer + scrim. Escape,
+       scrim tap, and rail navigation close it (tglNav / closeAdminNav). -->
+  <aside id="app-sidebar" aria-label="Admin navigation">
+    <div class="sb-head">
+      <span class="sb-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-menu"></use></svg> Admin</span>
+      <button type="button" class="sb-close" data-action="tglNav" aria-label="Close navigation menu"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg></button>
+    </div>
+    <div class="rail-group"><span class="rail-label">Projects</span>
+      <button type="button" class="rail-link" data-action="openProjectModal"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-plus"></use></svg> New Project</button>
+      <a class="rail-link" href="#project-list"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-folder"></use></svg> Project List</a>
+      <a class="rail-link" href="#cloud-admin-section"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cloud"></use></svg> Cloud Admin</a>
+    </div>
+    <div class="rail-group"><span class="rail-label">Export</span>
+      <button type="button" class="rail-link" data-action="downloadPublicData"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Public Data</button>
+      <button type="button" class="rail-link" data-action="downloadAdminBackup"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Backup CSV</button>
+    </div>
+    <div class="rail-group"><span class="rail-label">Go</span>
+      <a class="rail-link" href="app.html"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg> Projects / Dashboard</a>
+    </div>
+  </aside>
+  <div id="nav-scrim" data-action="tglNav" aria-hidden="true"></div>
 </div>
 
 <!-- ═══ Add / Edit project modal ═══ -->
@@ -686,6 +725,7 @@ function admLoadTheirs(){
 
 function enterAdmin(){
   showScreen('admin-app');
+  syncAdminHdr();
   loadProjects();
   _admLastWritten = JSON.stringify(projects);
   renderProjects();
@@ -1030,7 +1070,7 @@ document.getElementById('adm-cfm').addEventListener('click', e=>{ if(e.target.id
 document.getElementById('pw-om').addEventListener('click', e=>{ if(e.target.id==='pw-om') closePwModal(); });
 /* Escape closes the admin's custom modals, matching the project viewer. */
 document.addEventListener('keydown', e=>{
-  if(e.key==='Escape'){ admCfmCancel(); closePwModal(); closeProjectModal(); closeSnippetModal(); }
+  if(e.key==='Escape'){ admCfmCancel(); closePwModal(); closeProjectModal(); closeSnippetModal(); closeAdminNav(); }
 });
 document.getElementById('pw-new2').addEventListener('keydown', e=>{ if(e.key==='Enter') submitPasswordChange(); });
 
@@ -1043,6 +1083,33 @@ function _admIdx(el){
   const raw = el.getAttribute('data-idx');
   return raw === null ? undefined : parseInt(raw, 10);
 }
+/* MMGR-NEW-UI-CREATION-BRIEF I1: shared-shell nav wiring for admin.html.
+   The hamburger + rail + scrim reuse the shared #app-sidebar / #nav-scrim
+   chrome (css/mmgr.css): body.sidebar-open slides the rail in, the scrim
+   shows, Escape + scrim tap close. Mirrors project.html's tglNav pattern so
+   every surface behaves the same. */
+function tglAdminNav(){
+  const open = document.body.classList.toggle('sidebar-open');
+  const btn = document.getElementById('nav-btn');
+  if (btn) btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+}
+function closeAdminNav(){
+  document.body.classList.remove('sidebar-open');
+  const btn = document.getElementById('nav-btn');
+  if (btn) btn.setAttribute('aria-expanded', 'false');
+}
+// Rail navigation closes the drawer (mobile) / overlay (desktop) after use.
+document.addEventListener('click', function(e){
+  const rail = e.target.closest('#app-sidebar');
+  if (rail && (e.target.closest('a') || e.target.closest('[data-action]'))) closeAdminNav();
+});
+// Keep the rail aligned under the sticky header (it starts below --hdr-h).
+function syncAdminHdr(){
+  const hdr = document.querySelector('#admin-app header');
+  if (hdr) document.documentElement.style.setProperty('--hdr-h', Math.round(hdr.getBoundingClientRect().height) + 'px');
+}
+window.addEventListener('resize', function(){ syncAdminHdr(); });
+
 const ADMIN_ACTION_MAP = {
   'adminSetupPassword': () => handleSetupPassword(),
   'adminLogin': () => handleLogin(),
@@ -1070,6 +1137,7 @@ const ADMIN_ACTION_MAP = {
   'regenerateCode': (el) => regenerateCode(_admIdx(el)),
   'openSnippetModal': (el) => openSnippetModal(_admIdx(el)),
   'deleteProject': (el) => deleteProject(_admIdx(el)),
+  'tglNav': () => tglAdminNav(),
   'tglTheme': (el) => tglTheme(el),
   'tglGlassMode': (el) => tglGlassMode(el),
   'cloudAdminList': () => cloudAdminList(),

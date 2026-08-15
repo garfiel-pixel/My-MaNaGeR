@@ -305,6 +305,23 @@ body.sidebar-on .nav-btn{display:inline-flex;}
 .sec-nav .sec-btn.active{box-shadow:0 0 0 1px var(--green);background:rgba(16,185,129,.08);}
 .ic-svg{width:18px;height:18px;flex-shrink:0;vertical-align:-3px;}
 .ic-ct{width:20px;height:20px;flex-shrink:0;margin-right:4px;vertical-align:-4px;}
+/* UI-MODERNIZATION 2026-08-14 (dashboard-alignment audit, follow-up): with
+   19 pills across 6 ATOMIC .nav-group flex items the wrap-packed strip broke
+   into 3 ragged rows (112px tall, orphan pill alone on row 3) at desktop
+   widths — the "messy/misaligned" nav. Desktop now keeps ONE compact row and
+   scrolls horizontally (thin, token-tinted scrollbar via color-mix on the
+   theme-aware --slate) so the sticky tab bar stays a slim 32px bar under the
+   header. Sticky + overflow-x coexist (tested): the strip is its own scroll
+   container; the element itself stays sticky below #app-header. Mobile
+   (≤768px) is the off-canvas drawer — untouched by construction. */
+@media(min-width:769px){
+  .sec-nav{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:thin;
+    scrollbar-color:color-mix(in srgb,var(--slate) 35%,transparent) transparent;}
+  .sec-nav::-webkit-scrollbar{height:6px;}
+  .sec-nav::-webkit-scrollbar-thumb{background:color-mix(in srgb,var(--slate) 30%,transparent);border-radius:3px;}
+  .sec-nav::-webkit-scrollbar-track{background:transparent;}
+  .sec-nav .nav-group{flex-shrink:0;}
+}
 /* ---- DIR-3 (PROJECT-UX-NAV-WEATHER-EXPORT-DIRECTIVE): Core-Mode onboarding
        callout on the Dashboard. Solid card surface (Gate 6.1 — never glass
        over content), gold-tinted border, no motion (instant show/hide via

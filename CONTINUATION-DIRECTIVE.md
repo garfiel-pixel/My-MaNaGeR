@@ -1246,6 +1246,31 @@ RHYTHM_GATE PASS 11/11 (fresh run vs :8765); no served asset touched (qa-*.cjs i
 .assetsignore → NOT part of the wrangler bundle, so NO deploy needed). Committed +
 pushed.
 
+**2026-08-14 — Session extension: SEC-NAV SINGLE-ROW FIX (owner flagged "still not
+aligned and messy" and pasted a GitHub-AI diagnosis about .sec-nav sticky/
+--hdr-h measurement timing).** SKEPTICAL AUDIT RESULT: the GitHub AI's theory does
+NOT reproduce — when scrolled 400px the header bottom and .sec-nav top are exactly
+flush (gap 0, --hdr-h measures 64px correctly, syncHeaderStack is called on boot +
+resize); the glass-premium position:relative override is INTENTIONAL (documented in
+the CSS comment); the AI's proposed fixes (64px fallback, double-rAF measurement,
+sticky override) would have fixed nothing. REAL ROOT CAUSE (measured, not
+hypothesized): at desktop widths the section-nav pill strip wrapped to 3 RAGGED
+rows (112px tall, orphan "Meetings" pill alone on row 3) because the 6 .nav-group
+flex items are ATOMIC — whole groups wrap as solid blocks and pack unevenly; at
+1440px row 1 ended at x=1087 with ~300px free yet group 3 jumped to row 2. FIX
+(css/mmgr.css, desktop-only @media(min-width:769px)): .sec-nav keeps ONE compact
+32px row — flex-wrap:nowrap + overflow-x:auto (the strip is its own scroll
+container while the element itself stays sticky below the header, verified), thin
+token-tinted scrollbar (scrollbar-color color-mix on the theme-aware --slate,
+dark/cyan re-tint automatically), .nav-group flex-shrink:0. Mobile ≤768px
+off-canvas drawer untouched by construction. sw.js v94→v95 (css/mmgr.css shell
+asset). VERIFICATION: navH 112→32px, all pills ONE top line, scrollable at 1440 +
+1024 (scrollWidth 2484 vs client 1392), sticky gap 0 when scrolled, dark bg
+rgb(9,10,15) + cyan verified, qa-rhythm RHYTHM_GATE PASS 11/11 (R09 no-overflow:
+internal nav scroll doesn't leak to the document), npm run verify GREEN (CSP 11/11,
+SW v95 > 47 assets, 17/17 skills), emoji gate clean on new lines. Owner screenshots
+for the earlier review: tools/dash-review-{light,dark,cyan}.png.
+
 ---
 
 *This file is the working source of truth for continuing this project across sessions.

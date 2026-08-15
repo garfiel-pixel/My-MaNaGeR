@@ -33,6 +33,14 @@
      suggestion (never a blocking modal, never repeated nagging),
      offered once multi-device use is detected (a merge) or when
      the user opens the Sync section with no identity attached.
+   - OWNER 2026-08-15 (GOOGLE-SIGNIN-THREADS-THE-SITE): the
+     Settings sign-in now uses the SAME shared public Client ID as
+     the main site (mmgr-google-auth.js / worker.js) — the old
+     BYO "paste your client ID" field is gone. Signing in here
+     ALSO creates the real site-wide session (the ID token is
+     handed to GoogleAuth.handleCredentialResponse), so one sign-in
+     shows "Signed in" on every page. A legacy mmgr_sync_clientid
+     device slot still overrides when present.
    ============================================================ */
 var MMGR = window.MMGR || {};
 
@@ -122,26 +130,44 @@ var MMGR = window.MMGR || {};
     });
     renderSyncSection();
     if (ns.App && ns.App.showToast) {
-      ns.App.showToast('Signed in as ' + (payload.email || payload.sub) + ' — identity is a device label only; nothing is gated.', 'ok');
+      ns.App.showToast('Signed in as ' + (payload.email || payload.sub) + ' — this device is signed in across the app; optional, nothing is gated.', 'ok');
+    }
+  }
+
+  // Shared Google Client ID — the same public ID the main site's sign-in
+  // uses (mirrored in mmgr-google-auth.js / worker.js / wrangler.jsonc). It
+  // replaces the old BYO requirement: the Settings sign-in works out of the
+  // box, no per-device paste needed.
+  function sharedClientId() {
+    return (ns.GoogleAuth && ns.GoogleAuth.CLIENT_ID) || '';
+  }
+
+  // GIS credential callback for the connect flow: records the device label
+  // (merge labeling) AND hands the same ID token to GoogleAuth so the REAL
+  // site-wide session is created — one sign-in threads through every page.
+  function onConnectCredential(resp) {
+    handleCredential(resp);
+    if (ns.GoogleAuth && ns.GoogleAuth.handleCredentialResponse) {
+      try { ns.GoogleAuth.handleCredentialResponse(resp); } catch (e) { /* label already saved — session is optional */ }
     }
   }
 
   // Start the sign-in flow: lazily load GIS, then render its button into
-  // #sync-gis-btn. Client ID comes from the device slot (BYO, like the AI
-  // key); a blank client ID just toasts — never crashes.
+  // #sync-gis-btn. Client ID is the shared public ID (a legacy BYO device
+  // slot overrides it); with neither present it toasts — never crashes.
   async function connect() {
     const ok = await loadGIS();
     if (!ok || !window.google || !window.google.accounts || !window.google.accounts.id) {
       if (ns.App && ns.App.showToast) ns.App.showToast('Google sign-in unavailable (offline?) — file export/import sync still works.', 'err');
       return false;
     }
-    const clientId = getClientId();
+    const clientId = getClientId() || sharedClientId();
     if (!clientId) {
-      if (ns.App && ns.App.showToast) ns.App.showToast('Enter your Google OAuth Client ID in Sync settings first.', 'err');
+      if (ns.App && ns.App.showToast) ns.App.showToast('Google sign-in is not configured on this host.', 'err');
       return false;
     }
     try {
-      window.google.accounts.id.initialize({ client_id: clientId, callback: handleCredential });
+      window.google.accounts.id.initialize({ client_id: clientId, callback: onConnectCredential });
       const btn = U.$('sync-gis-btn');
       if (btn) window.google.accounts.id.renderButton(btn, { theme: 'outline', size: 'medium', text: 'continue_with' });
       return true;
@@ -163,6 +189,11 @@ var MMGR = window.MMGR || {};
 
   function signOut() {
     clearIdentity();
+    // When the identity came from a real site-wide session, sign THAT out
+    // too so the whole site flips back to signed-out together.
+    if (ns.GoogleAuth && ns.GoogleAuth.isSignedIn && ns.GoogleAuth.isSignedIn() && ns.GoogleAuth.signOut) {
+      try { ns.GoogleAuth.signOut(); } catch (e) { /* device label already cleared */ }
+    }
     renderSyncSection();
     if (ns.App && ns.App.showToast) ns.App.showToast('Signed out — device label removed. All features still work.', 'ok');
   }
@@ -202,27 +233,43 @@ var MMGR = window.MMGR || {};
     let html = '';
 
     // Status line.
-    html += '<div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-users"></use></svg> Sync Identity</span></div>';
-    html += '<div class="sr-hint">100% optional — Google identity only labels this device for multi-device merges. It is never required, never gates a feature, and never leaves this device.</div>';
+    html += '<div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-users"></use></svg> Sign-in</span></div>';
+    html += '<div class="sr-hint">Optional — sign in once and the whole app (launcher, admin, every project) shares the same signed-in state. It never gates a feature and never leaves this device.</div>';
 
     if (signedIn && id) {
-      html += '<div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-check-circle"></use></svg> Signed in as <strong>' + U.escapeHtml(id.email || id.name || id.sub) + '</strong></span>' +
+      html += '<div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-check-circle"></use></svg> Already signed in as <strong>' + U.escapeHtml(id.email || id.name || id.sub) + '</strong></span>' +
         '<button class="btn btn-n btn-s" data-action="syncSignOut"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> Sign Out</button></div>';
     } else {
       html += '<div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-lock"></use></svg> Not signed in — works fully without an account</span></div>';
-      html += '<div class="exp-row"><button class="btn btn-n btn-s" data-action="syncConnect"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-users"></use></svg> Connect Google (optional)</button></div>';
+      html += '<div class="exp-row"><button class="btn btn-n btn-s" data-action="syncConnect"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-users"></use></svg> Sign in with Google (optional)</button></div>';
       html += '<div id="sync-gis-btn" class="sync-gis-btn"></div>';
-      html += '<div class="sr"><span class="sl">Google OAuth Client ID (BYO, device-only)</span><input type="text" id="sync-client-id" class="ctl-in w150" placeholder="xxxx.apps.googleusercontent.com" value="' + U.escapeHtml(getClientId()) + '" data-action="syncClientId"></div>';
 
       // Single dismissible suggestion — ONLY after multi-device use was
       // detected (a merge happened), and never again after dismissal.
       if (multiDeviceDetected() && !suggestionDismissed()) {
-        html += '<div class="sync-suggest"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> Merging projects across devices? Connect Google to label this device — optional, dismissible, never required. ' +
+        html += '<div class="sync-suggest"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> Merging projects across devices? Sign in to label this device — optional, dismissible, never required. ' +
           '<button class="btn btn-n btn-s" data-action="syncDismissSuggest">Dismiss</button></div>';
       }
     }
     wrap.innerHTML = html;
   }
+
+  // Thread the real site-wide session into the device label: whenever
+  // GoogleAuth signs in / restores a session, mirror the user into the sync
+  // identity so merge labeling + this section stay consistent everywhere.
+  // Signing out clears it again. Registers at module load (project.html);
+  // render no-ops without #sync-section.
+  document.addEventListener('mmgr:user-changed', function(e) {
+    const u = e && e.detail;
+    if (u && u.sub) {
+      setIdentity({ sub: u.sub, email: u.email || '', name: u.name || '', picture: u.picture || '', at: new Date().toISOString() });
+    }
+    renderSyncSection();
+  });
+  document.addEventListener('mmgr:google-signed-out', function() {
+    clearIdentity();
+    renderSyncSection();
+  });
 
   function setClientIdFrom(el) { setClientId(el); }
 

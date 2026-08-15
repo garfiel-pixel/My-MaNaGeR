@@ -109,6 +109,11 @@
          and Backup to local (.json) — instead of jumping to the Settings
          drawer. Toggled by bkToggle in mmgr-app.js; closed on outside
          click / Escape / choosing an option. -->
+    <!-- OWNER 2026-08-15: the "Signed in" chip — shown only when a real
+         Google/email session exists (mmgr-google-auth.js drives it via
+         showUser/showButton). Clicking it opens the Settings drawer at the
+         Controls tab, where sign-in/sign-out live. -->
+    <button type="button" class="si-chip" id="hdr-signin" hidden title="Signed in"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-check-circle"></use></svg> Signed in</button>
     <span class="bk-anchor"><div class="dirty-ind" id="dirty-ind" data-action="bkToggle" aria-haspopup="true" aria-expanded="false" aria-controls="bk-pop" title="Changes save to this browser automatically. Click to back up — to the cloud (automatic once linked) or to a .json file.">● Not backed up</div>
     <div class="bk-pop" id="bk-pop" hidden role="dialog" aria-label="Backup options">
       <div class="bk-pop-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-save"></use></svg> Backup</div>

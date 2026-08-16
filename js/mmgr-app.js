@@ -71,6 +71,30 @@ var MMGR = window.MMGR || {};
 
   function isReadonly() { return ns.scope === 'readonly'; }
 
+  // PART F T9 (no-offline-copy guarantee): TRUE when this project was opened
+  // with a cloud editor/viewer code (session escope role set — the same slot
+  // mmgr-cloud.js writes). A recipient must never be able to export the
+  // project as an offline-copyable file: the server enforces scope on writes,
+  // but export runs entirely client-side, so the UI must refuse it here.
+  function cloudCodeHeld() {
+    try {
+      const es = JSON.parse(sessionStorage.getItem('mmgr_cloud_escope_' + ns.projectId) || 'null');
+      return !!(es && (es.role === 'editor' || es.role === 'view'));
+    } catch (e) { return false; }
+  }
+  function cloudExportBlocked(action) {
+    // openOM (export modal), cpOut (copy JSON), saveProjectFile (download
+    // .json) and driveBackup (writes the workspace to the recipient's own
+    // Drive) are the offline-copy surfaces — refused while a share code is
+    // held. Everything else proceeds normally.
+    if (action !== 'openOM' && action !== 'cpOut' && action !== 'saveProjectFile' && action !== 'driveBackup') return false;
+    if (!cloudCodeHeld()) return false;
+    if (window.MMGR.App && typeof window.MMGR.App.showToast === 'function') {
+      window.MMGR.App.showToast('Shared projects can\u2019t be copied offline. This project was opened with a share code.', 'err');
+    }
+    return true;
+  }
+
   // ---- Init ----
   function init() {
     if (!checkAccess()) return;
@@ -2065,6 +2089,8 @@ var MMGR = window.MMGR || {};
     init: init,
     _boot: _boot,
     isReadonly: isReadonly,
+    cloudCodeHeld: cloudCodeHeld,
+    cloudExportBlocked: cloudExportBlocked,
     setUserName: setUserName,
     tglTheme: tglTheme,
     tglCh: tglCh,
@@ -2375,7 +2401,10 @@ window.MMGR = MMGR;
     // (confirm-gated, overwrites local workspace), and the auto-interval is a
     // device pref — all user-initiated, never gating. GoogleAuth is optional,
     // so every handler guards before touching it (zero-throw module).
-    'driveBackup': () => { const G = window.MMGR.GoogleAuth; if (G && G.triggerBackup) G.triggerBackup(); },
+    // PART F T9: driveBackup is an offline-copy surface — refused while a
+    // cloud share code is held (the recipient must not copy the project to
+    // their own Drive).
+    'driveBackup': () => { if (window.MMGR.App && window.MMGR.App.cloudExportBlocked('driveBackup')) return; const G = window.MMGR.GoogleAuth; if (G && G.triggerBackup) G.triggerBackup(); },
     'driveRestore': () => { const G = window.MMGR.GoogleAuth; if (G && G.triggerRestore) G.triggerRestore(); },
     'driveAutoInterval': (el) => { const G = window.MMGR.GoogleAuth; if (G && G.setAutoIntervalFrom) G.setAutoIntervalFrom(el); },
     'driveSetPass': (el) => { const G = window.MMGR.GoogleAuth; if (G && G.setDrivePassFrom) G.setDrivePassFrom(el); },
@@ -2418,7 +2447,9 @@ window.MMGR = MMGR;
     'openDrwToPrompts': (el) => window.MMGR.App.openDrwToPrompts(el.getAttribute('data-type')),
     'bkToggle': () => window.MMGR.App.bkToggle(),
     'bkCloud': () => window.MMGR.App.bkCloud(),
-    'saveProjectFile': () => window.MMGR.App.saveProjectFile(),
+    // PART F T9 (no-offline-copy): export/download are refused while a cloud
+    // share code is held — the recipient must not leave with the project file.
+    'saveProjectFile': () => { if (window.MMGR.App && window.MMGR.App.cloudExportBlocked('saveProjectFile')) return; window.MMGR.App.saveProjectFile(); },
     'saveBaseline': () => window.MMGR.App.saveBaseline(),
     'restoreBaseline': () => window.MMGR.App.restoreBaseline(),
     'undo': () => window.MMGR.App.undo(),
@@ -2428,9 +2459,9 @@ window.MMGR = MMGR;
     'cfmCancel': () => window.MMGR.App.cfmCancel(),
     'keepMine': () => window.MMGR.App.keepMine(),
     'keepTheirs': () => window.MMGR.App.keepTheirs(),
-    'openOM': () => window.MMGR.App.openOM(),
+    'openOM': () => { if (window.MMGR.App && window.MMGR.App.cloudExportBlocked('openOM')) return; window.MMGR.App.openOM(); },
     'closeOM': () => window.MMGR.App.closeOM(),
-    'cpOut': () => window.MMGR.App.cpOut(),
+    'cpOut': () => { if (window.MMGR.App && window.MMGR.App.cloudExportBlocked('cpOut')) return; window.MMGR.App.cpOut(); },
     'loadClip': () => window.MMGR.App.loadClip(),
     'openDrw': () => window.MMGR.App.openDrw(),
     'closeDrw': () => window.MMGR.App.closeDrw(),

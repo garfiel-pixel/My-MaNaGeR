@@ -24,6 +24,7 @@
     "qa:report-issue": "node tools/verify-report-issue.cjs",
     "qa:market-features": "node tools/qa-market-features.cjs",
     "qa:reviews": "node tools/qa-reviews.cjs",
+    "qa:t9-adoption": "node tools/qa-t9-adoption.cjs",
     "import:mcp": "node tools/import-mcp-changelog.cjs",
     "predeploy": "npm run verify",
     "deploy": "npm run predeploy && npx wrangler deploy"

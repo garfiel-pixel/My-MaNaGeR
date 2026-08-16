@@ -98,11 +98,21 @@
       const title = p.label || p.projectId || 'Unnamed project';
       const when = p.updatedAt ? 'Last saved ' + fmtDate(p.updatedAt) : 'Created ' + fmtDate(p.createdAt);
       const snap = p.hasSnapshot ? '' : '<div class="cd-meta">No snapshot saved yet. Open it to save the first one.</div>';
+      // PART F T9: adopted (shared) projects render a role chip + an Unpin
+      // button so a recipient can drop a pinned project from THEIR list;
+      // the owner's own projects are untouched. The chip tells the user what
+      // a code grants before they open it (read-only vs scoped edit).
+      const shared = p.accessRole && p.accessRole !== 'owner';
+      const chip = shared ? '<span class="cd-role">Shared ' + escapeHtml(p.accessRole === 'view' ? 'Viewer (read-only)' : 'Editor') + '</span>' : '';
+      const unpin = shared ? '<button type="button" class="cd-unpin" data-cd-unpin="' + escapeHtml(p.projectId) + '" title="Remove this shared project from your list (the owner\'s project is not affected)">Unpin</button>' : '';
       return '<div class="cd-card" role="listitem">' +
-        '<div class="cd-title">' + escapeHtml(title) + '</div>' +
-        '<div class="cd-meta">' + escapeHtml(p.projectId || '') + '<br>' + escapeHtml(when) + (p.linkedName ? '<br>Linked to ' + escapeHtml(p.linkedName) : '') + '</div>' +
+        '<div class="cd-title">' + escapeHtml(title) + chip + '</div>' +
+        '<div class="cd-meta">' + escapeHtml(p.projectId || '') + '<br>' + escapeHtml(when) + (p.linkedName ? '<br>Shared by ' + escapeHtml(p.linkedName) : '') + '</div>' +
         snap +
+        '<div class="cd-actions">' +
         '<button type="button" class="btn btn-g btn-s" data-cd-load="' + escapeHtml(p.projectId) + '" title="Open this project from the cloud snapshot">Load</button>' +
+        unpin +
+        '</div>' +
         '</div>';
     }).join('');
   }
@@ -155,7 +165,7 @@
   // ---- open the LemonSqueezy checkout (same contract as the drawer's
   //      cloudUpgrade in mmgr-cloud.js — session-gated POST, open URL) ----
   async function upgradePlan() {
-    setStatus('Opening checkout…');
+    setStatus('Opening checkout...');
     try {
       const res = await fetch('/api/billing/checkout', { method: 'POST', credentials: 'same-origin' });
       const data = await res.json().catch(function() { return {}; });
@@ -201,17 +211,35 @@
           localStorage.setItem('mmgr_unlocked_' + projectId, '1');
           localStorage.setItem('mmgr_scope_' + projectId, 'full');
           localStorage.setItem('mmgr_state_' + projectId, JSON.stringify(data.state));
+          // PART F T9: a load through an adoption row returns the LIVE code
+          // role + scope — seed the same session slot mmgr-cloud.js writes
+          // (escopeKey) so the opened project applies the grant: viewers drop
+          // into read-only from boot, editors get only their granted sections.
+          // Without this, a pinned shared project would open full-access on
+          // the client (the server still enforces, but the UI must match).
+          if (data.role === 'view' || data.role === 'editor') {
+            try {
+              sessionStorage.setItem('mmgr_cloud_escope_' + projectId, JSON.stringify({
+                label: data.editorLabel || data.viewerLabel || (data.role === 'view' ? 'Viewer' : 'Editor'),
+                sections: data.scope || [],
+                role: data.role === 'view' ? 'view' : 'editor'
+              }));
+              if (data.role === 'view') localStorage.setItem('mmgr_scope_' + projectId, 'readonly');
+            } catch (e) { /* ignore — server still enforces */ }
+          }
         } catch (e) { setStatus('Storage unavailable — could not open the project.', true); return; }
         // Opens the project viewer with the same ?id= entry the editor-code
         // unlock uses.
         window.location.href = 'project.html?id=' + encodeURIComponent(projectId);
         return;
       }
-      // Review pass (2026-08-11): no snapshot yet — there is nothing to open,
-      // and navigating would land the user on the access gate for a project
-      // that was never actually saved. Tell them to open it once from the
-      // project's Cloud section first instead of silently bouncing them.
-      setStatus('This project has no cloud snapshot yet — open it once from its Cloud section (Save to Cloud) and it will appear here.', true);
+      // PART F T9: no snapshot yet — the OLD copy told the user to open it
+      // once from "its Cloud section", which only makes sense for the OWNER.
+      // A recipient who pinned a shared project has no Cloud section for
+      // someone else's project — explain clearly instead of dead-ending.
+      setStatus(data.role === 'view' || data.role === 'editor'
+        ? 'This shared project has no cloud snapshot yet. The admin needs to save it once first, then it will open here.'
+        : 'This project has no cloud snapshot yet. Open it once from its Cloud section (Save to Cloud) and it will appear here.', true);
     } catch (e) {
       setStatus('Could not reach the cloud service.', true);
     } finally {
@@ -219,8 +247,38 @@
     }
   }
 
+  // ---- PART F T9: unpin an adopted (shared) project ----
+  // Recipient-only action: DELETE /api/cloud/projects/:id/adopt drops the
+  // adoption row. The owner's project is never touched — the row is keyed on
+  // the recipient's own sub. On success the list reloads without the card.
+  async function unpinProject(projectId) {
+    setStatus('Removing from your list…');
+    try {
+      const res = await fetch('/api/cloud/projects/' + encodeURIComponent(projectId) + '/adopt', {
+        method: 'DELETE',
+        credentials: 'same-origin'
+      });
+      const data = await res.json().catch(function() { return {}; });
+      if (!res.ok || !data.ok) {
+        setStatus((data && data.error) || 'Could not unpin the project.', true);
+        return;
+      }
+      setStatus('Unpinned. The project is gone from your list.');
+      loadList();
+    } catch (e) {
+      setStatus('Could not reach the cloud service.', true);
+    }
+  }
+
   // ---- events ----
   document.addEventListener('click', function(e) {
+    const un = e.target && e.target.closest ? e.target.closest('[data-cd-unpin]') : null;
+    if (un) {
+      e.preventDefault();
+      const id = un.getAttribute('data-cd-unpin');
+      if (id) unpinProject(id);
+      return;
+    }
     const el = e.target && e.target.closest ? e.target.closest('[data-cd-load]') : null;
     if (el) {
       e.preventDefault();

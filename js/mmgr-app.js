@@ -740,7 +740,7 @@ var MMGR = window.MMGR || {};
   // x / alert-triangle), one-word label (Done / Error / Note), full-contrast
   // message, slide-up + hold + graceful fade-out. Shared markup + the .toast
   // CSS in css/mmgr.css (same as app.html / admin.html) — one look everywhere.
-  function showToast(msg, type) {
+  function showToast(msg, type, action) {
     const existing = document.querySelector('.toast');
     if (existing) existing.remove();
     const isErr = type === 'err' || type === 'error';
@@ -755,12 +755,26 @@ var MMGR = window.MMGR || {};
     const icon = isErr ? 'i-x' : (isWarn ? 'i-alert-triangle' : 'i-check-circle');
     const label = isErr ? 'Error' : (isWarn ? 'Note' : 'Done');
     t.innerHTML = '<span class="toast-ico"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#' + icon + '"></use></svg></span>' +
-                  '<span class="toast-body"><b></b><span></span></span>';
+                  '<span class="toast-body"><b></b><span></span></span>' +
+                  (action && action.label ? '<button type="button" class="toast-act" role="button">' + U.escapeHtml(action.label) + '</button>' : '');
     t.querySelector('b').textContent = label;
     t.querySelector('.toast-body > span').textContent = msg;
+    const actBtn = t.querySelector('.toast-act');
+    if (actBtn) {
+      // T6 (2026-08-16): destructive actions keep a short undo window — the
+      // toast holds ~6s while the snapshot lives, so the user can restore.
+      actBtn.addEventListener('click', function() {
+        clearTimeout(t._outTimer);
+        t.classList.remove('is-out');
+        if (action && action.onClick) { try { action.onClick(); } catch (e) { /* caller handles */ } }
+        t.classList.add('is-out');
+        setTimeout(() => t.remove(), 450);
+      });
+    }
     document.body.appendChild(t);
-    setTimeout(() => t.classList.add('is-out'), 2600);
-    setTimeout(() => t.remove(), 3100);
+    const hold = (action && action.label) ? 6000 : 2600;
+    t._outTimer = setTimeout(() => t.classList.add('is-out'), hold);
+    setTimeout(() => t.remove(), hold + 500);
   }
 
   // ---- Methodology Learning Card ----
@@ -2511,6 +2525,10 @@ window.MMGR = MMGR;
     'endMeeting': () => window.MMGR.Meetings.endMeeting(),
     'cancelActiveMeeting': () => window.MMGR.Meetings.cancelActiveMeeting(),
     'copyMeetingMinutes': (el) => window.MMGR.Meetings.copyMeetingMinutes(parseInt(el.getAttribute('data-id'))),
+    // T6 (2026-08-16): delete a concluded meeting with undo. MUTATING —
+    // deliberately absent from READONLY_SAFE_ACTIONS (view-only scopes refuse).
+    'delMeeting': (el) => window.MMGR.Meetings.delMeeting(parseInt(el.getAttribute('data-id'))),
+    'undoDelMeeting': () => window.MMGR.Meetings.undoDelMeeting(),
     'tglPromise': (el) => window.MMGR.Meetings.tglPromise(el.getAttribute('data-kind'), parseInt(el.getAttribute('data-idx'))),
     // Rank 1.5: meeting voice capture (mutates state — NOT in READONLY_SAFE_ACTIONS)
     'voiceStartCapture': () => window.MMGR.Voice.startCapture(),

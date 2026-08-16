@@ -380,7 +380,8 @@ var MMGR = window.MMGR || {};
         summary: act.title + ' (' + durationMin + ' min, ' + doneCount + '/' + act.items.length + ' items covered)\n' + lines
                  + (act.summary ? '\n\nSummary: ' + act.summary : ''),
         actionItems: unresolved.map(i => i.text).join('; '),
-        followUp: ''
+        followUp: '',
+        sourceMeetingId: act.id // T6 (2026-08-16): lets delMeeting remove this auto-logged Comms entry with its meeting
       });
       if (!st.meetings) st.meetings = [];
       st.meetings.unshift(JSON.parse(JSON.stringify(act)));
@@ -496,9 +497,110 @@ var MMGR = window.MMGR || {};
         <div class="meet-hist-actions">
           <span class="badge ${covered === m.items.length ? 'bg' : 'ba'} meet-hist-badge">${covered}/${m.items.length} covered</span>
           <button class="btn btn-n btn-s" data-action="copyMeetingMinutes" data-id="${m.id}" title="Copy a Word-ready minutes block to the clipboard"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy Minutes</button>
+          <button class="btn btn-d btn-s" data-action="delMeeting" data-id="${m.id}" title="Delete this meeting record and its linked entries (undo offered)"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-trash"></use></svg> Delete</button>
         </div>
       </div>`;
     }).join('');
+  }
+
+  // ---- Delete + undo (T6, owner directive 2026-08-16) ---------------------
+  // A concluded meeting is a permanent record today with NO way to remove it,
+  // not even by mistake. delMeeting removes the meeting record plus every
+  // linked artifact it created on end: the auto-logged Comms entry, the
+  // Meeting-to-Action promises (st.meetingPromises[*] with sourceMeetingId),
+  // and the Decision Log entries stamped with sourceMeetingId (transcript
+  // extraction). A full snapshot is kept for a short UNDO window (~8s) so a
+  // mistaken tap restores everything exactly — then the snapshot is dropped.
+  let _delSnapshot = null;    // { at, meeting, comms, promises, logEntries, done }
+  const DEL_UNDO_MS = 8000;
+  function _dropDelSnapshot() { _delSnapshot = null; }
+
+  function delMeeting(id) {
+    const s = ns.State.getState();
+    const idx = (s.meetings || []).findIndex(x => x.id === id);
+    if (idx < 0) { if (ns.App && ns.App.showToast) ns.App.showToast('That meeting is no longer in this project.', 'warn'); return; }
+    const meeting = s.meetings[idx];
+    const doDelete = function() {
+      // Snapshot BEFORE mutating so undo restores byte-identical records.
+      const snap = { at: Date.now(), done: false, meeting: JSON.parse(JSON.stringify(meeting)), comms: [], promises: [], logEntries: [] };
+      ns.State.updateState(function(st) {
+        const keepPromises = {};
+        Object.keys(st.meetingPromises || {}).forEach(function(k) {
+          const kept = (st.meetingPromises[k] || []).filter(function(p) {
+            const linked = p.sourceMeetingId === id;
+            if (linked) snap.promises.push({ kind: k, p: JSON.parse(JSON.stringify(p)) });
+            return !linked;
+          });
+          if (kept.length) keepPromises[k] = kept;
+        });
+        if (st.meetingPromises) st.meetingPromises = keepPromises;
+        st.commsEntries = (st.commsEntries || []).filter(function(c) {
+          const linked = c.sourceMeetingId === id;
+          if (linked) snap.comms.push(JSON.parse(JSON.stringify(c)));
+          return !linked;
+        });
+        st.logEntries = (st.logEntries || []).filter(function(e) {
+          const linked = e.sourceMeetingId === id;
+          if (linked) snap.logEntries.push(JSON.parse(JSON.stringify(e)));
+          return !linked;
+        });
+        st.meetings = (st.meetings || []).filter(x => x.id !== id);
+      });
+      snap.done = true;
+      _delSnapshot = snap;
+      setTimeout(function() { if (_delSnapshot && _delSnapshot.at === snap.at) _dropDelSnapshot(); }, DEL_UNDO_MS);
+      renderMeetings();
+      renderPromises();
+      if (R && R.renderLog) R.renderLog();
+      if (R && R.renderComms) R.renderComms();
+      if (ns.App && ns.App.showToast) {
+        var n = function(v, s, p) { return v + ' ' + (v === 1 ? s : p); };
+        ns.App.showToast('Meeting deleted. ' + n(snap.comms.length, 'Comms entry', 'Comms entries') + ', ' + n(snap.logEntries.length, 'decision', 'decisions') + ', ' + n(snap.promises.length, 'promise', 'promises') + ' removed.', 'warn', {
+          label: 'Undo',
+          onClick: function() { undoDelMeeting(snap.at); }
+        });
+      }
+    };
+    if (ns.App && ns.App.askConfirm) {
+      ns.App.askConfirm({
+        title: 'Delete meeting',
+        message: 'Delete "' + meeting.title + '" and its linked Comms, decisions and meeting-to-action entries? You can undo right after.',
+        danger: true,
+        confirmLabel: 'Delete',
+        cancelLabel: 'Cancel',
+        onOk: doDelete
+      });
+    } else {
+      doDelete();
+    }
+  }
+
+  function undoDelMeeting(at) {
+    const snap = _delSnapshot;
+    if (!snap || (at != null && snap.at !== at) || !snap.done || Date.now() - snap.at > DEL_UNDO_MS) {
+      if (ns.App && ns.App.showToast) ns.App.showToast('The undo window for that meeting has passed.', 'warn');
+      return;
+    }
+    ns.State.updateState(function(st) {
+      if (!st.meetings) st.meetings = [];
+      st.meetings.unshift(JSON.parse(JSON.stringify(snap.meeting)));
+      if (!st.commsEntries) st.commsEntries = [];
+      snap.comms.forEach(function(c) { st.commsEntries.push(JSON.parse(JSON.stringify(c))); });
+      if (!st.meetingPromises) st.meetingPromises = {};
+      snap.promises.forEach(function(e) {
+        if (!st.meetingPromises[e.kind]) st.meetingPromises[e.kind] = [];
+        st.meetingPromises[e.kind].push(JSON.parse(JSON.stringify(e.p)));
+      });
+      if (!st.logEntries) st.logEntries = [];
+      snap.logEntries.forEach(function(e) { st.logEntries.push(JSON.parse(JSON.stringify(e))); });
+    });
+    snap.done = true; // mark restored so the timeout can't double-handle
+    _dropDelSnapshot();
+    renderMeetings();
+    renderPromises();
+    if (R && R.renderLog) R.renderLog();
+    if (R && R.renderComms) R.renderComms();
+    if (ns.App && ns.App.showToast) ns.App.showToast('Meeting restored.', 'ok');
   }
 
   // ---- API ----
@@ -520,6 +622,10 @@ var MMGR = window.MMGR || {};
     copyMeetingMinutes: copyMeetingMinutes,
     renderActiveMeeting: renderActiveMeeting,
     renderMeetingHistory: renderMeetingHistory,
+    // T6 (2026-08-16): delete a concluded meeting + its linked entries with
+    // an undo window (delMeeting / undoDelMeeting).
+    delMeeting: delMeeting,
+    undoDelMeeting: undoDelMeeting,
     tglPromise: tglPromise,
     renderPromises: renderPromises,
     recordSentiment: recordSentiment,

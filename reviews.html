@@ -101,6 +101,20 @@
             <label for="review-text">Your review</label>
             <textarea id="review-text" name="review" rows="4" maxlength="2000" required placeholder="What did you build, and how did My MaNaGeR help?"></textarea>
           </div>
+          <!-- STAR INPUT UI (STABILIZATION 2026-08-16, PART F T7 follow-up):
+               the schema + renderer were already star-READY; this is the
+               missing control. Radios keep it keyboard-accessible; the fill
+               is driven by data-val (js/reviews.js) + hover preview (CSS). -->
+          <div class="rv-field">
+            <span class="rv-pick-label" id="rv-pick-label">Your rating <span class="rv-opt">(optional)</span></span>
+            <div class="rv-pick-row" id="rv-pick-row" role="radiogroup" aria-labelledby="rv-pick-label" data-val="0">
+              <label class="rv-star-btn"><input type="radio" name="stars" value="1" aria-label="1 star out of 5"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-star"></use></svg></label>
+              <label class="rv-star-btn"><input type="radio" name="stars" value="2" aria-label="2 stars out of 5"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-star"></use></svg></label>
+              <label class="rv-star-btn"><input type="radio" name="stars" value="3" aria-label="3 stars out of 5"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-star"></use></svg></label>
+              <label class="rv-star-btn"><input type="radio" name="stars" value="4" aria-label="4 stars out of 5"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-star"></use></svg></label>
+              <label class="rv-star-btn"><input type="radio" name="stars" value="5" aria-label="5 stars out of 5"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-star"></use></svg></label>
+            </div>
+          </div>
           <div class="rv-form-foot">
             <button type="submit" class="btn btn-gold">Post review</button>
             <p class="rv-status" id="review-status" role="status" aria-live="polite" hidden></p>

@@ -75,6 +75,22 @@ header h1{font-size:1rem;display:flex;align-items:center;gap:8px;font-weight:800
    admin's sticky header is a few px shorter, so pin the rail to the header's
    actual height once the panel is unlocked (syncAdminHdr sets --hdr-h). */
 #admin-app #app-sidebar{top:var(--hdr-h,64px);}
+/* FIX (STABILIZATION 2026-08-16): the shared rail reveal in css/mmgr.css is
+   gated on body.sidebar-on — a class only project.html ever sets — so admin's
+   body.sidebar-open toggle (tglAdminNav) never revealed the rail or the scrim
+   (the hamburger rotated but the drawer stayed hidden; ≤768px hid the rail
+   entirely). Admin owns its own reveal: desktop overlay drawer + mobile
+   off-canvas drawer + scrim, same tokens as the shared chrome. */
+body.sidebar-open #app-sidebar{transform:translateX(0);visibility:visible;}
+body.sidebar-open #nav-scrim{opacity:1;pointer-events:auto;}
+@media(max-width:768px){
+  #admin-app #app-sidebar{display:flex;}
+}
+/* STABILIZATION (2026-08-16): the Cloud Projects list's "Deleted" state —
+   a tombstoned project renders with a danger badge + note + Undo / Delete
+   permanently actions instead of looking live. */
+.badge.del{background:rgba(220,53,69,.14);color:var(--danger);border:1px solid rgba(220,53,69,.4);backdrop-filter:none;}
+.del-note{color:var(--danger);font-weight:700;}
 header h1 .mark{color:var(--gold);}
 .hdr-actions{display:flex;gap:6px;align-items:center;flex-wrap:wrap;}
 .hdr-actions a{font-size:.74rem;color:var(--slate);text-decoration:none;margin-right:4px;transition:color var(--tr);}
@@ -883,7 +899,18 @@ function copyCode(i){
 }
 function deleteProject(i){
   const p = projects[i];
-  const isCloud = !!(p.cloudId && p.cloudOwnerCode);
+  // STABILIZATION (2026-08-16): the cascade keys on the cloud link alone —
+  // a row missing its stored owner code must NOT silently skip the cloud
+  // delete (the Worker falls back to the signed-in session). That gap is how
+  // a "deleted" project kept showing in the Cloud Projects list.
+  const isCloud = !!p.cloudId;
+  // Owner-code header when the record carries it; otherwise the Worker's
+  // session auth covers a signed-in owner.
+  const cloudHeaders = function(){
+    const h = { 'Content-Type': 'application/json' };
+    if (p.cloudOwnerCode) h['X-Owner-Code'] = p.cloudOwnerCode;
+    return h;
+  };
   admConfirm({
     title: 'Delete Project?',
     message: isCloud
@@ -905,7 +932,7 @@ function deleteProject(i){
           try {
             const res = await fetch('/api/cloud/projects/' + encodeURIComponent(p.cloudId) + '/delete', {
               method: 'POST', credentials: 'same-origin',
-              headers: { 'Content-Type': 'application/json', 'X-Owner-Code': p.cloudOwnerCode },
+              headers: cloudHeaders(),
               body: JSON.stringify({})
             });
             const data = await res.json().catch(()=>({}));
@@ -913,6 +940,10 @@ function deleteProject(i){
               toast('Removed from this list, but the cloud copy could NOT be deleted (' + ((data && data.error) || 'HTTP ' + res.status) + '). It still works for anyone with a code.', 'error');
               return;
             }
+            // The Cloud Projects list below must reflect the tombstone
+            // immediately — the owner's exact complaint was that a deleted
+            // project kept showing there as live.
+            try { if (cloudAdminCode()) cloudAdminList(); } catch (e2) { /* list refresh is best-effort */ }
           } catch (e) {
             toast('Removed from this list, but the cloud copy could NOT be deleted (cloud unreachable). It still works for anyone with a code.', 'error');
             return;
@@ -931,7 +962,7 @@ function deleteProject(i){
           restoreLocal();
           fetch('/api/cloud/projects/' + encodeURIComponent(p.cloudId) + '/restore', {
             method: 'POST', credentials: 'same-origin',
-            headers: { 'Content-Type': 'application/json', 'X-Owner-Code': p.cloudOwnerCode },
+            headers: cloudHeaders(),
             body: JSON.stringify({})
           }).then(r=>r.json()).then(d=>{
             toast(d && d.ok ? 'Project restored. It works again for every code holder.' : 'Restored locally, but the cloud restore failed. Publish again to restore the cloud copy.', d && d.ok ? 'ok' : 'error');
@@ -1362,11 +1393,20 @@ async function cloudAdminList(){
     const projects = data.projects || [];
     if(!projects.length){ list.innerHTML = '<div class="empty">No cloud-linked projects yet.</div>'; cloudAdminStatus(''); return; }
     list.innerHTML = projects.map(function(p){
+      // STABILIZATION (2026-08-16): a tombstoned project renders its
+      // "Deleted" state instead of looking live — the owner's exact report.
+      // Undo (restore) is the only recovery path after the 5s toast window;
+      // Delete permanently (purge) wipes the backend NOW, no undo.
+      const deleted = !!p.deletedAt;
+      const meta = '<span>Created: ' + escapeHtml(String(p.createdAt||'').slice(0,10)) + '</span><span>Updated: ' + escapeHtml(String(p.updatedAt||'').slice(0,19).replace('T',' ')) + '</span>' + (p.themePrefs ? '<span>Theme: ' + escapeHtml(p.themePrefs.palette) + (p.themePrefs.dark ? ' · dark' : '') + (p.themePrefs.updatedAt ? ' · saved ' + escapeHtml(String(p.themePrefs.updatedAt).slice(0,10)) : '') + '</span>' : '') + '</div>';
+      const actions = deleted
+        ? '<div class="prow-actions"><button class="btn btn-o btn-s" data-action="cloudAdminRestore" data-id="' + escapeAttr(p.projectId) + '"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> Undo</button>' +
+          '<button class="btn btn-d btn-s" data-action="cloudAdminPurge" data-id="' + escapeAttr(p.projectId) + '"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-trash"></use></svg> Delete permanently</button></div>'
+        : '<div class="prow-actions"><button class="btn btn-o btn-s" data-action="cloudAdminReissue" data-id="' + escapeAttr(p.projectId) + '"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> Reissue owner code</button></div>';
       return '<div class="prow"><div class="prow-top"><div><div class="prow-title">' + escapeHtml(p.label || p.projectId) + '</div>' +
-        '<div class="prow-desc">ID: <code>' + escapeHtml(p.projectId) + '</code> · linked account: ' + (p.linkedName ? escapeHtml(p.linkedName) : '<em>none</em>') + ' · snapshot: ' + (p.hasSnapshot ? 'yes' : 'no') + '</div></div>' +
-        '<span class="badge ' + (p.hasSnapshot ? 'active' : 'planning') + '">' + (p.hasSnapshot ? 'snapshot' : 'no snapshot') + '</span></div>' +
-        '<div class="prow-meta"><span>Created: ' + escapeHtml(String(p.createdAt||'').slice(0,10)) + '</span><span>Updated: ' + escapeHtml(String(p.updatedAt||'').slice(0,19).replace('T',' ')) + '</span>' + (p.themePrefs ? '<span>Theme: ' + escapeHtml(p.themePrefs.palette) + (p.themePrefs.dark ? ' · dark' : '') + (p.themePrefs.updatedAt ? ' · saved ' + escapeHtml(String(p.themePrefs.updatedAt).slice(0,10)) : '') + '</span>' : '') + '</div>' +
-        '<div class="prow-actions"><button class="btn btn-o btn-s" data-action="cloudAdminReissue" data-id="' + escapeAttr(p.projectId) + '"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> Reissue owner code</button></div></div>';
+        '<div class="prow-desc">ID: <code>' + escapeHtml(p.projectId) + '</code> · linked account: ' + (p.linkedName ? escapeHtml(p.linkedName) : '<em>none</em>') + ' · snapshot: ' + (p.hasSnapshot ? 'yes' : 'no') + (deleted ? ' · <span class="del-note">deleted ' + escapeHtml(String(p.deletedAt).slice(0,19).replace('T',' ')) + '</span>' : '') + '</div></div>' +
+        '<span class="badge ' + (deleted ? 'del' : (p.hasSnapshot ? 'active' : 'planning')) + '">' + (deleted ? 'deleted' : (p.hasSnapshot ? 'snapshot' : 'no snapshot')) + '</span></div>' +
+        '<div class="prow-meta">' + meta + actions + '</div></div>';
     }).join('');
     cloudAdminStatus(projects.length + ' cloud project(s) loaded.', 'ok');
   }catch(e){
@@ -1397,6 +1437,63 @@ async function cloudAdminReissue(projectId){
           return;
         }
         cloudAdminStatus('New owner code: ' + data.ownerCode + '. Copy it now, it is shown once.', 'ok');
+      }catch(e){
+        cloudAdminStatus('Cloud API unreachable on this host.', 'err');
+      }
+    }
+  });
+}
+
+/* STABILIZATION (2026-08-16) — "Deleted" state actions for the Cloud
+   Projects list. Undo restores a tombstoned project (the only recovery path
+   after the 5s delete-toast window); Delete permanently (fortify) hard-
+   purges the backend NOW — R2 blobs, codes, adoptions, changelog, D1 row —
+   with no undo ("no more cloud until another cloud upload"). Both ride the
+   X-Admin-Code header like the list itself; the Worker accepts admin auth
+   for these two owner-style actions by design (the site operator IS the
+   owner). */
+async function cloudAdminRestore(projectId){
+  cloudAdminStatus('Restoring project…', '');
+  try{
+    const res = await fetch('/api/cloud/projects/' + encodeURIComponent(projectId) + '/restore', {
+      method:'POST', credentials:'same-origin', headers:{'Content-Type':'application/json', 'X-Admin-Code': cloudAdminCode() || ''}, body: JSON.stringify({})
+    });
+    const data = await res.json().catch(()=>({}));
+    if(!res.ok || !data.ok){
+      cloudAdminStatus('Restore failed: ' + ((data && data.error) || 'HTTP ' + res.status) + '.', 'err');
+      return;
+    }
+    cloudAdminStatus('Project restored. It is live again for every code holder.', 'ok');
+    cloudAdminList();
+  }catch(e){
+    cloudAdminStatus('Cloud API unreachable on this host.', 'err');
+  }
+}
+async function cloudAdminPurge(projectId){
+  let label = projectId;
+  const row = document.querySelector('#cloud-admin-list [data-action="cloudAdminPurge"][data-id="' + String(projectId).replace(/"/g,'&quot;') + '"]');
+  if(row && row.closest('.prow')){
+    const t = row.closest('.prow').querySelector('.prow-title');
+    if(t) label = t.textContent;
+  }
+  admConfirm({
+    title: 'Delete permanently?',
+    message: 'Permanently delete "' + label + '" from the cloud backend NOW? This wipes the project from D1 and R2: its snapshot, every editor/viewer code, adoptions and the changelog are gone, and no one can load it again. There is NO undo for this. Your local copy on this device is not affected.',
+    danger: true,
+    confirmLabel: 'Delete permanently',
+    onOk: async function(){
+      cloudAdminStatus('Deleting permanently…', '');
+      try{
+        const res = await fetch('/api/cloud/projects/' + encodeURIComponent(projectId) + '/purge', {
+          method:'POST', credentials:'same-origin', headers:{'Content-Type':'application/json', 'X-Admin-Code': cloudAdminCode() || ''}, body: JSON.stringify({})
+        });
+        const data = await res.json().catch(()=>({}));
+        if(!res.ok || !data.ok){
+          cloudAdminStatus('Delete failed: ' + ((data && data.error) || 'HTTP ' + res.status) + '.', 'err');
+          return;
+        }
+        toast('Project permanently deleted from the cloud. No more cloud until the next upload.', 'ok');
+        cloudAdminList();
       }catch(e){
         cloudAdminStatus('Cloud API unreachable on this host.', 'err');
       }
@@ -1643,6 +1740,8 @@ const ADMIN_ACTION_MAP = {
   'tglGlassMode': (el) => tglGlassMode(el),
   'cloudAdminList': () => cloudAdminList(),
   'cloudAdminReissue': (el) => cloudAdminReissue(el.getAttribute('data-id')),
+  'cloudAdminRestore': (el) => cloudAdminRestore(el.getAttribute('data-id')),
+  'cloudAdminPurge': (el) => cloudAdminPurge(el.getAttribute('data-id')),
   'codesManager': (el) => openCodesManager(_admIdx(el)),
   'closeCodesModal': () => closeCodesModal(),
   'codesCreate': () => createCloudCode(),

@@ -285,6 +285,35 @@ async function ev(expr) {
     })()`);
     check('R12b form posts -> status + new card on top', chrome2 && /Thank you/.test(chrome2.status || '') && chrome2.firstCard === 'Site Visitor' && /Browser-driven review/.test(chrome2.firstText || ''), chrome2);
     check('R12c zero console errors on reviews.html', consoleErrors.length === 0, consoleErrors.slice(0, 5));
+
+    // R13 STAR INPUT UI (STABILIZATION 2026-08-16 — owner decision: star
+    // picker + display only): the picker renders 5 radios, a picked rating
+    // rides the POST, the new card draws the stars, and the picker resets.
+    const starState = await ev(`(function(){
+      var row = document.getElementById('rv-pick-row');
+      var radios = row ? row.querySelectorAll('input[name="stars"]') : [];
+      return { count: radios.length, val: row ? row.getAttribute('data-val') : null };
+    })()`);
+    check('R13a star picker renders 5 radios (data-val 0)', starState && starState.count === 5 && starState.val === '0', starState);
+    await ev(`(function(){
+      var n = document.getElementById('review-name'); if (n) n.value = 'Rated Visitor';
+      var t = document.getElementById('review-text'); if (t) t.value = 'Browser-driven RATED review with four stars.';
+      var row = document.getElementById('rv-pick-row');
+      var r4 = row ? row.querySelector('input[value="4"]') : null;
+      if (r4) { r4.checked = true; row.dispatchEvent(new Event('change')); }
+      var f = document.getElementById('review-form'); if (f) f.requestSubmit();
+      return true;
+    })()`);
+    await delay(2500);
+    const starAfter = await ev(`(function(){
+      var row = document.getElementById('rv-pick-row');
+      var first = document.querySelector('.rv-card');
+      var ons = first ? first.querySelectorAll('.rv-star.on').length : 0;
+      var name = first ? first.querySelector('.rv-name').textContent : '';
+      return { dataVal: row ? row.getAttribute('data-val') : null, checked: !!(row && row.querySelector('input[name="stars"]:checked')), ons: ons, name: name, status: (document.getElementById('review-status') || {}).textContent || '' };
+    })()`);
+    check('R13b rated review posts -> 4 stars rendered on the new top card', /Thank you/.test(starAfter.status || '') && starAfter.name === 'Rated Visitor' && starAfter.ons === 4, starAfter);
+    check('R13c picker resets after the post (data-val 0, nothing checked)', starAfter.dataVal === '0' && starAfter.checked === false, starAfter);
   } catch (e) {
     pageOk = false; why = e.message;
   } finally {

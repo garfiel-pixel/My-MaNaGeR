@@ -63,7 +63,7 @@ const INLINE_SCRIPT_HASHES = [
   "'sha256-Jd4HFQYDoZo8X42G7dwI7h9WPPvRgUYBtXk8UPdTY3Q='", // app.html (early-apply theme snippet + desktop rail-open default)
   "'sha256-9ajvGrjnsFPwCtr5PvlDV+SVKzwxAyNkRPQ3CTXRuCE='", // app.html (launcher + 2026-08-15: rail-head hamburger toggle + pill toast(); 2026-08-16: dash-cleanup + T5 Google-icon fix — openSignIn() calls GoogleAuth.ensureGisButton() + CLOUD-CODES-AND-DELETE — 'Have a code?' code-entry card (cloudCodeOpen: POST /api/cloud/codes/lookup → /load with role header → seed session → open project.html))
   "'sha256-qbHZHLyhdEDRwWrA8/I8ty4xIjUv+L/+Y6/0cIXdkJo='", // admin.html (early-apply theme snippet)
-  "'sha256-DTm66QFb1keNd+wKnVeEE2a0XN/ip/E7iO2exmc5mmU='", // admin.html (2026-08-15: pill toast() + rail sign-in/customize + Import Project + Publish to Cloud + cloud-code adoption + sign-in routing from publish; 2026-08-16: dash-cleanup + BUG-5 cloud publish fix + T5 Google-icon fix + CLOUD-CODES-AND-DELETE — delete-with-Undo toast (soft delete/restore), per-row Codes manager (editor/viewer create/list/revoke), honest cloud-admin error copy)
+  "'sha256-X90hx47K5Wed3kK6semkRqdr3BLX1r8wBn8iIhja0mU='", // admin.html (2026-08-15: pill toast() + rail sign-in/customize + Import Project + Publish to Cloud + cloud-code adoption + sign-in routing from publish; 2026-08-16: dash-cleanup + BUG-5 cloud publish fix + T5 Google-icon fix + CLOUD-CODES-AND-DELETE — delete-with-Undo toast (soft delete/restore), per-row Codes manager (editor/viewer create/list/revoke), honest cloud-admin error copy; STABILIZATION 2026-08-16 — delete-link coherence: local delete cascades on cloudId alone (session fallback), cloud-admin list renders the tombstone 'Deleted' state with Undo + Delete permanently (purge) + auto-refresh, hamburger rail reveal fix, dash-free purge confirm copy)
   "'sha256-Oa7ON+9A164SSXhnxu08mFn0V9Tj2SlZ2SzFXFoqKNE='", // dashboard.html
   "'sha256-bNdw0+64xL2//htoz+u3InKWYZNEHO/CnuZqtcJIBgU='", // seed-test.html
   "'sha256-AxkduQ155AQ7I921Ow+mZyri0uQY4ygsDy1i/x/xbCc='", // mymanager-field-guide.html
@@ -645,7 +645,14 @@ async function cloudRateCheck(request, bucket) {
   const cfg = CLOUD_RATE[bucket] || CLOUD_RATE.general;
   const headers = bucket === 'recover' ? ['X-Owner-Code'] : ['X-Owner-Code', 'X-Editor-Code'];
   const key = await cloudRateKey(request, headers);
-  const r = cloudRateAllow(key, cfg);
+  // BUGFIX (STABILIZATION 2026-08-16): the sliding-window slots are stored in
+  // one shared map keyed only by the request key ('anon' / 'ip:...'), so every
+  // bucket raced on the SAME slot list — general-bucket traffic (e.g. the
+  // public reviews page's GETs) consumed the reviews bucket's 10/min budget
+  // and could 429 a human's POST before they ever submitted. Namespacing the
+  // key by bucket makes each limit independent, as intended.
+  const ns = bucket + ':' + key;
+  const r = cloudRateAllow(ns, cfg);
   if (!r.allowed) return { limited: true, retryAfter: r.retryAfter };
   return { limited: false };
 }
@@ -711,6 +718,7 @@ async function purgeStaleCloudProjects(env) {
       cursor = listed.truncated ? listed.cursor : undefined;
     } while (cursor);
     await env.DB.prepare('DELETE FROM cloud_editor_codes WHERE project_id = ?').bind(pid).run();
+    await env.DB.prepare('DELETE FROM cloud_adoptions WHERE project_id = ?').bind(pid).run();
     await env.DB.prepare('DELETE FROM cloud_changelog WHERE project_id = ?').bind(pid).run();
     await env.DB.prepare('DELETE FROM cloud_projects WHERE project_id = ?').bind(pid).run();
     purged.push({ projectId: pid, label: stale[i].owner_label || null, purgedAt: new Date().toISOString() });
@@ -734,6 +742,7 @@ async function purgeStaleCloudProjects(env) {
       cursor = listed.truncated ? listed.cursor : undefined;
     } while (cursor);
     await env.DB.prepare('DELETE FROM cloud_editor_codes WHERE project_id = ?').bind(pid).run();
+    await env.DB.prepare('DELETE FROM cloud_adoptions WHERE project_id = ?').bind(pid).run();
     await env.DB.prepare('DELETE FROM cloud_changelog WHERE project_id = ?').bind(pid).run();
     await env.DB.prepare('DELETE FROM cloud_projects WHERE project_id = ?').bind(pid).run();
     purged.push({ projectId: pid, label: 'deleted', purgedAt: new Date().toISOString() });
@@ -1687,7 +1696,12 @@ async function handleAdminCloudList(request, env) {
   // can see the prefs store in use from the admin cloud listing. google_sub is
   // selected INTERNALLY only — the raw sub is never exposed in the response,
   // just the derived themePrefs (palette/dark/updatedAt).
-  const rows = await env.DB.prepare('SELECT project_id, owner_label, google_name, google_sub, latest_r2_key, created_at, updated_at FROM cloud_projects ORDER BY updated_at DESC').all();
+  // STABILIZATION (2026-08-16): deleted_at rides along so the admin Cloud
+  // Projects list can render a tombstoned row as its "Deleted" state (Undo +
+  // Delete permanently) instead of looking live — the owner's report: "when I
+  // delete the local version from the admin panel, it is still showing in the
+  // cloud project section at the bottom."
+  const rows = await env.DB.prepare('SELECT project_id, owner_label, google_name, google_sub, latest_r2_key, created_at, updated_at, deleted_at FROM cloud_projects ORDER BY updated_at DESC').all();
   const projects = [];
   for (const r of (rows.results || [])) {
     let themePrefs = null;
@@ -1704,7 +1718,7 @@ async function handleAdminCloudList(request, env) {
         }
       } catch (e) { themePrefs = null; }
     }
-    projects.push({ projectId: r.project_id, label: r.owner_label || null, linkedName: r.google_name || null, hasSnapshot: !!r.latest_r2_key, createdAt: r.created_at, updatedAt: r.updated_at, themePrefs: themePrefs });
+    projects.push({ projectId: r.project_id, label: r.owner_label || null, linkedName: r.google_name || null, hasSnapshot: !!r.latest_r2_key, createdAt: r.created_at, updatedAt: r.updated_at, deletedAt: r.deleted_at || null, themePrefs: themePrefs });
   }
   return json({ ok: true, projects: projects });
 }
@@ -2283,11 +2297,48 @@ async function handleCloudProjectDelete(request, env, projectId) {
 // cloud + codes) per the owner's planning decision.
 async function handleCloudProjectRestore(request, env, projectId) {
   const auth = await cloudAuthOwnerEither(request, env, projectId);
-  if (!auth) return cloudForbidden();
+  if (!auth) {
+    // STABILIZATION (2026-08-16): the admin Cloud Projects list's "Deleted"
+    // Undo needs a restore path after the 5s toast window expires — the site
+    // operator (ADMIN_CODE) may restore a tombstoned project too.
+    const admin = await cloudAdminAuth(request, env);
+    if (!admin || admin.disabled) return cloudForbidden();
+  }
   const now = new Date().toISOString();
   const res = await env.DB.prepare('UPDATE cloud_projects SET deleted_at = NULL, updated_at = ? WHERE project_id = ? AND deleted_at IS NOT NULL').bind(now, projectId).run();
   if (!res.meta.changes) return json({ ok: false, error: 'project not found or not deleted' }, 404);
   return json({ ok: true, restored: projectId, restoredAt: now });
+}
+
+// POST /api/cloud/projects/:id/purge — owner OR site-admin HARD delete
+// (STABILIZATION directive 2026-08-16, owner decision: soft delete + Undo,
+// with a "Delete permanently" fortify button). Removes the project from the
+// backend NOW — R2 blobs (every revision under projects/<id>/), editor/viewer
+// codes, recipient adoptions, the changelog, and the D1 row itself. This is
+// the manual version of the 7-day cron tombstone purge: a deliberate,
+// destructive operator action with no tombstone and no undo — "there will be
+// no more cloud until another cloud upload" (owner's words).
+async function handleCloudProjectPurge(request, env, projectId) {
+  const owner = await cloudAuthOwnerEither(request, env, projectId);
+  if (!owner) {
+    const admin = await cloudAdminAuth(request, env);
+    if (!admin || admin.disabled) return cloudForbidden();
+  }
+  const row = await env.DB.prepare('SELECT project_id FROM cloud_projects WHERE project_id = ?').bind(projectId).first();
+  if (!row) return json({ ok: false, error: 'project not found' }, 404);
+  let cursor = undefined;
+  do {
+    const listed = await env.R2.list({ prefix: 'projects/' + projectId + '/', cursor: cursor });
+    for (let j = 0; j < (listed.objects || []).length; j++) {
+      try { await env.R2.delete(listed.objects[j].key); } catch (e) { /* best-effort per object */ }
+    }
+    cursor = listed.truncated ? listed.cursor : undefined;
+  } while (cursor);
+  await env.DB.prepare('DELETE FROM cloud_editor_codes WHERE project_id = ?').bind(projectId).run();
+  await env.DB.prepare('DELETE FROM cloud_adoptions WHERE project_id = ?').bind(projectId).run();
+  await env.DB.prepare('DELETE FROM cloud_changelog WHERE project_id = ?').bind(projectId).run();
+  await env.DB.prepare('DELETE FROM cloud_projects WHERE project_id = ?').bind(projectId).run();
+  return json({ ok: true, purged: projectId, purgedAt: new Date().toISOString() });
 }
 
 /* ============================================================
@@ -2932,7 +2983,7 @@ async function handleApi(request, env, url) {
     if (request.method === 'POST') return handleCloudCreate(request, env);
     if (request.method === 'GET') return handleCloudProjectList(request, env);
   }
-  const cloudMatch = path.match(/^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/(save|load|recover|meta|delete|restore)$/);
+  const cloudMatch = path.match(/^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/(save|load|recover|meta|delete|restore|purge)$/);
   if (cloudMatch) {
     const pid = cloudMatch[1];
     const op = cloudMatch[2];
@@ -2944,6 +2995,9 @@ async function handleApi(request, env, url) {
     if (op === 'recover' && request.method === 'POST') return handleCloudRecover(request, env, pid);
     if (op === 'delete' && request.method === 'POST') return handleCloudProjectDelete(request, env, pid);
     if (op === 'restore' && request.method === 'POST') return handleCloudProjectRestore(request, env, pid);
+    // STABILIZATION (2026-08-16): 'purge' = the admin's "Delete permanently"
+    // fortify action — hard-deletes the backend NOW (no tombstone, no undo).
+    if (op === 'purge' && request.method === 'POST') return handleCloudProjectPurge(request, env, pid);
   }
   // CLOUD-CODES-AND-DELETE-DIRECTIVE: the launcher's single code door.
   if (path === '/api/cloud/codes/lookup' && request.method === 'POST') {

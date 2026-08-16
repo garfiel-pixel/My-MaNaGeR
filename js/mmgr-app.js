@@ -236,6 +236,7 @@ var MMGR = window.MMGR || {};
         closeDrw();
         closeOM();
         closeModals();
+        if (ns.Bids && ns.Bids.closeBidPkgModal) ns.Bids.closeBidPkgModal();
         if (ns.Charter) { ns.Charter.closeChartUp(); }
         if (ns.WbsImport) { ns.WbsImport.closeWbsImport(); }
         if (ns.ImportDates) { ns.ImportDates.closeImportDates(); }
@@ -2218,20 +2219,39 @@ window.MMGR = MMGR;
     'updEnvelope': (el, e) => window.MMGR.Budget.updEnvelope(el.value, e && e.type),
     'addStake': () => window.MMGR.Stakeholders.addStake(),
     'delStake': (el) => window.MMGR.Stakeholders.delStake(parseInt(el.getAttribute('data-idx'))),
-    // MARKET-FEATURE-ROADMAP A3/A4: bid leveling + Go/No-Go scoring actions
-    // (state mutations — deliberately NOT in READONLY_SAFE_ACTIONS).
-    'bidAdd': () => window.MMGR.Bids.addBidPackage(),
-    'bidAddRow': (el) => window.MMGR.Bids.addBid(parseInt(el.getAttribute('data-pkg'))),
-    'bidDelRow': (el) => window.MMGR.Bids.delBid(parseInt(el.getAttribute('data-pkg')), parseInt(el.getAttribute('data-idx'))),
+    // MARKET-FEATURE-ROADMAP A3/A4 (T8 REBUILD 2026-08-16): bid leveling +
+    // Go/No-Go scoring actions — modal-created packages, leveled grid,
+    // weighted star scorecard. State mutations are deliberately NOT in
+    // READONLY_SAFE_ACTIONS; bidProposal/bidClarify open links (safe).
+    'bidAdd': () => window.MMGR.Bids.openBidPkgModal(),
+    'bidEdit': (el) => window.MMGR.Bids.openBidPkgModal(parseInt(el.getAttribute('data-pkg'))),
+    'bidModalAddItem': () => window.MMGR.Bids.bidModalAddItem(),
+    'bidModalDelItem': (el) => window.MMGR.Bids.bidModalDelItem(parseInt(el.getAttribute('data-idx'))),
+    'bidPkgSave': () => window.MMGR.Bids.bidPkgSave(),
+    'closeBidPkg': () => window.MMGR.Bids.closeBidPkgModal(),
+    'closeBidPkgBg': (el, e) => { if (e.target === el) window.MMGR.Bids.closeBidPkgModal(); },
+    'bidSubAdd': (el) => window.MMGR.Bids.addSub(parseInt(el.getAttribute('data-pkg'))),
+    'bidSubDel': (el) => window.MMGR.Bids.delSub(parseInt(el.getAttribute('data-pkg')), parseInt(el.getAttribute('data-sid'))),
+    'bidPkgUpd': (el, e) => window.MMGR.Bids.updPkg(parseInt(el.getAttribute('data-pkg')), el.getAttribute('data-field'), el.value, e && e.type),
+    'bidSubUpd': (el, e) => window.MMGR.Bids.updSub(parseInt(el.getAttribute('data-pkg')), parseInt(el.getAttribute('data-sid')), el.getAttribute('data-field'), el.value, e && e.type),
+    'bidLineUpd': (el, e) => window.MMGR.Bids.updLine(parseInt(el.getAttribute('data-pkg')), parseInt(el.getAttribute('data-lid')), el.getAttribute('data-field'), el.value, e && e.type),
+    'bidLineDel': (el) => window.MMGR.Bids.delLine(parseInt(el.getAttribute('data-pkg')), parseInt(el.getAttribute('data-lid'))),
+    'bidAmount': (el, e) => window.MMGR.Bids.updAmount(parseInt(el.getAttribute('data-pkg')), parseInt(el.getAttribute('data-sid')), parseInt(el.getAttribute('data-lid')), el.value, e && e.type),
+    'bidAddLine': (el) => window.MMGR.Bids.addLine(parseInt(el.getAttribute('data-pkg'))),
+    'bidAward': (el) => window.MMGR.Bids.awardSub(parseInt(el.getAttribute('data-pkg')), parseInt(el.getAttribute('data-sid'))),
+    'bidProposal': (el) => window.MMGR.Bids.openProposal(parseInt(el.getAttribute('data-pkg')), parseInt(el.getAttribute('data-sid'))),
+    'bidClarify': (el) => window.MMGR.Bids.clarifySub(parseInt(el.getAttribute('data-pkg')), parseInt(el.getAttribute('data-sid'))),
     'bidDelPkg': (el) => window.MMGR.Bids.delBidPackage(parseInt(el.getAttribute('data-pkg'))),
-    'updBid': (el, e) => window.MMGR.Bids.updBid(parseInt(el.getAttribute('data-pkg')), parseInt(el.getAttribute('data-idx')), el.getAttribute('data-field'), el.value, e && e.type),
-    'updBidPkg': (el, e) => window.MMGR.Bids.updBidPackage(parseInt(el.getAttribute('data-pkg')), el.value, e && e.type),
     'gonogoAdd': () => window.MMGR.Bids.addGoNoGo(),
-    'gonogoAddCrit': (el) => window.MMGR.Bids.addGoNoGoCriterion(parseInt(el.getAttribute('data-idx'))),
-    'gonogoDelCrit': (el) => window.MMGR.Bids.delGoNoGoCriterion(parseInt(el.getAttribute('data-idx')), parseInt(el.getAttribute('data-cidx'))),
+    'gonogoUpd': (el, e) => window.MMGR.Bids.updGoNoGo(parseInt(el.getAttribute('data-idx')), el.getAttribute('data-field'), el.value, e && e.type),
+    'gonogoCatUpd': (el, e) => window.MMGR.Bids.updGoNoGoCat(parseInt(el.getAttribute('data-idx')), parseInt(el.getAttribute('data-cidx')), el.getAttribute('data-field'), el.value, e && e.type),
+    'gonogoCritUpd': (el, e) => window.MMGR.Bids.updGoNoGoCrit(parseInt(el.getAttribute('data-idx')), parseInt(el.getAttribute('data-cidx')), parseInt(el.getAttribute('data-ridx')), el.getAttribute('data-field'), el.value, e && e.type),
+    'gonogoStar': (el) => window.MMGR.Bids.setGoNoGoStar(parseInt(el.getAttribute('data-idx')), parseInt(el.getAttribute('data-cidx')), parseInt(el.getAttribute('data-ridx')), parseInt(el.getAttribute('data-val'))),
+    'gonogoAddCat': (el) => window.MMGR.Bids.addGoNoGoCat(parseInt(el.getAttribute('data-idx'))),
+    'gonogoDelCat': (el) => window.MMGR.Bids.delGoNoGoCat(parseInt(el.getAttribute('data-idx')), parseInt(el.getAttribute('data-cidx'))),
+    'gonogoAddCrit': (el) => window.MMGR.Bids.addGoNoGoCriterion(parseInt(el.getAttribute('data-idx')), parseInt(el.getAttribute('data-cidx'))),
+    'gonogoDelCrit': (el) => window.MMGR.Bids.delGoNoGoCriterion(parseInt(el.getAttribute('data-idx')), parseInt(el.getAttribute('data-cidx')), parseInt(el.getAttribute('data-ridx'))),
     'gonogoDel': (el) => window.MMGR.Bids.delGoNoGo(parseInt(el.getAttribute('data-idx'))),
-    'updGoNoGo': (el, e) => window.MMGR.Bids.updGoNoGo(parseInt(el.getAttribute('data-idx')), el.getAttribute('data-field'), el.value, e && e.type),
-    'updGoNoGoCrit': (el, e) => window.MMGR.Bids.updGoNoGoCriterion(parseInt(el.getAttribute('data-idx')), parseInt(el.getAttribute('data-cidx')), el.getAttribute('data-field'), el.value, e && e.type),
     'addChange': () => window.MMGR.Changes.addChange(),
     'delChange': (el) => window.MMGR.Changes.delChange(parseInt(el.getAttribute('data-idx'))),
     'addLog': () => window.MMGR.Log.addLog(),
@@ -2603,6 +2623,9 @@ window.MMGR = MMGR;
   // views, report generation). Everything else is refused with a toast.
   const READONLY_SAFE_ACTIONS = {
     'showSec': 1, 'cpAllPage': 1, 'print': 1, 'openDrw': 1, 'closeDrw': 1,
+    // T8 bids rebuild: opening a proposal link / composing a clarification
+    // email and dismissing the Add Bid Package modal never mutate state.
+    'bidProposal': 1, 'bidClarify': 1, 'closeBidPkg': 1, 'closeBidPkgBg': 1,
     'swDtab': 1, 'openDrwToPrompts': 1, 'openDrwToSave': 1,
     'jumpToDashTimeline': 1, 'closeMLC': 1, 'openMeetPrompt': 1,
     'copyMeetingMinutes': 1, 'runMonteCarlo': 1, 'undoClr': 1,
@@ -2758,7 +2781,7 @@ window.MMGR = MMGR;
     // field (Google OAuth Client ID) — it was missing from this change
     // whitelist, so the value sat in the box but was never persisted.
     // `change` is the correct event for a one-time paste/type-then-blur field.
-    if (handler && (action === 'updEnvelope' || action === 'saveSprint' || action === 'setWorkWeek' || action === 'setRegion' || action === 'loadProjectFile' || action === 'mergeProjectFile' || action === 'updCharter' || action === 'updClose' || action === 'setUserName' || action === 'addRaciTaskFromPicker' || action === 'addRaciPersonFromPicker' || action === 'updField' || action === 'updTaskField' || action === 'updKPI' || action === 'updKPILink' || action === 'updKPIDir' || action === 'updSpendEntry' || action === 'updRaciTask' || action === 'updRaciPerson' || action === 'claimSetCause' || action === 'aiSetTier' || action === 'setErrWebhook' || action === 'driveAutoInterval' || action === 'driveSetPass' || action === 'syncClientId' || action === 'updBid' || action === 'updBidPkg' || action === 'updGoNoGo' || action === 'updGoNoGoCrit' || action === 'updInspItem')) {
+    if (handler && (action === 'updEnvelope' || action === 'saveSprint' || action === 'setWorkWeek' || action === 'setRegion' || action === 'loadProjectFile' || action === 'mergeProjectFile' || action === 'updCharter' || action === 'updClose' || action === 'setUserName' || action === 'addRaciTaskFromPicker' || action === 'addRaciPersonFromPicker' || action === 'updField' || action === 'updTaskField' || action === 'updKPI' || action === 'updKPILink' || action === 'updKPIDir' || action === 'updSpendEntry' || action === 'updRaciTask' || action === 'updRaciPerson' || action === 'claimSetCause' || action === 'aiSetTier' || action === 'setErrWebhook' || action === 'driveAutoInterval' || action === 'driveSetPass' || action === 'syncClientId' || action === 'bidPkgUpd' || action === 'bidSubUpd' || action === 'bidLineUpd' || action === 'bidAmount' || action === 'gonogoUpd' || action === 'gonogoCatUpd' || action === 'gonogoCritUpd' || action === 'updInspItem')) {
       handler(el, e);
     }
   });
@@ -2774,7 +2797,7 @@ window.MMGR = MMGR;
     const action = el.getAttribute('data-action');
     if (!guardReadonly(action)) return;
     const handler = ACTION_MAP[action];
-    if (handler && (action === 'updCharter' || action === 'updClose' || action === 'setUserName' || action === 'updEnvelope' || action === 'wiPreview' || action === 'idPreview' || action === 'regenChartPrompt' || action === 'updField' || action === 'updTaskField' || action === 'updKPI' || action === 'updSpendEntry' || action === 'updRaciTask' || action === 'updRaciPerson' || action === 'updDMAIC' || action === 'updMeetItemNote' || action === 'updMeetField' || action === 'handleCharterUpload' || action === 'setErrWebhook' || action === 'updBid' || action === 'updBidPkg' || action === 'updGoNoGo' || action === 'updGoNoGoCrit' || action === 'updInspItem')) {
+    if (handler && (action === 'updCharter' || action === 'updClose' || action === 'setUserName' || action === 'updEnvelope' || action === 'wiPreview' || action === 'idPreview' || action === 'regenChartPrompt' || action === 'updField' || action === 'updTaskField' || action === 'updKPI' || action === 'updSpendEntry' || action === 'updRaciTask' || action === 'updRaciPerson' || action === 'updDMAIC' || action === 'updMeetItemNote' || action === 'updMeetField' || action === 'handleCharterUpload' || action === 'setErrWebhook' || action === 'bidPkgUpd' || action === 'bidSubUpd' || action === 'bidLineUpd' || action === 'bidAmount' || action === 'gonogoUpd' || action === 'gonogoCatUpd' || action === 'gonogoCritUpd' || action === 'updInspItem')) {
       handler(el, e);
     }
   });

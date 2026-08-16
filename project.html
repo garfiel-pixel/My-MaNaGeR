@@ -679,18 +679,22 @@
         <th class="w60"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> </th>
       </tr></thead><tbody id="stk-body"></tbody></table></div>
     </div>
-    <!-- MARKET-FEATURE-ROADMAP A3: bid leveling — side-by-side sub-bid
-         comparison per package. Rendered by js/mmgr-bids.js. -->
+    <!-- MARKET-FEATURE-ROADMAP A3 (T8 REBUILD 2026-08-16): bid leveling —
+         modal-created packages with CSI division, target budget, deadline and
+         scope line items; the leveled grid compares subcontractor quotes per
+         line item with base totals, leveling adjustments and true leveled
+         totals. Rendered by js/mmgr-bids.js. -->
     <div class="card m0a mt16">
-      <div class="card-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Bid Leveling<span class="ct-sub">Compare subcontractor quotes per package — lowest bid and scope gaps flagged</span>
+      <div class="card-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Bid Leveling<span class="ct-sub">Leveled comparison of subcontractor quotes against target scope and budget</span>
         <div class="g6"><button class="btn btn-g btn-s" data-action="bidAdd">+ Add Bid Package</button></div>
       </div>
       <div id="bid-body"></div>
     </div>
-    <!-- MARKET-FEATURE-ROADMAP A4: Go/No-Go bid scoring — scored checklist
-         deciding whether an opportunity is worth pursuing. -->
+    <!-- MARKET-FEATURE-ROADMAP A4 (T8 REBUILD): Go/No-Go bid scoring —
+         weighted questionnaire with 1-5 star criteria per weighted category;
+         live score, GO/REVIEW/NO-GO verdict and automation bar. -->
     <div class="card m0a mt16">
-      <div class="card-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-target"></use></svg> Go / No-Go Scorecard<span class="ct-sub">Scored criteria — 75%+ GO, 50%+ REVIEW, below NO-GO</span>
+      <div class="card-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-target"></use></svg> Go / No-Go Scorecard<span class="ct-sub">Weighted star questionnaire, 75%+ GO, 50%+ REVIEW, below NO-GO</span>
         <div class="g6"><button class="btn btn-g btn-s" data-action="gonogoAdd">+ Add Scorecard</button></div>
       </div>
       <div id="gonogo-body"></div>
@@ -1477,6 +1481,44 @@
     <div class="wi-actions">
       <button class="btn btn-d btn-s" data-action="closeImportDates">Cancel</button>
       <button class="btn btn-g btn-s" id="id-commit-btn" data-action="idCommit" disabled><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-check-circle"></use></svg> Fill In</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Bid Package Modal (MARKET-FEATURE-ROADMAP A3, T8 REBUILD
+     2026-08-16): package name, CSI Division Code, target baseline budget,
+     bid deadline and scope line items. Draft inputs are read on Save (no
+     state mutation per keystroke); the CSI options are filled from
+     MMGR.Bids' canonical CSI_DIVISIONS list on open. -->
+<div id="bidpkg-modal" data-action="closeBidPkgBg">
+  <div class="bp-box">
+    <h3 id="bp-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Add Bid Package</h3>
+    <div class="bp-field">
+      <label for="bp-name">Package name</label>
+      <input type="text" id="bp-name" placeholder="e.g. Electrical Phase 1">
+    </div>
+    <div class="bp-grid">
+      <div class="bp-field">
+        <label for="bp-csi">CSI Division Code</label>
+        <select id="bp-csi"></select>
+      </div>
+      <div class="bp-field">
+        <label for="bp-budget">Target baseline budget</label>
+        <input type="number" id="bp-budget" min="0" step="100" placeholder="0">
+      </div>
+      <div class="bp-field">
+        <label for="bp-deadline">Bid deadline</label>
+        <input type="date" id="bp-deadline">
+      </div>
+    </div>
+    <div class="bp-field">
+      <span class="bp-lbl">Scope line items</span>
+      <div id="bp-items"></div>
+      <button type="button" class="btn btn-n btn-s" data-action="bidModalAddItem">+ Add Line Item</button>
+    </div>
+    <div class="bp-actions">
+      <button class="btn btn-d btn-s" data-action="closeBidPkg">Cancel</button>
+      <button class="btn btn-g btn-s" data-action="bidPkgSave"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-mail"></use></svg> Save &amp; Send RFQ</button>
     </div>
   </div>
 </div>

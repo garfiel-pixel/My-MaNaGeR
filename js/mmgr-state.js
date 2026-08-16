@@ -614,7 +614,12 @@ var MMGR = window.MMGR || {};
     // could silently drop an editor's RFI/Submittal/Punch edits; C13/C16/
     // C17/C18/C26/C30/C11 registries ship in batch 2).
     'rfis', 'submittals', 'punchList', 'payApps', 'inspections', 'incidents',
-    'handover', 'warrantyItems', 'permits', 'drawingLog'];
+    'handover', 'warrantyItems', 'permits', 'drawingLog',
+    // MARKET-FEATURE-ROADMAP A3/A4 (T8 REBUILD 2026-08-16): bid packages +
+    // Go/No-Go scorecards were missing from the whitelist, so their per-field
+    // timestamps were never stamped and cloud-merge conflict resolution could
+    // silently drop a teammate's bid leveling edits.
+    'bidPackages', 'goNoGo'];
   let _lastSaveFingerprint = null;
 
   function fingerprintOf(s) {

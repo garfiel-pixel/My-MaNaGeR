@@ -380,25 +380,90 @@ body.sidebar-open .nav-btn .ico,body.sidebar-open .sb-close .ico{transform:rotat
   border:1px solid rgba(245,158,11,.4);border-radius:var(--squircle-md);padding:10px 14px;margin-bottom:14px;font-size:.76rem;color:var(--text);}
 .stk-cmp .ico{color:var(--amber);flex-shrink:0;}
 .stk-cmp.is-hide{display:none;}
-/* MARKET-FEATURE-ROADMAP A3/A4: Bid Leveling + Go/No-Go scorecards
-   (Stakeholders panel). Nested panels INSIDE the outer glass .card — they
-   reuse the SAME card language at a nested scale (glass-fill surface +
-   glass border + squircle radius + rim/shadow); the inputs use the app's
-   soft-field treatment, NEVER default browser borders. UI doctrine: every
-   creation of this sort ships WITH the app's design, not apart from it. */
+/* MARKET-FEATURE-ROADMAP A3/A4 (T8 REBUILD 2026-08-16): Bid Leveling +
+   Go/No-Go scorecards (Stakeholders panel). Nested panels INSIDE the outer
+   glass .card — they reuse the SAME card language at a nested scale
+   (glass-fill surface + glass border + squircle radius + rim/shadow); the
+   inputs use the app's soft-field treatment, NEVER default browser borders.
+   UI doctrine 8: every creation of this sort ships WITH the app's design,
+   not apart from it. */
 .bid-pkg{background:var(--glass-fill-dark);border:var(--glass-border);border-radius:var(--squircle-md);padding:12px 16px;margin-bottom:14px;box-shadow:var(--glass-rim),var(--glass-shadow);transition:border-color var(--tr),background var(--tr),box-shadow var(--tr);}
 .bid-pkg-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px;}
 .bid-pkg-head input[type=text]{font-weight:700;font-size:.78rem;background:var(--tile-bg);border:1px solid var(--border);border-radius:var(--radius-control);color:var(--text);font-family:inherit;padding:6px 10px;outline:none;transition:border-color var(--tr),box-shadow var(--tr);}
-.bid-min{font-size:.7rem;color:var(--green);font-weight:700;margin-bottom:6px;}
-.bid-tbl{margin-top:4px;}
-.bid-tbl th,.bid-tbl td{padding:4px 6px;font-size:.72rem;}
+.bid-pkg-head input:focus-visible,.bp-box input:focus-visible,.bp-box select:focus-visible,.gn-cat-head input:focus-visible,.gn-crit input:focus-visible,.lvl-grid input:focus-visible{outline:none;border-color:var(--gold);box-shadow:0 0 0 2px rgba(var(--gold-rgb),.22);}
+.bid-chips{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center;}
+.bid-chip{font-size:.62rem;font-weight:700;letter-spacing:.02em;color:var(--slate);background:var(--tile-bg);border:1px solid var(--border);border-radius:999px;padding:3px 9px;}
+.bid-chip-muted{font-weight:500;color:var(--text-secondary,var(--slate));}
+/* Leveled grid — transparent .dt inline-edit cells; totals rows bold. */
+.lvl-grid{min-width:640px;margin-top:2px;}
+.lvl-grid th,.lvl-grid td{padding:5px 8px;font-size:.72rem;vertical-align:top;}
+.lvl-item-col{min-width:200px;}
+.lvl-tgt-col{min-width:96px;}
+.lvl-del-col{width:34px;}
+.lvl-sub{min-width:170px;}
+.lvl-sub-name{font-weight:700;font-size:.74rem;background:var(--tile-bg);border:1px solid var(--border);border-radius:var(--radius-control);color:var(--text);font-family:inherit;padding:5px 8px;outline:none;width:100%;}
+.lvl-sub-mini{font-size:.64rem;background:var(--tile-bg);border:1px solid var(--border);border-radius:var(--radius-control);color:var(--text);font-family:inherit;padding:3px 7px;outline:none;width:100%;margin-top:4px;}
+.lvl-sub .btn{display:block;margin-top:5px;}
+.lvl-awarded{display:inline-block;margin-top:5px;font-size:.58rem;}
+.lvl-item-cell input,.lvl-tgt-cell input{min-width:120px;}
+.lvl-num{text-align:right;font-variant-numeric:tabular-nums;font-weight:600;}
+.lvl-var-ok{color:var(--green);}
+.lvl-var-over{color:var(--danger);font-weight:800;}
+.lvl-var-na{color:var(--slate);font-weight:400;}
+.lvl-label{font-weight:700;color:var(--slate);font-size:.66rem;text-transform:uppercase;letter-spacing:.04em;}
+.lvl-total td{border-top:1px solid var(--border);}
+.lvl-base td,.lvl-adj td{font-weight:500;}
+.lvl-true td{font-weight:800;border-top-width:2px;}
+.lvl-actions td{border-top:2px solid var(--border);}
+.lvl-act{font-size:.6rem;padding:3px 7px;margin:0 4px 4px 0;}
+.lvl-act-cell{min-width:250px;}
+.lvl-lowest{font-size:.56rem;margin-top:2px;}
+.lvl-tools{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;}
+/* Go/No-Go weighted scorecard — categories with weights + 1-5 star rows. */
 .gn-card{background:var(--glass-fill-dark);border:var(--glass-border);border-radius:var(--squircle-md);padding:12px 16px;margin-bottom:14px;box-shadow:var(--glass-rim),var(--glass-shadow);transition:border-color var(--tr),background var(--tr),box-shadow var(--tr);}
-.gn-crit{display:flex;align-items:center;gap:8px;margin:6px 0;flex-wrap:wrap;}
-.gn-crit input{flex:1;min-width:140px;background:var(--tile-bg);border:1px solid var(--border);border-radius:var(--radius-control);color:var(--text);font-size:.76rem;font-family:inherit;padding:5px 9px;outline:none;transition:border-color var(--tr),box-shadow var(--tr);}
-.gn-crit select{width:92px;}
-.gn-score{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:8px;}
-.gn-score-txt{font-size:.72rem;color:var(--slate);}
 .gn-badge{font-size:.62rem;}
+.gn-scorebar{position:relative;height:12px;border-radius:999px;background:var(--tile-bg);border:1px solid var(--border);margin:4px 0 12px;overflow:hidden;}
+.gn-scorebar-fill{height:100%;border-radius:999px;transition:width .3s ease;}
+.gn-scorebar-fill.go{background:var(--green);}
+.gn-scorebar-fill.review{background:var(--amber);}
+.gn-scorebar-fill.nogo{background:var(--danger);}
+.gn-scorebar-fill.empty{background:var(--border);}
+.gn-scorebar-mark{position:absolute;top:0;bottom:0;width:1px;background:rgba(255,255,255,.6);}
+.gn-scorebar-mark.m50{left:50%;}
+.gn-scorebar-mark.m75{left:75%;}
+.gn-cats{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.gn-cat{background:var(--tile-bg);border:1px solid var(--border);border-radius:var(--squircle-sm);padding:10px 12px;}
+.gn-cat-head{display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap;}
+.gn-cat-head input[type=text]{flex:1;min-width:120px;background:var(--glass-fill-dark);border:1px solid var(--border);border-radius:var(--radius-control);color:var(--text);font-size:.74rem;font-family:inherit;padding:5px 9px;outline:none;font-weight:700;}
+.gn-wt{display:inline-flex;align-items:center;gap:3px;font-size:.68rem;font-weight:700;color:var(--slate);}
+.gn-wt input{width:52px;background:var(--glass-fill-dark);border:1px solid var(--border);border-radius:var(--radius-control);color:var(--text);font-size:.72rem;font-family:inherit;padding:4px 6px;outline:none;}
+.gn-crit{display:flex;align-items:center;gap:8px;margin:6px 0;flex-wrap:wrap;}
+.gn-crit input{flex:1;min-width:140px;background:var(--glass-fill-dark);border:1px solid var(--border);border-radius:var(--radius-control);color:var(--text);font-size:.76rem;font-family:inherit;padding:5px 9px;outline:none;transition:border-color var(--tr),box-shadow var(--tr);}
+.gn-stars{display:inline-flex;gap:2px;flex-shrink:0;}
+.gn-star{background:none;border:none;padding:2px;cursor:pointer;color:var(--border);line-height:0;}
+.gn-star .ico{width:17px;height:17px;}
+.gn-star.on{color:var(--gold);}
+.gn-star:focus-visible{outline:2px solid var(--gold);outline-offset:1px;border-radius:3px;}
+.gn-addcrit{margin-top:6px;}
+.gn-foot{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px;}
+.gn-score-txt{font-size:.72rem;color:var(--slate);font-weight:600;}
+@media (max-width:900px){.gn-cats{grid-template-columns:1fr;}}
+/* Add Bid Package modal (T8) — same surface + input recipe as the other
+   content modals (.cu-box/.wi-box); dense form content is solid, never
+   glass (Gate 6.1). */
+#bidpkg-modal{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:2100;display:none;align-items:center;justify-content:center;padding:20px;}
+#bidpkg-modal.on{display:flex;}
+#bidpkg-modal .bp-box{background:var(--card);border:1px solid var(--border);border-radius:12px;max-width:720px;width:100%;max-height:90vh;overflow:auto;padding:20px;box-shadow:0 24px 70px rgba(0,0,0,.45);}
+#bidpkg-modal .bp-box h3{font-size:.95rem;margin:0 0 16px;display:flex;align-items:center;gap:8px;color:var(--text);}
+#bidpkg-modal .bp-box h3 .ico{color:var(--gold);}
+.bp-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;}
+.bp-field{margin-bottom:14px;}
+.bp-field label,.bp-lbl{display:block;font-size:.72rem;font-weight:700;color:var(--slate);margin-bottom:5px;letter-spacing:.02em;}
+.bp-field input[type=text],.bp-field input[type=number],.bp-field input[type=date],.bp-field select{width:100%;background:var(--tile-bg);border:1px solid var(--border);border-radius:var(--radius-control);color:var(--text);font:inherit;font-size:.82rem;padding:8px 11px;outline:none;}
+.bp-item{display:flex;gap:8px;align-items:center;margin-bottom:8px;}
+.bp-item .bp-item-desc{flex:1;}
+.bp-item .bp-item-cost{width:130px;}
+@media (max-width:640px){.bp-grid{grid-template-columns:1fr;}}
 /* ---- DIR-3 (PROJECT-UX-NAV-WEATHER-EXPORT-DIRECTIVE): Core-Mode onboarding
        callout on the Dashboard. Solid card surface (Gate 6.1 — never glass
        over content), gold-tinted border, no motion (instant show/hide via

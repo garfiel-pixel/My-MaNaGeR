@@ -4,8 +4,11 @@
    verifies the A1/A2/A3/A4/A5/A7 implementations end-to-end:
    - A1/A5: stakeholder COI/license expiry + EMR staleness
    - A2: lien-waiver status on budget lines
-   - A3: bid leveling (lowest/scope-gap flags)
-   - A4: Go/No-Go scoring verdicts
+   - A3: bid leveling (T8 rebuild — modal-created packages, leveled grid
+     with base totals / leveling adjustments / true leveled totals /
+     variance, per-sub award/proposal/clarify actions, legacy migration)
+   - A4: Go/No-Go weighted star scorecard (category weights, live score,
+     GO/REVIEW/NO-GO verdicts, automation bar)
    - A7: claim-compliance AI preset (prompt + local builder)
    Usage: node tools/qa-market-features.cjs  (serve.cjs on :8765)
    ============================================================ */
@@ -75,30 +78,47 @@ async function check(name, expr, hint) {
   // ---- Module presence ----
   await check('A0 module loaded', `(function(){return {val: !!MMGR.Bids && !!MMGR.Stakeholders.getExpiringCompliance && !!MMGR.Stakeholders.isEmrStale};})()`);
 
-  // ---- A3: bid leveling ----
-  await ev(`MMGR.Bids.addBidPackage();`); await delay(200);
-  await ev(`MMGR.State.updateState(function(s){s.bidPackages[0].package='Electrical — Phase 1';});`); await delay(200);
-  await ev(`MMGR.Bids.addBid(0); MMGR.Bids.addBid(0);`); await delay(200);
-  await ev(`MMGR.Bids.updBid(0,0,'vendor','ABC Electrical Ltd'); MMGR.Bids.updBid(0,0,'amount',45000); MMGR.Bids.updBid(0,0,'scopeNotes','Includes fixtures');`); await delay(200);
-  await ev(`MMGR.Bids.updBid(0,1,'vendor','XYZ Wiring Co'); MMGR.Bids.updBid(0,1,'amount',41000); MMGR.Bids.updBid(0,1,'scopeNotes','Excludes fixtures');`); await delay(200);
-  await ev(`MMGR.Bids.updBid(0,1,'amount',41000);`); await delay(300);
-  await check('A3 render has package block', `(function(){var b=document.getElementById('bid-body');return {val: !!b && b.querySelectorAll('.bid-pkg').length===1};})()`);
-  await check('A3 flagScopeGaps marks lowest', `(function(){var p=MMGR.State.getState().bidPackages[0];var f=MMGR.Bids.flagScopeGaps(p.bids);return {val: f.length===2 && f[1].lowestAmount===true && f[1].scopeGap===true};})()`);
-  await check('A3 lowest rendered in DOM', `(function(){var b=document.getElementById('bid-body');return {val: !!b && b.innerHTML.indexOf('lowest')>-1};})()`);
-  await check('A3 action rows wired', `(function(){var b=document.getElementById('bid-body');return {val: !!b && !!b.querySelector('[data-action=updBid]') && !!b.querySelector('[data-action=bidDelRow]')};})()`);
+  // ---- A3 (T8 REBUILD): bid leveling — modal-created packages + leveled grid ----
+  await ev(`MMGR.Bids.openBidPkgModal();`); await delay(250);
+  await check('A3 modal opens with CSI select + one line item', `(function(){var m=document.getElementById('bidpkg-modal');var csi=document.getElementById('bp-csi');return {val: m && m.classList.contains('on') && csi && csi.options.length>=20 && document.querySelectorAll('#bp-items .bp-item').length===1};})()`);
+  await ev(`MMGR.Bids.bidModalAddItem();`); await delay(150);
+  await check('A3 modal add line item row', `(function(){return {val: document.querySelectorAll('#bp-items .bp-item').length===2};})()`);
+  // Fill the draft through the DOM (same path a real user takes) and save.
+  await ev(`(function(){document.getElementById('bp-name').value='Electrical Phase 1';document.getElementById('bp-csi').value='26';document.getElementById('bp-budget').value='100000';document.getElementById('bp-deadline').value='2026-09-30';var rows=document.querySelectorAll('#bp-items .bp-item');rows[0].querySelector('.bp-item-desc').value='Rough-in';rows[0].querySelector('.bp-item-cost').value='45000';rows[1].querySelector('.bp-item-desc').value='Fixtures';rows[1].querySelector('.bp-item-cost').value='30000';return true;})()`); await delay(150);
+  await ev(`MMGR.Bids.bidPkgSave();`); await delay(350);
+  await check('A3 save creates package + closes modal', `(function(){var s=MMGR.State.getState();var m=document.getElementById('bidpkg-modal');return {val: s.bidPackages.length===1 && s.bidPackages[0].lineItems.length===2 && s.bidPackages[0].csiDivision==='26' && s.bidPackages[0].targetBudget===100000 && !m.classList.contains('on')};})()`);
+  await check('A3 page context alive after RFQ mailto', `(function(){return {val: !!(window.MMGR && MMGR.State)};})()`);
+  // Add two subcontractors and price the grid (sub 1 skips Fixtures).
+  await ev(`MMGR.Bids.addSub(0); MMGR.Bids.addSub(0);`); await delay(250);
+  await ev(`MMGR.Bids.updSub(0,0,'vendor','ABC Electrical Ltd'); MMGR.Bids.updSub(0,1,'vendor','XYZ Wiring Co');`); await delay(200);
+  await ev(`MMGR.Bids.updAmount(0,0,0,45000); MMGR.Bids.updAmount(0,0,1,30000); MMGR.Bids.updAmount(0,1,0,41000);`); await delay(350);
+  await check('A3 leveled grid math (base/adjustments/leveled/variance)', `(function(){var p=MMGR.State.getState().bidPackages[0];var g=MMGR.Bids.leveledGrid(p);var a=g.subs[0],b=g.subs[1];return {val: a.base===75000 && a.adj===0 && a.leveled===75000 && Math.round(a.varPct)===-25 && b.base===41000 && b.adj===30000 && b.leveled===71000 && Math.round(b.varPct)===-29 && g.lowestIdx===1 && g.targetTotal===75000};})()`);
+  await check('A3 grid renders totals rows + variance color + actions', `(function(){var el=document.getElementById('bid-body');return {val: !!el && el.querySelectorAll('.bid-pkg').length===1 && !!el.querySelector('.lvl-grid') && !!el.querySelector('.lvl-base') && !!el.querySelector('.lvl-adj') && !!el.querySelector('.lvl-true') && !!el.querySelector('.lvl-var') && el.querySelectorAll('.lvl-var-ok').length===2 && !!el.querySelector('[data-action=bidAward]') && !!el.querySelector('[data-action=bidProposal]') && !!el.querySelector('[data-action=bidClarify]') && el.querySelector('.lvl-lowest')!==null};})()`);
+  // Award Contract flows through the shared confirm dialog.
+  await ev(`MMGR.Bids.awardSub(0,1);`); await delay(200);
+  await check('A3 award asks for confirmation', `(function(){return {val: document.getElementById('cfm-modal').classList.contains('on')};})()`);
+  await ev(`MMGR.App.cfmOk();`); await delay(300);
+  await check('A3 award persists + badge renders', `(function(){var p=MMGR.State.getState().bidPackages[0];var b=document.getElementById('bid-body');return {val: p.subs[1].awarded===true && b.innerHTML.indexOf('AWARDED')>-1};})()`);
+  // Legacy shape (pre-rebuild {package,bids[]}) migrates in place on render.
+  await ev(`MMGR.State.updateState(function(s){if(!s.bidPackages)s.bidPackages=[];s.bidPackages.push({id:'BID-legacy',package:'Legacy Package',bids:[{vendor:'Legacy Co',amount:50000}]});});`); await delay(250);
+  // renderAll re-renders only the ACTIVE panel — open the Stakeholders panel
+  // (where the bid cards live) so render() runs and migrates the legacy shape.
+  await ev(`document.querySelector('[data-action=showSec][data-section=stk]').click();`); await delay(400);
+  await ev(`MMGR.Render.renderAll();`); await delay(300);
+  await check('A3 legacy package migrates to new shape', `(function(){var s=MMGR.State.getState();var p=s.bidPackages[1];var b=document.getElementById('bid-body');var dbg={li:p&&p.lineItems&&p.lineItems.length,hasSubs:!!(p&&p.subs),vendor:p&&p.subs&&p.subs[0]&&p.subs[0].vendor,pkgs:b?b.querySelectorAll('.bid-pkg').length:-1,hasBids:p&&Array.isArray(p.bids)};return {val: !!p.lineItems && p.lineItems.length===1 && !!p.subs && p.subs[0].vendor==='Legacy Co' && b.querySelectorAll('.bid-pkg').length===2, dbg: JSON.stringify(dbg)};})()`, 'debug: see dbg field');
 
-  // ---- A4: Go/No-Go ----
+  // ---- A4 (T8 REBUILD): Go/No-Go weighted star scorecard ----
   await ev(`MMGR.Bids.addGoNoGo();`); await delay(200);
   await ev(`MMGR.Bids.updGoNoGo(0,'projectName','Riverside Tower Phase 2');`); await delay(200);
-  await ev(`MMGR.Bids.updGoNoGoCriterion(0,0,'label','Bonding capacity available'); MMGR.Bids.updGoNoGoCriterion(0,0,'score',1);`); await delay(200);
-  await ev(`MMGR.Bids.addGoNoGoCriterion(0);`); await delay(200);
-  await ev(`MMGR.Bids.updGoNoGoCriterion(0,1,'label','Schedule realistic'); MMGR.Bids.updGoNoGoCriterion(0,1,'score',0.5);`); await delay(300);
-  // Roadmap formula: >=0.75 GO, >=0.5 REVIEW, else NO-GO. At exactly 0.75 it
-  // is GO (the roadmap's own boundary); REVIEW lives between 0.5 and 0.75.
-  await check('A4 goNoGoScore GO at 75% (roadmap boundary)', `(function(){var g=MMGR.State.getState().goNoGo[0];var sc=MMGR.Bids.goNoGoScore(g.criteria);return {val: sc.pct===0.75 && sc.recommendation==='GO'};})()`);
-  await check('A4 goNoGoScore REVIEW at 60%', `(function(){var g=MMGR.State.getState().goNoGo[0];g.criteria[1].score=0.2;var sc=MMGR.Bids.goNoGoScore(g.criteria);return {val: sc.pct===0.6 && sc.recommendation==='REVIEW'};})()`);
-  await check('A4 goNoGoScore NO-GO at 40%', `(function(){var g=MMGR.State.getState().goNoGo[0];g.criteria[0].score=0.5;g.criteria[1].score=0.3;var sc=MMGR.Bids.goNoGoScore(g.criteria);return {val: sc.pct===0.4 && sc.recommendation==='NO-GO'};})()`);
-  await check('A4 scorecard rendered with badge', `(function(){var b=document.getElementById('gonogo-body');return {val: !!b && b.querySelectorAll('.gn-card').length===1 && b.querySelector('.gn-badge')!==null};})()`);
+  await check('A4 scorecard defaults to 30/25/20/25 weights', `(function(){var g=MMGR.State.getState().goNoGo[0];return {val: g.categories.length===4 && g.categories[0].weight===30 && g.categories[1].weight===25 && g.categories[2].weight===20 && g.categories[3].weight===25};})()`);
+  // Rate 5/5/2/4 stars across the four categories -> 30 + 25 + 8 + 20 = 83 GO.
+  await ev(`MMGR.Bids.setGoNoGoStar(0,0,0,5); MMGR.Bids.setGoNoGoStar(0,1,0,5); MMGR.Bids.setGoNoGoStar(0,2,0,2); MMGR.Bids.setGoNoGoStar(0,3,0,4);`); await delay(350);
+  await check('A4 weighted score 83% GO', `(function(){var g=MMGR.State.getState().goNoGo[0];var sc=MMGR.Bids.weightedScore(g);return {val: Math.round(sc.pct)===83 && sc.recommendation==='GO'};})()`);
+  await ev(`MMGR.Bids.setGoNoGoStar(0,0,0,4); MMGR.Bids.setGoNoGoStar(0,1,0,3); MMGR.Bids.setGoNoGoStar(0,2,0,2); MMGR.Bids.setGoNoGoStar(0,3,0,1);`); await delay(350);
+  await check('A4 weighted score REVIEW band', `(function(){var g=MMGR.State.getState().goNoGo[0];var sc=MMGR.Bids.weightedScore(g);return {val: sc.pct>=50 && sc.pct<75 && sc.recommendation==='REVIEW'};})()`);
+  await ev(`MMGR.Bids.setGoNoGoStar(0,0,0,1); MMGR.Bids.setGoNoGoStar(0,1,0,1); MMGR.Bids.setGoNoGoStar(0,2,0,1); MMGR.Bids.setGoNoGoStar(0,3,0,1);`); await delay(350);
+  await check('A4 weighted score NO-GO band', `(function(){var g=MMGR.State.getState().goNoGo[0];var sc=MMGR.Bids.weightedScore(g);return {val: sc.pct<50 && sc.recommendation==='NO-GO'};})()`);
+  await check('A4 scorecard renders categories + stars + bar + badge', `(function(){var b=document.getElementById('gonogo-body');return {val: !!b && b.querySelectorAll('.gn-card').length===1 && b.querySelectorAll('.gn-cat').length===4 && b.querySelectorAll('.gn-star').length===20 && b.querySelectorAll('.gn-star.on').length===4 && !!b.querySelector('.gn-scorebar-fill') && b.querySelector('.gn-badge')!==null};})()`);
 
   // ---- A1/A5: stakeholder compliance ----
   await ev(`MMGR.Stakeholders.addStake();`); await delay(200);

@@ -1,0 +1,19 @@
+  trap as a prior session). The running process predates the current
+  serve.cjs. Let me restart it fresh.
+  $ ps aux 2>/dev/null | grep -i "node serve" | grep -v grep; echo "---
+  killing---"; taskkill //F //IM node.exe 2>/dev/null || pkill -f "node
+  serve.cjs" 2>/dev/null; sleep 1; ps aux 2>/dev/null | grep -i "node
+  serve" | grep -v grep || echo "no node serve processes left"; nohup
+  node serve.cjs > /tmp/serve2.log 2>&1 & sleep 3; curl -s -I http://
+  localhost:8765/admin.html | grep -o "sha256-DTm66Q[A-Za-z0-9+/=]*" &&
+  echo "FRESH SERVER HAS DTm66Q" || echo "STILL MISSING" (1m timeout)
+ working...                                                  17m 2s  ■ Esc
+ ╭────────────────────────────────────────────────────────────────────────╮
+ │ Secure your infrastructure with Eon's native replication and        Ad │
+ │ granular recovery for large-scale data protection.                     │
+ │  Learn More  eon.io                                                    │
+ ╰────────────────────────────────────────────────────────────────────────╯
+╭──────────────────────────────────────────────────────────────────────────╮
+│                                                                          │
+│   Enter a coding task or / for commands                                  │
+PS C:\Users\Garfield\Downloads\mymanager-fixed> [555;10;30M[555;10;28M[555;9;26M[555;9;24M[555;8;22M[555;8;21M[555;8;19M[555;8;18M[555;7;16M[555;7;15M[555;7;14M[555;7;13M[555;7;12M[555;7;11M[555;7;12M[555;7;13M[555;10;16M[555;11;17M[555;12;18M[555;12;19M[555;13;20M[555;14;20M[555;14;19M[555;14;18M[555;14;17M[555;14;16M[555;14;15M[555;15;15M[555;27;14M[555;29;14M[555;32;14M[555;34;14M[555;35;14M[555;36;14M[555;38;14M[555;39;15M[555;40;15M[555;39;15M[555;38;15M[555;37;14M[555;36;14M[555;35;14M[555;35;13M[555;34;13M[555;32;12M[555;31;12M[555;30;12M[555;29;11M[555;28;11M[555;28;10M[555;28;9M[555;27;9M[555;27;8M[555;26;8M[555;26;7M[555;25;7M[555;25;6M[555;24;5M[555;23;5M[555;23;4M[555;23;3M[555;23;2M[555;22;2M[555;22;1M[555;21;1M[555;20;1M[

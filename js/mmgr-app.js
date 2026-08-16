@@ -54,6 +54,18 @@ var MMGR = window.MMGR || {};
     // app into read-only mode (reduced view). A locally-owned project is
     // always full scope — the creator is never gated by a code they set.
     ns.scope = locallyOwned ? 'full' : (localStorage.getItem('mmgr_scope_' + projectId) === 'readonly' ? 'readonly' : 'full');
+    // CLOUD-CODES-AND-DELETE: a cloud VIEWER code (session escope role
+    // 'view', set when the code was entered on the launcher or in the Cloud
+    // drawer) drops the app into read-only mode from boot — every mutating
+    // data-action is refused via READONLY_SAFE_ACTIONS, and the cloud
+    // module's applyEditorScope blocks the sections outside the viewer's
+    // grant. Reads the same session slot mmgr-cloud.js writes (escopeKey).
+    if (ns.scope === 'full') {
+      try {
+        const es = JSON.parse(sessionStorage.getItem('mmgr_cloud_escope_' + projectId) || 'null');
+        if (es && Array.isArray(es.sections) && es.role === 'view') ns.scope = 'readonly';
+      } catch (e) { /* ignore */ }
+    }
     return true;
   }
 

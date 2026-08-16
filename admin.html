@@ -109,10 +109,10 @@ main{max-width:1000px;margin:0 auto;padding:26px 24px 70px;}
 /* ── modal chrome (overlay only; .mb skeleton is shared) ── */
 #om{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:2000;align-items:center;justify-content:center;padding:20px;overflow-y:auto;}
 #om.show{display:flex;}
-#adm-cfm,#pw-om,#adm-conflict,#snip-om{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:2100;align-items:center;justify-content:center;padding:20px;overflow-y:auto;}
-#adm-cfm.show,#pw-om.show,#adm-conflict.show,#snip-om.show{display:flex;}
+#adm-cfm,#pw-om,#adm-conflict,#snip-om,#codes-om{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:2100;align-items:center;justify-content:center;padding:20px;overflow-y:auto;}
+#adm-cfm.show,#pw-om.show,#adm-conflict.show,#snip-om.show,#codes-om.show{display:flex;}
 /* admin modals keep the narrower width + entrance animation (admin layout) */
-#om .mb,#snip-om .mb,#adm-cfm .mb,#pw-om .mb,#adm-conflict .mb{width:460px;max-width:100%;max-height:88vh;animation:mIn .25s cubic-bezier(.25,1,.5,1);}
+#om .mb,#snip-om .mb,#adm-cfm .mb,#pw-om .mb,#adm-conflict .mb,#codes-om .mb{width:520px;max-width:100%;max-height:88vh;animation:mIn .25s cubic-bezier(.25,1,.5,1);}
 @keyframes mIn{from{opacity:0;transform:translateY(10px) scale(.98)}to{opacity:1;transform:none}}
 @media (prefers-reduced-motion:reduce){.mb{animation:none!important;}}
 .pw-box{width:420px;max-width:100%;}
@@ -355,6 +355,28 @@ pre.snippet{background:#f8fafc;border:1px solid var(--border);border-radius:6px;
   </div>
 </div>
 
+<!-- ═══ Codes manager (CLOUD-CODES-AND-DELETE 2026-08-16) ═══
+     Per cloud-linked project row: create/list/revoke editor + viewer
+     codes without leaving the admin panel. The project's stored owner
+     code (cloudOwnerCode) authenticates — the same credential
+     updateCloudSnapshot uses. A created code is shown EXACTLY ONCE. -->
+<div id="codes-om">
+  <div class="mb">
+    <div class="mh"><span class="mt"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-lock"></use></svg> <span id="codes-om-title">Codes</span></span><button class="dc" data-action="closeCodesModal"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> </button></div>
+    <div class="mbody">
+      <p style="font-size:.76rem;color:var(--slate);margin:0 0 10px;line-height:1.5">Owner code: <code class="code-box" id="codes-om-owner"></code>. Anyone with it opens the project as owner on any device.</p>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
+        <input id="codes-label" type="text" maxlength="60" placeholder="Label, e.g. Site Super — Riverside" style="flex:1;min-width:180px" autocomplete="off">
+        <select id="codes-role" style="width:auto"><option value="editor">Editor (can edit the sections below)</option><option value="view">Viewer (read-only, can see them)</option></select>
+        <button class="btn btn-g btn-s" data-action="codesCreate"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-plus"></use></svg> Create Code</button>
+      </div>
+      <div id="codes-scope" style="font-size:.72rem;color:var(--slate);margin-bottom:10px;line-height:1.6"><span style="margin:0">Sections this code may edit (or see, for a viewer):</span><span id="codes-scope-load" style="margin:0"> loading…</span></div>
+      <div id="codes-reveal" style="border:1px solid var(--gold);background:rgba(var(--gold-rgb),.1);border-radius:var(--radius);padding:8px 10px;margin:10px 0;font-size:.76rem" hidden role="status"></div>
+      <div id="codes-list" style="font-size:.72rem;color:var(--slate)">Loading codes…</div>
+    </div>
+  </div>
+</div>
+
 <!-- ═══ Access URL modal ═══ -->
 <div id="snip-om">
   <div class="mb">
@@ -475,9 +497,12 @@ function uniqueSlug(base){
   return `${base}-${i}`;
 }
 
-function toast(msg, type){
+function toast(msg, type, action){
   // Owner 2026-08-15: pill-shaped notification — icon circle + label +
   // message, slide-up + fade-out. Shared markup/CSS with launcher + project.
+  // CLOUD-CODES-AND-DELETE (2026-08-16): optional action pill (label + fn)
+  // — the Undo button on project delete. Action toasts hold ~5s (the owner's
+  // requested undo window) instead of the default ~2.6s.
   const existing = document.querySelector('.toast');
   if (existing) existing.remove();
   const isErr = type === 'error' || type === 'err';
@@ -492,9 +517,23 @@ function toast(msg, type){
                 '<span class="toast-body"><b></b><span></span></span>';
   t.querySelector('b').textContent = label;
   t.querySelector('.toast-body > span').textContent = msg;
+  let hideT = null; let killT = null;
+  if (action && action.label){
+    const act = document.createElement('button');
+    act.type = 'button';
+    act.className = 'toast-act';
+    act.textContent = action.label;
+    act.addEventListener('click', function(){
+      clearTimeout(hideT); clearTimeout(killT);
+      t.remove();
+      try { action.fn && action.fn(); } catch(e){ /* the action guards itself */ }
+    });
+    t.querySelector('.toast-body').appendChild(act);
+  }
   document.body.appendChild(t);
-  setTimeout(()=>{ t.classList.add('is-out'); }, 2600);
-  setTimeout(()=>{ t.remove(); }, 3100);
+  const hold = (action && action.label) ? 4600 : 2600;
+  hideT = setTimeout(()=>{ t.classList.add('is-out'); }, hold);
+  killT = setTimeout(()=>{ t.remove(); }, hold + 500);
 }
 
 /* ── seed data: one worked demo example on a totally fresh browser ── */
@@ -821,7 +860,7 @@ function renderProjects(){
           <button class="btn btn-n btn-s" data-action="openProjectModal" data-idx="${i}"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-edit"></use></svg> Edit</button>
           <button class="btn btn-n btn-s" data-action="regenerateCode" data-idx="${i}"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> New Code</button>
           <button class="btn btn-n btn-s" data-action="openSnippetModal" data-idx="${i}"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-link"></use></svg> URL</button>
-          ${p.cloudId ? `<button class="btn btn-g btn-s" data-action="updateCloudSnapshot" data-idx="${i}"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cloud"></use></svg> Update Cloud Snapshot</button>` : `<button class="btn btn-o btn-s" data-action="publishToCloud" data-idx="${i}"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-upload"></use></svg> Publish to Cloud</button>`}
+          ${p.cloudId ? `<button class="btn btn-g btn-s" data-action="updateCloudSnapshot" data-idx="${i}"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cloud"></use></svg> Update Cloud Snapshot</button><button class="btn btn-n btn-s" data-action="codesManager" data-idx="${i}"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-lock"></use></svg> Codes</button>` : `<button class="btn btn-o btn-s" data-action="publishToCloud" data-idx="${i}"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-upload"></use></svg> Publish to Cloud</button>`}
           <button class="btn btn-d btn-s" data-action="deleteProject" data-idx="${i}"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-trash"></use></svg> Delete</button>
         </div>
       </div>`;
@@ -844,18 +883,62 @@ function copyCode(i){
 }
 function deleteProject(i){
   const p = projects[i];
+  const isCloud = !!(p.cloudId && p.cloudOwnerCode);
   admConfirm({
     title: 'Delete Project?',
-    message: `Delete "${p.title}"? This only removes it from your admin list and (after you republish) the public dashboard. It does not delete the project's HTML file itself.`,
+    message: isCloud
+      ? `Delete "${p.title}"? This deletes it from the CLOUD too: every editor/viewer code stops working immediately and no one can load it anymore. You can Undo for a few seconds after confirming.`
+      : `Delete "${p.title}"? This only removes it from your admin list and (after you republish) the public dashboard. It does not delete the project's HTML file itself.`,
     danger: true,
     confirmLabel: 'Delete Project',
     onOk: function(){
-      projects.splice(i,1);
-      saveProjects();
-      renderProjects();
-      toast(p.cloudId
-        ? 'Project removed from this list. Its cloud copy still exists; manage it from the Cloud Admin section.'
-        : 'Project deleted. Remember to republish the static manifest (toolbar) if it was live.');
+      const record = JSON.parse(JSON.stringify(p));
+      const idx = projects.indexOf(p);
+      async function doDelete(){
+        projects.splice(idx, 1);
+        saveProjects();
+        renderProjects();
+        // CLOUD-CODES-AND-DELETE: soft-delete the cloud copy (tombstone) so
+        // every code holder's next load answers 'project_deleted', and Undo
+        // can restore it — local + cloud + codes (owner's planning decision).
+        if (isCloud) {
+          try {
+            const res = await fetch('/api/cloud/projects/' + encodeURIComponent(p.cloudId) + '/delete', {
+              method: 'POST', credentials: 'same-origin',
+              headers: { 'Content-Type': 'application/json', 'X-Owner-Code': p.cloudOwnerCode },
+              body: JSON.stringify({})
+            });
+            const data = await res.json().catch(()=>({}));
+            if (!res.ok || !data.ok) {
+              toast('Removed from this list, but the cloud copy could NOT be deleted (' + ((data && data.error) || 'HTTP ' + res.status) + '). It still works for anyone with a code.', 'error');
+              return;
+            }
+          } catch (e) {
+            toast('Removed from this list, but the cloud copy could NOT be deleted (cloud unreachable). It still works for anyone with a code.', 'error');
+            return;
+          }
+        } else {
+          toast('Project deleted. Remember to republish the static manifest (toolbar) if it was live.', '', { label: 'Undo', fn: restoreLocal });
+          return;
+        }
+        toast('Project deleted. No one can load it anymore. Undo?', 'ok', { label: 'Undo', fn: restoreAll });
+        function restoreLocal(){
+          projects.splice(Math.min(idx, projects.length), 0, record);
+          saveProjects();
+          renderProjects();
+        }
+        function restoreAll(){
+          restoreLocal();
+          fetch('/api/cloud/projects/' + encodeURIComponent(p.cloudId) + '/restore', {
+            method: 'POST', credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json', 'X-Owner-Code': p.cloudOwnerCode },
+            body: JSON.stringify({})
+          }).then(r=>r.json()).then(d=>{
+            toast(d && d.ok ? 'Project restored. It works again for every code holder.' : 'Restored locally, but the cloud restore failed. Publish again to restore the cloud copy.', d && d.ok ? 'ok' : 'error');
+          }).catch(()=>toast('Restored locally. Re-publish to cloud to restore the cloud copy.', 'error'));
+        }
+      }
+      doDelete();
     }
   });
 }
@@ -1272,7 +1355,7 @@ async function cloudAdminList(){
     const res = await fetch('/api/cloud/admin/projects', { headers:{ 'X-Admin-Code': code } });
     const data = await res.json().catch(()=>({}));
     if(!res.ok || !data.ok){
-      cloudAdminStatus((data && data.error) || 'Failed (HTTP ' + res.status + '). ' + (res.status === 503 ? 'The Worker has no ADMIN_CODE configured.' : res.status === 403 ? 'Wrong admin code.' : ''), 'err');
+      cloudAdminStatus((data && data.error) || 'Failed (HTTP ' + res.status + '). ' + (res.status === 503 ? 'The Worker has no ADMIN_CODE configured.' : res.status === 403 ? 'That is not the site ADMIN code. Project codes (owner/editor/viewer) do NOT unlock this section. Enter those on the launcher (app.html). The site admin code is the ADMIN_CODE secret set on the Worker.' : ''), 'err');
       return;
     }
     const list = document.getElementById('cloud-admin-list');
@@ -1316,6 +1399,147 @@ async function cloudAdminReissue(projectId){
         cloudAdminStatus('New owner code: ' + data.ownerCode + '. Copy it now, it is shown once.', 'ok');
       }catch(e){
         cloudAdminStatus('Cloud API unreachable on this host.', 'err');
+      }
+    }
+  });
+}
+
+/* ============================================================
+   CLOUD-CODES-AND-DELETE (2026-08-16) — per-project codes manager
+   ------------------------------------------------------------
+   Opens from each cloud-linked project row ("Codes"). Uses the
+   project's stored owner code (cloudOwnerCode) — the same credential
+   updateCloudSnapshot uses. Creates editor/viewer codes (label + role
+   + section scope from the live /api/cloud/sections vocabulary),
+   lists them, revokes them. A created code is shown EXACTLY ONCE.
+   ============================================================ */
+let _codesIdx = null;
+let _codesSections = null;
+async function codesFetchSections(){
+  if (_codesSections) return _codesSections;
+  try{
+    const res = await fetch('/api/cloud/sections');
+    const data = await res.json();
+    if (data && data.ok && Array.isArray(data.sections)) _codesSections = data.sections;
+  }catch(e){}
+  return _codesSections;
+}
+function openCodesManager(i){
+  const p = projects[i];
+  if (!p || !p.cloudId) return;
+  _codesIdx = i;
+  document.getElementById('codes-om-title').textContent = 'Codes for ' + p.title;
+  document.getElementById('codes-om-owner').textContent = p.cloudOwnerCode || '(not recorded on this device. Copy code from the row if it was linked elsewhere)';
+  document.getElementById('codes-reveal').hidden = true;
+  document.getElementById('codes-label').value = '';
+  document.getElementById('codes-role').value = 'editor';
+  document.getElementById('codes-list').textContent = 'Loading codes…';
+  document.getElementById('codes-om').classList.add('show');
+  codesFetchSections().then(function(secs){
+    const box = document.getElementById('codes-scope');
+    const loadEl = document.getElementById('codes-scope-load');
+    if (loadEl) loadEl.remove();
+    if (secs && secs.length){
+      secs.forEach(function(sec){
+        const label = document.createElement('label');
+        label.style.display = 'inline-flex'; label.style.alignItems = 'center'; label.style.gap = '4px';
+        label.style.margin = '2px 12px 2px 0'; label.style.fontSize = '.72rem'; label.style.color = 'var(--text)';
+        const cb = document.createElement('input');
+        cb.type = 'checkbox'; cb.value = sec.key;
+        label.appendChild(cb);
+        label.appendChild(document.createTextNode(sec.label));
+        box.appendChild(label);
+      });
+    } else {
+      box.insertAdjacentHTML('beforeend', '<span>Cloud API unavailable. Codes need the Worker.</span>');
+    }
+  });
+  listCloudCodes();
+}
+function closeCodesModal(){
+  document.getElementById('codes-om').classList.remove('show');
+  _codesIdx = null;
+}
+function codesOwnerCode(){
+  const p = (_codesIdx !== null) && projects[_codesIdx];
+  return (p && p.cloudOwnerCode) || '';
+}
+async function listCloudCodes(){
+  const wrap = document.getElementById('codes-list');
+  const p = (_codesIdx !== null) && projects[_codesIdx];
+  const code = codesOwnerCode();
+  if (!p || !code){ wrap.textContent = 'No owner code recorded on this device for this project.'; return; }
+  try{
+    const res = await fetch('/api/cloud/projects/' + encodeURIComponent(p.cloudId) + '/editors', {
+      method: 'GET', credentials: 'same-origin', headers: { 'X-Owner-Code': code }
+    });
+    const data = await res.json().catch(()=>({}));
+    if (!res.ok || !data.ok){ wrap.textContent = 'Could not load codes.'; return; }
+    const eds = data.editors || [];
+    if (!eds.length){ wrap.textContent = 'No editor or viewer codes yet. Create one above.'; return; }
+    wrap.innerHTML = eds.map(function(e){
+      const isView = e.role === 'view';
+      return '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:4px 0;border-bottom:1px solid var(--border)">' +
+        '<span style="color:var(--gold);font-weight:600">' + escapeHtml(e.label || (isView ? 'Viewer' : 'Editor')) + '</span>' +
+        '<span style="color:var(--slate)">' + (isView ? 'viewer · ' : 'editor · ') + escapeHtml((e.scope || []).join(', ') || '—') + ' · ' + escapeHtml(String(e.createdAt || '').slice(0,10)) + '</span>' +
+        (e.active ? '<button class="btn btn-d btn-s" data-action="codesRevoke" data-id="' + e.id + '"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> Revoke</button>' : '<span style="color:var(--slate)">revoked</span>') +
+        '</div>';
+    }).join('');
+  }catch(e){
+    wrap.textContent = 'Cloud API unreachable on this host.';
+  }
+}
+async function createCloudCode(){
+  const p = (_codesIdx !== null) && projects[_codesIdx];
+  const code = codesOwnerCode();
+  if (!p || !code){ toast('No owner code recorded for this project on this device.', 'error'); return; }
+  const label = document.getElementById('codes-label').value.trim().slice(0,60);
+  if (!label){ toast('Give the code a label first.', 'warn'); return; }
+  const role = document.getElementById('codes-role').value === 'view' ? 'view' : 'editor';
+  const scope = [];
+  document.querySelectorAll('#codes-scope input[type=checkbox]:checked').forEach(function(cb){ scope.push(cb.value); });
+  if (!scope.length){ toast(role === 'view' ? 'Tick at least one section this code may see.' : 'Tick at least one section this code may edit.', 'warn'); return; }
+  try{
+    const res = await fetch('/api/cloud/projects/' + encodeURIComponent(p.cloudId) + '/editors', {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json', 'X-Owner-Code': code },
+      body: JSON.stringify({ label: label, scope: scope, role: role })
+    });
+    const data = await res.json().catch(()=>({}));
+    if (!res.ok || !data.ok || !data.editorCode){ toast((data && data.error) || 'Code creation failed.', 'error'); return; }
+    const reveal = document.getElementById('codes-reveal');
+    reveal.hidden = false;
+    reveal.innerHTML = '<strong style="font-size:.76rem">NEW ' + (role === 'view' ? 'viewer' : 'editor') + ' code for "' + escapeHtml(label) + '". Copy it now, it is shown once:</strong> ' +
+      '<code style="font-family:ui-monospace,monospace;letter-spacing:.05em;color:var(--gold);font-weight:700">' + escapeHtml(data.editorCode) + '</code> ' +
+      '<button class="btn btn-g btn-s" data-action="codesCopyReveal" data-code="' + escapeHtml(data.editorCode) + '"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy</button>';
+    document.getElementById('codes-label').value = '';
+    document.querySelectorAll('#codes-scope input[type=checkbox]:checked').forEach(function(cb){ cb.checked = false; });
+    toast((role === 'view' ? 'Viewer' : 'Editor') + ' code created. Copy it from the panel now, it is shown once.');
+    listCloudCodes();
+  }catch(e){
+    toast('Cloud API unreachable on this host.', 'error');
+  }
+}
+async function revokeCloudCode(id){
+  const p = (_codesIdx !== null) && projects[_codesIdx];
+  const code = codesOwnerCode();
+  if (!p || !code || !id) return;
+  admConfirm({
+    title: 'Revoke this code?',
+    message: 'The code stops working immediately and cannot be restored.',
+    danger: true,
+    confirmLabel: 'Revoke',
+    onOk: async function(){
+      try{
+        const res = await fetch('/api/cloud/projects/' + encodeURIComponent(p.cloudId) + '/editors/' + encodeURIComponent(id), {
+          method: 'DELETE', credentials: 'same-origin', headers: { 'X-Owner-Code': code }
+        });
+        const data = await res.json().catch(()=>({}));
+        if (!res.ok || !data.ok){ toast((data && data.error) || 'Revoke failed.', 'error'); return; }
+        toast('Code revoked. It no longer opens the project.');
+        listCloudCodes();
+      }catch(e){
+        toast('Cloud API unreachable on this host.', 'error');
       }
     }
   });
@@ -1418,7 +1642,12 @@ const ADMIN_ACTION_MAP = {
   'tglTheme': (el) => tglTheme(el),
   'tglGlassMode': (el) => tglGlassMode(el),
   'cloudAdminList': () => cloudAdminList(),
-  'cloudAdminReissue': (el) => cloudAdminReissue(el.getAttribute('data-id'))
+  'cloudAdminReissue': (el) => cloudAdminReissue(el.getAttribute('data-id')),
+  'codesManager': (el) => openCodesManager(_admIdx(el)),
+  'closeCodesModal': () => closeCodesModal(),
+  'codesCreate': () => createCloudCode(),
+  'codesRevoke': (el) => revokeCloudCode(el.getAttribute('data-id')),
+  'codesCopyReveal': (el) => { const c = el.getAttribute('data-code'); if (c && navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(c).then(()=>toast('Code copied.')).catch(()=>toast('Copy manually.','warn')); }
 };
 document.addEventListener('click', function(e){
   const el = e.target.closest('[data-action]');

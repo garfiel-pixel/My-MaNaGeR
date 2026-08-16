@@ -61,9 +61,9 @@ const INLINE_SCRIPT_HASHES = [
   "'sha256-gCwlAVKUNamFRjZeFSwcBd1zxQs+/mZ2GoLF8lqT/II='", // project.html (early-apply theme snippet)
   "'sha256-o+0No2XpbES4E5QJh31mY9JsJFqSmE+B4x+z1fNPjVc='", // project.html
   "'sha256-Jd4HFQYDoZo8X42G7dwI7h9WPPvRgUYBtXk8UPdTY3Q='", // app.html (early-apply theme snippet + desktop rail-open default)
-  "'sha256-zWe1bJafDWaYJ4YdwEUdpgqdDunaZt/whgywQmU5gvE='", // app.html (launcher + 2026-08-15: rail-head hamburger toggle + pill toast(); 2026-08-16: dash-cleanup + T5 Google-icon fix — openSignIn() now calls GoogleAuth.ensureGisButton() instead of the never-firing fallback-div guard, so the GIS button re-renders at proper size when the modal opens)
+  "'sha256-9ajvGrjnsFPwCtr5PvlDV+SVKzwxAyNkRPQ3CTXRuCE='", // app.html (launcher + 2026-08-15: rail-head hamburger toggle + pill toast(); 2026-08-16: dash-cleanup + T5 Google-icon fix — openSignIn() calls GoogleAuth.ensureGisButton() + CLOUD-CODES-AND-DELETE — 'Have a code?' code-entry card (cloudCodeOpen: POST /api/cloud/codes/lookup → /load with role header → seed session → open project.html))
   "'sha256-qbHZHLyhdEDRwWrA8/I8ty4xIjUv+L/+Y6/0cIXdkJo='", // admin.html (early-apply theme snippet)
-  "'sha256-JY32IeHTdez5jV6LisYssq7qI6VFHP+G0wF/dmYljUw='", // admin.html (2026-08-15: pill toast() + rail sign-in/customize + Import Project + Publish to Cloud + cloud-code adoption + sign-in routing from publish; 2026-08-16: dash-cleanup + BUG-5 cloud publish fix + T5 Google-icon fix — tglAdminNav() re-renders the rail's GIS button via GoogleAuth.ensureGisButton() on open (boot render was 0x0 inside the hidden rail))
+  "'sha256-DTm66QFb1keNd+wKnVeEE2a0XN/ip/E7iO2exmc5mmU='", // admin.html (2026-08-15: pill toast() + rail sign-in/customize + Import Project + Publish to Cloud + cloud-code adoption + sign-in routing from publish; 2026-08-16: dash-cleanup + BUG-5 cloud publish fix + T5 Google-icon fix + CLOUD-CODES-AND-DELETE — delete-with-Undo toast (soft delete/restore), per-row Codes manager (editor/viewer create/list/revoke), honest cloud-admin error copy)
   "'sha256-Oa7ON+9A164SSXhnxu08mFn0V9Tj2SlZ2SzFXFoqKNE='", // dashboard.html
   "'sha256-bNdw0+64xL2//htoz+u3InKWYZNEHO/CnuZqtcJIBgU='", // seed-test.html
   "'sha256-AxkduQ155AQ7I921Ow+mZyri0uQY4ygsDy1i/x/xbCc='", // mymanager-field-guide.html
@@ -517,6 +517,19 @@ async function hashOwnerCode(code, saltHex) {
   return hex;
 }
 
+// sha256 hex fingerprint of a code — the lookup key used by
+// POST /api/cloud/codes/lookup (migration 0009). Safe as a stored key
+// because codes are high-entropy random strings (~80 bits): sha256 of
+// the code is not brute-forceable, and the code itself is still never
+// stored beyond the existing PBKDF2 hashes.
+async function fingerprintOf(code) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(code || '')));
+  const bytes = new Uint8Array(buf);
+  let hex = '';
+  for (let i = 0; i < bytes.length; i++) hex += bytes[i].toString(16).padStart(2, '0');
+  return hex;
+}
+
 // Constant-time comparison (same XOR-accumulate pattern as readSession).
 function codesEqual(a, b) {
   if (typeof a !== 'string' || typeof b !== 'string' || a.length !== b.length) return false;
@@ -555,6 +568,14 @@ function cloudTimingSink() {
 // indistinguishable on purpose (no existence leak).
 function cloudForbidden() {
   return json({ ok: false, error: 'invalid project or owner code' }, 403);
+}
+
+// The DISTINCT failure shape for a soft-deleted project (admin delete,
+// migration 0009 deleted_at tombstone). Deliberately separate from
+// cloudForbidden: per the owner's directive, a code holder must be told
+// the project is gone (they already knew the code — no existence leak).
+function cloudProjectDeleted() {
+  return json({ ok: false, error: 'project_deleted' }, 410);
 }
 
 // ---- CLOUD RATE LIMITING (gap-audit item A1) -----------------------------
@@ -643,6 +664,10 @@ function cloudRateLimited(retryAfter) {
 // (legacy rows are back-filled by the migration, and the null guard is a
 // belt-and-suspenders so a schema race can never delete a live project).
 const CLOUD_ORPHAN_RETENTION_MS = 365 * 24 * 60 * 60 * 1000; // 12 months
+// Tombstone grace for admin-deleted projects (migration 0009 deleted_at):
+// the admin Undo window is seconds, so a multi-day grace is generous — but
+// the blob should not linger forever for a project that is never coming back.
+const CLOUD_DELETED_PURGE_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
 // Stamp last_owner_seen_at on an owner-authenticated request. Fire-and-
 // forget semantics: this is a maintenance bump, never a failure point —
@@ -683,6 +708,29 @@ async function purgeStaleCloudProjects(env) {
     await env.DB.prepare('DELETE FROM cloud_changelog WHERE project_id = ?').bind(pid).run();
     await env.DB.prepare('DELETE FROM cloud_projects WHERE project_id = ?').bind(pid).run();
     purged.push({ projectId: pid, label: stale[i].owner_label || null, purgedAt: new Date().toISOString() });
+  }
+  // CLOUD-CODES-AND-DELETE: hard-purge soft-deleted (admin-deleted) projects
+  // whose tombstone is older than the grace window — the R2 blob, editor/view
+  // codes, and changelog all go, mirroring the unlink cleanup above.
+  const delCutoff = new Date(Date.now() - CLOUD_DELETED_PURGE_MS).toISOString();
+  const delRows = await env.DB.prepare(
+    'SELECT project_id FROM cloud_projects WHERE deleted_at IS NOT NULL AND deleted_at < ? ORDER BY deleted_at ASC LIMIT 200'
+  ).bind(delCutoff).all();
+  const gone = (delRows && delRows.results) || [];
+  for (let i = 0; i < gone.length; i++) {
+    const pid = gone[i].project_id;
+    let cursor = undefined;
+    do {
+      const listed = await env.R2.list({ prefix: 'projects/' + pid + '/', cursor: cursor });
+      for (let j = 0; j < (listed.objects || []).length; j++) {
+        try { await env.R2.delete(listed.objects[j].key); } catch (e) { /* best-effort per object */ }
+      }
+      cursor = listed.truncated ? listed.cursor : undefined;
+    } while (cursor);
+    await env.DB.prepare('DELETE FROM cloud_editor_codes WHERE project_id = ?').bind(pid).run();
+    await env.DB.prepare('DELETE FROM cloud_changelog WHERE project_id = ?').bind(pid).run();
+    await env.DB.prepare('DELETE FROM cloud_projects WHERE project_id = ?').bind(pid).run();
+    purged.push({ projectId: pid, label: 'deleted', purgedAt: new Date().toISOString() });
   }
   return { purged: purged, checked: stale.length };
 }
@@ -829,7 +877,7 @@ async function cloudReadState(env, key) {
 // dummy-PBKDF2 + timing floor before returning null (no existence leak).
 async function cloudAuthOwnerByCode(request, env, projectId, code) {
   if (!code) { await Promise.all([cloudDummyHash(), cloudTimingSink()]); return null; }
-  const row = await env.DB.prepare('SELECT owner_code_salt, owner_code_hash, google_sub, google_name FROM cloud_projects WHERE project_id = ?').bind(projectId).first();
+  const row = await env.DB.prepare('SELECT owner_code_salt, owner_code_hash, google_sub, google_name, deleted_at FROM cloud_projects WHERE project_id = ?').bind(projectId).first();
   if (!row) { await Promise.all([cloudDummyHash(), cloudTimingSink()]); return null; }
   const hash = await hashOwnerCode(code, row.owner_code_salt);
   if (!codesEqual(hash, row.owner_code_hash)) { await cloudTimingSink(); return null; }
@@ -863,9 +911,12 @@ async function cloudAuthOwnerEither(request, env, projectId) {
 // active row authenticates; an attacker probing with a wrong code cannot
 // distinguish unknown/1-code/N-code projects by timing.
 const CLOUD_EDITOR_AUTH_SLOTS = 4;
-async function cloudAuthEditor(request, env, projectId, code) {
+// Shared-code auth for BOTH roles (migration 0009 role column): the JOIN
+// pulls the project's deleted_at so load/save/meta can answer
+// 'project_deleted' with the same row read (no extra SELECT on hot paths).
+async function cloudAuthSharedCode(request, env, projectId, code, role) {
   if (!code) { await Promise.all([cloudDummyHash(), cloudTimingSink()]); return null; }
-  const rows = await env.DB.prepare('SELECT id, code_salt, code_hash, label, scope FROM cloud_editor_codes WHERE project_id = ? AND active = 1').bind(projectId).all();
+  const rows = await env.DB.prepare('SELECT e.id, e.code_salt, e.code_hash, e.label, e.scope, p.deleted_at FROM cloud_editor_codes e JOIN cloud_projects p ON p.project_id = e.project_id WHERE e.project_id = ? AND e.active = 1 AND e.role = ?').bind(projectId, role).all();
   const active = (rows && rows.results) || [];
   const slots = Math.max(active.length, CLOUD_EDITOR_AUTH_SLOTS);
   for (let i = 0; i < slots; i++) {
@@ -875,11 +926,20 @@ async function cloudAuthEditor(request, env, projectId, code) {
     if (row && codesEqual(hash, row.code_hash)) {
       let scope = [];
       try { const p = JSON.parse(row.scope); if (Array.isArray(p)) scope = p.filter(function(x) { return !!CLOUD_SECTIONS[x]; }); } catch (e) { scope = []; }
-      return { role: 'editor', editorId: row.id, label: row.label || 'Editor', scope: scope, row: row };
+      return { role: role, editorId: row.id, label: row.label || (role === 'view' ? 'Viewer' : 'Editor'), scope: scope, row: row };
     }
   }
   await cloudTimingSink();
   return null;
+}
+async function cloudAuthEditor(request, env, projectId, code) {
+  return cloudAuthSharedCode(request, env, projectId, code, 'editor');
+}
+// Viewer identity: an active VIEW code can LOAD (read-only + section
+// scope) but can never SAVE — the save path never accepts X-View-Code
+// and cloudAuthEditor only matches role='editor'.
+async function cloudAuthViewer(request, env, projectId, code) {
+  return cloudAuthSharedCode(request, env, projectId, code, 'view');
 }
 
 // ---- SERVER-SIDE SCOPE ENFORCEMENT (Phase 2, plan §3) -----------
@@ -1178,6 +1238,12 @@ async function handleCloudEditorCreate(request, env, projectId) {
   if (read.tooLarge) return json({ ok: false, error: 'body too large' }, 413);
   if (read.bad || !read.body || typeof read.body !== 'object') return json({ ok: false, error: 'bad request' }, 400);
   const label = typeof read.body.label === 'string' ? read.body.label.trim().slice(0, 60) : '';
+  // CLOUD-CODES-AND-DELETE-DIRECTIVE (migration 0009): shared codes now
+  // carry a ROLE — 'editor' (edit the granted sections, the original
+  // behaviour) or 'view' (read-only everywhere, only the granted sections
+  // visible/enabled). Same scope validation for both; a view code's scope
+  // is what the holder may SEE.
+  const role = read.body.role === 'view' ? 'view' : 'editor';
   const scope = Array.isArray(read.body.scope)
     ? read.body.scope.filter(function(s) { return typeof s === 'string' && !!CLOUD_SECTIONS[s]; })
     : [];
@@ -1186,39 +1252,45 @@ async function handleCloudEditorCreate(request, env, projectId) {
   const salt = randomSaltHex();
   const code = randomOwnerCode();
   const hash = await hashOwnerCode(code, salt);
+  const fp = await fingerprintOf(code);
   const now = new Date().toISOString();
   const res = await env.DB.prepare(
-    'INSERT INTO cloud_editor_codes (project_id, label, scope, code_salt, code_hash, active, created_at) VALUES (?,?,?,?,?,1,?)'
-  ).bind(projectId, label, JSON.stringify(unique), salt, hash, now).run();
-  return json({ ok: true, editorCode: code, editorId: res.meta.last_row_id, label: label, scope: unique, createdAt: now });
+    'INSERT INTO cloud_editor_codes (project_id, label, scope, code_salt, code_hash, code_fingerprint, role, active, created_at) VALUES (?,?,?,?,?,?,?,1,?)'
+  ).bind(projectId, label, JSON.stringify(unique), salt, hash, fp, role, now).run();
+  return json({ ok: true, editorCode: code, editorId: res.meta.last_row_id, label: label, scope: unique, role: role, createdAt: now });
 }
 
 // GET /api/cloud/projects/:id/editors — owner-only list (never codes/hashes).
 async function handleCloudEditorList(request, env, projectId) {
   const auth = await cloudAuthOwnerEither(request, env, projectId);
   if (!auth) return cloudForbidden();
-  const rows = await env.DB.prepare('SELECT id, label, scope, active, created_at FROM cloud_editor_codes WHERE project_id = ? ORDER BY id DESC').bind(projectId).all();
+  const rows = await env.DB.prepare('SELECT id, label, scope, role, active, created_at FROM cloud_editor_codes WHERE project_id = ? ORDER BY id DESC').bind(projectId).all();
   const editors = (rows.results || []).map(function(r) {
     let scope = [];
     try { const p = JSON.parse(r.scope); if (Array.isArray(p)) scope = p; } catch (e) { scope = []; }
-    return { id: r.id, label: r.label, scope: scope, active: r.active === 1, createdAt: r.created_at };
+    return { id: r.id, label: r.label, scope: scope, role: r.role || 'editor', active: r.active === 1, createdAt: r.created_at };
   });
   return json({ ok: true, editors: editors });
 }
 
 // DELETE /api/cloud/projects/:id/editors/:editorId — owner-only revoke.
-// In-flight-save guarantee (gap-audit item A5): the DELETE commits atomically
-// in D1, and every editor save authenticates by SELECTing the project's ACTIVE
-// editor rows at request-processing time (cloudAuthEditor). A save whose auth
-// SELECT runs after this commit sees no matching row and returns the generic
-// 403; a save that already authenticated before the commit completes is
-// processed under the permission that was valid when it started — standard
-// request-boundary revocation, no token-lifetime gap beyond the in-flight
-// request itself.
+// CLOUD-CODES-AND-DELETE (2026-08-16): revocation is now a SOFT revoke
+// (active = 0) instead of a row DELETE — a revoked code stays on record so
+// the launcher lookup can answer 'code_revoked' (the owner's explicit UX
+// requirement: "it would say project code expired or project code revoked")
+// instead of the indistinguishable 'invalid_code', and the client list can
+// finally show its own "revoked" state. Auth is unchanged and still airtight:
+// every editor/viewer save and load authenticates by SELECTing the project's
+// ACTIVE rows at request-processing time (cloudAuthSharedCode, active = 1), so
+// a revoked code stops working immediately with zero token-lifetime gap — a
+// request that authenticated before the UPDATE commits completes under the
+// permission that was valid when it started (standard request-boundary
+// revocation). The 25-code cap counts ACTIVE codes only, so revoked rows never
+// block new codes.
 async function handleCloudEditorRevoke(request, env, projectId, editorId) {
   const auth = await cloudAuthOwnerEither(request, env, projectId);
   if (!auth) return cloudForbidden();
-  const res = await env.DB.prepare('DELETE FROM cloud_editor_codes WHERE id = ? AND project_id = ?').bind(editorId, projectId).run();
+  const res = await env.DB.prepare('UPDATE cloud_editor_codes SET active = 0 WHERE id = ? AND project_id = ? AND active = 1').bind(editorId, projectId).run();
   if (!res.meta.changes) return json({ ok: false, error: 'editor code not found' }, 404);
   return json({ ok: true, revokedEditorId: editorId });
 }
@@ -1595,7 +1667,7 @@ async function handleCloudCreate(request, env) {
   // (unlinked) creates are never capped, so the dormant/unconfigured path
   // behaves byte-for-byte as before.
   if (session && session.sub && billingConfigured(env)) {
-    const cnt = await env.DB.prepare('SELECT COUNT(*) AS c FROM cloud_projects WHERE google_sub = ?').bind(session.sub).first();
+    const cnt = await env.DB.prepare('SELECT COUNT(*) AS c FROM cloud_projects WHERE google_sub = ? AND deleted_at IS NULL').bind(session.sub).first();
     const owned = (cnt && cnt.c) || 0;
     if (owned >= billingFreeCap(env)) {
       // Over the free cap: allowed only while an ACTIVE subscription exists
@@ -1610,6 +1682,7 @@ async function handleCloudCreate(request, env) {
   const salt = randomSaltHex();
   const ownerCode = randomOwnerCode();
   const hash = await hashOwnerCode(ownerCode, salt);
+  const ownerFp = await fingerprintOf(ownerCode);
   const now = new Date().toISOString();
   // CREATE-RACE GUARD (review finding): two concurrent creates for the same
   // id can both pass the SELECT above and then both INSERT — the second
@@ -1622,8 +1695,8 @@ async function handleCloudCreate(request, env) {
     // from the retention policy forever (NULL would be treated as immortal
     // by the purge's IS NOT NULL guard).
     await env.DB.prepare(
-      'INSERT INTO cloud_projects (project_id, owner_code_salt, owner_code_hash, owner_label, google_sub, google_name, latest_r2_key, created_at, updated_at, last_owner_seen_at) VALUES (?,?,?,?,?,?,?,?,?,?)'
-    ).bind(projectId, salt, hash, name, session ? session.sub : null, session ? session.name : null, null, now, now, now).run();
+      'INSERT INTO cloud_projects (project_id, owner_code_salt, owner_code_hash, owner_code_fingerprint, owner_label, google_sub, google_name, latest_r2_key, created_at, updated_at, last_owner_seen_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)'
+    ).bind(projectId, salt, hash, ownerFp, name, session ? session.sub : null, session ? session.name : null, null, now, now, now).run();
   } catch (e) {
     const raced = await env.DB.prepare('SELECT project_id FROM cloud_projects WHERE project_id = ?').bind(projectId).first();
     if (raced) return json({ ok: false, error: 'project already linked' }, 409);
@@ -1684,10 +1757,11 @@ async function handleCloudSave(request, env, projectId) {
   const now = new Date().toISOString();
   const key = 'projects/' + projectId + '/latest.json';
   const prev = await cloudReadState(env, key);
-  let next; let actor; let scopeReport = null;
+  let next; let actor; let scopeReport = null; let authRow = null;
   if (ownerCode) {
     const a = await cloudAuthOwnerByCode(request, env, projectId, ownerCode);
     if (!a) return cloudForbidden();
+    authRow = a.row;
     actor = { type: 'owner', label: a.label };
     next = JSON.parse(JSON.stringify(read.body.state));
     stripStateSecrets(next);
@@ -1696,11 +1770,16 @@ async function handleCloudSave(request, env, projectId) {
   } else {
     const a = await cloudAuthEditor(request, env, projectId, editorCode);
     if (!a) return cloudForbidden();
+    authRow = a.row;
     actor = { type: 'editor', label: a.label };
     const merged = cloudScopeMerge(prev, read.body.state, a.scope);
     next = merged.next;
     scopeReport = { scope: a.scope, editorLabel: a.label, applied: merged.applied, blocked: merged.blocked };
   }
+  // CLOUD-CODES-AND-DELETE: a soft-deleted (admin-deleted) project must not
+  // accept any further writes — the tombstone is checked on the SAME row
+  // read the auth already did (no extra SELECT on hot paths).
+  if (authRow && authRow.deleted_at) return cloudProjectDeleted();
   next.updatedAt = now;
   await env.R2.put(key, JSON.stringify(next), { httpMetadata: { contentType: 'application/json' } });
   await env.DB.prepare('UPDATE cloud_projects SET latest_r2_key = ?, updated_at = ? WHERE project_id = ?').bind(key, now, projectId).run();
@@ -1734,19 +1813,21 @@ async function handleCloudSave(request, env, projectId) {
 async function handleCloudLoad(request, env, projectId) {
   const ownerCode = String(request.headers.get('X-Owner-Code') || '').trim();
   const editorCode = String(request.headers.get('X-Editor-Code') || '').trim();
+  const viewCode = String(request.headers.get('X-View-Code') || '').trim();
   // Review pass (2026-08-11): resolve the session fallback ONCE up front and
   // reuse it — the earlier version verified the session twice (two row reads
   // + two timing sinks per session-only load). The no-credential failure path
   // still runs the same dummy-hash + timing-floor composite as every other
   // "no row / wrong code" branch.
   let sessFallback = null;
-  if (!ownerCode && !editorCode) {
+  if (!ownerCode && !editorCode && !viewCode) {
     sessFallback = await cloudAuthOwnerSession(request, env, projectId);
     if (!sessFallback) { await Promise.all([cloudDummyHash(), cloudTimingSink()]); return cloudForbidden(); }
   }
-  const row = await env.DB.prepare('SELECT owner_code_salt, owner_code_hash, latest_r2_key, updated_at FROM cloud_projects WHERE project_id = ?').bind(projectId).first();
+  const row = await env.DB.prepare('SELECT owner_code_salt, owner_code_hash, latest_r2_key, updated_at, deleted_at FROM cloud_projects WHERE project_id = ?').bind(projectId).first();
   if (!row) { await Promise.all([cloudDummyHash(), cloudTimingSink()]); return cloudForbidden(); }
   let editorAuth = null;
+  let viewerAuth = null;
   let ownerAuth = false;
   if (ownerCode) {
     const hash = await hashOwnerCode(ownerCode, row.owner_code_salt);
@@ -1755,20 +1836,29 @@ async function handleCloudLoad(request, env, projectId) {
   } else if (editorCode) {
     editorAuth = await cloudAuthEditor(request, env, projectId, editorCode);
     if (!editorAuth) return cloudForbidden();
+  } else if (viewCode) {
+    viewerAuth = await cloudAuthViewer(request, env, projectId, viewCode);
+    if (!viewerAuth) return cloudForbidden();
   } else {
     if (!sessFallback) { await cloudTimingSink(); return cloudForbidden(); }
     ownerAuth = true;
   }
+  // CLOUD-CODES-AND-DELETE: tombstoned projects refuse every read too —
+  // checked only after a successful auth so the message goes only to
+  // people who held a valid credential.
+  if (row.deleted_at) return cloudProjectDeleted();
   // A5-2: an owner load (code or session) is owner activity.
   if (ownerAuth) await cloudTouchOwner(env, projectId);
   if (!row.latest_r2_key) {
     const base = { ok: true, state: null, savedAt: null };
     if (editorAuth) { base.role = 'editor'; base.editorLabel = editorAuth.label; base.scope = editorAuth.scope; }
+    if (viewerAuth) { base.role = 'view'; base.viewerLabel = viewerAuth.label; base.scope = viewerAuth.scope; }
     return json(base);
   }
   const state = await cloudReadState(env, row.latest_r2_key);
   const resp = { ok: true, state: state, savedAt: row.updated_at };
   if (editorAuth) { resp.role = 'editor'; resp.editorLabel = editorAuth.label; resp.scope = editorAuth.scope; }
+  if (viewerAuth) { resp.role = 'view'; resp.viewerLabel = viewerAuth.label; resp.scope = viewerAuth.scope; }
   return json(resp);
 }
 
@@ -1786,9 +1876,10 @@ async function handleCloudRecover(request, env, projectId) {
   const salt = randomSaltHex();
   const ownerCode = randomOwnerCode();
   const hash = await hashOwnerCode(ownerCode, salt);
+  const ownerFp = await fingerprintOf(ownerCode);
   const now = new Date().toISOString();
-  await env.DB.prepare('UPDATE cloud_projects SET owner_code_salt = ?, owner_code_hash = ?, updated_at = ? WHERE project_id = ?')
-    .bind(salt, hash, now, projectId).run();
+  await env.DB.prepare('UPDATE cloud_projects SET owner_code_salt = ?, owner_code_hash = ?, owner_code_fingerprint = ?, updated_at = ? WHERE project_id = ?')
+    .bind(salt, hash, ownerFp, now, projectId).run();
   // Gap-audit items A3/A4: a recovery is now its own changelog event so the
   // owner can see IN-APP that a reissue ever happened. Attribution is
   // preserved — existing rows keep their recorded actor labels; only the
@@ -1814,20 +1905,27 @@ async function handleCloudRecover(request, env, projectId) {
 async function handleCloudMeta(request, env, projectId) {
   const code = String(request.headers.get('X-Owner-Code') || '').trim();
   const ecode = String(request.headers.get('X-Editor-Code') || '').trim();
+  const vcode = String(request.headers.get('X-View-Code') || '').trim();
   const session = await readSession(request, env);
-  const row = await env.DB.prepare('SELECT owner_code_salt, owner_code_hash, google_sub, google_name, owner_label, latest_r2_key, updated_at FROM cloud_projects WHERE project_id = ?').bind(projectId).first();
+  const row = await env.DB.prepare('SELECT owner_code_salt, owner_code_hash, google_sub, google_name, owner_label, latest_r2_key, updated_at, deleted_at FROM cloud_projects WHERE project_id = ?').bind(projectId).first();
   if (!row) { await Promise.all([cloudDummyHash(), cloudTimingSink()]); return cloudForbidden(); }
   let authorized = false;
   let isEditor = false; let editorScope = null; let editorLabel = null;
+  let viewer = false; let viewerScope = null;
   if (code) {
     const hash = await hashOwnerCode(code, row.owner_code_salt);
     authorized = codesEqual(hash, row.owner_code_hash);
   } else if (ecode) {
     const ea = await cloudAuthEditor(request, env, projectId, ecode);
     if (ea) { authorized = true; isEditor = true; editorScope = ea.scope; editorLabel = ea.label; }
+  } else if (vcode) {
+    const va = await cloudAuthViewer(request, env, projectId, vcode);
+    if (va) { authorized = true; isEditor = true; viewerScope = va.scope; editorLabel = va.label; viewer = true; }
   }
   if (!authorized && session && session.sub && row.google_sub && row.google_sub === session.sub) authorized = true;
   if (!authorized) return cloudForbidden();
+  // CLOUD-CODES-AND-DELETE: tombstoned projects refuse every read.
+  if (row.deleted_at) return cloudProjectDeleted();
   // A5-2: an owner meta probe (session or code) is owner activity.
   await cloudTouchOwner(env, projectId);
   const resp = {
@@ -1835,7 +1933,8 @@ async function handleCloudMeta(request, env, projectId) {
     linkedName: row.google_name || null, label: row.owner_label || null,
     hasSnapshot: !!row.latest_r2_key, updatedAt: row.updated_at
   };
-  if (isEditor) { resp.role = 'editor'; resp.editorLabel = editorLabel; resp.scope = editorScope; }
+  if (isEditor && !viewer) { resp.role = 'editor'; resp.editorLabel = editorLabel; resp.scope = editorScope; }
+  if (viewer) { resp.role = 'view'; resp.editorLabel = editorLabel; resp.scope = viewerScope; }
   return json(resp);
 }
 
@@ -1868,6 +1967,71 @@ async function handleCloudUnlink(request, env, projectId) {
   await env.DB.prepare('DELETE FROM cloud_editor_codes WHERE project_id = ?').bind(projectId).run();
   await env.DB.prepare('DELETE FROM cloud_changelog WHERE project_id = ?').bind(projectId).run();
   return json({ ok: true, unlinked: projectId, unlinkedAt: now });
+}
+
+// ---- CLOUD-CODES-AND-DELETE-DIRECTIVE (2026-08-16) -----------------------
+// POST /api/cloud/codes/lookup  { code }
+// The launcher's single door: resolves ANY code (owner / editor / view) to
+// its cloud project WITHOUT returning state or the code itself. Lookup is
+// by sha256 fingerprint (migration 0009) — safe because codes are
+// high-entropy random strings, and the plaintext is still never stored
+// beyond the existing PBKDF2 hashes. Distinct user-facing outcomes per
+// the owner's directive: invalid_code (nothing matches), code_revoked (a
+// shared code that was revoked), project_deleted (admin-deleted project).
+async function handleCloudCodeLookup(request, env) {
+  const read = await readCloudBody(request);
+  if (read.tooLarge) return json({ ok: false, error: 'body too large' }, 413);
+  if (read.bad || !read.body || typeof read.body !== 'object') return json({ ok: false, error: 'bad request' }, 400);
+  const code = typeof read.body.code === 'string' ? read.body.code.trim() : '';
+  if (!code || code.length > 64) { await Promise.all([cloudDummyHash(), cloudTimingSink()]); return json({ ok: false, error: 'invalid_code' }, 403); }
+  const fp = await fingerprintOf(code);
+  // Shared codes first (editor + view live in cloud_editor_codes).
+  const shared = await env.DB.prepare(
+    'SELECT e.project_id, e.role, e.label, e.scope, e.active, p.owner_label, p.deleted_at FROM cloud_editor_codes e JOIN cloud_projects p ON p.project_id = e.project_id WHERE e.code_fingerprint = ?'
+  ).bind(fp).first();
+  if (shared) {
+    if (shared.active !== 1) return json({ ok: false, error: 'code_revoked' }, 403);
+    if (shared.deleted_at) return cloudProjectDeleted();
+    let scope = [];
+    try { const p = JSON.parse(shared.scope); if (Array.isArray(p)) scope = p.filter(function(x) { return !!CLOUD_SECTIONS[x]; }); } catch (e) { scope = []; }
+    return json({ ok: true, projectId: shared.project_id, projectName: shared.owner_label || shared.label || 'Unnamed project', role: shared.role === 'view' ? 'view' : 'editor', label: shared.label || (shared.role === 'view' ? 'Viewer' : 'Editor'), scope: scope });
+  }
+  // Owner code next (cloud_projects row — fingerprint written at create/recover).
+  const owner = await env.DB.prepare('SELECT project_id, owner_label, deleted_at FROM cloud_projects WHERE owner_code_fingerprint = ?').bind(fp).first();
+  if (owner) {
+    if (owner.deleted_at) return cloudProjectDeleted();
+    return json({ ok: true, projectId: owner.project_id, projectName: owner.owner_label || 'Unnamed project', role: 'owner', label: 'Owner', scope: [] });
+  }
+  await cloudTimingSink();
+  return json({ ok: false, error: 'invalid_code' }, 403);
+}
+
+// POST /api/cloud/projects/:id/delete — owner-only SOFT delete (admin
+// panel Delete). Tombstones the row (deleted_at) so every load/save/meta
+// and the launcher lookup immediately answer 'project_deleted', while
+// POST .../restore can bring it all back within the undo window. Hard
+// purge of tombstoned rows happens in the scheduled() cleanup
+// (CLOUD_DELETED_PURGE_MS).
+async function handleCloudProjectDelete(request, env, projectId) {
+  const auth = await cloudAuthOwnerEither(request, env, projectId);
+  if (!auth) return cloudForbidden();
+  const now = new Date().toISOString();
+  const res = await env.DB.prepare('UPDATE cloud_projects SET deleted_at = ?, updated_at = ? WHERE project_id = ? AND deleted_at IS NULL').bind(now, now, projectId).run();
+  if (!res.meta.changes) return json({ ok: false, error: 'project not found' }, 404);
+  return json({ ok: true, deleted: projectId, deletedAt: now });
+}
+
+// POST /api/cloud/projects/:id/restore — owner-only undo of the soft
+// delete above (admin Undo within the toast window). Clears the tombstone;
+// the project is live again for every code holder. FULL restore (local +
+// cloud + codes) per the owner's planning decision.
+async function handleCloudProjectRestore(request, env, projectId) {
+  const auth = await cloudAuthOwnerEither(request, env, projectId);
+  if (!auth) return cloudForbidden();
+  const now = new Date().toISOString();
+  const res = await env.DB.prepare('UPDATE cloud_projects SET deleted_at = NULL, updated_at = ? WHERE project_id = ? AND deleted_at IS NOT NULL').bind(now, projectId).run();
+  if (!res.meta.changes) return json({ ok: false, error: 'project not found or not deleted' }, 404);
+  return json({ ok: true, restored: projectId, restoredAt: now });
 }
 
 /* ============================================================
@@ -2512,7 +2676,7 @@ async function handleApi(request, env, url) {
     if (request.method === 'POST') return handleCloudCreate(request, env);
     if (request.method === 'GET') return handleCloudProjectList(request, env);
   }
-  const cloudMatch = path.match(/^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/(save|load|recover|meta)$/);
+  const cloudMatch = path.match(/^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/(save|load|recover|meta|delete|restore)$/);
   if (cloudMatch) {
     const pid = cloudMatch[1];
     const op = cloudMatch[2];
@@ -2522,6 +2686,14 @@ async function handleApi(request, env, url) {
     if (op === 'save' && request.method === 'POST') return handleCloudSave(request, env, pid);
     if (op === 'load' && request.method === 'POST') return handleCloudLoad(request, env, pid);
     if (op === 'recover' && request.method === 'POST') return handleCloudRecover(request, env, pid);
+    if (op === 'delete' && request.method === 'POST') return handleCloudProjectDelete(request, env, pid);
+    if (op === 'restore' && request.method === 'POST') return handleCloudProjectRestore(request, env, pid);
+  }
+  // CLOUD-CODES-AND-DELETE-DIRECTIVE: the launcher's single code door.
+  if (path === '/api/cloud/codes/lookup' && request.method === 'POST') {
+    const rl = await cloudRateCheck(request, 'general');
+    if (rl.limited) return cloudRateLimited(rl.retryAfter);
+    return handleCloudCodeLookup(request, env);
   }
   // DELETE /api/cloud/projects/:id — owner-only unlink (gap-audit item B10).
   const cloudUnlinkMatch = path.match(/^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})$/);

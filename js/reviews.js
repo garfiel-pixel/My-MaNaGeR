@@ -22,6 +22,26 @@
   var nameIn = document.getElementById('review-name');
   var textIn = document.getElementById('review-text');
   var statusEl = document.getElementById('review-status');
+  // STAR INPUT UI (STABILIZATION 2026-08-16): the picker radios drive the
+  // data-val fill state and ride along on submit (1-5 int, optional).
+  var pickRow = document.getElementById('rv-pick-row');
+
+  function selectedStars() {
+    if (!pickRow) return 0;
+    var checked = pickRow.querySelector('input[name="stars"]:checked');
+    var n = checked ? parseInt(checked.value, 10) : 0;
+    return (n >= 1 && n <= 5) ? n : 0;
+  }
+  function syncPickFill() {
+    if (pickRow) pickRow.setAttribute('data-val', String(selectedStars()));
+  }
+  function resetStars() {
+    if (!pickRow) return;
+    var checked = pickRow.querySelector('input[name="stars"]:checked');
+    if (checked) checked.checked = false;
+    syncPickFill();
+  }
+  if (pickRow) pickRow.addEventListener('change', syncPickFill);
 
   function setStatus(msg, isErr) {
     if (!statusEl) return;
@@ -131,6 +151,8 @@
       if (name.length > 60) name = name.slice(0, 60);
       var payload = { review: review };
       if (name) payload.name = name;
+      var stars = selectedStars();
+      if (stars) payload.stars = stars;
       var btn = formEl.querySelector('button[type="submit"]');
       if (btn) btn.disabled = true;
       try {
@@ -147,6 +169,7 @@
         }
         if (nameIn) nameIn.value = '';
         if (textIn) textIn.value = '';
+        resetStars();
         setStatus('Thank you! Your review is live for everyone to see.');
         // Prepend the new review (newest first) — re-fetch keeps ordering
         // authoritative without trusting the echo.

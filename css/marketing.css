@@ -716,6 +716,25 @@ svg.ico use{fill:inherit;stroke:inherit;}
 .rv-field input[type="text"]:focus-visible,
 .rv-field textarea:focus-visible{outline:none;border-color:var(--gold);box-shadow:0 0 0 3px rgba(var(--gold-rgb),.18);}
 .rv-field textarea{resize:vertical;min-height:110px;}
+/* Star rating picker (STABILIZATION 2026-08-16 — the PART F T7 follow-up:
+   the schema + list renderer were already star-READY; this is the missing
+   input control). Radios stay keyboard-accessible; the fill follows the
+   picker's data-val (js/reviews.js) with a hover preview, gold accent on
+   the border token so dark/cyan themes inherit it. */
+.rv-pick-label{display:block;font-size:.8rem;font-weight:700;margin-bottom:6px;}
+.rv-pick-row{display:inline-flex;gap:4px;}
+.rv-star-btn{display:inline-flex;align-items:center;justify-content:center;width:42px;height:42px;border-radius:10px;cursor:pointer;color:var(--border);transition:color var(--tr);}
+.rv-star-btn input{position:absolute;opacity:0;pointer-events:none;width:1px;height:1px;}
+.rv-star-btn .ico{width:26px;height:26px;color:currentColor;}
+.rv-star-btn input:focus-visible + .ico{outline:2px solid var(--gold);outline-offset:2px;border-radius:4px;}
+.rv-pick-row:hover .rv-star-btn{color:var(--border);}
+.rv-pick-row:hover .rv-star-btn:hover,
+.rv-pick-row:hover .rv-star-btn:hover ~ .rv-star-btn{color:var(--gold);}
+.rv-pick-row[data-val="1"] .rv-star-btn:nth-child(-n+1){color:var(--gold);}
+.rv-pick-row[data-val="2"] .rv-star-btn:nth-child(-n+2){color:var(--gold);}
+.rv-pick-row[data-val="3"] .rv-star-btn:nth-child(-n+3){color:var(--gold);}
+.rv-pick-row[data-val="4"] .rv-star-btn:nth-child(-n+4){color:var(--gold);}
+.rv-pick-row[data-val="5"] .rv-star-btn:nth-child(-n+5){color:var(--gold);}
 .rv-form-foot{display:flex;align-items:center;gap:18px;flex-wrap:wrap;margin-top:4px;}
 .rv-status{
   flex:1 1 240px;font-size:.86rem;font-weight:600;color:var(--teal-deep);

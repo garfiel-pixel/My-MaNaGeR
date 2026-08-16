@@ -22,6 +22,12 @@
        assert delete -> lookup answers project_deleted for the
        deleted project's own owner code
    K7  editor-code cap still enforced (25 active shared codes)
+   K8  STABILIZATION: the admin cloud list exposes deletedAt for a
+       tombstoned project (the "Deleted" state — the owner's report:
+       a deleted project kept showing in the Cloud Projects list)
+   K9  STABILIZATION: the fortify route POST .../purge hard-deletes
+       the backend NOW (list row gone, owner code -> invalid_code,
+       restore -> 404)
 
    Exit 0 only when all checks pass. Reports PASS/FAIL per check.
    Usage: node tools/qa-cloud-codes-delete.cjs
@@ -34,6 +40,9 @@ const os = require('os');
 const PORT = 8797;
 const BASE = 'http://127.0.0.1:' + PORT;
 const ROOT = path.resolve(__dirname, '..');
+// STABILIZATION (2026-08-16): the admin-list + fortify checks need the site
+// ADMIN_CODE in the dev environment (same pattern as qa-cloud-phase2.cjs).
+const ADMIN_CODE = 'QA-ADMIN-' + Date.now().toString(36).toUpperCase();
 
 const log = (s) => { process.stdout.write('[codes] ' + s + '\n'); };
 const delay = ms => new Promise(r => setTimeout(r, ms));
@@ -70,6 +79,9 @@ function startWrangler() {
         [WRANGLER_JS, 'd1', 'migrations', 'apply', 'my-manager-db', '--local', '--persist-to', PERSIST_DIR],
         { cwd: ROOT, stdio: 'ignore', timeout: 120000 });
     } catch (e) { log('migrations apply (best-effort): ' + e.message); }
+    // The harness must configure ADMIN_CODE for the admin-list + fortify
+    // checks; .dev.vars is gitignored and removed on exit (phase2 pattern).
+    try { fs.writeFileSync(DEV_VARS, 'ADMIN_CODE=' + ADMIN_CODE + '\n'); } catch (e) { log('could not write .dev.vars: ' + e.message); }
     proc = spawn(process.execPath, [WRANGLER_JS, 'dev', '--port', String(PORT), '--ip', '127.0.0.1', '--persist-to', PERSIST_DIR], {
       cwd: ROOT,
       env: Object.assign({}, process.env, { WRANGLER_SEND_METRICS: 'false' }),
@@ -252,6 +264,43 @@ const j = async (res) => { try { return await res.json(); } catch (e) { return {
     });
     const odlk = await j(r);
     check('K6 owner code lookup after delete -> project_deleted', r.status === 410 && odlk.error === 'project_deleted', { status: r.status, odlk });
+
+    // ---- STABILIZATION (2026-08-16): delete-link coherence ----
+    // The project is currently soft-deleted (tombstoned) from K6. The admin
+    // Cloud Projects list must expose that state (deletedAt) so the admin
+    // panel can render "Deleted" + Undo + Delete permanently instead of
+    // looking live (the owner's exact bug report).
+    r = await fetch(BASE + '/api/cloud/admin/projects', { headers: { 'X-Admin-Code': ADMIN_CODE } });
+    const admDel = await j(r);
+    const delRow = (admDel.projects || []).find(function(x) { return x.projectId === pid; });
+    check('K8 admin cloud list exposes the tombstone (deletedAt set)', r.ok && admDel.ok && !!delRow && !!delRow.deletedAt && delRow.hasSnapshot === false, { status: r.status, row: delRow });
+    // K9 fortify: POST .../purge hard-deletes the backend NOW — the list
+    // row disappears, the owner code stops resolving (row gone -> generic
+    // invalid_code), and restore finds nothing to restore (404).
+    r = await fetch(BASE + '/api/cloud/projects/' + pid + '/purge', {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json', 'X-Admin-Code': ADMIN_CODE },
+      body: JSON.stringify({})
+    });
+    const prg = await j(r);
+    check('K9a purge (fortify) ok via ADMIN_CODE', r.ok && prg.ok && prg.purged === pid, { status: r.status, prg });
+    r = await fetch(BASE + '/api/cloud/admin/projects', { headers: { 'X-Admin-Code': ADMIN_CODE } });
+    const admGone = await j(r);
+    check('K9b admin cloud list no longer shows the purged project', r.ok && admGone.ok && !(admGone.projects || []).some(function(x) { return x.projectId === pid; }), { status: r.status, admGone });
+    r = await fetch(BASE + '/api/cloud/codes/lookup', {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code: ownerCode })
+    });
+    const plk = await j(r);
+    check('K9c owner code lookup after purge -> invalid_code (row gone)', r.status === 403 && plk.error === 'invalid_code', { status: r.status, plk });
+    r = await fetch(BASE + '/api/cloud/projects/' + pid + '/restore', {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json', 'X-Admin-Code': ADMIN_CODE },
+      body: JSON.stringify({})
+    });
+    const prst = await j(r);
+    check('K9d restore after purge -> 404 (nothing left to restore)', r.status === 404 && !prst.ok, { status: r.status, prst });
   } catch (e) {
     check('harness fatal', false, String(e && e.message || e));
     log(devLog.split('\n').slice(-25).join('\n'));

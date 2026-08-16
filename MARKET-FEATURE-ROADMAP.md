@@ -16,11 +16,28 @@ Do not begin any Section B item without an explicit go-ahead naming that specifi
 | ⚠️ PARTIAL | Exists in some form; a documented gap remains |
 | ⬜ OPEN | Not implemented — candidate for the next zero-dependency build pass |
 | 🚫 BLOCKED | Requires a 3rd-party account, API key, hardware, or owner/legal review |
+| 🗑 REMOVED | De-scoped as bloat by the owner (2026-08-16) — not to be built without the owner explicitly re-opening it |
 
 **Audit trail:** every claim below was checked directly against the current tree
 (`js/*.js`, `project.html`, `css/mmgr.css`), not assumed from the roadmap text.
 Section C was previously unverified — it is now cross-checked per the file's own
 "Required next step".
+
+---
+
+# PHASE NOTE — STABILIZATION MODE (owner directive, 2026-08-16)
+
+**Feature builds are FROZEN.** The owner's directive: stop adding breadth,
+stabilize the app completely, and the owner will use it naturally as a budget
+manager — annoyances they report become the roadmap. Items marked 🗑 below are
+DE-SCOPED (bloat): not coming back unless the owner re-opens them. Remaining ⬜
+OPEN items are FROZEN — not to be started without the owner naming one. De-scoped
+elsewhere (they live in MASTER-ACTION-PLAN-v3-STRICT.md / the continuation
+directive, not this file): the webhooks + external API tier, real-time presence
+(Durable Objects), and the billing/subscription tier. The ONLY active work items
+this phase: the delete-link coherence fix (local delete must visibly remove the
+linked cloud project everywhere, incl. the admin Cloud Projects list) and the
+reviews star-input UI — both recorded in CONTINUATION-DIRECTIVE.md STATUS LOG.
 
 ---
 
@@ -435,8 +452,9 @@ first**, the same discipline applied everywhere else in this project.
 22. **Multi-project portfolio dashboard** — ✅ DONE. `js/mmgr-portfolio.js` + the
     dark dashboard on `app.html` (`#db-metrics`, `renderMetrics`) rank all projects
     by urgency/health with plain-English reasons + weather-risk input.
-23. **Cross-project resource allocation view** — ⬜ OPEN. Portfolio ranks projects;
-    no cross-project person/crew conflict view.
+23. **Cross-project resource allocation view** — 🗑 REMOVED (de-scoped
+    2026-08-16). Portfolio machinery is not needed for the single-user
+    stabilization phase; not to be built without the owner re-opening it.
 24. **Template library** — ⚠️ PARTIAL. Meeting templates (`MEET_TEMPLATES` in
     `js/mmgr-meetings.js`) exist; no reusable WBS/schedule/budget templates.
 
@@ -470,3 +488,7 @@ same false-positive risk that showed up repeatedly during the monolith parity ch
 Do not add duplicate modules for anything already covered.
 **✅ Status: this cross-check has been done (2026-08-15) and is recorded in the
 markers above.**
+
+**FROZEN as of 2026-08-16 (stabilization mode):** every ⬜ OPEN / ⚠️ PARTIAL item
+above is on hold — no new feature builds until the owner's natural-usage pass is
+done. See the PHASE NOTE at the top of this file.

@@ -948,6 +948,44 @@ async function cloudAuthViewer(request, env, projectId, code) {
   return cloudAuthSharedCode(request, env, projectId, code, 'view');
 }
 
+// ---- PART F T9 (2026-08-16): recipient adoption (pin-into-list) ----
+// cloud_adoptions links a signed-in recipient to a project they loaded
+// with an editor/viewer code. The adoption is keyed on the recipient's own
+// session sub (server-side only — never a client-supplied claim) and
+// stores the editor-code id so the grant stays CURRENT: every
+// session-authenticated load/save re-reads the live code row. A revoked
+// code answers code_revoked (the adoption stops working); a tombstoned
+// project answers project_deleted. No PBKDF2/timing floor needed here —
+// the adoption row is a per-user capability read, not an existence oracle
+// (the caller already holds a valid session cookie).
+async function cloudAdopt(env, projectId, sub, editorCodeId, role) {
+  if (!sub || !editorCodeId) return;
+  const now = new Date().toISOString();
+  await env.DB.prepare(
+    'INSERT INTO cloud_adoptions (project_id, recipient_sub, editor_code_id, role, created_at, updated_at) VALUES (?,?,?,?,?,?) ' +
+    'ON CONFLICT(project_id, recipient_sub) DO UPDATE SET editor_code_id = excluded.editor_code_id, role = excluded.role, updated_at = excluded.updated_at'
+  ).bind(projectId, sub, editorCodeId, role, now, now).run();
+}
+// Returns { role, editorId, label, scope, row } for an active adoption,
+// { revoked: true } when the linked code was revoked/deleted, or null when
+// this session has no adoption row for the project.
+async function cloudAuthAdoption(request, env, projectId) {
+  const session = await readSession(request, env);
+  if (!session || !session.sub) return null;
+  const ad = await env.DB.prepare(
+    'SELECT editor_code_id, role FROM cloud_adoptions WHERE project_id = ? AND recipient_sub = ?'
+  ).bind(projectId, session.sub).first();
+  if (!ad) return null;
+  const row = await env.DB.prepare(
+    'SELECT e.id, e.code_salt, e.code_hash, e.label, e.scope, e.active, e.role, p.deleted_at FROM cloud_editor_codes e JOIN cloud_projects p ON p.project_id = e.project_id WHERE e.id = ?'
+  ).bind(ad.editor_code_id).first();
+  if (!row || row.active !== 1) return { revoked: true };
+  if (row.deleted_at) return { deleted: true };
+  let scope = [];
+  try { const p = JSON.parse(row.scope); if (Array.isArray(p)) scope = p.filter(function(x) { return !!CLOUD_SECTIONS[x]; }); } catch (e) { scope = []; }
+  return { role: row.role === 'view' ? 'view' : 'editor', editorId: row.id, label: row.label || (row.role === 'view' ? 'Viewer' : 'Editor'), scope: scope, row: row };
+}
+
 // ---- SERVER-SIDE SCOPE ENFORCEMENT (Phase 2, plan §3) -----------
 // An editor's save is merged, never trusted wholesale: the new blob is
 // the previous blob with ONLY the granted sections' state keys replaced
@@ -1680,21 +1718,66 @@ async function handleAdminCloudList(request, env) {
 async function handleCloudProjectList(request, env) {
   const session = await readSession(request, env);
   if (!session || !session.sub) return cloudForbidden();
-  const rows = await env.DB.prepare(
-    'SELECT project_id, owner_label, google_name, latest_r2_key, created_at, updated_at, last_owner_seen_at FROM cloud_projects WHERE google_sub = ? ORDER BY updated_at DESC'
+  // PART F T9: the signed-in account sees its OWN projects (google_sub match)
+  // plus every project it PINNED via an editor/viewer code (cloud_adoptions).
+  // Adopted rows carry accessRole + adoptedAt so the launcher can render the
+  // "Shared" chip; they are never confused with owned projects and never
+  // leak projects the session has no capability for (adoption is keyed on
+  // the session's own sub, created only after a real code load).
+  const owned = await env.DB.prepare(
+    'SELECT project_id, owner_label, google_name, latest_r2_key, created_at, updated_at, last_owner_seen_at FROM cloud_projects WHERE google_sub = ? AND deleted_at IS NULL'
   ).bind(session.sub).all();
-  const projects = ((rows && rows.results) || []).map(function(r) {
-    return {
+  const adopted = await env.DB.prepare(
+    'SELECT p.project_id, p.owner_label, p.google_name, p.latest_r2_key, p.created_at, p.updated_at, p.last_owner_seen_at, a.role AS adopted_role, a.created_at AS adopted_at ' +
+    'FROM cloud_adoptions a JOIN cloud_projects p ON p.project_id = a.project_id ' +
+    'WHERE a.recipient_sub = ? AND p.deleted_at IS NULL'
+  ).bind(session.sub).all();
+  const seen = {};
+  const projects = [];
+  ((owned && owned.results) || []).forEach(function(r) {
+    seen[r.project_id] = 1;
+    projects.push({
       projectId: r.project_id,
       label: r.owner_label || null,
       linkedName: r.google_name || null,
       hasSnapshot: !!r.latest_r2_key,
       createdAt: r.created_at,
       updatedAt: r.updated_at,
-      lastOwnerSeenAt: r.last_owner_seen_at || null
-    };
+      lastOwnerSeenAt: r.last_owner_seen_at || null,
+      accessRole: 'owner',
+      adoptedAt: null
+    });
   });
+  ((adopted && adopted.results) || []).forEach(function(r) {
+    if (seen[r.project_id]) return; // owner rows win the dedup
+    projects.push({
+      projectId: r.project_id,
+      label: r.owner_label || null,
+      linkedName: r.google_name || null,
+      hasSnapshot: !!r.latest_r2_key,
+      createdAt: r.created_at,
+      updatedAt: r.updated_at,
+      lastOwnerSeenAt: r.last_owner_seen_at || null,
+      accessRole: r.adopted_role === 'view' ? 'view' : 'editor',
+      adoptedAt: r.adopted_at || null
+    });
+  });
+  projects.sort(function(a, b) { return String(b.updatedAt || '').localeCompare(String(a.updatedAt || '')); });
   return json({ ok: true, projects: projects });
+}
+
+// DELETE /api/cloud/projects/:id/adopt — a recipient removes a PINNED
+// (adopted) project from their own My Cloud Projects list. Session + adoption
+// row gated: only the adopting account itself can drop its own pin, and an
+// owner's own project is never touched (the adoption row is keyed on the
+// session's sub). No timing floor needed — same per-user capability read as
+// cloudAuthAdoption.
+async function handleCloudUnadopt(request, env, projectId) {
+  const session = await readSession(request, env);
+  if (!session || !session.sub) return cloudForbidden();
+  const res = await env.DB.prepare('DELETE FROM cloud_adoptions WHERE project_id = ? AND recipient_sub = ?').bind(projectId, session.sub).run();
+  if (!res.meta.changes) return json({ ok: false, error: 'not adopted' }, 404);
+  return json({ ok: true, removed: projectId });
 }
 
 // ---- account theme preference (THEME-SYSTEM-AND-MOBILE-UI-ACTION-PLAN §2.3) ----
@@ -1863,7 +1946,19 @@ async function handleCloudSave(request, env, projectId) {
     || (typeof read.body.ownerCode === 'string' ? read.body.ownerCode.trim() : '');
   const editorCode = String(request.headers.get('X-Editor-Code') || '').trim()
     || (typeof read.body.editorCode === 'string' ? read.body.editorCode.trim() : '');
-  if (!ownerCode && !editorCode) { await Promise.all([cloudDummyHash(), cloudTimingSink()]); return cloudForbidden(); }
+  // PART F T9: with NO code, an adopted editor (a project pinned after an
+  // editor-code load) saves through the session + adoption row — the same
+  // server-side scope merge as a code-holder. Adopted VIEWERS never save
+  // (the adoption row itself re-reads the live code row, so a revoked code
+  // answers code_revoked and a downgraded role is enforced here).
+  let adoptAuth = null;
+  if (!ownerCode && !editorCode) {
+    adoptAuth = await cloudAuthAdoption(request, env, projectId);
+    if (adoptAuth && adoptAuth.revoked) return json({ ok: false, error: 'code_revoked' }, 403);
+    if (adoptAuth && adoptAuth.deleted) return cloudProjectDeleted();
+    if (!adoptAuth) { await Promise.all([cloudDummyHash(), cloudTimingSink()]); return cloudForbidden(); }
+    if (adoptAuth.role !== 'editor') { await cloudTimingSink(); return cloudForbidden(); }
+  }
   const now = new Date().toISOString();
   const key = 'projects/' + projectId + '/latest.json';
   const prev = await cloudReadState(env, key);
@@ -1877,6 +1972,13 @@ async function handleCloudSave(request, env, projectId) {
     stripStateSecrets(next);
     // A5-2: an owner save is owner activity — refresh the purge window.
     await cloudTouchOwner(env, projectId);
+  } else if (adoptAuth) {
+    const a = adoptAuth;
+    authRow = a.row;
+    actor = { type: 'editor', label: a.label };
+    const merged = cloudScopeMerge(prev, read.body.state, a.scope);
+    next = merged.next;
+    scopeReport = { scope: a.scope, editorLabel: a.label, applied: merged.applied, blocked: merged.blocked };
   } else {
     const a = await cloudAuthEditor(request, env, projectId, editorCode);
     if (!a) return cloudForbidden();
@@ -1929,10 +2031,19 @@ async function handleCloudLoad(request, env, projectId) {
   // + two timing sinks per session-only load). The no-credential failure path
   // still runs the same dummy-hash + timing-floor composite as every other
   // "no row / wrong code" branch.
+  // PART F T9: a non-owner signed-in session may still hold a recipient
+  // adoption — probe it BEFORE the generic rejection so a pinned project
+  // re-opens without re-typing the code. No session at all still gets the
+  // generic rejection (timing discipline preserved); a revoked/tombstoned
+  // adoption surfaces its distinct message in the branch below.
   let sessFallback = null;
+  let adoptFallback = null;
   if (!ownerCode && !editorCode && !viewCode) {
     sessFallback = await cloudAuthOwnerSession(request, env, projectId);
-    if (!sessFallback) { await Promise.all([cloudDummyHash(), cloudTimingSink()]); return cloudForbidden(); }
+    if (!sessFallback) {
+      adoptFallback = await cloudAuthAdoption(request, env, projectId);
+      if (!adoptFallback) { await Promise.all([cloudDummyHash(), cloudTimingSink()]); return cloudForbidden(); }
+    }
   }
   const row = await env.DB.prepare('SELECT owner_code_salt, owner_code_hash, latest_r2_key, updated_at, deleted_at FROM cloud_projects WHERE project_id = ?').bind(projectId).first();
   if (!row) { await Promise.all([cloudDummyHash(), cloudTimingSink()]); return cloudForbidden(); }
@@ -1946,12 +2057,26 @@ async function handleCloudLoad(request, env, projectId) {
   } else if (editorCode) {
     editorAuth = await cloudAuthEditor(request, env, projectId, editorCode);
     if (!editorAuth) return cloudForbidden();
+    // PART F T9: a signed-in recipient loading with an editor code pins the
+    // project into their My Cloud Projects list (server-side adoption).
+    const sess = await readSession(request, env);
+    if (sess && sess.sub) await cloudAdopt(env, projectId, sess.sub, editorAuth.editorId, 'editor');
   } else if (viewCode) {
     viewerAuth = await cloudAuthViewer(request, env, projectId, viewCode);
     if (!viewerAuth) return cloudForbidden();
-  } else {
-    if (!sessFallback) { await cloudTimingSink(); return cloudForbidden(); }
+    const sess = await readSession(request, env);
+    if (sess && sess.sub) await cloudAdopt(env, projectId, sess.sub, viewerAuth.editorId, 'view');
+  } else if (sessFallback) {
     ownerAuth = true;
+  } else if (adoptFallback) {
+    // PART F T9: session-only load falls back to the recipient adoption row
+    // (a project pinned after an editor/viewer code load re-opens without
+    // re-typing the code). The adoption re-reads the LIVE code row so a
+    // revoked code answers code_revoked here too.
+    if (adoptFallback.revoked) return json({ ok: false, error: 'code_revoked' }, 403);
+    if (adoptFallback.deleted) return cloudProjectDeleted();
+    if (adoptFallback.role === 'view') viewerAuth = adoptFallback;
+    else editorAuth = adoptFallback;
   }
   // CLOUD-CODES-AND-DELETE: tombstoned projects refuse every read too —
   // checked only after a successful auth so the message goes only to
@@ -2022,9 +2147,13 @@ async function handleCloudMeta(request, env, projectId) {
   let authorized = false;
   let isEditor = false; let editorScope = null; let editorLabel = null;
   let viewer = false; let viewerScope = null;
+  // PART F T9: only an OWNER probe (session or code) counts as owner
+  // activity — adopted recipients must never refresh the owner's purge window.
+  let ownerProbe = false;
   if (code) {
     const hash = await hashOwnerCode(code, row.owner_code_salt);
     authorized = codesEqual(hash, row.owner_code_hash);
+    if (authorized) ownerProbe = true;
   } else if (ecode) {
     const ea = await cloudAuthEditor(request, env, projectId, ecode);
     if (ea) { authorized = true; isEditor = true; editorScope = ea.scope; editorLabel = ea.label; }
@@ -2032,12 +2161,26 @@ async function handleCloudMeta(request, env, projectId) {
     const va = await cloudAuthViewer(request, env, projectId, vcode);
     if (va) { authorized = true; isEditor = true; viewerScope = va.scope; editorLabel = va.label; viewer = true; }
   }
-  if (!authorized && session && session.sub && row.google_sub && row.google_sub === session.sub) authorized = true;
+  if (!authorized && session && session.sub && row.google_sub && row.google_sub === session.sub) { authorized = true; ownerProbe = true; }
+  if (!authorized && !ownerProbe) {
+    // PART F T9: session-only meta falls back to the recipient adoption row
+    // (pinned projects re-open without re-typing the code).
+    const ad = await cloudAuthAdoption(request, env, projectId);
+    if (ad && ad.revoked) return json({ ok: false, error: 'code_revoked' }, 403);
+    if (ad && ad.deleted) return cloudProjectDeleted();
+    if (ad) {
+      authorized = true; isEditor = true;
+      editorScope = ad.scope; editorLabel = ad.label;
+      viewer = ad.role === 'view';
+      if (viewer) viewerScope = ad.scope;
+    }
+  }
   if (!authorized) return cloudForbidden();
   // CLOUD-CODES-AND-DELETE: tombstoned projects refuse every read.
   if (row.deleted_at) return cloudProjectDeleted();
-  // A5-2: an owner meta probe (session or code) is owner activity.
-  await cloudTouchOwner(env, projectId);
+  // A5-2: only an OWNER meta probe (session or code) is owner activity — an
+  // adopted recipient probing must never refresh the owner's purge window.
+  if (ownerProbe) await cloudTouchOwner(env, projectId);
   const resp = {
     ok: true, projectId: projectId, linked: !!row.google_sub,
     linkedName: row.google_name || null, label: row.owner_label || null,
@@ -2076,6 +2219,9 @@ async function handleCloudUnlink(request, env, projectId) {
   } while (cursor);
   await env.DB.prepare('DELETE FROM cloud_editor_codes WHERE project_id = ?').bind(projectId).run();
   await env.DB.prepare('DELETE FROM cloud_changelog WHERE project_id = ?').bind(projectId).run();
+  // PART F T9: unlink drops every recipient adoption too (the codes they
+  // pointed at are gone with the project).
+  await env.DB.prepare('DELETE FROM cloud_adoptions WHERE project_id = ?').bind(projectId).run();
   return json({ ok: true, unlinked: projectId, unlinkedAt: now });
 }
 
@@ -2804,6 +2950,14 @@ async function handleApi(request, env, url) {
     const rl = await cloudRateCheck(request, 'general');
     if (rl.limited) return cloudRateLimited(rl.retryAfter);
     return handleCloudCodeLookup(request, env);
+  }
+  // PART F T9: DELETE /api/cloud/projects/:id/adopt — recipient unpins a
+  // project from their own My Cloud Projects list.
+  const cloudUnadoptMatch = path.match(/^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/adopt$/);
+  if (cloudUnadoptMatch && request.method === 'DELETE') {
+    const rl = await cloudRateCheck(request, 'general');
+    if (rl.limited) return cloudRateLimited(rl.retryAfter);
+    return handleCloudUnadopt(request, env, cloudUnadoptMatch[1]);
   }
   // DELETE /api/cloud/projects/:id — owner-only unlink (gap-audit item B10).
   const cloudUnlinkMatch = path.match(/^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})$/);

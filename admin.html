@@ -203,7 +203,7 @@ pre.snippet{background:#f8fafc;border:1px solid var(--border);border-radius:6px;
       <button class="btn btn-g" data-action="openProjectModal"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-plus"></use></svg> New Project</button>
       <button class="btn btn-n" data-action="importProject"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-upload"></use></svg> Import Project</button>
       <input type="file" id="import-project-file" accept=".json,.js,application/json,application/javascript,text/plain" style="display:none" aria-hidden="true">
-      <button class="btn btn-n" data-action="downloadPublicData"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Download Public Data</button>
+      <button class="btn btn-n" data-action="downloadPublicData"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Download Static Manifest</button>
       <button class="btn btn-n" data-action="downloadAdminBackup"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Export Backup (CSV)</button>
     </div>
 
@@ -213,9 +213,11 @@ pre.snippet{background:#f8fafc;border:1px solid var(--border);border-radius:6px;
       </div>
       <div class="accordion-body">
         <p><strong style="color:var(--text)">Publishing changes:</strong> edits here save to <em>this browser only</em>.
-        To make them visible to your visitors, click <strong>Download Public Data File</strong>, then commit the resulting
+        To make them visible to your visitors, click <strong>Download Static Manifest</strong>, then commit the resulting
         <code style="color:var(--gold)">projects-data.js</code> to your repository and deploy via
-        <code>npx wrangler deploy</code> (Cloudflare Workers static assets).</p>
+        <code>npx wrangler deploy</code> (Cloudflare Workers static assets). For cloud-linked projects, the per-row
+        <strong>Update Cloud Snapshot</strong> button pushes the project's latest state straight to the cloud backend
+        instead, no file involved.</p>
         <p style="margin-top:10px"><strong style="color:var(--text)">Security model (local-first):</strong>
         Everything stays on this device: admin password hash, session flag, and plaintext access codes live in
         <code>localStorage</code>/<code>sessionStorage</code> only. The published <code>projects-data.js</code> contains
@@ -262,7 +264,7 @@ pre.snippet{background:#f8fafc;border:1px solid var(--border);border-radius:6px;
       <a class="rail-link" href="#cloud-admin-section"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cloud"></use></svg> Cloud Admin</a>
     </div>
     <div class="rail-group"><span class="rail-label">Export</span>
-      <button type="button" class="rail-link" data-action="downloadPublicData"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Public Data</button>
+      <button type="button" class="rail-link" data-action="downloadPublicData"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Static Manifest</button>
       <button type="button" class="rail-link" data-action="downloadAdminBackup"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Backup CSV</button>
     </div>
     <div class="rail-group"><span class="rail-label">Go</span>
@@ -802,7 +804,9 @@ function renderProjects(){
           <div>
             <div class="prow-title">${escapeHtml(p.title)} ${p.isDemo ? '<span class="demo-tag">DEMO</span>' : ''}</div>
             <div class="prow-desc">${escapeHtml(p.description||'')}</div>
-            ${published ? '' : `<div class="pub-note"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-alert-triangle"></use></svg> Not published ${p.cloudId ? '<span class="hint" style="margin:0">in the live data file — republish to update visitors</span>' : ''} <button class="btn btn-n btn-s" data-action="downloadPublicData">Update Public File</button></div>`}
+            ${published ? '' : (p.cloudId
+              ? `<div class="pub-note"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cloud"></use></svg> Live in the cloud. Push the latest state with <strong>Update Cloud Snapshot</strong> below. <button class="btn btn-n btn-s" data-action="updateCloudSnapshot" data-idx="${i}">Update Cloud Snapshot</button></div>`
+              : `<div class="pub-note"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-alert-triangle"></use></svg> Not published. Visitors can't see this yet. <button class="btn btn-n btn-s" data-action="downloadPublicData">Download Static Manifest</button></div>`)}
           </div>
           <span class="badge ${status}">${escapeHtml(status.replace('-',' '))}</span>
         </div>
@@ -817,7 +821,7 @@ function renderProjects(){
           <button class="btn btn-n btn-s" data-action="openProjectModal" data-idx="${i}"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-edit"></use></svg> Edit</button>
           <button class="btn btn-n btn-s" data-action="regenerateCode" data-idx="${i}"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> New Code</button>
           <button class="btn btn-n btn-s" data-action="openSnippetModal" data-idx="${i}"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-link"></use></svg> URL</button>
-          ${p.cloudId ? `<button class="btn btn-g btn-s" data-action="publishToCloud" data-idx="${i}"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cloud"></use></svg> Published</button>` : `<button class="btn btn-o btn-s" data-action="publishToCloud" data-idx="${i}"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-upload"></use></svg> Publish to Cloud</button>`}
+          ${p.cloudId ? `<button class="btn btn-g btn-s" data-action="updateCloudSnapshot" data-idx="${i}"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cloud"></use></svg> Update Cloud Snapshot</button>` : `<button class="btn btn-o btn-s" data-action="publishToCloud" data-idx="${i}"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-upload"></use></svg> Publish to Cloud</button>`}
           <button class="btn btn-d btn-s" data-action="deleteProject" data-idx="${i}"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-trash"></use></svg> Delete</button>
         </div>
       </div>`;
@@ -849,7 +853,9 @@ function deleteProject(i){
       projects.splice(i,1);
       saveProjects();
       renderProjects();
-      toast('Project deleted. Remember to republish the public data file.');
+      toast(p.cloudId
+        ? 'Project removed from this list. Its cloud copy still exists; manage it from the Cloud Admin section.'
+        : 'Project deleted. Remember to republish the static manifest (toolbar) if it was live.');
     }
   });
 }
@@ -943,8 +949,11 @@ async function saveProjectForm(){
   }
   saveProjects();
   renderProjects();
+  const cloudLinked = !!(projects[editingIndex !== null ? editingIndex : projects.length - 1].cloudId);
   closeProjectModal();
-  toast('Project saved. Download the public data file to publish this change.');
+  toast(cloudLinked
+    ? 'Project saved. Push the latest state with Update Cloud Snapshot on its row.'
+    : 'Project saved. Download the static manifest (toolbar) to publish this change.');
 }
 
 /* ============================================================
@@ -992,7 +1001,7 @@ function downloadPublicData(){
 window.MMGR_PROJECTS = ${JSON.stringify(publicProjects, null, 2)};
 `;
   downloadFile('projects-data.js', content, 'application/javascript');
-  toast('Downloaded. Upload this to replace projects-data.js on your live site.');
+  toast('Static manifest downloaded. Upload this to replace projects-data.js on a self-hosted site. For cloud-linked projects, use Update Cloud Snapshot instead.');
 }
 function downloadAdminBackup(){
   const rows = [['id','title','description','status','file','code','codeHash']];
@@ -1109,11 +1118,82 @@ document.addEventListener('mmgr:google-signed-in', function(){
   if (idx > -1) publishToCloud(idx);
 });
 
+/* ============================================================
+   UPDATE CLOUD SNAPSHOT (owner directive 2026-08-16, BUG-5)
+   ------------------------------------------------------------
+   The old per-row "Update Public File" downloaded a static
+   projects-data.js manifest — leftover from before the D1+R2
+   cloud backend existed. For a CLOUD-LINKED project the real
+   publish action is pushing the project's current state to the
+   backend: POST /api/cloud/projects/:id/save (the exact endpoint
+   the project viewer's Save to Cloud + auto-sync use). Zero file
+   download; a clear on-screen success/failure toast. The static
+   manifest export remains available as its own distinctly
+   labeled toolbar action ("Download Static Manifest") for
+   non-cloud, self-hosted deployments.
+   ============================================================ */
+async function updateCloudSnapshot(i){
+  const p = projects[i];
+  if (!p){ return; }
+  if (!p.cloudId || !p.cloudOwnerCode){
+    toast('This project is not cloud-linked with a recorded owner code on this device. Use Publish to Cloud to link it (or Copy Cloud Code if it was linked elsewhere).', 'warn');
+    return;
+  }
+  const btn = document.querySelector('#project-list [data-action="updateCloudSnapshot"][data-idx="' + i + '"]');
+  if (btn){ btn.disabled = true; btn.textContent = 'Updating…'; }
+  try{
+    // The project's current state: the workspace copy on this device if one
+    // exists, otherwise the current cloud snapshot (never clobbered), otherwise
+    // a minimal state seeded from this admin record.
+    let state = null;
+    try {
+      const raw = localStorage.getItem('mmgr_state_' + p.id);
+      if (raw) state = JSON.parse(raw);
+    } catch (e) { state = null; }
+    if (!state){
+      const lr = await fetch('/api/cloud/projects/' + encodeURIComponent(p.cloudId) + '/load', {
+        method: 'POST', credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json', 'X-Owner-Code': p.cloudOwnerCode },
+        body: JSON.stringify({})
+      });
+      const ld = await lr.json().catch(function(){ return {}; });
+      if (lr.ok && ld.ok && ld.state) state = ld.state;
+    }
+    if (!state){
+      // No workspace copy anywhere yet — seed the first snapshot from this
+      // record. schemaVersion must track mmgr-state.js SCHEMA_VERSION.
+      state = { projectId: p.id, projectName: p.title, schemaVersion: 19, updatedAt: new Date().toISOString() };
+    }
+    // The admin record is the registry's source of truth: stamp the title so
+    // edits made here propagate to the cloud snapshot.
+    state.projectName = p.title;
+    if (state.schemaVersion === undefined) state.schemaVersion = 19;
+    state.updatedAt = new Date().toISOString();
+    const res = await fetch('/api/cloud/projects/' + encodeURIComponent(p.cloudId) + '/save', {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json', 'X-Owner-Code': p.cloudOwnerCode },
+      body: JSON.stringify({ state: state })
+    });
+    const data = await res.json().catch(function(){ return {}; });
+    if (!res.ok || !data.ok){
+      toast(((data && data.error) || 'Cloud snapshot update failed (HTTP ' + res.status + ').') + (res.status === 402 ? '. Upgrade needed.' : ''), 'error');
+      return;
+    }
+    toast('Cloud snapshot updated at ' + String(data.savedAt || '').slice(0,19).replace('T',' ') + '. Visitors loading from My Cloud Projects see the latest state.');
+    renderProjects();
+  }catch(e){
+    toast('Cloud snapshot update failed. Is the cloud backend reachable?', 'error');
+  }finally{
+    if (btn){ btn.disabled = false; btn.textContent = 'Update Cloud Snapshot'; }
+  }
+}
+
 async function publishToCloud(i){
   const p = projects[i];
   if (!p){ return; }
   if (p.cloudId && p.cloudOwnerCode){
-    toast('Already in the cloud. ID ' + p.cloudId + '. Use Copy Cloud Code to share it again.');
+    // Already linked — the real publish action is pushing the latest state.
+    updateCloudSnapshot(i);
     return;
   }
   if (publishNeedsSignIn(i, p.id)) return;
@@ -1272,6 +1352,15 @@ function tglAdminNav(){
   const open = document.body.classList.toggle('sidebar-open');
   const btn = document.getElementById('nav-btn');
   if (btn) btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+  // T5 (2026-08-16): the rail's Google button was rendered at boot while the
+  // rail was visibility:hidden + off-canvas, so GIS drew it 0x0 (both the
+  // iframe and the fallback) and it stayed invisible after the rail opened.
+  // Re-draw it now that the rail is on screen.
+  if (open){
+    try {
+      if (window.MMGR && MMGR.GoogleAuth && MMGR.GoogleAuth.ensureGisButton) MMGR.GoogleAuth.ensureGisButton();
+    } catch(e){ /* GIS quirk — harmless */ }
+  }
 }
 function closeAdminNav(){
   document.body.classList.remove('sidebar-open');
@@ -1308,6 +1397,7 @@ const ADMIN_ACTION_MAP = {
   'openProjectModal': (el) => openProjectModal(_admIdx(el)),
   'importProject': () => importProject(),
   'publishToCloud': (el) => publishToCloud(_admIdx(el)),
+  'updateCloudSnapshot': (el) => updateCloudSnapshot(_admIdx(el)),
   'copyCloudCode': (el) => copyCloudCode(_admIdx(el)),
   'downloadPublicData': () => downloadPublicData(),
   'downloadAdminBackup': () => downloadAdminBackup(),

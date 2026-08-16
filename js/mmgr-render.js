@@ -1248,6 +1248,18 @@ var MMGR = window.MMGR || {};
   }
 
   function showSection(section, btn) {
+    // EDITOR-SCOPE (mmgr-cloud.js applyEditorScope/isSectionBlocked): a scoped
+    // editor code must not open a writable section outside its grant. The nav
+    // grey-out (pointer-events:none + disabled) blocks mouse and keyboard on
+    // the buttons, but in-panel jump buttons (empty-state "+ Add Task" calls
+    // data-action=showSec) and any direct showSection call would bypass it —
+    // guard the switch itself so every path is blocked, not just the nav.
+    // View-only panels (dash/def/kan/gantt/claim/digest/baselinen/wxlog) are
+    // never blocked; the server also enforces the scope on every save (B11).
+    if (window.MMGR && window.MMGR.Cloud && window.MMGR.Cloud.isSectionBlocked && window.MMGR.Cloud.isSectionBlocked(section)) {
+      if (ns.App && ns.App.showToast) ns.App.showToast('That section is outside this editor code\u2019s scope. Locked.', 'warn');
+      return;
+    }
     // PROJECT-UX-NAV-WEATHER-EXPORT-DIRECTIVE DIR-2: every section switch
     // starts from a consistent top position — a carried-over scroll offset
     // from a long section reads as a "jump" into unrelated content.

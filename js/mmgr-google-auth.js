@@ -109,6 +109,44 @@ var MMGR = window.MMGR || {};
     }
   }
 
+  // T5 (2026-08-16): GIS measures the host at RENDER time, so a button drawn
+  // into a hidden container comes out 0x0 and never recovers on its own.
+  //   - app.html: #google-signin-button lives inside #siom, which is
+  //     display:none at boot -> the real Google button iframe is 0x0; the old
+  //     openSignIn() re-render guard checked for the fallback div[role=button],
+  //     but GIS ALWAYS creates that fallback, so the guard never fired.
+  //   - admin.html: the rail is visibility:hidden + translateX(-105%) at boot
+  //     -> the whole button (iframe AND fallback) is 0x0 and the rail has no
+  //     re-render hook at all.
+  // ensureGisButton() re-draws the button into the host when it becomes
+  // visible IF the current render is broken (iframe missing or zero-sized).
+  // Safe to call repeatedly (no-op when healthy); zero-throw when GIS is
+  // absent. Call sites: app.html openSignIn(), admin.html tglAdminNav().
+  function ensureGisButton() {
+    if (!gisReady()) return false;
+    const host = $('google-signin-button');
+    if (!host) return false;
+    try {
+      const ifr = host.querySelector('iframe');
+      const broken = !ifr || (ifr.getBoundingClientRect().width === 0 && ifr.getBoundingClientRect().height === 0);
+      if (!broken) return true;
+      // Wipe the stale 0x0 render and draw a fresh button now that the host
+      // is measurable (modal/rail open). GIS allows re-render after wipe.
+      host.innerHTML = '';
+      window.google.accounts.id.renderButton(host, {
+        theme: 'outline',
+        size: 'medium',
+        shape: 'rectangular',
+        text: 'signin_with'
+      });
+      installPopupBlockDetector();
+      return true;
+    } catch (e) {
+      if (window.console && window.console.warn) window.console.warn('mmgr-google-auth: GIS re-render failed (optional identity unaffected)', e);
+      return false;
+    }
+  }
+
   function showButton() {
     _user = null;
     const btn = $('google-signin-button');
@@ -1190,6 +1228,9 @@ var MMGR = window.MMGR || {};
   ns.GoogleAuth = {
     CLIENT_ID: CLIENT_ID,
     initGIS: initGIS,
+    // T5 (2026-08-16): re-render the GIS button when its host becomes visible
+    // (app.html modal open / admin rail open) if the boot render came out 0x0.
+    ensureGisButton: ensureGisButton,
     restoreSession: restoreSession,
     handleCredentialResponse: handleCredentialResponse,
     // OWNER 2026-08-15: session state getters (display-only) so other

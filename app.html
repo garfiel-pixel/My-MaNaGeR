@@ -639,13 +639,12 @@ function openSignIn(){
   const m = document.getElementById('siom');
   if (!m) return;
   m.classList.add('open');
+  // T5 (2026-08-16): GIS sized the button at boot while #siom was display:none,
+  // so the real Google button iframe came out 0x0 and the old guard (which
+  // checked for the always-present fallback div[role=button]) never re-rendered
+  // it. ensureGisButton() re-draws the button now that the modal is visible.
   try {
-    const host = document.getElementById('google-signin-button');
-    if (host && window.google && window.google.accounts && window.google.accounts.id &&
-        !host.querySelector('iframe, [id^=g_id_onload], div[role=button]')) {
-      const cid = (window.MMGR && MMGR.GoogleAuth && MMGR.GoogleAuth.CLIENT_ID) || '';
-      if (cid) window.google.accounts.id.renderButton(host, { theme:'outline', size:'medium', shape:'rectangular', text:'signin_with' });
-    }
+    if (window.MMGR && MMGR.GoogleAuth && MMGR.GoogleAuth.ensureGisButton) MMGR.GoogleAuth.ensureGisButton();
   } catch(e){ /* GIS quirk — the boot render is the fallback */ }
   const f = document.querySelector('#siom input, #siom .email-auth-toggle, #siom iframe');
   if (f && f.focus) { try { f.focus(); } catch(e){} }

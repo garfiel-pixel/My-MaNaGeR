@@ -820,6 +820,18 @@ var MMGR = window.MMGR || {};
     }
     return VIEW_ONLY_PANELS.indexOf(key) === -1;
   }
+  // Is this section off-limits for the current session's scoped editor code?
+  // Mirrors applyEditorScope's block list exactly so the nav grey-out and the
+  // section-switch guard (mmgr-render.js showSection) can never drift apart.
+  // View-only panels (dash/def/kan/gantt/claim/digest/baselinen/wxlog) are
+  // never blocked — they read derived data and the server blocks their writes
+  // by construction (B11).
+  function isSectionBlocked(section) {
+    const scope = getEScope();
+    const isEditor = !!getECode() && !getCode();
+    if (!isEditor || !scope) return false;
+    return isWritableSection(section) && scope.sections.indexOf(section) === -1;
+  }
   function applyEditorScope() {
     const scope = getEScope();
     const isEditor = !!getECode() && !getCode();
@@ -827,10 +839,21 @@ var MMGR = window.MMGR || {};
     const btns = document.querySelectorAll('.sec-btn[data-section]');
     for (let i = 0; i < btns.length; i++) {
       const sec = btns[i].getAttribute('data-section');
-      const blocked = isEditor && scope && isWritableSection(sec) && scope.sections.indexOf(sec) === -1;
+      const blocked = isSectionBlocked(sec);
       btns[i].classList.toggle('scope-blocked', blocked);
-      if (blocked) btns[i].setAttribute('title', 'Outside this editor code\u2019s scope — locked');
-      else btns[i].removeAttribute('title');
+      if (blocked) {
+        // pointer-events:none only stops the MOUSE — a keyboard user could
+        // still Tab + Enter the button, and in-panel "+ Add Task" jump
+        // buttons call showSec directly. disabled + aria-disabled make the
+        // block real for every input path; showSection also guards.
+        btns[i].setAttribute('disabled', 'disabled');
+        btns[i].setAttribute('aria-disabled', 'true');
+        btns[i].setAttribute('title', 'Outside this editor code\u2019s scope. Locked.');
+      } else {
+        btns[i].removeAttribute('disabled');
+        btns[i].removeAttribute('aria-disabled');
+        btns[i].removeAttribute('title');
+      }
     }
     const banner = $('editor-scope-banner');
     if (banner) banner.classList.toggle('is-hide', !isEditor);
@@ -1273,6 +1296,7 @@ var MMGR = window.MMGR || {};
     copyEditorCode: copyEditorCode,
     editorCodeDone: editorCodeDone,
     applyEditorScope: applyEditorScope,
+    isSectionBlocked: isSectionBlocked,
     getCode: getCode,
     getECode: getECode,
     getEScope: getEScope,

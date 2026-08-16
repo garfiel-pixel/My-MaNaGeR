@@ -101,11 +101,16 @@ var MMGR = window.MMGR || {};
       const raw = sessionStorage.getItem(escopeKey());
       if (!raw) return null;
       const p = JSON.parse(raw);
-      return (p && Array.isArray(p.sections)) ? p : null;
+      if (!p || !Array.isArray(p.sections)) return null;
+      // CLOUD-CODES-AND-DELETE: role ('editor' | 'view') — legacy stored
+      // scopes (pre-migration) were always editor; default them here so
+      // no caller ever reads an undefined role.
+      if (p.role !== 'view') p.role = 'editor';
+      return p;
     } catch (e) { return null; }
   }
-  function setEScope(label, sections) {
-    try { sessionStorage.setItem(escopeKey(), JSON.stringify({ label: label || '', sections: sections || [] })); } catch (e) { /* ignore */ }
+  function setEScope(label, sections, role) {
+    try { sessionStorage.setItem(escopeKey(), JSON.stringify({ label: label || '', sections: sections || [], role: role === 'view' ? 'view' : 'editor' })); } catch (e) { /* ignore */ }
   }
 
   // ---- last-seen cloud time (gap-audit B8/B9: last-synced indicator +
@@ -130,8 +135,8 @@ var MMGR = window.MMGR || {};
       return (p && p.code) ? p : null;
     } catch (e) { return null; }
   }
-  function setPendingEditorCode(code, label, scope) {
-    try { sessionStorage.setItem(pendingCodeKey(), JSON.stringify({ code: code, label: label || '', scope: scope || [] })); } catch (e) { /* ignore */ }
+  function setPendingEditorCode(code, label, scope, role) {
+    try { sessionStorage.setItem(pendingCodeKey(), JSON.stringify({ code: code, label: label || '', scope: scope || [], role: role === 'view' ? 'view' : 'editor' })); } catch (e) { /* ignore */ }
   }
   function clearPendingEditorCode() {
     try { sessionStorage.removeItem(pendingCodeKey()); } catch (e) { /* ignore */ }
@@ -313,7 +318,12 @@ var MMGR = window.MMGR || {};
     const oc = getCode();
     const ec = getECode();
     if (oc) return { code: oc, header: 'X-Owner-Code' };
-    if (ec) return { code: ec, header: 'X-Editor-Code' };
+    if (ec) {
+      const es = getEScope();
+      // CLOUD-CODES-AND-DELETE: a VIEW code travels under X-View-Code — the
+      // server only ever grants reads (role='view'); a view save is refused.
+      return { code: ec, header: (es && es.role === 'view') ? 'X-View-Code' : 'X-Editor-Code' };
+    }
     return null;
   }
 
@@ -321,6 +331,10 @@ var MMGR = window.MMGR || {};
   async function saveToCloud() {
     const cred = activeCredential();
     if (!cred) { setStatus('Create a cloud project first (button above).', 'warn'); return; }
+    // CLOUD-CODES-AND-DELETE: a viewer code is read-only everywhere — the
+    // server would refuse the save (X-View-Code is never accepted by /save),
+    // so refuse it here with a plain explanation instead of a confusing 403.
+    if (cred.header === 'X-View-Code') { setStatus('Viewer codes are read-only. You cannot save changes to the cloud. Ask the admin for an editor or owner code to edit.', 'warn'); return; }
     const state = readProjectState();
     if (!state) { setStatus('No local project state to save yet.', 'warn'); return; }
     setStatus('Saving to cloud…', 'busy');
@@ -379,6 +393,7 @@ var MMGR = window.MMGR || {};
   async function autoSaveToCloud(opts) {
     const cred = activeCredential();
     if (!cred) return false;
+    if (cred.header === 'X-View-Code') return false; // viewers never push
     if (_autoBusy) return false;
     const state = readProjectState();
     if (!state) return false;
@@ -431,7 +446,10 @@ var MMGR = window.MMGR || {};
       });
       const data = await res.json().catch(function() { return {}; });
       if (!res.ok || !data.ok) {
-        const msg = (data && data.error) || 'Cloud load failed (HTTP ' + res.status + ').';
+        const raw = (data && data.error) || '';
+        const msg = raw === 'code_revoked' ? 'This code was revoked by the project admin. Contact them for a new one.'
+          : raw === 'project_deleted' ? 'This project was deleted by the admin. It is no longer available from the cloud.'
+          : raw || 'Cloud load failed (HTTP ' + res.status + ').';
         if (res.status === 403) { if (cred.header === 'X-Owner-Code') clearCode(); else clearECode(); }
         await render();
         setStatus(msg, 'err');
@@ -444,7 +462,8 @@ var MMGR = window.MMGR || {};
         localStorage.setItem('mmgr_scope_' + pid(), 'full');
         localStorage.setItem('mmgr_current_project', pid());
       } catch (e) { /* storage blocked — status below still reports the outcome */ }
-      if (data.role === 'editor') setEScope(data.editorLabel, data.scope || []);
+      if (data.role === 'view') setEScope(data.viewerLabel || data.editorLabel, data.scope || [], 'view');
+      else if (data.role === 'editor') setEScope(data.editorLabel, data.scope || []);
       if (data.savedAt) setLastSeen(data.savedAt);
       setStatus('Cloud snapshot restored — reloading.', 'ok');
       setTimeout(function() { window.location.reload(); }, 1200);
@@ -533,13 +552,20 @@ var MMGR = window.MMGR || {};
     if (!window.confirm('Replace this device\u2019s local workspace with the cloud snapshot for this project? Current local data will be overwritten.')) return;
     setStatus('Checking code…', 'busy');
     const result = await probeLoad(code);
-    if (!result) {
-      setStatus('That code was not accepted — check it and try again.', 'err');
+    if (!result || !result.ok) {
+      const err = result && result.error;
+      setStatus(err === 'code_revoked' ? 'This code was revoked by the project admin. Contact them for a new one.'
+        : err === 'project_deleted' ? 'This project was deleted by the admin. It is no longer available from the cloud.'
+        : 'That code was not accepted for this project. Check it and try again.', 'err');
       return;
     }
-    if (result.role === 'editor') {
+    const r = result.data;
+    if (r.role === 'view') {
       setECode(code);
-      setEScope(result.editorLabel, result.scope || []);
+      setEScope(r.viewerLabel || r.editorLabel, r.scope || [], 'view');
+    } else if (r.role === 'editor') {
+      setECode(code);
+      setEScope(r.editorLabel, r.scope || []);
     } else {
       setCode(code);
     }
@@ -547,23 +573,26 @@ var MMGR = window.MMGR || {};
     await loadFromCloud();
   }
 
-  // Probe /load with a typed code: owner header first, editor header second.
-  // Returns the parsed response on success or null. Never throws.
+  // Probe /load with a typed code: owner header, editor header, then view
+  // header (CLOUD-CODES-AND-DELETE: viewer codes are role='view'). Returns
+  // { ok:true, data } on success or { ok:false, error } on failure (the last
+  // structured error seen, for friendly copy). Never throws.
   async function probeLoad(code) {
-    for (let i = 0; i < 2; i++) {
+    const headersOrder = ['X-Owner-Code', 'X-Editor-Code', 'X-View-Code'];
+    let lastErr = null;
+    for (let i = 0; i < headersOrder.length; i++) {
       try {
-        const header = i === 0 ? 'X-Owner-Code' : 'X-Editor-Code';
         const headers = { 'Content-Type': 'application/json' };
-        headers[header] = code;
+        headers[headersOrder[i]] = code;
         const res = await fetch('/api/cloud/projects/' + encodeURIComponent(pid()) + '/load', {
           method: 'POST', credentials: 'same-origin', headers: headers, body: JSON.stringify({})
         });
-        if (!res.ok) continue;
-        const data = await res.json();
-        if (data && data.ok) return data;
-      } catch (e) { /* try the other header, then give up */ }
+        const data = await res.json().catch(function() { return {}; });
+        if (res.ok && data && data.ok) return { ok: true, data: data };
+        if (data && data.error) lastErr = data.error;
+      } catch (e) { /* try the next header, then give up */ }
     }
-    return null;
+    return { ok: false, error: lastErr };
   }
 
   // ---- copy code ----------------------------------------------------------
@@ -583,36 +612,41 @@ var MMGR = window.MMGR || {};
   // PHASE 2 — editor code management (owner-only UI)
   // =========================================================================
 
-  // Create: read the label + checked section boxes -> POST -> show code once.
+  // Create: read the label + role + checked section boxes -> POST -> show code once.
+  // CLOUD-CODES-AND-DELETE: a role picker ('editor' | 'view') sits next to the
+  // label — editor = can edit the granted sections, view = read-only everywhere
+  // with only the granted sections visible/enabled.
   async function createEditor() {
     const labelIn = $('cloud-editor-label-in');
     const label = (labelIn && labelIn.value || '').trim().slice(0, 60);
-    if (!label) { setStatus('Give this editor code a label first (e.g. \u201CSite Super — Riverside\u201D).', 'warn'); return; }
+    if (!label) { setStatus('Give this code a label first (e.g. \u201CSite Super — Riverside\u201D).', 'warn'); return; }
+    const roleIn = $('cloud-editor-role');
+    const role = roleIn && roleIn.value === 'view' ? 'view' : 'editor';
     const scope = [];
     const boxes = document.querySelectorAll('#cloud-editor-scope-box input[type=checkbox]:checked');
     for (let i = 0; i < boxes.length; i++) scope.push(boxes[i].value);
-    if (scope.length === 0) { setStatus('Tick at least one section this code may edit.', 'warn'); return; }
+    if (scope.length === 0) { setStatus(role === 'view' ? 'Tick at least one section this code may see.' : 'Tick at least one section this code may edit.', 'warn'); return; }
     const code = getCode();
-    if (!code) { setStatus('Owner code required to manage editor codes.', 'warn'); return; }
-    setStatus('Creating editor code…', 'busy');
+    if (!code) { setStatus('Owner code required to manage codes.', 'warn'); return; }
+    setStatus('Creating code…', 'busy');
     try {
       const res = await fetch('/api/cloud/projects/' + encodeURIComponent(pid()) + '/editors', {
         method: 'POST',
         credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json', 'X-Owner-Code': code },
-        body: JSON.stringify({ label: label, scope: scope })
+        body: JSON.stringify({ label: label, scope: scope, role: role })
       });
       const data = await res.json().catch(function() { return {}; });
       if (!res.ok || !data.ok || !data.editorCode) {
-        setStatus((data && data.error) || 'Editor code creation failed (HTTP ' + res.status + ').', 'err');
+        setStatus((data && data.error) || 'Code creation failed (HTTP ' + res.status + ').', 'err');
         return;
       }
       // gap-audit G23: park the code in a shown-once banner (render renders it
       // prominently with a Copy button) — matching the owner-code flow's
       // "copy this now" seriousness.
-      setPendingEditorCode(data.editorCode, data.label, data.scope || []);
+      setPendingEditorCode(data.editorCode, data.label, data.scope || [], data.role || 'editor');
       await render();
-      setStatus('Editor code created for \u201C' + data.label + '\u201D (scope: ' + (data.scope || []).map(sectionLabel).join(', ') + '). Copy it from the banner — it is shown once.', 'ok');
+      setStatus((data.role === 'view' ? 'Viewer' : 'Editor') + ' code created for \u201C' + data.label + '\u201D (scope: ' + (data.scope || []).map(sectionLabel).join(', ') + '). Copy it from the banner, it is shown once.', 'ok');
       if (listEditors) listEditors();
     } catch (e) {
       setStatus('Cloud is unavailable on this host (needs the Worker API).', 'err');
@@ -632,11 +666,12 @@ var MMGR = window.MMGR || {};
       const data = await res.json().catch(function() { return {}; });
       if (!res.ok || !data.ok) { wrap.innerHTML = '<div class="sr-hint">Could not load editor codes.</div>'; return; }
       const eds = data.editors || [];
-      if (!eds.length) { wrap.innerHTML = '<div class="sr-hint">No editor codes yet — create one above.</div>'; return; }
+      if (!eds.length) { wrap.innerHTML = '<div class="sr-hint">No codes yet — create one above.</div>'; return; }
       wrap.innerHTML = eds.map(function(e) {
+        const isView = e.role === 'view';
         return '<div class="sr" style="font-size:.72rem;display:flex;align-items:center;gap:8px;flex-wrap:wrap">' +
-          '<span style="color:var(--gold)">' + esc(e.label || 'Editor') + '</span>' +
-          '<span class="sr-hint" style="margin:0">' + esc((e.scope || []).map(sectionLabel).join(', ')) + ' · ' + esc(String(e.createdAt || '').slice(0, 10)) + '</span>' +
+          '<span style="color:var(--gold)">' + esc(e.label || (isView ? 'Viewer' : 'Editor')) + '</span>' +
+          '<span class="sr-hint" style="margin:0">' + (isView ? 'viewer · ' : 'editor · ') + esc((e.scope || []).map(sectionLabel).join(', ')) + ' · ' + esc(String(e.createdAt || '').slice(0, 10)) + '</span>' +
           (e.active ? '<button class="btn btn-d btn-s" data-action="cloudEditorRevoke" data-id="' + e.id + '">Revoke</button>' : '<span class="sr-hint" style="margin:0">revoked</span>') +
           '</div>';
       }).join('');
@@ -648,10 +683,10 @@ var MMGR = window.MMGR || {};
   // Revoke an editor code (owner-only) — the code stops working immediately.
   async function revokeEditor(id) {
     if (!id) return;
-    if (!window.confirm('Revoke this editor code? It stops working immediately and cannot be restored.')) return;
+    if (!window.confirm('Revoke this code? It stops working immediately and cannot be restored.')) return;
     const code = getCode();
-    if (!code) { setStatus('Owner code required to revoke editor codes.', 'warn'); return; }
-    setStatus('Revoking editor code…', 'busy');
+    if (!code) { setStatus('Owner code required to revoke codes.', 'warn'); return; }
+    setStatus('Revoking code…', 'busy');
     try {
       const res = await fetch('/api/cloud/projects/' + encodeURIComponent(pid()) + '/editors/' + encodeURIComponent(id), {
         method: 'DELETE', credentials: 'same-origin', headers: { 'X-Owner-Code': code }
@@ -885,8 +920,9 @@ var MMGR = window.MMGR || {};
   // ---- shown-once NEW-editor-code banner (gap-audit G23) -----------------
   function pendingBannerHtml(pendingCode) {
     if (!pendingCode) return '';
+    const isView = pendingCode.role === 'view';
     return '<div class="sr cloud-new-code" style="border:1px solid var(--gold);background:rgba(var(--gold-rgb),.1);border-radius:var(--radius);padding:8px 10px;margin:10px 0 4px" role="status">' +
-      '<div class="sr-hint" style="margin:0 0 4px"><strong>NEW editor code for \u201C' + esc(pendingCode.label || 'editor') + '\u201D — copy it now, it is shown once:</strong></div>' +
+      '<div class="sr-hint" style="margin:0 0 4px"><strong>NEW ' + (isView ? 'viewer' : 'editor') + ' code for \u201C' + esc(pendingCode.label || (isView ? 'viewer' : 'editor')) + '\u201D — copy it now, it is shown once:</strong></div>' +
       '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">' +
       '<code style="font-family:ui-monospace,monospace;letter-spacing:.05em;color:var(--gold);font-size:1rem;font-weight:700">' + esc(pendingCode.code) + '</code>' +
       '<button class="btn btn-g btn-s" data-action="cloudCopyEditorCode" data-code="' + esc(pendingCode.code) + '"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy code</button>' +
@@ -916,13 +952,16 @@ var MMGR = window.MMGR || {};
         '<div class="sr-hint" style="margin:8px 0 0">Already have a code from someone? Open <strong>Cloud &amp; Sync ▸ Cloud Backup</strong> and enter it under “On another device?”.</div>' +
         '</div>';
     } else if (ecode && !code) {
+      const isView = !!(escope && escope.role === 'view');
       const scopeTxt = escope && escope.sections && escope.sections.length
         ? escope.sections.map(sectionLabel).join(', ')
         : 'unknown';
       body =
         '<div class="share-card">' +
-        '<div class="sr" style="border:none;padding:0 0 6px"><span class="sl" style="font-size:.8rem;font-weight:800">You are an editor</span></div>' +
-        '<div class="sr-hint" style="margin:0">Editor code active: <code class="share-code">' + esc(escope && escope.label || 'editor') + '</code> — you can edit: <strong>' + esc(scopeTxt) + '</strong>. Codes can only touch what the owner granted; generating and revoking codes is owner-only.</div>' +
+        '<div class="sr" style="border:none;padding:0 0 6px"><span class="sl" style="font-size:.8rem;font-weight:800">' + (isView ? 'You are a viewer' : 'You are an editor') + '</span></div>' +
+        '<div class="sr-hint" style="margin:0">' + (isView
+          ? 'Viewer code active: <code class="share-code">' + esc(escope && escope.label || 'viewer') + '</code>. You can see: <strong>' + esc(scopeTxt) + '</strong>. Read-only: nothing here can be edited. Ask the admin for an editor or owner code to change things.'
+          : 'Editor code active: <code class="share-code">' + esc(escope && escope.label || 'editor') + '</code>. You can edit: <strong>' + esc(scopeTxt) + '</strong>. Codes can only touch what the owner granted; generating and revoking codes is owner-only.') + '</div>' +
         '</div>';
     } else {
       body =
@@ -931,14 +970,18 @@ var MMGR = window.MMGR || {};
         '<div class="sr-hint" style="margin:0 0 8px">Anyone with this code opens the project as <strong>owner</strong> on any device. Keep it safe — if lost, only the linked Google account can recover it.</div>' +
         '<code class="share-code">' + esc(code) + '</code>' +
         pendingBannerHtml(pendingCode) +
-        '<div class="sr" style="margin-top:12px;padding:0 0 4px"><span class="sl" style="font-size:.72rem;font-weight:700">Editor codes — edit only what you tick</span><button class="btn btn-n btn-s" data-action="cloudEditorList" style="margin-left:auto"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> List</button></div>' +
-        '<div class="sr-hint" style="margin:0 0 6px">Give someone a code that can edit ONLY the sections you tick (e.g. Budget only). Scope is enforced server-side on every save — a shared or leaked code cannot touch anything else.</div>' +
+        '<div class="sr" style="margin-top:12px;padding:0 0 4px"><span class="sl" style="font-size:.72rem;font-weight:700">Codes: edit or view only what you tick</span><button class="btn btn-n btn-s" data-action="cloudEditorList" style="margin-left:auto"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> List</button></div>' +
+        '<div class="sr-hint" style="margin:0 0 6px">Give someone a code that can edit ONLY the sections you tick (e.g. Budget only), or a viewer code that can only SEE them (read-only, nothing touchable). Scope is enforced server-side on every save, so a shared or leaked code cannot touch anything else.</div>' +
         '<div class="exp-row" style="flex-wrap:wrap">' +
         '<input type="text" id="cloud-editor-label-in" class="ctl-in" placeholder="Label, e.g. Site Super — Riverside" style="min-width:200px" autocomplete="off">' +
-        '<button class="btn btn-g btn-s" data-action="cloudEditorCreate"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-plus"></use></svg> Create Editor Code</button>' +
+        '<select id="cloud-editor-role" class="ctl-in" style="width:auto" aria-label="Code type">' +
+        '<option value="editor">Editor — can edit the sections below</option>' +
+        '<option value="view">Viewer — can see them, read-only</option>' +
+        '</select>' +
+        '<button class="btn btn-g btn-s" data-action="cloudEditorCreate"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-plus"></use></svg> Create Code</button>' +
         '</div>' +
         '<div id="cloud-editor-scope-box" class="share-scope">' +
-        '<span class="sr-hint" style="margin:0">Sections this code may edit:</span>' +
+        '<span class="sr-hint" style="margin:0">Sections this code may edit (or see, for a viewer):</span>' +
         '<span id="cloud-editor-scope-load" class="sr-hint" style="margin:0">loading…</span>' +
         '</div>' +
         '<div id="cloud-editor-list"></div>' +
@@ -993,20 +1036,21 @@ var MMGR = window.MMGR || {};
         '<button class="btn btn-n btn-s" data-action="cloudLoadWithCode"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Load with Code</button>' +
         '</div>';
     } else if (ecode && !code) {
-      // EDITOR MODE — scoped editing; the server enforces the grant.
+      // EDITOR / VIEWER MODE — scoped access; the server enforces the grant.
+      const isView = !!(escope && escope.role === 'view');
       const scopeTxt = escope && escope.sections && escope.sections.length
         ? escope.sections.map(sectionLabel).join(', ')
         : 'unknown';
       body =
-        '<div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-folder"></use></svg> Cloud Backup — editing as editor</span></div>' +
-        '<div class="sr-hint">Editor code active: <code style="font-family:ui-monospace,monospace;letter-spacing:.05em;color:var(--gold)">' + esc(escope && escope.label || 'editor') + '</code> — you can edit: <strong>' + esc(scopeTxt) + '</strong>. Other panels are locked for this code (enforced by the server, not just greyed out).</div>' +
+        '<div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-folder"></use></svg> Cloud Backup: ' + (isView ? 'viewing as viewer' : 'editing as editor') + '</span></div>' +
+        '<div class="sr-hint">' + (isView ? 'Viewer' : 'Editor') + ' code active: <code style="font-family:ui-monospace,monospace;letter-spacing:.05em;color:var(--gold)">' + esc(escope && escope.label || (isView ? 'viewer' : 'editor')) + '</code>. You can ' + (isView ? 'see' : 'edit') + ': <strong>' + esc(scopeTxt) + '</strong>. ' + (isView ? 'Read-only: nothing here can be changed.' : 'Other panels are locked for this code (enforced by the server, not just greyed out).') + '</div>' +
         '<div class="exp-row">' +
-        '<button class="btn btn-n btn-s" data-action="cloudSave"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-upload"></use></svg> Save to Cloud</button>' +
+        (isView ? '' : '<button class="btn btn-n btn-s" data-action="cloudSave"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-upload"></use></svg> Save to Cloud</button>') +
         '<button class="btn btn-n btn-s" data-action="cloudLoad"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Load from Cloud</button>' +
         '<button class="btn btn-n btn-s" data-action="cloudCopyCode"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy Code</button>' +
         '<button class="btn btn-o btn-s" data-action="cloudDropEditor"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> Use owner code instead</button>' +
         '</div>' +
-        '<div class="sr-hint">Changes you save are attributed to this editor label in the owner\u2019s changelog.</div>' +
+        '<div class="sr-hint">' + (isView ? 'Nothing you do here changes the cloud copy — reload anytime to see fresh data.' : 'Changes you save are attributed to this editor label in the owner\u2019s changelog.') + '</div>' +
         '<div id="cloud-last-sync" class="sr-hint" role="status" aria-live="polite"></div>';
     } else {
       // OWNER MODE (owner code in session). The owner code + editor-code

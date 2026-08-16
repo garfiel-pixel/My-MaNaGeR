@@ -256,6 +256,27 @@ body.glass-premium .wrap{position:relative;z-index:1;}
     <div class="cd-list" id="cloud-dash-list" role="list"></div>
     <div class="cd-status" id="cloud-dash-status" role="status" aria-live="polite"></div>
   </div>
+
+  <!-- CLOUD-CODES-AND-DELETE (2026-08-16): the ONE place to enter any cloud
+       code — owner, editor, or viewer. The lookup resolves the code to its
+       project on the backend and opens it here; no shared URL needed beyond
+       this site. Works from any device, any country. -->
+  <div class="cloud-dash" id="code-entry" aria-label="Open a project with a code">
+    <div class="cd-head">
+      <h2><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-lock"></use></svg> Have a code? Open a project</h2>
+      <span class="cd-sub">Owner, editor, or viewer code. Works from any device</span>
+    </div>
+    <div class="cd-list" style="grid-template-columns:1fr;max-width:580px">
+      <div style="background:var(--tile-bg);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;display:flex;flex-direction:column;gap:10px">
+        <input id="code-entry-in" type="text" maxlength="32" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="XXXX-XXXX-XXXX-XXXX" aria-label="Project code" style="background:#f8fafc;border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-size:1rem;letter-spacing:.1em;padding:10px 12px;font-family:ui-monospace,monospace;outline:none">
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <button type="button" class="btn btn-g" id="code-entry-btn" data-action="cloudCodeOpen"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Open from Cloud</button>
+          <span class="cd-status" id="code-entry-status" role="status" aria-live="polite"></span>
+        </div>
+        <p class="cd-sub" style="margin:0">Enter a code you were given for a project. It loads straight from the cloud backend, no prior device history needed. Viewer codes open read-only.</p>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- Sign-in modal (NEW-UI-CREATION-BRIEF I1 follow-up, 2026-08-14): the
@@ -741,7 +762,76 @@ document.addEventListener('click', function(e){
   if (row) handleCardClick(row.getAttribute('data-open-project'));
 });
 
+/* CLOUD-CODES-AND-DELETE (2026-08-16): the launcher's single door for any
+   cloud code (owner / editor / viewer). Lookup resolves the code to its
+   project, /load pulls the state with the right credential header, and the
+   session is seeded exactly like the project page's own "Load with Code"
+   flow so project.html boots in the right role: owner = full edit,
+   editor = scoped edit, viewer = read-only + scoped sections. */
+function normalizeCloudCode(raw){
+  const s = String(raw || '').trim().toUpperCase();
+  return s.length === 16 ? s.slice(0,4) + '-' + s.slice(4,8) + '-' + s.slice(8,12) + '-' + s.slice(12,16) : s;
+}
+async function cloudCodeOpen(){
+  const input = document.getElementById('code-entry-in');
+  const status = document.getElementById('code-entry-status');
+  const btn = document.getElementById('code-entry-btn');
+  const code = normalizeCloudCode(input && input.value);
+  if (!code) { if (status) status.textContent = 'Enter the code you were given first.'; return; }
+  if (btn) { btn.disabled = true; btn.textContent = 'Opening…'; }
+  if (status) status.textContent = '';
+  try {
+    const lr = await fetch('/api/cloud/codes/lookup', {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code: code })
+    });
+    const ld = await lr.json().catch(function(){ return {}; });
+    if (!lr.ok || !ld.ok || !ld.projectId) {
+      if (status) status.textContent = ld.error === 'code_revoked' ? 'This code was revoked by the project admin. Contact them for a new one.'
+        : ld.error === 'project_deleted' ? 'This project was deleted by the admin.'
+        : 'No cloud project matches that code. Check it and try again.';
+      return;
+    }
+    const headers = { 'Content-Type': 'application/json' };
+    headers[ld.role === 'owner' ? 'X-Owner-Code' : (ld.role === 'view' ? 'X-View-Code' : 'X-Editor-Code')] = code;
+    const rr = await fetch('/api/cloud/projects/' + encodeURIComponent(ld.projectId) + '/load', {
+      method: 'POST', credentials: 'same-origin', headers: headers, body: JSON.stringify({})
+    });
+    const rd = await rr.json().catch(function(){ return {}; });
+    if (!rr.ok || !rd.ok) {
+      if (status) status.textContent = rd.error === 'code_revoked' ? 'This code was revoked by the project admin.'
+        : rd.error === 'project_deleted' ? 'This project was deleted by the admin.'
+        : 'The code opened but the project could not load. Try again.';
+      return;
+    }
+    if (!rd.state) { if (status) status.textContent = 'This project has no cloud snapshot yet. The admin needs to save it once first.'; return; }
+    try {
+      localStorage.setItem('mmgr_state_' + ld.projectId, JSON.stringify(rd.state));
+      localStorage.setItem('mmgr_unlocked_' + ld.projectId, '1');
+      localStorage.setItem('mmgr_scope_' + ld.projectId, 'full');
+      localStorage.setItem('mmgr_current_project', ld.projectId);
+      if (ld.role !== 'owner') {
+        sessionStorage.setItem('mmgr_cloud_ecode_' + ld.projectId, code);
+        sessionStorage.setItem('mmgr_cloud_escope_' + ld.projectId, JSON.stringify({
+          label: ld.label || (ld.role === 'view' ? 'Viewer' : 'Editor'),
+          sections: ld.scope || [],
+          role: ld.role === 'view' ? 'view' : 'editor'
+        }));
+      }
+    } catch (e) { /* storage blocked — open still proceeds below */ }
+    window.location.href = 'project.html?id=' + encodeURIComponent(ld.projectId);
+  } catch (e) {
+    if (status) status.textContent = 'Could not reach the cloud service. Check your connection and try again.';
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Open from Cloud'; }
+  }
+}
+const entryInput = document.getElementById('code-entry-in');
+if (entryInput) entryInput.addEventListener('keydown', function(e){ if (e.key === 'Enter') cloudCodeOpen(); });
+
 const DASH_ACTION_MAP = {
+  'cloudCodeOpen': () => cloudCodeOpen(),
   'closeModal': () => closeModal(),
   'attemptUnlock': () => attemptUnlock(),
   'tglTheme': (el) => tglTheme(el),

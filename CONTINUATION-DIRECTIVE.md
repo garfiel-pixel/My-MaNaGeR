@@ -814,6 +814,107 @@ Load flow + project.html feature-gating per code role).
 
 ---
 
+## PART G — CLOUD-CODES-AND-DELETE-DIRECTIVE (owner-approved design, 2026-08-16)
+
+**Source:** owner planning session 2026-08-16 (rough-sketch directive, planning-only
+until the design was approved in-chat). **Design APPROVED by the owner** ("Looks
+excellent. I would love for its implementation") — implementation is authorized; this
+PART G is the memory so any fresh session knows what is being built and where it
+stopped. Read the STATUS LOG entry below before starting; it is the exact resume point.
+
+### The one goal (owner's words, decoded)
+"Any code works anywhere": you send a code to anyone in any country; they enter it in
+ONE obvious place (the launcher); the project loads from the cloud backend into their
+device; they see/do exactly what the code grants — nothing more. Delete is the admin's
+power, revoke is the admin's power, and every error tells you why. Offline copies keep
+working until the next online refresh, which then surfaces revocation/deletion.
+
+### Code model (three roles, one lookup)
+- **owner/admin** — full edit (exists; PBKDF2 hash in cloud_projects, never plaintext).
+- **editor** — edits ONLY granted sections (exists: cloud_editor_codes + scope + server
+  cloudScopeMerge + client applyEditorScope; 25-code cap).
+- **view** (NEW) — read-only EVERYWHERE + only granted sections visible/enabled;
+  offline copy stays read-only; server rejects all writes for a view credential.
+- Codes are revocable (editor/view); a revoked code stops loading with "code revoked".
+  Owner-code rotation already exists (admin "New Code" / project Recover).
+
+### Backend (worker.js + migration 0003)
+1. Migration: `role TEXT NOT NULL DEFAULT 'editor'` + `code_fingerprint TEXT` on
+   cloud_editor_codes; `owner_code_fingerprint TEXT` + `deleted_at TEXT` on
+   cloud_projects; indexes on the fingerprint columns. Fingerprint = sha256(code)
+   (codes are high-entropy random — fingerprint is a safe lookup key, code itself is
+   never stored beyond the existing PBKDF2 hash).
+2. `POST /api/cloud/codes/lookup { code }` — resolves ANY code to
+   `{ ok, projectId, projectName, role, label, scope }`; never returns state or the
+   code; rate-limited; generic-ish failures: `invalid_code` / `code_revoked` /
+   `project_deleted` (the owner explicitly wants these distinct messages — a code
+   holder already knew the code, so no existence leak concern).
+3. Soft delete + restore: `POST /api/cloud/projects/:id/delete` (owner auth) sets
+   deleted_at; every load/save/meta then returns `project_deleted`; `POST
+   /api/cloud/projects/:id/restore` clears it. PurgeStaleCloudProjects extended to
+   hard-purge deleted rows older than ~7 days. NOTE: legacy codes (issued before this
+   change) have NULL fingerprints and are NOT lookup-resolvable until re-issued —
+   fresh publishes (the owner's own re-upload plan) get fingerprints automatically.
+4. View role: cloud_editor_codes.role; cloudAuthEditor restricted to role='editor';
+   new X-View-Code auth for load/meta (role:'view' + scope in the response); saves
+   with a view credential always 403. Editor create accepts body.role.
+5. Keep the generic-403 + timing-floor discipline for auth failures (only the
+   requested distinct user-facing messages above change).
+
+### Frontend
+1. **Launcher (app.html)**: new "Have a code? Open a project" card — the ONE place to
+   enter any code. POST lookup → POST load with the right header (X-Owner-Code /
+   X-Editor-Code / X-View-Code) → seed mmgr_unlocked_<id> + mmgr_state_<id> + scope
+   (localStorage for view/readonly, sessionStorage escope for editor/view) → open
+   project.html?id=<id>. Existing local manifest unlock + My Cloud Projects stay
+   untouched (offline-first sacred). app.html inline-script CSP hash MUST be
+   regenerated (worker.js + serve.cjs mirrors).
+2. **Viewer mode (project.html)**: extend mmgr-cloud.js escope storage to carry
+   `role` ('editor' | 'view'); mmgr-app.js checkAccess/init: if escope role === 'view'
+   → ns.scope = 'readonly' (so READONLY_SAFE_ACTIONS blocks every write from boot) +
+   applyEditorScope blocks non-granted sections (same grey-out + disabled + showSection
+   guard already built for editors). renderShare + cloud drawer copy becomes
+   viewer-aware. Share & Access gains a role picker (Editor / Viewer) on code creation.
+3. **Admin (admin.html)**: (a) project Delete → confirm (exists) → soft-delete
+   (`POST .../delete`) + local row removal → pill toast with Undo action (~5s) → undo
+   restores local record + `POST .../restore` (FULL restore — owner decision).
+   (b) per-row "Codes" manager: list editor/view codes (GET .../editors now returns
+   role), create (label + role + live /api/cloud/sections multi-select), revoke —
+   inside admin, no need to open the project. (c) Honest cloud-box error: entering a
+   project code in the admin's cloud box (which validates the SITE ADMIN_CODE) must
+   say "That's not the site admin code — project codes unlock on the launcher" instead
+   of bare "Wrong admin code". admin.html inline-script CSP hash MUST be regenerated.
+4. **Friendly error mapping** everywhere a code is entered: `code_revoked` → "This
+   code was revoked by the project admin."; `project_deleted` → "This project was
+   deleted by the admin."; `invalid_code` → "No cloud project matches that code."
+
+### Skills to load before this work
+workers-best-practices, security-audit, d1-migration (SQL gotchas only), cloudflare
+(platform fallback), skeptical-code-audit (verification), universal-ui-architect +
+ui-modernization (any UI surface — token/glass/icon/toast/confirm language, NO emoji),
+pwa-development (sw.js bump), qa-expert (harness coverage). AGENTS.md hard gates: CSP
+hash regen for every edited inline script; sw.js cache bump for shell asset changes;
+npm run verify before ship; emoji scan on served pages; directive + STATUS LOG kept
+current.
+
+### Acceptance (owner-facing)
+1. Owner publishes/re-publishes a project → copies an EDITOR code limited to e.g.
+   "Risk / Issues" + "Meetings" → opens in an incognito/another device → enters the
+   code on the launcher → project loads from the cloud → ONLY those two sections are
+   reachable (greyed + disabled + blocked), every other section and every write
+   refused. Same with a VIEW code: read-only everywhere + only granted sections.
+2. "Just send the code" works from a country away — no URL needed beyond the site.
+3. Admin deletes a project → confirm → 5s Undo toast → Undo fully restores (local +
+   cloud + codes). Without Undo, the project is gone for everyone: any code holder's
+   next load says the project was deleted.
+4. Revoking a code → that code stops loading with "code revoked"; the admin's cloud
+   box never again says a bare "invalid/wrong admin code" for a project code.
+
+STATUS: **PLANNING APPROVED 2026-08-16 — implementation started in the same session
+(see STATUS LOG for the exact resume point).**
+
+---
+
 ## VERIFICATION WORKFLOW — how this closes out
 
 Per Garfield's instruction: work through Parts A–D using each file's real, in-repo
@@ -831,6 +932,9 @@ Format: date/session marker, what was completed (with file/line specifics), what
 in-progress and exactly where it stopped, what's next.
 
 ### Log entries (most recent at top)
+
+**2026-08-16 — Session: CLOUD-CODES-AND-DELETE (owner approved the PART G design: "Looks excellent. I would love for its implementation" + "create our workable system and we can polish it after it works"). PART G written into this file, then IMPLEMENTED end-to-end, uncommitted.**
+Backend (worker.js + migration 0009): `role` ('editor'|'view') + `code_fingerprint` on cloud_editor_codes, `owner_code_fingerprint` + `deleted_at` on cloud_projects (fingerprint = sha256 of the code — safe lookup key for high-entropy codes, plaintext still never stored). New POST /api/cloud/codes/lookup (resolves any code → {projectId, projectName, role, label, scope}; distinct outcomes invalid_code / code_revoked / project_deleted), POST /api/cloud/projects/:id/delete (soft tombstone) + /restore, deleted_at guards on load/save/meta (410 project_deleted, only after successful auth), X-View-Code auth for load/meta (cloudAuthSharedCode parameterized; editor auth restricted to role='editor'), editor create accepts body.role, revoke is now SOFT (active=0) so revoked codes answer code_revoked instead of vanishing (owner's explicit "project code revoked" requirement; P2.6f still 403), purge extended to hard-purge tombstoned rows after 7 days, free-plan cap count excludes deleted rows. Frontend: app.html launcher gains the "Have a code? Open a project" card (cloudCodeOpen: lookup → /load with role header → seed mmgr_state_/mmgr_unlocked_/escope → open project.html); mmgr-cloud.js viewer support (escope role 'view', activeCredential → X-View-Code, viewer saves refused client+server, renderShare role picker + viewer copy, listEditors role badge, friendly code_revoked/project_deleted copy); mmgr-app.js checkAccess drops viewer scope into readonly (READONLY_SAFE_ACTIONS blocks every write from boot) while applyEditorScope blocks out-of-scope sections; admin.html per-project-row Codes manager (create editor/viewer code with live /api/cloud/sections scope, list with role, revoke, shown-once reveal), project Delete now soft-deletes the cloud copy with a ~5s Undo pill toast (full restore local+cloud+codes; admin toast gained an action param), honest cloud-admin 403 copy (project codes are not the site ADMIN code); field guide A-20/A-15 cards. Gates: CSP hashes regenerated for app.html (9ajvGrj...) + admin.html (DTm66Q...) in worker.js + serve.cjs; sw.js mmgr-shell-v124→v126 (v125 was re-bumped for the field-guide cards); node --check clean; npm run verify GREEN (CSP 11/11, SW v126 > 48 assets, hidden, 17/17 skills); qa-cloud-phase2 79/79; NEW tools/qa-cloud-codes-delete.cjs 18/18 (owner lookup, editor/viewer roles, X-View-Code load + save-refused, soft delete/restore, revoked→code_revoked). NOTE for the next session: legacy codes issued BEFORE migration 0009 have NULL fingerprints and are not launcher-lookup-resolvable until re-issued (recover / New Code / re-publish) — the owner's own re-upload plan regenerates them. NEXT: owner tests the live flow (publish → create editor/viewer code → enter it on the launcher from another device; admin delete + Undo), then commit + push + deploy (wrangler staging recipe + apply migration 0009 to REMOTE D1 via `npx wrangler d1 migrations apply my-manager-db --remote`) on the owner's go.
 
 **2026-08-16 — Session: PART-F-T4-T5-T6 (owner: "Continue with the next PART F task (T4 contact phone, T5 Google icon, or T6 meeting delete+undo)") — all three queued tasks shipped in one session (the standing one-session rule): T4 phone tile, T5 GIS button re-render fix, T6 meeting delete + undo; verified (sw v124), uncommitted.**
 **T4 — Contact page phone (contact.html):** the owner's direct line `+1 (876) 530-3595` is now a fourth contact tile in the same card language as the existing email/social tiles — i-phone sprite icon (already in css/mmgr-icons.svg, no new symbol needed), `href="tel:+18765303595"` working click-to-call, heading + description. COMPLEXITY S.

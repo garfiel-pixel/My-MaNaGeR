@@ -38,7 +38,7 @@
 window.MMGR_PROJECTS = [
   {
     "id": "demo-project",
-    "title": "Demo Project — Riverside Tower Renovation",
+    "title": "Demo Project, Riverside Tower Renovation",
     "description": "A working example wired up end-to-end so you can test the unlock flow before adding your own projects. Contact the admin to get the access code.",
     "status": "active",
     "file": "project.html?id=demo-project",

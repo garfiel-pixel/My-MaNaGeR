@@ -377,19 +377,24 @@ body.sidebar-open .nav-btn .ico,body.sidebar-open .sb-close .ico{transform:rotat
 /* A1 heads-up banner on the Stakeholder Register — card language, amber
    accent border + icon tile per UI doctrine 1, hidden until something is due. */
 .stk-cmp{display:flex;align-items:center;gap:10px;background:linear-gradient(180deg,rgba(245,158,11,.1),var(--card) 60%);
-  border:1px solid rgba(245,158,11,.4);border-radius:var(--radius-lg);padding:10px 14px;margin-bottom:14px;font-size:.76rem;color:var(--text);}
+  border:1px solid rgba(245,158,11,.4);border-radius:var(--squircle-md);padding:10px 14px;margin-bottom:14px;font-size:.76rem;color:var(--text);}
 .stk-cmp .ico{color:var(--amber);flex-shrink:0;}
 .stk-cmp.is-hide{display:none;}
 /* MARKET-FEATURE-ROADMAP A3/A4: Bid Leveling + Go/No-Go scorecards
-   (Stakeholders panel). Reuses the .dt table / .badge / .card language. */
-.bid-pkg{border:1px solid var(--border);border-radius:var(--radius-lg);padding:12px 14px;margin-bottom:14px;background:var(--tile-bg);}
+   (Stakeholders panel). Nested panels INSIDE the outer glass .card — they
+   reuse the SAME card language at a nested scale (glass-fill surface +
+   glass border + squircle radius + rim/shadow); the inputs use the app's
+   soft-field treatment, NEVER default browser borders. UI doctrine: every
+   creation of this sort ships WITH the app's design, not apart from it. */
+.bid-pkg{background:var(--glass-fill-dark);border:var(--glass-border);border-radius:var(--squircle-md);padding:12px 16px;margin-bottom:14px;box-shadow:var(--glass-rim),var(--glass-shadow);transition:border-color var(--tr),background var(--tr),box-shadow var(--tr);}
 .bid-pkg-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px;}
-.bid-pkg-head input[type=text]{font-weight:700;font-size:.78rem;}
+.bid-pkg-head input[type=text]{font-weight:700;font-size:.78rem;background:var(--tile-bg);border:1px solid var(--border);border-radius:var(--radius-control);color:var(--text);font-family:inherit;padding:6px 10px;outline:none;transition:border-color var(--tr),box-shadow var(--tr);}
 .bid-min{font-size:.7rem;color:var(--green);font-weight:700;margin-bottom:6px;}
 .bid-tbl{margin-top:4px;}
 .bid-tbl th,.bid-tbl td{padding:4px 6px;font-size:.72rem;}
-.gn-card{border:1px solid var(--border);border-radius:var(--radius-lg);padding:12px 14px;margin-bottom:14px;background:var(--tile-bg);}
+.gn-card{background:var(--glass-fill-dark);border:var(--glass-border);border-radius:var(--squircle-md);padding:12px 16px;margin-bottom:14px;box-shadow:var(--glass-rim),var(--glass-shadow);transition:border-color var(--tr),background var(--tr),box-shadow var(--tr);}
 .gn-crit{display:flex;align-items:center;gap:8px;margin:6px 0;flex-wrap:wrap;}
+.gn-crit input{flex:1;min-width:140px;background:var(--tile-bg);border:1px solid var(--border);border-radius:var(--radius-control);color:var(--text);font-size:.76rem;font-family:inherit;padding:5px 9px;outline:none;transition:border-color var(--tr),box-shadow var(--tr);}
 .gn-crit select{width:92px;}
 .gn-score{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:8px;}
 .gn-score-txt{font-size:.72rem;color:var(--slate);}
@@ -400,7 +405,7 @@ body.sidebar-open .nav-btn .ico,body.sidebar-open .sb-close .ico{transform:rotat
        .is-hide). Hidden permanently after any pack is toggled on or dismiss. */
 .core-callout{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;
   background:linear-gradient(180deg,rgba(var(--gold-rgb),.09),var(--card) 55%);
-  border:1px solid rgba(var(--gold-rgb),.38);border-radius:var(--radius-lg);
+  border:1px solid rgba(var(--gold-rgb),.38);border-radius:var(--squircle-md);
   padding:14px 18px;margin-bottom:18px;}
 .core-callout-txt{display:flex;align-items:center;gap:10px;font-size:.8rem;line-height:1.5;color:var(--text);max-width:660px;}
 .core-callout-txt .ico{color:var(--gold);flex-shrink:0;}

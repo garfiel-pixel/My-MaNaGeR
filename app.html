@@ -8,7 +8,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>My MaNaGeR — Projects</title>
+<title>My MaNaGeR | Projects</title>
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#D4AF37">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -63,6 +63,26 @@ body.glass-premium .wrap{position:relative;z-index:1;}
 .pc-local{color:var(--green);border:1px solid rgba(16,185,129,.35);background:rgba(16,185,129,.1);}
 .pc-note{color:var(--amber);border:1px solid rgba(245,158,11,.3);background:rgba(245,158,11,.07);}
 .empty{grid-column:1/-1;text-align:center;padding:60px 20px;color:var(--slate);font-size:.82rem;}
+/* PROJECTS CAROUSEL (owner 2026-08-16): the project grid is paged — up to 4
+   cards per page with prev/next + a counter, so a long wall reads
+   1-2-3-4 → next → 5-6-7-8 → next → 9 instead of a grid you count. Cards STAY
+   in the DOM (harnesses query .pcard) — hidden pages get .pg-off. The pager
+   mirrors the launcher's glass card language (tokens only). */
+.pg-off{display:none;}
+.pg-nav{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:12px;margin-top:18px;}
+.pg-btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:var(--radius-control);border:var(--glass-border);background:var(--glass-fill-dark);color:var(--text);font:inherit;font-size:.74rem;font-weight:600;cursor:pointer;box-shadow:var(--glass-rim);transition:border-color var(--tr),background var(--tr),color var(--tr),transform var(--press-duration) var(--spring-in);}
+.pg-btn:hover:not(:disabled){border-color:var(--gold);color:var(--gold);}
+.pg-btn:active:not(:disabled){transform:scale(var(--press-scale));}
+.pg-btn:disabled{opacity:.45;cursor:default;}
+.pg-btn:focus-visible{outline:2px solid var(--gold);outline-offset:2px;}
+.pg-count{font-size:.7rem;color:var(--slate);min-width:56px;text-align:center;font-variant-numeric:tabular-nums;}
+.pg-dots{display:flex;align-items:center;gap:7px;}
+.pg-dot{width:8px;height:8px;border-radius:50%;border:none;padding:0;background:var(--border);cursor:pointer;transition:background var(--tr),transform var(--tr);}
+.pg-dot.is-on{background:var(--gold);transform:scale(1.2);}
+.pg-dot:focus-visible{outline:2px solid var(--gold);outline-offset:2px;}
+.pcard.pg-on{animation:pgIn .38s var(--spring-press);}
+@keyframes pgIn{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:none;}}
+@media (prefers-reduced-motion:reduce){.pcard.pg-on{animation:none;}.pg-btn,.pg-dot{transition:none;}}
 .foot{text-align:center;margin-top:60px;}
 .foot a{color:var(--slate);font-size:.7rem;text-decoration:none;border-bottom:1px dotted transparent;}
 .foot a:hover{color:var(--slate);border-color:var(--slate);}
@@ -187,7 +207,7 @@ body.glass-premium .wrap{position:relative;z-index:1;}
       <span class="db-avatar-box"><span class="db-avatar-ring"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-user"></use></svg></span><span class="db-avatar-dot" hidden></span></span>
       <span class="db-avatar-txt">Sign in</span>
     </button>
-    <h1><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg> <span class="mark">My</span> MaNaGeR — Projects</h1>
+    <h1><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg> <span class="mark">My</span> MaNaGeR Projects</h1>
     <p>Select a project to view its dashboard, schedule, risk register, and budget. Each project is protected by its own access code.</p>
   </div>
 
@@ -217,7 +237,7 @@ body.glass-premium .wrap{position:relative;z-index:1;}
        project lists can never be confused (Cloud vs Local). -->
   <div class="db-sec" aria-label="Projects">
     <h2 class="db-sec-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-folder"></use></svg> Projects</h2>
-    <span class="db-sec-sub">On this device and published — open one to get to work</span>
+    <span class="db-sec-sub">On this device and published. Open one to get to work</span>
   </div>
   <div class="grid" id="grid"><!-- cards render here --></div>
 
@@ -231,7 +251,7 @@ body.glass-premium .wrap{position:relative;z-index:1;}
   <div class="cloud-dash" id="cloud-dash" hidden aria-label="My cloud projects">
     <div class="cd-head">
       <h2><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cloud"></use></svg> My Cloud Projects</h2>
-      <span class="cd-sub">Linked to your account — click Load to open one</span>
+      <span class="cd-sub">Linked to your account. Click Load to open one</span>
     </div>
     <div class="cd-list" id="cloud-dash-list" role="list"></div>
     <div class="cd-status" id="cloud-dash-status" role="status" aria-live="polite"></div>
@@ -249,7 +269,7 @@ body.glass-premium .wrap{position:relative;z-index:1;}
   <div class="mb">
     <div class="mh"><span class="mt"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-user"></use></svg> Sign in</span><button type="button" class="dc" data-action="closeSignIn"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg></button></div>
     <div class="mbody">
-      <p class="si-hint">Sign in with Google or use your email — optional, for cloud sync, backups, and your cloud projects.</p>
+      <p class="si-hint">Sign in with Google or use your email. Optional, for cloud sync, backups, and your cloud projects.</p>
       <div id="google-signin-button"></div>
       <div id="google-user-chip" hidden></div>
     </div>
@@ -347,11 +367,11 @@ function renderCards(){
     const chips = local
       ? (published
           ? '<span class="pc-chip pc-local">On this device</span>'
-          : '<span class="pc-chip pc-local">On this device</span><span class="pc-chip pc-note">Not published — visitors can\'t see this yet</span>')
+          : '<span class="pc-chip pc-local">On this device</span><span class="pc-chip pc-note">Not published. Visitors can\'t see this yet</span>')
       : '';
     const cta = local
       ? '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg> Open'
-      : (unlocked ? '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-check"></use></svg> Unlocked — open <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg>' : 'Enter code <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg>');
+      : (unlocked ? '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-check"></use></svg> Unlocked, open <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg>' : 'Enter code <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg>');
     return `
       <button class="pcard ${unlocked ? 'unlocked' : ''}" data-id="${p.id}" aria-label="Open ${escapeHtml(p.title)}">
         <div class="pc-head">
@@ -462,8 +482,8 @@ function tglGlassMode(el){
   document.querySelectorAll('[data-action="tglGlassMode"]').forEach(g => { g.checked = on; });
   const eff = (window.MMGR && MMGR.Viewport && MMGR.Viewport.effectiveGlassMode) ? MMGR.Viewport.effectiveGlassMode() : 'css';
   toast(on
-    ? (eff === 'premium' ? 'Premium liquid-glass mode on.' : 'Preference saved — this device uses CSS glass.')
-    : 'Premium visual mode off — CSS glass stays on.',
+    ? (eff === 'premium' ? 'Premium liquid-glass mode on.' : 'Preference saved. This device uses CSS glass.')
+    : 'Premium visual mode off. CSS glass stays on.',
     eff === 'premium' ? 'ok' : 'warn');
 }
 
@@ -512,7 +532,7 @@ async function attemptUnlock(){
   // view-only unlock works for manifests produced either way.
   const roHash = activeProject.roCodeHash || activeProject.readOnlyCodeHash || '';
   if(hash === activeProject.codeHash || hash === roHash){
-    btn.textContent = 'Unlocked — opening…';
+    btn.textContent = 'Unlocked, opening…';
     localStorage.setItem('mmgr_unlocked_'+activeProject.id, '1');
     // ACTION-PLAN 4.1: a read-only scope code gets a separate scope flag;
     // the project gate then opens the reduced view (see project.html).
@@ -529,7 +549,7 @@ async function attemptUnlock(){
     btn.disabled = true; btn.textContent = 'Checking…';
     const cloud = await tryCloudEditorUnlock(activeProject.id, val);
     if(cloud){
-      btn.textContent = 'Unlocked — opening…';
+      btn.textContent = 'Unlocked, opening…';
       setTimeout(()=>{ window.location.href = activeProject.file; }, 400);
       return;
     }
@@ -643,7 +663,7 @@ function renderRailProjects(){
   if (!list) return;
   const projects = allProjects();
   if (!projects.length){
-    list.innerHTML = '<div class="db-sub-empty">No projects yet — add one from the Admin panel.</div>';
+    list.innerHTML = '<div class="db-sub-empty">No projects yet. Add one from the Admin panel.</div>';
     return;
   }
   list.innerHTML = projects.map(function(p){
@@ -698,7 +718,7 @@ function renderUserAvatar(user){
   if (dot) dot.hidden = false;
   if (txt) txt.textContent = 'Signed in';
   const who = user.email || user.name || 'operator';
-  btn.setAttribute('aria-label', 'Signed in as ' + who + ' — manage account');
+  btn.setAttribute('aria-label', 'Signed in as ' + who + '. Manage account');
   btn.setAttribute('title', 'Signed in as ' + who);
   btn.classList.add('is-in');
 }

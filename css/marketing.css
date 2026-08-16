@@ -819,3 +819,15 @@ svg.ico use{fill:inherit;stroke:inherit;}
     backdrop-filter:none;
   }
 }
+
+/* ---------- 17. Reveal-on-scroll (owner 2026-08-16) ---------- */
+/* Progressive enhancement: .rv is added by js/marketing.js only — a static
+   no-JS page (or reduced-motion / no-IntersectionObserver user) sees every
+   element fully visible immediately, never hidden. Elements fade + rise into
+   view as they enter the viewport; grids stagger via --rv-i set by JS. */
+.rv{opacity:0;transform:translateY(18px);transition:opacity .5s cubic-bezier(.22,1,.36,1),transform .5s cubic-bezier(.22,1,.36,1);}
+.rv.rv-in{opacity:1;transform:none;}
+.rv{transition-delay:calc(var(--rv-i,0)*55ms);}
+@media (prefers-reduced-motion:reduce){
+  .rv{opacity:1;transform:none;transition:none;}
+}

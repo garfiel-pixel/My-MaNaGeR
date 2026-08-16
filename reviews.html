@@ -1,14 +1,17 @@
 <!DOCTYPE html>
 <!--
-  My MaNaGeR — Contact page (Liquid Glass v1.0).
-  Basic contact page; the real contact form lands in Phase 4.
+  My MaNaGeR — Reviews window (PART F T7, 2026-08-16).
+  Public: anyone leaves a review (name optional, renders as
+  "Anonymous"), stored in the cloud backend and shown to everyone
+  instantly. Star-READY schema (1-5 stars + votes stored now; the
+  star input UI is a follow-up session per the owner).
 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Contact | My MaNaGeR</title>
-<meta name="description" content="Contact My MaNaGeR: reach the admin for access codes, support, and feedback.">
+<title>Reviews | My MaNaGeR</title>
+<meta name="description" content="Read and leave reviews for My MaNaGeR, the offline-first construction project management workspace.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='2.5' y='2.5' width='19' height='19' rx='5' fill='%23E8B84A'/%3E%3Cpath d='M12 5.5c.5 3 1.2 4.8 2.7 6.2 1.5 1.5 3.3 2.2 6.3 2.7-3 .5-4.8 1.2-6.3 2.7-1.5 1.5-2.2 3.3-2.7 6.3-.5-3-1.2-4.8-2.7-6.3C7.8 15.6 6 14.9 3 14.4c3-.5 4.8-1.2 6.3-2.7C10.8 10.2 11.5 8.4 12 5.5z' fill='%230F172A'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="css/marketing.css">
 <script src="js/mmgr-theme.js"></script>
@@ -29,8 +32,8 @@
       <a class="nav-link" href="index.html#features">Features</a>
       <a class="nav-link" href="mymanager-field-guide.html">Guide</a>
       <a class="nav-link" href="about.html">About</a>
-      <a class="nav-link" href="contact.html" aria-current="page">Contact</a>
-      <a class="nav-link" href="reviews.html">Reviews</a>
+      <a class="nav-link" href="contact.html">Contact</a>
+      <a class="nav-link" href="reviews.html" aria-current="page">Reviews</a>
     </nav>
     <span class="pal-switch" role="group" aria-label="Color theme">
       <button type="button" class="pal-btn" data-pal="default" aria-pressed="true">Gold</button>
@@ -73,69 +76,47 @@
 <main id="main">
   <section class="page-hero">
     <div class="container">
-      <span class="crumbs"><a href="index.html">Home</a> · Contact</span>
-      <h1>Contact &amp; Support</h1>
-      <!-- Phase 2 copy landed; the contact form itself lands in Phase 4. -->
-      <p>Need an access code, help with a project, or a feature idea? Here's how to reach us.</p>
-    </div>
-  </section>
-
-  <!-- photo band to match the About / Features pages (solid layer — never glass) -->
-  <section class="photo-band">
-    <img class="pb-img" src="images/site-overview-clean.webp" alt="Aerial view of an active construction site" loading="lazy" width="1584" height="672">
-    <div class="pb-overlay" aria-hidden="true"></div>
-    <div class="container pb-content">
-      <span class="eyebrow">Talk to us</span>
-      <h2>Every project needs a line to the office.</h2>
-      <p>Access codes, support, or a feature you want next. One email and it lands on the right desk.</p>
-      <div class="pb-cta">
-        <a class="btn btn-gold" href="mailto:admin@mymanager.app">Email the admin</a>
-      </div>
+      <span class="crumbs"><a href="index.html">Home</a> · Reviews</span>
+      <h1>What people say</h1>
+      <p>Real words from project teams using My MaNaGeR. Leave your own review below — it appears here for everyone, instantly.</p>
     </div>
   </section>
 
   <section class="section">
     <div class="container">
-      <div class="contact-grid">
-        <div class="contact-tile">
-          <div class="ct-icon"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-mail"></use></svg></div>
-          <div>
-            <h3>Email</h3>
-            <p>For access codes, support, and general questions.<br><a href="mailto:admin@mymanager.app">admin@mymanager.app</a></p>
-          </div>
-        </div>
-        <div class="contact-tile">
-          <div class="ct-icon"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-phone"></use></svg></div>
-          <div>
-            <h3>Phone</h3>
-            <p>Direct line for urgent project questions.<br><a href="tel:+18765303595">+1 (876) 530-3595</a></p>
-          </div>
-        </div>
-        <div class="contact-tile">
-          <div class="ct-icon"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-lock"></use></svg></div>
-          <div>
-            <h3>Project access</h3>
-            <p>Each project in the app is protected by its own access code. Ask your project admin for the code. View-only codes are available too.</p>
-          </div>
-        </div>
-        <div class="contact-tile">
-          <div class="ct-icon"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-book"></use></svg></div>
-          <div>
-            <h3>Learn the app</h3>
-            <p>Most questions are answered in the <a href="mymanager-field-guide.html">Field Guide</a>, with twenty-five sheets covering every panel.</p>
-          </div>
-        </div>
-        <div class="contact-tile">
-          <div class="ct-icon"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-lightbulb"></use></svg></div>
-          <div>
-            <h3>Feedback</h3>
-            <p>Ideas for the next version? Email us. We read everything.</p>
-          </div>
-        </div>
+      <div class="section-head">
+        <span class="eyebrow">Leave a review</span>
+        <h2>Tell us how it went</h2>
+        <p>Your name is optional — leave it blank and you'll appear as "Anonymous". Plain text only, and it posts straight to the site.</p>
       </div>
-      <div class="placeholder-note">
-        <strong>Phase 4:</strong> a real contact form lands here (no dead form today; this page only shows working contact channels).
+
+      <!-- Solid content card (Gate 6.1 — forms never sit on glass) -->
+      <div class="prose-card rv-form-card">
+        <form id="review-form" novalidate>
+          <div class="rv-field">
+            <label for="review-name">Your name <span class="rv-opt">(optional)</span></label>
+            <input type="text" id="review-name" name="name" maxlength="60" autocomplete="name" placeholder="Anonymous">
+          </div>
+          <div class="rv-field">
+            <label for="review-text">Your review</label>
+            <textarea id="review-text" name="review" rows="4" maxlength="2000" required placeholder="What did you build, and how did My MaNaGeR help?"></textarea>
+          </div>
+          <div class="rv-form-foot">
+            <button type="submit" class="btn btn-gold">Post review</button>
+            <p class="rv-status" id="review-status" role="status" aria-live="polite" hidden></p>
+          </div>
+        </form>
       </div>
+
+      <div class="section-head rv-list-head">
+        <span class="eyebrow">Reviews</span>
+        <h2>From the field</h2>
+      </div>
+
+      <div class="rv-empty" id="reviews-empty" role="status">
+        <p>No reviews yet — be the first to share how it went.</p>
+      </div>
+      <div class="rv-list" id="reviews-list" aria-live="polite"></div>
     </div>
   </section>
 </main>
@@ -183,5 +164,6 @@
 
 <script src="js/mmgr-google-auth.js"></script>
 <script src="js/marketing.js"></script>
+<script src="js/reviews.js"></script>
 </body>
 </html>

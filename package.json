@@ -23,6 +23,7 @@
     "qa:email-auth": "node tools/qa-email-auth.cjs",
     "qa:report-issue": "node tools/verify-report-issue.cjs",
     "qa:market-features": "node tools/qa-market-features.cjs",
+    "qa:reviews": "node tools/qa-reviews.cjs",
     "import:mcp": "node tools/import-mcp-changelog.cjs",
     "predeploy": "npm run verify",
     "deploy": "npm run predeploy && npx wrangler deploy"

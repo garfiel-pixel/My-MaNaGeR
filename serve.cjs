@@ -12,6 +12,10 @@ const path = require('path');
 const ROOT = __dirname;
 const PORT = 8765;
 
+// PART F T7 (2026-08-16): in-memory reviews store for the dev-server
+// mirror below (production uses the Worker's D1 `reviews` table + R2).
+const REVIEWS = [];
+
 // OBSERVABILITY-SECURITY-DOMAIN-EXECUTION-DIRECTIVES DIR-2:   mirror of the
 // production Worker headers (see worker.js) so the headless Chrome QA gates
 // exercise the REAL CSP locally. Keep this in sync with worker.js whenever
@@ -112,6 +116,59 @@ const server = http.createServer((req, res) => {
       res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
       res.end(JSON.stringify({ ok: true, status: 'ok', app: 'my-manager', time: new Date().toISOString() }));
       return;
+    }
+
+    // PART F T7 (2026-08-16): mirror of the Worker's public reviews
+    // endpoints so the local QA battery exercises reviews.html against
+    // the dev server exactly like production (worker.js serves these
+    // routes for real; this in-memory copy is dev-only). Same content
+    // discipline: plain text only, name optional, newest first.
+    if (p === '/api/reviews') {
+      if (req.method === 'GET') {
+        const list = REVIEWS.slice().sort(function(a, b) {
+          if (a.createdAt === b.createdAt) return b.id - a.id;
+          return a.createdAt < b.createdAt ? 1 : -1;
+        }).slice(0, 200);
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
+        res.end(JSON.stringify({ ok: true, reviews: list }));
+        return;
+      }
+      if (req.method === 'POST') {
+        let raw = '';
+        req.on('data', function(c) {
+          raw += c;
+          if (raw.length > 8192) req.destroy();
+        });
+        req.on('end', function() {
+          try {
+            const body = JSON.parse(raw);
+            const rawName = typeof body.name === 'string' ? body.name.trim().slice(0, 60) : '';
+            const rawText = typeof body.review === 'string' ? body.review.trim() : '';
+            if (!rawText) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ ok: false, error: 'review text is required' })); return; }
+            if (rawText.length > 2000) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ ok: false, error: 'review too long' })); return; }
+            if (/[<>]/.test(rawText + rawName) || /https?:\/\/|www\./i.test(rawText + rawName)) {
+              res.writeHead(400, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ ok: false, error: 'plain text only — no HTML or links in reviews' }));
+              return;
+            }
+            let stars = null;
+            if (body.stars !== undefined && body.stars !== null && body.stars !== 0) {
+              const n = Number(body.stars);
+              if (Number.isInteger(n) && n >= 1 && n <= 5) stars = n;
+              else { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ ok: false, error: 'stars must be a whole number from 1 to 5' })); return; }
+            }
+            const now = new Date().toISOString();
+            const review = { id: REVIEWS.length + 1, name: rawName || null, review: rawText, stars: stars, votes: 0, createdAt: now };
+            REVIEWS.push(review);
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
+            res.end(JSON.stringify({ ok: true, review: review }));
+          } catch (e) {
+            res.writeHead(400, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ ok: false, error: 'bad request' }));
+          }
+        });
+        return;
+      }
     }
 
     const file = path.join(ROOT, p);

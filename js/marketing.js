@@ -181,4 +181,36 @@
     document.addEventListener('mmgr:google-signed-out', function(){ renderSigninSignedOut(); });
     GA.restoreSession();
   }
+
+  /* ---- REVEAL-ON-SCROLL (owner 2026-08-16) ----
+     Feature cards / steps / audience items / section heads fade and rise into
+     view as they enter the viewport. Progressive enhancement: .rv is added by
+     JS only, so a static no-JS page sees everything fully visible; reduced-
+     motion and no-IntersectionObserver users get the same instant visibility.
+     Elements unobserve themselves once revealed. Never throws. */
+  var rvTargets = Array.prototype.slice.call(document.querySelectorAll(
+    '.fcard, .aud-item, .step, .section-head, .guide-band, .pb-content, .hero-inner'
+  ));
+  if (rvTargets.length) {
+    var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)');
+    if (!(reduceMotion && reduceMotion.matches) && 'IntersectionObserver' in window) {
+      rvTargets.forEach(function(el, i){
+        el.classList.add('rv');
+        el.style.setProperty('--rv-i', String(i > 8 ? 8 : i));
+      });
+      var rvIO = new IntersectionObserver(function(entries){
+        entries.forEach(function(en){
+          if (en.isIntersecting) {
+            en.target.classList.add('rv-in');
+            rvIO.unobserve(en.target);
+          }
+        });
+      }, { threshold: 0.12, rootMargin: '0px 0px -8% 0px' });
+      rvTargets.forEach(function(el){ rvIO.observe(el); });
+    } else {
+      // reduced-motion or no IO: everything visible immediately (CSS also
+      // forces .rv to full visibility under reduced motion — belt + braces).
+      rvTargets.forEach(function(el){ el.classList.add('rv-in'); });
+    }
+  }
 })();

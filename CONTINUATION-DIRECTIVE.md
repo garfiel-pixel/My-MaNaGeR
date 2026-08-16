@@ -190,6 +190,28 @@ directive documents.
    `js/mmgr-app.js` and the inline `toast()` on app.html + admin.html) so every page
    looks identical and no page drifts. Errors announce with `role="alert"`; the rest
    stay polite live regions. `prefers-reduced-motion` kills the slide.
+8. **Every card, add-form and nested panel ships WITH the app's card language,
+   never apart from it (owner, 2026-08-15).** The owner's bar: when something
+   pops out — an add row, a scorecard, a nested panel — it must come out in the
+   SAME design the rest of the app already has (clean, smooth, rounded), never
+   a bare square box and never a raw default-browser input. Concrete rules:
+   - Nested panels inside a `.card` reuse the `.card` surface language at a
+     nested scale: `--glass-fill-dark` + `--glass-border` + `--squircle-md`
+     radius (+ rim/shadow where depth helps) — never a flat `--tile-bg` square
+     box with hard corners.
+   - Every input/select rendered into a card is either the table's transparent
+     inline-edit (`.dt td input`) or the app's soft-field treatment
+     (`--tile-bg` + `1px var(--border)` + `--radius-control` + padding, focus
+     ring inherited) — NEVER the default browser border; that 2px-inset grey
+     box IS the boxy look the owner flagged.
+   - Radius tokens are page-scoped: `--radius-lg` exists ONLY in
+     `css/marketing.css` — on project/app/admin it is UNDEFINED and computes
+     to 0px (literal square corners). Use `--radius`, `--radius-control`,
+     `--squircle-sm/md/lg`, `--radius-card`; if a new creation needs a token
+     that doesn't exist on that page, ADD it to that page's token block in
+     the same change.
+   - This rule applies to every NEW creation of this sort — the design ships
+     ALONGSIDE the feature (same change), never as a follow-up pass.
 
 ---
 
@@ -631,6 +653,149 @@ to be worked from directly and their completion status determined fresh:
 
 ---
 
+## PART F — OPEN WORK REGISTRY (2026-08-16 OWNER DIRECTIVE)
+
+> Owner directive (2026-08-16, voice capture): (1) kill the excessive dashes
+> across the marketing main page (the "Waterfall · Agile · Hybrid" eyebrow, the
+> hero, headings), the admin panel and the app panel — "make it flow instead of
+> dashes"; (2) the launcher project grid must become a paged slide view — "1 2 3
+> 4, click the next button beside the 4th one, slide through to the last one" —
+> never a wall you count 1-9; (3) scroll transitions — "when I'm scrolling down,
+> certain features are popping up" (reveal-on-scroll); (4) add a REVIEW window —
+> anyone leaves a review (name optional, "anonymous" allowed), it stores to the
+> server bucket (R2) and EVERYONE sees it — dedicated review page confirmed;
+> (5) fix the Google icon in the sign-in buttons; (6) Meeting section needs
+> delete + undo (a concluded meeting can't be removed even by mistake);
+> (7) REBUILD Bid Leveling + Go/No-Go to the owner's pasted spec (Add Package
+> modal, per-line leveled comparison grid, weighted 1-5 star scorecard) — "the
+> bid leveling you have created is not it", inputs must use the app's standard
+> soft-field UI, never rectangular default boxes; (8) contact page gains the
+> owner's phone number (+1 876 530 3595); (9) CLOUD SHARE — codes that work
+> from anywhere: viewer option + editor option + per-feature toggles, the
+> recipient enters the code and the project PINs into their own "My Cloud
+> Projects" list, opens on click, and only shows the granted features (never
+> the admin's full feature set); not Premium-gated yet (open until public
+> launch). Owner decisions recorded: review stars/priority = a FOLLOW-UP session
+> (design the storage star-ready now); cloud = build the adoption (server-side
+> pin) flow; session = directive first, then the first 3 tasks, then route the
+> rest to a fresh session if the budget runs out.
+
+### Task list (rigorous — what, where, complexity, expected outcome)
+
+**T1 — Dash cleanup (served pages).** Replace dash-heavy visible copy with
+flowing text: index.html eyebrow `Waterfall · Agile · Hybrid` → `Waterfall,
+Agile and Hybrid`; hero h1 `like a pro — in one workspace` → `like a pro, in
+one workspace`; heading em-dashes (`Built-In AI — Not a Middleman` → `Built-In
+AI, Not a Middleman`; `Master every panel, template, and metric — sheet by
+sheet` → `..., sheet by sheet`); title tags `X — My MaNaGeR` → `X | My
+MaNaGeR`; app.html h1 `My MaNaGeR — Projects` → `My MaNaGeR Projects`;
+admin.html visible labels (e.g. `(url-safe, unique — auto-filled from title)`
+→ `(url-safe, unique; auto-filled from title)`); middot separators in
+labels/footers (`Local-first · No tracking · No servers required` → `Local-
+first, no tracking, no servers required`); paragraph em-dashes → commas /
+periods / colons. Scope: index/features/about/contact/app/admin visible HTML
+copy + JS strings that render into those pages. Comments, internal docs and
+non-rendered strings keep their dashes. COMPLEXITY: S. EXPECTED: zero visible
+em-dashes in headings/eyebrows on the six pages; prose flows without
+sentence-splitting dashes; qa-marketing still green (mkt-02 hero CTAs, mkt-03
+9 cards, mkt-10 page chrome, mkt-16/17 sign-in). CSP: NO inline-script edits →
+hashes unchanged.
+
+**T2 — Launcher projects carousel (app.html #grid).** Replace the flat
+count-1-9 grid with a paged slide view: up to 4 cards per page, a next button
+beside the 4th card + prev button + `1 of N` counter, cards slide in on page
+change. CARDS STAY IN THE DOM (`.pcard` queries in qa-full:1472 /
+verify-gates-themes:180 must keep matching) — hidden pages get `.pg-off`
+(`display:none`), the pager is a sibling container `#pg-nav` OUTSIDE #grid so
+renderCards' innerHTML wipe can't orphan it. Where: carousel logic in
+js/mmgr-cloud-dash.js (external — ZERO CSP hash churn) driven by a
+MutationObserver on #grid (re-paginate after every renderCards()); styles
+`.pg-nav/.pg-btn/.pg-dot/.pg-off` token-driven (--border/--text/--slate/--gold,
+app.html inline <style> block + dark-mode auto via existing tokens); page
+entrance = one subtle fade/rise keyframe killed by the existing
+prefers-reduced-motion kill. Empty state + ≤4 cards → no pager. COMPLEXITY:
+M. EXPECTED: 9 projects read 1-2-3-4 → next → 5-6-7-8 → next → 9; keyboard-
+accessible buttons; qa-full + qa-dashboard-spec + verify-gates-themes green.
+
+**T3 — Scroll transitions (marketing pages).** Reveal-on-scroll for feature
+cards / steps / audience items / section heads on index/features/about/contact:
+js/marketing.js gains a tiny IntersectionObserver that adds `.rv` to targets
+THEN `.rv-in` when ~85% into view (progressive enhancement — no-JS / no-IO /
+prefers-reduced-motion users get everything visible instantly; never hide
+content by default). css/marketing.css: `.rv{opacity:0;transform:translateY(18px);transition:opacity .5s,transform .5s}` +
+`.rv.rv-in{opacity:1;transform:none}` + nth-child stagger for card grids;
+reduced-motion global kill (already present at marketing.css ~750) wins.
+COMPLEXITY: S. EXPECTED: feature cards pop in as you scroll; zero console
+errors; qa-marketing mkt-10 page-chrome gates green (content still renders).
+
+**T4 — Contact page: owner's phone number.** contact.html gains the direct
+line: `+1 (876) 530-3595` as a working contact channel (same card language as
+the existing contact tiles; `href="tel:+18765303595"`). COMPLEXITY: S.
+
+**T5 — Google icon fix.** The sign-in buttons' Google G is not rendering
+properly. Investigate the GIS-rendered button + the custom sign-in sheet/drawer
+buttons (app.html #google-signin-button host, mmgr-google-auth.js GIS init,
+css for `.g_id_signin` / custom Google buttons on marketing signin-sheet +
+project drawer + admin). Fix = whichever renders the broken glyph (usually the
+official Google logo CSS/asset path or a fallback SVG G). COMPLEXITY: S-M.
+
+**T6 — Meeting delete + undo.** A concluded/ended meeting cannot be deleted.
+Add `delMeeting` (removes the meeting record + its decision-log/meeting-to-
+action entries with a confirm) and an UNDO toast path (keep a snapshot for ~6s,
+`undoDelMeeting` restores). mmgr-meetings.js (state.meetings) + ACTION_MAP
+entry + READONLY_SAFE (mutating) + field-guide A-XX update. COMPLEXITY: M.
+
+**T7 — Review window (dedicated page).** New `reviews.html` (marketing nav:
+index/features/about/contact/guide + footer), public form: name (optional →
+"Anonymous") + review text (+ optional phone/email? NO — keep minimal per the
+owner: name + review), POST to a new Worker endpoint `/api/reviews` (same-origin
+only, rate-limited like the auth bucket, size-capped, plain text only — no
+HTML/links → escape on render) stored as R2 `reviews/<id>.json` + D1
+`reviews` table (migration 0009) listing GET `/api/reviews` (public, newest
+first). Design star-READY now: schema carries `stars INTEGER` (nullable, 0 =
+not rated) + `votes` + `created_at` — the star/priority UI is a FOLLOW-UP
+session per the owner. Everyone sees all reviews instantly (no moderation).
+The owner's optional local-AI "suggest a review" helper (LOCAL_BUILDERS tier,
+zero-key, never writes into the app) is a stretch add in the same change if
+budget allows. COMPLEXITY: M-L (new Worker route + migration + page + shell).
+
+**T8 — Bid Leveling + Go/No-Go REBUILD (owner's pasted spec).** Current
+`js/mmgr-bids.js` cards are NOT it. Rebuild to the owner's detailed spec:
+(1) `+ Add Bid Package` MODAL (slide-out/popup): package name, CSI Division
+Code dropdown, target baseline budget (currency), bid deadline (date), scope
+line items (description + est. cost) with `+ Add Line Item`, footer Cancel /
+Save & Send RFQ; (2) EXPANDED leveled grid per package: rows = scope line
+items × columns = subcontractors, target cost column, `BASE BID TOTAL`,
+`LEVELING ADJUSTMENTS` (missing scope items added at target cost), `TRUE
+LEVELED TOTAL`, `VARIANCE TO BUDGET` % with green/red colouring, per-sub
+ACTION row (Award Contract / View Original Proposal / Send Post-Bid
+Clarification Email); (3) `+ Add Scorecard` WEIGHTED questionnaire: 1-5 star
+inputs, category weights (30/25/20/25%), live calculated score,
+GO ≥75% / REVIEW ≥50% / NO-GO verdict + the automation-recommendation bar.
+HARD RULE: every input is the app's standard soft-field (--tile-bg + 1px
+--border + --radius-control + focus ring) or the `.dt td input` transparent
+inline-edit — NEVER default browser borders; panels use the `.card` glass
+language (doctrine rule 8). COMPLEXITY: L. EXPECTED: matches the pasted spec's
+field-level detail; qa-market-features extended; doctrine rule 8 honoured.
+
+**T9 — Cloud share codes from anywhere (adoption).** Owner flow: upload a
+project to cloud → generate a VIEWER code (read-only) or EDITOR code
+(existing, section-scoped) with per-feature toggles → send the code to anyone
+anywhere → they enter it in the launcher (Load with Code / cloud section) →
+the project PINs into THEIR "My Cloud Projects" list (server-side adoption:
+D1 link row recipient_sub ↔ project, so it persists and re-opens without
+re-typing) → clicking it loads the project with ONLY the granted features
+(viewer = read-only everywhere; editor = granted sections only — the app must
+hide/disable the ungranted panels, never show the admin's full surface) →
+shared projects are never publishable offline-copy by the recipient. Also fix
+mmgr-cloud-dash.js:214's dead-end copy ("This project has no cloud snapshot
+yet — open it once from its Cloud section") — when the session holds the code,
+Load should just save+load; otherwise explain clearly. Not Premium-gated until
+public launch. COMPLEXITY: L (worker D1 migration + adoption route + launcher
+Load flow + project.html feature-gating per code role).
+
+---
+
 ## VERIFICATION WORKFLOW — how this closes out
 
 Per Garfield's instruction: work through Parts A–D using each file's real, in-repo
@@ -648,6 +813,12 @@ Format: date/session marker, what was completed (with file/line specifics), what
 in-progress and exactly where it stopped, what's next.
 
 ### Log entries (most recent at top)
+
+**2026-08-16 — Session: UI-DASHES-CAROUSEL-REVEAL-OPENWORK (owner: "way too much dashes... put all of them in a chunk... click to the side and they all slide through... when I'm scrolling down it's not giving me transitions") — dash cleanup, launcher carousel, scroll reveals shipped; the 9-task open-work registry written first (per owner's directive-first instruction), verified (sw v120), uncommitted.**
+The owner reviewed the continuation directive, then delivered a large multi-part UI directive: (1) far too many em/en dashes in visible copy across the site ("this guy is dashing all over the place"), (2) the launcher's project grid should paginate into a slide-through carousel instead of a countable grid, (3) marketing pages need scroll-in reveal transitions instead of static scrolling, (4) a public review window (dedicated page, anonymous reviews, star-rating later), (5) cloud share codes that pin into the recipient's My Cloud Projects list with strict feature-scoping (editor can only see the features they're granted — never the admin's full UI), (6) contact phone +1 876 530 3595, (7) Google icon fix, (8) delete/undo for concluded meetings, (9) bid leveling redesign toward the leveling-grid spec (already partially in hand from the prior card-language pass). **PER THE OWNER'S INSTRUCTION the 2026-08-16 open-work registry was written into this directive FIRST** (9 tasks, each with details, code examples, complexity, expectations, decisions) so a fresh model can pick up any task in a new session. **THIS SESSION EXECUTED TASKS 1–3:** (1) DASH CLEANUP — every visible em/en dash in heading/eyebrow/sub/copy on index/features/about/contact/app/admin (static HTML + JS-rendered strings in js/marketing.js, js/mmgr-cloud-dash.js, js/mmgr-portfolio.js, projects-data.js, plus the inline scripts' toast/warn strings) replaced with flowing punctuation (colons, middots only where they read as list separators, or plain sentence flow); breadcrumb separators (features.html →) and CSV-format strings deliberately kept; aria-labels sanitized too. (2) LAUNCHER CAROUSEL — app.html grid now pages 4 cards per page (6-seed + published manifest = 7 → 2 pages) with prev/next pill buttons + dot indicator + a "n of m" counter, slide-in transition on page change (CSS keyframes, `prefers-reduced-motion` kills the slide), `hidden`-attribute-driven so no element is left painted (verify-hidden gate clean). (3) SCROLL REVEALS — `.rv` reveal-on-scroll on marketing pages: IntersectionObserver in js/marketing.js adds `.rv-in` (fade+rise, stagger via transition-delay), `prefers-reduced-motion` shows everything immediately, zero-JS shows everything (progressive enhancement). CSP: app.html + admin.html inline scripts changed → SHA-256 hashes regenerated and mirrored in worker.js + serve.cjs (11/11). sw.js mmgr-shell-v117 → v120 (v118 first bump, v119 after second HTML round, v120 after mmgr-portfolio.js + projects-data.js). VERIFICATION: `npm run verify` GREEN (CSP 11/11, SW v120 > 48 SHELL assets, verify-hidden, 17/17 skills); qa-dashboard-spec **74/74**; qa-marketing **19/19** (mkt-14 gate flake on first run — cold-start CDP, 19/19 on re-run); emoji scan 0 hits on all 13 touched served assets; functional CDP check of every carousel interaction (page 1 → 2 → 1, prev/next disabled states, dot active state, counter) + all 9 reveal cards + zero rendered em-dash in index/app innerText. NEXT: owner reviews the flowing copy, the launcher carousel, and the scroll reveals; ship on the owner's go (commit + push + deploy); the registry's remaining tasks (Reviews page w/ stars, cloud share codes, phone number, Google icon, meeting delete/undo, bid-leveling grid) are queued for follow-up sessions per the owner's one-session-first-3 rule.
+
+**2026-08-15 — Session: BID-UI-CARD-LANGUAGE (owner: "when you click on add bid it is very boxy... do a review of the others correspond like that, apply the changes, and update the continuous directive so that any new creation of something of this sort is implemented alongside it, not apart from it") — the boxy bid/scorecard UI brought into the app's own card language, doctrine rule 8 added, verified (sw v117), uncommitted.**
+The owner flagged the Add Bid / Bid Leveling + Go/No-Go scorecards as "very boxy" against the clean stakeholder table and dashboard rhythm. **ROOT CAUSE:** `.bid-pkg` / `.gn-card` used `var(--radius-lg)` — a token that exists ONLY in `css/marketing.css`, so on project.html `border-radius` computed to **0px** (literal square boxes) — and the package-name + Go/No-Go criteria inputs rendered with the raw default 2px-inset UA browser border. **FIXED (css/mmgr.css only — no inline scripts, CSP hashes unchanged):** (1) `.bid-pkg` + `.gn-card` now reuse the `.card` surface language at a nested scale — `--glass-fill-dark` + `--glass-border` + `--squircle-md` (20px) + rim/shadow (were flat `--tile-bg` square boxes); (2) `.bid-pkg-head input[type=text]` + `.gn-crit input` get the app's soft-field treatment (`--tile-bg` + `1px var(--border)` + `--radius-control` 8px + padding; gold focus ring inherited) — never the browser default border; (3) the AUDIT found the same undefined-radius-token bug in TWO more cards — `.stk-cmp` (A1 compliance banner) + `.core-callout` (Dashboard Core-Mode callout) — both now `--squircle-md`; (4) the audit's "others": every other roadmap add-form (stakeholders, RFIs, submittals, punch list, pay apps, inspections, incidents, drawing log, permits, warranty, handover) already renders a clean `.dt` table (transparent borderless inputs) — no change needed. **UI DOCTRINE gains rule 8** (cards/add-forms ship WITH the app's card language; radius tokens are page-scoped — `--radius-lg` is marketing-only and computes to 0px on the workspace; new creations implement the design ALONGSIDE the feature). VERIFICATION: `npm run verify` GREEN (CSP 11/11 — zero inline-script edits, hashes unchanged; SW mmgr-shell-v116→v117; verify-hidden; 17/17 skills); qa-market-features **55/55**; qa-full **171/171**; qa-rhythm **RHYTHM_GATE PASS**; emoji scan clean on css/mmgr.css; BROWSER (serve.cjs:8765, SW cleared): `.bid-pkg`/`.gn-card` computed radius **20px (was 0px)**, white glass-fill surface + hairline glass border + shadow; header/criteria inputs now 1px border + tile bg + 8px radius (was 2px-inset UA border); dark-mode parity verified (`--glass-fill-dark` rgba(255,255,255,.08), `--tile-bg` rgba(0,0,0,.2), dark border). Screenshots: /tmp/mmgr-proj-bids-{fixed,dark}.png. NEXT: owner reviews the live Stakeholders ▸ Bid Leveling + Go/No-Go cards (and the compliance banner + dashboard callout corners); ship (commit + push + deploy) on the owner's go.
 
 **2026-08-15 — Session: MARKET-FEATURE-ROADMAP-SECTION-C-BATCH-2 (owner: "build the remaining Section C batch: ball-in-court rollup, committed cost, pay applications, inspection checklists, incident closure, warranty/expiry/permit trackers") — all ten remaining Section C items shipped, uncommitted (sw v116).**
 Remaining Section C batch shipped, all zero third-party, all rendered into existing panels/cards (no nav changes): **C6 Ball-in-court rollup** — pure `getBallInCourt()` (js/mmgr-closure.js) aggregating every open RFI / submittal / issue with its ball-in-court holder sorted by due date + `renderBallInCourt` card at the top of the Documents panel (`#blc-body`). **C11 Drawing distribution log** — `state.drawingLog` + `ns.DrawingLog` CRUD + `renderDrawLog` card in Documents (date / drawing no / rev / distributed-to / method / notes). **C12 Committed cost** — per-line `committed` bucket on Budget lines (blank defaults to planned — pre-C12 behavior preserved; 0 drops a planning-stage line out of the commitment total), Committed column in the table, `bud-committed-gap` committed-but-not-spent sub-label under the summary card. **C13 Pay Applications** — `state.payApps` + `ns.PayApps` CRUD, `genPayApp` drafts the current period at the live spend figure (sum of budget-line actuals — never hand-typed twice), `renderPayApps` card in the Budget panel walking draft → submitted → approved. **C16 Inspection checklists** — `state.inspections` + `ns.Inspections` CRUD with pass/fail item rows (all checked → auto-advances to passed; a failed item reopens), `inspItemToggle`/`addInspItem`/`delInspItem` actions + `updInspItem` in the input/change whitelists with focus discipline; card in the Risk & Issue panel — deliberately separate from DMAIC. **C17 Incident register w/ corrective-action loop** — `state.incidents` + `ns.Incidents` CRUD, status walk open → investigation → action → closed with closedDate auto-stamped on close + root cause / corrective action on record; card in the Risk & Issue panel. **C18 Handover/closeout package** — `state.handover` + `ns.Handover` CRUD bundling O&M / warranty / as-built / certificates / sign-off items walking required → ready → filed; card in the Closure panel. **C26 Warranty tracker** — `state.warrantyItems` + `ns.Warranty` CRUD with start/end dates + live time-left badges (green/amber ≤60d/red lapsed); card in the Closure panel; feeds C29. **C29 Expiry & Renewals dashboard** — pure `getExpiryRollup()` (js/mmgr-stakeholders.js) rolling up COI/license expiries + EMR staleness + warranty end dates + permit expiries due inside 60 days (or overdue) with days-left badges; `renderExpiryCard` card on the Dashboard that hides entirely when nothing is due. **C30 Permit register** — `state.permits` + `ns.Permits` CRUD with permit no / type / agency / issued / expiry / status walk applied → active → expiring → expired + days-left flags; card in Documents; feeds C29. **CRITICAL FIX (found first, before any feature work)**: the FIELD_KEYS merge whitelist in js/mmgr-state.js was missing `rfis`/`submittals`/`punchList` — the batch-1 registries saved to localStorage but their per-field timestamps were never stamped, so cloud-merge conflict resolution (fieldTs-driven last-write-wins) could silently DROP an editor's RFI/Submittal/Punch edits; all batch-2 keys (`payApps`/`inspections`/`incidents`/`handover`/`warrantyItems`/`permits`/`drawingLog`) added too. Wiring: 19 new ACTION_MAP entries + 7 MODULE_UPDATERS (all mutating — never READONLY_SAFE); batch-1/batch-2 registry updaters (updRfi/updSubmittal/updPunch/updHandoverItem/updWarranty/updDrawLog/updPermit) gained the app's evtType focus discipline (save on keystroke, re-render on change so header summaries stay live — they previously never re-rendered). Field guide A-23 "Registers, Compliance & Handover" added (nav + sheet count 23→24 + CTA band + footer). Roadmap C6/C11/C12/C13/C16/C17/C18/C26/C29/C30 marked ✅ with file cites. VERIFICATION: node --check clean on all touched JS + sw.js; `npm run verify` GREEN (CSP 11/11 — zero inline-script edits, hashes unchanged; SW mmgr-shell-v115→v116, 48 SHELL assets; verify-hidden; 17/17 skills); `tools/qa-market-features.cjs` extended to **55/55** (npm run qa:market-features — C12 committed column/summary/gap + planned fallback, C13 genPayApp live-spend draft + status walk + billed summary, C16 items persisted + auto-passed + reopen, C17 closedDate stamp + closure fields, C18 handover render, C26 warranty days-left, C11 drawlog, C30 permit, C6 rollup aggregation + card, C29 expiry rollup + dashboard card); qa-full **171/171** (one harness expectation corrected — the new Committed summary sub-label initially used an inline `style=` which the zero-inline-style gate rejected; moved the color to JS); qa-ai AI23_GATE PASS; qa-rhythm RHYTHM_GATE PASS; emoji scan clean on all touched served assets. Two real bugs caught mid-verification and fixed: (1) the batch-1 registry updaters never re-rendered after a change, leaving the RFI/submittal/punch summaries stale until the section re-opened — they now follow the Budget/Resources evtType discipline; (2) the new `bud-committed-gap` summary sub-label shipped with an inline `style=` attribute, violating qa-full's zero-inline-style gate on project.html — moved the color into JS. NEXT: owner reviews; ship (commit + push + deploy) on the owner's go; Section C is now fully shipped — remaining roadmap OPEN items are Section C items 9 (cycle-time metrics), 10 (procurement log), 14 (cost-to-complete view), 15 (change rollup), 19 (client portal), 21 (@mentions), 23 (cross-project resources), 24 (template library), 25 (sheet redline), 27 (time tracking), 28 (equipment log) — all either partial-with-existing-coverage or deferred per the owner's one-go rule.

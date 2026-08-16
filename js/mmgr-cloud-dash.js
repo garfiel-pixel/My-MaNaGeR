@@ -51,7 +51,7 @@
     const list = $(RAIL_CLOUD);
     if (!list) return;
     if (!projects || !projects.length) {
-      list.innerHTML = '<div class="db-sub-empty">No cloud projects yet — link one from any project\'s Cloud section.</div>';
+      list.innerHTML = '<div class="db-sub-empty">No cloud projects yet. Link one from any project\'s Cloud section.</div>';
       return;
     }
     list.innerHTML = projects.map(function(p) {
@@ -91,13 +91,13 @@
     loadPlan();
     renderRailCloud(projects);
     if (!projects.length) {
-      list.innerHTML = '<div class="cd-empty">No cloud-linked projects under this account yet — link one from any project\'s Cloud section (Create Cloud Project).</div>';
+      list.innerHTML = '<div class="cd-empty">No cloud-linked projects under this account yet. Link one from any project\'s Cloud section (Create Cloud Project).</div>';
       return;
     }
     list.innerHTML = projects.map(function(p) {
       const title = p.label || p.projectId || 'Unnamed project';
       const when = p.updatedAt ? 'Last saved ' + fmtDate(p.updatedAt) : 'Created ' + fmtDate(p.createdAt);
-      const snap = p.hasSnapshot ? '' : '<div class="cd-meta">No snapshot saved yet — open it to save the first one.</div>';
+      const snap = p.hasSnapshot ? '' : '<div class="cd-meta">No snapshot saved yet. Open it to save the first one.</div>';
       return '<div class="cd-card" role="listitem">' +
         '<div class="cd-title">' + escapeHtml(title) + '</div>' +
         '<div class="cd-meta">' + escapeHtml(p.projectId || '') + '<br>' + escapeHtml(when) + (p.linkedName ? '<br>Linked to ' + escapeHtml(p.linkedName) : '') + '</div>' +
@@ -160,7 +160,7 @@
       const res = await fetch('/api/billing/checkout', { method: 'POST', credentials: 'same-origin' });
       const data = await res.json().catch(function() { return {}; });
       if (!res.ok || !data.ok || !data.checkoutUrl) {
-        if (res.status === 503) setStatus('Billing isn\u2019t configured on this server yet — no upgrade is available.', true);
+        if (res.status === 503) setStatus('Billing isn\u2019t configured on this server yet, so no upgrade is available.', true);
         else setStatus((data && data.error) || 'Checkout failed (HTTP ' + res.status + ').', true);
         return;
       }
@@ -242,13 +242,96 @@
     if (rl) rl.innerHTML = '<div class="db-sub-empty">Sign in to see your cloud projects.</div>';
   });
 
+  // ---- PROJECTS CAROUSEL (owner 2026-08-16) -----------------------------
+  // The launcher #grid is paged: up to PG_PER_PAGE cards per page with
+  // prev/next + a counter, so a 9-project wall reads 1-2-3-4 -> next ->
+  // 5-6-7-8 -> next -> 9 instead of a grid you count. Cards STAY in the DOM
+  // (the qa harnesses query .pcard) — hidden pages get .pg-off. The pager
+  // (#pg-nav) lives OUTSIDE #grid so renderCards() innerHTML wipes can't
+  // orphan it; a MutationObserver re-paginates after every render (boot,
+  // reseed, admin import). Zero dependencies; never throws.
+  const PG_PER_PAGE = 4;
+  let pgCurrent = 0;
+
+  function paginateGrid() {
+    const grid = document.getElementById('grid');
+    if (!grid) return;
+    const cards = Array.prototype.slice.call(grid.querySelectorAll('.pcard'));
+    let nav = document.getElementById('pg-nav');
+    if (cards.length <= PG_PER_PAGE) {
+      cards.forEach(function(c) { c.classList.remove('pg-off'); });
+      if (nav) nav.remove();
+      return;
+    }
+    const pages = Math.ceil(cards.length / PG_PER_PAGE);
+    if (pgCurrent > pages - 1) pgCurrent = pages - 1;
+
+    function showPage(i) {
+      pgCurrent = i;
+      cards.forEach(function(c, idx) {
+        const on = Math.floor(idx / PG_PER_PAGE) === pgCurrent;
+        c.classList.toggle('pg-off', !on);
+        if (on) c.classList.add('pg-on'); else c.classList.remove('pg-on');
+      });
+      const prev = document.getElementById('pg-prev');
+      const next = document.getElementById('pg-next');
+      const cnt = document.getElementById('pg-count');
+      if (prev) prev.disabled = pgCurrent === 0;
+      if (next) next.disabled = pgCurrent === pages - 1;
+      if (cnt) cnt.textContent = (pgCurrent + 1) + ' of ' + pages;
+      const dots = document.querySelectorAll('.pg-dot');
+      for (let d = 0; d < dots.length; d++) dots[d].classList.toggle('is-on', d === pgCurrent);
+    }
+
+    function buildDots() {
+      const dotsEl = document.getElementById('pg-dots');
+      if (!dotsEl || dotsEl.children.length === pages) return;
+      let html = '';
+      for (let p = 0; p < pages; p++) {
+        html += '<button type="button" class="pg-dot" data-pg="' + p + '" aria-label="Go to page ' + (p + 1) + '" aria-pressed="' + (p === pgCurrent ? 'true' : 'false') + '"></button>';
+      }
+      dotsEl.innerHTML = html;
+    }
+
+    if (!nav) {
+      nav = document.createElement('div');
+      nav.id = 'pg-nav';
+      nav.className = 'pg-nav';
+      nav.setAttribute('aria-label', 'Project pages');
+      nav.innerHTML =
+        '<button type="button" class="pg-btn" id="pg-prev" aria-label="Previous projects"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-left"></use></svg> Prev</button>' +
+        '<span class="pg-count" id="pg-count" role="status" aria-live="polite"></span>' +
+        '<span class="pg-dots" id="pg-dots" role="group" aria-label="Project pages"></span>' +
+        '<button type="button" class="pg-btn" id="pg-next" aria-label="Next projects">Next <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg></button>';
+      grid.parentNode.insertBefore(nav, grid.nextSibling);
+      document.getElementById('pg-prev').addEventListener('click', function() { if (pgCurrent > 0) showPage(pgCurrent - 1); });
+      document.getElementById('pg-next').addEventListener('click', function() { if (pgCurrent < pages - 1) showPage(pgCurrent + 1); });
+      document.getElementById('pg-dots').addEventListener('click', function(e) {
+        const dot = e.target && e.target.closest ? e.target.closest('.pg-dot') : null;
+        if (dot) showPage(parseInt(dot.getAttribute('data-pg'), 10) || 0);
+      });
+    }
+    buildDots();
+    showPage(pgCurrent);
+  }
+
+  function initGridPager() {
+    const grid = document.getElementById('grid');
+    if (grid && window.MutationObserver) {
+      new MutationObserver(function() { paginateGrid(); })
+        .observe(grid, { childList: true });
+    }
+    paginateGrid();
+  }
+
   // Boot: render once the session state is known. restoreSession() in
   // mmgr-google-auth.js is async; probe /api/auth/me ourselves — if a
   // session exists the list loads, otherwise the section stays hidden and
   // the sign-in event will reveal it.
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', loadList);
+    document.addEventListener('DOMContentLoaded', function() { loadList(); initGridPager(); });
   } else {
     loadList();
+    initGridPager();
   }
 })();

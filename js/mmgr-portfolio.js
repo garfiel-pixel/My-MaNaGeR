@@ -186,7 +186,7 @@ var MMGR = window.MMGR || {};
     el.innerHTML = ranked.map(r => {
       const p = r.project;
       const u = r.urgency;
-      const healthTxt = r.health && r.health.score !== null ? r.health.score + '/100' : '—';
+      const healthTxt = r.health && r.health.score !== null ? r.health.score + '/100' : 'n/a';
       const cls = badges[u.tier] || '';
       const wxN = r.state ? wxRiskDays(r.state).length : 0;
       const wxBadge = wxN ? `<span class="badge br" style="font-size:.6rem" title="${wxN} weather-risk day(s) in the next 7 days">${wxN} wx-risk</span>` : '';
@@ -194,7 +194,7 @@ var MMGR = window.MMGR || {};
         <div class="pf-rank">${r.rank}</div>
         <div class="pf-body">
           <div class="pf-title">${escapeHtml(p.title)}</div>
-          <div class="pf-meta">Health <strong>${healthTxt}</strong> · Urgency <span class="badge ${cls}" style="font-size:.6rem">${tierLabel(u.tier)}</span>${wxBadge}</div>
+          <div class="pf-meta">Health <strong>${healthTxt}</strong>, urgency <span class="badge ${cls}" style="font-size:.6rem">${tierLabel(u.tier)}</span>${wxBadge}</div>
           <div class="pf-reason">${escapeHtml(u.reason)}</div>
         </div>
       </div>`;

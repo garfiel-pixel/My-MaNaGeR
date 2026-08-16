@@ -117,7 +117,7 @@ async function check(name, expr, hint) {
   await ev(`(function(){var m = document.getElementById('om'); if(m) m.classList.remove('open'); return true;})()`);
 
   // ---- 4. Inner pages ----
-  for (const p of ['about.html', 'features.html', 'contact.html']) {
+  for (const p of ['about.html', 'features.html', 'contact.html', 'reviews.html']) {
     consoleErrors = [];
     await send('Page.navigate', { url: BASE + '/' + p }); await delay(1600);
     await check('mkt-10 ' + p + ': renders header + hero + footer, zero console errors', `(function(){
@@ -200,13 +200,13 @@ async function check(name, expr, hint) {
 
   // ---- 8. Page-level console error audit (reload every page fresh) ----
   const audit = [];
-  for (const p of ['index.html', 'about.html', 'features.html', 'contact.html', 'mymanager-field-guide.html', 'app.html']) {
+  for (const p of ['index.html', 'about.html', 'features.html', 'contact.html', 'reviews.html', 'mymanager-field-guide.html', 'app.html']) {
     consoleErrors = []; pageErrors = [];
     await send('Page.navigate', { url: BASE + '/' + p }); await delay(2200);
     audit.push({ page: p, consoleErrors: consoleErrors.slice(), pageErrors: pageErrors.slice() });
   }
   const bad = audit.filter(a => a.consoleErrors.length || a.pageErrors.length);
-  await check('mkt-15 audit: zero console errors across all 6 pages', `(function(){return {val: ${bad.length === 0}, bad: ${JSON.stringify(bad.length)}};})()`, JSON.stringify(bad));
+  await check('mkt-15 audit: zero console errors across all 7 pages', `(function(){return {val: ${bad.length === 0}, bad: ${JSON.stringify(bad.length)}};})()`, JSON.stringify(bad));
 
   log('\n===== SUMMARY =====');
   const fails = results.filter(r => r.status === 'FAIL');

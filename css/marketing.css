@@ -693,6 +693,59 @@ svg.ico use{fill:inherit;stroke:inherit;}
   border-radius:var(--radius-sm);padding:12px 16px;
 }
 
+/* ---------- 13b. Reviews window (PART F T7, 2026-08-16) ----------
+   Public review form + list on reviews.html. Solid content cards
+   (Gate 6.1 — forms and review prose are dense content, never glass).
+   Token-driven, so the cyan and dark palettes swap automatically. */
+.rv-form-card{max-width:720px;margin:0 auto 74px;}
+.rv-field{margin-bottom:16px;}
+.rv-field label{
+  display:block;font-size:.82rem;font-weight:700;color:var(--text-primary);
+  margin-bottom:6px;letter-spacing:.01em;
+}
+.rv-opt{color:var(--text-secondary);font-weight:500;}
+.rv-field input[type="text"],
+.rv-field textarea{
+  width:100%;padding:11px 13px;border-radius:var(--radius-sm);
+  border:1px solid var(--border);background:var(--card);color:var(--text-primary);
+  font:inherit;font-size:.92rem;line-height:1.5;
+  transition:border-color var(--tr),box-shadow var(--tr);
+}
+.rv-field input[type="text"]::placeholder,
+.rv-field textarea::placeholder{color:var(--text-secondary);opacity:.8;}
+.rv-field input[type="text"]:focus-visible,
+.rv-field textarea:focus-visible{outline:none;border-color:var(--gold);box-shadow:0 0 0 3px rgba(var(--gold-rgb),.18);}
+.rv-field textarea{resize:vertical;min-height:110px;}
+.rv-form-foot{display:flex;align-items:center;gap:18px;flex-wrap:wrap;margin-top:4px;}
+.rv-status{
+  flex:1 1 240px;font-size:.86rem;font-weight:600;color:var(--teal-deep);
+  min-height:1.2em;
+}
+.rv-status.is-err{color:var(--danger);}
+.rv-status[hidden]{display:none;}
+.rv-list-head{margin-top:0;}
+.rv-empty{
+  text-align:center;padding:38px 22px;border:1px dashed var(--border);
+  border-radius:var(--radius-md);color:var(--text-secondary);font-size:.92rem;
+}
+.rv-empty[hidden]{display:none;}
+.rv-list{display:grid;grid-template-columns:1fr;gap:18px;}
+.rv-card{
+  background:var(--card);border:1px solid var(--border);border-radius:var(--radius-md);
+  padding:24px 26px;box-shadow:0 1px 2px rgba(15,23,42,.04),0 10px 26px rgba(15,23,42,.05);
+}
+.rv-head{display:flex;align-items:baseline;justify-content:space-between;gap:14px;flex-wrap:wrap;}
+.rv-name{font-size:.95rem;font-weight:800;color:var(--text-primary);letter-spacing:-.01em;}
+.rv-date{font-size:.74rem;color:var(--text-secondary);letter-spacing:.04em;text-transform:uppercase;}
+.rv-stars{display:inline-flex;gap:2px;margin:10px 0 6px;}
+.rv-star{width:16px;height:16px;color:var(--border);}
+.rv-star.on{color:var(--gold);}
+.rv-text{font-size:.92rem;line-height:1.65;color:var(--text-secondary);margin-top:2px;white-space:pre-wrap;overflow-wrap:break-word;}
+@media (max-width:560px){
+  .rv-form-card{margin-bottom:54px;}
+  .rv-card{padding:20px;}
+}
+
 /* ---------- 13c. Feature detail blocks (features page, solid content) ---------- */
 .feature{
   background:var(--card);border:1px solid var(--border);border-radius:var(--radius-md);

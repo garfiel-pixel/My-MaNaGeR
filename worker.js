@@ -598,7 +598,13 @@ const CLOUD_RATE = {
   // it gets a tighter bucket than general. Register shares it so account-
   // creation spam gets the same hammer deterrent. 30/min per key is
   // generous for any legit flow (one click per sign-in).
-  auth: { max: 30, windowMs: 60000 }
+  auth: { max: 30, windowMs: 60000 },
+  // PART F T7 (2026-08-16) — public reviews window POST. UNauthenticated
+  // write surface (anyone can review), so it gets its own bucket tighter
+  // than general: 10 posts/min per IP is plenty for one human review and
+  // deters a scripted spam loop. GET (the public list) rides the general
+  // bucket — cheap read, generous limit.
+  reviews: { max: 10, windowMs: 60000 }
 };
 const _cloudBuckets = new Map();
 async function cloudRateKey(request, headerNames) {
@@ -1218,6 +1224,110 @@ function handleCloudSections() {
     return { key: k, label: CLOUD_SECTIONS[k].label, keys: CLOUD_SECTIONS[k].keys.slice() };
   });
   return json({ ok: true, sections: sections });
+}
+
+// ---- PART F T7 — PUBLIC REVIEWS WINDOW (2026-08-16) -------------------
+// reviews.html: anyone leaves a review (name optional, "Anonymous" when
+// blank), stored in D1 + R2, listed newest-first for everyone instantly
+// (no moderation, per the owner). Star-READY: the schema carries
+// `stars` (nullable, 0 = not rated) + `votes` now; the star/priority
+// UI is a FOLLOW-UP session per the owner, so this endpoint accepts an
+// optional 1-5 `stars` value but the page form does not send it yet.
+//
+// Content discipline (owner directive): PLAIN TEXT ONLY. The page
+// renders with textContent (never innerHTML), and the server rejects
+// HTML/links outright — angle brackets, URL schemes, and www. prefixes
+// are stripped into a 400 so a crafted payload cannot survive to the
+// DOM at all. Size-capped (a review is short prose — a 2 KB review
+// text + 60-char name is far beyond generous) and rate-limited with
+// the dedicated `reviews` bucket (10/min per IP).
+const REVIEW_TEXT_MAX = 2000;
+const REVIEW_NAME_MAX = 60;
+const REVIEW_BODY_LIMIT_BYTES = 8192;
+
+// Read the JSON body with a review-sized cap (reviews are short prose;
+// the cloud 8 MB body reader would accept junk we then reject anyway).
+async function readReviewBody(request) {
+  const cl = Number(request.headers.get('Content-Length') || 0);
+  if (cl > REVIEW_BODY_LIMIT_BYTES) return { tooLarge: true };
+  if (!request.body) {
+    try { return { body: await request.json() }; } catch (e) { return { bad: true }; }
+  }
+  const reader = request.body.getReader();
+  const chunks = [];
+  let total = 0;
+  let done = false;
+  while (!done) {
+    const res = await reader.read();
+    done = res.done;
+    if (res.value) {
+      total += res.value.byteLength;
+      if (total > REVIEW_BODY_LIMIT_BYTES) return { tooLarge: true };
+      chunks.push(res.value);
+    }
+  }
+  const bytes = new Uint8Array(total);
+  let off = 0;
+  for (const c of chunks) { bytes.set(c, off); off += c.byteLength; }
+  const text = new TextDecoder().decode(bytes);
+  try { return { body: JSON.parse(text) }; } catch (e) { return { bad: true }; }
+}
+
+// PLAIN-TEXT-ONLY guard: reject HTML markup and URL scaffolding.
+// Returns the problem as a human message, or null when the text is clean.
+function reviewPlainTextProblem(s) {
+  if (/[<>]/.test(s)) return 'plain text only — no HTML or markup in reviews';
+  if (/https?:\/\/|www\./i.test(s)) return 'plain text only — no links in reviews';
+  return null;
+}
+
+// POST /api/reviews  { name?, review, stars? }  →  { ok, review }
+// Writes BOTH D1 (listing source) and R2 reviews/<id>.json (durable
+// copy) — the same dual-write the cloud project rows use.
+async function handleReviewsCreate(request, env) {
+  const read = await readReviewBody(request);
+  if (read.tooLarge) return json({ ok: false, error: 'review too large' }, 413);
+  if (read.bad || !read.body || typeof read.body !== 'object') return json({ ok: false, error: 'bad request' }, 400);
+  const rawName = typeof read.body.name === 'string' ? read.body.name.trim().slice(0, REVIEW_NAME_MAX) : '';
+  const rawText = typeof read.body.review === 'string' ? read.body.review.trim() : '';
+  if (!rawText) return json({ ok: false, error: 'review text is required' }, 400);
+  if (rawText.length > REVIEW_TEXT_MAX) return json({ ok: false, error: 'review too long (max ' + REVIEW_TEXT_MAX + ' characters)' }, 400);
+  const prob = reviewPlainTextProblem(rawText) || reviewPlainTextProblem(rawName);
+  if (prob) return json({ ok: false, error: prob }, 400);
+  // Star-READY: accept an optional 1-5 rating (the follow-up UI sends it).
+  let stars = null;
+  if (read.body.stars !== undefined && read.body.stars !== null && read.body.stars !== 0) {
+    const n = Number(read.body.stars);
+    if (Number.isInteger(n) && n >= 1 && n <= 5) stars = n;
+    else return json({ ok: false, error: 'stars must be a whole number from 1 to 5' }, 400);
+  }
+  const name = rawName ? rawName : null;
+  const now = new Date().toISOString();
+  const res = await env.DB.prepare(
+    'INSERT INTO reviews (name, review_text, stars, votes, created_at) VALUES (?,?,?,0,?)'
+  ).bind(name, rawText, stars, now).run();
+  const id = Number(res.meta.last_row_id);
+  const review = { id: id, name: name, review: rawText, stars: stars, votes: 0, createdAt: now };
+  try {
+    await env.R2.put('reviews/' + id + '.json', JSON.stringify(review), { httpMetadata: { contentType: 'application/json' } });
+  } catch (e) {
+    // D1 is the listing source of truth; a blob write failure must not
+    // fail the review itself (same best-effort discipline as cloud saves).
+  }
+  return json({ ok: true, review: review });
+}
+
+// GET /api/reviews — public, newest first. Never exposes anything beyond
+// the four public fields; no moderation (owner: everyone sees all reviews
+// instantly).
+async function handleReviewsList(env) {
+  const rows = await env.DB.prepare(
+    'SELECT id, name, review_text, stars, votes, created_at FROM reviews ORDER BY created_at DESC, id DESC LIMIT 200'
+  ).all();
+  const reviews = (rows.results || []).map(function(r) {
+    return { id: r.id, name: r.name, review: r.review_text, stars: r.stars, votes: r.votes, createdAt: r.created_at };
+  });
+  return json({ ok: true, reviews: reviews });
 }
 
 // POST /api/cloud/projects/:id/editors  { label, scope: [section...] }
@@ -2801,6 +2911,25 @@ async function handleApi(request, env, url) {
   // pings on open). Stateless, no auth, always 200 while the Worker is up.
   if (path === '/api/health' && request.method === 'GET') {
     return json({ ok: true, status: 'ok', app: 'my-manager', time: new Date().toISOString() });
+  }
+
+  // PART F T7 (2026-08-16) — public reviews window (reviews.html).
+  // GET = public list (newest first, no auth); POST = leave a review.
+  // Both ride the same-origin gate at the top of handleApi. POST is
+  // rate-limited with the dedicated `reviews` bucket (unauthenticated
+  // write surface) and validates plain text only — no HTML, no links;
+  // the page renders everything via textContent so nothing can execute.
+  if (path === '/api/reviews') {
+    if (request.method === 'GET') {
+      const rl = await cloudRateCheck(request, 'general');
+      if (rl.limited) return cloudRateLimited(rl.retryAfter);
+      return handleReviewsList(env);
+    }
+    if (request.method === 'POST') {
+      const rl = await cloudRateCheck(request, 'reviews');
+      if (rl.limited) return cloudRateLimited(rl.retryAfter);
+      return handleReviewsCreate(request, env);
+    }
   }
 
   // POST /api/auth/google { idToken } -> verify -> Set-Cookie mmgr_session

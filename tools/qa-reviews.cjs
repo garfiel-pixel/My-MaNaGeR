@@ -1,46 +1,59 @@
 /* ============================================================
-   PART F T7 (2026-08-16) — PUBLIC REVIEWS WINDOW END-TO-END GATE
+   CLOUD-FIRST SYNC (PART 3) — REVIEW QUEUE (admin review and
+   accept changes from another source) — END-TO-END GATE (2026-08-17)
    ------------------------------------------------------------
    Starts the Worker LOCALLY (npx wrangler dev against local D1 +
-   R2 miniflare emulation) and verifies the /api/reviews surface
-   against that live server, then loads reviews.html in headless
-   Chrome and drives the real form.
+   R2 miniflare emulation, migration 0015 applied — cloud_reviews
+   table) and verifies the approved review-queue surface:
 
-   R1  GET /api/reviews starts empty
-   R2  POST a valid review -> ok + review echoed; name null when blank
-   R3  POST with a name -> name echoed; stars accepted (star-READY)
-   R4  GET returns newest-first with the stored fields
-   R5  POST rejects empty review text (400)
-   R6  POST rejects HTML/markup (400, plain text only)
-   R7  POST rejects links (400)
-   R8  POST rejects oversized text (400)
-   R9  POST rate-limit trips the dedicated reviews bucket (429)
-   R10 cross-origin POST -> 403 (same-origin gate)
-   R11 D1 row + R2 reviews/<id>.json durable copy both written
-   R12 page: reviews.html renders header/hero/form/footer, zero
-       console errors, empty state shown, form posts a review and
-       the list re-renders with it
+   R1  editor save -> review:'pending' + reviewId, applied:[],
+       and the cloud blob does NOT move (no direct apply)
+   R2  owner GET /reviews lists the proposal (pending, source
+       editor, diffs present)
+   R3  the same editor saving again REPLACES their pending
+       proposal (last proposal wins — still exactly one pending)
+   R4  owner accept -> blob moves through the SAME scope merge
+       (in-scope applied, out-of-scope blocked), a changelog
+       'accepted' entry is written, proposal status accepted
+   R5  accepting the same proposal again -> 409 (not pending)
+   R6  reject path: a new editor proposal rejected -> blob
+       unchanged, changelog 'rejected' entry, status rejected
+   R7  an editor credential (mine=1) sees only their own
+       proposals with status; an editor listing ALL reviews -> 403
+   R8  MCP import -> proposal (not an instant changelog row);
+       owner accept -> 'accepted' changelog entry with the MCP
+       import_key; a re-import is skipped (already imported)
+   R9  MCP reject -> 'rejected' changelog entry, no accepted entry
+   R10 owner save still applies directly (regression: no review)
+   R11 unlink cascades proposals (reviews list -> generic 403)
 
    Exit 0 only when all checks pass. Reports PASS/FAIL per check.
    Usage: node tools/qa-reviews.cjs
    ============================================================ */
+'use strict';
 const { spawn, execFileSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
-const PORT = 8797;
+const PORT = 8795;
 const BASE = 'http://127.0.0.1:' + PORT;
 const ROOT = path.resolve(__dirname, '..');
 
-const log = (s) => { process.stdout.write('[reviews] ' + s + '\n'); };
+const SECRET = 'qa-reviews-secret-9d2f7c1b';
+const ADMIN_CODE = 'qa-admin-rv-31e8';
+
+const log = (s) => { process.stdout.write('[rv] ' + s + '\n'); };
 const delay = ms => new Promise(r => setTimeout(r, ms));
+
 const results = [];
-const check = (name, val, detail) => { results.push({ name, val }); log((val ? 'PASS' : 'FAIL') + '  ' + name + (val ? '' : '   <-- ' + JSON.stringify(detail).slice(0, 500))); };
+const check = (name, val, detail) => {
+  results.push({ name, val });
+  log((val ? 'PASS' : 'FAIL') + '  ' + name + (val ? '' : '   <-- ' + JSON.stringify(detail).slice(0, 500)));
+};
 
 setTimeout(() => { log('WATCHDOG — harness exceeded 300s'); try { proc && proc.kill(); } catch (e) {} process.exit(2); }, 300000).unref();
 
-// ---- wrangler location ----------------------------------------------------
 function globalWranglerJs() {
   try {
     const npmCmd = process.platform === 'win32' ? 'npm.cmd' : 'npm';
@@ -51,22 +64,30 @@ function globalWranglerJs() {
   return null;
 }
 const WRANGLER_JS = globalWranglerJs();
-const PERSIST_DIR = path.join(os.tmpdir(), 'mmgr-reviews-wstate-' + Date.now());
+const PERSIST_DIR = path.join(os.tmpdir(), 'mmgr-rv-wstate-' + Date.now());
 
 let proc = null;
+let devLog = '';
+
 function startWrangler() {
   return new Promise((resolve, reject) => {
+    log('starting wrangler dev on :' + PORT + ' (local D1 + R2, migration 0015)…');
     try {
       execFileSync(process.execPath,
         [WRANGLER_JS, 'd1', 'migrations', 'apply', 'my-manager-db', '--local', '--persist-to', PERSIST_DIR],
-        { cwd: ROOT, stdio: 'ignore', timeout: 90000 });
+        { cwd: ROOT, stdio: 'ignore', timeout: 120000 });
     } catch (e) { log('migrations apply (best-effort): ' + e.message); }
-    proc = spawn(process.execPath, [WRANGLER_JS, 'dev', '--port', String(PORT), '--ip', '127.0.0.1', '--persist-to', PERSIST_DIR], {
+    proc = spawn(process.execPath, [WRANGLER_JS, 'dev', '--port', String(PORT), '--ip', '127.0.0.1', '--persist-to', PERSIST_DIR,
+      '--var', 'GOOGLE_CLIENT_SECRET:' + SECRET,
+      '--var', 'ADMIN_CODE:' + ADMIN_CODE], {
       cwd: ROOT,
       env: Object.assign({}, process.env, { WRANGLER_SEND_METRICS: 'false' }),
       stdio: ['ignore', 'pipe', 'pipe']
     });
+    proc.stdout.on('data', d => { devLog += d; });
+    proc.stderr.on('data', d => { devLog += d; });
     proc.on('error', (e) => reject(new Error('wrangler spawn failed: ' + e.message)));
+    proc.on('exit', (code) => { if (code !== 0 && code !== null) log('wrangler dev exited early (code ' + code + ')'); });
     const t0 = Date.now();
     const poll = async () => {
       try {
@@ -86,255 +107,307 @@ function stopWrangler() {
   try { proc && proc.kill(); } catch (e) {}
 }
 
-// ---- D1 / R2 direct inspection (read-only sqlite + blob walk) -------------
-const q = (s) => "'" + String(s).replace(/'/g, "''") + "'";
-function d1File() {
-  const dir = path.join(PERSIST_DIR, 'v3', 'd1', 'miniflare-D1DatabaseObject');
-  if (!fs.existsSync(dir)) return null;
-  for (const f of fs.readdirSync(dir)) {
-    if (f.endsWith('.sqlite') && !f.startsWith('metadata')) return path.join(dir, f);
-  }
-  return null;
-}
-function queryD1(sql) {
-  const f = d1File();
-  if (f) {
-    try {
-      const { DatabaseSync } = require('node:sqlite');
-      const db = new DatabaseSync(f, { readOnly: true });
-      const rows = [];
-      for (const row of db.prepare(sql).all()) rows.push(row);
-      db.close();
-      return rows;
-    } catch (e) { log('node:sqlite read failed (' + e.message + ') — trying wrangler d1 execute'); }
-  }
-  if (WRANGLER_JS) {
-    try {
-      const out = execFileSync(process.execPath,
-        [WRANGLER_JS, 'd1', 'execute', 'my-manager-db', '--local', '--persist-to', PERSIST_DIR, '--command', sql, '--json'],
-        { cwd: ROOT, encoding: 'utf8', timeout: 60000 });
-      const m = out.match(/\[[\s\S]*\]/);
-      if (m) {
-        const parsed = JSON.parse(m[0]);
-        if (parsed[0] && Array.isArray(parsed[0].results)) return parsed[0].results;
-      }
-    } catch (e) { log('d1 execute fallback failed: ' + e.message); }
-  }
-  return null;
-}
-// Miniflare stores R2 objects under hashed blob filenames (the key is
-// metadata, not the path), so locate the review blob by CONTENT marker —
-// the review text we posted is unique to this run.
-function findR2Blob(marker) {
-  const root = path.join(PERSIST_DIR, 'v3', 'r2');
-  if (!fs.existsSync(root)) return null;
-  const hits = [];
-  const walk = (d) => {
-    let entries = [];
-    try { entries = fs.readdirSync(d, { withFileTypes: true }); } catch (e) { return; }
-    for (const e of entries) {
-      const p = path.join(d, e.name);
-      if (e.isDirectory()) walk(p);
-      else if (e.isFile()) {
-        try {
-          const content = fs.readFileSync(p, 'utf8');
-          if (marker && content.indexOf(marker) > -1) hits.push({ path: p, content });
-        } catch (err) { /* skip locked/partial */ }
-      }
-    }
-  };
-  walk(root);
-  return hits[0] || null;
-}
+const j = async (res) => { try { return await res.json(); } catch (e) { return {}; } };
+const jsonHeaders = { 'Content-Type': 'application/json' };
 
-async function api(pathname, opts) {
-  const res = await fetch(BASE + pathname, Object.assign({ credentials: 'same-origin' }, opts || {}));
-  let body = null;
-  try { body = await res.json(); } catch (e) { body = null; }
-  return { status: res.status, body, text: res.status + '|' + JSON.stringify(body) };
-}
-
-// ---- headless Chrome (CDP) ------------------------------------------------
-const CHROME = process.platform === 'win32'
-  ? 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'
-  : '/usr/bin/google-chrome';
-let ws = null; let msgId = 0; const pending = new Map();
-function launchChrome(profileDir, port) {
-  return new Promise((resolve, reject) => {
-    const p = spawn(CHROME, ['--headless=new', '--disable-gpu', '--no-first-run', '--incognito', '--remote-debugging-port=' + port, '--user-data-dir=' + profileDir, '--window-size=1440,1200', 'about:blank'], { stdio: 'ignore' });
-    const t0 = Date.now();
-    const poll = async () => {
-      try { const r = await fetch('http://127.0.0.1:' + port + '/json/version'); if (r.ok) return resolve(p); } catch (e) {}
-      if (Date.now() - t0 > 30000) return reject(new Error('chrome did not open on :' + port));
-      setTimeout(poll, 300);
-    };
-    poll();
-  });
-}
-async function cdpConnect(port) {
-  const targets = await (await fetch('http://127.0.0.1:' + port + '/json')).json();
-  const page = targets.find(t => t.type === 'page');
-  ws = new WebSocket(page.webSocketDebuggerUrl);
-  ws.onmessage = (ev2) => {
-    const msg = JSON.parse(ev2.data);
-    if (msg.id && pending.has(msg.id)) { pending.get(msg.id)(msg); pending.delete(msg.id); }
+function baseState(pid, name) {
+  const now = new Date().toISOString();
+  return {
+    schemaVersion: 17, projectId: pid, projectName: name, updatedAt: now,
+    charter: { name: name },
+    tasks: [{ id: 't1', name: 'Task One', status: 'todo' }],
+    risks: [{ id: 'r1', name: 'Risk One', prob: 3, impact: 3 }],
+    fieldTs: { charter: now, tasks: now, risks: now },
+    config: {}, flags: {}
   };
-  await new Promise((res) => { ws.onopen = res; });
-}
-function cdp(method, params) {
-  return new Promise((resolve) => {
-    const id = ++msgId;
-    pending.set(id, resolve);
-    ws.send(JSON.stringify({ id, method, params: params || {} }));
-  });
-}
-let consoleErrors = [];
-async function ev(expr) {
-  const r = await cdp('Runtime.evaluate', { expression: expr, awaitPromise: true, returnByValue: true });
-  return r.result && r.result.result ? r.result.result.value : undefined;
 }
 
 (async function main() {
-  log('starting wrangler dev on :' + PORT + ' (local D1 + R2)…');
-  await startWrangler();
-
-  // ---- R1 empty list ----
-  const r1 = await api('/api/reviews');
-  check('R1 GET /api/reviews starts empty', r1.status === 200 && r1.body && r1.body.ok && Array.isArray(r1.body.reviews) && r1.body.reviews.length === 0, r1.text);
-
-  // ---- R2 valid POST, anonymous ----
-  const r2 = await api('/api/reviews', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ review: 'Solid tool for our daily standups on site.' }) });
-  const r2id = r2.body && r2.body.review ? r2.body.review.id : null;
-  check('R2 POST valid review -> ok + id + name null', r2.status === 200 && r2.body && r2.body.ok && r2id && r2.body.review.name === null && r2.body.review.review === 'Solid tool for our daily standups on site.' && r2.body.review.votes === 0, r2.text);
-
-  // ---- R3 POST with name + stars (star-READY) ----
-  const r3 = await api('/api/reviews', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: 'Project Lead', review: 'Saved our closeout weeks.', stars: 5 }) });
-  check('R3 POST name + stars accepted', r3.status === 200 && r3.body && r3.body.ok && r3.body.review.name === 'Project Lead' && r3.body.review.stars === 5, r3.text);
-
-  // ---- R4 GET newest-first + fields ----
-  const r4 = await api('/api/reviews');
-  const names = (r4.body && r4.body.reviews || []).map(r => r.name);
-  check('R4 GET returns newest-first with fields', r4.status === 200 && names[0] === 'Project Lead' && names[1] === null && (r4.body.reviews[1] || {}).review === 'Solid tool for our daily standups on site.' && !!r4.body.reviews[0].createdAt, r4.text);
-
-  // ---- R5 empty review text ----
-  const r5 = await api('/api/reviews', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ review: '   ' }) });
-  check('R5 POST empty review -> 400', r5.status === 400, r5.text);
-
-  // ---- R6 HTML/markup rejected ----
-  const r6 = await api('/api/reviews', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ review: '<script>alert(1)</script>' }) });
-  check('R6 POST HTML markup -> 400 plain-text-only', r6.status === 400 && /plain text/i.test((r6.body && r6.body.error) || ''), r6.text);
-
-  // ---- R7 links rejected ----
-  const r7 = await api('/api/reviews', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ review: 'Check out https://example.com for details' }) });
-  check('R7 POST link -> 400 no-links', r7.status === 400 && /link/i.test((r7.body && r7.body.error) || ''), r7.text);
-
-  // ---- R8 oversized text ----
-  const r8 = await api('/api/reviews', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ review: 'x'.repeat(2500) }) });
-  check('R8 POST >2000 chars -> 400', r8.status === 400, r8.text);
-
-  // ---- R10 cross-origin POST rejected ----
-  const r10 = await api('/api/reviews', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Origin': 'https://evil.example' }, body: JSON.stringify({ review: 'x' }) });
-  check('R10 cross-origin POST -> 403 same-origin gate', r10.status === 403, r10.text);
-
-  // ---- R11 D1 + R2 durable copy ----
-  const d1rows = queryD1('SELECT id, name, review_text, stars, votes FROM reviews ORDER BY id');
-  const blob = findR2Blob('Solid tool for our daily standups on site.');
-  check('R11 D1 reviews rows written', !!d1rows && d1rows.length >= 2 && (d1rows[0] || {}).review_text === 'Solid tool for our daily standups on site.', JSON.stringify(d1rows).slice(0, 300));
-  check('R11b R2 reviews/<id>.json durable copy written', !!blob && blob.content.indexOf('Solid tool for our daily standups on site.') > -1, blob ? blob.path : 'no blob');
-
-  // ---- R12 page render + real form flow (BEFORE the R9 rate-limit hammer:
-  // both share the same 127.0.0.1 key, so the hammer would 429 the page's
-  // own POST) ----
-  let chromeProc = null; let pageOk = true; let why = '';
   try {
-    const profile = path.join(os.tmpdir(), 'mmgr-reviews-cdp-' + Date.now());
-    const cport = 9300 + Math.floor(Math.random() * 200);
-    chromeProc = await launchChrome(profile, cport);
-    await cdpConnect(cport);
-    await cdp('Page.enable');
-    await cdp('Runtime.enable');
-    consoleErrors = [];
-    await cdp('Page.navigate', { url: BASE + '/reviews.html' });
-    await delay(2200);
-    const chrome1 = await ev(`(function(){
-      return {
-        header: !!document.querySelector('.site-header'),
-        hero: !!document.querySelector('.page-hero h1'),
-        form: !!document.getElementById('review-form'),
-        footer: !!document.querySelector('.site-footer'),
-        navReviews: (function(){ var a = document.querySelector('.site-nav a[href="reviews.html"]'); return !!a; })(),
-        listCards: document.querySelectorAll('.rv-card').length
-      };
-    })()`);
-    check('R12 page renders header/hero/form/footer + nav Reviews + seeded list', chrome1 && chrome1.header && chrome1.hero && chrome1.form && chrome1.footer && chrome1.navReviews && chrome1.listCards >= 2, chrome1);
+    await startWrangler();
+    const pid = 'rv-proj-' + Date.now().toString(36);
 
-    // Drive the real form: fill + submit, then wait for the re-fetch render.
-    await ev(`(function(){
-      var n = document.getElementById('review-name'); if (n) n.value = 'Site Visitor';
-      var t = document.getElementById('review-text'); if (t) t.value = 'Browser-driven review from the QA harness.';
-      var f = document.getElementById('review-form'); if (f) f.requestSubmit();
-      return true;
-    })()`);
-    await delay(2500);
-    const chrome2 = await ev(`(function(){
-      return {
-        status: (document.getElementById('review-status') || {}).textContent || '',
-        firstCard: (function(){ var c = document.querySelector('.rv-card .rv-name'); return c ? c.textContent : null; })(),
-        firstText: (function(){ var c = document.querySelector('.rv-card .rv-text'); return c ? c.textContent : null; })()
-      };
-    })()`);
-    check('R12b form posts -> status + new card on top', chrome2 && /Thank you/.test(chrome2.status || '') && chrome2.firstCard === 'Site Visitor' && /Browser-driven review/.test(chrome2.firstText || ''), chrome2);
-    check('R12c zero console errors on reviews.html', consoleErrors.length === 0, consoleErrors.slice(0, 5));
+    // R0 create + seed + editor code.
+    let r = await fetch(BASE + '/api/cloud/projects', {
+      method: 'POST', credentials: 'same-origin',
+      headers: jsonHeaders,
+      body: JSON.stringify({ projectId: pid, name: 'Review QA' })
+    });
+    const created = await j(r);
+    check('R0a create cloud project', r.ok && created.ok && !!created.ownerCode, created);
+    const ownerCode = created.ownerCode;
 
-    // R13 STAR INPUT UI (STABILIZATION 2026-08-16 — owner decision: star
-    // picker + display only): the picker renders 5 radios, a picked rating
-    // rides the POST, the new card draws the stars, and the picker resets.
-    const starState = await ev(`(function(){
-      var row = document.getElementById('rv-pick-row');
-      var radios = row ? row.querySelectorAll('input[name="stars"]') : [];
-      return { count: radios.length, val: row ? row.getAttribute('data-val') : null };
-    })()`);
-    check('R13a star picker renders 5 radios (data-val 0)', starState && starState.count === 5 && starState.val === '0', starState);
-    await ev(`(function(){
-      var n = document.getElementById('review-name'); if (n) n.value = 'Rated Visitor';
-      var t = document.getElementById('review-text'); if (t) t.value = 'Browser-driven RATED review with four stars.';
-      var row = document.getElementById('rv-pick-row');
-      var r4 = row ? row.querySelector('input[value="4"]') : null;
-      if (r4) { r4.checked = true; row.dispatchEvent(new Event('change')); }
-      var f = document.getElementById('review-form'); if (f) f.requestSubmit();
-      return true;
-    })()`);
-    await delay(2500);
-    const starAfter = await ev(`(function(){
-      var row = document.getElementById('rv-pick-row');
-      var first = document.querySelector('.rv-card');
-      var ons = first ? first.querySelectorAll('.rv-star.on').length : 0;
-      var name = first ? first.querySelector('.rv-name').textContent : '';
-      return { dataVal: row ? row.getAttribute('data-val') : null, checked: !!(row && row.querySelector('input[name="stars"]:checked')), ons: ons, name: name, status: (document.getElementById('review-status') || {}).textContent || '' };
-    })()`);
-    check('R13b rated review posts -> 4 stars rendered on the new top card', /Thank you/.test(starAfter.status || '') && starAfter.name === 'Rated Visitor' && starAfter.ons === 4, starAfter);
-    check('R13c picker resets after the post (data-val 0, nothing checked)', starAfter.dataVal === '0' && starAfter.checked === false, starAfter);
+    const state0 = baseState(pid, 'Review QA');
+    r = await fetch(BASE + '/api/cloud/projects/' + pid + '/save', {
+      method: 'POST', credentials: 'same-origin',
+      headers: Object.assign({}, jsonHeaders, { 'X-Owner-Code': ownerCode }),
+      body: JSON.stringify({ state: state0 })
+    });
+    const seed = await j(r);
+    check('R0b owner seeds the snapshot', r.ok && seed.ok, seed);
+
+    r = await fetch(BASE + '/api/cloud/projects/' + pid + '/editors', {
+      method: 'POST', credentials: 'same-origin',
+      headers: Object.assign({}, jsonHeaders, { 'X-Owner-Code': ownerCode }),
+      body: JSON.stringify({ label: 'Site Super', scope: ['wbs'] })
+    });
+    const ed = await j(r);
+    check('R0c editor code created (scope wbs)', r.ok && ed.ok && !!ed.editorCode, ed);
+    const editorCode = ed.editorCode;
+
+    // R1 editor save -> proposal, blob untouched.
+    const stateE = JSON.parse(JSON.stringify(state0));
+    stateE.tasks[0].name = 'Edited by editor';
+    stateE.risks[0].name = 'HACKED out of scope';
+    r = await fetch(BASE + '/api/cloud/projects/' + pid + '/save', {
+      method: 'POST', credentials: 'same-origin',
+      headers: Object.assign({}, jsonHeaders, { 'X-Editor-Code': editorCode }),
+      body: JSON.stringify({ state: stateE })
+    });
+    const edSave = await j(r);
+    // applied reports what the proposal WOULD change (its scope coverage),
+    // never that it landed — review:'pending' is the truth; the blob does
+    // not move until the owner accepts (checked in R1b).
+    check('R1a editor save -> review pending + reviewId + would-be applied wbs + blocked risk',
+      r.ok && edSave.ok && edSave.review === 'pending' && !!edSave.reviewId &&
+      Array.isArray(edSave.applied) && edSave.applied.indexOf('wbs') !== -1 &&
+      Array.isArray(edSave.blocked) && edSave.blocked.indexOf('risk') !== -1, edSave);
+    const reviewId1 = edSave.reviewId;
+    r = await fetch(BASE + '/api/cloud/projects/' + pid + '/load', {
+      method: 'POST', credentials: 'same-origin',
+      headers: Object.assign({}, jsonHeaders, { 'X-Owner-Code': ownerCode }),
+      body: JSON.stringify({})
+    });
+    const blob1 = await j(r);
+    check('R1b cloud blob unchanged after editor save (pending review)',
+      r.ok && blob1.state.tasks[0].name === 'Task One' && blob1.state.risks[0].name === 'Risk One', blob1.state);
+
+    // R2 owner list shows the proposal with diffs.
+    r = await fetch(BASE + '/api/cloud/projects/' + pid + '/reviews', {
+      method: 'GET', credentials: 'same-origin', headers: { 'X-Owner-Code': ownerCode }
+    });
+    const list1 = await j(r);
+    const p1 = (list1.proposals || []).find(function(x) { return x.id === reviewId1; });
+    check('R2 owner list: pending proposal with editor source + diffs',
+      r.ok && list1.ok && !!p1 && p1.status === 'pending' && p1.sourceType === 'editor' && p1.sourceLabel === 'Site Super' &&
+      Array.isArray(p1.diffs) && p1.diffs.length > 0, list1);
+
+    // R3 re-save replaces the pending proposal.
+    const stateE2 = JSON.parse(JSON.stringify(state0));
+    stateE2.tasks[0].name = 'Edited again (WBS)';
+    r = await fetch(BASE + '/api/cloud/projects/' + pid + '/save', {
+      method: 'POST', credentials: 'same-origin',
+      headers: Object.assign({}, jsonHeaders, { 'X-Editor-Code': editorCode }),
+      body: JSON.stringify({ state: stateE2 })
+    });
+    const edSave2 = await j(r);
+    const reviewId2 = edSave2.reviewId;
+    r = await fetch(BASE + '/api/cloud/projects/' + pid + '/reviews', {
+      method: 'GET', credentials: 'same-origin', headers: { 'X-Owner-Code': ownerCode }
+    });
+    const list2 = await j(r);
+    const pend = (list2.proposals || []).filter(function(x) { return x.status === 'pending'; });
+    check('R3 last proposal wins (still exactly one pending, the new id)',
+      r.ok && list2.ok && pend.length === 1 && pend[0].id === reviewId2 && reviewId1 !== reviewId2, { pend: pend.map(function(x) { return x.id; }), reviewId1: reviewId1, reviewId2: reviewId2 });
+
+    // R4 owner accept -> scope-merged apply + 'accepted' changelog.
+    r = await fetch(BASE + '/api/cloud/projects/' + pid + '/reviews/' + reviewId2 + '/accept', {
+      method: 'POST', credentials: 'same-origin',
+      headers: Object.assign({}, jsonHeaders, { 'X-Owner-Code': ownerCode }),
+      body: JSON.stringify({})
+    });
+    const acc = await j(r);
+    check('R4a accept ok with applied wbs + savedAt', r.ok && acc.ok && acc.status === 'accepted' && acc.applied.indexOf('wbs') !== -1 && !!acc.savedAt, acc);
+    r = await fetch(BASE + '/api/cloud/projects/' + pid + '/load', {
+      method: 'POST', credentials: 'same-origin',
+      headers: Object.assign({}, jsonHeaders, { 'X-Owner-Code': ownerCode }),
+      body: JSON.stringify({})
+    });
+    const blobA = await j(r);
+    check('R4b accepted editor change applied (wbs), out-of-scope risk NOT applied',
+      r.ok && blobA.state.tasks[0].name === 'Edited again (WBS)' && blobA.state.risks[0].name === 'Risk One', blobA.state);
+    r = await fetch(BASE + '/api/cloud/projects/' + pid + '/changelog', {
+      method: 'GET', credentials: 'same-origin', headers: { 'X-Owner-Code': ownerCode }
+    });
+    const clogA = await j(r);
+    const accEntry = (clogA.entries || []).filter(function(e) { return e.type === 'accepted'; });
+    check('R4c changelog has an accepted entry with diffs', r.ok && accEntry.length >= 1 && Array.isArray(accEntry[0].diffs), accEntry);
+    r = await fetch(BASE + '/api/cloud/projects/' + pid + '/reviews', {
+      method: 'GET', credentials: 'same-origin', headers: { 'X-Owner-Code': ownerCode }
+    });
+    const listA = await j(r);
+    const pA = (listA.proposals || []).find(function(x) { return x.id === reviewId2; });
+    check('R4d proposal now accepted with decidedAt', !!pA && pA.status === 'accepted' && !!pA.decidedAt, pA);
+
+    // R5 accept again -> 409.
+    r = await fetch(BASE + '/api/cloud/projects/' + pid + '/reviews/' + reviewId2 + '/accept', {
+      method: 'POST', credentials: 'same-origin',
+      headers: Object.assign({}, jsonHeaders, { 'X-Owner-Code': ownerCode }),
+      body: JSON.stringify({})
+    });
+    check('R5 accepting an already-accepted proposal -> 409', r.status === 409, { status: r.status });
+
+    // R6 reject path.
+    const stateR = JSON.parse(JSON.stringify(state0));
+    stateR.tasks[0].name = 'To be rejected';
+    r = await fetch(BASE + '/api/cloud/projects/' + pid + '/save', {
+      method: 'POST', credentials: 'same-origin',
+      headers: Object.assign({}, jsonHeaders, { 'X-Editor-Code': editorCode }),
+      body: JSON.stringify({ state: stateR })
+    });
+    const edSaveR = await j(r);
+    const reviewIdR = edSaveR.reviewId;
+    r = await fetch(BASE + '/api/cloud/projects/' + pid + '/reviews/' + reviewIdR + '/reject', {
+      method: 'POST', credentials: 'same-origin',
+      headers: Object.assign({}, jsonHeaders, { 'X-Owner-Code': ownerCode }),
+      body: JSON.stringify({})
+    });
+    const rej = await j(r);
+    check('R6a reject ok', r.ok && rej.ok && rej.status === 'rejected', rej);
+    r = await fetch(BASE + '/api/cloud/projects/' + pid + '/load', {
+      method: 'POST', credentials: 'same-origin',
+      headers: Object.assign({}, jsonHeaders, { 'X-Owner-Code': ownerCode }),
+      body: JSON.stringify({})
+    });
+    const blobR = await j(r);
+    check('R6b rejected change NOT in the blob', r.ok && blobR.state.tasks[0].name === 'Edited again (WBS)', blobR.state && blobR.state.tasks);
+    r = await fetch(BASE + '/api/cloud/projects/' + pid + '/changelog', {
+      method: 'GET', credentials: 'same-origin', headers: { 'X-Owner-Code': ownerCode }
+    });
+    const clogR = await j(r);
+    check('R6c changelog has a rejected entry', r.ok && (clogR.entries || []).some(function(e) { return e.type === 'rejected'; }), clogR);
+
+    // R7 editor mine=1 + editor cannot list all.
+    r = await fetch(BASE + '/api/cloud/projects/' + pid + '/reviews?mine=1', {
+      method: 'GET', credentials: 'same-origin', headers: { 'X-Editor-Code': editorCode }
+    });
+    const mine = await j(r);
+    const mineStatuses = (mine.proposals || []).map(function(x) { return x.status; });
+    check('R7a editor mine=1 shows own proposals with statuses (accepted + rejected)',
+      r.ok && mine.ok && mine.proposals.length >= 2 && mineStatuses.indexOf('accepted') !== -1 && mineStatuses.indexOf('rejected') !== -1, mine);
+    // An editor credential (with or without mine=1) is scoped to their OWN
+    // proposals — never the full queue (no MCP proposals, no other labels).
+    r = await fetch(BASE + '/api/cloud/projects/' + pid + '/reviews', {
+      method: 'GET', credentials: 'same-origin', headers: { 'X-Editor-Code': editorCode }
+    });
+    const allTry = await j(r);
+    const onlyMine = (allTry.proposals || []).every(function(x) { return x.sourceType === 'editor' && x.sourceLabel === 'Site Super'; });
+    check('R7b editor listing reviews returns ONLY their own proposals (never the full queue)',
+      r.ok && allTry.ok && allTry.proposals.length >= 2 && onlyMine && !(allTry.proposals || []).some(function(x) { return x.sourceType === 'mcp'; }), allTry);
+
+    // R8 MCP import -> proposal; accept -> 'accepted' entry with import_key; re-import skipped.
+    const mcpEntry = {
+      localId: 101, entry_type: 'edit', actor_type: 'owner', actor_label: 'MCP AI',
+      created_at: new Date().toISOString(),
+      diffs_json: [{ path: 'tasks[0].name', before: 'Task One', beforeAbsent: false, after: 'Edited again (WBS)', afterAbsent: false }]
+    };
+    r = await fetch(BASE + '/api/cloud/projects/' + pid + '/changelog/import', {
+      method: 'POST', credentials: 'same-origin',
+      headers: Object.assign({}, jsonHeaders, { 'X-Owner-Code': ownerCode }),
+      body: JSON.stringify({ entries: [mcpEntry] })
+    });
+    const imp = await j(r);
+    check('R8a MCP import creates a proposal (not an instant changelog row)', r.ok && imp.ok && imp.imported.length === 1 && typeof imp.imported[0].reviewId === 'number', imp);
+    const mcpReviewId = imp.imported[0].reviewId;
+    r = await fetch(BASE + '/api/cloud/projects/' + pid + '/changelog', {
+      method: 'GET', credentials: 'same-origin', headers: { 'X-Owner-Code': ownerCode }
+    });
+    const clogPre = await j(r);
+    const acceptedBefore = (clogPre.entries || []).filter(function(e) { return e.type === 'accepted' && e.source === 'mcp'; });
+    check('R8b no MCP accepted entry before the owner decides', r.ok && acceptedBefore.length === 0, clogPre);
+    r = await fetch(BASE + '/api/cloud/projects/' + pid + '/reviews/' + mcpReviewId + '/accept', {
+      method: 'POST', credentials: 'same-origin',
+      headers: Object.assign({}, jsonHeaders, { 'X-Owner-Code': ownerCode }),
+      body: JSON.stringify({})
+    });
+    const mcpAcc = await j(r);
+    check('R8c MCP accept ok with an entry id', r.ok && mcpAcc.ok && mcpAcc.status === 'accepted' && !!mcpAcc.entryId, mcpAcc);
+    r = await fetch(BASE + '/api/cloud/projects/' + pid + '/changelog', {
+      method: 'GET', credentials: 'same-origin', headers: { 'X-Owner-Code': ownerCode }
+    });
+    const clogAcc = await j(r);
+    const mcpAccepted = (clogAcc.entries || []).filter(function(e) { return e.type === 'accepted' && e.source === 'mcp'; });
+    check('R8d MCP accepted entry present with AI badge source', r.ok && mcpAccepted.length === 1 && Array.isArray(mcpAccepted[0].diffs), mcpAccepted);
+    // Re-import the same entry -> skipped (already imported).
+    r = await fetch(BASE + '/api/cloud/projects/' + pid + '/changelog/import', {
+      method: 'POST', credentials: 'same-origin',
+      headers: Object.assign({}, jsonHeaders, { 'X-Owner-Code': ownerCode }),
+      body: JSON.stringify({ entries: [mcpEntry] })
+    });
+    const imp2 = await j(r);
+    check('R8e re-import of the same entry skipped (already imported)', r.ok && imp2.ok && imp2.imported.length === 0 && imp2.skipped.length === 1, imp2);
+
+    // R9 MCP reject.
+    const mcpEntry2 = {
+      localId: 102, entry_type: 'edit', actor_type: 'owner', actor_label: 'MCP AI',
+      created_at: new Date().toISOString(),
+      diffs_json: [{ path: 'tasks[0].name', before: 'Edited again (WBS)', beforeAbsent: false, after: 'AI wants this name', afterAbsent: false }]
+    };
+    r = await fetch(BASE + '/api/cloud/projects/' + pid + '/save', {
+      method: 'POST', credentials: 'same-origin',
+      headers: Object.assign({}, jsonHeaders, { 'X-Owner-Code': ownerCode }),
+      body: JSON.stringify({ state: Object.assign(baseState(pid, 'Review QA'), { tasks: [{ id: 't1', name: 'AI wants this name', status: 'todo' }] }) })
+    });
+    await j(r); // owner applies the AI state so the import verifies
+    r = await fetch(BASE + '/api/cloud/projects/' + pid + '/changelog/import', {
+      method: 'POST', credentials: 'same-origin',
+      headers: Object.assign({}, jsonHeaders, { 'X-Owner-Code': ownerCode }),
+      body: JSON.stringify({ entries: [mcpEntry2] })
+    });
+    const imp3 = await j(r);
+    const mcpReview2 = imp3.imported[0] && imp3.imported[0].reviewId;
+    r = await fetch(BASE + '/api/cloud/projects/' + pid + '/reviews/' + mcpReview2 + '/reject', {
+      method: 'POST', credentials: 'same-origin',
+      headers: Object.assign({}, jsonHeaders, { 'X-Owner-Code': ownerCode }),
+      body: JSON.stringify({})
+    });
+    const mcpRej = await j(r);
+    check('R9a MCP reject ok', r.ok && mcpRej.ok && mcpRej.status === 'rejected', mcpRej);
+    r = await fetch(BASE + '/api/cloud/projects/' + pid + '/changelog', {
+      method: 'GET', credentials: 'same-origin', headers: { 'X-Owner-Code': ownerCode }
+    });
+    const clogM = await j(r);
+    const rejEntries = (clogM.entries || []).filter(function(e) { return e.type === 'rejected'; });
+    const mcpAccepted2 = (clogM.entries || []).filter(function(e) { return e.type === 'accepted' && e.source === 'mcp'; });
+    check('R9b MCP reject logged, no new accepted entry for it', r.ok && rejEntries.length >= 2 && mcpAccepted2.length === 1, { rej: rejEntries.length, acc: mcpAccepted2.length });
+
+    // R10 owner save still applies directly.
+    const stateO = Object.assign(baseState(pid, 'Review QA'), { tasks: [{ id: 't1', name: 'Owner direct', status: 'todo' }] });
+    r = await fetch(BASE + '/api/cloud/projects/' + pid + '/save', {
+      method: 'POST', credentials: 'same-origin',
+      headers: Object.assign({}, jsonHeaders, { 'X-Owner-Code': ownerCode }),
+      body: JSON.stringify({ state: stateO })
+    });
+    const ownerSave = await j(r);
+    check('R10 owner save applies directly (no review)', r.ok && ownerSave.ok && ownerSave.review === undefined && !!ownerSave.savedAt && ownerSave.actor === 'owner', ownerSave);
+
+    // R11 unlink cascades proposals.
+    r = await fetch(BASE + '/api/cloud/projects/' + pid, {
+      method: 'DELETE', credentials: 'same-origin',
+      headers: Object.assign({}, jsonHeaders, { 'X-Owner-Code': ownerCode }),
+      body: JSON.stringify({})
+    });
+    const unl = await j(r);
+    check('R11a unlink succeeds', r.ok && unl.ok, unl);
+    r = await fetch(BASE + '/api/cloud/projects/' + pid + '/reviews', {
+      method: 'GET', credentials: 'same-origin', headers: { 'X-Owner-Code': ownerCode }
+    });
+    check('R11b reviews list after unlink -> generic 403', r.status === 403, { status: r.status });
+
+    // Summary.
+    const fails = results.filter(function(x) { return !x.val; });
+    log('========================================');
+    log('review-queue gate: ' + (results.length - fails.length) + '/' + results.length + ' checks passed');
+    if (fails.length) {
+      log('FAILED: ' + fails.map(function(f) { return f.name; }).join(' | '));
+      stopWrangler();
+      process.exit(1);
+    }
+    stopWrangler();
+    process.exit(0);
   } catch (e) {
-    pageOk = false; why = e.message;
-  } finally {
-    try { ws && ws.close(); } catch (e) {}
-    try { chromeProc && chromeProc.kill(); } catch (e) {}
+    log('HARNESS ERROR: ' + (e && e.stack || e));
+    stopWrangler();
+    process.exit(1);
   }
-  check('R12d page flow completed without harness error', pageOk, why);
-
-  // ---- R9 rate limit (dedicated reviews bucket: 10/min) — AFTER the page
-  // flow so the browser's own POST is never 429'd by the hammer. ----
-  let limited = false; let lastStatus = 0;
-  for (let i = 0; i < 12; i++) {
-    const r = await api('/api/reviews', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ review: 'rate test ' + i }) });
-    lastStatus = r.status;
-    if (r.status === 429) { limited = true; break; }
-  }
-  check('R9 POST rate limit trips reviews bucket (429)', limited && lastStatus === 429, 'last status ' + lastStatus);
-
-  stopWrangler();
-  const failed = results.filter(r => !r.val);
-  log('---');
-  log(failed.length === 0 ? 'REVIEWS_GATE PASS (' + results.length + '/' + results.length + ')' : 'REVIEWS_GATE FAIL (' + (results.length - failed.length) + '/' + results.length + ')');
-  process.exit(failed.length ? 1 : 0);
-})().catch((e) => { log('FATAL: ' + e.stack); stopWrangler(); process.exit(1); });
+})();

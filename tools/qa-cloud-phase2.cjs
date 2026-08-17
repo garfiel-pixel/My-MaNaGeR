@@ -378,15 +378,17 @@ function baseState(pid, name) {
     check('P2.3a editor load returns role/editorLabel/scope', edLoad.status === 200 && edLoad.body && edLoad.body.ok === true && edLoad.body.role === 'editor' && edLoad.body.editorLabel === 'Site Super' && JSON.stringify(edLoad.body.scope) === JSON.stringify(['wbs', 'bud']), edLoad.text);
     check('P2.3b editor load returns the owner snapshot (charter + risks readable)', !!edLoad.body && edLoad.body.state && edLoad.body.state.charter.name === NAME && edLoad.body.state.risks[0].name === 'Risk One', edLoad.body && edLoad.body.state);
 
-    // A8: editor save IN scope (wbs) — applied, changelog attributed
+    // A8: editor save IN scope (wbs) — REVIEW QUEUE (2026-08-17, always on):
+    // the save becomes a PENDING PROPOSAL — nothing applies until the owner
+    // accepts. applied reports what the proposal WOULD change.
     const stateE = JSON.parse(JSON.stringify(state1));
     stateE.tasks[0].name = 'Edited by editor';
     const edSaveIn = await api('/api/cloud/projects/' + PID + '/save', {
       method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Editor-Code': EC },
       body: JSON.stringify({ state: stateE })
     });
-    check('P2.4b editor in-scope save ok (actor editor)', edSaveIn.status === 200 && edSaveIn.body && edSaveIn.body.ok === true && edSaveIn.body.actor === 'editor' && edSaveIn.body.editorLabel === 'Site Super', edSaveIn.text);
-    check('P2.4c editor save reports applied:["wbs"]', !!edSaveIn.body && Array.isArray(edSaveIn.body.applied) && edSaveIn.body.applied.indexOf('wbs') !== -1, edSaveIn.body && edSaveIn.body.applied);
+    check('P2.4b editor in-scope save ok (review pending, actor editor)', edSaveIn.status === 200 && edSaveIn.body && edSaveIn.body.ok === true && edSaveIn.body.review === 'pending' && !!edSaveIn.body.reviewId && edSaveIn.body.actor === 'editor' && edSaveIn.body.editorLabel === 'Site Super', edSaveIn.text);
+    check('P2.4c editor save reports would-be applied:["wbs"]', !!edSaveIn.body && Array.isArray(edSaveIn.body.applied) && edSaveIn.body.applied.indexOf('wbs') !== -1, edSaveIn.body && edSaveIn.body.applied);
 
     // A9: THE scope-enforcement check — editor tries to change risks too
     const stateH = JSON.parse(JSON.stringify(stateE));
@@ -396,14 +398,23 @@ function baseState(pid, name) {
       method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Editor-Code': EC },
       body: JSON.stringify({ state: stateH })
     });
-    check('P2.5a editor save that touches out-of-scope section still ok', edSaveOut.status === 200 && edSaveOut.body && edSaveOut.body.ok === true, edSaveOut.text);
+    check('P2.5a editor save that touches out-of-scope section still ok (proposal)', edSaveOut.status === 200 && edSaveOut.body && edSaveOut.body.ok === true && edSaveOut.body.review === 'pending', edSaveOut.text);
     check('P2.5b out-of-scope change reported as blocked:["risk"]', !!edSaveOut.body && Array.isArray(edSaveOut.body.blocked) && edSaveOut.body.blocked.indexOf('risk') !== -1 && edSaveOut.body.blocked.indexOf('charter') === -1, edSaveOut.body && edSaveOut.body.blocked);
-    // Verify on the blob: risks MUST be unchanged, tasks MUST be the editor's.
+    // REVIEW QUEUE: the blob does NOT move on an editor save. Verify tasks are
+    // still the OWNER's seed — then accept the pending proposal and verify the
+    // same scope-enforced merge the old direct-save path performed.
     const ownerLoad1 = await api('/api/cloud/projects/' + PID + '/load', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Owner-Code': OC }, body: JSON.stringify({}) });
-    const blobState = ownerLoad1.body && ownerLoad1.body.state;
-    check('P2.5c server-side merge: in-scope WBS change persisted', !!blobState && blobState.tasks[0].name === 'Edited again (WBS)', blobState && blobState.tasks);
-    check('P2.5d server-side merge: out-of-scope risk change NOT persisted', !!blobState && blobState.risks[0].name === 'Risk One', blobState && blobState.risks);
-    check('P2.5e server-side merge: other sections (charter) untouched', !!blobState && blobState.charter.name === NAME, blobState && blobState.charter);
+    const blobPre = ownerLoad1.body && ownerLoad1.body.state;
+    check('P2.5c REVIEW QUEUE: editor save did NOT move the blob yet', !!blobPre && blobPre.tasks[0].name === 'Task One', blobPre && blobPre.tasks);
+    const accRes = await api('/api/cloud/projects/' + PID + '/reviews/' + edSaveOut.body.reviewId + '/accept', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Owner-Code': OC }, body: JSON.stringify({})
+    });
+    check('P2.5c2 owner accept ok (applied wbs)', accRes.status === 200 && accRes.body && accRes.body.ok === true && accRes.body.status === 'accepted' && accRes.body.applied.indexOf('wbs') !== -1, accRes.text);
+    const ownerLoad1b = await api('/api/cloud/projects/' + PID + '/load', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Owner-Code': OC }, body: JSON.stringify({}) });
+    const blobState = ownerLoad1b.body && ownerLoad1b.body.state;
+    check('P2.5d server-side merge on accept: in-scope WBS change persisted', !!blobState && blobState.tasks[0].name === 'Edited again (WBS)', blobState && blobState.tasks);
+    check('P2.5e server-side merge on accept: out-of-scope risk change NOT persisted', !!blobState && blobState.risks[0].name === 'Risk One', blobState && blobState.risks);
+    check('P2.5f server-side merge on accept: other sections (charter) untouched', !!blobState && blobState.charter.name === NAME, blobState && blobState.charter);
 
     // A10: wrong/unknown/revoked editor codes -> identical generic 403
     const wrongEC = await api('/api/cloud/projects/' + PID + '/load', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Editor-Code': 'ZZZZ-ZZZZ-ZZZZ-ZZZZ' }, body: JSON.stringify({}) });
@@ -440,19 +451,27 @@ function baseState(pid, name) {
       method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Editor-Code': ECB },
       body: JSON.stringify({ state: stateB })
     });
-    check('P2.8a editor can save the first blob (no prior owner snapshot)', edSaveB.status === 200 && edSaveB.body && edSaveB.body.ok === true, edSaveB.text);
+    // REVIEW QUEUE: even the FIRST save on a project with no snapshot is a
+    // proposal — the owner accepts it, and only then is the blob created.
+    check('P2.8a editor first save is a pending proposal (no blob yet)', edSaveB.status === 200 && edSaveB.body && edSaveB.body.ok === true && edSaveB.body.review === 'pending' && !!edSaveB.body.reviewId, edSaveB.text);
+    const ownerLoadB0 = await api('/api/cloud/projects/' + PIDB + '/load', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Owner-Code': OCB }, body: JSON.stringify({}) });
+    check('P2.8b no blob before the owner accepts', ownerLoadB0.body && ownerLoadB0.body.state === null, ownerLoadB0.text);
+    const accB = await api('/api/cloud/projects/' + PIDB + '/reviews/' + edSaveB.body.reviewId + '/accept', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Owner-Code': OCB }, body: JSON.stringify({})
+    });
+    check('P2.8b2 owner accept bootstraps the blob', accB.status === 200 && accB.body && accB.body.ok === true, accB.text);
     const ownerLoadB = await api('/api/cloud/projects/' + PIDB + '/load', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Owner-Code': OCB }, body: JSON.stringify({}) });
     const blobB = ownerLoadB.body && ownerLoadB.body.state;
-    check('P2.8b editor-bootstrapped blob contains ONLY its scoped section (tasks)', !!blobB && blobB.tasks && blobB.tasks[0].name === 'Bootstrapped', blobB);
-    check('P2.8c editor-bootstrapped blob does NOT carry out-of-scope keys', !!blobB && (blobB.risks === undefined) && (blobB.charter === undefined), blobB);
+    check('P2.8c editor-bootstrapped blob contains ONLY its scoped section (tasks)', !!blobB && blobB.tasks && blobB.tasks[0].name === 'Bootstrapped', blobB);
+    check('P2.8d editor-bootstrapped blob does NOT carry out-of-scope keys', !!blobB && (blobB.risks === undefined) && (blobB.charter === undefined), blobB);
 
     // ==================================================================
     // PHASE B — changelog with revert
     // ==================================================================
     // B1: small owner edit -> field-level 'edit' entry. Base on the CURRENT
-    // blob (post-scope-merge) so only charter.name changes — a stale base
-    // would also revert the editor's WBS edit and split the entry.
-    const state2 = JSON.parse(JSON.stringify(ownerLoad1.body.state));
+    // blob (post-accept — ownerLoad1b) so only charter.name changes — a stale
+    // base would also overwrite the accepted WBS edit and split the entry.
+    const state2 = JSON.parse(JSON.stringify(ownerLoad1b.body.state));
     state2.charter.name = NAME + '-v2';
     const save2 = await api('/api/cloud/projects/' + PID + '/save', {
       method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Owner-Code': OC },
@@ -493,14 +512,22 @@ function baseState(pid, name) {
     const ownerLoad3 = await api('/api/cloud/projects/' + PID + '/load', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Owner-Code': OC }, body: JSON.stringify({}) });
     check('P3.2g revert-of-revert restored the reverted change', !!ownerLoad3.body.state && ownerLoad3.body.state.charter.name === NAME + '-v2', ownerLoad3.body && ownerLoad3.body.state && ownerLoad3.body.state.charter);
 
-    // B5: editor attribution + no editor revert
+    // B5: editor attribution via the review queue + no editor revert
     const edSaveAttr = await api('/api/cloud/projects/' + PID + '/save', {
       method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Editor-Code': EC },
       body: JSON.stringify({ state: stateE })
     });
-    check('P3.3a editor save ok', edSaveAttr.status === 200 && edSaveAttr.body && edSaveAttr.body.ok === true, edSaveAttr.text);
-    logRows = queryD1('SELECT id, entry_type, actor_type, actor_label, section, diffs_json FROM cloud_changelog WHERE project_id = ' + q(PID) + ' ORDER BY id DESC');
-    check('P3.3b editor change attributed to the editor code label', !!logRows && logRows[0].actor_type === 'editor' && logRows[0].actor_label === 'Site Super', logRows && logRows[0]);
+    check('P3.3a editor save ok (pending review)', edSaveAttr.status === 200 && edSaveAttr.body && edSaveAttr.body.ok === true && edSaveAttr.body.review === 'pending' && !!edSaveAttr.body.reviewId, edSaveAttr.text);
+    // Attribution: the proposal row carries the editor code label; accepting
+    // logs the changelog 'accepted' entry (owner-decided) with the diffs.
+    logRows = queryD1('SELECT source_label, status, editor_code_id FROM cloud_reviews WHERE project_id = ' + q(PID) + ' AND status = \'pending\' ORDER BY id DESC LIMIT 1');
+    check('P3.3b proposal attributed to the editor code label', !!logRows && logRows[0].source_label === 'Site Super' && logRows[0].editor_code_id !== null, logRows && logRows[0]);
+    const accAttr = await api('/api/cloud/projects/' + PID + '/reviews/' + edSaveAttr.body.reviewId + '/accept', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Owner-Code': OC }, body: JSON.stringify({})
+    });
+    check('P3.3c accept logs the accepted entry', accAttr.status === 200 && accAttr.body && accAttr.body.ok === true && accAttr.body.status === 'accepted', accAttr.text);
+    logRows = queryD1('SELECT entry_type, actor_type, diffs_json FROM cloud_changelog WHERE project_id = ' + q(PID) + ' ORDER BY id DESC');
+    check('P3.3d newest changelog entry is accepted with diffs', !!logRows && logRows[0].entry_type === 'accepted' && logRows[0].actor_type === 'owner' && !!logRows[0].diffs_json, logRows && logRows[0]);
     const editorRevokeAttempt = await api('/api/cloud/projects/' + PID + '/changelog/' + E1 + '/revert', {
       method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Editor-Code': EC }, body: JSON.stringify({})
     });

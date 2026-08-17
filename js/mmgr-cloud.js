@@ -113,6 +113,40 @@ var MMGR = window.MMGR || {};
     try { sessionStorage.setItem(escopeKey(), JSON.stringify({ label: label || '', sections: sections || [], role: role === 'view' ? 'view' : 'editor' })); } catch (e) { /* ignore */ }
   }
 
+  // ---- CLOUD-FIRST SYNC (PART 3, approved 2026-08-17): offline copies ---
+  // A registered copy is a VIEW-ONLY snapshot of the cloud project on this
+  // device. The registration lives server-side (offline_copies table, keyed
+  // on the device id); the device id + copy id + the cloud revision this
+  // copy last pulled are stored here (localStorage — a copy must survive
+  // reloads so the "Update offline copy" icon can persist).
+  function deviceId() {
+    try {
+      let id = localStorage.getItem('mmgr_device_id');
+      if (!id) {
+        id = (crypto.randomUUID ? crypto.randomUUID() : ('dev-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10)));
+        localStorage.setItem('mmgr_device_id', id);
+      }
+      return id;
+    } catch (e) {
+      return 'dev-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
+    }
+  }
+  function copyKey() { return 'mmgr_offline_copy_' + pid(); }
+  function getCopyRecord() {
+    try {
+      const raw = localStorage.getItem(copyKey());
+      if (!raw) return null;
+      const p = JSON.parse(raw);
+      return (p && p.copyId && p.deviceId) ? p : null;
+    } catch (e) { return null; }
+  }
+  function setCopyRecord(rec) {
+    try { localStorage.setItem(copyKey(), JSON.stringify(rec)); } catch (e) { /* ignore */ }
+  }
+  function clearCopyRecord() {
+    try { localStorage.removeItem(copyKey()); } catch (e) { /* ignore */ }
+  }
+
   // ---- last-seen cloud time (gap-audit B8/B9: last-synced indicator +
   // conflict heads-up). The server stamps updatedAt on every save; keeping
   // the most recent value here lets the app warn when a save we just made
@@ -406,9 +440,20 @@ var MMGR = window.MMGR || {};
       let statusMsg = 'Saved to cloud — ' + (data.savedAt || '').slice(0, 19).replace('T', ' ') + '.';
       if (data.actor === 'editor') {
         const scopeTxt = (data.scope || []).map(sectionLabel).join(', ');
-        statusMsg = 'Saved as editor (' + (data.editorLabel || 'editor') + ') — scope: ' + scopeTxt + '.';
-        if (data.applied && data.applied.length) statusMsg += ' Applied: ' + data.applied.map(sectionLabel).join(', ') + '.';
-        if (data.blocked && data.blocked.length) statusMsg += ' NOT saved (outside this code\u2019s scope): ' + data.blocked.map(sectionLabel).join(', ') + '.';
+        // REVIEW QUEUE (approved 2026-08-17, always on): an editor save is a
+        // PROPOSAL — the cloud does not move until the owner accepts it.
+        // Say exactly that instead of claiming the save landed.
+        if (data.review === 'pending') {
+          statusMsg = 'Saved for owner review (' + (data.editorLabel || 'editor') + ') — your change is pending acceptance before it reaches the cloud. Scope: ' + scopeTxt + '.';
+          if (data.blocked && data.blocked.length) statusMsg += ' Outside this code\u2019s scope: ' + data.blocked.map(sectionLabel).join(', ') + '.';
+        } else if (data.review === 'noop') {
+          statusMsg = 'Saved as editor (' + (data.editorLabel || 'editor') + ') — nothing new within this code\u2019s scope to send for review.';
+          if (data.blocked && data.blocked.length) statusMsg += ' Outside this code\u2019s scope: ' + data.blocked.map(sectionLabel).join(', ') + '.';
+        } else {
+          statusMsg = 'Saved as editor (' + (data.editorLabel || 'editor') + ') — scope: ' + scopeTxt + '.';
+          if (data.applied && data.applied.length) statusMsg += ' Applied: ' + data.applied.map(sectionLabel).join(', ') + '.';
+          if (data.blocked && data.blocked.length) statusMsg += ' NOT saved (outside this code\u2019s scope): ' + data.blocked.map(sectionLabel).join(', ') + '.';
+        }
       } else {
         statusMsg += ' Snapshot ' + (data.key || '').split('/').pop() + '.';
       }
@@ -776,8 +821,21 @@ var MMGR = window.MMGR || {};
         if (en.type === 'bulk') what = 'Full-state change (snapshot)';
         else if (en.type === 'revert') what = 'Revert of a previous change';
         else if (en.type === 'recovery') { what = 'Owner code reissued (recovery)'; revertBtn = ''; } // not a content change — not revertible
+        // CLOUD-FIRST SYNC (2026-08-17): a 'broadcast' entry means the owner
+        // pushed the current snapshot to all registered offline copies (or
+        // auto-broadcast fired on save). A push is not a content change, so
+        // it is not revertible — exactly like 'recovery'.
+        else if (en.type === 'broadcast') { what = 'Broadcast to offline copies'; revertBtn = ''; }
+        // REVIEW QUEUE (2026-08-17): 'accepted' = the owner approved an
+        // inbound change (editor save applied or AI import acknowledged) —
+        // carries the same leaf diffs as an 'edit', so it stays revertible.
+        // 'rejected' = the owner declined — nothing changed, not revertible.
+        else if (en.type === 'accepted') {
+          what = (isMCP ? 'Accepted AI change (MCP)' : 'Accepted change from review') + (en.diffs && en.diffs.length ? ' — ' + en.diffs.length + ' field(s) changed' : '');
+        }
+        else if (en.type === 'rejected') { what = (isMCP ? 'Rejected AI change (MCP)' : 'Rejected change from review'); revertBtn = ''; }
         else what = (en.diffs ? en.diffs.length : 0) + ' field(s) changed' + (en.section ? ' · ' + esc(sectionLabel(en.section)) : '');
-        if (isMCP) what = 'Imported from AI (MCP) — ' + what;
+        if (isMCP && en.type !== 'accepted' && en.type !== 'rejected') what = 'Imported from AI (MCP) — ' + what;
         // Click-to-expand diffs (backlog, 2026-08-12): any entry carrying
         // field-level diffs (edit + revert entries; bulk rows only hold a
         // snapshot key) gets a caret that reveals the before/after panel —
@@ -1094,7 +1152,17 @@ var MMGR = window.MMGR || {};
         '<button class="btn btn-n btn-s" data-action="cloudCopyCode"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy Code</button>' +
         '<button class="btn btn-o btn-s" data-action="cloudDropEditor"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> Use owner code instead</button>' +
         '</div>' +
-        '<div class="sr-hint">' + (isView ? 'Nothing you do here changes the cloud copy — reload anytime to see fresh data.' : 'Changes you save are attributed to this editor label in the owner\u2019s changelog.') + '</div>' +
+        // CLOUD-FIRST SYNC: "Make offline copy" (view-only, owner decision
+        // 2026-08-17) + "Update offline copy" when the copy is behind. The
+        // server registers the copy; this device is view-only so the pull
+        // overwrite is always safe (approved reconcile: copies never fight
+        // the cloud — the local auto-syncs up, the admin broadcasts down).
+        '<div class="sr" style="margin-top:8px"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Offline copy</span></div>' +
+        '<div id="cloud-offline-copy-box"></div>' +
+        // REVIEW QUEUE: the editor's own proposal status line (pending /
+        // accepted / rejected) — filled by cloudReviewMine() on render.
+        '<div id="cloud-review-mine"></div>' +
+        '<div class="sr-hint">' + (isView ? 'Nothing you do here changes the cloud copy — reload anytime to see fresh data.' : 'Changes you save wait for the owner\u2019s review before they reach the cloud project — accepted edits are logged in the changelog.') + '</div>' +
         '<div id="cloud-last-sync" class="sr-hint" role="status" aria-live="polite"></div>';
     } else {
       // OWNER MODE (owner code in session). The owner code + editor-code
@@ -1117,6 +1185,24 @@ var MMGR = window.MMGR || {};
         '<button class="btn btn-n btn-s" data-action="cloudLogList" style="margin-left:8px"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> View</button></div>' +
         '<div class="sr-hint">Every save is logged with field-level before/after values (or a snapshot for bulk changes). Revert is owner-only and itself logged — history is never erased.</div>' +
         '<div id="cloud-log-list"></div>' +
+        // CLOUD-FIRST SYNC (PART 3, approved 2026-08-17): the owner's
+        // broadcast controls — manual "Broadcast to other projects" + the
+        // per-project auto-broadcast toggle (owner decision: broadcast
+        // overwrites copies when the admin clicks OR auto-broadcast is on).
+        '<div class="sr" style="margin-top:8px"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-upload"></use></svg> Offline copies &amp; broadcast</span>' +
+        '<button class="btn btn-n btn-s" data-action="cloudBroadcast" style="margin-left:8px"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-bell"></use></svg> Broadcast to other projects</button></div>' +
+        '<div class="sr-hint">Registered offline copies update when you save (live refresh). Broadcast now pushes the current snapshot to every copy and logs it in the changelog.</div>' +
+        '<label class="pref" style="margin:6px 0 0;font-size:.72rem;display:flex;align-items:center;gap:6px">' +
+        '<input type="checkbox" id="cloud-auto-broadcast" data-action="cloudAutoBroadcast"> Auto-broadcast on every save (this project)</label>' +
+        '<div id="cloud-offline-list" style="margin-top:6px"></div>' +
+        // REVIEW QUEUE (approved 2026-08-17, always on): the owner's gate
+        // for changes from a non-owner source — editor saves and AI imports
+        // wait here as proposals until the owner accepts (applies) or
+        // rejects (discards). Nothing reaches the project without a decision.
+        '<div class="sr" style="margin-top:8px"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-check"></use></svg> Review incoming changes</span>' +
+        '<button class="btn btn-n btn-s" data-action="cloudReviewList" style="margin-left:8px"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> Refresh</button></div>' +
+        '<div class="sr-hint">Edits from editor codes (and AI imports) wait here for your decision — accept to apply them to the cloud project, reject to discard. The editor sees the outcome on their side.</div>' +
+        '<div id="cloud-review-list"></div>' +
         // ---- MASTER-ACTION-PLAN RANK 9.2: opt-in webhooks (owner-only) ----
         '<div class="sr" style="margin-top:8px"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-zap"></use></svg> Webhooks</span>' +
         '<button class="btn btn-n btn-s" data-action="cloudWebhookList" style="margin-left:8px"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> List</button></div>' +
@@ -1179,6 +1265,36 @@ var MMGR = window.MMGR || {};
 
     const host = $('cloud-gis-host');
     if (host && !host.querySelector('iframe, div[role=button]')) host.classList.add('is-hide');
+
+    // CLOUD-FIRST SYNC: fill the viewer/editor "Offline copy" box (Make /
+    // Update / Remove) and, in owner mode, the broadcast list + auto-toggle.
+    const copyBox = $('cloud-offline-copy-box');
+    if (copyBox) {
+      const rec = getCopyRecord();
+      if (!rec) {
+        copyBox.innerHTML = '<div class="exp-row">' +
+          '<button class="btn btn-n btn-s" data-action="cloudMakeCopy"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Make offline copy</button>' +
+          '</div>' +
+          '<div class="sr-hint">Keep a view-only snapshot of this project on this device. It updates automatically when the project changes or the admin broadcasts.</div>';
+      } else {
+        copyBox.innerHTML = '<div class="sr" style="font-size:.72rem;display:flex;align-items:center;gap:8px;flex-wrap:wrap">' +
+          '<span class="sr-hint" style="margin:0">View-only offline copy registered on this device.</span>' +
+          '<button class="btn btn-n btn-s" data-action="cloudUpdateCopy"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> Update offline copy</button>' +
+          '<button class="btn btn-o btn-s" data-action="cloudRemoveCopy"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> Remove copy</button>' +
+          '</div>' +
+          '<div class="sr-hint">Updates arrive automatically when the admin saves or broadcasts. The copy is view-only — nothing here can edit the project.</div>';
+      }
+    }
+    if (code) {
+      cloudOfflineList();
+      cloudReviewList();
+    } else if (getECode() && !getCode()) {
+      const escope2 = getEScope();
+      // REVIEW QUEUE: an EDITOR's own proposal status (pending / accepted /
+      // rejected) — the "review list with status" visibility approved for
+      // the source side. Viewers cannot save, so they have no proposals.
+      if (!(escope2 && escope2.role === 'view')) cloudReviewMine();
+    }
 
     // Load the section checkboxes + existing editor codes into owner mode.
     if (code) {
@@ -1264,6 +1380,354 @@ var MMGR = window.MMGR || {};
       clearCode(); clearECode(); setLastSeen(''); clearPendingEditorCode();
       await render();
       setStatus('Unlinked — the cloud copy is deleted. This device keeps its local data.', 'ok');
+    } catch (e) {
+      setStatus('Cloud is unavailable on this host (needs the Worker API).', 'err');
+    }
+  }
+
+  // =========================================================================
+  // CLOUD-FIRST SYNC (PART 3, approved 2026-08-17) — offline copies +
+  // broadcast. A registered copy is a VIEW-ONLY snapshot of this project on
+  // this device (owner decision: "View-only"). It updates when the main
+  // device saves (live refresh on save — approved scope) or when the admin
+  // broadcasts. Reconcile model (owner): the local is connected to the cloud,
+  // so changes made auto-sync up whenever a sync can happen, and the cloud
+  // broadcasts down to copies when the admin clicks "Broadcast to other
+  // projects" or turns on per-project auto-broadcast.
+  // =========================================================================
+  async function cloudMakeCopy() {
+    const cred = activeCredential();
+    if (!cred) { setStatus('No cloud credential in this session.', 'warn'); return; }
+    if (getCopyRecord()) { setStatus('This device already has an offline copy of this project.', 'warn'); return; }
+    setStatus('Registering offline copy…', 'busy');
+    try {
+      const headers = { 'Content-Type': 'application/json' };
+      headers[cred.header] = cred.code;
+      const res = await fetch('/api/cloud/projects/' + encodeURIComponent(pid()) + '/offline-copies', {
+        method: 'POST', credentials: 'same-origin', headers: headers,
+        body: JSON.stringify({ deviceId: deviceId() })
+      });
+      const data = await res.json().catch(function() { return {}; });
+      if (!res.ok || !data.ok || !data.copyId) {
+        setStatus((data && data.error) || 'Offline copy registration failed (HTTP ' + res.status + ').', 'err');
+        return;
+      }
+      setCopyRecord({ copyId: data.copyId, deviceId: deviceId(), lastCloudRev: data.revision || null });
+      await render();
+      setStatus('Offline copy registered on this device — it updates when the project changes or the admin broadcasts. View-only.', 'ok');
+    } catch (e) {
+      setStatus('Cloud is unavailable on this host (needs the Worker API).', 'err');
+    }
+  }
+
+  // Pull the newest cloud snapshot into this device's workspace WITHOUT a
+  // full page reload: adopt the state in memory (State.adoptExternal) and
+  // re-render (Render.renderAll), then stamp the copy's last_cloud_rev via
+  // the X-Device-Id header the server uses for freshness tracking. silent =
+  // the live-refresh path (rev-changed push) — no status churn; manual clicks
+  // get the friendly confirmation. Never throws.
+  async function cloudUpdateCopy(silent) {
+    const cred = activeCredential();
+    const rec = getCopyRecord();
+    if (!cred || !rec) { setStatus('No offline copy registered on this device yet — use Make offline copy first.', 'warn'); return; }
+    if (!silent) setStatus('Updating offline copy…', 'busy');
+    try {
+      const headers = { 'Content-Type': 'application/json', 'X-Device-Id': rec.deviceId };
+      headers[cred.header] = cred.code;
+      const res = await fetch('/api/cloud/projects/' + encodeURIComponent(pid()) + '/load', {
+        method: 'POST', credentials: 'same-origin', headers: headers, body: JSON.stringify({})
+      });
+      const data = await res.json().catch(function() { return {}; });
+      if (!res.ok || !data.ok) {
+        const raw = (data && data.error) || '';
+        const msg = raw === 'code_revoked' ? 'This code was revoked by the project admin. Contact them for a new one.'
+          : raw === 'project_deleted' ? 'This project was deleted by the admin. It is no longer available from the cloud.'
+          : raw || 'Offline copy update failed (HTTP ' + res.status + ').';
+        if (!silent) setStatus(msg, 'err');
+        return;
+      }
+      if (!data.state) { if (!silent) setStatus('No cloud snapshot to pull yet — the admin needs to save once first.', 'warn'); return; }
+      try {
+        localStorage.setItem('mmgr_state_' + pid(), JSON.stringify(data.state));
+        localStorage.setItem('mmgr_unlocked_' + pid(), '1');
+        localStorage.setItem('mmgr_scope_' + pid(), 'full');
+        localStorage.setItem('mmgr_current_project', pid());
+      } catch (e) { /* storage blocked — in-memory adopt below still applies */ }
+      const S = window.MMGR.State;
+      if (S && typeof S.adoptExternal === 'function') S.adoptExternal(data.state);
+      const R = window.MMGR.Render;
+      if (R && typeof R.renderAll === 'function') { try { R.renderAll(); } catch (e) { /* render is best-effort */ } }
+      if (data.savedAt) {
+        setLastSeen(data.savedAt);
+        rec.lastCloudRev = data.savedAt;
+        setCopyRecord(rec);
+      }
+      if (!silent) setStatus('Offline copy updated — this device now matches the cloud (' + (data.savedAt || '').slice(0, 19).replace('T', ' ') + ').', 'ok');
+    } catch (e) {
+      if (!silent) setStatus('Cloud is unavailable on this host (needs the Worker API).', 'err');
+    }
+  }
+
+  // Remove this device's offline copy (server unregister + local record).
+  async function cloudRemoveCopy() {
+    const rec = getCopyRecord();
+    const cred = activeCredential();
+    if (!rec) { setStatus('No offline copy registered on this device.', 'warn'); return; }
+    if (!window.confirm('Remove this device\u2019s offline copy? It stops receiving updates; the cloud project and other copies are untouched.')) return;
+    try {
+      if (cred) {
+        const headers = { 'Content-Type': 'application/json', 'X-Device-Id': rec.deviceId };
+        headers[cred.header] = cred.code;
+        const res = await fetch('/api/cloud/projects/' + encodeURIComponent(pid()) + '/offline-copies/' + encodeURIComponent(rec.copyId), {
+          method: 'DELETE', credentials: 'same-origin', headers: headers,
+          body: JSON.stringify({ deviceId: rec.deviceId })
+        });
+        // 404/403 on an already-gone copy is fine — the local record is the
+        // source of truth for "this device has a copy" going forward.
+        if (!res.ok) { /* keep going — clear the local record either way */ }
+      }
+      clearCopyRecord();
+      await render();
+      setStatus('Offline copy removed.', 'ok');
+    } catch (e) {
+      setStatus('Cloud is unavailable on this host (needs the Worker API).', 'err');
+    }
+  }
+
+  // Owner: list registered offline copies into the broadcast UI + refresh
+  // the auto-broadcast toggle state. Zero-throw; failure leaves the row
+  // with a quiet "could not load" note.
+  async function cloudOfflineList() {
+    const wrap = $('cloud-offline-list');
+    if (!wrap) return;
+    const code = getCode();
+    if (!code) { wrap.innerHTML = '<div class="sr-hint">Owner code required.</div>'; return; }
+    try {
+      const res = await fetch('/api/cloud/projects/' + encodeURIComponent(pid()) + '/offline-copies', {
+        method: 'GET', credentials: 'same-origin', headers: { 'X-Owner-Code': code }
+      });
+      const data = await res.json().catch(function() { return {}; });
+      if (!res.ok || !data.ok) { wrap.innerHTML = '<div class="sr-hint">Could not load offline copies.</div>'; return; }
+      const copies = data.copies || [];
+      const toggle = $('cloud-auto-broadcast');
+      if (toggle) toggle.checked = !!data.autoBroadcast;
+      if (!copies.length) {
+        wrap.innerHTML = '<div class="sr-hint">No offline copies registered yet — recipients click Make offline copy inside their view.</div>';
+        return;
+      }
+      wrap.innerHTML = copies.map(function(c) {
+        const pulled = c.lastPulledAt ? String(c.lastPulledAt).slice(0, 19).replace('T', ' ') : 'never';
+        return '<div class="sr" style="font-size:.72rem;display:flex;align-items:center;gap:8px;flex-wrap:wrap">' +
+          '<span class="sr-hint" style="margin:0">' + esc(String(c.deviceId).slice(0, 24)) + '</span>' +
+          '<span class="sr-hint" style="margin:0">last pulled ' + esc(pulled) + '</span>' +
+          '<button class="btn btn-o btn-s" data-action="cloudOfflineRemove" data-id="' + esc(c.id) + '">Remove</button>' +
+          '</div>';
+      }).join('');
+    } catch (e) {
+      wrap.innerHTML = '<div class="sr-hint">Cloud unavailable here.</div>';
+    }
+  }
+
+  // Owner: manual "Broadcast to other projects" — pushes the current
+  // revision to every registered copy (connected ones refresh instantly via
+  // the Presence DO) and records a changelog 'broadcast' entry.
+  async function cloudBroadcast() {
+    const code = getCode();
+    if (!code) { setStatus('Owner code required to broadcast.', 'warn'); return; }
+    if (!window.confirm('Broadcast to other projects now? Every registered offline copy is told the cloud moved and will pull the latest snapshot. View-only copies cannot edit, so nothing is lost.')) return;
+    setStatus('Broadcasting…', 'busy');
+    try {
+      const res = await fetch('/api/cloud/projects/' + encodeURIComponent(pid()) + '/broadcast', {
+        method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json', 'X-Owner-Code': code },
+        body: JSON.stringify({})
+      });
+      const data = await res.json().catch(function() { return {}; });
+      if (!res.ok || !data.ok) { setStatus((data && data.error) || 'Broadcast failed (HTTP ' + res.status + ').', 'err'); return; }
+      setStatus('Broadcast sent — ' + (data.copies || 0) + ' registered copy/copies will update to the current snapshot.', 'ok');
+      cloudOfflineList();
+    } catch (e) {
+      setStatus('Cloud is unavailable on this host (needs the Worker API).', 'err');
+    }
+  }
+
+  // Owner: toggle per-project auto-broadcast (every save also broadcasts).
+  async function cloudAutoBroadcast() {
+    const code = getCode();
+    if (!code) { setStatus('Owner code required.', 'warn'); return; }
+    const toggle = $('cloud-auto-broadcast');
+    const enabled = !!(toggle && toggle.checked);
+    try {
+      const res = await fetch('/api/cloud/projects/' + encodeURIComponent(pid()) + '/auto-broadcast', {
+        method: 'PUT', credentials: 'same-origin', headers: { 'Content-Type': 'application/json', 'X-Owner-Code': code },
+        body: JSON.stringify({ enabled: enabled })
+      });
+      const data = await res.json().catch(function() { return {}; });
+      if (!res.ok || !data.ok) {
+        if (toggle) toggle.checked = !enabled; // revert the checkbox on failure
+        setStatus((data && data.error) || 'Auto-broadcast toggle failed (HTTP ' + res.status + ').', 'err');
+        return;
+      }
+      setStatus(enabled ? 'Auto-broadcast ON — every save also broadcasts to registered copies.' : 'Auto-broadcast OFF — broadcast manually when you want to push.', 'ok');
+    } catch (e) {
+      if (toggle) toggle.checked = !enabled;
+      setStatus('Cloud is unavailable on this host (needs the Worker API).', 'err');
+    }
+  }
+
+  // Owner: remove a specific registered copy from the broadcast list.
+  async function cloudOfflineRemove(id) {
+    const code = getCode();
+    if (!code || !id) return;
+    if (!window.confirm('Remove this offline copy? The device stops receiving updates; the cloud project and its other copies are untouched.')) return;
+    try {
+      const res = await fetch('/api/cloud/projects/' + encodeURIComponent(pid()) + '/offline-copies/' + encodeURIComponent(id), {
+        method: 'DELETE', credentials: 'same-origin', headers: { 'Content-Type': 'application/json', 'X-Owner-Code': code }
+      });
+      const data = await res.json().catch(function() { return {}; });
+      if (!res.ok || !data.ok) { setStatus((data && data.error) || 'Remove failed (HTTP ' + res.status + ').', 'err'); return; }
+      setStatus('Offline copy removed.', 'ok');
+      cloudOfflineList();
+    } catch (e) {
+      setStatus('Cloud is unavailable on this host (needs the Worker API).', 'err');
+    }
+  }
+
+  // ---- REVIEW QUEUE (2026-08-17, approved "always on") -------------------
+  // Owner: list proposals (pending first) into the Review section. Each
+  // row shows the source (editor label or MCP AI), proposed time, an
+  // expandable before/after diff panel, and Accept / Reject for pending
+  // ones; decided rows show their status. Zero-throw.
+  async function cloudReviewList() {
+    const wrap = $('cloud-review-list');
+    if (!wrap) return;
+    const code = getCode();
+    if (!code) { wrap.innerHTML = '<div class="sr-hint">Owner code required.</div>'; return; }
+    try {
+      const res = await fetch('/api/cloud/projects/' + encodeURIComponent(pid()) + '/reviews', {
+        method: 'GET', credentials: 'same-origin', headers: { 'X-Owner-Code': code }
+      });
+      const data = await res.json().catch(function() { return {}; });
+      if (!res.ok || !data.ok) { wrap.innerHTML = '<div class="sr-hint">Could not load proposals.</div>'; return; }
+      const props = data.proposals || [];
+      if (!props.length) {
+        wrap.innerHTML = '<div class="sr-hint">Nothing waiting for review — edits from editor codes and AI imports land here until you accept them.</div>';
+        return;
+      }
+      wrap.innerHTML = props.map(function(p) {
+        const isMCP = p.sourceType === 'mcp';
+        const src = isMCP
+          ? '<span class="badge-ai"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg> MCP AI</span> ' + esc(p.sourceLabel || 'AI edit')
+          : '<strong>' + esc(p.sourceLabel || 'Editor') + '</strong> (editor)';
+        const when = String(p.proposedAt || '').slice(0, 19).replace('T', ' ');
+        const badge = p.status === 'pending'
+          ? '<span class="badge" style="color:var(--gold);border:1px solid rgba(245,158,11,.35);background:rgba(245,158,11,.12)">pending</span>'
+          : p.status === 'accepted'
+            ? '<span class="badge" style="color:var(--green);border:1px solid var(--green);background:rgba(16,185,129,.12)">accepted</span>'
+            : '<span class="badge" style="color:#ef4444;border:1px solid rgba(239,68,68,.5);background:rgba(239,68,68,.12)">rejected</span>';
+        let actions = '';
+        if (p.status === 'pending') {
+          actions = '<button class="btn btn-g btn-s" data-action="cloudReviewAccept" data-id="' + p.id + '"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-check"></use></svg> Accept</button>' +
+            '<button class="btn btn-o btn-s" data-action="cloudReviewReject" data-id="' + p.id + '"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> Reject</button>';
+        } else {
+          const decided = (p.status === 'accepted' ? 'Accepted ' : 'Rejected ') + String(p.decidedAt || '').slice(0, 19).replace('T', ' ');
+          actions = '<span class="sr-hint" style="margin:0">' + esc(decided) + (p.decidedBy ? ' by ' + esc(p.decidedBy) : '') + '</span>';
+        }
+        const nDiffs = Array.isArray(p.diffs) ? p.diffs.length : 0;
+        const diffsToggle = nDiffs
+          ? '<button type="button" class="cl-toggle" data-action="cloudReviewToggleDiffs" data-id="' + p.id + '" aria-expanded="false" aria-controls="rv-diffs-' + p.id + '" aria-label="Show field diffs for proposal ' + p.id + '" title="Show field-level before/after values"></button>'
+          : '';
+        const diffsPanel = nDiffs
+          ? '<div class="cl-diffs is-hide" id="rv-diffs-' + p.id + '">' + renderDiffPanel({ diffs: p.diffs }) + '</div>'
+          : '';
+        return '<div class="sr" style="border:1px solid var(--border);border-radius:var(--radius);padding:6px 8px;margin-top:6px">' +
+          '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">' + src + badge + diffsToggle +
+          '<span class="sr-hint" style="margin:0">proposed ' + esc(when) + '</span>' +
+          '<span style="margin-left:auto;display:flex;align-items:center;gap:6px;flex-wrap:wrap">' + actions + '</span>' +
+          '</div>' + diffsPanel +
+          '</div>';
+      }).join('');
+    } catch (e) {
+      wrap.innerHTML = '<div class="sr-hint">Cloud unavailable here.</div>';
+    }
+  }
+
+  // Editor: their own proposal status (pending / accepted / rejected) — the
+  // "review list with status" visibility approved for the source side.
+  async function cloudReviewMine() {
+    const wrap = $('cloud-review-mine');
+    if (!wrap) return;
+    try {
+      const res = await fetch('/api/cloud/projects/' + encodeURIComponent(pid()) + '/reviews?mine=1', {
+        method: 'GET', credentials: 'same-origin', headers: { 'X-Editor-Code': getECode() }
+      });
+      const data = await res.json().catch(function() { return {}; });
+      if (!res.ok || !data.ok) { wrap.innerHTML = ''; return; }
+      const props = data.proposals || [];
+      if (!props.length) { wrap.innerHTML = '<div class="sr-hint">Your edits wait for the admin\u2019s review before reaching the cloud — status appears here after you save.</div>'; return; }
+      const latest = props[0];
+      const when = String(latest.proposedAt || '').slice(0, 19).replace('T', ' ');
+      const statusTxt = latest.status === 'pending' ? 'pending the admin\u2019s review (proposed ' + when + ')'
+        : latest.status === 'accepted' ? 'accepted on ' + String(latest.decidedAt || '').slice(0, 19).replace('T', ' ') + ' — it is now in the cloud project'
+        : 'rejected on ' + String(latest.decidedAt || '').slice(0, 19).replace('T', ' ') + ' — it did not reach the project';
+      wrap.innerHTML = '<div class="sr-hint" style="margin-top:6px">Your last change: <strong>' + esc(statusTxt) + '</strong>.</div>';
+    } catch (e) {
+      wrap.innerHTML = '';
+    }
+  }
+
+  // Toggle a proposal's diff panel (mirror of toggleDiffs, review list).
+  function reviewToggleDiffs(id) {
+    const panel = $('rv-diffs-' + id);
+    if (!panel) return;
+    const show = panel.classList.contains('is-hide');
+    panel.classList.toggle('is-hide');
+    const btn = document.querySelector('#cloud-review-list [data-action="cloudReviewToggleDiffs"][data-id="' + String(id).replace(/"/g, '&quot;') + '"]');
+    if (btn) {
+      btn.classList.toggle('open', show);
+      btn.setAttribute('aria-expanded', show ? 'true' : 'false');
+    }
+  }
+
+  // Owner: accept a proposal — the scoped merge applies to the cloud
+  // snapshot (or the MCP audit row is written), changelog 'accepted'.
+  async function cloudReviewAccept(id) {
+    const code = getCode();
+    if (!code || !id) return;
+    if (!window.confirm('Accept this change? It is applied to the cloud project now and logged in the changelog (and offline copies refresh).')) return;
+    setStatus('Accepting…', 'busy');
+    try {
+      const res = await fetch('/api/cloud/projects/' + encodeURIComponent(pid()) + '/reviews/' + encodeURIComponent(id) + '/accept', {
+        method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json', 'X-Owner-Code': code },
+        body: JSON.stringify({})
+      });
+      const data = await res.json().catch(function() { return {}; });
+      if (!res.ok || !data.ok) { setStatus((data && data.error) || 'Accept failed (HTTP ' + res.status + ').', 'err'); return; }
+      setStatus('Accepted — the change is now in the cloud project' + (data.savedAt ? ' (' + String(data.savedAt).slice(0, 19).replace('T', ' ') + ')' : '') + '. Load from Cloud to pull it into this workspace.', 'ok');
+      cloudReviewList();
+      cloudMetaStatus().then(function(txt) {
+        const el = $('cloud-last-sync');
+        if (el && txt) el.textContent = txt;
+      });
+    } catch (e) {
+      setStatus('Cloud is unavailable on this host (needs the Worker API).', 'err');
+    }
+  }
+
+  // Owner: reject a proposal — discarded, changelog 'rejected', no state change.
+  async function cloudReviewReject(id) {
+    const code = getCode();
+    if (!code || !id) return;
+    if (!window.confirm('Reject this change? It is discarded — the cloud project stays as it is, and the source device sees it was rejected.')) return;
+    setStatus('Rejecting…', 'busy');
+    try {
+      const res = await fetch('/api/cloud/projects/' + encodeURIComponent(pid()) + '/reviews/' + encodeURIComponent(id) + '/reject', {
+        method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json', 'X-Owner-Code': code },
+        body: JSON.stringify({})
+      });
+      const data = await res.json().catch(function() { return {}; });
+      if (!res.ok || !data.ok) { setStatus((data && data.error) || 'Reject failed (HTTP ' + res.status + ').', 'err'); return; }
+      setStatus('Rejected — the change was discarded. The cloud project is unchanged.', 'ok');
+      cloudReviewList();
     } catch (e) {
       setStatus('Cloud is unavailable on this host (needs the Worker API).', 'err');
     }
@@ -1365,6 +1829,26 @@ var MMGR = window.MMGR || {};
   document.addEventListener('mmgr:google-signed-in', function() { _signedIn = true; render(); });
   document.addEventListener('mmgr:google-signed-out', function() { _signedIn = false; render(); });
 
+  // ---- CLOUD-FIRST SYNC: live refresh on save (approved scope) -----------
+  // The Presence WebSocket delivers `{type:'rev-changed', revision}` when the
+  // main device saves or the admin broadcasts. A REGISTERED copy on this
+  // device auto-pulls the fresh snapshot (view-only, so the overwrite is
+  // always safe — approved reconcile: copies never fight the cloud). Only
+  // viewers auto-pull; an editor with a registered copy pulls manually (their
+  // workspace may hold in-flight scoped edits — the manual button pushes
+  // local changes up first, then pulls, per the owner's auto-sync-up model).
+  let _revPullBusy = false;
+  document.addEventListener('mmgr:rev-changed', function(ev) {
+    const rec = getCopyRecord();
+    if (!rec) return; // no copy on this device — nothing to refresh
+    if (_revPullBusy) return;
+    const escope = getEScope();
+    const isView = !!(getECode() && !getCode() && escope && escope.role === 'view');
+    if (!isView) { render(); return; } // editor copy: just refresh the box (manual Update)
+    _revPullBusy = true;
+    cloudUpdateCopy(true).then(function() { _revPullBusy = false; });
+  });
+
   // ---- public API ---------------------------------------------------------
   ns.Cloud = {
     render: render,
@@ -1397,6 +1881,28 @@ var MMGR = window.MMGR || {};
     getCode: getCode,
     getECode: getECode,
     getEScope: getEScope,
+    // CLOUD-FIRST SYNC (PART 3, approved 2026-08-17): offline copies +
+    // broadcast. cloudMakeCopy registers this device (view-only);
+    // cloudUpdateCopy pulls the newest snapshot (silent = live refresh);
+    // cloudRemoveCopy unregisters; cloudBroadcast/cloudAutoBroadcast are the
+    // owner's manual + automatic broadcast controls; cloudOfflineList feeds
+    // the owner's Broadcast UI; cloudOfflineRemove drops one registered copy.
+    cloudMakeCopy: cloudMakeCopy,
+    cloudUpdateCopy: cloudUpdateCopy,
+    cloudRemoveCopy: cloudRemoveCopy,
+    cloudBroadcast: cloudBroadcast,
+    cloudAutoBroadcast: cloudAutoBroadcast,
+    cloudOfflineList: cloudOfflineList,
+    cloudOfflineRemove: cloudOfflineRemove,
+    // REVIEW QUEUE (2026-08-17, approved "always on"): the owner's review
+    // list + accept/reject decisions and the editor's own status view.
+    cloudReviewList: cloudReviewList,
+    cloudReviewMine: cloudReviewMine,
+    cloudReviewAccept: cloudReviewAccept,
+    cloudReviewReject: cloudReviewReject,
+    reviewToggleDiffs: reviewToggleDiffs,
+    _deviceId: deviceId,
+    _getCopyRecord: getCopyRecord,
     // test hooks (qa-cloud-phase1.cjs / qa-cloud-phase2.cjs)
     _pid: pid,
     _readProjectState: readProjectState,

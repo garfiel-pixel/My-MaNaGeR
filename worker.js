@@ -786,6 +786,8 @@ async function purgeStaleCloudProjects(env) {
     await env.DB.prepare('DELETE FROM cloud_editor_codes WHERE project_id = ?').bind(pid).run();
     await env.DB.prepare('DELETE FROM cloud_adoptions WHERE project_id = ?').bind(pid).run();
     await env.DB.prepare('DELETE FROM cloud_changelog WHERE project_id = ?').bind(pid).run();
+    await env.DB.prepare('DELETE FROM offline_copies WHERE project_id = ?').bind(pid).run();
+    await env.DB.prepare('DELETE FROM cloud_reviews WHERE project_id = ?').bind(pid).run();
     await env.DB.prepare('DELETE FROM cloud_projects WHERE project_id = ?').bind(pid).run();
     purged.push({ projectId: pid, label: stale[i].owner_label || null, purgedAt: new Date().toISOString() });
   }
@@ -810,6 +812,8 @@ async function purgeStaleCloudProjects(env) {
     await env.DB.prepare('DELETE FROM cloud_editor_codes WHERE project_id = ?').bind(pid).run();
     await env.DB.prepare('DELETE FROM cloud_adoptions WHERE project_id = ?').bind(pid).run();
     await env.DB.prepare('DELETE FROM cloud_changelog WHERE project_id = ?').bind(pid).run();
+    await env.DB.prepare('DELETE FROM offline_copies WHERE project_id = ?').bind(pid).run();
+    await env.DB.prepare('DELETE FROM cloud_reviews WHERE project_id = ?').bind(pid).run();
     await env.DB.prepare('DELETE FROM cloud_projects WHERE project_id = ?').bind(pid).run();
     purged.push({ projectId: pid, label: 'deleted', purgedAt: new Date().toISOString() });
   }
@@ -1162,8 +1166,11 @@ function cloudSectionOfDiffs(diffs) {
 
 // Record one changelog row for a save. Returns {id,type} or null when
 // nothing changed / first save. Field-level 'edit' for <= cap leaves,
-// snapshot 'bulk' above it.
-async function cloudLogSave(env, projectId, prev, next, actor) {
+// snapshot 'bulk' above it. entryType (optional) overrides the entry
+// type — REVIEW QUEUE (2026-08-17) uses 'accepted' so an accepted
+// proposal is logged as the audit record of the owner's decision
+// (still revertible via the same leaf/snapshot machinery).
+async function cloudLogSave(env, projectId, prev, next, actor, entryType) {
   const diffs = cloudDiffState(prev, next);
   if (diffs === null || diffs.length === 0) return null;
   const now = new Date().toISOString();
@@ -1172,14 +1179,14 @@ async function cloudLogSave(env, projectId, prev, next, actor) {
     await env.R2.put(snapKey, JSON.stringify(prev), { httpMetadata: { contentType: 'application/json' } });
     const res = await env.DB.prepare(
       'INSERT INTO cloud_changelog (project_id, entry_type, actor_type, actor_label, section, diffs_json, snapshot_key, created_at) VALUES (?,?,?,?,?,?,?,?)'
-    ).bind(projectId, 'bulk', actor.type, actor.label, null, null, snapKey, now).run();
-    return { id: res.meta.last_row_id, type: 'bulk' };
+    ).bind(projectId, entryType || 'bulk', actor.type, actor.label, null, null, snapKey, now).run();
+    return { id: res.meta.last_row_id, type: entryType || 'bulk' };
   }
   const sec = cloudSectionOfDiffs(diffs);
   const res = await env.DB.prepare(
     'INSERT INTO cloud_changelog (project_id, entry_type, actor_type, actor_label, section, diffs_json, snapshot_key, created_at) VALUES (?,?,?,?,?,?,?,?)'
-  ).bind(projectId, 'edit', actor.type, actor.label, sec, JSON.stringify(diffs), null, now).run();
-  return { id: res.meta.last_row_id, type: 'edit' };
+  ).bind(projectId, entryType || 'edit', actor.type, actor.label, sec, JSON.stringify(diffs), null, now).run();
+  return { id: res.meta.last_row_id, type: entryType || 'edit' };
 }
 
 // ---- state-path utilities (revert) ------------------------------
@@ -1547,7 +1554,10 @@ async function handleCloudChangelogRevert(request, env, projectId, entryId) {
   if (!cur) return json({ ok: false, error: 'no snapshot to revert against' }, 400);
   const now = new Date().toISOString();
   let next; let logDiffs = null; let logSnapKey = null;
-  if (entry.entry_type === 'edit' || (entry.entry_type === 'revert' && !entry.snapshot_key)) {
+  // REVIEW QUEUE (2026-08-17): an 'accepted' entry carries the same
+  // field-level diffs as an 'edit' — reverting it undoes the accepted
+  // proposal exactly like an editor save.
+  if (entry.entry_type === 'edit' || entry.entry_type === 'accepted' || (entry.entry_type === 'revert' && !entry.snapshot_key)) {
     let diffs = [];
     try { if (entry.diffs_json) diffs = JSON.parse(entry.diffs_json); } catch (e) { diffs = []; }
     const pre = JSON.parse(JSON.stringify(cur));
@@ -1730,15 +1740,18 @@ async function handleCloudChangelogImport(request, env, projectId) {
     }
     const v = cloudVerifyImportedDiffs(cur, e.diffs);
     if (!v.ok) { skipped.push({ localId: e.localId, reason: v.reason }); continue; }
-    // MCP 'bulk' entries carry field diffs, not an R2 snapshot — store them
-    // as 'edit' so the existing revert route can undo them.
-    const type = e.type === 'bulk' ? 'edit' : e.type;
+    // REVIEW QUEUE (2026-08-17, always on): an imported AI edit becomes a
+    // PENDING PROPOSAL, not an instant changelog row — the owner reviews it
+    // in the Review section and ACCEPTS (the audit 'accepted' row is then
+    // written) or REJECTS ('rejected' row, no audit entry). The blob is
+    // already in the produced state (verified above), so accept is an
+    // audit-acknowledgement; the diffs + original actor ride the proposal.
     const sec = cloudSectionOfDiffs(e.diffs);
     const res = await env.DB.prepare(
-      "INSERT INTO cloud_changelog (project_id, entry_type, actor_type, actor_label, section, diffs_json, snapshot_key, created_at, import_key) VALUES (?,?,?,?,?,?,?,?,?) ON CONFLICT(import_key) DO NOTHING"
-    ).bind(projectId, type, e.actorType, e.label, sec, JSON.stringify(e.diffs), null, e.createdAt, 'mcp:' + projectId + ':' + e.localId).run();
+      'INSERT INTO cloud_reviews (project_id, proposal_type, source_type, source_label, diffs_json, section, actor_type, import_key, status, proposed_at) VALUES (?,?,?,?,?,?,?,?,?,?) ON CONFLICT(import_key) DO NOTHING'
+    ).bind(projectId, 'mcp', 'mcp', e.label || 'MCP AI', JSON.stringify(e.diffs), sec, e.actorType || 'mcp', 'mcp:' + projectId + ':' + e.localId, 'pending', e.createdAt).run();
     if (!res.meta.changes) { skipped.push({ localId: e.localId, reason: 'already imported' }); continue; }
-    imported.push({ localId: e.localId, cloudId: res.meta.last_row_id, type: type, section: sec });
+    imported.push({ localId: e.localId, reviewId: res.meta.last_row_id, type: 'mcp', section: sec });
   }
   // An import is the owner proving presence — refresh the purge window.
   if (imported.length) await cloudTouchOwner(env, projectId);
@@ -2031,6 +2044,31 @@ function stripStateSecrets(obj) {
 //   OR X-Editor-Code (editor, server-side section-scope merge — Phase 2).
 // Body: { state } (+ optional ownerCode/editorCode fallback).
 // On every successful save a changelog row is recorded (Phase 3).
+// ---- REVIEW QUEUE (2026-08-17, approved "always on") ----------------
+// An editor's scoped save becomes a PENDING proposal instead of moving the
+// blob. The raw submission + grant scope are stored so ACCEPT re-runs the
+// SAME cloudScopeMerge against the then-current snapshot (honest diffs at
+// apply time, same enforcement as today's save). Leaf diffs vs the snapshot
+// at propose time are stored for the review UI (fieldTs excluded — it is
+// server-managed metadata, not content). Last-proposal-wins: a new save
+// from the same editor code REPLACES that editor's still-pending proposal.
+// Returns { status, reviewId, applied, blocked }; status 'noop' means the
+// editor's grant would change nothing (no proposal row created).
+async function queueEditorProposal(env, projectId, a, submitted, prev, now) {
+  const merged = cloudScopeMerge(prev, submitted, a.scope);
+  const scope = Array.isArray(a.scope) ? a.scope : [];
+  if (!merged.applied.length) return { status: 'noop', reviewId: null, applied: merged.applied, blocked: merged.blocked };
+  let diffs = cloudDiffState(prev, merged.next) || [];
+  diffs = diffs.filter(function(d) { return String(d.path).indexOf('fieldTs') !== 0; });
+  await env.DB.prepare('DELETE FROM cloud_reviews WHERE project_id = ? AND editor_code_id = ? AND status = ?')
+    .bind(projectId, a.editorId, 'pending').run();
+  const res = await env.DB.prepare(
+    'INSERT INTO cloud_reviews (project_id, proposal_type, source_type, source_label, editor_code_id, scope, submitted_json, diffs_json, status, proposed_at) VALUES (?,?,?,?,?,?,?,?,?,?)'
+  ).bind(projectId, 'save', 'editor', a.label || 'Editor', a.editorId, JSON.stringify(scope),
+    JSON.stringify(stripStateSecrets(submitted)), JSON.stringify(diffs), 'pending', now).run();
+  return { status: 'pending', reviewId: res.meta.last_row_id, applied: merged.applied, blocked: merged.blocked };
+}
+
 async function handleCloudSave(request, env, projectId) {
   const read = await readCloudBody(request);
   if (read.tooLarge) return json({ ok: false, error: 'body too large' }, 413);
@@ -2070,17 +2108,23 @@ async function handleCloudSave(request, env, projectId) {
     const a = adoptAuth;
     authRow = a.row;
     actor = { type: 'editor', label: a.label };
-    const merged = cloudScopeMerge(prev, read.body.state, a.scope);
-    next = merged.next;
-    scopeReport = { scope: a.scope, editorLabel: a.label, applied: merged.applied, blocked: merged.blocked };
+    // REVIEW QUEUE (approved 2026-08-17, always on): an editor's save is a
+    // PROPOSAL — never applied directly. The blob does not move (and no
+    // rev-changed push fires) until the owner accepts. The raw submission
+    // + grant scope are stored so ACCEPT re-runs this same scope merge.
+    const queued = await queueEditorProposal(env, projectId, a, read.body.state, prev, now);
+    return json({ ok: true, review: queued.status, reviewId: queued.reviewId, actor: 'editor', editorLabel: a.label, scope: a.scope, applied: queued.applied, blocked: queued.blocked, previousUpdatedAt: (prev && prev.updatedAt) || null });
   } else {
     const a = await cloudAuthEditor(request, env, projectId, editorCode);
     if (!a) return cloudForbidden();
     authRow = a.row;
     actor = { type: 'editor', label: a.label };
-    const merged = cloudScopeMerge(prev, read.body.state, a.scope);
-    next = merged.next;
-    scopeReport = { scope: a.scope, editorLabel: a.label, applied: merged.applied, blocked: merged.blocked };
+    // CLOUD-CODES-AND-DELETE: a soft-deleted (admin-deleted) project must
+    // not accept proposals either — checked on the SAME row read the auth
+    // already did.
+    if (authRow && authRow.deleted_at) return cloudProjectDeleted();
+    const queued = await queueEditorProposal(env, projectId, a, read.body.state, prev, now);
+    return json({ ok: true, review: queued.status, reviewId: queued.reviewId, actor: 'editor', editorLabel: a.label, scope: a.scope, applied: queued.applied, blocked: queued.blocked, previousUpdatedAt: (prev && prev.updatedAt) || null });
   }
   // CLOUD-CODES-AND-DELETE: a soft-deleted (admin-deleted) project must not
   // accept any further writes — the tombstone is checked on the SAME row
@@ -2101,7 +2145,37 @@ async function handleCloudSave(request, env, projectId) {
   resp.previousUpdatedAt = (prev && prev.updatedAt) || null;
   if (scopeReport) Object.assign(resp, scopeReport);
   if (entry) resp.changelog = entry;
+  // CLOUD-FIRST SYNC (PART 3, approved 2026-08-17): live refresh on save —
+  // every successful save pushes rev-changed to CONNECTED copies so they
+  // update instantly (the approved "copies update when the main device
+  // saves" scope; still never project content over the socket). When the
+  // owner has turned on per-project AUTO-BROADCAST, the save also records a
+  // changelog 'broadcast' entry so the audit trail shows the propagation.
+  // Both are gated on the project having >=1 registered copy — a project
+  // with no copies needs neither the push nor the entry (and a DO fetch
+  // would otherwise wake an idle DO for nothing). Never fails the save.
+  await cloudPushRevChangedIfCopies(env, projectId, now, actor);
   return json(resp);
+}
+
+// REVIEW QUEUE shared push: after an ACCEPT (or any save) moves the blob,
+// tell connected copies + log the auto-broadcast entry when the project has
+// >=1 registered copy. Same additive discipline as the save path.
+async function cloudPushRevChangedIfCopies(env, projectId, now, actor) {
+  try {
+    const syncRow = await env.DB.prepare(
+      'SELECT auto_broadcast, (SELECT COUNT(*) FROM offline_copies WHERE project_id = ?) AS copies FROM cloud_projects WHERE project_id = ?'
+    ).bind(projectId, projectId).first();
+    const nCopies = syncRow ? Number(syncRow.copies || 0) : 0;
+    if (nCopies > 0) {
+      await presencePushRevChanged(env, projectId, now);
+      if (syncRow && syncRow.auto_broadcast) {
+        await env.DB.prepare(
+          'INSERT INTO cloud_changelog (project_id, entry_type, actor_type, actor_label, section, diffs_json, snapshot_key, created_at) VALUES (?,?,?,?,?,?,?,?)'
+        ).bind(projectId, 'broadcast', actor.type, actor.label || (actor.type === 'owner' ? 'Owner' : 'Editor'), null, null, null, now).run();
+      }
+    }
+  } catch (e) { /* sync push is additive — never fail a save */ }
 }
 
 // POST /api/cloud/projects/:id/load  (X-Owner-Code header or body.ownerCode)
@@ -2183,6 +2257,19 @@ async function handleCloudLoad(request, env, projectId) {
     if (editorAuth) { base.role = 'editor'; base.editorLabel = editorAuth.label; base.scope = editorAuth.scope; }
     if (viewerAuth) { base.role = 'view'; base.viewerLabel = viewerAuth.label; base.scope = viewerAuth.scope; }
     return json(base);
+  }
+  // CLOUD-FIRST SYNC (PART 3, approved 2026-08-17): when a REGISTERED
+  // offline copy pulls (X-Device-Id rides the pull), stamp the copy's
+  // freshness — last_pulled_at + last_cloud_rev = the revision just pulled —
+  // so the owner's Broadcast UI shows accurate "last pulled" data. Only the
+  // copy-pull path sends the header; ordinary loads never stamp. Best-effort.
+  const pullDevice = String(request.headers.get('X-Device-Id') || '').trim();
+  if (pullDevice) {
+    try {
+      await env.DB.prepare(
+        'UPDATE offline_copies SET last_pulled_at = ?, last_cloud_rev = ? WHERE project_id = ? AND device_id = ?'
+      ).bind(new Date().toISOString(), row.updated_at, projectId, pullDevice).run();
+    } catch (e) { /* stamping a pull is best-effort */ }
   }
   const state = await cloudReadState(env, row.latest_r2_key);
   const resp = { ok: true, state: state, savedAt: row.updated_at };
@@ -2316,7 +2403,270 @@ async function handleCloudUnlink(request, env, projectId) {
   // PART F T9: unlink drops every recipient adoption too (the codes they
   // pointed at are gone with the project).
   await env.DB.prepare('DELETE FROM cloud_adoptions WHERE project_id = ?').bind(projectId).run();
+  // CLOUD-FIRST SYNC: unlink drops every registered offline copy as well.
+  await env.DB.prepare('DELETE FROM offline_copies WHERE project_id = ?').bind(projectId).run();
+  // REVIEW QUEUE: unlink drops every pending/decided proposal too.
+  await env.DB.prepare('DELETE FROM cloud_reviews WHERE project_id = ?').bind(projectId).run();
   return json({ ok: true, unlinked: projectId, unlinkedAt: now });
+}
+
+// ---- CLOUD-FIRST SYNC (PART 3, approved 2026-08-17): offline copies ----
+// Any VALID access to the project can register an offline copy (viewer,
+// editor, owner code, linked session, or adoption) — a copy is view-only by
+// design, so registering it needs no special role. Returns the auth result
+// or null after the standard timing discipline.
+async function cloudAuthAnyAccess(request, env, projectId) {
+  const code = String(request.headers.get('X-Owner-Code') || '').trim();
+  if (code) {
+    const a = await cloudAuthOwnerByCode(request, env, projectId, code);
+    if (a) return a;
+  }
+  const ecode = String(request.headers.get('X-Editor-Code') || '').trim();
+  if (ecode) {
+    const a = await cloudAuthEditor(request, env, projectId, ecode);
+    if (a) return a;
+  }
+  const vcode = String(request.headers.get('X-View-Code') || '').trim();
+  if (vcode) {
+    const a = await cloudAuthViewer(request, env, projectId, vcode);
+    if (a) return a;
+  }
+  const sess = await cloudAuthOwnerSession(request, env, projectId);
+  if (sess) return sess;
+  const ad = await cloudAuthAdoption(request, env, projectId);
+  if (ad && (ad.role === 'editor' || ad.role === 'view')) return ad;
+  return null;
+}
+
+// POST /api/cloud/projects/:id/offline-copies  { deviceId }
+// Registers this device as a view-only offline copy of the cloud project.
+// Idempotent per device (UNIQUE(project_id, device_id) upsert): a device
+// re-registering gets its existing row back, never a duplicate. The device
+// id is client-supplied (a stable per-device id, e.g. a localStorage uuid)
+// and shape-checked. Returns the copy id + the current cloud revision so
+// the client can store its starting last_cloud_rev without a second call.
+async function handleOfflineCopyRegister(request, env, projectId) {
+  const read = await readCloudBody(request);
+  if (read.tooLarge) return json({ ok: false, error: 'body too large' }, 413);
+  if (read.bad || !read.body || typeof read.body !== 'object') return json({ ok: false, error: 'bad request' }, 400);
+  const deviceId = String(read.body.deviceId || '').trim();
+  if (!deviceId || deviceId.length > 64 || !/^[A-Za-z0-9._:-]{1,64}$/.test(deviceId)) {
+    return json({ ok: false, error: 'deviceId is required (letters, numbers, . _ : -)' }, 400);
+  }
+  const auth = await cloudAuthAnyAccess(request, env, projectId);
+  if (!auth) return cloudForbidden();
+  const row = await env.DB.prepare('SELECT deleted_at, updated_at FROM cloud_projects WHERE project_id = ?').bind(projectId).first();
+  if (!row) return cloudForbidden();
+  if (row.deleted_at) return cloudProjectDeleted();
+  const now = new Date().toISOString();
+  const copyId = crypto.randomUUID();
+  const res = await env.DB.prepare(
+    'INSERT INTO offline_copies (id, project_id, device_id, created_at) VALUES (?,?,?,?) ' +
+    'ON CONFLICT(project_id, device_id) DO NOTHING'
+  ).bind(copyId, projectId, deviceId, now).run();
+  // DO NOTHING keeps the EXISTING row (stable id) when a device re-registers:
+  // the copy's id is the client's handle for deleting its own copy, so it
+  // must never churn. changes = 0 on conflict -> return the original id.
+  const finalId = (res.meta && res.meta.changes > 0)
+    ? copyId // inserted
+    : (await env.DB.prepare('SELECT id FROM offline_copies WHERE project_id = ? AND device_id = ?').bind(projectId, deviceId).first() || {}).id;
+  return json({ ok: true, copyId: finalId || copyId, deviceId: deviceId, registeredAt: now, revision: row.updated_at || null });
+}
+
+// GET /api/cloud/projects/:id/offline-copies — owner-only list of every
+// registered offline copy (id, device, registered, last pulled + the rev
+// it last pulled) plus the project's current revision and auto-broadcast
+// flag, so the owner's Broadcast UI can show count + freshness.
+async function handleOfflineCopyList(request, env, projectId) {
+  const auth = await cloudAuthOwnerEither(request, env, projectId);
+  if (!auth) return cloudForbidden();
+  const row = await env.DB.prepare('SELECT deleted_at, updated_at, auto_broadcast FROM cloud_projects WHERE project_id = ?').bind(projectId).first();
+  if (!row) return cloudForbidden();
+  if (row.deleted_at) return cloudProjectDeleted();
+  const rows = await env.DB.prepare(
+    'SELECT id, device_id, created_at, last_pulled_at, last_cloud_rev FROM offline_copies WHERE project_id = ? ORDER BY created_at ASC'
+  ).bind(projectId).all();
+  const copies = (rows.results || []).map(function(r) {
+    return {
+      id: r.id, deviceId: r.device_id, createdAt: r.created_at,
+      lastPulledAt: r.last_pulled_at, lastCloudRev: r.last_cloud_rev
+    };
+  });
+  return json({ ok: true, copies: copies, revision: row.updated_at || null, autoBroadcast: !!row.auto_broadcast });
+}
+
+// DELETE /api/cloud/projects/:id/offline-copies/:copyId — unregister a
+// copy. Owner (code or session) may remove any copy; the registering device
+// itself may also remove its own (deviceId in the body). Same generic 403
+// for everyone without the right.
+async function handleOfflineCopyDelete(request, env, projectId, copyId) {
+  const owner = await cloudAuthOwnerEither(request, env, projectId);
+  let deviceId = '';
+  if (!owner) {
+    const read = await readCloudBody(request);
+    if (!read.bad && read.body && typeof read.body === 'object') deviceId = String(read.body.deviceId || '').trim();
+    if (!deviceId) return cloudForbidden();
+  }
+  const where = owner
+    ? await env.DB.prepare('SELECT id FROM offline_copies WHERE id = ? AND project_id = ?').bind(copyId, projectId).first()
+    : await env.DB.prepare('SELECT id FROM offline_copies WHERE id = ? AND project_id = ? AND device_id = ?').bind(copyId, projectId, deviceId).first();
+  if (!where) return json({ ok: false, error: 'offline copy not found' }, 404);
+  await env.DB.prepare('DELETE FROM offline_copies WHERE id = ? AND project_id = ?').bind(copyId, projectId).run();
+  return json({ ok: true, removed: copyId });
+}
+
+// POST /api/cloud/projects/:id/broadcast — owner-only MANUAL broadcast:
+// pushes the project's current revision to every connected copy via the
+// Presence DO (connected copies refresh instantly; offline copies pick up
+// the new rev on their next meta/load and show the Update icon), and logs
+// a changelog entry type 'broadcast' so the audit trail shows it.
+async function handleCloudBroadcast(request, env, projectId) {
+  const auth = await cloudAuthOwnerEither(request, env, projectId);
+  if (!auth) return cloudForbidden();
+  const row = await env.DB.prepare('SELECT deleted_at, updated_at FROM cloud_projects WHERE project_id = ?').bind(projectId).first();
+  if (!row) return cloudForbidden();
+  if (row.deleted_at) return cloudProjectDeleted();
+  const now = new Date().toISOString();
+  const revision = row.updated_at || now;
+  await presencePushRevChanged(env, projectId, revision);
+  const cnt = await env.DB.prepare('SELECT COUNT(*) AS n FROM offline_copies WHERE project_id = ?').bind(projectId).first();
+  const copies = cnt ? Number(cnt.n || 0) : 0;
+  // Changelog 'broadcast' entry — not revertible (it is a push event, not a
+  // content change), but visible in the owner's history.
+  await env.DB.prepare(
+    'INSERT INTO cloud_changelog (project_id, entry_type, actor_type, actor_label, section, diffs_json, snapshot_key, created_at) VALUES (?,?,?,?,?,?,?,?)'
+  ).bind(projectId, 'broadcast', 'owner', auth.label || 'Owner', null, null, null, now).run();
+  return json({ ok: true, broadcastAt: now, revision: revision, copies: copies });
+}
+
+// PUT /api/cloud/projects/:id/auto-broadcast  { enabled }
+// Owner-only per-project switch: when enabled, EVERY save also broadcasts
+// its new revision to all registered copies (the auto form of the manual
+// button — the owner "turns on auto broadcast for that specific project").
+async function handleCloudAutoBroadcast(request, env, projectId) {
+  const auth = await cloudAuthOwnerEither(request, env, projectId);
+  if (!auth) return cloudForbidden();
+  const read = await readCloudBody(request);
+  if (read.tooLarge) return json({ ok: false, error: 'body too large' }, 413);
+  if (read.bad || !read.body || typeof read.body !== 'object') return json({ ok: false, error: 'bad request' }, 400);
+  const enabled = read.body.enabled === true || read.body.enabled === 1;
+  const row = await env.DB.prepare('SELECT deleted_at FROM cloud_projects WHERE project_id = ?').bind(projectId).first();
+  if (!row) return cloudForbidden();
+  if (row.deleted_at) return cloudProjectDeleted();
+  await env.DB.prepare('UPDATE cloud_projects SET auto_broadcast = ? WHERE project_id = ?').bind(enabled ? 1 : 0, projectId).run();
+  return json({ ok: true, enabled: enabled });
+}
+
+// ---- REVIEW QUEUE (2026-08-17, approved "always on") ---------------------
+// The owner's gate for changes from a non-owner source (editor saves +
+// MCP imports). GET lists proposals; POST :id/accept applies + logs
+// 'accepted'; POST :id/reject discards + logs 'rejected'. Owner-only for
+// the list/decide endpoints; an editor can read their OWN proposals via
+// ?mine=1 with the editor credential (status visibility on the source
+// side — approved "review list with status").
+async function handleReviewList(request, env, projectId, mine) {
+  const code = String(request.headers.get('X-Owner-Code') || '').trim();
+  const owner = code ? await cloudAuthOwnerEither(request, env, projectId) : null;
+  let editorId = null; let editorLabel = null;
+  if (!owner) {
+    const ecode = String(request.headers.get('X-Editor-Code') || '').trim();
+    if (ecode) {
+      const a = await cloudAuthEditor(request, env, projectId, ecode);
+      if (a) { editorId = a.editorId; editorLabel = a.label; }
+    } else {
+      const ad = await cloudAuthAdoption(request, env, projectId);
+      if (ad && ad.role === 'editor') { editorId = ad.editorId; editorLabel = ad.label; }
+    }
+    if (!editorId) { await cloudTimingSink(); return cloudForbidden(); }
+  }
+  const row = await env.DB.prepare('SELECT deleted_at FROM cloud_projects WHERE project_id = ?').bind(projectId).first();
+  if (!row) return cloudForbidden();
+  if (row.deleted_at) return cloudProjectDeleted();
+  if (owner && !mine) {
+    const rows = await env.DB.prepare(
+      'SELECT id, proposal_type, source_type, source_label, status, diffs_json, proposed_at, decided_at, decided_by, accepted_entry_id FROM cloud_reviews WHERE project_id = ? ORDER BY CASE WHEN status = ? THEN 0 ELSE 1 END, id DESC LIMIT 100'
+    ).bind(projectId, 'pending').all();
+    const proposals = (rows.results || []).map(function(r) {
+      let diffs = null;
+      try { if (r.diffs_json) diffs = JSON.parse(r.diffs_json); } catch (e) { diffs = null; }
+      return { id: r.id, proposalType: r.proposal_type, sourceType: r.source_type, sourceLabel: r.source_label, status: r.status, diffs: diffs, proposedAt: r.proposed_at, decidedAt: r.decided_at, decidedBy: r.decided_by, acceptedEntryId: r.accepted_entry_id };
+    });
+    return json({ ok: true, proposals: proposals });
+  }
+  // Editor's own view (mine=1 or an editor credential): their proposals only.
+  const mineRows = await env.DB.prepare(
+    'SELECT id, proposal_type, source_type, source_label, status, diffs_json, proposed_at, decided_at FROM cloud_reviews WHERE project_id = ? AND editor_code_id = ? ORDER BY id DESC LIMIT 20'
+  ).bind(projectId, editorId).all();
+  const mineList = (mineRows.results || []).map(function(r) {
+    let diffs = null;
+    try { if (r.diffs_json) diffs = JSON.parse(r.diffs_json); } catch (e) { diffs = null; }
+    return { id: r.id, proposalType: r.proposal_type, sourceType: r.source_type, sourceLabel: r.source_label || editorLabel, status: r.status, diffs: diffs, proposedAt: r.proposed_at, decidedAt: r.decided_at };
+  });
+  return json({ ok: true, proposals: mineList });
+}
+
+async function handleReviewAccept(request, env, projectId, reviewId) {
+  const auth = await cloudAuthOwnerEither(request, env, projectId);
+  if (!auth) return cloudForbidden();
+  const row = await env.DB.prepare('SELECT * FROM cloud_reviews WHERE id = ? AND project_id = ?').bind(reviewId, projectId).first();
+  if (!row) return json({ ok: false, error: 'proposal not found' }, 404);
+  if (row.status !== 'pending') return json({ ok: false, error: 'proposal is not pending' }, 409);
+  const now = new Date().toISOString();
+  const resp = { ok: true, reviewId: reviewId, status: 'accepted', decidedAt: now };
+  if (row.proposal_type === 'save') {
+    const key = 'projects/' + projectId + '/latest.json';
+    const prev = await cloudReadState(env, key);
+    let scope = [];
+    try { const p = JSON.parse(row.scope); if (Array.isArray(p)) scope = p; } catch (e) { scope = []; }
+    let submitted = {};
+    try { submitted = JSON.parse(row.submitted_json); } catch (e) { submitted = {}; }
+    const merged = cloudScopeMerge(prev, submitted, scope);
+    resp.applied = merged.applied;
+    resp.blocked = merged.blocked;
+    if (merged.applied.length > 0) {
+      merged.next.updatedAt = now;
+      await env.R2.put(key, JSON.stringify(merged.next), { httpMetadata: { contentType: 'application/json' } });
+      await env.DB.prepare('UPDATE cloud_projects SET latest_r2_key = ?, updated_at = ? WHERE project_id = ?').bind(key, now, projectId).run();
+      const entry = await cloudLogSave(env, projectId, prev, merged.next, { type: 'owner', label: auth.label || 'Owner' }, 'accepted');
+      if (entry) resp.changelog = entry;
+      await cloudPushRevChangedIfCopies(env, projectId, now, { type: 'owner', label: auth.label || 'Owner' });
+      resp.savedAt = now;
+    }
+  } else if (row.proposal_type === 'mcp') {
+    // The blob is already in the state the AI edit produced (verified at
+    // import time). Accept = the owner acknowledges the AI change: the
+    // audit row that today's importer wrote directly is written now, as
+    // an 'accepted' entry carrying the original actor + diffs + import_key.
+    const ins = await env.DB.prepare(
+      "INSERT INTO cloud_changelog (project_id, entry_type, actor_type, actor_label, section, diffs_json, snapshot_key, created_at, import_key) VALUES (?,?,?,?,?,?,?,?,?) ON CONFLICT(import_key) DO NOTHING"
+    ).bind(projectId, 'accepted', row.actor_type || 'mcp', row.source_label || 'MCP AI', row.section || null, row.diffs_json || null, null, now, row.import_key).run();
+    resp.entryId = ins.meta.last_row_id;
+  } else {
+    return json({ ok: false, error: 'unsupported proposal type' }, 400);
+  }
+  const acceptedEntryId = resp.entryId || (resp.changelog && resp.changelog.id) || null;
+  await env.DB.prepare('UPDATE cloud_reviews SET status = ?, decided_at = ?, decided_by = ?, accepted_entry_id = ? WHERE id = ?')
+    .bind('accepted', now, auth.label || 'Owner', acceptedEntryId, reviewId).run();
+  resp.acceptedEntryId = acceptedEntryId;
+  return json(resp);
+}
+
+async function handleReviewReject(request, env, projectId, reviewId) {
+  const auth = await cloudAuthOwnerEither(request, env, projectId);
+  if (!auth) return cloudForbidden();
+  const row = await env.DB.prepare('SELECT * FROM cloud_reviews WHERE id = ? AND project_id = ?').bind(reviewId, projectId).first();
+  if (!row) return json({ ok: false, error: 'proposal not found' }, 404);
+  if (row.status !== 'pending') return json({ ok: false, error: 'proposal is not pending' }, 409);
+  const now = new Date().toISOString();
+  // A 'rejected' changelog entry (diffs carried for audit context, but the
+  // revert route only handles edit/accepted/bulk/revert — so it is
+  // intentionally not revertible; nothing changed, nothing to undo).
+  await env.DB.prepare(
+    'INSERT INTO cloud_changelog (project_id, entry_type, actor_type, actor_label, section, diffs_json, snapshot_key, created_at) VALUES (?,?,?,?,?,?,?,?)'
+  ).bind(projectId, 'rejected', 'owner', auth.label || 'Owner', row.section || null, row.diffs_json || null, null, now).run();
+  await env.DB.prepare('UPDATE cloud_reviews SET status = ?, decided_at = ?, decided_by = ? WHERE id = ?')
+    .bind('rejected', now, auth.label || 'Owner', reviewId).run();
+  return json({ ok: true, reviewId: reviewId, status: 'rejected', decidedAt: now });
 }
 
 // ---- CLOUD-CODES-AND-DELETE-DIRECTIVE (2026-08-16) -----------------------
@@ -2417,6 +2767,10 @@ async function handleCloudProjectPurge(request, env, projectId) {
   await env.DB.prepare('DELETE FROM cloud_editor_codes WHERE project_id = ?').bind(projectId).run();
   await env.DB.prepare('DELETE FROM cloud_adoptions WHERE project_id = ?').bind(projectId).run();
   await env.DB.prepare('DELETE FROM cloud_changelog WHERE project_id = ?').bind(projectId).run();
+  // CLOUD-FIRST SYNC: purge drops registered offline copies too.
+  await env.DB.prepare('DELETE FROM offline_copies WHERE project_id = ?').bind(projectId).run();
+  // REVIEW QUEUE: purge drops every proposal as well.
+  await env.DB.prepare('DELETE FROM cloud_reviews WHERE project_id = ?').bind(projectId).run();
   await env.DB.prepare('DELETE FROM cloud_projects WHERE project_id = ?').bind(projectId).run();
   return json({ ok: true, purged: projectId, purgedAt: new Date().toISOString() });
 }
@@ -3444,6 +3798,65 @@ async function handleApi(request, env, url) {
     if (rl.limited) return cloudRateLimited(rl.retryAfter);
     return handlePresenceUpgrade(request, env, url);
   }
+  // CLOUD-FIRST SYNC (PART 3, approved 2026-08-17): offline-copy
+  // registration + the admin broadcast controls. POST = register this
+  // device as a view-only offline copy (any valid credential); GET =
+  // owner-only list (the broadcast UI needs the count + freshness).
+  const offlineListMatch = path.match(/^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/offline-copies$/);
+  if (offlineListMatch) {
+    const rl = await cloudRateCheck(request, 'general');
+    if (rl.limited) return cloudRateLimited(rl.retryAfter);
+    if (request.method === 'POST') return handleOfflineCopyRegister(request, env, offlineListMatch[1]);
+    if (request.method === 'GET') return handleOfflineCopyList(request, env, offlineListMatch[1]);
+  }
+  // DELETE /api/cloud/projects/:id/offline-copies/:copyId — unregister
+  // (owner, or the registering device itself).
+  const offlineDelMatch = path.match(/^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/offline-copies\/([A-Za-z0-9-]{1,64})$/);
+  if (offlineDelMatch && request.method === 'DELETE') {
+    const rl = await cloudRateCheck(request, 'general');
+    if (rl.limited) return cloudRateLimited(rl.retryAfter);
+    return handleOfflineCopyDelete(request, env, offlineDelMatch[1], offlineDelMatch[2]);
+  }
+  // REVIEW QUEUE (2026-08-17): GET /reviews lists proposals — owner sees
+  // every proposal (pending first), an editor credential (or mine=1 with
+  // one) sees only their own (status visibility on the source side).
+  const reviewListMatch = path.match(/^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/reviews$/);
+  if (reviewListMatch && request.method === 'GET') {
+    const rl = await cloudRateCheck(request, 'general');
+    if (rl.limited) return cloudRateLimited(rl.retryAfter);
+    return handleReviewList(request, env, reviewListMatch[1], url.searchParams.get('mine') === '1');
+  }
+  // POST /reviews/:id/accept + /reviews/:id/reject — owner-only decisions.
+  const reviewAcceptMatch = path.match(/^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/reviews\/(\d+)\/accept$/);
+  if (reviewAcceptMatch && request.method === 'POST') {
+    const rl = await cloudRateCheck(request, 'general');
+    if (rl.limited) return cloudRateLimited(rl.retryAfter);
+    return handleReviewAccept(request, env, reviewAcceptMatch[1], Number(reviewAcceptMatch[2]));
+  }
+  const reviewRejectMatch = path.match(/^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/reviews\/(\d+)\/reject$/);
+  if (reviewRejectMatch && request.method === 'POST') {
+    const rl = await cloudRateCheck(request, 'general');
+    if (rl.limited) return cloudRateLimited(rl.retryAfter);
+    return handleReviewReject(request, env, reviewRejectMatch[1], Number(reviewRejectMatch[2]));
+  }
+  // POST /api/cloud/projects/:id/broadcast — owner-only manual broadcast:
+  // push the current revision to every registered copy + record a
+  // changelog 'broadcast' entry so the audit trail shows it.
+  const broadcastMatch = path.match(/^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/broadcast$/);
+  if (broadcastMatch && request.method === 'POST') {
+    const rl = await cloudRateCheck(request, 'general');
+    if (rl.limited) return cloudRateLimited(rl.retryAfter);
+    return handleCloudBroadcast(request, env, broadcastMatch[1]);
+  }
+  // PUT /api/cloud/projects/:id/auto-broadcast — owner-only per-project
+  // switch: when enabled, EVERY save also broadcasts (the auto form of the
+  // manual button).
+  const autoBcMatch = path.match(/^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/auto-broadcast$/);
+  if (autoBcMatch && request.method === 'PUT') {
+    const rl = await cloudRateCheck(request, 'general');
+    if (rl.limited) return cloudRateLimited(rl.retryAfter);
+    return handleCloudAutoBroadcast(request, env, autoBcMatch[1]);
+  }
 
 
   // CLOUD-BACKEND-ARCHITECTURE-PLAN Phase 2/3 — editor codes, changelog,
@@ -3802,6 +4215,20 @@ async function handlePresenceUpgrade(request, env, url) {
   return env.PRESENCE.get(env.PRESENCE.idFromName(projectId)).fetch(upgraded);
 }
 
+// CLOUD-FIRST SYNC (2026-08-17): push a rev-changed message to the
+// project's Presence DO so CONNECTED copies refresh instantly (live
+// refresh on save — the approved scope). Fire-and-forget from the save
+// path's perspective; presence is additive, a failed push changes nothing.
+async function presencePushRevChanged(env, projectId, revision) {
+  try {
+    const stub = env.PRESENCE.get(env.PRESENCE.idFromName(projectId));
+    await stub.fetch(new Request('https://presence.internal/broadcast', {
+      method: 'POST',
+      body: JSON.stringify({ type: 'rev-changed', revision: revision })
+    }));
+  } catch (e) { /* presence is additive — a failed push changes nothing */ }
+}
+
 // Presence Durable Object — WebSocket Collab per project (Hibernation API).
 // One instance per project (idFromName(projectId)); in-memory roster only,
 // no persistent storage of any kind.
@@ -3809,6 +4236,20 @@ export class Presence {
   constructor(state, env) { this.state = state; this.env = env; }
 
   async fetch(request) {
+    // CLOUD-FIRST SYNC (2026-08-17): internal broadcast path. When the
+    // Worker calls this DO with a plain POST (no WebSocket upgrade), the
+    // JSON body is relayed to every connected socket. Only the Worker can
+    // reach the DO (the binding stub); no public route maps to it and
+    // /api/cloud/presence validates access before forwarding upgrades, so
+    // this path is Worker-internal by construction.
+    const upgrade = (request.headers.get('Upgrade') || '').toLowerCase();
+    if (upgrade !== 'websocket') {
+      try {
+        const msg = await request.text();
+        if (msg) this.broadcast(msg);
+      } catch (e) { /* ignore malformed internal calls */ }
+      return new Response('ok');
+    }
     const name = decodeURIComponent(request.headers.get('X-Presence-Name') || 'Viewer');
     const pair = new WebSocketPair();
     const id = crypto.randomUUID();

@@ -1,0 +1,41 @@
+    -         '<div class="sr-hint">' + (isView ? 'Nothing you do here changes the cloud copy — reload anytime to see fresh data.' : 'Changes you save ar
+    -         '<div id="cloud-last-sync" class="sr-hint" role="status" aria-live="polite"></div>';
+    +         '<div id="cloud-offline-copy-box"></div>' +
+    +         // REVIEW QUEUE: the editor's own proposal status line (pending /
+    +         // accepted / rejected) — filled by cloudReviewMine() on render.
+    +         '<div id="cloud-review-mine"></div>' +
+    +         '<div class="sr-hint">' + (isView ? 'Nothing you do here changes the cloud copy — reload anytime to see fresh data.' : 'Changes you save wa
+    +         '<div id="cloud-last-sync" class="sr-hint" role="status" aria-live="polite"></div>';
+
+  $ node --check js/mmgr-cloud.js && node --check js/mmgr-app.js && node --check worker.js && echo OK && git status --short && git diff --stat | tail -12
+
+  OK
+   M AUTH-MAINFRAME-AND-CLOUD-FIRST-SYNC-DIRECTIVE.md
+   M CONTINUATION-DIRECTIVE.md
+   M js/mmgr-app.js
+   M js/mmgr-cloud.js
+  Show 29 more lines
+
+  • Thinking
+    Everything is in place. The last client edit (the editor status div + hint text) touched mmgr-cloud.js only — no inline scripts, so CSP is
+    unaffected. Since I edited mmgr-cloud.js after the last full test run, let me re-run the review harness + cloud-phase2 once more to be safe (the
+    client edit only added a div + text — phase2's P2.10 uses the browser editor drawer, worth a re-run to confirm the new div/hint doesn't break the
+     drawer render).
+
+  The final client edit (editor status div + hint) came after the last test run — let me re-run the browser-driven phase2 and the review harness to
+  confirm nothing broke:
+
+  $ node tools/qa-cloud-phase2.cjs 2>&1 | grep -E "FAIL|broken|CLOUD_PHASE2" | tail -4 && node tools/qa-reviews.cjs 2>&1 | tail -2 && node tools/qa-
+  offline-copies.cjs 2>&1 | tail -2 (10m timeout)
+  [cloud2] CLOUD_PHASE2 PASS (85/85 checks)
+  [rv] ========================================
+  [rv] review-queue gate: 27/27 checks passed
+  [oc] ========================================
+  [oc] offline-copies gate: 23/23 checks passed
+                                                                                                                                                  ⎘ • △▽   ▄
+
+╭───────────────────────────────────────────────────────Session ended  ·  4 of 7 sessions used today───────────────────────────────────────────────────────╮
+│                                                                                                                                   ╭────────────────────╮ │
+│ Press Enter to continue in a new session                                                                                          │ Change model   Esc │ │
+│                                                                                                                                   ╰────────────────────╯ │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯

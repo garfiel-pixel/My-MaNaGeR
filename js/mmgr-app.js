@@ -2439,6 +2439,25 @@ window.MMGR = MMGR;
     'cloudLogRevert': (el) => { const C = window.MMGR.Cloud; if (C && C.revertLog) C.revertLog(el && el.getAttribute('data-id')); },
     'cloudLogToggleDiffs': (el) => { const C = window.MMGR.Cloud; if (C && C.toggleDiffs) C.toggleDiffs(el && el.getAttribute('data-id')); },
     'cloudDropEditor': () => { const C = window.MMGR.Cloud; if (C && C.dropEditor) C.dropEditor(); },
+    // CLOUD-FIRST SYNC (PART 3, approved 2026-08-17): offline copies +
+    // broadcast. cloudMakeCopy registers this device (view-only);
+    // cloudUpdateCopy pulls the newest snapshot (no full reload);
+    // cloudRemoveCopy unregisters; cloudBroadcast + cloudAutoBroadcast are
+    // the owner's manual + automatic broadcast controls; cloudOfflineRemove
+    // drops one registered copy from the owner's list.
+    'cloudMakeCopy': () => { const C = window.MMGR.Cloud; if (C && C.cloudMakeCopy) C.cloudMakeCopy(); },
+    'cloudUpdateCopy': () => { const C = window.MMGR.Cloud; if (C && C.cloudUpdateCopy) C.cloudUpdateCopy(); },
+    'cloudRemoveCopy': () => { const C = window.MMGR.Cloud; if (C && C.cloudRemoveCopy) C.cloudRemoveCopy(); },
+    'cloudBroadcast': () => { const C = window.MMGR.Cloud; if (C && C.cloudBroadcast) C.cloudBroadcast(); },
+    'cloudAutoBroadcast': () => { const C = window.MMGR.Cloud; if (C && C.cloudAutoBroadcast) C.cloudAutoBroadcast(); },
+    'cloudOfflineRemove': (el) => { const C = window.MMGR.Cloud; if (C && C.cloudOfflineRemove) C.cloudOfflineRemove(el && el.getAttribute('data-id')); },
+    // REVIEW QUEUE (2026-08-17, approved "always on"): owner review list +
+    // accept/reject decisions; cloudReviewMine is the editor's own status.
+    'cloudReviewList': () => { const C = window.MMGR.Cloud; if (C && C.cloudReviewList) C.cloudReviewList(); },
+    'cloudReviewMine': () => { const C = window.MMGR.Cloud; if (C && C.cloudReviewMine) C.cloudReviewMine(); },
+    'cloudReviewAccept': (el) => { const C = window.MMGR.Cloud; if (C && C.cloudReviewAccept) C.cloudReviewAccept(el && el.getAttribute('data-id')); },
+    'cloudReviewReject': (el) => { const C = window.MMGR.Cloud; if (C && C.cloudReviewReject) C.cloudReviewReject(el && el.getAttribute('data-id')); },
+    'cloudReviewToggleDiffs': (el) => { const C = window.MMGR.Cloud; if (C && C.reviewToggleDiffs) C.reviewToggleDiffs(el && el.getAttribute('data-id')); },
     'cascadeGantt': () => window.MMGR.App.cascadeGantt(),
     'toggleCritical': (el) => window.MMGR.App.toggleCritical(el),
     'tglLeadtimeLane': (el) => window.MMGR.App.tglLeadtimeLane(el),
@@ -2742,7 +2761,21 @@ window.MMGR = MMGR;
     'cloudUnlink': 1, 'cloudCopyEditorCode': 1, 'cloudEditorCodeDone': 1,
     // MASTER-ACTION-PLAN RANK 9.2: webhook CRUD only mutates the SERVER
     // subscription table (like the other cloud actions) — safe in view-only.
-    'cloudWebhookList': 1, 'cloudWebhookAdd': 1, 'cloudWebhookDel': 1
+    'cloudWebhookList': 1, 'cloudWebhookAdd': 1, 'cloudWebhookDel': 1,
+    // CLOUD-FIRST SYNC (PART 3, approved 2026-08-17): offline copies +
+    // broadcast. cloudMakeCopy registers this device server-side (view-only
+    // by owner decision — the copy can never edit), cloudUpdateCopy pulls the
+    // newest snapshot into the copy (overwriting a VIEW-ONLY snapshot is
+    // always safe — no local edits exist to lose), cloudRemoveCopy
+    // unregisters, and the owner's broadcast/auto-broadcast/offline-list
+    // controls only mutate SERVER state or the copy registry — all safe in
+    // view-only mode, exactly like the other cloud actions above.
+    'cloudMakeCopy': 1, 'cloudUpdateCopy': 1, 'cloudRemoveCopy': 1,
+    'cloudBroadcast': 1, 'cloudAutoBroadcast': 1, 'cloudOfflineRemove': 1,
+    // REVIEW QUEUE: the review list/accept/reject/mine actions only mutate
+    // SERVER state (proposals + the cloud snapshot on accept) — never the
+    // local workspace — so they stay safe in view-only mode like broadcast.
+    'cloudReviewList': 1, 'cloudReviewMine': 1, 'cloudReviewAccept': 1, 'cloudReviewReject': 1, 'cloudReviewToggleDiffs': 1
   };
   function guardReadonly(action) {
     // The ACTION_MAP delegation IIFE has no closure over the App module's

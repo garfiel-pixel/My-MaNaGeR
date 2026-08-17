@@ -71,6 +71,15 @@
       } else if (msg.type === 'leave') {
         delete members[msg.id];
         render();
+      } else if (msg.type === 'rev-changed') {
+        // CLOUD-FIRST SYNC (PART 3, approved 2026-08-17): the main device
+        // saved (or the admin broadcast). The server pushes ONLY the new
+        // revision over the socket — never project content — and the
+        // registered-copy logic in mmgr-cloud.js listens for this event and
+        // pulls the fresh snapshot. Non-copy viewers simply ignore it.
+        document.dispatchEvent(new CustomEvent('mmgr:rev-changed', {
+          detail: { revision: msg.revision || null }
+        }));
       }
       // 'pong' is a keepalive ack — nothing to render.
     };

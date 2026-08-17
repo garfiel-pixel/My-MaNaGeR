@@ -137,7 +137,42 @@ and can pull the new data for offline use; changes are auto-saved (no toggle).
   cloud; another device sees it only after a manual Load from Cloud (full
   page reload). The owner's change-order scenario does NOT work today.
 
-### 3.3 Build plan (queued — complex-L, needs design sign-off before building)
+### 3.3 Build plan — DESIGN APPROVED 2026-08-17 (owner answers to the three sign-off questions)
+
+**Scope: APPROVED AS SCOPED (live refresh on save).** Owner: "doccument this
+in continious directive and i choose aproved as scoped later we can add a
+feature where admin review and update from another source and accept
+changes." The approved model is: copies update when the main device saves —
+NO simultaneous co-editing, last save wins, changelog history retained.
+
+**REVIEW QUEUE: BUILT 2026-08-17** — the "admin review and accept changes
+from another source" feature shipped (owner approval: BOTH editor saves +
+MCP imports go through review, ALWAYS ON, review-list-with-status). A
+non-owner change (editor save or MCP import) becomes a PENDING proposal in
+cloud_reviews (migration 0015) and does NOT move the cloud snapshot until
+the owner ACCEPTS (applies through the same scope merge + changelog
+'accepted', revertible) or REJECTS (discarded + changelog 'rejected'). The
+editor sees their proposal's status on their side (pending / accepted /
+rejected); the owner reviews diffs in the Cloud drawer. This OVERRIDES the
+"last save wins" clause for non-owner sources: only accepted changes move
+the project (and only they push rev-changed to copies). Owner saves still
+apply instantly.
+
+**Offline copies: VIEW-ONLY** (owner: "View-only") — a registered offline
+copy is read-only everywhere; it can never edit the cloud project.
+
+**Reconcile: auto-sync-up + admin-gated broadcast** (owner: "the local is
+conected to the cloud so any changes made should automaticall be updated to
+the cloud when internet is conect and a sync canhappen and it broadcast and
+overite all other project when the admin click broadcast to other projects
+or the admin can turn on auto broadcast for that specific project") — the
+local device pushes its changes to the cloud whenever a sync can happen
+(already true: autoSaveToCloud), and the ADMIN controls propagation to
+copies: a manual "Broadcast to other projects" action, or a per-project
+AUTO-BROADCAST toggle that makes every save broadcast. Copies never fight
+the cloud (view-only + last-save-wins), so there is no keep-local prompt.
+
+Build plan (queued — complex-L):
 1. **Cloud-first creation flow**: "Create in cloud" becomes the primary path
    for new shared projects; offline attach/download is derived from it.
 2. **View links**: shareable link carries a view code (existing viewer-role
@@ -145,14 +180,19 @@ and can pull the new data for offline use; changes are auto-saved (no toggle).
 3. **"Make offline copy" icon** in-project: POST registers the copy
    (new table: offline_copies { id, cloud_project_id, device_id, created_at,
    last_pulled_at, last_cloud_rev }) — server registers it, per owner.
+   Registered copies are view-only.
 4. **"Update offline copy" icon + auto-pull**: when a registered copy's
    revision is behind (compare savedAt/changelog rev), show the icon;
    pull refreshes only changed sections (no full reload).
-5. **Live broadcast** (owner confirmed interest): upgrade the Presence
-   WebSocket from roster-only to also broadcast `{ type: 'rev-changed',
-   revision }` to connected viewers (still never project content); open
-   copies refresh instantly instead of polling. Web page first, then the
-   same flows port to a native app later — the PWA is already installable.
+5. **Live broadcast**: upgrade the Presence WebSocket from roster-only to
+   also broadcast `{ type: 'rev-changed', revision }` to connected viewers
+   (still never project content); open copies refresh instantly instead of
+   polling. **Plus the owner's broadcast control**: `POST
+   /api/cloud/projects/:id/broadcast` (admin clicks "Broadcast to other
+   projects") pushes the current revision to every registered copy, and a
+   per-project `auto_broadcast` flag makes every save broadcast
+   automatically. Web page first, then the same flows port to a native app
+   later — the PWA is already installable.
 
 ---
 
@@ -180,10 +220,13 @@ writer of cloud_subscriptions) handles lifecycle events. SHIPPED:
    "You are not authorized to make changes to workers.dev"), verify, then
    flip the `RESEND_FROM_EMAIL` secret to admin@mymanager.app. Until then
    dev/testing uses the free `onboarding@resend.dev` sender.
-2. ~~Review PART 3 design~~ REVIEWED 2026-08-17 against the code (the
-   pieces it builds on are all live: viewer codes, adoption, changelog,
-   Presence DO). Approve before the complex-L build starts — this is the
-   only open item before it.
+2. ~~Review PART 3 design~~ REVIEWED + APPROVED 2026-08-17 against the
+   code (the pieces it builds on are all live: viewer codes, adoption,
+   changelog, Presence DO) with the owner's three answers recorded in
+   §3.3 (scope = approved-as-scoped live refresh; copies view-only;
+   reconcile = auto-sync-up + admin broadcast / per-project auto-broadcast).
+   The complex-L cloud-first sync build started in the same session — see
+   the CONTINUATION-DIRECTIVE.md STATUS LOG.
 3. ~~Walk the auth changes after deploy~~ the whole auth wave is DEPLOYED
    2026-08-17 (migrations 0012+0013 remote, worker versions
    `79d8e536…` + `505eb85b…`): wrong-password lockout, sign-out

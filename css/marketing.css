@@ -291,6 +291,66 @@ svg.ico use{fill:inherit;stroke:inherit;}
 .signin-btn:hover{background:rgba(255,255,255,.16);border-color:rgba(255,255,255,.5);}
 .signin-btn:focus-visible{outline:2px solid var(--gold);outline-offset:1px;}
 .signin-btn[aria-expanded="true"]{background:rgba(255,255,255,.16);}
+/* OWNER 2026-08-17 — signed-in identity chip inside the header trigger: a
+   small avatar (photo or initial) + name replace the static "Sign in" label;
+   clicking still opens the account sheet. */
+.signin-btn .sb-avatar{
+  width:22px;height:22px;border-radius:50%;overflow:hidden;flex-shrink:0;
+  background:var(--gold);color:var(--on-gold);
+  display:flex;align-items:center;justify-content:center;
+  font-weight:800;font-size:.64rem;line-height:1;
+}
+.signin-btn .sb-avatar img{width:100%;height:100%;object-fit:cover;display:block;}
+.signin-btn .sb-name{max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+
+/* OWNER 2026-08-17 — section-index dropdowns in the primary nav. Glass
+   chrome overlay (chrome may be glass; the item rows carry a solid wash for
+   legibility). Opens on hover or keyboard focus; the trigger carries
+   aria-haspopup/aria-expanded (disclosure pattern). */
+.nav-dd{position:relative;display:inline-flex;}
+.nav-dd-menu{
+  position:absolute;top:calc(100% + 12px);left:50%;transform:translateX(-50%) translateY(-4px);
+  z-index:120;min-width:232px;max-width:min(340px,calc(100vw - 24px));
+  padding:10px;border-radius:14px;
+  background:var(--glass-specular),var(--glass-tint-soft);
+  -webkit-backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  border:var(--glass-edge);box-shadow:var(--glass-shadow);
+  opacity:0;visibility:hidden;
+  transition:opacity var(--tr),transform var(--tr),visibility var(--tr);
+}
+.nav-dd:hover .nav-dd-menu,
+.nav-dd:focus-within .nav-dd-menu{opacity:1;visibility:visible;transform:translateX(-50%) translateY(0);}
+.nav-dd-list{display:flex;flex-direction:column;gap:2px;}
+.nav-dd-cols .nav-dd-list{
+  display:grid;grid-template-columns:repeat(2,1fr);gap:2px 10px;
+  max-height:min(64vh,420px);overflow-y:auto;
+}
+.nav-dd-item{
+  display:block;padding:7px 10px;border-radius:8px;
+  color:var(--text-primary);font-size:.78rem;font-weight:600;line-height:1.35;
+  background:rgba(255,255,255,.05);
+  transition:background var(--tr),color var(--tr);
+}
+.nav-dd-item:hover{background:rgba(var(--gold-rgb),.16);color:var(--gold);}
+.nav-dd-item:focus-visible{outline:2px solid var(--gold);outline-offset:-1px;}
+.nav-dd-foot{
+  display:block;margin-top:8px;padding:8px 10px 2px;
+  border-top:1px solid var(--border);
+  color:var(--text-secondary);font-size:.72rem;font-weight:600;
+  transition:color var(--tr);
+}
+.nav-dd-foot:hover{color:var(--gold);}
+/* highlight flash for a dropdown-selected section (gold ring + soft glow) */
+.dd-flash{animation:dd-flash 2.6s ease;}
+@keyframes dd-flash{
+  0%,70%{box-shadow:0 0 0 2px var(--gold),0 0 26px rgba(var(--gold-rgb),.4);}
+  100%{box-shadow:0 0 0 2px rgba(var(--gold-rgb),0),0 0 26px rgba(var(--gold-rgb),0);}
+}
+@media (prefers-reduced-motion:reduce){
+  .nav-dd-menu{transition:none;}
+  .dd-flash{animation-duration:1.4s;}
+}
 
 .signin-sheet{
   position:fixed;top:calc(var(--header-h) + 10px);right:16px;
@@ -333,6 +393,62 @@ svg.ico use{fill:inherit;stroke:inherit;}
 .signin-sheet .email-auth-alt button:focus-visible{outline:2px solid var(--gold);outline-offset:1px;border-radius:var(--radius-sm);}
 .signin-sheet .email-auth-err{font-size:.76rem;color:var(--danger);}
 .signin-sheet .email-auth-note{font-size:.76rem;color:var(--text-secondary);line-height:1.5;}
+/* AUTH MAINFRAME v2 — forgot-password request + check-your-inbox panels.
+   Same sheet language as the form above; both use display:flex, so the
+   [hidden] guards below are REQUIRED (flex display outranks the UA rule). */
+.signin-sheet .email-auth-reset{display:flex;flex-direction:column;gap:8px;}
+.signin-sheet .email-auth-reset[hidden]{display:none;}
+.signin-sheet .email-auth-reset-title{margin:0;font-size:.84rem;color:var(--text-primary);}
+.signin-sheet .email-auth-reset-msg{margin:0;font-size:.76rem;color:var(--text-secondary);line-height:1.5;}
+.signin-sheet .email-auth-check{display:flex;flex-direction:column;gap:8px;align-items:flex-start;}
+.signin-sheet .email-auth-check[hidden]{display:none;}
+.signin-sheet .email-auth-check-ico{width:22px;height:22px;color:var(--gold);}
+.signin-sheet .email-auth-check-title{margin:0;font-size:.84rem;color:var(--text-primary);}
+.signin-sheet .email-auth-check-msg{margin:0;font-size:.76rem;color:var(--text-secondary);line-height:1.5;}
+.signin-sheet .email-auth-resend{
+  background:none;border:none;padding:0;color:var(--gold);
+  text-decoration:underline;text-underline-offset:2px;cursor:pointer;font:inherit;font-size:.76rem;
+}
+.signin-sheet .email-auth-resend:focus-visible{outline:2px solid var(--gold);outline-offset:1px;border-radius:var(--radius-sm);}
+.signin-sheet .email-auth-resend:disabled{opacity:.6;cursor:default;}
+.signin-sheet .email-auth-check-close{
+  margin-top:2px;padding:7px 14px;border-radius:8px;border:1px solid var(--border);
+  background:var(--card);color:var(--text-primary);font-size:.78rem;font-weight:600;cursor:pointer;
+}
+.signin-sheet .email-auth-check-close:focus-visible{outline:2px solid var(--gold);outline-offset:1px;}
+/* AUTH MAINFRAME 2026-08-17 — password change (email accounts) inside the
+   signed-in account row. Same sheet language as the reset/check panels;
+   [hidden] guards REQUIRED (the flex rules outrank the UA hidden rule). */
+.signin-sheet .email-auth-pw{display:flex;flex-direction:column;gap:8px;align-items:stretch;}
+.signin-sheet .email-auth-pw[hidden]{display:none;}
+.signin-sheet .email-auth-pw .email-auth-row[hidden]{display:none;}
+.signin-sheet .email-auth-pw-title{margin:0;font-size:.84rem;color:var(--text-primary);}
+.signin-sheet .email-auth-pw-msg{margin:0;font-size:.76rem;color:var(--text-secondary);line-height:1.5;}
+.signin-sheet .email-auth-pw .email-auth-input{flex:1 1 150px;min-width:120px;}
+.signin-sheet .email-auth-pw-btn{
+  background:none;border:none;padding:0;color:var(--gold);
+  text-decoration:underline;text-underline-offset:2px;cursor:pointer;font:inherit;font-size:.76rem;
+}
+.signin-sheet .email-auth-pw-btn:hover{color:var(--gold-hover);}
+.signin-sheet .email-auth-pw-btn:focus-visible{outline:2px solid var(--gold);outline-offset:1px;border-radius:var(--radius-sm);}
+.signin-sheet .email-auth-pw-btn[hidden]{display:none;}
+.signin-sheet .email-auth-pw-submit{
+  display:inline-flex;align-items:center;justify-content:center;
+  padding:9px 16px;border-radius:9px;border:1px solid transparent;
+  background:var(--gold);color:var(--on-gold);
+  font-size:.84rem;font-weight:700;line-height:1;cursor:pointer;
+  transition:background var(--tr);
+}
+.signin-sheet .email-auth-pw-submit:hover{background:var(--gold-hover);}
+.signin-sheet .email-auth-pw-submit:focus-visible{outline:2px solid var(--gold);outline-offset:1px;}
+.signin-sheet .email-auth-pw-submit:disabled{opacity:.6;cursor:default;}
+.signin-sheet .email-auth-pw-cancel{
+  background:none;border:none;padding:0;color:var(--text-secondary);
+  text-decoration:underline;text-underline-offset:2px;cursor:pointer;font:inherit;font-size:.76rem;
+}
+.signin-sheet .email-auth-pw-cancel:hover{color:var(--gold);}
+.signin-sheet .email-auth-pw-cancel:focus-visible{outline:2px solid var(--gold);outline-offset:1px;border-radius:var(--radius-sm);}
+.signin-sheet .email-auth-pw-ok{margin:0;font-size:.78rem;color:var(--teal);}
 .signin-sheet .signin-user{display:flex;flex-direction:column;gap:8px;align-items:flex-start;}
 /* display:flex above defeats the `hidden` attribute (author display rules
    outrank the UA [hidden]{display:none}) — the signed-in row was painted
@@ -920,4 +1036,52 @@ svg.ico use{fill:inherit;stroke:inherit;}
 .rv{transition-delay:calc(var(--rv-i,0)*55ms);}
 @media (prefers-reduced-motion:reduce){
   .rv{opacity:1;transform:none;transition:none;}
+}
+
+/* ---------- AUTH PAGES (verify.html / reset.html — AUTH MAINFRAME v2, 2026-08-17) ---------- */
+/* Transactional email-link pages: minimal chrome, ONE solid card (Gate 6.1 —
+   status/forms never sit on glass), tokens only, dark mode via the shared
+   body.dark-mode set, reduced-motion spinner kill, [hidden] guards so the
+   verify-hidden gate can never be defeated. Error text uses the site's
+   established --danger convention (.email-auth-err / .rv-status.is-err). */
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0;}
+.auth-page{min-height:100dvh;display:flex;flex-direction:column;background:var(--bg);}
+.auth-header{display:flex;align-items:center;justify-content:center;padding:24px 16px 6px;}
+.auth-header .brand{font-size:1.02rem;}
+.auth-main{flex:1;display:flex;align-items:flex-start;justify-content:center;padding:28px 16px 44px;}
+.auth-card{width:100%;max-width:400px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:36px 28px;box-shadow:var(--glass-shadow);}
+.auth-state{display:flex;flex-direction:column;align-items:center;text-align:center;gap:10px;}
+.auth-state[hidden]{display:none;}
+.auth-state h1{font-size:1.28rem;font-weight:700;letter-spacing:-.01em;color:var(--text-primary);line-height:1.25;}
+.auth-state p{font-size:var(--fs-small);color:var(--text-secondary);line-height:1.55;}
+.auth-icon{width:44px;height:44px;margin-bottom:2px;}
+.auth-icon.ok{color:var(--teal);}
+.auth-icon.err{color:var(--danger);}
+.auth-icon.head{color:var(--gold);}
+.auth-spinner{width:38px;height:38px;border-radius:50%;border:3px solid color-mix(in oklch,var(--gold) 30%,transparent);border-top-color:var(--gold);animation:auth-spin .8s linear infinite;margin-bottom:6px;}
+@keyframes auth-spin{to{transform:rotate(360deg);}}
+@media (prefers-reduced-motion:reduce){.auth-spinner{animation:none;}}
+.auth-form{display:flex;flex-direction:column;gap:14px;}
+.auth-form[hidden]{display:none;}
+.auth-form h1{font-size:1.28rem;font-weight:700;letter-spacing:-.01em;color:var(--text-primary);line-height:1.25;}
+.auth-form > p{font-size:var(--fs-small);color:var(--text-secondary);line-height:1.55;}
+.auth-field{display:flex;flex-direction:column;gap:6px;}
+.auth-field label{font-size:var(--fs-tiny);font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--text-secondary);}
+.auth-field input{padding:10px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg);color:var(--text-primary);font:inherit;font-size:var(--fs-body);}
+.auth-field input:focus{outline:2px solid var(--gold);outline-offset:1px;border-color:var(--gold);}
+.auth-hint{font-size:var(--fs-tiny);color:var(--text-secondary);}
+.auth-err{font-size:var(--fs-small);color:var(--danger);line-height:1.4;}
+.auth-err[hidden]{display:none;}
+.btn-block{width:100%;justify-content:center;}
+.auth-recover{display:flex;flex-direction:column;gap:10px;align-items:center;text-align:center;width:100%;padding-top:6px;}
+.auth-recover form{display:flex;gap:8px;width:100%;}
+.auth-recover input{flex:1;min-width:0;padding:9px 11px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg);color:var(--text-primary);font:inherit;font-size:var(--fs-small);}
+.auth-recover input:focus{outline:2px solid var(--gold);outline-offset:1px;border-color:var(--gold);}
+.auth-note{font-size:var(--fs-tiny);color:var(--text-secondary);line-height:1.5;}
+.auth-footer{padding:14px 16px 28px;text-align:center;font-size:var(--fs-tiny);color:var(--text-secondary);}
+.auth-noscript{margin:0 auto 28px;max-width:400px;padding:10px 14px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--card);font-size:var(--fs-small);color:var(--text-secondary);}
+@media (max-width:480px){
+  .auth-card{padding:28px 20px;}
+  .auth-recover form{flex-direction:column;}
+  .auth-recover .btn{width:100%;}
 }

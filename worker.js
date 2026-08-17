@@ -96,6 +96,16 @@ const HEADERS = {
   'Permissions-Policy': 'camera=(), microphone=(self), geolocation=(), payment=(), usb=()'
 };
 
+// SEO-FILES (2026-08-17): robots.txt and sitemap.xml live as real files at
+// the repo root and are served by the ASSETS binding. This route pins the
+// correct Content-Type for each and — belt-and-suspenders — if a file is
+// ever missing (the single-page-app fallback would otherwise answer
+// index.html with 200), it 404s instead of feeding a crawler the homepage.
+const SEO_FILES = {
+  '/robots.txt': 'text/plain; charset=utf-8',
+  '/sitemap.xml': 'application/xml; charset=utf-8'
+};
+
 // WHISPER-CSP (QA-STRESS DIR-2 finding, Aug 2026): the bundled offline
 // whisper runtime (vendor/whisper/) runs its Emscripten glue inside a
 // module worker, and that glue builds function invokers with `new Function`
@@ -159,6 +169,21 @@ function normalizePathname(p) {
 const GOOGLE_CLIENT_ID = '297970704704-m05hgt93lfaq286q90br8c96ffg1aph3.apps.googleusercontent.com';
 const SESSION_COOKIE = 'mmgr_session';
 const SESSION_MAX_AGE = 604800; // 7 days, seconds (spec: Max-Age=604800)
+// AUTH-MAINFRAME (2026-08-17, owner-approved): lazy sliding renewal +
+// server-side revocation. Sessions are re-issued on /api/auth/me when
+// older than SESSION_RENEW_AFTER_MS (same jti, fresh expiry), bounded by
+// the ABSOLUTE cap — active users are no longer silently logged out at 7
+// days, and a stolen cookie can never outlive the cap. Every session
+// carries a random jti recorded in auth_sessions (migration 0012) so it
+// can be revoked: logout, sign-out-everywhere, password change.
+const SESSION_RENEW_AFTER_MS = 86400000;        // re-issue when 24h old
+const SESSION_ABSOLUTE_CAP = 30 * 24 * 60 * 60; // 30 days, seconds
+// Per-account login lockout (auth_login_guard): 5 failed passwords ->
+// 15 min; 10+ -> 1 hour. A successful login clears the row.
+const AUTH_LOCK_FAILS = 5;
+const AUTH_LOCK_WINDOW_MS = 15 * 60 * 1000;
+const AUTH_LOCK_ESCALATE_FAILS = 10;
+const AUTH_LOCK_ESCALATE_MS = 60 * 60 * 1000;
 
 // JSON responses for the API — never the page CSP, always no-store.
 function json(data, status = 200) {
@@ -444,7 +469,39 @@ async function readSession(request, env) {
   if (diff !== 0) return null;
   const exp = Number(payload.exp);
   if (!Number.isFinite(exp) || exp * 1000 <= Date.now()) return null;
+  // AUTH-MAINFRAME revocation check: a revoked (or swept) jti kills the
+  // session on EVERY authenticated route. Sessions minted before migration
+  // 0012 carry no jti — accept them once (they are renewed with a jti on
+  // the next /api/auth/me) instead of logging everyone out on deploy.
+  if (payload.jti) {
+    let sessRow;
+    try {
+      sessRow = await env.DB.prepare('SELECT revoked_at FROM auth_sessions WHERE jti = ?').bind(payload.jti).first();
+    } catch (e) { return null; }
+    if (!sessRow || sessRow.revoked_at) return null;
+  }
   return payload;
+}
+
+// AUTH-MAINFRAME: mint a session — random jti, issued-at, 7-day expiry —
+// record it in auth_sessions (so it can be revoked) and return the token.
+// A failed D1 write must never block sign-in; revocation then lapses to
+// expiry-based expiry only (the cookie is still HMAC-signed).
+async function mintSession(user, env) {
+  const nowSec = Math.floor(Date.now() / 1000);
+  const exp = nowSec + SESSION_MAX_AGE;
+  const jti = crypto.randomUUID();
+  const payload = { sub: user.sub, email: user.email, name: user.name, picture: user.picture, jti: jti, iat: nowSec, exp: exp };
+  const token = await signSession(payload, await sessionKey(env));
+  try {
+    await env.DB.prepare('INSERT INTO auth_sessions (jti, sub, created_at, expires_at) VALUES (?,?,?,?)')
+      .bind(jti, user.sub, new Date(nowSec * 1000).toISOString(), new Date(exp * 1000).toISOString()).run();
+  } catch (e) { /* best-effort — see comment above */ }
+  return { token: token, payload: payload };
+}
+
+function sessionSetCookie(token) {
+  return SESSION_COOKIE + '=' + token + '; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=' + SESSION_MAX_AGE;
 }
 
 /* ============================================================
@@ -595,10 +652,19 @@ const CLOUD_RATE = {
   // email+password register/login (deferred cloud item #14, 2026-08-12):
   // login is the CREDENTIAL-GUESSING surface — a scripted loop trying
   // passwords is the one auth path with no platform OAuth to stop it, so
-  // it gets a tighter bucket than general. Register shares it so account-
-  // creation spam gets the same hammer deterrent. 30/min per key is
-  // generous for any legit flow (one click per sign-in).
-  auth: { max: 30, windowMs: 60000 },
+  // it gets a tighter bucket than general. AUTH-MAINFRAME (2026-08-17):
+  // register and login get SEPARATE buckets so a login-spam script can
+  // never consume register's budget (or vice versa) — 30/min per key is
+  // generous for any legit flow (one click per sign-in). The per-account
+  // lockout (auth_login_guard) is the second line behind this.
+  authRegister: { max: 30, windowMs: 60000 },
+  authLogin: { max: 30, windowMs: 60000 },
+  // AUTH MAINFRAME v2 (2026-08-17): forgot-password is its own
+  // unauthenticated surface — tighter IP bucket than login; verify/reset are
+  // token-consumption surfaces (a guessed token is rejected by HMAC anyway;
+  // the bucket just slows hammering).
+  authForgot: { max: 10, windowMs: 60000 },
+  authToken: { max: 30, windowMs: 60000 },
   // PART F T7 (2026-08-16) — public reviews window POST. UNauthenticated
   // write surface (anyone can review), so it gets its own bucket tighter
   // than general: 10 posts/min per IP is plenty for one human review and
@@ -1865,6 +1931,20 @@ async function handleCloudCreate(request, env) {
   const existing = await env.DB.prepare('SELECT project_id FROM cloud_projects WHERE project_id = ?').bind(projectId).first();
   if (existing) return json({ ok: false, error: 'project already linked' }, 409);
   const session = await readSession(request, env);
+  // AUTH MAINFRAME v2 (verified-email gate): an EMAIL account must have
+  // verified its address before it can OWN (link) a cloud project — this is
+  // what makes account-occupation (registering someone else's email first)
+  // useless. Google sessions (platform-verified identities) are never gated,
+  // and the gate is off entirely when email is unconfigured (no
+  // RESEND_API_KEY) so the dormant path behaves byte-for-byte as before.
+  // Enforced at create, so a freshly-verified session works on the next
+  // attempt — no cached state to go stale.
+  if (session && session.sub && session.sub.indexOf('email:') === 0 && authEmailConfigured(env)) {
+    const userRow = await env.DB.prepare('SELECT email_verified FROM auth_users WHERE email = ?').bind(session.sub.slice('email:'.length)).first();
+    if (!userRow || !userRow.email_verified) {
+      return json({ ok: false, error: 'verify your email to enable cloud projects — check your inbox for the confirmation link', verifyRequired: true }, 403);
+    }
+  }
   // BILLING TIER (deferred cloud item #15, 2026-08-12): a session-LINKED
   // free account is capped at FREE_PROJECT_CAP linked projects (default 8,
   // per the owner's decision 2026-08-14);
@@ -2359,6 +2439,16 @@ async function handleCloudProjectPurge(request, env, projectId) {
    ============================================================ */
 const AUTH_MIN_PASSWORD = 8;
 
+// AUTH MAINFRAME v2 (2026-08-17) — email verification + forgot/reset via
+// Resend (RESEND_API_KEY / RESEND_FROM_EMAIL Wrangler secrets). DORMANT
+// until configured: with no RESEND_API_KEY the app sends no email and the
+// verified-email cloud gate is off — behavior is byte-for-byte unchanged.
+const AUTH_VERIFY_TTL_MS = 24 * 60 * 60 * 1000; // verify link: 24 hours
+const AUTH_RESET_TTL_MS = 30 * 60 * 1000;        // reset link: 30 minutes
+const AUTH_RESET_MAX_PER_EMAIL_H = 5;            // forgot: 5/hour/email
+const AUTH_FROM_FALLBACK = 'onboarding@resend.dev';
+const AUTH_RESEND_BASE = 'https://api.resend.com';
+
 function authNormalizeEmail(raw) {
   return String(raw || '').trim().toLowerCase();
 }
@@ -2373,20 +2463,113 @@ async function authHashPassword(password, saltHex) {
   return hashOwnerCode(password, saltHex);
 }
 
+// ---- Resend transactional email (AUTH MAINFRAME v2, 2026-08-17) ----------
+// Plain REST from the Worker (no SDK), dormant until configured: with no
+// RESEND_API_KEY the app sends nothing and every caller behaves exactly as
+// before. RESEND_API_BASE is a TEST-ONLY seam (qa-email-auth points it at a
+// local stub) — never set it in production.
+function authEmailConfigured(env) {
+  return !!(env && env.RESEND_API_KEY);
+}
+function authEmailFrom(env) {
+  const f = env && typeof env.RESEND_FROM_EMAIL === 'string' ? env.RESEND_FROM_EMAIL.trim() : '';
+  return f || AUTH_FROM_FALLBACK;
+}
+// Send a plain-text transactional email. Returns true when Resend accepted
+// it; never throws — a mail failure must not break a signup/login/webhook.
+async function sendAuthEmail(env, to, subject, textBody) {
+  if (!authEmailConfigured(env)) return false;
+  try {
+    const base = (env && typeof env.RESEND_API_BASE === 'string' && env.RESEND_API_BASE) || AUTH_RESEND_BASE;
+    const res = await fetch(base + '/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + env.RESEND_API_KEY,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ from: authEmailFrom(env), to: [to], subject: subject, text: textBody })
+    });
+    if (!res.ok) console.error('resend email rejected: ' + res.status + ' ' + (await res.text()).slice(0, 200));
+    return res.ok;
+  } catch (e) {
+    console.error('resend email failed:', e && e.message);
+    return false;
+  }
+}
+
+// ---- One-time signed tokens (verify + reset) ------------------------------
+// Mint: random jti, HMAC-signed payload (t = purpose, e = email, j = jti,
+// iat/exp), ledger row in auth_tokens. A failed D1 write must never block
+// the flow — the token is still signed and expiry-bounded; server-side
+// revocation then lapses to expiry-only (same accepted trade-off as
+// mintSession).
+async function mintAuthToken(env, email, purpose, ttlMs) {
+  const nowSec = Math.floor(Date.now() / 1000);
+  const jti = crypto.randomUUID();
+  const payload = { t: purpose, e: email, j: jti, iat: nowSec, exp: nowSec + Math.floor(ttlMs / 1000) };
+  const token = await signSession(payload, await sessionKey(env));
+  try {
+    await env.DB.prepare('INSERT INTO auth_tokens (id, email, purpose, created_at, expires_at) VALUES (?,?,?,?,?)')
+      .bind(jti, email, purpose, new Date(nowSec * 1000).toISOString(), new Date(nowSec * 1000 + ttlMs).toISOString()).run();
+  } catch (e) { /* best-effort */ }
+  return token;
+}
+
+// Shared verification-email body — used by register (initial link) and
+// /api/auth/resend-verify (expired/used-link recovery) so the two paths can
+// never drift apart.
+function authVerifyEmailBody(name, origin, token) {
+  return (name ? 'Hello ' + name + ',\n\n' : 'Hello,\n\n') +
+    'Confirm your email to activate your My MaNaGeR account and enable cloud projects:\n\n' +
+    origin + '/verify.html?token=' + encodeURIComponent(token) + '\n\n' +
+    'This link expires in 24 hours. If you did not create this account, you can ignore this email.';
+}
+
+// Consume a one-time token for a purpose. Returns the bound email on
+// success, null on any failure (bad signature, wrong purpose, expired,
+// unknown row, or already consumed). Single-use is a conditional UPDATE —
+// two racing replays cannot both consume the same row.
+async function consumeAuthToken(env, rawToken, purpose) {
+  if (!rawToken || typeof rawToken !== 'string') return null;
+  const dot = rawToken.indexOf('.');
+  if (dot <= 0 || dot >= rawToken.length - 1) return null;
+  let payloadStr, sigBytes;
+  try {
+    payloadStr = base64UrlDecode(rawToken.slice(0, dot));
+    sigBytes = base64UrlToBytes(rawToken.slice(dot + 1));
+  } catch (e) { return null; }
+  let payload;
+  try { payload = JSON.parse(payloadStr); } catch (e) { return null; }
+  if (!payload || typeof payload !== 'object' || payload.t !== purpose || typeof payload.e !== 'string' || !payload.j) return null;
+  let expected;
+  try {
+    expected = new Uint8Array(await crypto.subtle.sign('HMAC', await sessionKey(env), new TextEncoder().encode(payloadStr)));
+  } catch (e) { return null; }
+  if (expected.length !== sigBytes.length) return null;
+  let diff = 0;
+  for (let i = 0; i < expected.length; i++) diff |= expected[i] ^ sigBytes[i];
+  if (diff !== 0) return null;
+  const exp = Number(payload.exp);
+  if (!Number.isFinite(exp) || exp * 1000 <= Date.now()) return null;
+  try {
+    const nowIso = new Date().toISOString();
+    const upd = await env.DB.prepare('UPDATE auth_tokens SET used_at = ? WHERE id = ? AND purpose = ? AND used_at IS NULL AND revoked_at IS NULL AND expires_at > ?')
+      .bind(nowIso, payload.j, purpose, nowIso).run();
+    if (!upd || !upd.meta || !upd.meta.changes || upd.meta.changes < 1) return null;
+    return payload.e;
+  } catch (e) { return null; }
+}
+
 // Sign a session for an email account and return the Set-Cookie response,
 // mirroring the /api/auth/google response shape exactly.
-async function authSessionResponse(user, env) {
-  const exp = Math.floor(Date.now() / 1000) + SESSION_MAX_AGE;
-  const token = await signSession(
-    { sub: 'email:' + user.email, email: user.email, name: user.name, picture: '', exp },
-    await sessionKey(env)
-  );
-  return new Response(JSON.stringify({ ok: true, user: { sub: 'email:' + user.email, email: user.email, name: user.name } }), {
+async function authSessionResponse(user, env, emailSent) {
+  const s = await mintSession({ sub: 'email:' + user.email, email: user.email, name: user.name, picture: '' }, env);
+  return new Response(JSON.stringify({ ok: true, user: { sub: 'email:' + user.email, email: user.email, name: user.name }, emailSent: !!emailSent }), {
     status: 200,
     headers: {
       'Content-Type': 'application/json; charset=utf-8',
       'Cache-Control': 'no-store',
-      'Set-Cookie': SESSION_COOKIE + '=' + token + '; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=' + SESSION_MAX_AGE
+      'Set-Cookie': sessionSetCookie(s.token)
     }
   });
 }
@@ -2415,7 +2598,18 @@ async function handleAuthRegister(request, env) {
     if (raced) return json({ ok: false, error: 'account already exists — sign in instead' }, 409);
     throw e;
   }
-  return authSessionResponse({ email: email, name: name }, env);
+  // AUTH MAINFRAME v2: mint a one-time verify token (24h) and email it. With
+  // RESEND_API_KEY unset this is a no-op (emailSent: false) — register then
+  // behaves exactly as before, and the cloud-create verified gate is off.
+  let emailSent = false;
+  if (authEmailConfigured(env)) {
+    try {
+      const origin = new URL(request.url).origin;
+      const vtoken = await mintAuthToken(env, email, 'verify', AUTH_VERIFY_TTL_MS);
+      emailSent = await sendAuthEmail(env, email, 'Confirm your My MaNaGeR account', authVerifyEmailBody(name, origin, vtoken));
+    } catch (e) { /* a mail failure must never break signup */ }
+  }
+  return authSessionResponse({ email: email, name: name }, env, emailSent);
 }
 
 // POST /api/auth/login { email, password }
@@ -2424,6 +2618,23 @@ async function handleAuthLogin(request, env) {
   try { body = await request.json(); } catch (e) { return json({ ok: false, error: 'bad request' }, 400); }
   const email = authNormalizeEmail(body && body.email);
   const password = String((body && body.password) || '');
+  // AUTH-MAINFRAME per-account lockout (owner: "we cannot have someone
+  // spamming down our thing"). Checked for EXISTING accounts only — the
+  // unknown-email path keeps the generic 401 + dummy-PBKDF2 timing (no
+  // existence leak). A locked account gets an explicit 429 with Retry-After
+  // and the owner's exact guidance ("try again later or contact support").
+  const guard = await env.DB.prepare('SELECT failed_attempts, locked_until FROM auth_login_guard WHERE email = ?').bind(email).first();
+  if (guard && guard.locked_until && new Date(guard.locked_until).getTime() > Date.now()) {
+    const retryAfter = Math.max(1, Math.ceil((new Date(guard.locked_until).getTime() - Date.now()) / 1000));
+    return new Response(JSON.stringify({ ok: false, error: 'Too many failed attempts — try again later or contact support.' }), {
+      status: 429,
+      headers: {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Cache-Control': 'no-store',
+        'Retry-After': String(retryAfter)
+      }
+    });
+  }
   const row = await env.DB.prepare('SELECT email, password_hash, name FROM auth_users WHERE email = ?').bind(email).first();
   if (!row) {
     // TIMING-SIDE-CHANNEL GUARD: an unknown email returns after a real PBKDF2
@@ -2437,9 +2648,161 @@ async function handleAuthLogin(request, env) {
   if (sep <= 0) return json({ ok: false, error: 'invalid email or password' }, 401);
   const hash = await authHashPassword(password, row.password_hash.slice(0, sep));
   if (!codesEqual(hash, row.password_hash.slice(sep + 1))) {
+    const fails = (guard ? (Number(guard.failed_attempts) || 0) : 0) + 1;
+    const lockMs = fails >= AUTH_LOCK_ESCALATE_FAILS ? AUTH_LOCK_ESCALATE_MS : fails >= AUTH_LOCK_FAILS ? AUTH_LOCK_WINDOW_MS : 0;
+    const lockedUntil = lockMs ? new Date(Date.now() + lockMs).toISOString() : null;
+    try {
+      await env.DB.prepare('INSERT INTO auth_login_guard (email, failed_attempts, locked_until) VALUES (?,?,?) ON CONFLICT(email) DO UPDATE SET failed_attempts = excluded.failed_attempts, locked_until = excluded.locked_until')
+        .bind(email, fails, lockedUntil).run();
+    } catch (e) { /* a guard write must never break login */ }
     return json({ ok: false, error: 'invalid email or password' }, 401);
   }
+  try {
+    await env.DB.prepare('DELETE FROM auth_login_guard WHERE email = ?').bind(email).run();
+  } catch (e) { /* best-effort */ }
   return authSessionResponse({ email: row.email, name: row.name }, env);
+}
+
+// POST /api/auth/password { currentPassword, newPassword } — session-gated
+// password change. Email accounts only (Google-linked sessions have no
+// password). Verifies the CURRENT password, swaps the PBKDF2 hash, and
+// revokes every OTHER session for the account (the present one survives) —
+// a password change is a theft signal, so old sessions should not outlive it.
+async function handleAuthPasswordChange(request, env) {
+  const session = await readSession(request, env);
+  if (!session || !session.sub) return json({ ok: false, error: 'not signed in' }, 401);
+  if (session.sub.indexOf('email:') !== 0) return json({ ok: false, error: 'this account has no password' }, 400);
+  let body;
+  try { body = await request.json(); } catch (e) { return json({ ok: false, error: 'bad request' }, 400); }
+  const email = session.sub.slice('email:'.length);
+  const current = String((body && body.currentPassword) || '');
+  const next = String((body && body.newPassword) || '');
+  if (next.length < AUTH_MIN_PASSWORD) return json({ ok: false, error: 'password must be at least ' + AUTH_MIN_PASSWORD + ' characters' }, 400);
+  const row = await env.DB.prepare('SELECT password_hash FROM auth_users WHERE email = ?').bind(email).first();
+  if (!row) return json({ ok: false, error: 'account not found' }, 404);
+  const sep = row.password_hash.indexOf(':');
+  if (sep <= 0) return json({ ok: false, error: 'account not found' }, 404);
+  const hash = await authHashPassword(current, row.password_hash.slice(0, sep));
+  if (!codesEqual(hash, row.password_hash.slice(sep + 1))) {
+    return json({ ok: false, error: 'current password is incorrect' }, 401);
+  }
+  const salt = randomSaltHex();
+  const newHash = await authHashPassword(next, salt);
+  await env.DB.prepare('UPDATE auth_users SET password_hash = ? WHERE email = ?').bind(salt + ':' + newHash, email).run();
+  // Revoke every OTHER session (the present one survives).
+  try {
+    await env.DB.prepare('UPDATE auth_sessions SET revoked_at = ? WHERE sub = ? AND revoked_at IS NULL AND jti != ?')
+      .bind(new Date().toISOString(), session.sub, session.jti || '').run();
+  } catch (e) { /* best-effort */ }
+  return json({ ok: true });
+}
+
+// POST /api/auth/verify { token } — consume the one-time verify token and
+// mark the account's email verified. Replays answer 400 (single-use); a
+// second click on the same link is therefore a clean 'already used' error,
+// not a double-write.
+async function handleAuthVerify(request, env) {
+  let body;
+  try { body = await request.json(); } catch (e) { return json({ ok: false, error: 'bad request' }, 400); }
+  const email = await consumeAuthToken(env, String((body && body.token) || ''), 'verify');
+  if (!email) return json({ ok: false, error: 'invalid or expired verification link' }, 400);
+  try {
+    await env.DB.prepare('UPDATE auth_users SET email_verified = 1 WHERE email = ?').bind(email).run();
+  } catch (e) { /* best-effort */ }
+  return json({ ok: true, email: email });
+}
+
+// POST /api/auth/forgot { email } — request a password reset. The response
+// is IDENTICAL whether or not the email exists (dummy-PBKDF2 timing on the
+// unknown path — no existence leak), and the per-email quota (5/hour) also
+// answers the same generic message so the quota itself cannot be probed.
+async function handleAuthForgot(request, env) {
+  let body;
+  try { body = await request.json(); } catch (e) { return json({ ok: false, error: 'bad request' }, 400); }
+  const email = authNormalizeEmail(body && body.email);
+  if (!authEmailValid(email)) return json({ ok: false, error: 'invalid email address' }, 400);
+  const generic = { ok: true, message: 'If an account exists for that email, a reset link is on its way.' };
+  const row = await env.DB.prepare('SELECT email FROM auth_users WHERE email = ?').bind(email).first();
+  if (!row) {
+    await cloudTimingSink();
+    await authHashPassword('x'.repeat(AUTH_MIN_PASSWORD), CLOUD_DUMMY_SALT);
+    return json(generic);
+  }
+  if (authEmailConfigured(env)) {
+    try {
+      const hourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+      const cnt = await env.DB.prepare('SELECT COUNT(*) AS c FROM auth_tokens WHERE email = ? AND purpose = ? AND created_at > ?')
+        .bind(email, 'reset', hourAgo).first();
+      if (!cnt || (cnt.c || 0) < AUTH_RESET_MAX_PER_EMAIL_H) {
+        const origin = new URL(request.url).origin;
+        const rtoken = await mintAuthToken(env, email, 'reset', AUTH_RESET_TTL_MS);
+        await sendAuthEmail(env, email,
+          'Reset your My MaNaGeR password',
+          'We received a request to reset your My MaNaGeR password.\n\n' +
+          'Reset it here (the link expires in 30 minutes):\n\n' +
+          origin + '/reset.html?token=' + encodeURIComponent(rtoken) + '\n\n' +
+          'If you did not request this, you can ignore this email.');
+      }
+    } catch (e) { /* a mail failure must never break the generic response */ }
+  }
+  return json(generic);
+}
+
+// POST /api/auth/reset { token, newPassword } — consume the one-time reset
+// token, swap the PBKDF2 hash, revoke EVERY session for the account (a
+// password reset is a takeover signal — old sessions must not outlive it),
+// and clear any login lockout for the account.
+async function handleAuthReset(request, env) {
+  let body;
+  try { body = await request.json(); } catch (e) { return json({ ok: false, error: 'bad request' }, 400); }
+  const next = String((body && body.newPassword) || '');
+  if (next.length < AUTH_MIN_PASSWORD) return json({ ok: false, error: 'password must be at least ' + AUTH_MIN_PASSWORD + ' characters' }, 400);
+  const email = await consumeAuthToken(env, String((body && body.token) || ''), 'reset');
+  if (!email) return json({ ok: false, error: 'invalid or expired reset link' }, 400);
+  const row = await env.DB.prepare('SELECT email FROM auth_users WHERE email = ?').bind(email).first();
+  if (!row) return json({ ok: false, error: 'invalid or expired reset link' }, 400);
+  const salt = randomSaltHex();
+  const newHash = await authHashPassword(next, salt);
+  await env.DB.prepare('UPDATE auth_users SET password_hash = ? WHERE email = ?').bind(salt + ':' + newHash, email).run();
+  try {
+    await env.DB.prepare('UPDATE auth_sessions SET revoked_at = ? WHERE sub = ? AND revoked_at IS NULL')
+      .bind(new Date().toISOString(), 'email:' + email).run();
+    await env.DB.prepare('DELETE FROM auth_login_guard WHERE email = ?').bind(email).run();
+  } catch (e) { /* best-effort */ }
+  return json({ ok: true });
+}
+
+// POST /api/auth/resend-verify { email } — request a FRESH verification link
+// (the 24h single-use link died). Same generic-response + quota discipline as
+// forgot: the response is IDENTICAL whether the account is unknown, unverified,
+// or already verified (dummy-PBKDF2 timing on the unknown path — no existence
+// leak), and the per-email quota (5/hour) answers the same generic message.
+async function handleAuthResendVerify(request, env) {
+  let body;
+  try { body = await request.json(); } catch (e) { return json({ ok: false, error: 'bad request' }, 400); }
+  const email = authNormalizeEmail(body && body.email);
+  if (!authEmailValid(email)) return json({ ok: false, error: 'invalid email address' }, 400);
+  const generic = { ok: true, message: 'If an account needs verification, a new confirmation link is on its way.' };
+  const row = await env.DB.prepare('SELECT email, email_verified, name FROM auth_users WHERE email = ?').bind(email).first();
+  if (!row) {
+    await cloudTimingSink();
+    await authHashPassword('x'.repeat(AUTH_MIN_PASSWORD), CLOUD_DUMMY_SALT);
+    return json(generic);
+  }
+  if (row.email_verified) return json(generic); // nothing to verify — same generic
+  if (authEmailConfigured(env)) {
+    try {
+      const hourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+      const cnt = await env.DB.prepare('SELECT COUNT(*) AS c FROM auth_tokens WHERE email = ? AND purpose = ? AND created_at > ?')
+        .bind(email, 'verify', hourAgo).first();
+      if (!cnt || (cnt.c || 0) < AUTH_RESET_MAX_PER_EMAIL_H) {
+        const origin = new URL(request.url).origin;
+        const vtoken = await mintAuthToken(env, email, 'verify', AUTH_VERIFY_TTL_MS);
+        await sendAuthEmail(env, email, 'Confirm your My MaNaGeR account', authVerifyEmailBody(row.name, origin, vtoken));
+      }
+    } catch (e) { /* a mail failure must never break the generic response */ }
+  }
+  return json(generic);
 }
 
 /* ============================================================
@@ -2527,6 +2890,22 @@ async function handleBillingWebhook(request, env) {
     'ON CONFLICT(owner_sub) DO UPDATE SET ls_subscription_id = excluded.ls_subscription_id, status = excluded.status, ' +
     'current_period_end = excluded.current_period_end, updated_at = excluded.updated_at'
   ).bind(ownerSub, lsId, status, 'pro', periodEnd, now, now).run();
+  // PART 4 (subscription emails, 2026-08-17): purchase confirmation on
+  // subscription_created, cancellation notice on subscription_cancelled —
+  // via Resend. DORMANT until RESEND_API_KEY is set; never blocks or
+  // changes the webhook result. Recipient: the LS customer email
+  // (attrs.user_email) or the account's own email for email accounts.
+  if (authEmailConfigured(env) && (event === 'subscription_created' || event === 'subscription_cancelled')) {
+    const recipient = String(attrs.user_email || '').trim() || (ownerSub.indexOf('email:') === 0 ? ownerSub.slice('email:'.length) : '');
+    if (recipient) {
+      const confirmed = event === 'subscription_created';
+      await sendAuthEmail(env, recipient,
+        confirmed ? 'Your My MaNaGeR subscription is confirmed' : 'Your My MaNaGeR subscription was cancelled',
+        confirmed
+          ? 'Your My MaNaGeR subscription is confirmed and your plan is locked in. Thank you for supporting the project.\n\nIf you have any questions, reply to this email.'
+          : 'Your My MaNaGeR subscription has been cancelled. You can resubscribe at any time from your account.');
+    }
+  }
   return json({ ok: true, event: event, status: status });
 }
 
@@ -3150,17 +3529,13 @@ async function handleApi(request, env, url) {
       ? env.GOOGLE_CLIENT_ID : GOOGLE_CLIENT_ID;
     const user = await verifyGoogleIdToken(idToken, clientId);
     if (!user) return json({ ok: false, error: 'invalid token' }, 401);
-    const exp = Math.floor(Date.now() / 1000) + SESSION_MAX_AGE;
-    const token = await signSession(
-      { sub: user.sub, email: user.email, name: user.name, picture: user.picture, exp },
-      await sessionKey(env)
-    );
+    const s = await mintSession(user, env);
     return new Response(JSON.stringify({ ok: true, user }), {
       status: 200,
       headers: {
         'Content-Type': 'application/json; charset=utf-8',
         'Cache-Control': 'no-store',
-        'Set-Cookie': SESSION_COOKIE + '=' + token + '; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=' + SESSION_MAX_AGE
+        'Set-Cookie': sessionSetCookie(s.token)
       }
     });
   }
@@ -3169,6 +3544,39 @@ async function handleApi(request, env, url) {
   if (path === '/api/auth/me' && request.method === 'GET') {
     const session = await readSession(request, env);
     if (!session) return json({ ok: false, user: null });
+    // AUTH-MAINFRAME lazy sliding renewal: re-issue the cookie when the
+    // session is older than the renew window (or is a pre-table cookie
+    // carrying no jti/iat), bounded by the absolute cap. Same jti, fresh
+    // expiry — the revocation row is kept and its expiry bumped.
+    const iat = Number(session.iat) || 0;
+    const age = iat ? Date.now() - iat * 1000 : SESSION_RENEW_AFTER_MS + 1;
+    const absCapMs = iat ? (iat + SESSION_ABSOLUTE_CAP) * 1000 : Date.now();
+    if (age > SESSION_RENEW_AFTER_MS && Date.now() < absCapMs) {
+      const nowSec = Math.floor(Date.now() / 1000);
+      const exp = Math.min(nowSec + SESSION_MAX_AGE, iat + SESSION_ABSOLUTE_CAP);
+      const jti = session.jti || crypto.randomUUID();
+      const refreshed = await signSession(
+        { sub: session.sub, email: session.email, name: session.name, picture: session.picture, jti: jti, iat: nowSec, exp: exp },
+        await sessionKey(env)
+      );
+      try {
+        if (session.jti) {
+          await env.DB.prepare('UPDATE auth_sessions SET expires_at = ? WHERE jti = ?')
+            .bind(new Date(exp * 1000).toISOString(), session.jti).run();
+        } else {
+          await env.DB.prepare('INSERT INTO auth_sessions (jti, sub, created_at, expires_at) VALUES (?,?,?,?)')
+            .bind(jti, session.sub, new Date().toISOString(), new Date(exp * 1000).toISOString()).run();
+        }
+      } catch (e) { /* renewal bookkeeping is best-effort */ }
+      return new Response(JSON.stringify({ ok: true, user: { sub: session.sub, email: session.email, name: session.name, picture: session.picture } }), {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/json; charset=utf-8',
+          'Cache-Control': 'no-store',
+          'Set-Cookie': sessionSetCookie(refreshed)
+        }
+      });
+    }
     return json({ ok: true, user: { sub: session.sub, email: session.email, name: session.name, picture: session.picture } });
   }
 
@@ -3182,14 +3590,50 @@ async function handleApi(request, env, url) {
   // every /api/auth/* route; the auth rate bucket covers the brute-force
   // surface (see CLOUD_RATE above).
   if (path === '/api/auth/register' && request.method === 'POST') {
-    const rl = await cloudRateCheck(request, 'auth');
+    const rl = await cloudRateCheck(request, 'authRegister');
     if (rl.limited) return cloudRateLimited(rl.retryAfter);
     return handleAuthRegister(request, env);
   }
   if (path === '/api/auth/login' && request.method === 'POST') {
-    const rl = await cloudRateCheck(request, 'auth');
+    const rl = await cloudRateCheck(request, 'authLogin');
     if (rl.limited) return cloudRateLimited(rl.retryAfter);
     return handleAuthLogin(request, env);
+  }
+  // POST /api/auth/password — session-gated password change (email accounts
+  // only; revokes every OTHER session). Rides the login bucket: it is the
+  // same credential surface (verifies the current password).
+  if (path === '/api/auth/password' && request.method === 'POST') {
+    const rl = await cloudRateCheck(request, 'authLogin');
+    if (rl.limited) return cloudRateLimited(rl.retryAfter);
+    return handleAuthPasswordChange(request, env);
+  }
+  // AUTH MAINFRAME v2 — email verification + forgot/reset. verify/reset
+  // consume one-time signed tokens (single-use, HMAC-bound to the account);
+  // forgot rides the unauthenticated surface like register/login (same-
+  // origin gate above) and answers a generic message either way (no
+  // existence leak).
+  if (path === '/api/auth/verify' && request.method === 'POST') {
+    const rl = await cloudRateCheck(request, 'authToken');
+    if (rl.limited) return cloudRateLimited(rl.retryAfter);
+    return handleAuthVerify(request, env);
+  }
+  if (path === '/api/auth/forgot' && request.method === 'POST') {
+    const rl = await cloudRateCheck(request, 'authForgot');
+    if (rl.limited) return cloudRateLimited(rl.retryAfter);
+    return handleAuthForgot(request, env);
+  }
+  if (path === '/api/auth/reset' && request.method === 'POST') {
+    const rl = await cloudRateCheck(request, 'authToken');
+    if (rl.limited) return cloudRateLimited(rl.retryAfter);
+    return handleAuthReset(request, env);
+  }
+  // POST /api/auth/resend-verify — fresh verification link for a dead
+  // 24h/single-use link (verify.html's recoverable error path). Rides the
+  // authForgot bucket (same unauthenticated, quota-guarded surface).
+  if (path === '/api/auth/resend-verify' && request.method === 'POST') {
+    const rl = await cloudRateCheck(request, 'authForgot');
+    if (rl.limited) return cloudRateLimited(rl.retryAfter);
+    return handleAuthResendVerify(request, env);
   }
 
   // BILLING TIER (deferred cloud item #15, EXECUTED 2026-08-12) —
@@ -3224,6 +3668,39 @@ async function handleApi(request, env, url) {
     const sfs = request.headers.get('Sec-Fetch-Site');
     if (sfs && sfs !== 'same-origin' && sfs !== 'none') {
       return json({ ok: false, error: 'forbidden' }, 403);
+    }
+    // AUTH-MAINFRAME: revoke THIS session server-side before clearing the
+    // cookie, so a captured cookie is dead even if it is replayed later.
+    const sess = await readSession(request, env);
+    if (sess && sess.jti) {
+      try {
+        await env.DB.prepare('UPDATE auth_sessions SET revoked_at = ? WHERE jti = ?')
+          .bind(new Date().toISOString(), sess.jti).run();
+      } catch (e) { /* best-effort */ }
+    }
+    return new Response(JSON.stringify({ ok: true }), {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Cache-Control': 'no-store',
+        'Set-Cookie': SESSION_COOKIE + '=; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=0'
+      }
+    });
+  }
+
+  // POST /api/auth/logout-all -> revoke EVERY session for the account
+  // (sign out everywhere). Same Sec-Fetch-Site logout-CSRF guard as logout.
+  if (path === '/api/auth/logout-all' && request.method === 'POST') {
+    const sfs = request.headers.get('Sec-Fetch-Site');
+    if (sfs && sfs !== 'same-origin' && sfs !== 'none') {
+      return json({ ok: false, error: 'forbidden' }, 403);
+    }
+    const sess = await readSession(request, env);
+    if (sess && sess.sub) {
+      try {
+        await env.DB.prepare('UPDATE auth_sessions SET revoked_at = ? WHERE sub = ? AND revoked_at IS NULL')
+          .bind(new Date().toISOString(), sess.sub).run();
+      } catch (e) { /* best-effort */ }
     }
     return new Response(JSON.stringify({ ok: true }), {
       status: 200,
@@ -3407,6 +3884,22 @@ export default {
     } catch (e) {
       console.error('rank9 webhook evaluation failed:', e && e.message);
     }
+    // AUTH-MAINFRAME: sweep stale session + guard rows so auth_sessions
+    // cannot grow unbounded — expired rows and sessions revoked more than
+    // 7 days ago, and lockout rows whose lock expired over a day ago.
+    try {
+      const s7 = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+      const s1 = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      const sessSweep = await env.DB.prepare('DELETE FROM auth_sessions WHERE expires_at < ? OR (revoked_at IS NOT NULL AND revoked_at < ?)')
+        .bind(s7, s7).run();
+      const guardSweep = await env.DB.prepare('DELETE FROM auth_login_guard WHERE locked_until IS NOT NULL AND locked_until < ?')
+        .bind(s1).run();
+      const tokenSweep = await env.DB.prepare('DELETE FROM auth_tokens WHERE expires_at < ? OR (used_at IS NOT NULL AND used_at < ?) OR (revoked_at IS NOT NULL AND revoked_at < ?)')
+        .bind(s7, s7, s7).run();
+      console.log('auth sweep: sessions=' + ((sessSweep.meta && sessSweep.meta.changes) || 0) + ' guards=' + ((guardSweep.meta && guardSweep.meta.changes) || 0) + ' tokens=' + ((tokenSweep.meta && tokenSweep.meta.changes) || 0));
+    } catch (e) {
+      console.error('auth sweep failed:', e && e.message);
+    }
   },
   async fetch(request, env) {
     try {
@@ -3417,6 +3910,22 @@ export default {
       // paths (and auth responses never carry the page CSP).
       if (normalized.indexOf('/api/') === 0) {
         return handleApi(request, env, url);
+      }
+      // SEO-FILES (2026-08-17): robots.txt/sitemap.xml must never fall
+      // through to the SPA fallback (which serves index.html with 200).
+      // Serve the real asset with a pinned Content-Type, or 404 if missing.
+      if (SEO_FILES[normalized]) {
+        const seoRes = await env.ASSETS.fetch(request);
+        const seoType = seoRes.headers.get('Content-Type') || '';
+        if (seoRes.ok && seoType.indexOf('text/html') !== 0) {
+          const seoDecorated = new Response(seoRes.body, seoRes);
+          seoDecorated.headers.set('Content-Type', SEO_FILES[normalized]);
+          for (const [name, value] of Object.entries(HEADERS)) {
+            seoDecorated.headers.set(name, value);
+          }
+          return seoDecorated;
+        }
+        return new Response('Not Found', { status: 404 });
       }
       const response = await env.ASSETS.fetch(request);
       // Copy status/statusText/headers into a new Response, then add ours.

@@ -149,6 +149,8 @@ var MMGR = window.MMGR || {};
 
   function showButton() {
     _user = null;
+    syncPwHosts(); // signed out → password-change triggers hide
+
     const btn = $('google-signin-button');
     const chip = $('google-user-chip');
     if (btn) btn.hidden = false;
@@ -169,16 +171,26 @@ var MMGR = window.MMGR || {};
 
   function resetEmailAuthMode() {
     _emailMode = 'login';
+    _checkUser = null;
     const block = $('email-auth-block');
     if (!block) return;
     const nameEl = emailAuthQ(block, '.email-auth-name');
     const pass = emailAuthQ(block, '.email-auth-pass');
     const submitBtn = emailAuthQ(block, '.email-auth-submit');
     const modeBtn = emailAuthQ(block, '.email-auth-mode');
+    const forgotBtn = emailAuthQ(block, '.email-auth-forgot');
+    const resetPanel = emailAuthQ(block, '.email-auth-reset');
+    const checkPanel = emailAuthQ(block, '.email-auth-check');
     if (nameEl) nameEl.hidden = true;
     if (pass) pass.autocomplete = 'current-password';
     if (submitBtn) submitBtn.textContent = 'Sign in';
     if (modeBtn) modeBtn.textContent = 'Create an account instead';
+    if (forgotBtn) forgotBtn.hidden = false;
+    if (resetPanel) resetPanel.hidden = true;
+    if (checkPanel) checkPanel.hidden = true;
+    // NOTE: form.hidden is intentionally NOT touched here — app.html/admin.html
+    // keep the form behind the "Sign in with email instead" toggle; marketing
+    // pages restore it explicitly via renderSigninSignedOut().
   }
 
   // Render the signed-in chip. Google-supplied fields are always written via
@@ -232,6 +244,11 @@ var MMGR = window.MMGR || {};
     document.dispatchEvent(new CustomEvent('mmgr:user-changed', { detail: user }));
     // Plan badge follows the identity (see refreshPlan below).
     refreshPlan();
+    // AUTH MAINFRAME 2026-08-17 — password-change triggers follow the
+    // account type on EVERY surface (the chip is app.html/admin.html
+    // only; marketing pages render their own account row, so this must
+    // run before the chip guard below).
+    syncPwHosts();
     if (!chip) return;
     chip.hidden = false;
     chip.innerHTML = '';
@@ -258,6 +275,10 @@ var MMGR = window.MMGR || {};
     chip.appendChild(avatar);
     chip.appendChild(name);
     chip.appendChild(out);
+    // AUTH MAINFRAME 2026-08-17 — password change (email accounts): the
+    // shared control mounts into the signed-in chip; the trigger stays
+    // hidden for Google accounts (no password exists for them).
+    mountPasswordControl(chip);
   }
 
   // STABILIZATION 2026-08-16: renders the account's Premium pill into every
@@ -392,6 +413,10 @@ var MMGR = window.MMGR || {};
      (which re-reads /api/auth/me) and any other listener refresh.
      ============================================================ */
   let _emailMode = 'login'; // 'login' | 'register' (one mount per page)
+  // AUTH MAINFRAME v2: the signed-in user behind a register-with-verification
+  // "check your inbox" panel. The session cookie is already set server-side;
+  // "Got it" completes the sign-in render (showUser + events) for this user.
+  let _checkUser = null;
 
   function emailAuthMarkup() {
     return '<div class="email-auth" id="email-auth-block">' +
@@ -403,9 +428,37 @@ var MMGR = window.MMGR || {};
       '<input type="text" class="email-auth-input email-auth-name" placeholder="Name (optional)" autocomplete="name" aria-label="Name" hidden>' +
       '<button type="submit" class="btn btn-n btn-s email-auth-submit">Sign in</button>' +
       '</div>' +
-      '<div class="email-auth-alt"><button type="button" class="email-auth-mode">Create an account instead</button></div>' +
+      '<div class="email-auth-alt">' +
+      '<button type="button" class="email-auth-mode">Create an account instead</button>' +
+      '<button type="button" class="email-auth-forgot">Forgot password?</button>' +
+      '</div>' +
       '<div class="email-auth-err" role="status" aria-live="polite"></div>' +
-      '</form></div>';
+      '</form>' +
+      // AUTH MAINFRAME v2 — forgot-password request panel (login sheet). The
+      // server answers the SAME generic message whether or not the account
+      // exists, so this form can never probe which emails have accounts.
+      '<div class="email-auth-reset" hidden>' +
+      '<p class="email-auth-reset-title"><strong>Reset your password</strong></p>' +
+      '<p class="email-auth-reset-msg">Enter your email and we will send a reset link if an account exists for it.</p>' +
+      '<div class="email-auth-row">' +
+      '<input type="email" class="email-auth-input" placeholder="Email" autocomplete="email" aria-label="Email for reset" required>' +
+      '<button type="button" class="btn btn-n btn-s email-auth-submit email-auth-reset-submit">Send reset link</button>' +
+      '</div>' +
+      '<div class="email-auth-err" role="status" aria-live="polite"></div>' +
+      '<div class="email-auth-alt"><button type="button" class="email-auth-reset-back">Back to sign in</button></div>' +
+      '</div>' +
+      // AUTH MAINFRAME v2 — "check your inbox" panel (register verification /
+      // reset-request outcomes). The Resend button only shows for the verify
+      // case (POST /api/auth/resend-verify); reset just tells the user to
+      // check their inbox (the response is deliberately generic).
+      '<div class="email-auth-check" role="status" aria-live="polite" hidden>' +
+      '<svg class="ico email-auth-check-ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-mail"></use></svg>' +
+      '<p class="email-auth-check-title"><strong>Check your inbox</strong></p>' +
+      '<p class="email-auth-check-msg"></p>' +
+      '<button type="button" class="email-auth-resend">Resend confirmation link</button>' +
+      '<button type="button" class="email-auth-check-close">Got it</button>' +
+      '</div>' +
+      '</div>';
   }
 
   function emailAuthQ(block, sel) { return block ? block.querySelector(sel) : null; }
@@ -437,15 +490,19 @@ var MMGR = window.MMGR || {};
       if (res.status === 429) throw new Error('Too many attempts — wait a minute and try again.');
       throw new Error((data && data.error) || 'Sign-in failed (HTTP ' + res.status + ').');
     }
-    return data.user;
+    return data;
   }
 
   function emailLogin(email, password) {
-    return emailAuthPost('/api/auth/login', { email: email, password: password });
+    return emailAuthPost('/api/auth/login', { email: email, password: password }).then(function(d) { return d.user; });
   }
 
+  // AUTH MAINFRAME v2: register answers { user, emailSent } — emailSent tells
+  // the UI whether a confirmation email was dispatched (verification flow).
   function emailRegister(email, password, name) {
-    return emailAuthPost('/api/auth/register', { email: email, password: password, name: name });
+    return emailAuthPost('/api/auth/register', { email: email, password: password, name: name }).then(function(d) {
+      return { user: d.user, emailSent: d.emailSent === true };
+    });
   }
 
   // Mount the toggle + form. Default host is #google-signin-button (app.html /
@@ -479,6 +536,28 @@ var MMGR = window.MMGR || {};
     wireEmailAuth(block);
   }
 
+  // AUTH MAINFRAME v2 — show the "check your inbox" panel (form + reset panel
+  // hidden). showResend reveals the Resend-confirmation-link button (verify
+  // case only — reset sends no follow-up action).
+  function showEmailAuthCheck(block, msg, showResend) {
+    const f = emailAuthQ(block, '.email-auth-form');
+    const rp = emailAuthQ(block, '.email-auth-reset');
+    const chk = emailAuthQ(block, '.email-auth-check');
+    const msgEl = emailAuthQ(block, '.email-auth-check-msg');
+    const resendBtn = emailAuthQ(block, '.email-auth-resend');
+    if (f) f.hidden = true;
+    if (rp) rp.hidden = true;
+    if (msgEl && msg) msgEl.textContent = msg;
+    if (resendBtn) resendBtn.hidden = !showResend;
+    if (chk) chk.hidden = false;
+    setEmailAuthError(block, '');
+  }
+
+  function hideEmailAuthCheck(block) {
+    const chk = emailAuthQ(block, '.email-auth-check');
+    if (chk) chk.hidden = true;
+  }
+
   function wireEmailAuth(block) {
     const form = emailAuthQ(block, '.email-auth-form');
     const toggle = emailAuthQ(block, '.email-auth-toggle');
@@ -486,6 +565,14 @@ var MMGR = window.MMGR || {};
     const errEl = emailAuthQ(block, '.email-auth-err');
     const nameEl = emailAuthQ(block, '.email-auth-name');
     const submitBtn = emailAuthQ(block, '.email-auth-submit');
+    const forgotBtn = emailAuthQ(block, '.email-auth-forgot');
+    const resetPanel = emailAuthQ(block, '.email-auth-reset');
+    const resetBack = emailAuthQ(block, '.email-auth-reset-back');
+    const resetSubmit = emailAuthQ(block, '.email-auth-reset-submit');
+    const checkPanel = emailAuthQ(block, '.email-auth-check');
+    const checkMsg = emailAuthQ(block, '.email-auth-check-msg');
+    const resendBtn = emailAuthQ(block, '.email-auth-resend');
+    const checkClose = emailAuthQ(block, '.email-auth-check-close');
     if (!form || !toggle || !modeBtn) return;
 
     toggle.addEventListener('click', function() {
@@ -505,7 +592,66 @@ var MMGR = window.MMGR || {};
       if (pass) pass.autocomplete = isReg ? 'new-password' : 'current-password';
       if (submitBtn) submitBtn.textContent = isReg ? 'Create account' : 'Sign in';
       modeBtn.textContent = isReg ? 'Already have an account? Sign in' : 'Create an account instead';
+      if (forgotBtn) forgotBtn.hidden = isReg; // forgot-password is a LOGIN-only action
       if (errEl) errEl.textContent = '';
+    });
+
+    // AUTH MAINFRAME v2 — forgot-password: swap the form for the reset
+    // request panel, POST /api/auth/forgot, then land on the generic
+    // check-your-inbox state (no existence leak either way).
+    if (forgotBtn) forgotBtn.addEventListener('click', function() {
+      setEmailAuthError(block, '');
+      form.hidden = true;
+      if (resetPanel) resetPanel.hidden = false;
+      const ri = resetPanel ? resetPanel.querySelector('input[type=email]') : null;
+      if (ri) { try { ri.focus(); } catch (e) { /* focus is a hint */ } }
+    });
+    if (resetBack) resetBack.addEventListener('click', function() {
+      setEmailAuthError(block, '');
+      if (resetPanel) resetPanel.hidden = true;
+      form.hidden = false;
+    });
+    if (resetSubmit) resetSubmit.addEventListener('click', function() {
+      const ri = resetPanel ? resetPanel.querySelector('input[type=email]') : null;
+      const email = (ri && ri.value) ? ri.value.trim() : '';
+      const rerr = resetPanel ? emailAuthQ(resetPanel, '.email-auth-err') : null;
+      if (!email) { if (rerr) { rerr.textContent = 'Enter your email address.'; rerr.hidden = false; } return; }
+      if (rerr) rerr.hidden = true;
+      resetSubmit.disabled = true;
+      emailAuthPost('/api/auth/forgot', { email: email }).then(function() {
+        showEmailAuthCheck(block, 'If an account exists for that email, a reset link is on its way.', false);
+      }).catch(function(err) {
+        if (rerr) { rerr.textContent = (err && err.message) || 'Could not send the reset link.'; rerr.hidden = false; }
+      }).finally(function() {
+        resetSubmit.disabled = false;
+      });
+    });
+
+    // "Check your inbox" panel actions: resend the verification link (verify
+    // case) and complete the deferred sign-in render (Got it).
+    if (resendBtn) resendBtn.addEventListener('click', function() {
+      const email = _checkUser && _checkUser.email ? _checkUser.email : '';
+      if (!email) { if (checkMsg) checkMsg.textContent = 'Sign in with the account to request a new link.'; return; }
+      resendBtn.disabled = true;
+      emailAuthPost('/api/auth/resend-verify', { email: email }).then(function() {
+        if (checkMsg) checkMsg.textContent = 'If an account needs verification, a new confirmation link is on its way — check your inbox.';
+      }).catch(function(err) {
+        if (checkMsg) checkMsg.textContent = (err && err.message) || 'Could not send the link right now.';
+      }).finally(function() {
+        resendBtn.disabled = false;
+      });
+    });
+    if (checkClose) checkClose.addEventListener('click', function() {
+      hideEmailAuthCheck(block);
+      const user = _checkUser;
+      _checkUser = null;
+      if (user) {
+        showUser(user);
+        document.dispatchEvent(new CustomEvent('mmgr:google-signed-in', { detail: user }));
+        if (typeof window.mmgrOnGoogleSignIn === 'function') {
+          try { window.mmgrOnGoogleSignIn(user); } catch (e) { /* optional hook */ }
+        }
+      }
     });
 
     form.addEventListener('submit', function(e) {
@@ -523,9 +669,20 @@ var MMGR = window.MMGR || {};
       const p = (_emailMode === 'register')
         ? emailRegister(email, password, name)
         : emailLogin(email, password);
-      p.then(function(user) {
-        // Same success path as Google: chip replaces the auth surface, and
+      p.then(function(result) {
+        // AUTH MAINFRAME v2: register now emails a confirmation link — show
+        // the check-your-inbox state INSTEAD of the signed-in chip. The
+        // session cookie is already set server-side; "Got it" completes the
+        // sign-in render (showUser + events) so the user keeps the account.
+        if (_emailMode === 'register' && result && result.emailSent) {
+          _checkUser = result.user || null;
+          showEmailAuthCheck(block, 'We sent a confirmation link to ' + email + '. Cloud projects unlock once you click it.', true);
+          return;
+        }
+        // Login, or register on a host without email configured (dormant) —
+        // same success path as Google: chip replaces the auth surface, and
         // the identical event fires so the cloud drawer / hooks refresh.
+        const user = (result && result.user) ? result.user : result;
         showUser(user);
         document.dispatchEvent(new CustomEvent('mmgr:google-signed-in', { detail: user }));
         if (typeof window.mmgrOnGoogleSignIn === 'function') {
@@ -534,6 +691,175 @@ var MMGR = window.MMGR || {};
       }).catch(function(err) {
         setEmailAuthError(block, (err && err.message) || 'Sign-in failed.');
       });
+    });
+  }
+
+  /* ============================================================
+     PASSWORD CHANGE (AUTH MAINFRAME — 2026-08-17) — the session-
+     gated POST /api/auth/password endpoint wired into every account
+     surface via mountPasswordControl(hostEl): the signed-in chip on
+     app.html/admin.html (showUser mounts it), the marketing sign-in
+     sheet's account row (marketing.js mounts it), and project.html
+     Settings > Controls > Profile (auto-mounted into [data-pw-host]).
+     The trigger shows ONLY for email accounts (sub = 'email:…');
+     Google accounts have no password — the worker answers 400 for
+     them — so the button is never rendered for those. States:
+     form → busy → inline error (role=status) → success confirmation
+     (every other device is signed out server-side). Passwords are
+     cleared after every attempt; zero inline handlers; [hidden]
+     guards on every panel.
+     ============================================================ */
+  let _pwRecs = []; // [{host, btn, panel, fields, actions, cur, next, conf, err, ok, submit, cancel}]
+
+  function isEmailAccount(user) {
+    return !!(user && user.sub && String(user.sub).indexOf('email:') === 0);
+  }
+
+  function pwMarkup() {
+    return '<div class="email-auth-pw" hidden>' +
+      '<p class="email-auth-pw-title"><strong>Change password</strong></p>' +
+      '<p class="email-auth-pw-msg">You will stay signed in on this device. Every other device is signed out when the password changes.</p>' +
+      '<div class="email-auth-row email-auth-pw-fields">' +
+      '<input type="password" class="email-auth-input email-auth-pw-cur" placeholder="Current password" autocomplete="current-password" aria-label="Current password" required>' +
+      '<input type="password" class="email-auth-input email-auth-pw-new" placeholder="New password (8+ chars)" autocomplete="new-password" aria-label="New password" minlength="8" required>' +
+      '<input type="password" class="email-auth-input email-auth-pw-conf" placeholder="Confirm new password" autocomplete="new-password" aria-label="Confirm new password" minlength="8" required>' +
+      '</div>' +
+      '<div class="email-auth-row email-auth-pw-actions">' +
+      '<button type="button" class="btn btn-g btn-s email-auth-pw-submit">Update password</button>' +
+      '<button type="button" class="email-auth-pw-cancel">Cancel</button>' +
+      '</div>' +
+      '<div class="email-auth-err email-auth-pw-err" role="status" aria-live="polite"></div>' +
+      '<p class="email-auth-pw-ok" role="status" hidden>Password updated. Every other device was signed out.</p>' +
+      '</div>';
+  }
+
+  function resetPwPanel(rec) {
+    if (!rec) return;
+    if (rec.cur) rec.cur.value = '';
+    if (rec.next) rec.next.value = '';
+    if (rec.conf) rec.conf.value = '';
+    if (rec.err) rec.err.textContent = '';
+    if (rec.ok) rec.ok.hidden = true;
+    if (rec.fields) rec.fields.hidden = false;
+    if (rec.actions) rec.actions.hidden = false;
+    if (rec.submit) { rec.submit.disabled = false; rec.submit.textContent = 'Update password'; }
+  }
+
+  function setPwError(rec, msg) {
+    if (rec && rec.err) rec.err.textContent = msg || '';
+  }
+
+  async function pwAuthPost(payload) {
+    let res;
+    try {
+      res = await fetch('/api/auth/password', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+    } catch (e) {
+      throw new Error('Password change is unavailable on this host (needs the Worker API).');
+    }
+    let data = null;
+    try { data = await res.json(); } catch (e) { /* non-JSON failure */ }
+    if (!res.ok || !data || !data.ok) {
+      if (res.status === 429) throw new Error('Too many attempts — wait a minute and try again.');
+      if (res.status === 401) throw new Error('Current password is incorrect.');
+      throw new Error((data && data.error) || 'Could not update the password (HTTP ' + res.status + ').');
+    }
+    return data;
+  }
+
+  // Mount the Change-password trigger + panel into a host element (signed-in
+  // chip / account row / settings section). Idempotent per host; the trigger
+  // is hidden unless the signed-in account is an email account.
+  function mountPasswordControl(host) {
+    if (!host || !host.querySelector) return;
+    if (host.querySelector('.email-auth-pw')) return;
+    const wrap = document.createElement('div');
+    wrap.innerHTML = pwMarkup();
+    const panel = wrap.firstElementChild;
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'email-auth-pw-btn';
+    btn.textContent = 'Change password';
+    btn.setAttribute('aria-expanded', 'false');
+    const rec = {
+      host: host, btn: btn, panel: panel,
+      fields: panel.querySelector('.email-auth-pw-fields'),
+      actions: panel.querySelector('.email-auth-pw-actions'),
+      cur: panel.querySelector('.email-auth-pw-cur'),
+      next: panel.querySelector('.email-auth-pw-new'),
+      conf: panel.querySelector('.email-auth-pw-conf'),
+      err: panel.querySelector('.email-auth-pw-err'),
+      ok: panel.querySelector('.email-auth-pw-ok'),
+      submit: panel.querySelector('.email-auth-pw-submit'),
+      cancel: panel.querySelector('.email-auth-pw-cancel')
+    };
+    btn.addEventListener('click', function() {
+      const open = panel.hidden;
+      resetPwPanel(rec);
+      panel.hidden = !open;
+      btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      if (open && rec.cur) { try { rec.cur.focus(); } catch (e) { /* focus is a hint */ } }
+    });
+    rec.cancel.addEventListener('click', function() {
+      resetPwPanel(rec);
+      panel.hidden = true;
+      btn.setAttribute('aria-expanded', 'false');
+    });
+    rec.submit.addEventListener('click', function() {
+      const cv = (rec.cur && rec.cur.value) ? rec.cur.value : '';
+      const nv = (rec.next && rec.next.value) ? rec.next.value : '';
+      const cfv = (rec.conf && rec.conf.value) ? rec.conf.value : '';
+      setPwError(rec, '');
+      if (!cv) { setPwError(rec, 'Enter your current password.'); return; }
+      if (nv.length < 8) { setPwError(rec, 'New password must be at least 8 characters.'); return; }
+      if (nv !== cfv) { setPwError(rec, 'New passwords do not match.'); return; }
+      if (rec.cur) rec.cur.value = ''; // never echo passwords in the DOM
+      if (rec.next) rec.next.value = '';
+      if (rec.conf) rec.conf.value = '';
+      rec.submit.disabled = true;
+      rec.submit.textContent = 'Updating';
+      pwAuthPost({ currentPassword: cv, newPassword: nv }).then(function() {
+        if (rec.fields) rec.fields.hidden = true;
+        if (rec.actions) rec.actions.hidden = true;
+        setPwError(rec, '');
+        if (rec.ok) rec.ok.hidden = false;
+      }).catch(function(err) {
+        setPwError(rec, (err && err.message) || 'Could not update the password.');
+        if (rec.submit) rec.submit.textContent = 'Update password';
+      }).finally(function() {
+        if (rec.submit) rec.submit.disabled = false;
+      });
+    });
+    // Trigger before the panel; when the host already ends with a sign-out
+    // button (chip / sheet account row), slot both in front of it so the
+    // account actions read Change password, then Sign out.
+    const outBtn = host.querySelector('.signin-out, .gchip-out');
+    if (outBtn) {
+      host.insertBefore(btn, outBtn);
+      host.insertBefore(panel, outBtn);
+    } else {
+      host.appendChild(btn);
+      host.appendChild(panel);
+    }
+    _pwRecs.push(rec);
+    syncPwHosts();
+  }
+
+  // Visibility follows the signed-in account type: only email accounts
+  // (sub 'email:…') have a password to change. Signed out → hidden.
+  function syncPwHosts() {
+    const show = isEmailAccount(_user);
+    _pwRecs.forEach(function(rec) {
+      if (rec.btn) rec.btn.hidden = !show;
+      if (!show && rec.panel && !rec.panel.hidden) {
+        resetPwPanel(rec);
+        rec.panel.hidden = true;
+        if (rec.btn) rec.btn.setAttribute('aria-expanded', 'false');
+      }
     });
   }
 
@@ -1257,6 +1583,11 @@ var MMGR = window.MMGR || {};
 
   function boot() {
     mountEmailAuth();
+    // AUTH MAINFRAME 2026-08-17 — password change mounts: any element marked
+    // [data-pw-host] (project.html Settings > Controls > Profile) hosts the
+    // shared control; visibility syncs with the session.
+    const pwHosts = document.querySelectorAll('[data-pw-host]');
+    for (let i = 0; i < pwHosts.length; i++) mountPasswordControl(pwHosts[i]);
     wireHeaderChip();
     wireDriveControls();
     // The GIS script tag is async+defer in the page head, so it may still be
@@ -1302,6 +1633,8 @@ var MMGR = window.MMGR || {};
     emailLogin: emailLogin,
     emailRegister: emailRegister,
     mountEmailAuth: mountEmailAuth,
+    // AUTH MAINFRAME 2026-08-17 — password change (email accounts)
+    mountPasswordControl: mountPasswordControl,
     // OWNER 2026-08-15: pop the sign-in prompt at a user gesture (used by
     // cloud actions that need the session — recovery, admin publish-linking).
     openSignInPrompt: openSignInPrompt,

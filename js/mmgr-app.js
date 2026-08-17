@@ -2413,6 +2413,7 @@ window.MMGR = MMGR;
     // Same zero-throw pattern as the Drive entries above.
     'cloudCreate': () => { const C = window.MMGR.Cloud; if (C && C.createProject) C.createProject(); },
     'cloudUpgrade': () => { const C = window.MMGR.Cloud; if (C && C.cloudUpgrade) C.cloudUpgrade(); },
+    'cloudResendVerify': () => { const C = window.MMGR.Cloud; if (C && C.cloudResendVerify) C.cloudResendVerify(); },
     'cloudSave': () => { const C = window.MMGR.Cloud; if (C && C.saveToCloud) C.saveToCloud(); },
     'cloudLoad': () => { const C = window.MMGR.Cloud; if (C && C.loadFromCloud) C.loadFromCloud(); },
     'cloudRecover': () => { const C = window.MMGR.Cloud; if (C && C.recoverCode) C.recoverCode(); },
@@ -2728,7 +2729,7 @@ window.MMGR = MMGR;
     // driveBackup above. Load is DELIBERATELY excluded: it overwrites the
     // local workspace like driveRestore/import, so it stays blocked in
     // view-only.
-    'cloudCreate': 1, 'cloudUpgrade': 1, 'cloudSave': 1, 'cloudRecover': 1, 'cloudCopyCode': 1, 'cloudSignIn': 1,
+    'cloudCreate': 1, 'cloudUpgrade': 1, 'cloudResendVerify': 1, 'cloudSave': 1, 'cloudRecover': 1, 'cloudCopyCode': 1, 'cloudSignIn': 1,
     // CLOUD-BACKEND-ARCHITECTURE-PLAN Phase 2/3: editor-code management and
     // changelog view/revert never mutate the local workspace (owner-only
     // server calls; a revert changes the CLOUD snapshot, not this device) —

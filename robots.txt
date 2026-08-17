@@ -1,0 +1,16 @@
+# My MaNaGeR — robots.txt
+# Public marketing pages (/, /features, /about, /contact, /reviews,
+# /mymanager-field-guide) are fully crawlable. The app workspace pages are
+# access-code gated and the admin panel is operator-only, so they are
+# disallowed here (admin.html also carries its own <meta name="robots"
+# content="noindex, nofollow">).
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /app
+Disallow: /project
+Disallow: /dashboard
+Disallow: /admin
+Disallow: /seed-test
+
+Sitemap: https://my-manager.garfieldprocis.workers.dev/sitemap.xml

@@ -55,6 +55,42 @@
      B6  webhook bad signature /          -> 401 / 200 ignored
          test_request event
 
+   PHASE 3 — EMAIL CONFIGURED (Resend stub on an in-process port):
+     E1-E13b verification on signup, the verified-email cloud gate,
+     verify token single-use + garbage rejection, forgot/reset with
+     generic no-leak responses + per-email quota, reset revokes ALL
+     sessions, subscription confirmation/cancellation emails,
+     resend-verify (unverified -> 2nd email, verified -> no email)
+
+   PHASE 4 — PASSWORD-CHANGE API CONTRACT (POST /api/auth/password):
+     F1  register a fresh account              -> 200 + cookie
+     F2  change with NO session                -> 401 not signed in
+     F3  wrong current password                -> 401 'current
+         password is incorrect' (UI-mapped message)
+     F4  new password < 8 chars                -> 400
+     F5  malformed JSON body                   -> 400
+     F6  correct change                        -> 200; old pw 401;
+         new pw 200; present session survives
+     F7  change revokes every OTHER session    -> second /me dies,
+         the acting one lives
+     F8  google-sub session (forged HMAC cookie, no jti) -> 400
+         'this account has no password'
+
+   PHASE 5 — PASSWORD-CHANGE UI WIRING (headless Chrome + CDP,
+   loads the REAL app.html from the wrangler dev origin):
+     G1  email session                    -> trigger VISIBLE in chip
+     G2  trigger click                    -> panel opens + expanded
+     G3  empty current                    -> inline error
+     G4  short new password               -> inline error
+     G5  mismatched new/confirm           -> inline error
+     G6  wrong current (real 401)         -> inline "Current password
+         is incorrect.", fields cleared, submit restored
+     G7  correct change (real 200)        -> success message, fields/
+         actions hidden; new pw signs in server-side
+     G8  google session (forged cookie)   -> trigger HIDDEN
+     G9  signed out (no cookie)           -> trigger HIDDEN
+     G10 zero console errors across all states
+
    The password path is exercised for REAL (no cookie minting):
    PBKDF2-SHA256 (100k iters, per-account salt) is computed by the
    Worker on every register/login. Wrangler is started with
@@ -515,6 +551,311 @@ async function phase3() {
   check('E12b the fresh resend link verifies the account -> 200', e12b.status === 200 && e12b.body.ok === true, e12b.text);
 }
 
+// ---- PHASE 4 — password-change API contract (POST /api/auth/password) ----
+// AUTH MAINFRAME (2026-08-17): session-gated, email accounts ONLY (Google
+// sessions have no password), verifies the CURRENT password, swaps the
+// PBKDF2 hash, and revokes every OTHER session (the present one survives).
+// Rides the authLogin rate bucket, so this phase stays well under 30/min.
+const GRACE = 'grace.pw.e2e@example.com';
+
+async function phase4() {
+  log('--- PHASE 4 (password change API contract — /api/auth/password) ---');
+
+  // Register a fresh account; the email phase mints a verify email (captured
+  // by the stub — password change does NOT require a verified email).
+  const r0 = await api('/api/auth/register', { method: 'POST', headers: jsonHeaders, body: JSON.stringify({ email: GRACE, password: 'grace-pass-1', name: 'Grace PW' }) });
+  const graceCookie = extractSessionCookie(r0);
+  check('F1 register grace -> 200 + session cookie', r0.status === 200 && r0.body.ok === true && !!graceCookie, r0.text);
+
+  // F2 — no session: the endpoint is session-gated.
+  const f2 = await api('/api/auth/password', { method: 'POST', headers: jsonHeaders, body: JSON.stringify({ currentPassword: 'x', newPassword: 'whatever-1' }) });
+  check('F2 password change with NO session -> 401 not signed in', f2.status === 401 && f2.body.ok === false && /not signed in/.test(f2.body.error || ''), f2.text);
+
+  // F3 — wrong CURRENT password: 401 with the exact UI-mapped message.
+  const f3 = await api('/api/auth/password', { method: 'POST', headers: cookieHeader(graceCookie), body: JSON.stringify({ currentPassword: 'wrong-pass', newPassword: 'grace-pass-2' }) });
+  check('F3 wrong current password -> 401 "current password is incorrect"',
+    f3.status === 401 && f3.body.ok === false && /current password is incorrect/.test(f3.body.error || ''), f3.text);
+
+  // F4 — new password below the 8-char floor is rejected before any hash work.
+  const f4 = await api('/api/auth/password', { method: 'POST', headers: cookieHeader(graceCookie), body: JSON.stringify({ currentPassword: 'grace-pass-1', newPassword: 'short' }) });
+  check('F4 new password < 8 chars -> 400', f4.status === 400 && f4.body.ok === false && /at least/.test(f4.body.error || ''), f4.text);
+
+  // F5 — bad JSON body is rejected, never crashes.
+  const f5 = await api('/api/auth/password', { method: 'POST', headers: cookieHeader(graceCookie), body: 'not-json' });
+  check('F5 malformed JSON body -> 400 bad request', f5.status === 400 && f5.body.ok === false, f5.text);
+
+  // F6 — SUCCESS: 200 ok:true, the OLD password stops working, the NEW one
+  // signs in, and the present session survives (this device stays signed in).
+  const f6 = await api('/api/auth/password', { method: 'POST', headers: cookieHeader(graceCookie), body: JSON.stringify({ currentPassword: 'grace-pass-1', newPassword: 'grace-pass-2' }) });
+  const oldPw = await api('/api/auth/login', { method: 'POST', headers: jsonHeaders, body: JSON.stringify({ email: GRACE, password: 'grace-pass-1' }) });
+  const newPw = await api('/api/auth/login', { method: 'POST', headers: jsonHeaders, body: JSON.stringify({ email: GRACE, password: 'grace-pass-2' }) });
+  const meAfter = await api('/api/auth/me', { method: 'GET', headers: cookieHeader(graceCookie) });
+  check('F6 change success -> 200; old pw 401; new pw 200; present session alive',
+    f6.status === 200 && f6.body.ok === true && oldPw.status === 401 && newPw.status === 200 && meAfter.body.ok === true && meAfter.body.user && meAfter.body.user.sub === 'email:' + GRACE,
+    JSON.stringify({ f6: f6.status, oldPw: oldPw.status, newPw: newPw.status, me: meAfter.text }));
+
+  // F7 — OTHER sessions are revoked server-side: mint a second session, change
+  // the password with the first, and the second session's /me must die.
+  const login2 = await api('/api/auth/login', { method: 'POST', headers: jsonHeaders, body: JSON.stringify({ email: GRACE, password: 'grace-pass-2' }) });
+  const graceCookie2 = extractSessionCookie(login2);
+  const f7 = await api('/api/auth/password', { method: 'POST', headers: cookieHeader(graceCookie), body: JSON.stringify({ currentPassword: 'grace-pass-2', newPassword: 'grace-pass-3' }) });
+  const otherDead = await api('/api/auth/me', { method: 'GET', headers: cookieHeader(graceCookie2) });
+  const presentAlive = await api('/api/auth/me', { method: 'GET', headers: cookieHeader(graceCookie) });
+  check('F7 change revokes every OTHER session (this one survives)',
+    f7.status === 200 && otherDead.body.ok === false && otherDead.body.user === null && presentAlive.body.ok === true && !!presentAlive.body.user,
+    JSON.stringify({ f7: f7.status, other: otherDead.text, present: presentAlive.text }));
+
+  // F8 — Google-sub sessions (no password exists) are rejected, NOT crashed.
+  // Forge a google: session cookie with the known HMAC secret (same shape as
+  // the Worker's signSession; no jti => accepted once on the pre-table path).
+  const forgePayload = { sub: 'google:123456789', email: 'grace.google@gmail.com', name: 'Grace Google', exp: Math.floor(Date.now() / 1000) + 3600 };
+  const forgeStr = JSON.stringify(forgePayload);
+  const forgeB64 = Buffer.from(forgeStr).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  const forgeSig = crypto.createHmac('sha256', SECRET).update(forgeStr).digest('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  const googleCookie = forgeB64 + '.' + forgeSig;
+  const f8 = await api('/api/auth/password', { method: 'POST', headers: cookieHeader(googleCookie), body: JSON.stringify({ currentPassword: 'x', newPassword: 'whatever-1' }) });
+  check('F8 google-sub session -> 400 "this account has no password"',
+    f8.status === 400 && f8.body.ok === false && /no password/.test(f8.body.error || ''), f8.text);
+}
+
+// ---- PHASE 5 — password-change UI wiring (headless Chrome + CDP) ---------
+// The shared control (js/mmgr-google-auth.js mountPasswordControl) renders
+// the Change-password trigger ONLY for email accounts, drives client-side
+// validation, maps the API 401/200 onto inline feedback, clears the fields
+// after every attempt, and hides on Google/signed-out states. This phase
+// loads the REAL app.html from the wrangler dev origin, injects a real
+// session cookie (email + forged google), and drives every state.
+const PW_CHROME = process.platform === 'win32'
+  ? 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'
+  : '/usr/bin/google-chrome';
+let pwWs = null; let pwMsgId = 0; const pwPending = new Map();
+function pwLaunchChrome(profileDir, port) {
+  return new Promise((resolve, reject) => {
+    const p = spawn(PW_CHROME, ['--headless=new', '--disable-gpu', '--no-first-run', '--incognito', '--remote-debugging-port=' + port, '--user-data-dir=' + profileDir, '--window-size=1440,1200', 'about:blank'], { stdio: 'ignore' });
+    const t0 = Date.now();
+    const poll = async () => {
+      try { const r = await fetch('http://127.0.0.1:' + port + '/json/version'); if (r.ok) return resolve(p); } catch (e) { /* not up */ }
+      if (Date.now() - t0 > 30000) return reject(new Error('chrome did not open on :' + port));
+      setTimeout(poll, 300);
+    };
+    poll();
+  });
+}
+async function pwCdpConnect(port) {
+  const targets = await (await fetch('http://127.0.0.1:' + port + '/json')).json();
+  const page = targets.find(t => t.type === 'page');
+  pwWs = new WebSocket(page.webSocketDebuggerUrl);
+  pwWs.onmessage = (ev2) => {
+    const msg = JSON.parse(ev2.data);
+    if (msg.id && pwPending.has(msg.id)) { pwPending.get(msg.id)(msg); pwPending.delete(msg.id); }
+  };
+  await new Promise((res) => { pwWs.onopen = res; });
+}
+function pwCdp(method, params) {
+  return new Promise((resolve) => {
+    const id = ++pwMsgId;
+    pwPending.set(id, resolve);
+    pwWs.send(JSON.stringify({ id, method, params: params || {} }));
+  });
+}
+let pwConsoleErrors = [];
+async function pwEv(expr) {
+  const r = await pwCdp('Runtime.evaluate', { expression: expr, awaitPromise: true, returnByValue: true });
+  return r.result && r.result.result ? r.result.result.value : undefined;
+}
+async function pwSetCookie(token) {
+  await pwCdp('Network.setCookie', {
+    name: 'mmgr_session', value: token, url: BASE + '/', httpOnly: true, secure: true, sameSite: 'Lax'
+  });
+}
+async function phase5() {
+  log('--- PHASE 5 (password-change UI wiring — headless Chrome) ---');
+  let chromeProc = null;
+  let pageOk = true; let why = '';
+  try {
+    const profile = path.join(os.tmpdir(), 'mmgr-pw-cdp-' + Date.now());
+    const cport = 9500 + Math.floor(Math.random() * 200);
+    chromeProc = await pwLaunchChrome(profile, cport);
+    await pwCdpConnect(cport);
+    await pwCdp('Page.enable');
+    await pwCdp('Runtime.enable');
+    await pwCdp('Network.enable');
+    pwConsoleErrors = [];
+    pwWs.onmessage = (ev2) => {
+      const msg = JSON.parse(ev2.data);
+      if (msg.method === 'Runtime.consoleAPICalled' && msg.params && msg.params.type === 'error') pwConsoleErrors.push('console: ' + (msg.params.args || []).map(a => a.value || a.description || '').join(' '));
+      if (msg.method === 'Runtime.exceptionThrown' && msg.params && msg.params.exceptionDetails) pwConsoleErrors.push('exception: ' + (msg.params.exceptionDetails.text || ''));
+      if (msg.id && pwPending.has(msg.id)) { pwPending.get(msg.id)(msg); pwPending.delete(msg.id); }
+    };
+
+    // Register a FRESH account for the UI (GRACE's password is grace-pass-3
+    // after PHASE 4) and inject its session cookie into the browser.
+    const reg = await api('/api/auth/register', { method: 'POST', headers: jsonHeaders, body: JSON.stringify({ email: 'holly.pw.e2e@example.com', password: 'holly-pass-1', name: 'Holly PW' }) });
+    const hollyCookie = extractSessionCookie(reg);
+    await pwSetCookie(hollyCookie);
+    await pwCdp('Page.navigate', { url: BASE + '/app.html' });
+    // app.html boots restoreSession asynchronously (GIS fallback poll ~10s
+    // without the Google script), so poll for the trigger.
+    let trig = null;
+    for (let i = 0; i < 40; i++) {
+      await delay(500);
+      trig = await pwEv(`(function(){
+        var b = document.querySelector('#google-user-chip .email-auth-pw-btn');
+        return b ? { hidden: b.hidden, text: b.textContent } : null;
+      })()`);
+      if (trig && trig.hidden === false) break;
+    }
+    check('G1 email session -> Change-password trigger VISIBLE in the signed-in chip',
+      trig && trig.hidden === false && trig.text === 'Change password', trig);
+
+    // G2 — click the trigger: panel opens, aria-expanded flips.
+    const open1 = await pwEv(`(function(){
+      var b = document.querySelector('#google-user-chip .email-auth-pw-btn');
+      if (!b) return null;
+      b.click();
+      var p = document.querySelector('#google-user-chip .email-auth-pw');
+      return { expanded: b.getAttribute('aria-expanded'), panelHidden: p ? p.hidden : 'no-panel' };
+    })()`);
+    check('G2 trigger click -> panel opens + aria-expanded=true',
+      open1 && open1.expanded === 'true' && open1.panelHidden === false, open1);
+
+    // G3 — empty current password: client-side validation, no network.
+    const g3 = await pwEv(`(function(){
+      var b = document.querySelector('#google-user-chip .email-auth-pw-btn');
+      var p = document.querySelector('#google-user-chip .email-auth-pw');
+      p.querySelector('.email-auth-pw-new').value = 'holly-pass-2';
+      p.querySelector('.email-auth-pw-conf').value = 'holly-pass-2';
+      p.querySelector('.email-auth-pw-submit').click();
+      return p.querySelector('.email-auth-pw-err').textContent;
+    })()`);
+    check('G3 empty current -> inline error "Enter your current password."', g3 === 'Enter your current password.', g3);
+
+    // G4 — new password below 8 chars.
+    const g4 = await pwEv(`(function(){
+      var p = document.querySelector('#google-user-chip .email-auth-pw');
+      p.querySelector('.email-auth-pw-cur').value = 'holly-pass-1';
+      p.querySelector('.email-auth-pw-new').value = 'short';
+      p.querySelector('.email-auth-pw-conf').value = 'short';
+      p.querySelector('.email-auth-pw-submit').click();
+      return p.querySelector('.email-auth-pw-err').textContent;
+    })()`);
+    check('G4 short new password -> inline "at least 8 characters"', /at least 8 characters/.test(g4 || ''), g4);
+
+    // G5 — mismatch.
+    const g5 = await pwEv(`(function(){
+      var p = document.querySelector('#google-user-chip .email-auth-pw');
+      p.querySelector('.email-auth-pw-new').value = 'holly-pass-2';
+      p.querySelector('.email-auth-pw-conf').value = 'holly-pass-3';
+      p.querySelector('.email-auth-pw-submit').click();
+      return p.querySelector('.email-auth-pw-err').textContent;
+    })()`);
+    check('G5 mismatched new/confirm -> inline "do not match"', /do not match/.test(g5 || ''), g5);
+
+    // G6 — WRONG current password: real 401 -> exact inline message, fields
+    // cleared, submit restored to "Update password" and re-enabled.
+    await pwEv(`(function(){
+      var p = document.querySelector('#google-user-chip .email-auth-pw');
+      p.querySelector('.email-auth-pw-cur').value = 'wrong-pass';
+      p.querySelector('.email-auth-pw-new').value = 'holly-pass-2';
+      p.querySelector('.email-auth-pw-conf').value = 'holly-pass-2';
+      p.querySelector('.email-auth-pw-submit').click();
+      return true;
+    })()`);
+    let g6 = null;
+    for (let i = 0; i < 20; i++) {
+      await delay(300);
+      g6 = await pwEv(`(function(){
+        var p = document.querySelector('#google-user-chip .email-auth-pw');
+        var s = p.querySelector('.email-auth-pw-submit');
+        return {
+          err: p.querySelector('.email-auth-pw-err').textContent,
+          cur: p.querySelector('.email-auth-pw-cur').value,
+          next: p.querySelector('.email-auth-pw-new').value,
+          conf: p.querySelector('.email-auth-pw-conf').value,
+          submitText: s.textContent,
+          submitDisabled: s.disabled
+        };
+      })()`);
+      if (g6 && g6.err) break;
+    }
+    check('G6 wrong current (real 401) -> inline "Current password is incorrect.", fields cleared, submit restored',
+      g6 && g6.err === 'Current password is incorrect.' && g6.cur === '' && g6.next === '' && g6.conf === '' && g6.submitText === 'Update password' && g6.submitDisabled === false, g6);
+
+    // G7 — CORRECT change: real 200 -> success message, fields/actions hidden.
+    await pwEv(`(function(){
+      var p = document.querySelector('#google-user-chip .email-auth-pw');
+      p.querySelector('.email-auth-pw-cur').value = 'holly-pass-1';
+      p.querySelector('.email-auth-pw-new').value = 'holly-pass-2';
+      p.querySelector('.email-auth-pw-conf').value = 'holly-pass-2';
+      p.querySelector('.email-auth-pw-submit').click();
+      return true;
+    })()`);
+    let g7 = null;
+    for (let i = 0; i < 20; i++) {
+      await delay(300);
+      g7 = await pwEv(`(function(){
+        var p = document.querySelector('#google-user-chip .email-auth-pw');
+        return {
+          ok: p.querySelector('.email-auth-pw-ok').hidden,
+          okText: p.querySelector('.email-auth-pw-ok').textContent,
+          fieldsHidden: p.querySelector('.email-auth-pw-fields').hidden,
+          actionsHidden: p.querySelector('.email-auth-pw-actions').hidden
+        };
+      })()`);
+      if (g7 && g7.ok === false) break;
+    }
+    check('G7 correct change (real 200) -> success message, fields/actions hidden',
+      g7 && g7.ok === false && /Password updated/.test(g7.okText || '') && g7.fieldsHidden === true && g7.actionsHidden === true, g7);
+    // The new password must really work server-side.
+    const hollyNew = await api('/api/auth/login', { method: 'POST', headers: jsonHeaders, body: JSON.stringify({ email: 'holly.pw.e2e@example.com', password: 'holly-pass-2' }) });
+    check('G7b new password signs in server-side', hollyNew.status === 200 && hollyNew.body.ok === true, hollyNew.text);
+
+    // G8 — Google session (forged cookie, no password) -> trigger HIDDEN.
+    const forgeG = { sub: 'google:987654321', email: 'holly.google@gmail.com', name: 'Holly Google', exp: Math.floor(Date.now() / 1000) + 3600 };
+    const forgeGStr = JSON.stringify(forgeG);
+    const forgeGB64 = Buffer.from(forgeGStr).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    const forgeGSig = crypto.createHmac('sha256', SECRET).update(forgeGStr).digest('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    await pwSetCookie(forgeGB64 + '.' + forgeGSig);
+    await pwCdp('Page.navigate', { url: BASE + '/app.html' });
+    let g8 = null;
+    for (let i = 0; i < 40; i++) {
+      await delay(500);
+      g8 = await pwEv(`(function(){
+        var chip = document.getElementById('google-user-chip');
+        var b = document.querySelector('#google-user-chip .email-auth-pw-btn');
+        return { chipHidden: chip ? chip.hidden : 'no-chip', btnHidden: b ? b.hidden : 'no-btn', btnText: b ? b.textContent : null };
+      })()`);
+      if (g8 && g8.btnHidden === true) break;
+    }
+    check('G8 google session -> trigger HIDDEN (Google accounts have no password)',
+      g8 && g8.btnHidden === true && g8.chipHidden === false, g8);
+
+    // G9 — signed out (no cookie) -> trigger hidden.
+    await pwCdp('Network.deleteCookies', { name: 'mmgr_session', url: BASE + '/' });
+    await pwCdp('Page.navigate', { url: BASE + '/app.html' });
+    let g9 = null;
+    for (let i = 0; i < 40; i++) {
+      await delay(500);
+      g9 = await pwEv(`(function(){
+        var chip = document.getElementById('google-user-chip');
+        var b = document.querySelector('#google-user-chip .email-auth-pw-btn');
+        return { chipHidden: chip ? chip.hidden : 'no-chip', btnHidden: b ? b.hidden : 'no-btn' };
+      })()`);
+      if (g9 && (g9.chipHidden === true || g9.btnHidden === true)) break;
+    }
+    // Signed out: showUser never runs, so the trigger is not mounted at all
+    // ('no-btn') OR is hidden — either way it is not visible.
+    check('G9 signed out (no cookie) -> trigger absent or hidden', g9 && (g9.btnHidden === true || g9.btnHidden === 'no-btn'), g9);
+    check('G10 zero console errors across all app.html states', pwConsoleErrors.length === 0, pwConsoleErrors.slice(0, 5));
+  } catch (e) {
+    pageOk = false; why = e.message;
+  } finally {
+    try { pwWs && pwWs.close(); } catch (e) { /* ignore */ }
+    try { chromeProc && chromeProc.kill(); } catch (e) { /* ignore */ }
+  }
+  check('G0 UI phase completed without harness error', pageOk, why);
+}
+
 (async () => {
   if (!WRANGLER_JS) { log('FATAL: global wrangler not found (npm root -g)'); process.exit(1); }
   try {
@@ -525,6 +866,8 @@ async function phase3() {
     await startEmailStub();
     await startWrangler('email');
     await phase3();
+    await phase4();
+    await phase5();
 
     try {
       fs.writeFileSync(STATE_FILE, JSON.stringify({ port: PORT, secret: SECRET, alice: ALICE, aliceCookie: aliceCookie, carol: CAROL, adminCode: ADMIN_CODE }));

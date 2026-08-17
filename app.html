@@ -313,6 +313,26 @@ body.glass-premium .wrap{position:relative;z-index:1;}
   </div>
 </div>
 
+<!-- LAUNCHER DELETE (owner 2026-08-17): confirm sheet for deleting a cloud
+     project from the My Cloud Projects launcher. Owner-only action (the
+     session-gated POST /api/cloud/projects/:id/delete enforces it server-
+     side); driven entirely by js/mmgr-cloud-dash.js — zero inline handlers,
+     so the CSP hashes are untouched. Mirror of the #om sheet pattern; the
+     card's 3-dot menu opens it with the project name filled in. -->
+<div id="cdm" role="dialog" aria-modal="true" aria-label="Delete cloud project">
+  <div class="mb" id="cdm-mb">
+    <div class="mh"><span class="mt"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-trash"></use></svg> Delete cloud project?</span><button type="button" class="dc" data-cdm-close><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg></button></div>
+    <div class="mbody">
+      <p id="cdm-desc"></p>
+      <div class="gerr" id="cdm-err" aria-live="polite"></div>
+    </div>
+    <div class="mf">
+      <button type="button" class="btn btn-n" data-cdm-close>Cancel</button>
+      <button type="button" class="btn btn-d" id="cdm-confirm" data-cdm-confirm>Delete project</button>
+    </div>
+  </div>
+</div>
+
 <script src="projects-data.js"></script>
 <script src="js/mmgr-portfolio.js"></script>
 <script src="js/mmgr-google-auth.js"></script>

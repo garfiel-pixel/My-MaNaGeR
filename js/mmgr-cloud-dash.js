@@ -98,20 +98,40 @@
       const title = p.label || p.projectId || 'Unnamed project';
       const when = p.updatedAt ? 'Last saved ' + fmtDate(p.updatedAt) : 'Created ' + fmtDate(p.createdAt);
       const snap = p.hasSnapshot ? '' : '<div class="cd-meta">No snapshot saved yet. Open it to save the first one.</div>';
-      // PART F T9: adopted (shared) projects render a role chip + an Unpin
-      // button so a recipient can drop a pinned project from THEIR list;
-      // the owner's own projects are untouched. The chip tells the user what
-      // a code grants before they open it (read-only vs scoped edit).
+      // PART F T9: adopted (shared) projects render a role chip so a
+      // recipient knows what a code grants before opening (read-only vs
+      // scoped edit). LAUNCHER DELETE (owner 2026-08-17): every card now
+      // carries the 3-dot menu — the OWNER gets "Delete project" (confirm +
+      // undo toast); a shared card gets "Remove from my list" (unpin — the
+      // owner's main version is never touched by anyone but the owner). A
+      // shared card whose owner deleted the project renders DISCONTINUED:
+      // no Load button, a notice that it can no longer be opened or
+      // updated, and a Remove action (the prompted cleanup).
       const shared = p.accessRole && p.accessRole !== 'owner';
+      const disc = !!p.discontinued;
       const chip = shared ? '<span class="cd-role">Shared ' + escapeHtml(p.accessRole === 'view' ? 'Viewer (read-only)' : 'Editor') + '</span>' : '';
-      const unpin = shared ? '<button type="button" class="cd-unpin" data-cd-unpin="' + escapeHtml(p.projectId) + '" title="Remove this shared project from your list (the owner\'s project is not affected)">Unpin</button>' : '';
-      return '<div class="cd-card" role="listitem">' +
+      const menuItem = shared
+        ? '<button type="button" class="cd-menu-item" role="menuitem" data-cd-unpin="' + escapeHtml(p.projectId) + '"' + (disc ? ' data-cd-disc="1"' : '') + '>' +
+          '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> ' + (disc ? 'Remove discontinued project' : 'Remove from my list') +
+          '</button>'
+        : '<button type="button" class="cd-menu-item cd-menu-danger" role="menuitem" data-cd-del="' + escapeHtml(p.projectId) + '" data-cd-del-name="' + escapeHtml(title) + '">' +
+          '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-trash"></use></svg> Delete project' +
+          '</button>';
+      const discBanner = disc
+        ? '<div class="cd-disc" role="note"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-alert-triangle"></use></svg> Discontinued — the admin deleted this project. It can no longer be opened or updated. Remove it from your list.</div>'
+        : '';
+      const loadBtn = disc ? '' : '<button type="button" class="btn btn-g btn-s" data-cd-load="' + escapeHtml(p.projectId) + '" title="Open this project from the cloud snapshot">Load</button>';
+      const discRemove = disc ? '<button type="button" class="btn btn-n btn-s" data-cd-unpin="' + escapeHtml(p.projectId) + '" data-cd-disc="1" title="Remove this discontinued project from your list">Remove</button>' : '';
+      return '<div class="cd-card' + (disc ? ' cd-disc-card' : '') + '" role="listitem">' +
+        '<button type="button" class="cd-menu" data-cd-menu="' + escapeHtml(p.projectId) + '" aria-haspopup="menu" aria-expanded="false" aria-label="Project options for ' + escapeHtml(title) + '"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-more"></use></svg></button>' +
+        '<div class="cd-menu-pop" hidden role="menu" data-cd-menu-pop="' + escapeHtml(p.projectId) + '" aria-label="Options for ' + escapeHtml(title) + '">' + menuItem + '</div>' +
         '<div class="cd-title">' + escapeHtml(title) + chip + '</div>' +
         '<div class="cd-meta">' + escapeHtml(p.projectId || '') + '<br>' + escapeHtml(when) + (p.linkedName ? '<br>Shared by ' + escapeHtml(p.linkedName) : '') + '</div>' +
+        discBanner +
         snap +
         '<div class="cd-actions">' +
-        '<button type="button" class="btn btn-g btn-s" data-cd-load="' + escapeHtml(p.projectId) + '" title="Open this project from the cloud snapshot">Load</button>' +
-        unpin +
+        loadBtn +
+        discRemove +
         '</div>' +
         '</div>';
     }).join('');
@@ -251,8 +271,11 @@
   // Recipient-only action: DELETE /api/cloud/projects/:id/adopt drops the
   // adoption row. The owner's project is never touched — the row is keyed on
   // the recipient's own sub. On success the list reloads without the card.
-  async function unpinProject(projectId) {
-    setStatus('Removing from your list…');
+  // LAUNCHER DELETE (2026-08-17): a DISCONTINUED project (the owner deleted
+  // the main version) is removed the same way — the recipient only ever
+  // clears their own pin; there is nothing left to restore on their side.
+  async function unpinProject(projectId, discontinued) {
+    setStatus(discontinued ? 'Removing discontinued project…' : 'Removing from your list…');
     try {
       const res = await fetch('/api/cloud/projects/' + encodeURIComponent(projectId) + '/adopt', {
         method: 'DELETE',
@@ -260,23 +283,167 @@
       });
       const data = await res.json().catch(function() { return {}; });
       if (!res.ok || !data.ok) {
-        setStatus((data && data.error) || 'Could not unpin the project.', true);
+        setStatus((data && data.error) || 'Could not remove the project.', true);
         return;
       }
-      setStatus('Unpinned. The project is gone from your list.');
+      notify(discontinued ? 'Discontinued project removed from your list.' : 'Removed. The project is gone from your list.', 'ok');
+      setStatus('');
       loadList();
     } catch (e) {
       setStatus('Could not reach the cloud service.', true);
     }
   }
 
+  // ---- LAUNCHER DELETE (owner 2026-08-17) -------------------------------
+  // The owner's 3-dot menu "Delete project" opens the #cdm confirm sheet
+  // (static markup on app.html — driven entirely from here, zero inline
+  // handlers) with the project name filled in; confirming calls the
+  // existing session-gated POST .../delete (owner-only soft delete) and
+  // surfaces an Undo pill for the ~5s window, mirroring the admin panel's
+  // delete flow. Shared cards NEVER reach this path — their menu only ever
+  // offers remove-from-my-list (the owner alone can delete the main version).
+  let _pendingDelete = null;
+  function openDeleteConfirm(projectId, name) {
+    _pendingDelete = { id: projectId, name: name || projectId };
+    const d = document.getElementById('cdm-desc');
+    if (d) d.textContent = 'Deleting "' + (name || projectId) + '" removes it from the cloud backend. Every shared copy stops working (discontinued) and it disappears from your launcher. You can undo this for a few seconds after confirming.';
+    const err = document.getElementById('cdm-err');
+    if (err) err.textContent = '';
+    const m = document.getElementById('cdm');
+    if (m) { m.classList.add('open'); }
+  }
+  function closeDeleteConfirm() {
+    _pendingDelete = null;
+    const m = document.getElementById('cdm');
+    if (m) m.classList.remove('open');
+  }
+  async function deleteProject(projectId, name) {
+    setStatus('Deleting project…');
+    try {
+      const res = await fetch('/api/cloud/projects/' + encodeURIComponent(projectId) + '/delete', {
+        method: 'POST',
+        credentials: 'same-origin'
+      });
+      const data = await res.json().catch(function() { return {}; });
+      if (!res.ok || !data.ok) {
+        closeDeleteConfirm();
+        setStatus((data && data.error) || 'Could not delete the project.', true);
+        return;
+      }
+      closeDeleteConfirm();
+      notify('"' + (name || projectId) + '" deleted from the cloud.', 'ok', { label: 'Undo', fn: function() { restoreProject(projectId, name); } });
+      setStatus('');
+      loadList();
+    } catch (e) {
+      closeDeleteConfirm();
+      setStatus('Could not reach the cloud service.', true);
+    }
+  }
+  async function restoreProject(projectId, name) {
+    setStatus('Restoring project…');
+    try {
+      const res = await fetch('/api/cloud/projects/' + encodeURIComponent(projectId) + '/restore', {
+        method: 'POST',
+        credentials: 'same-origin'
+      });
+      const data = await res.json().catch(function() { return {}; });
+      if (!res.ok || !data.ok) {
+        setStatus((data && data.error) || 'Could not restore the project.', true);
+        return;
+      }
+      notify('"' + (name || projectId) + '" restored.', 'ok');
+      setStatus('');
+      loadList();
+    } catch (e) {
+      setStatus('Could not reach the cloud service.', true);
+    }
+  }
+
+  // ---- 3-dot menu popover (LAUNCHER DELETE 2026-08-17) ----
+  // One open menu at a time; clicking the card's 3-dot toggles it, any
+  // click outside closes it, Escape closes menus + the confirm sheet.
+  // projectId is [A-Za-z0-9_-] (sanitized server-side at create), so the
+  // attribute selectors are safe without CSS.escape — same reasoning as
+  // loadProject().
+  function closeMenus() {
+    const pops = document.querySelectorAll('.cd-menu-pop');
+    for (let i = 0; i < pops.length; i++) pops[i].hidden = true;
+    const btns = document.querySelectorAll('[data-cd-menu]');
+    for (let i = 0; i < btns.length; i++) btns[i].setAttribute('aria-expanded', 'false');
+  }
+  function toggleMenu(projectId, btn) {
+    const pop = document.querySelector('[data-cd-menu-pop="' + projectId + '"]');
+    if (!pop) return;
+    const wasOpen = !pop.hidden;
+    closeMenus();
+    if (!wasOpen) {
+      pop.hidden = false;
+      if (btn) btn.setAttribute('aria-expanded', 'true');
+    }
+  }
+
+  // ---- action-capable toast (same shared .toast/.toast-act CSS as the
+  //      admin panel's Undo pill — app.html's inline toast() has no action
+  //      support, and this file loads before it anyway, so build our own) ----
+  function notify(msg, type, action) {
+    const existing = document.querySelector('.toast');
+    if (existing) existing.remove();
+    const isErr = type === 'error' || type === 'err';
+    const isWarn = type === 'warn';
+    const t = document.createElement('div');
+    t.className = 'toast ' + (isErr ? 'err' : (isWarn ? 'warn' : 'ok'));
+    t.setAttribute('role', isErr ? 'alert' : 'status');
+    t.setAttribute('aria-live', isErr ? 'assertive' : 'polite');
+    const icon = isErr ? 'i-x' : (isWarn ? 'i-alert-triangle' : 'i-check-circle');
+    const label = isErr ? 'Error' : (isWarn ? 'Note' : 'Done');
+    t.innerHTML = '<span class="toast-ico"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#' + icon + '"></use></svg></span>' +
+                  '<span class="toast-body"><b></b><span></span></span>';
+    t.querySelector('b').textContent = label;
+    t.querySelector('.toast-body > span').textContent = msg;
+    let hideT = null; let killT = null;
+    if (action && action.label) {
+      const act = document.createElement('button');
+      act.type = 'button';
+      act.className = 'toast-act';
+      act.textContent = action.label;
+      act.addEventListener('click', function() {
+        clearTimeout(hideT); clearTimeout(killT);
+        t.remove();
+        try { action.fn && action.fn(); } catch (e) { /* the action guards itself */ }
+      });
+      t.querySelector('.toast-body').appendChild(act);
+    }
+    document.body.appendChild(t);
+    const hold = (action && action.label) ? 4600 : 2600;
+    hideT = setTimeout(function() { t.classList.add('is-out'); }, hold);
+    killT = setTimeout(function() { t.remove(); }, hold + 500);
+  }
+
   // ---- events ----
   document.addEventListener('click', function(e) {
+    // 3-dot menu toggle — handled FIRST so a click on the button neither
+    // closes itself (outside-click logic below) nor leaks to card actions.
+    const menuBtn = e.target && e.target.closest ? e.target.closest('[data-cd-menu]') : null;
+    if (menuBtn) {
+      e.preventDefault();
+      const id = menuBtn.getAttribute('data-cd-menu');
+      if (id) toggleMenu(id, menuBtn);
+      return;
+    }
+    const del = e.target && e.target.closest ? e.target.closest('[data-cd-del]') : null;
+    if (del) {
+      e.preventDefault();
+      closeMenus();
+      const id = del.getAttribute('data-cd-del');
+      if (id) openDeleteConfirm(id, del.getAttribute('data-cd-del-name') || id);
+      return;
+    }
     const un = e.target && e.target.closest ? e.target.closest('[data-cd-unpin]') : null;
     if (un) {
       e.preventDefault();
+      closeMenus();
       const id = un.getAttribute('data-cd-unpin');
-      if (id) unpinProject(id);
+      if (id) unpinProject(id, !!un.getAttribute('data-cd-disc'));
       return;
     }
     const el = e.target && e.target.closest ? e.target.closest('[data-cd-load]') : null;
@@ -290,7 +457,27 @@
     if (up) {
       e.preventDefault();
       upgradePlan();
+      return;
     }
+    const cfm = e.target && e.target.closest ? e.target.closest('[data-cdm-confirm]') : null;
+    if (cfm) {
+      e.preventDefault();
+      const p = _pendingDelete;
+      if (p) deleteProject(p.id, p.name);
+      return;
+    }
+    if (e.target && e.target.closest && e.target.closest('[data-cdm-close]')) {
+      e.preventDefault();
+      closeDeleteConfirm();
+      return;
+    }
+    // Click outside any menu popover closes every open one.
+    if (!e.target.closest('.cd-menu-pop') && !e.target.closest('[data-cd-menu]')) closeMenus();
+    // Click on the #cdm backdrop closes the confirm sheet (same as #om).
+    if (e.target.id === 'cdm') closeDeleteConfirm();
+  });
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') { closeMenus(); closeDeleteConfirm(); }
   });
   document.addEventListener('mmgr:google-signed-in', function() { loadList(); });
   document.addEventListener('mmgr:google-signed-out', function() {

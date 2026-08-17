@@ -2915,6 +2915,68 @@ body.db-page .cd-unpin{
 body.db-page .cd-unpin:hover{border-color:var(--danger);color:var(--danger);}
 body.db-page .cd-unpin:focus-visible{outline:none;border-color:var(--gold);box-shadow:0 0 0 3px rgba(var(--gold-rgb),.18);}
 body.dark-mode.db-page .cd-unpin{color:var(--db-text-secondary);border-color:color-mix(in oklch,var(--db-border) 60%,transparent);}
+/* ---- LAUNCHER DELETE (owner 2026-08-17): 3-dot menu + discontinued state ----
+   Every cloud card carries a 3-dot menu pinned to its top-right corner: the
+   owner's card offers Delete project (opens the #cdm confirm sheet), a shared
+   card offers Remove from my list (unpin). A shared card whose owner deleted
+   the main version renders the discontinued banner + a Remove action instead
+   of Load. Token-driven; dark-mode overrides below. */
+body.db-page .cd-card{position:relative;}
+body.db-page .cd-title{padding-right:34px;} /* clear the 3-dot button */
+body.db-page .cd-menu{
+  position:absolute;top:10px;right:10px;z-index:3;
+  display:inline-flex;align-items:center;justify-content:center;
+  width:28px;height:28px;padding:0;border-radius:8px;cursor:pointer;
+  border:1px solid transparent;background:transparent;color:var(--text-secondary);
+  transition:border-color var(--tr),background var(--tr),color var(--tr);
+}
+body.db-page .cd-menu .ico{width:16px;height:16px;}
+body.db-page .cd-menu:hover{border-color:var(--border);background:color-mix(in oklch,var(--text) 6%,transparent);color:var(--text);}
+body.db-page .cd-menu:focus-visible{outline:none;border-color:var(--gold);box-shadow:0 0 0 3px rgba(var(--gold-rgb),.18);}
+body.db-page .cd-menu-pop{
+  position:absolute;top:44px;right:10px;z-index:5;min-width:210px;
+  background:var(--card);border:1px solid var(--border);border-radius:12px;
+  box-shadow:0 14px 34px rgba(16,24,40,.18);padding:6px;
+  display:flex;flex-direction:column;gap:2px;
+}
+body.db-page .cd-menu-item{
+  display:flex;align-items:center;gap:8px;width:100%;
+  font:inherit;font-size:.76rem;font-weight:600;text-align:left;cursor:pointer;
+  padding:8px 10px;border-radius:8px;border:1px solid transparent;background:transparent;
+  color:var(--text);transition:background var(--tr),color var(--tr);
+}
+body.db-page .cd-menu-item .ico{width:14px;height:14px;color:var(--text-secondary);flex-shrink:0;}
+body.db-page .cd-menu-item:hover{background:color-mix(in oklch,var(--text) 6%,transparent);}
+body.db-page .cd-menu-item:focus-visible{outline:none;border-color:var(--gold);box-shadow:0 0 0 3px rgba(var(--gold-rgb),.18);}
+body.db-page .cd-menu-danger{color:var(--danger);}
+body.db-page .cd-menu-danger .ico{color:var(--danger);}
+body.db-page .cd-menu-danger:hover{background:color-mix(in oklch,var(--danger) 8%,transparent);}
+body.db-page .cd-disc{
+  display:flex;align-items:flex-start;gap:8px;margin-top:10px;padding:9px 11px;
+  border-radius:10px;font-size:.7rem;line-height:1.45;
+  color:var(--danger);background:color-mix(in oklch,var(--danger) 9%,transparent);
+  border:1px solid color-mix(in oklch,var(--danger) 26%,transparent);
+}
+body.db-page .cd-disc .ico{width:14px;height:14px;flex-shrink:0;margin-top:1px;}
+body.db-page .cd-disc-card{border-color:color-mix(in oklch,var(--danger) 32%,transparent);}
+body.db-page .cd-disc-card:hover{border-color:var(--danger);}
+body.dark-mode.db-page .cd-menu{color:var(--db-text-secondary);}
+body.dark-mode.db-page .cd-menu:hover{background:rgba(255,255,255,.06);color:var(--text);}
+body.dark-mode.db-page .cd-menu-pop{background:var(--db-surface-raised);border-color:color-mix(in oklch,var(--db-border) 60%,transparent);}
+body.dark-mode.db-page .cd-menu-item{color:var(--text);}
+body.dark-mode.db-page .cd-menu-item .ico{color:var(--db-text-secondary);}
+body.dark-mode.db-page .cd-menu-item:hover{background:rgba(255,255,255,.06);}
+body.dark-mode.db-page .cd-menu-danger{color:var(--danger);}
+body.dark-mode.db-page .cd-menu-danger .ico{color:var(--danger);}
+body.dark-mode.db-page .cd-menu-danger:hover{background:rgba(239,68,68,.12);}
+/* ---- LAUNCHER DELETE confirm sheet (#cdm) — mirror of the #siom pattern ---- */
+#cdm{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:2000;align-items:center;justify-content:center;}
+#cdm.open{display:flex;}
+#cdm .mb{width:440px;max-width:100%;max-height:82vh;}
+#cdm .mbody{padding:18px 22px;display:flex;flex-direction:column;gap:12px;}
+#cdm .mbody p{margin:0;font-size:.78rem;line-height:1.55;color:var(--text);}
+#cdm .mf{display:flex;justify-content:flex-end;gap:10px;padding:14px 22px;border-top:1px solid var(--border);}
+@media print{#cdm{display:none!important;}}
 body.db-page .cloud-dash{margin-top:34px;}
 /* ---- rail footer identity: circular profile icon, bottom-aligned ---- */
 body.db-page .db-user{min-height:38px;align-items:center;}

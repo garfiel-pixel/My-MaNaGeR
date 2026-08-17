@@ -85,6 +85,19 @@ html[data-theme="cyan"]{
   --glass-specular:linear-gradient(180deg,rgba(255,255,255,.16),rgba(255,255,255,.03) 42%,rgba(255,255,255,0));
   --glass-edge:1px solid rgba(255,255,255,.16);
 }
+/* CYAN-LIGHT ON ALWAYS-DARK SURFACES (owner 2026-08-17 — dark bg must carry
+   light text/accents). The cyan LIGHT theme's --gold/--teal are dark teals
+   chosen for the light page background, but the hero h1 spans, the hero stats
+   figures, and the footer sit on theme-independent dark navy (photo overlay /
+   footer band). Reuse the cyan DARK theme's bright values (50e8f4 / 2dd4bf)
+   so the accent stays readable there; the rest of the page keeps the dark-teal
+   light-theme identity untouched. */
+html[data-theme="cyan"] .hero h1 .gold,
+html[data-theme="cyan"] .hero-stats b,
+html[data-theme="cyan"] .footer-col b,
+html[data-theme="cyan"] .footer-bottom a:hover,
+html[data-theme="cyan"] .brand b span{color:#50e8f4;}
+html[data-theme="cyan"] .hero h1 .teal{color:#2dd4bf;}
 html[data-theme="cyan"] body.dark-mode{
   --bg:#001619;--bg-warm:#06262b;--header-navy:#001013;--card:#0a2a2e;--border:rgba(80,232,244,.18);
   --gold:#50e8f4;--gold-hover:#7beef9;--gold-deep:#2bc4d4;--gold-rgb:80,232,244;
@@ -336,19 +349,30 @@ svg.ico use{fill:inherit;stroke:inherit;}
 }
 .nav-dd-item{
   display:block;padding:7px 10px;border-radius:8px;
-  color:var(--text-primary);font-size:.78rem;font-weight:600;line-height:1.35;
+  /* DARK-GLASS TEXT (owner 2026-08-17): the dropdown is dark navy glass in
+     EVERY theme (light theme included — the glass tint is always dark), so
+     its text must be light in every theme too. --text-primary is dark in
+     light themes (dark navy on dark glass = invisible) and only flips light
+     in dark-mode — that flip is what made the dropdown look fine in dark
+     mode but unreadable in light/cyan. --on-navy is light in all four theme
+     blocks, so it is the correct token here. */
+  color:var(--on-navy);font-size:.78rem;font-weight:600;line-height:1.35;
   background:rgba(255,255,255,.05);
   transition:background var(--tr),color var(--tr);
 }
-.nav-dd-item:hover{background:rgba(var(--gold-rgb),.16);color:var(--gold);}
+/* Hover = white text on a white wash (same language as the mobile menu
+   links) — never the theme gold, because cyan-light's gold is a dark teal
+   that vanishes on the dark glass. The gold identity lives in the nav-link
+   underline + focus ring + dd-flash instead. */
+.nav-dd-item:hover{background:rgba(255,255,255,.14);color:#fff;}
 .nav-dd-item:focus-visible{outline:2px solid var(--gold);outline-offset:-1px;}
 .nav-dd-foot{
   display:block;margin-top:8px;padding:8px 10px 2px;
-  border-top:1px solid var(--border);
-  color:var(--text-secondary);font-size:.72rem;font-weight:600;
+  border-top:1px solid rgba(248,250,252,.22);
+  color:rgba(248,250,252,.72);font-size:.72rem;font-weight:600;
   transition:color var(--tr);
 }
-.nav-dd-foot:hover{color:var(--gold);}
+.nav-dd-foot:hover{color:#fff;}
 /* highlight flash for a dropdown-selected section (gold ring + soft glow) */
 .dd-flash{animation:dd-flash 2.6s ease;}
 @keyframes dd-flash{
@@ -400,7 +424,7 @@ svg.ico use{fill:inherit;stroke:inherit;}
 }
 .signin-sheet .email-auth-alt button:focus-visible{outline:2px solid var(--gold);outline-offset:1px;border-radius:var(--radius-sm);}
 .signin-sheet .email-auth-err{font-size:.76rem;color:var(--danger);}
-.signin-sheet .email-auth-note{font-size:.76rem;color:var(--text-secondary);line-height:1.5;}
+.signin-sheet .email-auth-note{font-size:.76rem;color:rgba(248,250,252,.72);line-height:1.5;}
 /* AUTH MAINFRAME v2 — forgot-password request + check-your-inbox panels.
    Same sheet language as the form above; both use display:flex, so the
    [hidden] guards below are REQUIRED (flex display outranks the UA rule). */
@@ -430,14 +454,15 @@ svg.ico use{fill:inherit;stroke:inherit;}
 .signin-sheet .email-auth-pw{display:flex;flex-direction:column;gap:8px;align-items:stretch;}
 .signin-sheet .email-auth-pw[hidden]{display:none;}
 .signin-sheet .email-auth-pw .email-auth-row[hidden]{display:none;}
-.signin-sheet .email-auth-pw-title{margin:0;font-size:.84rem;color:var(--text-primary);}
-.signin-sheet .email-auth-pw-msg{margin:0;font-size:.76rem;color:var(--text-secondary);line-height:1.5;}
+.signin-sheet .email-auth-pw-title{margin:0;font-size:.84rem;color:var(--on-navy);}
+.signin-sheet .email-auth-pw-msg{margin:0;font-size:.76rem;color:rgba(248,250,252,.72);line-height:1.5;}
 .signin-sheet .email-auth-pw .email-auth-input{flex:1 1 150px;min-width:120px;}
+/* light link on the dark glass — the theme gold is a dark teal in cyan-light */
 .signin-sheet .email-auth-pw-btn{
-  background:none;border:none;padding:0;color:var(--gold);
+  background:none;border:none;padding:0;color:rgba(248,250,252,.92);
   text-decoration:underline;text-underline-offset:2px;cursor:pointer;font:inherit;font-size:.76rem;
 }
-.signin-sheet .email-auth-pw-btn:hover{color:var(--gold-hover);}
+.signin-sheet .email-auth-pw-btn:hover{color:#fff;}
 .signin-sheet .email-auth-pw-btn:focus-visible{outline:2px solid var(--gold);outline-offset:1px;border-radius:var(--radius-sm);}
 .signin-sheet .email-auth-pw-btn[hidden]{display:none;}
 .signin-sheet .email-auth-pw-submit{
@@ -451,19 +476,24 @@ svg.ico use{fill:inherit;stroke:inherit;}
 .signin-sheet .email-auth-pw-submit:focus-visible{outline:2px solid var(--gold);outline-offset:1px;}
 .signin-sheet .email-auth-pw-submit:disabled{opacity:.6;cursor:default;}
 .signin-sheet .email-auth-pw-cancel{
-  background:none;border:none;padding:0;color:var(--text-secondary);
+  background:none;border:none;padding:0;color:rgba(248,250,252,.72);
   text-decoration:underline;text-underline-offset:2px;cursor:pointer;font:inherit;font-size:.76rem;
 }
-.signin-sheet .email-auth-pw-cancel:hover{color:var(--gold);}
+.signin-sheet .email-auth-pw-cancel:hover{color:#fff;}
 .signin-sheet .email-auth-pw-cancel:focus-visible{outline:2px solid var(--gold);outline-offset:1px;border-radius:var(--radius-sm);}
-.signin-sheet .email-auth-pw-ok{margin:0;font-size:.78rem;color:var(--teal);}
+.signin-sheet .email-auth-pw-ok{margin:0;font-size:.78rem;color:rgba(248,250,252,.92);}
 .signin-sheet .signin-user{display:flex;flex-direction:column;gap:8px;align-items:flex-start;}
 /* display:flex above defeats the `hidden` attribute (author display rules
    outrank the UA [hidden]{display:none}) — the signed-in row was painted
    inside the closed sign-in sheet. Guard it so hidden really hides. */
 .signin-sheet .signin-user[hidden]{display:none;}
-.signin-sheet .signin-user-name{font-size:.9rem;font-weight:700;color:var(--text-primary);}
-.signin-sheet .signin-user-sub{font-size:.76rem;color:var(--text-secondary);word-break:break-all;}
+/* DARK-GLASS TEXT (owner 2026-08-17): the sheet is dark navy glass in every
+   theme, so the account row that sits directly on it must use light text
+   (--on-navy, light in all four theme blocks) — not --text-primary, which is
+   dark in light themes (dark on dark). The solid .email-auth card inside is
+   untouched (white card + dark text is correct there). */
+.signin-sheet .signin-user-name{font-size:.9rem;font-weight:700;color:var(--on-navy);}
+.signin-sheet .signin-user-sub{font-size:.76rem;color:rgba(248,250,252,.72);word-break:break-all;}
 /* STABILIZATION 2026-08-16: the signed-in identity leads with the profile
    picture — Google photo or the name's first letter, the app.html avatar
    pattern. The Premium pill is a [data-plan-badge] mount filled by
@@ -476,9 +506,12 @@ svg.ico use{fill:inherit;stroke:inherit;}
 .signin-sheet .signin-user-avatar img{width:100%;height:100%;object-fit:cover;display:block;}
 .signin-sheet .plan-pill{
   display:inline-flex;align-items:center;gap:4px;font-size:.62rem;font-weight:800;
-  letter-spacing:.04em;text-transform:uppercase;color:var(--gold-deep);
+  letter-spacing:.04em;text-transform:uppercase;
+  /* light text on the dark glass — --gold-deep is a dark tone in light
+     themes and vanishes; the gold border keeps the premium identity */
+  color:rgba(248,250,252,.92);
   border:1px solid var(--gold);border-radius:100px;padding:3px 10px;
-  background:rgba(var(--gold-rgb),.12);white-space:nowrap;
+  background:rgba(255,255,255,.1);white-space:nowrap;
 }
 .signin-sheet .plan-pill .ico{width:12px;height:12px;}
 .signin-sheet .plan-pill[hidden]{display:none;}

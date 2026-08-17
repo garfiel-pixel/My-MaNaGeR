@@ -318,6 +318,37 @@ function extractSessionCookie(res) {
     }));
     check('A9 owner meta still resolves (project untouched by adoption)', meta.ok === true && !!meta.label, meta);
 
+    // LAUNCHER DELETE (owner 2026-08-17): when the owner deletes the main
+    // version, the recipient's adopted row must NOT vanish silently — it
+    // comes back flagged discontinued:true + deletedAt so the launcher can
+    // prompt the recipient to remove it, and session-only load answers
+    // project_deleted ("there is no continuation, no update — it will not
+    // work for them", per the owner). The recipient can still unpin it.
+    r = await fetch(BASE + '/api/cloud/projects/' + pid + '/delete', {
+      method: 'POST', credentials: 'same-origin', headers: Object.assign({}, jsonHeaders, { 'X-Owner-Code': ownerCode })
+    });
+    const del = await j(r);
+    check('A10a owner deletes the main version (soft delete)', r.ok && del.ok, del);
+    r = await fetch(BASE + '/api/cloud/projects', { method: 'GET', credentials: 'same-origin', headers: cookieHeader(recipientCookie) });
+    const discList = await j(r);
+    const discRow = (discList.projects || []).find(function(p) { return p.projectId === pid; });
+    check('A10b adopted row STILL listed after owner delete, flagged discontinued + deletedAt',
+      r.ok && discList.ok && !!discRow && discRow.discontinued === true && !!discRow.deletedAt, discRow);
+    r = await fetch(BASE + '/api/cloud/projects/' + pid + '/load', {
+      method: 'POST', credentials: 'same-origin', headers: cookieHeader(recipientCookie), body: JSON.stringify({})
+    });
+    const discLoad = await j(r);
+    check('A10c session-only load of the discontinued project -> project_deleted', r.status === 410 && discLoad.error === 'project_deleted', { status: r.status, discLoad });
+    r = await fetch(BASE + '/api/cloud/projects/' + pid + '/adopt', {
+      method: 'DELETE', credentials: 'same-origin', headers: cookieHeader(recipientCookie)
+    });
+    const discUnpin = await j(r);
+    check('A10d recipient removes the discontinued project (unpin still works)', r.ok && discUnpin.ok, discUnpin);
+    r = await fetch(BASE + '/api/cloud/projects', { method: 'GET', credentials: 'same-origin', headers: cookieHeader(recipientCookie) });
+    const discList2 = await j(r);
+    const discGone = !(discList2.projects || []).some(function(p) { return p.projectId === pid; });
+    check('A10e discontinued project gone from recipient list after removal', r.ok && discGone, discList2);
+
     log('\n===== SUMMARY =====');
     const fails = results.filter(r2 => !r2.val);
     log('checks: ' + results.length + ', passed: ' + (results.length - fails.length) + ', failed: ' + fails.length);

@@ -16,6 +16,7 @@
 <symbol id="i-cloud-rain" viewBox="0 0 24 24"><path d="M7 16a4.5 4.5 0 1 1 1.1-8.9A6 6 0 0 1 19 10a3.5 3.5 0 0 1-1 6.9H7z"/><path d="M8 19.5l-1 2M12 19.5l-1 2M16 19.5l-1 2"/></symbol>
 <symbol id="i-cloud" viewBox="0 0 24 24"><path d="M7 16a4.5 4.5 0 1 1 1.1-8.9A6 6 0 0 1 19 10a3.5 3.5 0 0 1-1 6.9H7z"/></symbol>
 <symbol id="i-trash" viewBox="0 0 24 24"><path d="M5 7h14M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m3 0-1 13a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 7z"/><path d="M10 11v6M14 11v6"/></symbol>
+<symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1.6" fill="currentColor" stroke="none"/></symbol>
 <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M4 12a8 8 0 0 1 13.7-5.7L20 8"/><path d="M20 4v4h-4"/><path d="M20 12a8 8 0 0 1-13.7 5.7L4 16"/><path d="M4 20v-4h4"/></symbol>
 <symbol id="i-save" viewBox="0 0 24 24"><path d="M5 4h11l3 3v13H5z"/><path d="M8 4v6h8V4M8 20v-6h8v6"/></symbol>
 <symbol id="i-bar-chart" viewBox="0 0 24 24"><path d="M5 20V11M11 20V6M17 20v-8"/><path d="M3 20h18"/></symbol>

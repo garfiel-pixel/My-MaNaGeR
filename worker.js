@@ -1820,10 +1820,18 @@ async function handleCloudProjectList(request, env) {
   const owned = await env.DB.prepare(
     'SELECT project_id, owner_label, google_name, latest_r2_key, created_at, updated_at, last_owner_seen_at FROM cloud_projects WHERE google_sub = ? AND deleted_at IS NULL'
   ).bind(session.sub).all();
+  // LAUNCHER DELETE (owner 2026-08-17): adopted rows are NOT filtered on
+  // deleted_at — when the owner deletes the main version, every recipient's
+  // copy becomes DISCONTINUED (there is no continuation, no update — "just
+  // what they have always had, and it will not work for them", per the
+  // owner's words). The recipient still sees the card with a discontinued
+  // flag + deletedAt so the launcher can prompt them to remove it; the
+  // owner's OWN rows stay filtered (their delete is the intent, and the
+  // launcher's undo toast + admin's tombstone view cover mistakes).
   const adopted = await env.DB.prepare(
-    'SELECT p.project_id, p.owner_label, p.google_name, p.latest_r2_key, p.created_at, p.updated_at, p.last_owner_seen_at, a.role AS adopted_role, a.created_at AS adopted_at ' +
+    'SELECT p.project_id, p.owner_label, p.google_name, p.latest_r2_key, p.created_at, p.updated_at, p.last_owner_seen_at, p.deleted_at, a.role AS adopted_role, a.created_at AS adopted_at ' +
     'FROM cloud_adoptions a JOIN cloud_projects p ON p.project_id = a.project_id ' +
-    'WHERE a.recipient_sub = ? AND p.deleted_at IS NULL'
+    'WHERE a.recipient_sub = ?'
   ).bind(session.sub).all();
   const seen = {};
   const projects = [];
@@ -1843,6 +1851,12 @@ async function handleCloudProjectList(request, env) {
   });
   ((adopted && adopted.results) || []).forEach(function(r) {
     if (seen[r.project_id]) return; // owner rows win the dedup
+    // LAUNCHER DELETE: a tombstoned project the recipient pinned renders as
+    // discontinued (the launcher prompts them to remove it) instead of
+    // silently vanishing — the owner's delete is still the ONLY thing that
+    // can kill the main version, and the recipient only ever gets a
+    // remove-from-my-list action for it.
+    const discontinued = !!r.deleted_at;
     projects.push({
       projectId: r.project_id,
       label: r.owner_label || null,
@@ -1852,7 +1866,9 @@ async function handleCloudProjectList(request, env) {
       updatedAt: r.updated_at,
       lastOwnerSeenAt: r.last_owner_seen_at || null,
       accessRole: r.adopted_role === 'view' ? 'view' : 'editor',
-      adoptedAt: r.adopted_at || null
+      adoptedAt: r.adopted_at || null,
+      discontinued: discontinued,
+      deletedAt: discontinued ? (r.deleted_at || null) : null
     });
   });
   projects.sort(function(a, b) { return String(b.updatedAt || '').localeCompare(String(a.updatedAt || '')); });

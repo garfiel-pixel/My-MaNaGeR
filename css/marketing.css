@@ -292,6 +292,7 @@ svg.ico use{fill:inherit;stroke:inherit;}
   padding:9px 14px;border-radius:9px;
   border:var(--glass-edge);background:rgba(255,255,255,.08);
   color:#fff;font-size:.84rem;font-weight:600;cursor:pointer;
+  white-space:nowrap; /* the pill label must never wrap (owner tighten, 2026-08-17) */
   transition:background var(--tr),border-color var(--tr);
   -webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);
 }
@@ -520,6 +521,13 @@ svg.ico use{fill:inherit;stroke:inherit;}
 }
 @media (max-width:880px){
   .header-cta-desktop{display:none;}
+}
+/* narrow screens: the flex row has no slack, so the sign-in pill would be
+   squeezed until its label wraps. Drop the brand subtitle + tighten the gap
+   so logo, Sign in and the menu button all keep their natural size. */
+@media (max-width:420px){
+  .header-inner{gap:14px;}
+  .brand small{display:none;}
 }
 
 /* ---------- 6. Hero (solid content layer — never glass) ---------- */

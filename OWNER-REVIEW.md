@@ -88,6 +88,32 @@ comments). When re-opened, they still need their own OAuth client IDs + secrets:
 - [x] Confirm `ADMIN_CODE` is set as a Wrangler secret — CONFIRMED 2026-08-13
   (`npx wrangler secret list` shows it on `my-manager`).
 
+### 1.5 Resend transactional email (auth mainframe — verification/reset + subscription emails)
+Chosen via Gravity Index 2026-08-17: **Resend** — free tier (3,000 emails/mo,
+100/day), plain REST from the Worker (no SDK). INTEGRATION **BUILT + VERIFIED
+2026-08-17** (40/40 in tools/qa-email-auth.cjs against a local Resend stub):
+email verification on signup, forgot-password/reset, the verified-email cloud
+ownership gate, and subscription confirmation/cancellation emails
+(AUTH-MAINFRAME-AND-CLOUD-FIRST-SYNC-DIRECTIVE.md Part 2 §2.2 + Part 4,
+migration 0013 auth_tokens + auth_users.email_verified).
+
+- [x] Resend account + API key created; key stored as the Wrangler secret
+  `RESEND_API_KEY` (2026-08-17).
+- [x] `RESEND_FROM_EMAIL` — currently the free dev sender `onboarding@resend.dev`
+  (delivers only to the Resend signup address — dev testing only).
+- [ ] **Buy the `mymanager.app` domain**, then add it in Resend and verify:
+  use **Manual setup** (3 DNS records in Cloudflare — MX
+  `feedback-smtp.us-east-1.amazonses.com` prio 10, SPF TXT, DKIM TXT with
+  proxy DNS-Only); the Auto configure / Domain Connect flow fails on this
+  Cloudflare account with "You are not authorized to make changes to
+  workers.dev". Once verified, flip the secret:
+  `npx wrangler secret put RESEND_FROM_EMAIL` -> admin@mymanager.app.
+- [x] Ship `/verify.html` + `/reset.html` — DONE 2026-08-17 (js/verify.js +
+  js/reset.js, external scripts, CSP hashes untouched). The email links now
+  land on real pages with success/error states + fresh-link recovery.
+  Remaining before the emails reach real users: buy + verify the domain and
+  flip RESEND_FROM_EMAIL (this checklist's third bullet).
+
 ---
 
 ## 2. 🚀 Deploy operations (real-world side effects — owner runs these)
@@ -119,10 +145,17 @@ is committed + pushed (`7ee863e` docs, `2e20562` feat, `3c0e62b` emoji-free,
   path (/index.html → /, /mymanager-field-guide.html → /mymanager-field-guide) —
   pre-existing behavior, verified the canonical paths serve the new content.
 - [x] Optional: real-Google round-trip of `/api/cloud/prefs/theme` against the deployed origin — **CLOSED 2026-08-14 (owner: "no need user can easily customize at their expense")** — the local harness already proves the flow with byte-identical session cookies.
+- [x] **Deploy (2026-08-17 auth-mainframe wave: email verification + password change UI + sign-in identity/nav dropdowns + SEO files)** — DONE 2026-08-17. Migrations **0012 + 0013 applied to remote D1** (`wrangler d1 migrations apply my-manager-db --remote` — auth_sessions, auth_login_guard, auth_tokens, auth_users.email_verified, all ✅). Worker deployed via the tar staging recipe (25 files uploaded, 113 cached; version `79d8e536-adea-4694-a0bd-48e0d863b2ba`, cron preserved). Live curl: /verify + /reset + /reviews serve their real pages, robots.txt text/plain + sitemap.xml application/xml, sw.js = mmgr-shell-v135, /api/auth/me correct signed-out shape.
+- [x] **Deploy (2026-08-17 front-page wave: decluttered header + bento glass hero)** — DONE 2026-08-17, version `505eb85b-9bf7-44fe-b55d-9b058e522f5d`, live sw.js = mmgr-shell-v136, live index header pills gone / mobile-menu pills present. See §4 for the visual review.
 
 ---
 
 ## 3. 🧭 Product decisions (only you can pick these)
+
+- [ ] **Cloud-first sync design sign-off (AUTH directive PART 3)** — reviewed 2026-08-17
+  against the code (builds on live pieces: viewer codes, adoption, changelog, Presence
+  DO); the complex-L build stays queued until you approve the design. This is the last
+  big feature before public launch.
 
 - [ ] **Digest engine real-use gate (blocks Rank 9).** MASTER-ACTION-PLAN Rank 9
   (API/webhook layer) is explicitly deferred until the Rank 2 digest engine has been
@@ -176,6 +209,15 @@ Each was programmatically verified, but the owner's eye is the final gate:
 - [ ] **Email+password sign-in form** (app.html/admin.html auth bar + the new
   marketing-site sheet): toggle, login/register modes, error line.
 - [ ] **Presence chip** (project.html header, when a second viewer is open).
+- [ ] **Front-page modernization** (index.html): the header now reads Logo → nav →
+  Open App → Sign in (Gold/Cyan pills moved to the mobile menu), and the hero
+  preview cards are translucent glass over the crane photo. Screenshot:
+  tools/front-page-modernize-light.png (2026-08-17).
+- [ ] **Password change UI** (email accounts only — sign in with an email account,
+  then: marketing sign-in sheet, launcher/admin account chip, or project.html
+  Settings → Controls → Profile → Change password): current + new + confirm,
+  wrong-current error, "every other device signed out" success. The trigger does
+  NOT appear for Google accounts (they have no password).
 - [ ] **Heat/Cold safety banner** (NEW 2026-08-13 — project.html top-of-page red/blue
   bar when a heat/cold risk day is in the forecast): confirm the copy/tints read as
   SAFETY, not just another schedule flag.

@@ -53,7 +53,7 @@
   --radius-lg: 22px;
   --tr: .18s cubic-bezier(.22,.88,.30,1);
   --tr-slow: .32s cubic-bezier(.22,.88,.30,1);
-  --header-h: 68px;
+  --header-h: 76px;
 
   /* type */
   --font: "Inter",system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
@@ -112,7 +112,11 @@ body.dark-mode{
 .pal-btn:hover{color:#fff;}
 .pal-btn:focus-visible{outline:2px solid var(--gold);outline-offset:1px;}
 .pal-btn[aria-pressed="true"]{background:var(--gold);color:var(--on-gold);}
-@media (max-width:560px){.header-inner .pal-switch{display:none;}}
+/* UI MODERNIZATION 2026-08-17 (owner: decluttered header — one conversion
+   path, no floating color tags) — the palette picker moved OUT of the
+   header into the mobile menu; the theme helper's document-level [data-pal]
+   listener serves it there with zero JS change. */
+.mobile-menu .pal-switch{margin:14px 2px 2px;align-self:flex-start;}
 
 /* ---------- 2. Reset + base ---------- */
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
@@ -188,6 +192,9 @@ svg.ico use{fill:inherit;stroke:inherit;}
 .header-inner{
   height:100%;
   display:flex;align-items:center;justify-content:space-between;gap:24px;
+  /* vertical breathing room: taller bar + horizontal padding so the header
+     never crowds the viewport edge (owner UI modernization, 2026-08-17) */
+  padding:0 clamp(16px,2.5vw,2rem);
 }
 
 /* brand */
@@ -555,8 +562,9 @@ svg.ico use{fill:inherit;stroke:inherit;}
 .hero h1 .gold{color:var(--gold);}
 .hero h1 .teal{color:var(--teal);}
 .hero-sub{
-  font-size:clamp(1rem,1.5vw,1.16rem);
-  color:rgba(248,250,252,.78);
+  font-size:clamp(1.125rem,1.5vw,1.18rem);
+  line-height:1.75;
+  color:rgba(248,250,252,.82);
   max-width:54ch;margin-bottom:34px;
 }
 .hero-cta{display:flex;gap:14px;flex-wrap:wrap;}
@@ -574,11 +582,27 @@ svg.ico use{fill:inherit;stroke:inherit;}
   display:grid;gap:14px;
 }
 .hero-card{
-  background:var(--card);color:var(--text-primary);
-  border:1px solid var(--border);border-radius:var(--radius-md);
+  /* UI MODERNIZATION 2026-08-17 (owner: bento glassmorphism) — the preview
+     cards let the crane photo filter through: translucent theme-aware fill
+     (color-mix with the card token keeps light/dark parity automatically),
+     a razor-thin light micro-border, and the existing deep soft shadow.
+     The cards are DECORATIVE (aria-hidden), so glass-on-content never
+     applies; reduced-transparency + no-backdrop-filter fall back to the
+     solid card. */
+  background:color-mix(in oklch,var(--card) 82%,transparent);
+  -webkit-backdrop-filter:blur(12px) saturate(1.4);
+  backdrop-filter:blur(12px) saturate(1.4);
+  color:var(--text-primary);
+  border:1px solid rgba(255,255,255,.38);border-radius:var(--radius-md);
   padding:18px 20px;
-  box-shadow:0 18px 44px rgba(15,23,42,.42);
+  box-shadow:0 20px 44px -12px rgba(0,0,0,.5);
   transition:transform var(--tr-slow),box-shadow var(--tr-slow);
+}
+@media (prefers-reduced-transparency:reduce){
+  .hero-card{background:var(--card);-webkit-backdrop-filter:none;backdrop-filter:none;}
+}
+@supports not (backdrop-filter:blur(1px)){
+  .hero-card{background:var(--card);}
 }
 .hero-card:hover{transform:translateY(-4px);box-shadow:0 26px 58px rgba(15,23,42,.5);}
 .hero-card .hc-top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;}

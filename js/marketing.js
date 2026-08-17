@@ -139,6 +139,24 @@
     if (!form || !userBox) return;
     var nm = document.getElementById('signin-user-name');
     var sub = document.getElementById('signin-user-sub');
+    var av = document.getElementById('signin-user-avatar');
+    /* STABILIZATION 2026-08-16: the identity now leads with the profile
+       picture — Google photo when available, otherwise the first letter of
+       the name (the app.html avatar pattern). Written via DOM APIs so
+       remote data can't inject. */
+    if (av) {
+      av.innerHTML = '';
+      if (user && user.picture) {
+        var img = document.createElement('img');
+        img.src = user.picture;
+        img.alt = '';
+        img.referrerPolicy = 'no-referrer';
+        av.appendChild(img);
+      } else {
+        var initial = user ? (user.name || user.email || '?').charAt(0).toUpperCase() : '?';
+        av.textContent = initial;
+      }
+    }
     if (nm) nm.textContent = (user && (user.name || user.email)) || 'Signed in';
     if (sub) sub.textContent = (user && user.email) ? user.email : '';
     form.hidden = true;
@@ -149,8 +167,10 @@
     if (!signinSheet) return;
     var form = signinSheet.querySelector('.email-auth');
     var userBox = document.getElementById('signin-user');
+    var av = document.getElementById('signin-user-avatar');
     if (form) form.hidden = false;
     if (userBox) userBox.hidden = true;
+    if (av) { av.innerHTML = ''; av.textContent = ''; }
   }
 
   if (signinBtns.length && signinSheet && GA) {

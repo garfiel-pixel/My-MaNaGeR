@@ -156,6 +156,9 @@ var MMGR = window.MMGR || {};
     // OWNER 2026-08-15: project.html header chip hides when signed out.
     const hc = $('hdr-signin');
     if (hc) hc.hidden = true;
+    // Signed out -> no plan badge anywhere (mounts stay hidden).
+    const pills = document.querySelectorAll('[data-plan-badge]');
+    for (let i = 0; i < pills.length; i++) pills[i].hidden = true;
     // Signed out -> the email+password alternative is available again, and
     // the form returns to LOGIN mode (signing back in is the common intent
     // after a sign-out; register stays one click away).
@@ -192,15 +195,43 @@ var MMGR = window.MMGR || {};
     // sign-in sheet) can render its own signed-in state. App pages listen
     // to mmgr:google-signed-in and ignore this event.
     _user = user;
-    // OWNER 2026-08-15: project.html header chip — a compact "Signed in"
-    // indicator next to the "Not backed up" control. Clicking it opens the
-    // Settings drawer at the Controls tab (where sign-in/sign-out live).
+    // STABILIZATION 2026-08-16: project.html header chip — the signed-in
+    // identity, mirroring the app.html rail: a name-initial avatar (or the
+    // Google photo when provided) + the operator name + a Premium pill. The
+    // pill is a [data-plan-badge] mount that refreshPlan() fills. Clicking
+    // the chip opens the Settings drawer at the Controls tab (where
+    // sign-in/sign-out live).
     const hc = $('hdr-signin');
     if (hc) {
       hc.hidden = false;
       hc.title = 'Signed in as ' + (user.email || user.name || user.sub || 'Operator');
+      hc.innerHTML = '';
+      const avatar = document.createElement('span');
+      avatar.className = 'gchip-avatar';
+      if (user.picture) {
+        const img = document.createElement('img');
+        img.className = 'gchip-avatar-img';
+        img.src = user.picture;
+        img.alt = '';
+        img.referrerPolicy = 'no-referrer';
+        avatar.appendChild(img);
+      } else {
+        avatar.textContent = (user.name || user.email || '?').charAt(0).toUpperCase();
+      }
+      const nm = document.createElement('span');
+      nm.className = 'hdr-chip-name';
+      nm.textContent = user.name || user.email || 'Operator';
+      const pill = document.createElement('span');
+      pill.className = 'plan-pill';
+      pill.setAttribute('data-plan-badge', '');
+      pill.hidden = true;
+      hc.appendChild(avatar);
+      hc.appendChild(nm);
+      hc.appendChild(pill);
     }
     document.dispatchEvent(new CustomEvent('mmgr:user-changed', { detail: user }));
+    // Plan badge follows the identity (see refreshPlan below).
+    refreshPlan();
     if (!chip) return;
     chip.hidden = false;
     chip.innerHTML = '';
@@ -227,6 +258,35 @@ var MMGR = window.MMGR || {};
     chip.appendChild(avatar);
     chip.appendChild(name);
     chip.appendChild(out);
+  }
+
+  // STABILIZATION 2026-08-16: renders the account's Premium pill into every
+  // [data-plan-badge] mount on the page (project.html header chip, marketing
+  // sign-in sheet, admin rail Account group) so the plan reflects wherever
+  // the identity is shown — exactly like the app.html rail footer, which
+  // keeps its own loadPlan() in mmgr-cloud-dash.js (same session-gated
+  // endpoint; app.html has no [data-plan-badge] mounts, so no double render).
+  // Free or unconfigured plan -> mounts stay hidden. Zero-throw: any failure
+  // leaves the pills hidden and the page unaffected.
+  async function refreshPlan() {
+    let res;
+    try {
+      res = await fetch('/api/billing/status', { method: 'GET', credentials: 'same-origin' });
+    } catch (e) { return; }
+    if (!res.ok) return;
+    let data = null;
+    try { data = await res.json(); } catch (e) { return; }
+    if (!data || !data.ok || !data.configured) return;
+    const mounts = document.querySelectorAll('[data-plan-badge]');
+    for (let i = 0; i < mounts.length; i++) {
+      if (data.active) {
+        mounts[i].hidden = false;
+        mounts[i].innerHTML = '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-check"></use></svg> Premium';
+      } else {
+        mounts[i].hidden = true;
+      }
+    }
+    document.dispatchEvent(new CustomEvent('mmgr:plan-changed', { detail: data }));
   }
 
   // Restore the operator identity from the Worker session cookie. Never

@@ -1230,6 +1230,18 @@ hr.div{border:none;border-top:1px solid var(--border);margin:14px 0;}
 .si-chip:focus-visible{outline:2px solid var(--green);outline-offset:2px;}
 .si-chip .ico{width:12px;height:12px;}
 .si-chip[hidden]{display:none;}
+/* STABILIZATION 2026-08-16: the project.html header chip now carries the
+   signed-in identity — small name-initial avatar (or Google photo) + name,
+   mirroring the app.html rail. The Premium pill inside is a [data-plan-badge]
+   mount filled by mmgr-google-auth.js refreshPlan(). */
+.si-chip .gchip-avatar{width:22px;height:22px;font-size:.6rem;}
+.hdr-chip-name{max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+/* Shared Premium pill (app pages): rendered into [data-plan-badge] mounts by
+   mmgr-google-auth.js refreshPlan() — project.html header chip, admin rail.
+   Mirrors body.db-page .db-plan-badge from app.html's rail footer. */
+.plan-pill{display:inline-flex;align-items:center;gap:4px;font-size:.58rem;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--gold);border:1px solid var(--gold);border-radius:100px;padding:2px 8px;background:rgba(var(--gold-rgb),.12);white-space:nowrap;}
+.plan-pill .ico{width:11px;height:11px;}
+.plan-pill[hidden]{display:none;}
 .dirty-ind{display:none;align-items:center;gap:5px;font-size:.7rem;color:var(--amber);padding:3px 9px;border:1px solid var(--amber);border-radius:100px;background:rgba(var(--amber-rgb),0.08);cursor:pointer;transition:all var(--tr);}
 .dirty-ind:hover{background:rgba(var(--amber-rgb),0.2);}
 @keyframes pulseAttn{0%,100%{box-shadow:0 0 0 0 rgba(var(--gold-rgb),.55);}50%{box-shadow:0 0 0 7px rgba(var(--gold-rgb),0);}}

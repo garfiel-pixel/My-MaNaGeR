@@ -295,6 +295,11 @@ pre.snippet{background:#f8fafc;border:1px solid var(--border);border-radius:6px;
         <div id="google-signin-button"></div>
         <div id="google-user-chip" hidden></div>
       </div>
+      <!-- STABILIZATION 2026-08-16: Premium pill beside the signed-in chip —
+           a [data-plan-badge] mount filled by mmgr-google-auth.js
+           refreshPlan(), matching the app.html rail footer. Hidden when the
+           plan is free or billing is unconfigured. -->
+      <span class="plan-pill" id="admin-plan-badge" data-plan-badge hidden></span>
     </div>
     <div class="rail-group"><span class="rail-label">Customize</span>
       <span class="rail-ctl-row"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-moon"></use></svg> Dark theme <label class="tgl"><input type="checkbox" data-action="tglTheme" aria-label="Toggle dark theme"><span class="tsl"></span></label></span>

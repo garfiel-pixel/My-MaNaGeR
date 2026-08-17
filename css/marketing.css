@@ -340,6 +340,24 @@ svg.ico use{fill:inherit;stroke:inherit;}
 .signin-sheet .signin-user[hidden]{display:none;}
 .signin-sheet .signin-user-name{font-size:.9rem;font-weight:700;color:var(--text-primary);}
 .signin-sheet .signin-user-sub{font-size:.76rem;color:var(--text-secondary);word-break:break-all;}
+/* STABILIZATION 2026-08-16: the signed-in identity leads with the profile
+   picture — Google photo or the name's first letter, the app.html avatar
+   pattern. The Premium pill is a [data-plan-badge] mount filled by
+   mmgr-google-auth.js refreshPlan(). */
+.signin-sheet .signin-user-avatar{
+  width:44px;height:44px;border-radius:50%;overflow:hidden;flex-shrink:0;
+  background:var(--gold);color:var(--on-gold);display:flex;align-items:center;
+  justify-content:center;font-weight:800;font-size:1.05rem;
+}
+.signin-sheet .signin-user-avatar img{width:100%;height:100%;object-fit:cover;display:block;}
+.signin-sheet .plan-pill{
+  display:inline-flex;align-items:center;gap:4px;font-size:.62rem;font-weight:800;
+  letter-spacing:.04em;text-transform:uppercase;color:var(--gold-deep);
+  border:1px solid var(--gold);border-radius:100px;padding:3px 10px;
+  background:rgba(var(--gold-rgb),.12);white-space:nowrap;
+}
+.signin-sheet .plan-pill .ico{width:12px;height:12px;}
+.signin-sheet .plan-pill[hidden]{display:none;}
 .signin-sheet .signin-out{
   padding:8px 14px;border-radius:9px;border:1px solid var(--border);
   background:var(--card);color:var(--text-primary);

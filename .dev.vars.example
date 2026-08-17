@@ -1,0 +1,16 @@
+# Local dev secrets — copy this file to `.dev.vars` and fill in real values.
+# `.dev.vars` is gitignored; `wrangler dev` reads it automatically.
+# Remote deploys use `npx wrangler secret put <NAME>` with the SAME names.
+
+# --- Resend transactional email (AUTH MAINFRAME v2, 2026-08-17) ---
+# Until you buy + verify a sending domain in Resend, use the free onboarding
+# sender. NOTE: onboarding@resend.dev can ONLY send to the email address you
+# signed up to Resend with — fine for dev testing; real users need the
+# verified domain (e.g. admin@mymanager.app).
+RESEND_API_KEY=
+RESEND_FROM_EMAIL=onboarding@resend.dev
+
+# TEST-ONLY seam: tools/qa-email-auth.cjs points the Worker at a local stub
+# via this var so the email path is tested end to end without hitting
+# api.resend.com. Never set it in production.
+# RESEND_API_BASE=http://127.0.0.1:8797

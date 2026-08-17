@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<!--
+  My MaNaGeR — Email verification landing (AUTH MAINFRAME v2, 2026-08-17).
+  Transactional page reached from the verification email link
+  (/verify.html?token=...). Drives /api/auth/verify; when the 24h single-use
+  link is dead it offers a fresh-link recovery form (/api/auth/resend-verify).
+  External script only (js/verify.js) — no inline scripts, CSP hashes stay
+  untouched. Icons are sprite symbols, no emoji (owner hard gate).
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Confirm your email | My MaNaGeR</title>
+<meta name="description" content="Confirm your email address to activate your My MaNaGeR account and enable cloud projects.">
+<meta name="robots" content="noindex">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='2.5' y='2.5' width='19' height='19' rx='5' fill='%23E8B84A'/%3E%3Cpath d='M12 5.5c.5 3 1.2 4.8 2.7 6.2 1.5 1.5 3.3 2.2 6.3 2.7-3 .5-4.8 1.2-6.3 2.7-1.5 1.5-2.2 3.3-2.7 6.3-.5-3-1.2-4.8-2.7-6.3C7.8 15.6 6 14.9 3 14.4c3-.5 4.8-1.2 6.3-2.7C10.8 10.2 11.5 8.4 12 5.5z' fill='%230F172A'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="css/marketing.css">
+<script src="js/mmgr-theme.js"></script>
+</head>
+<body class="auth-page">
+
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="auth-header">
+  <a class="brand" href="index.html" aria-label="My MaNaGeR home">
+    <span class="brand-mark" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3.5c.55 3.1 1.3 4.95 2.9 6.4 1.6 1.45 3.45 2.2 6.6 2.7-3.15.5-5 1.25-6.6 2.7-1.6 1.45-2.35 3.3-2.9 6.4-.55-3.1-1.3-4.95-2.9-6.4C7.5 15.85 5.65 15.1 2.5 14.6c3.15-.5 5-1.25 6.6-2.7 1.6-1.45 2.35-3.3 2.9-6.4z"/></svg>
+    </span>
+    <span><b>My <span>MaNaGeR</span></b></span>
+  </a>
+</header>
+
+<main id="main" class="auth-main">
+  <!-- Solid content card (Gate 6.1 — status/forms never sit on glass) -->
+  <div class="auth-card">
+
+    <div class="auth-state" id="st-loading" role="status" aria-live="polite">
+      <span class="auth-spinner" aria-hidden="true"></span>
+      <h1>Confirming your email</h1>
+      <p>Just a moment while we verify the link.</p>
+    </div>
+
+    <div class="auth-state" id="st-ok" hidden>
+      <svg class="auth-icon ok" aria-hidden="true"><use href="css/mmgr-icons.svg#i-check-circle"></use></svg>
+      <h1>Email verified</h1>
+      <p>Your email address is confirmed. You can now sign in and enable cloud projects.</p>
+      <a class="btn btn-gold" href="app.html">Open the app</a>
+    </div>
+
+    <div class="auth-state" id="st-err" hidden>
+      <svg class="auth-icon err" aria-hidden="true"><use href="css/mmgr-icons.svg#i-alert-triangle"></use></svg>
+      <h1>Link not valid</h1>
+      <p id="st-err-msg">This confirmation link is invalid, expired, or has already been used.</p>
+      <div class="auth-recover">
+        <p class="auth-note">Get a fresh link — if this account needs verification, a new confirmation email is on its way.</p>
+        <form id="recover-form" novalidate>
+          <label class="sr-only" for="recover-email">Email address</label>
+          <input type="email" id="recover-email" name="email" autocomplete="email" placeholder="you@example.com" required>
+          <button type="submit" class="btn btn-gold btn-sm" id="recover-btn">Send new link</button>
+        </form>
+        <p class="auth-err" id="recover-err" role="alert" hidden></p>
+      </div>
+      <a class="btn btn-ghost" href="index.html">Back to My MaNaGeR</a>
+    </div>
+
+    <div class="auth-state" id="st-sent" hidden role="status" aria-live="polite">
+      <svg class="auth-icon ok" aria-hidden="true"><use href="css/mmgr-icons.svg#i-mail"></use></svg>
+      <h1>Check your inbox</h1>
+      <p>If an account needs verification, a new confirmation link is on its way.</p>
+      <a class="btn btn-ghost" href="index.html">Back to My MaNaGeR</a>
+    </div>
+
+  </div>
+</main>
+
+<footer class="auth-footer">
+  <span>My MaNaGeR — offline-first construction project workspace</span>
+</footer>
+
+<noscript><div class="auth-noscript">JavaScript is required to confirm your email address.</div></noscript>
+
+<script src="js/verify.js"></script>
+</body>
+</html>

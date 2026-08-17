@@ -244,6 +244,11 @@ var MMGR = window.MMGR || {};
   // banner never appears and this whole path is inert (byte-for-byte unchanged
   // behavior on the current deploy).
   let _upgradePending = false;
+  // AUTH MAINFRAME v2 — verified-email gate: set when create answers HTTP 403
+  // {verifyRequired:true} (unverified email account). Mirrors _upgradePending:
+  // render() shows a confirm-your-email banner + a resend action. Dormant when
+  // email is unconfigured or the session is Google — the server never 403s then.
+  let _verifyPending = false;
   let _createInFlight = false;
 
   async function createProject() {
@@ -266,6 +271,13 @@ var MMGR = window.MMGR || {};
           _upgradePending = true;
           await render();
           setStatus((data && data.error) || 'Free plan limit reached — upgrade to link more projects.', 'err');
+        } else if (res.status === 403 && data && data.verifyRequired) {
+          // AUTH MAINFRAME v2: the email account has not clicked its
+          // confirmation link. Surface the inbox guidance + a resend
+          // affordance instead of a bare error (mirrors the 402 pattern).
+          _verifyPending = true;
+          await render();
+          setStatus((data && data.error) || 'Verify your email to enable cloud projects — check your inbox for the confirmation link.', 'err');
         } else if (res.status === 409) {
           // BUG-1: project already linked — reload the drawer to show the
           // existing code instead of a confusing error.
@@ -277,6 +289,7 @@ var MMGR = window.MMGR || {};
         return;
       }
       _upgradePending = false;
+      _verifyPending = false;
       setCode(data.ownerCode);
       await render();
       setStatus('Cloud project linked — owner/recovery code: ' + data.ownerCode + '. Store it somewhere safe: if lost, only the linked Google account can recover it.', 'ok');
@@ -284,6 +297,37 @@ var MMGR = window.MMGR || {};
       setStatus('Cloud is unavailable on this host (needs the Worker API).', 'err');
     } finally {
       _createInFlight = false;
+    }
+  }
+
+  // AUTH MAINFRAME v2 — resend the verification email for the signed-in
+  // account (the confirm-your-email banner's action). The endpoint answers a
+  // generic message either way (no existence/status leak); the banner stays
+  // until the account verifies or the drawer is reloaded.
+  async function cloudResendVerify() {
+    setStatus('Sending confirmation link…', 'busy');
+    try {
+      const meRes = await fetch('/api/auth/me', { credentials: 'same-origin' });
+      const me = await meRes.json().catch(function() { return null; });
+      const email = (me && me.ok && me.user && me.user.email) ? me.user.email : '';
+      if (!email) {
+        setStatus('You are not signed in with an email account — sign in to request a new link.', 'warn');
+        return;
+      }
+      const res = await fetch('/api/auth/resend-verify', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email })
+      });
+      const data = await res.json().catch(function() { return {}; });
+      if (res.ok && data && data.ok) {
+        setStatus((data && data.message) || 'If an account needs verification, a new confirmation link is on its way — check your inbox.', 'ok');
+      } else {
+        setStatus((data && data.error) || 'Could not send the link (HTTP ' + res.status + ').', 'err');
+      }
+    } catch (e) {
+      setStatus('Cloud is unavailable on this host (needs the Worker API).', 'err');
     }
   }
 
@@ -1109,6 +1153,14 @@ var MMGR = window.MMGR || {};
         '<button class="btn btn-g btn-s" data-action="cloudUpgrade"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-zap"></use></svg> Upgrade plan</button>' +
         '</div>';
     }
+    // AUTH MAINFRAME v2 — verified-email gate banner (only set by a real
+    // server 403 {verifyRequired:true} — see createProject above).
+    if (_verifyPending) {
+      body += '<div class="sr" style="border:1px solid var(--gold);background:rgba(var(--gold-rgb),.1);border-radius:var(--radius);padding:8px 10px;margin:6px 0" role="status">' +
+        '<div class="sr-hint" style="margin:0 0 6px"><strong>Confirm your email</strong> — cloud projects unlock once you click the confirmation link we emailed you.</div>' +
+        '<button class="btn btn-n btn-s" data-action="cloudResendVerify"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-mail"></use></svg> Resend confirmation link</button>' +
+        '</div>';
+    }
     body += '<div id="cloud-status" class="drive-status" role="status" aria-live="polite"></div>';
 
     wrap.innerHTML = body;
@@ -1318,6 +1370,7 @@ var MMGR = window.MMGR || {};
     render: render,
     createProject: createProject,
     cloudUpgrade: cloudUpgrade,
+    cloudResendVerify: cloudResendVerify,
     saveToCloud: saveToCloud,
     autoSaveToCloud: autoSaveToCloud,
     loadFromCloud: loadFromCloud,

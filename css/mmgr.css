@@ -2459,6 +2459,33 @@ body.db-page:not(.dark-mode) .db-link:focus-visible{outline:2px solid var(--gold
 .email-auth-alt button{background:none;border:none;padding:0;font-size:.66rem;font-weight:600;color:var(--blue);cursor:pointer;text-decoration:underline;text-underline-offset:2px;}
 .email-auth-err{font-size:.66rem;color:var(--danger);min-height:.9em;}
 @media(max-width:640px){.email-auth{align-items:stretch;}.email-auth-row{flex-direction:column;}.email-auth-input{flex:1 1 100%;width:100%;}}
+/* AUTH MAINFRAME 2026-08-17 — password-change control (shared trigger +
+   panel mounted by mmgr-google-auth.js mountPasswordControl into the
+   signed-in chip, the marketing account row, and Settings > Controls >
+   Profile). Same soft-field language as the email-auth form; [hidden]
+   guards are REQUIRED (the .email-auth-row/.email-auth-pw flex rules
+   outrank the UA [hidden] rule). */
+.email-auth-pw{display:flex;flex-direction:column;gap:6px;align-items:stretch;}
+.email-auth-pw[hidden]{display:none;}
+.email-auth-pw .email-auth-row[hidden]{display:none;}
+.email-auth-pw-title{margin:0;font-size:.72rem;color:var(--text);}
+.email-auth-pw-msg{margin:0;font-size:.66rem;color:var(--text-secondary);line-height:1.5;}
+.email-auth-pw .email-auth-input{flex:1 1 150px;min-width:110px;}
+.email-auth-pw-btn{
+  background:none;border:none;padding:0;font-size:.68rem;font-weight:600;
+  color:var(--blue);cursor:pointer;text-decoration:underline;text-underline-offset:2px;
+}
+.email-auth-pw-btn:hover{color:var(--gold);}
+.email-auth-pw-btn:focus-visible{outline:2px solid var(--gold);outline-offset:1px;border-radius:var(--radius);}
+.email-auth-pw-btn[hidden]{display:none;}
+.email-auth-pw-cancel{
+  background:none;border:none;padding:0;font-size:.68rem;font-weight:600;
+  color:var(--text-secondary);cursor:pointer;text-decoration:underline;text-underline-offset:2px;
+}
+.email-auth-pw-cancel:hover{color:var(--gold);}
+.email-auth-pw-cancel:focus-visible{outline:2px solid var(--gold);outline-offset:1px;border-radius:var(--radius);}
+.email-auth-pw-ok{margin:0;font-size:.7rem;color:var(--green);}
+.pw-host{margin-top:8px;display:flex;flex-direction:column;align-items:flex-start;gap:6px;}
 
 /* ============================================================
    MMGR-NEW-UI-CREATION-BRIEF I1 follow-up — app.html launcher

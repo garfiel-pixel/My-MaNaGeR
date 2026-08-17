@@ -1240,6 +1240,10 @@
     <div class="ctl-sec"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-user"></use></svg> Profile</div>
     <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-user"></use></svg> Your Name</span><input type="text" id="user-name-in" placeholder="Your name" aria-label="Your name (shown in the header greeting)" data-action="setUserName" class="ctl-in w150"></div>
     <div class="sr-hint">Shown in the header greeting. Leave blank for a generic welcome.</div>
+    <!-- AUTH MAINFRAME 2026-08-17: password change for email accounts —
+         the shared control mounts here from js/mmgr-google-auth.js; the
+         trigger stays hidden unless the signed-in account has a password. -->
+    <div class="pw-host" data-pw-host></div>
 
     <!-- Share & Access — rendered by js/mmgr-cloud.js: owner code, editor
          codes with section-scope toggles (view-only / edit-budget / etc). -->

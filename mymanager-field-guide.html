@@ -167,6 +167,19 @@ ul,ol{list-style:none;}
 .site-signin{color:var(--brass-bright);}
 .site-signin:hover{background:rgba(207,154,82,.08);border-color:var(--brass);color:var(--brass-bright);}
 .site-signin:focus-visible{outline:2px solid var(--brass);outline-offset:1px;}
+/* OWNER 2026-08-17 — signed-in identity chip inside the guide's sign-in
+   triggers (same pattern as the marketing header, brass/cyan tokens). */
+.site-signin .sb-avatar{
+  width:20px;height:20px;border-radius:50%;overflow:hidden;flex-shrink:0;
+  background:var(--brass);color:var(--ink);
+  display:flex;align-items:center;justify-content:center;
+  font-weight:800;font-size:.6rem;line-height:1;
+}
+.site-signin .sb-avatar img{width:100%;height:100%;object-fit:cover;display:block;}
+.site-signin .sb-name{max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+/* deep links from the marketing dropdowns land with breathing room below
+   the fixed chrome (scrollIntoView respects scroll-margin-top) */
+.sheet[id]{scroll-margin-top:24px;}
 
 /* ===== EMAIL SIGN-IN SHEET (2026-08-14 — shared mmgr-google-auth.js form) =====
    Chrome sheet in the guide's own "Working Drawing" tokens — brass accent on ink.
@@ -222,6 +235,36 @@ ul,ol{list-style:none;}
 }
 .signin-sheet .signin-out:hover{border-color:#ff9d9d;color:#ff9d9d;}
 .signin-sheet .signin-out:focus-visible{outline:2px solid var(--brass);outline-offset:1px;}
+/* AUTH MAINFRAME 2026-08-17 — password change (email accounts) in the
+   signed-in account row; [hidden] guards required (flex outranks hidden). */
+.signin-sheet .email-auth-pw{display:flex;flex-direction:column;gap:8px;align-items:stretch;}
+.signin-sheet .email-auth-pw[hidden]{display:none;}
+.signin-sheet .email-auth-pw .email-auth-row[hidden]{display:none;}
+.signin-sheet .email-auth-pw-title{margin:0;font-size:.84rem;color:var(--text);}
+.signin-sheet .email-auth-pw-msg{margin:0;font-size:.76rem;color:var(--text-dimmer);line-height:1.5;}
+.signin-sheet .email-auth-pw .email-auth-input{flex:1 1 150px;min-width:120px;}
+.signin-sheet .email-auth-pw-btn{
+  background:none;border:none;padding:0;color:var(--brass-bright);
+  text-decoration:underline;text-underline-offset:2px;cursor:pointer;font:inherit;font-size:.76rem;
+}
+.signin-sheet .email-auth-pw-btn:focus-visible{outline:2px solid var(--brass);outline-offset:1px;border-radius:4px;}
+.signin-sheet .email-auth-pw-btn[hidden]{display:none;}
+.signin-sheet .email-auth-pw-submit{
+  display:inline-flex;align-items:center;justify-content:center;
+  padding:9px 16px;border-radius:8px;border:1px solid transparent;
+  background:var(--brass);color:var(--ink);
+  font-size:.84rem;font-weight:700;line-height:1;cursor:pointer;
+  transition:background .15s var(--ease);
+}
+.signin-sheet .email-auth-pw-submit:hover{background:var(--brass-bright);}
+.signin-sheet .email-auth-pw-submit:focus-visible{outline:2px solid var(--cyan);outline-offset:1px;}
+.signin-sheet .email-auth-pw-submit:disabled{opacity:.6;cursor:default;}
+.signin-sheet .email-auth-pw-cancel{
+  background:none;border:none;padding:0;color:var(--text-dim);
+  text-decoration:underline;text-underline-offset:2px;cursor:pointer;font:inherit;font-size:.76rem;
+}
+.signin-sheet .email-auth-pw-cancel:focus-visible{outline:2px solid var(--brass);outline-offset:1px;border-radius:4px;}
+.signin-sheet .email-auth-pw-ok{margin:0;font-size:.78rem;color:#7fe0a8;}
 
 /* ===== MAIN ===== */
 main{flex:1;min-width:0;position:relative;}
@@ -1331,7 +1374,7 @@ Date: ____________  Focus: ____________</pre>
       </div>
 
       <h3 class="h-sub">Optional Google identity — gates recovery, not the app</h3>
-      <p class="prose">Signing in with Google is entirely optional. It unlocks two conveniences: Google Drive backup/restore of your project files, and owner-code recovery for cloud projects. It never gates anything — create, save, load, and editor access all work with zero account. You can sign in later, or never.</p>
+      <p class="prose">Signing in with Google is entirely optional. It unlocks two conveniences: Google Drive backup/restore of your project files, and owner-code recovery for cloud projects. It never gates anything — create, save, load, and editor access all work with zero account. You can sign in later, or never. Email accounts (sign in with email instead) can change their password any time from the sign-in sheet, the launcher or admin account chip, or Settings ▸ Controls ▸ Profile — enter the current password plus the new one (8+ characters) and every other device is signed out immediately; this device stays signed in.</p>
 
       <h3 class="h-sub">Copy All — your fastest way into Word</h3>
       <p class="prose">Navigate to any panel and click <strong>Copy All</strong>. Everything visible on that view is compiled, timestamped, and placed on your clipboard — ready to paste straight into a Word document, an email, or a client report. It works the same way on every panel: WBS, Budget, Risk, RACI, Charter, all of it.</p>

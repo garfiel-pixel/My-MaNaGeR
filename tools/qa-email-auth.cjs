@@ -36,10 +36,10 @@
      A18 email session on prefs R2         -> PUT/GET round-trip
          works (prefs keyed on 'email:' sub)
      A15 rate burst LAST: 40 wrong-password -> at least one 429 with
-         logins                             Retry-After AND at least
-                                            one 401 (limiter lets
-                                            real attempts through,
-                                            then blocks)
+         logins (never-registered           Retry-After AND at least
+         email — the per-account lockout    one 401 (limiter lets
+         guard never engages, so the        real attempts through,
+         RATE LIMITER is what is tested)    then blocks)
 
    PHASE 2 — CONFIGURED (fake LEMONSQUEEZY_* secrets + a
    FREE_PROJECT_CAP override, same persist dir so accounts live):
@@ -71,6 +71,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const crypto = require('crypto');
+const http = require('http');
 
 const PORT = 8796;
 const BASE = 'http://127.0.0.1:' + PORT;
@@ -98,6 +99,44 @@ const check = (name, val, detail) => {
   log((val ? 'PASS' : 'FAIL') + '  ' + name + (val ? '' : '   <-- ' + JSON.stringify(detail).slice(0, 500)));
 };
 
+// ---- PHASE 3: local Resend stub -------------------------------------------------
+// The Worker's sendAuthEmail posts to RESEND_API_BASE (test-only env seam).
+// Point it at this in-process stub so the email path is exercised END TO END
+// (token minted -> email body built -> link extracted -> token consumed)
+// without ever calling the real api.resend.com.
+let stubPort = 0;
+const stubEmails = []; // { to, subject, text, at }
+function startEmailStub() {
+  const srv = http.createServer(function (req, res) {
+    if (req.method === 'POST' && req.url === '/emails') {
+      let body = '';
+      req.on('data', function (c) { body += c; });
+      req.on('end', function () {
+        try {
+          const j = JSON.parse(body);
+          // The Worker sends to: [addr] (Resend API shape) — normalize to a
+          // string so mailsTo() can match it directly.
+          const tos = Array.isArray(j.to) ? j.to.join(',') : String(j.to || '');
+          stubEmails.push({ to: tos, subject: j.subject, text: j.text, at: new Date().toISOString() });
+        } catch (e) { /* ignore malformed */ }
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ id: 'stub_' + stubEmails.length }));
+      });
+      return;
+    }
+    res.writeHead(404, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'not found' }));
+  });
+  return new Promise(function (resolve) {
+    srv.listen(0, '127.0.0.1', function () { stubPort = srv.address().port; resolve(srv); });
+  });
+}
+const mailsTo = (email, subject) => stubEmails.filter(function (m) { return m.to === email && (!subject || m.subject === subject); });
+const tokenFromLink = (text, page) => {
+  const m = String(text || '').match(new RegExp(page + '\\.html\\?token=([^\\s\\n]+)'));
+  return m ? m[1] : null;
+};
+
 let proc = null;
 let devLog = '';
 
@@ -114,10 +153,12 @@ function globalWranglerJs() {
 const WRANGLER_JS = globalWranglerJs();
 const PERSIST_DIR = path.join(TMP, 'mmgr-email-auth-wstate-' + Date.now());
 
-async function startWrangler(configured) {
+async function startWrangler(mode) {
+  // mode: 'dormant' (phase 1 — no secrets) | 'configured' (phase 2 — LS) | 'email' (phase 3 — LS + Resend stub)
+  const configured = mode === 'configured' || mode === 'email';
   stopWrangler();
   await delay(800); // let the previous process release the port
-  log('starting wrangler dev on :' + PORT + ' (' + (configured ? 'CONFIGURED' : 'dormant') + ' phase)…');
+  log('starting wrangler dev on :' + PORT + ' (' + mode + ' phase)…');
   try {
     fs.rmSync(STOP_FILE, { force: true });
     fs.rmSync(STATE_FILE, { force: true });
@@ -141,6 +182,25 @@ async function startWrangler(configured) {
       '--var', 'LEMONSQUEEZY_VARIANT_ID:' + LS_VARIANT,
       '--var', 'LEMONSQUEEZY_STORE_ID:' + LS_STORE,
       '--var', 'FREE_PROJECT_CAP:2'
+    );
+  }
+  // The repo root may carry a .dev.vars with the REAL RESEND_API_KEY (local
+  // testing) — wrangler dev reads it automatically and would otherwise leak
+  // the key into EVERY phase here: register would mint verification emails
+  // and the verified-email cloud gate would 403 the accounts these phases
+  // never verify. CLI --var beats .dev.vars, so non-email phases explicitly
+  // NULL the key (empty value = falsy = authEmailConfigured() false), and the
+  // email phase overrides it with the stub-scoped fake.
+  if (mode === 'email') {
+    args.push(
+      '--var', 'RESEND_API_KEY:qa-fake-resend-key-00000000000000000000000000000000',
+      '--var', 'RESEND_FROM_EMAIL:onboarding@resend.dev',
+      '--var', 'RESEND_API_BASE:http://127.0.0.1:' + stubPort
+    );
+  } else {
+    args.push(
+      '--var', 'RESEND_API_KEY:',
+      '--var', 'RESEND_FROM_EMAIL:'
     );
   }
   proc = spawn(process.execPath, args, {
@@ -208,8 +268,8 @@ async function phase1() {
   // A3 — happy-path register: real cookie, correct namespace, no secret leakage.
   const a3 = await api('/api/auth/register', { method: 'POST', headers: jsonHeaders, body: JSON.stringify({ email: ALICE, password: 's3cure-pass!', name: 'Alice Test' }) });
   const a3cookie = extractSessionCookie(a3);
-  check('A3 register valid -> 200 + session cookie + sub email: namespace',
-    a3.status === 200 && a3.body.ok === true && a3.body.user.sub === 'email:' + ALICE && a3.body.user.name === 'Alice Test' && !!a3cookie && !('password_hash' in a3.body) && !('password' in a3.body), a3.text);
+  check('A3 register valid -> 200 + session cookie + sub email: namespace (emailSent:false when dormant)',
+    a3.status === 200 && a3.body.ok === true && a3.body.user.sub === 'email:' + ALICE && a3.body.user.name === 'Alice Test' && !!a3cookie && !('password_hash' in a3.body) && !('password' in a3.body) && a3.body.emailSent === false, a3.text);
   const a4 = await api('/api/auth/register', { method: 'POST', headers: jsonHeaders, body: JSON.stringify({ email: ALICE, password: 'another-pass-1' }) });
   check('A4 duplicate register -> 409', a4.status === 409, a4.text);
 
@@ -264,20 +324,25 @@ async function phase1() {
   const a16 = await api('/api/auth/register', { method: 'POST', headers: jsonHeaders, body: JSON.stringify({ email: 'longname@example.com', password: 'longname-pass1', name: 'X'.repeat(100) }) });
   check('A16 register name > 80 chars sliced to 80', a16.status === 200 && a16.body.user.name.length === 80, a16.text);
 
-  // A17 — logout clears the session.
-  const a17o = await api('/api/auth/logout', { method: 'POST', headers: { 'Cookie': 'mmgr_session=' + aliceCookie } });
-  const a17m = await api('/api/auth/me', { method: 'GET', headers: jsonHeaders });
-  check('A17 logout -> 200 and /me afterwards -> null', a17o.status === 200 && a17m.body.ok === false && a17m.body.user === null, a17o.text + ' | ' + a17m.text);
-
   // A18 — the email session drives the R2 prefs store (same 'email:' sub key).
+  // Runs BEFORE A17: logout (A17) now revokes the session server-side, so a
+  // cookie used after it is dead by design (auth mainframe).
   const a18p = await api('/api/cloud/prefs/theme', { method: 'PUT', headers: cookieHeader(aliceCookie), body: JSON.stringify({ palette: 'cyan' }) });
   const a18g = await api('/api/cloud/prefs/theme', { method: 'GET', headers: cookieHeader(aliceCookie) });
   check('A18 email session on prefs R2: PUT cyan -> GET cyan', a18p.status === 200 && a18g.status === 200 && a18g.body.theme.palette === 'cyan', a18g.text);
 
-  // A15 — rate burst LAST in this phase (shared anon bucket, 30/min).
+  // A17 — logout clears the session (server-side revocation).
+  const a17o = await api('/api/auth/logout', { method: 'POST', headers: { 'Cookie': 'mmgr_session=' + aliceCookie } });
+  const a17m = await api('/api/auth/me', { method: 'GET', headers: jsonHeaders });
+  check('A17 logout -> 200 and /me afterwards -> null', a17o.status === 200 && a17m.body.ok === false && a17m.body.user === null, a17o.text + ' | ' + a17m.text);
+
+  // A15 — rate burst LAST in this phase. Probes a NEVER-REGISTERED email so
+  // the per-account lockout guard (auth_login_guard, 5 fails -> lock) never
+  // engages — what is under test here is the RATE LIMITER (authLogin bucket,
+  // 30/min), and an unknown email keeps the generic-401 path (no guard row).
   let saw429 = 0, saw401 = 0, retryAfter = null;
   for (let i = 0; i < 40; i++) {
-    const r = await api('/api/auth/login', { method: 'POST', headers: jsonHeaders, body: JSON.stringify({ email: ALICE, password: 'brute-' + i }) });
+    const r = await api('/api/auth/login', { method: 'POST', headers: jsonHeaders, body: JSON.stringify({ email: 'rate-limit-probe@example.com', password: 'brute-' + i }) });
     if (r.status === 429) { saw429++; retryAfter = r.headers.get('Retry-After'); }
     else if (r.status === 401) saw401++;
   }
@@ -287,6 +352,10 @@ async function phase1() {
 
 async function phase2() {
   log('--- PHASE 2 (configured — fake LemonSqueezy secrets + FREE_PROJECT_CAP=2) ---');
+  // AUTH MAINFRAME: phase 1's A17 logout revoked alice's session server-side,
+  // so phase 2 re-signs in for a fresh cookie before touching billing.
+  const relog = await api('/api/auth/login', { method: 'POST', headers: jsonHeaders, body: JSON.stringify({ email: ALICE, password: 's3cure-pass!' }) });
+  aliceCookie = extractSessionCookie(relog);
   // B1 — configured status surfaces the cap.
   const b1 = await api('/api/billing/status', { method: 'GET', headers: cookieHeader(aliceCookie) });
   check('B1 status configured:true, plan free, projectCap 2',
@@ -326,23 +395,150 @@ async function phase2() {
   check('B6 webhook: bad signature -> 401; test_request -> 200 ignored', bad.status === 401 && tr.status === 200 && tr.body.ignored === 'test_request', bad.text + ' | ' + tr.text);
 }
 
+// ---- PHASE 3 (email configured — Resend stub) ----------------------------------
+// AUTH MAINFRAME v2: verification on signup, verified-email cloud gate,
+// forgot/reset with no existence leak + per-email quota, reset revokes ALL
+// sessions, and subscription confirmation/cancellation emails. The stub
+// intercepts sendAuthEmail so no real Resend call ever happens.
+const DAVE = 'dave.email.e2e@example.com';
+const FRANK = 'frank.email.e2e@example.com';
+const PID_DAVE = 'ea-dave-' + Date.now().toString(36);
+
+async function phase3() {
+  log('--- PHASE 3 (email configured — Resend stub on :' + stubPort + ') ---');
+
+  // E1 — register mints a verify token and emails it (emailSent:true).
+  const e1 = await api('/api/auth/register', { method: 'POST', headers: jsonHeaders, body: JSON.stringify({ email: DAVE, password: 'dave-pass-123', name: 'Dave Email' }) });
+  const daveCookie = extractSessionCookie(e1);
+  const verifyMails = mailsTo(DAVE, 'Confirm your My MaNaGeR account');
+  check('E1 register -> 200 + emailSent:true + one verification email captured by the stub',
+    e1.status === 200 && e1.body.ok === true && e1.body.emailSent === true && !!daveCookie && verifyMails.length === 1, e1.text + ' | mails=' + verifyMails.length);
+  const verifyToken = tokenFromLink(verifyMails[0] && verifyMails[0].text, 'verify');
+
+  // E1b — the verified-email gate blocks cloud ownership BEFORE verification.
+  const e1b = await api('/api/cloud/projects', { method: 'POST', headers: cookieHeader(daveCookie), body: JSON.stringify({ projectId: PID_DAVE, name: 'Dave Cloud' }) });
+  check('E1b unverified email session cannot create a cloud project -> 403 verifyRequired',
+    e1b.status === 403 && e1b.body.ok === false && e1b.body.verifyRequired === true, e1b.text);
+
+  // E2 — consume the verify token; the account is now verified and can own.
+  const e2 = await api('/api/auth/verify', { method: 'POST', headers: jsonHeaders, body: JSON.stringify({ token: verifyToken }) });
+  check('E2 verify token -> 200 ok', e2.status === 200 && e2.body.ok === true && e2.body.email === DAVE, e2.text);
+  const e2b = await api('/api/cloud/projects', { method: 'POST', headers: cookieHeader(daveCookie), body: JSON.stringify({ projectId: PID_DAVE, name: 'Dave Cloud' }) });
+  check('E2b verified email session creates cloud project -> 200 linked', e2b.status === 200 && e2b.body.ok === true && e2b.body.linked === true, e2b.text);
+
+  // E3 — single-use: replaying the same verify token is rejected.
+  const e3 = await api('/api/auth/verify', { method: 'POST', headers: jsonHeaders, body: JSON.stringify({ token: verifyToken }) });
+  check('E3 verify token replay -> 400', e3.status === 400 && e3.body.ok === false, e3.text);
+
+  // E4 — garbage tokens are rejected, never crash.
+  const e4 = await api('/api/auth/verify', { method: 'POST', headers: jsonHeaders, body: JSON.stringify({ token: 'garbage.token.value' }) });
+  check('E4 verify with a garbage token -> 400', e4.status === 400 && e4.body.ok === false, e4.text);
+
+  // E5 — duplicate register still 409 in the email phase.
+  const e5 = await api('/api/auth/register', { method: 'POST', headers: jsonHeaders, body: JSON.stringify({ email: DAVE, password: 'other-pass-1' }) });
+  check('E5 duplicate register -> 409', e5.status === 409, e5.text);
+
+  // E6 — forgot for an EXISTING account mints a reset token + email.
+  const e6 = await api('/api/auth/forgot', { method: 'POST', headers: jsonHeaders, body: JSON.stringify({ email: DAVE }) });
+  const genericMsg = e6.body && e6.body.message;
+  const resetMailsAfterForgot = mailsTo(DAVE, 'Reset your My MaNaGeR password');
+  check('E6 forgot (existing) -> 200 generic + one reset email captured',
+    e6.status === 200 && e6.body.ok === true && !!genericMsg && resetMailsAfterForgot.length === 1, e6.text + ' | resetMails=' + resetMailsAfterForgot.length);
+
+  // E7 — forgot for an UNKNOWN email: same generic response, no email, no leak.
+  const e7 = await api('/api/auth/forgot', { method: 'POST', headers: jsonHeaders, body: JSON.stringify({ email: 'nobody.ever@example.com' }) });
+  const e7mails = mailsTo('nobody.ever@example.com');
+  check('E7 forgot (unknown) -> 200 IDENTICAL message + no email captured',
+    e7.status === 200 && e7.body.ok === true && e7.body.message === genericMsg && e7mails.length === 0, e7.text + ' | mails=' + e7mails.length);
+
+  // E8 — reset swaps the hash, revokes EVERY session (old cookie dies).
+  const resetToken = tokenFromLink(resetMailsAfterForgot[0] && resetMailsAfterForgot[0].text, 'reset');
+  const e8 = await api('/api/auth/reset', { method: 'POST', headers: jsonHeaders, body: JSON.stringify({ token: resetToken, newPassword: 'dave-new-pass-9' }) });
+  const oldPw = await api('/api/auth/login', { method: 'POST', headers: jsonHeaders, body: JSON.stringify({ email: DAVE, password: 'dave-pass-123' }) });
+  const newPw = await api('/api/auth/login', { method: 'POST', headers: jsonHeaders, body: JSON.stringify({ email: DAVE, password: 'dave-new-pass-9' }) });
+  const oldSessionDead = await api('/api/auth/me', { method: 'GET', headers: cookieHeader(daveCookie) });
+  check('E8 reset -> 200; old password 401; new password 200; pre-reset session dead',
+    e8.status === 200 && oldPw.status === 401 && newPw.status === 200 && oldSessionDead.body.ok === false && oldSessionDead.body.user === null,
+    JSON.stringify({ e8: e8.status, oldPw: oldPw.status, newPw: newPw.status, me: oldSessionDead.text }));
+
+  // E9 — reset token is single-use: replay rejected.
+  const e9 = await api('/api/auth/reset', { method: 'POST', headers: jsonHeaders, body: JSON.stringify({ token: resetToken, newPassword: 'another-pass-1' }) });
+  check('E9 reset token replay -> 400', e9.status === 400 && e9.body.ok === false, e9.text);
+
+  // E10 — subscription confirmation + cancellation emails (PART 4).
+  const subCreated = JSON.stringify({
+    meta: { event_name: 'subscription_created', custom_data: { sub: 'email:' + DAVE } },
+    data: { id: 'ls_sub_dave', attributes: { status: 'active', renews_at: new Date(Date.now() + 30 * 86400000).toISOString(), user_email: 'customer@buyer.example' } }
+  });
+  const s1 = await api('/api/billing/webhook', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Signature': lsSignature(subCreated, LS_SECRET) }, body: subCreated });
+  const confirmMails = mailsTo('customer@buyer.example', 'Your My MaNaGeR subscription is confirmed');
+  check('E10a webhook subscription_created -> confirmation email to the LS customer email',
+    s1.status === 200 && confirmMails.length === 1, s1.text + ' | mails=' + confirmMails.length);
+  const subCancelled = JSON.stringify({
+    meta: { event_name: 'subscription_cancelled', custom_data: { sub: 'email:' + DAVE } },
+    data: { id: 'ls_sub_dave', attributes: { status: 'cancelled', ends_at: new Date(Date.now() + 7 * 86400000).toISOString() } }
+  });
+  const s2 = await api('/api/billing/webhook', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Signature': lsSignature(subCancelled, LS_SECRET) }, body: subCancelled });
+  const cancelMails = mailsTo(DAVE, 'Your My MaNaGeR subscription was cancelled');
+  check('E10b webhook subscription_cancelled -> cancellation email (no user_email, falls back to the account email)',
+    s2.status === 200 && cancelMails.length === 1, s2.text + ' | mails=' + cancelMails.length);
+
+  // E11 — per-email reset quota: 5/hour. E6 used 1; the next 4 mint (total 5),
+  // the 6th answers the same generic message WITHOUT minting or emailing.
+  for (let i = 0; i < 5; i++) {
+    await api('/api/auth/forgot', { method: 'POST', headers: jsonHeaders, body: JSON.stringify({ email: DAVE }) });
+  }
+  const quotaMsg = (await api('/api/auth/forgot', { method: 'POST', headers: jsonHeaders, body: JSON.stringify({ email: DAVE }) })).body;
+  const resetMailsFinal = mailsTo(DAVE, 'Reset your My MaNaGeR password');
+  check('E11 forgot quota: 5 reset emails max per hour, 6th still answers the same generic message',
+    quotaMsg.ok === true && quotaMsg.message === genericMsg && resetMailsFinal.length === 5,
+    JSON.stringify({ resetMails: resetMailsFinal.length, msg: quotaMsg }));
+
+  // E12/E13 — resend-verify (the fresh-link recovery path behind verify.html's
+  // error state): an UNVERIFIED account gets a second verification email, an
+  // already-verified account gets NOTHING, and both answers are the SAME
+  // generic message — the endpoint can never probe account existence/status.
+  const e12r = await api('/api/auth/register', { method: 'POST', headers: jsonHeaders, body: JSON.stringify({ email: FRANK, password: 'frank-pass-1', name: 'Frank Email' }) });
+  const frankMailsAfterRegister = mailsTo(FRANK, 'Confirm your My MaNaGeR account');
+  const e12 = await api('/api/auth/resend-verify', { method: 'POST', headers: jsonHeaders, body: JSON.stringify({ email: FRANK }) });
+  const frankMailsAfterResend = mailsTo(FRANK, 'Confirm your My MaNaGeR account');
+  check('E12 resend-verify (unverified) -> generic 200 + a SECOND verification email',
+    e12r.status === 200 && e12.status === 200 && e12.body.ok === true && !!e12.body.message && frankMailsAfterRegister.length === 1 && frankMailsAfterResend.length === 2,
+    e12.text + ' | mails=' + frankMailsAfterResend.length);
+  const e13 = await api('/api/auth/resend-verify', { method: 'POST', headers: jsonHeaders, body: JSON.stringify({ email: DAVE }) });
+  const daveVerifyMails = mailsTo(DAVE, 'Confirm your My MaNaGeR account');
+  check('E13 resend-verify (already verified) -> SAME generic message + NO new email',
+    e13.status === 200 && e13.body.ok === true && e13.body.message === e12.body.message && daveVerifyMails.length === 1,
+    e13.text + ' | mails=' + daveVerifyMails.length);
+  const frankNewToken = tokenFromLink(frankMailsAfterResend[1] && frankMailsAfterResend[1].text, 'verify');
+  const e12b = await api('/api/auth/verify', { method: 'POST', headers: jsonHeaders, body: JSON.stringify({ token: frankNewToken }) });
+  check('E12b the fresh resend link verifies the account -> 200', e12b.status === 200 && e12b.body.ok === true, e12b.text);
+}
+
 (async () => {
   if (!WRANGLER_JS) { log('FATAL: global wrangler not found (npm root -g)'); process.exit(1); }
   try {
-    await startWrangler(false);
+    await startWrangler('dormant');
     await phase1();
-    await startWrangler(true);
+    await startWrangler('configured');
     await phase2();
+    await startEmailStub();
+    await startWrangler('email');
+    await phase3();
 
     try {
       fs.writeFileSync(STATE_FILE, JSON.stringify({ port: PORT, secret: SECRET, alice: ALICE, aliceCookie: aliceCookie, carol: CAROL, adminCode: ADMIN_CODE }));
     } catch (e) { /* non-fatal */ }
     log('READY port=' + PORT + ' — browser phase: http://127.0.0.1:' + PORT + '/app.html (register/login via the email form)');
-    log('waiting for browser phase (stop file: ' + STOP_FILE + ')…');
-    const t0 = Date.now();
-    while (Date.now() - t0 < 1200000) {
-      if (fs.existsSync(STOP_FILE)) break;
-      await delay(1000);
+    // MMGR_QA_NO_BROWSER=1 skips the interactive browser-phase wait (CI /
+    // automated runs) — the API gates above are the actual test.
+    if (!process.env.MMGR_QA_NO_BROWSER) {
+      log('waiting for browser phase (stop file: ' + STOP_FILE + ')…');
+      const t0 = Date.now();
+      while (Date.now() - t0 < 1200000) {
+        if (fs.existsSync(STOP_FILE)) break;
+        await delay(1000);
+      }
     }
   } catch (e) {
     log('FATAL harness exception: ' + ((e && e.stack) || e));

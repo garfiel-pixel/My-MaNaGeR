@@ -85,6 +85,12 @@
     var spy = new IntersectionObserver(function(entries){
       var best = null, bestRatio = -1;
       entries.forEach(function(entry){
+        /* LOCK-IN (OWNER 2026-08-17): a section the reader has already scrolled
+           past stays marked (.done) — the tracker reads as a progress trail. */
+        if (!entry.isIntersecting && entry.boundingClientRect.top < 0) {
+          var past = spyById[entry.target.id];
+          if (past) past.classList.add('done');
+        }
         if (entry.isIntersecting && entry.intersectionRatio > bestRatio) {
           bestRatio = entry.intersectionRatio;
           best = entry.target.id;
@@ -253,6 +259,8 @@
      flashes it on arrival. Menus open on hover/focus (CSS), close on Escape
      or focus-out, and every lookup is null-guarded — never throws. */
   var NAV_DD = {
+    /* OWNER 2026-08-17: hover dropdowns ONLY for small topics. The Field Guide
+       is a whole destination, not a menu — its nav link is a plain link now. */
     'index.html#features': {
       items: [
         { id: 'f-wbs', label: 'WBS + Gantt' },
@@ -263,38 +271,15 @@
         { id: 'f-ai', label: 'Built-In AI' },
         { id: 'f-voice', label: 'Voice to Notes & Claims' },
         { id: 'f-weather', label: 'Weather-Aware' },
-        { id: 'f-offline', label: 'Offline-First' }
+        { id: 'f-offline', label: 'Offline-First' },
+        { id: 'f-health', label: 'Health & Portfolio' },
+        { id: 'f-meetings', label: 'Meetings & Decisions' },
+        { id: 'f-claims', label: 'Claims & Digests' },
+        { id: 'f-registers', label: 'Registers & Compliance' },
+        { id: 'f-gonogo', label: 'Bid Leveling & Go/No-Go' },
+        { id: 'f-lookahead', label: 'Lookahead & Field Metrics' }
       ],
       foot: { href: 'features.html', label: 'See every feature in detail' }
-    },
-    'mymanager-field-guide.html': {
-      items: [
-        { id: 'welcome', label: 'A-00 Welcome & Orientation' },
-        { id: 'quickstart', label: 'A-01 Your First 15 Minutes' },
-        { id: 'dashboard', label: 'A-02 Dashboard & Health Score' },
-        { id: 'charter', label: 'A-03 Charter & Definitions' },
-        { id: 'wbs', label: 'A-04 WBS, Gantt & Critical Path' },
-        { id: 'kanban', label: 'A-05 Kanban & RACI' },
-        { id: 'resources', label: 'A-06 Resources & Budget' },
-        { id: 'risk', label: 'A-07 Risk, Issues & Simulation' },
-        { id: 'records', label: 'A-08 Stakeholders, Changes & Closure' },
-        { id: 'meetings', label: 'A-09 Meetings & Agenda Templates' },
-        { id: 'voice', label: 'A-10 Voice Capture & Field Reports' },
-        { id: 'claim', label: 'A-11 Claim Pack & Voice-to-Claim' },
-        { id: 'comms', label: 'A-12 Comms Log & Documents' },
-        { id: 'ai', label: 'A-13 AI Assistant' },
-        { id: 'dmaic', label: 'A-14 DMAIC (Six Sigma Mode)' },
-        { id: 'data', label: 'A-15 Data, Backup & Access' },
-        { id: 'weather', label: 'A-16 Weather & Forecast' },
-        { id: 'interface', label: 'A-17 Interface & Shortcuts' },
-        { id: 'trouble', label: 'A-18 When Something Looks Off' },
-        { id: 'faq', label: 'A-19 Frequently Asked' },
-        { id: 'projects-admin', label: 'A-20 Projects, Admin & Create Your Own' },
-        { id: 'bids-compliance', label: 'A-21 Bids, Compliance & Go/No-Go' },
-        { id: 'rfi-field-metrics', label: 'A-22 RFIs, Submittals & Field Metrics' },
-        { id: 'registers-compliance', label: 'A-23 Registers, Compliance & Handover' },
-        { id: 'reviews-window', label: 'A-24 Public Reviews Window' }
-      ]
     },
     'about.html': {
       items: [
@@ -335,6 +320,33 @@
     ddFlashTimer = setTimeout(function(){ el.classList.remove('dd-flash'); }, 2800);
   }
 
+  /* OWNER 2026-08-17 dropdown behavior: hover (or keyboard focus) opens a
+     SIMPLE LIGHT BOX menu and BLURS the page behind it (#nav-dd-scrim, the
+     page-focus scrim). The menu stays open while the reader reaches it and
+     picks; it closes on clicking the scrim, pressing Escape, picking an item,
+     or focus moving away — never slams shut on hover-out (no flicker). */
+  var ddScrim = null;
+  /* Escape closes the menu and returns focus to the trigger; the guard stops
+     the trigger's own focusin from re-opening it in the same tick. */
+  var ddSuppressUntil = 0;
+  function ddNow(){ return (window.performance && performance.now) ? performance.now() : Date.now(); }
+  function ensureDdScrim(){
+    if (!ddScrim) {
+      ddScrim = document.getElementById('nav-dd-scrim');
+      if (!ddScrim) {
+        ddScrim = document.createElement('div');
+        ddScrim.id = 'nav-dd-scrim';
+        document.body.appendChild(ddScrim);
+      }
+      ddScrim.addEventListener('click', closeDropdowns);
+    }
+  }
+  function closeDropdowns(){
+    document.querySelectorAll('.nav-dd').forEach(function(w){ w.classList.remove('is-open'); });
+    if (ddScrim) ddScrim.classList.remove('on');
+    document.querySelectorAll('.nav-dd a.nav-link').forEach(function(a){ a.setAttribute('aria-expanded', 'false'); });
+  }
+
   function wireNavDropdowns(){
     var links = document.querySelectorAll('.site-nav a.nav-link');
     var known = {};
@@ -347,7 +359,7 @@
         var cfg = NAV_DD[a.getAttribute('href')];
         if (!cfg) return;
         var wrap = document.createElement('span');
-        wrap.className = 'nav-dd' + (cfg.items.length > 8 ? ' nav-dd-cols' : '') + (cfg.items.length > 12 ? ' nav-dd-tall' : '');
+        wrap.className = 'nav-dd' + (cfg.items.length > 8 ? ' nav-dd-cols' : '') + (cfg.items.length > 15 ? ' nav-dd-tall' : '');
         var menu = document.createElement('span');
         menu.className = 'nav-dd-menu';
         menu.setAttribute('aria-label', String(a.textContent || '').trim() + ' sections');
@@ -360,6 +372,7 @@
           itA.className = 'nav-dd-item';
           itA.textContent = it.label;
           itA.addEventListener('click', function(ev){
+            closeDropdowns();
             if (document.getElementById(it.id)) {
               ev.preventDefault();
               ddFlash(it.id);
@@ -388,26 +401,41 @@
         parent.replaceChild(wrap, a);
         wrap.appendChild(a);
         wrap.appendChild(menu);
-        // aria-expanded tracks the hover/focus open state.
+        // Open state: mouseenter/focusin opens (page blurs behind); the scrim
+        // click, Escape, picking an item, or focus moving away closes it.
         var open = false;
         function sync(){ a.setAttribute('aria-expanded', open ? 'true' : 'false'); }
-        wrap.addEventListener('mouseenter', function(){ open = true; sync(); });
-        wrap.addEventListener('mouseleave', function(){ open = false; sync(); });
-        wrap.addEventListener('focusin', function(){ open = true; sync(); });
+        function openWrap(){
+          if (ddNow() < ddSuppressUntil) return; /* Escape just closed it */
+          ensureDdScrim();
+          closeDropdowns();
+          wrap.classList.add('is-open');
+          if (ddScrim) ddScrim.classList.add('on');
+          open = true; sync();
+        }
+        function closeWrap(){
+          wrap.classList.remove('is-open');
+          open = false; sync();
+        }
+        wrap.addEventListener('mouseenter', openWrap);
+        wrap.addEventListener('focusin', openWrap);
         wrap.addEventListener('focusout', function(e){
-          if (!wrap.contains(e.relatedTarget)) { open = false; sync(); }
+          if (!wrap.contains(e.relatedTarget)) closeWrap();
         });
       });
     }
     document.addEventListener('keydown', function(e){
       if (e.key === 'Escape') {
+        var trigger = null;
         document.querySelectorAll('.nav-dd').forEach(function(w){
           var a = w.querySelector('a.nav-link');
-          if (a && a.getAttribute('aria-expanded') === 'true') {
-            a.focus();
-            a.setAttribute('aria-expanded', 'false');
-          }
+          if (a && a.getAttribute('aria-expanded') === 'true') trigger = a;
         });
+        closeDropdowns();
+        if (trigger) {
+          ddSuppressUntil = ddNow() + 60;
+          trigger.focus(); /* focus returns to the trigger; it must not re-open */
+        }
       }
     });
     // Cross-page deep link: an arriving hash that names a known section
@@ -453,5 +481,75 @@
       // forces .rv to full visibility under reduced motion — belt + braces).
       rvTargets.forEach(function(el){ el.classList.add('rv-in'); });
     }
+  }
+
+  /* ---- FEATURE BAR (OWNER 2026-08-17: "a flat horizontal bar where it just
+         slowly ticked to the side... you see the first 4 or 5 and then it
+         skips over to the next one, going around and around") ----
+     The .features row auto-ticks one card at a time, looping continuously.
+     The reader can steer it with the prev/next buttons but never has to.
+     Seamless loop: the first few cards are CLONED to the end of the track;
+     when the tick reaches the clone region it snaps back to the start with no
+     transition (identical pixels, invisible). Auto-tick pauses on
+     hover/focus/touch and while the tab is hidden; prefers-reduced-motion
+     disables it entirely (the bar stays manually scrollable). Never throws. */
+  var featTrack = document.querySelector('.features');
+  var featPrev = document.getElementById('feat-prev');
+  var featNext = document.getElementById('feat-next');
+  if (featTrack) {
+    (function(){
+      var GAP = 18, TICK_MS = 3400;
+      var originals = Array.prototype.slice.call(featTrack.children);
+      if (originals.length < 2) return;
+      var rm = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)');
+      var paused = !!(rm && rm.matches);
+      /* clone the first few cards for the seamless loop (aria-hidden copies) */
+      var CLONES = Math.min(5, originals.length);
+      var realScroll = 0;
+      originals.slice(0, CLONES).forEach(function(c){
+        var cl = c.cloneNode(true);
+        cl.setAttribute('aria-hidden', 'true');
+        /* clones must not inherit the reveal-on-scroll state (they are the
+           seamless-loop copies — always fully visible) */
+        cl.classList.remove('rv', 'rv-in');
+        cl.style.removeProperty('--rv-i');
+        featTrack.appendChild(cl);
+      });
+      var all = Array.prototype.slice.call(featTrack.children);
+      realScroll = all.slice(0, originals.length).reduce(function(w, c){ return w + c.getBoundingClientRect().width + GAP; }, -GAP);
+      function stepW(){
+        return (all[0] ? all[0].getBoundingClientRect().width : 300) + GAP;
+      }
+      function tick(){
+        if (paused) return;
+        /* reached the clones: snap back to the start, invisible */
+        if (featTrack.scrollLeft >= realScroll - 4) featTrack.scrollLeft = 0;
+        try {
+          featTrack.scrollBy({ left: stepW(), behavior: (rm && rm.matches) ? 'auto' : 'smooth' });
+        } catch (e) { featTrack.scrollLeft += stepW(); }
+      }
+      var timer = null;
+      function play(){ if (paused || timer) return; timer = setInterval(tick, TICK_MS); }
+      function stop(){ if (timer) { clearInterval(timer); timer = null; } }
+      function go(dir){
+        var w = stepW();
+        var target = featTrack.scrollLeft + dir * w;
+        if (target >= realScroll) target = 0;                     /* wrap forward */
+        if (target < 0) target = realScroll - featTrack.clientWidth; /* wrap back */
+        try {
+          featTrack.scrollTo({ left: target, behavior: (rm && rm.matches) ? 'auto' : 'smooth' });
+        } catch (e) { featTrack.scrollLeft = target; }
+      }
+      if (featPrev) featPrev.addEventListener('click', function(){ go(-1); });
+      if (featNext) featNext.addEventListener('click', function(){ go(1); });
+      ['mouseenter', 'focusin', 'touchstart', 'pointerdown'].forEach(function(ev){
+        featTrack.addEventListener(ev, stop, { passive: true });
+      });
+      featTrack.addEventListener('mouseleave', play);
+      document.addEventListener('visibilitychange', function(){
+        if (document.hidden) stop(); else play();
+      });
+      if (!paused) play();
+    })();
   }
 })();

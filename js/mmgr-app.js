@@ -1624,7 +1624,7 @@ var MMGR = window.MMGR || {};
   // confirmation dialog behaves exactly like Cancel — the onCancel callback
   // (e.g. a Gantt-drag rollback) must still run.
   function closeModals() {
-    ['cfm-modal', 'conflict-modal'].forEach(id => {
+    ['cfm-modal', 'conflict-modal', 'del-modal'].forEach(id => {
       const el = U.$(id);
       if (el) el.classList.remove('on');
     });
@@ -2458,6 +2458,11 @@ window.MMGR = MMGR;
     'cloudReviewAccept': (el) => { const C = window.MMGR.Cloud; if (C && C.cloudReviewAccept) C.cloudReviewAccept(el && el.getAttribute('data-id')); },
     'cloudReviewReject': (el) => { const C = window.MMGR.Cloud; if (C && C.cloudReviewReject) C.cloudReviewReject(el && el.getAttribute('data-id')); },
     'cloudReviewToggleDiffs': (el) => { const C = window.MMGR.Cloud; if (C && C.reviewToggleDiffs) C.reviewToggleDiffs(el && el.getAttribute('data-id')); },
+    // IN-PROJECT DELETE (owner 2026-08-17): Settings > Controls > Danger
+    // Zone — confirm modal + password verify + the owner-only soft delete.
+    'cloudDeleteOpen': () => { const C = window.MMGR.Cloud; if (C && C.cloudDeleteOpen) C.cloudDeleteOpen(); },
+    'cloudDeleteClose': () => { const C = window.MMGR.Cloud; if (C && C.cloudDeleteClose) C.cloudDeleteClose(); },
+    'cloudDeleteConfirm': () => { const C = window.MMGR.Cloud; if (C && C.cloudDeleteConfirm) C.cloudDeleteConfirm(); },
     'cascadeGantt': () => window.MMGR.App.cascadeGantt(),
     'toggleCritical': (el) => window.MMGR.App.toggleCritical(el),
     'tglLeadtimeLane': (el) => window.MMGR.App.tglLeadtimeLane(el),

@@ -1389,6 +1389,21 @@
     <button class="btn btn-o full mb7"  data-action="openOM"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-upload"></use></svg> Generate Full Output (JSON)</button>
     <button class="btn btn-n full"  data-action="loadClip"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Load from Clipboard</button>
     <button class="btn btn-n full mt7"  data-action="print"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-printer"></use></svg> Print / PDF</button>
+
+    <!-- OWNER 2026-08-17: Danger Zone — in-project Delete Project at the
+         BOTTOM of the Controls tab (owner: "go inside of the project...
+         click the settings. Scroll onto the bottom. And you click delete
+         project"). Shown only while an OWNER code is held (renderDangerZone
+         in mmgr-cloud.js toggles hidden — editors/viewers never see it, and
+         the server enforces owner-only on the delete route regardless). -->
+    <div class="ctl-sec" id="del-zone" hidden><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-trash"></use></svg> Danger Zone</div>
+    <div class="danger-zone" id="del-zone-body" hidden>
+      <div class="danger-zone-copy">
+        <b>Delete this project</b>
+        <p>Removes it from the cloud backend for everyone. Every editor/viewer code stops working, every shared copy becomes <strong>discontinued</strong>, and offline copies keep their last snapshot but receive no more updates. Only you, the admin, can do this.</p>
+      </div>
+      <button class="btn btn-d btn-s" data-action="cloudDeleteOpen"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-trash"></use></svg> Delete project</button>
+    </div>
   </div>
   </div>
 </div>
@@ -1535,6 +1550,35 @@
 <div id="gantt-tip"></div>
 
 <!-- Confirmation dialog (Phase A: cascade / destructive ops) -->
+<!-- OWNER 2026-08-17: in-project delete confirm (#del-modal) — "Are you
+     sure?" then, for email accounts, the account password to verify the
+     delete (owner: "it comes up with a pop up that says Are you sure? And
+     then... you have to put in your password... to verify the delete").
+     Google accounts have no password — their signed-in session IS the
+     verification, so the field stays hidden for them (same email-only gate
+     as the password-change control). Static markup, zero inline handlers —
+     driven by js/mmgr-cloud.js via data-action. -->
+<div id="del-modal">
+  <div class="mb">
+    <div class="mh"><span class="mt"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-trash"></use></svg> Delete project?</span><button class="dc" data-action="cloudDeleteClose" aria-label="Cancel"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg></button></div>
+    <div class="mbody">
+      <p class="modal-txt" id="del-msg">Are you sure? This deletes the project from the cloud for everyone — editor and viewer codes stop working, every shared copy shows as <strong>discontinued</strong>, and offline copies keep their last snapshot but receive no more updates. There is no undo for anyone else; only you, the admin, can delete it.</p>
+      <div class="email-auth-pw" id="del-pw-wrap" hidden>
+        <p class="email-auth-pw-title" style="margin:0 0 4px"><strong>Verify your password</strong></p>
+        <div class="email-auth-row email-auth-pw-fields">
+          <input type="password" class="email-auth-input email-auth-pw-cur" id="del-pw" placeholder="Your account password" autocomplete="current-password" aria-label="Account password to verify the delete">
+        </div>
+        <p class="email-auth-pw-msg" style="margin:4px 0 0">Enter your account password to confirm the delete.</p>
+      </div>
+      <div class="gerr" id="del-err" aria-live="polite"></div>
+    </div>
+    <div class="mf">
+      <button class="btn btn-n btn-s" data-action="cloudDeleteClose">Cancel</button>
+      <button class="btn btn-d btn-s" id="del-ok" data-action="cloudDeleteConfirm">Delete project</button>
+    </div>
+  </div>
+</div>
+
 <div id="cfm-modal">
   <div class="mb cfm-box">
     <div class="mh"><span class="mt" id="cfm-title">Confirm</span><button class="dc" data-action="cfmCancel" aria-label="Cancel"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg></button></div>

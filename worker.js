@@ -3067,6 +3067,35 @@ async function handleAuthPasswordChange(request, env) {
   return json({ ok: true });
 }
 
+// POST /api/auth/verify-password { password } — session-gated password
+// verification for destructive actions (owner 2026-08-17: "you have to put
+// in your password for the Google account to verify the delete"). Email
+// accounts only (Google-linked sessions have no password — their signed-in
+// session IS the verification, the worker answers 400 for them exactly like
+// the password-change flow). Same timing-safe PBKDF2 check as
+// handleAuthPasswordChange; a wrong password answers 401 'password is
+// incorrect' and a non-empty session is required. Used by the in-project
+// Delete Project flow BEFORE the owner-only cloud delete is called.
+async function handleAuthVerifyPassword(request, env) {
+  const session = await readSession(request, env);
+  if (!session || !session.sub) return json({ ok: false, error: 'not signed in' }, 401);
+  if (session.sub.indexOf('email:') !== 0) return json({ ok: false, error: 'this account has no password' }, 400);
+  let body;
+  try { body = await request.json(); } catch (e) { return json({ ok: false, error: 'bad request' }, 400); }
+  const password = String((body && body.password) || '');
+  if (!password) return json({ ok: false, error: 'password is required' }, 400);
+  const email = session.sub.slice('email:'.length);
+  const row = await env.DB.prepare('SELECT password_hash FROM auth_users WHERE email = ?').bind(email).first();
+  if (!row) return json({ ok: false, error: 'account not found' }, 404);
+  const sep = row.password_hash.indexOf(':');
+  if (sep <= 0) return json({ ok: false, error: 'account not found' }, 404);
+  const hash = await authHashPassword(password, row.password_hash.slice(0, sep));
+  if (!codesEqual(hash, row.password_hash.slice(sep + 1))) {
+    return json({ ok: false, error: 'password is incorrect' }, 401);
+  }
+  return json({ ok: true, verified: true });
+}
+
 // POST /api/auth/verify { token } — consume the one-time verify token and
 // mark the account's email verified. Replays answer 400 (single-use); a
 // second click on the same link is therefore a clean 'already used' error,
@@ -4035,6 +4064,14 @@ async function handleApi(request, env, url) {
     const rl = await cloudRateCheck(request, 'authLogin');
     if (rl.limited) return cloudRateLimited(rl.retryAfter);
     return handleAuthPasswordChange(request, env);
+  }
+  // POST /api/auth/verify-password — session-gated password verification
+  // for destructive actions (in-project Delete Project, owner 2026-08-17).
+  // Same credential surface + login bucket as the password change above.
+  if (path === '/api/auth/verify-password' && request.method === 'POST') {
+    const rl = await cloudRateCheck(request, 'authLogin');
+    if (rl.limited) return cloudRateLimited(rl.retryAfter);
+    return handleAuthVerifyPassword(request, env);
   }
   // AUTH MAINFRAME v2 — email verification + forgot/reset. verify/reset
   // consume one-time signed tokens (single-use, HMAC-bound to the account);

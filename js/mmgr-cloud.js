@@ -1092,6 +1092,124 @@ var MMGR = window.MMGR || {};
     wrap.innerHTML = body;
   }
 
+  // ---- IN-PROJECT DELETE (owner 2026-08-17) ------------------------------
+  let _delBusy = false;
+  // Settings > Controls > bottom (Danger Zone): the owner deletes THIS
+  // cloud project from inside the project — the same owner-only soft delete
+  // the launcher/admin use (every other user's copy becomes discontinued;
+  // offline copies keep their last snapshot but get no more updates). The
+  // confirm modal (#del-modal, static markup on project.html) asks "Are you
+  // sure?" and — for EMAIL accounts — requires the account password first
+  // (POST /api/auth/verify-password, owner: "you have to put in your
+  // password to verify the delete"). Google accounts have no password, so
+  // the field stays hidden for them: their signed-in session IS the
+  // verification. Server-enforced either way: the delete route is owner-only
+  // and the verify endpoint is session-gated + timing-safe.
+  function renderDangerZone() {
+    const zone = $('del-zone');
+    const body = $('del-zone-body');
+    if (!zone && !body) return;
+    const show = !!getCode(); // owner code held -> this IS the admin's project
+    if (zone) zone.hidden = !show;
+    if (body) body.hidden = !show;
+  }
+  async function cloudDeleteOpen() {
+    const modal = $('del-modal');
+    if (!modal) return;
+    const err = $('del-err'); if (err) err.textContent = '';
+    const pw = $('del-pw'); if (pw) pw.value = '';
+    const wrap = $('del-pw-wrap');
+    // Decide the field's visibility from the LIVE session: email account ->
+    // password gate; Google/absent -> no field (session is the verification).
+    let emailAccount = false;
+    try {
+      const res = await fetch('/api/auth/me', { credentials: 'same-origin' });
+      if (res.ok) {
+        const data = await res.json();
+        emailAccount = !!(data && data.ok && data.user && String(data.user.sub).indexOf('email:') === 0);
+      }
+    } catch (e) { /* static host / offline — no field */ }
+    if (wrap) wrap.hidden = !emailAccount;
+    modal.classList.add('on');
+    if (emailAccount && pw) setTimeout(function () { pw.focus(); }, 60);
+  }
+  function cloudDeleteClose() {
+    const modal = $('del-modal');
+    if (modal) modal.classList.remove('on');
+    _delBusy = false;
+    const ok = $('del-ok'); if (ok) { ok.disabled = false; ok.textContent = 'Delete project'; }
+    const err = $('del-err'); if (err) err.textContent = '';
+  }
+  async function cloudDeleteConfirm() {
+    if (_delBusy) return;
+    const err = $('del-err');
+    const code = getCode();
+    if (!code) { if (err) err.textContent = 'The owner code is missing from this session. Re-open the project with your owner code and try again.'; return; }
+    const wrap = $('del-pw-wrap');
+    const needsPw = !!(wrap && !wrap.hidden);
+    const pw = needsPw && $('del-pw') ? $('del-pw').value : '';
+    _delBusy = true;
+    const ok = $('del-ok'); if (ok) { ok.disabled = true; ok.textContent = 'Deleting…'; }
+    const reset = function () {
+      _delBusy = false;
+      if (ok) { ok.disabled = false; ok.textContent = 'Delete project'; }
+      const p = $('del-pw'); if (p) p.value = '';
+    };
+    try {
+      // 1) Password gate (email accounts only).
+      if (needsPw) {
+        const vr = await fetch('/api/auth/verify-password', {
+          method: 'POST', credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password: pw })
+        });
+        const vd = await vr.json().catch(function () { return {}; });
+        if (!vr.ok || !vd.ok) {
+          reset();
+          if (err) err.textContent = (vd && vd.error === 'password is incorrect')
+            ? 'The password is incorrect.'
+            : ((vd && vd.error) || 'Could not verify your password. Try again.');
+          return;
+        }
+      }
+      // 2) Owner-only soft delete (same route as the launcher/admin).
+      const res = await fetch('/api/cloud/projects/' + encodeURIComponent(pid()) + '/delete', {
+        method: 'POST', credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json', 'X-Owner-Code': code },
+        body: JSON.stringify({})
+      });
+      const data = await res.json().catch(function () { return {}; });
+      if (!res.ok || !data.ok) {
+        reset();
+        if (err) err.textContent = (data && data.error === 'project_deleted')
+          ? 'This project was already deleted.'
+          : ((data && data.error) || 'Could not delete the project (HTTP ' + res.status + ').');
+        return;
+      }
+      // 3) Success: drop the local copy (admin list entry) + cloud session
+      // codes so nothing re-syncs, then go home. Everyone else already sees
+      // the project as discontinued server-side.
+      clearCode(); clearECode();
+      try {
+        const raw = localStorage.getItem('mmgr_admin_projects');
+        if (raw) {
+          const recs = JSON.parse(raw);
+          if (Array.isArray(recs)) {
+            const idx = recs.findIndex(function (r) { return r && (String(r.id) === pid() || String(r.cloudId || '') === pid()); });
+            if (idx !== -1) { recs.splice(idx, 1); localStorage.setItem('mmgr_admin_projects', JSON.stringify(recs)); }
+          }
+        }
+      } catch (e) { /* best-effort — cloud delete is the source of truth */ }
+      cloudDeleteClose();
+      const App = window.MMGR.App;
+      if (App && App.showToast) App.showToast('Project deleted. Every shared copy now shows as discontinued.', 'ok');
+      setTimeout(function () { window.location.href = 'app.html'; }, 900);
+    } catch (e) {
+      reset();
+      if (err) err.textContent = 'Could not reach the cloud service.';
+    }
+  }
+
   // OWNER 2026-08-15: adopt a cloud code recorded by the ADMIN panel for
   // this project (mmgr_admin_projects → record.cloudOwnerCode). Publishing
   // from the admin panel stores the owner code beside the project; when the
@@ -1124,6 +1242,9 @@ var MMGR = window.MMGR || {};
     // The Controls-tab Share & Access card must mirror the same credential
     // state — render it alongside the cloud section on every render pass.
     renderShare();
+    // IN-PROJECT DELETE: reveal the Danger Zone only while an owner code is
+    // held (same render pass — one credential read, both surfaces).
+    renderDangerZone();
 
     let body = '';
     if (!code && !ecode) {
@@ -1901,6 +2022,11 @@ var MMGR = window.MMGR || {};
     cloudReviewAccept: cloudReviewAccept,
     cloudReviewReject: cloudReviewReject,
     reviewToggleDiffs: reviewToggleDiffs,
+    // IN-PROJECT DELETE (owner 2026-08-17): Settings > Controls > Danger
+    // Zone — confirm modal + password verify + the owner-only soft delete.
+    cloudDeleteOpen: cloudDeleteOpen,
+    cloudDeleteClose: cloudDeleteClose,
+    cloudDeleteConfirm: cloudDeleteConfirm,
     _deviceId: deviceId,
     _getCopyRecord: getCopyRecord,
     // test hooks (qa-cloud-phase1.cjs / qa-cloud-phase2.cjs)

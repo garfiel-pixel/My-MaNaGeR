@@ -324,55 +324,59 @@ svg.ico use{fill:inherit;stroke:inherit;}
 .signin-btn .sb-avatar img{width:100%;height:100%;object-fit:cover;display:block;}
 .signin-btn .sb-name{max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 
-/* OWNER 2026-08-17 — section-index dropdowns in the primary nav. Glass
-   chrome overlay (chrome may be glass; the item rows carry a solid wash for
-   legibility). Opens on hover or keyboard focus; the trigger carries
-   aria-haspopup/aria-expanded (disclosure pattern). */
+/* OWNER 2026-08-17 — section-index dropdowns in the primary nav.
+   FULL-WIDTH HORIZONTAL PANEL (owner: "create a horizontal fully drop down...
+   it shows the full line of text going across... they are fully landed in a
+   horizontal format"). The menu is a SOLID LIGHT-GRAY bar spanning the page
+   under the sticky header — no dark navy glass ("just use regular light
+   gray"), no per-item boxes ("there is too much border"), just free-flowing
+   text in vertical columns side by side, each column pair divided by ONE
+   long vertical hairline (column-rule), and the foot row separated by one
+   long horizontal hairline. Solid surface (--bg) means contrast is
+   measurable in every theme — light gray + dark navy text in light/cyan,
+   dark slate + light text in dark-mode, all via the shared tokens. Opens on
+   hover or keyboard focus; the trigger carries aria-haspopup/aria-expanded
+   (disclosure pattern). */
 .nav-dd{position:relative;display:inline-flex;}
 .nav-dd-menu{
-  position:absolute;top:calc(100% + 12px);left:50%;transform:translateX(-50%) translateY(-4px);
-  z-index:120;min-width:232px;max-width:min(340px,calc(100vw - 24px));
-  padding:10px;border-radius:14px;
-  background:var(--glass-specular),var(--glass-tint-soft);
-  -webkit-backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturate));
-  backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturate));
-  border:var(--glass-edge);box-shadow:var(--glass-shadow);
-  opacity:0;visibility:hidden;
+  position:fixed;top:var(--header-h);left:0;right:0;z-index:120;
+  padding:26px 28px 18px;border-radius:0;
+  background:var(--bg);
+  box-shadow:0 18px 44px -14px rgba(15,23,42,.22);
+  opacity:0;visibility:hidden;transform:translateY(-6px);
   transition:opacity var(--tr),transform var(--tr),visibility var(--tr);
 }
 .nav-dd:hover .nav-dd-menu,
-.nav-dd:focus-within .nav-dd-menu{opacity:1;visibility:visible;transform:translateX(-50%) translateY(0);}
-.nav-dd-list{display:flex;flex-direction:column;gap:2px;}
-.nav-dd-cols .nav-dd-list{
-  display:grid;grid-template-columns:repeat(2,1fr);gap:2px 10px;
-  max-height:min(64vh,420px);overflow-y:auto;
+.nav-dd:focus-within .nav-dd-menu{opacity:1;visibility:visible;transform:translateY(0);}
+/* The list is one multi-column text flow: the guide (25 sheets) fills 4
+   columns of ~7, features (9) fills 3x3, small menus stay a single column.
+   column-rule draws the LONG VERTICAL LINE between each column pair — the
+   "long line in between" the owner asked for. */
+.nav-dd-list{
+  max-width:1180px;margin:0 auto;
+  columns:1;column-gap:44px;column-rule:1px solid var(--border);
 }
+.nav-dd-cols .nav-dd-list{columns:3;}
+.nav-dd-tall .nav-dd-list{columns:4;}
+/* Free-flowing text rows: no chip, no border, no box — plain links that
+   simply hover to the accent. break-inside:avoid keeps a row from splitting
+   across columns. */
 .nav-dd-item{
-  display:block;padding:7px 10px;border-radius:8px;
-  /* DARK-GLASS TEXT (owner 2026-08-17): the dropdown is dark navy glass in
-     EVERY theme (light theme included — the glass tint is always dark), so
-     its text must be light in every theme too. --text-primary is dark in
-     light themes (dark navy on dark glass = invisible) and only flips light
-     in dark-mode — that flip is what made the dropdown look fine in dark
-     mode but unreadable in light/cyan. --on-navy is light in all four theme
-     blocks, so it is the correct token here. */
-  color:var(--on-navy);font-size:.78rem;font-weight:600;line-height:1.35;
-  background:rgba(255,255,255,.05);
-  transition:background var(--tr),color var(--tr);
-}
-/* Hover = white text on a white wash (same language as the mobile menu
-   links) — never the theme gold, because cyan-light's gold is a dark teal
-   that vanishes on the dark glass. The gold identity lives in the nav-link
-   underline + focus ring + dd-flash instead. */
-.nav-dd-item:hover{background:rgba(255,255,255,.14);color:#fff;}
-.nav-dd-item:focus-visible{outline:2px solid var(--gold);outline-offset:-1px;}
-.nav-dd-foot{
-  display:block;margin-top:8px;padding:8px 10px 2px;
-  border-top:1px solid rgba(248,250,252,.22);
-  color:rgba(248,250,252,.72);font-size:.72rem;font-weight:600;
+  display:block;break-inside:avoid;
+  padding:6px 8px;
+  color:var(--text-primary);font-size:.86rem;font-weight:600;line-height:1.45;
   transition:color var(--tr);
 }
-.nav-dd-foot:hover{color:#fff;}
+.nav-dd-item:hover{color:var(--gold);}
+.nav-dd-item:focus-visible{outline:2px solid var(--gold);outline-offset:-1px;border-radius:6px;}
+/* Foot = one long horizontal hairline, then the link text. */
+.nav-dd-foot{
+  display:block;max-width:1180px;margin:14px auto 0;
+  padding-top:12px;border-top:1px solid var(--border);
+  color:var(--text-secondary);font-size:.76rem;font-weight:600;
+  transition:color var(--tr);
+}
+.nav-dd-foot:hover{color:var(--gold);}
 /* highlight flash for a dropdown-selected section (gold ring + soft glow) */
 .dd-flash{animation:dd-flash 2.6s ease;}
 @keyframes dd-flash{

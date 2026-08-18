@@ -616,6 +616,35 @@ async function phase4() {
   const f8 = await api('/api/auth/password', { method: 'POST', headers: cookieHeader(googleCookie), body: JSON.stringify({ currentPassword: 'x', newPassword: 'whatever-1' }) });
   check('F8 google-sub session -> 400 "this account has no password"',
     f8.status === 400 && f8.body.ok === false && /no password/.test(f8.body.error || ''), f8.text);
+
+  // ---- PHASE 4b — verify-password API contract (POST /api/auth/verify-password) ----
+  // IN-PROJECT DELETE (2026-08-17): the destructive-action verification
+  // gate. Session-gated, email accounts ONLY, same timing-safe PBKDF2 check
+  // as the password change; rides the authLogin bucket (this phase stays
+  // well under 30/min). The graceCookie session survived F7 (its password is
+  // now 'grace-pass-3'); the forged google cookie shape is reused from F8.
+  log('--- PHASE 4b (verify-password contract — /api/auth/verify-password) ---');
+
+  const v1 = await api('/api/auth/verify-password', { method: 'POST', headers: jsonHeaders, body: JSON.stringify({ password: 'x' }) });
+  check('V1 verify-password with NO session -> 401 not signed in', v1.status === 401 && v1.body.ok === false && /not signed in/.test(v1.body.error || ''), v1.text);
+
+  const v2 = await api('/api/auth/verify-password', { method: 'POST', headers: cookieHeader(graceCookie), body: JSON.stringify({ password: 'wrong-pass' }) });
+  check('V2 wrong password -> 401 "password is incorrect"',
+    v2.status === 401 && v2.body.ok === false && /password is incorrect/.test(v2.body.error || ''), v2.text);
+
+  const v3 = await api('/api/auth/verify-password', { method: 'POST', headers: cookieHeader(graceCookie), body: JSON.stringify({ password: 'grace-pass-3' }) });
+  check('V3 correct password -> 200 ok:true verified', v3.status === 200 && v3.body.ok === true && v3.body.verified === true, v3.text);
+
+  const v4 = await api('/api/auth/verify-password', { method: 'POST', headers: cookieHeader(googleCookie), body: JSON.stringify({ password: 'x' }) });
+  check('V4 google-sub session -> 400 "this account has no password"',
+    v4.status === 400 && v4.body.ok === false && /no password/.test(v4.body.error || ''), v4.text);
+
+  const v5 = await api('/api/auth/verify-password', { method: 'POST', headers: cookieHeader(graceCookie), body: JSON.stringify({}) });
+  check('V5 missing password -> 400 "password is required"',
+    v5.status === 400 && v5.body.ok === false && /password is required/.test(v5.body.error || ''), v5.text);
+
+  const v6 = await api('/api/auth/verify-password', { method: 'POST', headers: cookieHeader(graceCookie), body: 'not-json' });
+  check('V6 malformed JSON body -> 400 bad request', v6.status === 400 && v6.body.ok === false, v6.text);
 }
 
 // ---- PHASE 5 — password-change UI wiring (headless Chrome + CDP) ---------

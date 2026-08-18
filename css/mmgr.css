@@ -975,6 +975,29 @@ body.gantt-dragging .gb{cursor:grabbing;}
 .cfm-list{display:flex;flex-wrap:wrap;gap:4px;max-height:120px;overflow:auto;}
 .cfm-list code{font-size:.68rem;background:#f1f5f9;border:1px solid var(--border);border-radius:4px;padding:2px 6px;color:var(--text);}
 
+/* ---- IN-PROJECT DELETE (owner 2026-08-17): Danger Zone + confirm modal ----
+   Settings > Controls > bottom. #del-zone is a .ctl-sec (display:flex — the
+   [hidden] guard below is REQUIRED or the section shows for editors too);
+   the modal mirrors the #cfm-modal sheet pattern with the shared .email-auth
+   password-field styles inside (the .email-auth-pw[hidden] guard already
+   exists). Google accounts never see the password field. */
+.ctl-sec[hidden]{display:none;}
+.danger-zone{
+  display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;
+  padding:14px 16px;margin-bottom:10px;
+  border:1px solid color-mix(in oklch,var(--danger) 34%,transparent);border-radius:var(--radius);
+  background:color-mix(in oklch,var(--danger) 7%,transparent);
+}
+.danger-zone[hidden]{display:none;}
+.danger-zone-copy b{display:block;font-size:.8rem;color:var(--text);margin-bottom:3px;}
+.danger-zone-copy p{margin:0;font-size:.72rem;line-height:1.55;color:var(--text-secondary);max-width:520px;}
+.danger-zone-copy strong{color:var(--danger);}
+#del-modal{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9999;display:none;align-items:center;justify-content:center;padding:20px;}
+#del-modal.on{display:flex;}
+#del-modal .mb{width:480px;max-width:100%;max-height:82vh;}
+#del-modal .mbody{display:flex;flex-direction:column;gap:10px;}
+#del-modal #del-err{font-size:.72rem;color:var(--danger);margin:0;min-height:0;}
+
 /* ---- WBS keyboard-first (Phase F) ---- */
 .wbs-row{cursor:default;}
 .wbs-row:focus-visible,.wbs-row.wbs-sel{outline:2px solid var(--gold);outline-offset:-2px;background:rgba(var(--gold-rgb),.06);}

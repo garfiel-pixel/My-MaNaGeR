@@ -15,6 +15,70 @@ A systematic approach to modernizing the visual design of existing web applicati
 4. **Accessibility**: WCAG 2.2 AA contrast, proper focus states, aria labels.
 5. **Minimal changes**: Modify existing files. Don't create new ones unless necessary.
 
+## OWNER DESIGN DOCTRINE (2026-08-17) — READ BEFORE ANY MARKETING OR WORKSPACE UI CHANGE
+
+> The owner's standing answer to "what colors and surfaces do we use". Recorded 2026-08-17
+> after reviewing the live site ("the color we're using is dark and it's not lively at all").
+> This is a hard gate: follow it for every new or edited surface. It supersedes any
+> gold/navy examples elsewhere in this skill for the marketing + workspace surfaces.
+
+### 1. Color law — three simple colors
+- **Front page / marketing site: BRIGHT BLUE + WHITE + BLACK TEXT.** Blue is the single
+  accent (buttons, eyebrows, links, icon tiles, focus rings). Black/near-black text on white.
+  The blue must be DECENTLY BRIGHT (e.g. #2563EB primary, #1D4ED8 text-accent on white,
+  #3B82F6 hover) — never muted or muddy. The site's "navy" surfaces (footer, page-hero,
+  guide band, photo overlays) use a DEEP BLUE (e.g. #1E3A8A), not near-black.
+- **Inside the workspace / app: CYAN + WHITE + BLACK TEXT** (the existing cyan palette is
+  the base; the app default palette should trend toward cyan + white + black text).
+- **Dark mode:** accent brightens further (e.g. #60A5FA on dark) so it stays vivid; text is
+  light, surfaces are dark. ⛔ NEVER ship dark-on-dark: a dark theme must re-map BOTH the
+  surface tokens AND the text tokens in the same change. Black text on a black/dark
+  background is a hard gate violation. Always measure the new pairs (WCAG 2.2 AA floor).
+- Keep the palette simple: accent + white + black (or accent + dark + light). No rainbow.
+
+### 2. Glass law — turn DOWN, never up
+- Glass = the functional/navigation layer ONLY: sticky header, floating controls, sheets,
+  modals. The header glass structure is good and stays.
+- Content is SOLID, always: hero text, feature cards, steps, FAQ, forms, tables. The home
+  page was "too glassy" — hero preview cards are SOLID white cards with a border + shadow,
+  never translucent backdrop-filter cards. When a surface is decorative AND sits over a
+  photo, a solid card still wins (Gate 6.1: glass never carries content).
+
+### 3. Image protocol — request, never fabricate
+- When a section would showcase better with real imagery (hero topics, feature showcases),
+  REQUEST the images in chat and let the owner drop them into the repo (e.g. `images/`),
+  then wire them in. Never generate, hotlink, or fake an image. Never ship a broken <img>
+  src — either the asset is in the repo or the section stays text/mock.
+- Pending (2026-08-17): the owner is creating three images for the three homepage hero
+  topics (EVM / schedule-project / AI) — wire them into the hero showcase when they land.
+
+### 4. Copy law
+- No em/en dashes in any visible copy — use commas, periods, or colons. No "tagline
+  tangles": eyebrow micro-copy that just repeats the headline gets removed.
+- No emoji glyphs on served pages (SVG sprite only).
+
+### 5. Scroll tracker (section indicator)
+- Pages with sections carry a mini section tracker (scroll-spy). It must:
+  (a) track the CURRENT section accurately (most-visible wins), (b) LOCK IN sections the
+  reader has already passed (a filled stick / dimmed label persists), so it reads as a
+  progress trail that follows the reader down the page, (c) show its labels without
+  requiring hover (a tracker you cannot read is not a tracker).
+
+### 6. Nav dropdowns
+- Hover dropdowns ONLY for small topics (Features, About, Contact, Reviews). NEVER for a
+  huge topic (the Field Guide — it is a whole destination, not a menu).
+- A dropdown is a SIMPLE light box: solid white/light card, rounded, soft shadow, plain
+  text rows in columns. When one opens, BLUR the page behind it (a fixed backdrop-filter
+  scrim) so the reader focuses on the menu. The scrim is the close affordance (click it),
+  plus Escape and picking an item.
+
+### 7. Feature lists
+- Long feature lists render as a FLAT HORIZONTAL BAR that auto-ticks one card at a time,
+  looping continuously while the page is in view. The reader can steer it (prev/next) but
+  never has to. Auto-tick pauses on hover/focus/touch and dies under
+  prefers-reduced-motion (the bar stays manually scrollable). Undocumented real features
+  get added to the bar so the list stays honest and full.
+
 ## Step-by-Step Process
 
 ### Phase 1: Audit Current State

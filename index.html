@@ -110,7 +110,8 @@
     <div class="hero-overlay" aria-hidden="true"></div>
     <div class="container hero-inner">
       <div>
-        <span class="eyebrow">Waterfall, Agile and Hybrid</span>
+        <!-- OWNER 2026-08-17: no tagline tangles — the eyebrow that repeated the
+             headline was removed. The hero is one clean sentence. -->
         <h1>Run your project like a <span class="gold">pro</span>, in <span class="teal">one workspace</span>.</h1>
         <!-- Phase 2 copy: real product story, concise. FINAL-PRE-DEPLOY-DIRECTIVE
              DIR-5 (2026-08-11): AI promoted to a headline capability — its own
@@ -133,9 +134,16 @@
         </div>
       </div>
 
-      <!-- solid mock visual of the app's project cards (content layer) -->
+      <!-- solid mock visual of the app's project cards (content layer).
+           HERO IMAGES (owner 2026-08-17): the owner's three real images for
+           the three hero topics now sit above each card's hc-top as an
+           .hc-img img (lazy, alt="" — the whole visual is aria-hidden
+           decorative). Sources: images/hero-riverside.webp (schedule),
+           images/hero-evm.webp (EVM), images/hero-ai.webp (AI), converted
+           from the owner's JPGs at 900px wide. -->
       <div class="hero-visual" aria-hidden="true">
         <div class="hero-card">
+          <div class="hc-img"><img src="images/hero-riverside.webp" alt="" loading="lazy" width="900" height="491"></div>
           <div class="hc-top">
             <b><svg class="ico"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg> Riverside Residences</b>
             <span class="hc-badge">Hybrid</span>
@@ -146,6 +154,7 @@
           </div>
         </div>
         <div class="hero-card offset">
+          <div class="hc-img"><img src="images/hero-evm.webp" alt="" loading="lazy" width="900" height="491"></div>
           <div class="hc-top">
             <b><svg class="ico"><use href="css/mmgr-icons.svg#i-dollar"></use></svg> Budget, EVM</b>
             <span class="hc-badge">CPI 1.04</span>
@@ -156,6 +165,7 @@
           </div>
         </div>
         <div class="hero-card">
+          <div class="hc-img"><img src="images/hero-ai.webp" alt="" loading="lazy" width="900" height="491"></div>
           <div class="hc-top">
             <b><svg class="ico"><use href="css/mmgr-icons.svg#i-cpu"></use></svg> AI Assistant</b>
             <span class="hc-badge">Local, zero key</span>
@@ -267,6 +277,51 @@
           <p>Autosaves to your browser, exports a portable file, and never uploads a byte. Your data stays on your device, not someone's server.</p>
           <span class="fc-tag">Privacy</span>
         </article>
+        <article class="fcard" id="f-health">
+          <div class="fc-icon"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-activity"></use></svg></div>
+          <h3>Health &amp; Portfolio</h3>
+          <p>A live health score across schedule, budget and risk on every project, and a portfolio view when you run more than one.</p>
+          <span class="fc-tag">Overview</span>
+        </article>
+        <article class="fcard" id="f-meetings">
+          <div class="fc-icon"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-file-text"></use></svg></div>
+          <h3>Meetings &amp; Decisions</h3>
+          <p>Run a meeting, log decisions in one tap, and turn minutes into follow-up actions that land straight in the schedule.</p>
+          <span class="fc-tag">Collaboration</span>
+        </article>
+        <article class="fcard" id="f-claims">
+          <div class="fc-icon"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-zap"></use></svg></div>
+          <h3>Claims &amp; Digests</h3>
+          <p>Weekly digests and counsel-ready claim packs generated from your live project numbers, every claim traceable to its evidence.</p>
+          <span class="fc-tag">Intelligence</span>
+        </article>
+        <article class="fcard" id="f-registers">
+          <div class="fc-icon"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-shield"></use></svg></div>
+          <h3>Registers &amp; Compliance</h3>
+          <p>RFIs, submittals, punch lists, COIs, permits and warranties, each with its own lifecycle and expiry tracking.</p>
+          <span class="fc-tag">Governance</span>
+        </article>
+        <article class="fcard" id="f-gonogo">
+          <div class="fc-icon"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-star"></use></svg></div>
+          <h3>Bid Leveling &amp; Go/No-Go</h3>
+          <p>Level subcontractor bids line by line and score each opportunity with a weighted Go/No-Go questionnaire.</p>
+          <span class="fc-tag">Procurement</span>
+        </article>
+        <article class="fcard" id="f-lookahead">
+          <div class="fc-icon"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-flag"></use></svg></div>
+          <h3>Lookahead &amp; Field Metrics</h3>
+          <p>Two-week lookaheads, percent-plan-complete tracking, and weather windows that flag exposed tasks before the rain does.</p>
+          <span class="fc-tag">Field</span>
+        </article>
+      </div>
+      <div class="feat-ctl">
+        <span class="feat-hint">The bar keeps moving on its own. Steer it any time.</span>
+        <button type="button" class="feat-btn" id="feat-prev" aria-label="Previous features">
+          <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-left"></use></svg>
+        </button>
+        <button type="button" class="feat-btn" id="feat-next" aria-label="Next features">
+          <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg>
+        </button>
       </div>
     </div>
   </section>

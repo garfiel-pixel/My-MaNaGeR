@@ -76,17 +76,26 @@ async function check(name, expr, hint) {
     var cta = Array.prototype.slice.call(document.querySelectorAll('.hero-cta a')).map(a => a.textContent.trim());
     return {val: !!hero && cta.indexOf('Open App') > -1 && cta.indexOf('View Field Guide') > -1};
   })()`);
-  await check('mkt-03 homepage: 9 feature cards (solid content layer)', `(function(){
-    var cards = document.querySelectorAll('.fcard');
+  await check('mkt-03 homepage: 15 feature cards (solid content layer)', `(function(){
+    // The auto-ticking feature bar CLONES the first 5 cards (aria-hidden) for
+    // its seamless loop — count only the real (non-clone) cards.
+    var cards = Array.prototype.filter.call(document.querySelectorAll('.fcard'), function(c){
+      return c.getAttribute('aria-hidden') !== 'true';
+    });
     // backdropFilter is the standard property; webkitBackdropFilter may be
     // undefined in some Chrome builds, which is NOT glass.
     var glass = function(el){ var v = getComputedStyle(el).backdropFilter || ''; return v !== '' && v !== 'none'; };
-    var glassOnCards = Array.prototype.slice.call(cards).some(glass);
-    // CARD-COUNT (2026-08-11): index.html ships NINE distinct feature cards
-    // (WBS+Gantt, Kanban, RACI, Risk+Monte Carlo, Budget/EVM, Built-In AI,
-    // Voice→Notes, Weather-Aware, Offline-First) — verified none are
-    // duplicates; the old 8-count was stale after the AI card was added.
-    return {val: cards.length === 9 && !glassOnCards, n: cards.length, glassOnCards: glassOnCards};
+    var glassOnCards = cards.some(glass);
+    // CARD-COUNT (2026-08-17): the BLUE-WHITE-UI wave turned the feature grid
+    // into a horizontal auto-ticking bar and added SIX real (previously
+    // undocumented) features — index.html now ships FIFTEEN distinct .fcard
+    // articles (WBS+Gantt, Kanban, RACI, Risk+Monte Carlo, Budget/EVM,
+    // Built-In AI, Voice→Notes, Weather-Aware, Offline-First, Health &
+    // Portfolio, Meetings & Decisions, Claims & Digests, Registers &
+    // Compliance, Bid Leveling & Go/No-Go, Lookahead & Field Metrics). The
+    // old 9-count was the pre-2026-08-17 grid; cards must stay SOLID (the
+    // owner's reduced-glass rule).
+    return {val: cards.length === 15 && !glassOnCards, n: cards.length, glassOnCards: glassOnCards};
   })()`);
   await check('mkt-04 homepage: 4 how-it-works steps', `(function(){var s = document.querySelectorAll('.step');return {val: s.length === 4, n: s.length};})()`);
   await check('mkt-05 homepage: guide teaser band + FAQ + footer', `(function(){

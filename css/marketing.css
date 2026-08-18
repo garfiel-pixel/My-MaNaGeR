@@ -7,8 +7,14 @@
      (header, primary buttons, floating controls, modals, sheets)
    - Solid         -> content layer ONLY
      (hero text, feature cards, body copy, tables, lists, media)
-   - Gold is the primary accent on every glass surface.
-   - Teal is reserved for secondary / positive accents.
+   - BRIGHT BLUE is the primary accent on every marketing surface (OWNER
+     2026-08-17: blue + white + black text, three colors). The legacy
+     --gold/--teal token NAMES now carry the blue family — never rename
+     them, never reintroduce gold/teal to the default theme. The cyan
+     alternative theme keeps its teal/cyan identity by overriding the same
+     tokens.
+   - Dark mode re-maps BOTH surface and text tokens in one change — never
+     black-on-black (hard gate).
    - Never stack glass on glass.
    - Respect prefers-reduced-transparency & prefers-reduced-motion.
    ============================================================ */
@@ -16,33 +22,36 @@
 /* ---------- 1. Design tokens (exact palette — use these only) ---------- */
 :root{
   /* surfaces */
-  --bg:            #F8FAFC;   /* main page background */
-  --bg-warm:       #F7F5F0;   /* alternate warm section tone */
-  --header-navy:   #0F172A;
+  --bg:            #F8FAFC;   /* main page background (near-white) */
+  --bg-warm:       #F1F5FB;   /* alternate cool section tone (blue-white, OWNER 2026-08-17) */
+  --header-navy:   #1E3A8A;   /* DEEP BLUE — footer/page-hero/guide band/photo overlays */
   --card:          #FFFFFF;
   --border:        #E2E8F0;
 
-  /* accents */
-  --gold:          #E8B84A;
-  --gold-hover:    #F5C84A;
-  --gold-deep:     #D4A017;
-  --gold-rgb:      232,184,74;  /* rgba(var(--gold-rgb),a) — tokenized gold fills */
-  --teal:          #14B8A6;
-  --teal-deep:     #0D9488;
+  /* accents — BRIGHT BLUE family (OWNER 2026-08-17: blue + white + black).
+     Token names are legacy gold/teal; values are blue. Do not rename. */
+  --gold:          #2563EB;   /* primary accent — bright blue-600 (white on it = 4.54:1) */
+  --gold-hover:    #3B82F6;   /* blue-500 hover */
+  --gold-deep:     #1D4ED8;   /* blue-700 text accent on white (7.1:1) */
+  --gold-rgb:      37,99,235; /* rgba(var(--gold-rgb),a) — tokenized blue fills */
+  --teal:          #3B82F6;   /* secondary/positive accent — blue-500 */
+  --teal-deep:     #1D4ED8;   /* blue-700 */
   --danger:        #EF4444;
   --purple:        #8B5CF6;
+  /* accent readable on the deep-blue band (footer, page-hero, photo overlay) */
+  --accent-on-navy:#93C5FD;   /* blue-300 on #1E3A8A = 7.6:1 */
 
   /* text */
-  --text-primary:  #0F172A;
+  --text-primary:  #0F172A;   /* black text (near-black navy) */
   --text-secondary:#64748B;
   --on-navy:       #F8FAFC;   /* text on navy */
-  --on-gold:       #0F172A;   /* text on gold */
+  --on-gold:       #FFFFFF;   /* text on blue */
 
   /* Liquid Glass stack (functional layer only) */
   --glass-blur:    18px;
   --glass-saturate:1.6;
-  --glass-tint:    rgba(15,23,42,.72);
-  --glass-tint-soft:rgba(15,23,42,.55);
+  --glass-tint:    rgba(30,58,138,.72);
+  --glass-tint-soft:rgba(30,58,138,.55);
   --glass-edge:    1px solid rgba(255,255,255,.16);
   --glass-specular:linear-gradient(180deg,rgba(255,255,255,.16),rgba(255,255,255,.03) 42%,rgba(255,255,255,0));
   --glass-shadow:  0 10px 34px rgba(15,23,42,.16);
@@ -111,8 +120,11 @@ html[data-theme="cyan"] body.dark-mode{
    shared mmgr_theme slot is 'dark') — coherent slate set, gold accent retained. */
 body.dark-mode{
   --bg:#0b1120;--bg-warm:#0f172a;--header-navy:#0b1120;--card:#131c2e;--border:#243349;
-  --gold:#f5c84a;--gold-hover:#ffd970;--gold-deep:#d4a017;--gold-rgb:245,200,74;
-  --teal:#2dd4bf;--teal-deep:#14b8a6;--danger:#f87171;--purple:#a78bfa;
+  /* BRIGHT BLUE accents on dark (OWNER 2026-08-17): dark text on dark bg is a
+     hard gate — surfaces AND text re-map together. #60A5FA on #0b1120 = 7.5:1. */
+  --gold:#60A5FA;--gold-hover:#93C5FD;--gold-deep:#93C5FD;--gold-rgb:96,165,250;
+  --teal:#7DD3FC;--teal-deep:#60A5FA;--danger:#f87171;--purple:#a78bfa;
+  --accent-on-navy:#93C5FD;
   --text-primary:#e2e8f0;--text-secondary:#94a3b8;--on-navy:#e2e8f0;--on-gold:#0f172a;
   --glass-tint:rgba(2,6,17,.8);--glass-tint-soft:rgba(2,6,17,.6);
   --glass-specular:linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,.02) 42%,rgba(255,255,255,0));
@@ -188,11 +200,23 @@ svg.ico use{fill:inherit;stroke:inherit;}
 .site-header{
   position:sticky;top:0;z-index:100;
   height:var(--header-h);
-  /* multi-layer glass stack: specular highlight -> adaptive navy tint,
-     on top of the page showing through via backdrop blur/refraction */
-  background:var(--glass-specular),var(--glass-tint);
+  /* OWNER 2026-08-17: BLUE + WHITE — the header is a LIGHT frosted-white glass
+     with black text in light themes (the dark navy glass was part of the "dark
+     and not lively" complaint). The glass structure itself is unchanged and the
+     blur stays (mkt-06 depends on it). Dark mode flips back to dark glass with
+     light text below. */
+  background:rgba(255,255,255,.78);
   -webkit-backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturate));
   backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  border-bottom:1px solid rgba(15,23,42,.08);
+  box-shadow:0 10px 34px rgba(15,23,42,.08);
+}
+html[data-theme="cyan"] .site-header{
+  background:rgba(238,250,252,.8);
+  border-bottom:1px solid rgba(13,148,136,.14);
+}
+body.dark-mode .site-header{
+  background:var(--glass-specular),var(--glass-tint);
   border-bottom:var(--glass-edge);
   box-shadow:var(--glass-shadow);
 }
@@ -205,13 +229,21 @@ svg.ico use{fill:inherit;stroke:inherit;}
 .header-inner{
   height:100%;
   display:flex;align-items:center;justify-content:space-between;gap:24px;
-  /* vertical breathing room: taller bar + horizontal padding so the header
-     never crowds the viewport edge (owner UI modernization, 2026-08-17) */
-  padding:0 clamp(16px,2.5vw,2rem);
+  /* OWNER 2026-08-17: the brand sits in the TOP-LEFT CORNER — a hair of
+     breathing room only (8px), not the old 2.5vw gap. Right side keeps the
+     breathing padding so the controls never crowd the edge. */
+  padding:0 clamp(16px,2.5vw,2rem) 0 8px;
 }
+/* The header row also carries the .container class (centered 1120px) — that
+   centered box is what left a big gap between the corner and the brand on wide
+   screens (the owner's "gap between the corner and it"). The header must span
+   the FULL width so the brand truly sits in the corner; only the inner padding
+   governs its position. */
+.site-header .header-inner{width:100%;max-width:none;margin-inline:0;}
 
-/* brand */
-.brand{display:flex;align-items:center;gap:11px;font-weight:800;font-size:1.05rem;color:#fff;letter-spacing:.01em;}
+/* brand — black text on the light glass header (OWNER 2026-08-17) */
+.brand{display:flex;align-items:center;gap:11px;font-weight:800;font-size:1.05rem;color:var(--text-primary);letter-spacing:.01em;}
+body.dark-mode .brand{color:var(--on-navy);}
 .brand-mark{
   width:38px;height:38px;border-radius:11px;flex-shrink:0;
   display:grid;place-items:center;
@@ -223,26 +255,30 @@ svg.ico use{fill:inherit;stroke:inherit;}
 .brand b span{color:var(--gold);}
 .brand small{
   display:block;font-size:.56rem;font-weight:600;letter-spacing:.22em;
-  text-transform:uppercase;color:rgba(248,250,252,.66);margin-top:1px;
+  text-transform:uppercase;color:var(--text-secondary);margin-top:1px;
 }
+body.dark-mode .brand small{color:rgba(248,250,252,.66);}
 
 /* nav */
 .site-nav{display:flex;align-items:center;gap:4px;}
 .site-nav a.nav-link{
   position:relative;
   padding:9px 14px;border-radius:8px;
-  font-size:.9rem;font-weight:600;color:rgba(248,250,252,.82);
+  font-size:.9rem;font-weight:600;color:var(--text-primary);
   transition:color var(--tr),background var(--tr);
 }
+body.dark-mode .site-nav a.nav-link{color:rgba(248,250,252,.82);}
 .site-nav a.nav-link::after{
   content:"";position:absolute;left:14px;right:14px;bottom:4px;height:2px;
   background:var(--gold);border-radius:2px;
   transform:scaleX(0);transform-origin:left;
   transition:transform var(--tr);
 }
-.site-nav a.nav-link:hover{color:#fff;}
+.site-nav a.nav-link:hover{color:var(--gold-deep);}
+body.dark-mode .site-nav a.nav-link:hover{color:#fff;}
 .site-nav a.nav-link:hover::after{transform:scaleX(1);}
-.site-nav a.nav-link[aria-current="page"]{color:#fff;}
+.site-nav a.nav-link[aria-current="page"]{color:var(--gold-deep);}
+body.dark-mode .site-nav a.nav-link[aria-current="page"]{color:#fff;}
 .site-nav a.nav-link[aria-current="page"]::after{transform:scaleX(1);}
 .site-nav a.nav-link:focus-visible{outline-color:var(--gold);}
 
@@ -288,8 +324,12 @@ svg.ico use{fill:inherit;stroke:inherit;}
 .nav-toggle{
   display:none;
   width:42px;height:42px;border-radius:10px;
+  border:1px solid var(--border);background:transparent;
+  color:var(--text-primary);align-items:center;justify-content:center;
+}
+body.dark-mode .nav-toggle{
   border:var(--glass-edge);background:rgba(255,255,255,.08);
-  color:#fff;align-items:center;justify-content:center;
+  color:#fff;
 }
 .nav-toggle .ico{width:20px;height:20px;}
 
@@ -303,15 +343,20 @@ svg.ico use{fill:inherit;stroke:inherit;}
 .signin-btn{
   display:inline-flex;align-items:center;gap:6px;
   padding:9px 14px;border-radius:9px;
-  border:var(--glass-edge);background:rgba(255,255,255,.08);
-  color:#fff;font-size:.84rem;font-weight:600;cursor:pointer;
+  border:1px solid rgba(var(--gold-rgb),.35);background:rgba(var(--gold-rgb),.06);
+  color:var(--gold-deep);font-size:.84rem;font-weight:600;cursor:pointer;
   white-space:nowrap; /* the pill label must never wrap (owner tighten, 2026-08-17) */
   transition:background var(--tr),border-color var(--tr);
-  -webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);
 }
-.signin-btn:hover{background:rgba(255,255,255,.16);border-color:rgba(255,255,255,.5);}
+.signin-btn:hover{background:rgba(var(--gold-rgb),.12);border-color:var(--gold);}
 .signin-btn:focus-visible{outline:2px solid var(--gold);outline-offset:1px;}
-.signin-btn[aria-expanded="true"]{background:rgba(255,255,255,.16);}
+.signin-btn[aria-expanded="true"]{background:rgba(var(--gold-rgb),.12);}
+body.dark-mode .signin-btn{
+  border:var(--glass-edge);background:rgba(255,255,255,.08);
+  color:#fff;
+}
+body.dark-mode .signin-btn:hover{background:rgba(255,255,255,.16);border-color:rgba(255,255,255,.5);}
+body.dark-mode .signin-btn[aria-expanded="true"]{background:rgba(255,255,255,.16);}
 /* OWNER 2026-08-17 — signed-in identity chip inside the header trigger: a
    small avatar (photo or initial) + name replace the static "Sign in" label;
    clicking still opens the account sheet. */
@@ -338,20 +383,40 @@ svg.ico use{fill:inherit;stroke:inherit;}
    hover or keyboard focus; the trigger carries aria-haspopup/aria-expanded
    (disclosure pattern). */
 .nav-dd{position:relative;display:inline-flex;}
+/* OWNER 2026-08-17: a dropdown is a SIMPLE LIGHT BOX — a compact white card
+   under the header (never the old full-width bar), plain text rows in
+   columns, and a page BLUR behind it so the reader focuses on the menu. */
 .nav-dd-menu{
-  position:fixed;top:var(--header-h);left:0;right:0;z-index:120;
-  padding:26px 28px 18px;border-radius:0;
-  background:var(--bg);
-  box-shadow:0 18px 44px -14px rgba(15,23,42,.22);
-  opacity:0;visibility:hidden;transform:translateY(-6px);
+  position:fixed;top:calc(var(--header-h) + 8px);left:50%;
+  transform:translateX(-50%) translateY(-6px);
+  width:min(300px,calc(100vw - 32px));z-index:130;
+  padding:20px 22px 12px;border-radius:16px;
+  background:var(--card);border:1px solid var(--border);
+  box-shadow:0 24px 60px -16px rgba(15,23,42,.22);
+  opacity:0;visibility:hidden;
   transition:opacity var(--tr),transform var(--tr),visibility var(--tr);
 }
+.nav-dd-cols .nav-dd-menu{width:min(700px,calc(100vw - 32px));}
 .nav-dd:hover .nav-dd-menu,
-.nav-dd:focus-within .nav-dd-menu{opacity:1;visibility:visible;transform:translateY(0);}
-/* The list is one multi-column text flow: the guide (25 sheets) fills 4
-   columns of ~7, features (9) fills 3x3, small menus stay a single column.
-   column-rule draws the LONG VERTICAL LINE between each column pair — the
-   "long line in between" the owner asked for. */
+.nav-dd.is-open .nav-dd-menu{opacity:1;visibility:visible;transform:translateX(-50%) translateY(0);}
+/* Note: no :focus-within here — keyboard open is handled in JS (focusin ->
+   .is-open), and leaving :focus-within as a CSS trigger would re-open the menu
+   the moment Escape moves focus back to the trigger. */
+/* page BLUR behind the open menu (OWNER 2026-08-17: "make the project in the
+   background blur so whoever is doing it can focus on what is in front of
+   them"). pointer-events:none so it is a pure visual scrim; the menu sits
+   above it (z 130). Clicking it is handled by JS on the scrim element. */
+#nav-dd-scrim{
+  position:fixed;inset:0;z-index:120;pointer-events:none;
+  -webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px);
+  background:rgba(255,255,255,.22);
+  opacity:0;transition:opacity var(--tr);
+}
+#nav-dd-scrim.on{opacity:1;pointer-events:auto;}
+body.dark-mode #nav-dd-scrim{background:rgba(2,6,17,.32);}
+/* The list is one multi-column text flow: features (15) fills 3x5, small
+   menus stay a single column. column-rule draws the LONG VERTICAL LINE
+   between each column pair — the "long line in between" the owner asked for. */
 .nav-dd-list{
   max-width:1180px;margin:0 auto;
   columns:1;column-gap:44px;column-rule:1px solid var(--border);
@@ -583,10 +648,11 @@ svg.ico use{fill:inherit;stroke:inherit;}
 /* navy gradient + gold/teal tints keep the H1 and CTAs high-contrast over the photo */
 .hero-overlay{
   position:absolute;inset:0;pointer-events:none;z-index:1;
+  /* deep-blue tint over the photo (OWNER 2026-08-17: blue + white) */
   background:
-    radial-gradient(52% 70% at 82% 6%,rgba(var(--gold-rgb),.18),transparent 62%),
-    radial-gradient(44% 64% at 12% 90%,rgba(20,184,166,.14),transparent 60%),
-    linear-gradient(90deg,rgba(15,23,42,.94) 0%,rgba(15,23,42,.85) 38%,rgba(15,23,42,.68) 74%,rgba(15,23,42,.82) 100%);
+    radial-gradient(52% 70% at 82% 6%,rgba(var(--gold-rgb),.22),transparent 62%),
+    radial-gradient(44% 64% at 12% 90%,rgba(59,130,246,.16),transparent 60%),
+    linear-gradient(90deg,rgba(30,58,138,.94) 0%,rgba(30,58,138,.86) 38%,rgba(30,58,138,.7) 74%,rgba(30,58,138,.84) 100%);
 }
 /* faint drafting-grid texture — decorative, solid, palette-neutral */
 .hero::before{
@@ -604,8 +670,10 @@ svg.ico use{fill:inherit;stroke:inherit;}
   font-weight:800;letter-spacing:-.025em;line-height:1.06;
   margin:18px 0 18px;
 }
-.hero h1 .gold{color:var(--gold);}
-.hero h1 .teal{color:var(--teal);}
+.hero h1 .gold{color:var(--accent-on-navy);}
+.hero h1 .teal{color:#7DD3FC;}
+/* the h1 spans sit on the deep-blue photo overlay — always bright (dark/cyan
+   themes already override via their own blocks). */
 .hero-sub{
   font-size:clamp(1.125rem,1.5vw,1.18rem);
   line-height:1.75;
@@ -618,7 +686,7 @@ svg.ico use{fill:inherit;stroke:inherit;}
   margin-top:48px;padding-top:26px;
   border-top:1px solid rgba(255,255,255,.12);
 }
-.hero-stats b{display:block;font-size:1.5rem;font-weight:800;color:var(--gold);line-height:1.1;font-variant-numeric:tabular-nums;}
+.hero-stats b{display:block;font-size:1.5rem;font-weight:800;color:var(--accent-on-navy);line-height:1.1;font-variant-numeric:tabular-nums;}
 .hero-stats span{font-size:.76rem;letter-spacing:.06em;text-transform:uppercase;color:rgba(248,250,252,.6);}
 
 /* hero visual — solid mock of the app's project cards */
@@ -627,36 +695,30 @@ svg.ico use{fill:inherit;stroke:inherit;}
   display:grid;gap:14px;
 }
 .hero-card{
-  /* UI MODERNIZATION 2026-08-17 (owner: bento glassmorphism) — the preview
-     cards let the crane photo filter through: translucent theme-aware fill
-     (color-mix with the card token keeps light/dark parity automatically),
-     a razor-thin light micro-border, and the existing deep soft shadow.
-     The cards are DECORATIVE (aria-hidden), so glass-on-content never
-     applies; reduced-transparency + no-backdrop-filter fall back to the
-     solid card. */
-  background:color-mix(in oklch,var(--card) 82%,transparent);
-  -webkit-backdrop-filter:blur(12px) saturate(1.4);
-  backdrop-filter:blur(12px) saturate(1.4);
+  /* OWNER 2026-08-17: the home page was TOO GLASSY — the preview cards are
+     SOLID WHITE cards now (never translucent, never backdrop-filter). The
+     glass stays only on the functional layer (header/sheets). */
+  background:var(--card);
   color:var(--text-primary);
-  border:1px solid rgba(255,255,255,.38);border-radius:var(--radius-md);
+  border:1px solid var(--border);border-radius:var(--radius-md);
   padding:18px 20px;
-  box-shadow:0 20px 44px -12px rgba(0,0,0,.5);
+  box-shadow:0 20px 44px -12px rgba(15,23,42,.35);
   transition:transform var(--tr-slow),box-shadow var(--tr-slow);
 }
-@media (prefers-reduced-transparency:reduce){
-  .hero-card{background:var(--card);-webkit-backdrop-filter:none;backdrop-filter:none;}
-}
-@supports not (backdrop-filter:blur(1px)){
-  .hero-card{background:var(--card);}
-}
 .hero-card:hover{transform:translateY(-4px);box-shadow:0 26px 58px rgba(15,23,42,.5);}
+/* HERO IMAGES (owner 2026-08-17): the owner's three real topic images sit
+   above each card's hc-top. Bleed them to the card's top corners (negative
+   margin over the 18/20px padding), round the top to match the card, and
+   keep the caption area below them. Solid content — never glass. */
+.hero-card .hc-img{margin:-18px -20px 14px;overflow:hidden;border-radius:var(--radius-md) var(--radius-md) 0 0;}
+.hero-card .hc-img img{display:block;width:100%;height:auto;aspect-ratio:900/491;object-fit:cover;}
 .hero-card .hc-top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;}
 .hero-card .hc-top b{font-size:.86rem;font-weight:700;display:flex;align-items:center;gap:8px;}
 .hero-card .hc-top b .ico{color:var(--gold-deep);}
 .hero-card .hc-badge{
   font-size:.62rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
-  color:var(--teal-deep);background:rgba(20,184,166,.12);
-  padding:4px 9px;border-radius:100px;border:1px solid rgba(20,184,166,.3);
+  color:var(--gold-deep);background:rgba(var(--gold-rgb),.12);
+  padding:4px 9px;border-radius:100px;border:1px solid rgba(var(--gold-rgb),.3);
 }
 .hero-card .hc-row{display:grid;gap:8px;}
 .hc-bar{
@@ -665,7 +727,7 @@ svg.ico use{fill:inherit;stroke:inherit;}
 .hc-bar i{position:absolute;inset:0 auto 0 0;border-radius:6px;}
 .hc-bar.gold i{background:linear-gradient(90deg,var(--gold),var(--gold-hover));width:68%;}
 .hc-bar.teal i{background:linear-gradient(90deg,var(--teal-deep),var(--teal));width:84%;}
-.hc-bar.navy i{background:linear-gradient(90deg,var(--text-secondary),var(--header-navy));width:41%;}
+.hc-bar.navy i{background:linear-gradient(90deg,var(--gold-deep),var(--header-navy));width:41%;}
 .hc-meta{display:flex;justify-content:space-between;font-size:.68rem;color:var(--text-secondary);margin-top:7px;}
 .hero-card.offset{margin-left:auto;width:86%;}
 
@@ -681,9 +743,22 @@ svg.ico use{fill:inherit;stroke:inherit;}
 .aud-item b{display:block;font-size:.9rem;font-weight:700;margin-bottom:4px;}
 .aud-item span{font-size:.76rem;color:var(--text-secondary);line-height:1.45;display:block;}
 
-/* ---------- 8. Feature cards (solid white content layer) ---------- */
-.features{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;}
+/* ---------- 8. Feature cards (solid white content layer) ----------
+   OWNER 2026-08-17: "Everything a real project needs" is a FLAT HORIZONTAL
+   BAR that auto-ticks one card at a time, looping while the page is in view
+   (js/marketing.js drives the tick + prev/next). The reader can steer it but
+   never has to. Cards stay solid white. */
+.features{
+  display:flex;gap:18px;
+  overflow-x:auto;
+  scroll-snap-type:x proximity;
+  padding-bottom:10px;
+  scrollbar-width:none; -ms-overflow-style:none;
+}
+.features::-webkit-scrollbar{display:none;}
 .fcard{
+  flex:0 0 min(300px,78vw);
+  scroll-snap-align:start;
   background:var(--card);
   border:1px solid var(--border);
   border-radius:var(--radius-md);
@@ -692,6 +767,22 @@ svg.ico use{fill:inherit;stroke:inherit;}
   display:flex;flex-direction:column;gap:14px;
   transition:transform var(--tr),border-color var(--tr),box-shadow var(--tr);
 }
+/* carousel controls (auto-tick pauses on hover/focus of the bar) */
+.feat-ctl{display:flex;align-items:center;gap:10px;margin-top:24px;}
+.feat-ctl .feat-hint{
+  margin-right:auto;font-size:.78rem;color:var(--text-secondary);
+}
+.feat-btn{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:40px;height:40px;border-radius:100px;
+  border:1px solid var(--border);background:var(--card);
+  color:var(--gold-deep);cursor:pointer;
+  transition:background var(--tr),border-color var(--tr),color var(--tr),transform var(--tr);
+}
+.feat-btn:hover{background:var(--gold);border-color:var(--gold);color:var(--on-gold);transform:translateY(-1px);}
+.feat-btn:focus-visible{outline:2px solid var(--gold);outline-offset:2px;}
+.feat-btn:active{transform:scale(.95);}
+.feat-btn .ico{width:18px;height:18px;}
 .fcard:hover{
   transform:translateY(-4px);
   border-color:rgba(var(--gold-rgb),.65);
@@ -746,8 +837,8 @@ svg.ico use{fill:inherit;stroke:inherit;}
 .guide-band{
   position:relative;overflow:hidden;
   background:
-    radial-gradient(50% 90% at 88% 10%,rgba(var(--gold-rgb),.14),transparent 60%),
-    radial-gradient(45% 80% at 8% 100%,rgba(20,184,166,.12),transparent 60%),
+    radial-gradient(50% 90% at 88% 10%,rgba(var(--gold-rgb),.2),transparent 60%),
+    radial-gradient(45% 80% at 8% 100%,rgba(59,130,246,.16),transparent 60%),
     var(--header-navy);
   color:var(--on-navy);border-radius:var(--radius-lg);
   padding:56px 58px;
@@ -763,7 +854,7 @@ svg.ico use{fill:inherit;stroke:inherit;}
 }
 .guide-band h2{font-size:clamp(1.4rem,2.6vw,1.9rem);font-weight:800;letter-spacing:-.02em;line-height:1.15;margin:12px 0 10px;}
 .guide-band p{color:rgba(248,250,252,.75);max-width:52ch;}
-.guide-band .eyebrow{color:var(--gold);}
+.guide-band .eyebrow{color:var(--accent-on-navy);}
 .guide-band .btn-ghost-light{margin-left:10px;}
 .guide-cta{display:flex;gap:12px;flex-wrap:wrap;position:relative;}
 
@@ -781,7 +872,7 @@ svg.ico use{fill:inherit;stroke:inherit;}
 }
 .photo-band .pb-overlay{
   position:absolute;inset:0;pointer-events:none;
-  background:linear-gradient(100deg,rgba(15,23,42,.94) 0%,rgba(15,23,42,.86) 34%,rgba(15,23,42,.62) 68%,rgba(15,23,42,.8) 100%);
+  background:linear-gradient(100deg,rgba(30,58,138,.94) 0%,rgba(30,58,138,.86) 34%,rgba(30,58,138,.64) 68%,rgba(30,58,138,.82) 100%);
 }
 /* drafting-grid texture, same device as .guide-band */
 .photo-band::before{
@@ -792,7 +883,7 @@ svg.ico use{fill:inherit;stroke:inherit;}
   -webkit-mask-image:linear-gradient(180deg,#000,transparent 85%);
 }
 .pb-content{position:relative;z-index:1;max-width:620px;}
-.pb-content .eyebrow{color:var(--gold);}
+.pb-content .eyebrow{color:var(--accent-on-navy);}
 .pb-content h2{font-size:clamp(1.6rem,3.2vw,2.3rem);font-weight:800;letter-spacing:-.02em;line-height:1.15;margin:14px 0 12px;}
 .pb-content p{color:rgba(248,250,252,.8);font-size:1rem;max-width:52ch;}
 .pb-content p:only-child{font-size:clamp(1.05rem,1.8vw,1.2rem);font-weight:600;}
@@ -832,7 +923,8 @@ svg.ico use{fill:inherit;stroke:inherit;}
 .footer-brand p{font-size:.86rem;margin:14px 0 20px;max-width:34ch;}
 .footer-col b{
   display:block;font-size:.7rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;
-  color:var(--gold);margin-bottom:14px;
+  /* bright blue readable on the deep-blue band (blue-300, 7.6:1) */
+  color:var(--accent-on-navy);margin-bottom:14px;
 }
 .footer-col a{
   display:block;font-size:.88rem;padding:5px 0;color:rgba(248,250,252,.72);
@@ -855,7 +947,7 @@ svg.ico use{fill:inherit;stroke:inherit;}
 }
 .page-hero h1{font-size:clamp(1.9rem,4vw,2.7rem);font-weight:800;letter-spacing:-.025em;line-height:1.08;margin:14px 0 12px;}
 .page-hero p{color:rgba(248,250,252,.75);max-width:56ch;font-size:1.04rem;line-height:1.55;}
-.crumbs{font-size:.74rem;letter-spacing:.08em;text-transform:uppercase;color:var(--gold);font-weight:700;}
+.crumbs{font-size:.74rem;letter-spacing:.08em;text-transform:uppercase;color:var(--accent-on-navy);font-weight:700;}
 .crumbs a:hover{text-decoration:underline;}
 .prose-card{
   background:var(--card);border:1px solid var(--border);border-radius:var(--radius-md);
@@ -892,7 +984,7 @@ svg.ico use{fill:inherit;stroke:inherit;}
 .contact-tile a:hover{text-decoration:underline;}
 .placeholder-note{
   margin-top:18px;font-size:.8rem;color:var(--text-secondary);
-  background:rgba(var(--gold-rgb),.1);border:1px dashed rgba(212,160,23,.4);
+  background:rgba(var(--gold-rgb),.1);border:1px dashed rgba(var(--gold-rgb),.45);
   border-radius:var(--radius-sm);padding:12px 16px;
 }
 
@@ -997,7 +1089,6 @@ svg.ico use{fill:inherit;stroke:inherit;}
 
 /* ---------- 14. Responsive ---------- */
 @media (max-width:1000px){
-  .features{grid-template-columns:repeat(3,1fr);}
   .steps{grid-template-columns:repeat(2,1fr);}
   .audience{grid-template-columns:repeat(2,1fr);}
 }
@@ -1010,7 +1101,6 @@ svg.ico use{fill:inherit;stroke:inherit;}
   .contact-grid{grid-template-columns:1fr;}
 }
 @media (max-width:640px){
-  .features{grid-template-columns:1fr;}
   .steps{grid-template-columns:1fr;}
   .audience{grid-template-columns:1fr;}
   .section{padding:64px 0;}
@@ -1018,6 +1108,7 @@ svg.ico use{fill:inherit;stroke:inherit;}
   .photo-band{padding:76px 0;}
   .footer-grid{grid-template-columns:1fr;}
   .hero-stats{gap:22px;}
+  .feat-ctl .feat-hint{display:none;}
 }
 
 /* ---------- 15. Reduced motion + reduced transparency ---------- */
@@ -1043,12 +1134,16 @@ svg.ico use{fill:inherit;stroke:inherit;}
 }
 /* the hero keeps a full-viewport first screen without any snap */
 .hero{min-height:calc(100vh - var(--header-h));display:flex;align-items:center;}
-/* slim edge index — transparent, functional layer only (never a panel) */
+/* slim edge index — transparent, functional layer only (never a panel).
+   OWNER 2026-08-17: it is a MINI TRACKER — labels are always visible (a
+   tracker you cannot read is not a tracker), it follows the current section
+   accurately (most-visible wins), and sections the reader has already passed
+   LOCK IN (filled stick + dimmed label) so it reads as a progress trail. */
 .scroll-spy{
-  position:fixed;left:12px;top:50%;
+  position:fixed;left:8px;top:50%;
   transform:translateY(-50%);
   z-index:40;
-  display:flex;flex-direction:column;gap:14px;
+  display:flex;flex-direction:column;gap:12px;
   background:transparent;border:none;padding:0;width:auto;
   pointer-events:none; /* container ignores clicks */
 }
@@ -1062,6 +1157,10 @@ svg.ico use{fill:inherit;stroke:inherit;}
   background:rgba(71,85,105,.45);
   transition:background .2s,height .2s,box-shadow .2s;
 }
+.scroll-spy a.done .spy-stick{
+  background:rgba(var(--gold-rgb),.55);
+  box-shadow:none;
+}
 .scroll-spy a:hover .spy-stick,
 .scroll-spy a.active .spy-stick{
   height:28px;
@@ -1070,13 +1169,16 @@ svg.ico use{fill:inherit;stroke:inherit;}
 }
 .spy-label{
   font-size:.68rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
-  color:var(--gold-deep);
-  opacity:0; /* reveal on hover / when active — keeps the edge ultra-slim */
+  color:var(--text-secondary);
+  opacity:1; /* always readable — the mini tracker */
   transition:opacity .2s,color .2s;
   white-space:nowrap;
 }
-.scroll-spy a:hover .spy-label,
-.scroll-spy a.active .spy-label{opacity:1;}
+.scroll-spy a.done .spy-label{opacity:.7;}
+.scroll-spy a.active .spy-label,
+.scroll-spy a:hover .spy-label{
+  color:var(--gold-deep);opacity:1;font-weight:700;
+}
 /* edge rail collapses into the existing hamburger drawer on phones */
 @media (max-width:880px){
   .scroll-spy{display:none;}

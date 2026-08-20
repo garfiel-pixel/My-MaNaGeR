@@ -41,6 +41,25 @@
   /* accent readable on the deep-blue band (footer, page-hero, photo overlay) */
   --accent-on-navy:#93C5FD;   /* blue-300 on #1E3A8A = 7.6:1 */
 
+  /* COLOR-PALETTE-PROPOSAL: Blueprint blue ramp + locked status palette.
+     Added 2026-08-19. These sit alongside the legacy gold/teal names above
+     (which carry the same blue values). Use these NEW tokens for surfaces,
+     borders, and hover fills that need finer gradation than the legacy set.
+     Status tokens are LOCKED: badges/alerts/indicators ONLY, never decorative.
+     Rule: "If a color isn't telling you the state of something, it must be
+     blue, white, black, or a shade of blue." */
+  --blue-50:       #EFF4FC;   /* tinted surfaces, hover fills */
+  --blue-100:      #D7E3F7;   /* subtle fills, disabled states */
+  --blue-300:      #7FA8E8;   /* borders/icons on dark surfaces */
+  --blue-500:      #2D6CDF;   /* proposal primary (close to --gold #2563EB) */
+  --blue-700:      #1B4CA6;   /* proposal hover/pressed, headings on white */
+  --blue-900:      #0F2E6B;   /* proposal deep surfaces, dark-mode chrome */
+  --canvas:        #F4F6FA;   /* proposal app background (cool-toned, close to --bg) */
+  --ink:           #10151F;   /* proposal body text (slightly lifted off pure black) */
+  --status-danger: #C4342B;   /* over budget, blocked, critical risk */
+  --status-warning:#B4740E;   /* at risk, pending, due soon */
+  --status-success:#16794D;   /* on track, approved, healthy */
+
   /* text */
   --text-primary:  #0F172A;   /* black text (near-black navy) */
   --text-secondary:#64748B;
@@ -392,10 +411,17 @@ body.dark-mode .signin-btn[aria-expanded="true"]{background:rgba(255,255,255,.16
   width:min(300px,calc(100vw - 32px));z-index:130;
   padding:20px 22px 12px;border-radius:18px;
   background:var(--card);
-  border:1px solid var(--border);
-  box-shadow:0 20px 50px -12px rgba(15,23,42,.18),0 0 0 1px rgba(var(--gold-rgb),.06);
+  border:1px solid var(--blue-100);
+  box-shadow:0 20px 50px -12px rgba(15,23,42,.18),0 0 0 1px rgba(45,108,223,.08);
   opacity:0;visibility:hidden;
   transition:opacity var(--tr),transform var(--tr),visibility var(--tr);
+}
+/* Invisible bridge: extends upward from the menu to cover the gap between
+   the trigger and the menu panel. Without this, fast mouse movement across
+   the 8px gap momentarily loses :hover, causing a flicker. The bridge is a
+   child of .nav-dd, so hover on it counts as hover on the parent. */
+.nav-dd-menu::before{
+  content:"";position:absolute;top:-12px;left:0;right:0;height:12px;
 }
 .nav-dd-cols .nav-dd-menu{width:min(700px,calc(100vw - 32px));}
 .nav-dd:hover .nav-dd-menu,
@@ -416,25 +442,25 @@ body.dark-mode .signin-btn[aria-expanded="true"]{background:rgba(255,255,255,.16
 .nav-dd-cols .nav-dd-list{columns:3;}
 .nav-dd-tall .nav-dd-list{columns:4;}
 /* Free-flowing text rows: plain links that hover to the accent.
-   COLOR-PALETTE-PROPOSAL tokens: --gold = blueprint blue (#2D6CDF family).
+   COLOR-PALETTE-PROPOSAL tokens: --blue-500 primary, --blue-50 hover fill.
    break-inside:avoid keeps a row from splitting across columns. */
 .nav-dd-item{
   display:block;break-inside:avoid;
   padding:7px 10px;border-radius:8px;
-  color:var(--text-primary);font-size:.86rem;font-weight:600;line-height:1.45;
+  color:var(--ink);font-size:.86rem;font-weight:600;line-height:1.45;
   transition:color var(--tr),background var(--tr);
 }
-.nav-dd-item:hover{color:var(--gold);background:rgba(var(--gold-rgb),.06);}
-.nav-dd-item:focus-visible{outline:2px solid var(--gold);outline-offset:-1px;border-radius:8px;}
+.nav-dd-item:hover{color:var(--blue-700);background:var(--blue-50);}
+.nav-dd-item:focus-visible{outline:2px solid var(--blue-500);outline-offset:-1px;border-radius:8px;}
 /* Foot = one long horizontal hairline, then the link text. */
 .nav-dd-foot{
   display:block;max-width:1180px;margin:14px auto 0;
-  padding-top:12px;border-top:1px solid var(--border);
+  padding:12px 10px 0;border-top:1px solid var(--blue-100);
   color:var(--text-secondary);font-size:.78rem;font-weight:600;
   transition:color var(--tr),background var(--tr);
-  padding-left:10px;padding-right:10px;border-radius:8px;
+  border-radius:8px;
 }
-.nav-dd-foot:hover{color:var(--gold);background:rgba(var(--gold-rgb),.06);}
+.nav-dd-foot:hover{color:var(--blue-700);background:var(--blue-50);}
 /* highlight flash for a dropdown-selected section (gold ring + soft glow) */
 .dd-flash{animation:dd-flash 2.6s ease;}
 @keyframes dd-flash{
@@ -442,7 +468,7 @@ body.dark-mode .signin-btn[aria-expanded="true"]{background:rgba(255,255,255,.16
   100%{box-shadow:0 0 0 2px rgba(var(--gold-rgb),0),0 0 26px rgba(var(--gold-rgb),0);}
 }
 @media (prefers-reduced-motion:reduce){
-  .nav-dd-menu{transition:none;}
+  .nav-dd-menu{transition:opacity .12s ease;transform:none;}
   .dd-flash{animation-duration:1.4s;}
 }
 

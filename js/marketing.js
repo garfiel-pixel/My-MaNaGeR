@@ -439,6 +439,7 @@
           open = false; sync();
         }
         wrap.addEventListener('mouseenter', openWrap);
+        wrap.addEventListener('mouseleave', closeWrap);
         wrap.addEventListener('focusin', openWrap);
         wrap.addEventListener('focusout', function(e){
           if (!wrap.contains(e.relatedTarget)) closeWrap();

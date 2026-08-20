@@ -345,26 +345,14 @@
   }
 
   /* OWNER 2026-08-17 dropdown behavior: hover (or keyboard focus) opens a
-     SIMPLE LIGHT BOX menu and BLURS the page behind it (#nav-dd-scrim, the
-     page-focus scrim). The menu stays open while the reader reaches it and
-     picks; it closes on clicking the scrim, pressing Escape, picking an item,
-     or focus moving away — never slams shut on hover-out (no flicker). */
-  var ddScrim = null;
+     SIMPLE LIGHT BOX menu. The menu stays open while the reader reaches it
+     and picks; it closes on pressing Escape, picking an item, or focus/mouse
+     moving away. The page-focus scrim (#nav-dd-scrim) was removed 2026-08-19
+     (owner: "the full-viewport overlay blurred the entire page"). */
   /* Escape closes the menu and returns focus to the trigger; the guard stops
      the trigger's own focusin from re-opening it in the same tick. */
   var ddSuppressUntil = 0;
   function ddNow(){ return (window.performance && performance.now) ? performance.now() : Date.now(); }
-  function ensureDdScrim(){
-    if (!ddScrim) {
-      ddScrim = document.getElementById('nav-dd-scrim');
-      if (!ddScrim) {
-        ddScrim = document.createElement('div');
-        ddScrim.id = 'nav-dd-scrim';
-        document.body.appendChild(ddScrim);
-      }
-      ddScrim.addEventListener('click', closeDropdowns);
-    }
-  }
   function closeDropdowns(){
     document.querySelectorAll('.nav-dd').forEach(function(w){ w.classList.remove('is-open'); });
     document.querySelectorAll('.nav-dd a.nav-link').forEach(function(a){ a.setAttribute('aria-expanded', 'false'); });

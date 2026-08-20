@@ -511,7 +511,7 @@ body.dark-mode .signin-btn[aria-expanded="true"]{background:rgba(255,255,255,.16
   text-decoration:underline;text-underline-offset:2px;cursor:pointer;font:inherit;
 }
 .signin-sheet .email-auth-alt button:focus-visible{outline:2px solid var(--gold);outline-offset:1px;border-radius:var(--radius-sm);}
-.signin-sheet .email-auth-err{font-size:.76rem;color:var(--danger);}
+.signin-sheet .email-auth-err{font-size:.76rem;color:var(--status-danger);}
 .signin-sheet .email-auth-note{font-size:.76rem;color:rgba(248,250,252,.72);line-height:1.5;}
 /* AUTH MAINFRAME v2 — forgot-password request + check-your-inbox panels.
    Same sheet language as the form above; both use display:flex, so the
@@ -608,7 +608,7 @@ body.dark-mode .signin-btn[aria-expanded="true"]{background:rgba(255,255,255,.16
   background:var(--card);color:var(--text-primary);
   font-size:.82rem;font-weight:600;cursor:pointer;transition:border-color var(--tr),color var(--tr);
 }
-.signin-sheet .signin-out:hover{border-color:var(--danger);color:var(--danger);}
+.signin-sheet .signin-out:hover{border-color:var(--status-danger);color:var(--status-danger);}
 .signin-sheet .signin-out:focus-visible{outline:2px solid var(--gold);outline-offset:1px;}
 
 .mobile-menu{
@@ -760,7 +760,7 @@ body.dark-mode .signin-btn[aria-expanded="true"]{background:rgba(255,255,255,.16
 }
 .hc-bar i{position:absolute;inset:0 auto 0 0;border-radius:6px;}
 .hc-bar.gold i{background:linear-gradient(90deg,var(--gold),var(--gold-hover));width:68%;}
-.hc-bar.teal i{background:linear-gradient(90deg,var(--teal-deep),var(--teal));width:84%;}
+.hc-bar.teal i{background:linear-gradient(90deg,var(--blue-700),var(--blue-500));width:84%;}
 .hc-bar.navy i{background:linear-gradient(90deg,var(--gold-deep),var(--header-navy));width:41%;}
 .hc-meta{display:flex;justify-content:space-between;font-size:.68rem;color:var(--text-secondary);margin-top:7px;}
 .hero-card.offset{margin-left:auto;width:86%;}
@@ -1069,7 +1069,7 @@ body.dark-mode .signin-btn[aria-expanded="true"]{background:rgba(255,255,255,.16
   flex:1 1 240px;font-size:.86rem;font-weight:600;color:var(--teal-deep);
   min-height:1.2em;
 }
-.rv-status.is-err{color:var(--danger);}
+.rv-status.is-err{color:var(--status-danger);}
 .rv-status[hidden]{display:none;}
 .rv-list-head{margin-top:0;}
 .rv-empty{
@@ -1260,8 +1260,8 @@ body.dark-mode .signin-btn[aria-expanded="true"]{background:rgba(255,255,255,.16
 .auth-state h1{font-size:1.28rem;font-weight:700;letter-spacing:-.01em;color:var(--text-primary);line-height:1.25;}
 .auth-state p{font-size:var(--fs-small);color:var(--text-secondary);line-height:1.55;}
 .auth-icon{width:44px;height:44px;margin-bottom:2px;}
-.auth-icon.ok{color:var(--teal);}
-.auth-icon.err{color:var(--danger);}
+.auth-icon.ok{color:var(--status-success);}
+.auth-icon.err{color:var(--status-danger);}
 .auth-icon.head{color:var(--gold);}
 .auth-spinner{width:38px;height:38px;border-radius:50%;border:3px solid color-mix(in oklch,var(--gold) 30%,transparent);border-top-color:var(--gold);animation:auth-spin .8s linear infinite;margin-bottom:6px;}
 @keyframes auth-spin{to{transform:rotate(360deg);}}
@@ -1275,7 +1275,7 @@ body.dark-mode .signin-btn[aria-expanded="true"]{background:rgba(255,255,255,.16
 .auth-field input{padding:10px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg);color:var(--text-primary);font:inherit;font-size:var(--fs-body);}
 .auth-field input:focus{outline:2px solid var(--gold);outline-offset:1px;border-color:var(--gold);}
 .auth-hint{font-size:var(--fs-tiny);color:var(--text-secondary);}
-.auth-err{font-size:var(--fs-small);color:var(--danger);line-height:1.4;}
+.auth-err{font-size:var(--fs-small);color:var(--status-danger);line-height:1.4;}
 .auth-err[hidden]{display:none;}
 .btn-block{width:100%;justify-content:center;}
 .auth-recover{display:flex;flex-direction:column;gap:10px;align-items:center;text-align:center;width:100%;padding-top:6px;}

@@ -402,17 +402,9 @@ body.dark-mode .signin-btn[aria-expanded="true"]{background:rgba(255,255,255,.16
 /* Note: no :focus-within here — keyboard open is handled in JS (focusin ->
    .is-open), and leaving :focus-within as a CSS trigger would re-open the menu
    the moment Escape moves focus back to the trigger. */
-/* page BLUR behind the open menu (OWNER 2026-08-17: "make the project in the
-   background blur so whoever is doing it can focus on what is in front of
-   them"). pointer-events:none so it is a pure visual scrim; the menu sits
-   above it (z 130). Clicking it is handled by JS on the scrim element. */
-#nav-dd-scrim{
-  position:fixed;inset:0;z-index:120;pointer-events:none;
-  background:rgba(255,255,255,.12);
-  opacity:0;transition:opacity var(--tr);
-}
-#nav-dd-scrim.on{opacity:1;pointer-events:auto;}
-body.dark-mode #nav-dd-scrim{background:rgba(2,6,17,.18);}
+/* Nav dropdown scrim REMOVED (owner 2026-08-19): the full-viewport overlay
+   blurred the entire page behind the dropdown. Dropdowns now open as clean
+   popups without the page-wide dim. */
 /* The list is one multi-column text flow: features (15) fills 3x5, small
    menus stay a single column. column-rule draws the LONG VERTICAL LINE
    between each column pair — the "long line in between" the owner asked for. */

@@ -177,7 +177,8 @@
         img.referrerPolicy = 'no-referrer';
         av.appendChild(img);
       } else {
-        av.textContent = (user && (user.name || user.email)) ? String(user.name || user.email).charAt(0).toUpperCase() : '?';
+        var src = (user && (user.name || user.email || user.sub || '')) || '';
+        av.textContent = src.replace(/^email:/i, '').charAt(0).toUpperCase() || '?';
       }
       var nm = document.createElement('span');
       nm.className = 'sb-name';
@@ -216,7 +217,10 @@
         img.referrerPolicy = 'no-referrer';
         av.appendChild(img);
       } else {
-        var initial = user ? (user.name || user.email || '?').charAt(0).toUpperCase() : '?';
+        /* Extract initial from name, email, or sub (email: prefixed).
+           Defensive: sub 'email:user@example.com' → 'U', name 'John Doe' → 'J'. */
+        var src = (user && (user.name || user.email || user.sub || '')) || '';
+        var initial = src.replace(/^email:/i, '').charAt(0).toUpperCase() || '?';
         av.textContent = initial;
       }
     }
@@ -363,7 +367,6 @@
   }
   function closeDropdowns(){
     document.querySelectorAll('.nav-dd').forEach(function(w){ w.classList.remove('is-open'); });
-    if (ddScrim) ddScrim.classList.remove('on');
     document.querySelectorAll('.nav-dd a.nav-link').forEach(function(a){ a.setAttribute('aria-expanded', 'false'); });
   }
 
@@ -427,10 +430,8 @@
         function sync(){ a.setAttribute('aria-expanded', open ? 'true' : 'false'); }
         function openWrap(){
           if (ddNow() < ddSuppressUntil) return; /* Escape just closed it */
-          ensureDdScrim();
           closeDropdowns();
           wrap.classList.add('is-open');
-          if (ddScrim) ddScrim.classList.add('on');
           open = true; sync();
         }
         function closeWrap(){

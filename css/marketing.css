@@ -390,9 +390,10 @@ body.dark-mode .signin-btn[aria-expanded="true"]{background:rgba(255,255,255,.16
   position:fixed;top:calc(var(--header-h) + 8px);left:50%;
   transform:translateX(-50%) translateY(-6px);
   width:min(300px,calc(100vw - 32px));z-index:130;
-  padding:20px 22px 12px;border-radius:16px;
-  background:var(--card);border:1px solid var(--border);
-  box-shadow:0 24px 60px -16px rgba(15,23,42,.22);
+  padding:20px 22px 12px;border-radius:18px;
+  background:var(--card);
+  border:1px solid var(--border);
+  box-shadow:0 20px 50px -12px rgba(15,23,42,.18),0 0 0 1px rgba(var(--gold-rgb),.06);
   opacity:0;visibility:hidden;
   transition:opacity var(--tr),transform var(--tr),visibility var(--tr);
 }
@@ -414,25 +415,26 @@ body.dark-mode .signin-btn[aria-expanded="true"]{background:rgba(255,255,255,.16
 }
 .nav-dd-cols .nav-dd-list{columns:3;}
 .nav-dd-tall .nav-dd-list{columns:4;}
-/* Free-flowing text rows: no chip, no border, no box — plain links that
-   simply hover to the accent. break-inside:avoid keeps a row from splitting
-   across columns. */
+/* Free-flowing text rows: plain links that hover to the accent.
+   COLOR-PALETTE-PROPOSAL tokens: --gold = blueprint blue (#2D6CDF family).
+   break-inside:avoid keeps a row from splitting across columns. */
 .nav-dd-item{
   display:block;break-inside:avoid;
-  padding:6px 8px;
+  padding:7px 10px;border-radius:8px;
   color:var(--text-primary);font-size:.86rem;font-weight:600;line-height:1.45;
-  transition:color var(--tr);
+  transition:color var(--tr),background var(--tr);
 }
-.nav-dd-item:hover{color:var(--gold);}
-.nav-dd-item:focus-visible{outline:2px solid var(--gold);outline-offset:-1px;border-radius:6px;}
+.nav-dd-item:hover{color:var(--gold);background:rgba(var(--gold-rgb),.06);}
+.nav-dd-item:focus-visible{outline:2px solid var(--gold);outline-offset:-1px;border-radius:8px;}
 /* Foot = one long horizontal hairline, then the link text. */
 .nav-dd-foot{
   display:block;max-width:1180px;margin:14px auto 0;
   padding-top:12px;border-top:1px solid var(--border);
-  color:var(--text-secondary);font-size:.76rem;font-weight:600;
-  transition:color var(--tr);
+  color:var(--text-secondary);font-size:.78rem;font-weight:600;
+  transition:color var(--tr),background var(--tr);
+  padding-left:10px;padding-right:10px;border-radius:8px;
 }
-.nav-dd-foot:hover{color:var(--gold);}
+.nav-dd-foot:hover{color:var(--gold);background:rgba(var(--gold-rgb),.06);}
 /* highlight flash for a dropdown-selected section (gold ring + soft glow) */
 .dd-flash{animation:dd-flash 2.6s ease;}
 @keyframes dd-flash{

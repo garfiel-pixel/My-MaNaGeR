@@ -24,6 +24,20 @@
   "vars": {
     "GOOGLE_CLIENT_ID": "297970704704-m05hgt93lfaq286q90br8c96ffg1aph3.apps.googleusercontent.com"
   },
+  // Service binding: the Presence DO calls back to the Worker for code-based
+  // auth validation (codes must not appear in the WebSocket URL query string).
+  "services": [
+    { "binding": "INTERNAL_AUTH", "service": "my-manager" }
+  ],
+  // RATE LIMITING: Cloudflare Rate Limiting binding replaces the per-isolate
+  // in-memory Map. Per-location, backed by a shared store, eventually consistent.
+  "ratelimits": [
+    {
+      "name": "RATE_LIMITER",
+      "namespace_id": "1001",
+      "simple": { "limit": 60, "period": 60 }
+    }
+  ],
   // CLOUD-BACKEND-ARCHITECTURE-PLAN Phase 1 — D1 (structured project rows) +
   // R2 (project-state JSON blobs). The database_id below is the REAL id from
   // `npx wrangler d1 list` (database "mymanager", verified Aug 2026) — the

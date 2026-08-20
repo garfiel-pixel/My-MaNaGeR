@@ -51,8 +51,10 @@
   <div id="marketing-email-auth"></div>
   <p class="email-auth-note">Signing in only unlocks backup and moving projects between devices. The app itself needs no account.</p>
   <div class="signin-user" id="signin-user" hidden>
+    <span class="signin-user-avatar" id="signin-user-avatar" title="Signed in"></span>
     <span class="signin-user-name" id="signin-user-name"></span>
     <span class="signin-user-sub" id="signin-user-sub"></span>
+    <span class="plan-pill" data-plan-badge hidden></span>
     <button type="button" class="signin-out" id="signin-out">Sign out</button>
   </div>
 </div>
@@ -82,7 +84,7 @@
 
   <!-- photo band to match the About / Features pages (solid layer — never glass) -->
   <section class="photo-band">
-    <img class="pb-img" src="images/site-overview-clean.webp" alt="Aerial view of an active construction site" loading="lazy" width="1584" height="672">
+    <img class="pb-img" src="images/site-overview-clean.webp" alt="Aerial view of an active construction site" loading="lazy" width="1584" height="672" draggable="false">
     <div class="pb-overlay" aria-hidden="true"></div>
     <div class="container pb-content">
       <span class="eyebrow">Talk to us</span>

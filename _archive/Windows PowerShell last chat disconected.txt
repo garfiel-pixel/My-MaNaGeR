@@ -1,0 +1,23 @@
+    Let me now reload the browser and check the fixes.
+
+  • TODOs
+    ✓  Launch site and take screenshots to catalog all visual bugs
+    ✓  Fix nav dropdown blur: reduce scrim to light overlay only, keep dropdown text clear
+    ✓  Fix profile avatar: add missing signin-user-avatar div to features/about/contact pages
+    ✓  Remove redundant section eyebrow headers on index.html (Built for, Key Features, How it Works etc)
+    ✓  Fix scroll-spy label visibility: use darker color for inactive labels
+    ✓  Remove em dashes from visible content across marketing pages
+    ☐  Reload site and take screenshots to verify all fixes
+    ☐  Run full bug scan across multiple browser simulations
+    ☐  Update sw.js cache version and verify
+
+  • Thinking
+    Now let me reload the server and check the fixes in the browser. First, I need to kill the old serve.cjs and
+    restart it with the updated files.
+
+  $ taskkill //F //IM node.exe 2>/dev/null; sleep 1; nohup node serve.cjs > /tmp/serve.log 2>&1 & sleep 3 && curl -s
+  -o /dev/null -w "%{http_code}" http://localhost:8765/ (15s timeout)
+ working...                                                                                              17m 2s  ■ Esc
+PS C:\Users\Garfield\Downloads\mymanager-fixed> [555;6;1M[555;11;6M[555;16;10M[555;22;12M[555;26;14M[555;27;14M[555;29;14M[555;29;15M[555;30;15M[555;30;16M[555;33;22M[555;34;23M[555;35;24M[555;36;25M[555;36;24M[555;36;23M[555;35;23M[555;35;22M[555;34;21M[555;34;20M[555;34;19M[555;34;18M[555;35;18M[555;36;17M[555;38;17M[555;39;16M[555;40;16M[555;41;16M[555;41;15M[555555;41;15M[555555;41;15M[555555;41;15M[555555;41;15M[555555;41;15M[555555;41;15M[555;41;15M[555555;41;15M[555;41;15M[555;41;14M[555;41;13M[555;41;12M[555;41;11M[555;41;10M[555;40;10M[555;40;9M[555;39;8M[555;38;8M[555;38;7M[555;37;7M[555;36;6M[555;35;5M[555;34;5M[555;33;5M[555;32;5M[555;32;4M[555;31;4M[555;30;4M[555;29;4M[555;29;3M[555;28;3M[555;27;3M[555;26;3M[555;25;2M[555;24;2M[555;23;2M[555;22;2M[555;21;2M[555;20;1M[555;19;1M[555;18;1M[555;17;1M[555;16;1M[555;15;1M[555;14;1M[      g task or / for commands                                                                              │
+                                                                                                                       │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯

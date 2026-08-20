@@ -408,12 +408,11 @@ body.dark-mode .signin-btn[aria-expanded="true"]{background:rgba(255,255,255,.16
    above it (z 130). Clicking it is handled by JS on the scrim element. */
 #nav-dd-scrim{
   position:fixed;inset:0;z-index:120;pointer-events:none;
-  -webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px);
-  background:rgba(255,255,255,.22);
+  background:rgba(255,255,255,.12);
   opacity:0;transition:opacity var(--tr);
 }
 #nav-dd-scrim.on{opacity:1;pointer-events:auto;}
-body.dark-mode #nav-dd-scrim{background:rgba(2,6,17,.32);}
+body.dark-mode #nav-dd-scrim{background:rgba(2,6,17,.18);}
 /* The list is one multi-column text flow: features (15) fills 3x5, small
    menus stay a single column. column-rule draws the LONG VERTICAL LINE
    between each column pair — the "long line in between" the owner asked for. */
@@ -644,6 +643,21 @@ body.dark-mode #nav-dd-scrim{background:rgba(2,6,17,.32);}
   position:absolute;inset:0;width:100%;height:100%;
   object-fit:cover;object-position:center;
   z-index:0;
+}
+/* NO-DRAG BACKGROUND IMAGES (OWNER 2026-08-17): the hero photo, the
+   showcase-card images and the photo-band photos are decorative surface
+   layers, NOT draggable objects — Edge/Chromium lets a user drag a page
+   <img> out of the layout and drop it into the search bar. These are made
+   inert: no native image drag (-webkit-user-drag), no selection
+   (user-select), clicks pass through (pointer-events:none — they sit
+   behind the text/overlay layers anyway), and no right-click image menu
+   (contextmenu is blocked in js/marketing.js, belt + braces with the
+   draggable="false" attribute on the markup). */
+.hero-photo, .hc-img img, .pb-img{
+  -webkit-user-drag:none;
+  user-select:none;
+  -webkit-user-select:none;
+  pointer-events:none;
 }
 /* navy gradient + gold/teal tints keep the H1 and CTAs high-contrast over the photo */
 .hero-overlay{
@@ -1169,15 +1183,15 @@ body.dark-mode #nav-dd-scrim{background:rgba(2,6,17,.32);}
 }
 .spy-label{
   font-size:.68rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
-  color:var(--text-secondary);
+  color:var(--text);
   opacity:1; /* always readable — the mini tracker */
   transition:opacity .2s,color .2s;
   white-space:nowrap;
 }
-.scroll-spy a.done .spy-label{opacity:.7;}
+.scroll-spy a.done .spy-label{opacity:.55;}
 .scroll-spy a.active .spy-label,
 .scroll-spy a:hover .spy-label{
-  color:var(--gold-deep);opacity:1;font-weight:700;
+  color:var(--gold);opacity:1;font-weight:700;
 }
 /* edge rail collapses into the existing hamburger drawer on phones */
 @media (max-width:880px){

@@ -47,14 +47,17 @@
     if (!p || closedByUs || typeof WebSocket === 'undefined') return;
     var proto = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
     var code = accessEvidence();
-    var url = proto + window.location.host + '/api/cloud/presence?project=' + encodeURIComponent(p) +
-      (code ? '&code=' + encodeURIComponent(code) : '');
+    var url = proto + window.location.host + '/api/cloud/presence?project=' + encodeURIComponent(p);
     var socket;
     try { socket = new WebSocket(url); } catch (e) { scheduleReconnect(); return; }
     ws = socket;
     socket.onopen = function() {
       failedOpens = 0;
       reconnectDelay = 1000;
+      // Send auth as first message (code never appears in the URL query string).
+      if (code) {
+        try { socket.send(JSON.stringify({ type: 'auth', code: code })); } catch (e) { /* ignore */ }
+      }
       startPing();
     };
     socket.onmessage = function(ev) {
@@ -80,6 +83,10 @@
         document.dispatchEvent(new CustomEvent('mmgr:rev-changed', {
           detail: { revision: msg.revision || null }
         }));
+      } else if (msg.type === 'auth_error') {
+        // Auth rejected by server — close and don't retry.
+        closedByUs = true;
+        try { socket.close(); } catch (e) { /* ignore */ }
       }
       // 'pong' is a keepalive ack — nothing to render.
     };

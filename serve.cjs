@@ -25,11 +25,14 @@ const REVIEWS = [];
 // becomes an invalid directive and the browser rejects the WHOLE policy,
 // silently breaking every inline script. Must match worker.js exactly.
 const INLINE_SCRIPT_HASHES = [
-  "'sha256-gCwlAVKUNamFRjZeFSwcBd1zxQs+/mZ2GoLF8lqT/II='",
+  "'sha256-LPhcYyVaGsoAWUYIPRyfwYSw2y82UmyNSa5ktKilmyA='",
+  "'sha256-reza4vd5o52LWNUf9lzK6WjApdstd5sm4xVx+lcnK2M='",
   "'sha256-o+0No2XpbES4E5QJh31mY9JsJFqSmE+B4x+z1fNPjVc='",
-  "'sha256-Jd4HFQYDoZo8X42G7dwI7h9WPPvRgUYBtXk8UPdTY3Q='",
+  "'sha256-knLs8LDuR5LRAqiVQWd+WvmZsVHhKn3TBzy0oSiOpCo='",
+  "'sha256-PcY9TdIJsXGVPic0Qujx0Ov+GCt9gZG0hEtBVRDiLiM='",
   "'sha256-9ajvGrjnsFPwCtr5PvlDV+SVKzwxAyNkRPQ3CTXRuCE='",
-  "'sha256-qbHZHLyhdEDRwWrA8/I8ty4xIjUv+L/+Y6/0cIXdkJo='",
+  "'sha256-M1k/xpZtk8+IXDnnJCQoWcNTYR/4suhhG2ZZnYYuLD8='",
+  "'sha256-8rpgpTSjx7LcpleTm7RwTJ+pzjvndpRVDPiapb2gNo8='",
   "'sha256-X90hx47K5Wed3kK6semkRqdr3BLX1r8wBn8iIhja0mU='",
   "'sha256-Oa7ON+9A164SSXhnxu08mFn0V9Tj2SlZ2SzFXFoqKNE='",
   "'sha256-bNdw0+64xL2//htoz+u3InKWYZNEHO/CnuZqtcJIBgU='",
@@ -57,7 +60,8 @@ const SECURITY_HEADERS = {
   'X-Content-Type-Options': 'nosniff',
   'X-Frame-Options': 'DENY',
   'Referrer-Policy': 'strict-origin-when-cross-origin',
-  'Permissions-Policy': 'camera=(), microphone=(self), geolocation=(), payment=(), usb=()'
+  'Permissions-Policy': 'camera=(), microphone=(self), geolocation=(), payment=(), usb=()',
+  'Strict-Transport-Security': 'max-age=31536000; includeSubDomains'
 };
 
 // WHISPER-CSP (QA-STRESS DIR-2 finding, Aug 2026): the bundled offline

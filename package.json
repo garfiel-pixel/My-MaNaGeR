@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "private": true,
   "description": "My MaNaGeR — offline-first construction PM workspace (Cloudflare Workers static assets).",
+  "devDependencies": {
+    "wrangler": "^4.120.0"
+  },
   "scripts": {
     "serve": "node serve.cjs",
     "mcp": "node mcp/server.mjs",
@@ -27,6 +30,6 @@
     "qa:t9-adoption": "node tools/qa-t9-adoption.cjs",
     "import:mcp": "node tools/import-mcp-changelog.cjs",
     "predeploy": "npm run verify",
-    "deploy": "npm run predeploy && npx wrangler deploy"
+    "deploy": "npm run predeploy && rm -rf /tmp/mmgr-deploy && mkdir -p /tmp/mmgr-deploy && tar --exclude='.git' --exclude='.wrangler' --exclude='node_modules' --exclude='.agents' --exclude='_archive' --exclude='mcp' --exclude='.dev.vars*' --exclude='.gitattributes' --exclude='.gitignore' --exclude='*.md' --exclude='*.json' -cf - . | tar -xf - -C /tmp/mmgr-deploy && cp package.json wrangler.jsonc /tmp/mmgr-deploy/ && cd /tmp/mmgr-deploy && npm install --ignore-scripts --no-audit --no-fund && npx wrangler deploy"
   }
 }

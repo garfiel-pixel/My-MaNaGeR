@@ -120,23 +120,31 @@ body.glass-premium .wrap{position:relative;z-index:1;}
 .pf-meta{font-size:.68rem;color:var(--slate);margin-top:4px;}
 .pf-reason{font-size:.66rem;color:var(--slate);margin-top:4px;font-style:italic;}
 </style>
-</head>
-<body class="db-page">
-<script src="js/mmgr-theme.js" data-sync="1"></script>
 <script>
 /* Device-level theme (shared across launcher, admin, and app): applied before
    first paint from the same localStorage slot every theme toggle writes, so a
-   dark choice made anywhere persists everywhere with no flash. Kept inline on
-   purpose — these pages don't load the shared mmgr-*.js suite.
+   dark choice made anywhere persists everywhere with no flash. Kept inline in
+   <head> so the class is set before any content renders (FOUC prevention).
    NEW-UI-CREATION-BRIEF I1 follow-up: on desktop (>=769px) the launcher rail
    is PINNED OPEN by default — body.side-open is set pre-paint here so there
    is no layout flash; the hamburger toggles it (closes/reopens) on every
    viewport. Mobile stays drawer-closed by default. */
 (function(){ try {
-  if (localStorage.getItem('mmgr_theme') === 'dark') document.body.classList.add('dark-mode');
-  if (window.matchMedia && window.matchMedia('(min-width:769px)').matches) document.body.classList.add('side-open');
+  if (localStorage.getItem('mmgr_theme') === 'dark') document.documentElement.classList.add('dark-mode');
+  if (window.matchMedia && window.matchMedia('(min-width:769px)').matches) document.documentElement.classList.add('side-open');
 } catch (e) {} })();
 </script>
+</head>
+<body class="db-page">
+<script>
+/* Transfer classes from <html> to <body> (CSS selectors target body.*). */
+(function(){ try {
+  var h = document.documentElement;
+  if (h.classList.contains('dark-mode')) document.body.classList.add('dark-mode');
+  if (h.classList.contains('side-open')) document.body.classList.add('side-open');
+} catch (e) {} })();
+</script>
+<script src="js/mmgr-theme.js" data-sync="1"></script>
 
 <!-- DASHBOARD-UI-REFRESH-SPEC: dark-dashboard nav rail (app.html only —
      visible in dark mode; ≤768px it becomes an off-canvas drawer opened by
@@ -334,13 +342,13 @@ body.glass-premium .wrap{position:relative;z-index:1;}
 </div>
 
 <script src="projects-data.js"></script>
+<script src="js/mmgr-utils.js"></script>
 <script src="js/mmgr-portfolio.js"></script>
 <script src="js/mmgr-google-auth.js"></script>
 <script src="js/mmgr-cloud-dash.js"></script>
 <!-- Premium liquid-glass engine (same modules the project viewer uses).
      Loaded for the launcher's glass toggle + backdrop preview; Three.js is
      only fetched from the pinned CDN when the engine actually activates. -->
-<script src="js/mmgr-utils.js"></script>
 <script src="js/mmgr-viewport.js"></script>
 <script src="js/mmgr-glass.js"></script>
 <script>

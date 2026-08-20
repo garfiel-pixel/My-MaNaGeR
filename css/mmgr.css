@@ -13,7 +13,7 @@ svg.ico use{fill:inherit;stroke:inherit;}
   /* Light-first palette: crisp white cards on a cool-gray canvas, near-black
      text, restrained high-contrast accents. Dark mode is an opt-in override
      (body.dark-mode) — never the default presentation. */
-  --canvas:#f4f5f7;--card:#ffffff;--border:#e5e7eb;--text:#0f172a;--slate:#64748b;
+  --canvas:#f4f5f7;--card:#ffffff;--border:#e5e7eb;--text:#0f172a;--slate:#5a6b80;
   --gold:#b45309;--green:#047857;--danger:#dc2626;--amber:#c2410c;--blue:#2563eb;
   --purple:#8b5cf6;   /* DMAIC/quality accents */
   --gold-rgb:180,83,9;    /* rgba(var(--gold-rgb),a) — tokenized gold fills */
@@ -64,7 +64,7 @@ svg.ico use{fill:inherit;stroke:inherit;}
 
 /* ---- Dark Mode (opt-in only) ---- */
 body.dark-mode{
-  --canvas:#090a0f;--card:#12141c;--border:#222533;--text:#e2e8f0;--slate:#64748b;
+  --canvas:#090a0f;--card:#12141c;--border:#222533;--text:#e2e8f0;--slate:#8494a7;
   --gold:#f59e0b;--green:#10b981;--danger:#ef4444;--amber:#f59e0b;--blue:#3b82f6;
   --purple:#a78bfa;
   --gold-rgb:245,158,11;

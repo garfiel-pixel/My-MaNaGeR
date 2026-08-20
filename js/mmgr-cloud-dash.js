@@ -28,11 +28,11 @@
   const RAIL_PLAN = 'rail-plan';
 
   function $(id) { return document.getElementById(id); }
-  function escapeHtml(s) {
+  var escapeHtml = (MMGR.Utils && MMGR.Utils.escapeHtml) || function(s) {
     return String(s === undefined || s === null ? '' : s)
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-  }
+  };
   function fmtDate(iso) {
     if (!iso) return 'never synced';
     try {

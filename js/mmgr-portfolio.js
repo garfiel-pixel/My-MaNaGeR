@@ -201,11 +201,11 @@ var MMGR = window.MMGR || {};
     }).join('');
   }
 
-  function escapeHtml(str) {
+  var escapeHtml = (MMGR.Utils && MMGR.Utils.escapeHtml) || function(str) {
     const d = document.createElement('div');
     d.textContent = str == null ? '' : String(str);
     return d.innerHTML;
-  }
+  };
 
   // ---- API ----
   ns.Portfolio = {

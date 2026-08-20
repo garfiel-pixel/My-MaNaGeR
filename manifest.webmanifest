@@ -13,16 +13,16 @@
       "src": "icon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
-      "purpose": "any"
+      "purpose": "any maskable"
     },
     {
-      "src": "primary icon.png",
+      "src": "primary-icon.png",
       "sizes": "473x483",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "high contrast icon.png",
+      "src": "high-contrast-icon.png",
       "sizes": "676x369",
       "type": "image/png",
       "purpose": "any"

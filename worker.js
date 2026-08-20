@@ -97,7 +97,11 @@ const HEADERS = {
   'X-Frame-Options': 'DENY',
   'Referrer-Policy': 'strict-origin-when-cross-origin',
   'Permissions-Policy': 'camera=(), microphone=(self), geolocation=(), payment=(), usb=()',
-  'Strict-Transport-Security': 'max-age=31536000; includeSubDomains'
+  'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
+  // §5.1 audit fix: COOP/CORP headers prevent cross-origin window embedding
+  // and resource loading — defense-in-depth alongside the CSP frame-ancestors.
+  'Cross-Origin-Opener-Policy': 'same-origin',
+  'Cross-Origin-Resource-Policy': 'same-origin'
 };
 
 // SEO-FILES (2026-08-17): robots.txt and sitemap.xml live as real files at
@@ -3734,6 +3738,7 @@ async function evaluateWebhooks(env) {
 
 // ---- /api/auth/* routes --------------------------------------------------
 async function handleApi(request, env, url) {
+  try {
   const path = url.pathname;
 
   // WEBHOOK EXEMPTION (billing tier): LemonSqueezy posts server-to-server
@@ -4199,6 +4204,12 @@ async function handleApi(request, env, url) {
   }
 
   return json({ ok: false, error: 'not found' }, 404);
+  } catch (e) {
+    // §3.2 audit fix: unhandled API exceptions now return 500 with logging
+    // instead of silently becoming a misleading 404.
+    console.error('API unhandled error:', e && e.message);
+    return json({ ok: false, error: 'internal server error' }, 500);
+  }
 }
 
 /* ============================================================

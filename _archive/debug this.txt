@@ -1,0 +1,25 @@
+
+  CSP 14/14, SW v149 > 54 assets, hidden 14 pages, skills 17/17 -- all green. Now let me run qa-marketing.
+
+  $ node qa-marketing.cjs 2>&1 (2m timeout)
+  [FAIL] mkt-01 homepage: glass header + brand render  <-- {"val":false}
+  [FAIL] mkt-02 homepage: hero + 2 CTAs  <-- {"val":false}
+  [FAIL] mkt-03 homepage: 15 feature cards (solid content layer)  <-- {"val":false,"n":0,"glassOnCards":false}
+  [FAIL] mkt-04 homepage: 4 how-it-works steps  <-- {"val":false,"n":0}
+  [FAIL] mkt-05 homepage: guide teaser band + FAQ + footer  <-- {"val":false}
+  Show 26 more lines
+
+  • Thinking
+    The qa-marketing harness is failing a lot. This is likely because the local server isn't running — the
+    harness is probably trying to connect to serve.cjs at localhost:8765 but the server isn't started. Let me
+    check and start the server first.
+
+  The harness is failing because the local server isn't running. Let me start it first.
+
+  $ taskkill //F //IM node.exe 2>/dev/null; sleep 1; nohup node serve.cjs > /tmp/serve.log 2>&1 & sleep 3 && curl -s
+  -o /dev/null -w "%{http_code}" http://localhost:8765/ 2>&1
+ working...                                                                                              4m 54s  ■ Esc
+╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│                                                                                                                      │
+│   Enter a coding task or / for commands                                                                              │
+PS C:\Users\Garfield\Downloads\mymanager-fixed> [555;53;9M[555;46;7M[555;42;6M[555;40;6M[555;40;5M[555;39;5M[555;38;5M[555;36;4M[555;35;4M[555;35;3M[555;34;3M[555;33;3M[555;31;2M[555;30;2M[555;29;2M[555;29;3M[555;30;3M[555;31;3M[555;33;3M[555;36;3M[555;39;3M[555;42;3M[555;44;3M[555;50;3M[555;51;3M[555;51;4M[555;52;4M[555;51;4M[555;50;4M[555;49;4M[555;48;4M[555;47;4M[555;45;4M[555;43;4M[555;42;4M[555;41;4M[555;40;3M[555;39;3M[555;38;3M[555;35;3M[555;32;4M[555;29;4M[555;25;4M[555;20;4M[555;17;4M[555;13;4M[555;12;4M[555;12;3M[555;12;2M[555;13;2M[555;13;1M[555;14;1M[

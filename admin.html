@@ -151,18 +151,24 @@ pre.snippet{background:#f8fafc;border:1px solid var(--border);border-radius:6px;
 
 @media(max-width:600px){header{padding:14px 18px;}main{padding:20px 16px 60px;}.prow-top{flex-direction:column;}}
 </style>
-</head>
-<body>
-<script src="js/mmgr-theme.js" data-sync="1"></script>
 <script>
 /* Device-level theme (shared across launcher, admin, and app): applied before
    first paint from the same localStorage slot every theme toggle writes, so a
    dark choice made anywhere persists everywhere — the gate screens included.
-   Kept inline on purpose — these pages don't load the shared mmgr-*.js suite. */
+   Kept inline in <head> so the class is set before any content renders (FOUC prevention). */
 (function(){ try {
-  if (localStorage.getItem('mmgr_theme') === 'dark') document.body.classList.add('dark-mode');
+  if (localStorage.getItem('mmgr_theme') === 'dark') document.documentElement.classList.add('dark-mode');
 } catch (e) {} })();
 </script>
+</head>
+<body>
+<script>
+/* Transfer dark-mode from <html> to <body> (CSS selectors target body.dark-mode). */
+(function(){ try {
+  if (document.documentElement.classList.contains('dark-mode')) document.body.classList.add('dark-mode');
+} catch (e) {} })();
+</script>
+<script src="js/mmgr-theme.js" data-sync="1"></script>
 
 <!-- ═══ GATE: first-run password setup ═══ -->
 <div class="gatewrap" id="setup-screen">

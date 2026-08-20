@@ -58,12 +58,15 @@
 // WHOLE policy — silently breaking every inline script (verified the hard
 // way during implementation; the qa battery catches it via console errors).
 const INLINE_SCRIPT_HASHES = [
-  "'sha256-gCwlAVKUNamFRjZeFSwcBd1zxQs+/mZ2GoLF8lqT/II='", // project.html (early-apply theme snippet)
-  "'sha256-o+0No2XpbES4E5QJh31mY9JsJFqSmE+B4x+z1fNPjVc='", // project.html
-  "'sha256-Jd4HFQYDoZo8X42G7dwI7h9WPPvRgUYBtXk8UPdTY3Q='", // app.html (early-apply theme snippet + desktop rail-open default)
-  "'sha256-9ajvGrjnsFPwCtr5PvlDV+SVKzwxAyNkRPQ3CTXRuCE='", // app.html (launcher + 2026-08-15: rail-head hamburger toggle + pill toast(); 2026-08-16: dash-cleanup + T5 Google-icon fix — openSignIn() calls GoogleAuth.ensureGisButton() + CLOUD-CODES-AND-DELETE — 'Have a code?' code-entry card (cloudCodeOpen: POST /api/cloud/codes/lookup → /load with role header → seed session → open project.html))
-  "'sha256-qbHZHLyhdEDRwWrA8/I8ty4xIjUv+L/+Y6/0cIXdkJo='", // admin.html (early-apply theme snippet)
-  "'sha256-X90hx47K5Wed3kK6semkRqdr3BLX1r8wBn8iIhja0mU='", // admin.html (2026-08-15: pill toast() + rail sign-in/customize + Import Project + Publish to Cloud + cloud-code adoption + sign-in routing from publish; 2026-08-16: dash-cleanup + BUG-5 cloud publish fix + T5 Google-icon fix + CLOUD-CODES-AND-DELETE — delete-with-Undo toast (soft delete/restore), per-row Codes manager (editor/viewer create/list/revoke), honest cloud-admin error copy; STABILIZATION 2026-08-16 — delete-link coherence: local delete cascades on cloudId alone (session fallback), cloud-admin list renders the tombstone 'Deleted' state with Undo + Delete permanently (purge) + auto-refresh, hamburger rail reveal fix, dash-free purge confirm copy)
+  "'sha256-LPhcYyVaGsoAWUYIPRyfwYSw2y82UmyNSa5ktKilmyA='", // project.html (head theme snippet — FOUC prevention)
+  "'sha256-reza4vd5o52LWNUf9lzK6WjApdstd5sm4xVx+lcnK2M='", // project.html (body dark-mode transfer)
+  "'sha256-o+0No2XpbES4E5QJh31mY9JsJFqSmE+B4x+z1fNPjVc='", // project.html (main inline script)
+  "'sha256-knLs8LDuR5LRAqiVQWd+WvmZsVHhKn3TBzy0oSiOpCo='", // app.html (head theme + rail-open snippet — FOUC prevention)
+  "'sha256-PcY9TdIJsXGVPic0Qujx0Ov+GCt9gZG0hEtBVRDiLiM='", // app.html (body class transfer)
+  "'sha256-9ajvGrjnsFPwCtr5PvlDV+SVKzwxAyNkRPQ3CTXRuCE='", // app.html (main inline script)
+  "'sha256-M1k/xpZtk8+IXDnnJCQoWcNTYR/4suhhG2ZZnYYuLD8='", // admin.html (head theme snippet — FOUC prevention)
+  "'sha256-8rpgpTSjx7LcpleTm7RwTJ+pzjvndpRVDPiapb2gNo8='", // admin.html (body dark-mode transfer)
+  "'sha256-X90hx47K5Wed3kK6semkRqdr3BLX1r8wBn8iIhja0mU='", // admin.html (main inline script)
   "'sha256-Oa7ON+9A164SSXhnxu08mFn0V9Tj2SlZ2SzFXFoqKNE='", // dashboard.html
   "'sha256-bNdw0+64xL2//htoz+u3InKWYZNEHO/CnuZqtcJIBgU='", // seed-test.html
   "'sha256-AxkduQ155AQ7I921Ow+mZyri0uQY4ygsDy1i/x/xbCc='", // mymanager-field-guide.html
@@ -93,7 +96,8 @@ const HEADERS = {
   'X-Content-Type-Options': 'nosniff',
   'X-Frame-Options': 'DENY',
   'Referrer-Policy': 'strict-origin-when-cross-origin',
-  'Permissions-Policy': 'camera=(), microphone=(self), geolocation=(), payment=(), usb=()'
+  'Permissions-Policy': 'camera=(), microphone=(self), geolocation=(), payment=(), usb=()',
+  'Strict-Transport-Security': 'max-age=31536000; includeSubDomains'
 };
 
 // SEO-FILES (2026-08-17): robots.txt and sitemap.xml live as real files at
@@ -672,7 +676,6 @@ const CLOUD_RATE = {
   // bucket — cheap read, generous limit.
   reviews: { max: 10, windowMs: 60000 }
 };
-const _cloudBuckets = new Map();
 async function cloudRateKey(request, headerNames) {
   const ip = request.headers.get('CF-Connecting-IP');
   if (ip) return 'ip:' + ip;
@@ -690,38 +693,35 @@ async function cloudRateKey(request, headerNames) {
   }
   return 'anon';
 }
-function cloudRateAllow(key, cfg) {
+async function cloudRateCheck(request, bucket, env) {
+  const headers = bucket === 'recover' ? ['X-Owner-Code'] : ['X-Owner-Code', 'X-Editor-Code'];
+  const key = await cloudRateKey(request, headers);
+  const ns = bucket + ':' + key;
+  // Cloudflare Rate Limiting binding: per-location, backed by a shared store.
+  // Falls back to the in-memory Map when the binding is unavailable (local dev).
+  if (env && env.RATE_LIMITER) {
+    const { success } = await env.RATE_LIMITER.limit({ key: ns });
+    if (!success) return { limited: true, retryAfter: 60 };
+    return { limited: false };
+  }
+  // Fallback: in-memory sliding-window (per-isolate, best-effort).
+  const cfg = CLOUD_RATE[bucket] || CLOUD_RATE.general;
   const now = Date.now();
-  let list = _cloudBuckets.get(key);
-  if (!list) { list = []; _cloudBuckets.set(key, list); }
+  let list = _cloudBuckets.get(ns);
+  if (!list) { list = []; _cloudBuckets.set(ns, list); }
   while (list.length && list[0] <= now - cfg.windowMs) list.shift();
   if (list.length >= cfg.max) {
-    return { allowed: false, retryAfter: Math.max(1, Math.ceil((list[0] + cfg.windowMs - now) / 1000)) };
+    return { limited: true, retryAfter: Math.max(1, Math.ceil((list[0] + cfg.windowMs - now) / 1000)) };
   }
   list.push(now);
-  // Bound memory: drop buckets that have gone quiet for two windows.
   if (_cloudBuckets.size > 10000) {
     for (const [k, v] of _cloudBuckets) {
       if (!v.length || v[v.length - 1] <= now - cfg.windowMs * 2) _cloudBuckets.delete(k);
     }
   }
-  return { allowed: true };
-}
-async function cloudRateCheck(request, bucket) {
-  const cfg = CLOUD_RATE[bucket] || CLOUD_RATE.general;
-  const headers = bucket === 'recover' ? ['X-Owner-Code'] : ['X-Owner-Code', 'X-Editor-Code'];
-  const key = await cloudRateKey(request, headers);
-  // BUGFIX (STABILIZATION 2026-08-16): the sliding-window slots are stored in
-  // one shared map keyed only by the request key ('anon' / 'ip:...'), so every
-  // bucket raced on the SAME slot list — general-bucket traffic (e.g. the
-  // public reviews page's GETs) consumed the reviews bucket's 10/min budget
-  // and could 429 a human's POST before they ever submitted. Namespacing the
-  // key by bucket makes each limit independent, as intended.
-  const ns = bucket + ':' + key;
-  const r = cloudRateAllow(ns, cfg);
-  if (!r.allowed) return { limited: true, retryAfter: r.retryAfter };
   return { limited: false };
 }
+const _cloudBuckets = new Map();
 function cloudRateLimited(retryAfter) {
   return new Response(JSON.stringify({ ok: false, error: 'too many requests — slow down and try again in a minute' }), {
     status: 429,
@@ -3744,6 +3744,26 @@ async function handleApi(request, env, url) {
     return handleBillingWebhook(request, env);
   }
 
+  // INTERNAL PRESENCE AUTH (presence DO calls this to validate a code).
+  // Only reachable via the Worker's own service binding (INTERNAL_AUTH),
+  // never from the public internet.
+  if (path === '/api/internal/presence-auth' && request.method === 'POST') {
+    try {
+      const body = await request.json();
+      const projectId = String(body.projectId || '').slice(0, 64);
+      const code = String(body.code || '').trim();
+      if (!projectId || !code) return json({ ok: false });
+      const row = await env.DB.prepare('SELECT owner_code_salt, owner_code_hash, google_sub FROM cloud_projects WHERE project_id = ?').bind(projectId).first();
+      if (!row) return json({ ok: false });
+      const hash = await hashOwnerCode(code, row.owner_code_salt);
+      if (codesEqual(hash, row.owner_code_hash)) return json({ ok: true, name: 'Owner' });
+      const ed = await cloudAuthEditor(request, env, projectId, code);
+      if (ed) return json({ ok: true, name: ed.label || 'Editor' });
+      if (await cloudManifestCodeOk(env, projectId, code)) return json({ ok: true, name: 'Viewer' });
+      return json({ ok: false });
+    } catch (e) { return json({ ok: false }); }
+  }
+
   // CORS POLICY (gap-audit item A2): enforce same-origin-only for the whole
   // API before any route logic runs. Cross-origin requests are rejected with
   // a plain 403 and no ACAO header is ever emitted on an API response.
@@ -3755,7 +3775,7 @@ async function handleApi(request, env, url) {
   // BEFORE the ASSETS binding, exactly like /api/auth/*, so they can never be
   // swallowed by the SPA fallback.
   if (path === '/api/cloud/projects') {
-    const rl = await cloudRateCheck(request, 'general');
+    const rl = await cloudRateCheck(request, 'general', env);
     if (rl.limited) return cloudRateLimited(rl.retryAfter);
     // POST = create (Phase 1); GET = session-gated owner project list (A5-3).
     if (request.method === 'POST') return handleCloudCreate(request, env);
@@ -3779,7 +3799,7 @@ async function handleApi(request, env, url) {
   }
   // CLOUD-CODES-AND-DELETE-DIRECTIVE: the launcher's single code door.
   if (path === '/api/cloud/codes/lookup' && request.method === 'POST') {
-    const rl = await cloudRateCheck(request, 'general');
+    const rl = await cloudRateCheck(request, 'general', env);
     if (rl.limited) return cloudRateLimited(rl.retryAfter);
     return handleCloudCodeLookup(request, env);
   }
@@ -3787,14 +3807,14 @@ async function handleApi(request, env, url) {
   // project from their own My Cloud Projects list.
   const cloudUnadoptMatch = path.match(/^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/adopt$/);
   if (cloudUnadoptMatch && request.method === 'DELETE') {
-    const rl = await cloudRateCheck(request, 'general');
+    const rl = await cloudRateCheck(request, 'general', env);
     if (rl.limited) return cloudRateLimited(rl.retryAfter);
     return handleCloudUnadopt(request, env, cloudUnadoptMatch[1]);
   }
   // DELETE /api/cloud/projects/:id — owner-only unlink (gap-audit item B10).
   const cloudUnlinkMatch = path.match(/^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})$/);
   if (cloudUnlinkMatch && request.method === 'DELETE') {
-    const rl = await cloudRateCheck(request, 'general');
+    const rl = await cloudRateCheck(request, 'general', env);
     if (rl.limited) return cloudRateLimited(rl.retryAfter);
     return handleCloudUnlink(request, env, cloudUnlinkMatch[1]);
   }
@@ -3803,7 +3823,7 @@ async function handleApi(request, env, url) {
   // /api/cloud route; both are owner-gated.
   const apiShapeMatch = path.match(/^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/api\/([a-z]+)$/);
   if (apiShapeMatch && request.method === 'GET') {
-    const rl = await cloudRateCheck(request, 'general');
+    const rl = await cloudRateCheck(request, 'general', env);
     if (rl.limited) return cloudRateLimited(rl.retryAfter);
     const shape = apiShapeMatch[2];
     if (!API_SHAPES[shape]) return json({ ok: false, error: 'unknown shape — use tasks, baseline, risks, weather, evm or portfolio' }, 404);
@@ -3811,14 +3831,14 @@ async function handleApi(request, env, url) {
   }
   const webhookListMatch = path.match(/^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/webhooks$/);
   if (webhookListMatch) {
-    const rl = await cloudRateCheck(request, 'general');
+    const rl = await cloudRateCheck(request, 'general', env);
     if (rl.limited) return cloudRateLimited(rl.retryAfter);
     if (request.method === 'POST') return handleWebhookCreate(request, env, webhookListMatch[1]);
     if (request.method === 'GET') return handleWebhookList(request, env, webhookListMatch[1]);
   }
   const webhookDelMatch = path.match(/^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/webhooks\/(\d+)$/);
   if (webhookDelMatch && request.method === 'DELETE') {
-    const rl = await cloudRateCheck(request, 'general');
+    const rl = await cloudRateCheck(request, 'general', env);
     if (rl.limited) return cloudRateLimited(rl.retryAfter);
     return handleWebhookDelete(request, env, webhookDelMatch[1], webhookDelMatch[2]);
   }
@@ -3828,7 +3848,7 @@ async function handleApi(request, env, url) {
   // dark }); R2-backed, no D1 migration. Runs before the ASSETS binding
   // like every /api/cloud route.
   if (path === '/api/cloud/prefs/theme') {
-    const rl = await cloudRateCheck(request, 'general');
+    const rl = await cloudRateCheck(request, 'general', env);
     if (rl.limited) return cloudRateLimited(rl.retryAfter);
     if (request.method === 'GET') return handleCloudPrefsGet(request, env);
     if (request.method === 'PUT') return handleCloudPrefsPut(request, env);
@@ -3839,7 +3859,7 @@ async function handleApi(request, env, url) {
   // per-project Presence Durable Object (wrangler.jsonc durable_objects
   // binding + migrations v1-presence).
   if (path === '/api/cloud/presence') {
-    const rl = await cloudRateCheck(request, 'general');
+    const rl = await cloudRateCheck(request, 'general', env);
     if (rl.limited) return cloudRateLimited(rl.retryAfter);
     return handlePresenceUpgrade(request, env, url);
   }
@@ -3849,7 +3869,7 @@ async function handleApi(request, env, url) {
   // owner-only list (the broadcast UI needs the count + freshness).
   const offlineListMatch = path.match(/^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/offline-copies$/);
   if (offlineListMatch) {
-    const rl = await cloudRateCheck(request, 'general');
+    const rl = await cloudRateCheck(request, 'general', env);
     if (rl.limited) return cloudRateLimited(rl.retryAfter);
     if (request.method === 'POST') return handleOfflineCopyRegister(request, env, offlineListMatch[1]);
     if (request.method === 'GET') return handleOfflineCopyList(request, env, offlineListMatch[1]);
@@ -3858,7 +3878,7 @@ async function handleApi(request, env, url) {
   // (owner, or the registering device itself).
   const offlineDelMatch = path.match(/^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/offline-copies\/([A-Za-z0-9-]{1,64})$/);
   if (offlineDelMatch && request.method === 'DELETE') {
-    const rl = await cloudRateCheck(request, 'general');
+    const rl = await cloudRateCheck(request, 'general', env);
     if (rl.limited) return cloudRateLimited(rl.retryAfter);
     return handleOfflineCopyDelete(request, env, offlineDelMatch[1], offlineDelMatch[2]);
   }
@@ -3867,20 +3887,20 @@ async function handleApi(request, env, url) {
   // one) sees only their own (status visibility on the source side).
   const reviewListMatch = path.match(/^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/reviews$/);
   if (reviewListMatch && request.method === 'GET') {
-    const rl = await cloudRateCheck(request, 'general');
+    const rl = await cloudRateCheck(request, 'general', env);
     if (rl.limited) return cloudRateLimited(rl.retryAfter);
     return handleReviewList(request, env, reviewListMatch[1], url.searchParams.get('mine') === '1');
   }
   // POST /reviews/:id/accept + /reviews/:id/reject — owner-only decisions.
   const reviewAcceptMatch = path.match(/^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/reviews\/(\d+)\/accept$/);
   if (reviewAcceptMatch && request.method === 'POST') {
-    const rl = await cloudRateCheck(request, 'general');
+    const rl = await cloudRateCheck(request, 'general', env);
     if (rl.limited) return cloudRateLimited(rl.retryAfter);
     return handleReviewAccept(request, env, reviewAcceptMatch[1], Number(reviewAcceptMatch[2]));
   }
   const reviewRejectMatch = path.match(/^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/reviews\/(\d+)\/reject$/);
   if (reviewRejectMatch && request.method === 'POST') {
-    const rl = await cloudRateCheck(request, 'general');
+    const rl = await cloudRateCheck(request, 'general', env);
     if (rl.limited) return cloudRateLimited(rl.retryAfter);
     return handleReviewReject(request, env, reviewRejectMatch[1], Number(reviewRejectMatch[2]));
   }
@@ -3889,7 +3909,7 @@ async function handleApi(request, env, url) {
   // changelog 'broadcast' entry so the audit trail shows it.
   const broadcastMatch = path.match(/^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/broadcast$/);
   if (broadcastMatch && request.method === 'POST') {
-    const rl = await cloudRateCheck(request, 'general');
+    const rl = await cloudRateCheck(request, 'general', env);
     if (rl.limited) return cloudRateLimited(rl.retryAfter);
     return handleCloudBroadcast(request, env, broadcastMatch[1]);
   }
@@ -3898,7 +3918,7 @@ async function handleApi(request, env, url) {
   // manual button).
   const autoBcMatch = path.match(/^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/auto-broadcast$/);
   if (autoBcMatch && request.method === 'PUT') {
-    const rl = await cloudRateCheck(request, 'general');
+    const rl = await cloudRateCheck(request, 'general', env);
     if (rl.limited) return cloudRateLimited(rl.retryAfter);
     return handleCloudAutoBroadcast(request, env, autoBcMatch[1]);
   }
@@ -3908,44 +3928,44 @@ async function handleApi(request, env, url) {
   // and admin cloud visibility. All cloud routes run before the ASSETS
   // binding, exactly like the Phase 1 routes above.
   if (path === '/api/cloud/sections' && request.method === 'GET') {
-    const rl = await cloudRateCheck(request, 'general');
+    const rl = await cloudRateCheck(request, 'general', env);
     if (rl.limited) return cloudRateLimited(rl.retryAfter);
     return handleCloudSections();
   }
   if (path === '/api/cloud/admin/projects' && request.method === 'GET') {
-    const rl = await cloudRateCheck(request, 'general');
+    const rl = await cloudRateCheck(request, 'general', env);
     if (rl.limited) return cloudRateLimited(rl.retryAfter);
     return handleAdminCloudList(request, env);
   }
   const cloudEditorsMatch = path.match(/^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/editors$/);
   if (cloudEditorsMatch) {
     const pid = cloudEditorsMatch[1];
-    const rl = await cloudRateCheck(request, 'general');
+    const rl = await cloudRateCheck(request, 'general', env);
     if (rl.limited) return cloudRateLimited(rl.retryAfter);
     if (request.method === 'POST') return handleCloudEditorCreate(request, env, pid);
     if (request.method === 'GET') return handleCloudEditorList(request, env, pid);
   }
   const cloudEditorDelMatch = path.match(/^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/editors\/(\d+)$/);
   if (cloudEditorDelMatch && request.method === 'DELETE') {
-    const rl = await cloudRateCheck(request, 'general');
+    const rl = await cloudRateCheck(request, 'general', env);
     if (rl.limited) return cloudRateLimited(rl.retryAfter);
     return handleCloudEditorRevoke(request, env, cloudEditorDelMatch[1], cloudEditorDelMatch[2]);
   }
   const cloudLogMatch = path.match(/^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/changelog$/);
   if (cloudLogMatch && request.method === 'GET') {
-    const rl = await cloudRateCheck(request, 'general');
+    const rl = await cloudRateCheck(request, 'general', env);
     if (rl.limited) return cloudRateLimited(rl.retryAfter);
     return handleCloudChangelogList(request, env, cloudLogMatch[1]);
   }
   const cloudImportMatch = path.match(/^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/changelog\/import$/);
   if (cloudImportMatch && request.method === 'POST') {
-    const rl = await cloudRateCheck(request, 'general');
+    const rl = await cloudRateCheck(request, 'general', env);
     if (rl.limited) return cloudRateLimited(rl.retryAfter);
     return handleCloudChangelogImport(request, env, cloudImportMatch[1]);
   }
   const cloudRevertMatch = path.match(/^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/changelog\/(\d+)\/revert$/);
   if (cloudRevertMatch && request.method === 'POST') {
-    const rl = await cloudRateCheck(request, 'general');
+    const rl = await cloudRateCheck(request, 'general', env);
     if (rl.limited) return cloudRateLimited(rl.retryAfter);
     return handleCloudChangelogRevert(request, env, cloudRevertMatch[1], cloudRevertMatch[2]);
   }
@@ -3966,12 +3986,12 @@ async function handleApi(request, env, url) {
   // the page renders everything via textContent so nothing can execute.
   if (path === '/api/reviews') {
     if (request.method === 'GET') {
-      const rl = await cloudRateCheck(request, 'general');
+      const rl = await cloudRateCheck(request, 'general', env);
       if (rl.limited) return cloudRateLimited(rl.retryAfter);
       return handleReviewsList(env);
     }
     if (request.method === 'POST') {
-      const rl = await cloudRateCheck(request, 'reviews');
+      const rl = await cloudRateCheck(request, 'reviews', env);
       if (rl.limited) return cloudRateLimited(rl.retryAfter);
       return handleReviewsCreate(request, env);
     }
@@ -4048,12 +4068,12 @@ async function handleApi(request, env, url) {
   // every /api/auth/* route; the auth rate bucket covers the brute-force
   // surface (see CLOUD_RATE above).
   if (path === '/api/auth/register' && request.method === 'POST') {
-    const rl = await cloudRateCheck(request, 'authRegister');
+    const rl = await cloudRateCheck(request, 'authRegister', env);
     if (rl.limited) return cloudRateLimited(rl.retryAfter);
     return handleAuthRegister(request, env);
   }
   if (path === '/api/auth/login' && request.method === 'POST') {
-    const rl = await cloudRateCheck(request, 'authLogin');
+    const rl = await cloudRateCheck(request, 'authLogin', env);
     if (rl.limited) return cloudRateLimited(rl.retryAfter);
     return handleAuthLogin(request, env);
   }
@@ -4061,7 +4081,7 @@ async function handleApi(request, env, url) {
   // only; revokes every OTHER session). Rides the login bucket: it is the
   // same credential surface (verifies the current password).
   if (path === '/api/auth/password' && request.method === 'POST') {
-    const rl = await cloudRateCheck(request, 'authLogin');
+    const rl = await cloudRateCheck(request, 'authLogin', env);
     if (rl.limited) return cloudRateLimited(rl.retryAfter);
     return handleAuthPasswordChange(request, env);
   }
@@ -4069,7 +4089,7 @@ async function handleApi(request, env, url) {
   // for destructive actions (in-project Delete Project, owner 2026-08-17).
   // Same credential surface + login bucket as the password change above.
   if (path === '/api/auth/verify-password' && request.method === 'POST') {
-    const rl = await cloudRateCheck(request, 'authLogin');
+    const rl = await cloudRateCheck(request, 'authLogin', env);
     if (rl.limited) return cloudRateLimited(rl.retryAfter);
     return handleAuthVerifyPassword(request, env);
   }
@@ -4079,17 +4099,17 @@ async function handleApi(request, env, url) {
   // origin gate above) and answers a generic message either way (no
   // existence leak).
   if (path === '/api/auth/verify' && request.method === 'POST') {
-    const rl = await cloudRateCheck(request, 'authToken');
+    const rl = await cloudRateCheck(request, 'authToken', env);
     if (rl.limited) return cloudRateLimited(rl.retryAfter);
     return handleAuthVerify(request, env);
   }
   if (path === '/api/auth/forgot' && request.method === 'POST') {
-    const rl = await cloudRateCheck(request, 'authForgot');
+    const rl = await cloudRateCheck(request, 'authForgot', env);
     if (rl.limited) return cloudRateLimited(rl.retryAfter);
     return handleAuthForgot(request, env);
   }
   if (path === '/api/auth/reset' && request.method === 'POST') {
-    const rl = await cloudRateCheck(request, 'authToken');
+    const rl = await cloudRateCheck(request, 'authToken', env);
     if (rl.limited) return cloudRateLimited(rl.retryAfter);
     return handleAuthReset(request, env);
   }
@@ -4097,7 +4117,7 @@ async function handleApi(request, env, url) {
   // 24h/single-use link (verify.html's recoverable error path). Rides the
   // authForgot bucket (same unauthenticated, quota-guarded surface).
   if (path === '/api/auth/resend-verify' && request.method === 'POST') {
-    const rl = await cloudRateCheck(request, 'authForgot');
+    const rl = await cloudRateCheck(request, 'authForgot', env);
     if (rl.limited) return cloudRateLimited(rl.retryAfter);
     return handleAuthResendVerify(request, env);
   }
@@ -4110,12 +4130,12 @@ async function handleApi(request, env, url) {
   // the ONLY writer of cloud_subscriptions) is routed before the same-
   // origin gate at the top of handleApi.
   if (path === '/api/billing/status' && request.method === 'GET') {
-    const rl = await cloudRateCheck(request, 'general');
+    const rl = await cloudRateCheck(request, 'general', env);
     if (rl.limited) return cloudRateLimited(rl.retryAfter);
     return handleBillingStatus(request, env);
   }
   if (path === '/api/billing/checkout' && request.method === 'POST') {
-    const rl = await cloudRateCheck(request, 'general');
+    const rl = await cloudRateCheck(request, 'general', env);
     if (rl.limited) return cloudRateLimited(rl.retryAfter);
     return handleBillingCheckout(request, env);
   }
@@ -4244,24 +4264,17 @@ async function handlePresenceUpgrade(request, env, url) {
       else { await cloudTimingSink(); return cloudForbidden(); } // linked to another account
     }
   }
-  // (b) Owner/editor code from the D1 row, or (c) published-manifest code.
+  // (b) Code-based auth: the code is sent as the first WebSocket message
+  // (not in the URL query string — codes must not appear in logs/history).
+  // The DO will validate via an internal Worker call.
   if (!authed) {
-    const code = String(url.searchParams.get('code') || '').trim();
-    if (code) {
-      const row = await env.DB.prepare('SELECT owner_code_salt, owner_code_hash FROM cloud_projects WHERE project_id = ?').bind(projectId).first();
-      if (row) {
-        const hash = await hashOwnerCode(code, row.owner_code_salt);
-        if (codesEqual(hash, row.owner_code_hash)) { authed = true; name = 'Owner'; }
-        else {
-          const ed = await cloudAuthEditor(request, env, projectId, code);
-          if (ed) { authed = true; name = ed.label || 'Editor'; }
-        }
-      } else if (await cloudManifestCodeOk(env, projectId, code)) {
-        authed = true; // published local project — anonymous viewer
-      }
-    }
+    const headers = new Headers(request.headers);
+    headers.set('X-Presence-Name', encodeURIComponent(name));
+    headers.set('X-Presence-Auth', 'required');
+    headers.set('X-Presence-Project', projectId);
+    const upgraded = new Request(request.url, { method: request.method, headers: headers });
+    return env.PRESENCE.get(env.PRESENCE.idFromName(projectId)).fetch(upgraded);
   }
-  if (!authed) { await cloudTimingSink(); return cloudForbidden(); }
   const headers = new Headers(request.headers);
   headers.set('X-Presence-Name', encodeURIComponent(name));
   const upgraded = new Request(request.url, { method: request.method, headers: headers });
@@ -4304,18 +4317,26 @@ export class Presence {
       return new Response('ok');
     }
     const name = decodeURIComponent(request.headers.get('X-Presence-Name') || 'Viewer');
+    const needsAuth = request.headers.get('X-Presence-Auth') === 'required';
+    const authProject = request.headers.get('X-Presence-Project') || '';
     const pair = new WebSocketPair();
     const id = crypto.randomUUID();
     const server = pair[1];
-    server.serializeAttachment({ id: id, name: name, since: Date.now(), lastSeen: Date.now() });
+    server.serializeAttachment({ id: id, name: name, since: Date.now(), lastSeen: Date.now(), authed: !needsAuth, authProject: authProject });
     this.state.acceptWebSocket(server);
-    const members = [];
-    for (const ws of this.state.getWebSockets()) {
-      const a = ws.deserializeAttachment();
-      if (a && a.id !== id) members.push({ id: a.id, name: a.name, since: a.since });
+    if (needsAuth) {
+      // Code-based auth: wait for the first message with the code.
+      // The client sends { type: 'auth', code: '...' } immediately on open.
+    } else {
+      // Session-based auth: validated by the Worker before forwarding.
+      const members = [];
+      for (const ws of this.state.getWebSockets()) {
+        const a = ws.deserializeAttachment();
+        if (a && a.id !== id) members.push({ id: a.id, name: a.name, since: a.since });
+      }
+      server.send(JSON.stringify({ type: 'init', self: id, members: members }));
+      this.broadcast(JSON.stringify({ type: 'join', id: id, name: name, since: Date.now() }), id);
     }
-    server.send(JSON.stringify({ type: 'init', self: id, members: members }));
-    this.broadcast(JSON.stringify({ type: 'join', id: id, name: name, since: Date.now() }), id);
     return new Response(null, { status: 101, webSocket: pair[0] });
   }
 
@@ -4323,16 +4344,47 @@ export class Presence {
     const now = Date.now();
     const att = ws.deserializeAttachment() || {};
     att.lastSeen = now;
+    try {
+      const data = JSON.parse(msg);
+      // Code-based auth: first message must be { type: 'auth', code }.
+      if (data && data.type === 'auth' && !att.authed) {
+        try {
+          const res = await this.env.INTERNAL_AUTH.fetch('https://presence.internal/auth', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ projectId: att.authProject, code: data.code })
+          });
+          const r = await res.json();
+          if (r.ok) {
+            att.authed = true;
+            att.name = r.name || att.name;
+            ws.serializeAttachment(att);
+            const members = [];
+            for (const w of this.state.getWebSockets()) {
+              const a = w.deserializeAttachment();
+              if (a && a.authed && a.id !== att.id) members.push({ id: a.id, name: a.name, since: a.since });
+            }
+            ws.send(JSON.stringify({ type: 'init', self: att.id, members: members }));
+            this.broadcast(JSON.stringify({ type: 'join', id: att.id, name: att.name, since: att.since }), att.id);
+          } else {
+            ws.send(JSON.stringify({ type: 'auth_error', error: 'invalid_code' }));
+            try { ws.close(4001, 'auth failed'); } catch (e) { /* ignore */ }
+          }
+        } catch (e) {
+          ws.send(JSON.stringify({ type: 'auth_error', error: 'auth_unavailable' }));
+          try { ws.close(4001, 'auth unavailable'); } catch (e2) { /* ignore */ }
+        }
+        ws.serializeAttachment(att);
+        return;
+      }
+      if (data && data.type === 'ping') { ws.send(JSON.stringify({ type: 'pong' })); }
+    } catch (e) { /* non-JSON frames are ignored */ }
     ws.serializeAttachment(att);
     // Sweep stale sockets (client died without a close frame) on activity.
     for (const w of this.state.getWebSockets()) {
       const a = w.deserializeAttachment();
-      if (a && now - (a.lastSeen || 0) > 75000) { try { w.close(4000, 'stale'); } catch (e) { /* already gone */ } }
+      if (a && now - (a.lastSeen || 0) > 75000) { try { w.close(4000, 'stale'); } catch (e2) { /* already gone */ } }
     }
-    try {
-      const data = JSON.parse(msg);
-      if (data && data.type === 'ping') { ws.send(JSON.stringify({ type: 'pong' })); }
-    } catch (e) { /* non-JSON frames are ignored */ }
   }
 
   async webSocketClose(ws, code, reason, wasClean) {

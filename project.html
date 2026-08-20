@@ -57,19 +57,27 @@
       clicks "Connect Google" in Settings > Controls. It is a device label,
       never a gate — offline/CSP-blocked loads degrade to a toast.
 -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' 'sha256-o+0No2XpbES4E5QJh31mY9JsJFqSmE+B4x+z1fNPjVc=' 'sha256-gCwlAVKUNamFRjZeFSwcBd1zxQs+/mZ2GoLF8lqT/II=' https://accounts.google.com https://unpkg.com; style-src 'self' 'unsafe-inline' https://accounts.google.com https://fonts.googleapis.com; img-src 'self' data:; font-src 'self' data:; connect-src 'self' https://api.open-meteo.com https://geocoding-api.open-meteo.com https://api.openai.com https://api.anthropic.com https://generativelanguage.googleapis.com https://github.com https://release-assets.githubusercontent.com https://accounts.google.com https://huggingface.co https://*.cdn.hf.co; frame-src https://accounts.google.com; base-uri 'self'; form-action 'self';">
-</head>
-<body>
-<script src="js/mmgr-theme.js" data-sync="1"></script>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' 'sha256-o+0No2XpbES4E5QJh31mY9JsJFqSmE+B4x+z1fNPjVc=' 'sha256-LPhcYyVaGsoAWUYIPRyfwYSw2y82UmyNSa5ktKilmyA=' 'sha256-reza4vd5o52LWNUf9lzK6WjApdstd5sm4xVx+lcnK2M=' https://accounts.google.com https://unpkg.com; style-src 'self' 'unsafe-inline' https://accounts.google.com https://fonts.googleapis.com; img-src 'self' data:; font-src 'self' data:; connect-src 'self' https://api.open-meteo.com https://geocoding-api.open-meteo.com https://api.openai.com https://api.anthropic.com https://generativelanguage.googleapis.com https://github.com https://release-assets.githubusercontent.com https://accounts.google.com https://huggingface.co https://*.cdn.hf.co; frame-src https://accounts.google.com; base-uri 'self'; form-action 'self';">
 <script>
 /* Device-level theme (shared across launcher, admin, and app): applied before
    first paint from the same localStorage slot every theme toggle writes, so a
-   dark choice made anywhere persists everywhere with no flash. Kept inline on
-   purpose — these pages don't load the shared mmgr-*.js suite. */
+   dark choice made anywhere persists everywhere with no flash. Kept inline in
+   <head> so the class is set before any content renders (FOUC prevention). */
 (function(){ try {
-  if (localStorage.getItem('mmgr_theme') === 'dark') document.body.classList.add('dark-mode');
+  if (localStorage.getItem('mmgr_theme') === 'dark') document.documentElement.classList.add('dark-mode');
 } catch (e) {} })();
 </script>
+</head>
+<body>
+<script>
+/* Transfer dark-mode from <html> to <body> (the CSS selectors target body.dark-mode). */
+(function(){ try {
+  if (document.documentElement.classList.contains('dark-mode')) {
+    document.body.classList.add('dark-mode');
+  }
+} catch (e) {} })();
+</script>
+<script src="js/mmgr-theme.js" data-sync="1"></script>
 
 <!-- Boot loading skeleton (hidden by App.init after first paint) -->
 <div id="boot-splash"><div class="bs-inner"><div class="bs-spin"></div><div>Loading project...</div></div></div>

@@ -12,6 +12,26 @@
 (function(){
   'use strict';
 
+  /* ---- decorative images are inert (OWNER 2026-08-17) ----
+     Edge/Chromium lets a user drag a page <img> out of the layout and drop
+     it into the search bar. The hero photo, showcase-card images and
+     photo-band photos are surface layers, not draggable objects: the markup
+     carries draggable="false", the CSS blocks -webkit-user-drag + selection
+     + pointer events, and this guard blocks the native dragstart and the
+     right-click image menu on them. Null-guarded — never throws. */
+  var NO_DRAG_IMGS = '.hero-photo, .hc-img img, .pb-img';
+  function lockDecorativeImages(){
+    var imgs = document.querySelectorAll(NO_DRAG_IMGS);
+    for (var i = 0; i < imgs.length; i++){
+      (function(img){
+        img.setAttribute('draggable', 'false');
+        img.addEventListener('dragstart', function(e){ e.preventDefault(); });
+        img.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+      })(imgs[i]);
+    }
+  }
+  lockDecorativeImages();
+
   /* ---- mobile menu ---- */
   var toggle = document.getElementById('nav-toggle');
   var menu = document.getElementById('mobile-menu');

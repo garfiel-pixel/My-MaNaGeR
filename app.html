@@ -760,7 +760,8 @@ function renderUserAvatar(user){
     btn.classList.remove('is-in');
     return;
   }
-  const initial = escapeHtml((user.name || user.email || '?').charAt(0).toUpperCase());
+  const _src = (user.name || user.email || user.sub || '?').replace(/^email:/i, '');
+  const initial = escapeHtml(_src.charAt(0).toUpperCase());
   const pic = user.picture ? '<img class="db-avatar-img" src="' + escapeHtml(user.picture) + '" alt="" referrerpolicy="no-referrer">' : '';
   if (ring) ring.innerHTML = pic || '<span class="db-avatar-init">' + initial + '</span>';
   if (dot) dot.hidden = false;

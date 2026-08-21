@@ -169,7 +169,8 @@ export class Presence {
   broadcast(message, exceptId) {
     for (const ws of this.state.getWebSockets()) {
       const a = ws.deserializeAttachment();
-      if (exceptId && a && a.id === exceptId) continue;
+      if (!a || !a.authed) continue;
+      if (exceptId && a.id === exceptId) continue;
       try { ws.send(message); } catch (e) { /* closing socket */ }
     }
   }

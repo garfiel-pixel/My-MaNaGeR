@@ -1006,24 +1006,28 @@ async function handleApi(request, env, url) {
     return handleBillingWebhook(request, env);
   }
 
-  // INTERNAL PRESENCE AUTH (presence DO calls this to validate a code).
-  // Only reachable via the Worker's own service binding (INTERNAL_AUTH),
-  // never from the public internet.
+  // INTERNAL PRESENCE AUTH — validates a code for WebSocket upgrade.
+  // Reached via the INTERNAL_AUTH service binding from the Presence DO,
+  // but also reachable as a public path. Rate-limited and hardened
+  // identically to every other auth path to prevent oracle probing.
   if (path === '/api/internal/presence-auth' && request.method === 'POST') {
+    const rl = await cloudRateCheck(request, 'general', env);
+    if (rl.limited) return cloudRateLimited(rl.retryAfter);
     try {
       const body = await request.json();
       const projectId = String(body.projectId || '').slice(0, 64);
       const code = String(body.code || '').trim();
-      if (!projectId || !code) return json({ ok: false });
+      if (!projectId || !code) { await Promise.all([cloudDummyHash(), cloudTimingSink()]); return json({ ok: false }); }
       const row = await env.DB.prepare('SELECT owner_code_salt, owner_code_hash, google_sub FROM cloud_projects WHERE project_id = ?').bind(projectId).first();
-      if (!row) return json({ ok: false });
+      if (!row) { await Promise.all([cloudDummyHash(), cloudTimingSink()]); return json({ ok: false }); }
       const hash = await hashOwnerCode(code, row.owner_code_salt);
       if (codesEqual(hash, row.owner_code_hash)) return json({ ok: true, name: 'Owner' });
       const ed = await cloudAuthEditor(request, env, projectId, code);
       if (ed) return json({ ok: true, name: ed.label || 'Editor' });
       if (await cloudManifestCodeOk(env, projectId, code)) return json({ ok: true, name: 'Viewer' });
+      await Promise.all([cloudDummyHash(), cloudTimingSink()]);
       return json({ ok: false });
-    } catch (e) { return json({ ok: false }); }
+    } catch (e) { await Promise.all([cloudDummyHash(), cloudTimingSink()]); return json({ ok: false }); }
   }
 
   // CORS POLICY (gap-audit item A2): enforce same-origin-only for the whole

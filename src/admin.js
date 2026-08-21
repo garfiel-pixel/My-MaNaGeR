@@ -4,7 +4,7 @@
    Extracted from worker.js. The admin endpoint lists ALL cloud
    projects with theme preferences surfaced per project.
    ============================================================ */
-import { json, codesEqual } from './lib/http.js';
+import { json, codesEqual, cloudDummyHash, cloudTimingSink } from './lib/http.js';
 
 const CLOUD_PREFS_PREFIX = 'prefs/';
 function cloudPrefsKey(sub) { return CLOUD_PREFS_PREFIX + sub + '.json'; }
@@ -14,7 +14,10 @@ export async function cloudAdminAuth(request, env) {
   const expected = env && typeof env.ADMIN_CODE === 'string' ? env.ADMIN_CODE.trim() : '';
   if (!expected) return { disabled: true };
   const code = String(request.headers.get('X-Admin-Code') || '').trim();
-  if (!code || !codesEqual(code, expected)) return null;
+  if (!code || !codesEqual(code, expected)) {
+    await Promise.all([cloudDummyHash(), cloudTimingSink()]);
+    return null;
+  }
   return { ok: true };
 }
 

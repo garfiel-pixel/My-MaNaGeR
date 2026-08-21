@@ -70,5 +70,6 @@
 <symbol id="i-palette" viewBox="0 0 24 24"><path d="M12 3a9 9 0 0 0 0 18c1.5 0 2-1 2-2 0-1.5-1.5-1.5-1.5-3 0-1.5 1-2.5 2.5-2.5H16a5 5 0 0 0 5-5c0-3-4-5.5-9-5.5z"/><circle cx="7.5" cy="11" r="1"/><circle cx="10" cy="7.5" r="1"/><circle cx="14.5" cy="7.5" r="1"/></symbol>
 <symbol id="i-palette" viewBox="0 0 24 24"><path d="M12 3a9 9 0 0 0 0 18h1.5a2 2 0 0 0 0-4H12a2 2 0 0 1 0-4h7a2 2 0 0 0 2-2A9 9 0 0 0 12 3z"/><circle cx="7.5" cy="10.5" r="0.6" fill="currentColor" stroke="none"/><circle cx="10.5" cy="7.5" r="0.6" fill="currentColor" stroke="none"/><circle cx="14.5" cy="7.5" r="0.6" fill="currentColor" stroke="none"/></symbol>
 <symbol id="i-star" viewBox="0 0 24 24"><path d="M12 3.5l2.6 5.4 5.9.9-4.3 4.1 1 5.9L12 17.1l-5.2 2.7 1-5.9L3.5 9.8l5.9-.9L12 3.5z"/></symbol>
+<symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><circle cx="12" cy="8" r="0.7" fill="currentColor" stroke="none"/></symbol>
 </defs>
 </svg>

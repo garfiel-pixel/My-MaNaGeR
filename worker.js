@@ -4,6 +4,7 @@ import { cloudAdminAuth, handleAdminCloudList } from './src/admin.js';
 import { handleReviewsCreate, handleReviewsList, handleReviewList, handleReviewAccept, handleReviewReject } from './src/reviews.js';
 import { handleCloudEditorCreate, handleCloudEditorList, handleCloudEditorRevoke } from './src/cloud/editors.js';
 import { handleCloudChangelogList, handleCloudChangelogRevert, handleCloudChangelogImport } from './src/cloud/changelog.js';
+import { handleCloudPrefsGet, handleCloudPrefsPut, cloudPrefsKey, cloudSanitizePalette, handleOfflineCopyRegister, handleOfflineCopyList, handleOfflineCopyDelete, handleCloudBroadcast, handleCloudAutoBroadcast } from './src/cloud/sync.js';
 import {
   json, cloudForbidden, cloudProjectDeleted, cloudTimingSink, cloudDummyHash,
   codesEqual, base64UrlEncode, base64UrlDecode, base64UrlToBytes, bytesToBase64Url,
@@ -768,54 +769,11 @@ async function handleCloudUnadopt(request, env, projectId) {
 // optional source of truth. A 403 here (no valid session) simply means the
 // client keeps its local cache. Same generic forbidden as the rest of the
 // API — nothing leaks about whether the account exists.
-const CLOUD_PREFS_PREFIX = 'prefs/';
-function cloudPrefsKey(sub) { return CLOUD_PREFS_PREFIX + sub + '.json'; }
-function cloudSanitizePalette(v) { return v === 'cyan' || v === 'default' ? v : null; }
 // SIDEBAR-HAMBURGER-TOGGLE-PLAN: the desktop sidebar layout lives in the SAME
 // R2 prefs blob as palette/dark — one session-gated endpoint serves the whole
 // device-preference set, so a signed-in account's layout follows across devices.
-function cloudSanitizeSidebar(v) { return v === 'on' || v === 'off' ? v : null; }
 
-async function handleCloudPrefsGet(request, env) {
-  const session = await readSession(request, env);
-  if (!session || !session.sub) return cloudForbidden();
-  const obj = await env.R2.get(cloudPrefsKey(session.sub));
-  if (!obj) return json({ ok: true, theme: { palette: 'default', dark: false, sidebar: null } });
-  let parsed = null;
-  try { parsed = JSON.parse(await obj.text()); } catch (e) { parsed = null; }
-  const palette = cloudSanitizePalette(parsed && parsed.palette) || 'default';
-  // sidebar is nullable — a pre-sidebar blob or an untouched account simply
-  // has no layout preference yet (client keeps its local default).
-  const sidebar = cloudSanitizeSidebar(parsed && parsed.sidebar);
-  return json({ ok: true, theme: { palette: palette, dark: !!(parsed && parsed.dark), sidebar: sidebar } });
-}
 
-async function handleCloudPrefsPut(request, env) {
-  const session = await readSession(request, env);
-  if (!session || !session.sub) return cloudForbidden();
-  // The payload is at most two tiny fields — reject anything bigger up front
-  // so a session-holding client can't stuff the endpoint (cheap hardening).
-  const cl = Number(request.headers.get('content-length') || 0);
-  if (cl > 2048) return json({ ok: false, error: 'payload too large' }, 413);
-  let body = null;
-  try { body = await request.json(); } catch (e) { return json({ ok: false, error: 'invalid JSON body' }, 400); }
-  const palette = cloudSanitizePalette(body && body.palette);
-  const dark = body && typeof body.dark === 'boolean' ? body.dark : null;
-  const sidebar = cloudSanitizeSidebar(body && body.sidebar);
-  if (palette === null && dark === null && sidebar === null) return json({ ok: false, error: 'nothing to save (palette must be "default"|"cyan", dark a boolean, sidebar "on"|"off")' }, 400);
-  const key = cloudPrefsKey(session.sub);
-  let cur = { palette: 'default', dark: false, sidebar: null };
-  const existing = await env.R2.get(key);
-  if (existing) { try { const p = JSON.parse(await existing.text()); if (p) cur = p; } catch (e) { /* keep defaults */ } }
-  const next = {
-    palette: palette === null ? (cloudSanitizePalette(cur.palette) || 'default') : palette,
-    dark: dark === null ? !!cur.dark : dark,
-    sidebar: sidebar === null ? (cloudSanitizeSidebar(cur.sidebar) || null) : sidebar,
-    updatedAt: new Date().toISOString()
-  };
-  await env.R2.put(key, JSON.stringify(next), { httpMetadata: { contentType: 'application/json' } });
-  return json({ ok: true, theme: { palette: next.palette, dark: next.dark, sidebar: next.sidebar } });
-}
 
 // POST /api/cloud/projects  { projectId, name? }
 // Creates the D1 row, generates the owner code (returned ONCE), links the
@@ -1310,117 +1268,27 @@ async function handleCloudUnlink(request, env, projectId) {
 // id is client-supplied (a stable per-device id, e.g. a localStorage uuid)
 // and shape-checked. Returns the copy id + the current cloud revision so
 // the client can store its starting last_cloud_rev without a second call.
-async function handleOfflineCopyRegister(request, env, projectId) {
-  const read = await readCloudBody(request);
-  if (read.tooLarge) return json({ ok: false, error: 'body too large' }, 413);
-  if (read.bad || !read.body || typeof read.body !== 'object') return json({ ok: false, error: 'bad request' }, 400);
-  const deviceId = String(read.body.deviceId || '').trim();
-  if (!deviceId || deviceId.length > 64 || !/^[A-Za-z0-9._:-]{1,64}$/.test(deviceId)) {
-    return json({ ok: false, error: 'deviceId is required (letters, numbers, . _ : -)' }, 400);
-  }
-  const auth = await cloudAuthAnyAccess(request, env, projectId);
-  if (!auth) return cloudForbidden();
-  const row = await env.DB.prepare('SELECT deleted_at, updated_at FROM cloud_projects WHERE project_id = ?').bind(projectId).first();
-  if (!row) return cloudForbidden();
-  if (row.deleted_at) return cloudProjectDeleted();
-  const now = new Date().toISOString();
-  const copyId = crypto.randomUUID();
-  const res = await env.DB.prepare(
-    'INSERT INTO offline_copies (id, project_id, device_id, created_at) VALUES (?,?,?,?) ' +
-    'ON CONFLICT(project_id, device_id) DO NOTHING'
-  ).bind(copyId, projectId, deviceId, now).run();
-  // DO NOTHING keeps the EXISTING row (stable id) when a device re-registers:
-  // the copy's id is the client's handle for deleting its own copy, so it
-  // must never churn. changes = 0 on conflict -> return the original id.
-  const finalId = (res.meta && res.meta.changes > 0)
-    ? copyId // inserted
-    : (await env.DB.prepare('SELECT id FROM offline_copies WHERE project_id = ? AND device_id = ?').bind(projectId, deviceId).first() || {}).id;
-  return json({ ok: true, copyId: finalId || copyId, deviceId: deviceId, registeredAt: now, revision: row.updated_at || null });
-}
 
 // GET /api/cloud/projects/:id/offline-copies — owner-only list of every
 // registered offline copy (id, device, registered, last pulled + the rev
 // it last pulled) plus the project's current revision and auto-broadcast
 // flag, so the owner's Broadcast UI can show count + freshness.
-async function handleOfflineCopyList(request, env, projectId) {
-  const auth = await cloudAuthOwnerEither(request, env, projectId);
-  if (!auth) return cloudForbidden();
-  const row = await env.DB.prepare('SELECT deleted_at, updated_at, auto_broadcast FROM cloud_projects WHERE project_id = ?').bind(projectId).first();
-  if (!row) return cloudForbidden();
-  if (row.deleted_at) return cloudProjectDeleted();
-  const rows = await env.DB.prepare(
-    'SELECT id, device_id, created_at, last_pulled_at, last_cloud_rev FROM offline_copies WHERE project_id = ? ORDER BY created_at ASC'
-  ).bind(projectId).all();
-  const copies = (rows.results || []).map(function(r) {
-    return {
-      id: r.id, deviceId: r.device_id, createdAt: r.created_at,
-      lastPulledAt: r.last_pulled_at, lastCloudRev: r.last_cloud_rev
-    };
-  });
-  return json({ ok: true, copies: copies, revision: row.updated_at || null, autoBroadcast: !!row.auto_broadcast });
-}
 
 // DELETE /api/cloud/projects/:id/offline-copies/:copyId — unregister a
 // copy. Owner (code or session) may remove any copy; the registering device
 // itself may also remove its own (deviceId in the body). Same generic 403
 // for everyone without the right.
-async function handleOfflineCopyDelete(request, env, projectId, copyId) {
-  const owner = await cloudAuthOwnerEither(request, env, projectId);
-  let deviceId = '';
-  if (!owner) {
-    const read = await readCloudBody(request);
-    if (!read.bad && read.body && typeof read.body === 'object') deviceId = String(read.body.deviceId || '').trim();
-    if (!deviceId) return cloudForbidden();
-  }
-  const where = owner
-    ? await env.DB.prepare('SELECT id FROM offline_copies WHERE id = ? AND project_id = ?').bind(copyId, projectId).first()
-    : await env.DB.prepare('SELECT id FROM offline_copies WHERE id = ? AND project_id = ? AND device_id = ?').bind(copyId, projectId, deviceId).first();
-  if (!where) return json({ ok: false, error: 'offline copy not found' }, 404);
-  await env.DB.prepare('DELETE FROM offline_copies WHERE id = ? AND project_id = ?').bind(copyId, projectId).run();
-  return json({ ok: true, removed: copyId });
-}
 
 // POST /api/cloud/projects/:id/broadcast — owner-only MANUAL broadcast:
 // pushes the project's current revision to every connected copy via the
 // Presence DO (connected copies refresh instantly; offline copies pick up
 // the new rev on their next meta/load and show the Update icon), and logs
 // a changelog entry type 'broadcast' so the audit trail shows it.
-async function handleCloudBroadcast(request, env, projectId) {
-  const auth = await cloudAuthOwnerEither(request, env, projectId);
-  if (!auth) return cloudForbidden();
-  const row = await env.DB.prepare('SELECT deleted_at, updated_at FROM cloud_projects WHERE project_id = ?').bind(projectId).first();
-  if (!row) return cloudForbidden();
-  if (row.deleted_at) return cloudProjectDeleted();
-  const now = new Date().toISOString();
-  const revision = row.updated_at || now;
-  await presencePushRevChanged(env, projectId, revision);
-  const cnt = await env.DB.prepare('SELECT COUNT(*) AS n FROM offline_copies WHERE project_id = ?').bind(projectId).first();
-  const copies = cnt ? Number(cnt.n || 0) : 0;
-  // Changelog 'broadcast' entry — not revertible (it is a push event, not a
-  // content change), but visible in the owner's history.
-  await env.DB.prepare(
-    'INSERT INTO cloud_changelog (project_id, entry_type, actor_type, actor_label, section, diffs_json, snapshot_key, created_at) VALUES (?,?,?,?,?,?,?,?)'
-  ).bind(projectId, 'broadcast', 'owner', auth.label || 'Owner', null, null, null, now).run();
-  return json({ ok: true, broadcastAt: now, revision: revision, copies: copies });
-}
 
 // PUT /api/cloud/projects/:id/auto-broadcast  { enabled }
 // Owner-only per-project switch: when enabled, EVERY save also broadcasts
 // its new revision to all registered copies (the auto form of the manual
 // button — the owner "turns on auto broadcast for that specific project").
-async function handleCloudAutoBroadcast(request, env, projectId) {
-  const auth = await cloudAuthOwnerEither(request, env, projectId);
-  if (!auth) return cloudForbidden();
-  const read = await readCloudBody(request);
-  if (read.tooLarge) return json({ ok: false, error: 'body too large' }, 413);
-  if (read.bad || !read.body || typeof read.body !== 'object') return json({ ok: false, error: 'bad request' }, 400);
-  const enabled = read.body.enabled === true || read.body.enabled === 1;
-  const row = await env.DB.prepare('SELECT deleted_at FROM cloud_projects WHERE project_id = ?').bind(projectId).first();
-  if (!row) return cloudForbidden();
-  if (row.deleted_at) return cloudProjectDeleted();
-  await env.DB.prepare('UPDATE cloud_projects SET auto_broadcast = ? WHERE project_id = ?').bind(enabled ? 1 : 0, projectId).run();
-  return json({ ok: true, enabled: enabled });
-}
 
 // ---- REVIEW QUEUE (2026-08-17, approved "always on") ---------------------
 // The owner's gate for changes from a non-owner source (editor saves +
@@ -2408,7 +2276,7 @@ async function handleApi(request, env, url) {
   if (broadcastMatch && request.method === 'POST') {
     const rl = await cloudRateCheck(request, 'general', env);
     if (rl.limited) return cloudRateLimited(rl.retryAfter);
-    return handleCloudBroadcast(request, env, broadcastMatch[1]);
+    return handleCloudBroadcast(request, env, broadcastMatch[1], presencePushRevChanged);
   }
   // PUT /api/cloud/projects/:id/auto-broadcast — owner-only per-project
   // switch: when enabled, EVERY save also broadcasts (the auto form of the

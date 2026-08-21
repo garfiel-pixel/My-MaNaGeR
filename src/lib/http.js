@@ -1,4 +1,4 @@
-// Shared HTTP utilities extracted from worker.js.
+// Shared utilities extracted from worker.js.
 // Every API module imports from here instead of duplicating helpers.
 
 // ---- JSON responses --------------------------------------------------------
@@ -216,8 +216,6 @@ export function authVerifyEmailBody(name, origin, token) {
     'This link expires in 24 hours. If you did not create this account, you can ignore this email.';
 }
 
-// ---- Auth session response (shared by register + login) --------------------
-
 export async function authSessionResponse(user, env, emailSent) {
   const token = await signSession({ sub: user.sub, email: user.email || '', name: user.name || '', exp: Math.floor(Date.now() / 1000) + 604800 }, await sessionKey(env));
   return new Response(JSON.stringify({ ok: true, user: { sub: user.sub, email: user.email || '', name: user.name || '' }, emailSent: !!emailSent }), {
@@ -396,137 +394,401 @@ export async function cloudTouchOwner(env, projectId) {
 // ---- Cloud state read ------------------------------------------------------
 
 export async function cloudReadState(env, key) {
-  const obj = await env.R2.get(key, 'json');
-  return obj || {};
+  if (!key) return null;
+  const obj = await env.R2.get(key);
+  if (!obj) return null;
+  const text = await obj.text();
+  try { return JSON.parse(text); } catch (e) { return null; }
 }
 
 // ---- Deep equal (for cloud state comparison) -------------------------------
 
 export function cloudDeepEqual(a, b) {
-  if (a === b) return true;
-  if (a === null || b === null || typeof a !== 'object' || typeof b !== 'object') return false;
-  const ka = Object.keys(a), kb = Object.keys(b);
-  if (ka.length !== kb.length) return false;
-  for (let i = 0; i < ka.length; i++) {
-    if (ka[i] !== kb[i] || !cloudDeepEqual(a[ka[i]], b[kb[i]])) return false;
-  }
-  return true;
+  try { return JSON.stringify(a) === JSON.stringify(b); } catch (e) { return a === b; }
 }
 
-// ---- Cloud diff utilities --------------------------------------------------
+// ---- Cloud sections (scope enforcement) -----------------------------------
+
+export const CLOUD_SECTIONS = {
+  charter: { label: 'Charter', keys: ['projectName', 'methodology', 'methodologyLocked', 'charter'] },
+  wbs:     { label: 'WBS / Tasks', keys: ['tasks'] },
+  res:     { label: 'Resources', keys: ['resources'] },
+  bud:     { label: 'Budget', keys: ['budgetLines', 'budgetEnvelope', 'spendLog', 'nspid'] },
+  stk:     { label: 'Stakeholders', keys: ['stakeholders'] },
+  chg:     { label: 'Changes', keys: ['changes'] },
+  log:     { label: 'Decision Log', keys: ['logEntries'] },
+  risk:    { label: 'Risk / Issues', keys: ['risks', 'issues'] },
+  close:   { label: 'Closure', keys: ['closure'] },
+  raci:    { label: 'RACI', keys: ['raci'] },
+  comms:   { label: 'Comms Log', keys: ['commsEntries'] },
+  docs:    { label: 'Documents', keys: ['documents'] },
+  dmaic:   { label: 'DMAIC', keys: ['dmaic'] },
+  meet:    { label: 'Meetings', keys: ['meetings', 'meetingPromises', 'activeMeeting', 'nmeetid', 'sentimentHistory'] }
+};
+export const CLOUD_KEY_TO_SECTION = {};
+export const CLOUD_CONTENT_KEYS = [];
+Object.keys(CLOUD_SECTIONS).forEach(function(sec) {
+  CLOUD_SECTIONS[sec].keys.forEach(function(k) {
+    CLOUD_KEY_TO_SECTION[k] = sec;
+    CLOUD_CONTENT_KEYS.push(k);
+  });
+});
+export const CLOUD_CONTENT_KEY_SET = {};
+CLOUD_CONTENT_KEYS.forEach(function(k) { CLOUD_CONTENT_KEY_SET[k] = 1; });
+
+// Changelog leaf-diff cap
+export const CLOUD_MAX_LEAF_DIFFS = 40;
+
+export function handleCloudSections() {
+  const sections = Object.keys(CLOUD_SECTIONS).map(function(k) {
+    return { key: k, label: CLOUD_SECTIONS[k].label, keys: CLOUD_SECTIONS[k].keys.slice() };
+  });
+  return json({ ok: true, sections: sections });
+}
+
+// ---- Server-side scope enforcement ----------------------------------------
+
+export function cloudScopeMerge(prev, submitted, scope) {
+  const base = prev && typeof prev === 'object' && !Array.isArray(prev)
+    ? JSON.parse(JSON.stringify(prev)) : {};
+  const writable = {};
+  scope.forEach(function(sec) {
+    (CLOUD_SECTIONS[sec] || { keys: [] }).keys.forEach(function(k) { writable[k] = 1; });
+  });
+  const applied = []; const blocked = [];
+  Object.keys(submitted || {}).forEach(function(k) {
+    if (writable[k]) {
+      base[k] = submitted[k];
+      if (prev === null || prev === undefined || !cloudDeepEqual(prev[k], submitted[k])) {
+        const sec = CLOUD_KEY_TO_SECTION[k];
+        if (sec && applied.indexOf(sec) === -1) applied.push(sec);
+      }
+    } else if (CLOUD_CONTENT_KEY_SET[k]) {
+      const differs = (prev === null || prev === undefined)
+        ? submitted[k] !== undefined
+        : !cloudDeepEqual(prev[k], submitted[k]);
+      if (differs) {
+        const sec = CLOUD_KEY_TO_SECTION[k];
+        if (sec && blocked.indexOf(sec) === -1) blocked.push(sec);
+      }
+    }
+  });
+  if (prev && prev.fieldTs && typeof prev.fieldTs === 'object' && !Array.isArray(prev.fieldTs)) {
+    base.fieldTs = JSON.parse(JSON.stringify(prev.fieldTs));
+  }
+  const now = new Date().toISOString();
+  applied.forEach(function(sec) {
+    (CLOUD_SECTIONS[sec] || { keys: [] }).keys.forEach(function(k) {
+      if (base.fieldTs && typeof base.fieldTs === 'object') base.fieldTs[k] = now;
+    });
+  });
+  delete base.updatedAt;
+  return { next: base, applied: applied, blocked: blocked };
+}
+
+// ---- Diff utilities --------------------------------------------------------
 
 export function cloudWalkLeaves(path, v, out) {
-  if (v !== null && typeof v === 'object' && !Array.isArray(v)) {
-    for (const k of Object.keys(v)) cloudWalkLeaves(path ? path + '.' + k : k, v[k], out);
-  } else {
-    out.push({ path: path, value: v });
+  if (v === null || typeof v !== 'object') { out[path] = v; return; }
+  if (Array.isArray(v)) {
+    if (v.length === 0) { out[path] = []; return; }
+    v.forEach(function(item, i) { cloudWalkLeaves(path + '[' + i + ']', item, out); });
+    return;
   }
+  const keys = Object.keys(v);
+  if (keys.length === 0) { out[path] = {}; return; }
+  keys.forEach(function(k) { cloudWalkLeaves(path + '.' + k, v[k], out); });
 }
 export function cloudFlattenLeaves(obj, out) {
-  out = out || [];
-  cloudWalkLeaves('', obj, out);
-  return out;
+  CLOUD_CONTENT_KEYS.forEach(function(k) { cloudWalkLeaves(k, obj ? obj[k] : undefined, out); });
 }
 export function cloudDiffState(prev, next) {
-  const a = cloudFlattenLeaves(prev), b = cloudFlattenLeaves(next);
-  const map = {};
-  for (const e of a) map[e.path] = { old: e.value };
-  for (const e of b) {
-    if (map[e.path]) { map[e.path].cur = e.value; } else { map[e.path] = { cur: e.value }; }
-  }
+  if (!prev || typeof prev !== 'object') return null;
+  const before = {}; const after = {};
+  cloudFlattenLeaves(prev, before);
+  cloudFlattenLeaves(next, after);
+  const paths = Object.keys(before);
+  Object.keys(after).forEach(function(p) { if (paths.indexOf(p) === -1) paths.push(p); });
   const diffs = [];
-  for (const p of Object.keys(map)) {
-    const e = map[p];
-    const o = 'old' in e ? e.old : undefined;
-    const c = 'cur' in e ? e.cur : undefined;
-    if (JSON.stringify(o) !== JSON.stringify(c)) diffs.push({ path: p, old: o, cur: c });
+  for (let i = 0; i < paths.length; i++) {
+    const p = paths[i];
+    const a = before[p]; const b = after[p];
+    if (a === b || cloudDeepEqual(a, b)) continue;
+    diffs.push({
+      path: p,
+      before: a === undefined ? null : a,
+      beforeAbsent: a === undefined,
+      after: b === undefined ? null : b,
+      afterAbsent: b === undefined
+    });
   }
   return diffs;
 }
 export function cloudSectionOfDiffs(diffs) {
-  const sections = new Set();
-  for (const d of (diffs || [])) {
-    const root = String(d.path || '').split('.')[0];
-    if (root) sections.add(root);
+  let sec = null;
+  for (let i = 0; i < diffs.length; i++) {
+    const s = CLOUD_KEY_TO_SECTION[String(diffs[i].path).split(/[.[]/)[0]];
+    if (s === undefined) continue;
+    if (sec === null) sec = s;
+    else if (sec !== s) return 'multiple';
   }
-  return Array.from(sections);
-}
-export function cloudScopeMerge(prev, submitted, scope) {
-  if (!submitted || typeof submitted !== 'object') return prev || {};
-  const base = prev && typeof prev === 'object' ? Object.assign({}, prev) : {};
-  if (scope && typeof scope === 'string' && scope !== '*') {
-    const keys = scope.split(',').map(function(s) { return s.trim(); }).filter(Boolean);
-    for (const k of keys) { if (k in submitted) base[k] = submitted[k]; }
-    return base;
-  }
-  for (const k of Object.keys(submitted)) base[k] = submitted[k];
-  return base;
-}
-export function cloudRevertDiff(s, d) {
-  if (!d || !d.path) return s;
-  const segs = d.path.split('.');
-  const clone = JSON.parse(JSON.stringify(s));
-  let cur = clone;
-  for (let i = 0; i < segs.length - 1; i++) {
-    if (cur === null || typeof cur !== 'object') return s;
-    cur = cur[segs[i]];
-  }
-  if (cur === null || typeof cur !== 'object') return s;
-  if (d.old === undefined) { delete cur[segs[segs.length - 1]]; } else { cur[segs[segs.length - 1]] = d.old; }
-  return clone;
+  return sec;
 }
 
-// ---- Cloud path utilities --------------------------------------------------
+// ---- Changelog log ---------------------------------------------------------
+
+export async function cloudLogSave(env, projectId, prev, next, actor, entryType) {
+  const diffs = cloudDiffState(prev, next);
+  if (diffs === null || diffs.length === 0) return null;
+  const now = new Date().toISOString();
+  if (diffs.length > CLOUD_MAX_LEAF_DIFFS) {
+    const snapKey = 'projects/' + projectId + '/changelog/' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8) + '.json';
+    await env.R2.put(snapKey, JSON.stringify(prev), { httpMetadata: { contentType: 'application/json' } });
+    const res = await env.DB.prepare(
+      'INSERT INTO cloud_changelog (project_id, entry_type, actor_type, actor_label, section, diffs_json, snapshot_key, created_at) VALUES (?,?,?,?,?,?,?,?)'
+    ).bind(projectId, entryType || 'bulk', actor.type, actor.label, null, null, snapKey, now).run();
+    return { id: res.meta.last_row_id, type: entryType || 'bulk' };
+  }
+  const sec = cloudSectionOfDiffs(diffs);
+  const res = await env.DB.prepare(
+    'INSERT INTO cloud_changelog (project_id, entry_type, actor_type, actor_label, section, diffs_json, snapshot_key, created_at) VALUES (?,?,?,?,?,?,?,?)'
+  ).bind(projectId, entryType || 'edit', actor.type, actor.label, sec, JSON.stringify(diffs), null, now).run();
+  return { id: res.meta.last_row_id, type: entryType || 'edit' };
+}
+
+// ---- State-path utilities (revert) ----------------------------------------
 
 export function cloudPathSegments(p) {
-  return String(p || '').split('.').filter(Boolean);
+  const segs = []; const s = String(p); let i = 0;
+  while (i < s.length) {
+    if (s[i] === '[') {
+      const j = s.indexOf(']', i);
+      if (j < 0) break;
+      segs.push({ idx: Number(s.slice(i + 1, j)) });
+      i = j + 1;
+    } else if (s[i] === '.') {
+      i++;
+    } else {
+      let j = s.indexOf('.', i); let k = s.indexOf('[', i);
+      let end = s.length;
+      if (j >= 0 && j < end) end = j;
+      if (k >= 0 && k < end) end = k;
+      segs.push({ key: s.slice(i, end) });
+      i = end;
+    }
+  }
+  return segs;
 }
 export function cloudPathGet(obj, p) {
-  const segs = cloudPathSegments(p);
   let cur = obj;
-  for (const s of segs) { if (cur === null || typeof cur !== 'object') return undefined; cur = cur[s]; }
+  const segs = cloudPathSegments(p);
+  for (let i = 0; i < segs.length; i++) {
+    if (cur === null || cur === undefined) return undefined;
+    const seg = segs[i];
+    cur = seg.idx !== undefined ? cur[seg.idx] : cur[seg.key];
+  }
   return cur;
 }
 export function cloudPathSet(obj, p, val) {
   const segs = cloudPathSegments(p);
-  const clone = JSON.parse(JSON.stringify(obj));
-  let cur = clone;
+  let cur = obj;
   for (let i = 0; i < segs.length - 1; i++) {
-    if (cur === null || typeof cur !== 'object') return clone;
-    if (typeof cur[segs[i]] !== 'object' || cur[segs[i]] === null) cur[segs[i]] = {};
-    cur = cur[segs[i]];
+    if (cur === null || cur === undefined) return false;
+    const seg = segs[i];
+    if (seg.idx !== undefined) {
+      if (!Array.isArray(cur)) return false;
+      if (cur[seg.idx] === null || cur[seg.idx] === undefined) return false;
+      cur = cur[seg.idx];
+    } else {
+      if (cur[seg.key] === null || cur[seg.key] === undefined) return false;
+      cur = cur[seg.key];
+    }
   }
-  if (cur !== null && typeof cur === 'object') cur[segs[segs.length - 1]] = val;
-  return clone;
+  const last = segs[segs.length - 1];
+  if (last.idx !== undefined) {
+    if (!Array.isArray(cur)) return false;
+    cur[last.idx] = val;
+  } else {
+    if (cur === null || typeof cur !== 'object' || Array.isArray(cur)) return false;
+    cur[last.key] = val;
+  }
+  return true;
 }
 export function cloudPathDelete(obj, p) {
   const segs = cloudPathSegments(p);
-  const clone = JSON.parse(JSON.stringify(obj));
-  let cur = clone;
+  let cur = obj;
   for (let i = 0; i < segs.length - 1; i++) {
-    if (cur === null || typeof cur !== 'object') return clone;
-    cur = cur[segs[i]];
+    if (cur === null || cur === undefined) return;
+    const seg = segs[i];
+    cur = seg.idx !== undefined ? cur[seg.idx] : cur[seg.key];
   }
-  if (cur !== null && typeof cur === 'object') delete cur[segs[segs.length - 1]];
-  return clone;
+  const last = segs[segs.length - 1];
+  if (cur === null || cur === undefined) return;
+  if (last.idx !== undefined && Array.isArray(cur)) cur.splice(last.idx, 1);
+  else if (last.key !== undefined && typeof cur === 'object' && !Array.isArray(cur)) delete cur[last.key];
 }
 
-// ---- Cloud log save --------------------------------------------------------
+// ---- RecordId-aware diff revert -------------------------------------------
 
-export async function cloudLogSave(env, projectId, prev, next, actor, entryType) {
-  const diffs = cloudDiffState(prev, next);
-  if (!diffs.length) return;
+export function cloudRevertDiff(s, d) {
+  const m = String(d.path || '').match(/^([a-zA-Z]+)(?:\[(\d+)\])?(?:\.(.+))?$/);
+  if (!m) return false;
+  const listKey = m[1];
+  const idxStr = m[2];
+  const field = m[3];
+  const list = s[listKey];
+  if (!Array.isArray(list) || (field !== undefined && field.indexOf('.') !== -1)) {
+    if (d.beforeAbsent) { cloudPathDelete(s, d.path); return true; }
+    return cloudPathSet(s, d.path, d.before);
+  }
+  const isDeleteRestore = d.afterAbsent === true && d.beforeAbsent !== true && !field;
+  let idx = -1;
+  if (!isDeleteRestore && d.recordId !== undefined) {
+    idx = list.findIndex(function(r) { return r && String(r.id) === String(d.recordId); });
+    if (idx < 0) return false;
+  } else if (idxStr !== undefined) {
+    idx = Number(idxStr);
+  }
+  if (d.beforeAbsent) {
+    const rec = idx >= 0 && idx < list.length ? list[idx] : null;
+    if (field) {
+      if (!rec) return false;
+      delete rec[field];
+      return true;
+    }
+    if (idx >= 0 && idx < list.length) list.splice(idx, 1);
+    return true;
+  }
+  if (d.afterAbsent) {
+    if (idx < 0 || idx > list.length) return false;
+    if (field) {
+      const rec = list[idx];
+      if (!rec || typeof rec !== 'object') return false;
+      rec[field] = d.before;
+      return true;
+    }
+    list.splice(idx, 0, JSON.parse(JSON.stringify(d.before)));
+    return true;
+  }
+  if (field) {
+    if (idx < 0 || idx >= list.length) return false;
+    const rec = list[idx];
+    if (!rec || typeof rec !== 'object') return false;
+    rec[field] = d.after;
+    return true;
+  }
+  if (idx < 0 || idx >= list.length) return false;
+  list[idx] = d.after;
+  return true;
+}
+
+// ---- Cloud auth (owner/editor/viewer/adoption) ----------------------------
+
+const CLOUD_EDITOR_AUTH_SLOTS = 4;
+
+export async function cloudAuthOwnerByCode(request, env, projectId, code) {
+  if (!code) { await Promise.all([cloudDummyHash(), cloudTimingSink()]); return null; }
+  const row = await env.DB.prepare('SELECT owner_code_salt, owner_code_hash, google_sub, google_name, deleted_at FROM cloud_projects WHERE project_id = ?').bind(projectId).first();
+  if (!row) { await Promise.all([cloudDummyHash(), cloudTimingSink()]); return null; }
+  const hash = await hashOwnerCode(code, row.owner_code_salt);
+  if (!codesEqual(hash, row.owner_code_hash)) { await cloudTimingSink(); return null; }
+  return { role: 'owner', label: row.google_name || 'Owner', row: row };
+}
+
+export async function cloudAuthOwnerSession(request, env, projectId) {
+  const session = await readSession(request, env);
+  if (!session || !session.sub) { await cloudTimingSink(); return null; }
+  const row = await env.DB.prepare('SELECT google_sub, google_name FROM cloud_projects WHERE project_id = ?').bind(projectId).first();
+  if (!row || !row.google_sub || row.google_sub !== session.sub) { await cloudTimingSink(); return null; }
+  return { role: 'owner', label: row.google_name || session.name || 'Owner', row: row };
+}
+
+export async function cloudAuthOwnerEither(request, env, projectId) {
+  const code = String(request.headers.get('X-Owner-Code') || '').trim();
+  if (code) {
+    const a = await cloudAuthOwnerByCode(request, env, projectId, code);
+    if (a) return a;
+  }
+  return cloudAuthOwnerSession(request, env, projectId);
+}
+
+export async function cloudAuthSharedCode(request, env, projectId, code, role) {
+  if (!code) { await Promise.all([cloudDummyHash(), cloudTimingSink()]); return null; }
+  const rows = await env.DB.prepare('SELECT e.id, e.code_salt, e.code_hash, e.label, e.scope, p.deleted_at FROM cloud_editor_codes e JOIN cloud_projects p ON p.project_id = e.project_id WHERE e.project_id = ? AND e.active = 1 AND e.role = ?').bind(projectId, role).all();
+  const active = (rows && rows.results) || [];
+  const slots = Math.max(active.length, CLOUD_EDITOR_AUTH_SLOTS);
+  for (let i = 0; i < slots; i++) {
+    const row = active[i];
+    const salt = row ? row.code_salt : CLOUD_DUMMY_SALT;
+    const hash = await hashOwnerCode(code, salt);
+    if (row && codesEqual(hash, row.code_hash)) {
+      let scope = [];
+      try { const p = JSON.parse(row.scope); if (Array.isArray(p)) scope = p.filter(function(x) { return !!CLOUD_SECTIONS[x]; }); } catch (e) { scope = []; }
+      return { role: role, editorId: row.id, label: row.label || (role === 'view' ? 'Viewer' : 'Editor'), scope: scope, row: row };
+    }
+  }
+  await cloudTimingSink();
+  return null;
+}
+
+export async function cloudAuthEditor(request, env, projectId, code) {
+  return cloudAuthSharedCode(request, env, projectId, code, 'editor');
+}
+
+export async function cloudAuthViewer(request, env, projectId, code) {
+  return cloudAuthSharedCode(request, env, projectId, code, 'view');
+}
+
+export async function cloudAdopt(env, projectId, sub, editorCodeId, role) {
+  if (!sub || !editorCodeId) return;
   const now = new Date().toISOString();
-  try {
-    await env.DB.prepare(
-      'INSERT INTO cloud_changelog (project_id, entry_type, diffs_json, actor, created_at) VALUES (?,?,?,?,?)'
-    ).bind(projectId, entryType || 'update', JSON.stringify(diffs), actor || 'unknown', now).run();
-  } catch (e) { /* changelog write must never block a save */ }
+  await env.DB.prepare(
+    'INSERT INTO cloud_adoptions (project_id, recipient_sub, editor_code_id, role, created_at, updated_at) VALUES (?,?,?,?,?,?) ' +
+    'ON CONFLICT(project_id, recipient_sub) DO UPDATE SET editor_code_id = excluded.editor_code_id, role = excluded.role, updated_at = excluded.updated_at'
+  ).bind(projectId, sub, editorCodeId, role, now, now).run();
+}
+
+export async function cloudAuthAdoption(request, env, projectId) {
+  const session = await readSession(request, env);
+  if (!session || !session.sub) return null;
+  const ad = await env.DB.prepare(
+    'SELECT editor_code_id, role FROM cloud_adoptions WHERE project_id = ? AND recipient_sub = ?'
+  ).bind(projectId, session.sub).first();
+  if (!ad) return null;
+  const row = await env.DB.prepare(
+    'SELECT e.id, e.code_salt, e.code_hash, e.label, e.scope, e.active, e.role, p.deleted_at FROM cloud_editor_codes e JOIN cloud_projects p ON p.project_id = e.project_id WHERE e.id = ?'
+  ).bind(ad.editor_code_id).first();
+  if (!row || row.active !== 1) return { revoked: true };
+  if (row.deleted_at) return { deleted: true };
+  let scope = [];
+  try { const p = JSON.parse(row.scope); if (Array.isArray(p)) scope = p.filter(function(x) { return !!CLOUD_SECTIONS[x]; }); } catch (e) { scope = []; }
+  return { role: row.role === 'view' ? 'view' : 'editor', editorId: row.id, label: row.label || (row.role === 'view' ? 'Viewer' : 'Editor'), scope: scope, row: row };
+}
+
+export async function cloudAuthAnyAccess(request, env, projectId) {
+  const code = String(request.headers.get('X-Owner-Code') || '').trim();
+  if (code) {
+    const a = await cloudAuthOwnerByCode(request, env, projectId, code);
+    if (a) return a;
+  }
+  const ecode = String(request.headers.get('X-Editor-Code') || '').trim();
+  if (ecode) {
+    const a = await cloudAuthEditor(request, env, projectId, ecode);
+    if (a) return a;
+  }
+  const vcode = String(request.headers.get('X-View-Code') || '').trim();
+  if (vcode) {
+    const a = await cloudAuthViewer(request, env, projectId, vcode);
+    if (a) return a;
+  }
+  const sess = await cloudAuthOwnerSession(request, env, projectId);
+  if (sess) return sess;
+  const ad = await cloudAuthAdoption(request, env, projectId);
+  if (ad && (ad.role === 'editor' || ad.role === 'view')) return ad;
+  return null;
 }
 
 // ---- Cloud purge constants -------------------------------------------------
 
-const CLOUD_ORPHAN_RETENTION_MS = 365 * 24 * 60 * 60 * 1000; // 12 months
-const CLOUD_DELETED_PURGE_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
-
-export { CLOUD_ORPHAN_RETENTION_MS, CLOUD_DELETED_PURGE_MS, CLOUD_PBKDF2_ITERS };
+export const CLOUD_ORPHAN_RETENTION_MS = 365 * 24 * 60 * 60 * 1000;
+export const CLOUD_DELETED_PURGE_MS = 7 * 24 * 60 * 60 * 1000;

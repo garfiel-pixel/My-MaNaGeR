@@ -74,7 +74,7 @@ async function check(name, expr, hint) {
   await check('mkt-02 homepage: hero + 2 CTAs', `(function(){
     var hero = document.querySelector('.hero');
     var cta = Array.prototype.slice.call(document.querySelectorAll('.hero-cta a')).map(a => a.textContent.trim());
-    return {val: !!hero && cta.indexOf('Open App') > -1 && cta.indexOf('View Field Guide') > -1};
+    return {val: !!hero && cta.indexOf('Get Started') > -1 && cta.indexOf('View Field Guide') > -1};
   })()`);
   await check('mkt-03 homepage: 15 feature cards (solid content layer)', `(function(){
     // The auto-ticking feature bar CLONES the first 5 cards (aria-hidden) for

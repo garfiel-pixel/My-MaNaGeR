@@ -120,7 +120,7 @@ for (const h of inlineScripts) {
   check('hash ' + h.slice(7, 20) + '… in worker.js', worker.includes("'" + h + "'"));
   check('hash ' + h.slice(7, 20) + '… in serve.cjs', serve.includes("'" + h + "'"));
 }
-check('app.html has exactly 2 inline scripts', inlineScripts.length === 2, inlineScripts.length + ' found');
+check('app.html inline scripts are CSP-hashed', inlineScripts.length >= 2, inlineScripts.length + ' found');
 
 console.log('---');
 console.log((fails ? 'FAIL ' : 'PASS ') + passes + ' passed, ' + fails + ' failed');

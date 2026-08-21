@@ -25,8 +25,6 @@ jobs:
       - run: npm run verify:hidden
       - run: npm run verify:skills
 
-      # Add QA scripts here ONE AT A TIME as you confirm each is
-      # safe to run headless / without live D1 or R2 bindings.
-      # - run: node qa-focus.cjs
-      # - run: node qa-typing.cjs
-      # - run: node qa-rhythm.cjs
+      # QA scripts confirmed CI-safe (no wrangler dev, no Chrome):
+      - run: node tools/qa-dashboard-spec.cjs
+      - run: node tools/qa-changelog-diffs.cjs

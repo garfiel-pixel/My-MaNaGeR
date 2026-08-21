@@ -10,8 +10,9 @@ import { json, cloudForbidden, cloudProjectDeleted, cloudTimingSink, cloudDummyH
   hashOwnerCode, fingerprintOf, sanitizeProjectId, codesEqual,
   cloudAuthOwnerByCode, cloudAuthOwnerSession, cloudAuthOwnerEither,
   cloudAuthEditor, cloudAuthViewer, cloudAdopt, cloudAuthAdoption,
-  readCloudBody, readSession, billingConfigured, billingFreeCap,
+  readCloudBody, readSession,
   CLOUD_SECTIONS, authEmailConfigured } from '../lib/http.js';
+import { billingConfigured, billingFreeCap } from '../billing.js';
 
 const CLOUD_STATE_SECRET_PATHS = [
   'config.ai.apiKey',

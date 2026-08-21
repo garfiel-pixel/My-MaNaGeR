@@ -271,7 +271,7 @@ export async function fingerprintOf(code) {
 // ---- Cloud dummy hash (timing guard) --------------------------------------
 
 const CLOUD_DUMMY_CODE = 'ZZZZ-ZZZZ-ZZZZ-ZZZZ';
-const CLOUD_DUMMY_SALT = '00000000000000000000000000000000';
+export const CLOUD_DUMMY_SALT = '00000000000000000000000000000000';
 let _cloudDummyHashPromise = null;
 export async function cloudDummyHash() {
   if (!_cloudDummyHashPromise) _cloudDummyHashPromise = hashOwnerCode(CLOUD_DUMMY_CODE, CLOUD_DUMMY_SALT);
@@ -684,7 +684,7 @@ export function cloudRevertDiff(s, d) {
 
 // ---- Cloud auth (owner/editor/viewer/adoption) ----------------------------
 
-const CLOUD_EDITOR_AUTH_SLOTS = 4;
+export const CLOUD_EDITOR_AUTH_SLOTS = 4;
 
 export async function cloudAuthOwnerByCode(request, env, projectId, code) {
   if (!code) { await Promise.all([cloudDummyHash(), cloudTimingSink()]); return null; }

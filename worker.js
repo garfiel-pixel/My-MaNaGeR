@@ -9,6 +9,7 @@ import { handleCloudProjectList, handleCloudUnadopt, handleCloudCreate, handleCl
 import { API_SHAPES, apiPortfolio, handleApiShape } from './src/api/shapes.js';
 import { handleWebhookCreate, handleWebhookList, handleWebhookDelete, evaluateWebhooks, WEBHOOK_EVENTS } from './src/webhooks.js';
 import { Presence, handlePresenceUpgrade, presencePushRevChanged, cloudManifestCodeOk } from './src/cloud/presence.js';
+export { Presence };  // wrangler requires DO classes in the entrypoint
 import { handleAuthRegister, handleAuthLogin, handleAuthPasswordChange, handleAuthVerifyPassword, handleAuthVerify, handleAuthForgot, handleAuthReset, handleAuthResendVerify } from './src/auth/session.js';
 import {
   json, cloudForbidden, cloudProjectDeleted, cloudTimingSink, cloudDummyHash,

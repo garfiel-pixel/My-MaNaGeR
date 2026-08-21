@@ -25,6 +25,12 @@ jobs:
       - run: npm run verify:hidden
       - run: npm run verify:skills
 
+      # Deploy validation — catches DO export errors, syntax errors, and
+      # missing imports in worker.js without Cloudflare credentials.
+      # No staging needed: wrangler filters non-asset files (node_modules,
+      # .git) from the upload automatically.
+      - run: npx wrangler deploy --dry-run
+
       # QA scripts confirmed CI-safe (no wrangler dev, no Chrome):
       - run: node tools/qa-dashboard-spec.cjs
       - run: node tools/qa-changelog-diffs.cjs

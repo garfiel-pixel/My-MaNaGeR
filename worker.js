@@ -965,6 +965,7 @@ const AUTH_RESET_MAX_PER_EMAIL_H = 5;            // forgot: 5/hour/email
    files tax; chosen over a raw processor for exactly that
    reason). The tier is DORMANT until configured: with none of
    Billing extracted to src/billing.js — imported above.
+   ============================================================ */
 
 // ===========================================================================
 // MASTER-ACTION-PLAN RANK 9 (2026-08-12) — API / webhook layer

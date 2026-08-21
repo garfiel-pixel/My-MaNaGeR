@@ -6,6 +6,7 @@ import { handleCloudEditorCreate, handleCloudEditorList, handleCloudEditorRevoke
 import { handleCloudChangelogList, handleCloudChangelogRevert, handleCloudChangelogImport } from './src/cloud/changelog.js';
 import { handleCloudPrefsGet, handleCloudPrefsPut, cloudPrefsKey, cloudSanitizePalette, handleOfflineCopyRegister, handleOfflineCopyList, handleOfflineCopyDelete, handleCloudBroadcast, handleCloudAutoBroadcast } from './src/cloud/sync.js';
 import { handleCloudProjectList, handleCloudUnadopt, handleCloudCreate, handleCloudSave, handleCloudLoad, handleCloudRecover, handleCloudMeta, handleCloudUnlink, handleCloudCodeLookup, handleCloudProjectDelete, handleCloudProjectRestore, handleCloudProjectPurge, cloudPushRevChangedIfCopies, queueEditorProposal } from './src/cloud/projects.js';
+import { handleAuthRegister, handleAuthLogin, handleAuthPasswordChange, handleAuthVerifyPassword, handleAuthVerify, handleAuthForgot, handleAuthReset, handleAuthResendVerify } from './src/auth/session.js';
 import {
   json, cloudForbidden, cloudProjectDeleted, cloudTimingSink, cloudDummyHash,
   codesEqual, base64UrlEncode, base64UrlDecode, base64UrlToBytes, bytesToBase64Url,
@@ -874,7 +875,6 @@ async function purgeStaleCloudProjects(env) {
    salt stored 'salt:hex' next to the hash — the exact KDF the
    owner-code path uses. Never stored or logged in plaintext.
    ============================================================ */
-const AUTH_MIN_PASSWORD = 8;
 
 // AUTH MAINFRAME v2 (2026-08-17) — email verification + forgot/reset via
 // Resend (RESEND_API_KEY / RESEND_FROM_EMAIL Wrangler secrets). DORMANT
@@ -884,19 +884,10 @@ const AUTH_VERIFY_TTL_MS = 24 * 60 * 60 * 1000; // verify link: 24 hours
 const AUTH_RESET_TTL_MS = 30 * 60 * 1000;        // reset link: 30 minutes
 const AUTH_RESET_MAX_PER_EMAIL_H = 5;            // forgot: 5/hour/email
 
-function authNormalizeEmail(raw) {
-  return String(raw || '').trim().toLowerCase();
-}
 
-function authEmailValid(email) {
-  return email.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email);
-}
 
 // hashOwnerCode IS the PBKDF2-SHA256 (iterations, salt) helper — reuse it
 // verbatim so the password path and the owner-code path share one KDF.
-async function authHashPassword(password, saltHex) {
-  return hashOwnerCode(password, saltHex);
-}
 
 // ---- Resend transactional email (AUTH MAINFRAME v2, 2026-08-17) ----------
 // Plain REST from the Worker (no SDK), dormant until configured: with no
@@ -926,127 +917,14 @@ async function authHashPassword(password, saltHex) {
 // mirroring the /api/auth/google response shape exactly.
 
 // POST /api/auth/register { email, password, name? }
-async function handleAuthRegister(request, env) {
-  let body;
-  try { body = await request.json(); } catch (e) { return json({ ok: false, error: 'bad request' }, 400); }
-  const email = authNormalizeEmail(body && body.email);
-  if (!authEmailValid(email)) return json({ ok: false, error: 'invalid email address' }, 400);
-  const password = String((body && body.password) || '');
-  if (password.length < AUTH_MIN_PASSWORD) return json({ ok: false, error: 'password must be at least ' + AUTH_MIN_PASSWORD + ' characters' }, 400);
-  const name = String((body && body.name) || '').slice(0, 80);
-  const existing = await env.DB.prepare('SELECT email FROM auth_users WHERE email = ?').bind(email).first();
-  if (existing) return json({ ok: false, error: 'account already exists — sign in instead' }, 409);
-  const salt = randomSaltHex();
-  const hash = await authHashPassword(password, salt);
-  const now = new Date().toISOString();
-  try {
-    // CREATE-RACE GUARD (same pattern as handleCloudCreate): a concurrent
-    // duplicate register throws on the PK — re-check and answer 409, not 404.
-    await env.DB.prepare('INSERT INTO auth_users (email, password_hash, name, created_at) VALUES (?,?,?,?)')
-      .bind(email, salt + ':' + hash, name, now).run();
-  } catch (e) {
-    const raced = await env.DB.prepare('SELECT email FROM auth_users WHERE email = ?').bind(email).first();
-    if (raced) return json({ ok: false, error: 'account already exists — sign in instead' }, 409);
-    throw e;
-  }
-  // AUTH MAINFRAME v2: mint a one-time verify token (24h) and email it. With
-  // RESEND_API_KEY unset this is a no-op (emailSent: false) — register then
-  // behaves exactly as before, and the cloud-create verified gate is off.
-  let emailSent = false;
-  if (authEmailConfigured(env)) {
-    try {
-      const origin = new URL(request.url).origin;
-      const vtoken = await mintAuthToken(env, email, 'verify', AUTH_VERIFY_TTL_MS);
-      emailSent = await sendAuthEmail(env, email, 'Confirm your My MaNaGeR account', authVerifyEmailBody(name, origin, vtoken));
-    } catch (e) { /* a mail failure must never break signup */ }
-  }
-  return authSessionResponse({ email: email, name: name }, env, emailSent);
-}
 
 // POST /api/auth/login { email, password }
-async function handleAuthLogin(request, env) {
-  let body;
-  try { body = await request.json(); } catch (e) { return json({ ok: false, error: 'bad request' }, 400); }
-  const email = authNormalizeEmail(body && body.email);
-  const password = String((body && body.password) || '');
-  // AUTH-MAINFRAME per-account lockout (owner: "we cannot have someone
-  // spamming down our thing"). Checked for EXISTING accounts only — the
-  // unknown-email path keeps the generic 401 + dummy-PBKDF2 timing (no
-  // existence leak). A locked account gets an explicit 429 with Retry-After
-  // and the owner's exact guidance ("try again later or contact support").
-  const guard = await env.DB.prepare('SELECT failed_attempts, locked_until FROM auth_login_guard WHERE email = ?').bind(email).first();
-  if (guard && guard.locked_until && new Date(guard.locked_until).getTime() > Date.now()) {
-    const retryAfter = Math.max(1, Math.ceil((new Date(guard.locked_until).getTime() - Date.now()) / 1000));
-    return new Response(JSON.stringify({ ok: false, error: 'Too many failed attempts — try again later or contact support.' }), {
-      status: 429,
-      headers: {
-        'Content-Type': 'application/json; charset=utf-8',
-        'Cache-Control': 'no-store',
-        'Retry-After': String(retryAfter)
-      }
-    });
-  }
-  const row = await env.DB.prepare('SELECT email, password_hash, name FROM auth_users WHERE email = ?').bind(email).first();
-  if (!row) {
-    // TIMING-SIDE-CHANNEL GUARD: an unknown email returns after a real PBKDF2
-    // (the same work a known-email wrong-password probe costs) so a wall-clock
-    // difference cannot reveal which emails have accounts.
-    await cloudTimingSink();
-    await authHashPassword('x'.repeat(AUTH_MIN_PASSWORD), CLOUD_DUMMY_SALT);
-    return json({ ok: false, error: 'invalid email or password' }, 401);
-  }
-  const sep = row.password_hash.indexOf(':');
-  if (sep <= 0) return json({ ok: false, error: 'invalid email or password' }, 401);
-  const hash = await authHashPassword(password, row.password_hash.slice(0, sep));
-  if (!codesEqual(hash, row.password_hash.slice(sep + 1))) {
-    const fails = (guard ? (Number(guard.failed_attempts) || 0) : 0) + 1;
-    const lockMs = fails >= AUTH_LOCK_ESCALATE_FAILS ? AUTH_LOCK_ESCALATE_MS : fails >= AUTH_LOCK_FAILS ? AUTH_LOCK_WINDOW_MS : 0;
-    const lockedUntil = lockMs ? new Date(Date.now() + lockMs).toISOString() : null;
-    try {
-      await env.DB.prepare('INSERT INTO auth_login_guard (email, failed_attempts, locked_until) VALUES (?,?,?) ON CONFLICT(email) DO UPDATE SET failed_attempts = excluded.failed_attempts, locked_until = excluded.locked_until')
-        .bind(email, fails, lockedUntil).run();
-    } catch (e) { /* a guard write must never break login */ }
-    return json({ ok: false, error: 'invalid email or password' }, 401);
-  }
-  try {
-    await env.DB.prepare('DELETE FROM auth_login_guard WHERE email = ?').bind(email).run();
-  } catch (e) { /* best-effort */ }
-  return authSessionResponse({ email: row.email, name: row.name }, env);
-}
 
 // POST /api/auth/password { currentPassword, newPassword } — session-gated
 // password change. Email accounts only (Google-linked sessions have no
 // password). Verifies the CURRENT password, swaps the PBKDF2 hash, and
 // revokes every OTHER session for the account (the present one survives) —
 // a password change is a theft signal, so old sessions should not outlive it.
-async function handleAuthPasswordChange(request, env) {
-  const session = await readSession(request, env);
-  if (!session || !session.sub) return json({ ok: false, error: 'not signed in' }, 401);
-  if (session.sub.indexOf('email:') !== 0) return json({ ok: false, error: 'this account has no password' }, 400);
-  let body;
-  try { body = await request.json(); } catch (e) { return json({ ok: false, error: 'bad request' }, 400); }
-  const email = session.sub.slice('email:'.length);
-  const current = String((body && body.currentPassword) || '');
-  const next = String((body && body.newPassword) || '');
-  if (next.length < AUTH_MIN_PASSWORD) return json({ ok: false, error: 'password must be at least ' + AUTH_MIN_PASSWORD + ' characters' }, 400);
-  const row = await env.DB.prepare('SELECT password_hash FROM auth_users WHERE email = ?').bind(email).first();
-  if (!row) return json({ ok: false, error: 'account not found' }, 404);
-  const sep = row.password_hash.indexOf(':');
-  if (sep <= 0) return json({ ok: false, error: 'account not found' }, 404);
-  const hash = await authHashPassword(current, row.password_hash.slice(0, sep));
-  if (!codesEqual(hash, row.password_hash.slice(sep + 1))) {
-    return json({ ok: false, error: 'current password is incorrect' }, 401);
-  }
-  const salt = randomSaltHex();
-  const newHash = await authHashPassword(next, salt);
-  await env.DB.prepare('UPDATE auth_users SET password_hash = ? WHERE email = ?').bind(salt + ':' + newHash, email).run();
-  // Revoke every OTHER session (the present one survives).
-  try {
-    await env.DB.prepare('UPDATE auth_sessions SET revoked_at = ? WHERE sub = ? AND revoked_at IS NULL AND jti != ?')
-      .bind(new Date().toISOString(), session.sub, session.jti || '').run();
-  } catch (e) { /* best-effort */ }
-  return json({ ok: true });
-}
 
 // POST /api/auth/verify-password { password } — session-gated password
 // verification for destructive actions (owner 2026-08-17: "you have to put
@@ -1057,133 +935,27 @@ async function handleAuthPasswordChange(request, env) {
 // handleAuthPasswordChange; a wrong password answers 401 'password is
 // incorrect' and a non-empty session is required. Used by the in-project
 // Delete Project flow BEFORE the owner-only cloud delete is called.
-async function handleAuthVerifyPassword(request, env) {
-  const session = await readSession(request, env);
-  if (!session || !session.sub) return json({ ok: false, error: 'not signed in' }, 401);
-  if (session.sub.indexOf('email:') !== 0) return json({ ok: false, error: 'this account has no password' }, 400);
-  let body;
-  try { body = await request.json(); } catch (e) { return json({ ok: false, error: 'bad request' }, 400); }
-  const password = String((body && body.password) || '');
-  if (!password) return json({ ok: false, error: 'password is required' }, 400);
-  const email = session.sub.slice('email:'.length);
-  const row = await env.DB.prepare('SELECT password_hash FROM auth_users WHERE email = ?').bind(email).first();
-  if (!row) return json({ ok: false, error: 'account not found' }, 404);
-  const sep = row.password_hash.indexOf(':');
-  if (sep <= 0) return json({ ok: false, error: 'account not found' }, 404);
-  const hash = await authHashPassword(password, row.password_hash.slice(0, sep));
-  if (!codesEqual(hash, row.password_hash.slice(sep + 1))) {
-    return json({ ok: false, error: 'password is incorrect' }, 401);
-  }
-  return json({ ok: true, verified: true });
-}
 
 // POST /api/auth/verify { token } — consume the one-time verify token and
 // mark the account's email verified. Replays answer 400 (single-use); a
 // second click on the same link is therefore a clean 'already used' error,
 // not a double-write.
-async function handleAuthVerify(request, env) {
-  let body;
-  try { body = await request.json(); } catch (e) { return json({ ok: false, error: 'bad request' }, 400); }
-  const email = await consumeAuthToken(env, String((body && body.token) || ''), 'verify');
-  if (!email) return json({ ok: false, error: 'invalid or expired verification link' }, 400);
-  try {
-    await env.DB.prepare('UPDATE auth_users SET email_verified = 1 WHERE email = ?').bind(email).run();
-  } catch (e) { /* best-effort */ }
-  return json({ ok: true, email: email });
-}
 
 // POST /api/auth/forgot { email } — request a password reset. The response
 // is IDENTICAL whether or not the email exists (dummy-PBKDF2 timing on the
 // unknown path — no existence leak), and the per-email quota (5/hour) also
 // answers the same generic message so the quota itself cannot be probed.
-async function handleAuthForgot(request, env) {
-  let body;
-  try { body = await request.json(); } catch (e) { return json({ ok: false, error: 'bad request' }, 400); }
-  const email = authNormalizeEmail(body && body.email);
-  if (!authEmailValid(email)) return json({ ok: false, error: 'invalid email address' }, 400);
-  const generic = { ok: true, message: 'If an account exists for that email, a reset link is on its way.' };
-  const row = await env.DB.prepare('SELECT email FROM auth_users WHERE email = ?').bind(email).first();
-  if (!row) {
-    await cloudTimingSink();
-    await authHashPassword('x'.repeat(AUTH_MIN_PASSWORD), CLOUD_DUMMY_SALT);
-    return json(generic);
-  }
-  if (authEmailConfigured(env)) {
-    try {
-      const hourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
-      const cnt = await env.DB.prepare('SELECT COUNT(*) AS c FROM auth_tokens WHERE email = ? AND purpose = ? AND created_at > ?')
-        .bind(email, 'reset', hourAgo).first();
-      if (!cnt || (cnt.c || 0) < AUTH_RESET_MAX_PER_EMAIL_H) {
-        const origin = new URL(request.url).origin;
-        const rtoken = await mintAuthToken(env, email, 'reset', AUTH_RESET_TTL_MS);
-        await sendAuthEmail(env, email,
-          'Reset your My MaNaGeR password',
-          'We received a request to reset your My MaNaGeR password.\n\n' +
-          'Reset it here (the link expires in 30 minutes):\n\n' +
-          origin + '/reset.html?token=' + encodeURIComponent(rtoken) + '\n\n' +
-          'If you did not request this, you can ignore this email.');
-      }
-    } catch (e) { /* a mail failure must never break the generic response */ }
-  }
-  return json(generic);
-}
 
 // POST /api/auth/reset { token, newPassword } — consume the one-time reset
 // token, swap the PBKDF2 hash, revoke EVERY session for the account (a
 // password reset is a takeover signal — old sessions must not outlive it),
 // and clear any login lockout for the account.
-async function handleAuthReset(request, env) {
-  let body;
-  try { body = await request.json(); } catch (e) { return json({ ok: false, error: 'bad request' }, 400); }
-  const next = String((body && body.newPassword) || '');
-  if (next.length < AUTH_MIN_PASSWORD) return json({ ok: false, error: 'password must be at least ' + AUTH_MIN_PASSWORD + ' characters' }, 400);
-  const email = await consumeAuthToken(env, String((body && body.token) || ''), 'reset');
-  if (!email) return json({ ok: false, error: 'invalid or expired reset link' }, 400);
-  const row = await env.DB.prepare('SELECT email FROM auth_users WHERE email = ?').bind(email).first();
-  if (!row) return json({ ok: false, error: 'invalid or expired reset link' }, 400);
-  const salt = randomSaltHex();
-  const newHash = await authHashPassword(next, salt);
-  await env.DB.prepare('UPDATE auth_users SET password_hash = ? WHERE email = ?').bind(salt + ':' + newHash, email).run();
-  try {
-    await env.DB.prepare('UPDATE auth_sessions SET revoked_at = ? WHERE sub = ? AND revoked_at IS NULL')
-      .bind(new Date().toISOString(), 'email:' + email).run();
-    await env.DB.prepare('DELETE FROM auth_login_guard WHERE email = ?').bind(email).run();
-  } catch (e) { /* best-effort */ }
-  return json({ ok: true });
-}
 
 // POST /api/auth/resend-verify { email } — request a FRESH verification link
 // (the 24h single-use link died). Same generic-response + quota discipline as
 // forgot: the response is IDENTICAL whether the account is unknown, unverified,
 // or already verified (dummy-PBKDF2 timing on the unknown path — no existence
 // leak), and the per-email quota (5/hour) answers the same generic message.
-async function handleAuthResendVerify(request, env) {
-  let body;
-  try { body = await request.json(); } catch (e) { return json({ ok: false, error: 'bad request' }, 400); }
-  const email = authNormalizeEmail(body && body.email);
-  if (!authEmailValid(email)) return json({ ok: false, error: 'invalid email address' }, 400);
-  const generic = { ok: true, message: 'If an account needs verification, a new confirmation link is on its way.' };
-  const row = await env.DB.prepare('SELECT email, email_verified, name FROM auth_users WHERE email = ?').bind(email).first();
-  if (!row) {
-    await cloudTimingSink();
-    await authHashPassword('x'.repeat(AUTH_MIN_PASSWORD), CLOUD_DUMMY_SALT);
-    return json(generic);
-  }
-  if (row.email_verified) return json(generic); // nothing to verify — same generic
-  if (authEmailConfigured(env)) {
-    try {
-      const hourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
-      const cnt = await env.DB.prepare('SELECT COUNT(*) AS c FROM auth_tokens WHERE email = ? AND purpose = ? AND created_at > ?')
-        .bind(email, 'verify', hourAgo).first();
-      if (!cnt || (cnt.c || 0) < AUTH_RESET_MAX_PER_EMAIL_H) {
-        const origin = new URL(request.url).origin;
-        const vtoken = await mintAuthToken(env, email, 'verify', AUTH_VERIFY_TTL_MS);
-        await sendAuthEmail(env, email, 'Confirm your My MaNaGeR account', authVerifyEmailBody(row.name, origin, vtoken));
-      }
-    } catch (e) { /* a mail failure must never break the generic response */ }
-  }
-  return json(generic);
-}
 
 /* ============================================================
    BILLING TIER (deferred cloud item #15, EXECUTED 2026-08-12)

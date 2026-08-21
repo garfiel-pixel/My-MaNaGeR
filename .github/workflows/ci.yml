@@ -34,3 +34,4 @@ jobs:
       # QA scripts confirmed CI-safe (no wrangler dev, no Chrome):
       - run: node tools/qa-dashboard-spec.cjs
       - run: node tools/qa-changelog-diffs.cjs
+      - run: node tools/qa-ai-relay.cjs

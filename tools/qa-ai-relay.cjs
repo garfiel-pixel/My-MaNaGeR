@@ -30,6 +30,8 @@ const check = (name, val, detail) => { results.push({ name, val }); log((val ? '
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mmgr-relay-'));
   const mjs = path.join(dir, 'worker.mjs');
   fs.copyFileSync(path.join(__dirname, '..', 'worker.js'), mjs);
+  // Copy src/ modules that worker.js imports after the backend split.
+  fs.cpSync(path.join(__dirname, '..', 'src'), path.join(dir, 'src'), { recursive: true });
   const mod = await import(pathToFileURL(mjs).href + '?v=' + Date.now());
 
   let upstreamCalls = [];

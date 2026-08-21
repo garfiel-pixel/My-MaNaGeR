@@ -1858,5 +1858,9 @@ OWNER-SCOPE MATTER (decision + deploy owner-side; drafted here so the next sessi
 
 ---
 
+**2026-08-21 — Session: CI DEPLOY VALIDATION + SKEPTICAL AUDIT.** (1) CI: added `wrangler deploy --dry-run` to `.github/workflows/ci.yml` — catches DO export errors, syntax errors, and missing imports in worker.js without Cloudflare credentials. Skeptical audit confirmed: removed `export { Presence }` → dry-run fails with exact error; appended `}}}}}` → syntax error caught; nonexistent import → build failure caught. No staging needed for CI — wrangler filters non-asset files (node_modules, .git) from upload automatically (verified: 171 KiB upload regardless of 1,535+ files read). The staging tar step is only needed for real deploys (`.git` would exceed 25MiB limit). (2) CI pipeline now has 7 steps: verify:csp, verify:sw, verify:hidden, verify:skills, wrangler deploy --dry-run, qa-dashboard-spec 76/76, qa-changelog-diffs 17/17. All pass locally. (3) DEPLOYED via tar staging recipe (2 new/modified assets, version `c188b94e-c4ba-4e21-b0cd-dc23f47270c4`). POST-DEPLOY LIVE VERIFY: 200 on /. COMMITS: 347368e (ci: add wrangler deploy --dry-run). REMAINING (unchanged): frontend split (mmgr-render.js 3,595 / mmgr-app.js 2,993 / mmgr-cloud.js 2,047); branch protection check (GitHub settings); client-trust authz audit; doc consolidation (36 root-level directive files); buy + verify mymanager.app in Resend + flip RESEND_FROM_EMAIL; owner eyeball of the new front page + password UI; owner walks the live cloud-first flows.
+
+---
+
 *This file is the working source of truth for continuing this project across sessions.
 Keep it updated. Do not let a session end without updating the STATUS LOG.*

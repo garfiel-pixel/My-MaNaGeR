@@ -1,5 +1,22 @@
 import { handleAiChat } from './src/ai-proxy.js';
 import { handleBillingWebhook, handleBillingStatus, handleBillingCheckout, billingConfigured, billingFreeCap } from './src/billing.js';
+import { cloudAdminAuth, handleAdminCloudList } from './src/admin.js';
+import { handleReviewsCreate, handleReviewsList, handleReviewList, handleReviewAccept, handleReviewReject } from './src/reviews.js';
+import {
+  json, cloudForbidden, cloudProjectDeleted, cloudTimingSink, cloudDummyHash,
+  codesEqual, base64UrlEncode, base64UrlDecode, base64UrlToBytes, bytesToBase64Url,
+  sessionKey, signSession, readSession, sessionSetCookie, SESSION_COOKIE, SESSION_MAX_AGE,
+  authEmailConfigured, authEmailFrom, sendAuthEmail, mintAuthToken, consumeAuthToken, authVerifyEmailBody, authSessionResponse,
+  randomOwnerCode, sanitizeProjectId, randomSaltHex, hashOwnerCode, fingerprintOf,
+  sameOriginOnly, readCloudBody, cloudReadState, cloudDeepEqual,
+  CLOUD_SECTIONS, CLOUD_KEY_TO_SECTION, CLOUD_CONTENT_KEYS, CLOUD_CONTENT_KEY_SET, CLOUD_MAX_LEAF_DIFFS,
+  cloudAuthOwnerByCode, cloudAuthOwnerSession, cloudAuthOwnerEither, cloudAuthSharedCode,
+  cloudAuthEditor, cloudAuthViewer, cloudAdopt, cloudAuthAdoption, cloudAuthAnyAccess,
+  cloudScopeMerge, cloudWalkLeaves, cloudFlattenLeaves, cloudDiffState, cloudSectionOfDiffs,
+  cloudLogSave, cloudPathSegments, cloudPathGet, cloudPathSet, cloudPathDelete, cloudRevertDiff,
+  cloudRateCheck, cloudRateLimited, cloudRateKey, cloudTouchOwner,
+  handleCloudSections, CLOUD_EDITOR_AUTH_SLOTS, CLOUD_DUMMY_SALT, CLOUD_ORPHAN_RETENTION_MS, CLOUD_DELETED_PURGE_MS
+} from './src/lib/http.js';
 
 /* ============================================================
    My MaNaGeR — Thin response-decorating Worker (OBSERVABILITY-
@@ -178,8 +195,7 @@ function normalizePathname(p) {
 // Public Client ID (safe to ship — also embedded in the frontend).
 // Prefers env.GOOGLE_CLIENT_ID when set in wrangler.jsonc.
 const GOOGLE_CLIENT_ID = '297970704704-m05hgt93lfaq286q90br8c96ffg1aph3.apps.googleusercontent.com';
-const SESSION_COOKIE = 'mmgr_session';
-const SESSION_MAX_AGE = 604800; // 7 days, seconds (spec: Max-Age=604800)
+// SESSION_COOKIE + SESSION_MAX_AGE imported from src/lib/http.js
 // AUTH-MAINFRAME (2026-08-17, owner-approved): lazy sliding renewal +
 // server-side revocation. Sessions are re-issued on /api/auth/me when
 // older than SESSION_RENEW_AFTER_MS (same jti, fresh expiry), bounded by
@@ -197,42 +213,11 @@ const AUTH_LOCK_ESCALATE_FAILS = 10;
 const AUTH_LOCK_ESCALATE_MS = 60 * 60 * 1000;
 
 // JSON responses for the API — never the page CSP, always no-store.
-function json(data, status = 200) {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: {
-      'Content-Type': 'application/json; charset=utf-8',
-      'Cache-Control': 'no-store'
-    }
-  });
-}
+// json() imported from src/lib/http.js
 
 // AI relay extracted to src/ai-proxy.js — imported below.
 
-function base64UrlEncode(str) {
-  let bin = '';
-  for (const b of new TextEncoder().encode(str)) bin += String.fromCharCode(b);
-  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-}
-function base64UrlDecode(b64) {
-  const s = String(b64).replace(/-/g, '+').replace(/_/g, '/');
-  const bin = atob(s);
-  const bytes = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-  return new TextDecoder().decode(bytes);
-}
-function base64UrlToBytes(b64) {
-  const s = String(b64).replace(/-/g, '+').replace(/_/g, '/');
-  const bin = atob(s);
-  const bytes = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-  return bytes;
-}
-function bytesToBase64Url(bytes) {
-  let bin = '';
-  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
-  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-}
+// base64 utilities imported from src/lib/http.js
 
 // Verify a Google ID token with oauth2.googleapis.com/tokeninfo (no Client
 // Secret needed for this endpoint). Rejects on: non-OK response, aud
@@ -266,74 +251,7 @@ async function verifyGoogleIdToken(idToken, clientId) {
 // wrangler dev without the secret) a per-instance random key is used — the
 // cookie then only survives for that Worker instance, which is fine for
 // local testing and never weakens access codes.
-let _fallbackSessionKeyPromise = null;
-async function sessionKey(env) {
-  const secret = env && typeof env.GOOGLE_CLIENT_SECRET === 'string' && env.GOOGLE_CLIENT_SECRET.length
-    ? env.GOOGLE_CLIENT_SECRET : null;
-  if (secret) {
-    return crypto.subtle.importKey('raw', new TextEncoder().encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
-  }
-  // Cache the PROMISE, not the resolved key: concurrent /api/auth/* requests
-  // must share one key, or a sign/verify pair across the race would look like
-  // a tampered cookie (review finding).
-  if (!_fallbackSessionKeyPromise) {
-    const raw = crypto.getRandomValues(new Uint8Array(32));
-    let bin = '';
-    for (let i = 0; i < raw.length; i++) bin += String.fromCharCode(raw[i]);
-    _fallbackSessionKeyPromise = crypto.subtle.importKey('raw', new TextEncoder().encode(bin), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
-  }
-  return _fallbackSessionKeyPromise;
-}
-
-async function signSession(payload, key) {
-  const jsonStr = JSON.stringify(payload);
-  const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(jsonStr));
-  return base64UrlEncode(jsonStr) + '.' + bytesToBase64Url(new Uint8Array(sig));
-}
-
-// Read + verify the mmgr_session cookie. Returns the session payload or null.
-async function readSession(request, env) {
-  const cookieHeader = request.headers.get('Cookie') || '';
-  let raw = null;
-  cookieHeader.split(';').forEach(function(part) {
-    const idx = part.indexOf('=');
-    if (idx < 0) return;
-    if (part.slice(0, idx).trim() === SESSION_COOKIE) raw = part.slice(idx + 1).trim();
-  });
-  if (!raw) return null;
-  const dot = raw.indexOf('.');
-  if (dot <= 0 || dot >= raw.length - 1) return null;
-  let payloadStr, sigBytes;
-  try {
-    payloadStr = base64UrlDecode(raw.slice(0, dot));
-    sigBytes = base64UrlToBytes(raw.slice(dot + 1));
-  } catch (e) { return null; }
-  let payload;
-  try { payload = JSON.parse(payloadStr); } catch (e) { return null; }
-  if (!payload || typeof payload !== 'object' || !payload.sub) return null;
-  let expected;
-  try {
-    expected = new Uint8Array(await crypto.subtle.sign('HMAC', await sessionKey(env), new TextEncoder().encode(payloadStr)));
-  } catch (e) { return null; }
-  if (expected.length !== sigBytes.length) return null;
-  let diff = 0;
-  for (let i = 0; i < expected.length; i++) diff |= expected[i] ^ sigBytes[i];
-  if (diff !== 0) return null;
-  const exp = Number(payload.exp);
-  if (!Number.isFinite(exp) || exp * 1000 <= Date.now()) return null;
-  // AUTH-MAINFRAME revocation check: a revoked (or swept) jti kills the
-  // session on EVERY authenticated route. Sessions minted before migration
-  // 0012 carry no jti — accept them once (they are renewed with a jti on
-  // the next /api/auth/me) instead of logging everyone out on deploy.
-  if (payload.jti) {
-    let sessRow;
-    try {
-      sessRow = await env.DB.prepare('SELECT revoked_at FROM auth_sessions WHERE jti = ?').bind(payload.jti).first();
-    } catch (e) { return null; }
-    if (!sessRow || sessRow.revoked_at) return null;
-  }
-  return payload;
-}
+// sessionKey, signSession, readSession imported from src/lib/http.js
 
 // AUTH-MAINFRAME: mint a session — random jti, issued-at, 7-day expiry —
 // record it in auth_sessions (so it can be revoked) and return the token.
@@ -352,9 +270,7 @@ async function mintSession(user, env) {
   return { token: token, payload: payload };
 }
 
-function sessionSetCookie(token) {
-  return SESSION_COOKIE + '=' + token + '; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=' + SESSION_MAX_AGE;
-}
+// sessionSetCookie imported from src/lib/http.js
 
 /* ============================================================
    CLOUD-BACKEND-ARCHITECTURE-PLAN Phase 1 — /api/cloud/*
@@ -385,67 +301,26 @@ function sessionSetCookie(token) {
    frontend never ships the sub claim itself.
    ============================================================ */
 const CLOUD_CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no 0/O/1/I/L
-const CLOUD_PBKDF2_ITERS = 100000;
 const CLOUD_BODY_LIMIT_BYTES = 8388608; // 8 MB — state can include voice/claim data
 
 // 16 chars from a 32-char unambiguous alphabet -> ~80 bits of entropy,
 // formatted XXXX-XXXX-XXXX-XXXX. crypto.getRandomValues, never Math.random.
-function randomOwnerCode() {
-  const bytes = crypto.getRandomValues(new Uint8Array(16));
-  let code = '';
-  for (let i = 0; i < bytes.length; i++) code += CLOUD_CODE_ALPHABET[bytes[i] % 32];
-  return code.slice(0, 4) + '-' + code.slice(4, 8) + '-' + code.slice(8, 12) + '-' + code.slice(12, 16);
-}
 
 // The local project id becomes the cloud row's primary key. Only safe slug
 // chars survive; anything else is rejected (never stored).
-function sanitizeProjectId(raw) {
-  const s = String(raw || '').trim();
-  return /^[A-Za-z0-9_-]{1,64}$/.test(s) ? s : null;
-}
 
 // Fresh 16-byte salt per project (hex). Stored next to the hash.
-function randomSaltHex() {
-  const bytes = crypto.getRandomValues(new Uint8Array(16));
-  let hex = '';
-  for (let i = 0; i < bytes.length; i++) hex += bytes[i].toString(16).padStart(2, '0');
-  return hex;
-}
 
 // PBKDF2-SHA256(salt, code) -> 32-byte hex. The code itself is never
 // retained; only this derived value is persisted.
-async function hashOwnerCode(code, saltHex) {
-  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(code), 'PBKDF2', false, ['deriveBits']);
-  const bits = await crypto.subtle.deriveBits(
-    { name: 'PBKDF2', salt: new TextEncoder().encode(saltHex), iterations: CLOUD_PBKDF2_ITERS, hash: 'SHA-256' },
-    key, 256
-  );
-  const bytes = new Uint8Array(bits);
-  let hex = '';
-  for (let i = 0; i < bytes.length; i++) hex += bytes[i].toString(16).padStart(2, '0');
-  return hex;
-}
 
 // sha256 hex fingerprint of a code — the lookup key used by
 // POST /api/cloud/codes/lookup (migration 0009). Safe as a stored key
 // because codes are high-entropy random strings (~80 bits): sha256 of
 // the code is not brute-forceable, and the code itself is still never
 // stored beyond the existing PBKDF2 hashes.
-async function fingerprintOf(code) {
-  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(code || '')));
-  const bytes = new Uint8Array(buf);
-  let hex = '';
-  for (let i = 0; i < bytes.length; i++) hex += bytes[i].toString(16).padStart(2, '0');
-  return hex;
-}
 
 // Constant-time comparison (same XOR-accumulate pattern as readSession).
-function codesEqual(a, b) {
-  if (typeof a !== 'string' || typeof b !== 'string' || a.length !== b.length) return false;
-  let diff = 0;
-  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  return diff === 0;
-}
 
 // TIMING-SIDE-CHANNEL GUARD (review finding): the unknown-project path must
 // cost the SAME wall-clock as the known-project-wrong-code path. PBKDF2 at
@@ -453,39 +328,22 @@ function codesEqual(a, b) {
 // let an attacker distinguish "no such project" from "bad code" by timing
 // alone — the exact leak check 5 forbids. So every "no row" branch runs one
 // dummy PBKDF2 with a fixed code/salt before returning the generic 403.
-const CLOUD_DUMMY_CODE = 'ZZZZ-ZZZZ-ZZZZ-ZZZZ';
-const CLOUD_DUMMY_SALT = '00000000000000000000000000000000';
 // REVIEW FIX (timing existence leak): NEVER cache the dummy hash. A cached
 // promise made repeat unknown-project probes resolve in ~0ms while a
 // known-project wrong-code probe pays a real 100k-iteration PBKDF2 (~5-50ms)
 // — wall-clock then leaks project existence (check 5). Uncached, every
 // failure probe burns the same real PBKDF2 work as the honest path.
-async function cloudDummyHash() {
-  return hashOwnerCode(CLOUD_DUMMY_CODE, CLOUD_DUMMY_SALT);
-}
 // Also drain a fixed deadline on the fast paths so even the dummy-hash
 // shortcut cannot be profiled to sub-millisecond precision.
-const CLOUD_TIMING_FLOOR_MS = 15;
-function cloudTimingSink() {
-  return new Promise(function(resolve) {
-    setTimeout(resolve, CLOUD_TIMING_FLOOR_MS);
-  });
-}
 
 // The ONE 403 shape for every auth failure on cloud routes — unknown
 // project, wrong code, missing code, and unlinked recovery are
 // indistinguishable on purpose (no existence leak).
-function cloudForbidden() {
-  return json({ ok: false, error: 'invalid project or owner code' }, 403);
-}
 
 // The DISTINCT failure shape for a soft-deleted project (admin delete,
 // migration 0009 deleted_at tombstone). Deliberately separate from
 // cloudForbidden: per the owner's directive, a code holder must be told
 // the project is gone (they already knew the code — no existence leak).
-function cloudProjectDeleted() {
-  return json({ ok: false, error: 'project_deleted' }, 410);
-}
 
 // ---- CLOUD RATE LIMITING (gap-audit item A1) -----------------------------
 // Cheap hammer-deterrent + cost-inflation guard for the cloud endpoints.
@@ -498,88 +356,6 @@ function cloudProjectDeleted() {
 // real control. Limits are generous so legit multi-device flows never trip.
 // Keys: CF-Connecting-IP when present, else a SHA-256 of the presented code
 // (never the raw code in memory beyond the request), else 'anon'.
-const CLOUD_RATE = {
-  general: { max: 120, windowMs: 60000 },
-  recover: { max: 6, windowMs: 60000 }, // recovery is the sensitive reissue path
-  // email+password register/login (deferred cloud item #14, 2026-08-12):
-  // login is the CREDENTIAL-GUESSING surface — a scripted loop trying
-  // passwords is the one auth path with no platform OAuth to stop it, so
-  // it gets a tighter bucket than general. AUTH-MAINFRAME (2026-08-17):
-  // register and login get SEPARATE buckets so a login-spam script can
-  // never consume register's budget (or vice versa) — 30/min per key is
-  // generous for any legit flow (one click per sign-in). The per-account
-  // lockout (auth_login_guard) is the second line behind this.
-  authRegister: { max: 30, windowMs: 60000 },
-  authLogin: { max: 30, windowMs: 60000 },
-  // AUTH MAINFRAME v2 (2026-08-17): forgot-password is its own
-  // unauthenticated surface — tighter IP bucket than login; verify/reset are
-  // token-consumption surfaces (a guessed token is rejected by HMAC anyway;
-  // the bucket just slows hammering).
-  authForgot: { max: 10, windowMs: 60000 },
-  authToken: { max: 30, windowMs: 60000 },
-  // PART F T7 (2026-08-16) — public reviews window POST. UNauthenticated
-  // write surface (anyone can review), so it gets its own bucket tighter
-  // than general: 10 posts/min per IP is plenty for one human review and
-  // deters a scripted spam loop. GET (the public list) rides the general
-  // bucket — cheap read, generous limit.
-  reviews: { max: 10, windowMs: 60000 }
-};
-async function cloudRateKey(request, headerNames) {
-  const ip = request.headers.get('CF-Connecting-IP');
-  if (ip) return 'ip:' + ip;
-  for (let i = 0; i < headerNames.length; i++) {
-    const code = String(request.headers.get(headerNames[i]) || '').trim();
-    if (code) {
-      try {
-        const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(code));
-        const bytes = new Uint8Array(hash);
-        let hex = '';
-        for (let j = 0; j < bytes.length; j++) hex += bytes[j].toString(16).padStart(2, '0');
-        return 'code:' + hex;
-      } catch (e) { return 'anon'; }
-    }
-  }
-  return 'anon';
-}
-async function cloudRateCheck(request, bucket, env) {
-  const headers = bucket === 'recover' ? ['X-Owner-Code'] : ['X-Owner-Code', 'X-Editor-Code'];
-  const key = await cloudRateKey(request, headers);
-  const ns = bucket + ':' + key;
-  // Cloudflare Rate Limiting binding: per-location, backed by a shared store.
-  // Falls back to the in-memory Map when the binding is unavailable (local dev).
-  if (env && env.RATE_LIMITER) {
-    const { success } = await env.RATE_LIMITER.limit({ key: ns });
-    if (!success) return { limited: true, retryAfter: 60 };
-    return { limited: false };
-  }
-  // Fallback: in-memory sliding-window (per-isolate, best-effort).
-  const cfg = CLOUD_RATE[bucket] || CLOUD_RATE.general;
-  const now = Date.now();
-  let list = _cloudBuckets.get(ns);
-  if (!list) { list = []; _cloudBuckets.set(ns, list); }
-  while (list.length && list[0] <= now - cfg.windowMs) list.shift();
-  if (list.length >= cfg.max) {
-    return { limited: true, retryAfter: Math.max(1, Math.ceil((list[0] + cfg.windowMs - now) / 1000)) };
-  }
-  list.push(now);
-  if (_cloudBuckets.size > 10000) {
-    for (const [k, v] of _cloudBuckets) {
-      if (!v.length || v[v.length - 1] <= now - cfg.windowMs * 2) _cloudBuckets.delete(k);
-    }
-  }
-  return { limited: false };
-}
-const _cloudBuckets = new Map();
-function cloudRateLimited(retryAfter) {
-  return new Response(JSON.stringify({ ok: false, error: 'too many requests — slow down and try again in a minute' }), {
-    status: 429,
-    headers: {
-      'Content-Type': 'application/json; charset=utf-8',
-      'Cache-Control': 'no-store',
-      'Retry-After': String(retryAfter || 60)
-    }
-  });
-}
 
 // ---- ORPHAN-PURGE (A5-2 decision, 2026-08-11) ----------------------------
 // Auto-delete cloud projects after a retention window with NO owner
@@ -590,23 +366,13 @@ function cloudRateLimited(retryAfter) {
 // conservative: a project whose last_owner_seen_at is null is never purged
 // (legacy rows are back-filled by the migration, and the null guard is a
 // belt-and-suspenders so a schema race can never delete a live project).
-const CLOUD_ORPHAN_RETENTION_MS = 365 * 24 * 60 * 60 * 1000; // 12 months
-// Tombstone grace for admin-deleted projects (migration 0009 deleted_at):
-// the admin Undo window is seconds, so a multi-day grace is generous — but
-// the blob should not linger forever for a project that is never coming back.
-const CLOUD_DELETED_PURGE_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+// CLOUD_ORPHAN_RETENTION_MS + CLOUD_DELETED_PURGE_MS imported from src/lib/http.js
 
 // Stamp last_owner_seen_at on an owner-authenticated request. Fire-and-
 // forget semantics: this is a maintenance bump, never a failure point —
 // callers await it only when they want the write ordered with their own
 // response (recover, save); meta/load can await it too since it is a single
 // cheap UPDATE and D1 batches it with their own row read on the same conn.
-async function cloudTouchOwner(env, projectId) {
-  try {
-    await env.DB.prepare('UPDATE cloud_projects SET last_owner_seen_at = ? WHERE project_id = ?')
-      .bind(new Date().toISOString(), projectId).run();
-  } catch (e) { /* maintenance stamp must never fail a user request */ }
-}
 
 // Purge every cloud project whose owner has been absent for longer than the
 // retention window: D1 row + editor codes + changelog + every R2 object under
@@ -676,42 +442,8 @@ async function purgeStaleCloudProjects(env) {
 // impossible even for a request a browser would otherwise let through. This
 // turns the current "fine because the app is same-origin" default into a
 // written, enforced policy that a future refactor cannot accidentally open.
-function sameOriginOnly(request) {
-  const origin = request.headers.get('Origin');
-  if (!origin) return true; // non-browser / same-origin GETs — no CORS involved
-  try {
-    const u = new URL(request.url);
-    const o = new URL(origin);
-    return o.origin === u.origin;
-  } catch (e) { return false; }
-}
 
 // Size-capped body reader (mirror of readAiBody with a larger budget).
-async function readCloudBody(request) {
-  const cl = Number(request.headers.get('Content-Length') || 0);
-  if (cl > CLOUD_BODY_LIMIT_BYTES) return { tooLarge: true };
-  if (!request.body) {
-    try { return { body: await request.json() }; } catch (e) { return { bad: true }; }
-  }
-  const reader = request.body.getReader();
-  const chunks = [];
-  let total = 0;
-  let done = false;
-  while (!done) {
-    const res = await reader.read();
-    done = res.done;
-    if (res.value) {
-      total += res.value.byteLength;
-      if (total > CLOUD_BODY_LIMIT_BYTES) return { tooLarge: true };
-      chunks.push(res.value);
-    }
-  }
-  const bytes = new Uint8Array(total);
-  let off = 0;
-  for (const c of chunks) { bytes.set(c, off); off += c.byteLength; }
-  const text = new TextDecoder().decode(bytes);
-  try { return { body: JSON.parse(text) }; } catch (e) { return { bad: true }; }
-}
 
 
 /* ============================================================
@@ -756,81 +488,15 @@ async function readCloudBody(request) {
        on file.
    ============================================================ */
 
-// ---- canonical writable sections (Phase 2 scope vocabulary) ----
-// One top-level state key belongs to EXACTLY one section. View-only
-// panels (dash/def/kan/gantt/claim) read derived data and are not
-// independently writable, so they are not scoping targets.
-const CLOUD_SECTIONS = {
-  charter: { label: 'Charter', keys: ['projectName', 'methodology', 'methodologyLocked', 'charter'] },
-  wbs:     { label: 'WBS / Tasks', keys: ['tasks'] },
-  res:     { label: 'Resources', keys: ['resources'] },
-  bud:     { label: 'Budget', keys: ['budgetLines', 'budgetEnvelope', 'spendLog', 'nspid'] },
-  stk:     { label: 'Stakeholders', keys: ['stakeholders'] },
-  chg:     { label: 'Changes', keys: ['changes'] },
-  log:     { label: 'Decision Log', keys: ['logEntries'] },
-  risk:    { label: 'Risk / Issues', keys: ['risks', 'issues'] },
-  close:   { label: 'Closure', keys: ['closure'] },
-  raci:    { label: 'RACI', keys: ['raci'] },
-  comms:   { label: 'Comms Log', keys: ['commsEntries'] },
-  docs:    { label: 'Documents', keys: ['documents'] },
-  dmaic:   { label: 'DMAIC', keys: ['dmaic'] },
-  meet:    { label: 'Meetings', keys: ['meetings', 'meetingPromises', 'activeMeeting', 'nmeetid', 'sentimentHistory'] }
-};
-const CLOUD_KEY_TO_SECTION = {};
-const CLOUD_CONTENT_KEYS = [];
-Object.keys(CLOUD_SECTIONS).forEach(function(sec) {
-  CLOUD_SECTIONS[sec].keys.forEach(function(k) {
-    CLOUD_KEY_TO_SECTION[k] = sec;
-    CLOUD_CONTENT_KEYS.push(k);
-  });
-});
-const CLOUD_CONTENT_KEY_SET = {};
-CLOUD_CONTENT_KEYS.forEach(function(k) { CLOUD_CONTENT_KEY_SET[k] = 1; });
-
-// Changelog leaf-diff cap: a save touching more leaves than this is a
-// bulk operation and falls back to the snapshot path (plan §5 option B).
-const CLOUD_MAX_LEAF_DIFFS = 40;
-
-function cloudDeepEqual(a, b) {
-  try { return JSON.stringify(a) === JSON.stringify(b); } catch (e) { return a === b; }
-}
+// CLOUD_SECTIONS, CLOUD_KEY_TO_SECTION, CLOUD_CONTENT_KEYS, CLOUD_CONTENT_KEY_SET,
+// CLOUD_MAX_LEAF_DIFFS, cloudDeepEqual, cloudReadState imported from src/lib/http.js
 
 // Read the latest state blob for a project (null when none exists).
-async function cloudReadState(env, key) {
-  if (!key) return null;
-  const obj = await env.R2.get(key);
-  if (!obj) return null;
-  const text = await obj.text();
-  try { return JSON.parse(text); } catch (e) { return null; }
-}
 
 // ---- owner identity: owner code OR the linked Google session ----
 // Mirrors the timing discipline of the Phase 1 paths: unknown project,
 // wrong code, missing code, unlinked session all burn the same
 // dummy-PBKDF2 + timing floor before returning null (no existence leak).
-async function cloudAuthOwnerByCode(request, env, projectId, code) {
-  if (!code) { await Promise.all([cloudDummyHash(), cloudTimingSink()]); return null; }
-  const row = await env.DB.prepare('SELECT owner_code_salt, owner_code_hash, google_sub, google_name, deleted_at FROM cloud_projects WHERE project_id = ?').bind(projectId).first();
-  if (!row) { await Promise.all([cloudDummyHash(), cloudTimingSink()]); return null; }
-  const hash = await hashOwnerCode(code, row.owner_code_salt);
-  if (!codesEqual(hash, row.owner_code_hash)) { await cloudTimingSink(); return null; }
-  return { role: 'owner', label: row.google_name || 'Owner', row: row };
-}
-async function cloudAuthOwnerSession(request, env, projectId) {
-  const session = await readSession(request, env);
-  if (!session || !session.sub) { await cloudTimingSink(); return null; }
-  const row = await env.DB.prepare('SELECT google_sub, google_name FROM cloud_projects WHERE project_id = ?').bind(projectId).first();
-  if (!row || !row.google_sub || row.google_sub !== session.sub) { await cloudTimingSink(); return null; }
-  return { role: 'owner', label: row.google_name || session.name || 'Owner', row: row };
-}
-async function cloudAuthOwnerEither(request, env, projectId) {
-  const code = String(request.headers.get('X-Owner-Code') || '').trim();
-  if (code) {
-    const a = await cloudAuthOwnerByCode(request, env, projectId, code);
-    if (a) return a;
-  }
-  return cloudAuthOwnerSession(request, env, projectId);
-}
 
 // ---- editor identity: active editor code for this project ----
 // Every failure path (missing code / no row / revoked / wrong code)
@@ -843,37 +509,12 @@ async function cloudAuthOwnerEither(request, env, projectId) {
 // The submitted code is compared at every real slot, so a code issued for any
 // active row authenticates; an attacker probing with a wrong code cannot
 // distinguish unknown/1-code/N-code projects by timing.
-const CLOUD_EDITOR_AUTH_SLOTS = 4;
 // Shared-code auth for BOTH roles (migration 0009 role column): the JOIN
 // pulls the project's deleted_at so load/save/meta can answer
 // 'project_deleted' with the same row read (no extra SELECT on hot paths).
-async function cloudAuthSharedCode(request, env, projectId, code, role) {
-  if (!code) { await Promise.all([cloudDummyHash(), cloudTimingSink()]); return null; }
-  const rows = await env.DB.prepare('SELECT e.id, e.code_salt, e.code_hash, e.label, e.scope, p.deleted_at FROM cloud_editor_codes e JOIN cloud_projects p ON p.project_id = e.project_id WHERE e.project_id = ? AND e.active = 1 AND e.role = ?').bind(projectId, role).all();
-  const active = (rows && rows.results) || [];
-  const slots = Math.max(active.length, CLOUD_EDITOR_AUTH_SLOTS);
-  for (let i = 0; i < slots; i++) {
-    const row = active[i];
-    const salt = row ? row.code_salt : CLOUD_DUMMY_SALT;
-    const hash = await hashOwnerCode(code, salt);
-    if (row && codesEqual(hash, row.code_hash)) {
-      let scope = [];
-      try { const p = JSON.parse(row.scope); if (Array.isArray(p)) scope = p.filter(function(x) { return !!CLOUD_SECTIONS[x]; }); } catch (e) { scope = []; }
-      return { role: role, editorId: row.id, label: row.label || (role === 'view' ? 'Viewer' : 'Editor'), scope: scope, row: row };
-    }
-  }
-  await cloudTimingSink();
-  return null;
-}
-async function cloudAuthEditor(request, env, projectId, code) {
-  return cloudAuthSharedCode(request, env, projectId, code, 'editor');
-}
 // Viewer identity: an active VIEW code can LOAD (read-only + section
 // scope) but can never SAVE — the save path never accepts X-View-Code
 // and cloudAuthEditor only matches role='editor'.
-async function cloudAuthViewer(request, env, projectId, code) {
-  return cloudAuthSharedCode(request, env, projectId, code, 'view');
-}
 
 // ---- PART F T9 (2026-08-16): recipient adoption (pin-into-list) ----
 // cloud_adoptions links a signed-in recipient to a project they loaded
@@ -885,33 +526,9 @@ async function cloudAuthViewer(request, env, projectId, code) {
 // project answers project_deleted. No PBKDF2/timing floor needed here —
 // the adoption row is a per-user capability read, not an existence oracle
 // (the caller already holds a valid session cookie).
-async function cloudAdopt(env, projectId, sub, editorCodeId, role) {
-  if (!sub || !editorCodeId) return;
-  const now = new Date().toISOString();
-  await env.DB.prepare(
-    'INSERT INTO cloud_adoptions (project_id, recipient_sub, editor_code_id, role, created_at, updated_at) VALUES (?,?,?,?,?,?) ' +
-    'ON CONFLICT(project_id, recipient_sub) DO UPDATE SET editor_code_id = excluded.editor_code_id, role = excluded.role, updated_at = excluded.updated_at'
-  ).bind(projectId, sub, editorCodeId, role, now, now).run();
-}
 // Returns { role, editorId, label, scope, row } for an active adoption,
 // { revoked: true } when the linked code was revoked/deleted, or null when
 // this session has no adoption row for the project.
-async function cloudAuthAdoption(request, env, projectId) {
-  const session = await readSession(request, env);
-  if (!session || !session.sub) return null;
-  const ad = await env.DB.prepare(
-    'SELECT editor_code_id, role FROM cloud_adoptions WHERE project_id = ? AND recipient_sub = ?'
-  ).bind(projectId, session.sub).first();
-  if (!ad) return null;
-  const row = await env.DB.prepare(
-    'SELECT e.id, e.code_salt, e.code_hash, e.label, e.scope, e.active, e.role, p.deleted_at FROM cloud_editor_codes e JOIN cloud_projects p ON p.project_id = e.project_id WHERE e.id = ?'
-  ).bind(ad.editor_code_id).first();
-  if (!row || row.active !== 1) return { revoked: true };
-  if (row.deleted_at) return { deleted: true };
-  let scope = [];
-  try { const p = JSON.parse(row.scope); if (Array.isArray(p)) scope = p.filter(function(x) { return !!CLOUD_SECTIONS[x]; }); } catch (e) { scope = []; }
-  return { role: row.role === 'view' ? 'view' : 'editor', editorId: row.id, label: row.label || (row.role === 'view' ? 'Viewer' : 'Editor'), scope: scope, row: row };
-}
 
 // ---- SERVER-SIDE SCOPE ENFORCEMENT (Phase 2, plan §3) -----------
 // An editor's save is merged, never trusted wholesale: the new blob is
@@ -922,95 +539,8 @@ async function cloudAuthAdoption(request, env, projectId) {
 // (updatedAt/fieldTs/...) is server-managed, never taken from an editor
 // submission. fieldTs is kept consistent so the app's per-field
 // last-write-wins merge sees the editor's applied keys as fresh.
-function cloudScopeMerge(prev, submitted, scope) {
-  const base = prev && typeof prev === 'object' && !Array.isArray(prev)
-    ? JSON.parse(JSON.stringify(prev)) : {};
-  const writable = {};
-  scope.forEach(function(sec) {
-    (CLOUD_SECTIONS[sec] || { keys: [] }).keys.forEach(function(k) { writable[k] = 1; });
-  });
-  const applied = []; const blocked = [];
-  Object.keys(submitted || {}).forEach(function(k) {
-    if (writable[k]) {
-      base[k] = submitted[k];
-      if (prev === null || prev === undefined || !cloudDeepEqual(prev[k], submitted[k])) {
-        const sec = CLOUD_KEY_TO_SECTION[k];
-        if (sec && applied.indexOf(sec) === -1) applied.push(sec);
-      }
-    } else if (CLOUD_CONTENT_KEY_SET[k]) {
-      const differs = (prev === null || prev === undefined)
-        ? submitted[k] !== undefined
-        : !cloudDeepEqual(prev[k], submitted[k]);
-      if (differs) {
-        const sec = CLOUD_KEY_TO_SECTION[k];
-        if (sec && blocked.indexOf(sec) === -1) blocked.push(sec);
-      }
-    }
-    // non-content keys (fieldTs, updatedAt, config, flags, ...) are
-    // silently ignored — they never flow out of an editor's grant.
-  });
-  // Server-managed metadata: fieldTs carries over, and applied keys get a
-  // fresh stamp so the blob's timestamp map matches what it contains.
-  if (prev && prev.fieldTs && typeof prev.fieldTs === 'object' && !Array.isArray(prev.fieldTs)) {
-    base.fieldTs = JSON.parse(JSON.stringify(prev.fieldTs));
-  }
-  const now = new Date().toISOString();
-  applied.forEach(function(sec) {
-    (CLOUD_SECTIONS[sec] || { keys: [] }).keys.forEach(function(k) {
-      if (base.fieldTs && typeof base.fieldTs === 'object') base.fieldTs[k] = now;
-    });
-  });
-  delete base.updatedAt; // caller stamps a fresh updatedAt
-  return { next: base, applied: applied, blocked: blocked };
-}
 
 // ---- Phase 3 changelog: leaf-level diffing + snapshot fallback ----
-function cloudWalkLeaves(path, v, out) {
-  if (v === null || typeof v !== 'object') { out[path] = v; return; }
-  if (Array.isArray(v)) {
-    if (v.length === 0) { out[path] = []; return; }
-    v.forEach(function(item, i) { cloudWalkLeaves(path + '[' + i + ']', item, out); });
-    return;
-  }
-  const keys = Object.keys(v);
-  if (keys.length === 0) { out[path] = {}; return; }
-  keys.forEach(function(k) { cloudWalkLeaves(path + '.' + k, v[k], out); });
-}
-function cloudFlattenLeaves(obj, out) {
-  CLOUD_CONTENT_KEYS.forEach(function(k) { cloudWalkLeaves(k, obj ? obj[k] : undefined, out); });
-}
-function cloudDiffState(prev, next) {
-  if (!prev || typeof prev !== 'object') return null; // first save — nothing to diff
-  const before = {}; const after = {};
-  cloudFlattenLeaves(prev, before);
-  cloudFlattenLeaves(next, after);
-  const paths = Object.keys(before);
-  Object.keys(after).forEach(function(p) { if (paths.indexOf(p) === -1) paths.push(p); });
-  const diffs = [];
-  for (let i = 0; i < paths.length; i++) {
-    const p = paths[i];
-    const a = before[p]; const b = after[p];
-    if (a === b || cloudDeepEqual(a, b)) continue;
-    diffs.push({
-      path: p,
-      before: a === undefined ? null : a,
-      beforeAbsent: a === undefined,
-      after: b === undefined ? null : b,
-      afterAbsent: b === undefined
-    });
-  }
-  return diffs;
-}
-function cloudSectionOfDiffs(diffs) {
-  let sec = null;
-  for (let i = 0; i < diffs.length; i++) {
-    const s = CLOUD_KEY_TO_SECTION[String(diffs[i].path).split(/[.[]/)[0]];
-    if (s === undefined) continue;
-    if (sec === null) sec = s;
-    else if (sec !== s) return 'multiple';
-  }
-  return sec;
-}
 
 // Record one changelog row for a save. Returns {id,type} or null when
 // nothing changed / first save. Field-level 'edit' for <= cap leaves,
@@ -1018,104 +548,12 @@ function cloudSectionOfDiffs(diffs) {
 // type — REVIEW QUEUE (2026-08-17) uses 'accepted' so an accepted
 // proposal is logged as the audit record of the owner's decision
 // (still revertible via the same leaf/snapshot machinery).
-async function cloudLogSave(env, projectId, prev, next, actor, entryType) {
-  const diffs = cloudDiffState(prev, next);
-  if (diffs === null || diffs.length === 0) return null;
-  const now = new Date().toISOString();
-  if (diffs.length > CLOUD_MAX_LEAF_DIFFS) {
-    const snapKey = 'projects/' + projectId + '/changelog/' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8) + '.json';
-    await env.R2.put(snapKey, JSON.stringify(prev), { httpMetadata: { contentType: 'application/json' } });
-    const res = await env.DB.prepare(
-      'INSERT INTO cloud_changelog (project_id, entry_type, actor_type, actor_label, section, diffs_json, snapshot_key, created_at) VALUES (?,?,?,?,?,?,?,?)'
-    ).bind(projectId, entryType || 'bulk', actor.type, actor.label, null, null, snapKey, now).run();
-    return { id: res.meta.last_row_id, type: entryType || 'bulk' };
-  }
-  const sec = cloudSectionOfDiffs(diffs);
-  const res = await env.DB.prepare(
-    'INSERT INTO cloud_changelog (project_id, entry_type, actor_type, actor_label, section, diffs_json, snapshot_key, created_at) VALUES (?,?,?,?,?,?,?,?)'
-  ).bind(projectId, entryType || 'edit', actor.type, actor.label, sec, JSON.stringify(diffs), null, now).run();
-  return { id: res.meta.last_row_id, type: entryType || 'edit' };
-}
 
 // ---- state-path utilities (revert) ------------------------------
-function cloudPathSegments(p) {
-  // Tokenizes 'a.b[2].c' into [{key:'a'},{key:'b'},{idx:2},{key:'c'}].
-  // The '.' separator must be SKIPPED, never treated as an empty key —
-  // the original parser looped forever on any dotted path (found by
-  // qa-cloud-phase2 P3.2c: the revert request hung and the worker wedged).
-  const segs = []; const s = String(p); let i = 0;
-  while (i < s.length) {
-    if (s[i] === '[') {
-      const j = s.indexOf(']', i);
-      if (j < 0) break;
-      segs.push({ idx: Number(s.slice(i + 1, j)) });
-      i = j + 1;
-    } else if (s[i] === '.') {
-      i++; // skip separator
-    } else {
-      let j = s.indexOf('.', i); let k = s.indexOf('[', i);
-      let end = s.length;
-      if (j >= 0 && j < end) end = j;
-      if (k >= 0 && k < end) end = k;
-      segs.push({ key: s.slice(i, end) });
-      i = end;
-    }
-  }
-  return segs;
-}
-function cloudPathGet(obj, p) {
-  let cur = obj;
-  const segs = cloudPathSegments(p);
-  for (let i = 0; i < segs.length; i++) {
-    if (cur === null || cur === undefined) return undefined;
-    const seg = segs[i];
-    cur = seg.idx !== undefined ? cur[seg.idx] : cur[seg.key];
-  }
-  return cur;
-}
 // REVIEW FIX: never fabricate missing intermediate containers. Reverting a
 // leaf whose parent element was deleted (e.g. tasks[0].name after tasks[0]
 // was removed) must not resurrect a partial shell ({name:...} with no
 // id/status/dates). Returns true only when the write actually landed.
-function cloudPathSet(obj, p, val) {
-  const segs = cloudPathSegments(p);
-  let cur = obj;
-  for (let i = 0; i < segs.length - 1; i++) {
-    if (cur === null || cur === undefined) return false;
-    const seg = segs[i];
-    const next = segs[i + 1];
-    if (seg.idx !== undefined) {
-      if (!Array.isArray(cur)) return false;
-      if (cur[seg.idx] === null || cur[seg.idx] === undefined) return false;
-      cur = cur[seg.idx];
-    } else {
-      if (cur[seg.key] === null || cur[seg.key] === undefined) return false;
-      cur = cur[seg.key];
-    }
-  }
-  const last = segs[segs.length - 1];
-  if (last.idx !== undefined) {
-    if (!Array.isArray(cur)) return false;
-    cur[last.idx] = val;
-  } else {
-    if (cur === null || typeof cur !== 'object' || Array.isArray(cur)) return false;
-    cur[last.key] = val;
-  }
-  return true;
-}
-function cloudPathDelete(obj, p) {
-  const segs = cloudPathSegments(p);
-  let cur = obj;
-  for (let i = 0; i < segs.length - 1; i++) {
-    if (cur === null || cur === undefined) return;
-    const seg = segs[i];
-    cur = seg.idx !== undefined ? cur[seg.idx] : cur[seg.key];
-  }
-  const last = segs[segs.length - 1];
-  if (cur === null || cur === undefined) return;
-  if (last.idx !== undefined && Array.isArray(cur)) cur.splice(last.idx, 1);
-  else if (last.key !== undefined && typeof cur === 'object' && !Array.isArray(cur)) delete cur[last.key];
-}
 
 // ---- recordId-aware diff revert (CLOUD-MCP-IMPORT, 2026-08-11) ----------
 // Apply the INVERSE of one stored changelog diff to a state object
@@ -1128,71 +566,9 @@ function cloudPathDelete(obj, p) {
 // record was removed by a LATER edit is SKIPPED rather than written onto
 // whatever record sits there now. Returns true when the write actually
 // landed (so the revert log only claims applied diffs).
-function cloudRevertDiff(s, d) {
-  // field may itself be dotted for object content keys (raci.matrix.<key>).
-  const m = String(d.path || '').match(/^([a-zA-Z]+)(?:\[(\d+)\])?(?:\.(.+))?$/);
-  if (!m) return false;
-  const listKey = m[1];
-  const idxStr = m[2];
-  const field = m[3];
-  const list = s[listKey];
-  // Object content keys (charter, closure, raci, dmaic, activeMeeting, ...)
-  // and any nested leaf are diffed by the app's own saves too — revert them
-  // with the generic path helpers, exactly like the pre-recordId code did.
-  // REVIEW FIX (2026-08-11 #2): the first rewrite only special-cased
-  // charter + arrays, silently no-opping every other object key's revert.
-  if (!Array.isArray(list) || (field !== undefined && field.indexOf('.') !== -1)) {
-    if (d.beforeAbsent) { cloudPathDelete(s, d.path); return true; }
-    return cloudPathSet(s, d.path, d.before);
-  }
-  // A delete diff records the id of the record that WAS there — on revert it
-  // is intentionally absent, so delete-restores resolve by the recorded
-  // index, never by id lookup.
-  const isDeleteRestore = d.afterAbsent === true && d.beforeAbsent !== true && !field;
-  let idx = -1;
-  if (!isDeleteRestore && d.recordId !== undefined) {
-    idx = list.findIndex(function(r) { return r && String(r.id) === String(d.recordId); });
-    if (idx < 0) return false; // target record gone — skip rather than clobber
-  } else if (idxStr !== undefined) {
-    idx = Number(idxStr);
-  }
-  if (d.beforeAbsent) {
-    // A FIELD-level add (leaf diff — the field was undefined before the
-    // change) reverts to deleting just that field; only a WHOLE-RECORD add
-    // removes the record. REVIEW FIX (2026-08-11): the previous version
-    // spliced for every beforeAbsent diff, which turned cloud-native leaf
-    // reverts into corruption — reverting a record-add (leaf diffs at the
-    // same index) repeatedly removed the shifted FOLLOWING records.
-    const rec = idx >= 0 && idx < list.length ? list[idx] : null;
-    if (field) {
-      if (!rec) return false;
-      delete rec[field];
-      return true;
-    }
-    if (idx >= 0 && idx < list.length) { list.splice(idx, 1); return true; }
-    return false;
-  }
-  if (isDeleteRestore) {
-    // record was deleted by the logged change -> re-insert at a clamped
-    // position (never overwrite a possibly-drifted neighbor)
-    list.splice(Math.min(idx < 0 ? 0 : idx, list.length), 0, d.before);
-    return true;
-  }
-  const rec = idx >= 0 && idx < list.length ? list[idx] : null;
-  if (!rec) return false;
-  if (field) { rec[field] = d.before; return true; }
-  list[idx] = d.before;
-  return true;
-}
 
 // ---- editor code management (owner-only) -------------------------
 // GET /api/cloud/sections — canonical section vocabulary (public).
-function handleCloudSections() {
-  const sections = Object.keys(CLOUD_SECTIONS).map(function(k) {
-    return { key: k, label: CLOUD_SECTIONS[k].label, keys: CLOUD_SECTIONS[k].keys.slice() };
-  });
-  return json({ ok: true, sections: sections });
-}
 
 // ---- PART F T7 — PUBLIC REVIEWS WINDOW (2026-08-16) -------------------
 // reviews.html: anyone leaves a review (name optional, "Anonymous" when
@@ -1209,94 +585,20 @@ function handleCloudSections() {
 // DOM at all. Size-capped (a review is short prose — a 2 KB review
 // text + 60-char name is far beyond generous) and rate-limited with
 // the dedicated `reviews` bucket (10/min per IP).
-const REVIEW_TEXT_MAX = 2000;
-const REVIEW_NAME_MAX = 60;
-const REVIEW_BODY_LIMIT_BYTES = 8192;
 
 // Read the JSON body with a review-sized cap (reviews are short prose;
 // the cloud 8 MB body reader would accept junk we then reject anyway).
-async function readReviewBody(request) {
-  const cl = Number(request.headers.get('Content-Length') || 0);
-  if (cl > REVIEW_BODY_LIMIT_BYTES) return { tooLarge: true };
-  if (!request.body) {
-    try { return { body: await request.json() }; } catch (e) { return { bad: true }; }
-  }
-  const reader = request.body.getReader();
-  const chunks = [];
-  let total = 0;
-  let done = false;
-  while (!done) {
-    const res = await reader.read();
-    done = res.done;
-    if (res.value) {
-      total += res.value.byteLength;
-      if (total > REVIEW_BODY_LIMIT_BYTES) return { tooLarge: true };
-      chunks.push(res.value);
-    }
-  }
-  const bytes = new Uint8Array(total);
-  let off = 0;
-  for (const c of chunks) { bytes.set(c, off); off += c.byteLength; }
-  const text = new TextDecoder().decode(bytes);
-  try { return { body: JSON.parse(text) }; } catch (e) { return { bad: true }; }
-}
 
 // PLAIN-TEXT-ONLY guard: reject HTML markup and URL scaffolding.
 // Returns the problem as a human message, or null when the text is clean.
-function reviewPlainTextProblem(s) {
-  if (/[<>]/.test(s)) return 'plain text only — no HTML or markup in reviews';
-  if (/https?:\/\/|www\./i.test(s)) return 'plain text only — no links in reviews';
-  return null;
-}
 
 // POST /api/reviews  { name?, review, stars? }  →  { ok, review }
 // Writes BOTH D1 (listing source) and R2 reviews/<id>.json (durable
 // copy) — the same dual-write the cloud project rows use.
-async function handleReviewsCreate(request, env) {
-  const read = await readReviewBody(request);
-  if (read.tooLarge) return json({ ok: false, error: 'review too large' }, 413);
-  if (read.bad || !read.body || typeof read.body !== 'object') return json({ ok: false, error: 'bad request' }, 400);
-  const rawName = typeof read.body.name === 'string' ? read.body.name.trim().slice(0, REVIEW_NAME_MAX) : '';
-  const rawText = typeof read.body.review === 'string' ? read.body.review.trim() : '';
-  if (!rawText) return json({ ok: false, error: 'review text is required' }, 400);
-  if (rawText.length > REVIEW_TEXT_MAX) return json({ ok: false, error: 'review too long (max ' + REVIEW_TEXT_MAX + ' characters)' }, 400);
-  const prob = reviewPlainTextProblem(rawText) || reviewPlainTextProblem(rawName);
-  if (prob) return json({ ok: false, error: prob }, 400);
-  // Star-READY: accept an optional 1-5 rating (the follow-up UI sends it).
-  let stars = null;
-  if (read.body.stars !== undefined && read.body.stars !== null && read.body.stars !== 0) {
-    const n = Number(read.body.stars);
-    if (Number.isInteger(n) && n >= 1 && n <= 5) stars = n;
-    else return json({ ok: false, error: 'stars must be a whole number from 1 to 5' }, 400);
-  }
-  const name = rawName ? rawName : null;
-  const now = new Date().toISOString();
-  const res = await env.DB.prepare(
-    'INSERT INTO reviews (name, review_text, stars, votes, created_at) VALUES (?,?,?,0,?)'
-  ).bind(name, rawText, stars, now).run();
-  const id = Number(res.meta.last_row_id);
-  const review = { id: id, name: name, review: rawText, stars: stars, votes: 0, createdAt: now };
-  try {
-    await env.R2.put('reviews/' + id + '.json', JSON.stringify(review), { httpMetadata: { contentType: 'application/json' } });
-  } catch (e) {
-    // D1 is the listing source of truth; a blob write failure must not
-    // fail the review itself (same best-effort discipline as cloud saves).
-  }
-  return json({ ok: true, review: review });
-}
 
 // GET /api/reviews — public, newest first. Never exposes anything beyond
 // the four public fields; no moderation (owner: everyone sees all reviews
 // instantly).
-async function handleReviewsList(env) {
-  const rows = await env.DB.prepare(
-    'SELECT id, name, review_text, stars, votes, created_at FROM reviews ORDER BY created_at DESC, id DESC LIMIT 200'
-  ).all();
-  const reviews = (rows.results || []).map(function(r) {
-    return { id: r.id, name: r.name, review: r.review_text, stars: r.stars, votes: r.votes, createdAt: r.created_at };
-  });
-  return json({ ok: true, reviews: reviews });
-}
 
 // POST /api/cloud/projects/:id/editors  { label, scope: [section...] }
 // Owner-only (owner code or linked session). Generates the editor code,
@@ -1607,48 +909,6 @@ async function handleCloudChangelogImport(request, env, projectId) {
 }
 
 // ---- admin cloud visibility (operator-gated listing) --------------
-async function cloudAdminAuth(request, env) {
-  const expected = env && typeof env.ADMIN_CODE === 'string' ? env.ADMIN_CODE.trim() : '';
-  if (!expected) return { disabled: true };
-  const code = String(request.headers.get('X-Admin-Code') || '').trim();
-  if (!code || !codesEqual(code, expected)) return null;
-  return { ok: true };
-}
-async function handleAdminCloudList(request, env) {
-  const auth = await cloudAdminAuth(request, env);
-  if (auth && auth.disabled) return json({ ok: false, error: 'admin API not configured — set the ADMIN_CODE secret' }, 503);
-  if (!auth) return json({ ok: false, error: 'invalid admin code' }, 403);
-  // PREF-SURFACING (backlog, 2026-08-12): the linked account's stored theme
-  // preference (R2 prefs/<sub>.json) rides along per project so the operator
-  // can see the prefs store in use from the admin cloud listing. google_sub is
-  // selected INTERNALLY only — the raw sub is never exposed in the response,
-  // just the derived themePrefs (palette/dark/updatedAt).
-  // STABILIZATION (2026-08-16): deleted_at rides along so the admin Cloud
-  // Projects list can render a tombstoned row as its "Deleted" state (Undo +
-  // Delete permanently) instead of looking live — the owner's report: "when I
-  // delete the local version from the admin panel, it is still showing in the
-  // cloud project section at the bottom."
-  const rows = await env.DB.prepare('SELECT project_id, owner_label, google_name, google_sub, latest_r2_key, created_at, updated_at, deleted_at FROM cloud_projects ORDER BY updated_at DESC').all();
-  const projects = [];
-  for (const r of (rows.results || [])) {
-    let themePrefs = null;
-    if (r.google_sub) {
-      try {
-        const obj = await env.R2.get(cloudPrefsKey(r.google_sub));
-        if (obj) {
-          const p = JSON.parse(await obj.text());
-          if (p) themePrefs = {
-            palette: cloudSanitizePalette(p.palette) || 'default',
-            dark: !!p.dark,
-            updatedAt: p.updatedAt || null
-          };
-        }
-      } catch (e) { themePrefs = null; }
-    }
-    projects.push({ projectId: r.project_id, label: r.owner_label || null, linkedName: r.google_name || null, hasSnapshot: !!r.latest_r2_key, createdAt: r.created_at, updatedAt: r.updated_at, deletedAt: r.deleted_at || null, themePrefs: themePrefs });
-  }
-  return json({ ok: true, projects: projects });
-}
 
 // GET /api/cloud/projects — session-gated list of the SIGNED-IN OWNER'S
 // cloud-linked projects (A5-3 decision, 2026-08-11: the multi-project
@@ -2279,28 +1539,6 @@ async function handleCloudUnlink(request, env, projectId) {
 // editor, owner code, linked session, or adoption) — a copy is view-only by
 // design, so registering it needs no special role. Returns the auth result
 // or null after the standard timing discipline.
-async function cloudAuthAnyAccess(request, env, projectId) {
-  const code = String(request.headers.get('X-Owner-Code') || '').trim();
-  if (code) {
-    const a = await cloudAuthOwnerByCode(request, env, projectId, code);
-    if (a) return a;
-  }
-  const ecode = String(request.headers.get('X-Editor-Code') || '').trim();
-  if (ecode) {
-    const a = await cloudAuthEditor(request, env, projectId, ecode);
-    if (a) return a;
-  }
-  const vcode = String(request.headers.get('X-View-Code') || '').trim();
-  if (vcode) {
-    const a = await cloudAuthViewer(request, env, projectId, vcode);
-    if (a) return a;
-  }
-  const sess = await cloudAuthOwnerSession(request, env, projectId);
-  if (sess) return sess;
-  const ad = await cloudAuthAdoption(request, env, projectId);
-  if (ad && (ad.role === 'editor' || ad.role === 'view')) return ad;
-  return null;
-}
 
 // POST /api/cloud/projects/:id/offline-copies  { deviceId }
 // Registers this device as a view-only offline copy of the cloud project.
@@ -2428,110 +1666,8 @@ async function handleCloudAutoBroadcast(request, env, projectId) {
 // the list/decide endpoints; an editor can read their OWN proposals via
 // ?mine=1 with the editor credential (status visibility on the source
 // side — approved "review list with status").
-async function handleReviewList(request, env, projectId, mine) {
-  const code = String(request.headers.get('X-Owner-Code') || '').trim();
-  const owner = code ? await cloudAuthOwnerEither(request, env, projectId) : null;
-  let editorId = null; let editorLabel = null;
-  if (!owner) {
-    const ecode = String(request.headers.get('X-Editor-Code') || '').trim();
-    if (ecode) {
-      const a = await cloudAuthEditor(request, env, projectId, ecode);
-      if (a) { editorId = a.editorId; editorLabel = a.label; }
-    } else {
-      const ad = await cloudAuthAdoption(request, env, projectId);
-      if (ad && ad.role === 'editor') { editorId = ad.editorId; editorLabel = ad.label; }
-    }
-    if (!editorId) { await cloudTimingSink(); return cloudForbidden(); }
-  }
-  const row = await env.DB.prepare('SELECT deleted_at FROM cloud_projects WHERE project_id = ?').bind(projectId).first();
-  if (!row) return cloudForbidden();
-  if (row.deleted_at) return cloudProjectDeleted();
-  if (owner && !mine) {
-    const rows = await env.DB.prepare(
-      'SELECT id, proposal_type, source_type, source_label, status, diffs_json, proposed_at, decided_at, decided_by, accepted_entry_id FROM cloud_reviews WHERE project_id = ? ORDER BY CASE WHEN status = ? THEN 0 ELSE 1 END, id DESC LIMIT 100'
-    ).bind(projectId, 'pending').all();
-    const proposals = (rows.results || []).map(function(r) {
-      let diffs = null;
-      try { if (r.diffs_json) diffs = JSON.parse(r.diffs_json); } catch (e) { diffs = null; }
-      return { id: r.id, proposalType: r.proposal_type, sourceType: r.source_type, sourceLabel: r.source_label, status: r.status, diffs: diffs, proposedAt: r.proposed_at, decidedAt: r.decided_at, decidedBy: r.decided_by, acceptedEntryId: r.accepted_entry_id };
-    });
-    return json({ ok: true, proposals: proposals });
-  }
-  // Editor's own view (mine=1 or an editor credential): their proposals only.
-  const mineRows = await env.DB.prepare(
-    'SELECT id, proposal_type, source_type, source_label, status, diffs_json, proposed_at, decided_at FROM cloud_reviews WHERE project_id = ? AND editor_code_id = ? ORDER BY id DESC LIMIT 20'
-  ).bind(projectId, editorId).all();
-  const mineList = (mineRows.results || []).map(function(r) {
-    let diffs = null;
-    try { if (r.diffs_json) diffs = JSON.parse(r.diffs_json); } catch (e) { diffs = null; }
-    return { id: r.id, proposalType: r.proposal_type, sourceType: r.source_type, sourceLabel: r.source_label || editorLabel, status: r.status, diffs: diffs, proposedAt: r.proposed_at, decidedAt: r.decided_at };
-  });
-  return json({ ok: true, proposals: mineList });
-}
 
-async function handleReviewAccept(request, env, projectId, reviewId) {
-  const auth = await cloudAuthOwnerEither(request, env, projectId);
-  if (!auth) return cloudForbidden();
-  const row = await env.DB.prepare('SELECT * FROM cloud_reviews WHERE id = ? AND project_id = ?').bind(reviewId, projectId).first();
-  if (!row) return json({ ok: false, error: 'proposal not found' }, 404);
-  if (row.status !== 'pending') return json({ ok: false, error: 'proposal is not pending' }, 409);
-  const now = new Date().toISOString();
-  const resp = { ok: true, reviewId: reviewId, status: 'accepted', decidedAt: now };
-  if (row.proposal_type === 'save') {
-    const key = 'projects/' + projectId + '/latest.json';
-    const prev = await cloudReadState(env, key);
-    let scope = [];
-    try { const p = JSON.parse(row.scope); if (Array.isArray(p)) scope = p; } catch (e) { scope = []; }
-    let submitted = {};
-    try { submitted = JSON.parse(row.submitted_json); } catch (e) { submitted = {}; }
-    const merged = cloudScopeMerge(prev, submitted, scope);
-    resp.applied = merged.applied;
-    resp.blocked = merged.blocked;
-    if (merged.applied.length > 0) {
-      merged.next.updatedAt = now;
-      await env.R2.put(key, JSON.stringify(merged.next), { httpMetadata: { contentType: 'application/json' } });
-      await env.DB.prepare('UPDATE cloud_projects SET latest_r2_key = ?, updated_at = ? WHERE project_id = ?').bind(key, now, projectId).run();
-      const entry = await cloudLogSave(env, projectId, prev, merged.next, { type: 'owner', label: auth.label || 'Owner' }, 'accepted');
-      if (entry) resp.changelog = entry;
-      await cloudPushRevChangedIfCopies(env, projectId, now, { type: 'owner', label: auth.label || 'Owner' });
-      resp.savedAt = now;
-    }
-  } else if (row.proposal_type === 'mcp') {
-    // The blob is already in the state the AI edit produced (verified at
-    // import time). Accept = the owner acknowledges the AI change: the
-    // audit row that today's importer wrote directly is written now, as
-    // an 'accepted' entry carrying the original actor + diffs + import_key.
-    const ins = await env.DB.prepare(
-      "INSERT INTO cloud_changelog (project_id, entry_type, actor_type, actor_label, section, diffs_json, snapshot_key, created_at, import_key) VALUES (?,?,?,?,?,?,?,?,?) ON CONFLICT(import_key) DO NOTHING"
-    ).bind(projectId, 'accepted', row.actor_type || 'mcp', row.source_label || 'MCP AI', row.section || null, row.diffs_json || null, null, now, row.import_key).run();
-    resp.entryId = ins.meta.last_row_id;
-  } else {
-    return json({ ok: false, error: 'unsupported proposal type' }, 400);
-  }
-  const acceptedEntryId = resp.entryId || (resp.changelog && resp.changelog.id) || null;
-  await env.DB.prepare('UPDATE cloud_reviews SET status = ?, decided_at = ?, decided_by = ?, accepted_entry_id = ? WHERE id = ?')
-    .bind('accepted', now, auth.label || 'Owner', acceptedEntryId, reviewId).run();
-  resp.acceptedEntryId = acceptedEntryId;
-  return json(resp);
-}
 
-async function handleReviewReject(request, env, projectId, reviewId) {
-  const auth = await cloudAuthOwnerEither(request, env, projectId);
-  if (!auth) return cloudForbidden();
-  const row = await env.DB.prepare('SELECT * FROM cloud_reviews WHERE id = ? AND project_id = ?').bind(reviewId, projectId).first();
-  if (!row) return json({ ok: false, error: 'proposal not found' }, 404);
-  if (row.status !== 'pending') return json({ ok: false, error: 'proposal is not pending' }, 409);
-  const now = new Date().toISOString();
-  // A 'rejected' changelog entry (diffs carried for audit context, but the
-  // revert route only handles edit/accepted/bulk/revert — so it is
-  // intentionally not revertible; nothing changed, nothing to undo).
-  await env.DB.prepare(
-    'INSERT INTO cloud_changelog (project_id, entry_type, actor_type, actor_label, section, diffs_json, snapshot_key, created_at) VALUES (?,?,?,?,?,?,?,?)'
-  ).bind(projectId, 'rejected', 'owner', auth.label || 'Owner', row.section || null, row.diffs_json || null, null, now).run();
-  await env.DB.prepare('UPDATE cloud_reviews SET status = ?, decided_at = ?, decided_by = ? WHERE id = ?')
-    .bind('rejected', now, auth.label || 'Owner', reviewId).run();
-  return json({ ok: true, reviewId: reviewId, status: 'rejected', decidedAt: now });
-}
 
 // ---- CLOUD-CODES-AND-DELETE-DIRECTIVE (2026-08-16) -----------------------
 // POST /api/cloud/codes/lookup  { code }
@@ -2664,8 +1800,6 @@ const AUTH_MIN_PASSWORD = 8;
 const AUTH_VERIFY_TTL_MS = 24 * 60 * 60 * 1000; // verify link: 24 hours
 const AUTH_RESET_TTL_MS = 30 * 60 * 1000;        // reset link: 30 minutes
 const AUTH_RESET_MAX_PER_EMAIL_H = 5;            // forgot: 5/hour/email
-const AUTH_FROM_FALLBACK = 'onboarding@resend.dev';
-const AUTH_RESEND_BASE = 'https://api.resend.com';
 
 function authNormalizeEmail(raw) {
   return String(raw || '').trim().toLowerCase();
@@ -2686,34 +1820,8 @@ async function authHashPassword(password, saltHex) {
 // RESEND_API_KEY the app sends nothing and every caller behaves exactly as
 // before. RESEND_API_BASE is a TEST-ONLY seam (qa-email-auth points it at a
 // local stub) — never set it in production.
-function authEmailConfigured(env) {
-  return !!(env && env.RESEND_API_KEY);
-}
-function authEmailFrom(env) {
-  const f = env && typeof env.RESEND_FROM_EMAIL === 'string' ? env.RESEND_FROM_EMAIL.trim() : '';
-  return f || AUTH_FROM_FALLBACK;
-}
 // Send a plain-text transactional email. Returns true when Resend accepted
 // it; never throws — a mail failure must not break a signup/login/webhook.
-async function sendAuthEmail(env, to, subject, textBody) {
-  if (!authEmailConfigured(env)) return false;
-  try {
-    const base = (env && typeof env.RESEND_API_BASE === 'string' && env.RESEND_API_BASE) || AUTH_RESEND_BASE;
-    const res = await fetch(base + '/emails', {
-      method: 'POST',
-      headers: {
-        'Authorization': 'Bearer ' + env.RESEND_API_KEY,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ from: authEmailFrom(env), to: [to], subject: subject, text: textBody })
-    });
-    if (!res.ok) console.error('resend email rejected: ' + res.status + ' ' + (await res.text()).slice(0, 200));
-    return res.ok;
-  } catch (e) {
-    console.error('resend email failed:', e && e.message);
-    return false;
-  }
-}
 
 // ---- One-time signed tokens (verify + reset) ------------------------------
 // Mint: random jti, HMAC-signed payload (t = purpose, e = email, j = jti,
@@ -2721,76 +1829,18 @@ async function sendAuthEmail(env, to, subject, textBody) {
 // the flow — the token is still signed and expiry-bounded; server-side
 // revocation then lapses to expiry-only (same accepted trade-off as
 // mintSession).
-async function mintAuthToken(env, email, purpose, ttlMs) {
-  const nowSec = Math.floor(Date.now() / 1000);
-  const jti = crypto.randomUUID();
-  const payload = { t: purpose, e: email, j: jti, iat: nowSec, exp: nowSec + Math.floor(ttlMs / 1000) };
-  const token = await signSession(payload, await sessionKey(env));
-  try {
-    await env.DB.prepare('INSERT INTO auth_tokens (id, email, purpose, created_at, expires_at) VALUES (?,?,?,?,?)')
-      .bind(jti, email, purpose, new Date(nowSec * 1000).toISOString(), new Date(nowSec * 1000 + ttlMs).toISOString()).run();
-  } catch (e) { /* best-effort */ }
-  return token;
-}
 
 // Shared verification-email body — used by register (initial link) and
 // /api/auth/resend-verify (expired/used-link recovery) so the two paths can
 // never drift apart.
-function authVerifyEmailBody(name, origin, token) {
-  return (name ? 'Hello ' + name + ',\n\n' : 'Hello,\n\n') +
-    'Confirm your email to activate your My MaNaGeR account and enable cloud projects:\n\n' +
-    origin + '/verify.html?token=' + encodeURIComponent(token) + '\n\n' +
-    'This link expires in 24 hours. If you did not create this account, you can ignore this email.';
-}
 
 // Consume a one-time token for a purpose. Returns the bound email on
 // success, null on any failure (bad signature, wrong purpose, expired,
 // unknown row, or already consumed). Single-use is a conditional UPDATE —
 // two racing replays cannot both consume the same row.
-async function consumeAuthToken(env, rawToken, purpose) {
-  if (!rawToken || typeof rawToken !== 'string') return null;
-  const dot = rawToken.indexOf('.');
-  if (dot <= 0 || dot >= rawToken.length - 1) return null;
-  let payloadStr, sigBytes;
-  try {
-    payloadStr = base64UrlDecode(rawToken.slice(0, dot));
-    sigBytes = base64UrlToBytes(rawToken.slice(dot + 1));
-  } catch (e) { return null; }
-  let payload;
-  try { payload = JSON.parse(payloadStr); } catch (e) { return null; }
-  if (!payload || typeof payload !== 'object' || payload.t !== purpose || typeof payload.e !== 'string' || !payload.j) return null;
-  let expected;
-  try {
-    expected = new Uint8Array(await crypto.subtle.sign('HMAC', await sessionKey(env), new TextEncoder().encode(payloadStr)));
-  } catch (e) { return null; }
-  if (expected.length !== sigBytes.length) return null;
-  let diff = 0;
-  for (let i = 0; i < expected.length; i++) diff |= expected[i] ^ sigBytes[i];
-  if (diff !== 0) return null;
-  const exp = Number(payload.exp);
-  if (!Number.isFinite(exp) || exp * 1000 <= Date.now()) return null;
-  try {
-    const nowIso = new Date().toISOString();
-    const upd = await env.DB.prepare('UPDATE auth_tokens SET used_at = ? WHERE id = ? AND purpose = ? AND used_at IS NULL AND revoked_at IS NULL AND expires_at > ?')
-      .bind(nowIso, payload.j, purpose, nowIso).run();
-    if (!upd || !upd.meta || !upd.meta.changes || upd.meta.changes < 1) return null;
-    return payload.e;
-  } catch (e) { return null; }
-}
 
 // Sign a session for an email account and return the Set-Cookie response,
 // mirroring the /api/auth/google response shape exactly.
-async function authSessionResponse(user, env, emailSent) {
-  const s = await mintSession({ sub: 'email:' + user.email, email: user.email, name: user.name, picture: '' }, env);
-  return new Response(JSON.stringify({ ok: true, user: { sub: 'email:' + user.email, email: user.email, name: user.name }, emailSent: !!emailSent }), {
-    status: 200,
-    headers: {
-      'Content-Type': 'application/json; charset=utf-8',
-      'Cache-Control': 'no-store',
-      'Set-Cookie': sessionSetCookie(s.token)
-    }
-  });
-}
 
 // POST /api/auth/register { email, password, name? }
 async function handleAuthRegister(request, env) {
@@ -3580,7 +2630,7 @@ async function handleApi(request, env, url) {
   if (reviewAcceptMatch && request.method === 'POST') {
     const rl = await cloudRateCheck(request, 'general', env);
     if (rl.limited) return cloudRateLimited(rl.retryAfter);
-    return handleReviewAccept(request, env, reviewAcceptMatch[1], Number(reviewAcceptMatch[2]));
+    return handleReviewAccept(request, env, reviewAcceptMatch[1], Number(reviewAcceptMatch[2]), cloudPushRevChangedIfCopies);
   }
   const reviewRejectMatch = path.match(/^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/reviews\/(\d+)\/reject$/);
   if (reviewRejectMatch && request.method === 'POST') {

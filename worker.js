@@ -2,6 +2,8 @@ import { handleAiChat } from './src/ai-proxy.js';
 import { handleBillingWebhook, handleBillingStatus, handleBillingCheckout, billingConfigured, billingFreeCap } from './src/billing.js';
 import { cloudAdminAuth, handleAdminCloudList } from './src/admin.js';
 import { handleReviewsCreate, handleReviewsList, handleReviewList, handleReviewAccept, handleReviewReject } from './src/reviews.js';
+import { handleCloudEditorCreate, handleCloudEditorList, handleCloudEditorRevoke } from './src/cloud/editors.js';
+import { handleCloudChangelogList, handleCloudChangelogRevert, handleCloudChangelogImport } from './src/cloud/changelog.js';
 import {
   json, cloudForbidden, cloudProjectDeleted, cloudTimingSink, cloudDummyHash,
   codesEqual, base64UrlEncode, base64UrlDecode, base64UrlToBytes, bytesToBase64Url,
@@ -606,52 +608,8 @@ async function purgeStaleCloudProjects(env) {
 // Editor codes are capped per project (gap-audit item A6): an unbounded
 // count is not a security hole but lets an automation loop / mistake silently
 // create hundreds of rows. Generous cap, enforced on ACTIVE codes only.
-const CLOUD_MAX_EDITOR_CODES = 25;
-async function handleCloudEditorCreate(request, env, projectId) {
-  const auth = await cloudAuthOwnerEither(request, env, projectId);
-  if (!auth) return cloudForbidden();
-  const activeRows = await env.DB.prepare('SELECT COUNT(*) AS n FROM cloud_editor_codes WHERE project_id = ? AND active = 1').bind(projectId).first();
-  if (activeRows && Number(activeRows.n) >= CLOUD_MAX_EDITOR_CODES) {
-    return json({ ok: false, error: 'too many active editor codes (max ' + CLOUD_MAX_EDITOR_CODES + ') — revoke unused codes first' }, 400);
-  }
-  const read = await readCloudBody(request);
-  if (read.tooLarge) return json({ ok: false, error: 'body too large' }, 413);
-  if (read.bad || !read.body || typeof read.body !== 'object') return json({ ok: false, error: 'bad request' }, 400);
-  const label = typeof read.body.label === 'string' ? read.body.label.trim().slice(0, 60) : '';
-  // CLOUD-CODES-AND-DELETE-DIRECTIVE (migration 0009): shared codes now
-  // carry a ROLE — 'editor' (edit the granted sections, the original
-  // behaviour) or 'view' (read-only everywhere, only the granted sections
-  // visible/enabled). Same scope validation for both; a view code's scope
-  // is what the holder may SEE.
-  const role = read.body.role === 'view' ? 'view' : 'editor';
-  const scope = Array.isArray(read.body.scope)
-    ? read.body.scope.filter(function(s) { return typeof s === 'string' && !!CLOUD_SECTIONS[s]; })
-    : [];
-  const seen = {}; const unique = scope.filter(function(s) { if (seen[s]) return false; seen[s] = 1; return true; });
-  if (unique.length === 0) return json({ ok: false, error: 'at least one section is required' }, 400);
-  const salt = randomSaltHex();
-  const code = randomOwnerCode();
-  const hash = await hashOwnerCode(code, salt);
-  const fp = await fingerprintOf(code);
-  const now = new Date().toISOString();
-  const res = await env.DB.prepare(
-    'INSERT INTO cloud_editor_codes (project_id, label, scope, code_salt, code_hash, code_fingerprint, role, active, created_at) VALUES (?,?,?,?,?,?,?,1,?)'
-  ).bind(projectId, label, JSON.stringify(unique), salt, hash, fp, role, now).run();
-  return json({ ok: true, editorCode: code, editorId: res.meta.last_row_id, label: label, scope: unique, role: role, createdAt: now });
-}
 
 // GET /api/cloud/projects/:id/editors — owner-only list (never codes/hashes).
-async function handleCloudEditorList(request, env, projectId) {
-  const auth = await cloudAuthOwnerEither(request, env, projectId);
-  if (!auth) return cloudForbidden();
-  const rows = await env.DB.prepare('SELECT id, label, scope, role, active, created_at FROM cloud_editor_codes WHERE project_id = ? ORDER BY id DESC').bind(projectId).all();
-  const editors = (rows.results || []).map(function(r) {
-    let scope = [];
-    try { const p = JSON.parse(r.scope); if (Array.isArray(p)) scope = p; } catch (e) { scope = []; }
-    return { id: r.id, label: r.label, scope: scope, role: r.role || 'editor', active: r.active === 1, createdAt: r.created_at };
-  });
-  return json({ ok: true, editors: editors });
-}
 
 // DELETE /api/cloud/projects/:id/editors/:editorId — owner-only revoke.
 // CLOUD-CODES-AND-DELETE (2026-08-16): revocation is now a SOFT revoke
@@ -667,94 +625,11 @@ async function handleCloudEditorList(request, env, projectId) {
 // permission that was valid when it started (standard request-boundary
 // revocation). The 25-code cap counts ACTIVE codes only, so revoked rows never
 // block new codes.
-async function handleCloudEditorRevoke(request, env, projectId, editorId) {
-  const auth = await cloudAuthOwnerEither(request, env, projectId);
-  if (!auth) return cloudForbidden();
-  const res = await env.DB.prepare('UPDATE cloud_editor_codes SET active = 0 WHERE id = ? AND project_id = ? AND active = 1').bind(editorId, projectId).run();
-  if (!res.meta.changes) return json({ ok: false, error: 'editor code not found' }, 404);
-  return json({ ok: true, revokedEditorId: editorId });
-}
 
 // ---- changelog (Phase 3) -----------------------------------------
 // GET /api/cloud/projects/:id/changelog — owner-only (code or session).
-async function handleCloudChangelogList(request, env, projectId) {
-  const auth = await cloudAuthOwnerEither(request, env, projectId);
-  if (!auth) return cloudForbidden();
-  // MCP-CHANGELOG-UI (backlog, 2026-08-12): import_key is selected so the
-  // client can tell MCP-imported entries from native ones — the changelog UI
-  // renders imported AI entries with a distinct badge. The import_key value
-  // itself is never exposed, only the derived source flag.
-  const rows = await env.DB.prepare('SELECT id, entry_type, actor_type, actor_label, section, diffs_json, snapshot_key, import_key, created_at FROM cloud_changelog WHERE project_id = ? ORDER BY id DESC LIMIT 100').bind(projectId).all();
-  const entries = (rows.results || []).map(function(r) {
-    let diffs = null;
-    try { if (r.diffs_json) diffs = JSON.parse(r.diffs_json); } catch (e) { diffs = null; }
-    return { id: r.id, type: r.entry_type, actorType: r.actor_type, actorLabel: r.actor_label, section: r.section, diffs: diffs, hasSnapshot: !!r.snapshot_key, source: r.import_key ? 'mcp' : 'cloud', createdAt: r.created_at };
-  });
-  return json({ ok: true, entries: entries });
-}
 
 // POST /api/cloud/projects/:id/changelog/:entryId/revert — owner-only.
-async function handleCloudChangelogRevert(request, env, projectId, entryId) {
-  const auth = await cloudAuthOwnerEither(request, env, projectId);
-  if (!auth) return cloudForbidden();
-  const entry = await env.DB.prepare('SELECT id, entry_type, section, diffs_json, snapshot_key FROM cloud_changelog WHERE id = ? AND project_id = ?').bind(entryId, projectId).first();
-  if (!entry) return json({ ok: false, error: 'entry not found' }, 404);
-  const key = 'projects/' + projectId + '/latest.json';
-  const cur = await cloudReadState(env, key);
-  if (!cur) return json({ ok: false, error: 'no snapshot to revert against' }, 400);
-  const now = new Date().toISOString();
-  let next; let logDiffs = null; let logSnapKey = null;
-  // REVIEW QUEUE (2026-08-17): an 'accepted' entry carries the same
-  // field-level diffs as an 'edit' — reverting it undoes the accepted
-  // proposal exactly like an editor save.
-  if (entry.entry_type === 'edit' || entry.entry_type === 'accepted' || (entry.entry_type === 'revert' && !entry.snapshot_key)) {
-    let diffs = [];
-    try { if (entry.diffs_json) diffs = JSON.parse(entry.diffs_json); } catch (e) { diffs = []; }
-    const pre = JSON.parse(JSON.stringify(cur));
-    const revDiffs = [];
-    diffs.forEach(function(d) {
-      const curVal = cloudPathGet(pre, d.path);
-      // CLOUD-MCP-IMPORT: cloudRevertDiff resolves record diffs by stable
-      // recordId (MCP-imported entries) with the recorded-index fallback for
-      // cloud-native leaf diffs — behavior identical to the old inline
-      // cloudPathSet/cloudPathDelete when no recordId is present.
-      const applied = cloudRevertDiff(pre, d);
-      // REVIEW FIX: only record diffs that actually applied — a path whose
-      // container vanished (element deleted by a later change) is skipped
-      // rather than fabricated, and must not be claimed in the log entry.
-      if (!applied) return;
-      revDiffs.push({
-        path: d.path,
-        before: curVal === undefined ? null : curVal,
-        beforeAbsent: curVal === undefined,
-        after: d.before,
-        afterAbsent: !!d.beforeAbsent
-      });
-    });
-    next = pre;
-    logDiffs = revDiffs;
-  } else if (entry.entry_type === 'bulk' || (entry.entry_type === 'revert' && entry.snapshot_key)) {
-    if (!entry.snapshot_key) return json({ ok: false, error: 'entry has no snapshot' }, 400);
-    const snap = await env.R2.get(entry.snapshot_key);
-    if (!snap) return json({ ok: false, error: 'snapshot missing' }, 410);
-    let snapState = null;
-    try { snapState = JSON.parse(await snap.text()); } catch (e) { snapState = null; }
-    if (!snapState) return json({ ok: false, error: 'snapshot corrupt' }, 410);
-    // Keep the CURRENT blob as a snapshot so this revert is itself reversible.
-    logSnapKey = 'projects/' + projectId + '/changelog/' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8) + '.json';
-    await env.R2.put(logSnapKey, JSON.stringify(cur), { httpMetadata: { contentType: 'application/json' } });
-    next = snapState;
-  } else {
-    return json({ ok: false, error: 'unsupported entry type' }, 400);
-  }
-  next.updatedAt = now;
-  await env.R2.put(key, JSON.stringify(next), { httpMetadata: { contentType: 'application/json' } });
-  await env.DB.prepare('UPDATE cloud_projects SET latest_r2_key = ?, updated_at = ? WHERE project_id = ?').bind(key, now, projectId).run();
-  const res = await env.DB.prepare(
-    'INSERT INTO cloud_changelog (project_id, entry_type, actor_type, actor_label, section, diffs_json, snapshot_key, created_at) VALUES (?,?,?,?,?,?,?,?)'
-  ).bind(projectId, 'revert', 'owner', auth.label, entry.section || null, logDiffs ? JSON.stringify(logDiffs) : null, logSnapKey, now).run();
-  return json({ ok: true, revertedEntryId: entry.id, revertEntryId: res.meta.last_row_id, savedAt: now });
-}
 
 // ---- MCP changelog importer (CLOUD-MCP-IMPORT, 2026-08-11) --------
 // POST /api/cloud/projects/:id/changelog/import — owner-only.
@@ -781,42 +656,12 @@ async function handleCloudChangelogRevert(request, env, projectId, entryId) {
 // (the sidecar has no snapshot machinery) — they are stored as 'edit' so
 // the revert route can undo them; 'bulk' without diffs and 'recovery' are
 // rejected (nothing reversible).
-const CLOUD_IMPORT_MAX_ENTRIES = 500;
-const CLOUD_IMPORT_MAX_DIFFS = 1000;
 
 // Sanitize + validate ONE submitted entry. The sidecar's diffs_json may be
 // a JSON string or an array; note that JSON round-trip DROPS undefined
 // before/after values, so only path/beforeAbsent/afterAbsent are required
 // structural invariants (recordId is optional but always present on MCP
 // record diffs). Returns { ok:true, entry } or { ok:false, reason }.
-function sanitizeImportEntry(raw) {
-  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return { ok: false, reason: 'malformed entry' };
-  const localId = Number(raw.localId !== undefined ? raw.localId : raw.id);
-  if (!Number.isInteger(localId) || localId < 1) return { ok: false, reason: 'localId must be a positive integer' };
-  const type = String(raw.entry_type || '');
-  if (type !== 'edit' && type !== 'bulk' && type !== 'revert') return { ok: false, reason: 'unsupported entry_type "' + type + '"' };
-  const actorType = raw.actor_type === 'editor' ? 'editor' : 'owner';
-  const label = typeof raw.actor_label === 'string' && raw.actor_label.trim()
-    ? raw.actor_label.trim().slice(0, 60) : 'mcp-ai';
-  const createdAt = String(raw.created_at || '');
-  if (!createdAt || Number.isNaN(Date.parse(createdAt))) return { ok: false, reason: 'created_at must be an ISO date' };
-  let diffs = null;
-  if (raw.diffs_json !== undefined && raw.diffs_json !== null) {
-    if (typeof raw.diffs_json === 'string') {
-      try { diffs = JSON.parse(raw.diffs_json); } catch (e) { return { ok: false, reason: 'diffs_json is not valid JSON' }; }
-    } else {
-      diffs = raw.diffs_json;
-    }
-    if (!Array.isArray(diffs)) return { ok: false, reason: 'diffs_json must be an array' };
-    if (diffs.length > CLOUD_IMPORT_MAX_DIFFS) return { ok: false, reason: 'too many diffs (max ' + CLOUD_IMPORT_MAX_DIFFS + ')' };
-    for (let i = 0; i < diffs.length; i++) {
-      const d = diffs[i];
-      if (!d || typeof d !== 'object' || typeof d.path !== 'string' || !d.path) return { ok: false, reason: 'diff missing path' };
-      if (typeof d.beforeAbsent !== 'boolean' || typeof d.afterAbsent !== 'boolean') return { ok: false, reason: 'diff missing beforeAbsent/afterAbsent' };
-    }
-  }
-  return { ok: true, entry: { localId: localId, type: type, actorType: actorType, label: label, createdAt: createdAt, diffs: diffs } };
-}
 
 // Verify one entry's diffs against the current blob (the MCP edit's AFTER
 // state). Record diffs resolve by recordId — an add must be present and
@@ -824,89 +669,7 @@ function sanitizeImportEntry(raw) {
 // (whole-record or field) — exactly the resolution the revert route will
 // use, so a verified entry reverts correctly by construction. Charter/leaf
 // diffs compare by path. Returns { ok:true } or { ok:false, reason }.
-function cloudVerifyImportedDiffs(blob, diffs) {
-  for (let i = 0; i < diffs.length; i++) {
-    const d = diffs[i];
-    const m = String(d.path).match(/^([a-zA-Z]+)(?:\[(\d+)\])?(?:\.([a-zA-Z]+))?$/);
-    if (!m) return { ok: false, reason: 'malformed diff path ' + d.path };
-    const listKey = m[1];
-    const field = m[3];
-    if (listKey === 'charter') {
-      const v = cloudPathGet(blob, d.path);
-      if (d.afterAbsent ? v !== undefined : !cloudDeepEqual(v, d.after)) {
-        return { ok: false, reason: 'blob diverged from the MCP edit at ' + d.path };
-      }
-      continue;
-    }
-    const list = blob[listKey];
-    if (!Array.isArray(list)) return { ok: false, reason: 'no "' + listKey + '" in the cloud blob (blob diverged from the MCP edit)' };
-    if (d.recordId !== undefined) {
-      const rec = list.find(function(r) { return r && String(r.id) === String(d.recordId); });
-      if (d.afterAbsent) {
-        if (rec !== undefined) return { ok: false, reason: 'deleted record ' + d.recordId + ' still exists in the cloud (blob diverged from the MCP edit)' };
-      } else if (d.beforeAbsent) {
-        if (rec === undefined || !cloudDeepEqual(rec, d.after)) return { ok: false, reason: 'added record ' + d.recordId + ' missing from the cloud (blob diverged from the MCP edit)' };
-      } else if (field) {
-        if (rec === undefined || !cloudDeepEqual(rec[field], d.after)) return { ok: false, reason: 'field ' + d.path + ' diverged from the MCP edit' };
-      } else {
-        if (rec === undefined || !cloudDeepEqual(rec, d.after)) return { ok: false, reason: 'record ' + d.recordId + ' diverged from the MCP edit' };
-      }
-      continue;
-    }
-    // Defensive fallback (cloud-native leaf diff, no recordId): index compare.
-    const v = cloudPathGet(blob, d.path);
-    if (d.afterAbsent ? v !== undefined : !cloudDeepEqual(v, d.after)) {
-      return { ok: false, reason: 'blob diverged from the MCP edit at ' + d.path };
-    }
-  }
-  return { ok: true };
-}
 
-async function handleCloudChangelogImport(request, env, projectId) {
-  const auth = await cloudAuthOwnerEither(request, env, projectId);
-  if (!auth) return cloudForbidden();
-  const read = await readCloudBody(request);
-  if (read.tooLarge) return json({ ok: false, error: 'body too large' }, 413);
-  if (read.bad || !read.body || typeof read.body !== 'object') return json({ ok: false, error: 'bad request' }, 400);
-  const submitted = Array.isArray(read.body.entries) ? read.body.entries : null;
-  if (!submitted || submitted.length === 0) return json({ ok: false, error: 'entries required' }, 400);
-  if (submitted.length > CLOUD_IMPORT_MAX_ENTRIES) return json({ ok: false, error: 'too many entries (max ' + CLOUD_IMPORT_MAX_ENTRIES + ')' }, 400);
-  const key = 'projects/' + projectId + '/latest.json';
-  const cur = await cloudReadState(env, key);
-  const imported = [];
-  const skipped = [];
-  for (let i = 0; i < submitted.length; i++) {
-    const s = sanitizeImportEntry(submitted[i]);
-    if (!s.ok) { skipped.push({ localId: submitted[i] && submitted[i].localId !== undefined ? submitted[i].localId : (submitted[i] && submitted[i].id !== undefined ? submitted[i].id : null), reason: s.reason }); continue; }
-    const e = s.entry;
-    if (!e.diffs || e.diffs.length === 0) {
-      // Nothing to verify, nothing the revert route can undo.
-      skipped.push({ localId: e.localId, reason: 'entry has no diffs' });
-      continue;
-    }
-    if (!cur) {
-      skipped.push({ localId: e.localId, reason: 'no cloud snapshot to verify against' });
-      continue;
-    }
-    const v = cloudVerifyImportedDiffs(cur, e.diffs);
-    if (!v.ok) { skipped.push({ localId: e.localId, reason: v.reason }); continue; }
-    // REVIEW QUEUE (2026-08-17, always on): an imported AI edit becomes a
-    // PENDING PROPOSAL, not an instant changelog row — the owner reviews it
-    // in the Review section and ACCEPTS (the audit 'accepted' row is then
-    // written) or REJECTS ('rejected' row, no audit entry). The blob is
-    // already in the produced state (verified above), so accept is an
-    // audit-acknowledgement; the diffs + original actor ride the proposal.
-    const sec = cloudSectionOfDiffs(e.diffs);
-    const res = await env.DB.prepare(
-      'INSERT INTO cloud_reviews (project_id, proposal_type, source_type, source_label, diffs_json, section, actor_type, import_key, status, proposed_at) VALUES (?,?,?,?,?,?,?,?,?,?) ON CONFLICT(import_key) DO NOTHING'
-    ).bind(projectId, 'mcp', 'mcp', e.label || 'MCP AI', JSON.stringify(e.diffs), sec, e.actorType || 'mcp', 'mcp:' + projectId + ':' + e.localId, 'pending', e.createdAt).run();
-    if (!res.meta.changes) { skipped.push({ localId: e.localId, reason: 'already imported' }); continue; }
-    imported.push({ localId: e.localId, reviewId: res.meta.last_row_id, type: 'mcp', section: sec });
-  }
-  // An import is the owner proving presence — refresh the purge window.
-  if (imported.length) await cloudTouchOwner(env, projectId);
-  return json({ ok: true, projectId: projectId, imported: imported, skipped: skipped, total: submitted.length });
-}
 
 // ---- admin cloud visibility (operator-gated listing) --------------
 

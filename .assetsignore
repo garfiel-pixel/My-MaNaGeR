@@ -5,6 +5,10 @@
 # failed with "Asset too large." pointing at .git/objects/...).
 # NOTE: everything the APP serves at runtime stays included — js/, css/,
 # vendor/whisper (offline transcription), manifests, icons, and pages.
+#
+# Parity with the deploy script: real deploy excludes *.md and *.json then
+# copies package.json + wrangler.jsonc back. We mirror that here so CI's
+# dry-run validates the same asset bundle that ships to production.
 .git
 .wrangler
 node_modules
@@ -13,6 +17,8 @@ serve.cjs
 qa-*.cjs
 tools
 migrations
-CLOUD-BACKEND-ARCHITECTURE-PLAN.md
-universal-ui-architect.md
-monolith html to reference from all features.html
+*.md
+*.json
+!package.json
+!wrangler.jsonc
+!skills-lock.json

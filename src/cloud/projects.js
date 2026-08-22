@@ -8,6 +8,7 @@ import { json, cloudForbidden, cloudProjectDeleted, cloudTimingSink, cloudDummyH
   cloudReadState, cloudDeepEqual, cloudScopeMerge, cloudDiffState, cloudLogSave,
   cloudPathDelete, cloudTouchOwner, randomOwnerCode, randomSaltHex,
   hashOwnerCode, fingerprintOf, sanitizeProjectId, codesEqual,
+  cloudEncryptState, cloudDecryptState,
   cloudAuthOwnerByCode, cloudAuthOwnerSession, cloudAuthOwnerEither,
   cloudAuthEditor, cloudAuthViewer, cloudAdopt, cloudAuthAdoption,
   readCloudBody, readSession,
@@ -182,7 +183,14 @@ export async function handleCloudSave(request, env, projectId, cloudPushRevChang
   }
   if (authRow && authRow.deleted_at) return cloudProjectDeleted();
   next.updatedAt = now;
-  await env.R2.put(key, JSON.stringify(next), { httpMetadata: { contentType: 'application/json' } });
+  // Encrypt state blob before R2 storage (server-side envelope encryption,
+  // AES-256-GCM, key from owner_code_hash + owner_code_salt). Editor saves
+  // go through the review proposal path and don't reach this line.
+  let r2Payload = JSON.stringify(next);
+  if (authRow && authRow.owner_code_hash && authRow.owner_code_salt) {
+    try { r2Payload = await cloudEncryptState(next, authRow.owner_code_hash, authRow.owner_code_salt); } catch (e) { /* fall back to plaintext */ }
+  }
+  await env.R2.put(key, r2Payload, { httpMetadata: { contentType: 'application/json' } });
   await env.DB.prepare('UPDATE cloud_projects SET latest_r2_key = ?, updated_at = ? WHERE project_id = ?').bind(key, now, projectId).run();
   const entry = await cloudLogSave(env, projectId, prev, next, actor);
   const resp = { ok: true, savedAt: now, key: key, actor: actor.type, previousUpdatedAt: (prev && prev.updatedAt) || null };
@@ -247,7 +255,8 @@ export async function handleCloudLoad(request, env, projectId) {
       ).bind(new Date().toISOString(), row.updated_at, projectId, pullDevice).run();
     } catch (e) { /* stamping a pull is best-effort */ }
   }
-  const state = await cloudReadState(env, row.latest_r2_key);
+  // Decrypt state blob if encrypted (owner_code_hash + salt from the D1 row)
+  const state = await cloudReadState(env, row.latest_r2_key, row.owner_code_hash, row.owner_code_salt);
   const resp = { ok: true, state: state, savedAt: row.updated_at };
   if (editorAuth) { resp.role = 'editor'; resp.editorLabel = editorAuth.label; resp.scope = editorAuth.scope; }
   if (viewerAuth) { resp.role = 'view'; resp.viewerLabel = viewerAuth.label; resp.scope = viewerAuth.scope; }
@@ -326,19 +335,7 @@ export async function handleCloudUnlink(request, env, projectId) {
   const now = new Date().toISOString();
   const res = await env.DB.prepare('DELETE FROM cloud_projects WHERE project_id = ?').bind(projectId).run();
   if (!res.meta.changes) return json({ ok: false, error: 'project not found' }, 404);
-  let cursor = undefined;
-  do {
-    const listed = await env.R2.list({ prefix: 'projects/' + projectId + '/', cursor: cursor });
-    for (let i = 0; i < (listed.objects || []).length; i++) {
-      try { await env.R2.delete(listed.objects[i].key); } catch (e) { /* best-effort */ }
-    }
-    cursor = listed.truncated ? listed.cursor : undefined;
-  } while (cursor);
-  await env.DB.prepare('DELETE FROM cloud_editor_codes WHERE project_id = ?').bind(projectId).run();
-  await env.DB.prepare('DELETE FROM cloud_changelog WHERE project_id = ?').bind(projectId).run();
-  await env.DB.prepare('DELETE FROM cloud_adoptions WHERE project_id = ?').bind(projectId).run();
-  await env.DB.prepare('DELETE FROM offline_copies WHERE project_id = ?').bind(projectId).run();
-  await env.DB.prepare('DELETE FROM cloud_reviews WHERE project_id = ?').bind(projectId).run();
+  await cloudDeleteProjectFully(env, projectId);
   return json({ ok: true, unlinked: projectId, unlinkedAt: now });
 }
 
@@ -388,6 +385,15 @@ export async function handleCloudProjectPurge(request, env, projectId) {
   const now = new Date().toISOString();
   const res = await env.DB.prepare('DELETE FROM cloud_projects WHERE project_id = ?').bind(projectId).run();
   if (!res.meta.changes) return json({ ok: false, error: 'project not found' }, 404);
+  await cloudDeleteProjectFully(env, projectId);
+  return json({ ok: true, purged: projectId, purgedAt: now });
+}
+
+// Fully delete a project and all its referencing rows — R2 blobs, editor
+// codes, changelog, adoptions, offline copies, and reviews. Used by unlink,
+// purge, orphan sweep, and account deletion. The caller must still delete
+// the cloud_projects row itself (it owns the primary key lifecycle).
+export async function cloudDeleteProjectFully(env, projectId) {
   let cursor = undefined;
   do {
     const listed = await env.R2.list({ prefix: 'projects/' + projectId + '/', cursor: cursor });
@@ -401,7 +407,6 @@ export async function handleCloudProjectPurge(request, env, projectId) {
   await env.DB.prepare('DELETE FROM cloud_adoptions WHERE project_id = ?').bind(projectId).run();
   await env.DB.prepare('DELETE FROM offline_copies WHERE project_id = ?').bind(projectId).run();
   await env.DB.prepare('DELETE FROM cloud_reviews WHERE project_id = ?').bind(projectId).run();
-  return json({ ok: true, purged: projectId, purgedAt: now });
 }
 
 export async function cloudPushRevChangedIfCopies(env, projectId, now, actor) {

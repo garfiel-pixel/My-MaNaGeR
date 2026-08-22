@@ -391,14 +391,93 @@ export async function cloudTouchOwner(env, projectId) {
   } catch (e) { /* maintenance stamp must never fail a user request */ }
 }
 
-// ---- Cloud state read ------------------------------------------------------
+// ---- Cloud state encryption (R2 envelope) ---------------------------------
+// Server-side AES-256-GCM encryption for project state blobs in R2.
+// Key derived from owner_code_hash + owner_code_salt (both in D1) via
+// PBKDF2 — the same KDF as hashOwnerCode. Blob format: { v:2, iv, salt,
+// data } (base64). Legacy plaintext blobs (v:1 or no v) are read as-is
+// so existing unencrypted projects continue to work without migration.
+const R2_ENC_KDF_ITERS = 100000;
+const R2_ENC_VERSION = 2;
 
-export async function cloudReadState(env, key) {
+async function r2DeriveKey(ownerCodeHash, saltHex) {
+  // The owner_code_hash is a hex string derived from PBKDF2. Use it as
+  // key material for a second PBKDF2 derivation with a fresh salt.
+  const material = await crypto.subtle.importKey(
+    'raw', new TextEncoder().encode(ownerCodeHash), 'PBKDF2', false, ['deriveKey']
+  );
+  return crypto.subtle.deriveKey(
+    { name: 'PBKDF2', salt: new TextEncoder().encode(saltHex), iterations: R2_ENC_KDF_ITERS, hash: 'SHA-256' },
+    material,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['encrypt', 'decrypt']
+  );
+}
+
+function r2BytesToBase64(bytes) {
+  let s = '';
+  for (let i = 0; i < bytes.length; i += 0x8000) {
+    s += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+  }
+  return btoa(s);
+}
+
+function r2Base64ToBytes(b64) {
+  const bin = atob(b64);
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+
+// Encrypt a state object for R2 storage. Returns a versioned envelope.
+export async function cloudEncryptState(state, ownerCodeHash, ownerCodeSalt) {
+  if (!state || !ownerCodeHash || !ownerCodeSalt) return JSON.stringify(state);
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const key = await r2DeriveKey(ownerCodeHash, ownerCodeSalt);
+  const pt = new TextEncoder().encode(JSON.stringify(state));
+  const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv }, key, pt);
+  return JSON.stringify({
+    v: R2_ENC_VERSION,
+    iv: r2BytesToBase64(iv),
+    salt: ownerCodeSalt,
+    data: r2BytesToBase64(new Uint8Array(ct))
+  });
+}
+
+// Decrypt a state object from R2. Detects legacy plaintext (no v field)
+// and returns it as-is. Returns the decrypted state object.
+export async function cloudDecryptState(envelope, ownerCodeHash, ownerCodeSalt) {
+  if (!envelope) return null;
+  // Legacy plaintext — no encryption envelope
+  if (envelope.v === undefined || envelope.v === 1) return envelope;
+  if (envelope.v !== R2_ENC_VERSION || !envelope.iv || !envelope.data) return envelope;
+  // Encrypted — derive key and decrypt
+  const salt = envelope.salt || ownerCodeSalt;
+  const key = await r2DeriveKey(ownerCodeHash, salt);
+  const pt = await crypto.subtle.decrypt(
+    { name: 'AES-GCM', iv: r2Base64ToBytes(envelope.iv) },
+    key,
+    r2Base64ToBytes(envelope.data)
+  );
+  return JSON.parse(new TextDecoder().decode(pt));
+}
+
+// ---- Cloud state read ------------------------------------------------------
+// Reads a state blob from R2, with optional decryption when owner credentials
+// are provided. Legacy plaintext blobs are returned as-is.
+export async function cloudReadState(env, key, ownerCodeHash, ownerCodeSalt) {
   if (!key) return null;
   const obj = await env.R2.get(key);
   if (!obj) return null;
   const text = await obj.text();
-  try { return JSON.parse(text); } catch (e) { return null; }
+  let parsed;
+  try { parsed = JSON.parse(text); } catch (e) { return null; }
+  // If encryption credentials provided and blob is encrypted, decrypt
+  if (ownerCodeHash && ownerCodeSalt && parsed && parsed.v === R2_ENC_VERSION) {
+    try { return await cloudDecryptState(parsed, ownerCodeHash, ownerCodeSalt); } catch (e) { return null; }
+  }
+  return parsed;
 }
 
 // ---- Deep equal (for cloud state comparison) -------------------------------
@@ -790,5 +869,5 @@ export async function cloudAuthAnyAccess(request, env, projectId) {
 
 // ---- Cloud purge constants -------------------------------------------------
 
-export const CLOUD_ORPHAN_RETENTION_MS = 365 * 24 * 60 * 60 * 1000;
+export const CLOUD_ORPHAN_RETENTION_MS = 180 * 24 * 60 * 60 * 1000; // 180 days — was 365, tightened for sensitive company data
 export const CLOUD_DELETED_PURGE_MS = 7 * 24 * 60 * 60 * 1000;

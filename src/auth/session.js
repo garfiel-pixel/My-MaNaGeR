@@ -8,7 +8,9 @@
 import { json, cloudTimingSink, randomSaltHex, hashOwnerCode, codesEqual,
   readSession, authEmailConfigured, sendAuthEmail, mintAuthToken,
   consumeAuthToken, authVerifyEmailBody, authSessionResponse,
-  CLOUD_DUMMY_SALT } from '../lib/http.js';
+  SESSION_COOKIE, CLOUD_DUMMY_SALT } from '../lib/http.js';
+import { cloudDeleteProjectFully } from '../cloud/projects.js';
+import { cloudPrefsKey } from '../cloud/sync.js';
 
 const AUTH_MIN_PASSWORD = 8;
 const AUTH_VERIFY_TTL_MS = 24 * 60 * 60 * 1000;
@@ -231,4 +233,72 @@ export async function handleAuthResendVerify(request, env) {
     } catch (e) { /* mail failure must never break the generic response */ }
   }
   return json(generic);
+}
+
+// ---- Account deletion (GDPR/CCPA right to erasure) ------------------------
+// Hard-deletes the account and ALL owned project data. Email accounts require
+// password verification; Google accounts require typing 'DELETE'. Active
+// subscriptions block deletion (cancel first). Cascade order: projects first
+// (R2 + referencing D1 rows), then account-level rows, session last — so a
+// mid-deletion timeout leaves the account row intact for retry.
+export async function handleAuthDeleteAccount(request, env) {
+  const session = await readSession(request, env);
+  if (!session || !session.sub) return json({ ok: false, error: 'not signed in' }, 401);
+
+  let body;
+  try { body = await request.json(); } catch (e) { return json({ ok: false, error: 'bad request' }, 400); }
+
+  // 1. Confirm identity
+  const isEmailAccount = session.sub.indexOf('email:') === 0;
+  if (isEmailAccount) {
+    const password = String((body && body.password) || '');
+    if (!password) return json({ ok: false, error: 'password is required' }, 400);
+    const email = session.sub.slice('email:'.length);
+    const row = await env.DB.prepare('SELECT password_hash FROM auth_users WHERE email = ?').bind(email).first();
+    if (!row) return json({ ok: false, error: 'account not found' }, 404);
+    const sep = row.password_hash.indexOf(':');
+    if (sep <= 0) return json({ ok: false, error: 'account not found' }, 404);
+    const hash = await authHashPassword(password, row.password_hash.slice(0, sep));
+    if (!codesEqual(hash, row.password_hash.slice(sep + 1))) {
+      return json({ ok: false, error: 'password is incorrect' }, 401);
+    }
+  } else {
+    if (String(body && body.confirm) !== 'DELETE') {
+      return json({ ok: false, error: 'type DELETE to confirm' }, 400);
+    }
+  }
+
+  // 2. Block if active subscription exists
+  const sub = await env.DB.prepare('SELECT status FROM cloud_subscriptions WHERE owner_sub = ?').bind(session.sub).first();
+  if (sub && (sub.status === 'active' || sub.status === 'on_trial')) {
+    return json({ ok: false, error: 'cancel your subscription before deleting your account' }, 409);
+  }
+
+  // 3. Delete every owned project fully (R2 + all referencing D1 rows)
+  const owned = await env.DB.prepare('SELECT project_id FROM cloud_projects WHERE google_sub = ?').bind(session.sub).all();
+  for (const row of (owned.results || [])) {
+    await cloudDeleteProjectFully(env, row.project_id);
+    await env.DB.prepare('DELETE FROM cloud_projects WHERE project_id = ?').bind(row.project_id).run();
+  }
+
+  // 4. Delete account-level rows
+  try { await env.R2.delete(cloudPrefsKey(session.sub)); } catch (e) { /* best-effort */ }
+  await env.DB.prepare('DELETE FROM cloud_subscriptions WHERE owner_sub = ?').bind(session.sub).run();
+  await env.DB.prepare('DELETE FROM auth_sessions WHERE sub = ?').bind(session.sub).run();
+  if (isEmailAccount) {
+    const email = session.sub.slice('email:'.length);
+    await env.DB.prepare('DELETE FROM auth_users WHERE email = ?').bind(email).run();
+    await env.DB.prepare('DELETE FROM auth_tokens WHERE email = ?').bind(email).run();
+    await env.DB.prepare('DELETE FROM auth_login_guard WHERE email = ?').bind(email).run();
+  }
+
+  // 5. Clear session cookie
+  return new Response(JSON.stringify({ ok: true, deleted: true }), {
+    status: 200,
+    headers: {
+      'Content-Type': 'application/json; charset=utf-8',
+      'Cache-Control': 'no-store',
+      'Set-Cookie': SESSION_COOKIE + '=; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=0'
+    }
+  });
 }

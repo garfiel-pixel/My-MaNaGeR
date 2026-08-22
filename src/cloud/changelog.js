@@ -5,7 +5,7 @@
    including MCP import with honesty gate verification.
    ============================================================ */
 import { json, cloudForbidden, cloudReadState, cloudDeepEqual,
-  cloudPathGet, cloudRevertDiff,
+  cloudPathGet, cloudRevertDiff, cloudEncryptState,
   cloudAuthOwnerEither, readCloudBody } from '../lib/http.js';
 
 const CLOUD_IMPORT_MAX_ENTRIES = 500;
@@ -66,7 +66,13 @@ export async function handleCloudChangelogRevert(request, env, projectId, entryI
     return json({ ok: false, error: 'unsupported entry type' }, 400);
   }
   next.updatedAt = now;
-  await env.R2.put(key, JSON.stringify(next), { httpMetadata: { contentType: 'application/json' } });
+  // Encrypt state blob on revert (same envelope as handleCloudSave)
+  const projRow = await env.DB.prepare('SELECT owner_code_hash, owner_code_salt FROM cloud_projects WHERE project_id = ?').bind(projectId).first();
+  let r2Payload = JSON.stringify(next);
+  if (projRow && projRow.owner_code_hash && projRow.owner_code_salt) {
+    try { r2Payload = await cloudEncryptState(next, projRow.owner_code_hash, projRow.owner_code_salt); } catch (e) { /* fall back to plaintext */ }
+  }
+  await env.R2.put(key, r2Payload, { httpMetadata: { contentType: 'application/json' } });
   await env.DB.prepare('UPDATE cloud_projects SET latest_r2_key = ?, updated_at = ? WHERE project_id = ?').bind(key, now, projectId).run();
   const res = await env.DB.prepare(
     'INSERT INTO cloud_changelog (project_id, entry_type, actor_type, actor_label, section, diffs_json, snapshot_key, created_at) VALUES (?,?,?,?,?,?,?,?)'

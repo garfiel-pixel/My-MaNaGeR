@@ -115,11 +115,16 @@ directive documents.
   check passes, don't stop to ask again.
 - Run local `wrangler dev` end-to-end tests plus the full `qa-*.cjs` battery before
   marking any item complete, same two-tier verification used for the cloud backend work.
-- **External review zip (owner, 2026-08-21).** When the owner requests a source code
-  review from an external model or reviewer, create a copy of the codebase as a
-  `mymanager-source-review.zip` in `~/Downloads/` (owner's Downloads folder). The zip
-  must be a COPY (never move files from the project). Target size: under 1MB compressed.
-  The zip is a disposable review artifact — the reviewer deletes it after assessment.
+- **External review zip — SACRED RULE (owner, 2026-08-21).** NEVER generate or
+  create a review zip without first asking the owner for permission. The owner
+  must explicitly say "create the review zip" or equivalent before any zip is
+  built. This is a hard gate — no exceptions, no "I assumed you wanted one."
+
+  When the owner approves, create a copy of the codebase as
+  `mymanager-source-review.zip` in `~/Downloads/` (owner's Downloads folder).
+  The zip must be a COPY (never move files from the project). Target size:
+  under 1.5MB compressed. The zip is a disposable review artifact — the
+  reviewer deletes it after assessment.
 
   **Include (the reviewer needs these to verify fixes end-to-end):**
   - All `.js` files: `worker.js`, `src/**/*.js`, `js/**/*.js`, `js/render/**/*.js`,
@@ -138,12 +143,29 @@ directive documents.
   - PWA: `manifest.webmanifest`, `robots.txt`, `sitemap.xml`
   - Other: `icon.svg`
 
+  **Screenshots — MANDATORY for visual review:**
+  Take a screenshot of EVERY page in the app using `serve.cjs` (local dev
+  server) and a headless browser. Save screenshots into a `screenshots/`
+  directory inside the zip. Required pages:
+  - Marketing: index, features, about, contact, reviews, privacy
+  - App: app.html (launcher/dashboard), project.html (workspace),
+    admin.html (admin panel), dashboard.html (portfolio dashboard)
+  - Utility: reset.html, verify.html, seed-test.html
+  - Field Guide: mymanager-field-guide.html
+  - Dark mode variants: at least project.html in dark mode
+  - Mobile viewport: at least index.html and project.html at 375px width
+  Name screenshots descriptively: `01-index-desktop.png`,
+  `02-project-desktop.png`, `03-project-dark.png`, `04-project-mobile.png`,
+  etc. The reviewer uses these to assess UI quality, accessibility, and
+  visual consistency without needing to run the app locally.
+
   **Exclude (not source code, or too large, or sensitive):**
   - `.git/`, `node_modules/`, `_archive/`, `.agents/`, `vendor/`, `images/`, `mcp/`
   - All `*.md` files (directive/plan docs — not source code)
   - Root-level `qa-*.cjs` test harnesses (exclude from root, but `tools/qa-*.cjs`
     and `tools/verify-*` ARE included — they're dev tools, not test harnesses)
   - Binary assets: `*.png`, `*.webp`, `*.jpg`, `*.ico`, `*.woff*`, `*.ttf`
+    (EXCEPT the screenshots/ directory which IS included)
   - `serve.cjs` (local dev server, not app code)
   - `monolith html to reference from all features.html` (470KB reference file)
   - `SECURITY-FIXES*` files (owner-only planning docs)

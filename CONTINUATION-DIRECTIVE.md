@@ -115,6 +115,18 @@ directive documents.
   check passes, don't stop to ask again.
 - Run local `wrangler dev` end-to-end tests plus the full `qa-*.cjs` battery before
   marking any item complete, same two-tier verification used for the cloud backend work.
+- **External review zip (owner, 2026-08-21).** When the owner requests a source code
+  review from an external model or reviewer, create a copy of the codebase as a
+  `mymanager-source-review.zip` in `~/Downloads/` (owner's Downloads folder). The zip
+  must be a COPY (never move files from the project), include all `.js`, `.html`, `.css`,
+  `.sql`, `.json` (config only — `wrangler.jsonc`, `package.json`, `skills-lock.json`),
+  `.svg`, `.webmanifest`, `.txt`, `.xml`, `.yml` source files, plus `src/`, `js/`, `css/`,
+  `migrations/`, `tools/`, and `.github/workflows/` directories. Exclude: `.git/`,
+  `node_modules/`, `_archive/`, `.agents/`, `vendor/`, `images/`, `mcp/`, `*.md` files,
+  `qa-*.cjs` test harnesses, binary assets (PNG/WebP/JPG), `serve.cjs`,
+  `monolith html to reference from all features.html`, and any `SECURITY-FIXES*` files.
+  Target size: under 1MB compressed. The zip is a disposable review artifact — the
+  reviewer deletes it after assessment; no residue should remain in Downloads.
 - Report pass/fail per check, not a single "green" summary.- Stop and report back only for: a security-relevant failure, a genuinely new test
   failure not already known/tracked, or a real decision point not already answered
   somewhere in this file or its source documents.

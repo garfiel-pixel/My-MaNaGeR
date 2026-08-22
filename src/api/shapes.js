@@ -213,8 +213,8 @@ export { apiPortfolio };
 export async function handleApiShape(request, env, projectId, shape) {
   const auth = await cloudAuthOwnerEither(request, env, projectId);
   if (!auth) return cloudForbidden();
-  const row = await env.DB.prepare('SELECT latest_r2_key FROM cloud_projects WHERE project_id = ?').bind(projectId).first();
-  const state = row && row.latest_r2_key ? await cloudReadState(env, row.latest_r2_key) : null;
+  const row = await env.DB.prepare('SELECT latest_r2_key, owner_code_hash, owner_code_salt FROM cloud_projects WHERE project_id = ?').bind(projectId).first();
+  const state = row && row.latest_r2_key ? await cloudReadState(env, row.latest_r2_key, row.owner_code_hash, row.owner_code_salt) : null;
   if (!state) return json({ ok: true, shape: shape, exists: false, data: null });
   const builder = API_SHAPES[shape];
   return json({ ok: true, shape: shape, exists: true, generatedAt: new Date().toISOString(), data: builder(state) });

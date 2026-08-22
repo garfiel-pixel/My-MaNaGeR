@@ -136,7 +136,8 @@ export async function handleReviewAccept(request, env, projectId, reviewId, push
   const resp = { ok: true, reviewId: reviewId, status: 'accepted', decidedAt: now };
   if (row.proposal_type === 'save') {
     const key = 'projects/' + projectId + '/latest.json';
-    const prev = await cloudReadState(env, key);
+    const projRow = await env.DB.prepare('SELECT owner_code_hash, owner_code_salt FROM cloud_projects WHERE project_id = ?').bind(projectId).first();
+    const prev = await cloudReadState(env, key, projRow && projRow.owner_code_hash, projRow && projRow.owner_code_salt);
     let scope = [];
     try { const p = JSON.parse(row.scope); if (Array.isArray(p)) scope = p; } catch (e) { scope = []; }
     let submitted = {};

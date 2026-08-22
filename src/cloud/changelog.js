@@ -29,7 +29,9 @@ export async function handleCloudChangelogRevert(request, env, projectId, entryI
   const entry = await env.DB.prepare('SELECT id, entry_type, section, diffs_json, snapshot_key FROM cloud_changelog WHERE id = ? AND project_id = ?').bind(entryId, projectId).first();
   if (!entry) return json({ ok: false, error: 'entry not found' }, 404);
   const key = 'projects/' + projectId + '/latest.json';
-  const cur = await cloudReadState(env, key);
+  // Fetch encryption credentials for decrypting the current state blob
+  const projRow = await env.DB.prepare('SELECT owner_code_hash, owner_code_salt FROM cloud_projects WHERE project_id = ?').bind(projectId).first();
+  const cur = await cloudReadState(env, key, projRow && projRow.owner_code_hash, projRow && projRow.owner_code_salt);
   if (!cur) return json({ ok: false, error: 'no snapshot to revert against' }, 400);
   const now = new Date().toISOString();
   let next; let logDiffs = null; let logSnapKey = null;
@@ -67,7 +69,7 @@ export async function handleCloudChangelogRevert(request, env, projectId, entryI
   }
   next.updatedAt = now;
   // Encrypt state blob on revert (same envelope as handleCloudSave)
-  const projRow = await env.DB.prepare('SELECT owner_code_hash, owner_code_salt FROM cloud_projects WHERE project_id = ?').bind(projectId).first();
+  // projRow already fetched above for decryption — reuse for encryption
   let r2Payload = JSON.stringify(next);
   if (projRow && projRow.owner_code_hash && projRow.owner_code_salt) {
     try { r2Payload = await cloudEncryptState(next, projRow.owner_code_hash, projRow.owner_code_salt); } catch (e) { /* fall back to plaintext */ }
@@ -156,7 +158,8 @@ export async function handleCloudChangelogImport(request, env, projectId) {
   if (!submitted || submitted.length === 0) return json({ ok: false, error: 'entries required' }, 400);
   if (submitted.length > CLOUD_IMPORT_MAX_ENTRIES) return json({ ok: false, error: 'too many entries (max ' + CLOUD_IMPORT_MAX_ENTRIES + ')' }, 400);
   const key = 'projects/' + projectId + '/latest.json';
-  const cur = await cloudReadState(env, key);
+  const projRow = await env.DB.prepare('SELECT owner_code_hash, owner_code_salt FROM cloud_projects WHERE project_id = ?').bind(projectId).first();
+  const cur = await cloudReadState(env, key, projRow && projRow.owner_code_hash, projRow && projRow.owner_code_salt);
   const imported = [];
   const skipped = [];
   for (let i = 0; i < submitted.length; i++) {

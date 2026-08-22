@@ -156,20 +156,39 @@ export async function handleCloudSave(request, env, projectId, cloudPushRevChang
   }
   const now = new Date().toISOString();
   const key = 'projects/' + projectId + '/latest.json';
-  const prev = await cloudReadState(env, key);
   let next; let actor; let authRow = null;
   if (ownerCode) {
     const a = await cloudAuthOwnerByCode(request, env, projectId, ownerCode);
     if (!a) return cloudForbidden();
     authRow = a.row;
     actor = { type: 'owner', label: a.label };
+    // Read previous state with decryption credentials (owner auth has the key)
+    const prev = await cloudReadState(env, key, authRow.owner_code_hash, authRow.owner_code_salt);
     next = JSON.parse(JSON.stringify(read.body.state));
     stripStateSecrets(next);
     await cloudTouchOwner(env, projectId);
+    if (authRow && authRow.deleted_at) return cloudProjectDeleted();
+    next.updatedAt = now;
+    // Encrypt state blob before R2 storage (server-side envelope encryption,
+    // AES-256-GCM, key from owner_code_hash + owner_code_salt).
+    let r2Payload = JSON.stringify(next);
+    if (authRow.owner_code_hash && authRow.owner_code_salt) {
+      try { r2Payload = await cloudEncryptState(next, authRow.owner_code_hash, authRow.owner_code_salt); } catch (e) { /* fall back to plaintext */ }
+    }
+    await env.R2.put(key, r2Payload, { httpMetadata: { contentType: 'application/json' } });
+    await env.DB.prepare('UPDATE cloud_projects SET latest_r2_key = ?, updated_at = ? WHERE project_id = ?').bind(key, now, projectId).run();
+    const entry = await cloudLogSave(env, projectId, prev, next, actor);
+    const resp = { ok: true, savedAt: now, key: key, actor: actor.type, previousUpdatedAt: (prev && prev.updatedAt) || null };
+    if (entry) resp.changelog = entry;
+    if (cloudPushRevChangedIfCopies) await cloudPushRevChangedIfCopies(env, projectId, now, actor);
+    return json(resp);
   } else if (adoptAuth) {
     const a = adoptAuth;
     authRow = a.row;
     actor = { type: 'editor', label: a.label };
+    // Editor path: read previous state (may be encrypted, use owner credentials from D1)
+    const projRow = await env.DB.prepare('SELECT owner_code_hash, owner_code_salt FROM cloud_projects WHERE project_id = ?').bind(projectId).first();
+    const prev = await cloudReadState(env, key, projRow && projRow.owner_code_hash, projRow && projRow.owner_code_salt);
     const queued = await queueEditorProposal(env, projectId, a, read.body.state, prev, now);
     return json({ ok: true, review: queued.status, reviewId: queued.reviewId, actor: 'editor', editorLabel: a.label, scope: a.scope, applied: queued.applied, blocked: queued.blocked, previousUpdatedAt: (prev && prev.updatedAt) || null });
   } else {
@@ -178,25 +197,12 @@ export async function handleCloudSave(request, env, projectId, cloudPushRevChang
     authRow = a.row;
     actor = { type: 'editor', label: a.label };
     if (authRow && authRow.deleted_at) return cloudProjectDeleted();
+    // Editor path: read previous state (may be encrypted)
+    const projRow = await env.DB.prepare('SELECT owner_code_hash, owner_code_salt FROM cloud_projects WHERE project_id = ?').bind(projectId).first();
+    const prev = await cloudReadState(env, key, projRow && projRow.owner_code_hash, projRow && projRow.owner_code_salt);
     const queued = await queueEditorProposal(env, projectId, a, read.body.state, prev, now);
     return json({ ok: true, review: queued.status, reviewId: queued.reviewId, actor: 'editor', editorLabel: a.label, scope: a.scope, applied: queued.applied, blocked: queued.blocked, previousUpdatedAt: (prev && prev.updatedAt) || null });
   }
-  if (authRow && authRow.deleted_at) return cloudProjectDeleted();
-  next.updatedAt = now;
-  // Encrypt state blob before R2 storage (server-side envelope encryption,
-  // AES-256-GCM, key from owner_code_hash + owner_code_salt). Editor saves
-  // go through the review proposal path and don't reach this line.
-  let r2Payload = JSON.stringify(next);
-  if (authRow && authRow.owner_code_hash && authRow.owner_code_salt) {
-    try { r2Payload = await cloudEncryptState(next, authRow.owner_code_hash, authRow.owner_code_salt); } catch (e) { /* fall back to plaintext */ }
-  }
-  await env.R2.put(key, r2Payload, { httpMetadata: { contentType: 'application/json' } });
-  await env.DB.prepare('UPDATE cloud_projects SET latest_r2_key = ?, updated_at = ? WHERE project_id = ?').bind(key, now, projectId).run();
-  const entry = await cloudLogSave(env, projectId, prev, next, actor);
-  const resp = { ok: true, savedAt: now, key: key, actor: actor.type, previousUpdatedAt: (prev && prev.updatedAt) || null };
-  if (entry) resp.changelog = entry;
-  if (cloudPushRevChangedIfCopies) await cloudPushRevChangedIfCopies(env, projectId, now, actor);
-  return json(resp);
 }
 
 export async function handleCloudLoad(request, env, projectId) {

@@ -118,15 +118,37 @@ directive documents.
 - **External review zip (owner, 2026-08-21).** When the owner requests a source code
   review from an external model or reviewer, create a copy of the codebase as a
   `mymanager-source-review.zip` in `~/Downloads/` (owner's Downloads folder). The zip
-  must be a COPY (never move files from the project), include all `.js`, `.html`, `.css`,
-  `.sql`, `.json` (config only — `wrangler.jsonc`, `package.json`, `skills-lock.json`),
-  `.svg`, `.webmanifest`, `.txt`, `.xml`, `.yml` source files, plus `src/`, `js/`, `css/`,
-  `migrations/`, `tools/`, and `.github/workflows/` directories. Exclude: `.git/`,
-  `node_modules/`, `_archive/`, `.agents/`, `vendor/`, `images/`, `mcp/`, `*.md` files,
-  `qa-*.cjs` test harnesses, binary assets (PNG/WebP/JPG), `serve.cjs`,
-  `monolith html to reference from all features.html`, and any `SECURITY-FIXES*` files.
-  Target size: under 1MB compressed. The zip is a disposable review artifact — the
-  reviewer deletes it after assessment; no residue should remain in Downloads.
+  must be a COPY (never move files from the project). Target size: under 1MB compressed.
+  The zip is a disposable review artifact — the reviewer deletes it after assessment.
+
+  **Include (the reviewer needs these to verify fixes end-to-end):**
+  - All `.js` files: `worker.js`, `src/**/*.js`, `js/**/*.js`, `js/render/**/*.js`,
+    `projects-data.js`, `sw.js`
+  - All `.html` pages: `index.html`, `app.html`, `project.html`, `admin.html`,
+    `dashboard.html`, `features.html`, `about.html`, `contact.html`, `reviews.html`,
+    `privacy.html`, `reset.html`, `verify.html`, `seed-test.html`,
+    `mymanager-field-guide.html`
+  - All `.css`: `css/marketing.css`, `css/mmgr.css`, `css/mmgr-icons.svg`
+  - All `.sql` migrations: `migrations/*.sql`
+  - Config: `wrangler.jsonc`, `package.json`, `skills-lock.json`, `.assetsignore`
+  - CI: `.github/workflows/ci.yml`
+  - Tools: `tools/**/*.cjs`, `tools/**/*.mjs`, `tools/**/*.json` (QA scripts,
+    probes, audit tools — the reviewer needs these to confirm fixes like
+    `qa-ai-relay.cjs` copy-src fix)
+  - PWA: `manifest.webmanifest`, `robots.txt`, `sitemap.xml`
+  - Other: `icon.svg`
+
+  **Exclude (not source code, or too large, or sensitive):**
+  - `.git/`, `node_modules/`, `_archive/`, `.agents/`, `vendor/`, `images/`, `mcp/`
+  - All `*.md` files (directive/plan docs — not source code)
+  - Root-level `qa-*.cjs` test harnesses (exclude from root, but `tools/qa-*.cjs`
+    and `tools/verify-*` ARE included — they're dev tools, not test harnesses)
+  - Binary assets: `*.png`, `*.webp`, `*.jpg`, `*.ico`, `*.woff*`, `*.ttf`
+  - `serve.cjs` (local dev server, not app code)
+  - `monolith html to reference from all features.html` (470KB reference file)
+  - `SECURITY-FIXES*` files (owner-only planning docs)
+  - `.dev.vars*` (secrets)
+  - `package-lock.json` (lockfile, not source)
 - Report pass/fail per check, not a single "green" summary.- Stop and report back only for: a security-relevant failure, a genuinely new test
   failure not already known/tracked, or a real decision point not already answered
   somewhere in this file or its source documents.

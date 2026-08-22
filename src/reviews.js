@@ -6,7 +6,7 @@
    accepted/rejected by the owner).
    ============================================================ */
 import { json, cloudForbidden, cloudProjectDeleted, cloudTimingSink,
-  cloudReadState, cloudScopeMerge, cloudLogSave,
+  cloudReadState, cloudScopeMerge, cloudLogSave, cloudEncryptState,
   cloudAuthOwnerEither, cloudAuthEditor, cloudAuthAdoption } from './lib/http.js';
 
 const REVIEW_TEXT_MAX = 2000;
@@ -146,7 +146,13 @@ export async function handleReviewAccept(request, env, projectId, reviewId, push
     resp.blocked = merged.blocked;
     if (merged.applied.length > 0) {
       merged.next.updatedAt = now;
-      await env.R2.put(key, JSON.stringify(merged.next), { httpMetadata: { contentType: 'application/json' } });
+      // Encrypt state blob on accept (same envelope as handleCloudSave)
+      const projRow = await env.DB.prepare('SELECT owner_code_hash, owner_code_salt FROM cloud_projects WHERE project_id = ?').bind(projectId).first();
+      let r2Payload = JSON.stringify(merged.next);
+      if (projRow && projRow.owner_code_hash && projRow.owner_code_salt) {
+        try { r2Payload = await cloudEncryptState(merged.next, projRow.owner_code_hash, projRow.owner_code_salt); } catch (e) { /* fall back to plaintext */ }
+      }
+      await env.R2.put(key, r2Payload, { httpMetadata: { contentType: 'application/json' } });
       await env.DB.prepare('UPDATE cloud_projects SET latest_r2_key = ?, updated_at = ? WHERE project_id = ?').bind(key, now, projectId).run();
       const entry = await cloudLogSave(env, projectId, prev, merged.next, { type: 'owner', label: auth.label || 'Owner' }, 'accepted');
       if (entry) resp.changelog = entry;

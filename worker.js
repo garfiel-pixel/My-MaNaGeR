@@ -5,12 +5,12 @@ import { handleReviewsCreate, handleReviewsList, handleReviewList, handleReviewA
 import { handleCloudEditorCreate, handleCloudEditorList, handleCloudEditorRevoke } from './src/cloud/editors.js';
 import { handleCloudChangelogList, handleCloudChangelogRevert, handleCloudChangelogImport } from './src/cloud/changelog.js';
 import { handleCloudPrefsGet, handleCloudPrefsPut, cloudPrefsKey, cloudSanitizePalette, handleOfflineCopyRegister, handleOfflineCopyList, handleOfflineCopyDelete, handleCloudBroadcast, handleCloudAutoBroadcast } from './src/cloud/sync.js';
-import { handleCloudProjectList, handleCloudUnadopt, handleCloudCreate, handleCloudSave, handleCloudLoad, handleCloudRecover, handleCloudMeta, handleCloudUnlink, handleCloudCodeLookup, handleCloudProjectDelete, handleCloudProjectRestore, handleCloudProjectPurge, cloudPushRevChangedIfCopies, queueEditorProposal } from './src/cloud/projects.js';
+import { handleCloudProjectList, handleCloudUnadopt, handleCloudCreate, handleCloudSave, handleCloudLoad, handleCloudRecover, handleCloudMeta, handleCloudUnlink, handleCloudCodeLookup, handleCloudProjectDelete, handleCloudProjectRestore, handleCloudProjectPurge, cloudDeleteProjectFully, cloudPushRevChangedIfCopies, queueEditorProposal } from './src/cloud/projects.js';
 import { API_SHAPES, apiPortfolio, handleApiShape } from './src/api/shapes.js';
 import { handleWebhookCreate, handleWebhookList, handleWebhookDelete, evaluateWebhooks, WEBHOOK_EVENTS } from './src/webhooks.js';
 import { Presence, handlePresenceUpgrade, presencePushRevChanged, cloudManifestCodeOk } from './src/cloud/presence.js';
 export { Presence };  // wrangler requires DO classes in the entrypoint
-import { handleAuthRegister, handleAuthLogin, handleAuthPasswordChange, handleAuthVerifyPassword, handleAuthVerify, handleAuthForgot, handleAuthReset, handleAuthResendVerify } from './src/auth/session.js';
+import { handleAuthRegister, handleAuthLogin, handleAuthPasswordChange, handleAuthVerifyPassword, handleAuthVerify, handleAuthForgot, handleAuthReset, handleAuthResendVerify, handleAuthDeleteAccount } from './src/auth/session.js';
 import {
   json, cloudForbidden, cloudProjectDeleted, cloudTimingSink, cloudDummyHash,
   codesEqual, base64UrlEncode, base64UrlDecode, base64UrlToBytes, bytesToBase64Url,
@@ -398,19 +398,7 @@ async function purgeStaleCloudProjects(env) {
   const purged = [];
   for (let i = 0; i < stale.length; i++) {
     const pid = stale[i].project_id;
-    let cursor = undefined;
-    do {
-      const listed = await env.R2.list({ prefix: 'projects/' + pid + '/', cursor: cursor });
-      for (let j = 0; j < (listed.objects || []).length; j++) {
-        try { await env.R2.delete(listed.objects[j].key); } catch (e) { /* best-effort per object */ }
-      }
-      cursor = listed.truncated ? listed.cursor : undefined;
-    } while (cursor);
-    await env.DB.prepare('DELETE FROM cloud_editor_codes WHERE project_id = ?').bind(pid).run();
-    await env.DB.prepare('DELETE FROM cloud_adoptions WHERE project_id = ?').bind(pid).run();
-    await env.DB.prepare('DELETE FROM cloud_changelog WHERE project_id = ?').bind(pid).run();
-    await env.DB.prepare('DELETE FROM offline_copies WHERE project_id = ?').bind(pid).run();
-    await env.DB.prepare('DELETE FROM cloud_reviews WHERE project_id = ?').bind(pid).run();
+    await cloudDeleteProjectFully(env, pid);
     await env.DB.prepare('DELETE FROM cloud_projects WHERE project_id = ?').bind(pid).run();
     purged.push({ projectId: pid, label: stale[i].owner_label || null, purgedAt: new Date().toISOString() });
   }
@@ -424,19 +412,7 @@ async function purgeStaleCloudProjects(env) {
   const gone = (delRows && delRows.results) || [];
   for (let i = 0; i < gone.length; i++) {
     const pid = gone[i].project_id;
-    let cursor = undefined;
-    do {
-      const listed = await env.R2.list({ prefix: 'projects/' + pid + '/', cursor: cursor });
-      for (let j = 0; j < (listed.objects || []).length; j++) {
-        try { await env.R2.delete(listed.objects[j].key); } catch (e) { /* best-effort per object */ }
-      }
-      cursor = listed.truncated ? listed.cursor : undefined;
-    } while (cursor);
-    await env.DB.prepare('DELETE FROM cloud_editor_codes WHERE project_id = ?').bind(pid).run();
-    await env.DB.prepare('DELETE FROM cloud_adoptions WHERE project_id = ?').bind(pid).run();
-    await env.DB.prepare('DELETE FROM cloud_changelog WHERE project_id = ?').bind(pid).run();
-    await env.DB.prepare('DELETE FROM offline_copies WHERE project_id = ?').bind(pid).run();
-    await env.DB.prepare('DELETE FROM cloud_reviews WHERE project_id = ?').bind(pid).run();
+    await cloudDeleteProjectFully(env, pid);
     await env.DB.prepare('DELETE FROM cloud_projects WHERE project_id = ?').bind(pid).run();
     purged.push({ projectId: pid, label: 'deleted', purgedAt: new Date().toISOString() });
   }
@@ -1358,6 +1334,14 @@ async function handleApi(request, env, url) {
     const rl = await cloudRateCheck(request, 'authLogin', env);
     if (rl.limited) return cloudRateLimited(rl.retryAfter);
     return handleAuthVerifyPassword(request, env);
+  }
+  // POST /api/auth/delete-account — session-gated account deletion
+  // (GDPR/CCPA right to erasure). Email accounts require password;
+  // Google accounts require typing DELETE. Active subscriptions block.
+  if (path === '/api/auth/delete-account' && request.method === 'POST') {
+    const rl = await cloudRateCheck(request, 'authLogin', env);
+    if (rl.limited) return cloudRateLimited(rl.retryAfter);
+    return handleAuthDeleteAccount(request, env);
   }
   // AUTH MAINFRAME v2 — email verification + forgot/reset. verify/reset
   // consume one-time signed tokens (single-use, HMAC-bound to the account);

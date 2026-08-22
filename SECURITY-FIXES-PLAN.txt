@@ -1,0 +1,152 @@
+# SECURITY FIXES PLAN — Owner Annotates, Agent Implements
+# Date: 2026-08-21
+# Instructions: Add your implementation notes under each item (how you want it done).
+#               Then tell the agent "read SECURITY-FIXES-PLAN.txt and implement".
+#               The agent will follow YOUR instructions for each fix.
+
+================================================================================
+FINDING 1 — MEDIUM: No Account Deletion Mechanism
+================================================================================
+
+CURRENT STATE:
+- No /api/auth/delete-account endpoint exists
+- No UI flow to delete a user and all their data
+- User data persists indefinitely: auth_users row, cloud_projects, google_sub
+  linkage, session JTIs, billing subscriptions, offline copies, R2 prefs
+- For GDPR/CCPA compliance when holding company data, users MUST be able to
+  request complete data deletion
+
+DATA AT STAKE:
+- auth_users: email, password_hash, name
+- cloud_projects: all projects owned by this user (R2 blobs + D1 rows)
+- cloud_editor_codes: editor codes for their projects
+- cloud_adoptions: their adoption rows
+- cloud_changelog: changelog for their projects
+- cloud_reviews: review proposals for their projects
+- offline_copies: registered offline copies
+- cloud_subscriptions: billing subscription
+- auth_sessions: active session JTIs
+- auth_tokens: pending verification/reset tokens
+- R2 prefs: user preference blob (mmgr_prefs/<sub>.json)
+
+OWNER NOTES — How do you want this implemented?
+(Delete everything? Soft-delete with grace period? Email confirmation first?
+ What UI — settings page? Account page? Admin-only?)
+
+> [YOUR NOTES HERE]
+
+
+================================================================================
+FINDING 2 — MEDIUM: R2 Project Data Has No Application-Layer Encryption
+================================================================================
+
+CURRENT STATE:
+- Project state stored as plaintext JSON via R2.put(key, JSON.stringify(next))
+- Changelog snapshots: same plaintext JSON
+- Review proposals: same plaintext JSON
+- User prefs: same plaintext JSON
+- Cloudflare provides SSE (server-side encryption at rest) at infrastructure level
+- The app already has AES-256-GCM encryption for Google Drive backups
+  (js/mmgr-google-auth.js: encryptPayload/decryptPayload with PBKDF2 key derivation)
+
+WHAT THIS MEANS FOR COMPANY DATA:
+- A Cloudflare-side breach (unlikely but possible) would expose all project data
+  in plaintext — tasks, risks, budget, schedule, contacts, claims, everything
+- For construction companies holding sensitive bid data, financial projections,
+  and workforce information, application-layer encryption is standard practice
+
+HOW IT COULD WORK (one approach — owner decides):
+- On save: encrypt the state JSON with a project-specific key before R2.put()
+- On load: decrypt after R2.get()
+- Key derivation: project owner code + salt (already in D1) -> AES-256-GCM key
+- The owner code is already transmitted per-request (X-Owner-Code header)
+- This is the same pattern the Google Drive backup already uses
+
+OWNER NOTES — How do you want this implemented?
+(Encrypt all R2 blobs? Just project state? What key derivation?
+ Same AES-256-GCM as Google Drive backup? Per-project key?)
+
+> [YOUR NOTES HERE]
+
+
+================================================================================
+FINDING 3 — LOW: 365-Day Orphan Retention Is Long
+================================================================================
+
+CURRENT STATE:
+- CLOUD_ORPHAN_RETENTION_MS = 365 days (src/lib/http.js line 793)
+- Projects with no owner activity for a full year are hard-purged
+- CLOUD_DELETED_PURGE_MS = 7 days (admin-deleted projects)
+- No notification to the owner before purge
+
+OWNER NOTES — What retention period do you want?
+(90 days? 180 days? Should we email the owner before purging?
+ How many days notice?)
+
+> [YOUR NOTES HERE]
+
+
+================================================================================
+FINDING 4 — LOW: No Privacy Policy Page
+================================================================================
+
+CURRENT STATE:
+- The marketing site (index/features/about/contact) has no privacy policy
+- The app collects: Google profile info (sub, email, name), stores project data,
+  forwards chat messages to AI providers (BYO-key), uses LemonSqueezy for billing
+- For commercial deployment with company data, a privacy policy is required
+
+WHAT NEEDS TO BE COVERED:
+- What data is collected (Google profile, email, project state)
+- Where it's stored (Cloudflare R2/D1, user's browser localStorage)
+- Who it's shared with (AI providers via BYO-key relay, LemonSqueezy for billing)
+- How to delete it (ties to Finding 1)
+- Data retention periods (ties to Finding 3)
+- Contact information
+
+OWNER NOTES — Where do you want the privacy policy?
+(marketing site? /privacy.html? separate domain?
+ Do you have existing legal text to use?)
+
+> [YOUR NOTES HERE]
+
+
+================================================================================
+FINDING 5 — INFORMATIONAL: Client-Side State Is Unencrypted
+================================================================================
+
+CURRENT STATE:
+- Full project state lives in localStorage without encryption
+- This is by design — the app is offline-first, the browser IS the primary store
+- Google Drive backup has optional AES-256-GCM encryption
+- If a device is compromised, all project data in localStorage is readable
+
+NOTE: This is architectural, not a bug. The offline-first design means the
+browser is the authoritative store. encrypting localStorage would break the
+core offline-first promise. Documenting for awareness only.
+
+OWNER NOTES — Any action needed? Or just document this as a known trade-off?
+
+> [YOUR NOTES HERE]
+
+
+================================================================================
+WHAT'S ALREADY DONE WELL (no action needed)
+================================================================================
+
+1.  API keys never persist — sessionStorage-only, stripped from all server storage
+2.  Owner codes use PBKDF2-SHA256 with per-project salts, never stored plaintext
+3.  Passwords use PBKDF2-SHA256 100k iterations, per-account salt
+4.  Session cookie is HttpOnly/Secure/SameSite=Lax with HMAC-SHA256 signing
+5.  Session has JTI revocation (logout, password change, sign-out-everywhere)
+6.  Timing side-channels hardened on every auth failure path
+7.  CSP is strict — no unsafe-eval on app pages, script hashes, frame-ancestors none
+8.  Google Drive backups optionally encrypted with AES-256-GCM + PBKDF2
+9.  Rate limiting on every endpoint
+10. AI relay is stateless — no key logging, persistence, or echo
+11. Secrets stripped from project state before R2 storage (stripStateSecrets)
+12. COOP/CORP headers prevent cross-origin window embedding
+13. HSTS enforced (max-age=31536000; includeSubDomains)
+14. Owner code recovery requires Google session verification
+15. Admin panel requires ADMIN_CODE (constant-time comparison)
+16. Billing webhook verified with HMAC-SHA256 before any DB write

@@ -88,8 +88,8 @@ export async function evaluateWebhooks(env) {
   for (let i = 0; i < subs.length; i++) {
     const sub = subs[i];
     try {
-      const row = await env.DB.prepare('SELECT latest_r2_key FROM cloud_projects WHERE project_id = ?').bind(sub.project_id).first();
-      const state = row && row.latest_r2_key ? await cloudReadState(env, row.latest_r2_key) : null;
+      const row = await env.DB.prepare('SELECT latest_r2_key, owner_code_hash, owner_code_salt FROM cloud_projects WHERE project_id = ?').bind(sub.project_id).first();
+      const state = row && row.latest_r2_key ? await cloudReadState(env, row.latest_r2_key, row.owner_code_hash, row.owner_code_salt) : null;
       if (!state) continue;
       let fire = false; let payload = null;
       if (sub.event === 'health_dropped') {

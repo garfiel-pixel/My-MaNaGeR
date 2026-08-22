@@ -1864,6 +1864,19 @@ OWNER-SCOPE MATTER (decision + deploy owner-side; drafted here so the next sessi
 
 **2026-08-21 — Session: MMGR-RENDER.JS SPLIT + QA-RELAY FIX.** (1) mmgr-render.js split: extracted Financials panel (Money formatter, Spend Log, Cash-Flow S-Curve, Budget, Pay Apps — js/render/financials.js), People panel (Stakeholders, Changes, Log, RACI, RACI Heatmap, RACI Alerts, Comms — js/render/people.js), and Closure panel (Punch List, Handover, Warranty — js/render/closure.js). mmgr-render.js now 2,817 lines (was 3,595, -22%). 5 total extraction modules: documents, financials, people, closure. All shims delegate to ns.Render* namespaces. (2) qa-ai-relay.cjs fixed for module split: added fs.cpSync to copy src/ into temp dir. 14/14 tests pass. Added to CI — pipeline now 8 steps. (3) mmgr-app.js split attempted but inline script escaping failed — needs file-based extraction script next session. mmgr-cloud.js split deferred. DEPLOYED + LIVE (200 on /, SW v154, all 8 CI steps pass). REMAINING: mmgr-app.js split (2,993 lines), mmgr-cloud.js split (2,047 lines), branch protection check (GitHub settings).
 
+**2026-08-21 — Session: PRIVACY + SECURITY AUDIT.** Full privacy/security audit completed across all layers: data at rest, data in transit, localStorage, API key handling, third-party data flows, session/auth security, data retention/deletion, and Google sign-in data flow. Key findings:
+
+**Already solid:** (1) API keys never persist — sessionStorage-only, stripped from all server storage via stripStateSecrets(). (2) Owner codes use PBKDF2-SHA256 with per-project salts, never stored plaintext. (3) Passwords use PBKDF2-SHA256 100k iterations, per-account salt. (4) Session cookie is HttpOnly/Secure/SameSite=Lax with HMAC-SHA256 signing and JTI revocation. (5) Timing side-channels hardened on every auth failure path. (6) CSP is strict — no unsafe-eval on app pages, script hashes, frame-ancestors none. (7) Google Drive backups optionally encrypted with AES-256-GCM + PBKDF2. (8) Rate limiting on every endpoint. (9) AI relay is stateless — no key logging, persistence, or echo. (10) Secrets stripped from project state before R2 storage.
+
+**Findings needing owner input (see SECURITY-FIXES-PLAN.txt for full details):**
+- MEDIUM: No account deletion mechanism (GDPR/CCPA gap — users must be able to request complete data deletion)
+- MEDIUM: R2 project data stored as plaintext JSON (no application-layer encryption; relies on Cloudflare SSE only)
+- LOW: 365-day orphan retention is long for sensitive company data
+- LOW: No privacy policy page on the marketing site
+- INFORMATIONAL: Client-side localStorage state is unencrypted (by design — offline-first)
+
+Owner to annotate SECURITY-FIXES-PLAN.txt with implementation details, then agent reads and implements.
+
 ---
 
 *This file is the working source of truth for continuing this project across sessions.

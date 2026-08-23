@@ -37,12 +37,25 @@
    ============================================================ */
 window.MMGR_PROJECTS = [
   {
-    "id": "demo-project",
-    "title": "Demo Project, Riverside Tower Renovation",
-    "description": "A working example wired up end-to-end so you can test the unlock flow before adding your own projects. Contact the admin to get the access code.",
+    "id": "demo-filled",
+    "title": "Riverside Tower Renovation (Demo)",
+    "description": "A fully populated 18-month construction project with all sections filled out. View-only to show what a real project looks like.",
     "status": "active",
-    "file": "project.html?id=demo-project",
-    "codeHash": "5b583f9cc37f83fa78453b41c1516a1f23510fd367396523f36bd58b7dcb87f7",
-    "roCodeHash": "852eb69ba700845b83817984dc535ada337ba11cc4a1d3b92bce1ae0b873cb5c"
+    "file": "project.html?id=demo-filled",
+    "codeHash": "",
+    "roCodeHash": "",
+    "demo": true,
+    "demoType": "filled"
+  },
+  {
+    "id": "demo-empty",
+    "title": "Blank Template Project",
+    "description": "An empty project you can edit and explore. Try filling in the charter, adding tasks, and tracking budget.",
+    "status": "planning",
+    "file": "project.html?id=demo-empty",
+    "codeHash": "",
+    "roCodeHash": "",
+    "demo": true,
+    "demoType": "empty"
   }
 ];

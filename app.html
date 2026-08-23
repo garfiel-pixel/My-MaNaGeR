@@ -351,7 +351,7 @@ body.glass-premium .wrap{position:relative;z-index:1;}
 document.addEventListener('DOMContentLoaded', function() {
   if (!window.__mmgrAppBundleMissing) return;
   var MMGR = window.MMGR || {};
-  ['projects-data.js','js/mmgr-utils.js','js/mmgr-portfolio.js',
+  ['projects-data.js','demo-data.js','js/mmgr-utils.js','js/mmgr-portfolio.js',
    'js/mmgr-google-auth.js','js/mmgr-cloud-dash.js',
    'js/mmgr-viewport.js','js/mmgr-glass.js'
   ].forEach(function(f) { var e = document.createElement('script'); e.src = f; document.body.appendChild(e); });
@@ -894,6 +894,29 @@ document.addEventListener('click', function(e){
 });
 
 renderCards();
+
+/* DEMO PROJECT SEEDING: if a demo project has no state in localStorage,
+   seed it from the MMGR_DEMO_FILLED / MMGR_DEMO_EMPTY globals so the
+   project opens with pre-populated data on first visit. */
+(function(){
+  try {
+    if (window.MMGR_DEMO_FILLED) {
+      var key = 'mmgr_state_demo-filled';
+      if (!localStorage.getItem(key)) {
+        localStorage.setItem(key, JSON.stringify(window.MMGR_DEMO_FILLED));
+        localStorage.setItem('mmgr_unlocked_demo-filled', '1');
+      }
+    }
+    if (window.MMGR_DEMO_EMPTY) {
+      var key2 = 'mmgr_state_demo-empty';
+      if (!localStorage.getItem(key2)) {
+        localStorage.setItem(key2, JSON.stringify(window.MMGR_DEMO_EMPTY));
+        localStorage.setItem('mmgr_unlocked_demo-empty', '1');
+      }
+    }
+  } catch(e) { /* seeding must never block boot */ }
+})();
+
 /* CLOUD-BACKEND-ARCHITECTURE-PLAN Phase 2 , direct-link unlock for cloud
    codes. project.html bounces a locked visitor here as app.html?locked=<id>.
    If that project has a card in the grid, the user clicks it as usual; if it

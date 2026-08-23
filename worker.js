@@ -93,8 +93,8 @@ const INLINE_SCRIPT_HASHES = [
   "'sha256-jQGKXr3EKUJqelsBjB7GNSArKx9pbp38QHCOFoVCB3g='", // project.html (main inline script)
   "'sha256-59YXuH6ak9jBNEE5DGbQyi6pC3MiFmPHLBdvphq/ElQ='", // app.html (head theme + rail-open snippet — FOUC prevention)
   "'sha256-PcY9TdIJsXGVPic0Qujx0Ov+GCt9gZG0hEtBVRDiLiM='", // app.html (body class transfer)
-  "'sha256-wbQHVPUuBhoFCNBpJBX8hjCDtoBTwuDB/PIL4YAPbo4='", // app.html (dev fallback script)
-  "'sha256-6cm8By4LxG7o2HEW/Av42ySYb5kwhxxxP0Cj86/BxmY='", // app.html (dashboard logic)
+  "'sha256-td9NUrAuxuQCDN61bNSzOzlI3wYV7fWTePO1wRxuhWU='", // app.html (dev fallback script)
+  "'sha256-aZeEUettZsFgWV3VtAPyvtJY85akZN8CwZYmmdeEqWw='", // app.html (dashboard logic)
 
   "'sha256-cCWiNSMtCJLjwt0mcR0GscIEccMUKMKocExGYJ4z96M='", // admin.html (head theme snippet — FOUC prevention)
   "'sha256-8rpgpTSjx7LcpleTm7RwTJ+pzjvndpRVDPiapb2gNo8='", // admin.html (body dark-mode transfer)

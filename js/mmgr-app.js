@@ -16,6 +16,11 @@ var MMGR = window.MMGR || {};
   const urlParams = new URLSearchParams(window.location.search);
   ns.projectId = urlParams.get('id') || localStorage.getItem('mmgr_current_project') || 'default';
 
+  // DEMO VIEW-ONLY: the filled demo project is always read-only.
+  if (ns.projectId === 'demo-filled') {
+    ns.scope = 'readonly';
+  }
+
   // ---- Access Gate ----
   // Full codes set mmgr_unlocked_<id>='1'. A VIEW-ONLY code (ACTION-PLAN
   // 4.1) sets the same unlock flag PLUS mmgr_scope_<id>='readonly' , the

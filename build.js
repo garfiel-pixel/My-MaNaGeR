@@ -111,6 +111,7 @@ const MARKETING_MODULES = [
 // ---- app.html bundle (launcher / project list) ----
 const APP_LAUNCHER_MODULES = [
   'projects-data.js',
+  'demo-data.js',
   'js/mmgr-utils.js',
   'js/mmgr-portfolio.js',
   'js/mmgr-google-auth.js',

@@ -996,6 +996,22 @@ in-progress and exactly where it stopped, what's next.
 **2026-08-22 — Session: QA-SCRIPT-CI-AUDIT — all 40 QA scripts audited for CI-safety.**
 **SCOPE:** Audited every `tools/qa-*.cjs`, `tools/verify-*.cjs`, and root `qa-*.cjs` script for CI compatibility (no Chrome, no wrangler dev, no network). Result: 8 CI-safe scripts, all already in `.github/workflows/ci.yml`. The remaining 32 scripts require either headless Chrome (CDP-driven E2E) or wrangler dev (local D1/R2 emulation) and cannot run in GitHub Actions CI without those dependencies.
 **CI-SAFE (8, all in CI):** verify-csp-hashes, verify-sw-cache, verify-hidden-attr, verify-skills-lock, qa-dashboard-spec (76/76), qa-changelog-diffs (17/17), qa-ai-relay (14/14), verify-report-issue (27/27).
+**NOT CI-SAFE (32):** 20 require headless Chrome, 14 require wrangler dev.
+**ACTION:** No pipeline changes needed — all eligible scripts are already wired.
+
+**2026-08-22 — Session: FRONTEND-SPLIT-CLOUD (owner: "do the same thing for mmgr-cloud.js") — 5 modules extracted from mmgr-cloud.js.**
+**SCOPE:** mmgr-cloud.js 2047 → 1722 lines (−325, −16%). Extracted into js/cloud/: diffs.js (64 lines — clVal, renderDiffPanel, toggleDiffs), scope.js (61 lines — isWritableSection, isSectionBlocked, applyEditorScope), share.js (103 lines — renderShare, pendingBannerHtml, sectionLabel), review.js (176 lines — cloudReviewList, cloudReviewMine, cloudReviewAccept, cloudReviewReject, reviewToggleDiffs, copyEditorCode, editorCodeDone), webhooks.js (91 lines — webhookList, webhookAdd, webhookDel). Core utilities (pid, esc, setStatus, render, listLog, getCode, getECode, getEScope, activeCredential, _getSections) exposed on ns.Cloud for extracted modules. Diff panel retains _clValImpl and _renderDiffPanelImpl fallbacks for QA test harness (which loads only mmgr-cloud.js without extracted modules). SW v159.
+**VERIFICATION:** npm run verify GREEN (CSP 14/14, SW v159, hidden 2693 rules, skills 17/17); qa-dashboard-spec 76/76, qa-changelog-diffs 17/17, verify-report-issue 27/27; all 6 JS files parse clean.
+**DEPLOYED + LIVE** (200 on /, SW v159, Version 84aaefc4).
+
+**2026-08-22 — Session: SIGNIN-SHEET-UI-FIX (owner: "I'm seeing two tabs that say sign in with email instead") — duplicate form visibility + layout restructure.**
+**SCOPE:** CSS display:flex on .email-auth-form outranked the HTML hidden attribute, causing the email form to always render visible on load alongside the Google button. FIX: added [hidden]{display:none} guards on .email-auth-form and .email-auth-alt; added .email-auth-divider between Google button and email section; centered #google-signin-button with flex justify; restructured .email-auth-alt to flex-column for vertical Create account / Forgot password layout. Applied to all 6 marketing pages + field guide. SW v156.
+**VERIFICATION:** npm run verify GREEN (CSP 14/14, SW v156, hidden 2693 rules, skills 17/17); qa-dashboard-spec 76/76, qa-changelog-diffs 17/17, verify-report-issue 27/27.
+**DEPLOYED + LIVE** (200 on /, SW v156).
+
+**2026-08-22 — Session: FRONTEND-SPLIT-RENDER — all 40 QA scripts audited for CI-safety.**
+**SCOPE:** Audited every `tools/qa-*.cjs`, `tools/verify-*.cjs`, and root `qa-*.cjs` script for CI compatibility (no Chrome, no wrangler dev, no network). Result: 8 CI-safe scripts, all already in `.github/workflows/ci.yml`. The remaining 32 scripts require either headless Chrome (CDP-driven E2E) or wrangler dev (local D1/R2 emulation) and cannot run in GitHub Actions CI without those dependencies.
+**CI-SAFE (8, all in CI):** verify-csp-hashes, verify-sw-cache, verify-hidden-attr, verify-skills-lock, qa-dashboard-spec (76/76), qa-changelog-diffs (17/17), qa-ai-relay (14/14), verify-report-issue (27/27).
 **NOT CI-SAFE (32):** 18 require headless Chrome (qa-ai-visual, qa-ai, qa-drive-smoke, qa-focus, qa-full, qa-glass-visual, qa-glass, qa-marketing, qa-oauth, qa-obs-verify, qa-p0, qa-p1, qa-pwa, qa-r3, qa-restore-verify, qa-rhythm, qa-stress, qa-sync, qa-typing, qa-v11, qa-voice, verify-cloud-autosave-signin, verify-controls-admin, verify-dynamic-labels, verify-gates-cdp, verify-gates-themes, verify-glass-preview-cdp, verify-spy-cdp, verify-theme-cdp) and 14 require wrangler dev (qa-ai-badge-e2e, qa-ai-polish, qa-cloud-codes-delete, qa-cloud-import, qa-cloud-phase1, qa-cloud-phase2, qa-email-auth, qa-market-features, qa-offline-copies, qa-prefs-roundtrip, qa-presence, qa-rank9-api, qa-reviews, qa-t9-adoption).
 **ACTION:** No pipeline changes needed — all eligible scripts are already wired.
 

@@ -67,3 +67,24 @@ git commit --no-verify
    history that already exists on `origin` without a force-push plan — and if
    you do force-push, only change what you intended (e.g. commit messages),
    never files or infrastructure.
+
+## Extraction refactors (splitting monolith files into modules)
+
+The app's rendering, app, and cloud logic is being split from monolith files
+(`mmgr-render.js`, `mmgr-app.js`, `mmgr-cloud.js`) into per-domain modules
+(`js/render/*.js`, `js/app/*.js`, `js/cloud/*.js`). Every extraction follows
+the same pattern:
+
+1. **Move the real implementation** into the new module file.
+2. **Replace the original** with a one-line delegating wrapper:
+   ```js
+   function extractedName() {
+     if (ns.RenderXxx) ns.RenderXxx.extractedName();
+   }
+   ```
+3. **The final `ns.Render = { ... }` (or `ns.App`/`ns.Cloud`) export object
+   must still reference the wrapper's name** -- it should already be there.
+
+The static gate `node tools/verify-render-exports.cjs` (wired into `npm run
+verify`) catches any function that was extracted but never got a wrapper. Run
+it before committing any extraction-style refactor.

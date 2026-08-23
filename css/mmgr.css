@@ -489,6 +489,20 @@ body.sidebar-open .nav-btn .ico,body.sidebar-open .sb-close .ico{transform:rotat
 /* MARKET-FEATURE-ROADMAP A1: compliance badge on the Project Health card —
    same treatment as the Blocked/Overdue/Live-Issues danger counts. */
 #health-card.has-compliance #h-coi{box-shadow:0 0 0 1px var(--danger);background:rgba(239,68,68,.3);}
+/* Blueprint motif (TRACK B1): subtle corner-tick marks borrowed from the
+   Field Guide's drawing-set language — thin cyan border segments in the
+   top-left and bottom-right corners. Only on the Dashboard health card,
+   the one screen every user sees most. */
+.card.blueprint{position:relative;}
+.card.blueprint::before,.card.blueprint::after{
+  content:"";position:absolute;width:10px;height:10px;
+  border-top:1.5px solid var(--cyan-dim);border-left:1.5px solid var(--cyan-dim);
+  top:-1px;left:-1px;opacity:.7;pointer-events:none;
+}
+.card.blueprint::after{
+  top:auto;left:auto;bottom:-1px;right:-1px;
+  border:none;border-bottom:1.5px solid var(--cyan-dim);border-right:1.5px solid var(--cyan-dim);
+}
 
 /* ---- Cards ---- */
 /* PLAN-OF-ACTION-LIQUID-GLASS-UI 3.5.1: CSS glass is the universal default
@@ -1848,9 +1862,15 @@ body.dark-mode .pcard:hover{box-shadow:var(--glass-rim),0 12px 30px rgba(0,0,0,.
 .wx-dist-unit{font-size:.68rem;color:var(--slate);}
 
 /* ---- AI Assistant window (chat-style) ---- */
-.ai-fab{position:fixed;right:22px;bottom:22px;z-index:1500;width:54px;height:54px;border-radius:50%;border:none;background:linear-gradient(135deg,#f59e0b,#d97706);color:#0b0c10;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 8px 24px rgba(217,119,6,.4),inset 0 1px 0 rgba(255,255,255,.35);transition:transform var(--tr),box-shadow var(--tr);}
+/* TRACK B3: distinct visual presence — the AI is the strongest
+   differentiator and its entry point should feel like one.  A persistent
+   breathing glow + hover label sets it apart from every other chrome. */
+.ai-fab{position:fixed;right:22px;bottom:22px;z-index:1500;width:54px;height:54px;border-radius:50%;border:none;background:linear-gradient(135deg,#f59e0b,#d97706);color:#0b0c10;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 8px 24px rgba(217,119,6,.4),inset 0 1px 0 rgba(255,255,255,.35);transition:transform var(--tr),box-shadow var(--tr),filter var(--tr);animation:ai-glow 3s ease-in-out infinite;}
 .ai-fab .ico{width:24px;height:24px;}
-.ai-fab:hover{transform:translateY(-2px) scale(1.06);box-shadow:0 12px 30px rgba(217,119,6,.5);}
+.ai-fab:hover{transform:translateY(-2px) scale(1.06);box-shadow:0 12px 30px rgba(217,119,6,.6);filter:brightness(1.1);}
+@keyframes ai-glow{0%,100%{box-shadow:0 8px 24px rgba(217,119,6,.4),inset 0 1px 0 rgba(255,255,255,.35);}50%{box-shadow:0 8px 32px rgba(217,119,6,.6),0 0 16px rgba(245,158,11,.15),inset 0 1px 0 rgba(255,255,255,.35);}}
+.ai-fab::after{content:"Ask AI";position:absolute;right:calc(100% + 10px);top:50%;transform:translateY(-50%);background:var(--glass-fill-dark);border:var(--glass-border);border-radius:var(--squircle-sm);padding:4px 10px;font-family:var(--mono);font-size:.65rem;font-weight:600;letter-spacing:.04em;white-space:nowrap;color:var(--gold);opacity:0;pointer-events:none;transition:opacity .2s ease;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);}
+.ai-fab:hover::after{opacity:1;}
 #ai-win{display:none;position:fixed;inset:0;background:rgba(9,10,15,.62);backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px);z-index:2000;align-items:center;justify-content:center;padding:18px;}
 #ai-win.open{display:flex;animation:aiBackdropIn .22s ease;}
 @keyframes aiBackdropIn{from{opacity:0;}to{opacity:1;}}

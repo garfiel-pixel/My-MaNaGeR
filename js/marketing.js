@@ -167,24 +167,11 @@
     signinBtns.forEach(function(b){
       b.innerHTML = '';
       b.classList.add('is-signedin');
-      b.setAttribute('aria-label', 'Signed in as ' + ((user && (user.name || user.email)) || 'operator'));
-      var av = document.createElement('span');
-      av.className = 'sb-avatar';
-      if (user && user.picture) {
-        var img = document.createElement('img');
-        img.src = user.picture;
-        img.alt = '';
-        img.referrerPolicy = 'no-referrer';
-        av.appendChild(img);
-      } else {
-        var src = (user && (user.name || user.email || user.sub || '')) || '';
-        av.textContent = src.replace(/^email:/i, '').charAt(0).toUpperCase() || '?';
-      }
-      var nm = document.createElement('span');
-      nm.className = 'sb-name';
-      nm.textContent = (user && (user.name || user.email)) || 'Signed in';
-      b.appendChild(av);
-      b.appendChild(nm);
+      var displayName = (user && (user.name || user.email)) || 'Signed in';
+      b.setAttribute('aria-label', 'Signed in as ' + displayName);
+      /* Match the app sidebar pattern: SVG user icon + display name */
+      var safe = displayName.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+      b.innerHTML = '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-user"></use></svg> ' + safe;
     });
   }
   function renderSigninSignedOutTriggers(){

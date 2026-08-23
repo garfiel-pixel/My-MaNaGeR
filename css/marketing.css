@@ -379,14 +379,8 @@ body.dark-mode .signin-btn[aria-expanded="true"]{background:rgba(255,255,255,.16
 /* OWNER 2026-08-17 — signed-in identity chip inside the header trigger: a
    small avatar (photo or initial) + name replace the static "Sign in" label;
    clicking still opens the account sheet. */
-.signin-btn .sb-avatar{
-  width:22px;height:22px;border-radius:50%;overflow:hidden;flex-shrink:0;
-  background:var(--gold);color:var(--on-gold);
-  display:flex;align-items:center;justify-content:center;
-  font-weight:800;font-size:.64rem;line-height:1;
-}
-.signin-btn .sb-avatar img{width:100%;height:100%;object-fit:cover;display:block;}
-.signin-btn .sb-name{max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.signin-btn.is-signedin .ico{width:14px;height:14px;flex-shrink:0;}
+.signin-btn.is-signedin{max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 
 /* OWNER 2026-08-17 — section-index dropdowns in the primary nav.
    FULL-WIDTH HORIZONTAL PANEL (owner: "create a horizontal fully drop down...

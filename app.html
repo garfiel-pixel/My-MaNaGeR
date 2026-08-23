@@ -893,29 +893,29 @@ document.addEventListener('click', function(e){
   fn(el, e);
 });
 
-renderCards();
-
-/* DEMO PROJECT SEEDING: if a demo project has no state in localStorage,
-   seed it from the MMGR_DEMO_FILLED / MMGR_DEMO_EMPTY globals so the
-   project opens with pre-populated data on first visit. */
+/* DEMO PROJECT SEEDING: seed BEFORE first render so cards show as
+   unlocked on fresh devices (mobile or desktop). */
 (function(){
   try {
     if (window.MMGR_DEMO_FILLED) {
       var key = 'mmgr_state_demo-filled';
       if (!localStorage.getItem(key)) {
         localStorage.setItem(key, JSON.stringify(window.MMGR_DEMO_FILLED));
-        localStorage.setItem('mmgr_unlocked_demo-filled', '1');
       }
+      // Always ensure unlocked — even if state already exists
+      localStorage.setItem('mmgr_unlocked_demo-filled', '1');
     }
     if (window.MMGR_DEMO_EMPTY) {
       var key2 = 'mmgr_state_demo-empty';
       if (!localStorage.getItem(key2)) {
         localStorage.setItem(key2, JSON.stringify(window.MMGR_DEMO_EMPTY));
-        localStorage.setItem('mmgr_unlocked_demo-empty', '1');
       }
+      localStorage.setItem('mmgr_unlocked_demo-empty', '1');
     }
   } catch(e) { /* seeding must never block boot */ }
 })();
+
+renderCards();
 
 /* CLOUD-BACKEND-ARCHITECTURE-PLAN Phase 2 , direct-link unlock for cloud
    codes. project.html bounces a locked visitor here as app.html?locked=<id>.

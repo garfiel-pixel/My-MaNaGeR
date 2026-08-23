@@ -14,7 +14,7 @@ async function collectFiles(baseDir, currentDir, results) {
         await collectFiles(baseDir, fullPath, results);
       } else if (entry.isFile()) {
         const content = await fs.promises.readFile(fullPath);
-        const relativePath = path.relative(baseDir, fullPath).split("\\").join("/");
+        const relativePath = path.relative(baseDir, fullPath).split(path.sep).join("/");
         results.push({ relativePath, content });
       }
     })
@@ -28,7 +28,8 @@ async function computeSkillFolderHash(skillDir) {
   const hash = crypto.createHash("sha256");
   for (const file of files) {
     hash.update(file.relativePath);
-    hash.update(file.content);
+    // Normalize CRLF to LF for cross-platform hash consistency
+    hash.update(Buffer.from(file.content.toString('utf8').replace(/\r\n/g, '\n')));
   }
   return hash.digest("hex");
 }

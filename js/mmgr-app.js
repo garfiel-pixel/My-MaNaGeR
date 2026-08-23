@@ -1615,10 +1615,7 @@ var MMGR = window.MMGR || {};
     ev.target.value = '';
   }
 
-  function saveBaseline() {
-    ns.State.saveBaseline();
-    showToast('Baseline saved!', 'ok');
-  }
+  function saveBaseline() { if (ns.AppExport) ns.AppExport.saveBaseline(); }
 
   // ---- Init ----
   // Explicit module-readiness gate. init() must not run until every module

@@ -212,14 +212,7 @@ var MMGR = window.MMGR || {};
       return _sections;
     } catch (e) { return null; }
   }
-  function sectionLabel(key) {
-    if (_sections) {
-      for (let i = 0; i < _sections.length; i++) {
-        if (_sections[i].key === key) return _sections[i].label;
-      }
-    }
-    return key;
-  }
+  function sectionLabel(key) { return ns.CloudShare ? ns.CloudShare.sectionLabel(key) : key; }
 
   // ---- GIS lazy load + render (sign-in for recovery) ----------------------
   function ensureGIS() {

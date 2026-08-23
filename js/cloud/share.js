@@ -97,7 +97,8 @@ var MMGR = window.MMGR || {};
 
   ns.CloudShare = {
     renderShare: renderShare,
-    pendingBannerHtml: pendingBannerHtml
+    pendingBannerHtml: pendingBannerHtml,
+    sectionLabel: sectionLabel
   };
 })(MMGR);
 window.MMGR = MMGR;

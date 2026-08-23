@@ -6,6 +6,11 @@ on:
   pull_request:
     branches: [main]
 
+# Cancel in-flight runs for the same branch/PR to save minutes.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   verify:
     runs-on: ubuntu-latest
@@ -16,22 +21,37 @@ jobs:
         with:
           node-version: 20
 
-      - run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Install dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund
 
-      # Static checks — no live Cloudflare bindings needed.
-      # Each step runs independently so one failure doesn't hide the others.
-      - run: npm run verify:csp
-      - run: npm run verify:sw
-      - run: npm run verify:hidden
-      - run: npm run verify:skills
+      # ── Static integrity checks (no Cloudflare bindings needed) ─────
+      - name: Verify CSP inline-script hashes
+        run: npm run verify:csp
 
-      # Deploy validation — catches DO export errors, syntax errors, and
-      # missing imports in worker.js without Cloudflare credentials.
-      # No staging needed: wrangler filters non-asset files (node_modules,
-      # .git) from the upload automatically.
-      - run: npx wrangler deploy --dry-run
+      - name: Verify service-worker cache version
+        run: npm run verify:sw
 
-      # QA scripts confirmed CI-safe (no wrangler dev, no Chrome):
-      - run: node tools/qa-dashboard-spec.cjs
-      - run: node tools/qa-changelog-diffs.cjs
-      - run: node tools/qa-ai-relay.cjs
+      - name: Verify hidden-attribute wiring
+        run: npm run verify:hidden
+
+      - name: Verify skills-lock integrity
+        run: npm run verify:skills
+
+      # ── Deploy validation (dry-run, no credentials needed) ──────────
+      # Catches DO export errors, syntax errors, missing imports in
+      # worker.js. wrangler filters .git/node_modules from upload.
+      - name: Wrangler deploy dry-run
+        run: npx wrangler deploy --dry-run
+
+      # ── Pure-static QA gates (no Chrome, no wrangler dev) ───────────
+      - name: QA — dashboard spec (tokens, markup, icons, contrast)
+        run: node tools/qa-dashboard-spec.cjs
+
+      - name: QA — changelog diff expand
+        run: node tools/qa-changelog-diffs.cjs
+
+      - name: QA — AI relay (provider routing, auth, headers)
+        run: node tools/qa-ai-relay.cjs
+
+      - name: QA — report-issue payload (PII/budget exclusion)
+        run: node tools/verify-report-issue.cjs

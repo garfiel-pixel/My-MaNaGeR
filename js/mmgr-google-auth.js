@@ -1614,7 +1614,9 @@ var MMGR = window.MMGR || {};
   }
 
   function boot() {
-    mountEmailAuth();
+    // Marketing pages have their own mountEmailAuth call in marketing.js
+    // with showToggle:true. Skip if the marketing host exists.
+    if (!document.getElementById('marketing-email-auth')) mountEmailAuth();
     // AUTH MAINFRAME 2026-08-17 , password change mounts: any element marked
     // [data-pw-host] (project.html Settings > Controls > Profile) hosts the
     // shared control; visibility syncs with the session.

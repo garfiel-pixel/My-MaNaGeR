@@ -1318,10 +1318,10 @@ body.dark-mode .signin-btn[aria-expanded="true"]{background:rgba(255,255,255,.16
   .auth-recover .btn{width:100%;}
 }
 
-/* SIGN-IN DORMANT (2026-08-23): the sign-in button and sheet are
+/* SIGN-IN BUTTON DORMANT (2026-08-23): the sign-in button is
    hidden on marketing pages when NOT signed in. When signed in,
    the button becomes an identity chip (initial avatar + name)
-   and is visible. The sheet stays hidden always. Get Started
-   fills the header CTA position. */
+   and is visible. Get Started fills the header CTA position.
+   The sign-in sheet is controlled by the hidden attribute via JS
+   — never hide it with CSS (GIS needs a visible host to render). */
 .signin-btn:not(.is-signedin), .signin-trigger:not(.is-signedin), .site-signin.signin-trigger:not(.is-signedin){display:none!important;}
-.signin-sheet{display:none!important;}

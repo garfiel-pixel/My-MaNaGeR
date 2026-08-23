@@ -133,7 +133,7 @@ const HEADERS = {
   'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
   // §5.1 audit fix: COOP/CORP headers prevent cross-origin window embedding
   // and resource loading — defense-in-depth alongside the CSP frame-ancestors.
-  'Cross-Origin-Opener-Policy': 'same-origin',
+  'Cross-Origin-Opener-Policy': 'same-origin-allow-popups',
   'Cross-Origin-Resource-Policy': 'same-origin'
 };
 

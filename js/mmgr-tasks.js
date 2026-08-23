@@ -1,5 +1,5 @@
 /* ============================================================
-   My MaNaGeR — WBS / Task Management Module
+   My MaNaGeR , WBS / Task Management Module
    ============================================================ */
 var MMGR = window.MMGR || {};
 
@@ -73,7 +73,7 @@ var MMGR = window.MMGR || {};
   // ---- Item 23: rolling lead-time review stamp ----
   // Marks a lead-time item's rolling 3-month forecast as reviewed now, so
   // the Dashboard tracker can show a fresh (non-stale) badge. Client-side
-  // state only — a "last updated" timestamp, not a server sync.
+  // state only , a "last updated" timestamp, not a server sync.
   function tglLeadtimeReview(id) {
     ns.State.updateState(function(s) {
       const task = (s.tasks || []).find(t => t.id === id);
@@ -130,16 +130,16 @@ var MMGR = window.MMGR || {};
     }
     // Focus discipline (interaction audit): duration/status/name/assignee
     // edits fire `change` immediately, so the table rebuild would drop the
-    // caret. Re-render through rerenderPreservingFocus — the rebuilt twin
+    // caret. Re-render through rerenderPreservingFocus , the rebuilt twin
     // input keeps focus.
     U.rerenderPreservingFocus(function() {
       // If the user's focus has moved to a native date/time input (e.g. they
       // clicked a date picker right after editing another field), rebuilding
       // the WBS table would destroy that input just as its picker is opening
-      // — the "dates are fighting me" bug. Skip ONLY the WBS rebuild in that
+      // , the "dates are fighting me" bug. Skip ONLY the WBS rebuild in that
       // case (state is already saved); the derived panels never touch the
       // WBS DOM, so they still refresh. Note: date commits themselves never
-      // reach this path at all — see the date branch above.
+      // reach this path at all , see the date branch above.
       const ae = document.activeElement;
       const pickerFocused = ae && ae.type && (ae.type === 'date' || ae.type === 'time' ||
         ae.type === 'month' || ae.type === 'week' || ae.type === 'datetime-local');
@@ -147,7 +147,7 @@ var MMGR = window.MMGR || {};
       R.renderGantt();
       R.renderKanban();
       // Interaction re-audit: a status change also moves the health ring,
-      // Today's Focus, and the Decision Engine — refresh the Dashboard or
+      // Today's Focus, and the Decision Engine , refresh the Dashboard or
       // those counters stay stale until the next unrelated re-render.
       R.renderDash();
     });
@@ -206,7 +206,7 @@ var MMGR = window.MMGR || {};
     ns.State.updateState(function(s) {
       if (!s.defExpanded) s.defExpanded = {};
       // Collapse every phase container (isPhase or level 0) except standalone
-      // tasks — the render treats isPhase || level===0 as a collapsible row.
+      // tasks , the render treats isPhase || level===0 as a collapsible row.
       (s.tasks || []).forEach(t => {
         if (t.isPhase || (t.level || 0) === 0) s.defExpanded[t.id] = false;
       });
@@ -286,11 +286,11 @@ var MMGR = window.MMGR || {};
     const text = source.value.trim();
     if (!text) return;
     const lines = text.split('\n').filter(l => l.trim());
-    // Bulk import is destructive (adds tasks) — make it undoable.
+    // Bulk import is destructive (adds tasks) , make it undoable.
     ns.State.pushUndo();
     // Phase 2 idempotency: importing the SAME outline twice must not duplicate
     // tasks. A line is skipped when a task with the same name already exists
-    // at the same level under the same parent phase — so the WBS is a set,
+    // at the same level under the same parent phase , so the WBS is a set,
     // not an append log.
     let added = 0, skipped = 0;
     ns.State.updateState(function(s) {
@@ -334,7 +334,7 @@ var MMGR = window.MMGR || {};
       }
     });
     // Full-view refresh (interaction audit): the import changes live state, so
-    // every surface that reads tasks must re-render — not just the WBS panel
+    // every surface that reads tasks must re-render , not just the WBS panel
     // the import modal lives in. Kanban, Gantt and the Dashboard would stay
     // stale until the next unrelated re-render otherwise.
     R.renderWbs();
@@ -343,7 +343,7 @@ var MMGR = window.MMGR || {};
     R.renderDash();
     closeWbsImport();
     const noun = added === 1 ? ' task imported' : ' tasks imported';
-    ns.App.showToast(added + noun + (skipped ? ' — ' + skipped + ' already present, skipped' : '!'), 'ok');
+    ns.App.showToast(added + noun + (skipped ? ' , ' + skipped + ' already present, skipped' : '!'), 'ok');
   }
 
   // ---- Import Dates ----
@@ -369,7 +369,7 @@ var MMGR = window.MMGR || {};
   }
 
   // ---- MONOLITH-FEATURE-PARITY-DIRECTIVES RESTORE-2: 'Copy List' ----
-  // Restores the monolith's copyIdTemplate() — one click copies the readonly
+  // Restores the monolith's copyIdTemplate() , one click copies the readonly
   // id-template textarea (the task list the user takes to dictate durations)
   // to the clipboard. The spec mislabeled this as a stakeholder feature; the
   // monolith reference (button ~469, def ~3300) shows it belongs to the
@@ -377,14 +377,14 @@ var MMGR = window.MMGR || {};
   function copyIdTemplate() {
     const template = U.$('id-template');
     if (!template) return;
-    // execCommand returns false on failure rather than throwing — check the
+    // execCommand returns false on failure rather than throwing , check the
     // return value so the async clipboard fallback actually fires when the
     // legacy path fails (read-only content is safe to select + copy).
     template.select();
     let ok = false;
     try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
     if (ok) {
-      ns.App.showToast('Copied — paste it wherever you\'re going to dictate.', 'ok');
+      ns.App.showToast('Copied , paste it wherever you\'re going to dictate.', 'ok');
     } else {
       U.copyToClipboard(template.value);
       ns.App.showToast('Copied to clipboard.', 'ok');
@@ -424,7 +424,7 @@ var MMGR = window.MMGR || {};
     const text = source.value.trim();
     if (!text) { ns.App.showToast('No data to import.', 'err'); return; }
     const lines = text.split('\n').filter(l => l.trim());
-    // Bulk import is destructive — make it undoable.
+    // Bulk import is destructive , make it undoable.
     ns.State.pushUndo();
     let created = 0, updated = 0;
     const createdThisRun = new Set(); // same-name-twice-in-one-import guard
@@ -454,7 +454,7 @@ var MMGR = window.MMGR || {};
             created++;
           } else if (!createdThisRun.has(task.id)) {
             // A task created earlier in THIS import is an in-run update, not
-            // a pre-existing task — don't inflate the "updated" counter.
+            // a pre-existing task , don't inflate the "updated" counter.
             updated++;
           }
           task.duration = dur;
@@ -468,7 +468,7 @@ var MMGR = window.MMGR || {};
     R.renderKanban();
     R.renderDash();
     closeImportDates();
-    ns.App.showToast('Dates imported — ' + created + ' created, ' + updated + ' updated.', 'ok');
+    ns.App.showToast('Dates imported , ' + created + ' created, ' + updated + ' updated.', 'ok');
   }
 
   // ---- API ----

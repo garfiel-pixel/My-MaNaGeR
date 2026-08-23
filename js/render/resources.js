@@ -1,5 +1,5 @@
 /* ============================================================
-   My MaNaGeR — Resources Panel
+   My MaNaGeR , Resources Panel
    Resource table, utilization leveling visual.
    Extracted from mmgr-render.js.
    ============================================================ */

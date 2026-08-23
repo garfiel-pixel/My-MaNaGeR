@@ -1,5 +1,5 @@
 /* ============================================================
-   My MaNaGeR — Closure, Comms & Documents Management Module
+   My MaNaGeR , Closure, Comms & Documents Management Module
    ============================================================ */
 var MMGR = window.MMGR || {};
 
@@ -100,7 +100,7 @@ var MMGR = window.MMGR || {};
   }
 
   // ---- Submittal Register (MARKET-FEATURE-ROADMAP C2) ----
-  // material/shop-drawing approval workflow — distinct from RFIs (they are
+  // material/shop-drawing approval workflow , distinct from RFIs (they are
   // document approvals, not questions).
   function addSubmittal() {
     ns.State.updateState(function(s) {
@@ -131,7 +131,7 @@ var MMGR = window.MMGR || {};
 
   // ---- Punch List (MARKET-FEATURE-ROADMAP C3) ----
   // Dedicated defect/closeout items with photo-less location + assignee +
-  // category + priority — separate from the general task list AND from the
+  // category + priority , separate from the general task list AND from the
   // simple closeout checklist (which stays as-is for broad closeout items).
   function addPunch() {
     ns.State.updateState(function(s) {
@@ -160,7 +160,7 @@ var MMGR = window.MMGR || {};
   }
 
   // ---- Handover / Closeout Package (MARKET-FEATURE-ROADMAP C18) ----
-  // Bundled O&M / warranty / as-built / certificate / sign-off package — the
+  // Bundled O&M / warranty / as-built / certificate / sign-off package , the
   // roadmap's ask was a bundled package distinct from the Closure checklist.
   function addHandoverItem() {
     ns.State.updateState(function(s) {
@@ -189,7 +189,7 @@ var MMGR = window.MMGR || {};
   }
 
   // ---- Warranty Tracker (MARKET-FEATURE-ROADMAP C26) ----
-  // Warranty periods with end dates — feeds the C29 expiry rollup.
+  // Warranty periods with end dates , feeds the C29 expiry rollup.
   function addWarranty() {
     ns.State.updateState(function(s) {
       if (!s.warrantyItems) s.warrantyItems = [];
@@ -245,7 +245,7 @@ var MMGR = window.MMGR || {};
   }
 
   // ---- Permit Register (MARKET-FEATURE-ROADMAP C30) ----
-  // Dedicated permit status/expiry tracking — feeds the C29 expiry rollup.
+  // Dedicated permit status/expiry tracking , feeds the C29 expiry rollup.
   function addPermit() {
     ns.State.updateState(function(s) {
       if (!s.permits) s.permits = [];
@@ -275,7 +275,7 @@ var MMGR = window.MMGR || {};
   // ---- Ball-in-court rollup (MARKET-FEATURE-ROADMAP C6) ----
   // Cross-module "whose turn is it": open RFIs + submittals awaiting action
   // (their explicit ballInCourt fields) plus every open issue (its owner).
-  // Pure function over state — reads live state, renders nothing.
+  // Pure function over state , reads live state, renders nothing.
   function getBallInCourt() {
     const s = ns.State ? ns.State.getState() : null;
     if (!s) return [];
@@ -292,7 +292,7 @@ var MMGR = window.MMGR || {};
     });
     (s.issues || []).forEach(function(i) {
       if (i.status && i.status !== 'closed' && i.status !== 'resolved') {
-        out.push({ kind: 'Issue', ref: i.id, who: i.owner || '—', due: i.targetDate || '', tag: 'issues' });
+        out.push({ kind: 'Issue', ref: i.id, who: i.owner || '-', due: i.targetDate || '', tag: 'issues' });
       }
     });
     return out.sort(function(a, b) { return (a.due || '9999').localeCompare(b.due || '9999'); });

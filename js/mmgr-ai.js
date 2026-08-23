@@ -1,15 +1,15 @@
 /* ============================================================
-   My MaNaGeR — AI Assistant Window + Model Wiring (Rank 2.3)
+   My MaNaGeR , AI Assistant Window + Model Wiring (Rank 2.3)
    ------------------------------------------------------------
    Floating entry point (#ai-fab) opening a modal with:
      (a) one-click preset prompts (the existing prompt generators),
      (b) a free-form question box,
      (c) an automatic context dump of live project state,
      (d) Rank 2.3: a real submit() seam with two tiers:
-           Tier A — 'local': zero-key, in-browser, deterministic
+           Tier A , 'local': zero-key, in-browser, deterministic
              engine. Every line of its output traces to a real
              state field (the `trace` array on each output), so
-             zero-fabrication is guaranteed BY CONSTRUCTION —
+             zero-fabrication is guaranteed BY CONSTRUCTION , 
              it never invents a date, amount, or name.
              Constraint-satisfying redesign note: a WebGPU LLM
              would require bundling a multi-hundred-MB model or
@@ -19,17 +19,17 @@
              rejected cloud diarization). The seam below is
              provider-shaped so a WebGPU runtime can be dropped
              into runLocal() later without touching the UI.
-           Tier B — 'cloud': BYO key (OpenAI or Anthropic), same
+           Tier B , 'cloud': BYO key (OpenAI or Anthropic), same
              submit() seam, routed through MMGR.Net.post() with
              the exact circuit-breaker discipline weather uses
              (timeout, backoff, 5xx-retry). A failed cloud call
              degrades loudly but never breaks the app.
    Switching tiers = a settings toggle only (state.config.ai.tier)
-   — no schema or architecture change, per Rank 2.3's exit gate.
+   , no schema or architecture change, per Rank 2.3's exit gate.
 
    Presets are now AGENT-STYLE: one click generates AND writes the
    structured result back into state.aiOutputs[<type>] (unified
-   state only — the .json export carries it). The old copy-first
+   state only , the .json export carries it). The old copy-first
    flow remains for the 'off' tier.
    ============================================================ */
 var MMGR = window.MMGR || {};
@@ -40,7 +40,7 @@ var MMGR = window.MMGR || {};
   const U = ns.Utils;
 
   // BYO-AI-KEY-SESSION-ONLY-v1: the session vault (mmgr-ai-key.js). The AI
-  // key NEVER lives in project state / localStorage / exports — only in
+  // key NEVER lives in project state / localStorage / exports , only in
   // sessionStorage for this tab, cleared on Close or Clear. A missing vault
   // module degrades to disconnected (live chat disabled), never crashes.
   const BYO = ns.AiKey || {
@@ -53,7 +53,7 @@ var MMGR = window.MMGR || {};
 
   // BYO-AI-KEY-SESSION-ONLY-v1: scrub any legacy apiKey the pre-directive
   // flow may have persisted in state.config.ai. The key must never survive
-  // in project state or any export — the session vault is its only home now.
+  // in project state or any export , the session vault is its only home now.
   // Runs once at module load; adds nothing to the state schema.
   (function scrubLegacyKey() {
     try {
@@ -85,11 +85,11 @@ var MMGR = window.MMGR || {};
     complianceCheck: 'Claim Compliance'
   };
 
-  // Rank 2.3 tier metadata — shown in the AI window settings row.
+  // Rank 2.3 tier metadata , shown in the AI window settings row.
   const TIERS = {
-    off:   { label: 'Off — copy-first only' },
+    off:   { label: 'Off , copy-first only' },
     local: { label: 'Local (zero-key, offline, zero-fabrication)' },
-    cloud: { label: 'Cloud (BYO key, session-only — OpenAI / Google Gemini / Anthropic)' }
+    cloud: { label: 'Cloud (BYO key, session-only , OpenAI / Google Gemini / Anthropic)' }
   };
 
   function toast(msg, type) {
@@ -106,14 +106,14 @@ var MMGR = window.MMGR || {};
   }
 
   // ============================================================
-  // INTEGRATED-STRUCTURE-API-WINDOW — live backend-API status badge
+  // INTEGRATED-STRUCTURE-API-WINDOW , live backend-API status badge
   // ------------------------------------------------------------
   // The plan's AIWindow pings the backend health endpoint on mount and
   // reports checking / connected / error / disconnected. Adaptation: the
   // app's backend is the same-origin Worker relay, so the badge pings
   // GET /api/health (worker.js) through the existing MMGR.Net circuit
   // breaker. A missing endpoint (static/local hosting without the Worker)
-  // resolves to 'disconnected' — the window still works, it just says so.
+  // resolves to 'disconnected' , the window still works, it just says so.
   // The raw pill element is exposed so the QA battery can drive it.
   let _apiCheckInFlight = false;
 
@@ -196,7 +196,7 @@ var MMGR = window.MMGR || {};
     if (!q) return;
     q.value = (ns.Prompts && ns.Prompts.generate) ? ns.Prompts.generate(type) : '';
     q.focus();
-    toast('Preset prompt loaded — send it, edit it, or copy it.');
+    toast('Preset prompt loaded , send it, edit it, or copy it.');
   }
 
   function clear() {
@@ -209,16 +209,16 @@ var MMGR = window.MMGR || {};
     if (o) o.value = '';
     if (t) t.textContent = '';
     resetThread();
-    toast('Cleared — new conversation.');
+    toast('Cleared , new conversation.');
   }
 
   // ============================================================
-  // CONTEXT_SCHEMA — the exact shape of the automatic context dump
+  // CONTEXT_SCHEMA , the exact shape of the automatic context dump
   // ------------------------------------------------------------
   // Rank 2.3: buildContext() output is the grounding payload BOTH
   // tiers consume. The dump is flat Markdown lines grouped by
   // section, and the cloud system prompt forbids using anything
-  // outside it — so traceability to state fields is the contract.
+  // outside it , so traceability to state fields is the contract.
   const CONTEXT_SCHEMA = {
     sections: ['PROJECT', 'HEALTH SCORE', 'EVM (Earned Value)', 'TIMELINE', 'CRITICAL PATH', 'TOP RISKS / ISSUES', 'WEATHER'],
     format: '## <SECTION>\n- <key>: <value>',
@@ -235,7 +235,7 @@ var MMGR = window.MMGR || {};
 
   // BYO-AI-KEY-SESSION-ONLY-v1 STEP-3: cap the serialized context so a very
   // large project can never blow a provider's input window. Limit documented
-  // here: 12,000 chars ≈ ~3k tokens — comfortably inside every v1 provider's
+  // here: 12,000 chars ≈ ~3k tokens , comfortably inside every v1 provider's
   // context budget and still far richer than a chat-only prompt.
   const CONTEXT_MAX_CHARS = 12000;
 
@@ -246,7 +246,7 @@ var MMGR = window.MMGR || {};
     const s = state || ((ns.State && ns.State.getState) ? ns.State.getState() : {});
     const L = [];
     const sec = (title) => L.push('## ' + title);
-    const line = (k, v) => L.push('- ' + k + ': ' + (v === undefined || v === null || v === '' ? '—' : v));
+    const line = (k, v) => L.push('- ' + k + ': ' + (v === undefined || v === null || v === '' ? '-' : v));
     // NOTE: `f` is hoisted to function scope on purpose. In the pre-refactor
     // version it lived inside the PROJECT try-block, so the TIMELINE section
     // hit a ReferenceError on `(f && f.targetCompletion)` and silently
@@ -328,7 +328,7 @@ var MMGR = window.MMGR || {};
     try {
       sec('WEATHER');
       if (s.sitePlace) line('Site', s.sitePlace + ' (Open-Meteo' + (s.wxCache && s.wxCache.days && s.wxCache.days.length ? ', cached ' + s.wxCache.days.length + '-day forecast' : ', no forecast cached') + ')');
-      else line('Site', 'no location set — regional weather windows only');
+      else line('Site', 'no location set , regional weather windows only');
       if (ns.Forecast && ns.Forecast.riskDays) {
         const rd = ns.Forecast.riskDays(s) || [];
         line('Weather risk days', rd.length ? rd.slice(0, 5).map(d => d.date + ' (' + d.alerts.join(', ') + ')').join('; ') : 'none in forecast');
@@ -338,7 +338,7 @@ var MMGR = window.MMGR || {};
 
     let out = L.join('\n');
     if (out.length > CONTEXT_MAX_CHARS) {
-      out = out.slice(0, CONTEXT_MAX_CHARS) + '\n…[context truncated — project data exceeds the safe packet size]';
+      out = out.slice(0, CONTEXT_MAX_CHARS) + '\n…[context truncated , project data exceeds the safe packet size]';
     }
     return out;
   }
@@ -358,13 +358,13 @@ var MMGR = window.MMGR || {};
     let txt = (q && q.value) || '';
     const ctx = (c && c.value) || '';
     if (ctx) txt += (txt ? '\n\n==== PROJECT CONTEXT ====\n' : '==== PROJECT CONTEXT ====\n') + ctx;
-    if (!txt.trim()) { toast('Nothing to copy yet — pick a preset or type a question.', 'err'); return; }
+    if (!txt.trim()) { toast('Nothing to copy yet , pick a preset or type a question.', 'err'); return; }
     U.copyToClipboard(txt);
-    toast('Prompt + context copied — paste into your AI tool.');
+    toast('Prompt + context copied , paste into your AI tool.');
   }
 
   // ============================================================
-  // RANK 2.3 — CONFIG + SUBMIT() SEAM
+  // RANK 2.3 , CONFIG + SUBMIT() SEAM
   // ============================================================
 
   // Read the merged AI config (state.config.ai over Config.ai defaults).
@@ -373,12 +373,12 @@ var MMGR = window.MMGR || {};
     return Object.assign({}, ns.Config && ns.Config.ai ? ns.Config.ai : {}, cfg.ai || {});
   }
 
-  // Settings toggle — writes into state.config.ai (per-project, portable,
+  // Settings toggle , writes into state.config.ai (per-project, portable,
   // merged over defaults by Net.getConfig). No schema change.
   // MERGED-AI-CONTROL (audit 1.2): whenever a non-off tier is selected, it is
   // remembered as lastTier so the drawer master switch can restore it when
   // flipped back ON (default 'local' when never set).
-  // AI-CLOUD-CONNECT-UI (DIR-2): apiKey is NEVER written to project state —
+  // AI-CLOUD-CONNECT-UI (DIR-2): apiKey is NEVER written to project state , 
   // the session vault (mmgr-ai-key.js) is its only home. Any patch carrying
   // apiKey is silently dropped here, so no caller (action map, tests, future
   // UI) can ever persist a secret into state or into an export.
@@ -396,7 +396,7 @@ var MMGR = window.MMGR || {};
   }
 
   // MERGED-AI-CONTROL (audit 1.2): the Settings ▸ Features "AI Assistant"
-  // switch is now the SINGLE AI on/off control — it reads/writes
+  // switch is now the SINGLE AI on/off control , it reads/writes
   // state.config.ai.tier directly (flags.aiWindow is dropped as a gate).
   // OFF -> tier 'off'; ON -> restore the last non-off tier (default 'local').
   // Chrome flips checkbox `checked` before the click handler runs, so read it
@@ -407,13 +407,13 @@ var MMGR = window.MMGR || {};
     const tier = on ? (cfg.lastTier || 'local') : 'off';
     setAiCfg({ tier: tier });
     // syncSettingsUI re-gates the fab (renderFlags) so visibility and tier
-    // can never disagree — no separate renderFlags call needed here.
+    // can never disagree , no separate renderFlags call needed here.
     syncSettingsUI();
   }
 
   // Sync the AI window's tier select + BYO connect UI + send gate.
   // BYO-AI-KEY-SESSION-ONLY-v1: the key inputs live in the session vault
-  // (mmgr-ai-key.js), never in project state — so nothing here reads or
+  // (mmgr-ai-key.js), never in project state , so nothing here reads or
   // writes an apiKey from state.config.
   function syncSettingsUI() {
     const cfg = getAiCfg();
@@ -425,16 +425,16 @@ var MMGR = window.MMGR || {};
     syncSendGate();
     // Engine-status pill in the chat header. AI-CLOUD-CONNECT-UI (DIR-1): the
     // cloud label reads the SAME canonical status field as the chip and the
-    // Send gate — no two indicators can disagree anymore.
+    // Send gate , no two indicators can disagree anymore.
     const pill = U.$('ai-engine-pill');
     if (pill) pill.setAttribute('data-tier', cfg.tier || 'off');
     const pillLbl = U.$('ai-engine-pill-label');
     const tier = cfg.tier || 'off';
     if (pillLbl) {
-      // UI-DECLUTTER: the engine pill names the TIER only — the live
+      // UI-DECLUTTER: the engine pill names the TIER only , the live
       // BYO key connection detail lives in the ONE smart status chip
       // next to the provider dropdown (ai-byo-status). The backend
-      // health pill (ai-api-pill) is independent — it checks server
+      // health pill (ai-api-pill) is independent , it checks server
       // reachability, not key connection, so they can legitimately
       // show different states (e.g. 'Backend · online' + 'Disconnected').
       pillLbl.textContent = tier === 'local' ? 'Local · zero-key'
@@ -442,7 +442,7 @@ var MMGR = window.MMGR || {};
         : 'Off · copy-first';
     }
     // MERGED-AI-CONTROL: the fab visibility follows the tier (hidden only
-    // when the engine is fully off) — re-gate here so the header select and
+    // when the engine is fully off) , re-gate here so the header select and
     // the drawer switch can never leave the fab disagreeing with the tier.
     if (ns.Render && ns.Render.renderFlags) ns.Render.renderFlags();
   }
@@ -450,15 +450,15 @@ var MMGR = window.MMGR || {};
   // ---- BYO Connect flow (BYO-AI-KEY-SESSION-ONLY-v1 STEP-2) ----
   //
   // AI-CLOUD-CONNECT-UI (DIR-1): exactly three states, driven by ONE
-  // canonical field — state.config.ai.connectionStatus:
-  //   'not_connected'  — no key in the session vault (or key was rejected).
-  //   'saved_untested' — a key IS in the vault, but Connect & Test has not
+  // canonical field , state.config.ai.connectionStatus:
+  //   'not_connected'  , no key in the session vault (or key was rejected).
+  //   'saved_untested' , a key IS in the vault, but Connect & Test has not
   //                      confirmed it against the provider yet (or the last
   //                      probe failed). A key present is NOT 'connected'.
-  //   'connected'      — the last Connect & Test probe returned 2xx.
+  //   'connected'      , the last Connect & Test probe returned 2xx.
   // Plus state.config.ai.lastTestedAt (ISO) set when 'connected' was last
   // achieved. EVERY visible indicator (engine pill, BYO chip, Send button
-  // state) reads this one field via getConnectionState() — two indicators
+  // state) reads this one field via getConnectionState() , two indicators
   // can no longer disagree. The vault remains the ground truth: no vault
   // entry always means 'not_connected', even if a stale 'connected' record
   // survived in state from a previous session.
@@ -484,7 +484,7 @@ var MMGR = window.MMGR || {};
       if (txt) txt.textContent = 'Connected · ' + providerLabel(BYO.getProvider());
     } else if (status === 'saved_untested') {
       st.setAttribute('data-state', 'untested');
-      if (txt) txt.textContent = 'Key saved — not tested';
+      if (txt) txt.textContent = 'Key saved , not tested';
     } else {
       st.setAttribute('data-state', 'off');
       if (txt) txt.textContent = 'Disconnected';
@@ -505,21 +505,21 @@ var MMGR = window.MMGR || {};
     s.disabled = off || cloudNotVerified;
     // UI-DECLUTTER: no permanent red warning text in the input bar. The
     // disabled Send button carries a native tooltip explaining what to do
-    // next — hosted on the WRAPPER because Chrome suppresses title tooltips
+    // next , hosted on the WRAPPER because Chrome suppresses title tooltips
     // on disabled buttons. NOTE: plain '&', not the HTML entity.
     const msg = (tier === 'cloud' && status === 'not_connected')
-      ? 'Connect your AI key to send (session-only) — open the key settings next to the provider.'
+      ? 'Connect your AI key to send (session-only) , open the key settings next to the provider.'
       : (tier === 'cloud' && status === 'saved_untested')
-        ? 'Key saved — Connect & Test to verify before sending.'
-        : (off ? 'Engine is Off — choose Local or Cloud in the tier select.' : '');
+        ? 'Key saved , Connect & Test to verify before sending.'
+        : (off ? 'Engine is Off , choose Local or Cloud in the tier select.' : '');
     const wrap = U.$('ai-send-wrap');
     if (wrap) wrap.setAttribute('title', msg || 'Send');
   }
 
   // DIR-1: the real connectivity check. One minimal, cheap request through
-  // the existing circuit-broken Net path (mmgr-net.js — timeout + zero
+  // the existing circuit-broken Net path (mmgr-net.js , timeout + zero
   // retries: a probe must fail fast, not back off): the provider's
-  // models-list endpoint. Only a 2xx means the key is genuinely usable — a
+  // models-list endpoint. Only a 2xx means the key is genuinely usable , a
   // typo'd/revoked/wrong-provider key returns 401/403 and must NOT count as
   // connected. Returns { ok, status }.
   async function probeProvider(provider, key) {
@@ -546,43 +546,43 @@ var MMGR = window.MMGR || {};
   // Connect a BYO key for this session only, then VERIFY it with the probe.
   // Empty key -> error, stay not_connected. The full key is never rendered
   // again after connect. The chip/pill/Send all follow the probe outcome via
-  // the canonical status field — nothing is fabricated from key presence.
+  // the canonical status field , nothing is fabricated from key presence.
   async function connectByo(provider, apiKey) {
     if (!apiKey || !String(apiKey).trim()) {
-      toast('Paste your API key first — session-only, never stored.', 'err');
+      toast('Paste your API key first , session-only, never stored.', 'err');
       return { ok: false, error: 'empty key', status: 'not_connected' };
     }
     try {
       BYO.setKey(provider, apiKey);
     } catch (e) {
-      toast('Could not connect — ' + ((e && e.message) || 'invalid key'), 'err');
+      toast('Could not connect , ' + ((e && e.message) || 'invalid key'), 'err');
       return { ok: false, error: (e && e.message) || 'invalid key', status: 'not_connected' };
     }
     const k = U.$('ai-byo-key');
     if (k) k.value = ''; // never show the raw key after connect (with_key_ux)
-    // Key is now saved — but that is 'saved_untested', NOT 'connected'.
+    // Key is now saved , but that is 'saved_untested', NOT 'connected'.
     setConnectionStatus('saved_untested');
     syncSettingsUI();
     const probe = await probeProvider(provider, BYO.getKey());
     if (probe.ok) {
       setConnectionStatus('connected');
       syncSettingsUI();
-      toast('Key connected and verified against ' + providerLabel(provider) + ' — this session only. Cleared when you close the tab.', 'ok');
+      toast('Key connected and verified against ' + providerLabel(provider) + ' , this session only. Cleared when you close the tab.', 'ok');
       return { ok: true, status: 'connected' };
     }
     if (probe.status === 401 || probe.status === 403) {
-      // Provider explicitly rejected the key — clear it (auth failure, the
+      // Provider explicitly rejected the key , clear it (auth failure, the
       // only condition that clears a session key, consistent with runCloud).
       BYO.clearKey();
       setConnectionStatus('not_connected');
       syncSettingsUI();
-      toast('Provider rejected the key (401/403) — check it and connect again.', 'err');
+      toast('Provider rejected the key (401/403) , check it and connect again.', 'err');
       return { ok: false, error: 'provider rejected the key', status: 'not_connected' };
     }
     // Network failure / timeout / other status: key stays saved but unverified.
     syncSettingsUI();
-    // NOTE: toast uses textContent — plain '&', not the HTML entity.
-    toast('Key saved for this session, but the provider check could not confirm it — check the key and your connection, then Connect & Test again.', 'err');
+    // NOTE: toast uses textContent , plain '&', not the HTML entity.
+    toast('Key saved for this session, but the provider check could not confirm it , check the key and your connection, then Connect & Test again.', 'err');
     return { ok: false, error: 'probe failed', status: 'saved_untested' };
   }
 
@@ -590,17 +590,17 @@ var MMGR = window.MMGR || {};
     BYO.clearKey();
     setConnectionStatus('not_connected');
     syncSettingsUI();
-    toast('Session key cleared — you will paste it again next time.', 'ok');
+    toast('Session key cleared , you will paste it again next time.', 'ok');
   }
 
   // ---- Tier A: local zero-key engine ----
   // Deterministic. Output is built ONLY from state fields; the returned
   // `trace` array names the exact fields each line came from, so the
   // Rank 2.3 acceptance gate ("zero-fabrication, traceable line-by-line")
-  // is satisfied by construction — there is no generator randomness to
+  // is satisfied by construction , there is no generator randomness to
   // audit. Free-form lookups are answered by a small intent matcher;
   // anything it can't ground is answered honestly ("not answerable
-  // locally — switch to Cloud tier").
+  // locally , switch to Cloud tier").
   const TRACE = { fields: [] };
 
   function _t(field) { TRACE.fields.push(field); }
@@ -625,7 +625,7 @@ var MMGR = window.MMGR || {};
     if (/overdue|behind|late/.test(lower)) {
       const od = tasks.filter(t => U.isOverdue(t.endDate) && t.status !== 'completed');
       _t('tasks[].endDate'); _t('tasks[].status');
-      out.push('Overdue: ' + od.length + (od.length ? ' — ' + od.slice(0, 5).map(t => t.name + ' (due ' + t.endDate + ')').join('; ') : '.'));
+      out.push('Overdue: ' + od.length + (od.length ? ' , ' + od.slice(0, 5).map(t => t.name + ' (due ' + t.endDate + ')').join('; ') : '.'));
     }
     if (/budget|cost|spend/.test(lower)) {
       const planned = (s.budgetLines || []).reduce((n, l) => n + (+l.planned || 0), 0);
@@ -641,7 +641,7 @@ var MMGR = window.MMGR || {};
     if (/issue/.test(lower)) {
       const live = (s.issues || []).filter(i => i.status !== 'resolved' && i.status !== 'closed');
       _t('issues[].status'); _t('issues[].description');
-      out.push('Live issues: ' + live.length + (live.length ? ' — ' + live.slice(0, 5).map(i => i.description).join('; ') : '.'));
+      out.push('Live issues: ' + live.length + (live.length ? ' , ' + live.slice(0, 5).map(i => i.description).join('; ') : '.'));
     }
     if (/critical|float|path/.test(lower)) {
       const crit = tasks.filter(t => t.totalFloat === 0 && t.status !== 'completed');
@@ -676,7 +676,7 @@ var MMGR = window.MMGR || {};
       TRACE.fields = [];
       if (!ns.Digest) return { text: 'Digest engine not loaded.', trace: [] };
       const d = ns.Digest.computeDigest(s);
-      _t('Digest.computeDigest(s) — digestSnapshot/baseline diff');
+      _t('Digest.computeDigest(s) , digestSnapshot/baseline diff');
       return { text: ns.Digest.buildDigestText(d), trace: TRACE.fields.slice() };
     },
     health: function(s) {
@@ -720,12 +720,12 @@ var MMGR = window.MMGR || {};
         _t('charter.targetCompletion');
         text += 'Projected finish: ' + proj.toISOString().slice(0, 10) + ' vs target ' + tgt + ' (' + (over > 0 ? '+' + over + 'd over' : over < 0 ? Math.abs(over) + 'd ahead' : 'on target') + ').\n';
       } else {
-        text += 'Projected finish: cannot compute — set a target completion and dated tasks.\n';
+        text += 'Projected finish: cannot compute , set a target completion and dated tasks.\n';
       }
       if (ns.Evm && ns.Evm.compute) {
         const e = ns.Evm.compute(s);
         _t('EVM.compute(s)');
-        if (e && e.cpi) text += 'Burn rate (CPI): ' + e.cpi.toFixed(2) + ' — EAC trend ' + (e.cpi < 1 ? 'over budget' : 'at/below budget') + '.\n';
+        if (e && e.cpi) text += 'Burn rate (CPI): ' + e.cpi.toFixed(2) + ' , EAC trend ' + (e.cpi < 1 ? 'over budget' : 'at/below budget') + '.\n';
       }
       const wx = (s.weatherLog || []).length;
       _t('weatherLog');
@@ -746,7 +746,7 @@ var MMGR = window.MMGR || {};
       _t('charter.name'); _t('tasks[].status'); _t('tasks[].endDate'); _t('budgetLines[].planned');
       _t('budgetLines[].actual'); _t('risks[].probability'); _t('risks[].impact'); _t('issues[].status');
       const L = [];
-      L.push('PROJECT STATUS REPORT — ' + ((s.charter && s.charter.name) || s.projectName || 'Project'));
+      L.push('PROJECT STATUS REPORT , ' + ((s.charter && s.charter.name) || s.projectName || 'Project'));
       L.push('Completion: ' + pct + '% (' + done + '/' + tasks.length + ' tasks). Overdue: ' + od.length + '. Blocked: ' + bl.length + '.');
       L.push('Budget: ' + fmt$(actual) + ' actual / ' + fmt$(planned) + ' planned (envelope ' + fmt$(s.budgetEnvelope) + ').');
       L.push('Risks: ' + (s.risks || []).length + ' open (' + high.length + ' high). Live issues: ' + live.length + '.');
@@ -758,10 +758,10 @@ var MMGR = window.MMGR || {};
       TRACE.fields = [];
       const risks = (s.risks || []).filter(r => !r.issueId);
       _t('risks[].description'); _t('risks[].probability'); _t('risks[].impact');
-      const L = ['RISK REGISTER — ranked by probability × impact'];
+      const L = ['RISK REGISTER , ranked by probability × impact'];
       const score = r => ({ Low: 1, low: 1, Medium: 2, medium: 2, High: 3, high: 3 }[(r.probability || '')] || 1) * ({ Low: 1, low: 1, Medium: 2, medium: 2, High: 3, high: 3 }[(r.impact || '')] || 1);
       const sorted = risks.slice().sort((a, b) => score(b) - score(a));
-      sorted.forEach(r => L.push('- [' + (score(r) >= 6 ? 'HIGH' : score(r) >= 3 ? 'MED' : 'LOW') + '] ' + (r.description || '(untitled)') + ' | P:' + (r.probability || '—') + ' I:' + (r.impact || '—') + (r.mitigation ? ' | Mitigation: ' + r.mitigation : '')));
+      sorted.forEach(r => L.push('- [' + (score(r) >= 6 ? 'HIGH' : score(r) >= 3 ? 'MED' : 'LOW') + '] ' + (r.description || '(untitled)') + ' | P:' + (r.probability || '-') + ' I:' + (r.impact || '-') + (r.mitigation ? ' | Mitigation: ' + r.mitigation : '')));
       if (!sorted.length) L.push('(no open risks)');
       return { text: L.join('\n'), trace: TRACE.fields.slice() };
     },
@@ -788,8 +788,8 @@ var MMGR = window.MMGR || {};
       TRACE.fields = [];
       const pending = (s.changes || []).filter(c => c.status === 'submitted' || c.status === 'review');
       _t('changes[].status'); _t('changes[].title'); _t('changes[].schedImpact'); _t('changes[].costImpact');
-      const L = ['CHANGE IMPACT — pending requests'];
-      pending.forEach(c => L.push('- ' + (c.title || '(untitled)') + ' | Sched: ' + (c.schedImpact || '—') + ' | Cost: ' + (c.costImpact || '—') + ' | ' + c.status));
+      const L = ['CHANGE IMPACT , pending requests'];
+      pending.forEach(c => L.push('- ' + (c.title || '(untitled)') + ' | Sched: ' + (c.schedImpact || '-') + ' | Cost: ' + (c.costImpact || '-') + ' | ' + c.status));
       if (!pending.length) L.push('(no pending change requests)');
       return { text: L.join('\n'), trace: TRACE.fields.slice() };
     },
@@ -800,7 +800,7 @@ var MMGR = window.MMGR || {};
       const pct = tasks.length ? Math.round(done / tasks.length * 100) : 0;
       _t('tasks[].status'); _t('charter.name');
       return {
-        text: 'CLIENT UPDATE — ' + ((s.charter && s.charter.name) || s.projectName || 'Project') + '\nCompletion: ' + pct + '% (' + done + ' of ' + tasks.length + ' tasks).\nOverall: ' + (pct >= 70 ? 'On track.' : pct >= 40 ? 'Progressing — minor concerns.' : 'Early stage — attention needed.'),
+        text: 'CLIENT UPDATE , ' + ((s.charter && s.charter.name) || s.projectName || 'Project') + '\nCompletion: ' + pct + '% (' + done + ' of ' + tasks.length + ' tasks).\nOverall: ' + (pct >= 70 ? 'On track.' : pct >= 40 ? 'Progressing , minor concerns.' : 'Early stage , attention needed.'),
         trace: TRACE.fields.slice()
       };
     },
@@ -829,12 +829,12 @@ var MMGR = window.MMGR || {};
       const crit = tasks.filter(t => t.totalFloat === 0 && t.status !== 'completed');
       _t('tasks[].status'); _t('tasks[].totalFloat');
       const L = ['DAILY FIELD DIGEST'];
-      L.push('Blocked: ' + (bl.length ? bl.map(t => t.name + (t.notes ? ' — ' + t.notes : '')).join('; ') : 'none'));
+      L.push('Blocked: ' + (bl.length ? bl.map(t => t.name + (t.notes ? ' , ' + t.notes : '')).join('; ') : 'none'));
       L.push('Critical: ' + (crit.length ? crit.map(t => t.name).join(', ') : 'none'));
       return { text: L.join('\n'), trace: TRACE.fields.slice() };
     },
     // BACKLOG B-N: the email preset's LOCAL tier returns the static
-    // App.emailTpl('status') template VERBATIM — zero-fabrication by
+    // App.emailTpl('status') template VERBATIM , zero-fabrication by
     // construction, the guaranteed no-model fallback the backlog requires.
     // The Cloud tier drafts a richer, AI-polished version on top.
     email: function(s) {
@@ -844,13 +844,13 @@ var MMGR = window.MMGR || {};
       _t('budgetLines[].planned'); _t('budgetLines[].actual');
       const base = (ns.App && ns.App.emailTplText) ? ns.App.emailTplText('status') : 'Static email template unavailable.';
       return {
-        text: base + '\n\n(Static template from My MaNaGeR — run the Cloud tier for an AI-polished stakeholder email.)',
+        text: base + '\n\n(Static template from My MaNaGeR , run the Cloud tier for an AI-polished stakeholder email.)',
         trace: TRACE.fields.slice()
       };
     },
     // MARKET-FEATURE-ROADMAP A7: zero-key local tier for the compliance check.
     // Deterministic element-by-element audit of the assembled claim-pack data
-    // — no model call, zero fabrication. Each element is PRESENT / MISSING /
+    // , no model call, zero fabrication. Each element is PRESENT / MISSING /
     // N/A judged only from real state fields.
     complianceCheck: function(s) {
       TRACE.fields = [];
@@ -862,25 +862,25 @@ var MMGR = window.MMGR || {};
       const weatherLog = (s.weatherLog || []).length;
       const pendingChg = (s.changes || []).filter(c => c.status === 'submitted' || c.status === 'review').length;
       const decLog = (s.logEntries || []).length;
-      // 1. Delay narrative — slips with a cause tag are the narrative core.
+      // 1. Delay narrative , slips with a cause tag are the narrative core.
       const narrative = slips.filter(x => x.cause && x.cause !== 'unknown').length;
-      L.push(narrative ? '1. DELAY NARRATIVE — PRESENT (' + narrative + ' cause-tagged slip' + (narrative === 1 ? '' : 's') + ')'
-        : '1. DELAY NARRATIVE — MISSING (no cause-tagged schedule slips captured; record slip causes in the Claim Pack tab)');
-      // 2. Supporting evidence references — weather log / changes / decisions.
+      L.push(narrative ? '1. DELAY NARRATIVE , PRESENT (' + narrative + ' cause-tagged slip' + (narrative === 1 ? '' : 's') + ')'
+        : '1. DELAY NARRATIVE , MISSING (no cause-tagged schedule slips captured; record slip causes in the Claim Pack tab)');
+      // 2. Supporting evidence references , weather log / changes / decisions.
       const evidence = (weatherLog > 0 ? 1 : 0) + (pendingChg > 0 ? 1 : 0) + (decLog > 0 ? 1 : 0);
-      L.push(evidence >= 2 ? '2. SUPPORTING EVIDENCE — PRESENT (weather log ' + weatherLog + ', pending changes ' + pendingChg + ', decisions ' + decLog + ')'
-        : '2. SUPPORTING EVIDENCE — ' + (evidence === 0 ? 'MISSING' : 'THIN') + ' (only ' + evidence + ' of 3 evidence types present: weather log ' + weatherLog + ', changes ' + pendingChg + ', decisions ' + decLog + ' — add the missing ones)');
-      // 3. Cost impact breakdown — LD rollup with both buckets.
+      L.push(evidence >= 2 ? '2. SUPPORTING EVIDENCE , PRESENT (weather log ' + weatherLog + ', pending changes ' + pendingChg + ', decisions ' + decLog + ')'
+        : '2. SUPPORTING EVIDENCE , ' + (evidence === 0 ? 'MISSING' : 'THIN') + ' (only ' + evidence + ' of 3 evidence types present: weather log ' + weatherLog + ', changes ' + pendingChg + ', decisions ' + decLog + ' , add the missing ones)');
+      // 3. Cost impact breakdown , LD rollup with both buckets.
       L.push(ld && (ld.incurredLd > 0 || ld.avoidedLd > 0)
-        ? '3. COST IMPACT — PRESENT (LD ' + fmt$(ld.incurredLd || 0) + ' exposure / ' + fmt$(ld.avoidedLd || 0) + ' defensible)'
-        : '3. COST IMPACT — MISSING (no LD exposure computed; set an LD rate in the Budget panel and tag slip causes)');
-      // 4. Contractual basis — no state field exists; honest N/A.
-      L.push('4. CONTRACTUAL BASIS — N/A locally (no contract-terms field exists yet; the Cloud tier can assess a pasted contract basis)');
-      // 5. Requested relief — the claim narrative draft is the ask.
-      L.push('5. REQUESTED RELIEF — see the Claim Pack preset: draft the explicit ask (EoT / LD waiver / amount) once 1-3 are present');
+        ? '3. COST IMPACT , PRESENT (LD ' + fmt$(ld.incurredLd || 0) + ' exposure / ' + fmt$(ld.avoidedLd || 0) + ' defensible)'
+        : '3. COST IMPACT , MISSING (no LD exposure computed; set an LD rate in the Budget panel and tag slip causes)');
+      // 4. Contractual basis , no state field exists; honest N/A.
+      L.push('4. CONTRACTUAL BASIS , N/A locally (no contract-terms field exists yet; the Cloud tier can assess a pasted contract basis)');
+      // 5. Requested relief , the claim narrative draft is the ask.
+      L.push('5. REQUESTED RELIEF , see the Claim Pack preset: draft the explicit ask (EoT / LD waiver / amount) once 1-3 are present');
       const present = (narrative ? 1 : 0) + (evidence >= 2 ? 1 : 0) + (ld && (ld.incurredLd > 0 || ld.avoidedLd > 0) ? 1 : 0);
       L.push('');
-      L.push('VERDICT: ' + (present >= 3 ? 'ready to draft — run the Cloud tier for the full element-by-element review.' : (present === 2 ? 'nearly ready — close the one gap above, then run the Cloud tier.' : 'not submission-ready — ' + (3 - present) + ' of 3 core elements missing; fix the gaps above first.')));
+      L.push('VERDICT: ' + (present >= 3 ? 'ready to draft , run the Cloud tier for the full element-by-element review.' : (present === 2 ? 'nearly ready , close the one gap above, then run the Cloud tier.' : 'not submission-ready , ' + (3 - present) + ' of 3 core elements missing; fix the gaps above first.')));
       return { text: L.join('\n'), trace: TRACE.fields.slice() };
     }
   };
@@ -889,7 +889,7 @@ var MMGR = window.MMGR || {};
   function localUnavailable() {
     return {
       ok: false,
-      error: 'Local tier has no generator for this preset — run it on the Cloud tier instead.',
+      error: 'Local tier has no generator for this preset , run it on the Cloud tier instead.',
       tier: 'local'
     };
   }
@@ -898,7 +898,7 @@ var MMGR = window.MMGR || {};
     const s = ns.State.getState();
     if (type && LOCAL_BUILDERS[type]) {
       const built = LOCAL_BUILDERS[type](s);
-      // Builders return { text, trace } — normalize to the full result shape.
+      // Builders return { text, trace } , normalize to the full result shape.
       return { ok: true, tier: 'local', model: 'local-state-engine', text: built.text, trace: built.trace || [] };
     }
     if (type) return localUnavailable();
@@ -907,7 +907,7 @@ var MMGR = window.MMGR || {};
 
   // ---- Tier B: cloud call (OpenAI or Anthropic), circuit-broken ----
   const CLOUD_SYSTEM_PROMPT =
-    'You are an assistant grounded ONLY in the project data below. Use ONLY that data — never invent dates, amounts, names, or facts. If a requested detail is not present in the data, say "not in data" explicitly. Keep every claim traceable to a line of the provided context.';
+    'You are an assistant grounded ONLY in the project data below. Use ONLY that data , never invent dates, amounts, names, or facts. If a requested detail is not present in the data, say "not in data" explicitly. Keep every claim traceable to a line of the provided context.';
 
   // Convert OpenAI-style [{role,content}] into the Gemini generateContent
   // payload shape (systemInstruction + contents with role 'user'/'model').
@@ -930,21 +930,21 @@ var MMGR = window.MMGR || {};
   // providers. directChat() and relayChat() both route through
   // callProviderWithFallback(); nobody implements a second ladder.
   // Model list is [def.model].concat(def.fallbackModels || []) per provider
-  // from PROVIDER_DEFAULTS — ordered preferred/highest-quality first ->
+  // from PROVIDER_DEFAULTS , ordered preferred/highest-quality first ->
   // smallest/cheapest last (DIR-1). Fallback IDs were verified against the
   // providers' current model docs on 2026-08-09 (see mmgr-net.js).
   //
   // Fallback classification (DIR-3): an attempt advances to the next, smaller
-  // model ONLY on capacity rejections — 429 (rate limit) or 503 (overload). A
+  // model ONLY on capacity rejections , 429 (rate limit) or 503 (overload). A
   // 401/403 on ANY attempt stops the whole ladder immediately: the key itself
   // is rejected, so the existing 401-only key-clear rule (BYO.clearKey() in
-  // runCloud) applies — never keep trying smaller models with a key that is
+  // runCloud) applies , never keep trying smaller models with a key that is
   // already confirmed bad. Any OTHER error (400 bad request, network failure
   // after normal retries) also stops the ladder: silently trying a different
   // model would mask a real configuration bug.
   //
   // Relay-vs-direct (DIR-3 decision, documented): the client drives the
-  // ladder THROUGH the same-origin Worker relay when it is active — each
+  // ladder THROUGH the same-origin Worker relay when it is active , each
   // attempt posts to /api/ai/chat with a per-attempt `model` field, and the
   // relay (worker.js) forwards to exactly that model and passes 429/503
   // through with their own status so the ladder can advance. If the relay
@@ -1005,7 +1005,7 @@ var MMGR = window.MMGR || {};
   // NOTE: Net.post throws with .status after exhausting retries on 429/408/5xx
   // and carries status-less network failures up as-is. The ladder classifies
   // both: 429/503 advance, everything else (including a status-less network
-  // failure) stops the ladder — DIR-3 says a network failure must NOT
+  // failure) stops the ladder , DIR-3 says a network failure must NOT
   // silently fall through to a smaller model.
   async function geminiDirectAttempt(key, model, messages) {
     const url = (ns.Net && ns.Net.geminiEndpointFor) ? ns.Net.geminiEndpointFor(model) : null;
@@ -1022,9 +1022,9 @@ var MMGR = window.MMGR || {};
   }
 
   // One attempt against ONE model of ANY provider. directOnly skips the relay
-  // hop (used when the relay already proved absent — static hosting /
+  // hop (used when the relay already proved absent , static hosting /
   // directChat). Relay 429/503/401 (or any relay-reported 5xx/408 with a
-  // status) is a real answer — carried up. A status-less throw is a network
+  // status) is a real answer , carried up. A status-less throw is a network
   // failure/timeout: degrade to the direct call for the SAME model.
   async function providerAttempt(provider, key, model, messages, ctx, directOnly) {
     const direct = function() {
@@ -1055,7 +1055,7 @@ var MMGR = window.MMGR || {};
   }
 
   // The ladder itself (DIR-3 core). Returns { ok:true, text, model,
-  // fellBackFrom } — `model` is the model that ACTUALLY answered and
+  // fellBackFrom } , `model` is the model that ACTUALLY answered and
   // `fellBackFrom` is the original preferred model when a fallback fired
   // (DIR-4 transparency). Throws the last capacity error when every rung is
   // exhausted.
@@ -1073,7 +1073,7 @@ var MMGR = window.MMGR || {};
       } catch (e) {
         const status = e && e.status;
         if (status === 429 || status === 503) { lastCapacityErr = e; continue; }
-        throw e; // 401/403 or any other error — stop the ladder immediately
+        throw e; // 401/403 or any other error , stop the ladder immediately
       }
     }
     if (lastCapacityErr) throw lastCapacityErr;
@@ -1082,7 +1082,7 @@ var MMGR = window.MMGR || {};
     throw e;
   }
 
-  // Direct provider call — the fallback used only when the Worker relay is
+  // Direct provider call , the fallback used only when the Worker relay is
   // not reachable/deployed (local/static hosting). The key still comes from
   // the session vault, never from project state. Every provider routes
   // through the shared ladder in direct-only mode (DIR-3).
@@ -1104,17 +1104,17 @@ var MMGR = window.MMGR || {};
 
   async function runCloud(prompt, ctx, cfg) {
     // STEP-4 gate: live chat requires a connected session key. The key and
-    // provider come from the vault ONLY — state.config.ai.apiKey (legacy) is
+    // provider come from the vault ONLY , state.config.ai.apiKey (legacy) is
     // never read, so no project-state field can ever carry the key.
     const key = BYO.getKey();
-    if (!key) throw new Error('No AI key connected — connect one in the AI window (session-only, cleared when the tab closes).');
+    if (!key) throw new Error('No AI key connected , connect one in the AI window (session-only, cleared when the tab closes).');
     const provider = BYO.getProvider() || 'openai';
     const def = (ns.Net && ns.Net.PROVIDER_DEFAULTS) ? ns.Net.PROVIDER_DEFAULTS[provider] : {};
     // Provider defaults only: legacy config.ai.endpoint/model overrides were
-    // UI-removed by this directive, and the relay path ignores them anyway —
+    // UI-removed by this directive, and the relay path ignores them anyway , 
     // honoring them only in the direct fallback would be inconsistent.
     const model = (def && def.model) || provider;
-    // STEP-3: the key must never appear in the packet — defensive strip even
+    // STEP-3: the key must never appear in the packet , defensive strip even
     // though buildContext() only ever reads project state.
     const userContent = (prompt || '') + (ctx ? '\n\n==== PROJECT CONTEXT (grounding only) ====\n' + String(ctx).split(key).join('[key removed]') : '');
     const messages = [
@@ -1132,12 +1132,12 @@ var MMGR = window.MMGR || {};
       fellBackFrom = r.fellBackFrom;
     } catch (e) {
       // STEP-4: auth failure is the ONLY condition that clears the session
-      // key — network/timeout/provider-5xx errors leave it in place.
+      // key , network/timeout/provider-5xx errors leave it in place.
       if (e && e.status === 401) {
         BYO.clearKey();
         setConnectionStatus('not_connected');
         syncSettingsUI();
-        throw new Error('AI key rejected by the provider — session key cleared. Connect again.');
+        throw new Error('AI key rejected by the provider , session key cleared. Connect again.');
       }
       throw e;
     }
@@ -1156,7 +1156,7 @@ var MMGR = window.MMGR || {};
     const type = (opts && opts.type) || null;
     try {
       if (tier === 'off') {
-        return { ok: false, error: 'AI engine is Off — enable Local or Cloud in the AI window settings row (or Settings ▸ Controls ▸ AI Engine).', tier: 'off' };
+        return { ok: false, error: 'AI engine is Off , enable Local or Cloud in the AI window settings row (or Settings ▸ Controls ▸ AI Engine).', tier: 'off' };
       }
       if (tier === 'local') {
         const out = await runLocal(prompt, type);
@@ -1174,14 +1174,14 @@ var MMGR = window.MMGR || {};
         // STEP-4 gate at the single seam (covers Enter-send, preset runs, and
         // any caller that bypasses the disabled Send button).
         if (!BYO.isConnected()) {
-          return { ok: false, error: 'No AI key connected — open the AI window, pick Cloud, and Connect your key (session-only, never stored). Live chat needs it.', tier: 'cloud' };
+          return { ok: false, error: 'No AI key connected , open the AI window, pick Cloud, and Connect your key (session-only, never stored). Live chat needs it.', tier: 'cloud' };
         }
         return await runCloud(prompt, ctx || buildContext(), cfg);
       }
       return { ok: false, error: 'Unknown tier: ' + tier, tier: tier };
     } catch (e) {
       if (ns.Errors && ns.Errors.log) ns.Errors.log('AI submit failed: ' + (e && e.message), 'aiSubmit');
-      return { ok: false, error: 'AI call failed — ' + (e && e.message ? e.message : 'unknown error') + '. The app is unaffected; check Settings ▸ AI Engine and try again.', tier: tier };
+      return { ok: false, error: 'AI call failed , ' + (e && e.message ? e.message : 'unknown error') + '. The app is unaffected; check Settings ▸ AI Engine and try again.', tier: tier };
     }
   }
 
@@ -1222,7 +1222,7 @@ var MMGR = window.MMGR || {};
         };
       });
       renderOutput(type, res);
-      toast('Preset run complete — saved to project state (' + res.tier + ').', 'ok');
+      toast('Preset run complete , saved to project state (' + res.tier + ').', 'ok');
       return res;
     }
     renderOutput(type, res);
@@ -1255,7 +1255,7 @@ var MMGR = window.MMGR || {};
     if (res.ok) {
       renderOutput(null, res);
       // AI-WINDOW-SEND-CLEAR: the sent question leaves the input box and lives
-      // in the thread — the box empties (and collapses its grown height) so a
+      // in the thread , the box empties (and collapses its grown height) so a
       // follow-up can be typed immediately. The answer stays in the thread AND
       // in #ai-out, each with its own copy affordance.
       clearQuestionBox();
@@ -1269,7 +1269,7 @@ var MMGR = window.MMGR || {};
   }
 
   // ---- AI-WINDOW-SEND-CLEAR: empty the question box after a successful send
-  // (mirrors the clear() reset — value, grown height, at-cap marker) and put
+  // (mirrors the clear() reset , value, grown height, at-cap marker) and put
   // focus back in it so the next question can be typed immediately.
   function clearQuestionBox() {
     const q = U.$('ai-q');
@@ -1285,11 +1285,11 @@ var MMGR = window.MMGR || {};
     const out = U.$('ai-out');
     if (!out) return;
     if (res && res.ok) {
-      out.value = (type ? '[' + type + ' · ' + res.tier + ' · ' + (res.model || '') + ' — saved to project]\n\n' : '[answer · ' + res.tier + ' · ' + (res.model || '') + ']\n\n') + res.text;
+      out.value = (type ? '[' + type + ' · ' + res.tier + ' · ' + (res.model || '') + ' , saved to project]\n\n' : '[answer · ' + res.tier + ' · ' + (res.model || '') + ']\n\n') + res.text;
       const trace = U.$('ai-trace');
       if (trace) trace.textContent = 'Traceable to: ' + ((res.trace && res.trace.length) ? res.trace.join(', ') : '(grounded in attached context)');
     } else {
-      out.value = '—';
+      out.value = '-';
       const trace = U.$('ai-trace');
       if (trace) trace.textContent = (res && res.error) ? res.error : '';
     }
@@ -1297,7 +1297,7 @@ var MMGR = window.MMGR || {};
 
   function copyOut() {
     const out = U.$('ai-out');
-    if (!out || !out.value || out.value === '—') { toast('Nothing to copy yet — run a preset first.', 'err'); return; }
+    if (!out || !out.value || out.value === '-') { toast('Nothing to copy yet , run a preset first.', 'err'); return; }
     U.copyToClipboard(out.value);
     toast('Result copied.');
   }
@@ -1369,14 +1369,14 @@ var MMGR = window.MMGR || {};
   function botAvatar() {
     return '<div class="ai-bot-avatar"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg></div>';
   }
-  // AI-FALLBACK-BADGE: ONE shared chip builder — renderThread and
+  // AI-FALLBACK-BADGE: ONE shared chip builder , renderThread and
   // seedThreadFromState both call it, so the two render paths can never
   // drift (same convention as the shared fallback ladder itself). Returns
   // '' when no fallback fired. Tier gate keeps it cloud-only (the only tier
   // with a ladder).
   function fallbackBadgeHtml(tier, model, fellBackFrom) {
     if (tier !== 'cloud' || !fellBackFrom || !model || fellBackFrom === model) return '';
-    return '<div class="ai-fallback" role="status"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-down"></use></svg> Fell back to <strong>' + escHtml(model) + '</strong> — ' + escHtml(fellBackFrom) + ' hit its rate limit</div>';
+    return '<div class="ai-fallback" role="status"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-down"></use></svg> Fell back to <strong>' + escHtml(model) + '</strong> , ' + escHtml(fellBackFrom) + ' hit its rate limit</div>';
   }
 
   function botBubbleHtml(textHtml, metaHtml, badgeHtml, traceHtml) {
@@ -1387,7 +1387,7 @@ var MMGR = window.MMGR || {};
   }
   // AI-WINDOW-POLISH: every assistant bubble carries a per-answer Copy button
   // in its meta row. The raw text rides on the bubble's dataset (set via DOM
-  // property — never interpolated into markup), so the clipboard copy is exact
+  // property , never interpolated into markup), so the clipboard copy is exact
   // while the rendered bubble stays fully escaped. Delegated click handling
   // below; no per-bubble listeners.
   function copyBtnHtml() {
@@ -1415,7 +1415,7 @@ var MMGR = window.MMGR || {};
     }
   }
   // On open, surface the most recent persisted result so the conversation
-  // feels continuous (reads state.aiOutputs only — never invents anything).
+  // feels continuous (reads state.aiOutputs only , never invents anything).
   function seedThreadFromState() {
     const th = U.$('ai-thread');
     if (!th || th.dataset.seeded) return;
@@ -1433,7 +1433,7 @@ var MMGR = window.MMGR || {};
   }
 
   // ---- DIR-1 (AI-WINDOW-LAYOUT-SCROLL-AND-INPUT-BUG): Chat/Presets tab ----
-  // segment — swaps which pane is visible. UI-only, wired directly (like the
+  // segment , swaps which pane is visible. UI-only, wired directly (like the
   // BYO controls) so it never touches the read-only action lists. Both panes
   // stay in the DOM, so switching needs no re-render; the presets pane is
   // reachable regardless of conversation length. open() resets to the Chat
@@ -1459,13 +1459,13 @@ var MMGR = window.MMGR || {};
     });
   })();
 
-  // AI-WINDOW-POLISH: per-bubble Copy — delegated on the thread so bubbles
+  // AI-WINDOW-POLISH: per-bubble Copy , delegated on the thread so bubbles
   // added at any time (live chat or state seed) pick it up without rebinding.
   // The exact answer text is read from the bubble's dataset.copyText.
   (function() {
     const th = U.$('ai-thread');
     if (!th) return;
-    // REVIEW FIX: a single shared timer — rapid re-clicks clear the pending
+    // REVIEW FIX: a single shared timer , rapid re-clicks clear the pending
     // restore instead of stacking stale captures (double-click used to leave
     // the label stuck on "Copied" without the green styling). The reset also
     // restores the static known HTML + aria-label, never a captured snapshot.
@@ -1515,7 +1515,7 @@ var MMGR = window.MMGR || {};
 
   // ---- BYO Connect/Clear controls (STEP-2) ----
   // Wired directly (not through the action map) so the vault flow never
-  // touches the read-only action lists — connecting a key is not a project
+  // touches the read-only action lists , connecting a key is not a project
   // mutation and must stay available in view-only mode.
   (function() {
     const conn = U.$('ai-byo-connect');
@@ -1537,7 +1537,7 @@ var MMGR = window.MMGR || {};
   })();
 
   // UI-DECLUTTER: the API-key setup (paste + Connect & Test + security
-  // footnote) lives in a popover toggled by the settings gear — the status
+  // footnote) lives in a popover toggled by the settings gear , the status
   // chip and provider select stay visible in the strip, the raw key input is
   // one click away. Wired directly (like the connect/clear buttons above) so
   // it stays available in view-only mode.
@@ -1571,7 +1571,7 @@ var MMGR = window.MMGR || {};
 
   // ---- AI-WINDOW-RESIZE: edge/corner drag resize + per-device persistence ----
   // The size lives in localStorage under mmgr_ai_size (the same device-pref
-  // slot pattern as mmgr_theme) — a UI preference, deliberately NOT project
+  // slot pattern as mmgr_theme) , a UI preference, deliberately NOT project
   // state. Restored on open, clamped to the current viewport, min 480x360.
   const AI_SIZE_KEY = 'mmgr_ai_size';
   const AI_SIZE_MIN_W = 480;

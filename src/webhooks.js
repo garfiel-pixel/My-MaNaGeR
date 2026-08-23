@@ -1,5 +1,5 @@
 /* ============================================================
-   WEBHOOKS — subscription CRUD, HMAC delivery, cron evaluation
+   WEBHOOKS , subscription CRUD, HMAC delivery, cron evaluation
    ------------------------------------------------------------
    Extracted from worker.js. Owner-gated webhook subscriptions
    with HMAC-SHA256 signed delivery for health_dropped and
@@ -28,7 +28,7 @@ export async function handleWebhookCreate(request, env, projectId) {
   if (read.bad || !read.body || typeof read.body !== 'object') return json({ ok: false, error: 'bad request' }, 400);
   const event = String(read.body.event || '').trim();
   const targetUrl = String(read.body.targetUrl || '').trim();
-  if (WEBHOOK_EVENTS.indexOf(event) === -1) return json({ ok: false, error: 'unknown event — use health_dropped or weather_risk_tomorrow' }, 400);
+  if (WEBHOOK_EVENTS.indexOf(event) === -1) return json({ ok: false, error: 'unknown event , use health_dropped or weather_risk_tomorrow' }, 400);
   let u;
   try { u = new URL(targetUrl); } catch (e) { return json({ ok: false, error: 'targetUrl must be a valid URL' }, 400); }
   if (u.protocol !== 'https:' && u.protocol !== 'http:') return json({ ok: false, error: 'targetUrl must be http(s)' }, 400);

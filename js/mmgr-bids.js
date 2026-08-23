@@ -1,7 +1,7 @@
 /* ============================================================
-   My MaNaGeR — Bid Leveling & Go/No-Go Scoring Module
+   My MaNaGeR , Bid Leveling & Go/No-Go Scoring Module
    MARKET-FEATURE-ROADMAP A3 (bid leveling) + A4 (Go/No-Go bid
-   scoring) — REBUILT to the owner's T8 spec (2026-08-16):
+   scoring) , REBUILT to the owner's T8 spec (2026-08-16):
    (1) packages are created in the Add Bid Package modal (name,
        CSI Division Code, target baseline budget, bid deadline,
        scope line items with est. cost); (2) each package renders
@@ -16,7 +16,7 @@
        recommendation bar. HARD RULE (UI doctrine 8): every input
        is the app's soft-field treatment or the .dt transparent
        inline-edit; panels use the .card glass language.
-   Zero third-party dependency — plain state records + pure
+   Zero third-party dependency , plain state records + pure
    scoring helpers, following the module pattern of mmgr-risks.js.
    ============================================================ */
 var MMGR = window.MMGR || {};
@@ -751,7 +751,7 @@ var MMGR = window.MMGR || {};
     const tds = function(fn) { return subs.map(function(_, si) { return fn(g.subs[si], si); }).join(''); };
     const numTd = (n) => '<td class="lvl-num">' + money(n) + '</td>';
     const pctTd = (r) => {
-      if (r.varPct === null) return '<td class="lvl-num lvl-var-na">&mdash;</td>';
+      if (r.varPct === null) return '<td class="lvl-num lvl-var-na">, </td>';
       const cls = r.varPct <= 0 ? ' lvl-var-ok' : ' lvl-var-over';
       return '<td class="lvl-num' + cls + '">' + (r.varPct > 0 ? '+' : '') + r.varPct.toFixed(0) + '%</td>';
     };

@@ -1,13 +1,13 @@
 /* ============================================================
-   My MaNaGeR — marketing-site chrome (Liquid Glass front door).
+   My MaNaGeR , marketing-site chrome (Liquid Glass front door).
    Shared by index.html / about.html / features.html / contact.html /
    mymanager-field-guide.html (the guide's email sign-in sheet is driven by the
    same .signin-trigger wiring here):
    - mobile menu toggle (with Escape-to-close + focus management)
    - footer year
    - icon-sprite deploy guard (icons vanish silently if the css/
-     folder is missing on the host — surface it loudly on HTTP(S))
-   Every lookup is null-guarded — this file must never throw.
+     folder is missing on the host , surface it loudly on HTTP(S))
+   Every lookup is null-guarded , this file must never throw.
    ============================================================ */
 (function(){
   'use strict';
@@ -18,7 +18,7 @@
      photo-band photos are surface layers, not draggable objects: the markup
      carries draggable="false", the CSS blocks -webkit-user-drag + selection
      + pointer events, and this guard blocks the native dragstart and the
-     right-click image menu on them. Null-guarded — never throws. */
+     right-click image menu on them. Null-guarded , never throws. */
   var NO_DRAG_IMGS = '.hero-photo, .hc-img img, .pb-img';
   function lockDecorativeImages(){
     var imgs = document.querySelectorAll(NO_DRAG_IMGS);
@@ -100,13 +100,13 @@
       return (window.innerHeight + window.scrollY) >= (document.documentElement.scrollHeight - 4);
     }
     /* Pick the section with the largest visible share, not just "the last one
-       that intersected" — when several sections are in frame, the most visible
+       that intersected" , when several sections are in frame, the most visible
        one wins, so the active stick tracks what is actually on screen. */
     var spy = new IntersectionObserver(function(entries){
       var best = null, bestRatio = -1;
       entries.forEach(function(entry){
         /* LOCK-IN (OWNER 2026-08-17): a section the reader has already scrolled
-           past stays marked (.done) — the tracker reads as a progress trail. */
+           past stays marked (.done) , the tracker reads as a progress trail. */
         if (!entry.isIntersecting && entry.boundingClientRect.top < 0) {
           var past = spyById[entry.target.id];
           if (past) past.classList.add('done');
@@ -127,23 +127,23 @@
   /* ---- icon-sprite deploy guard (HTTP(S) only; file:// stays quiet) ---- */
   if (window.location.protocol === 'http:' || window.location.protocol === 'https:') {
     fetch('css/mmgr-icons.svg').then(function(r){
-      if (!r.ok) console.warn('ICON SPRITE MISSING: css/mmgr-icons.svg returned ' + r.status + ' — upload the css/ folder (mmgr.css + mmgr-icons.svg) to the site root.');
+      if (!r.ok) console.warn('ICON SPRITE MISSING: css/mmgr-icons.svg returned ' + r.status + ' , upload the css/ folder (mmgr.css + mmgr-icons.svg) to the site root.');
     }).catch(function(){
-      console.warn('ICON SPRITE MISSING: css/mmgr-icons.svg could not be fetched — upload the css/ folder to the site root.');
+      console.warn('ICON SPRITE MISSING: css/mmgr-icons.svg could not be fetched , upload the css/ folder to the site root.');
     });
   }
 
   /* ---- header email sign-in sheet (OWNER 2026-08-14: "at the side of the
          hamburger or where appropriate") ----
      The shared email+password form comes from js/mmgr-google-auth.js (the SAME
-     worker endpoints + session cookie as app.html/admin.html — never a duplicate
+     worker endpoints + session cookie as app.html/admin.html , never a duplicate
      auth implementation). The sheet is driven here: toggle + Escape +
      click-outside, one-time form mount, session restore, and the signed-in /
      signed-out states rendered from the module's events. A page may mount any
-     number of trigger buttons — every element with class .signin-trigger opens
+     number of trigger buttons , every element with class .signin-trigger opens
      the single #signin-sheet (marketing headers keep #signin-btn; the field-guide
      has one in the sidebar and one beside the mobile hamburger). All lookups are
-     null-guarded — pages without the markup are unaffected. */
+     null-guarded , pages without the markup are unaffected. */
   var GA = (window.MMGR && window.MMGR.GoogleAuth) ? window.MMGR.GoogleAuth : null;
   var signinBtns = Array.prototype.slice.call(document.querySelectorAll('.signin-trigger'));
   var signinSheet = document.getElementById('signin-sheet');
@@ -159,10 +159,10 @@
   }
 
   /* OWNER 2026-08-17: the header triggers themselves become the signed-in
-     identity — a small avatar (photo or initial) + name — instead of the
+     identity , a small avatar (photo or initial) + name , instead of the
      static "Sign in" label that stayed put after signing in. Clicking the
      chip still opens the sheet (which holds the account row + Sign out).
-     DOM APIs only — remote data can't inject. */
+     DOM APIs only , remote data can't inject. */
   function renderSigninTriggers(user){
     signinBtns.forEach(function(b){
       b.innerHTML = '';
@@ -205,7 +205,7 @@
     var sub = document.getElementById('signin-user-sub');
     var av = document.getElementById('signin-user-avatar');
     /* STABILIZATION 2026-08-16: the identity now leads with the profile
-       picture — Google photo when available, otherwise the first letter of
+       picture , Google photo when available, otherwise the first letter of
        the name (the app.html avatar pattern). Written via DOM APIs so
        remote data can't inject. */
     if (av) {
@@ -257,7 +257,7 @@
           }
           /* If GIS never loaded, show the styled fallback button immediately
              so the user always sees "Sign in with Google" + "Sign in with
-             email instead" — never a blank slot. */
+             email instead" , never a blank slot. */
           if (typeof GA.showGoogleFallback === 'function') {
             setTimeout(function(){ GA.showGoogleFallback(); }, 120);
           }
@@ -280,7 +280,7 @@
        signin-sheets 2026-08-22); the email form toggles behind it. Then
        restore the session so an already-signed-in visitor sees their state. */
     if (!document.getElementById('email-auth-block')) GA.mountEmailAuth('marketing-email-auth', { showToggle: true });
-    /* Re-render the GIS button when the sheet opens — GIS measures the host
+    /* Re-render the GIS button when the sheet opens , GIS measures the host
        at render time, so a button drawn into a hidden host comes out 0x0.
        ensureGisButton() wipes a broken render and re-draws when measurable. */
     if (typeof GA.ensureGisButton === 'function') GA.ensureGisButton();
@@ -300,10 +300,10 @@
      on the CURRENT page scrolls to it (smooth) and flashes a gold ring;
      a target on another page navigates, and the on-load hash handler
      flashes it on arrival. Menus open on hover/focus (CSS), close on Escape
-     or focus-out, and every lookup is null-guarded — never throws. */
+     or focus-out, and every lookup is null-guarded , never throws. */
   var NAV_DD = {
     /* OWNER 2026-08-17: hover dropdowns ONLY for small topics. The Field Guide
-       is a whole destination, not a menu — its nav link is a plain link now. */
+       is a whole destination, not a menu , its nav link is a plain link now. */
     'index.html#features': {
       items: [
         { id: 'f-wbs', label: 'WBS + Gantt' },
@@ -385,7 +385,7 @@
     });
     if (links.length) {
       Array.prototype.forEach.call(links, function(a){
-        if (a.closest('.nav-dd')) return; // idempotent — never re-wrap
+        if (a.closest('.nav-dd')) return; // idempotent , never re-wrap
         var cfg = NAV_DD[a.getAttribute('href')];
         if (!cfg) return;
         var wrap = document.createElement('span');
@@ -425,7 +425,7 @@
         // its parent at that moment), then move the link + menu INTO the
         // wrapper. The reverse order is a trap: wrap.appendChild(a) removes
         // the link from its parent, so a later parent.replaceChild(wrap, a)
-        // throws "node to be replaced is not a child" — the link ends up in a
+        // throws "node to be replaced is not a child" , the link ends up in a
         // detached wrapper and the loop aborts.
         var parent = a.parentNode;
         parent.replaceChild(wrap, a);
@@ -507,7 +507,7 @@
       rvTargets.forEach(function(el){ rvIO.observe(el); });
     } else {
       // reduced-motion or no IO: everything visible immediately (CSS also
-      // forces .rv to full visibility under reduced motion — belt + braces).
+      // forces .rv to full visibility under reduced motion , belt + braces).
       rvTargets.forEach(function(el){ el.classList.add('rv-in'); });
     }
   }
@@ -539,7 +539,7 @@
         var cl = c.cloneNode(true);
         cl.setAttribute('aria-hidden', 'true');
         /* clones must not inherit the reveal-on-scroll state (they are the
-           seamless-loop copies — always fully visible) */
+           seamless-loop copies , always fully visible) */
         cl.classList.remove('rv', 'rv-in');
         cl.style.removeProperty('--rv-i');
         featTrack.appendChild(cl);

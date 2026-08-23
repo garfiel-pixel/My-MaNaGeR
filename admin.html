@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <!--
-  My MaNaGeR — construction/project management workspace.
+  My MaNaGeR , construction/project management workspace.
   Icon system + access-control build by Garack.
 -->
 
@@ -19,7 +19,7 @@
 /* ============================================================
    Admin-specific styles. Shared component classes (.btn, .card,
    .badge, .mb/.mh/.mt/.dc/.mbody/.mf, .toolbar, …) come from
-   css/mmgr.css — nothing here re-declares them. Only layout that
+   css/mmgr.css , nothing here re-declares them. Only layout that
    is unique to the admin panel lives below.
    ============================================================ */
 .hidden{display:none !important;}
@@ -43,7 +43,7 @@ body.dark-mode .gbox input{background:rgba(0,0,0,.3);}
    AI window's Send button treatment; the focus ring mirrors the ONE app-wide
    focus treatment (DIR-3). */
 .gbox .btn{border-radius:100px;padding:11px 22px;}
-/* B-1: reduced transparency / no backdrop-filter — flatten .gbox to solid like
+/* B-1: reduced transparency / no backdrop-filter , flatten .gbox to solid like
    the shared mmgr.css fallback (this inline rule must come after the .gbox
    rules above to win at equal specificity). */
 @supports not (backdrop-filter:blur(1px)){
@@ -65,7 +65,7 @@ body.glass-premium main{position:relative;z-index:1;}
 
 /* ── app shell (admin layout) ── */
 /* MMGR-NEW-UI-CREATION-BRIEF I1: hamburger + h1 sit together on the left
-   (F-pattern — brief §3). The shared .nav-btn chrome comes from css/mmgr.css;
+   (F-pattern , brief §3). The shared .nav-btn chrome comes from css/mmgr.css;
    this block only groups the two. */
 .hdr-left{display:flex;align-items:center;gap:12px;min-width:0;}
 header{display:flex;align-items:center;justify-content:space-between;padding:16px 28px;border-bottom:1px solid var(--border);background:var(--card);position:sticky;top:0;z-index:100;
@@ -76,7 +76,7 @@ header h1{font-size:1rem;display:flex;align-items:center;gap:8px;font-weight:800
    actual height once the panel is unlocked (syncAdminHdr sets --hdr-h). */
 #admin-app #app-sidebar{top:var(--hdr-h,64px);}
 /* FIX (STABILIZATION 2026-08-16): the shared rail reveal in css/mmgr.css is
-   gated on body.sidebar-on — a class only project.html ever sets — so admin's
+   gated on body.sidebar-on , a class only project.html ever sets , so admin's
    body.sidebar-open toggle (tglAdminNav) never revealed the rail or the scrim
    (the hamburger rotated but the drawer stayed hidden; ≤768px hid the rail
    entirely). Admin owns its own reveal: desktop overlay drawer + mobile
@@ -86,7 +86,7 @@ body.sidebar-open #nav-scrim{opacity:1;pointer-events:auto;}
 @media(max-width:768px){
   #admin-app #app-sidebar{display:flex;}
 }
-/* STABILIZATION (2026-08-16): the Cloud Projects list's "Deleted" state —
+/* STABILIZATION (2026-08-16): the Cloud Projects list's "Deleted" state , 
    a tombstoned project renders with a danger badge + note + Undo / Delete
    permanently actions instead of looking live. */
 .badge.del{background:rgba(220,53,69,.14);color:var(--danger);border:1px solid rgba(220,53,69,.4);backdrop-filter:none;}
@@ -105,7 +105,7 @@ main{max-width:1000px;margin:0 auto;padding:26px 24px 70px;}
 .prow-title{font-size:.88rem;font-weight:800;line-height:1.3;transition:color var(--tr);}
 .prow:hover .prow-title{color:var(--gold);}
 .prow-desc{font-size:.74rem;color:var(--slate);margin-top:3px;max-width:520px;line-height:1.5;}
-/* §6.7 — active/completed solid-tinted; on-hold/planning frosted glass */
+/* §6.7 , active/completed solid-tinted; on-hold/planning frosted glass */
 .badge.active{background:rgba(16,185,129,.18);color:var(--green);border:1px solid var(--green);backdrop-filter:none;}
 .badge.completed{background:rgba(100,116,139,.35);color:var(--slate);border:1px solid rgba(100,116,139,.5);backdrop-filter:none;}
 .badge.on-hold{background:var(--glass-fill-dark);color:var(--gold);border:1px solid rgba(245,158,11,.35);backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturate));-webkit-backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturate));}
@@ -115,7 +115,7 @@ main{max-width:1000px;margin:0 auto;padding:26px 24px 70px;}
   padding:4px 9px;letter-spacing:.08em;color:var(--text);font-variant-numeric:tabular-nums;}
 .prow-actions{display:flex;gap:6px;margin-top:12px;flex-wrap:wrap;}
 .demo-tag{font-size:.66rem;color:var(--gold);border:1px solid rgba(245,158,11,.3);border-radius:100px;padding:2px 8px;}
-/* DIR-1 (ADMIN-PUBLISH-SYNC-AND-PROJECT-SELECT-POLISH): per-row publish-state note —
+/* DIR-1 (ADMIN-PUBLISH-SYNC-AND-PROJECT-SELECT-POLISH): per-row publish-state note , 
    a quiet amber marker (downgraded from the draft's urgent banner; creator access is
    local-first now, so this only informs the admin that VISITORS can't see it yet). */
 .pub-note{display:inline-flex;align-items:center;gap:8px;margin-top:8px;font-size:.68rem;color:var(--amber);border:1px solid rgba(245,158,11,.3);background:rgba(245,158,11,.07);border-radius:100px;padding:4px 10px;}
@@ -147,14 +147,14 @@ pre.snippet{background:#f8fafc;border:1px solid var(--border);border-radius:6px;
   line-height:1.6;white-space:pre-wrap;word-break:break-all;color:var(--text);font-family:ui-monospace,monospace;}
 
 /* ── toast: lives in the shared css/mmgr.css now (owner 2026-08-15:
-     polished pill notifications — same on launcher, admin, project). ── */
+     polished pill notifications , same on launcher, admin, project). ── */
 
 @media(max-width:600px){header{padding:14px 18px;}main{padding:20px 16px 60px;}.prow-top{flex-direction:column;}}
 </style>
 <script>
 /* Device-level theme (shared across launcher, admin, and app): applied before
    first paint from the same localStorage slot every theme toggle writes, so a
-   dark choice made anywhere persists everywhere — the gate screens included.
+   dark choice made anywhere persists everywhere , the gate screens included.
    Kept inline in <head> so the class is set before any content renders (FOUC prevention). */
 (function(){ try {
   if (localStorage.getItem('mmgr_theme') === 'dark') document.documentElement.classList.add('dark-mode');
@@ -175,7 +175,7 @@ pre.snippet{background:#f8fafc;border:1px solid var(--border);border-radius:6px;
   <div class="gbox">
     <div class="icon"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-tool"></use></svg></div>
     <h1>Set Up Admin Access</h1>
-    <p>No admin password is set on this device yet. Choose one. You'll need it every new browser session to manage projects.</p>
+    <p>No admin password is set on this device yet. Choose one , it will be stored locally on this device. You'll be asked to re-enter it each time you open the admin panel.</p>
     <input id="setup-pass1" type="password" placeholder="New admin password (min 8 characters)" autocomplete="new-password">
     <input id="setup-pass2" type="password" placeholder="Confirm password" autocomplete="new-password">
     <div class="gerr" id="setup-err"></div>
@@ -195,7 +195,7 @@ pre.snippet{background:#f8fafc;border:1px solid var(--border);border-radius:6px;
   </div>
 </div>
 
-<!-- ═══ Gate preferences (theme + premium glass preview) — shown while the
+<!-- ═══ Gate preferences (theme + premium glass preview) , shown while the
      gate screens are up, hidden once the admin panel is unlocked ═══ -->
 <div class="pref-row" id="gate-prefs">
   <span class="pref"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-moon"></use></svg> Dark<label class="tgl"><input type="checkbox" id="thm-tgl" data-action="tglTheme" aria-label="Toggle dark theme"><span class="tsl"></span></label></span>
@@ -207,9 +207,9 @@ pre.snippet{background:#f8fafc;border:1px solid var(--border);border-radius:6px;
 <div class="hidden" id="admin-app">
   <header>
     <div class="hdr-left">
-      <!-- MMGR-NEW-UI-CREATION-BRIEF I1: shared shell — hamburger (i-menu)
+      <!-- MMGR-NEW-UI-CREATION-BRIEF I1: shared shell , hamburger (i-menu)
            opens the left rail/drawer. Theme stays theme-only (never reused
-           as the menu control — brief §2.1). -->
+           as the menu control , brief §2.1). -->
       <button type="button" class="nav-btn" id="nav-btn" data-action="tglNav" aria-label="Open navigation menu" aria-expanded="false" aria-controls="app-sidebar"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-menu"></use></svg></button>
       <h1><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-shield"></use></svg> <span class="mark">Admin</span> Panel</h1>
     </div>
@@ -247,11 +247,11 @@ pre.snippet{background:#f8fafc;border:1px solid var(--border);border-radius:6px;
       </div>
     </div>
 
-    <!-- CLOUD-BACKEND-ARCHITECTURE-PLAN Phase 2/3 — cloud projects visibility.
+    <!-- CLOUD-BACKEND-ARCHITECTURE-PLAN Phase 2/3 , cloud projects visibility.
          Operator-gated by the Worker's ADMIN_CODE secret (typed once per
          session here, held in sessionStorage only). Owner-code reissue reuses
          /recover, which enforces plan §9: the signed-in Google account must
-         match the record on file — no code is ever issued to a stranger. -->
+         match the record on file , no code is ever issued to a stranger. -->
     <div class="card" id="cloud-admin-section" style="margin-top:16px">
       <div class="card-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cloud"></use></svg> Cloud Projects (D1 + R2)</div>
       <div class="field">
@@ -269,7 +269,7 @@ pre.snippet{background:#f8fafc;border:1px solid var(--border);border-radius:6px;
     <div id="project-list"></div>
   </main>
 
-  <!-- MMGR-NEW-UI-CREATION-BRIEF I1: shared shell — left rail (reuses the
+  <!-- MMGR-NEW-UI-CREATION-BRIEF I1: shared shell , left rail (reuses the
        shared #app-sidebar overlay/drawer chrome from css/mmgr.css; the
        rail-link component is defined there too). Desktop: overlay drawer via
        hamburger (pref-off path). Mobile: off-canvas drawer + scrim. Escape,
@@ -301,7 +301,7 @@ pre.snippet{background:#f8fafc;border:1px solid var(--border);border-radius:6px;
         <div id="google-signin-button"></div>
         <div id="google-user-chip" hidden></div>
       </div>
-      <!-- STABILIZATION 2026-08-16: Premium pill beside the signed-in chip —
+      <!-- STABILIZATION 2026-08-16: Premium pill beside the signed-in chip , 
            a [data-plan-badge] mount filled by mmgr-google-auth.js
            refreshPlan(), matching the app.html rail footer. Hidden when the
            plan is free or billing is unconfigured. -->
@@ -385,7 +385,7 @@ pre.snippet{background:#f8fafc;border:1px solid var(--border);border-radius:6px;
 <!-- ═══ Codes manager (CLOUD-CODES-AND-DELETE 2026-08-16) ═══
      Per cloud-linked project row: create/list/revoke editor + viewer
      codes without leaving the admin panel. The project's stored owner
-     code (cloudOwnerCode) authenticates — the same credential
+     code (cloudOwnerCode) authenticates , the same credential
      updateCloudSnapshot uses. A created code is shown EXACTLY ONCE. -->
 <div id="codes-om">
   <div class="mb">
@@ -393,7 +393,7 @@ pre.snippet{background:#f8fafc;border:1px solid var(--border);border-radius:6px;
     <div class="mbody">
       <p style="font-size:.76rem;color:var(--slate);margin:0 0 10px;line-height:1.5">Owner code: <code class="code-box" id="codes-om-owner"></code>. Anyone with it opens the project as owner on any device.</p>
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
-        <input id="codes-label" type="text" maxlength="60" placeholder="Label, e.g. Site Super — Riverside" style="flex:1;min-width:180px" autocomplete="off">
+        <input id="codes-label" type="text" maxlength="60" placeholder="Label, e.g. Site Super , Riverside" style="flex:1;min-width:180px" autocomplete="off">
         <select id="codes-role" style="width:auto"><option value="editor">Editor (can edit the sections below)</option><option value="view">Viewer (read-only, can see them)</option></select>
         <button class="btn btn-g btn-s" data-action="codesCreate"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-plus"></use></svg> Create Code</button>
       </div>
@@ -422,7 +422,7 @@ pre.snippet{background:#f8fafc;border:1px solid var(--border);border-radius:6px;
   </div>
 </div>
 
-<!-- ═══ Confirm modal (replaces native confirm() — same standard as the project viewer) ═══ -->
+<!-- ═══ Confirm modal (replaces native confirm() , same standard as the project viewer) ═══ -->
 <div id="adm-cfm">
   <div class="mb">
     <div class="mh"><span class="mt" id="adm-cfm-title">Confirm</span><button class="dc" data-action="admCfmCancel"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> </button></div>
@@ -484,7 +484,7 @@ pre.snippet{background:#f8fafc;border:1px solid var(--border);border-radius:6px;
 <script src="js/mmgr-glass.js"></script>
 <script>
 /* ============================================================
-   ADMIN PANEL — data model
+   ADMIN PANEL , data model
    ------------------------------------------------------------
    localStorage['mmgr_admin_pass_hash']  SHA-256 hash of the admin
      password. Persists on this device across sessions.
@@ -492,7 +492,7 @@ pre.snippet{background:#f8fafc;border:1px solid var(--border);border-radius:6px;
      this browser tab; cleared on tab close (re-login next visit).
    localStorage['mmgr_admin_projects']   this device's PRIVATE
      working copy of every project, INCLUDING plaintext codes.
-     Never upload this data anywhere — it's for your reference
+     Never upload this data anywhere , it's for your reference
      and for editing only. Only the hash-only export gets published.
    ============================================================ */
 
@@ -508,7 +508,7 @@ async function codeHashOf(code){
   return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
 }
 function generateCode(length){
-  const charset = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no 0/O or 1/I/l — avoids misreads
+  const charset = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no 0/O or 1/I/l , avoids misreads
   const bytes = new Uint8Array(length);
   crypto.getRandomValues(bytes);
   return Array.from(bytes, b => charset[b % charset.length]).join('');
@@ -525,10 +525,10 @@ function uniqueSlug(base){
 }
 
 function toast(msg, type, action){
-  // Owner 2026-08-15: pill-shaped notification — icon circle + label +
+  // Owner 2026-08-15: pill-shaped notification , icon circle + label +
   // message, slide-up + fade-out. Shared markup/CSS with launcher + project.
   // CLOUD-CODES-AND-DELETE (2026-08-16): optional action pill (label + fn)
-  // — the Undo button on project delete. Action toasts hold ~5s (the owner's
+  // , the Undo button on project delete. Action toasts hold ~5s (the owner's
   // requested undo window) instead of the default ~2.6s.
   const existing = document.querySelector('.toast');
   if (existing) existing.remove();
@@ -623,11 +623,11 @@ async function mergeLiveData(){
     // notes (isPublishedRecord) would otherwise stay stale until the next
     // edit. A re-render here is idempotent and cheap.
     renderProjects();
-  }catch(e){ /* fine — no live file reachable yet */ }
+  }catch(e){ /* fine , no live file reachable yet */ }
 }
 
 /* True when the local record exactly matches what visitors currently see in
-   the deployed manifest. Only meaningful once liveFetched — before that every
+   the deployed manifest. Only meaningful once liveFetched , before that every
    row counts as published (nothing to compare against). */
 function isPublishedRecord(p){
   if(!liveFetched) return true;
@@ -644,7 +644,7 @@ function isPublishedRecord(p){
 
 /* Mirror case (review pass): a project still published on the live site but
    missing from THIS list (locally deleted, republish not run) stays visible
-   to visitors with no row to attach a note to — surface it as a quiet line
+   to visitors with no row to attach a note to , surface it as a quiet line
    above the list so "I removed it and visitors still see it" can't happen
    silently. Only meaningful once the live manifest was fetched. */
 function deletedButLiveProjects(){
@@ -655,7 +655,7 @@ function deletedButLiveProjects(){
 }
 
 /* ============================================================
-   ADMIN GATE — password setup / login / session
+   ADMIN GATE , password setup / login / session
    ============================================================ */
 function showScreen(id){
   ['setup-screen','login-screen','admin-app'].forEach(s=>{
@@ -702,7 +702,7 @@ function lockAdmin(){
   document.getElementById('login-pass').value = '';
   showScreen('login-screen');
 }
-// Device-level theme toggle — writes the same localStorage slot (mmgr_theme)
+// Device-level theme toggle , writes the same localStorage slot (mmgr_theme)
 // that project.html's Settings toggle and the launcher's switch use, so the
 // choice persists across admin, launcher, and app. el-scoped so the gate pill
 // and the header switch stay in sync regardless of which is visible.
@@ -717,7 +717,7 @@ function tglTheme(el){
   if (window.MMGR && MMGR.Glass && MMGR.Glass.refreshTheme) MMGR.Glass.refreshTheme();
 }
 
-// Premium liquid-glass toggle — same device-level slot (mmgr_glass_mode) and
+// Premium liquid-glass toggle , same device-level slot (mmgr_glass_mode) and
 // capability floor as the project viewer's Settings toggle. On a narrow or
 // low-end device the preference is still saved; CSS glass simply stays on.
 function tglGlassMode(el){
@@ -782,7 +782,7 @@ async function submitPasswordChange(){
   toast('Admin password updated on this device.');
 }
 /* ============================================================
-   MULTI-TAB CONFLICT — same storage-event pattern as the project
+   MULTI-TAB CONFLICT , same storage-event pattern as the project
    viewer. Two admin tabs editing the project list must never
    silently overwrite each other: when another tab saves, this
    tab is notified and must choose Keep Mine or Load Theirs.
@@ -822,7 +822,7 @@ function enterAdmin(){
   _admLastWritten = JSON.stringify(projects);
   renderProjects();
   mergeLiveData();
-  // Storage events fire in OTHER tabs only — this tab is notified whenever a
+  // Storage events fire in OTHER tabs only , this tab is notified whenever a
   // peer overwrites the shared projects key while we are editing. Registered
   // once: re-login after lockAdmin() must not stack duplicate listeners.
   if (!_conflictBound){
@@ -834,7 +834,7 @@ function enterAdmin(){
         const ours = JSON.stringify(projects);
         if (e.newValue === _admLastWritten || e.newValue === ours) return; // own echo / identical content
         admShowConflict(incoming);
-      } catch(err){ /* unparseable write from elsewhere — ignore */ }
+      } catch(err){ /* unparseable write from elsewhere , ignore */ }
     });
   }
 }
@@ -910,7 +910,7 @@ function copyCode(i){
 }
 function deleteProject(i){
   const p = projects[i];
-  // STABILIZATION (2026-08-16): the cascade keys on the cloud link alone —
+  // STABILIZATION (2026-08-16): the cascade keys on the cloud link alone , 
   // a row missing its stored owner code must NOT silently skip the cloud
   // delete (the Worker falls back to the signed-in session). That gap is how
   // a "deleted" project kept showing in the Cloud Projects list.
@@ -938,7 +938,7 @@ function deleteProject(i){
         renderProjects();
         // CLOUD-CODES-AND-DELETE: soft-delete the cloud copy (tombstone) so
         // every code holder's next load answers 'project_deleted', and Undo
-        // can restore it — local + cloud + codes (owner's planning decision).
+        // can restore it , local + cloud + codes (owner's planning decision).
         if (isCloud) {
           try {
             const res = await fetch('/api/cloud/projects/' + encodeURIComponent(p.cloudId) + '/delete', {
@@ -952,7 +952,7 @@ function deleteProject(i){
               return;
             }
             // The Cloud Projects list below must reflect the tombstone
-            // immediately — the owner's exact complaint was that a deleted
+            // immediately , the owner's exact complaint was that a deleted
             // project kept showing there as live.
             try { if (cloudAdminCode()) cloudAdminList(); } catch (e2) { /* list refresh is best-effort */ }
           } catch (e) {
@@ -1118,10 +1118,10 @@ function downloadPublicData(){
     ({id,title,description,status,file,codeHash,roCodeHash}));
   const content =
 `/* ============================================================
-   My MaNaGeR — Public Projects Manifest
+   My MaNaGeR , Public Projects Manifest
    Generated by Admin Panel on ${new Date().toLocaleString()}.
    Commit this file to your repository and deploy via npx wrangler deploy (Cloudflare Workers static assets) to publish.
-   Contains hashes only — no plaintext codes.
+   Contains hashes only , no plaintext codes.
    ============================================================ */
 window.MMGR_PROJECTS = ${JSON.stringify(publicProjects, null, 2)};
 `;
@@ -1140,7 +1140,7 @@ function downloadAdminBackup(){
    IMPORT PROJECT (owner directive 2026-08-15)
    ------------------------------------------------------------
    Accepts a .json or .js file dropped/selected from disk and adds the
-   project(s) to this admin list — the local companion to "Download Public
+   project(s) to this admin list , the local companion to "Download Public
    Data". Accepted shapes:
      - projects-data.js manifest   (window.MMGR_PROJECTS = [ ... ])
      - a .json ARRAY of project records { id,title,description,status,file,
@@ -1148,7 +1148,7 @@ function downloadAdminBackup(){
      - a single project record object (same fields)
      - a project STATE export from project.html (has projectId/projectName)
    Records without a code get a fresh one generated so the project is
-   immediately openable — same behaviour as adding it by hand.
+   immediately openable , same behaviour as adding it by hand.
    ============================================================ */
 function importProject(){
   const input = document.getElementById('import-project-file');
@@ -1157,7 +1157,7 @@ function importProject(){
 function importProjectParse(text, fileName){
   let data = null;
   try {
-    // .js manifest: window.MMGR_PROJECTS = [...] — pull the array literal out.
+    // .js manifest: window.MMGR_PROJECTS = [...] , pull the array literal out.
     const m = String(text).match(/window\.MMGR_PROJECTS\s*=\s*([\s\S]*?);?\s*$/);
     if (m) {
       data = JSON.parse(m[1]);
@@ -1169,7 +1169,7 @@ function importProjectParse(text, fileName){
     return;
   }
   if (data && !Array.isArray(data) && typeof data === 'object') {
-    // Single record — or a project.html state export (projectId/projectName).
+    // Single record , or a project.html state export (projectId/projectName).
     data = [data];
   }
   if (!Array.isArray(data) || !data.length){ toast('No project records found in that file.', 'error'); return; }
@@ -1181,7 +1181,7 @@ function importProjectParse(text, fileName){
     const id = isStateExport ? String(raw.projectId) : String(raw.id || '');
     const title = (isStateExport ? raw.projectName : raw.title) || '';
     if (!id || !title){ return; }
-    // Never duplicate an existing id — skip silently (keeps re-imports safe).
+    // Never duplicate an existing id , skip silently (keeps re-imports safe).
     if (projects.some(function(p){ return p.id === id; }) || seen[id]) return;
     seen[id] = true;
     let code = raw.code || '';
@@ -1210,7 +1210,7 @@ function importProjectParse(text, fileName){
    ------------------------------------------------------------
    One click per project: POST /api/cloud/projects creates the D1 row and
    returns the OWNER code once (linked to the signed-in Google account when
-   a session cookie rides along — sign in via the rail first to get the
+   a session cookie rides along , sign in via the rail first to get the
    recover-lost-code guarantee). The cloud ID lands beside the project in
    the list and the owner code is copied to the clipboard. Opening that
    project on this device adopts the recorded code automatically, so
@@ -1219,7 +1219,7 @@ function importProjectParse(text, fileName){
 // OWNER 2026-08-15: publishing while not signed in pops the Google sign-in
 // prompt RIGHT THERE (the rail Account group's GIS button) instead of a
 // post-hoc tip, and the publish resumes automatically once the session
-// exists — so the project links to the account and the owner code is
+// exists , so the project links to the account and the owner code is
 // recoverable. Clicking Publish again while the prompt is up skips sign-in
 // and publishes unsigned (the tip below then explains the trade-off).
 let _publishAfterSignIn = null;
@@ -1247,7 +1247,7 @@ document.addEventListener('mmgr:google-signed-in', function(){
    UPDATE CLOUD SNAPSHOT (owner directive 2026-08-16, BUG-5)
    ------------------------------------------------------------
    The old per-row "Update Public File" downloaded a static
-   projects-data.js manifest — leftover from before the D1+R2
+   projects-data.js manifest , leftover from before the D1+R2
    cloud backend existed. For a CLOUD-LINKED project the real
    publish action is pushing the project's current state to the
    backend: POST /api/cloud/projects/:id/save (the exact endpoint
@@ -1285,7 +1285,7 @@ async function updateCloudSnapshot(i){
       if (lr.ok && ld.ok && ld.state) state = ld.state;
     }
     if (!state){
-      // No workspace copy anywhere yet — seed the first snapshot from this
+      // No workspace copy anywhere yet , seed the first snapshot from this
       // record. schemaVersion must track mmgr-state.js SCHEMA_VERSION.
       state = { projectId: p.id, projectName: p.title, schemaVersion: 19, updatedAt: new Date().toISOString() };
     }
@@ -1317,7 +1317,7 @@ async function publishToCloud(i){
   const p = projects[i];
   if (!p){ return; }
   if (p.cloudId && p.cloudOwnerCode){
-    // Already linked — the real publish action is pushing the latest state.
+    // Already linked , the real publish action is pushing the latest state.
     updateCloudSnapshot(i);
     return;
   }
@@ -1362,7 +1362,7 @@ function copyCloudCode(i){
 }
 
 /* ============================================================
-   CLOUD ADMIN — visibility into cloud-linked projects (Phase 2/3)
+   CLOUD ADMIN , visibility into cloud-linked projects (Phase 2/3)
    ------------------------------------------------------------
    The ADMIN_CODE Wrangler secret is the operator credential for the
    listing API (GET /api/cloud/admin/projects). Reissue reuses the
@@ -1405,7 +1405,7 @@ async function cloudAdminList(){
     if(!projects.length){ list.innerHTML = '<div class="empty">No cloud-linked projects yet.</div>'; cloudAdminStatus(''); return; }
     list.innerHTML = projects.map(function(p){
       // STABILIZATION (2026-08-16): a tombstoned project renders its
-      // "Deleted" state instead of looking live — the owner's exact report.
+      // "Deleted" state instead of looking live , the owner's exact report.
       // Undo (restore) is the only recovery path after the 5s toast window;
       // Delete permanently (purge) wipes the backend NOW, no undo.
       const deleted = !!p.deletedAt;
@@ -1455,10 +1455,10 @@ async function cloudAdminReissue(projectId){
   });
 }
 
-/* STABILIZATION (2026-08-16) — "Deleted" state actions for the Cloud
+/* STABILIZATION (2026-08-16) , "Deleted" state actions for the Cloud
    Projects list. Undo restores a tombstoned project (the only recovery path
    after the 5s delete-toast window); Delete permanently (fortify) hard-
-   purges the backend NOW — R2 blobs, codes, adoptions, changelog, D1 row —
+   purges the backend NOW , R2 blobs, codes, adoptions, changelog, D1 row , 
    with no undo ("no more cloud until another cloud upload"). Both ride the
    X-Admin-Code header like the list itself; the Worker accepts admin auth
    for these two owner-style actions by design (the site operator IS the
@@ -1513,10 +1513,10 @@ async function cloudAdminPurge(projectId){
 }
 
 /* ============================================================
-   CLOUD-CODES-AND-DELETE (2026-08-16) — per-project codes manager
+   CLOUD-CODES-AND-DELETE (2026-08-16) , per-project codes manager
    ------------------------------------------------------------
    Opens from each cloud-linked project row ("Codes"). Uses the
-   project's stored owner code (cloudOwnerCode) — the same credential
+   project's stored owner code (cloudOwnerCode) , the same credential
    updateCloudSnapshot uses. Creates editor/viewer codes (label + role
    + section scope from the live /api/cloud/sections vocabulary),
    lists them, revokes them. A created code is shown EXACTLY ONCE.
@@ -1589,7 +1589,7 @@ async function listCloudCodes(){
       const isView = e.role === 'view';
       return '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:4px 0;border-bottom:1px solid var(--border)">' +
         '<span style="color:var(--gold);font-weight:600">' + escapeHtml(e.label || (isView ? 'Viewer' : 'Editor')) + '</span>' +
-        '<span style="color:var(--slate)">' + (isView ? 'viewer · ' : 'editor · ') + escapeHtml((e.scope || []).join(', ') || '—') + ' · ' + escapeHtml(String(e.createdAt || '').slice(0,10)) + '</span>' +
+        '<span style="color:var(--slate)">' + (isView ? 'viewer · ' : 'editor · ') + escapeHtml((e.scope || []).join(', ') || '-') + ' · ' + escapeHtml(String(e.createdAt || '').slice(0,10)) + '</span>' +
         (e.active ? '<button class="btn btn-d btn-s" data-action="codesRevoke" data-id="' + e.id + '"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> Revoke</button>' : '<span style="color:var(--slate)">revoked</span>') +
         '</div>';
     }).join('');
@@ -1667,7 +1667,7 @@ document.addEventListener('keydown', e=>{
 document.getElementById('pw-new2').addEventListener('keydown', e=>{ if(e.key==='Enter') submitPasswordChange(); });
 
 /* ============================================================
-   Phase B — data-action event delegation.
+   Phase B , data-action event delegation.
    Zero inline onclick/oninput handlers remain in this page;
    every interactive element routes through ADMIN_ACTION_MAP.
    ============================================================ */
@@ -1691,7 +1691,7 @@ function tglAdminNav(){
   if (open){
     try {
       if (window.MMGR && MMGR.GoogleAuth && MMGR.GoogleAuth.ensureGisButton) MMGR.GoogleAuth.ensureGisButton();
-    } catch(e){ /* GIS quirk — harmless */ }
+    } catch(e){ /* GIS quirk , harmless */ }
   }
 }
 function closeAdminNav(){
@@ -1701,7 +1701,7 @@ function closeAdminNav(){
 }
 // Rail navigation closes the drawer (mobile) / overlay (desktop) after use.
 // Customize controls (theme/glass toggles + palette buttons) stay open so
-// the user can try them live — same contract as the app.html rail.
+// the user can try them live , same contract as the app.html rail.
 document.addEventListener('click', function(e){
   const rail = e.target.closest('#app-sidebar');
   if (!rail) return;
@@ -1765,7 +1765,7 @@ document.addEventListener('click', function(e){
   const fn = ADMIN_ACTION_MAP[el.getAttribute('data-action')];
   if (!fn) return;
   // Checkbox toggles own their click (theme): Chrome flips `checked` before
-  // this listener runs — no preventDefault, read the value as-is (same
+  // this listener runs , no preventDefault, read the value as-is (same
   // contract as the project viewer's theme toggle).
   if (el.tagName === 'INPUT' && el.type === 'checkbox'){ fn(el, e); return; }
   e.preventDefault();
@@ -1780,7 +1780,7 @@ document.addEventListener('input', function(e){
     if (fn) fn(el, e);
   }
 });
-// Import Project file picker — read the chosen file and add its projects.
+// Import Project file picker , read the chosen file and add its projects.
 document.getElementById('import-project-file').addEventListener('change', function(e){
   const file = e.target.files && e.target.files[0];
   if (!file) return;
@@ -1796,7 +1796,7 @@ document.getElementById('import-project-file').addEventListener('change', functi
 initGate();
 
 // Reflect the device-level theme + glass preferences on every admin switch
-// (gate pill + header — the early-apply snippet already handled the gate's
+// (gate pill + header , the early-apply snippet already handled the gate's
 // body class before paint) and boot the premium engine if allowed.
 (function(){
   const dark = localStorage.getItem('mmgr_theme') === 'dark';
@@ -1807,11 +1807,11 @@ initGate();
 })();
 
 /* Deploy guard: every icon in the app is a <use href="css/mmgr-icons.svg#...">.
-   If the sprite 404s on the live host the icons silently vanish — surface that
+   If the sprite 404s on the live host the icons silently vanish , surface that
    loudly. HTTP(S) only, so local file:// testing stays quiet. */
 if (window.location.protocol === 'http:' || window.location.protocol === 'https:'){
-  fetch('css/mmgr-icons.svg').then(r=>{ if(!r.ok) console.warn('ICON SPRITE MISSING: css/mmgr-icons.svg returned ' + r.status + ' — upload the css/ folder (mmgr.css + mmgr-icons.svg) to the site root.'); })
-    .catch(()=>console.warn('ICON SPRITE MISSING: css/mmgr-icons.svg could not be fetched — upload the css/ folder to the site root.'));
+  fetch('css/mmgr-icons.svg').then(r=>{ if(!r.ok) console.warn('ICON SPRITE MISSING: css/mmgr-icons.svg returned ' + r.status + ' , upload the css/ folder (mmgr.css + mmgr-icons.svg) to the site root.'); })
+    .catch(()=>console.warn('ICON SPRITE MISSING: css/mmgr-icons.svg could not be fetched , upload the css/ folder to the site root.'));
 }
 </script>
 <script src="js/mmgr-google-auth.js"></script>

@@ -1,5 +1,5 @@
 /* ============================================================
-   My MaNaGeR — DMAIC Workflow Module
+   My MaNaGeR , DMAIC Workflow Module
    Ported from the monolith (MONOLITH-PORTING-GUIDE feature 8).
    Full interactivity: editable phase content per DMAIC phase,
    per-phase complete/reopen, persistent via State.updateState.
@@ -12,11 +12,11 @@ var MMGR = window.MMGR || {};
   const U = ns.Utils;
 
   const DMAIC_DEFS = [
-    { key: 'define', title: 'D — Define', hint: 'Define the problem, goal, and boundaries.', fields: [['problem', 'Problem Statement', 'State it in measurable terms.'], ['goal', 'Goal Statement', 'Measurable improvement by what date?'], ['scope', 'Project Scope', 'Processes included and excluded.'], ['sponsor', 'Champion / Sponsor', 'Authority and accountability.'], ['voice', 'Voice of the Customer', 'What does the customer say?']] },
-    { key: 'measure', title: 'M — Measure', hint: 'Quantify the current state.', fields: [['baseline', 'Baseline Performance', 'Current defect rate / metric.'], ['defects', 'Defect Definition', 'What counts as a defect?'], ['unit', 'Unit of Measure', 'e.g. per pour, per floor.'], ['opportunity', 'Opportunities per Unit', 'How many ways can a defect occur?'], ['dpmo', 'DPMO', 'Defects per million opportunities.'], ['sigmaNow', 'Current Sigma Level', 'e.g. 2.8σ']] },
-    { key: 'analyze', title: 'A — Analyze', hint: 'Identify root causes.', fields: [['rootCauses', 'Root Causes', '5 Whys / cause-effect analysis.'], ['fishbone', 'Fishbone Notes', 'Categorized contributors.'], ['paretoTop', 'Pareto Top Drivers', 'The vital few.']] },
-    { key: 'improve', title: 'I — Improve', hint: 'Design and pilot solutions.', fields: [['solutions', 'Proposed Solutions', 'Ranked options.'], ['pilot', 'Pilot Plan', 'Where and how tested.'], ['results', 'Pilot Results', 'Measurable outcomes.']] },
-    { key: 'control', title: 'C — Control', hint: 'Sustain the improvement.', fields: [['plan', 'Control Plan', 'Standards and procedures.'], ['metrics', 'Ongoing Metrics', 'KPIs to monitor.'], ['handover', 'Handover', 'Owner and review cadence.']] }
+    { key: 'define', title: 'D , Define', hint: 'Define the problem, goal, and boundaries.', fields: [['problem', 'Problem Statement', 'State it in measurable terms.'], ['goal', 'Goal Statement', 'Measurable improvement by what date?'], ['scope', 'Project Scope', 'Processes included and excluded.'], ['sponsor', 'Champion / Sponsor', 'Authority and accountability.'], ['voice', 'Voice of the Customer', 'What does the customer say?']] },
+    { key: 'measure', title: 'M , Measure', hint: 'Quantify the current state.', fields: [['baseline', 'Baseline Performance', 'Current defect rate / metric.'], ['defects', 'Defect Definition', 'What counts as a defect?'], ['unit', 'Unit of Measure', 'e.g. per pour, per floor.'], ['opportunity', 'Opportunities per Unit', 'How many ways can a defect occur?'], ['dpmo', 'DPMO', 'Defects per million opportunities.'], ['sigmaNow', 'Current Sigma Level', 'e.g. 2.8σ']] },
+    { key: 'analyze', title: 'A , Analyze', hint: 'Identify root causes.', fields: [['rootCauses', 'Root Causes', '5 Whys / cause-effect analysis.'], ['fishbone', 'Fishbone Notes', 'Categorized contributors.'], ['paretoTop', 'Pareto Top Drivers', 'The vital few.']] },
+    { key: 'improve', title: 'I , Improve', hint: 'Design and pilot solutions.', fields: [['solutions', 'Proposed Solutions', 'Ranked options.'], ['pilot', 'Pilot Plan', 'Where and how tested.'], ['results', 'Pilot Results', 'Measurable outcomes.']] },
+    { key: 'control', title: 'C , Control', hint: 'Sustain the improvement.', fields: [['plan', 'Control Plan', 'Standards and procedures.'], ['metrics', 'Ongoing Metrics', 'KPIs to monitor.'], ['handover', 'Handover', 'Owner and review cadence.']] }
   ];
 
   function updDMAIC(phase, field, val) {
@@ -36,14 +36,14 @@ var MMGR = window.MMGR || {};
     renderDmaicSignal();
   }
 
-  // DMAIC on/off — keeps the nav visible state in sync with methodology UI.
+  // DMAIC on/off , keeps the nav visible state in sync with methodology UI.
   function tglDMAIC(on) {
     ns.State.updateState(function(s) {
       if (!s.dmaic) s.dmaic = defaultDmaic();
       s.dmaic.active = !!on;
     });
     renderDMAIC();
-    if (ns.App && ns.App.showToast && on) ns.App.showToast('DMAIC Mode activated — open the DMAIC tab.', 'ok');
+    if (ns.App && ns.App.showToast && on) ns.App.showToast('DMAIC Mode activated , open the DMAIC tab.', 'ok');
   }
 
   function defaultDmaic() {
@@ -71,8 +71,8 @@ var MMGR = window.MMGR || {};
 
   // ---- Dashboard signal (gap: DMAIC phase completion drove no dashboard
   // signal) ----
-  // A compact progress strip on the Dashboard — visible only while DMAIC is
-  // active — so phase completion feeds the at-a-glance view instead of
+  // A compact progress strip on the Dashboard , visible only while DMAIC is
+  // active , so phase completion feeds the at-a-glance view instead of
   // living only inside the DMAIC tab.
   function renderDmaicSignal() {
     const s = ns.State.getState();

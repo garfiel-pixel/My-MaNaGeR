@@ -1,5 +1,5 @@
 /* ============================================================
-   My MaNaGeR — History (Undo / Redo / Hold-to-Clear)
+   My MaNaGeR , History (Undo / Redo / Hold-to-Clear)
    Persistent undo/redo stack, hold-to-clear, section clear.
    Extracted from mmgr-app.js.
    ============================================================ */
@@ -17,7 +17,7 @@ var MMGR = window.MMGR || {};
   // ---- Hold to Clear ----
   let holdTimer = null;
   let holdShowedBar = false;
-  const HOLD_MSG_ON = ' Hold to clear — release to cancel';
+  const HOLD_MSG_ON = ' Hold to clear , release to cancel';
   const HOLD_MSG_OFF = ' Page cleared.';
 
   function startHold(section) {

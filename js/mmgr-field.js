@@ -1,5 +1,5 @@
 /* ============================================================
-   My MaNaGeR — Daily Field Report Module
+   My MaNaGeR , Daily Field Report Module
    ============================================================ */
 var MMGR = window.MMGR || {};
 
@@ -71,7 +71,7 @@ var MMGR = window.MMGR || {};
     s.dailySnapshot = { date: U.todayStr(), taskStates: states };
     ns.State.save(true);
     if (ns.App && ns.App.showToast) {
-      ns.App.showToast('Daily snapshot saved — diff will show tomorrow.', 'ok');
+      ns.App.showToast('Daily snapshot saved , diff will show tomorrow.', 'ok');
     }
     return s.dailySnapshot;
   }
@@ -112,7 +112,7 @@ var MMGR = window.MMGR || {};
       const today = U.todayStr();
       return t.startDate <= today && t.endDate >= today;
     });
-    return `DAILY FIELD REPORT — ${U.todayStr()}
+    return `DAILY FIELD REPORT , ${U.todayStr()}
 
 === PROJECT STATUS ===
 Completion: ${s.tasks ? Math.round((s.tasks.filter(t => t.status === 'completed').length / s.tasks.length) * 100) : 0}%

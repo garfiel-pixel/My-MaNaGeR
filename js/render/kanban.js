@@ -1,5 +1,5 @@
 /* ============================================================
-   My MaNaGeR — Kanban Board
+   My MaNaGeR , Kanban Board
    Card markup, board rendering, lead-time lane.
    Extracted from mmgr-render.js.
    ============================================================ */

@@ -1,31 +1,31 @@
 /* ============================================================
-   My MaNaGeR — Optional Operator Identity (GOOGLE-OPERATOR-
+   My MaNaGeR , Optional Operator Identity (GOOGLE-OPERATOR-
    IDENTITY-v1)
    ------------------------------------------------------------
    Loaded by app.html, admin.html, and project.html (the project
    Controls drawer mounts the optional Drive backup section there
    via #drive-section), plus the marketing pages (index/about/
-   features/contact — the header email sign-in sheet mounts only
+   features/contact , the header email sign-in sheet mounts only
    the email+password form via mountEmailAuth('marketing-email-auth')).
    This is an OPTIONAL operator-identity layer ONLY:
 
    - It NEVER replaces, bypasses, or weakens per-project access
-     codes. No code path in this module opens project data — the
+     codes. No code path in this module opens project data , the
      access-code unlock modal and the project grid are untouched.
    - Sign-in posts the Google ID token to /api/auth/google; the
      Worker verifies it server-side (aud/iss/exp) and sets an
      HttpOnly Secure SameSite=Lax session cookie (mmgr_session).
      The Client Secret never appears in this file or any
      client-shipped asset.
-   - Not signed in? The button is simply never interacted with —
+   - Not signed in? The button is simply never interacted with , 
      the rest of the page runs completely uninterrupted. Nothing
      here is gated on an identity.
    - /api/auth/me restores the operator identity from the session
      cookie on load. If it is unreachable (static host, offline)
      or unsigned, the page shows the sign-in button and keeps
      working. A failed sign-in leaves the user exactly where they
-     are — no false signed-in state, no redirect, no unlock.
-   - localStorage is NOT treated as proof of auth — the server
+     are , no false signed-in state, no redirect, no unlock.
+   - localStorage is NOT treated as proof of auth , the server
      session cookie is the only truth; the UI cache below is
      display-only and never gates anything.
 
@@ -39,13 +39,13 @@ var MMGR = window.MMGR || {};
 (function(ns) {
   'use strict';
 
-  // Public Client ID — safe to ship (also mirrored in worker.js / wrangler
+  // Public Client ID , safe to ship (also mirrored in worker.js / wrangler
   // vars). The Client Secret lives ONLY in the Worker's env.
   const CLIENT_ID = '297970704704-m05hgt93lfaq286q90br8c96ffg1aph3.apps.googleusercontent.com';
   const GIS_SRC = 'https://accounts.google.com/gsi/client';  let _gisInit = false;   // GIS initialized exactly once
   let _restored = false;  // /api/auth/me consulted at most once per boot
   let _popupWarnShown = false; // BUG-2: popup-blocked warning shown at most once
-  let _user = null;  // signed-in operator (session restore, Google, or email) — display-only, never gates anything
+  let _user = null;  // signed-in operator (session restore, Google, or email) , display-only, never gates anything
 
   function $(id) { return document.getElementById(id); }
   function gisReady() { return !!(window.google && window.google.accounts && window.google.accounts.id); }
@@ -53,8 +53,8 @@ var MMGR = window.MMGR || {};
 
   // BUG-2: detect when the GIS popup is blocked by the browser. The GIS
   // library logs to console.error (GSI_LOGGER) but provides no callback for
-  // popup failure. We intercept window.open during the GIS button click —
-  // if it returns null, the popup was blocked — and show a user-facing
+  // popup failure. We intercept window.open during the GIS button click , 
+  // if it returns null, the popup was blocked , and show a user-facing
   // message instead of a silent console error.
   function installPopupBlockDetector() {
     const host = $('google-signin-button');
@@ -73,7 +73,7 @@ var MMGR = window.MMGR || {};
           } else {
             const statusEl = $('google-signin-status') || $('drive-sync-status');
             if (statusEl) {
-              statusEl.textContent = 'Popup blocked — allow popups for this site, or use email sign-in.';
+              statusEl.textContent = 'Popup blocked , allow popups for this site, or use email sign-in.';
               statusEl.classList.add('is-err');
             }
           }
@@ -188,7 +188,7 @@ var MMGR = window.MMGR || {};
     if (forgotBtn) forgotBtn.hidden = false;
     if (resetPanel) resetPanel.hidden = true;
     if (checkPanel) checkPanel.hidden = true;
-    // NOTE: form.hidden is intentionally NOT touched here — app.html/admin.html
+    // NOTE: form.hidden is intentionally NOT touched here , app.html/admin.html
     // keep the form behind the "Sign in with email instead" toggle; marketing
     // pages restore it explicitly via renderSigninSignedOut().
   }
@@ -207,7 +207,7 @@ var MMGR = window.MMGR || {};
     // sign-in sheet) can render its own signed-in state. App pages listen
     // to mmgr:google-signed-in and ignore this event.
     _user = user;
-    // STABILIZATION 2026-08-16: project.html header chip — the signed-in
+    // STABILIZATION 2026-08-16: project.html header chip , the signed-in
     // identity, mirroring the app.html rail: a name-initial avatar (or the
     // Google photo when provided) + the operator name + a Premium pill. The
     // pill is a [data-plan-badge] mount that refreshPlan() fills. Clicking
@@ -244,7 +244,7 @@ var MMGR = window.MMGR || {};
     document.dispatchEvent(new CustomEvent('mmgr:user-changed', { detail: user }));
     // Plan badge follows the identity (see refreshPlan below).
     refreshPlan();
-    // AUTH MAINFRAME 2026-08-17 — password-change triggers follow the
+    // AUTH MAINFRAME 2026-08-17 , password-change triggers follow the
     // account type on EVERY surface (the chip is app.html/admin.html
     // only; marketing pages render their own account row, so this must
     // run before the chip guard below).
@@ -275,7 +275,7 @@ var MMGR = window.MMGR || {};
     chip.appendChild(avatar);
     chip.appendChild(name);
     chip.appendChild(out);
-    // AUTH MAINFRAME 2026-08-17 — password change (email accounts): the
+    // AUTH MAINFRAME 2026-08-17 , password change (email accounts): the
     // shared control mounts into the signed-in chip; the trigger stays
     // hidden for Google accounts (no password exists for them).
     mountPasswordControl(chip);
@@ -284,7 +284,7 @@ var MMGR = window.MMGR || {};
   // STABILIZATION 2026-08-16: renders the account's Premium pill into every
   // [data-plan-badge] mount on the page (project.html header chip, marketing
   // sign-in sheet, admin rail Account group) so the plan reflects wherever
-  // the identity is shown — exactly like the app.html rail footer, which
+  // the identity is shown , exactly like the app.html rail footer, which
   // keeps its own loadPlan() in mmgr-cloud-dash.js (same session-gated
   // endpoint; app.html has no [data-plan-badge] mounts, so no double render).
   // Free or unconfigured plan -> mounts stay hidden. Zero-throw: any failure
@@ -321,13 +321,13 @@ var MMGR = window.MMGR || {};
         const data = await res.json();
         if (data && data.ok && data.user) { showUser(data.user); return; }
       }
-    } catch (e) { /* static host / offline — fall through */ }
+    } catch (e) { /* static host / offline , fall through */ }
     showButton();
   }
 
   // GIS credential callback: hand the ID token to the Worker. On success show
   // the chip + notify (event + optional hook). On failure do NOTHING that
-  // could imply signed-in state — the user stays exactly where they are.
+  // could imply signed-in state , the user stays exactly where they are.
   async function handleCredentialResponse(resp) {
     const credential = resp && resp.credential;
     if (!credential) return;
@@ -347,7 +347,7 @@ var MMGR = window.MMGR || {};
           try { window.mmgrOnGoogleSignIn(data.user); } catch (e) { /* optional hook */ }
         }
       } else {
-        // Worker rejected the token (or a stale/forged credential) — no false
+        // Worker rejected the token (or a stale/forged credential) , no false
         // signed-in state, no redirect, no unlock.
         showButton();
       }
@@ -369,8 +369,8 @@ var MMGR = window.MMGR || {};
   // OWNER 2026-08-15: programmatic sign-in prompt for cloud actions that
   // need a Google session (owner-code recovery, admin publish-linking).
   // Must run inside a user gesture (a click handler). Shows the GIS One Tap
-  // / account chooser immediately — "pop the Google sign-in prompt right
-  // there" — and falls back to clicking the rendered GIS button when the
+  // / account chooser immediately , "pop the Google sign-in prompt right
+  // there" , and falls back to clicking the rendered GIS button when the
   // prompt API is unavailable (blocked / iframe). Returns true when a prompt
   // path was attempted, false when GIS is genuinely unavailable. If already
   // signed in, it's a no-op success.
@@ -396,10 +396,10 @@ var MMGR = window.MMGR || {};
 
   /* ============================================================
      EMAIL + PASSWORD SIGN-IN (deferred cloud item #14, completed
-     2026-08-12) — alternative provider beside Google.
+     2026-08-12) , alternative provider beside Google.
      ------------------------------------------------------------
      Register/login validate against D1 auth_users and issue the SAME
-     mmgr_session cookie as Google, with sub = 'email:<address>' — a
+     mmgr_session cookie as Google, with sub = 'email:<address>' , a
      namespace that can never collide with Google's numeric subs, so
      every downstream system (cloud owner identity, prefs R2 keys,
      presence roster, billing owner_sub) treats the account identically.
@@ -434,7 +434,7 @@ var MMGR = window.MMGR || {};
       '</div>' +
       '<div class="email-auth-err" role="status" aria-live="polite"></div>' +
       '</form>' +
-      // AUTH MAINFRAME v2 — forgot-password request panel (login sheet). The
+      // AUTH MAINFRAME v2 , forgot-password request panel (login sheet). The
       // server answers the SAME generic message whether or not the account
       // exists, so this form can never probe which emails have accounts.
       '<div class="email-auth-reset" hidden>' +
@@ -447,7 +447,7 @@ var MMGR = window.MMGR || {};
       '<div class="email-auth-err" role="status" aria-live="polite"></div>' +
       '<div class="email-auth-alt"><button type="button" class="email-auth-reset-back">Back to sign in</button></div>' +
       '</div>' +
-      // AUTH MAINFRAME v2 — "check your inbox" panel (register verification /
+      // AUTH MAINFRAME v2 , "check your inbox" panel (register verification /
       // reset-request outcomes). The Resend button only shows for the verify
       // case (POST /api/auth/resend-verify); reset just tells the user to
       // check their inbox (the response is deliberately generic).
@@ -470,7 +470,7 @@ var MMGR = window.MMGR || {};
 
   // POST to the Worker and resolve with the signed-in user on success.
   // Rejects with a user-facing message on any failure (incl. the auth
-  // rate-limit 429). Never throws on network errors — same zero-throw
+  // rate-limit 429). Never throws on network errors , same zero-throw
   // discipline as the Google path.
   async function emailAuthPost(path, payload) {
     let res;
@@ -487,7 +487,7 @@ var MMGR = window.MMGR || {};
     let data = null;
     try { data = await res.json(); } catch (e) { /* non-JSON failure */ }
     if (!res.ok || !data || !data.ok) {
-      if (res.status === 429) throw new Error('Too many attempts — wait a minute and try again.');
+      if (res.status === 429) throw new Error('Too many attempts , wait a minute and try again.');
       throw new Error((data && data.error) || 'Sign-in failed (HTTP ' + res.status + ').');
     }
     return data;
@@ -497,7 +497,7 @@ var MMGR = window.MMGR || {};
     return emailAuthPost('/api/auth/login', { email: email, password: password }).then(function(d) { return d.user; });
   }
 
-  // AUTH MAINFRAME v2: register answers { user, emailSent } — emailSent tells
+  // AUTH MAINFRAME v2: register answers { user, emailSent } , emailSent tells
   // the UI whether a confirmation email was dispatched (verification flow).
   function emailRegister(email, password, name) {
     return emailAuthPost('/api/auth/register', { email: email, password: password, name: name }).then(function(d) {
@@ -506,7 +506,7 @@ var MMGR = window.MMGR || {};
   }
 
   // Mount the toggle + form. Default host is #google-signin-button (app.html /
-  // admin.html auth bars — the block is inserted right after it, preserving the
+  // admin.html auth bars , the block is inserted right after it, preserving the
   // existing layout). Marketing pages pass their own container host (e.g.
   // 'marketing-email-auth'): the block is then appended INSIDE that container
   // and, with opts.showToggle === false, the "Sign in with email instead" toggle
@@ -536,9 +536,9 @@ var MMGR = window.MMGR || {};
     wireEmailAuth(block);
   }
 
-  // AUTH MAINFRAME v2 — show the "check your inbox" panel (form + reset panel
+  // AUTH MAINFRAME v2 , show the "check your inbox" panel (form + reset panel
   // hidden). showResend reveals the Resend-confirmation-link button (verify
-  // case only — reset sends no follow-up action).
+  // case only , reset sends no follow-up action).
   function showEmailAuthCheck(block, msg, showResend) {
     const f = emailAuthQ(block, '.email-auth-form');
     const rp = emailAuthQ(block, '.email-auth-reset');
@@ -596,7 +596,7 @@ var MMGR = window.MMGR || {};
       if (errEl) errEl.textContent = '';
     });
 
-    // AUTH MAINFRAME v2 — forgot-password: swap the form for the reset
+    // AUTH MAINFRAME v2 , forgot-password: swap the form for the reset
     // request panel, POST /api/auth/forgot, then land on the generic
     // check-your-inbox state (no existence leak either way).
     if (forgotBtn) forgotBtn.addEventListener('click', function() {
@@ -634,7 +634,7 @@ var MMGR = window.MMGR || {};
       if (!email) { if (checkMsg) checkMsg.textContent = 'Sign in with the account to request a new link.'; return; }
       resendBtn.disabled = true;
       emailAuthPost('/api/auth/resend-verify', { email: email }).then(function() {
-        if (checkMsg) checkMsg.textContent = 'If an account needs verification, a new confirmation link is on its way — check your inbox.';
+        if (checkMsg) checkMsg.textContent = 'If an account needs verification, a new confirmation link is on its way , check your inbox.';
       }).catch(function(err) {
         if (checkMsg) checkMsg.textContent = (err && err.message) || 'Could not send the link right now.';
       }).finally(function() {
@@ -670,7 +670,7 @@ var MMGR = window.MMGR || {};
         ? emailRegister(email, password, name)
         : emailLogin(email, password);
       p.then(function(result) {
-        // AUTH MAINFRAME v2: register now emails a confirmation link — show
+        // AUTH MAINFRAME v2: register now emails a confirmation link , show
         // the check-your-inbox state INSTEAD of the signed-in chip. The
         // session cookie is already set server-side; "Got it" completes the
         // sign-in render (showUser + events) so the user keeps the account.
@@ -679,7 +679,7 @@ var MMGR = window.MMGR || {};
           showEmailAuthCheck(block, 'We sent a confirmation link to ' + email + '. Cloud projects unlock once you click it.', true);
           return;
         }
-        // Login, or register on a host without email configured (dormant) —
+        // Login, or register on a host without email configured (dormant) , 
         // same success path as Google: chip replaces the auth surface, and
         // the identical event fires so the cloud drawer / hooks refresh.
         const user = (result && result.user) ? result.user : result;
@@ -695,15 +695,15 @@ var MMGR = window.MMGR || {};
   }
 
   /* ============================================================
-     PASSWORD CHANGE (AUTH MAINFRAME — 2026-08-17) — the session-
+     PASSWORD CHANGE (AUTH MAINFRAME , 2026-08-17) , the session-
      gated POST /api/auth/password endpoint wired into every account
      surface via mountPasswordControl(hostEl): the signed-in chip on
      app.html/admin.html (showUser mounts it), the marketing sign-in
      sheet's account row (marketing.js mounts it), and project.html
      Settings > Controls > Profile (auto-mounted into [data-pw-host]).
      The trigger shows ONLY for email accounts (sub = 'email:…');
-     Google accounts have no password — the worker answers 400 for
-     them — so the button is never rendered for those. States:
+     Google accounts have no password , the worker answers 400 for
+     them , so the button is never rendered for those. States:
      form → busy → inline error (role=status) → success confirmation
      (every other device is signed out server-side). Passwords are
      cleared after every attempt; zero inline handlers; [hidden]
@@ -764,7 +764,7 @@ var MMGR = window.MMGR || {};
     let data = null;
     try { data = await res.json(); } catch (e) { /* non-JSON failure */ }
     if (!res.ok || !data || !data.ok) {
-      if (res.status === 429) throw new Error('Too many attempts — wait a minute and try again.');
+      if (res.status === 429) throw new Error('Too many attempts , wait a minute and try again.');
       if (res.status === 401) throw new Error('Current password is incorrect.');
       throw new Error((data && data.error) || 'Could not update the password (HTTP ' + res.status + ').');
     }
@@ -864,23 +864,23 @@ var MMGR = window.MMGR || {};
   }
 
   /* ============================================================
-     GOOGLE-DRIVE-BACKUP — optional Drive backup & restore
+     GOOGLE-DRIVE-BACKUP , optional Drive backup & restore
      ------------------------------------------------------------
      Strictly client-side, strictly local-first: the workspace JSON
      goes DIRECTLY from this browser to the Google Drive REST API
-     using the OAuth access token — no server relay, no third party.
+     using the OAuth access token , no server relay, no third party.
 
      - The GIS ID-token flow (above) cannot request OAuth scopes, so
        a separate GIS OAuth2 token client is used for Drive. It asks
-       for https://www.googleapis.com/auth/drive.file ONLY — the app
+       for https://www.googleapis.com/auth/drive.file ONLY , the app
        sees files it created (mymanager-backup.json), never the
        user's whole Drive.
      - The access token is kept in a MODULE variable (session memory)
-       — never localStorage, never shipped to the Worker, never
+       , never localStorage, never shipped to the Worker, never
        logged. It is refreshed silently by GIS when needed.
      - Backup collects ONLY the workspace slots in localStorage
        (mmgr_state_*, mmgr_unlocked_*, mmgr_scope_*, current project)
-       — device-only slots (sync identity, client id, error webhook,
+       , device-only slots (sync identity, client id, error webhook,
        glass mode, viewport prefs) are deliberately excluded, so they
        never leave this device.
      - OPTIONAL passphrase encryption: when a passphrase is set, the
@@ -896,7 +896,7 @@ var MMGR = window.MMGR || {};
        keys, then reloads. A stale backup never wipes local state
        without the user confirming first.
      - Zero-throw: missing GIS, offline, denied scope, or a 401 all
-       degrade to a status line — never a crash.
+       degrade to a status line , never a crash.
      ============================================================ */
   const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
   const DRIVE_FILE = 'mymanager-backup.json';
@@ -910,11 +910,11 @@ var MMGR = window.MMGR || {};
   let _tokenInflight = false;  // re-entry guard: one token request at a time
 
   // Auto-backup device-level prefs (localStorage, same family as the
-  // mmgr_sync_* slots — never project state).
+  // mmgr_sync_* slots , never project state).
   const AUTO_KEY = 'mmgr_drive_auto';   // 'off' | '15' | '30' | '60' (minutes)
   const LAST_KEY = 'mmgr_drive_last';   // ISO timestamp of last successful auto backup
 
-  // The OAuth access token also caches to sessionStorage — literal "session
+  // The OAuth access token also caches to sessionStorage , literal "session
   // memory" that survives a reload WITHIN the same tab session, so the
   // background auto-backup keeps working after refresh without re-consent.
   // Never localStorage (a token must not outlive the session), never shipped.
@@ -927,8 +927,8 @@ var MMGR = window.MMGR || {};
   let _driveBusy = false;     // manual/auto mutual exclusion for Drive ops
 
   // Optional passphrase encryption. The passphrase itself is session memory
-  // ONLY (module var + sessionStorage, exactly like the OAuth token) — never
-  // localStorage, never shipped — while the "encryption is ON" flag is a
+  // ONLY (module var + sessionStorage, exactly like the OAuth token) , never
+  // localStorage, never shipped , while the "encryption is ON" flag is a
   // persistent device pref (localStorage) so a fresh session fails CLOSED
   // instead of silently uploading plaintext after a browser restart.
   const ENC_FLAG_KEY = 'mmgr_drive_enc';   // '1' = backups must be encrypted
@@ -942,7 +942,7 @@ var MMGR = window.MMGR || {};
     return !!(window.google && window.google.accounts && window.google.accounts.oauth2);
   }
 
-  // The GIS script is async+defer in the page head — if the user clicks a
+  // The GIS script is async+defer in the page head , if the user clicks a
   // Drive button before it has loaded, wait (briefly) for it instead of
   // reporting "unavailable". Injects the script if the tag is missing
   // (admin.html / offline-first shells). Zero-throw; rejects on timeout.
@@ -970,7 +970,7 @@ var MMGR = window.MMGR || {};
     });
   }
 
-  // Workspace keys only — device-only slots never ride along (see header).
+  // Workspace keys only , device-only slots never ride along (see header).
   function isWorkspaceKey(k) {
     return k === 'mmgr_current_project' ||
       k.indexOf('mmgr_state_') === 0 ||
@@ -986,7 +986,7 @@ var MMGR = window.MMGR || {};
     try {
       sessionStorage.setItem(DRIVE_TOKEN_KEY, token);
       sessionStorage.setItem(DRIVE_TOKEN_EXP_KEY, String(expiry));
-    } catch (e) { /* sessionStorage blocked — module var still holds it */ }
+    } catch (e) { /* sessionStorage blocked , module var still holds it */ }
   }
   function clearDriveTokenCache() {
     _driveToken = null;
@@ -1040,7 +1040,7 @@ var MMGR = window.MMGR || {};
   function requestDriveToken(forceConsent) {
     const client = driveTokenClient();
     if (!client) {
-      return Promise.reject(new Error('Google sign-in is unavailable (offline or blocked) — Drive backup needs Google.'));
+      return Promise.reject(new Error('Google sign-in is unavailable (offline or blocked) , Drive backup needs Google.'));
     }
     return new Promise(function(resolve, reject) {
       _tokenWaiter = { resolve: resolve, reject: reject };
@@ -1061,7 +1061,7 @@ var MMGR = window.MMGR || {};
     // Re-entry guard: never stack a second token request on top of a pending
     // one (a stale waiter would orphan the first promise forever).
     if (_tokenInflight) {
-      throw new Error('A Google sign-in request is already in progress — wait for it to finish.');
+      throw new Error('A Google sign-in request is already in progress , wait for it to finish.');
     }
     try {
       if (!oauth2Ready()) await waitForOAuth2(); // let the async GIS script catch up
@@ -1081,13 +1081,13 @@ var MMGR = window.MMGR || {};
   }
 
   // Silent variant for the background auto-backup timer: NEVER pops the
-  // consent screen, NEVER throws. Returns a valid token or null — the timer
+  // consent screen, NEVER throws. Returns a valid token or null , the timer
   // just skips that tick and tries again on the next interval.
   async function getDriveTokenSilent() {
     const cached = restoreDriveToken();
     if (cached) return cached;
     // No usable token: only attempt a (silent) refresh if a grant was ever
-    // obtained on this device — otherwise a timer would surprise the user
+    // obtained on this device , otherwise a timer would surprise the user
     // with a consent popup out of nowhere.
     let granted = false;
     try { granted = localStorage.getItem(DRIVE_GRANT_KEY) === '1'; } catch (e) { /* ignore */ }
@@ -1109,7 +1109,7 @@ var MMGR = window.MMGR || {};
   // Authorized Drive fetch with one 401 → refresh-and-retry. Never throws on
   // HTTP errors; callers inspect res.ok. silentOnly (auto-backup path) keeps
   // the retry quiet: refresh via getDriveTokenSilent (never a consent popup)
-  // and bail out — no fallback to the interactive consent screen.
+  // and bail out , no fallback to the interactive consent screen.
   async function driveFetch(url, options, token, retried, silentOnly) {
     if (!token) token = silentOnly ? await getDriveTokenSilent() : await getDriveToken(false);
     if (!token) throw new Error('No Google Drive access token.');
@@ -1121,7 +1121,7 @@ var MMGR = window.MMGR || {};
     if (res.status === 401 && !retried) {
       clearDriveTokenCache();
       const fresh = silentOnly ? await getDriveTokenSilent() : await getDriveToken(false);
-      if (!fresh) throw new Error('Google Drive session expired — sign in again to back up.');
+      if (!fresh) throw new Error('Google Drive session expired , sign in again to back up.');
       return driveFetch(url, options, fresh, true, silentOnly);
     }
     return res;
@@ -1139,14 +1139,14 @@ var MMGR = window.MMGR || {};
   // AES-256-GCM with a PBKDF2-derived key; fresh 16-byte salt + 12-byte IV on
   // every backup so identical workspaces never produce identical ciphertext.
   // GCM authenticates the ciphertext, so a wrong passphrase FAILS decryption
-  // (tag mismatch) instead of yielding garbage — restore can detect it and
+  // (tag mismatch) instead of yielding garbage , restore can detect it and
   // refuses to overwrite anything.
   function cryptoOk() {
     return !!(window.crypto && window.crypto.subtle && window.TextEncoder && window.TextDecoder);
   }
   function bytesToB64(bytes) {
     let s = '';
-    for (let i = 0; i < bytes.length; i += 0x8000) { // chunked — no call-stack overflow on big states
+    for (let i = 0; i < bytes.length; i += 0x8000) { // chunked , no call-stack overflow on big states
       s += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
     }
     return btoa(s);
@@ -1181,7 +1181,7 @@ var MMGR = window.MMGR || {};
   }
   // Unseal { salt, iv, data }. GCM auth failure (wrong passphrase / tampered
   // file) rejects with an OperationError, which callers translate to a clear
-  // message — nothing is ever written on a failed decrypt.
+  // message , nothing is ever written on a failed decrypt.
   // kdfOverride comes from the envelope ({ iterations, hash }) so backups made
   // with different KDF settings still decrypt; falls back to the constants.
   async function decryptPayload(enc, pass, kdfOverride) {
@@ -1218,7 +1218,7 @@ var MMGR = window.MMGR || {};
         sessionStorage.removeItem(ENC_PASS_KEY);
         localStorage.removeItem(ENC_FLAG_KEY);
       }
-    } catch (e) { /* storage blocked — module var still holds it */ }
+    } catch (e) { /* storage blocked , module var still holds it */ }
     return !!p;
   }
   // data-action / auth-bar entry point. Refuses to enable when the browser
@@ -1227,14 +1227,14 @@ var MMGR = window.MMGR || {};
     const v = (el && el.value != null) ? el.value : '';
     if (v && !cryptoOk()) {
       if (el && 'value' in el) el.value = '';
-      setDriveStatus('Encryption is unavailable in this browser (needs HTTPS) — passphrase not saved.', 'err');
+      setDriveStatus('Encryption is unavailable in this browser (needs HTTPS) , passphrase not saved.', 'err');
       return;
     }
     const on = setDrivePass(v);
     if (el && 'value' in el) el.value = ''; // never echo the passphrase in the DOM
     setDriveStatus(on
-      ? 'Backup encryption ON — future backups are passphrase-encrypted (AES-256-GCM).'
-      : 'Backup encryption OFF — backups upload as plaintext.',
+      ? 'Backup encryption ON , future backups are passphrase-encrypted (AES-256-GCM).'
+      : 'Backup encryption OFF , backups upload as plaintext.',
       on ? 'ok' : 'warn');
   }
 
@@ -1247,7 +1247,7 @@ var MMGR = window.MMGR || {};
         const k = localStorage.key(i);
         if (k && isWorkspaceKey(k)) data[k] = localStorage.getItem(k);
       }
-    } catch (e) { /* storage locked — best effort */ }
+    } catch (e) { /* storage locked , best effort */ }
     return {
       app: 'mymanager',
       kind: 'workspace-backup',
@@ -1269,12 +1269,12 @@ var MMGR = window.MMGR || {};
 
   // Package the workspace and push it to Drive (multipart upload). Creates
   // mymanager-backup.json on first run, PATCHes it on later runs. When
-  // silentOnly is set (auto-backup) every Drive call stays quiet — no consent
+  // silentOnly is set (auto-backup) every Drive call stays quiet , no consent
   // popup can ever come from this path.
   async function backupToDrive(silentOnly) {
     const payload = collectWorkspace();
     // Optional passphrase encryption: when ON, seal the workspace envelope
-    // with AES-256-GCM BEFORE it leaves this device. Fail-closed — if the
+    // with AES-256-GCM BEFORE it leaves this device. Fail-closed , if the
     // flag is on but no passphrase is in session memory (fresh browser
     // session), REFUSE to upload rather than silently write plaintext to
     // Drive. The inner payload (exportedAt + data) is what gets sealed.
@@ -1282,10 +1282,10 @@ var MMGR = window.MMGR || {};
     if (encryptionEnabled()) {
       const pass = getDrivePass();
       if (!pass) {
-        throw new Error('Backup encryption is ON — enter your backup passphrase first (a backup never uploads plaintext while it\u2019s on).');
+        throw new Error('Backup encryption is ON , enter your backup passphrase first (a backup never uploads plaintext while it\u2019s on).');
       }
       if (!cryptoOk()) {
-        throw new Error('Encryption is unavailable in this browser (needs HTTPS) — turn backup encryption off or use a secure connection.');
+        throw new Error('Encryption is unavailable in this browser (needs HTTPS) , turn backup encryption off or use a secure connection.');
       }
       const sealed = await encryptPayload(payload, pass);
       uploadDoc = {
@@ -1329,7 +1329,7 @@ var MMGR = window.MMGR || {};
   async function restoreFromDrive() {
     const existing = await findDriveBackup();
     if (!existing || !existing.id) {
-      throw new Error('No backup found on Drive yet — run “Backup to Drive” first.');
+      throw new Error('No backup found on Drive yet , run "Backup to Drive" first.');
     }
     const res = await driveFetch(DRIVE_API + '/' + encodeURIComponent(existing.id) + '?alt=media');
     if (!res.ok) throw new Error('Restore download failed (HTTP ' + res.status + ').');
@@ -1341,14 +1341,14 @@ var MMGR = window.MMGR || {};
     if (raw && raw.encrypted) {
       const pass = getDrivePass();
       if (!pass) {
-        throw new Error('That backup is encrypted — enter your backup passphrase (Backup settings) to restore it.');
+        throw new Error('That backup is encrypted , enter your backup passphrase (Backup settings) to restore it.');
       }
       try {
         // Pass the envelope's recorded KDF settings so a future iteration/hash
         // change never orphans older encrypted backups.
         payload = await decryptPayload(raw, pass, (raw && raw.kdf) ? raw.kdf : null);
       } catch (e) {
-        throw new Error('Wrong passphrase or corrupted backup — nothing was restored.');
+        throw new Error('Wrong passphrase or corrupted backup , nothing was restored.');
       }
     }
     if (!payload || payload.app !== 'mymanager' || payload.kind !== 'workspace-backup' || !payload.data || typeof payload.data !== 'object') {
@@ -1396,21 +1396,21 @@ var MMGR = window.MMGR || {};
     // Respect the chosen interval since the last successful auto backup.
     const last = getLastAutoBackup();
     if (last && Number.isFinite(new Date(last).getTime()) && (Date.now() - new Date(last).getTime()) < mins * 60000) return false;
-    // Silent token only — never a consent popup from a background timer.
+    // Silent token only , never a consent popup from a background timer.
     const token = await getDriveTokenSilent();
     if (!token) return false;
     _driveBusy = true;
     setDriveBusy(true);
     setDriveStatus('Auto-backup…', 'busy');
     try {
-      const r = await backupToDrive(true); // silentOnly — every call stays quiet
+      const r = await backupToDrive(true); // silentOnly , every call stays quiet
       setLastAutoBackup(new Date().toISOString());
-      if (!document.hidden) setDriveStatus('Auto-backup saved — ' + r.keyCount + ' workspace keys.', 'ok');
+      if (!document.hidden) setDriveStatus('Auto-backup saved , ' + r.keyCount + ' workspace keys.', 'ok');
       return true;
     } catch (e) {
       if (window.console && window.console.warn) window.console.warn('mmgr-google-auth: auto-backup skipped', e && e.message);
       // Fail-closed: when encryption is ON but the session passphrase is
-      // missing, the user must act to resume backups — show a persistent hint
+      // missing, the user must act to resume backups , show a persistent hint
       // (only when the tab is visible) instead of going completely silent.
       const noPass = /passphrase/i.test((e && e.message) || '');
       if (!document.hidden) setDriveStatus(noPass ? 'Enter your backup passphrase to resume auto-backup.' : '', 'err');
@@ -1434,7 +1434,7 @@ var MMGR = window.MMGR || {};
     }, 60000);
   }
 
-  // ---- UI wiring (app.html auth bar). No inline onclick — the module
+  // ---- UI wiring (app.html auth bar). No inline onclick , the module
   // binds the buttons directly, matching the zero-inline-handler rule. ----
   function setDriveStatus(msg, kind) {
     const s = $('drive-sync-status');
@@ -1448,7 +1448,7 @@ var MMGR = window.MMGR || {};
     if (b) b.disabled = busy;
     if (r) r.disabled = busy;
     // The project.html drawer buttons use data-action delegation instead of
-    // ids — disable them too so a running backup/restore can't be re-triggered
+    // ids , disable them too so a running backup/restore can't be re-triggered
     // there (the _driveBusy guard would also block it, this is just visual).
     document.querySelectorAll('[data-action="driveBackup"], [data-action="driveRestore"]').forEach(function(btn) {
       btn.disabled = busy;
@@ -1460,7 +1460,7 @@ var MMGR = window.MMGR || {};
   function autoIntervalStatus(v) {
     if (v === 'off') { setDriveStatus('Auto-backup off.', 'ok'); return; }
     const next = getLastAutoBackup();
-    setDriveStatus('Auto-backup every ' + v + ' min' + (next ? ' — next ' + new Date(new Date(next).getTime() + parseInt(v, 10) * 60000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '') + '.', 'ok');
+    setDriveStatus('Auto-backup every ' + v + ' min' + (next ? ' , next ' + new Date(new Date(next).getTime() + parseInt(v, 10) * 60000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '') + '.', 'ok');
   }
 
   // data-action entry point for the project.html drawer select: reads the
@@ -1472,7 +1472,7 @@ var MMGR = window.MMGR || {};
 
   // Renders the optional Drive backup section into the Controls drawer on
   // project.html (#drive-section, right next to #sync-section). Uses the
-  // drawer's existing classes (sr/sr-hint/exp-row/btn/ctl-in) — zero new
+  // drawer's existing classes (sr/sr-hint/exp-row/btn/ctl-in) , zero new
   // CSS. Buttons/select use data-action so the readonly guard and ACTION_MAP
   // delegation apply, exactly like the sync section above.
   function renderDriveSection() {
@@ -1481,7 +1481,7 @@ var MMGR = window.MMGR || {};
     const cur = getAutoInterval();
     wrap.innerHTML =
       '<div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-folder"></use></svg> Google Drive Backup</span></div>' +
-      '<div class="sr-hint">Optional — push this workspace to Google Drive (drive.file scope only, never your whole Drive) and pull it back on any device. Never required; JSON export/import stays the guaranteed sync path.</div>' +
+      '<div class="sr-hint">Optional , push this workspace to Google Drive (drive.file scope only, never your whole Drive) and pull it back on any device. Never required; JSON export/import stays the guaranteed sync path.</div>' +
       '<div class="exp-row">' +
       '<button class="btn btn-n btn-s" data-action="driveBackup"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-upload"></use></svg> Backup to Drive</button>' +
       '<button class="btn btn-n btn-s" data-action="driveRestore"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Restore from Drive</button>' +
@@ -1492,7 +1492,7 @@ var MMGR = window.MMGR || {};
       '<option value="30"' + (cur === '30' ? ' selected' : '') + '>Every 30 min</option>' +
       '<option value="60"' + (cur === '60' ? ' selected' : '') + '>Every 60 min</option>' +
       '</select></div>' +
-      '<div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-lock"></use></svg> Passphrase</span><input type="password" class="ctl-in w150" data-action="driveSetPass" placeholder="' + (encryptionEnabled() ? 'Encryption on — enter to change' : 'Encrypt backups (optional)') + '" autocomplete="new-password"></div>' +
+      '<div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-lock"></use></svg> Passphrase</span><input type="password" class="ctl-in w150" data-action="driveSetPass" placeholder="' + (encryptionEnabled() ? 'Encryption on , enter to change' : 'Encrypt backups (optional)') + '" autocomplete="new-password"></div>' +
       '<div class="sr-hint">Set a passphrase to encrypt every backup (AES-256-GCM, PBKDF2 key) so AI keys and other project-state secrets never sit in Drive as plaintext. The passphrase stays on this device; re-enter it after restarting the browser. Clear it to go back to plaintext backups.</div>' +
       '<div id="drive-sync-status" class="drive-status"></div>';
   }
@@ -1507,7 +1507,7 @@ var MMGR = window.MMGR || {};
       // A successful manual backup also resets the auto-interval clock, so
       // the timer never fires right after a manual one.
       setLastAutoBackup(new Date().toISOString());
-      setDriveStatus('Backed up ' + r.keyCount + ' workspace keys' + (r.updated ? ' (updated)' : '') + ' — ' + r.exportedAt.slice(0, 10) + '.', 'ok');
+      setDriveStatus('Backed up ' + r.keyCount + ' workspace keys' + (r.updated ? ' (updated)' : '') + ' , ' + r.exportedAt.slice(0, 10) + '.', 'ok');
     } catch (e) {
       setDriveStatus((e && e.message) || 'Backup failed.', 'err');
     } finally {
@@ -1518,17 +1518,17 @@ var MMGR = window.MMGR || {};
 
   async function triggerRestore() {
     if (_driveBusy) return;
-    // Restoring overwrites this device's local workspace — confirm first.
+    // Restoring overwrites this device's local workspace , confirm first.
     if (!window.confirm('Replace this device\u2019s workspace with the backup from Google Drive? Current local data will be overwritten.')) return;
     _driveBusy = true;
     setDriveBusy(true);
     setDriveStatus('Restoring…', 'busy');
     try {
       const r = await restoreFromDrive();
-      setDriveStatus('Restored ' + r.written + ' workspace keys — reloading.', 'ok');
+      setDriveStatus('Restored ' + r.written + ' workspace keys , reloading.', 'ok');
       setTimeout(function() { window.location.reload(); }, 1200);
       // Safety net: if the reload is ever blocked, re-enable the controls.
-      // Matches BOTH mounts — the app.html id-based button and the
+      // Matches BOTH mounts , the app.html id-based button and the
       // project.html drawer's data-action button (no id).
       setTimeout(function() {
         if ($('btn-drive-restore') || document.querySelector('[data-action="driveRestore"]')) {
@@ -1615,7 +1615,7 @@ var MMGR = window.MMGR || {};
 
   function boot() {
     mountEmailAuth();
-    // AUTH MAINFRAME 2026-08-17 — password change mounts: any element marked
+    // AUTH MAINFRAME 2026-08-17 , password change mounts: any element marked
     // [data-pw-host] (project.html Settings > Controls > Profile) hosts the
     // shared control; visibility syncs with the session.
     const pwHosts = document.querySelectorAll('[data-pw-host]');
@@ -1629,7 +1629,7 @@ var MMGR = window.MMGR || {};
     const s = document.querySelector('script[src*="gsi/client"]');
     if (s && typeof s.addEventListener === 'function') {
       s.addEventListener('load', function() { if (initGIS()) restoreSession(); });
-      s.addEventListener('error', function() { /* blocked/offline — fine */ });
+      s.addEventListener('error', function() { /* blocked/offline , fine */ });
     }
     // Fallback poll: covers the case where a cached async script fired its
     // load event before this listener attached. Also guarantees restoreSession
@@ -1666,10 +1666,10 @@ var MMGR = window.MMGR || {};
     emailLogin: emailLogin,
     emailRegister: emailRegister,
     mountEmailAuth: mountEmailAuth,
-    // AUTH MAINFRAME 2026-08-17 — password change (email accounts)
+    // AUTH MAINFRAME 2026-08-17 , password change (email accounts)
     mountPasswordControl: mountPasswordControl,
     // OWNER 2026-08-15: pop the sign-in prompt at a user gesture (used by
-    // cloud actions that need the session — recovery, admin publish-linking).
+    // cloud actions that need the session , recovery, admin publish-linking).
     openSignInPrompt: openSignInPrompt,
     // GOOGLE-DRIVE-BACKUP API (optional; safe to call from console too)
     DRIVE_SCOPE: DRIVE_SCOPE,

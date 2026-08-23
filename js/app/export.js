@@ -1,5 +1,5 @@
 /* ============================================================
-   My MaNaGeR — Export & File I/O
+   My MaNaGeR , Export & File I/O
    Export modal, project file save/load, baseline save.
    Extracted from mmgr-app.js.
    ============================================================ */

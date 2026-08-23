@@ -1,21 +1,21 @@
 /* ============================================================
-   My MaNaGeR — Voice Capture & Transcription (Rank 1.5)
+   My MaNaGeR , Voice Capture & Transcription (Rank 1.5)
    ------------------------------------------------------------
-   PLAN-OF-ACTION-AI-VOICE-SYNC-v1, RANK 1.5 — Meeting Voice
+   PLAN-OF-ACTION-AI-VOICE-SYNC-v1, RANK 1.5 , Meeting Voice
    Capture + Transcription infrastructure. Prerequisite plumbing
    for Rank 1.4 (Voice-to-Claim) and Rank 2.3 (model wiring).
 
    Sequenced per the plan:
-   - 1.5.1 Capture layer — MediaRecorder, 10s chunked buffering,
+   - 1.5.1 Capture layer , MediaRecorder, 10s chunked buffering,
      each chunk persisted to IndexedDB IMMEDIATELY on arrival
      (crash-safe: an abrupt tab kill loses at most the in-flight
      chunk, never the full meeting). Audio NEVER touches
-     localStorage or the single-blob JSON path — IndexedDB only,
+     localStorage or the single-blob JSON path , IndexedDB only,
      per the plan's KNOWN CONFLICTS note (non-negotiable).
-   - 1.5.2 Tier 0 (Web Speech API live captions) — network-dependent,
+   - 1.5.2 Tier 0 (Web Speech API live captions) , network-dependent,
      circuit-broken: if speech recognition is unavailable or errors,
      capture continues silently and the transcript stays hand-editable.
-     Tier 1 (whisper.cpp/WASM, TRUE OFFLINE) is LIVE in this build — the
+     Tier 1 (whisper.cpp/WASM, TRUE OFFLINE) is LIVE in this build , the
      prebuilt runtime is bundled in-repo (vendor/whisper/), and the
      ggml-tiny.en-q5_1 model is fetched ONCE from a GitHub release URL and
      cached via the Cache API (mmgr-whisper-model-v1). If that fetch is
@@ -25,25 +25,25 @@
      the meeting, then whisper produces the definitive transcript when
      recording stops.
      Tier 2 (cloud, BYO key) remains registered and gated.
-   - 1.5.4 Rule-based extraction (NO AI dependency) — keyword
+   - 1.5.4 Rule-based extraction (NO AI dependency) , keyword
      patterns ("I'll", "by Friday", "we agreed") write straight
      into the existing Decision Log (logEntries) and the
      Meeting-to-Action promises (meetingPromises), reusing the
      exact shapes mmgr-render.js / mmgr-decisions.js already read.
 
    Five non-negotiables (master plan):
-   1. Unified state only — transcript text lives on the meeting
+   1. Unified state only , transcript text lives on the meeting
       record (activeMeeting.transcript / meetings[].transcript);
       no side-store. Audio chunks are session evidence in
       IndexedDB, never a parallel project store.
-   2. Zero mandatory server cost — Tier 0 is a browser API, not
+   2. Zero mandatory server cost , Tier 0 is a browser API, not
       a hosted service; Tier 1/2 are opt-in.
-   3. No notification spam — visible recording-state UI (REC
+   3. No notification spam , visible recording-state UI (REC
       indicator + timer + level meter) is the consent surface,
       per the plan's non-negotiable. Nothing pings off-page.
-   4. Offline-first — capture + extraction + transcript editing
+   4. Offline-first , capture + extraction + transcript editing
       work with zero network. Tier 0 degrades, never blocks.
-   5. Portable data — the transcript is plain text inside the
+   5. Portable data , the transcript is plain text inside the
       single .json export; nothing requires a server to read it.
    ============================================================ */
 var MMGR = window.MMGR || {};
@@ -112,7 +112,7 @@ var MMGR = window.MMGR || {};
     const sessionId = U.genShortId('V');
     // projectId is stored so recovery/cleanup never cross projects: meeting
     // ids are PER-PROJECT counters (nmeetid restarts at 1), but IndexedDB is
-    // shared across every project on this origin — matching by meetingId
+    // shared across every project on this origin , matching by meetingId
     // alone could surface or delete another project's session.
     const projectId = ns.projectId || 'default';
     return enqueue(sessionId, function() {
@@ -168,7 +168,7 @@ var MMGR = window.MMGR || {};
 
   // Bounded retention: audio chunks are session evidence, not eternal. After
   // a session finalizes, prune the OLDEST finalized sessions (and their
-  // chunks) beyond SESSION_CAP for this project — the transcript already
+  // chunks) beyond SESSION_CAP for this project , the transcript already
   // lives in unified state, so nothing portable is ever lost. Never touches
   // non-finalized (recoverable/interrupted) sessions.
   const SESSION_CAP = 25;
@@ -210,7 +210,7 @@ var MMGR = window.MMGR || {};
     }).then(function(ok) { delete _queues[sessionId]; return ok; });
   }
 
-  // All non-finalized sessions — used for the single dismissible recovery
+  // All non-finalized sessions , used for the single dismissible recovery
   // chip (no notification spam: shown once per boot, never re-prompted).
   function pendingSessions() {
     return openDB().then(function(db) {
@@ -278,7 +278,7 @@ var MMGR = window.MMGR || {};
       const sessionId = await newSession(m.id, m.kind || 'weekly');
       const recorder = new window.MediaRecorder(stream);
       recorder.ondataavailable = function(e) {
-        // Every emitted chunk is persisted to IndexedDB immediately — the
+        // Every emitted chunk is persisted to IndexedDB immediately , the
         // crash-safety guarantee: a tab kill loses at most this in-flight
         // 10s chunk, never the meeting.
         if (e.data && e.data.size > 0) {
@@ -320,14 +320,14 @@ var MMGR = window.MMGR || {};
       startTier0();
       // Tier 1 warm-up: start loading the bundled whisper runtime + model
       // NOW so it is usually ready by the time the user stops the
-      // recording. Fire-and-forget and circuit-broken — a slow or failed
+      // recording. Fire-and-forget and circuit-broken , a slow or failed
       // load never interrupts capture.
       warmTier1();
-      _toast('Recording started — a live REC indicator stays on screen.', 'ok');
+      _toast('Recording started , a live REC indicator stays on screen.', 'ok');
       return true;
     } catch (err) {
       // If getUserMedia succeeded but a later step failed, the mic must not
-      // stay on — release the tracks before surfacing the error.
+      // stay on , release the tracks before surfacing the error.
       if (stream) { try { stream.getTracks().forEach(function(t) { t.stop(); }); } catch (e) {} }
       if (ns.Errors && ns.Errors.log) ns.Errors.log((err && err.message) || String(err), 'voice-start');
       _toast('Microphone unavailable or permission denied.', 'err');
@@ -365,7 +365,7 @@ var MMGR = window.MMGR || {};
     }
     if (_cap.stream) { try { _cap.stream.getTracks().forEach(function(t) { t.stop(); }); } catch (e) {} }
     renderCaptureSection();
-    _toast('Recording saved — captions are editable until you end the meeting.', 'ok');
+    _toast('Recording saved , captions are editable until you end the meeting.', 'ok');
     return true;
   }
 
@@ -382,7 +382,7 @@ var MMGR = window.MMGR || {};
       if (_cap.stream) { try { _cap.stream.getTracks().forEach(function(t) { t.stop(); }); } catch (e) {} }
       if (sessionId) deleteSession(sessionId);
     } else {
-      // Nothing live — also clear any pending (interrupted) session for the
+      // Nothing live , also clear any pending (interrupted) session for the
       // current meeting so the recovery chip doesn't linger after a cancel.
       clearPendingForMeeting();
     }
@@ -435,7 +435,7 @@ var MMGR = window.MMGR || {};
       };
       _cap.audioCtx = ctx;
       _cap.rafId = requestAnimationFrame(tick);
-    } catch (e) { /* meter is decorative — never block capture on it */ }
+    } catch (e) { /* meter is decorative , never block capture on it */ }
   }
   function stopMeter() {
     if (_cap.rafId) { cancelAnimationFrame(_cap.rafId); _cap.rafId = null; }
@@ -458,7 +458,7 @@ var MMGR = window.MMGR || {};
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     const note = U.$('voice-tier-note');
     if (!SR) {
-      if (note) note.textContent = 'Live captions unavailable in this browser — recording continues; type notes below.';
+      if (note) note.textContent = 'Live captions unavailable in this browser , recording continues; type notes below.';
       return; // circuit-broken: capture proceeds, transcript stays editable
     }
     try {
@@ -476,7 +476,7 @@ var MMGR = window.MMGR || {};
       rec.onerror = function(ev) {
         if (ns.Errors && ns.Errors.log) ns.Errors.log((ev && ev.error) || 'speech error', 'voice-tier0');
         const n = U.$('voice-tier-note');
-        if (n) n.textContent = 'Live captions interrupted (' + ((ev && ev.error) || 'error') + ') — type notes instead.';
+        if (n) n.textContent = 'Live captions interrupted (' + ((ev && ev.error) || 'error') + ') , type notes instead.';
         _cap.rec = null;
       };
       rec.onend = function() { /* no silent auto-restart loop */ };
@@ -498,7 +498,7 @@ var MMGR = window.MMGR || {};
   // impossible. Batch-on-stop architecture: Tier 0 streams captions live;
   // on Stop, whisper transcribes the full recording in a module worker and
   // writes the definitive transcript into unified state. Circuit-broken
-  // like Tier 0 — any failure leaves the captions intact and never blocks
+  // like Tier 0 , any failure leaves the captions intact and never blocks
   // ending the meeting.
   const TIER1_ENTRY = 'vendor/whisper/index.js';
   // Remote-first model hosting (SKEPTICAL-AUDIT FIX, Aug 2026): the
@@ -526,7 +526,7 @@ var MMGR = window.MMGR || {};
   // Download the Tier 1 model exactly once and serve repeat loads from the
   // Cache API. Returns the model bytes as an ArrayBuffer. Throws when the
   // fetch fails (CORS-blocked release host, offline, no Cache API) or when
-  // the host answers with an error status — callers fall back to the
+  // the host answers with an error status , callers fall back to the
   // bundled local model in that case. Throwing on !response.ok matters: an
   // error-page body must never be handed to whisper as "model bytes".
   async function getModelBytes() {
@@ -542,9 +542,9 @@ var MMGR = window.MMGR || {};
   }
 
   let _t1 = {
-    promise: null,     // memoized init promise (cleared on failure -> retry)
+    promise: null, // memoized init promise (cleared on failure -> retry)
     ready: false,
-    ctx: null,         // whisper context (module-worker backed)
+    ctx: null, // whisper context (module-worker backed)
     transcribing: false,
     progress: 0,
     lastErr: null,
@@ -561,10 +561,10 @@ var MMGR = window.MMGR || {};
     const mod = await import(_t1Url(TIER1_ENTRY));
     // Force the single-thread artifact: static hosts (this dev server
     // included) do not send COOP/COEP, so SharedArrayBuffer is
-    // unavailable — the loader would fall back anyway; forcing it keeps
+    // unavailable , the loader would fall back anyway; forcing it keeps
     // the runtime path deterministic across hosts. configureWasm throws
     // once the runtime is already loaded (the module singleton is shared)
-    // — that is fine: the first configure wins, later calls are no-ops.
+    // , that is fine: the first configure wins, later calls are no-ops.
     if (typeof mod.configureWasm === 'function') {
       try { mod.configureWasm({ threads: false }); } catch (e) { /* already configured */ }
     }
@@ -597,10 +597,10 @@ var MMGR = window.MMGR || {};
       } catch (remoteErr) {
         // Offline, or a host outage: fall back to the bundled copy for
         // self-hosted deploys that ship the .bin themselves. Record why.
-        // (A plain CORS block no longer lands here — the primary URL is
+        // (A plain CORS block no longer lands here , the primary URL is
         // the CORS-enabled HF mirror, verified at implementation time.)
         if (ns.Errors && ns.Errors.log) {
-          ns.Errors.log('voice-tier1: remote model fetch failed (' + ((remoteErr && remoteErr.message) || String(remoteErr)) + ') — using bundled model', 'voice-tier1');
+          ns.Errors.log('voice-tier1: remote model fetch failed (' + ((remoteErr && remoteErr.message) || String(remoteErr)) + ') , using bundled model', 'voice-tier1');
         }
         modelPath = _t1Url(TIER1_MODEL_FALLBACK);
         cacheModel = true; // bundled copy: runtime Cache Storage is fine
@@ -621,7 +621,7 @@ var MMGR = window.MMGR || {};
     return target.ready;
   }
 
-  // initTier1(forcedModelUrl) — forcedModelUrl is a test/diagnostic hook to
+  // initTier1(forcedModelUrl) , forcedModelUrl is a test/diagnostic hook to
   // exercise the circuit-break deterministically; production calls it with
   // no argument. Failures are NOT memoized: a transient failure (e.g. the
   // model fetch hiccuping) can be retried by the next call.
@@ -673,7 +673,7 @@ var MMGR = window.MMGR || {};
   }
 
   // Every persisted chunk for a session, in arrival order (waits for any
-  // in-flight append — the queue guarantees nothing is missed on stop).
+  // in-flight append , the queue guarantees nothing is missed on stop).
   function readChunks(sessionId) {
     return waitQueue(sessionId).then(function() {
       return openDB().then(function(db) {
@@ -691,7 +691,7 @@ var MMGR = window.MMGR || {};
     });
   }
 
-  // Decode the captured blob (webm/opus — or a WAV in tests) into whisper's
+  // Decode the captured blob (webm/opus , or a WAV in tests) into whisper's
   // 16 kHz mono Float32Array. AudioContext lives on the main thread only;
   // the WASM worker itself never touches audio decoding.
   async function decodeForWhisper(blob) {
@@ -769,12 +769,12 @@ var MMGR = window.MMGR || {};
       const res = await op.promise;
       const text = String((res && res.result) || '').trim();
       applyWhisperText(text, sessionId);
-      if (text) _toast('Offline transcription complete — transcript updated.', 'ok');
+      if (text) _toast('Offline transcription complete , transcript updated.', 'ok');
     } catch (err) {
       _t1.lastErr = err;
       mark('transcribeState', 'failed');
       if (ns.Errors && ns.Errors.log) ns.Errors.log((err && err.message) || String(err), 'voice-tier1');
-      _toast('Offline transcription failed — captions kept; you can retry.', 'err');
+      _toast('Offline transcription failed , captions kept; you can retry.', 'err');
     } finally {
       _t1.transcribing = false;
       renderCaptureSection();
@@ -785,7 +785,7 @@ var MMGR = window.MMGR || {};
   }
 
   // Manual re-run from the stopped card (also the action behind the retry
-  // button after a failure). Targets the ACTIVE meeting's own session only —
+  // button after a failure). Targets the ACTIVE meeting's own session only , 
   // stored meetings carry their own captureSession, so there is no case where
   // a session belonging to a different record should be re-transcribed here.
   function transcribeOffline() {
@@ -799,7 +799,7 @@ var MMGR = window.MMGR || {};
   function kickTranscription(sessionId) { transcribeSession(sessionId); }
 
   // Caption lines accumulate in _cap.captionBuf and flush to state at most
-  // every 5s — throttling keeps updatedAt churn (and thus multi-tab
+  // every 5s , throttling keeps updatedAt churn (and thus multi-tab
   // storage-event conflict modals) off the hot path of live speech.
   function appendCaption(line) {
     const clean = String(line || '').replace(/\s+/g, ' ').trim();
@@ -826,7 +826,7 @@ var MMGR = window.MMGR || {};
     });
   }
 
-  // ---- Rule-based extraction (1.5.4) — pure, zero AI --------------------
+  // ---- Rule-based extraction (1.5.4) , pure, zero AI --------------------
   // Keyword patterns only, per the plan: "I'll", "by Friday", "we agree".
   // No AI call is ever made; the AI-refined upgrade path is gated behind
   // Rank 2's model wiring and is NOT a dependency here.
@@ -836,7 +836,7 @@ var MMGR = window.MMGR || {};
   const OWNER_RE = /\b(?:assign|to|for|with)\s+([A-Z][A-Za-z]{1,20})\b/;
 
   // Clause splitter (QA-STRESS DIR-2 finding, Aug 2026): real whisper
-  // output is often punctuation-sparse — long run-on stretches with only
+  // output is often punctuation-sparse , long run-on stretches with only
   // commas. The old per-sentence matcher treated a 600-char comma-only
   // transcript as ONE sentence, so first-match-wins collapsed it: the first
   // decision matched and the entire rest (every action item!) was skipped.
@@ -844,7 +844,7 @@ var MMGR = window.MMGR || {};
   // longer than 140 chars at commas/semicolons into INDEPENDENT clauses.
   // Deliberately NO merging back: merging two comma-bits can glue an
   // action clause to a decision clause, and the per-clause first-match
-  // rule would then drop the action again (verified by the stress run —
+  // rule would then drop the action again (verified by the stress run , 
   // the merge step was the regression, not the split).
   function splitClauses(text) {
     const sentences = String(text || '').match(/[^.!?\n]+[.!?]*/g) || [];
@@ -881,12 +881,12 @@ var MMGR = window.MMGR || {};
         const dueM = s.match(DUE_RE);
         const ownM = s.match(OWNER_RE);
         const body = s
-          .replace(/^[\s"'“”]*(?:i'?ll|i will|we'?ll|we will|you need to|someone needs to|can you|you should|we should|let'?s)\s+/i, '')
+          .replace(/^[\s"'""]*(?:i'?ll|i will|we'?ll|we will|you need to|someone needs to|can you|you should|we should|let'?s)\s+/i, '')
           .replace(/[.!?]+$/, '')
           .trim();
         let text = body ? body.charAt(0).toUpperCase() + body.slice(1) : s.replace(/[.!?]+$/, '');
         if (dueM) text += ' (due ' + dueM[1] + ')';
-        if (ownM) text += ' — owner: ' + ownM[1];
+        if (ownM) text += ' , owner: ' + ownM[1];
         const key = 'a:' + text.toLowerCase();
         if (seen[key]) return;
         seen[key] = 1;
@@ -958,7 +958,7 @@ var MMGR = window.MMGR || {};
   // Renders into #meet-voice-wrap (a div inside the live meeting card,
   // created by mmgr-meetings.js renderActiveMeeting). Zero inline styles;
   // classes come from css/mmgr.css. REC state, timer and level meter stay
-  // on screen the whole time — the consent-relevant recording indicator.
+  // on screen the whole time , the consent-relevant recording indicator.
   function renderCaptureSection() {
     const wrap = U.$('meet-voice-wrap');
     if (!wrap) return;
@@ -981,7 +981,7 @@ var MMGR = window.MMGR || {};
           '<span class="voice-chunks" id="voice-chunks">0 chunks saved</span>' +
         '</div>' +
         '<div class="voice-meter"><div class="voice-meter-fill" id="voice-meter-fill"></div></div>' +
-        '<div class="voice-tier-note" id="voice-tier-note">Live captions (Tier 0) stream here — on stop, bundled offline whisper (Tier 1) produces the full transcript.</div>' +
+        '<div class="voice-tier-note" id="voice-tier-note">Live captions (Tier 0) stream here , on stop, bundled offline whisper (Tier 1) produces the full transcript.</div>' +
         '<textarea class="cf-ta voice-captions" id="voice-captions" readonly placeholder="Live captions appear here...">' + U.escapeHtml(transcript) + '</textarea>' +
         '<div class="g6"><button class="btn btn-g btn-s" data-action="voiceStopCapture"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-check-circle"></use></svg> Stop &amp; Save</button>' +
         '<button class="btn btn-n btn-s" data-action="voiceDiscardCapture"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> Discard</button></div>' +
@@ -996,18 +996,18 @@ var MMGR = window.MMGR || {};
           t1row = '<div class="voice-t1 voice-t1-on"><span class="voice-t1-lbl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cpu"></use></svg> Offline transcription (whisper, in-browser)...</span>' +
             '<div class="voice-meter"><div class="voice-meter-fill" id="voice-meter-fill" style="width:' + pct + '%"></div></div></div>';
         } else if (m.transcribeState === 'done') {
-          t1row = '<div class="voice-t1 voice-t1-ok"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-check-circle"></use></svg> Offline transcript ready — whisper WASM, no network.</div>';
+          t1row = '<div class="voice-t1 voice-t1-ok"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-check-circle"></use></svg> Offline transcript ready , whisper WASM, no network.</div>';
         } else if (m.transcribeState === 'failed') {
-          t1row = '<div class="voice-t1 voice-t1-err"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-alert-triangle"></use></svg> Offline transcription failed — captions kept. <button class="btn btn-n btn-s" data-action="voiceTranscribeOffline">Retry</button></div>';
+          t1row = '<div class="voice-t1 voice-t1-err"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-alert-triangle"></use></svg> Offline transcription failed , captions kept. <button class="btn btn-n btn-s" data-action="voiceTranscribeOffline">Retry</button></div>';
         } else {
           t1row = '<div class="g6 voice-t1"><button class="btn btn-n btn-s" data-action="voiceTranscribeOffline"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cpu"></use></svg> Transcribe Offline</button>' +
-            '<span class="voice-sub">Runs fully in-browser via whisper — no key. First run downloads the 31 MB model once and caches it; if the download is blocked it uses the bundled copy.</span></div>';
+            '<span class="voice-sub">Runs fully in-browser via whisper , no key. First run downloads the 31 MB model once and caches it; if the download is blocked it uses the bundled copy.</span></div>';
         }
       }
       html = '<div class="voice-card">' +
         '<div class="voice-head"><span class="voice-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-zap"></use></svg> Voice Capture</span>' +
           (isStopped ? (m.captureMethod === 'tier1' ? '<span class="badge bg">offline transcript</span>' : '<span class="badge bg">saved</span>') : '<span class="badge ba">off</span>') + '</div>' +
-        (isStopped ? '' : '<div class="voice-note">Record this meeting — mic access is requested only while recording, and a live REC indicator stays on screen for consent. Live captions (Tier 0) stream while recording; bundled offline whisper (Tier 1) finalizes the transcript when you stop. Everything stays editable until you end the meeting.</div>') +
+        (isStopped ? '' : '<div class="voice-note">Record this meeting , mic access is requested only while recording, and a live REC indicator stays on screen for consent. Live captions (Tier 0) stream while recording; bundled offline whisper (Tier 1) finalizes the transcript when you stop. Everything stays editable until you end the meeting.</div>') +
         '<div class="g6"><button class="btn btn-g btn-s" data-action="voiceStartCapture"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-zap"></use></svg> Record Meeting</button></div>' +
         t1row +
         '<label class="cf-label voice-lbl">Transcript <span class="voice-sub">(typed or edited here; extracted into Decisions when the meeting ends)</span></label>' +
@@ -1020,7 +1020,7 @@ var MMGR = window.MMGR || {};
 
   // Single dismissible recovery chip (once per boot, never re-prompted).
   // Only NON-finalized sessions that are NOT the live capture session and
-  // NOT the current meeting's own session count as "interrupted" — a live
+  // NOT the current meeting's own session count as "interrupted" , a live
   // recording must never flash a false "interrupted session" alarm (the
   // plan's no-notification-spam rule).
   function checkRecovery() {
@@ -1039,7 +1039,7 @@ var MMGR = window.MMGR || {};
       chip.className = 'voice-recover';
       chip.innerHTML = '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-alert-triangle"></use></svg> ' +
         interrupted.length + ' interrupted recording session' + (interrupted.length !== 1 ? 's' : '') +
-        ' found — audio chunks were saved safely. <button class="btn btn-n btn-s" data-action="voiceRecoverDismiss">Dismiss</button>';
+        ' found , audio chunks were saved safely. <button class="btn btn-n btn-s" data-action="voiceRecoverDismiss">Dismiss</button>';
       wrap.prepend(chip);
     }).catch(function() {});
   }
@@ -1054,7 +1054,7 @@ var MMGR = window.MMGR || {};
       active: tier1Ready() ? 'tier1' : 'tier0',
       tiers: TIERS,
       tier1: tier1Status(),
-      note: 'Tier 1 (offline whisper WASM) is live with a bundled model — transcription runs fully in-browser with zero network. Tier 2 (cloud BYO key) stays gated per PLAN-OF-ACTION-AI-VOICE-SYNC-v1 1.5.2.'
+      note: 'Tier 1 (offline whisper WASM) is live with a bundled model , transcription runs fully in-browser with zero network. Tier 2 (cloud BYO key) stays gated per PLAN-OF-ACTION-AI-VOICE-SYNC-v1 1.5.2.'
     };
   }
 

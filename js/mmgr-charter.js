@@ -1,5 +1,5 @@
 /* ============================================================
-   My MaNaGeR — Charter & KPI Management Module
+   My MaNaGeR , Charter & KPI Management Module
    ============================================================ */
 var MMGR = window.MMGR || {};
 
@@ -39,9 +39,9 @@ var MMGR = window.MMGR || {};
   // Opt-in traceability: a KPI can point at a live computed metric instead of
   // a hand-typed number. Manual (linkedMetric:null) is the default for every
   // KPI and behaves exactly as before. The target field always stays free
-  // text — linking only supplies the *current value*.
+  // text , linking only supplies the *current value*.
   const KPI_METRICS = [
-    { key: '', label: '— Manual (default) —' },
+    { key: '', label: ', Manual (default) , ' },
     { key: 'spi', label: 'SPI (Schedule Perf. Index)' },
     { key: 'cpi', label: 'CPI (Cost Perf. Index)' },
     { key: 'pctComplete', label: '% Complete' },
@@ -147,7 +147,7 @@ var MMGR = window.MMGR || {};
   // Shared one-line export used by Copy All / prompts so a linked KPI's
   // live value shows up consistently everywhere.
   function kpiExportLine(k) {
-    let s = `- ${k.name || '(unnamed)'} | Target: ${k.target || '—'} | Measure: ${k.measure || '—'}`;
+    let s = `- ${k.name || '(unnamed)'} | Target: ${k.target || '-'} | Measure: ${k.measure || '-'}`;
     if (k.linkedMetric) {
       const st = kpiStatus(k);
       s += ` | Live ${kpiMetricLabel(k.linkedMetric)}: ${st.live === null ? 'no data yet' : st.live}${st.txt ? ' (' + st.txt + ')' : ''}`;
@@ -250,7 +250,7 @@ var MMGR = window.MMGR || {};
     if (modal) modal.classList.remove('on');
   }
 
-  // V3.1 — modal tab switcher (Upload File vs Paste Text).
+  // V3.1 , modal tab switcher (Upload File vs Paste Text).
   function cuSwitchTab(which) {
     const tf = U.$('cu-tab-file'), tp = U.$('cu-tab-paste');
     const pf = U.$('cu-pane-file'), pp = U.$('cu-pane-paste');
@@ -288,15 +288,15 @@ var MMGR = window.MMGR || {};
       } else if (name.endsWith('.pdf')) {
         throw new Error('PDF files can\'t be parsed in-browser under this app\'s security policy. Open it in a PDF reader, select all, copy, and use Paste Text instead.');
       } else {
-        throw new Error('Unsupported file type. Use .txt or .md — or paste the text directly.');
+        throw new Error('Unsupported file type. Use .txt or .md , or paste the text directly.');
       }
       openChartUp(text.trim());
-      if (ns.App && ns.App.showToast) ns.App.showToast('Text extracted — review, generate prompt, then paste AI output', 'ok');
+      if (ns.App && ns.App.showToast) ns.App.showToast('Text extracted , review, generate prompt, then paste AI output', 'ok');
     } catch (err) {
       console.error('Charter upload:', err);
       openChartUp('');
       // Unsupported binary formats land the user on the Paste tab with the
-      // cursor ready — one paste away from continuing the workflow.
+      // cursor ready , one paste away from continuing the workflow.
       cuSwitchTab('paste');
       if (ns.App && ns.App.showToast) ns.App.showToast(err.message || 'Could not extract text.', 'err');
     }
@@ -305,17 +305,17 @@ var MMGR = window.MMGR || {};
   function generateCharterFillPrompt(textContent) {
     return 'You are an expert Project Manager. Read the charter document below and extract the information into STRICT valid JSON (no prose, no code fences, no comments). Use these exact keys and types:\n'
       + '{\n'
-      + '  "name": string,           // Project name\n'
-      + '  "sponsor": string,        // Executive sponsor\n'
-      + '  "targetStart": "YYYY-MM-DD",    // Planned start date\n'
-      + '  "targetCompletion": "YYYY-MM-DD",      // Planned end date\n'
-      + '  "budgetEnvelope": number,         // Planned budget in dollars (numeric only)\n'
-      + '  "objective": string,      // Business objective / quantifiable outcome\n'
-      + '  "scope": string,          // In-scope items\n'
-      + '  "deliverables": string,   // Key deliverables\n'
-      + '  "constraints": string,    // Constraints\n'
-      + '  "assumptions": string,    // Assumptions\n'
-      + '  "exclusions": string,     // Out-of-scope items\n'
+      + '  "name": string, // Project name\n'
+      + '  "sponsor": string, // Executive sponsor\n'
+      + '  "targetStart": "YYYY-MM-DD", // Planned start date\n'
+      + '  "targetCompletion": "YYYY-MM-DD", // Planned end date\n'
+      + '  "budgetEnvelope": number, // Planned budget in dollars (numeric only)\n'
+      + '  "objective": string, // Business objective / quantifiable outcome\n'
+      + '  "scope": string, // In-scope items\n'
+      + '  "deliverables": string, // Key deliverables\n'
+      + '  "constraints": string, // Constraints\n'
+      + '  "assumptions": string, // Assumptions\n'
+      + '  "exclusions": string, // Out-of-scope items\n'
       + '  "kpis": [ { "name": string, "target": string, "category": "financial|schedule|quality|safety|environmental" } ]\n'
       + '}\n'
       + 'Rules:\n'
@@ -353,11 +353,11 @@ var MMGR = window.MMGR || {};
   // Regex fallback for plain-text charters when the AI output isn't JSON.
   function regexExtractCharter(txt) {
     const grab = (label) => {
-      const re = new RegExp('(?:^|\n)\s*' + label + '\s*[:\-–]\s*(.+?)(?=\n\s*[A-Z][A-Za-z /]{2,30}\s*[:\-–]|\n\s*\n|$)', 'is');
+      const re = new RegExp('(?:^|\n)\s*' + label + '\s*[:\--]\s*(.+?)(?=\n\s*[A-Z][A-Za-z /]{2,30}\s*[:\--]|\n\s*\n|$)', 'is');
       const m = txt.match(re);
       return m ? m[1].trim() : '';
     };
-    const budget = (() => { const m = txt.match(/budget\s*[:\-–]\s*\$?\s*([\d,]+(?:\.\d+)?)/i); return m ? +m[1].replace(/,/g, '') : 0; })();
+    const budget = (() => { const m = txt.match(/budget\s*[:\--]\s*\$?\s*([\d,]+(?:\.\d+)?)/i); return m ? +m[1].replace(/,/g, '') : 0; })();
     return {
       name: grab('Project Name') || grab('Project Title') || grab('Project'),
       sponsor: grab('Sponsor') || grab('Executive Sponsor'),
@@ -418,7 +418,7 @@ var MMGR = window.MMGR || {};
   }
 
   // ---- MONOLITH-FEATURE-PARITY-DIRECTIVES RESTORE-5: Print Charter ----
-  // Restores the monolith's printCharter() — a scoped print that shows only
+  // Restores the monolith's printCharter() , a scoped print that shows only
   // the charter section (body.print-charter + .charter-print-root, CSS
   // already present in css/mmgr.css). The textarea-expansion step fixes the
   // classic bug where a <textarea> only prints its scrolled-into-view text.
@@ -437,7 +437,7 @@ var MMGR = window.MMGR || {};
   }
 
   // ---- MONOLITH-FEATURE-PARITY-DIRECTIVES RESTORE-6: Save Charter button ----
-  // Restores the monolith's saveCharter() — an explicit save distinct from
+  // Restores the monolith's saveCharter() , an explicit save distinct from
   // the silent debounced autosave, with a confirming toast so the user gets
   // positive, visible confirmation the charter was persisted.
   function saveCharter() {
@@ -453,7 +453,7 @@ var MMGR = window.MMGR || {};
       constraints: read('ch-constraints'),
       assumptions: read('ch-assumptions'),
       exclusions: read('ch-exclusions'),
-      // budgetEnvelope is numeric everywhere else in state — coerce on save
+      // budgetEnvelope is numeric everywhere else in state , coerce on save
       // so downstream math (buildBudgetSummary, EVM) never sees a string.
       budgetEnvelope: read('ch-budget') !== undefined && read('ch-budget') !== '' ? +read('ch-budget') : undefined
     };

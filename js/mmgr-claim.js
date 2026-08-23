@@ -1,11 +1,11 @@
 /* ============================================================
-   My MaNaGeR — Evidence / Claim Pack (MASTER-ACTION-PLAN-v3-STRICT Rank 1)
+   My MaNaGeR , Evidence / Claim Pack (MASTER-ACTION-PLAN-v3-STRICT Rank 1)
    ------------------------------------------------------------
    - 1.2  Baseline-vs-actual delta as a FIRST-CLASS object:
          computeSlips() derives every schedule slip (task, days, cause
          tag) from baseline-vs-current, auto-tagging cause from live
          evidence (weather delay log / predecessor slips / change
-         control), defaulting to 'unknown' — never silently blank.
+         control), defaulting to 'unknown' , never silently blank.
          Explicit user overrides persist in state.slipCauses.
    - 1.1  One-click Claim/Delay package: buildClaimPack() pulls the ENTIRE
          package from unified state (weather delay log, affected WBS,
@@ -79,7 +79,7 @@ var MMGR = window.MMGR || {};
   // Auto-tag precedence: weather > predecessor > change > unknown (never blank).
   function autoCause(s, task, baseEnd, curEnd) {
     const id = String(task.id);
-    // 1. weather — a logged weather-delay day inside the slip window that
+    // 1. weather , a logged weather-delay day inside the slip window that
     //    names this task as affected.
     const wxHit = (s.weatherLog || []).some(e => {
       const d = U.parseDL(e.date);
@@ -88,7 +88,7 @@ var MMGR = window.MMGR || {};
       return d >= baseEnd && d <= curEnd;
     });
     if (wxHit) return 'weather';
-    // 2. predecessor — any predecessor also slipped vs baseline.
+    // 2. predecessor , any predecessor also slipped vs baseline.
     const slippedIds = {};
     ((s.baseline && s.baseline.tasks) || []).forEach(bt => {
       const cur = (s.tasks || []).find(x => String(x.id) === String(bt.id));
@@ -98,11 +98,11 @@ var MMGR = window.MMGR || {};
       }
     });
     if ((task.predecessors || []).some(p => slippedIds[String(p)])) return 'predecessor';
-    // 3. change — a change-control entry references this task by id or name.
+    // 3. change , a change-control entry references this task by id or name.
     const nameLc = String(task.name || '').toLowerCase();
     const chgHit = (s.changes || []).some(c => {
       const hay = [c.title, c.notes, c.ripple, c.schedImpact, c.costImpact].filter(Boolean).join(' ');
-      // Token-boundary id match ("t4" must be its own token — never a
+      // Token-boundary id match ("t4" must be its own token , never a
       // substring like "st4el"), plus a name match only when the name is
       // specific enough (>= 3 chars) to avoid false positives.
       const tokens = hay.split(/[^a-zA-Z0-9_]+/).filter(Boolean);
@@ -165,7 +165,7 @@ var MMGR = window.MMGR || {};
       if (toD && d > toD) return false;
       return true;
     };
-    // Weather delay rows in the window (Rank 7.4 data — the Rank 1 dependency)
+    // Weather delay rows in the window (Rank 7.4 data , the Rank 1 dependency)
     const weatherDelays = (s.weatherLog || []).filter(e => inRange(e.date)).map(e => ({
       date: e.date, condition: e.condition || '', note: e.note || '',
       affectedTaskIds: (e.affectedTaskIds || []).map(String)
@@ -190,7 +190,7 @@ var MMGR = window.MMGR || {};
     // WINDOW-scoped avoided/incurred rollup, so the package is internally
     // consistent: weather-tagged slips in the window = defensible; every
     // other cause in the window = incurred. (The Budget-tab card shows the
-    // project-to-date figure via ldRollup() — that is a different, labeled
+    // project-to-date figure via ldRollup() , that is a different, labeled
     // surface.)
     let wAvoidedDays = 0, wIncurredDays = 0;
     slips.forEach(sl => { if (sl.cause === 'weather') wAvoidedDays += sl.days; else wIncurredDays += sl.days; });
@@ -213,7 +213,7 @@ var MMGR = window.MMGR || {};
       meetings.push({ date: c.date, kind: c.type || 'Communication', summary: c.summary || '', actions: c.actionItems || '', followUp: c.followUp || '' });
     });
     (s.logEntries || []).forEach(l => {
-      // Decision log stores a locale string — best-effort parse. Format in
+      // Decision log stores a locale string , best-effort parse. Format in
       // LOCAL time (never toISOString) so a late-evening entry doesn't drift
       // across the day boundary via UTC and silently leave the window.
       const d = new Date(l.date);
@@ -222,7 +222,7 @@ var MMGR = window.MMGR || {};
         meetings.push({ date: iso, kind: 'Decision Log', summary: l.decision || '', actions: l.actionItems || '', followUp: '' });
       }
     });
-    // Open carried-forward meeting promises — always cited, not range-bound
+    // Open carried-forward meeting promises , always cited, not range-bound
     const openPromises = [];
     const promises = s.meetingPromises || {};
     Object.keys(promises).forEach(k => {
@@ -326,7 +326,7 @@ var MMGR = window.MMGR || {};
     });
 
     // ---- 2. Schedule delta (baseline vs actual, cause-tagged) ----
-    section(2, 'SCHEDULE DELTA — BASELINE VS ACTUAL (CAUSE-TAGGED)');
+    section(2, 'SCHEDULE DELTA , BASELINE VS ACTUAL (CAUSE-TAGGED)');
     const deltaHead = pad('TASK', 26) + pad('ID', 7) + pad('+DAYS', 7) + pad('BASELINE END', 14) + pad('CURRENT END', 14) + 'CAUSE';
     L.push(deltaHead);
     rule('-', deltaHead.length);
@@ -342,13 +342,13 @@ var MMGR = window.MMGR || {};
     rule('-', wxHead.length);
     if (pack.weatherDelays.length) {
       pack.weatherDelays.forEach(e => L.push(pad(e.date, 12) + pad(e.condition, 18) +
-        pad(e.note || '', 26) + (e.affectedTaskIds.length ? e.affectedTaskIds.join(', ') : '—')));
+        pad(e.note || '', 26) + (e.affectedTaskIds.length ? e.affectedTaskIds.join(', ') : '-')));
     } else { L.push('None logged in window.'); }
 
     // ---- 4. Affected WBS tasks ----
     section(4, 'AFFECTED WBS TASKS');
     if (pack.affectedTasks.length) {
-      pack.affectedTasks.forEach(t => L.push('[' + t.id + '] ' + t.name + ' — ' + (t.status || 'no status') + (t.dates ? ' (' + t.dates + ')' : '')));
+      pack.affectedTasks.forEach(t => L.push('[' + t.id + '] ' + t.name + ' , ' + (t.status || 'no status') + (t.dates ? ' (' + t.dates + ')' : '')));
     } else { L.push('None identified in window.'); }
 
     // ---- 5. LD / contract exposure (window) ----
@@ -369,7 +369,7 @@ var MMGR = window.MMGR || {};
     // ---- 7. Meeting decisions & action items (window) ----
     section(7, 'MEETING DECISIONS & ACTION ITEMS (WINDOW)');
     if (pack.meetings.length) {
-      pack.meetings.forEach(m => L.push('[' + m.date + '] ' + m.kind + (m.summary ? ' — ' + m.summary : '') +
+      pack.meetings.forEach(m => L.push('[' + m.date + '] ' + m.kind + (m.summary ? ' , ' + m.summary : '') +
         (m.actions ? ' | Actions: ' + m.actions : '') + (m.followUp ? ' | Follow-up: ' + m.followUp : '')));
     } else { L.push('None tied to window.'); }
 
@@ -392,7 +392,7 @@ var MMGR = window.MMGR || {};
     L.push('Date:          ' + (pack.generatedAt || '____________________________'));
     blank();
     rule('=');
-    L.push('Prepared by My MaNaGeR from project state — CLAIM-' + ref + '.');
+    L.push('Prepared by My MaNaGeR from project state , CLAIM-' + ref + '.');
     return L.join('\n');
   }
 
@@ -409,7 +409,7 @@ var MMGR = window.MMGR || {};
     const from = fromEl ? fromEl.value : '';
     const to = toEl ? toEl.value : '';
     if (from && to && from > to) { // ISO dates compare lexicographically
-      if (ns.App && ns.App.showToast) ns.App.showToast('Date range is reversed — From must be before To.', 'err');
+      if (ns.App && ns.App.showToast) ns.App.showToast('Date range is reversed , From must be before To.', 'err');
       return;
     }
     const pack = buildClaimPack(ns.State.getState(), from, to);

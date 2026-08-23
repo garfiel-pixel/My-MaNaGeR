@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <!--
-  My MaNaGeR — Construction/Project Management Workspace
+  My MaNaGeR , Construction/Project Management Workspace
   Built by Garack.
   Single data-driven project viewer. Reads project ID from URL parameter
   or localStorage and loads the corresponding project data.
@@ -9,7 +9,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>My MaNaGeR — Project</title>
+<title>My MaNaGeR , Project</title>
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#D4AF37">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -19,14 +19,14 @@
 <!--
   Content Security Policy:
   - 'unsafe-eval' removed entirely.
-  - 'wasm-unsafe-eval' IS present in script-src — the narrow, safe allowance
+  - 'wasm-unsafe-eval' IS present in script-src , the narrow, safe allowance
     that permits WebAssembly.instantiate for the bundled offline whisper
     runtime (Rank 1.5 Tier 1). It does NOT enable eval(): no string-to-code
     anywhere. Remove it only if the whisper WASM bundle is ever dropped.
   - 'unsafe-inline' removed from default-src and script-src (all scripts are
     external; zero inline event handlers remain).
   - style-src keeps 'unsafe-inline' for a small, MEASURED residual:
-      * static project.html markup carries ZERO inline styles — every static
+      * static project.html markup carries ZERO inline styles , every static
         value lives as a named class in css/mmgr.css, and runtime
         show/hide toggles use the .is-hide class (swapped via classList,
         never style.display);
@@ -38,7 +38,7 @@
       the same-origin Worker relay /api/ai/chat, with a direct-call fallback
       for local/static hosting): https://api.openai.com https://api.anthropic.com
       https://generativelanguage.googleapis.com
-      Tier B is OPTIONAL and circuit-broken exactly like Open-Meteo — with
+      Tier B is OPTIONAL and circuit-broken exactly like Open-Meteo , with
       no key configured the cloud tier never fires, and the local tier
       (Tier A) needs no network at all. A custom provider endpoint would
       need its host added here, same as any other connect-src entry.
@@ -50,14 +50,14 @@
       *.cdn.hf.co, hence both entries).
   - Rank 3.5 (Liquid Glass, premium tier): https://unpkg.com is the pinned
       Three.js CDN used ONLY by the opt-in Premium visual mode via dynamic
-      import(). It is never fetched at boot — with the toggle off there is
+      import(). It is never fetched at boot , with the toggle off there is
       zero network request (hard gate, verified by qa-glass.cjs).
   - Rank 4.5 (Optional Google identity): https://accounts.google.com is the
       Google Identity Services script host, lazy-loaded ONLY when the user
       clicks "Connect Google" in Settings > Controls. It is a device label,
-      never a gate — offline/CSP-blocked loads degrade to a toast.
+      never a gate , offline/CSP-blocked loads degrade to a toast.
 -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' 'sha256-o+0No2XpbES4E5QJh31mY9JsJFqSmE+B4x+z1fNPjVc=' 'sha256-LPhcYyVaGsoAWUYIPRyfwYSw2y82UmyNSa5ktKilmyA=' 'sha256-reza4vd5o52LWNUf9lzK6WjApdstd5sm4xVx+lcnK2M=' https://accounts.google.com https://unpkg.com; style-src 'self' 'unsafe-inline' https://accounts.google.com https://fonts.googleapis.com; img-src 'self' data:; font-src 'self' data:; connect-src 'self' https://api.open-meteo.com https://geocoding-api.open-meteo.com https://api.openai.com https://api.anthropic.com https://generativelanguage.googleapis.com https://github.com https://release-assets.githubusercontent.com https://accounts.google.com https://huggingface.co https://*.cdn.hf.co; frame-src https://accounts.google.com; base-uri 'self'; form-action 'self';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' 'sha256-jQGKXr3EKUJqelsBjB7GNSArKx9pbp38QHCOFoVCB3g=' 'sha256-LPhcYyVaGsoAWUYIPRyfwYSw2y82UmyNSa5ktKilmyA=' 'sha256-reza4vd5o52LWNUf9lzK6WjApdstd5sm4xVx+lcnK2M=' https://accounts.google.com https://unpkg.com; style-src 'self' 'unsafe-inline' https://accounts.google.com https://fonts.googleapis.com; img-src 'self' data:; font-src 'self' data:; connect-src 'self' https://api.open-meteo.com https://geocoding-api.open-meteo.com https://api.openai.com https://api.anthropic.com https://generativelanguage.googleapis.com https://github.com https://release-assets.githubusercontent.com https://accounts.google.com https://huggingface.co https://*.cdn.hf.co; frame-src https://accounts.google.com; base-uri 'self'; form-action 'self';">
 <script>
 /* Device-level theme (shared across launcher, admin, and app): applied before
    first paint from the same localStorage slot every theme toggle writes, so a
@@ -82,20 +82,20 @@
 <!-- Boot loading skeleton (hidden by App.init after first paint) -->
 <div id="boot-splash"><div class="bs-inner"><div class="bs-spin"></div><div>Loading project...</div></div></div>
 
-<!-- Heat/Cold SAFETY alert (Rank 10 item 21, promoted 2026-08-13) — full-width
+<!-- Heat/Cold SAFETY alert (Rank 10 item 21, promoted 2026-08-13) , full-width
      page-top banner when a heat or cold risk day is in the cached forecast.
      Deliberately distinct (danger/blue tint, i-alert-triangle) from the amber
      schedule-risk flags so a safety concern never reads as a schedule concern.
      Rendered by renderSafetyBanner() in js/mmgr-render.js; hidden (.is-hide)
      when clear. Static markup, zero inline styles. -->
 <div id="safety-banner" class="is-hide" role="status" aria-live="polite"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-alert-triangle"></use></svg><span id="safety-banner-text"></span></div>
-<!-- View-only banner (ACTION-PLAN 4.1) — shown when the project was opened
+<!-- View-only banner (ACTION-PLAN 4.1) , shown when the project was opened
      with a read-only scope code. Static markup, zero inline styles. -->
-<div id="readonly-banner" class="is-hide"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-eye"></use></svg> View-only mode — read-only access. Contact the admin for the full access code.</div>
+<div id="readonly-banner" class="is-hide"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-eye"></use></svg> View-only mode , read-only access. Contact the admin for the full access code.</div>
     <!-- CLOUD-BACKEND-ARCHITECTURE-PLAN Phase 2: editor-scope banner (toggled
-         by js/mmgr-cloud.js applyEditorScope). Pure UX — the Worker enforces
+         by js/mmgr-cloud.js applyEditorScope). Pure UX , the Worker enforces
          the scope server-side on every editor save. -->
-    <div id="editor-scope-banner" class="is-hide"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-user"></use></svg> Editing as a scoped editor code — some panels are locked for this code (enforced by the server).</div>
+    <div id="editor-scope-banner" class="is-hide"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-user"></use></svg> Editing as a scoped editor code , some panels are locked for this code (enforced by the server).</div>
 
 <!-- Undo Bar -->
 <div id="ub"><span><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-alert-triangle"></use></svg><span id="ub-msg"> Page cleared.</span></span><button class="btn btn-s btn-warn"  data-action="undoClr"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-corner-down-left"></use></svg> Undo</button><span id="ut" class="amber-b">5</span></div>
@@ -112,21 +112,21 @@
     <a class="hdr-back" href="app.html" title="Back to projects list"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-left"></use></svg> Projects</a>
     <button class="nav-btn" id="nav-btn" data-action="tglNav" aria-label="Open navigation menu" aria-expanded="false" aria-controls="sec-nav"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-menu"></use></svg></button>
     <!-- OWNER 2026-08-15: the red "Not backed up" indicator now opens the
-         backup popover (#bk-pop) — Backup to cloud (automatic once linked)
-         and Backup to local (.json) — instead of jumping to the Settings
+         backup popover (#bk-pop) , Backup to cloud (automatic once linked)
+         and Backup to local (.json) , instead of jumping to the Settings
          drawer. Toggled by bkToggle in mmgr-app.js; closed on outside
          click / Escape / choosing an option. -->
-    <!-- OWNER 2026-08-15: the "Signed in" chip — shown only when a real
+    <!-- OWNER 2026-08-15: the "Signed in" chip , shown only when a real
          Google/email session exists (mmgr-google-auth.js drives it via
          showUser/showButton). Clicking it opens the Settings drawer at the
          Controls tab, where sign-in/sign-out live. -->
     <button type="button" class="si-chip" id="hdr-signin" hidden title="Signed in"></button>
-    <span class="bk-anchor"><div class="dirty-ind" id="dirty-ind" data-action="bkToggle" aria-haspopup="true" aria-expanded="false" aria-controls="bk-pop" title="Changes save to this browser automatically. Click to back up — to the cloud (automatic once linked) or to a .json file.">● Not backed up</div>
+    <span class="bk-anchor"><div class="dirty-ind" id="dirty-ind" data-action="bkToggle" aria-haspopup="true" aria-expanded="false" aria-controls="bk-pop" title="Changes save to this browser automatically. Click to back up , to the cloud (automatic once linked) or to a .json file.">● Not backed up</div>
     <div class="bk-pop" id="bk-pop" hidden role="dialog" aria-label="Backup options">
       <div class="bk-pop-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-save"></use></svg> Backup</div>
       <button type="button" class="bk-opt" data-action="bkCloud">
         <span class="bk-opt-ico"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cloud"></use></svg></span>
-        <span class="bk-opt-txt"><b>Backup to cloud</b><small id="bk-cloud-hint">Link this project once — then every Save to Cloud keeps the snapshot current.</small></span>
+        <span class="bk-opt-txt"><b>Backup to cloud</b><small id="bk-cloud-hint">Link this project once , then every Save to Cloud keeps the snapshot current.</small></span>
         <svg class="ico bk-caret" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg>
       </button>
       <button type="button" class="bk-opt" data-action="saveProjectFile">
@@ -145,9 +145,9 @@
 
 <!-- MAIN -->
 <main id="app-main">
-  <div class="vl">My MaNaGeR — <span id="meth-lbl">Project View</span></div>
+  <div class="vl">My MaNaGeR , <span id="meth-lbl">Project View</span></div>
 
-  <!-- STRUCTURAL-IA §2: grouped navigation (Option A — single row, grouped
+  <!-- STRUCTURAL-IA §2: grouped navigation (Option A , single row, grouped
        with eyebrow labels + dividers; every section still one click away). -->
   <nav class="sec-nav" id="sec-nav">
     <div class="nav-group"><span class="nav-group-label">Overview</span>
@@ -204,10 +204,10 @@
          been toggled on AND the user hasn't dismissed it. Hidden forever after
          any pack is toggled on or "Not now" is clicked. -->
     <div class="core-callout is-hide" id="core-callout" role="note">
-      <div class="core-callout-txt"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-orb"></use></svg> <strong>Core Mode is on.</strong> Only the essential sections are shown (Dashboard, Definitions, Charter, WBS, Kanban). Turn on Risk, Budget, RACI, Meetings, Claim Pack and more — one click, nothing hidden is ever lost.</div>
+      <div class="core-callout-txt"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-orb"></use></svg> <strong>Core Mode is on.</strong> Only the essential sections are shown (Dashboard, Definitions, Charter, WBS, Kanban). Turn on Risk, Budget, RACI, Meetings, Claim Pack and more , one click, nothing hidden is ever lost.</div>
       <div class="core-callout-actions">
         <button class="btn btn-g btn-s" data-action="openPacks"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-settings"></use></svg> Turn on Advanced Packs</button>
-        <button class="btn btn-n btn-s" data-action="dismissPacksCallout" aria-label="Dismiss this tip — never show it again">Not now</button>
+        <button class="btn btn-n btn-s" data-action="dismissPacksCallout" aria-label="Dismiss this tip , never show it again">Not now</button>
       </div>
     </div>
     <div class="g3">
@@ -227,7 +227,7 @@
           <div class="fb-sm"><span>In Progress</span><span class="badge bg" id="h-ip">0</span></div>
           <div class="fb-sm"><span>At Risk (Due Soon)</span><span class="badge ba" id="h-ar">0</span></div>
           <div class="fb-sm"><span>Blocked</span><span class="badge br" id="h-bl">0</span></div>
-          <div class="fb-sm"><span>Completed</span><span class="badge bo" id="h-dn">0</span></div>
+          <div class="fb-sm"><span>Completed</span><span class="badge bg" id="h-dn">0</span></div>
           <div class="fb-sm"><span>Overdue</span><span class="badge br" id="h-od">0</span></div>
           <div class="fb-sm"><span>Live Issues</span><span class="badge br" id="h-is">0</span></div>
           <div class="fb-sm"><span>Compliance Expiring</span><span class="badge br" id="h-coi">0</span></div>
@@ -235,7 +235,7 @@
         <!-- Weighted Health Score (MONOLITH-PORTING-GUIDE feature 1) -->
         <div class="health-section">
           <div class="hs-row">
-            <div class="hs-num-box"><div class="hs-num" id="health-score-num">—</div><div class="hs-suffix" id="health-score-suffix">/100</div></div>
+            <div class="hs-num-box"><div class="hs-num" id="health-score-num">-</div><div class="hs-suffix" id="health-score-suffix">/100</div></div>
             <div class="hs-main"><div class="hs-track"><div id="health-bar"></div></div><div id="health-score-label"></div></div>
           </div>
           <div id="health-breakdown"></div>
@@ -246,9 +246,9 @@
         <ol id="n3" class="n3"><li class="txt-sl">No tasks added yet.</li></ol>
       </div>
     </div>
-    <!-- Today's Decision Engine (ACTION-PLAN 1.1) — impact-scored needs-you-now list -->
+    <!-- Today's Decision Engine (ACTION-PLAN 1.1) , impact-scored needs-you-now list -->
     <div class="card mt-lg" id="today-decision-card">
-      <div class="card-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-zap"></use></svg> Today's Decision<span class="ct-sub">Impact-scored from live data — overdue, stalled, risk, budget, actions</span></div>
+      <div class="card-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-zap"></use></svg> Today's Decision<span class="ct-sub">Impact-scored from live data , overdue, stalled, risk, budget, actions</span></div>
       <div id="today-decision-body"></div>
     </div>
     <!-- DMAIC Improvement Progress (dashboard signal when DMAIC is active) -->
@@ -260,10 +260,10 @@
       <div class="card" id="dw-bud-card"><div class="card-title">Budget Variance</div><div class="stat" id="dw-bud">$0</div><div class="t-xxs" id="dw-bud-sub">Planned vs Actual</div></div>
       <div class="card" id="dw-util-card"><div class="card-title">Resource Utilization</div><div class="stat" id="dw-util">0%</div><div class="t-xxs" id="dw-util-sub">Avg across resources</div></div>
       <div class="card" id="dw-chg-card"><div class="card-title">Pending Changes</div><div class="stat" id="dw-chg">0</div><div class="t-xxs">Awaiting approval</div></div>
-      <div class="card" id="dw-base-card"><div class="card-title">Baseline Variance</div><div class="stat" id="dw-base">—</div><div class="t-xxs" id="dw-base-sub">Schedule / Cost vs baseline</div></div>
+      <div class="card" id="dw-base-card"><div class="card-title">Baseline Variance</div><div class="stat" id="dw-base">-</div><div class="t-xxs" id="dw-base-sub">Schedule / Cost vs baseline</div></div>
     </div>
     <div class="card mt-lg" id="base-var-card" >
-      <div class="card-title">Baseline Variance — Schedule Days &amp; Cost</div>
+      <div class="card-title">Baseline Variance , Schedule Days &amp; Cost</div>
       <div class="t78 mb10">Cost variance (current planned vs baseline planned): <strong id="base-var-cost" class="txt-sl">n/a</strong></div>
       <div class="ox"><table class="dt"><thead><tr><th>Task</th><th>Baseline End</th><th>Current End</th><th>Var</th></tr></thead><tbody id="base-var-body"></tbody></table></div>
     </div>
@@ -273,10 +273,10 @@
     </div>
     <!-- Timeline Target (MONOLITH-PORTING-GUIDE feature 11) -->
     <div class="card mt-lg" id="timeline-target-wrap">
-      <div class="card-title">Timeline Target — Charter vs Schedule</div>
+      <div class="card-title">Timeline Target , Charter vs Schedule</div>
       <div id="timeline-target-card"></div>
     </div>
-    <!-- Schedule Confidence (V3.5 monolith port) — one unified glance at
+    <!-- Schedule Confidence (V3.5 monolith port) , one unified glance at
          "are we going to make it": simulation probability + weather buffer
          check + biggest crash candidate. -->
     <div class="card mt-lg" id="schedule-confidence-wrap">
@@ -288,18 +288,18 @@
       <div class="card-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-calendar"></use></svg> Today's Focus View<span class="ct-sub" id="today-date-lbl"></span></div>
       <div id="today-body"></div>
     </div>
-    <!-- Lookahead (MARKET-FEATURE-ROADMAP C7) — 2-week rolling field view -->
+    <!-- Lookahead (MARKET-FEATURE-ROADMAP C7) , 2-week rolling field view -->
     <div class="card mt-lg" id="lookahead-card">
-      <div class="card-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg> 2-Week Lookahead<span class="ct-sub">What's actually happening next — overdue carryover, this week, next week</span></div>
+      <div class="card-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg> 2-Week Lookahead<span class="ct-sub">What's actually happening next , overdue carryover, this week, next week</span></div>
       <div id="lookahead-body"></div>
     </div>
-    <!-- Percent Plan Complete (MARKET-FEATURE-ROADMAP C8) — lean metric -->
+    <!-- Percent Plan Complete (MARKET-FEATURE-ROADMAP C8) , lean metric -->
     <div class="card mt-lg" id="ppc-card">
-      <div class="card-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-bar-chart"></use></svg> Percent Plan Complete (PPC)<span class="ct-sub">Planned-to-finish this week vs actually completed — 4-week history</span></div>
+      <div class="card-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-bar-chart"></use></svg> Percent Plan Complete (PPC)<span class="ct-sub">Planned-to-finish this week vs actually completed , 4-week history</span></div>
       <div id="ppc-head" class="t78 mb10"></div>
       <div id="ppc-body"></div>
     </div>
-    <!-- Expiry & Renewals (MARKET-FEATURE-ROADMAP C29) — one rollup across
+    <!-- Expiry & Renewals (MARKET-FEATURE-ROADMAP C29) , one rollup across
          COI/licenses/EMR, warranties and permits; hidden until something is due. -->
     <div class="card mt-lg is-hide" id="expiry-card">
       <div class="card-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-alert-triangle"></use></svg> Expiry &amp; Renewals<span class="ct-sub" id="expiry-count"></span></div>
@@ -309,9 +309,9 @@
     <div class="card mt-lg" id="evm-card">
       <div class="card-title" data-def="Earned Value Metrics (CPI & SPI)">Earned Value Management</div>
       <div class="evm-grid">
-        <div class="evm-tile"><div class="evm-tile-label">Schedule Perf. Index</div><div class="evm-tile-val" id="evm-spi">—</div><div class="evm-tile-sub" id="evm-spi-lbl"></div></div>
-        <div class="evm-tile"><div class="evm-tile-label">Cost Perf. Index</div><div class="evm-tile-val" id="evm-cpi">—</div><div class="evm-tile-sub" id="evm-cpi-lbl"></div></div>
-        <div class="evm-tile"><div class="evm-tile-label">Earned Value</div><div class="evm-tile-val txt-gold" id="evm-ev">—</div><div class="evm-tile-sub" id="evm-ev-lbl"></div></div>
+        <div class="evm-tile"><div class="evm-tile-label">Schedule Perf. Index</div><div class="evm-tile-val" id="evm-spi">-</div><div class="evm-tile-sub" id="evm-spi-lbl"></div></div>
+        <div class="evm-tile"><div class="evm-tile-label">Cost Perf. Index</div><div class="evm-tile-val" id="evm-cpi">-</div><div class="evm-tile-sub" id="evm-cpi-lbl"></div></div>
+        <div class="evm-tile"><div class="evm-tile-label">Earned Value</div><div class="evm-tile-val txt-gold" id="evm-ev">-</div><div class="evm-tile-sub" id="evm-ev-lbl"></div></div>
       </div>
       <div class="evm-grid2">
         <div>Schedule Variance (SV): <span class="fw-b" id="evm-sv"></span></div>
@@ -320,10 +320,10 @@
         <div>Actual Cost (AC): <span class="txt-sl" id="evm-ac"></span></div>
       </div>
       <div class="evm-grid3">
-        <div class="evm-tile-sm"><div class="evm-tile-label-sm" title="Estimate at Completion">EAC</div><div class="evm-tile-val-sm" id="evm-eac">—</div><div class="evm-tile-sub-sm">Est. at Completion</div></div>
-        <div class="evm-tile-sm"><div class="evm-tile-label-sm" title="Estimate to Complete">ETC</div><div class="evm-tile-val-sm" id="evm-etc">—</div><div class="evm-tile-sub-sm">Est. to Complete</div></div>
-        <div class="evm-tile-sm"><div class="evm-tile-label-sm" title="Variance at Completion">VAC</div><div class="evm-tile-val-sm" id="evm-vac">—</div><div class="evm-tile-sub-sm">Var. at Completion</div></div>
-        <div class="evm-tile-sm"><div class="evm-tile-label-sm" title="To-Complete Performance Index">TCPI</div><div class="evm-tile-val-sm" id="evm-tcpi">—</div><div class="evm-tile-sub-sm" id="evm-tcpi-lbl"></div></div>
+        <div class="evm-tile-sm"><div class="evm-tile-label-sm" title="Estimate at Completion">EAC</div><div class="evm-tile-val-sm" id="evm-eac">-</div><div class="evm-tile-sub-sm">Est. at Completion</div></div>
+        <div class="evm-tile-sm"><div class="evm-tile-label-sm" title="Estimate to Complete">ETC</div><div class="evm-tile-val-sm" id="evm-etc">-</div><div class="evm-tile-sub-sm">Est. to Complete</div></div>
+        <div class="evm-tile-sm"><div class="evm-tile-label-sm" title="Variance at Completion">VAC</div><div class="evm-tile-val-sm" id="evm-vac">-</div><div class="evm-tile-sub-sm">Var. at Completion</div></div>
+        <div class="evm-tile-sm"><div class="evm-tile-label-sm" title="To-Complete Performance Index">TCPI</div><div class="evm-tile-val-sm" id="evm-tcpi">-</div><div class="evm-tile-sub-sm" id="evm-tcpi-lbl"></div></div>
       </div>
     </div>
     <!-- Milestone Timeline (feature 11) -->
@@ -331,24 +331,24 @@
       <div class="card-title" data-def="Milestone"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-flag"></use></svg> Milestone Timeline</div>
       <div id="milestone-timeline"></div>
     </div>
-    <!-- Action-Item Aging (ACTION-PLAN 3.1) — open actions escalate amber → red by days overdue -->
+    <!-- Action-Item Aging (ACTION-PLAN 3.1) , open actions escalate amber → red by days overdue -->
     <div class="card mt-lg" id="action-aging-card">
       <div class="card-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clock"></use></svg> Action-Item Aging<span class="ct-sub" id="action-aging-sub"></span></div>
       <div id="action-aging-body"></div>
     </div>
-    <!-- PM Consistency Streak (ACTION-PLAN 3.3) — quiet, non-guilt day counter -->
+    <!-- PM Consistency Streak (ACTION-PLAN 3.3) , quiet, non-guilt day counter -->
     <div class="card mt-lg" id="streak-card">
-      <div class="card-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-activity"></use></svg> PM Consistency<span class="ct-sub">Quiet day-counter — informational only, never nags</span></div>
+      <div class="card-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-activity"></use></svg> PM Consistency<span class="ct-sub">Quiet day-counter , informational only, never nags</span></div>
       <div id="streak-body"></div>
     </div>
-    <!-- Weekly Baseline Narrative (ACTION-PLAN 3.4) — plain-English diff feeding Copy All -->
+    <!-- Weekly Baseline Narrative (ACTION-PLAN 3.4) , plain-English diff feeding Copy All -->
     <div class="card mt-lg" id="baseline-narrative-card">
       <div class="card-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-file-text"></use></svg> What Changed This Week<span class="ct-sub">Plain-English diff vs the saved baseline</span>
         <div class="g6"><button class="btn btn-n btn-s" data-action="cpAllPage" data-section="baselinen"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy All</button></div>
       </div>
       <div id="baseline-narrative-body"></div>
     </div>
-    <!-- Rank 2: Weekly/Daily Digest Engine — 'What Changed' diff vs pinned reference -->
+    <!-- Rank 2: Weekly/Daily Digest Engine , 'What Changed' diff vs pinned reference -->
     <div class="card mt-lg" id="digest-card">
       <div class="card-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-calendar"></use></svg> Weekly Digest<span class="ct-sub">What changed since your last pinned reference</span>
         <div class="g6"><button class="btn btn-n btn-s" data-action="digestGenerate"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> Generate Now</button><button class="btn btn-o btn-s" data-action="digestPin"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-pin"></use></svg> Pin Reference</button><button class="btn btn-n btn-s" data-action="cpAllPage" data-section="digest"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy All</button></div>
@@ -375,24 +375,24 @@
       </div>
       <div id="weather-variance-body"></div>
     </div>
-    <!-- Weather Risk Forecast (ACTION-PLAN 7.1) — Open-Meteo, cached 3h -->
+    <!-- Weather Risk Forecast (ACTION-PLAN 7.1) , Open-Meteo, cached 3h -->
     <div class="card mt-lg" id="weather-forecast-card">
       <div class="card-title" data-def="Weather-Sensitive Task"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cloud-rain"></use></svg> Weather Risk Forecast<span class="ct-sub">Open-Meteo · cached 3h · thresholds: rain ≥60%, heat ≥32°C, cold ≤0°C</span>
         <div class="g6">
-          <input type="text" id="wx-place-in" placeholder="City or town, Parish/State, Country — more specific = more accurate" aria-label="Site location — city or town, parish/state, country">
+          <input type="text" id="wx-place-in" placeholder="City or town, Parish/State, Country , more specific = more accurate" aria-label="Site location , city or town, parish/state, country">
           <button class="btn btn-g btn-s" data-action="wxGeocode">Locate</button>
-          <!-- OWNER 2026-08-15: "Use my current location" — browser geolocation
+          <!-- OWNER 2026-08-15: "Use my current location" , browser geolocation
                pins the exact coordinates where you are and fetches the forecast
                for them (tailored to your location). Falls back gracefully to the
                type-a-city path when permission is denied or unavailable. -->
-          <button class="btn btn-n btn-s" data-action="wxUseLocation" title="Use my current location — the forecast is then tailored to exactly where you are"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-crosshair"></use></svg> Use my current location</button>
+          <button class="btn btn-n btn-s" data-action="wxUseLocation" title="Use my current location , the forecast is then tailored to exactly where you are"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-crosshair"></use></svg> Use my current location</button>
           <button class="btn btn-n btn-s" data-action="wxRefresh">Refresh</button>
           <span class="wx-view-tgl">
             <button class="btn btn-s" data-action="wxSetView" data-days="7" aria-label="Show 7-day weather forecast">7d</button>
             <button class="btn btn-s" data-action="wxSetView" data-days="16" aria-label="Show 16-day weather forecast">16d</button>
           </span>
         </div>
-        <div class="wx-hint">The site is looked up online for its exact coordinates — type your site city or address (more specific = more accurate), or tap <strong>Use my current location</strong> to tailor the forecast to exactly where you are. Needs an internet connection; when offline the regional weather windows remain the fallback.</div>
+        <div class="wx-hint">The site is looked up online for its exact coordinates , type your site city or address (more specific = more accurate), or tap <strong>Use my current location</strong> to tailor the forecast to exactly where you are. Needs an internet connection; when offline the regional weather windows remain the fallback.</div>
       </div>
       <div id="weather-forecast-body"></div>
     </div>
@@ -435,7 +435,7 @@
         <div class="cf-field"><label class="cf-label" for="ch-target-start">Target Start Date</label><input class="cf-input" type="date" id="ch-target-start" data-action="updCharter" data-charter-field="targetStart"></div>
         <div class="cf-field"><label class="cf-label" for="ch-target-end">Target Completion Date</label><input class="cf-input" type="date" id="ch-target-end" data-action="updCharter" data-charter-field="targetCompletion"></div>
         <div class="cf-field full"><label class="cf-label" for="ch-obj">Project Objective</label><textarea class="cf-ta" id="ch-obj" placeholder="What is the primary business objective this project delivers?" data-action="updCharter" data-charter-field="objective"></textarea></div>
-        <div class="cf-field full"><label class="cf-label" for="ch-scope">Scope — In Scope</label><textarea class="cf-ta" id="ch-scope" placeholder="What is included in the project scope?" data-action="updCharter" data-charter-field="scope"></textarea></div>
+        <div class="cf-field full"><label class="cf-label" for="ch-scope">Scope , In Scope</label><textarea class="cf-ta" id="ch-scope" placeholder="What is included in the project scope?" data-action="updCharter" data-charter-field="scope"></textarea></div>
         <div class="cf-field full"><label class="cf-label" for="ch-deliverables">Key Deliverables</label><textarea class="cf-ta" id="ch-deliverables" placeholder="Tangible outputs the project will produce" data-action="updCharter" data-charter-field="deliverables"></textarea></div>
         <div class="cf-field full"><label class="cf-label" for="ch-constraints">Constraints</label><textarea class="cf-ta" id="ch-constraints" placeholder="Budget caps, regulatory deadlines, resource limits" data-action="updCharter" data-charter-field="constraints"></textarea></div>
         <div class="cf-field full"><label class="cf-label" for="ch-assumptions">Assumptions</label><textarea class="cf-ta" id="ch-assumptions" placeholder="What must remain true for success" data-action="updCharter" data-charter-field="assumptions"></textarea></div>
@@ -477,7 +477,7 @@
   <!-- ═══ GANTT ═══ -->
   <div class="panel" id="panel-gantt">
     <div class="card">
-      <div class="card-title">Gantt Chart — Schedule View
+      <div class="card-title">Gantt Chart , Schedule View
         <div class="g6">
           <button class="btn btn-g btn-s" data-action="cascadeGantt" data-def="Cascade Dates"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> Cascade Dates</button>
           <button class="btn btn-o btn-s toggle-chip is-off" data-action="toggleCritical" data-def="Critical Path"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-target"></use></svg> Highlight Critical</button>
@@ -495,7 +495,7 @@
       <p class="t-xs mb14">Runs 1,000 simulated schedules using triangular per-task duration distributions (optimistic/likely/pessimistic) to produce a probability distribution of project completion dates.</p>
       <div class="g6 align-end">
         <div><label class="mc-field-label" for="mc-target">Target Completion Date</label><input type="date" id="mc-target" class="mc-input"></div>
-        <div><label class="mc-field-label" for="mc-risk-factor">Risk Factor (1.0 base — 2.0 high)</label><input type="number" id="mc-risk-factor" value="1.2" min="1.0" max="2.0" step="0.1" class="mc-input"></div>
+        <div><label class="mc-field-label" for="mc-risk-factor">Risk Factor (1.0 base , 2.0 high)</label><input type="number" id="mc-risk-factor" value="1.2" min="1.0" max="2.0" step="0.1" class="mc-input"></div>
         <button class="btn btn-g btn-s" data-action="runMonteCarlo"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-activity"></use></svg> Run Simulation</button>
       </div>
       <div id="mc-result" class="is-hide">
@@ -552,7 +552,7 @@
   <!-- ═══ RESOURCES ═══ -->
   <div class="panel" id="panel-res">
     <div class="card">
-      <div class="card-title">Resources — Team, Equipment & Materials
+      <div class="card-title">Resources , Team, Equipment & Materials
         <div class="g6">
           <button class="btn btn-g btn-s" data-action="addResource">+ Add Resource</button>
           <button class="btn btn-o btn-s" data-action="pushResourcesToBudget"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-dollar"></use></svg> Push to Budget</button>
@@ -572,7 +572,7 @@
   <!-- ═══ BUDGET ═══ -->
   <div class="panel" id="panel-bud">
     <div class="card">
-      <div class="card-title">Budget — Envelope, Committed &amp; Spent
+      <div class="card-title">Budget , Envelope, Committed &amp; Spent
         <div class="g6">
           <button class="btn btn-g btn-s" data-action="addBudgetLine">+ Add Line</button>
           <button class="btn btn-n btn-s" data-action="cpAllPage" data-section="bud"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy All</button>
@@ -598,7 +598,7 @@
         <div class="card m0a" ><div class="card-title ct-sm" >Remaining</div><div class="stat-md" id="bud-remaining">$0</div><div class="stat-sm" id="bud-remaining-pct">On budget</div></div>
         <div class="card m0a" ><div class="card-title ct-sm" >Unallocated</div><div class="stat-md" id="bud-unallocated">$0</div></div>
       </div>
-      <!-- MARKET-FEATURE-ROADMAP A2: lien-waiver rollup — one line under the
+      <!-- MARKET-FEATURE-ROADMAP A2: lien-waiver rollup , one line under the
            summary cards; hidden until at least one budget line exists. -->
       <div class="card m0a is-hide" id="bud-waivers-wrap">
         <div class="card-title ct-sm">Lien Waivers<span class="ct-sub" id="bud-waivers"></span></div>
@@ -633,13 +633,13 @@
         <div class="card-title">Risk Exposure vs Contingency<span class="ct-sub">Expected value of logged risks vs contingency lines</span></div>
         <div id="risk-cont-con"></div>
       </div>
-      <!-- LD Exposure rollup (MASTER-ACTION-PLAN-v3-STRICT Rank 1.3) — avoided
+      <!-- LD Exposure rollup (MASTER-ACTION-PLAN-v3-STRICT Rank 1.3) , avoided
            vs incurred, driven by 1.2's slip cause tags, not weather tags alone. -->
       <div class="card m0a mt16">
-        <div class="card-title">Liquidated Damages Rollup<span class="ct-sub">Avoided vs incurred — driven by slip cause tags (Claim Pack tab)</span></div>
+        <div class="card-title">Liquidated Damages Rollup<span class="ct-sub">Avoided vs incurred , driven by slip cause tags (Claim Pack tab)</span></div>
         <div id="ld-rollup-body"></div>
       </div>
-      <!-- Pay Applications (MARKET-FEATURE-ROADMAP C13) — draw requests,
+      <!-- Pay Applications (MARKET-FEATURE-ROADMAP C13) , draw requests,
            generated from live spend or entered manually. -->
       <div class="card m0a mt16">
         <div class="card-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-file-text"></use></svg> Pay Applications<span class="ct-sub" id="payapp-sum"></span>
@@ -654,7 +654,7 @@
         </tr></thead><tbody id="payapp-body"></tbody></table></div>
       </div>
       <div class="card m0a mt16">
-        <div class="card-title">Spend Log — Dated Actuals<div class="g6"><button class="btn btn-g btn-s" data-action="addSpendEntry">+ Add Spend Entry</button></div></div>
+        <div class="card-title">Spend Log , Dated Actuals<div class="g6"><button class="btn btn-g btn-s" data-action="addSpendEntry">+ Add Spend Entry</button></div></div>
         <div class="ox"><table class="dt"><thead><tr>
           <th class="w120">Date</th><th>Budget Line</th><th class="w100">Amount</th><th>Notes</th><th class="w60"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> </th>
         </tr></thead><tbody id="spendlog-body"></tbody></table></div>
@@ -672,7 +672,7 @@
         </div>
       </div>
       <!-- MARKET-FEATURE-ROADMAP A1: expiring-compliance heads-up (card
-           language per UI doctrine — hidden until something is due). -->
+           language per UI doctrine , hidden until something is due). -->
       <div class="stk-cmp is-hide" id="stk-compliance" role="note">
         <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-alert-triangle"></use></svg>
         <span class="stk-cmp-txt"></span>
@@ -686,7 +686,7 @@
         <th class="w60"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> </th>
       </tr></thead><tbody id="stk-body"></tbody></table></div>
     </div>
-    <!-- MARKET-FEATURE-ROADMAP A3 (T8 REBUILD 2026-08-16): bid leveling —
+    <!-- MARKET-FEATURE-ROADMAP A3 (T8 REBUILD 2026-08-16): bid leveling , 
          modal-created packages with CSI division, target budget, deadline and
          scope line items; the leveled grid compares subcontractor quotes per
          line item with base totals, leveling adjustments and true leveled
@@ -697,7 +697,7 @@
       </div>
       <div id="bid-body"></div>
     </div>
-    <!-- MARKET-FEATURE-ROADMAP A4 (T8 REBUILD): Go/No-Go bid scoring —
+    <!-- MARKET-FEATURE-ROADMAP A4 (T8 REBUILD): Go/No-Go bid scoring , 
          weighted questionnaire with 1-5 star criteria per weighted category;
          live score, GO/REVIEW/NO-GO verdict and automation bar. -->
     <div class="card m0a mt16">
@@ -775,7 +775,7 @@
         </tr></thead><tbody id="issue-body"></tbody></table></div>
       </div>
     </div>
-    <!-- Inspection Checklists (MARKET-FEATURE-ROADMAP C16) — trade/phase
+    <!-- Inspection Checklists (MARKET-FEATURE-ROADMAP C16) , trade/phase
          inspection checklists, distinct from DMAIC continuous improvement. -->
     <div class="card m0a mt16">
       <div class="card-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-check-circle"></use></svg> Inspection Checklists<span class="ct-sub" id="insp-sum"></span>
@@ -787,7 +787,7 @@
       </tr></thead><tbody id="insp-body"></tbody></table></div>
     </div>
     <!-- Incident Register w/ corrective-action loop (MARKET-FEATURE-ROADMAP
-         C17) — quality/safety incidents: report → investigation → action →
+         C17) , quality/safety incidents: report → investigation → action →
          closed, with root cause + corrective action on record. -->
     <div class="card m0a mt16">
       <div class="card-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-alert-triangle"></use></svg> Incident Register<span class="ct-sub" id="inc-sum"></span>
@@ -804,7 +804,7 @@
   <!-- ═══ CLAIM PACK (MASTER-ACTION-PLAN-v3-STRICT Rank 1) ═══ -->
   <div class="panel" id="panel-claim">
     <div class="card">
-      <div class="card-title" data-def="Liquidated Damages">Claim / Delay Package<span class="ct-sub">One-click counsel-ready export — every figure pulled live from state</span>
+      <div class="card-title" data-def="Liquidated Damages">Claim / Delay Package<span class="ct-sub">One-click counsel-ready export , every figure pulled live from state</span>
         <div class="g6">
           <label class="wx-field">From <input type="date" id="claim-from"></label>
           <label class="wx-field">To <input type="date" id="claim-to"></label>
@@ -812,12 +812,12 @@
           <button class="btn btn-n btn-s" data-action="cpAllPage" data-section="claim"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy All</button>
         </div>
       </div>
-      <p class="t-xs mb14">Weather delays, affected WBS tasks, LD/contract exposure, baseline-vs-actual deltas, change control, and meeting decisions/action items — all sourced from project state for the selected window. No manual re-entry.</p>
+      <p class="t-xs mb14">Weather delays, affected WBS tasks, LD/contract exposure, baseline-vs-actual deltas, change control, and meeting decisions/action items , all sourced from project state for the selected window. No manual re-entry.</p>
       <div id="claim-package-body"></div>
     </div>
     <div class="card m0a mt16">
-      <div class="card-title">Schedule Slip Log<span class="ct-sub">Baseline vs actual delta, cause-tagged — never silently blank</span></div>
-      <p class="t-xs mb14">Every task that slipped past its baseline end date appears here. Causes auto-tag from evidence (weather log / predecessor slips / change control) and default to <em>unknown</em> — re-tag manually with the dropdown.</p>
+      <div class="card-title">Schedule Slip Log<span class="ct-sub">Baseline vs actual delta, cause-tagged , never silently blank</span></div>
+      <p class="t-xs mb14">Every task that slipped past its baseline end date appears here. Causes auto-tag from evidence (weather log / predecessor slips / change control) and default to <em>unknown</em> , re-tag manually with the dropdown.</p>
       <div class="ox"><table class="dt"><thead><tr>
         <th>Task</th><th>Baseline End</th><th>Current End</th><th class="w70">Slip</th><th class="w150">Cause</th><th>LD Position</th>
       </tr></thead><tbody id="claim-slips-body"></tbody></table></div>
@@ -830,7 +830,7 @@
       <div class="card-title">Project Closure
         <div class="g6"><button class="btn btn-n btn-s" data-action="cpAllPage" data-section="close"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy All</button></div>
       </div>
-      <!-- Punch List (MARKET-FEATURE-ROADMAP C3) — dedicated defect/closeout
+      <!-- Punch List (MARKET-FEATURE-ROADMAP C3) , dedicated defect/closeout
            items with location + assignee + category + priority. -->
       <div class="card m0a mt16">
         <div class="card-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-check-circle"></use></svg> Punch List<span class="ct-sub" id="punch-sum"></span>
@@ -841,7 +841,7 @@
           <th class="w100">Category</th><th class="w90">Priority</th><th class="w100">Status</th><th>Notes</th><th class="w50"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> </th>
         </tr></thead><tbody id="punch-body"></tbody></table></div>
       </div>
-      <!-- Handover / Closeout Package (MARKET-FEATURE-ROADMAP C18) — bundled
+      <!-- Handover / Closeout Package (MARKET-FEATURE-ROADMAP C18) , bundled
            O&M / warranty / as-built / certificates / sign-off package. -->
       <div class="card m0a mt16">
         <div class="card-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-file-text"></use></svg> Handover Package<span class="ct-sub" id="handover-sum"></span>
@@ -851,7 +851,7 @@
           <th class="w50">ID</th><th>Item / Document</th><th class="w130">Category</th><th class="w100">Status</th><th>Notes</th><th class="w50"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> </th>
         </tr></thead><tbody id="handover-body"></tbody></table></div>
       </div>
-      <!-- Warranty Tracker (MARKET-FEATURE-ROADMAP C26) — warranty periods
+      <!-- Warranty Tracker (MARKET-FEATURE-ROADMAP C26) , warranty periods
            with end dates; feeds the dashboard Expiry & Renewals rollup. -->
       <div class="card m0a mt16">
         <div class="card-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-shield"></use></svg> Warranty Tracker<span class="ct-sub" id="warranty-sum"></span>
@@ -887,7 +887,7 @@
           <button class="btn btn-n btn-s" data-action="cpAllPage" data-section="raci"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy All</button>
         </div>
       </div>
-      <!-- RACI conflict alerts (ACTION-PLAN 2.4) — restored target for renderRaciAlerts -->
+      <!-- RACI conflict alerts (ACTION-PLAN 2.4) , restored target for renderRaciAlerts -->
       <div id="raci-alerts" class="mb14"></div>
       <div id="raci-con"></div>
       <!-- RACI-to-workload heatmap (ACTION-PLAN 4.2) -->
@@ -927,7 +927,7 @@
         <th>Responsible</th><th>Notes</th><th class="w60"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> </th>
       </tr></thead><tbody id="doc-body"></tbody></table></div>
     </div>
-    <!-- RFI Register (MARKET-FEATURE-ROADMAP C1) — question → routing →
+    <!-- RFI Register (MARKET-FEATURE-ROADMAP C1) , question → routing →
          response, with ball-in-court status. -->
     <div class="card m0a mt16">
       <div class="card-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-help"></use></svg> RFI Register<span class="ct-sub" id="rfi-sum"></span>
@@ -938,7 +938,7 @@
         <th class="w110">Issued</th><th class="w110">Due</th><th class="w100">Status</th><th class="w120">Ball in Court</th><th class="w140">Response</th><th class="w50"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> </th>
       </tr></thead><tbody id="rfi-body"></tbody></table></div>
     </div>
-    <!-- Submittal Register (MARKET-FEATURE-ROADMAP C2) — material/shop-drawing
+    <!-- Submittal Register (MARKET-FEATURE-ROADMAP C2) , material/shop-drawing
          approval workflow, distinct from RFIs. -->
     <div class="card m0a mt16">
       <div class="card-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-file-text"></use></svg> Submittal Register<span class="ct-sub" id="sub-sum"></span>
@@ -949,13 +949,13 @@
         <th class="w110">Submitted</th><th class="w130">Status</th><th class="w110">Response</th><th class="w120">Ball in Court</th><th>Notes</th><th class="w50"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> </th>
       </tr></thead><tbody id="sub-body"></tbody></table></div>
     </div>
-    <!-- Ball-in-court rollup (MARKET-FEATURE-ROADMAP C6) — cross-module
+    <!-- Ball-in-court rollup (MARKET-FEATURE-ROADMAP C6) , cross-module
          "whose turn is it" across RFIs, submittals and open issues. -->
     <div class="card m0a mt16">
       <div class="card-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-dot"></use></svg> Ball in Court<span class="ct-sub" id="blc-sum"></span></div>
       <div id="blc-body"></div>
     </div>
-    <!-- Drawing Distribution Log (MARKET-FEATURE-ROADMAP C11) — who received
+    <!-- Drawing Distribution Log (MARKET-FEATURE-ROADMAP C11) , who received
          which drawing revision, when, and by what method. -->
     <div class="card m0a mt16">
       <div class="card-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-file-text"></use></svg> Drawing Distribution Log<span class="ct-sub" id="drawlog-sum"></span>
@@ -965,7 +965,7 @@
         <th class="w50">ID</th><th class="w110">Date</th><th>Drawing No.</th><th class="w60">Rev</th><th>Distributed To</th><th class="w90">Method</th><th>Notes</th><th class="w50"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> </th>
       </tr></thead><tbody id="drawlog-body"></tbody></table></div>
     </div>
-    <!-- Permit Register (MARKET-FEATURE-ROADMAP C30) — dedicated permit
+    <!-- Permit Register (MARKET-FEATURE-ROADMAP C30) , dedicated permit
          status/expiry tracking; feeds the Expiry & Renewals rollup. -->
     <div class="card m0a mt16">
       <div class="card-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-shield"></use></svg> Permit Register<span class="ct-sub" id="permit-sum"></span>
@@ -987,19 +987,19 @@
   <div class="panel" id="panel-meet">
     <!-- Live meeting session (rendered by mmgr-meetings.js) -->
     <div id="active-meeting-wrap"></div>
-    <!-- Last Meeting's Promises (ACTION-PLAN 1.2) — unresolved action items carried forward -->
+    <!-- Last Meeting's Promises (ACTION-PLAN 1.2) , unresolved action items carried forward -->
     <div class="card is-hide" id="meet-promises-wrap">
       <div class="card-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-check-circle"></use></svg> Last Meeting's Promises<span class="ct-sub">Unresolved action items carried into the next meeting of the same type</span></div>
       <div id="meet-promises"></div>
     </div>
-    <!-- Team Pulse history (ACTION-PLAN 3.2) — professional, non-emoji sentiment -->
+    <!-- Team Pulse history (ACTION-PLAN 3.2) , professional, non-emoji sentiment -->
     <div class="card is-hide" id="meet-sentiment-wrap">
       <div class="card-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-heart"></use></svg> Team Pulse<span class="ct-sub">Optional per-meeting sentiment, tracked over time</span></div>
       <div id="meet-sentiment-body"></div>
     </div>
     <div class="card">
       <div class="card-title">Meeting Agendas &amp; Templates<div class="g6"><button class="btn btn-o btn-s" data-action="openMeetPrompt"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-edit"></use></svg> AI Agenda Prompt</button><button class="btn btn-n btn-s" data-action="cpAllPage" data-section="meet"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy All</button></div></div>
-      <p class="t-xs mb14">Pick a template to copy a Word-ready agenda — or hit <strong>Start</strong> to run the meeting live in the app: check items off with notes, track elapsed time, and end it to auto-log a permanent Comms entry.</p>
+      <p class="t-xs mb14">Pick a template to copy a Word-ready agenda , or hit <strong>Start</strong> to run the meeting live in the app: check items off with notes, track elapsed time, and end it to auto-log a permanent Comms entry.</p>
       <div class="rsec">
         <div class="rst"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-zap"></use></svg> Pre-Project Kickoff</div>
         <ul id="meet-kickoff-list" class="meet-kickoff-list"></ul>
@@ -1019,7 +1019,7 @@
       </div>
     </div>
     <div class="card">
-      <div class="card-title">Completed Meetings — Project Record</div>
+      <div class="card-title">Completed Meetings , Project Record</div>
       <div id="meeting-history-body"></div>
     </div>
   </div>
@@ -1029,7 +1029,7 @@
 <!-- SIDEBAR-HAMBURGER-TOGGLE-PLAN (2026-08-12): opt-in desktop sidebar.
      Fixed left rail (~240px) below the sticky header, mirroring the .sec-nav
      groups. js/mmgr-app.js buildSidebar() clones the nav groups into this
-     shell (one source of truth — links/actions can never drift), and the
+     shell (one source of truth , links/actions can never drift), and the
      drawer/pill nav keeps working exactly as before. Shown when the device
      preference localStorage mmgr_sidebar === 'on' (body.sidebar-on; default
      'off', so existing users see zero change until they opt in). Desktop-only:
@@ -1041,18 +1041,18 @@
   <div class="sb-head">
     <span class="sb-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-menu"></use></svg> Sections</span>
     <!-- OWNER 2026-08-15: the rail-head close control is the SAME hamburger
-         as the header button (never an X — UI DOCTRINE rule 3). It rotates
+         as the header button (never an X , UI DOCTRINE rule 3). It rotates
          90deg while the rail is open; clicking it closes the rail so the
          content takes the full screen, and the header hamburger reopens it. -->
     <button type="button" class="sb-close" data-action="tglSidebarOpen" aria-label="Close menu" title="Close menu"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-menu"></use></svg></button>
   </div>
 </aside>
 
-<!-- AI Assistant (parallel track) — floating entry point + modal.
+<!-- AI Assistant (parallel track) , floating entry point + modal.
      Preset prompts, free-form question, automatic project-context dump.
      Copy-to-clipboard first; a generative API-key path can be dropped in
      later without redesign (see js/mmgr-ai.js). -->
-<button id="ai-fab" class="ai-fab" data-action="openAiWin" aria-label="Open AI Assistant" title="AI Assistant — preset prompts, free-form question, project context"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg></button>
+<button id="ai-fab" class="ai-fab" data-action="openAiWin" aria-label="Open AI Assistant" title="AI Assistant , preset prompts, free-form question, project context"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg></button>
 <div id="ai-win" data-action="closeAiWinBg">
   <!-- AI-WINDOW-RESIZE: eight edge/corner drag handles (data-edge) wired in
        js/mmgr-ai.js; the size is persisted per device in localStorage
@@ -1070,25 +1070,25 @@
       <span class="mt"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg> AI Assistant</span>
       <!-- AI-WINDOW-POLISH: engine pills + tier select grouped into one
            right-side cluster so the header reads as [title] [controls]. All
-           ids/actions unchanged — getElementById wiring is nesting-agnostic. -->
+           ids/actions unchanged , getElementById wiring is nesting-agnostic. -->
       <div class="ai-head-right">
         <!-- MERGED-AI-CONTROL (audit 1.2): the tier selector lives in the
-             header — visible without expanding anything. Same id + action as
+             header , visible without expanding anything. Same id + action as
              before so syncSettingsUI/action wiring is intact. -->
-        <select id="ai-tier" class="ai-head-tier" data-action="aiSetTier" title="AI engine — Off, Local (zero-key, offline), or Cloud (BYO key)">
+        <select id="ai-tier" class="ai-head-tier" data-action="aiSetTier" title="AI engine , Off, Local (zero-key, offline), or Cloud (BYO key)">
           <option value="off">Off</option>
           <option value="local">Local</option>
           <option value="cloud">Cloud</option>
         </select>
         <span class="ai-pill" id="ai-engine-pill" data-tier="off"><span class="ai-pill-dot"></span><span id="ai-engine-pill-label">Engine</span></span>
         <!-- INTEGRATED-STRUCTURE-API-WINDOW plan §1/§3: backend health badge
-             — pings the same-origin Worker relay health route
+             , pings the same-origin Worker relay health route
              (GET /api/health) when the window opens and reports
              checking / online / error / offline. Wired in
              mmgr-ai.js checkApiHealth(); click to re-check.
              NOTE: this is the BACKEND server health, not the user's
-             AI key connection — that lives in ai-byo-status below. -->
-        <span class="ai-pill ai-api-pill" id="ai-api-pill" data-state="checking" title="Backend API connection — click to re-check"><span class="ai-pill-dot"></span><span id="ai-api-pill-label">Backend · checking</span></span>
+             AI key connection , that lives in ai-byo-status below. -->
+        <span class="ai-pill ai-api-pill" id="ai-api-pill" data-state="checking" title="Backend API connection , click to re-check"><span class="ai-pill-dot"></span><span id="ai-api-pill-label">Backend · checking</span></span>
       </div>
       <div class="ai-head-actions">
         <button class="ai-clear-btn" data-action="aiClear" title="Start a new conversation"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> New</button>
@@ -1096,15 +1096,15 @@
       </div>
     </div>
     <!-- AI-CLOUD-CONNECT-UI (DIR-1): the Cloud connection fields live in an
-         ALWAYS-VISIBLE row directly under the tier select — the moment the
+         ALWAYS-VISIBLE row directly under the tier select , the moment the
          tier is Cloud they are on screen, zero extra clicks. (The old home,
          inside the collapsed <details>, is exactly why the key input looked
          missing.) Visibility is still driven by syncSettingsUI toggling
-         is-hide on #ai-cfg-cloud by tier. Wired directly in mmgr-ai.js — no
+         is-hide on #ai-cfg-cloud by tier. Wired directly in mmgr-ai.js , no
          action-map entries, so connecting a key stays available in view-only
          mode (connecting is not a project mutation). -->
     <!-- AI-WINDOW-POLISH: the verbose label + long security paragraph are
-         gone — the status chip already says Disconnected/Connected, the key
+         gone , the status chip already says Disconnected/Connected, the key
          input carries the session-only promise in its title, and the footnote
          is one line. Same ids/classes, so the QA wiring (ai-byo-status,
          ai-byo-provider, ai-byo-connect, ai-byo-clear, .ai-byo-sec) is intact. -->
@@ -1113,26 +1113,26 @@
          footnote live in a popover behind the settings gear (ai-byo-gear /
          ai-byo-pop), so the window header no longer carries a large key box.
          Same ids/classes for the QA wiring (ai-byo-status, ai-byo-provider,
-         ai-byo-connect, ai-byo-clear, .ai-byo-sec) — all still in the DOM. -->
+         ai-byo-connect, ai-byo-clear, .ai-byo-sec) , all still in the DOM. -->
     <div class="ai-conn-row" id="ai-cfg-cloud">
       <span class="ai-byo-status" id="ai-byo-status" data-state="off"><span class="ai-byo-dot"></span><span class="ai-byo-status-txt">Disconnected</span></span>
-      <!-- Provider list must match MMGR.AiKey.PROVIDERS (js/mmgr-ai-key.js) — keep in sync -->
+      <!-- Provider list must match MMGR.AiKey.PROVIDERS (js/mmgr-ai-key.js) , keep in sync -->
       <select id="ai-byo-provider" title="AI provider for this session">
         <option value="openai">OpenAI</option>
         <option value="google-gemini">Google Gemini</option>
         <option value="anthropic">Anthropic Claude</option>
       </select>
-      <button class="ai-byo-gear" id="ai-byo-gear" type="button" aria-expanded="false" aria-label="API key settings" title="API key settings — paste your key and Connect &amp; Test"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-settings"></use></svg></button>
+      <button class="ai-byo-gear" id="ai-byo-gear" type="button" aria-expanded="false" aria-label="API key settings" title="API key settings , paste your key and Connect &amp; Test"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-settings"></use></svg></button>
       <div class="ai-byo-pop is-hide" id="ai-byo-pop" role="group" aria-label="API key setup">
         <input type="password" id="ai-byo-key" class="ai-byo-key" placeholder="Paste your API key (session-only)" autocomplete="off" spellcheck="false" title="Session-only: your key stays in this browser, is never exported, and clears when you close the tab">
         <button class="btn btn-g btn-s" id="ai-byo-connect" title="Save this session key and verify it with a live provider check"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-link"></use></svg> Connect &amp; Test</button>
         <button class="btn btn-n btn-s" id="ai-byo-clear" title="Forget the key in this session"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> Clear</button>
-        <p class="ai-byo-sec">Your key stays in this browser for this session only — never stored on our servers, never in exports, cleared when you close the tab.</p>
+        <p class="ai-byo-sec">Your key stays in this browser for this session only , never stored on our servers, never in exports, cleared when you close the tab.</p>
       </div>
     </div>
     <div class="mbody ai-body">
       <!-- AI-WINDOW-LAYOUT-SCROLL-AND-INPUT-BUG-DIRECTIVE DIR-1: Chat/Presets
-           segment — the one-click presets moved out of the scroll-competing
+           segment , the one-click presets moved out of the scroll-competing
            thread column into their own pane, always reachable by tab no
            matter how long the conversation is (previously the stacked layout
            made them structurally unreachable once the thread filled the
@@ -1148,8 +1148,8 @@
         <div class="ai-bubble ai-bot ai-welcome" id="ai-welcome">
           <div class="ai-bot-avatar"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg></div>
           <div class="ai-bot-body">
-            <div class="ai-text">Hi — I'm your project assistant. Ask anything about this project, or open the Presets tab for one-click prompts.</div>
-            <div class="ai-tip">Try: “Where are we and what is blocking the critical path?” · “Summarize the top risks” · “Is the budget on track?”</div>
+            <div class="ai-text">Hi , I'm your project assistant. Ask anything about this project, or open the Presets tab for one-click prompts.</div>
+            <div class="ai-tip">Try: "Where are we and what is blocking the critical path?" · "Summarize the top risks" · "Is the budget on track?"</div>
           </div>
         </div>
       </div>
@@ -1157,31 +1157,31 @@
       <!-- Presets pane: one-click prompt chips (rendered by js/mmgr-ai.js open()) -->
       <div class="ai-pane ai-pane-presets is-hide" id="ai-pane-presets" role="tabpanel" aria-labelledby="ai-seg-presets">
       <div class="ai-sug-wrap">
-        <div class="ai-sug-label"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-zap"></use></svg> One-click presets — generate &amp; save to project state</div>
+        <div class="ai-sug-label"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-zap"></use></svg> One-click presets , generate &amp; save to project state</div>
         <div class="ai-presets" id="ai-presets"></div>
       </div>
       </div>
-      <!-- Project context + engine settings (collapsed by default — sits below
+      <!-- Project context + engine settings (collapsed by default , sits below
            both panes; all ids/actions unchanged for Rank 2.3 wiring) -->
       <details class="ai-adv">
         <summary><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-settings"></use></svg> Project context &amp; tools</summary>
         <div class="ai-adv-body">
           <div class="dsec">Project context (auto-generated grounding for both tiers)</div>
-          <textarea id="ai-ctx" class="ai-ctx" readonly aria-label="AI project context (read-only)" placeholder="Project context appears here — charter, health, EVM, timeline, risks, critical path, weather."></textarea>
+          <textarea id="ai-ctx" class="ai-ctx" readonly aria-label="AI project context (read-only)" placeholder="Project context appears here , charter, health, EVM, timeline, risks, critical path, weather."></textarea>
           <div class="ai-actions">
             <button class="btn btn-n btn-s" data-action="aiAttachContext"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-file-text"></use></svg> Attach Project Context</button>
             <button class="btn btn-n btn-s" data-action="aiCopy"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-file-text"></use></svg> Copy Prompt + Context</button>
             <button class="btn btn-n btn-s" data-action="aiCopyOut"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy Result</button>
             <button class="btn btn-n btn-s" data-action="aiClear">Clear</button>
           </div>
-          <p class="ai-note">Tier A runs a zero-key engine in this browser — every line traces to a real project field, offline. Tier B uses your own OpenAI / Google Gemini / Anthropic Claude key for this session only (never stored, never exported, cleared on close) through the Worker relay or the same circuit-broken network path as weather. Connect &amp; Test verifies the key with a live provider check before Send unlocks. The copy-first flow still works for any external tool.</p>
+          <p class="ai-note">Tier A runs a zero-key engine in this browser , every line traces to a real project field, offline. Tier B uses your own OpenAI / Google Gemini / Anthropic Claude key for this session only (never stored, never exported, cleared on close) through the Worker relay or the same circuit-broken network path as weather. Connect &amp; Test verifies the key with a live provider check before Send unlocks. The copy-first flow still works for any external tool.</p>
         </div>
       </details>
-      <!-- Result store — hidden; copyOut() reads it and runs render as bubbles -->
+      <!-- Result store , hidden; copyOut() reads it and runs render as bubbles -->
       <textarea id="ai-out" class="ai-out" readonly aria-label="AI response output"></textarea>
       <div class="ai-trace" id="ai-trace"></div>
     </div>
-    <!-- UI-DECLUTTER: the red inline connection warning is gone — the Send
+    <!-- UI-DECLUTTER: the red inline connection warning is gone , the Send
          button stays disabled when no verified key exists and the reason is a
          native tooltip hosted on the wrapper span (Chrome suppresses title
          tooltips on disabled buttons). -->
@@ -1214,14 +1214,14 @@
   </div>
   <div class="db is-hide" id="db-qa">
     <div class="fi"><div class="fn"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Do I need an account or an internet connection?</div><div class="fd">No. Everything saves to your browser (LocalStorage) and works fully offline. You only need a connection for optional extras: the Cloud AI tier with your own key, live weather forecasts, voice caption downloads, and Google sign-in sync.</div></div>
-    <div class="fi"><div class="fn"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-lock"></use></svg> Is my project data sent anywhere?</div><div class="fd">No. The Local AI tier runs entirely in your browser, and nothing uploads unless you opt in. The Cloud AI tier sends only the compiled project-context prompt to the provider you choose, using your own key — the key and the data are never stored on our servers and never included in project exports or backups.</div></div>
-    <div class="fi"><div class="fn"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg> How does the built-in AI work — and do I need my own key?</div><div class="fd">Two tiers. Local runs zero-key, offline, and every line it writes traces to a real field in your project. Cloud takes your own key for OpenAI, Google Gemini, or Anthropic Claude — pick the provider, paste the key, and Connect &amp; Test verifies it live before Send unlocks. The AI window keeps a Chat / Presets tab bar at the top: the conversation lives under Chat, and the one-click prompt chips live under Presets — always one click away, no matter how long the conversation gets.</div></div>
-    <div class="fi"><div class="fn"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-activity"></use></svg> What happens if my AI provider rate-limits me?</div><div class="fd">The Cloud tier automatically retries on the next smaller model from the same provider — for example Gemini 2.0 Flash → Flash Lite → Flash Latest — and shows an amber “Fell back to …” badge in the chat naming the model that actually answered. Only capacity rejections (HTTP 429/503) trigger the fallback; a rejected key (401/403) is cleared immediately rather than quietly retried on smaller models.</div></div>
+    <div class="fi"><div class="fn"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-lock"></use></svg> Is my project data sent anywhere?</div><div class="fd">No. The Local AI tier runs entirely in your browser, and nothing uploads unless you opt in. The Cloud AI tier sends only the compiled project-context prompt to the provider you choose, using your own key , the key and the data are never stored on our servers and never included in project exports or backups.</div></div>
+    <div class="fi"><div class="fn"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg> How does the built-in AI work , and do I need my own key?</div><div class="fd">Two tiers. Local runs zero-key, offline, and every line it writes traces to a real field in your project. Cloud takes your own key for OpenAI, Google Gemini, or Anthropic Claude , pick the provider, paste the key, and Connect &amp; Test verifies it live before Send unlocks. The AI window keeps a Chat / Presets tab bar at the top: the conversation lives under Chat, and the one-click prompt chips live under Presets , always one click away, no matter how long the conversation gets.</div></div>
+    <div class="fi"><div class="fn"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-activity"></use></svg> What happens if my AI provider rate-limits me?</div><div class="fd">The Cloud tier automatically retries on the next smaller model from the same provider , for example Gemini 2.0 Flash → Flash Lite → Flash Latest , and shows an amber "Fell back to …" badge in the chat naming the model that actually answered. Only capacity rejections (HTTP 429/503) trigger the fallback; a rejected key (401/403) is cleared immediately rather than quietly retried on smaller models.</div></div>
     <div class="fi"><div class="fn"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-eye"></use></svg> Where does my AI key live?</div><div class="fd">In this browser tab only (sessionStorage), for this session. It is cleared when you close the tab or press Clear, and it never appears in project state, exports, backups, or the error log.</div></div>
-    <div class="fi"><div class="fn"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-save"></use></svg> How do I back up or move my project?</div><div class="fd">Use Generate Output to export a timestamped .json file and re-import it on any device. Optional Google Drive backup/restore and sign-in sync are available too — but the export file is the guaranteed path on every device, signed in or not.</div></div>
-    <div class="fi"><div class="fn"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-phone"></use></svg> Can I use this on my phone or tablet?</div><div class="fd">Yes — the workspace is responsive, installs like an app (PWA), and keeps working offline after the first load. Voice capture runs on the device too.</div></div>
-    <div class="fi"><div class="fn"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-camera"></use></svg> How does voice capture work?</div><div class="fd">Dictate a site meeting and whisper transcribes it offline in your browser — no cloud, no per-minute fee. Recorded disputes feed straight into the Claim Pack.</div></div>
-    <div class="fi"><div class="fn"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-hardhat"></use></svg> What is a Claim Pack?</div><div class="fd">Weather delays and schedule slips compiled into a written delay argument with liquidated-damages exposure — incurred vs defensible — ready for counsel review.</div></div>
+    <div class="fi"><div class="fn"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-save"></use></svg> How do I back up or move my project?</div><div class="fd">Use Generate Output to export a timestamped .json file and re-import it on any device. Optional Google Drive backup/restore and sign-in sync are available too , but the export file is the guaranteed path on every device, signed in or not.</div></div>
+    <div class="fi"><div class="fn"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-phone"></use></svg> Can I use this on my phone or tablet?</div><div class="fd">Yes , the workspace is responsive, installs like an app (PWA), and keeps working offline after the first load. Voice capture runs on the device too.</div></div>
+    <div class="fi"><div class="fn"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-camera"></use></svg> How does voice capture work?</div><div class="fd">Dictate a site meeting and whisper transcribes it offline in your browser , no cloud, no per-minute fee. Recorded disputes feed straight into the Claim Pack.</div></div>
+    <div class="fi"><div class="fn"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-hardhat"></use></svg> What is a Claim Pack?</div><div class="fd">Weather delays and schedule slips compiled into a written delay argument with liquidated-damages exposure , incurred vs defensible , ready for counsel review.</div></div>
     <div class="fi"><div class="fn"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-users"></use></svg> How do I share updates with the team or client?</div><div class="fd">From the Controls tab: Copy As (Slack / email / client formats) and ready-to-send email templates (status update, change request, risk escalation, closure sign-off). Export the .json for a full handoff.</div></div>
   </div>
   <div class="db is-hide" id="db-prompt">
@@ -1247,21 +1247,21 @@
     <div class="ctl-sec"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-user"></use></svg> Profile</div>
     <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-user"></use></svg> Your Name</span><input type="text" id="user-name-in" placeholder="Your name" aria-label="Your name (shown in the header greeting)" data-action="setUserName" class="ctl-in w150"></div>
     <div class="sr-hint">Shown in the header greeting. Leave blank for a generic welcome.</div>
-    <!-- AUTH MAINFRAME 2026-08-17: password change for email accounts —
+    <!-- AUTH MAINFRAME 2026-08-17: password change for email accounts , 
          the shared control mounts here from js/mmgr-google-auth.js; the
          trigger stays hidden unless the signed-in account has a password. -->
     <div class="pw-host" data-pw-host></div>
 
-    <!-- Share & Access — rendered by js/mmgr-cloud.js: owner code, editor
+    <!-- Share & Access , rendered by js/mmgr-cloud.js: owner code, editor
          codes with section-scope toggles (view-only / edit-budget / etc). -->
     <div class="ctl-sec"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-shield"></use></svg> Share &amp; Access</div>
     <div id="ctrl-share" role="region" aria-label="Sharing and access codes"></div>
 
-    <!-- ACTION-PLAN 5.1: multi-format Copy All (Slack / email / client) —
+    <!-- ACTION-PLAN 5.1: multi-format Copy All (Slack / email / client) , 
          rebuilt as explain-before-copy cards: what each format is for, a
          live preview of what will be copied, then the Copy button. -->
     <div class="ctl-sec"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy As…</div>
-    <div class="sr-hint ctl-lead">The same live project state, in three share formats. Read what each one is for — then copy it.</div>
+    <div class="sr-hint ctl-lead">The same live project state, in three share formats. Read what each one is for , then copy it.</div>
     <div class="fmt-card">
       <div class="fmt-head"><span class="fmt-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-users"></use></svg> Slack Digest</span><button class="btn btn-g btn-s" data-action="cpFormats" data-kind="slack" title="Copy the Slack-formatted digest"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy</button></div>
       <p class="fmt-desc">Slack is the team chat app many crews use for quick updates. This format uses Slack's bold <code>*asterisks*</code> markup so headings and warnings stand out when pasted into a channel.</p>
@@ -1274,16 +1274,16 @@
     </div>
     <div class="fmt-card">
       <div class="fmt-head"><span class="fmt-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-file-text"></use></svg> Client Summary</span><button class="btn btn-g btn-s" data-action="cpFormats" data-kind="client" title="Copy the printable client summary"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy</button></div>
-      <p class="fmt-desc">A clean, printable one-page summary for a client or stakeholder: progress, key metrics, open issues. No internal risk detail — just what a client needs to know.</p>
+      <p class="fmt-desc">A clean, printable one-page summary for a client or stakeholder: progress, key metrics, open issues. No internal risk detail , just what a client needs to know.</p>
       <pre class="fmt-preview" id="pv-client" aria-label="Client summary preview (live)"></pre>
     </div>
 
     <!-- MONOLITH-FEATURE-PARITY-DIRECTIVES RESTORE-3: one-click email templates
-         (static, zero-AI baseline restored from the monolith — the guaranteed
+         (static, zero-AI baseline restored from the monolith , the guaranteed
          fallback). AI-upgrade path tracked separately in BACKLOG.md. Each
          template is its own full card: what it is, a live preview, copy. -->
     <div class="ctl-sec"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-mail"></use></svg> Email Templates</div>
-    <div class="sr-hint ctl-lead">Ready-to-send drafts built from live project data — each is a full email with subject line. Read the preview, then copy and paste into your mail client.</div>
+    <div class="sr-hint ctl-lead">Ready-to-send drafts built from live project data , each is a full email with subject line. Read the preview, then copy and paste into your mail client.</div>
     <div class="fmt-card">
       <div class="fmt-head"><span class="fmt-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-calendar"></use></svg> Status Update</span><button class="btn btn-n btn-s" data-action="emailTpl" data-kind="status" title="Copy the weekly status update email"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy</button></div>
       <p class="fmt-desc">The regular weekly update to your sponsor: overall progress, tasks in progress, blockers, live issues, and next priorities.</p>
@@ -1310,7 +1310,7 @@
     <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-palette"></use></svg> Color Theme</span><span class="pal-switch" role="group" aria-label="Color theme"><button type="button" class="pal-btn" data-pal="default" aria-pressed="true">Default</button><button type="button" class="pal-btn" data-pal="cyan" aria-pressed="false">Cyan</button></span></div>
     <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-crosshair"></use></svg> Crosshair Cursor</span><label class="tgl"><input type="checkbox" id="ch-tgl" aria-label="Crosshair Cursor" data-action="tglCh"><span class="tsl"></span></label></div>
     <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-orb"></use></svg> Premium Visual Mode</span><label class="tgl"><input type="checkbox" id="glass-tgl" aria-label="Premium Visual Mode" data-action="tglGlassMode"><span class="tsl"></span></label></div>
-    <div class="sr-hint">Premium visual mode — uses more graphics power (WebGL liquid-glass backdrop). Off by default; requires a capable device. CSS glass is the universal default for everyone else.</div>
+    <div class="sr-hint">Premium visual mode , uses more graphics power (WebGL liquid-glass backdrop). Off by default; requires a capable device. CSS glass is the universal default for everyone else.</div>
 
     <div class="ctl-sec"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-settings"></use></svg> Workspace</div>
     <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-lock"></use></svg> Lock Active Methodology</span><button class="btn btn-n btn-s toggle-chip is-off" data-action="tglLock">Lock / Unlock</button></div>
@@ -1320,34 +1320,34 @@
 
     <div class="ctl-sec"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cloud"></use></svg> Cloud &amp; Sync</div>
     <!-- PLAN-OF-ACTION-AI-VOICE-SYNC-v1 4.5: optional Google identity for
-         sync — never gating. Rendered by js/mmgr-sync.js into this slot. -->
+         sync , never gating. Rendered by js/mmgr-sync.js into this slot. -->
     <div id="sync-section"></div>
-    <div class="sr-hint">Sync identity is 100% optional — the app works forever without an account. JSON export/import is the guaranteed sync path on every device, signed in or not.</div>
-    <!-- GOOGLE-DRIVE-BACKUP: optional Drive backup/restore controls — never
+    <div class="sr-hint">Sync identity is 100% optional , the app works forever without an account. JSON export/import is the guaranteed sync path on every device, signed in or not.</div>
+    <!-- GOOGLE-DRIVE-BACKUP: optional Drive backup/restore controls , never
          gating. Rendered by js/mmgr-google-auth.js into this slot. -->
     <div id="drive-section"></div>
     <!-- CLOUD-BACKEND-ARCHITECTURE-PLAN Phase 1: optional Cloud Backup
-         (D1 + R2 owner-code storage) — never gating. Rendered by
+         (D1 + R2 owner-code storage) , never gating. Rendered by
          js/mmgr-cloud.js into this slot. -->
     <div id="cloud-section"></div>
 
     <div class="ctl-sec"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg> Features</div>
-    <div class="sr-hint">Feature flags — switch a module off to hide it from the workspace. All default on.</div>
+    <div class="sr-hint">Feature flags , switch a module off to hide it from the workspace. All default on.</div>
     <!-- MERGED-AI-CONTROL (audit 1.2): this switch is now the SINGLE AI on/off
-         control — it reads/writes state.config.ai.tier (OFF -> 'off', ON ->
+         control , it reads/writes state.config.ai.tier (OFF -> 'off', ON ->
          restore last non-off tier, default 'local'). flags.aiWindow is gone. -->
     <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg> AI Assistant</span><label class="tgl"><input type="checkbox" id="ai-tgl" aria-label="AI Assistant" data-action="tglAiTier"><span class="tsl"></span></label></div>
-    <div class="sr-hint">AI Assistant is the engine master switch — Off disables the assistant (fab hidden); On restores Local or your last engine tier.</div>
+    <div class="sr-hint">AI Assistant is the engine master switch , Off disables the assistant (fab hidden); On restores Local or your last engine tier.</div>
     <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-activity"></use></svg> Monte Carlo Simulation</span><label class="tgl"><input type="checkbox" id="fl-monte-carlo" aria-label="Monte Carlo Simulation" data-action="tglFlag" data-flag="monteCarlo"><span class="tsl"></span></label></div>
     <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-printer"></use></svg> Gantt PNG Export</span><label class="tgl"><input type="checkbox" id="fl-gantt-export" aria-label="Gantt PNG Export" data-action="tglFlag" data-flag="ganttExport"><span class="tsl"></span></label></div>
     <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clock"></use></svg> Kanban Lead-Time Lane</span><label class="tgl"><input type="checkbox" id="fl-leadtime-lane" aria-label="Kanban Lead-Time Lane" data-action="tglFlag" data-flag="leadtimeLane"><span class="tsl"></span></label></div>
     <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cloud-rain"></use></svg> Weather Forecast Panel</span><label class="tgl"><input type="checkbox" id="fl-weather" aria-label="Weather Forecast Panel" data-action="tglFlag" data-flag="weatherForecast"><span class="tsl"></span></label></div>
-    <!-- Rank 3.1 (MASTER-ACTION-PLAN Rank 3.1): Core Mode vs Advanced Packs —
+    <!-- Rank 3.1 (MASTER-ACTION-PLAN Rank 3.1): Core Mode vs Advanced Packs , 
          progressive disclosure. New projects start Core-only; each advanced
          pack is a single-action toggle here. Toggling a pack on reveals its
          nav sections instantly; off hides them (never destroys data). -->
     <div class="ctl-sec" id="adv-packs-section"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-orb"></use></svg> Advanced Packs</div>
-    <div class="sr-hint">New projects open Core-only (Dashboard, Definitions, Charter, WBS, Kanban). Turn a pack on to reveal its sections — one action, nothing hidden is ever lost.</div>
+    <div class="sr-hint">New projects open Core-only (Dashboard, Definitions, Charter, WBS, Kanban). Turn a pack on to reveal its sections , one action, nothing hidden is ever lost.</div>
     <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-bar-chart"></use></svg> Schedule Science</span><label class="tgl"><input type="checkbox" id="pk-schedule" aria-label="Schedule Science pack" data-action="tglPack" data-pack="schedule"><span class="tsl"></span></label></div>
     <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-dollar"></use></svg> Money</span><label class="tgl"><input type="checkbox" id="pk-money" aria-label="Money pack" data-action="tglPack" data-pack="money"><span class="tsl"></span></label></div>
     <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-users"></use></svg> Governance</span><label class="tgl"><input type="checkbox" id="pk-governance" aria-label="Governance pack" data-action="tglPack" data-pack="governance"><span class="tsl"></span></label></div>
@@ -1356,26 +1356,26 @@
     <div class="ctl-sec"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-tool"></use></svg> Support &amp; Diagnostics</div>
     <!-- Phase 2: client-side error surface (last 20 errors, timestamp + action) -->
     <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-alert-triangle"></use></svg> Client Error Log</span><span class="g6"><button class="btn btn-n btn-s" data-action="copyErrorLog" title="Copy the error log to the clipboard as plain text"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy</button><button class="btn btn-n btn-s" data-action="downloadErrorLog" title="Download the error log as a .txt file"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Download</button><button class="btn btn-n btn-s" data-action="clearErrorLog">Clear</button></span></div>
-    <div class="sr-hint">Last 20 client-side errors with timestamp and source action — for debugging on static hosting where no server log exists. Copy or download the log to share it.</div>
+    <div class="sr-hint">Last 20 client-side errors with timestamp and source action , for debugging on static hosting where no server log exists. Copy or download the log to share it.</div>
     <div id="errlog-body" class="errlog"></div>
     <!-- MASTER-ACTION-PLAN Rank 6.1: sanitized Report Issue package. Zero
-         network — the user copies/downloads it themselves. Default payload
-         is counts-only (no names, no figures — hard rule); the opt-in
+         network , the user copies/downloads it themselves. Default payload
+         is counts-only (no names, no figures , hard rule); the opt-in
          below adds project context per report. -->
     <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-flag"></use></svg> Report Issue</span><span class="g6"><button class="btn btn-n btn-s" data-action="reportIssueCopy" title="Copy a sanitized diagnostic package to the clipboard"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy report</button><button class="btn btn-n btn-s" data-action="reportIssueDownload" title="Download the diagnostic package as a .txt file"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Download</button></span></div>
     <div class="sr"><span class="sl">Include project context</span><label class="tgl"><input type="checkbox" id="report-ctx-tgl" aria-label="Include project context in the report" data-action="tglReportContext"><span class="tsl"></span></label></div>
-    <div class="sr-hint">Packages a sanitized snapshot: active panel, packs, non-sensitive counts, and the client error log. Budget figures, risk descriptions, and names are NEVER included unless you check <strong>Include project context</strong> (adds project name, task/risk/issue lists, and budget totals). Nothing is sent anywhere — you copy or download it yourself.</div>
-    <!-- DIR-1b: opt-in remote error reporting — OFF by default, device-level
+    <div class="sr-hint">Packages a sanitized snapshot: active panel, packs, non-sensitive counts, and the client error log. Budget figures, risk descriptions, and names are NEVER included unless you check <strong>Include project context</strong> (adds project name, task/risk/issue lists, and budget totals). Nothing is sent anywhere , you copy or download it yourself.</div>
+    <!-- DIR-1b: opt-in remote error reporting , OFF by default, device-level
          slot (never project state), POSTs routed through MMGR.Net's
          circuit-breaker. Zero network activity while off. -->
     <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-upload"></use></svg> Remote Error Reporting</span><label class="tgl"><input type="checkbox" id="err-report-tgl" aria-label="Remote Error Reporting" data-action="tglErrReport"><span class="tsl"></span></label></div>
-    <div class="sr-hint">Optional and off by default. When enabled with a webhook URL, new client errors are posted to your own endpoint — never to a third-party service. A failed send stays logged locally only.</div>
+    <div class="sr-hint">Optional and off by default. When enabled with a webhook URL, new client errors are posted to your own endpoint , never to a third-party service. A failed send stays logged locally only.</div>
     <input type="url" id="err-webhook" class="ctl-in" data-action="setErrWebhook" placeholder="https://your-webhook.example.com/hook (optional)" aria-label="Error reporting webhook URL (optional)" autocomplete="off">
     <div class="ctl-sec"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-save"></use></svg> Backup &amp; Transfer</div>
     <div class="sr-kbd">
       <div class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-lightbulb"></use></svg> Keyboard Shortcuts</div>
       <div class="kbd-grid">
-        <span class="kbd">F</span> Focus Mode — isolate the active panel
+        <span class="kbd">F</span> Focus Mode , isolate the active panel
         <span class="kbd">Ctrl/⌘ + Z</span> Undo (outside text fields)
         <span class="kbd">Ctrl/⌘ + Shift + Z</span> Redo
         <span class="kbd">Esc</span> Close drawer / modals
@@ -1397,11 +1397,11 @@
     <button class="btn btn-n full"  data-action="loadClip"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Load from Clipboard</button>
     <button class="btn btn-n full mt7"  data-action="print"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-printer"></use></svg> Print / PDF</button>
 
-    <!-- OWNER 2026-08-17: Danger Zone — in-project Delete Project at the
+    <!-- OWNER 2026-08-17: Danger Zone , in-project Delete Project at the
          BOTTOM of the Controls tab (owner: "go inside of the project...
          click the settings. Scroll onto the bottom. And you click delete
          project"). Shown only while an OWNER code is held (renderDangerZone
-         in mmgr-cloud.js toggles hidden — editors/viewers never see it, and
+         in mmgr-cloud.js toggles hidden , editors/viewers never see it, and
          the server enforces owner-only on the delete route regardless). -->
     <div class="ctl-sec" id="del-zone" hidden><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-trash"></use></svg> Danger Zone</div>
     <div class="danger-zone" id="del-zone-body" hidden>
@@ -1445,7 +1445,7 @@
         <div class="cu-hint cu-hint-mt">Paste raw charter text copied from Word, PDF, email, or any document.</div>
       </div>
       <textarea id="cu-source" aria-label="Charter source text" data-action="regenChartPrompt" placeholder="Text extracted from your uploaded charter (or pasted directly) will appear here. You can edit before generating the prompt."></textarea>
-      <div class="cu-hint cu-hint2">Edit freely before regenerating the prompt. Plain-text files (.txt / .md) are read directly. Word (.docx) and PDF files can&rsquo;t be parsed in-browser under this app&rsquo;s security policy — if you pick one, open it in Word/Adobe and paste its text here instead.</div>
+      <div class="cu-hint cu-hint2">Edit freely before regenerating the prompt. Plain-text files (.txt / .md) are read directly. Word (.docx) and PDF files can&rsquo;t be parsed in-browser under this app&rsquo;s security policy , if you pick one, open it in Word/Adobe and paste its text here instead.</div>
     </div>
     <div class="cu-step">
       <div class="dsec4">2. AI Prompt</div>
@@ -1550,26 +1550,26 @@
 </div>
 
 <div id="cx"></div><div id="cy"></div>
-<div class="focus-ind">FOCUS MODE — Press F to exit</div>
+<div class="focus-ind">FOCUS MODE , Press F to exit</div>
 <div class="hp" id="hp"></div>
 
 <!-- Gantt hover tooltip (Phase C) -->
 <div id="gantt-tip"></div>
 
 <!-- Confirmation dialog (Phase A: cascade / destructive ops) -->
-<!-- OWNER 2026-08-17: in-project delete confirm (#del-modal) — "Are you
+<!-- OWNER 2026-08-17: in-project delete confirm (#del-modal) , "Are you
      sure?" then, for email accounts, the account password to verify the
      delete (owner: "it comes up with a pop up that says Are you sure? And
      then... you have to put in your password... to verify the delete").
-     Google accounts have no password — their signed-in session IS the
+     Google accounts have no password , their signed-in session IS the
      verification, so the field stays hidden for them (same email-only gate
-     as the password-change control). Static markup, zero inline handlers —
+     as the password-change control). Static markup, zero inline handlers , 
      driven by js/mmgr-cloud.js via data-action. -->
 <div id="del-modal">
   <div class="mb">
     <div class="mh"><span class="mt"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-trash"></use></svg> Delete project?</span><button class="dc" data-action="cloudDeleteClose" aria-label="Cancel"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg></button></div>
     <div class="mbody">
-      <p class="modal-txt" id="del-msg">Are you sure? This deletes the project from the cloud for everyone — editor and viewer codes stop working, every shared copy shows as <strong>discontinued</strong>, and offline copies keep their last snapshot but receive no more updates. There is no undo for anyone else; only you, the admin, can delete it.</p>
+      <p class="modal-txt" id="del-msg">Are you sure? This deletes the project from the cloud for everyone , editor and viewer codes stop working, every shared copy shows as <strong>discontinued</strong>, and offline copies keep their last snapshot but receive no more updates. There is no undo for anyone else; only you, the admin, can delete it.</p>
       <div class="email-auth-pw" id="del-pw-wrap" hidden>
         <p class="email-auth-pw-title" style="margin:0 0 4px"><strong>Verify your password</strong></p>
         <div class="email-auth-row email-auth-pw-fields">
@@ -1671,13 +1671,13 @@
   <script src="js/cloud/webhooks.js"></script>
   <script>
 /* Deploy guard: every icon in this app is a <use href="css/mmgr-icons.svg#...">.
-   A missing sprite on the live host makes icons vanish silently — surface it
+   A missing sprite on the live host makes icons vanish silently , surface it
    loudly. HTTP(S) only, so local file:// testing stays quiet. */
 if (window.location.protocol === 'http:' || window.location.protocol === 'https:'){
-  fetch('css/mmgr-icons.svg').then(r=>{ if(!r.ok) console.warn('ICON SPRITE MISSING: css/mmgr-icons.svg returned ' + r.status + ' — upload the css/ folder (mmgr.css + mmgr-icons.svg) to the site root.'); })
-    .catch(()=>console.warn('ICON SPRITE MISSING: css/mmgr-icons.svg could not be fetched — upload the css/ folder to the site root.'));
+  fetch('css/mmgr-icons.svg').then(r=>{ if(!r.ok) console.warn('ICON SPRITE MISSING: css/mmgr-icons.svg returned ' + r.status + ' , upload the css/ folder (mmgr.css + mmgr-icons.svg) to the site root.'); })
+    .catch(()=>console.warn('ICON SPRITE MISSING: css/mmgr-icons.svg could not be fetched , upload the css/ folder to the site root.'));
 }
-// Rank 4.1 (MASTER-ACTION-PLAN Rank 4): PWA registration — cache-first
+// Rank 4.1 (MASTER-ACTION-PLAN Rank 4): PWA registration , cache-first
 // service worker for the app shell. localhost/HTTPS only (SW requires a
 // secure context); a missing registration must never break the app.
 if ('serviceWorker' in navigator &&

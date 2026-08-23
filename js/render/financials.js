@@ -1,5 +1,5 @@
 /* ============================================================
-   My MaNaGeR — Financials Panel
+   My MaNaGeR , Financials Panel
    Money formatter, Spend Log, Cash-Flow S-Curve, Budget,
    Pay Applications.
    Extracted from mmgr-render.js.
@@ -33,7 +33,7 @@ var MMGR = window.MMGR || {};
     const log = s.spendLog || [];
     const lines = s.budgetLines || [];
     if (log.length === 0) {
-      b.innerHTML = '<tr><td colspan="5"><div class="es" style="padding:10px;font-size:.72rem">No dated spend logged yet — the cash flow chart\'s Actual line is estimated until you add entries here.</div></td></tr>';
+      b.innerHTML = '<tr><td colspan="5"><div class="es" style="padding:10px;font-size:.72rem">No dated spend logged yet , the cash flow chart\'s Actual line is estimated until you add entries here.</div></td></tr>';
       return;
     }
     const lineOpts = (cur) => lines.map(l =>
@@ -96,7 +96,7 @@ var MMGR = window.MMGR || {};
   </svg>
   <div style="display:flex;gap:16px;font-size:.68rem;color:var(--slate);margin-top:4px;flex-wrap:wrap">
     <span><span style="display:inline-block;width:10px;height:10px;background:var(--gold);border-radius:2px;margin-right:4px"></span>Planned (time-phased)</span>
-    <span><span style="display:inline-block;width:10px;height:10px;background:var(--green);border-radius:2px;margin-right:4px"></span>Actual${hasLog ? '' : ' (estimated — log dated spend below for a real actual line)'}</span>
+    <span><span style="display:inline-block;width:10px;height:10px;background:var(--green);border-radius:2px;margin-right:4px"></span>Actual${hasLog ? '' : ' (estimated , log dated spend below for a real actual line)'}</span>
   </div>`;
   }
 
@@ -164,16 +164,16 @@ var MMGR = window.MMGR || {};
       <td>${U.escapeHtml(l.id || 'B' + (i+1))}</td>
       <td><input type="text" value="${U.escapeHtml(l.category)}" data-action="updField" data-module="Budget" data-field="category" data-idx="${i}"></td>
       <td><input type="number" value="${l.planned || 0}" min="0" step="100" data-action="updField" data-module="Budget" data-field="planned" data-idx="${i}" style="width:90px"></td>
-      <td><input type="number" value="${l.committed !== null && l.committed !== undefined && l.committed !== '' ? l.committed : ''}" min="0" step="100" data-action="updField" data-module="Budget" data-field="committed" data-idx="${i}" style="width:90px" placeholder="${l.planned || 0}" title="Committed $ — blank defaults to Planned (C12)"></td>
+      <td><input type="number" value="${l.committed !== null && l.committed !== undefined && l.committed !== '' ? l.committed : ''}" min="0" step="100" data-action="updField" data-module="Budget" data-field="committed" data-idx="${i}" style="width:90px" placeholder="${l.planned || 0}" title="Committed $ , blank defaults to Planned (C12)"></td>
       <td><input type="number" value="${l.actual || 0}" min="0" step="100" data-action="updField" data-module="Budget" data-field="actual" data-idx="${i}" style="width:90px"></td>
       <td style="color:${((l.planned || 0) - (l.actual || 0)) >= 0 ? 'var(--green)' : 'var(--danger)'}">${((l.planned || 0) - (l.actual || 0)) >= 0 ? '+' : ''}$${Math.abs((l.planned || 0) - (l.actual || 0)).toLocaleString()}</td>
       <td>${envelope ? Math.round(((l.actual || 0) / envelope) * 100) + '%' : '0%'}</td>
-      <td><select data-action="updField" data-module="Budget" data-field="taskId" data-idx="${i}"><option value="">—</option>${(s.tasks || []).map(t => `<option ${t.id === l.taskId ? 'selected' : ''}>${U.escapeHtml(t.id)}</option>`).join('')}</select></td>
+      <td><select data-action="updField" data-module="Budget" data-field="taskId" data-idx="${i}"><option value="">-</option>${(s.tasks || []).map(t => `<option ${t.id === l.taskId ? 'selected' : ''}>${U.escapeHtml(t.id)}</option>`).join('')}</select></td>
       <td><select data-action="updField" data-module="Budget" data-field="curve" data-idx="${i}">${['linear','front-loaded','back-loaded','bell'].map(c => `<option ${l.curve === c ? 'selected' : ''}>${c}</option>`).join('')}</select></td>
-      <td><input type="checkbox" ${l.isContingency ? 'checked' : ''} data-action="updField" data-module="Budget" data-field="isContingency" data-idx="${i}" title="Contingency reserve — compared against risk exposure (2.5)"></td>
+      <td><input type="checkbox" ${l.isContingency ? 'checked' : ''} data-action="updField" data-module="Budget" data-field="isContingency" data-idx="${i}" title="Contingency reserve , compared against risk exposure (2.5)"></td>
       <td><select data-action="updField" data-module="Budget" data-field="waiverStatus" data-idx="${i}" title="Lien waiver status">${['pending','conditional','unconditional','not_required'].map(w => `<option ${(l.waiverStatus || 'pending') === w ? 'selected' : ''}>${w}</option>`).join('')}</select></td>
       <td><input type="date" value="${U.escapeHtml(l.waiverReceivedAt || '')}" data-action="updField" data-module="Budget" data-field="waiverReceivedAt" data-idx="${i}" title="Date the waiver was received"></td>
-      <td><input type="text" value="${U.escapeHtml(l.notes || '')}" data-action="updField" data-module="Budget" data-field="notes" data-idx="${i}" placeholder="—"></td>
+      <td><input type="text" value="${U.escapeHtml(l.notes || '')}" data-action="updField" data-module="Budget" data-field="notes" data-idx="${i}" placeholder="-"></td>
       <td><button class="btn btn-s btn-d" data-action="delBudgetLine" data-idx="${i}">×</button></td>
     </tr>`).join('');
     const rcc = $('risk-cont-con');
@@ -217,7 +217,7 @@ var MMGR = window.MMGR || {};
       <td><select data-action="updField" data-module="PayApps" data-field="status" data-idx="${i}" style="color:${statusColor(a.status)}">${['draft','submitted','approved','rejected'].map(v => `<option ${a.status === v ? 'selected' : ''}>${v}</option>`).join('')}</select></td>
       <td><input type="date" value="${a.dateSubmitted || ''}" data-action="updField" data-module="PayApps" data-field="dateSubmitted" data-idx="${i}"></td>
       <td><input type="date" value="${a.dateApproved || ''}" data-action="updField" data-module="PayApps" data-field="dateApproved" data-idx="${i}"></td>
-      <td><input type="text" value="${U.escapeHtml(a.notes || '')}" data-action="updField" data-module="PayApps" data-field="notes" data-idx="${i}" placeholder="—"></td>
+      <td><input type="text" value="${U.escapeHtml(a.notes || '')}" data-action="updField" data-module="PayApps" data-field="notes" data-idx="${i}" placeholder="-"></td>
       <td><button class="btn btn-s btn-d" data-action="delPayApp" data-idx="${i}">×</button></td>
     </tr>`).join('');
   }

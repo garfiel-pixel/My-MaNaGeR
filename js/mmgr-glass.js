@@ -1,9 +1,9 @@
 /* ============================================================
-   My MaNaGeR — Dual-Engine Glass UI: Premium Liquid-Glass Engine
+   My MaNaGeR , Dual-Engine Glass UI: Premium Liquid-Glass Engine
    (PLAN-OF-ACTION-LIQUID-GLASS-UI Rank 3.5, items 3.5.4 + 3.5.5)
    ------------------------------------------------------------
    The CSS `backdrop-filter` glass treatment is the universal
-   default (zero JS, zero opt-in — see css/mmgr.css). This module
+   default (zero JS, zero opt-in , see css/mmgr.css). This module
    is the OPT-IN "Premium" tier: a Three.js liquid-glass backdrop
    rendered on a full-viewport canvas BEHIND the app.
 
@@ -12,13 +12,13 @@
      from a version-pinned CDN URL via dynamic import() ONLY when
      BOTH 3.5.2's detection (Viewport.isHighEnd + preference) and
      3.5.3's settings toggle allow it. With the toggle off, zero
-     network request is made — verified by qa-glass.cjs.
+     network request is made , verified by qa-glass.cjs.
    - The CDN URL is a real, verified Three.js link (unpkg,
      three@0.160.0), NOT the placeholder cloudflare.com reference
      from the source document.
    - 3.5.5 shared teardown: switching back to CSS (toggle, resize
      into a narrow viewport, capability re-check) disposes the
-     renderer AND forces WebGL context loss — no leaked contexts.
+     renderer AND forces WebGL context loss , no leaked contexts.
    - Circuit-broken like every other optional network path: an
      import failure, a WebGL failure, or a context loss degrades
      to CSS glass with a toast, never a crash.
@@ -32,7 +32,7 @@ var MMGR = window.MMGR || {};
   // https://unpkg.com/three@0.160.0/build/three.module.js returns 200).
   const THREE_CDN = 'https://unpkg.com/three@0.160.0/build/three.module.js';
 
-  // Fresh engine state — reset by deactivate() so a re-activate never sees
+  // Fresh engine state , reset by deactivate() so a re-activate never sees
   // stale refs from a previous session.
   function freshState() {
     return {
@@ -55,7 +55,7 @@ var MMGR = window.MMGR || {};
   // Test seam (same convention as qa-voice's forcedModelUrl / the viewport
   // __mmgrForceHighEnd hook): a QA gate injects a fake THREE module here to
   // verify the lifecycle deterministically without the network. Production
-  // never sets it — the real dynamic import from the pinned CDN is used.
+  // never sets it , the real dynamic import from the pinned CDN is used.
   function _importThree() {
     if (typeof window.__mmgrThreeImport === 'function') return window.__mmgrThreeImport();
     if (typeof window.__mmgrGlassImportCalls === 'number') window.__mmgrGlassImportCalls++;
@@ -66,14 +66,14 @@ var MMGR = window.MMGR || {};
   // The flat blob-glow shader was replaced with a genuine glass-refraction look:
   // a procedural liquid field is sampled at RGB-channel-offset UVs along a
   // slowly drifting distortion vector, so edges of the field bend like light
-  // through glass — but the chromatic offset is kept small (0.004) so edges
+  // through glass , but the chromatic offset is kept small (0.004) so edges
   // never rainbow. The palette is CONSTRAINED: a cool slate base with only a
   // very-low-weight warm-gold accent (no iridescent multi-hue wash), and the
   // accent is mixed into the theme base at <= 0.15 (dark) / 0.06 (light) so the
   // glass stays dark in dark mode and near off-white in light mode. A faint
   // specular sheen + vignette are kept so the surface still reads as physical
   // glass. The background is procedural (in-shader), so no texture uploads and
-  // no new THREE API surface — the qa-glass.cjs fake-THREE mock stays valid and
+  // no new THREE API surface , the qa-glass.cjs fake-THREE mock stays valid and
   // the lifecycle gate is untouched. One full-screen quad, one draw call,
   // theme-aware (uDark switches base + tint strength).
   const VERT = [
@@ -88,7 +88,7 @@ var MMGR = window.MMGR || {};
     'uniform vec2 uRes;',
     'uniform float uDark;',
     'uniform float uCyan;',
-    // Cheap high-quality hash (no transcendentals) — the backdrop stays fast even
+    // Cheap high-quality hash (no transcendentals) , the backdrop stays fast even
     // at high pixel ratios.
     'float hash(vec2 p){',
     '  p = fract(p * vec2(123.34, 456.21));',
@@ -114,13 +114,13 @@ var MMGR = window.MMGR || {};
     '  }',
     '  return v;',
     '}',
-    // The liquid height field — the "background" the glass refracts. Procedural
+    // The liquid height field , the "background" the glass refracts. Procedural
     // (in-shader), so the engine never uploads a texture and the QA mock surface
     // stays unchanged (FIX-1 Option B design decision).
     'float field(vec2 p){',
     '  return fbm(p);',
     '}',
-    // Constrained palette — cool slate is the only hue, with a warm-gold accent
+    // Constrained palette , cool slate is the only hue, with a warm-gold accent
     // at very low weight (0.22 max), so the field never shows the old iridescent
     // purple/green/orange wash. Theme-compatible in both light and dark. The
     // cyan palette swaps the accent to a fluorescent-cyan vector (uCyan uniform,
@@ -141,7 +141,7 @@ var MMGR = window.MMGR || {};
     '  vec2 w = 0.06 * vec2(',
     '    field(uv * 3.0 + vec2(t * 0.18, -t * 0.10)),',
     '    field(uv * 3.0 + vec2(-t * 0.08, t * 0.16)));',
-    '  // Chromatic aberration — light bends through the surface: sample the',
+    '  // Chromatic aberration , light bends through the surface: sample the',
     '  // background at RGB-offset UVs along a slowly drifting distortion vector.',
     '  // Kept deliberately small (0.004) so edges refract without rainbow fringing.',
     '  vec2 ca = 0.004 * vec2(sin(t * 0.7), cos(t * 0.6));', 
@@ -149,7 +149,7 @@ var MMGR = window.MMGR || {};
     '  float g = field((uv + w) * 3.0);',
     '  float b = field((uv - ca + w) * 3.0);',
     '  vec3 irid = palette(mix(r, b, 0.5) * 0.6 + g * 0.4 + 0.12);',
-    '  // Constrained accent weight: <= 0.15 in dark, ~0.06 in light — the glass',
+    '  // Constrained accent weight: <= 0.15 in dark, ~0.06 in light , the glass',
     '  // stays near the theme base (deep slate / off-white) instead of washing',
     '  // the whole screen in color.',
     '  vec3 base = uDark > 0.5 ? vec3(0.020, 0.026, 0.050) : vec3(0.970, 0.972, 0.978);',
@@ -176,7 +176,7 @@ var MMGR = window.MMGR || {};
   // content (z-index 0, later in DOM than #glass-canvas; #app-main is z1),
   // and a rAF-throttled mousemove listener writes the custom properties onto
   // <html> so the glow follows the cursor. The listener + element live only
-  // for the premium session — deactivate()/fallback remove both, keeping the
+  // for the premium session , deactivate()/fallback remove both, keeping the
   // zero-cost-when-off gate intact (verified by qa-glass.cjs).
   let _glowEl = null;
   let _glowRaf = 0;
@@ -216,14 +216,14 @@ var MMGR = window.MMGR || {};
       _state.renderer.render(_state.scene, _state.camera);
       _state.rafId = requestAnimationFrame(_frame);
     } catch (e) {
-      // A render exception must never crash the app — fall back to CSS.
+      // A render exception must never crash the app , fall back to CSS.
       deactivate();
       if (ns.Errors && ns.Errors.log) ns.Errors.log('glass: render error, back to CSS', 'glass');
     }
   }
 
   // PERF (owner 2026-08-15): the premium engine keeps pumping frames even
-  // when the tab is hidden — a full-viewport WebGL shader burning GPU for a
+  // when the tab is hidden , a full-viewport WebGL shader burning GPU for a
   // page nobody is looking at. Pause the loop on visibilitychange and resume
   // it when the tab comes back; the mouse-glow RAF is cancelled the same way
   // (its mousemove listener still re-arms it, which is fine while hidden).
@@ -267,7 +267,7 @@ var MMGR = window.MMGR || {};
       document.body.appendChild(canvas);
       _mountGlow(); // mouse-tracking glow above the canvas, below the app
       const renderer = new THREE.WebGLRenderer({ canvas: canvas, alpha: false, antialias: false, powerPreference: 'high-performance' });
-      // PERF (owner 2026-08-15): cap the render scale at 1.25 instead of 1.5 —
+      // PERF (owner 2026-08-15): cap the render scale at 1.25 instead of 1.5 , 
       // a 44% fragment reduction on high-DPI screens with no perceptible
       // softness for a blurred backdrop; the shader is the single most
       // expensive thing on the page, and the owner's machine lagged with it on.
@@ -286,7 +286,7 @@ var MMGR = window.MMGR || {};
       const mat = new THREE.ShaderMaterial({ uniforms: uniforms, vertexShader: VERT, fragmentShader: FRAG, transparent: true, depthWrite: false });
       const mesh = new THREE.Mesh(geo, mat);
       scene.add(mesh);
-      // WebGL context loss must not strand a zombie canvas — tear down.
+      // WebGL context loss must not strand a zombie canvas , tear down.
       canvas.addEventListener('webglcontextlost', function(e) {
         e.preventDefault();
         _state.ctxLost = true;
@@ -297,7 +297,7 @@ var MMGR = window.MMGR || {};
       document.addEventListener('visibilitychange', _onVisibility);
       document.body.classList.add('glass-premium');
       _frame();
-      if (ns.App && ns.App.showToast) ns.App.showToast('Premium liquid-glass mode on — toggle off in Settings to return to CSS glass.', 'ok');
+      if (ns.App && ns.App.showToast) ns.App.showToast('Premium liquid-glass mode on , toggle off in Settings to return to CSS glass.', 'ok');
       return true;
     } catch (err) {
       _fallback('webgl', err);
@@ -311,8 +311,8 @@ var MMGR = window.MMGR || {};
       if (_state.canvas && _state.canvas.parentNode) _state.canvas.parentNode.removeChild(_state.canvas);
     } catch (e) { /* ignore */ }
     document.body.classList.remove('glass-premium');
-    if (ns.Errors && ns.Errors.log) ns.Errors.log('glass: premium unavailable (' + why + ') — CSS glass stays on', 'glass');
-    if (ns.App && ns.App.showToast) ns.App.showToast('Premium glass unavailable on this device — CSS glass stays on.', 'err');
+    if (ns.Errors && ns.Errors.log) ns.Errors.log('glass: premium unavailable (' + why + ') , CSS glass stays on', 'glass');
+    if (ns.App && ns.App.showToast) ns.App.showToast('Premium glass unavailable on this device , CSS glass stays on.', 'err');
     _state = freshState();
   }
 
@@ -341,7 +341,7 @@ var MMGR = window.MMGR || {};
     _state = freshState();
   }
 
-  // The single re-check entry point — called on boot, on the settings
+  // The single re-check entry point , called on boot, on the settings
   // toggle, and from showSection() so the shared viewport signal drives
   // both layout simplification and the glass engine (plan §2).
   function sync() {

@@ -55,7 +55,7 @@ check('R1a header line present', sanitized.indexOf('Report Issue package') > -1)
 check('R1b schema version present', sanitized.indexOf('Schema version: 18') > -1);
 check('R1c active panel present', sanitized.indexOf('Active panel: wbs') > -1);
 check('R1d packs line present with ON/OFF split', sanitized.indexOf('Packs ON: money, governance, field') > -1 && sanitized.indexOf('OFF: schedule, quality') > -1);
-check('R1e counts line present', sanitized.indexOf('Counts — tasks: 2') > -1 && sanitized.indexOf('budget lines: 1') > -1);
+check('R1e counts line present', sanitized.indexOf('Counts , tasks: 2') > -1 && sanitized.indexOf('budget lines: 1') > -1);
 check('R1f error log entries rendered', sanitized.indexOf('window error: boom') > -1 && sanitized.indexOf('unhandled rejection') > -1);
 check('R1g pack order is the five canonical names', Report.PACK_ORDER.length === 5 && Report.PACK_ORDER.join(',') === 'schedule,money,governance,field,quality');
 

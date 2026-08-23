@@ -1,5 +1,5 @@
 /* ============================================================
-   My MaNaGeR — Risks Panel
+   My MaNaGeR , Risks Panel
    Risk matrix, risk rendering, impact parsing, exposure math.
    Extracted from mmgr-render.js.
    ============================================================ */

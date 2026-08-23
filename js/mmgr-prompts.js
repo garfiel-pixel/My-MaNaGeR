@@ -1,5 +1,5 @@
 /* ============================================================
-   My MaNaGeR — AI Prompt Generation Module
+   My MaNaGeR , AI Prompt Generation Module
    ============================================================ */
 var MMGR = window.MMGR || {};
 
@@ -43,8 +43,8 @@ var MMGR = window.MMGR || {};
     const c = s.charter;
     return [
       `Project: ${c.name || 'Unnamed'}`,
-      `Sponsor: ${c.sponsor || '—'}`,
-      `Objective: ${c.objective || '—'}`,
+      `Sponsor: ${c.sponsor || '-'}`,
+      `Objective: ${c.objective || '-'}`,
       `Target: ${c.targetStart || '?'} → ${c.targetCompletion || '?'}`,
       `Budget: $${(c.budgetEnvelope || 0).toLocaleString()}`,
       `KPIs: ${(c.kpis || []).map(k => `${k.name}: ${k.target}`).join(', ') || 'None'}`
@@ -64,7 +64,7 @@ var MMGR = window.MMGR || {};
   function buildResourceSummary() {
     const s = S();
     if (!s || !s.resources) return '(No resources)';
-    return s.resources.map(r => `- ${r.name} (${r.type}) | ${r.role || '—'} | ${r.availability || 100}% avail | $${r.rate || 0}/hr | ${r.hoursAllocated || 0}h allocated | ${r.utilization || 0}% util`).join('\n');
+    return s.resources.map(r => `- ${r.name} (${r.type}) | ${r.role || '-'} | ${r.availability || 100}% avail | $${r.rate || 0}/hr | ${r.hoursAllocated || 0}h allocated | ${r.utilization || 0}% util`).join('\n');
   }
 
   function buildRaciSummary() {
@@ -124,7 +124,7 @@ var MMGR = window.MMGR || {};
   // ---- Prompt Templates ----
   const prompts = {
     report: function() {
-      return `PROJECT STATUS REPORT — GENERATED FROM My MaNaGeR DATA
+      return `PROJECT STATUS REPORT , GENERATED FROM My MaNaGeR DATA
 
 === PROJECT CONTEXT ===
 ${buildContext()}
@@ -168,7 +168,7 @@ Format as a professional document with sections, tables, and a header.`;
     },
 
     forecast: function() {
-      return `PROJECT FORECAST — GENERATED FROM My MaNaGeR DATA
+      return `PROJECT FORECAST , GENERATED FROM My MaNaGeR DATA
 
 ${buildContext()}
 
@@ -192,7 +192,7 @@ Based on the above project data, provide:
     },
 
     risk: function() {
-      return `RISK ANALYSIS — GENERATED FROM My MaNaGeR DATA
+      return `RISK ANALYSIS , GENERATED FROM My MaNaGeR DATA
 
 ${buildContext()}
 
@@ -209,14 +209,14 @@ ${buildTaskList()}
 Analyze the risks and provide:
 1. Prioritized risk assessment (rank by probability × impact)
 2. For each top risk: specific mitigation actions with owner and timeline
-3. Risk correlation analysis — which risks compound each other?
+3. Risk correlation analysis , which risks compound each other?
 4. Risk response strategy recommendation (Avoid/Transfer/Mitigate/Accept) for each
 5. Top 3 risks requiring immediate attention
-6. Escalation criteria — when does each risk become an issue?`;
+6. Escalation criteria , when does each risk become an issue?`;
     },
 
     digest: function() {
-      return `WEEKLY DIGEST — GENERATED FROM My MaNaGeR DATA
+      return `WEEKLY DIGEST , GENERATED FROM My MaNaGeR DATA
 
 ${buildContext()}
 
@@ -245,7 +245,7 @@ Generate a clean weekly briefing covering:
     },
 
     health: function() {
-      return `PROJECT HEALTH SUMMARY — GENERATED FROM My MaNaGeR DATA
+      return `PROJECT HEALTH SUMMARY , GENERATED FROM My MaNaGeR DATA
 
 ${buildContext()}
 
@@ -301,7 +301,7 @@ Provide an executive-level project health summary:
         }
       }
       const auditBlock = issues.length ? issues.map(i => `- ${i}`).join('\n') : '(No date logic issues found)';
-      return `SCHEDULE LOGIC AUDIT — GENERATED FROM My MaNaGeR DATA
+      return `SCHEDULE LOGIC AUDIT , GENERATED FROM My MaNaGeR DATA
 
 ${buildContext()}
 
@@ -339,7 +339,7 @@ ${(() => {
     },
 
     visual: function() {
-      return `VISUAL OUTPUT — GENERATED FROM My MaNaGeR DATA
+      return `VISUAL OUTPUT , GENERATED FROM My MaNaGeR DATA
 
 ${buildContext()}
 
@@ -367,7 +367,7 @@ Make it readable with a clean, high-contrast theme, and use inline CSS.`;
     },
 
     change: function() {
-      return `CHANGE IMPACT ASSESSMENT — GENERATED FROM My MaNaGeR DATA
+      return `CHANGE IMPACT ASSESSMENT , GENERATED FROM My MaNaGeR DATA
 
 ${buildContext()}
 
@@ -398,7 +398,7 @@ For each pending change request, provide:
     },
 
     client: function() {
-      return `CLIENT-FACING STATUS UPDATE — GENERATED FROM My MaNaGeR DATA
+      return `CLIENT-FACING STATUS UPDATE , GENERATED FROM My MaNaGeR DATA
 
 ${buildContext()}
 
@@ -415,12 +415,12 @@ Generate a client-facing status update in plain language (no PM jargon):
 3. What's coming next
 4. Any decisions needed from the client
 5. Overall status: On track / Minor concerns / Needs attention
-6. Keep it professional but accessible — this is for the paying client`;
+6. Keep it professional but accessible , this is for the paying client`;
     },
 
     email: function() {
       // BACKLOG B-N (2026-08-12): richer stakeholder-email draft through the
-      // AI window — an upgrade layered ON TOP of the static App.emailTpl
+      // AI window , an upgrade layered ON TOP of the static App.emailTpl
       // templates, never a replacement. The local tier returns the static
       // template verbatim; the Cloud tier drafts a polished version.
       const s = S();
@@ -439,7 +439,7 @@ Generate a client-facing status update in plain language (no PM jargon):
       const planned = ((s && s.budgetLines) || []).reduce((n, l) => n + (+l.planned || 0), 0);
       const actual = ((s && s.budgetLines) || []).reduce((n, l) => n + (+l.actual || 0), 0);
       return ['# DRAFT A POLISHED STAKEHOLDER EMAIL', '',
-        'You are a construction project manager writing a professional stakeholder email for ' + pn + '. Use ONLY the facts below — never invent dates, amounts, task names, or people.',
+        'You are a construction project manager writing a professional stakeholder email for ' + pn + '. Use ONLY the facts below , never invent dates, amounts, task names, or people.',
         '',
         'Project: ' + pn,
         'Sponsor: ' + sp,
@@ -454,42 +454,42 @@ Generate a client-facing status update in plain language (no PM jargon):
         '1. A clear subject line naming the project and the update period',
         '2. A short greeting to ' + sp,
         '3. Status highlights in plain, confident language (no PM jargon)',
-        '4. Anything needing attention (blocked work, open issues, high risks, budget overrun) — only what the data shows',
+        '4. Anything needing attention (blocked work, open issues, high risks, budget overrun) , only what the data shows',
         '5. The specific asks / decisions needed from the sponsor',
         '6. Next steps for the coming period',
         '7. A professional closing with a sign-off name placeholder ([PM])',
-        'If the project has no data yet, say so honestly and draft a short introductory note instead — never fabricate progress.'].join('\n');
+        'If the project has no data yet, say so honestly and draft a short introductory note instead , never fabricate progress.'].join('\n');
     },
 
     charterdates: function() {
-      // Exact port of the monolith promptCharterDates() — this deliberately
+      // Exact port of the monolith promptCharterDates() , this deliberately
       // runs BEFORE WBS dating: commit to a realistic Target Start/Completion
       // (informed by weather season + work week + management reserve), THEN
       // generate the WBS to fit inside that committed window.
       const s = S();
       const f = (s && s.charter) || {};
-      const scope = [f.objective, f.scope, f.deliverables].filter(Boolean).join(' | ') || '(no scope description entered yet in Charter — reason from the project name alone, and say so)';
+      const scope = [f.objective, f.scope, f.deliverables].filter(Boolean).join(' | ') || '(no scope description entered yet in Charter , reason from the project name alone, and say so)';
       const w = (s && s.wxWindow) || {};
       const ww = (s && s.workWeek) || 5;
       const fmt$ = (n) => (n < 0 ? '-' : '') + '$' + Math.abs(Math.round(+n || 0)).toLocaleString();
       return ['# ESTABLISH CHARTER TARGET DATES',
         '',
-        'You are a senior construction scheduler helping set the FIRST real commitment on this project — the Target Start Date and Target Completion Date that will go in the Project Charter. This happens BEFORE the detailed task-by-task schedule exists. Your job is to propose one realistic pair of dates, with your reasoning shown plainly, not to build a task list.',
+        'You are a senior construction scheduler helping set the FIRST real commitment on this project , the Target Start Date and Target Completion Date that will go in the Project Charter. This happens BEFORE the detailed task-by-task schedule exists. Your job is to propose one realistic pair of dates, with your reasoning shown plainly, not to build a task list.',
         '',
         `Project name: ${f.name || '(unnamed)'}`,
         `Sponsor: ${f.sponsor || '(not set)'}`,
         `Scope described so far: ${scope}`,
         `Approved budget envelope: ${s && s.budgetEnvelope ? fmt$(s.budgetEnvelope) : '(not set)'}`,
         `Work week: ${ww} day(s)/week`,
-        (w.start && w.end) ? `A Weather/hurricane-season window is already set: ${w.start} to ${w.end}, Charter buffer ${w.bufferDays || 0} days — use this as given.` : 'No weather/hurricane-season window has been set yet — propose one based on the project\'s general region and construction type if you can infer it, or state plainly that you need the location to do this properly.',
+        (w.start && w.end) ? `A Weather/hurricane-season window is already set: ${w.start} to ${w.end}, Charter buffer ${w.bufferDays || 0} days , use this as given.` : 'No weather/hurricane-season window has been set yet , propose one based on the project\'s general region and construction type if you can infer it, or state plainly that you need the location to do this properly.',
         '',
         '## IF YOU HAVE WEB/LIVE SEARCH ACCESS',
         'Search for the current hurricane/wet-season outlook and typical historical storm-day frequency for the relevant region, and today\'s actual date, before proposing dates. Cite what you found. If you do NOT have live search access, say so explicitly at the top of your answer rather than silently reasoning from older training knowledge as if it were current.',
         '',
         '## WHAT TO PROPOSE',
-        '1. A realistic TOTAL PROJECT DURATION for a project of this described scope and budget, reasoned from construction-industry benchmarks — show your reasoning, not just a number.',
-        '2. A WEATHER CONTINGENCY, stated as its own separate number of days (not silently folded into the base duration) — how much of that duration is genuinely at risk from the season, and how many days of cushion that risk realistically warrants.',
-        '3. A MANAGEMENT RESERVE, also stated as its own separate number of days — general schedule risk buffer beyond weather specifically (permitting delays, minor rework, etc.). A common planning-level guideline is 5-10% of total duration; use your judgment and say why.',
+        '1. A realistic TOTAL PROJECT DURATION for a project of this described scope and budget, reasoned from construction-industry benchmarks , show your reasoning, not just a number.',
+        '2. A WEATHER CONTINGENCY, stated as its own separate number of days (not silently folded into the base duration) , how much of that duration is genuinely at risk from the season, and how many days of cushion that risk realistically warrants.',
+        '3. A MANAGEMENT RESERVE, also stated as its own separate number of days , general schedule risk buffer beyond weather specifically (permitting delays, minor rework, etc.). A common planning-level guideline is 5-10% of total duration; use your judgment and say why.',
         '4. A proposed TARGET START DATE and TARGET COMPLETION DATE, in YYYY-MM-DD format, ready to paste directly into the Charter\'s Start/End fields.',
         '5. Break down the finish date as: base duration + weather contingency + management reserve = total, so the reasoning is auditable, not a black box.',
         '',
@@ -505,12 +505,12 @@ Generate a client-facing status update in plain language (no PM jargon):
         'Reserve: <1-2 sentences on why this reserve amount>',
         '```',
         '',
-        'Once you accept these dates and lock them into the Charter, the next step is generating the detailed WBS schedule to fit inside this committed window — that\'s a separate prompt (Generate Dates for WBS Outline), which already reads these Charter dates back out automatically.'
+        'Once you accept these dates and lock them into the Charter, the next step is generating the detailed WBS schedule to fit inside this committed window , that\'s a separate prompt (Generate Dates for WBS Outline), which already reads these Charter dates back out automatically.'
       ].filter(x => x !== '').join('\n');
     },
 
     gendates: function() {
-      // Exact port of the monolith promptGenerateDates() — returns the SAME
+      // Exact port of the monolith promptGenerateDates() , returns the SAME
       // WBS outline with [YYYY-MM-DD → YYYY-MM-DD] and [conf:high|low]
       // appended to every line, weather-aware and envelope-checked against
       // the committed Charter Target Completion Date.
@@ -523,27 +523,27 @@ Generate a client-facing status update in plain language (no PM jargon):
         const ind = '  '.repeat(t.indent !== undefined ? t.indent : (t.level || 0));
         const wxTag = t.weatherExposed ? ' [weather-exposed]' : '';
         return `${ind}${t.name}${wxTag}`;
-      }).join('\n') || '(no tasks yet — add tasks in the WBS first)';
+      }).join('\n') || '(no tasks yet , add tasks in the WBS first)';
       return ['# GENERATE DATES FOR WBS OUTLINE',
         '',
         'You are a senior construction scheduler. Your job: take the WBS outline below and return the SAME outline, unchanged in structure, with realistic date ranges and confidence tags appended to every line.',
         '',
-        `Project start date: ${f.targetStart || f.start || '(not set in charter — assume today)'}`,
+        `Project start date: ${f.targetStart || f.start || '(not set in charter , assume today)'}`,
         `Project target completion: ${f.targetCompletion || f.end || '(not set)'}`,
         `Project name: ${f.name || '(unnamed)'}`,
-        `Work week: ${ww} day(s)/week — count durations in these working days, not plain calendar days.`,
-        (wx.start && wx.end) ? `Hurricane/wet-season window: ${wx.start} to ${wx.end}${wx.bufferDays ? ' (Charter buffer: ' + wx.bufferDays + ' days)' : ''} — tasks marked [weather-exposed] below that fall inside this window should get extra duration padding to absorb likely weather delays; say so in your assumptions note.` : 'No hurricane/wet-season window has been set yet in this project — if any [weather-exposed] tasks below fall in a rainy season based on general regional knowledge, flag that as a risk in your assumptions note.',
+        `Work week: ${ww} day(s)/week , count durations in these working days, not plain calendar days.`,
+        (wx.start && wx.end) ? `Hurricane/wet-season window: ${wx.start} to ${wx.end}${wx.bufferDays ? ' (Charter buffer: ' + wx.bufferDays + ' days)' : ''} , tasks marked [weather-exposed] below that fall inside this window should get extra duration padding to absorb likely weather delays; say so in your assumptions note.` : 'No hurricane/wet-season window has been set yet in this project , if any [weather-exposed] tasks below fall in a rainy season based on general regional knowledge, flag that as a risk in your assumptions note.',
         wxTasks.length ? `Tasks tagged [weather-exposed] (${wxTasks.length}): ${wxTasks.join(', ')}` : '',
         '',
         '## RULES',
-        '1. Assign realistic per-task DURATIONS using standard construction industry benchmarks, IN WORKING DAYS per the work week stated above. Reason per task — do NOT use a flat default.',
-        '2. Sequence dates respecting parent/child nesting and trade logic. Envelope subtasks cannot start before Frame\'s engineer sign-off, etc. — unless the outline explicitly shows overlap.',
+        '1. Assign realistic per-task DURATIONS using standard construction industry benchmarks, IN WORKING DAYS per the work week stated above. Reason per task , do NOT use a flat default.',
+        '2. Sequence dates respecting parent/child nesting and trade logic. Envelope subtasks cannot start before Frame\'s engineer sign-off, etc. , unless the outline explicitly shows overlap.',
         '3. Append [YYYY-MM-DD → YYYY-MM-DD] to EVERY line (main tasks AND subtasks). Use the → arrow. Zero reformatting must be needed by the user to paste this back into WBS Text Import.',
         '4. Append a confidence tag AFTER the date: [conf:high] for well-established construction processes with low variance (e.g. "pour foundation concrete"), [conf:low] for tasks that depend on external parties or high-variance work (e.g. "confirm anchor tenant lease terms").',
-        '5. For any line marked [weather-exposed] that falls inside the hurricane/wet-season window given above, pad its duration to account for likely weather delays, and drop it to [conf:low] even if it would otherwise be high-confidence — weather risk overrides normal confidence.',
-        '6. DO NOT invent tasks not in the input. DO NOT drop any tasks. The output must be a 1:1 match to the input outline — dates and confidence tags added only, preserving the exact indentation. Do not carry the "[weather-exposed]" marker itself into your output — that\'s input context only, not part of the outline format.',
+        '5. For any line marked [weather-exposed] that falls inside the hurricane/wet-season window given above, pad its duration to account for likely weather delays, and drop it to [conf:low] even if it would otherwise be high-confidence , weather risk overrides normal confidence.',
+        '6. DO NOT invent tasks not in the input. DO NOT drop any tasks. The output must be a 1:1 match to the input outline , dates and confidence tags added only, preserving the exact indentation. Do not carry the "[weather-exposed]" marker itself into your output , that\'s input context only, not part of the outline format.',
         '7. At the top of your response, include a short plain-English NOTE (3-6 lines) listing sequencing assumptions you made and which weather-exposed tasks got padding and why, so the user can sanity-check before pasting back.',
-        (f.targetCompletion || f.end) ? `8. This project already has a committed Target Completion Date (${f.targetCompletion || f.end}) locked in the Charter. After dating every task, check whether your generated schedule's actual finish date fits inside that commitment. State clearly in your NOTE whether it fits, and if it runs over, say by how many days and which phase is driving the overrun — don't silently let it slip past without flagging it.` : '',
+        (f.targetCompletion || f.end) ? `8. This project already has a committed Target Completion Date (${f.targetCompletion || f.end}) locked in the Charter. After dating every task, check whether your generated schedule's actual finish date fits inside that commitment. State clearly in your NOTE whether it fits, and if it runs over, say by how many days and which phase is driving the overrun , don't silently let it slip past without flagging it.` : '',
         '',
         '## EXPECTED OUTPUT FORMAT',
         '```',
@@ -554,7 +554,7 @@ Generate a client-facing status update in plain language (no PM jargon):
         '  Confirm anchor tenant lease terms [2026-01-08 → 2026-02-15] [conf:low]',
         '```',
         '',
-        '## INPUT — CURRENT WBS OUTLINE',
+        '## INPUT , CURRENT WBS OUTLINE',
         '```',
         outline,
         '```',
@@ -568,7 +568,7 @@ Generate a client-facing status update in plain language (no PM jargon):
     },
 
     daily: function() {
-      // Exact port of the monolith promptDailyField() — a same-day field
+      // Exact port of the monolith promptDailyField() , a same-day field
       // digest that diffs against the last Daily Snapshot (Snapshot Now) so
       // "completed today" is real, not a current-state dump.
       const s = S();
@@ -606,26 +606,26 @@ Generate a client-facing status update in plain language (no PM jargon):
         const tDate = new Date(target);
         const projected = new Date(Math.max.apply(null, dated.map(t => new Date(t.endDate || t.end).getTime())));
         const over = Math.round((projected - tDate) / 86400000);
-        tlLine = '## TIMELINE TARGET\nTarget Completion: ' + target + ' | Current Planned Finish: ' + projected.toISOString().slice(0, 10) + ' | ' + (over > 0 ? (over <= 14 ? 'At Risk — ' : 'Over target — ') + over + 'd over' : 'On or ahead of target') + '\n';
+        tlLine = '## TIMELINE TARGET\nTarget Completion: ' + target + ' | Current Planned Finish: ' + projected.toISOString().slice(0, 10) + ' | ' + (over > 0 ? (over <= 14 ? 'At Risk , ' : 'Over target , ') + over + 'd over' : 'On or ahead of target') + '\n';
       }
       return ['# DAILY FIELD STATUS REPORT PROMPT',
-        `Project: ${f.name || '—'}`,
+        `Project: ${f.name || '-'}`,
         `Date: ${new Date().toISOString().split('T')[0]}`,
         '',
         'You are the Project Manager writing a same-day field status digest, following a site walk. The PM has just updated task statuses in the app. Produce:',
         '',
-        '1. **Completed today** — recognize what got done (vs. the prior snapshot).',
-        '2. **Blocked tasks** — each with a one-line reason (pull from notes if present, otherwise say "reason not captured — needs entry").',
-        '3. **Lead-time tasks nearing expected date** — flag any within 7 days.',
-        '4. **Float consumption flags** — call out near-critical and critical tasks.',
-        '5. **One-paragraph "Where We Stand"** — plain-English summary suitable for pasting into a daily sponsor update (2-4 sentences, no jargon).',
+        '1. **Completed today** , recognize what got done (vs. the prior snapshot).',
+        '2. **Blocked tasks** , each with a one-line reason (pull from notes if present, otherwise say "reason not captured , needs entry").',
+        '3. **Lead-time tasks nearing expected date** , flag any within 7 days.',
+        '4. **Float consumption flags** , call out near-critical and critical tasks.',
+        '5. **One-paragraph "Where We Stand"** , plain-English summary suitable for pasting into a daily sponsor update (2-4 sentences, no jargon).',
         '',
-        prevSnap ? `## COMPLETED SINCE LAST SNAPSHOT (${prevSnap.date})` : '## COMPLETED TODAY (no prior snapshot — showing current completed state)',
+        prevSnap ? `## COMPLETED SINCE LAST SNAPSHOT (${prevSnap.date})` : '## COMPLETED TODAY (no prior snapshot , showing current completed state)',
         (prevSnap && completedToday.length) ? completedToday.map(t => `- [${t.id}] ${t.name}`).join('\n')
           : (!prevSnap ? tasks.filter(t => t.status === 'completed').slice(0, 10).map(t => `- [${t.id}] ${t.name}`).join('\n') || '(none)' : '(nothing new since last snapshot)'),
         '',
         '## BLOCKED TASKS (' + blocked.length + ')',
-        blocked.length ? blocked.map(t => `- [${t.id}] ${t.name} — reason: ${t.notes || '(not captured)'}`).join('\n') : '(none blocked)',
+        blocked.length ? blocked.map(t => `- [${t.id}] ${t.name} , reason: ${t.notes || '(not captured)'}`).join('\n') : '(none blocked)',
         '',
         '## IN PROGRESS (' + inprog.length + ')',
         inprog.length ? inprog.map(t => `- [${t.id}] ${t.name}${t.endDate ? ' | Target end: ' + t.endDate : ''}${(t.done !== undefined && t.done !== null && t.done !== '') ? ' | ' + t.done + '% Completed' : ''}`).join('\n') : '(nothing in progress)',
@@ -633,8 +633,8 @@ Generate a client-facing status update in plain language (no PM jargon):
         '## LEAD-TIME NEARING EXPECTED DATE',
         leadtimeNear.length ? leadtimeNear.map(t => {
           const days = Math.round((U.parseDL(t.expectedDate) - today) / 86400000);
-          return `- [${t.id}] ${t.name} — expected ${t.expectedDate} (${days < 0 ? 'OVERDUE by ' + Math.abs(days) + 'd' : days + 'd out'})`;
-        }).join('\n') : '(none — no leadtime tasks close to expected date)',
+          return `- [${t.id}] ${t.name} , expected ${t.expectedDate} (${days < 0 ? 'OVERDUE by ' + Math.abs(days) + 'd' : days + 'd out'})`;
+        }).join('\n') : '(none , no leadtime tasks close to expected date)',
         '',
         '## CRITICAL / NEAR-CRITICAL (float watch)',
         'Critical (zero float): ' + (crit.length ? crit.map(t => `[${t.id}] ${t.name}`).join(', ') : 'none'),
@@ -644,18 +644,18 @@ Generate a client-facing status update in plain language (no PM jargon):
         '## OUTPUT',
         'Use short sections with the same headings above, then close with the "Where We Stand" paragraph.',
         '',
-        '_Tip: click **Snapshot Now** below and re-run tomorrow — you\'ll get a real completed-today diff instead of a current-state dump._'
+        '_Tip: click **Snapshot Now** below and re-run tomorrow , you\'ll get a real completed-today diff instead of a current-state dump._'
       ].filter(x => x !== '').join('\n');
     },
 
     claim: function() {
       // Rank 1 companion: grounds the LLM in the actual claim-pack
-      // evidence already assembled in the app — schedule slips with cause
+      // evidence already assembled in the app , schedule slips with cause
       // tags, LD rollup, weather log, pending changes, decision log.
       const s = S();
       const f = (s && s.charter) || {};
-      let slipsBlock = '(no schedule slips detected — project is on or ahead of baseline)';
-      let ldBlock = '(no LD exposure data — set an LD rate in the Budget panel)';
+      let slipsBlock = '(no schedule slips detected , project is on or ahead of baseline)';
+      let ldBlock = '(no LD exposure data , set an LD rate in the Budget panel)';
       try {
         if (ns.Claim && ns.Claim.computeSlips) {
           const slips = ns.Claim.computeSlips(s) || [];
@@ -669,8 +669,8 @@ Generate a client-facing status update in plain language (no PM jargon):
             ldBlock = `LD rate: $${(+s.ldRate || 0).toLocaleString()}/day | Weather-caused (avoidable/defensible): $${(ld.avoidedLd || 0).toLocaleString()} | All other causes (exposure): $${(ld.incurredLd || 0).toLocaleString()}`;
           }
         }
-      } catch (e) { /* grounding is best-effort — never block the prompt */ }
-      return `CLAIM / DELAY PACKAGE EVIDENCE — GENERATED FROM My MaNaGeR DATA
+      } catch (e) { /* grounding is best-effort , never block the prompt */ }
+      return `CLAIM / DELAY PACKAGE EVIDENCE , GENERATED FROM My MaNaGeR DATA
 
 ${buildContext()}
 
@@ -687,7 +687,7 @@ ${ldBlock}
 ${(() => {
   const wl = (s && s.weatherLog) || [];
   if (!wl.length) return '(no weather delays logged)';
-  return wl.map(e => `- ${e.date}: ${e.condition || 'weather'}${e.note ? ' — ' + e.note : ''}${(e.affectedTaskIds || []).length ? ' | affected tasks: ' + e.affectedTaskIds.join(', ') : ''}`).join('\n');
+  return wl.map(e => `- ${e.date}: ${e.condition || 'weather'}${e.note ? ' , ' + e.note : ''}${(e.affectedTaskIds || []).length ? ' | affected tasks: ' + e.affectedTaskIds.join(', ') : ''}`).join('\n');
 })()}
 
 === PENDING CHANGES ===
@@ -700,7 +700,7 @@ ${buildLogSummary()}
 Using ONLY the evidence above (do not invent facts, dates, or amounts):
 1. Draft the claim narrative: what happened, which baseline dates were missed, and the cause for each slip
 2. Lay out the LD exposure: weather-caused days (defensible) vs non-weather days (exposure)
-3. List the supporting evidence — which weather-log entries and change orders back each slip
+3. List the supporting evidence , which weather-log entries and change orders back each slip
 4. Flag evidence gaps: what is still missing before this package is submission-ready
 5. End with a plain-English executive summary for the client/insurer
 
@@ -708,14 +708,14 @@ Be precise with dates and amounts from the data. Where evidence is missing, say 
     },
 
     complianceCheck: function() {
-      // MARKET-FEATURE-ROADMAP A7: AI-drafted clause-compliance check — the
+      // MARKET-FEATURE-ROADMAP A7: AI-drafted clause-compliance check , the
       // lighter VisibleThread: review the assembled claim package against a
       // standard element checklist. Grounded in the SAME evidence sources as
       // the claim preset so the two can never disagree.
       const s = S();
       const f = (s && s.charter) || {};
-      let slipsBlock = '(no schedule slips detected — project is on or ahead of baseline)';
-      let ldBlock = '(no LD exposure data — set an LD rate in the Budget panel)';
+      let slipsBlock = '(no schedule slips detected , project is on or ahead of baseline)';
+      let ldBlock = '(no LD exposure data , set an LD rate in the Budget panel)';
       try {
         if (ns.Claim && ns.Claim.computeSlips) {
           const slips = ns.Claim.computeSlips(s) || [];
@@ -729,8 +729,8 @@ Be precise with dates and amounts from the data. Where evidence is missing, say 
             ldBlock = `LD rate: $${(+s.ldRate || 0).toLocaleString()}/day | Weather-caused (avoidable/defensible): $${(ld.avoidedLd || 0).toLocaleString()} | All other causes (exposure): $${(ld.incurredLd || 0).toLocaleString()}`;
           }
         }
-      } catch (e) { /* grounding is best-effort — never block the prompt */ }
-      return `CLAIM PACKAGE COMPLIANCE CHECK — GENERATED FROM My MaNaGeR DATA
+      } catch (e) { /* grounding is best-effort , never block the prompt */ }
+      return `CLAIM PACKAGE COMPLIANCE CHECK , GENERATED FROM My MaNaGeR DATA
 
 Project: ${f.name || '(unnamed)'} | Sponsor: ${f.sponsor || '(not set)'}
 
@@ -746,7 +746,7 @@ ${ldBlock}
 ${(() => {
   const wl = (s && s.weatherLog) || [];
   if (!wl.length) return '(no weather delays logged)';
-  return wl.map(e => `- ${e.date}: ${e.condition || 'weather'}${e.note ? ' — ' + e.note : ''}${(e.affectedTaskIds || []).length ? ' | affected tasks: ' + e.affectedTaskIds.join(', ') : ''}`).join('\n');
+  return wl.map(e => `- ${e.date}: ${e.condition || 'weather'}${e.note ? ' , ' + e.note : ''}${(e.affectedTaskIds || []).length ? ' | affected tasks: ' + e.affectedTaskIds.join(', ') : ''}`).join('\n');
 })()}
 
 === PENDING CHANGES ===
@@ -756,13 +756,13 @@ ${buildChangeSummary()}
 ${buildLogSummary()}
 
 === INSTRUCTIONS ===
-Review this claim package against a standard submission checklist and report, element by element, whether each is PRESENT, MISSING, or UNCLEAR — using ONLY the data above, never inventing content:
-1. DELAY NARRATIVE — is there a plain-language story of what happened, which baseline dates were missed, and the cause for each slip?
-2. SUPPORTING EVIDENCE REFERENCES — do the slips point to concrete evidence (weather-log entries, change orders, decision-log entries)?
-3. COST IMPACT BREAKDOWN — is the LD exposure / cost impact quantified and separated by cause (defensible vs exposure)?
-4. CONTRACTUAL BASIS — is there a stated basis for relief (which contract terms, notices, or obligations apply)?
-5. REQUESTED RELIEF — is the ask explicit (extension of time, LD waiver, amount)?
-End with: a one-line verdict on submission readiness, and a short list of exactly what to add before submitting. Where a required element is genuinely absent from the data, say "MISSING — add ..." rather than assuming it exists.`;
+Review this claim package against a standard submission checklist and report, element by element, whether each is PRESENT, MISSING, or UNCLEAR , using ONLY the data above, never inventing content:
+1. DELAY NARRATIVE , is there a plain-language story of what happened, which baseline dates were missed, and the cause for each slip?
+2. SUPPORTING EVIDENCE REFERENCES , do the slips point to concrete evidence (weather-log entries, change orders, decision-log entries)?
+3. COST IMPACT BREAKDOWN , is the LD exposure / cost impact quantified and separated by cause (defensible vs exposure)?
+4. CONTRACTUAL BASIS , is there a stated basis for relief (which contract terms, notices, or obligations apply)?
+5. REQUESTED RELIEF , is the ask explicit (extension of time, LD waiver, amount)?
+End with: a one-line verdict on submission readiness, and a short list of exactly what to add before submitting. Where a required element is genuinely absent from the data, say "MISSING , add ..." rather than assuming it exists.`;
     }
   };
 

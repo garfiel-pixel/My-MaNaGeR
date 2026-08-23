@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <!--
-  My MaNaGeR — Password reset landing (AUTH MAINFRAME v2, 2026-08-17).
+  My MaNaGeR , Password reset landing (AUTH MAINFRAME v2, 2026-08-17).
   Transactional page reached from the reset email link (/reset.html?token=...).
   Validates the new password client-side, drives /api/auth/reset; when the
   30-min single-use link is dead it offers a fresh-link recovery form
-  (/api/auth/forgot). External script only (js/reset.js) — no inline scripts,
+  (/api/auth/forgot). External script only (js/reset.js) , no inline scripts,
   CSP hashes stay untouched. Icons are sprite symbols, no emoji (owner gate).
 -->
 <html lang="en">
@@ -32,7 +32,7 @@
 </header>
 
 <main id="main" class="auth-main">
-  <!-- Solid content card (Gate 6.1 — status/forms never sit on glass) -->
+  <!-- Solid content card (Gate 6.1 , status/forms never sit on glass) -->
   <div class="auth-card">
 
     <!-- Idle / submitting state: the form itself. -->
@@ -65,7 +65,7 @@
       <h1>Link not valid</h1>
       <p id="st-err-msg">This reset link is invalid, expired, or has already been used.</p>
       <div class="auth-recover">
-        <p class="auth-note">Get a fresh link — if an account exists for that email, a new reset email is on its way.</p>
+        <p class="auth-note">Get a fresh link , if an account exists for that email, a new reset email is on its way.</p>
         <form id="recover-form" novalidate>
           <label class="sr-only" for="recover-email">Email address</label>
           <input type="email" id="recover-email" name="email" autocomplete="email" placeholder="you@example.com" required>
@@ -87,7 +87,7 @@
 </main>
 
 <footer class="auth-footer">
-  <span>My MaNaGeR — offline-first construction project workspace</span>
+  <span>My MaNaGeR , offline-first construction project workspace</span>
 </footer>
 
 <noscript><div class="auth-noscript">JavaScript is required to reset your password.</div></noscript>

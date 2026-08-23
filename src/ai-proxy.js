@@ -1,5 +1,5 @@
 /* ============================================================
-   BYO-AI-KEY-SESSION-ONLY-v1 STEP-5 — /api/ai/chat relay
+   BYO-AI-KEY-SESSION-ONLY-v1 STEP-5 , /api/ai/chat relay
    ------------------------------------------------------------
    Stateless forwarder ONLY: the user's key is read from the per-request
    X-User-Api-Key header (or the body apiKey field) for that single request,
@@ -18,7 +18,7 @@ const AI_PROVIDERS = {
   // returns text in content[].text (handled below).
   anthropic: { url: 'https://api.anthropic.com/v1/messages', model: 'claude-3-5-sonnet-latest' },
   // GEMINI-MODEL-FALLBACK-LADDER (DIR-2): the Gemini model name is embedded in
-  // the URL path, so the upstream URL is built per request via geminiUrl() —
+  // the URL path, so the upstream URL is built per request via geminiUrl() , 
   // the static default above is only a fallback. The client drives the model
   // ladder THROUGH this relay (DIR-3): each attempt posts a validated `model`
   // field and the relay forwards to exactly that model; capacity statuses
@@ -27,7 +27,7 @@ const AI_PROVIDERS = {
 };
 // Strict model-id validation: the value is interpolated into the upstream URL
 // path, so it must be a plain Gemini model id (letters/digits/dash/dot/underscore
-// only — no slashes/colons/query): path-injection guard. Invalid -> default.
+// only , no slashes/colons/query): path-injection guard. Invalid -> default.
 const GEMINI_MODEL_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
 function geminiUrl(model) {
   return 'https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent';
@@ -116,7 +116,7 @@ export async function handleAiChat(request) {
   // to the provider default instead of erroring.
   const reqModel = (typeof body.model === 'string' && GEMINI_MODEL_RE.test(body.model)) ? body.model : null;
   const model = reqModel || AI_PROVIDERS[provider].model;
-  // Key for THIS request only — header preferred, body field accepted.
+  // Key for THIS request only , header preferred, body field accepted.
   const key = String(request.headers.get('X-User-Api-Key') || '').trim()
     || (typeof body.apiKey === 'string' ? String(body.apiKey).trim() : '');
   if (!key) return json({ ok: false, error: 'missing api key' }, 401);

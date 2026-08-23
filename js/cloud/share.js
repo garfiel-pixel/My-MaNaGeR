@@ -1,5 +1,5 @@
 /* ============================================================
-   My MaNaGeR — Cloud Share UI
+   My MaNaGeR , Cloud Share UI
    Owner code, editor-code manager, scope display.
    Extracted from mmgr-cloud.js.
    ============================================================ */

@@ -1,5 +1,5 @@
 /* ============================================================
-   My MaNaGeR — Cloud Webhooks
+   My MaNaGeR , Cloud Webhooks
    Owner-only webhook CRUD (health drop, weather risk).
    Extracted from mmgr-cloud.js.
    ============================================================ */

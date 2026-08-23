@@ -1,5 +1,5 @@
 /* ============================================================
-   My MaNaGeR — Weather Analysis Module
+   My MaNaGeR , Weather Analysis Module
    ============================================================ */
 var MMGR = window.MMGR || {};
 
@@ -12,7 +12,7 @@ var MMGR = window.MMGR || {};
   const WINDOWS = {
     'northern-temperate': {
       name: 'Northern Temperate',
-      winter: { start: '11-15', end: '03-15' },  // Nov 15 - Mar 15
+      winter: { start: '11-15', end: '03-15' }, // Nov 15 - Mar 15
       spring: { start: '03-16', end: '05-31' },
       summer: { start: '06-01', end: '08-31' },
       fall: { start: '09-01', end: '11-14' },
@@ -95,7 +95,7 @@ var MMGR = window.MMGR || {};
   }
 
   // NOTE: no calculateWeatherBuffer here. The old blunt "always +5 days"
-  // buffer was removed — the single authoritative implementation is
+  // buffer was removed , the single authoritative implementation is
   // ns.Schedule.calculateWeatherBuffer, which counts only WORKING days a
   // task actually spends inside hostile windows. Keeping one path prevents
   // the public API from silently disagreeing with the schedule engine.

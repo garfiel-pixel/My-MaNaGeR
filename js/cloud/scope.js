@@ -1,5 +1,5 @@
 /* ============================================================
-   My MaNaGeR — Cloud Editor Scope
+   My MaNaGeR , Cloud Editor Scope
    Grey-out panels an editor code cannot write.
    Extracted from mmgr-cloud.js.
    ============================================================ */

@@ -1,11 +1,11 @@
 /* ============================================================
-   My MaNaGeR — Weather Forecast & Delay Log (ACTION-PLAN 7)
+   My MaNaGeR , Weather Forecast & Delay Log (ACTION-PLAN 7)
    Open-Meteo integration, fully client-side.
    ------------------------------------------------------------
    - 7.1  Weekly forecast risk panel (Open-Meteo daily API,
          latitude/longitude or one-time geocode of a place name).
          Responses are cached in localStorage with a short TTL
-         (3h) — never re-fetched on every render.
+         (3h) , never re-fetched on every render.
    - 7.2  Risk-day thresholds: precipitation probability >= 60%,
          heat (tMax >= 32C), cold (tMin <= 0C). Days that clear a
          threshold and overlap a weather-sensitive task are fed to
@@ -39,7 +39,7 @@ var MMGR = window.MMGR || {};
 
   // ---- Geocode a place name ONCE and store lat/lon in state ----
   // Client-side, on-request. Fails quietly (returns false) when offline
-  // or unknown — the app keeps using the static regional windows.
+  // or unknown , the app keeps using the static regional windows.
   // Phase 2: routed through MMGR.Net (timeout + exponential backoff, max 3).
   async function geocode(place, state) {
     const st = state || ns.State.getState();
@@ -150,15 +150,15 @@ var MMGR = window.MMGR || {};
     const days = riskDays(state);
     const heat = days.filter(d => d.alerts.indexOf('heat ' + d.tMax + 'C') > -1)[0];
     const cold = days.filter(d => d.alerts.some(a => a.indexOf('cold') === 0))[0];
-    if (heat) return { kind: 'heat', text: 'Heat alert: ' + heat.tMax + 'C on ' + heat.date + ' — schedule outdoor work for early hours.' };
-    if (cold) return { kind: 'cold', text: 'Cold alert: ' + cold.tMin + 'C on ' + cold.date + ' — concrete/water work at freeze risk.' };
+    if (heat) return { kind: 'heat', text: 'Heat alert: ' + heat.tMax + 'C on ' + heat.date + ' , schedule outdoor work for early hours.' };
+    if (cold) return { kind: 'cold', text: 'Cold alert: ' + cold.tMin + 'C on ' + cold.date + ' , concrete/water work at freeze risk.' };
     return null;
   }
 
   // ---- 7.4 Weather delay log ----
   // Auto-pulls today's cached conditions; manual override when no forecast
   // exists (on-site reality beats an expired cache). Stores into
-  // state.weatherLog (client-side only — simulated backend).
+  // state.weatherLog (client-side only , simulated backend).
   function logWeatherDay(state, opts) {
     const s = state || ns.State.getState();
     const o = opts || {};
@@ -218,9 +218,9 @@ var MMGR = window.MMGR || {};
     const days = riskDays(s).filter(d => U.parseDL(d.date) >= new Date()).slice(0, 3);
     const proj = (s && (s.projectName || (s.charter && s.charter.name))) || 'Project';
     if (!days.length) return 'No weather risk days in the current forecast for ' + proj + '.';
-    const lines = ['SUBCONTRACTOR WEATHER NOTICE — ' + proj, '='.repeat(40)];
+    const lines = ['SUBCONTRACTOR WEATHER NOTICE , ' + proj, '='.repeat(40)];
     days.forEach(d => {
-      lines.push(d.date + ' — ' + d.alerts.join(', ') + (d.affected.length ? ' | Affects: ' + d.affected.join(', ') : ' | No weather-sensitive tasks mapped'));
+      lines.push(d.date + ' , ' + d.alerts.join(', ') + (d.affected.length ? ' | Affects: ' + d.affected.join(', ') : ' | No weather-sensitive tasks mapped'));
     });
     lines.push('Prepared by My MaNaGeR. Confirm with the site foreman before acting.');
     return lines.join('\n');

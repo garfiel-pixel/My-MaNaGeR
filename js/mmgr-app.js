@@ -1,5 +1,5 @@
 /* ============================================================
-   My MaNaGeR — Application Controller Module
+   My MaNaGeR , Application Controller Module
    Initialization, event handlers, drawer, modals, toast,
    keyboard shortcuts, theme, crosshair, methodology learning card.
    ============================================================ */
@@ -18,18 +18,18 @@ var MMGR = window.MMGR || {};
 
   // ---- Access Gate ----
   // Full codes set mmgr_unlocked_<id>='1'. A VIEW-ONLY code (ACTION-PLAN
-  // 4.1) sets the same unlock flag PLUS mmgr_scope_<id>='readonly' — the
+  // 4.1) sets the same unlock flag PLUS mmgr_scope_<id>='readonly' , the
   // project opens in a reduced, non-editable view. Both paths are
   // client-side localStorage (simulated backend), matching the existing
   // SHA-256 model; the plaintext code never leaves the browser.
   // ---- DIR-1 (ADMIN-PUBLISH-SYNC-AND-PROJECT-SELECT-POLISH): local-first
   // creator access. A project id present in this device's admin working list
-  // (localStorage mmgr_admin_projects) is owned HERE — the creator's own
+  // (localStorage mmgr_admin_projects) is owned HERE , the creator's own
   // access must never depend on the publish/deploy step, which gates only
   // OTHER people's access. Locally-owned projects open with full scope, no
   // code re-entry, even on a deep link straight to project.html.
   // Security note: this is exactly equivalent to the pre-existing ability to
-  // set mmgr_unlocked_<id> directly in localStorage — convenience protection
+  // set mmgr_unlocked_<id> directly in localStorage , convenience protection
   // for a personal tool, not server-side security (per the admin banner). ----
   function isLocallyOwned(id) {
     try {
@@ -52,11 +52,11 @@ var MMGR = window.MMGR || {};
     }
     // If this browser opened the project with a view-only code, drop the
     // app into read-only mode (reduced view). A locally-owned project is
-    // always full scope — the creator is never gated by a code they set.
+    // always full scope , the creator is never gated by a code they set.
     ns.scope = locallyOwned ? 'full' : (localStorage.getItem('mmgr_scope_' + projectId) === 'readonly' ? 'readonly' : 'full');
     // CLOUD-CODES-AND-DELETE: a cloud VIEWER code (session escope role
     // 'view', set when the code was entered on the launcher or in the Cloud
-    // drawer) drops the app into read-only mode from boot — every mutating
+    // drawer) drops the app into read-only mode from boot , every mutating
     // data-action is refused via READONLY_SAFE_ACTIONS, and the cloud
     // module's applyEditorScope blocks the sections outside the viewer's
     // grant. Reads the same session slot mmgr-cloud.js writes (escopeKey).
@@ -72,7 +72,7 @@ var MMGR = window.MMGR || {};
   function isReadonly() { return ns.scope === 'readonly'; }
 
   // PART F T9 (no-offline-copy guarantee): TRUE when this project was opened
-  // with a cloud editor/viewer code (session escope role set — the same slot
+  // with a cloud editor/viewer code (session escope role set , the same slot
   // mmgr-cloud.js writes). A recipient must never be able to export the
   // project as an offline-copyable file: the server enforces scope on writes,
   // but export runs entirely client-side, so the UI must refuse it here.
@@ -85,7 +85,7 @@ var MMGR = window.MMGR || {};
   function cloudExportBlocked(action) {
     // openOM (export modal), cpOut (copy JSON), saveProjectFile (download
     // .json) and driveBackup (writes the workspace to the recipient's own
-    // Drive) are the offline-copy surfaces — refused while a share code is
+    // Drive) are the offline-copy surfaces , refused while a share code is
     // held. Everything else proceeds normally.
     if (action !== 'openOM' && action !== 'cpOut' && action !== 'saveProjectFile' && action !== 'driveBackup') return false;
     if (!cloudCodeHeld()) return false;
@@ -103,7 +103,7 @@ var MMGR = window.MMGR || {};
 
     const s = S();
 
-    // ACTION-PLAN 4.1: view-only scope — reduced read-only view. The body
+    // ACTION-PLAN 4.1: view-only scope , reduced read-only view. The body
     // class + banner are the visible state; the delegated event guards below
     // block every mutating data-action, while navigation / Copy All / Print
     // keep working.
@@ -113,8 +113,8 @@ var MMGR = window.MMGR || {};
       if (banner) banner.classList.remove('is-hide');
     }
 
-    // Apply theme — light is the default; dark is opt-in. The device-level
-    // preference (localStorage mmgr_theme — the same slot the launcher and
+    // Apply theme , light is the default; dark is opt-in. The device-level
+    // preference (localStorage mmgr_theme , the same slot the launcher and
     // admin read, and the same slot tglTheme writes) is the MASTER so the
     // choice made anywhere persists everywhere; per-project state.theme is
     // the portable fallback for a fresh device or an imported project file.
@@ -170,7 +170,7 @@ var MMGR = window.MMGR || {};
     // gates land on both navs together; then boot the rail open and install
     // the drawer/sidebar dismiss bindings.
     buildSidebar();
-    // OWNER 2026-08-15: the sidebar IS the view on desktop — boot the pinned
+    // OWNER 2026-08-15: the sidebar IS the view on desktop , boot the pinned
     // rail OPEN (body.sidebar-open). Mobile keeps the off-canvas drawer
     // (sidebar-open is never set there, so the scrim can't flash at boot).
     if (window.innerWidth > 768) document.body.classList.add('sidebar-open');
@@ -192,7 +192,7 @@ var MMGR = window.MMGR || {};
     // Phase 2: hook the client error surface (window error + unhandledrejection)
     if (ns.Errors && ns.Errors.hookGlobals) ns.Errors.hookGlobals();
 
-    // Rank 4.2: crash-durability journal restore — if the IndexedDB journal
+    // Rank 4.2: crash-durability journal restore , if the IndexedDB journal
     // holds a NEWER state than localStorage (a hard kill happened mid-edit),
     // adopt it and re-render. Async best-effort; never blocks first paint.
     ns.State.restoreFromJournal().then(function(restored) {
@@ -211,7 +211,7 @@ var MMGR = window.MMGR || {};
     // updates the header badge immediately without a full re-render.
     ns.State.onChange(function() { R.renderDirtyIndicator(); });
 
-    // OWNER 2026-08-15: background cloud auto-sync — once the user goes
+    // OWNER 2026-08-15: background cloud auto-sync , once the user goes
     // idle (~25s), a cloud-linked project's snapshot is pushed silently so
     // the header's green "Cloud backed up" chip stays honest. No-op for
     // unlinked / editor-only / readonly projects (Cloud.autoSaveToCloud
@@ -249,7 +249,7 @@ var MMGR = window.MMGR || {};
       }
       if (e.key === 'f' || e.key === 'F') {
         // e.target can be the document node (no closest) when nothing has
-        // focus — guard so the shortcut never throws.
+        // focus , guard so the shortcut never throws.
         const inInput = e.target.closest && e.target.closest('input,textarea,select');
         if (!e.ctrlKey && !e.metaKey && !inInput) {
           e.preventDefault();
@@ -271,7 +271,7 @@ var MMGR = window.MMGR || {};
     // PLAN-OF-ACTION-LIQUID-GLASS-UI 3.5.2/3.5.4: apply the glass engine on
     // boot if the device preference + capability floor allow it. Also sync
     // the settings toggle's checked state to the stored preference. The
-    // engine is dynamically imported and only then — zero cost otherwise.
+    // engine is dynamically imported and only then , zero cost otherwise.
     if (ns.Viewport && ns.Viewport.getGlassMode) {
       const gt = U.$('glass-tgl');
       if (gt) gt.checked = ns.Viewport.getGlassMode() === 'premium';
@@ -279,7 +279,7 @@ var MMGR = window.MMGR || {};
     if (ns.Glass && ns.Glass.sync) ns.Glass.sync();
 
     // DIR-1b: reflect the device-level remote-error-reporting preference
-    // (localStorage slot, like the glass mode toggle above — never project
+    // (localStorage slot, like the glass mode toggle above , never project
     // state) into the Controls drawer controls on boot.
     if (ns.Errors && ns.Errors.getReportCfg) {
       const rc = ns.Errors.getReportCfg();
@@ -294,13 +294,13 @@ var MMGR = window.MMGR || {};
     if (ns.Sync && ns.Sync.renderSyncSection) ns.Sync.renderSyncSection();
 
     // GOOGLE-DRIVE-BACKUP: render the optional Drive backup/restore section
-    // into the Controls drawer (project.html only — app.html uses its
+    // into the Controls drawer (project.html only , app.html uses its
     // auth-bar controls). Same zero-throw guard as the sync section above.
     if (ns.GoogleAuth && ns.GoogleAuth.renderDriveSection) ns.GoogleAuth.renderDriveSection();
 
     // CLOUD-BACKEND-ARCHITECTURE-PLAN Phase 1: render the optional Cloud
     // Backup (D1 + R2 owner-code storage) section into the Controls drawer.
-    // Strictly additive and never gating — the module no-ops without
+    // Strictly additive and never gating , the module no-ops without
     // #cloud-section (project.html only), and the Worker API absence degrades
     // to a quiet "unavailable here" note.
     if (ns.Cloud && ns.Cloud.render) ns.Cloud.render();
@@ -327,7 +327,7 @@ var MMGR = window.MMGR || {};
     document.body.classList.toggle('dark-mode', !isLight);
     // Device-level preference (shared slot with the launcher + admin): the
     // choice persists across every page. state.theme stays in step so the
-    // portable export still carries the theme for fresh devices — but that
+    // portable export still carries the theme for fresh devices , but that
     // project-state write is skipped in view-only (a read-only scope must not
     // mutate project state; the device pref + body class are enough there).
     try { localStorage.setItem('mmgr_theme', theme); } catch (e) { /* ignore */ }
@@ -339,7 +339,7 @@ var MMGR = window.MMGR || {};
 
   // ---- PLAN-OF-ACTION-LIQUID-GLASS-UI 3.5.3: Premium visual mode toggle ----
   // A single, clearly-labeled settings toggle, off by default, persisted to
-  // the shared device-preference slot (localStorage — NOT project state, so
+  // the shared device-preference slot (localStorage , NOT project state, so
   // it can never travel in the .json export). Never a popup or forced
   // prompt. The capability floor (Viewport.effectiveGlassMode) overrides the
   // stored preference: a low-end device stays on CSS glass no matter what.
@@ -350,21 +350,21 @@ var MMGR = window.MMGR || {};
     if (ns.Glass) ns.Glass.sync();
     const effective = (ns.Viewport && ns.Viewport.effectiveGlassMode) ? ns.Viewport.effectiveGlassMode() : 'css';
     showToast(on
-      ? (effective === 'premium' ? 'Premium visual mode on — liquid-glass backdrop active.' : 'Preference saved — this device uses CSS glass (capability floor).')
-      : 'Premium visual mode off — CSS glass stays on.',
+      ? (effective === 'premium' ? 'Premium visual mode on , liquid-glass backdrop active.' : 'Preference saved , this device uses CSS glass (capability floor).')
+      : 'Premium visual mode off , CSS glass stays on.',
       effective === 'premium' ? 'ok' : 'warn');
   }
 
   // ---- THEME-SYSTEM-AND-MOBILE-UI-ACTION-PLAN §4.2: mobile nav drawer ----
   // Hamburger + scrim toggle body.nav-open, which slides the .sec-nav off-canvas
-  // drawer in/out on ≤768px (desktop ignores the class — the nav stays sticky).
+  // drawer in/out on ≤768px (desktop ignores the class , the nav stays sticky).
   // BUG-9: on desktop, the hamburger opens the #app-sidebar overlay instead.
   // The drawer closes on: scrim tap (same action), any section button, Escape,
   // and a viewport resize back to desktop width.
   let _navBound = false;
   function closeNav() {
     document.body.classList.remove('nav-open');
-    // OWNER 2026-08-15: on desktop the sidebar is the pinned primary nav —
+    // OWNER 2026-08-15: on desktop the sidebar is the pinned primary nav , 
     // section clicks do NOT close it (only the hamburger / Escape does).
     const btn = U.$('nav-btn');
     if (btn) btn.setAttribute('aria-expanded', 'false');
@@ -389,7 +389,7 @@ var MMGR = window.MMGR || {};
       if (e.key !== 'Escape') return;
       closeNav();
       bkClose();
-      // Escape also closes the desktop pinned rail — full-screen work, the
+      // Escape also closes the desktop pinned rail , full-screen work, the
       // hamburger reopens it.
       if (window.innerWidth > 768 && document.body.classList.contains('sidebar-open')) setSidebarOpen(false);
     });
@@ -400,7 +400,7 @@ var MMGR = window.MMGR || {};
   }
   // The one hamburger drives both navigations by viewport: ≤768px the mobile
   // off-canvas drawer (body.nav-open), desktop the overlay sidebar (BUG-9:
-  // always available, no pref gate — the overlay is transient, not pinned).
+  // always available, no pref gate , the overlay is transient, not pinned).
   function tglNav() {
     bindNavDismiss();
     const btn = U.$('nav-btn');
@@ -408,7 +408,7 @@ var MMGR = window.MMGR || {};
       const open = document.body.classList.toggle('nav-open');
       if (btn) btn.setAttribute('aria-expanded', open ? 'true' : 'false');
       // BUG-10: the mobile off-canvas drawer is the same overflow scroll
-      // container as the desktop sidebar — reset it to the top on open too,
+      // container as the desktop sidebar , reset it to the top on open too,
       // so the first section is always the first thing visible.
       if (open) {
         const nav = U.$('sec-nav');
@@ -423,11 +423,11 @@ var MMGR = window.MMGR || {};
   // ---- SIDEBAR-HAMBURGER-TOGGLE-PLAN (2026-08-12): opt-in desktop sidebar ----
   // A fixed left rail (~240px) that mirrors the horizontal .sec-nav groups.
   // It is a DEVICE preference (localStorage mmgr_sidebar = 'on'|'off', default
-  // 'off' — current users see zero change until they opt in), persisted to the
+  // 'off' , current users see zero change until they opt in), persisted to the
   // same session-gated R2 prefs blob as the theme (worker.js /api/cloud/prefs/
   // theme gains a sidebar field) so a signed-in account's layout follows across
   // devices. The sidebar itself is desktop-only (≤768px the existing .sec-nav
-  // drawer remains the only mobile nav). Pure device-UI chrome — never project
+  // drawer remains the only mobile nav). Pure device-UI chrome , never project
   // state, safe in view-only mode.
   const SIDEBAR_KEY = 'mmgr_sidebar';
   let _sidebarUserTouched = false;
@@ -435,7 +435,7 @@ var MMGR = window.MMGR || {};
   function readDevicePref(key) { try { return localStorage.getItem(key); } catch (e) { return null; } }
   function writeDevicePref(key, v) { try { localStorage.setItem(key, v); } catch (e) {} }
 
-  // OWNER 2026-08-15: the sidebar is the ONLY desktop view — the legacy
+  // OWNER 2026-08-15: the sidebar is the ONLY desktop view , the legacy
   // mmgr_sidebar pref no longer gates it. body.sidebar-on is therefore always
   // applied; body.sidebar-open is the rail's transient open/closed state.
   function sidebarEnabled() { return true; }
@@ -451,7 +451,7 @@ var MMGR = window.MMGR || {};
     // visibility:hidden does NOT reset an overflow scroll container, so a
     // previously-scrolled sidebar would re-open mid-list (Governance/Closeout/
     // DMAIC visible, Overview hidden above the fold). Reset whenever the
-    // overlay is open — covers every open path (hamburger, settings toggle,
+    // overlay is open , covers every open path (hamburger, settings toggle,
     // backend pull, boot-with-pref) in one place, idempotently.
     if (document.body.classList.contains('sidebar-open')) {
       const sb = U.$('app-sidebar');
@@ -468,7 +468,7 @@ var MMGR = window.MMGR || {};
   }
 
   // BUG-9: temporary open/close of the overlay sidebar (hamburger, × button,
-  // Escape, section click). The overlay is always available on desktop — no
+  // Escape, section click). The overlay is always available on desktop , no
   // pref gate. The persisted layout preference (sidebar-on) is kept for
   // backward compat but no longer controls hamburger visibility.
   function setSidebarOpen(open) {
@@ -500,35 +500,35 @@ var MMGR = window.MMGR || {};
         // Same arming flag the theme helper uses: any successful round trip
         // enables the one-per-load backend pull on this device.
         if (r.ok) writeDevicePref('mmgr_palette_backend', '1');
-      }).catch(function () { /* offline / no worker — localStorage is the cache */ });
+      }).catch(function () { /* offline / no worker , localStorage is the cache */ });
     } catch (e) { /* ignore */ }
   }
 
   // One-per-load backend pull (mirrors js/mmgr-theme.js): only on a device
   // that has already synced SOME pref, and only until a LOCAL sidebar pref
-  // exists — the signed-in account's saved layout then follows across devices
+  // exists , the signed-in account's saved layout then follows across devices
   // without ever clobbering a fresh local choice.
   function pullSidebarBackend() {
     if (_sidebarUserTouched) return;
-    if (readDevicePref('mmgr_palette_backend') !== '1') return; // never synced — nothing to pull
+    if (readDevicePref('mmgr_palette_backend') !== '1') return; // never synced , nothing to pull
     if (readDevicePref(SIDEBAR_KEY) != null) return;            // local pref wins
     try {
       fetch('/api/cloud/prefs/theme', { headers: { 'Accept': 'application/json' } })
         .then(function (r) { return r.ok ? r.json() : null; })
         .then(function (d) {
           if (!d || !d.ok || !d.theme) return;
-          if (_sidebarUserTouched) return; // user chose mid-flight — their pick wins
+          if (_sidebarUserTouched) return; // user chose mid-flight , their pick wins
           const v = d.theme.sidebar;
           if (v !== 'on' && v !== 'off') return;
           writeDevicePref(SIDEBAR_KEY, v);
           document.body.classList.toggle('sidebar-open', v === 'on');
           syncSidebarChrome();
-        }).catch(function () { /* backend unreachable — keep local cache */ });
+        }).catch(function () { /* backend unreachable , keep local cache */ });
     } catch (e) { /* ignore */ }
   }
 
   // Build the sidebar content by CLONING the horizontal .sec-nav groups (one
-  // source of truth — the links/actions can never drift), stripping the ids
+  // source of truth , the links/actions can never drift), stripping the ids
   // (the originals own them: gnav/knav/dmaic-nav), and keeping every clone's
   // pack/methodology visibility mirrored to its original forever. Active-state
   // sync needs no mirror: showSection's global .sec-btn query already covers
@@ -609,7 +609,7 @@ var MMGR = window.MMGR || {};
   }
 
   // ---- DIR-1a: error log export (Copy / Download) ----
-  // Consumes ns.Errors.getLog() — the single data source. Plain-text format
+  // Consumes ns.Errors.getLog() , the single data source. Plain-text format
   // matches the drawer's ts / action / msg columns. Zero network calls.
   function errLogText() {
     // Single source of truth: ns.Errors.formatEntry shares the drawer's ts
@@ -624,7 +624,7 @@ var MMGR = window.MMGR || {};
     const text = errLogText();
     if (!text) { showToast('Error log is empty.', 'warn'); return; }
     // U.copyToClipboard never rejects (clipboard API + execCommand fallback
-    // both resolve true), so no catch is needed — a successful copy is the
+    // both resolve true), so no catch is needed , a successful copy is the
     // only path that reaches the success toast.
     await U.copyToClipboard(text);
     showToast('Error log copied.', 'ok');
@@ -648,7 +648,7 @@ var MMGR = window.MMGR || {};
 
   // ---- MASTER-ACTION-PLAN Rank 6.1: Report Issue (sanitized) ----
   // Zero-network diagnostic package (js/mmgr-report.js). The payload is
-  // COUNTS-ONLY by default — budget figures, risk descriptions, and names
+  // COUNTS-ONLY by default , budget figures, risk descriptions, and names
   // are never included (hard rule from the plan). The Include-project-
   // context toggle opts THIS report in to names + budget totals; the pref
   // is session-only and each report defaults back to sanitized on reload.
@@ -665,7 +665,7 @@ var MMGR = window.MMGR || {};
   async function reportIssueCopy() {
     if (!ns.Report || typeof ns.Report.copyPackage !== 'function') { showToast('Report module unavailable.', 'err'); return; }
     const ok = await ns.Report.copyPackage(_reportCtx);
-    showToast(ok ? 'Report copied — paste it wherever you file the issue.' : 'Could not copy the report.', ok ? 'ok' : 'err');
+    showToast(ok ? 'Report copied , paste it wherever you file the issue.' : 'Could not copy the report.', ok ? 'ok' : 'err');
   }
 
   function reportIssueDownload() {
@@ -682,8 +682,8 @@ var MMGR = window.MMGR || {};
     const on = tgl ? tgl.checked : false;
     if (ns.Errors && ns.Errors.setReportCfg) ns.Errors.setReportCfg({ enabled: on });
     showToast(on
-      ? 'Remote error reporting ON — new errors are posted to your webhook.'
-      : 'Remote error reporting OFF — errors stay on this device only.',
+      ? 'Remote error reporting ON , new errors are posted to your webhook.'
+      : 'Remote error reporting OFF , errors stay on this device only.',
       on ? 'ok' : 'warn');
   }
 
@@ -747,7 +747,7 @@ var MMGR = window.MMGR || {};
   }
 
   // DIR-3 (PROJECT-UX-NAV-WEATHER-EXPORT-DIRECTIVE): jump the user straight
-  // to the Advanced Packs toggles — open the Controls drawer, switch to the
+  // to the Advanced Packs toggles , open the Controls drawer, switch to the
   // Controls tab (the packs live there), and bring the section into view.
   // Instant scroll (behavior 'auto'): zero motion, motion-preference safe.
   function openPacks() {
@@ -773,10 +773,10 @@ var MMGR = window.MMGR || {};
 
   // ---- Toast ----
   // Owner directive 2026-08-15: notifications are polished pills, not plain
-  // rectangles — circular border, tinted circular icon tile (check-circle /
+  // rectangles , circular border, tinted circular icon tile (check-circle /
   // x / alert-triangle), one-word label (Done / Error / Note), full-contrast
   // message, slide-up + hold + graceful fade-out. Shared markup + the .toast
-  // CSS in css/mmgr.css (same as app.html / admin.html) — one look everywhere.
+  // CSS in css/mmgr.css (same as app.html / admin.html) , one look everywhere.
   function showToast(msg, type, action) {
     const existing = document.querySelector('.toast');
     if (existing) existing.remove();
@@ -798,7 +798,7 @@ var MMGR = window.MMGR || {};
     t.querySelector('.toast-body > span').textContent = msg;
     const actBtn = t.querySelector('.toast-act');
     if (actBtn) {
-      // T6 (2026-08-16): destructive actions keep a short undo window — the
+      // T6 (2026-08-16): destructive actions keep a short undo window , the
       // toast holds ~6s while the snapshot lives, so the user can restore.
       actBtn.addEventListener('click', function() {
         clearTimeout(t._outTimer);
@@ -821,19 +821,19 @@ var MMGR = window.MMGR || {};
       title: 'Waterfall Methodology',
       body: 'A linear, sequential approach where each phase must be completed before the next begins. Best for construction, manufacturing, and regulated environments where requirements are stable and changes are costly.',
       when: 'Best for: Fixed-price contracts, regulatory projects, and any project where the full scope is known upfront.',
-      example: 'Example: Building a bridge — design must be approved before steel is ordered, and steel must arrive before erection begins.'
+      example: 'Example: Building a bridge , design must be approved before steel is ordered, and steel must arrive before erection begins.'
     },
     agile: {
       title: 'Agile Methodology',
       body: 'An iterative approach that delivers work in small, time-boxed increments called sprints. Best for software, product development, and environments where requirements evolve rapidly.',
       when: 'Best for: Projects with evolving requirements, innovation work, and teams that benefit from rapid feedback loops.',
-      example: 'Example: Developing a mobile app — each 2-week sprint delivers a working feature set that users can test and provide feedback on.'
+      example: 'Example: Developing a mobile app , each 2-week sprint delivers a working feature set that users can test and provide feedback on.'
     },
     hybrid: {
       title: 'Hybrid Methodology',
       body: 'Combines the structure of Waterfall (planning, design, governance) with the flexibility of Agile (iterative delivery, continuous improvement). Best for complex projects that need both certainty and adaptability.',
       when: 'Best for: Large-scale digital transformations, capital projects with software components, and any project where parts are well-defined and parts are exploratory.',
-      example: 'Example: A factory automation project — the physical layout and equipment procurement follow Waterfall, while the control software is developed in Agile sprints.'
+      example: 'Example: A factory automation project , the physical layout and equipment procurement follow Waterfall, while the control software is developed in Agile sprints.'
     }
   };
 
@@ -880,7 +880,7 @@ var MMGR = window.MMGR || {};
     if (section === 'comms') {
       text += 'COMMUNICATION LOG\n' + '='.repeat(40) + '\n';
       ((s && s.commsEntries) || []).forEach(c => {
-        text += `[${c.id}] ${c.date} | ${c.type} | ${c.attendees}\n  Summary: ${c.summary}\n  Actions: ${c.actionItems}\n  Follow-up: ${c.followUp || '—'}\n\n`;
+        text += `[${c.id}] ${c.date} | ${c.type} | ${c.attendees}\n  Summary: ${c.summary}\n  Actions: ${c.actionItems}\n  Follow-up: ${c.followUp || '-'}\n\n`;
       });
       U.copyToClipboard(text);
       showToast('Copied!', 'ok');
@@ -889,21 +889,21 @@ var MMGR = window.MMGR || {};
     if (section === 'docs') {
       text += 'DOCUMENT REGISTER\n' + '='.repeat(40) + '\n';
       ((s && s.documents) || []).forEach(d => {
-        text += `[${d.id}] ${d.docNo} | ${d.title} | ${d.type} v${d.version} | ${d.status} | ${d.responsible} | Issued: ${d.dateIssued || '—'} | ${d.notes || ''}\n`;
+        text += `[${d.id}] ${d.docNo} | ${d.title} | ${d.type} v${d.version} | ${d.status} | ${d.responsible} | Issued: ${d.dateIssued || '-'} | ${d.notes || ''}\n`;
       });
       U.copyToClipboard(text);
       showToast('Copied!', 'ok');
       return;
     }
     // ACTION-PLAN 7.4: dispute-ready weather delay log export (date,
-    // conditions, note, affected tasks + LD exposure). Client-side text —
+    // conditions, note, affected tasks + LD exposure). Client-side text , 
     // no server round-trip; the log itself is localStorage state.
     if (section === 'wxlog') {
       text += 'WEATHER DELAY LOG (DISPUTE RECORD)\n' + '='.repeat(40) + '\n';
       const log = (s && s.weatherLog) || [];
       if (log.length) {
         log.forEach(e => {
-          text += e.date + ' | ' + (e.condition || '—') + (e.note ? ' | Note: ' + e.note : '') +
+          text += e.date + ' | ' + (e.condition || '-') + (e.note ? ' | Note: ' + e.note : '') +
             (e.affectedTaskIds && e.affectedTaskIds.length ? ' | Affected: ' + e.affectedTaskIds.join(', ') : '') + '\n';
         });
       } else {
@@ -923,16 +923,16 @@ var MMGR = window.MMGR || {};
       text += 'MEETING AGENDAS & TEMPLATES\n' + '='.repeat(40) + '\n\nPRE-PROJECT KICKOFF (' + M.MEET_TEMPLATES.kickoff.dur + ')\n' + '-'.repeat(30) + '\n';
       M.MEET_KICKOFF_ITEMS.forEach((it, i) => { text += (i + 1) + '. ' + it + '\n'; });
       text += '\nRECURRING TEMPLATES\n' + '-'.repeat(30) + '\n';
-      M.MEET_RECURRING.concat(M.MEET_SPECIALIZED).forEach(m => { text += '• ' + m.t + ' (' + m.dur + ') — ' + m.d + '\n'; });
+      M.MEET_RECURRING.concat(M.MEET_SPECIALIZED).forEach(m => { text += '• ' + m.t + ' (' + m.dur + ') , ' + m.d + '\n'; });
       if (s && (s.methodology === 'agile' || s.methodology === 'hybrid')) {
         text += '\nAGILE CEREMONIES\n' + '-'.repeat(30) + '\n';
-        M.MEET_AGILE.forEach(m => { text += '• ' + m.t + ' (' + m.dur + ') — ' + m.d + '\n'; });
+        M.MEET_AGILE.forEach(m => { text += '• ' + m.t + ' (' + m.dur + ') , ' + m.d + '\n'; });
       }
       U.copyToClipboard(text);
       showToast('All meeting templates copied!', 'ok');
       return;
     }
-    // ACTION-PLAN 3.4: the weekly baseline narrative feeds Copy All — a
+    // ACTION-PLAN 3.4: the weekly baseline narrative feeds Copy All , a
     // client-side plain-English diff, no server round-trip.
     if (section === 'baselinen') {
       text += 'WHAT CHANGED THIS WEEK\n' + '='.repeat(40) + '\n';
@@ -940,18 +940,18 @@ var MMGR = window.MMGR || {};
       if (narr) {
         narr.forEach(n => { text += '• ' + n + '\n'; });
       } else {
-        text += 'No baseline captured yet — Settings > Controls > Save Baseline.\n';
+        text += 'No baseline captured yet , Settings > Controls > Save Baseline.\n';
       }
       text += '\nCURRENT PLAN (tasks)\n' + '='.repeat(40) + '\n';
       ((s && s.tasks) || []).forEach(t => {
-        text += '[' + t.id + '] ' + t.name + ' | ' + (t.status || '') + ' | ' + (t.startDate || '—') + ' → ' + (t.endDate || '—') + '\n';
+        text += '[' + t.id + '] ' + t.name + ' | ' + (t.status || '') + ' | ' + (t.startDate || '-') + ' → ' + (t.endDate || '-') + '\n';
       });
       U.copyToClipboard(text);
       showToast('Copied!', 'ok');
       return;
     }
     // MASTER-ACTION-PLAN-v3-STRICT Rank 1.1: the one-click claim/delay
-    // package — composed live from unified state via the Claim module,
+    // package , composed live from unified state via the Claim module,
     // windowed by the Claim Pack tab's date range. Client-side text, same
     // zero-server Copy All path.
     if (section === 'claim' && ns.Claim) {
@@ -964,7 +964,7 @@ var MMGR = window.MMGR || {};
       return;
     }
     // MASTER-ACTION-PLAN-v3-STRICT Rank 2.1: the auto-generated "what
-    // changed" digest — diffed against the pinned reference point (or the
+    // changed" digest , diffed against the pinned reference point (or the
     // baseline) and copied as plain text. Local generation only.
     if (section === 'digest' && ns.Digest && ns.Digest.computeDigest && ns.Digest.buildDigestText) {
       text += ns.Digest.buildDigestText(ns.Digest.computeDigest(s));
@@ -982,7 +982,7 @@ var MMGR = window.MMGR || {};
   }
 
   // ============================================================
-  // ACTION-PLAN Phase 5 — export & polish
+  // ACTION-PLAN Phase 5 , export & polish
   // ============================================================
 
   // ---- 5.1 Multi-format Copy All ----
@@ -996,7 +996,7 @@ var MMGR = window.MMGR || {};
     const lines = [];
     const f = (s.charter) || {};
     lines.push('*' + (s.projectName || f.name || 'Project') + '*');
-    lines.push('Status: ' + (f.status || '—') + ' | Methodology: ' + ((s.methodology || 'waterfall').toUpperCase()));
+    lines.push('Status: ' + (f.status || '-') + ' | Methodology: ' + ((s.methodology || 'waterfall').toUpperCase()));
     const tasks = s.tasks || [];
     const done = tasks.filter(t => t.status === 'completed').length;
     const overdue = tasks.filter(t => U.isOverdue(t.endDate) && t.status !== 'completed').length;
@@ -1020,19 +1020,19 @@ var MMGR = window.MMGR || {};
   }
 
   // Explain-before-copy builders (owner 2026-08-15): the exact text each
-  // Copy As format produces — used BOTH by cpFormats (the copy action) and
+  // Copy As format produces , used BOTH by cpFormats (the copy action) and
   // by renderCtrlPreviews (the live previews in the Controls tab), so the
   // preview is always byte-identical to what gets copied.
   function copyAsText(kind) {
     const s = ns.State.getState();
     const ts = new Date().toLocaleString();
     if (kind === 'slack') {
-      return '*My MaNaGeR — Weekly Digest* (' + ts + ')\n' + buildDigest(s);
+      return '*My MaNaGeR , Weekly Digest* (' + ts + ')\n' + buildDigest(s);
     } else if (kind === 'email') {
       const body = buildDigest(s).replace(/\*/g, '');
-      return 'Subject: Project Digest — ' + (s.projectName || '') + '\n\nHi team,\n\n' + body.replace(/\n/g, '\n') + '\n\n— My MaNaGeR\n';
+      return 'Subject: Project Digest , ' + (s.projectName || '') + '\n\nHi team,\n\n' + body.replace(/\n/g, '\n') + '\n\n, My MaNaGeR\n';
     } else if (kind === 'client') {
-      // Printable client summary — clean text, no markup, safe to paste into
+      // Printable client summary , clean text, no markup, safe to paste into
       // a doc or print directly.
       const f = (s.charter) || {};
       const tasks = s.tasks || [];
@@ -1040,8 +1040,8 @@ var MMGR = window.MMGR || {};
       const lines = [];
       lines.push('CLIENT PROJECT SUMMARY');
       lines.push('='.repeat(40));
-      lines.push('Project: ' + (s.projectName || f.name || '—'));
-      lines.push('Status: ' + (f.status || '—'));
+      lines.push('Project: ' + (s.projectName || f.name || '-'));
+      lines.push('Status: ' + (f.status || '-'));
       lines.push('Prepared: ' + ts);
       lines.push('');
       lines.push('PROGRESS');
@@ -1064,7 +1064,7 @@ var MMGR = window.MMGR || {};
   }
 
   // Live previews for the Copy As + Email Template cards. textContent only
-  // (the previews are plain text — never innerHTML). Wired into the render
+  // (the previews are plain text , never innerHTML). Wired into the render
   // tail so they always mirror the current state.
   function renderCtrlPreviews() {
     const set = function(id, txt) {
@@ -1091,18 +1091,18 @@ var MMGR = window.MMGR || {};
   // ---- MONOLITH-FEATURE-PARITY-DIRECTIVES RESTORE-3: one-click email
   // template generator (Status Update / Change Request / Risk Escalation /
   // Closure Sign-Off). Restored as the monolith's ORIGINAL static, zero-AI
-  // version — every button copies a ready-to-send email draft built from
+  // version , every button copies a ready-to-send email draft built from
   // live project state, so it works with no model configured and remains the
   // guaranteed fallback. BACKLOG B-N (2026-08-12): the same body is now also
   // exposed as a pure emailTplText(kind) getter so the AI window's LOCAL
   // tier can return it verbatim (zero-fabrication baseline) while the Cloud
-  // tier drafts an AI-polished 'email' preset on top — the buttons below are
+  // tier drafts an AI-polished 'email' preset on top , the buttons below are
   // unchanged and never depend on a model.
   function emailTplText(kind) {
     const s = ns.State.getState();
     const f = s.charter || {};
     const pn = f.name || '[Project Name]';
-    // The current charter schema has no PM field — the signer is deliberately
+    // The current charter schema has no PM field , the signer is deliberately
     // a distinct placeholder rather than reusing the sponsor, so the email
     // does not imply the sponsor wrote it.
     const pm = '[PM]';
@@ -1114,16 +1114,16 @@ var MMGR = window.MMGR || {};
     const openIssues = (s.issues || []).filter(i => i.status !== 'resolved' && i.status !== 'closed');
     let body = '';
     if (kind === 'status') {
-      body = 'Subject: ' + pn + ' — Weekly Status Update\n\nHi ' + sp + ',\n\nQuick status on ' + pn + ' as of ' + new Date().toLocaleDateString() + ':\n• Overall progress: ' + pct + '% Completed (' + dn + '/' + tot + ' tasks)\n• In Progress: ' + tasks.filter(t => t.status === 'inprogress').length + '\n• Blocked: ' + tasks.filter(t => t.status === 'blocked').length + '\n• Live issues: ' + openIssues.length + '\n\nNext priorities:\n' + (tasks.filter(t => t.status !== 'completed').slice(0, 3).map(t => '  - ' + (t.name || t.id)).join('\n') || '  - (none)') + '\n\nRegards,\n' + pm;
+      body = 'Subject: ' + pn + ' , Weekly Status Update\n\nHi ' + sp + ',\n\nQuick status on ' + pn + ' as of ' + new Date().toLocaleDateString() + ':\n• Overall progress: ' + pct + '% Completed (' + dn + '/' + tot + ' tasks)\n• In Progress: ' + tasks.filter(t => t.status === 'inprogress').length + '\n• Blocked: ' + tasks.filter(t => t.status === 'blocked').length + '\n• Live issues: ' + openIssues.length + '\n\nNext priorities:\n' + (tasks.filter(t => t.status !== 'completed').slice(0, 3).map(t => '  - ' + (t.name || t.id)).join('\n') || '  - (none)') + '\n\nRegards,\n' + pm;
     } else if (kind === 'change') {
       const pending = (s.changes || []).filter(c => c.status === 'submitted' || c.status === 'review');
-      body = 'Subject: ' + pn + ' — Change Request for Approval\n\nHi ' + sp + ',\n\nA change request has been raised on ' + pn + '. Please review the impact below and confirm approval:\n\n' + (pending.map(c => '• ' + (c.title || '(untitled)') + ' (Sched ' + (c.schedImpact || '—') + ', Cost ' + (c.costImpact || '—') + ') — Requester: ' + (c.requester || '—') + '\n  Notes: ' + (c.notes || '')).join('\n') || '(no pending changes)') + '\n\nAwaiting your decision.\n\nRegards,\n' + pm;
+      body = 'Subject: ' + pn + ' , Change Request for Approval\n\nHi ' + sp + ',\n\nA change request has been raised on ' + pn + '. Please review the impact below and confirm approval:\n\n' + (pending.map(c => '• ' + (c.title || '(untitled)') + ' (Sched ' + (c.schedImpact || '-') + ', Cost ' + (c.costImpact || '-') + ') , Requester: ' + (c.requester || '-') + '\n  Notes: ' + (c.notes || '')).join('\n') || '(no pending changes)') + '\n\nAwaiting your decision.\n\nRegards,\n' + pm;
     } else if (kind === 'risk') {
       const highRisks = (s.risks || []).filter(r => !r.issueId && (r.probability === 'High' || r.probability === 'Very High' || r.impact === 'High' || r.impact === 'Very High'));
-      body = 'Subject: ' + pn + ' — Risk / Issue Escalation\n\nHi ' + sp + ',\n\nThe following items require attention on ' + pn + ':\n\nACTIVE ISSUES:\n' + (openIssues.map(r => '• [' + (r.id || 'I?') + '] ' + r.description + ' | Owner: ' + (r.owner || '—') + ' | Target: ' + (r.targetDate || '—')).join('\n') || '(none)') + '\n\nHIGH RISKS:\n' + (highRisks.map(r => '• [' + (r.id || 'R?') + '] ' + r.description + ' | Prob ' + r.probability + ' | Impact ' + r.impact + ' | Mitigation: ' + (r.mitigation || '—')).join('\n') || '(none)') + '\n\nRegards,\n' + pm;
+      body = 'Subject: ' + pn + ' , Risk / Issue Escalation\n\nHi ' + sp + ',\n\nThe following items require attention on ' + pn + ':\n\nACTIVE ISSUES:\n' + (openIssues.map(r => '• [' + (r.id || 'I?') + '] ' + r.description + ' | Owner: ' + (r.owner || '-') + ' | Target: ' + (r.targetDate || '-')).join('\n') || '(none)') + '\n\nHIGH RISKS:\n' + (highRisks.map(r => '• [' + (r.id || 'R?') + '] ' + r.description + ' | Prob ' + r.probability + ' | Impact ' + r.impact + ' | Mitigation: ' + (r.mitigation || '-')).join('\n') || '(none)') + '\n\nRegards,\n' + pm;
     } else {
       const items = (s.closure && s.closure.items) || [];
-      body = 'Subject: ' + pn + ' — Closure Sign-Off Request\n\nHi ' + sp + ',\n\n' + pn + ' is ready for formal closure. Summary:\n• Overall: ' + pct + '% Completed\n• Deliverables checklist: ' + items.filter(c => c.done).length + '/' + items.length + ' complete\n\nLessons learned and final report attached. Please confirm sign-off.\n\nRegards,\n' + pm;
+      body = 'Subject: ' + pn + ' , Closure Sign-Off Request\n\nHi ' + sp + ',\n\n' + pn + ' is ready for formal closure. Summary:\n• Overall: ' + pct + '% Completed\n• Deliverables checklist: ' + items.filter(c => c.done).length + '/' + items.length + ' complete\n\nLessons learned and final report attached. Please confirm sign-off.\n\nRegards,\n' + pm;
     }
     return body;
   }
@@ -1165,7 +1165,7 @@ var MMGR = window.MMGR || {};
     ctx.fillStyle = '#0e1116'; ctx.fillRect(0, 0, W, H);
     // Header + weekday labels
     ctx.fillStyle = '#f1f5f9'; ctx.font = '700 11px sans-serif';
-    ctx.fillText((s.projectName || 'Project') + ' — Schedule Export', padL, padT + 12);
+    ctx.fillText((s.projectName || 'Project') + ' , Schedule Export', padL, padT + 12);
     ctx.font = '10px sans-serif'; ctx.fillStyle = '#94a3b8';
     for (let i = 0; i < totalDays; i++) {
       const d = U.addDays(minDate, i);
@@ -1317,7 +1317,7 @@ var MMGR = window.MMGR || {};
   function onExternalChange(parsed) {
     const s = S();
     if (!parsed || !s || !parsed.updatedAt) return;
-    if (parsed.updatedAt <= s.updatedAt) return; // not newer — ignore
+    if (parsed.updatedAt <= s.updatedAt) return; // not newer , ignore
     if (JSON.stringify(parsed) === JSON.stringify(s)) return; // same content
     _pendingExternal = parsed;
     const modal = U.$('conflict-modal');
@@ -1354,7 +1354,7 @@ var MMGR = window.MMGR || {};
   }
 
   // Close every custom modal we own (Escape key path). An Escape on the
-  // confirmation dialog behaves exactly like Cancel — the onCancel callback
+  // confirmation dialog behaves exactly like Cancel , the onCancel callback
   // (e.g. a Gantt-drag rollback) must still run.
   function closeModals() {
     ['cfm-modal', 'conflict-modal', 'del-modal'].forEach(id => {
@@ -1445,11 +1445,11 @@ var MMGR = window.MMGR || {};
     ev.preventDefault();
     if (dragTaskId) {
       const task = (S().tasks || []).find(t => t.id === dragTaskId);
-      // Monolith drop guard: lead-time cards belong in the Lead-Time lane —
+      // Monolith drop guard: lead-time cards belong in the Lead-Time lane , 
       // WIP columns are for crew-driven work. Refuse the drop with a toast
       // instead of silently moving a third-party wait into a work column.
       if (task && task.leadTime) {
-        showToast('Lead-time cards belong in the Lead-Time lane — WIP columns are for crew-driven work.', 'err');
+        showToast('Lead-time cards belong in the Lead-Time lane , WIP columns are for crew-driven work.', 'err');
         dragTaskId = null;
         document.querySelectorAll('.kcol').forEach(c => c.classList.remove('dov'));
         return;
@@ -1474,7 +1474,7 @@ var MMGR = window.MMGR || {};
         if (task) task.leadTime = !task.leadTime;
       });
       // Interaction re-audit: toggling lead-time changes the WBS row (LT badge
-      // + submitted/expected inputs) and the Dashboard's Lead-Time Tracker —
+      // + submitted/expected inputs) and the Dashboard's Lead-Time Tracker , 
       // refresh all three surfaces, not just the board lane.
       R.renderKanban();
       R.renderWbs();
@@ -1513,7 +1513,7 @@ var MMGR = window.MMGR || {};
     const modal = U.$('om');
     if (txt && modal) {
       txt.value = prompt;
-      U.$('om-title').innerHTML = '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-edit"></use></svg> Prompt — ' + type;
+      U.$('om-title').innerHTML = '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-edit"></use></svg> Prompt , ' + type;
       modal.classList.add('open');
     }
     // Monolith port: the Daily Field report gets a "Snapshot Now" button in
@@ -1591,11 +1591,11 @@ var MMGR = window.MMGR || {};
       R.renderAll();
       if (ns.Charter) ns.Charter.loadCharterData();
       if (ns.Sprint) ns.Sprint.loadSprintData();
-      // Surface every two-way conflict by NAME — never silently resolved.
+      // Surface every two-way conflict by NAME , never silently resolved.
       // A conflict is a field present on BOTH sides; the newer stamp wins
       // and the loser is named in the toast so the user can verify it.
       const conflicts = out.report.filter(r => r.reason === 'newer-timestamp' || r.reason === 'local-equal-or-newer');
-      // Cap the named list — a full project import can conflict on dozens of
+      // Cap the named list , a full project import can conflict on dozens of
       // fields and would overflow the toast.
       const NAMED = 5;
       const names = conflicts.slice(0, NAMED).map(r => r.field).join(', ');
@@ -1606,7 +1606,7 @@ var MMGR = window.MMGR || {};
         ? 'Merged ' + fromFile + ' field(s) from file, kept ' + keptLocal + ' local. Conflicting fields (newest edit won): ' + names + more + '.'
         : 'Merged ' + fromFile + ' field(s) from file, kept ' + keptLocal + ' local. No field had edits on both sides.';
       // Rank 4.5: after a merge (multi-device use detected), offer the
-      // single dismissible optional-identity suggestion — if not signed in
+      // single dismissible optional-identity suggestion , if not signed in
       // and not already dismissed on this device. Never a modal, never spam.
       if (ns.Sync && ns.Sync.noteMultiDeviceUse) ns.Sync.noteMultiDeviceUse();
       showToast(summary, out.adopted > 0 ? 'ok' : 'warn');
@@ -1621,12 +1621,12 @@ var MMGR = window.MMGR || {};
   // Explicit module-readiness gate. init() must not run until every module
   // the app depends on is present, otherwise a module that fails to load (or
   // a future reorder of the <script> tags) produces a silent, partial boot.
-  // We poll every 50ms — which covers deferred scripts and slow network — and
+  // We poll every 50ms , which covers deferred scripts and slow network , and
   // after ~5s give up LOUDLY with the missing module names instead of initing
   // against an incomplete namespace.
   //
   // NOTE: Utils and Render are captured at parse time (const U / const R
-  // above), so those two scripts must still load BEFORE app.js — the gate
+  // above), so those two scripts must still load BEFORE app.js , the gate
   // guards the rest of the boot, not that specific parse-time capture.
   const REQUIRED_MODULES = [
     'Utils', 'State', 'Render', 'Prompts', 'Weather', 'FieldReport', 'Schedule',
@@ -1657,15 +1657,15 @@ var MMGR = window.MMGR || {};
         const missing = REQUIRED_MODULES.filter(m => !ns[m]);
         attempts++;
         if (attempts > MAX_ATTEMPTS) {
-          const msg = 'My MaNaGeR boot ABORTED — missing modules: ' + missing.join(', ') + '. Check the <script> load order in project.html.';
+          const msg = 'My MaNaGeR boot ABORTED , missing modules: ' + missing.join(', ') + '. Check the <script> load order in project.html.';
           console.error(msg);
-          // Fail visibly for end users too — a silent blank page tells them
+          // Fail visibly for end users too , a silent blank page tells them
           // nothing about why nothing rendered.
           const sp = document.getElementById('boot-splash');
           if (sp) sp.classList.add('off');
           const el = document.createElement('div');
           el.style.cssText = 'position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#1a1a1a;color:#ff6b6b;font:14px/1.5 monospace;padding:40px;text-align:center;z-index:99999';
-          el.textContent = 'App failed to start — missing modules: ' + missing.join(', ') + '. Check the <script> load order.';
+          el.textContent = 'App failed to start , missing modules: ' + missing.join(', ') + '. Check the <script> load order.';
           document.body.appendChild(el);
           return;
         }
@@ -1824,7 +1824,7 @@ window.MMGR = MMGR;
     'toggleRiskIssue': (el) => window.MMGR.Risks.toggleRiskIssue(parseInt(el.getAttribute('data-idx'))),
     'delIssue': (el) => window.MMGR.Risks.delIssue(parseInt(el.getAttribute('data-idx'))),
     // MONOLITH-FEATURE-PARITY-DIRECTIVES RESTORE-1: risk matrix
-    // click-to-filter (view-only — filtering the list, not mutating state).
+    // click-to-filter (view-only , filtering the list, not mutating state).
     'riskMatrixCell': (el) => window.MMGR.Render.riskMatrixCell(el.getAttribute('data-prob'), el.getAttribute('data-imp')),
     'riskMatrixClear': () => window.MMGR.Render.clearRiskFilter(),
     // MONOLITH-FEATURE-PARITY-DIRECTIVES RESTORE-7: WBS schedule-issues
@@ -1839,7 +1839,7 @@ window.MMGR = MMGR;
     'addStake': () => window.MMGR.Stakeholders.addStake(),
     'delStake': (el) => window.MMGR.Stakeholders.delStake(parseInt(el.getAttribute('data-idx'))),
     // MARKET-FEATURE-ROADMAP A3/A4 (T8 REBUILD 2026-08-16): bid leveling +
-    // Go/No-Go scoring actions — modal-created packages, leveled grid,
+    // Go/No-Go scoring actions , modal-created packages, leveled grid,
     // weighted star scorecard. State mutations are deliberately NOT in
     // READONLY_SAFE_ACTIONS; bidProposal/bidClarify open links (safe).
     'bidAdd': () => window.MMGR.Bids.openBidPkgModal(),
@@ -1888,7 +1888,7 @@ window.MMGR = MMGR;
     'delSubmittal': (el) => window.MMGR.Submittals.delSubmittal(parseInt(el.getAttribute('data-idx'))),
     'addPunch': () => window.MMGR.PunchList.addPunch(),
     'delPunch': (el) => window.MMGR.PunchList.delPunch(parseInt(el.getAttribute('data-idx'))),
-    // MARKET-FEATURE-ROADMAP Section C batch 2 (state mutations — never
+    // MARKET-FEATURE-ROADMAP Section C batch 2 (state mutations , never
     // READONLY_SAFE): pay applications, inspections, incidents, handover,
     // warranty, drawing distribution log, permits.
     'addPayApp': () => window.MMGR.PayApps.addPayApp(true),
@@ -1926,7 +1926,7 @@ window.MMGR = MMGR;
     'cpAllPage': (el) => window.MMGR.App.cpAllPage(el.getAttribute('data-section')),
     'cpFormats': (el) => window.MMGR.App.cpFormats(el.getAttribute('data-kind')),
     // MONOLITH-FEATURE-PARITY-DIRECTIVES RESTORE-3: one-click email template
-    // generator (view-only — composes + copies, never mutates state).
+    // generator (view-only , composes + copies, never mutates state).
     'emailTpl': (el) => window.MMGR.App.emailTpl(el.getAttribute('data-kind')),
     'exportGanttPNG': () => window.MMGR.App.exportGanttPNG(),
     'wxGeocode': () => window.MMGR.App.wxGeocode(),
@@ -1953,28 +1953,28 @@ window.MMGR = MMGR;
     'aiAttachContext': () => window.MMGR.AiWin.attachContext(),
     'aiCopy': () => window.MMGR.AiWin.copy(),
     'aiClear': () => window.MMGR.AiWin.clear(),
-    // Rank 2.3: real model wiring — run preset / run question / settings.
+    // Rank 2.3: real model wiring , run preset / run question / settings.
     'aiRunPreset': (el) => window.MMGR.AiWin.runPreset(el.getAttribute('data-type')),
     'aiRun': () => window.MMGR.AiWin.runQuestion(),
     'aiCopyOut': () => window.MMGR.AiWin.copyOut(),
     'aiSetTier': (el) => { window.MMGR.AiWin.setAiCfg({ tier: el.value }); window.MMGR.AiWin.syncSettingsUI(); },
     // MERGED-AI-CONTROL (audit 1.2): the drawer's AI Assistant switch is now
-    // the single AI on/off control — it reads/writes state.config.ai.tier
+    // the single AI on/off control , it reads/writes state.config.ai.tier
     // directly (flags.aiWindow is dropped as a gate). OFF -> tier 'off'; ON
     // -> restore the last non-off tier (default 'local').
     'tglAiTier': (el) => window.MMGR.AiWin.tglDrawerTier(el),
-    // AI-CLOUD-CONNECT-UI (DIR-2): no aiSetKey action — and no aiSetProvider /
+    // AI-CLOUD-CONNECT-UI (DIR-2): no aiSetKey action , and no aiSetProvider /
     // aiSetEndpoint / aiSetModel actions either. The BYO provider select is
     // read directly by the Connect & Test flow, and the key is wired
     // directly in mmgr-ai.js (session vault only); setAiCfg drops apiKey
-    // patches anyway — a key can never be persisted into project state.
+    // patches anyway , a key can never be persisted into project state.
     // Rank 3.4: viewport prompt answers write a device-level preference only
-    // (localStorage, never project state) — safe in view-only. toggleFull is
+    // (localStorage, never project state) , safe in view-only. toggleFull is
     // a pure DOM class toggle.
     'vpAccept': (el) => window.MMGR.Viewport.accept(el.getAttribute('data-section')),
     'vpDismiss': (el) => window.MMGR.Viewport.dismiss(el.getAttribute('data-section')),
     'vpFull': (el) => window.MMGR.Viewport.toggleFull(el.getAttribute('data-section')),
-    // Rank 3.5 (PLAN-OF-ACTION-LIQUID-GLASS-UI): premium visual mode toggle —
+    // Rank 3.5 (PLAN-OF-ACTION-LIQUID-GLASS-UI): premium visual mode toggle , 
     // writes a device-level preference only (localStorage, never project
     // state), so it is safe in view-only, exactly like the viewport prefs.
     'tglGlassMode': () => window.MMGR.App.tglGlassMode(),
@@ -1983,7 +1983,7 @@ window.MMGR = MMGR;
     'tglSidebar': () => window.MMGR.App.tglSidebar(),
     'tglSidebarOpen': () => window.MMGR.App.tglSidebarOpen(),
     // Rank 4.5 (PLAN-OF-ACTION-AI-VOICE-SYNC-v1): optional Google identity
-    // for sync — device-level label only, never a gate, safe in view-only.
+    // for sync , device-level label only, never a gate, safe in view-only.
     'syncConnect': () => window.MMGR.App.syncConnect(),
     'syncSignOut': () => window.MMGR.App.syncSignOut(),
     'syncClientId': (el) => window.MMGR.App.syncClientId(el),
@@ -1992,9 +1992,9 @@ window.MMGR = MMGR;
     // Controls drawer (project.html). Backup is export-equivalent (reads the
     // workspace, writes Drive + a device pref), restore is import-equivalent
     // (confirm-gated, overwrites local workspace), and the auto-interval is a
-    // device pref — all user-initiated, never gating. GoogleAuth is optional,
+    // device pref , all user-initiated, never gating. GoogleAuth is optional,
     // so every handler guards before touching it (zero-throw module).
-    // PART F T9: driveBackup is an offline-copy surface — refused while a
+    // PART F T9: driveBackup is an offline-copy surface , refused while a
     // cloud share code is held (the recipient must not copy the project to
     // their own Drive).
     'driveBackup': () => { if (window.MMGR.App && window.MMGR.App.cloudExportBlocked('driveBackup')) return; const G = window.MMGR.GoogleAuth; if (G && G.triggerBackup) G.triggerBackup(); },
@@ -2022,7 +2022,7 @@ window.MMGR = MMGR;
     'cloudSignIn': () => { const C = window.MMGR.Cloud; if (C && C.signIn) C.signIn(); },
     'cloudLoadWithCode': () => { const C = window.MMGR.Cloud; if (C && C.loadWithCode) C.loadWithCode(); },
     // CLOUD-BACKEND-ARCHITECTURE-PLAN Phase 2/3: editor-code management
-    // (create/list/revoke — owner-only, enforced server-side) and the
+    // (create/list/revoke , owner-only, enforced server-side) and the
     // changelog view/revert (owner-only). Same zero-throw pattern as the
     // Phase 1 entries above.
     'cloudEditorCreate': () => { const C = window.MMGR.Cloud; if (C && C.createEditor) C.createEditor(); },
@@ -2052,7 +2052,7 @@ window.MMGR = MMGR;
     'cloudReviewReject': (el) => { const C = window.MMGR.Cloud; if (C && C.cloudReviewReject) C.cloudReviewReject(el && el.getAttribute('data-id')); },
     'cloudReviewToggleDiffs': (el) => { const C = window.MMGR.Cloud; if (C && C.reviewToggleDiffs) C.reviewToggleDiffs(el && el.getAttribute('data-id')); },
     // IN-PROJECT DELETE (owner 2026-08-17): Settings > Controls > Danger
-    // Zone — confirm modal + password verify + the owner-only soft delete.
+    // Zone , confirm modal + password verify + the owner-only soft delete.
     'cloudDeleteOpen': () => { const C = window.MMGR.Cloud; if (C && C.cloudDeleteOpen) C.cloudDeleteOpen(); },
     'cloudDeleteClose': () => { const C = window.MMGR.Cloud; if (C && C.cloudDeleteClose) C.cloudDeleteClose(); },
     'cloudDeleteConfirm': () => { const C = window.MMGR.Cloud; if (C && C.cloudDeleteConfirm) C.cloudDeleteConfirm(); },
@@ -2066,7 +2066,7 @@ window.MMGR = MMGR;
     'bkToggle': () => window.MMGR.App.bkToggle(),
     'bkCloud': () => window.MMGR.App.bkCloud(),
     // PART F T9 (no-offline-copy): export/download are refused while a cloud
-    // share code is held — the recipient must not leave with the project file.
+    // share code is held , the recipient must not leave with the project file.
     'saveProjectFile': () => { if (window.MMGR.App && window.MMGR.App.cloudExportBlocked('saveProjectFile')) return; window.MMGR.App.saveProjectFile(); },
     'saveBaseline': () => window.MMGR.App.saveBaseline(),
     'restoreBaseline': () => window.MMGR.App.restoreBaseline(),
@@ -2083,7 +2083,7 @@ window.MMGR = MMGR;
     'loadClip': () => window.MMGR.App.loadClip(),
     'openDrw': () => window.MMGR.App.openDrw(),
     'closeDrw': () => window.MMGR.App.closeDrw(),
-    // DIR-3: Core-Mode onboarding callout — jump to the pack toggles / dismiss.
+    // DIR-3: Core-Mode onboarding callout , jump to the pack toggles / dismiss.
     'openPacks': () => window.MMGR.App.openPacks(),
     'dismissPacksCallout': () => window.MMGR.App.dismissPacksCallout(),
     'undoClr': () => window.MMGR.App.undoClr(),
@@ -2110,12 +2110,12 @@ window.MMGR = MMGR;
     'copyErrorLog': () => window.MMGR.App.copyErrorLog(),
     'downloadErrorLog': () => window.MMGR.App.downloadErrorLog(),
     'tglErrReport': (el) => window.MMGR.App.tglErrReport(),
-    // MASTER-ACTION-PLAN Rank 6.1 — sanitized report package (read-only).
+    // MASTER-ACTION-PLAN Rank 6.1 , sanitized report package (read-only).
     'reportIssueCopy': () => window.MMGR.App.reportIssueCopy(),
     'reportIssueDownload': () => window.MMGR.App.reportIssueDownload(),
     'tglReportContext': () => window.MMGR.App.tglReportContext(),
     'setErrWebhook': (el) => window.MMGR.App.setErrWebhook(el),
-    // Rank 3.1: Core Mode vs Advanced Packs — toggling a pack mutates
+    // Rank 3.1: Core Mode vs Advanced Packs , toggling a pack mutates
     // state.packs (blocked in view-only, like every other write). Same
     // checkbox convention as tglFlag: Chrome has already flipped `checked`
     // before this runs, so read it as-is (no manual flip, no preventDefault).
@@ -2154,19 +2154,19 @@ window.MMGR = MMGR;
       window.MMGR.Closure.updClose(field, el.value);
     },
     // Hold-to-clear is driven by pointerdown/pointerup delegation below,
-    // NOT by click — a plain click must never start the hold countdown.
+    // NOT by click , a plain click must never start the hold countdown.
     // Drag and drop (Kanban)
     'dragDrop': (el) => {
       // Handled by special drag/drop event listeners
     },
     // Hold-to-clear runs on pointerdown delegation (never click), so the
-    // click path is an explicit no-op — enforced by the headless audit.
+    // click path is an explicit no-op , enforced by the headless audit.
     'startHold': () => {}, // pointerdown-only
     // Jump to timeline
     'jumpToDashTimeline': () => window.MMGR.App.jumpToDashTimeline(),
     // Generic field update for dynamic render templates (WBS, risks, etc.)
     // evtType ('input' vs 'change') is forwarded so table-rendering updaters
-    // can save on keystroke but defer the re-render to blur/commit — a
+    // can save on keystroke but defer the re-render to blur/commit , a
     // re-render on every keystroke destroys the focused input (browser-verified).
     'updTaskField': (el, e) => {
       const id = el.getAttribute('data-id');
@@ -2206,16 +2206,16 @@ window.MMGR = MMGR;
     'endMeeting': () => window.MMGR.Meetings.endMeeting(),
     'cancelActiveMeeting': () => window.MMGR.Meetings.cancelActiveMeeting(),
     'copyMeetingMinutes': (el) => window.MMGR.Meetings.copyMeetingMinutes(parseInt(el.getAttribute('data-id'))),
-    // T6 (2026-08-16): delete a concluded meeting with undo. MUTATING —
+    // T6 (2026-08-16): delete a concluded meeting with undo. MUTATING , 
     // deliberately absent from READONLY_SAFE_ACTIONS (view-only scopes refuse).
     'delMeeting': (el) => window.MMGR.Meetings.delMeeting(parseInt(el.getAttribute('data-id'))),
     'undoDelMeeting': () => window.MMGR.Meetings.undoDelMeeting(),
     'tglPromise': (el) => window.MMGR.Meetings.tglPromise(el.getAttribute('data-kind'), parseInt(el.getAttribute('data-idx'))),
-    // Rank 1.5: meeting voice capture (mutates state — NOT in READONLY_SAFE_ACTIONS)
+    // Rank 1.5: meeting voice capture (mutates state , NOT in READONLY_SAFE_ACTIONS)
     'voiceStartCapture': () => window.MMGR.Voice.startCapture(),
     'voiceStopCapture': () => window.MMGR.Voice.stopCapture(),
     'voiceDiscardCapture': () => window.MMGR.Voice.discardCapture(false),
-    // Tier 1: manual offline whisper transcription / retry (mutates state — blocked in view-only)
+    // Tier 1: manual offline whisper transcription / retry (mutates state , blocked in view-only)
     'voiceTranscribeOffline': () => window.MMGR.Voice.transcribeOffline(),
     'voiceRecoverDismiss': () => window.MMGR.Voice.dismissRecovery(),
     'updField': (el, e) => {
@@ -2233,16 +2233,16 @@ window.MMGR = MMGR;
         'Stakeholders': { ns: 'Stakeholders', fn: 'updStake' },
         'Changes':      { ns: 'Changes', fn: 'updChange' },
         'Log':          { ns: 'Log', fn: 'updLog' },
-        // CloseItems' updater takes (index, done) — no field parameter.
+        // CloseItems' updater takes (index, done) , no field parameter.
         'CloseItems':   { ns: 'Closure', fn: 'updCloseItem', doneOnly: true },
         'Comms':        { ns: 'Comms', fn: 'updComms' },
         'Documents':    { ns: 'Documents', fn: 'updDoc' },
         // MARKET-FEATURE-ROADMAP C1/C2/C3: RFI + Submittal + Punch List
-        // registries (state mutations — never READONLY_SAFE).
+        // registries (state mutations , never READONLY_SAFE).
         'Rfis':         { ns: 'Rfis', fn: 'updRfi' },
         'Submittals':   { ns: 'Submittals', fn: 'updSubmittal' },
         'PunchList':    { ns: 'PunchList', fn: 'updPunch' },
-        // MARKET-FEATURE-ROADMAP Section C batch 2 (state mutations — never
+        // MARKET-FEATURE-ROADMAP Section C batch 2 (state mutations , never
         // READONLY_SAFE).
         'PayApps':      { ns: 'PayApps', fn: 'updPayApp' },
         'Inspections':  { ns: 'Inspections', fn: 'updInspection' },
@@ -2267,7 +2267,7 @@ window.MMGR = MMGR;
     }
   };
 
-  // ACTION-PLAN 4.1: read-only gate — the ONLY actions allowed in a
+  // ACTION-PLAN 4.1: read-only gate , the ONLY actions allowed in a
   // view-only scope are non-mutating ones (navigation, copy, print, drawer
   // views, report generation). Everything else is refused with a toast.
   const READONLY_SAFE_ACTIONS = {
@@ -2286,7 +2286,7 @@ window.MMGR = MMGR;
     'copyIdTemplate': 1, 'emailTpl': 1, 'printCharter': 1,
     // Phase 7: wxRefresh (view the forecast) + wxCopyNotice (copy text) are
     // read-only; wxGeocode writes the site location config and wxLogToday /
-    // wxLogManual write the LD-claim weather log — all stay blocked in
+    // wxLogManual write the LD-claim weather log , all stay blocked in
     // view-only mode. meetSentiment and tglLeadtimeReview mutate state too.
     'wxRefresh': 1, 'wxCopyNotice': 1,
     // Rank 3.1: tglPack mutates state.packs -> stays blocked in view-only.
@@ -2298,91 +2298,91 @@ window.MMGR = MMGR;
     'digestGenerate': 1,
     // AI window: open/close/load/copy/attach are read-only. Rank 2.3's
     // aiRunPreset/aiRun WRITE state.aiOutputs and aiSet* writes state.config
-    // — all correctly stay BLOCKED in view-only mode.
+    // , all correctly stay BLOCKED in view-only mode.
     'openAiWin': 1, 'closeAiWin': 1, 'closeAiWinBg': 1, 'aiPreset': 1,
     'aiAttachContext': 1, 'aiCopy': 1, 'aiClear': 1, 'aiCopyOut': 1,
     // Rank 1.5: dismissRecovery only hides a local chip (module flag + DOM)
-    // — non-mutating, safe in view-only mode. The three capture actions
+    // , non-mutating, safe in view-only mode. The three capture actions
     // (voiceStartCapture/voiceStopCapture/voiceDiscardCapture) DO mutate
     // state and correctly stay blocked.
     'voiceRecoverDismiss': 1,
     // Rank 3.4: viewport preference is a device-level screen choice, not
-    // project state — allowed in view-only (like theme is a preference, but
+    // project state , allowed in view-only (like theme is a preference, but
     // this one intentionally stays out of project state entirely).
     'vpAccept': 1, 'vpDismiss': 1, 'vpFull': 1,
     // Rank 3.5: glass preference is a device-level screen choice, not
-    // project state — allowed in view-only like the viewport prefs.
+    // project state , allowed in view-only like the viewport prefs.
     'tglGlassMode': 1,
     // Theme-persistence: the theme preference is a device-level choice too
-    // (localStorage mmgr_theme, the same slot the launcher + admin read) —
+    // (localStorage mmgr_theme, the same slot the launcher + admin read) , 
     // allowed in view-only like glass mode. tglTheme writes only the device
     // pref + body class in view-only; the per-project state write is skipped.
     'tglTheme': 1,
     // THEME-SYSTEM-AND-MOBILE-UI-ACTION-PLAN §4.2: the mobile nav drawer is
-    // pure device-UI chrome (body.nav-open class only) — never project state.
+    // pure device-UI chrome (body.nav-open class only) , never project state.
     // SIDEBAR-HAMBURGER-TOGGLE-PLAN: the sidebar toggle is the same kind of
     // pure device-UI chrome (body.sidebar-on + localStorage pref).
     'tglNav': 1, 'tglSidebar': 1, 'tglSidebarOpen': 1, 'bkToggle': 1, 'bkCloud': 1,
     // DIR-1a/1b: copying/downloading the error log is read-only; the
     // remote-reporting toggle + webhook URL are device-level preferences
-    // (localStorage, like the glass mode toggle) — never project state.
+    // (localStorage, like the glass mode toggle) , never project state.
     'copyErrorLog': 1, 'downloadErrorLog': 1, 'tglErrReport': 1, 'setErrWebhook': 1,
     // MASTER-ACTION-PLAN Rank 6.1: building/copying/downloading the report
     // is read-only; the context toggle is a session-only UI pref.
     'reportIssueCopy': 1, 'reportIssueDownload': 1, 'tglReportContext': 1,
     // Rank 4.5: Google identity is a device-level label, never a gate to
-    // project data — signing in/out/dismissing never mutates project state.
+    // project data , signing in/out/dismissing never mutates project state.
     'syncConnect': 1, 'syncSignOut': 1, 'syncClientId': 1, 'syncDismissSuggest': 1,
     // GOOGLE-DRIVE-BACKUP: backup is export-equivalent (reads the workspace,
     // writes Drive + a device pref) and the auto-interval + backup passphrase
     // are device-level preferences (localStorage / sessionStorage, never
-    // project state) — safe in view-only, like claimGenerate / digestGenerate
+    // project state) , safe in view-only, like claimGenerate / digestGenerate
     // / runMonteCarlo above. Restore is DELIBERATELY excluded: it overwrites
     // local workspace, exactly like import, so it stays blocked in view-only.
     'driveBackup': 1, 'driveAutoInterval': 1, 'driveSetPass': 1,
     // CLOUD-BACKEND-ARCHITECTURE-PLAN Phase 1: cloud create/save/recover/
     // copy/sign-in never mutate the local workspace (they push to the server
-    // or manage session-only credentials) — safe in view-only, exactly like
+    // or manage session-only credentials) , safe in view-only, exactly like
     // driveBackup above. Load is DELIBERATELY excluded: it overwrites the
     // local workspace like driveRestore/import, so it stays blocked in
     // view-only.
     'cloudCreate': 1, 'cloudUpgrade': 1, 'cloudResendVerify': 1, 'cloudSave': 1, 'cloudRecover': 1, 'cloudCopyCode': 1, 'cloudSignIn': 1,
     // CLOUD-BACKEND-ARCHITECTURE-PLAN Phase 2/3: editor-code management and
     // changelog view/revert never mutate the local workspace (owner-only
-    // server calls; a revert changes the CLOUD snapshot, not this device) —
+    // server calls; a revert changes the CLOUD snapshot, not this device) , 
     // safe in view-only, like the Phase 1 cloud entries above.
     'cloudEditorCreate': 1, 'cloudEditorList': 1, 'cloudEditorRevoke': 1,
     'cloudLogList': 1, 'cloudLogRevert': 1, 'cloudLogToggleDiffs': 1, 'cloudDropEditor': 1,
     // GAP-AUDIT-CLOUD-31: unlink only mutates the CLOUD copy (like the other
     // cloud actions above), and the banner Copy/Done are clipboard/session
-    // only — all safe in view-only.
+    // only , all safe in view-only.
     'cloudUnlink': 1, 'cloudCopyEditorCode': 1, 'cloudEditorCodeDone': 1,
     // MASTER-ACTION-PLAN RANK 9.2: webhook CRUD only mutates the SERVER
-    // subscription table (like the other cloud actions) — safe in view-only.
+    // subscription table (like the other cloud actions) , safe in view-only.
     'cloudWebhookList': 1, 'cloudWebhookAdd': 1, 'cloudWebhookDel': 1,
     // CLOUD-FIRST SYNC (PART 3, approved 2026-08-17): offline copies +
     // broadcast. cloudMakeCopy registers this device server-side (view-only
-    // by owner decision — the copy can never edit), cloudUpdateCopy pulls the
+    // by owner decision , the copy can never edit), cloudUpdateCopy pulls the
     // newest snapshot into the copy (overwriting a VIEW-ONLY snapshot is
-    // always safe — no local edits exist to lose), cloudRemoveCopy
+    // always safe , no local edits exist to lose), cloudRemoveCopy
     // unregisters, and the owner's broadcast/auto-broadcast/offline-list
-    // controls only mutate SERVER state or the copy registry — all safe in
+    // controls only mutate SERVER state or the copy registry , all safe in
     // view-only mode, exactly like the other cloud actions above.
     'cloudMakeCopy': 1, 'cloudUpdateCopy': 1, 'cloudRemoveCopy': 1,
     'cloudBroadcast': 1, 'cloudAutoBroadcast': 1, 'cloudOfflineRemove': 1,
     // REVIEW QUEUE: the review list/accept/reject/mine actions only mutate
-    // SERVER state (proposals + the cloud snapshot on accept) — never the
-    // local workspace — so they stay safe in view-only mode like broadcast.
+    // SERVER state (proposals + the cloud snapshot on accept) , never the
+    // local workspace , so they stay safe in view-only mode like broadcast.
     'cloudReviewList': 1, 'cloudReviewMine': 1, 'cloudReviewAccept': 1, 'cloudReviewReject': 1, 'cloudReviewToggleDiffs': 1
   };
   function guardReadonly(action) {
     // The ACTION_MAP delegation IIFE has no closure over the App module's
-    // isReadonly() — route through the published API (MMGR.App.isReadonly).
+    // isReadonly() , route through the published API (MMGR.App.isReadonly).
     const ro = window.MMGR.App && typeof window.MMGR.App.isReadonly === 'function' && window.MMGR.App.isReadonly();
     if (!ro) return true;
     if (READONLY_SAFE_ACTIONS[action]) return true;
     if (window.MMGR.App && typeof window.MMGR.App.showToast === 'function') {
-      window.MMGR.App.showToast('View-only mode — read-only access. Contact the admin for full access.', 'err');
+      window.MMGR.App.showToast('View-only mode , read-only access. Contact the admin for full access.', 'err');
     }
     return false;
   }
@@ -2391,7 +2391,7 @@ window.MMGR = MMGR;
   document.addEventListener('click', function(e) {
     const el = e.target.closest('[data-action]');
     if (!el) return;
-    // P0 ("the dates are fighting me" — real-click path): editable field
+    // P0 ("the dates are fighting me" , real-click path): editable field
     // controls (text/date inputs, selects, textareas) own their change/input
     // events; the delegated change/input listeners below are their ONLY
     // handlers. Firing their data-action on every click would re-render the
@@ -2409,9 +2409,9 @@ window.MMGR = MMGR;
     const action = el.getAttribute('data-action');
     if (!guardReadonly(action)) {
       // View-only rejection: Chrome has already flipped a checkbox's `checked`
-      // before this handler runs, so revert it — otherwise the switch would
+      // before this handler runs, so revert it , otherwise the switch would
       // visually toggle while the state it controls stays unchanged (audit
-      // 1.2 / 1.3 — the AI master switch, tglPack, tglFlag all behave this way).
+      // 1.2 / 1.3 , the AI master switch, tglPack, tglFlag all behave this way).
       if (el.tagName === 'INPUT' && el.type === 'checkbox') el.checked = !el.checked;
       return;
     }
@@ -2419,7 +2419,7 @@ window.MMGR = MMGR;
     if (handler) {
       if (el.tagName === 'INPUT' && el.type === 'checkbox') {
         // CRITICAL (browser-verified): Chrome toggles checkbox `checked` when
-        // the click event is DISPATCHED — i.e. BEFORE this listener runs — and
+        // the click event is DISPATCHED , i.e. BEFORE this listener runs , and
         // a subsequent preventDefault() REVERTS it to the original value.
         // The old flip-then-preventDefault pattern therefore double-toggled
         // back to the pre-click value, leaving theme/crosshair/milestone
@@ -2441,7 +2441,7 @@ window.MMGR = MMGR;
     if (!guardReadonly(action)) return;
     const handler = ACTION_MAP[action];
     // CLAUDE-BUG-AUDIT (2026-08-11) #1: syncClientId is a type-then-blur text
-    // field (Google OAuth Client ID) — it was missing from this change
+    // field (Google OAuth Client ID) , it was missing from this change
     // whitelist, so the value sat in the box but was never persisted.
     // `change` is the correct event for a one-time paste/type-then-blur field.
     if (handler && (action === 'updEnvelope' || action === 'saveSprint' || action === 'setWorkWeek' || action === 'setRegion' || action === 'loadProjectFile' || action === 'mergeProjectFile' || action === 'updCharter' || action === 'updClose' || action === 'setUserName' || action === 'addRaciTaskFromPicker' || action === 'addRaciPersonFromPicker' || action === 'updField' || action === 'updTaskField' || action === 'updKPI' || action === 'updKPILink' || action === 'updKPIDir' || action === 'updSpendEntry' || action === 'updRaciTask' || action === 'updRaciPerson' || action === 'claimSetCause' || action === 'aiSetTier' || action === 'setErrWebhook' || action === 'driveAutoInterval' || action === 'driveSetPass' || action === 'syncClientId' || action === 'bidPkgUpd' || action === 'bidSubUpd' || action === 'bidLineUpd' || action === 'bidAmount' || action === 'gonogoUpd' || action === 'gonogoCatUpd' || action === 'gonogoCritUpd' || action === 'updInspItem')) {
@@ -2449,7 +2449,7 @@ window.MMGR = MMGR;
     }
   });
 
-  // Rank 3.1: tglPack chips are checkboxes — the click delegation handles
+  // Rank 3.1: tglPack chips are checkboxes , the click delegation handles
   // them (checkbox click IS the action), and the action map entry above flips
   // state.packs. No change/input whitelist entry needed.
 
@@ -2466,7 +2466,7 @@ window.MMGR = MMGR;
   });
 
   // 5.2 Definitions tooltips: any element with data-def="<term>" shows the
-  // glossary entry on hover. Delegated mouseover/out — zero inline handlers.
+  // glossary entry on hover. Delegated mouseover/out , zero inline handlers.
   document.addEventListener('mouseover', function(e) {
     const el = e.target.closest && e.target.closest('[data-def]');
     if (el) window.MMGR.App.showDefTip(el, el.getAttribute('data-def'));
@@ -2476,7 +2476,7 @@ window.MMGR = MMGR;
     if (el) window.MMGR.App.hideDefTip();
   });
 
-  // RACI right-click cycles backward (feature 5) — contextmenu must be
+  // RACI right-click cycles backward (feature 5) , contextmenu must be
   // prevented so the browser's menu never appears over the matrix.
   document.addEventListener('contextmenu', function(e) {
     const cell = e.target.closest && e.target.closest('[data-action="cycleRaci"]');
@@ -2500,7 +2500,7 @@ window.MMGR = MMGR;
   });
 
   // MLC hover handling (mouseenter/mouseleave on meth buttons)
-  // e.target can be the document node when synthetic/edge events fire —
+  // e.target can be the document node when synthetic/edge events fire , 
   // guard every closest() so hover handling never throws.
   document.addEventListener('mouseenter', function(e) {
     const el = e.target && e.target.closest ? e.target.closest('[data-mlc]') : null;
@@ -2516,7 +2516,7 @@ window.MMGR = MMGR;
     }
   }, true);
 
-  // MLC card hover — keep open
+  // MLC card hover , keep open
   document.addEventListener('mouseenter', function(e) {
     if (e.target && e.target.closest && e.target.closest('#meth-learn-card')) {
       window.MMGR.App.clearMlcTimer();
@@ -2572,7 +2572,7 @@ window.MMGR = MMGR;
     if (el) window.MMGR.App.startHold(el.getAttribute('data-section'));
   });
 
-  // Release anywhere cancels — cancelHold is a no-op when nothing is held,
+  // Release anywhere cancels , cancelHold is a no-op when nothing is held,
   // so no closest() gating is needed (and it covers releases over other
   // elements, re-rendered buttons, and pointer-capture edge cases).
   document.addEventListener('pointerup', () => window.MMGR.App.cancelHold());

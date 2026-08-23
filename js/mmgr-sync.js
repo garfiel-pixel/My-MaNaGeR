@@ -1,8 +1,8 @@
 /* ============================================================
-   My MaNaGeR — Optional Google Identity for Sync (Rank 4.5)
+   My MaNaGeR , Optional Google Identity for Sync (Rank 4.5)
    (PLAN-OF-ACTION-AI-VOICE-SYNC-v1, Rank 4.5)
    ------------------------------------------------------------
-   NEVER GATING — this module is 100% optional and adds zero
+   NEVER GATING , this module is 100% optional and adds zero
    requirements to the app:
 
    - Login stays 100% optional. Every feature works forever with
@@ -13,29 +13,29 @@
    - What it is explicitly NOT: not an account system, not a gate
      to any feature, not a dependency for core CRUD (task edit,
      budget entry, risk log, claim log), not a requirement for
-     the JSON export/import path — the guaranteed fallback.
+     the JSON export/import path , the guaranteed fallback.
 
    Implementation shape (per the plan):
    - GIS (Google Identity Services) client-side sign-in button,
      lazy-loaded from https://accounts.google.com/gsi/client ONLY
-     when the user clicks Connect — zero mandatory network, and
+     when the user clicks Connect , zero mandatory network, and
      circuit-broken: an offline/CSP-blocked load degrades to a
      toast, never an error.
    - The ID token is decoded client-side (JWT payload) into a
      device label: { sub, email, name, picture }. Stored in a
-     DEVICE-LEVEL localStorage slot — deliberately NOT project
+     DEVICE-LEVEL localStorage slot , deliberately NOT project
      state, so it can never leak into the portable .json export
      (constraint #5) or ride along in a merge.
    - The Cloudflare Workers sync relay from the earlier hybrid
      discussion stays optional/absent; JSON export/import remains
      the guaranteed transport either way.
-   - Recommended, not required — surfaced as a SINGLE, dismissible
+   - Recommended, not required , surfaced as a SINGLE, dismissible
      suggestion (never a blocking modal, never repeated nagging),
      offered once multi-device use is detected (a merge) or when
      the user opens the Sync section with no identity attached.
    - OWNER 2026-08-15 (GOOGLE-SIGNIN-THREADS-THE-SITE): the
      Settings sign-in now uses the SAME shared public Client ID as
-     the main site (mmgr-google-auth.js / worker.js) — the old
+     the main site (mmgr-google-auth.js / worker.js) , the old
      BYO "paste your client ID" field is gone. Signing in here
      ALSO creates the real site-wide session (the ID token is
      handed to GoogleAuth.handleCredentialResponse), so one sign-in
@@ -99,7 +99,7 @@ var MMGR = window.MMGR || {};
     });
   }
 
-  // Client-side ID-token decode (JWT payload, base64url). Purely a label —
+  // Client-side ID-token decode (JWT payload, base64url). Purely a label , 
   // no signature verification, because the token is never used to authorize
   // anything. If the shape ever changes, degrade to a null label, never crash.
   function decodeIdToken(token) {
@@ -130,11 +130,11 @@ var MMGR = window.MMGR || {};
     });
     renderSyncSection();
     if (ns.App && ns.App.showToast) {
-      ns.App.showToast('Signed in as ' + (payload.email || payload.sub) + ' — this device is signed in across the app; optional, nothing is gated.', 'ok');
+      ns.App.showToast('Signed in as ' + (payload.email || payload.sub) + ' , this device is signed in across the app; optional, nothing is gated.', 'ok');
     }
   }
 
-  // Shared Google Client ID — the same public ID the main site's sign-in
+  // Shared Google Client ID , the same public ID the main site's sign-in
   // uses (mirrored in mmgr-google-auth.js / worker.js / wrangler.jsonc). It
   // replaces the old BYO requirement: the Settings sign-in works out of the
   // box, no per-device paste needed.
@@ -144,21 +144,21 @@ var MMGR = window.MMGR || {};
 
   // GIS credential callback for the connect flow: records the device label
   // (merge labeling) AND hands the same ID token to GoogleAuth so the REAL
-  // site-wide session is created — one sign-in threads through every page.
+  // site-wide session is created , one sign-in threads through every page.
   function onConnectCredential(resp) {
     handleCredential(resp);
     if (ns.GoogleAuth && ns.GoogleAuth.handleCredentialResponse) {
-      try { ns.GoogleAuth.handleCredentialResponse(resp); } catch (e) { /* label already saved — session is optional */ }
+      try { ns.GoogleAuth.handleCredentialResponse(resp); } catch (e) { /* label already saved , session is optional */ }
     }
   }
 
   // Start the sign-in flow: lazily load GIS, then render its button into
   // #sync-gis-btn. Client ID is the shared public ID (a legacy BYO device
-  // slot overrides it); with neither present it toasts — never crashes.
+  // slot overrides it); with neither present it toasts , never crashes.
   async function connect() {
     const ok = await loadGIS();
     if (!ok || !window.google || !window.google.accounts || !window.google.accounts.id) {
-      if (ns.App && ns.App.showToast) ns.App.showToast('Google sign-in unavailable (offline?) — file export/import sync still works.', 'err');
+      if (ns.App && ns.App.showToast) ns.App.showToast('Google sign-in unavailable (offline?) , file export/import sync still works.', 'err');
       return false;
     }
     const clientId = getClientId() || sharedClientId();
@@ -170,7 +170,7 @@ var MMGR = window.MMGR || {};
       window.google.accounts.id.initialize({ client_id: clientId, callback: onConnectCredential });
       const btn = U.$('sync-gis-btn');
       if (btn) window.google.accounts.id.renderButton(btn, { theme: 'outline', size: 'medium', text: 'continue_with' });
-      // OWNER 2026-08-15: pop the Google prompt immediately (one motion —
+      // OWNER 2026-08-15: pop the Google prompt immediately (one motion , 
       // the rendered button is the fallback when the prompt API is blocked).
       if (window.google.accounts.id && typeof window.google.accounts.id.prompt === 'function') {
         try { window.google.accounts.id.prompt(); } catch (e) { /* button stays rendered */ }
@@ -200,7 +200,7 @@ var MMGR = window.MMGR || {};
       try { ns.GoogleAuth.signOut(); } catch (e) { /* device label already cleared */ }
     }
     renderSyncSection();
-    if (ns.App && ns.App.showToast) ns.App.showToast('Signed out — device label removed. All features still work.', 'ok');
+    if (ns.App && ns.App.showToast) ns.App.showToast('Signed out , device label removed. All features still work.', 'ok');
   }
 
   // ---- Single dismissible suggestion (no spam, never a modal) ------------
@@ -208,7 +208,7 @@ var MMGR = window.MMGR || {};
     try { return localStorage.getItem(SUGGEST_KEY) === '1'; } catch (e) { return false; }
   }
   // Multi-device use flag: set only by noteMultiDeviceUse() when a merge
-  // actually happens. The suggestion is NOT shown at boot — it appears only
+  // actually happens. The suggestion is NOT shown at boot , it appears only
   // once multi-device use is DETECTED, per the plan's no-spam rule.
   function multiDeviceDetected() {
     try { return localStorage.getItem('mmgr_sync_mdu') === '1'; } catch (e) { return false; }
@@ -239,20 +239,20 @@ var MMGR = window.MMGR || {};
 
     // Status line.
     html += '<div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-users"></use></svg> Sign-in</span></div>';
-    html += '<div class="sr-hint">Optional — sign in once and the whole app (launcher, admin, every project) shares the same signed-in state. It never gates a feature and never leaves this device.</div>';
+    html += '<div class="sr-hint">Optional , sign in once and the whole app (launcher, admin, every project) shares the same signed-in state. It never gates a feature and never leaves this device.</div>';
 
     if (signedIn && id) {
       html += '<div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-check-circle"></use></svg> Already signed in as <strong>' + U.escapeHtml(id.email || id.name || id.sub) + '</strong></span>' +
         '<button class="btn btn-n btn-s" data-action="syncSignOut"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> Sign Out</button></div>';
     } else {
-      html += '<div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-lock"></use></svg> Not signed in — works fully without an account</span></div>';
+      html += '<div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-lock"></use></svg> Not signed in , works fully without an account</span></div>';
       html += '<div class="exp-row"><button class="btn btn-n btn-s" data-action="syncConnect"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-users"></use></svg> Sign in with Google (optional)</button></div>';
       html += '<div id="sync-gis-btn" class="sync-gis-btn"></div>';
 
-      // Single dismissible suggestion — ONLY after multi-device use was
+      // Single dismissible suggestion , ONLY after multi-device use was
       // detected (a merge happened), and never again after dismissal.
       if (multiDeviceDetected() && !suggestionDismissed()) {
-        html += '<div class="sync-suggest"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> Merging projects across devices? Sign in to label this device — optional, dismissible, never required. ' +
+        html += '<div class="sync-suggest"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> Merging projects across devices? Sign in to label this device , optional, dismissible, never required. ' +
           '<button class="btn btn-n btn-s" data-action="syncDismissSuggest">Dismiss</button></div>';
       }
     }

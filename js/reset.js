@@ -1,14 +1,14 @@
 /* ============================================================
-   My MaNaGeR — /reset.html controller (AUTH MAINFRAME v2, 2026-08-17)
+   My MaNaGeR , /reset.html controller (AUTH MAINFRAME v2, 2026-08-17)
    ------------------------------------------------------------
    Reads ?token=, validates the new password client-side (min 8,
    match), POSTs /api/auth/reset, drives the card states (form /
    ok / error), and offers a fresh-link recovery form (POST
-   /api/auth/forgot) when the 30-min single-use token is dead — the
+   /api/auth/forgot) when the 30-min single-use token is dead , the
    recoverable error path (Complete-States §11).
 
    External file on purpose: CSP script-src 'self', zero hash churn.
-   All rendered text uses textContent — nothing here can execute.
+   All rendered text uses textContent , nothing here can execute.
    ============================================================ */
 (function () {
   'use strict';
@@ -40,7 +40,7 @@
   }
 
   if (!token) {
-    // The form is pointless without a token — show the error state directly.
+    // The form is pointless without a token , show the error state directly.
     if (form) form.hidden = true;
     fail('This reset link is incomplete. Use the full link from your email, or request a fresh one below.');
   } else if (form) {

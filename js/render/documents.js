@@ -1,5 +1,5 @@
 /* ============================================================
-   My MaNaGeR — Documents Panel
+   My MaNaGeR , Documents Panel
    RFI Register, Submittal Register, Ball-in-court rollup,
    Drawing Distribution Log, Permit Register.
    Extracted from mmgr-render.js.
@@ -43,7 +43,7 @@ var MMGR = window.MMGR || {};
       <td><input type="date" value="${r.dateIssued || ''}" data-action="updField" data-module="Rfis" data-field="dateIssued" data-idx="${i}"></td>
       <td><input type="date" value="${r.dueDate || ''}" data-action="updField" data-module="Rfis" data-field="dueDate" data-idx="${i}" title="Response due"></td>
       <td><select data-action="updField" data-module="Rfis" data-field="status" data-idx="${i}" style="color:${statusColor(r.status)}">${['open','routed','responded','closed'].map(v => `<option ${r.status === v ? 'selected' : ''}>${v}</option>`).join('')}</select></td>
-      <td><input type="text" value="${U.escapeHtml(r.ballInCourt || '')}" data-action="updField" data-module="Rfis" data-field="ballInCourt" data-idx="${i}" placeholder="Whose turn is it" title="Ball-in-court — whose turn to respond"></td>
+      <td><input type="text" value="${U.escapeHtml(r.ballInCourt || '')}" data-action="updField" data-module="Rfis" data-field="ballInCourt" data-idx="${i}" placeholder="Whose turn is it" title="Ball-in-court , whose turn to respond"></td>
       <td><input type="text" value="${U.escapeHtml(r.response || '')}" data-action="updField" data-module="Rfis" data-field="response" data-idx="${i}" style="min-width:140px" placeholder="Response / answer"></td>
       <td><button class="btn btn-s btn-d" data-action="delRfi" data-idx="${i}">×</button></td>
     </tr>`).join('');
@@ -74,7 +74,7 @@ var MMGR = window.MMGR || {};
       <td><select data-action="updField" data-module="Submittals" data-field="status" data-idx="${i}" style="color:${statusColor(x.status)}">${['pending','review','approved','approved-comments','rejected'].map(v => `<option ${x.status === v ? 'selected' : ''}>${v}</option>`).join('')}</select></td>
       <td><input type="date" value="${x.responseDate || ''}" data-action="updField" data-module="Submittals" data-field="responseDate" data-idx="${i}" title="Response date"></td>
       <td><input type="text" value="${U.escapeHtml(x.ballInCourt || '')}" data-action="updField" data-module="Submittals" data-field="ballInCourt" data-idx="${i}" placeholder="Whose turn is it" title="Ball-in-court"></td>
-      <td><input type="text" value="${U.escapeHtml(x.notes || '')}" data-action="updField" data-module="Submittals" data-field="notes" data-idx="${i}" placeholder="—"></td>
+      <td><input type="text" value="${U.escapeHtml(x.notes || '')}" data-action="updField" data-module="Submittals" data-field="notes" data-idx="${i}" placeholder="-"></td>
       <td><button class="btn btn-s btn-d" data-action="delSubmittal" data-idx="${i}">×</button></td>
     </tr>`).join('');
   }
@@ -90,13 +90,13 @@ var MMGR = window.MMGR || {};
     const sum = $('blc-sum');
     if (sum) sum.textContent = list.length ? (list.length + ' items awaiting action') : '';
     if (list.length === 0) {
-      body.innerHTML = '<div class="es" style="padding:14px;font-size:.78rem">Nothing awaiting action — every open item has a named next step or none is open.</div>';
+      body.innerHTML = '<div class="es" style="padding:14px;font-size:.78rem">Nothing awaiting action , every open item has a named next step or none is open.</div>';
       return;
     }
     const kindColor = (k) => k === 'RFI' ? 'var(--gold)' : k === 'Submittal' ? 'var(--cyan)' : 'var(--amber)';
     body.innerHTML = list.map((x) => `<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.04)">
       <span class="badge" style="color:${kindColor(x.kind)};border-color:${kindColor(x.kind)}">${x.kind}</span>
-      <span style="flex:1;font-size:.8rem">${U.escapeHtml(x.ref)} — ${U.escapeHtml(x.who)}${x.due ? ' <span style="color:var(--slate)">due ' + U.escapeHtml(x.due) + '</span>' : ''}</span>
+      <span style="flex:1;font-size:.8rem">${U.escapeHtml(x.ref)} , ${U.escapeHtml(x.who)}${x.due ? ' <span style="color:var(--slate)">due ' + U.escapeHtml(x.due) + '</span>' : ''}</span>
     </div>`).join('');
   }
 
@@ -120,7 +120,7 @@ var MMGR = window.MMGR || {};
       <td><input type="text" value="${U.escapeHtml(x.rev || '')}" data-action="updField" data-module="DrawingLog" data-field="rev" data-idx="${i}" style="width:50px" placeholder="Rev"></td>
       <td><input type="text" value="${U.escapeHtml(x.distributedTo || '')}" data-action="updField" data-module="DrawingLog" data-field="distributedTo" data-idx="${i}" style="min-width:120px" placeholder="Distributed to"></td>
       <td><select data-action="updField" data-module="DrawingLog" data-field="method" data-idx="${i}">${['Email','Print','Portal','Hand'].map(v => `<option ${x.method === v ? 'selected' : ''}>${v}</option>`).join('')}</select></td>
-      <td><input type="text" value="${U.escapeHtml(x.notes || '')}" data-action="updField" data-module="DrawingLog" data-field="notes" data-idx="${i}" placeholder="—"></td>
+      <td><input type="text" value="${U.escapeHtml(x.notes || '')}" data-action="updField" data-module="DrawingLog" data-field="notes" data-idx="${i}" placeholder="-"></td>
       <td><button class="btn btn-s btn-d" data-action="delDrawLog" data-idx="${i}">×</button></td>
     </tr>`).join('');
   }
@@ -157,7 +157,7 @@ var MMGR = window.MMGR || {};
       <td><input type="date" value="${x.dateIssued || ''}" data-action="updField" data-module="Permits" data-field="dateIssued" data-idx="${i}"></td>
       <td><input type="date" value="${x.expires || ''}" data-action="updField" data-module="Permits" data-field="expires" data-idx="${i}">${expiryTxt}</td>
       <td><select data-action="updField" data-module="Permits" data-field="status" data-idx="${i}" style="color:${statusColor(x.status)}">${['applied','active','expiring','expired','closed'].map(v => `<option ${x.status === v ? 'selected' : ''}>${v}</option>`).join('')}</select></td>
-      <td><input type="text" value="${U.escapeHtml(x.notes || '')}" data-action="updField" data-module="Permits" data-field="notes" data-idx="${i}" placeholder="—"></td>
+      <td><input type="text" value="${U.escapeHtml(x.notes || '')}" data-action="updField" data-module="Permits" data-field="notes" data-idx="${i}" placeholder="-"></td>
       <td><button class="btn btn-s btn-d" data-action="delPermit" data-idx="${i}">×</button></td>
     </tr>`;
     }).join('');

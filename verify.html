@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <!--
-  My MaNaGeR — Email verification landing (AUTH MAINFRAME v2, 2026-08-17).
+  My MaNaGeR , Email verification landing (AUTH MAINFRAME v2, 2026-08-17).
   Transactional page reached from the verification email link
   (/verify.html?token=...). Drives /api/auth/verify; when the 24h single-use
   link is dead it offers a fresh-link recovery form (/api/auth/resend-verify).
-  External script only (js/verify.js) — no inline scripts, CSP hashes stay
+  External script only (js/verify.js) , no inline scripts, CSP hashes stay
   untouched. Icons are sprite symbols, no emoji (owner hard gate).
 -->
 <html lang="en">
@@ -32,7 +32,7 @@
 </header>
 
 <main id="main" class="auth-main">
-  <!-- Solid content card (Gate 6.1 — status/forms never sit on glass) -->
+  <!-- Solid content card (Gate 6.1 , status/forms never sit on glass) -->
   <div class="auth-card">
 
     <div class="auth-state" id="st-loading" role="status" aria-live="polite">
@@ -53,7 +53,7 @@
       <h1>Link not valid</h1>
       <p id="st-err-msg">This confirmation link is invalid, expired, or has already been used.</p>
       <div class="auth-recover">
-        <p class="auth-note">Get a fresh link — if this account needs verification, a new confirmation email is on its way.</p>
+        <p class="auth-note">Get a fresh link , if this account needs verification, a new confirmation email is on its way.</p>
         <form id="recover-form" novalidate>
           <label class="sr-only" for="recover-email">Email address</label>
           <input type="email" id="recover-email" name="email" autocomplete="email" placeholder="you@example.com" required>
@@ -75,7 +75,7 @@
 </main>
 
 <footer class="auth-footer">
-  <span>My MaNaGeR — offline-first construction project workspace</span>
+  <span>My MaNaGeR , offline-first construction project workspace</span>
 </footer>
 
 <noscript><div class="auth-noscript">JavaScript is required to confirm your email address.</div></noscript>

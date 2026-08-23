@@ -1,5 +1,5 @@
 /* ============================================================
-   My MaNaGeR — Report Issue package (MASTER-ACTION-PLAN-v3-STRICT
+   My MaNaGeR , Report Issue package (MASTER-ACTION-PLAN-v3-STRICT
    Rank 6.1, executed 2026-08-12)
    ------------------------------------------------------------
    Zero-network diagnostic export for static hosting. "Report
@@ -13,19 +13,19 @@
        lines / changes / meetings / decisions)
      - the client error-log slice (last 20, ts + action + msg)
 
-   STRICTLY EXCLUDED by default (hard rule from the plan — the
+   STRICTLY EXCLUDED by default (hard rule from the plan , the
    exported payload never includes budget dollar figures, risk
    descriptions, or personal names): the package is counts-only.
    An explicit per-report opt-in (Include project context, default
    OFF) adds project/charter name, task/risk/issue lists, and
-   budget totals — still never AI keys, because only enumerated
+   budget totals , still never AI keys, because only enumerated
    fields are ever read.
 
-   Nothing is ever SENT anywhere — the user copies or downloads it
+   Nothing is ever SENT anywhere , the user copies or downloads it
    themselves (offline-first / zero-server constraint intact).
 
    reportIssueText() is a PURE function (explicit inputs, no DOM)
-   so the exclusion rules are statically testable — see
+   so the exclusion rules are statically testable , see
    tools/verify-report-issue.cjs. Depends only on ns.State /
    ns.Errors / ns.Utils, all consulted lazily and never required.
    ============================================================ */
@@ -53,14 +53,14 @@
       ' ' + p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds());
   }
 
-  // PURE builder — explicit inputs, no DOM, harness-testable. opts:
+  // PURE builder , explicit inputs, no DOM, harness-testable. opts:
   //   includeContext (bool), activePanel, viewport, theme, ua
   function reportIssueText(state, errorEntries, opts) {
     const o = opts || {};
     const include = !!o.includeContext;
     const s = state || {};
     const L = [];
-    L.push('My MaNaGeR — Report Issue package');
+    L.push('My MaNaGeR , Report Issue package');
     L.push('Generated: ' + new Date().toISOString());
     L.push('Schema version: ' + (s.schemaVersion === undefined || s.schemaVersion === null ? '?' : s.schemaVersion));
     if (o.ua || o.viewport) L.push('Environment: ' + (o.ua || '?') + (o.viewport ? ' | viewport ' + o.viewport : ''));
@@ -70,7 +70,7 @@
     const on = PACK_ORDER.filter(function(p) { return packs[p] !== false; });
     const off = PACK_ORDER.filter(function(p) { return packs[p] === false; });
     L.push('Packs ON: ' + (on.length ? on.join(', ') : '(none)') + (off.length ? ' | OFF: ' + off.join(', ') : ''));
-    L.push('Counts — tasks: ' + (s.tasks || []).length +
+    L.push('Counts , tasks: ' + (s.tasks || []).length +
       ' | issues: ' + (s.issues || []).length +
       ' | risks: ' + (s.risks || []).length +
       ' | budget lines: ' + (s.budgetLines || []).length +
@@ -91,7 +91,7 @@
       }).join(' | ') || '(none)'));
       L.push('Issues: ' + ((s.issues || []).map(function(i) { return i.description || '(untitled)'; }).join(' | ') || '(none)'));
     } else {
-      L.push('(Project context omitted — names and figures stay off the report unless "Include project context" is checked.)');
+      L.push('(Project context omitted , names and figures stay off the report unless "Include project context" is checked.)');
     }
     L.push('');
     const errs = Array.isArray(errorEntries) ? errorEntries : [];
@@ -106,7 +106,7 @@
     return L.join('\n');
   }
 
-  // Live builder — reads current state + error log + DOM context. Never
+  // Live builder , reads current state + error log + DOM context. Never
   // throws: every DOM/state read is guarded so a partial page can still
   // produce the pure fields.
   function buildPackage(includeContext) {
@@ -123,7 +123,7 @@
       theme = (document.documentElement && document.documentElement.getAttribute('data-theme')) || 'default';
       if (document.body && document.body.classList.contains('dark-mode')) theme += ' (dark)';
       ua = navigator.userAgent;
-    } catch (e) { /* DOM unavailable — keep the pure fields */ }
+    } catch (e) { /* DOM unavailable , keep the pure fields */ }
     return reportIssueText(s, errs, {
       includeContext: includeContext, activePanel: activePanel,
       viewport: viewport, theme: theme, ua: ua

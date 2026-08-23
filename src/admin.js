@@ -1,5 +1,5 @@
 /* ============================================================
-   ADMIN — operator-gated cloud project listing
+   ADMIN , operator-gated cloud project listing
    ------------------------------------------------------------
    Extracted from worker.js. The admin endpoint lists ALL cloud
    projects with theme preferences surfaced per project.
@@ -23,7 +23,7 @@ export async function cloudAdminAuth(request, env) {
 
 export async function handleAdminCloudList(request, env) {
   const auth = await cloudAdminAuth(request, env);
-  if (auth && auth.disabled) return json({ ok: false, error: 'admin API not configured — set the ADMIN_CODE secret' }, 503);
+  if (auth && auth.disabled) return json({ ok: false, error: 'admin API not configured , set the ADMIN_CODE secret' }, 503);
   if (!auth) return json({ ok: false, error: 'invalid admin code' }, 403);
   const rows = await env.DB.prepare('SELECT project_id, owner_label, google_name, google_sub, latest_r2_key, created_at, updated_at, deleted_at FROM cloud_projects ORDER BY updated_at DESC').all();
   const projects = [];

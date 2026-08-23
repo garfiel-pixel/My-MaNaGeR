@@ -1,5 +1,5 @@
 /* ============================================================
-   My MaNaGeR — RACI Matrix Module
+   My MaNaGeR , RACI Matrix Module
    ============================================================ */
 var MMGR = window.MMGR || {};
 
@@ -62,11 +62,11 @@ var MMGR = window.MMGR || {};
   // Pure functions of the letter → color, same treatment as the monolith.
   const RACI_CYCLE = ['', 'R', 'A', 'C', 'I'];
   const RACI_LABELS = {
-    R: 'Responsible — does the work',
-    A: 'Accountable — owns the outcome (exactly one per task)',
-    C: 'Consulted — two-way input before the work',
-    I: 'Informed — one-way, kept in the loop',
-    '': 'Not involved — click to assign'
+    R: 'Responsible , does the work',
+    A: 'Accountable , owns the outcome (exactly one per task)',
+    C: 'Consulted , two-way input before the work',
+    I: 'Informed , one-way, kept in the loop',
+    '': 'Not involved , click to assign'
   };
 
   function raciCellBg(v) {
@@ -79,7 +79,7 @@ var MMGR = window.MMGR || {};
 
   function cycleRaci(taskId, personId, ev) {
     // ev may be a real event (click/contextmenu) OR a plain options object
-    // (keyboard handler / direct calls) — guard preventDefault so the cycle
+    // (keyboard handler / direct calls) , guard preventDefault so the cycle
     // never dies on a non-event argument.
     if (ev && typeof ev.preventDefault === 'function') ev.preventDefault();
     const dir = ev && ev.button === 2 ? -1 : 1;
@@ -95,7 +95,7 @@ var MMGR = window.MMGR || {};
   }
 
   // Keyboard navigation for a focused RACI cell (Enter/Space forward,
-  // Backspace/ArrowLeft back, ArrowRight forward) — delegated, no inline
+  // Backspace/ArrowLeft back, ArrowRight forward) , delegated, no inline
   // handlers, so the CSP stays intact.
   document.addEventListener('keydown', function(e) {
     const cell = e.target.closest && e.target.closest('[data-action="cycleRaci"]');
@@ -127,9 +127,9 @@ var MMGR = window.MMGR || {};
     const s = ns.State.getState();
     const raci = s.raci || { tasks: [], persons: [], matrix: {} };
     const { tasks, persons, matrix } = raci;
-    if (!tasks.length || !persons.length) return '(no RACI data yet — add task rows and person columns in the RACI tab first)';
+    if (!tasks.length || !persons.length) return '(no RACI data yet , add task rows and person columns in the RACI tab first)';
     const header = 'Task | ' + persons.map(p => { const pi = raciPersonInfo(p); return pi.name + (pi.role ? ' (' + pi.role + ')' : ''); }).join(' | ');
-    const rows = tasks.map(t => { const ti = raciTaskInfo(t); return ti.name + ' | ' + persons.map(p => matrix[t.id + '_' + p.id] || '—').join(' | '); });
+    const rows = tasks.map(t => { const ti = raciTaskInfo(t); return ti.name + ' | ' + persons.map(p => matrix[t.id + '_' + p.id] || '-').join(' | '); });
     return [header].concat(rows).join('\n');
   }
 

@@ -1,9 +1,9 @@
 /* ============================================================
-   My MaNaGeR — Public Reviews Window (PART F T7, 2026-08-16).
+   My MaNaGeR , Public Reviews Window (PART F T7, 2026-08-16).
    External module for reviews.html (no inline scripts → no CSP
    hash churn):
    - loads the public review list (GET /api/reviews, newest
-     first) and renders it with textContent ONLY — user content
+     first) and renders it with textContent ONLY , user content
      is never innerHTML, so nothing can execute (the Worker also
      rejects HTML/links server-side; this is the second layer)
    - submits the leave-a-review form (POST /api/reviews) with
@@ -11,7 +11,7 @@
    - star-READY: a review row renders its stored star rating
      (1-5) when present; 0/null (not rated) shows no stars. The
      star-INPUT UI is a follow-up session per the owner.
-   Every lookup is null-guarded and every fetch is caught — this
+   Every lookup is null-guarded and every fetch is caught , this
    file must never throw.
    ============================================================ */
 (function(){
@@ -50,7 +50,7 @@
     statusEl.hidden = !msg;
   }
 
-  // Build a star row (filled = stored rating) from the sprite — icons only,
+  // Build a star row (filled = stored rating) from the sprite , icons only,
   // never emoji. Returns null when not rated (0/null), so the row hides.
   function starRow(stars) {
     if (!stars || stars < 1 || stars > 5) return null;
@@ -76,7 +76,7 @@
     return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
   }
 
-  // Render one review as DOM nodes — textContent only, never innerHTML.
+  // Render one review as DOM nodes , textContent only, never innerHTML.
   function reviewCard(r) {
     var card = document.createElement('article');
     card.className = 'rv-card';
@@ -131,7 +131,7 @@
       renderList(data && data.ok ? data.reviews : []);
     } catch (e) {
       // Offline / dev server without the mirror: show the empty state
-      // quietly — the page must never throw.
+      // quietly , the page must never throw.
       showEmpty(true);
     }
   }
@@ -142,9 +142,9 @@
       setStatus('');
       var review = textIn.value.replace(/\s+/g, ' ').trim();
       if (!review) { setStatus('Please write a short review before sending.', true); return; }
-      if (review.length > 2000) { setStatus('That review is too long — keep it under 2000 characters.', true); return; }
+      if (review.length > 2000) { setStatus('That review is too long , keep it under 2000 characters.', true); return; }
       if (/[<>]/.test(review) || /https?:\/\/|www\./i.test(review)) {
-        setStatus('Plain text only, please — no HTML or links in reviews.', true);
+        setStatus('Plain text only, please , no HTML or links in reviews.', true);
         return;
       }
       var name = nameIn ? nameIn.value.replace(/\s+/g, ' ').trim() : '';
@@ -171,7 +171,7 @@
         if (textIn) textIn.value = '';
         resetStars();
         setStatus('Thank you! Your review is live for everyone to see.');
-        // Prepend the new review (newest first) — re-fetch keeps ordering
+        // Prepend the new review (newest first) , re-fetch keeps ordering
         // authoritative without trusting the echo.
         loadReviews();
       } catch (e) {

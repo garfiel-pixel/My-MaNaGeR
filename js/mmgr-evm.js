@@ -1,10 +1,10 @@
 /* ============================================================
-   My MaNaGeR — EVM (Earned Value Management) Module
+   My MaNaGeR , EVM (Earned Value Management) Module
    Ported from the monolith (MONOLITH-PORTING-GUIDE feature 4).
    computeEVM() is the single source of truth for every earned-value
    number in the app (dashboard card, linked KPIs, AI prompts).
    Returns null when there's not enough data yet (no tasks or no
-   planned budget) — same "no fabricated numbers" rule as Health.
+   planned budget) , same "no fabricated numbers" rule as Health.
    ============================================================ */
 var MMGR = window.MMGR || {};
 
@@ -57,7 +57,7 @@ var MMGR = window.MMGR || {};
     const e = computeEVM();
     const ids = ['evm-spi', 'evm-cpi', 'evm-ev', 'evm-sv', 'evm-cv', 'evm-pv', 'evm-ac', 'evm-spi-lbl', 'evm-cpi-lbl', 'evm-ev-lbl', 'evm-eac', 'evm-etc', 'evm-vac', 'evm-tcpi', 'evm-tcpi-lbl'];
     if (!e) {
-      ids.forEach(id => { const el = document.getElementById(id); if (el) { el.textContent = '—'; el.style.color = ''; } });
+      ids.forEach(id => { const el = document.getElementById(id); if (el) { el.textContent = '-'; el.style.color = ''; } });
       return;
     }
     const { pct, ev, ac, pv, spi, cpi, sv, cv, bac, eac, etc, vac, tcpi } = e;

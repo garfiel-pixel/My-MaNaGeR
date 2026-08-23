@@ -1,5 +1,5 @@
 /* ============================================================
-   My MaNaGeR — BYO AI Key session vault (BYO-AI-KEY-SESSION-ONLY-v1 STEP-1)
+   My MaNaGeR , BYO AI Key session vault (BYO-AI-KEY-SESSION-ONLY-v1 STEP-1)
    ------------------------------------------------------------
    The ONLY home of the user's bring-your-own AI API key.
 
@@ -11,7 +11,7 @@
      gone; the next visit requires pasting the key again.
    - Empty/whitespace keys are rejected by setKey() (throws).
    - The key must never be placed in a URL query, history, or postMessage
-     payload — this module only ever reads/writes its own sessionStorage slot.
+     payload , this module only ever reads/writes its own sessionStorage slot.
    - Provider set is locked to providers_v2: openai, google-gemini, anthropic.
 
    API: setKey(provider, apiKey), getKey(), getProvider(), clearKey(),
@@ -25,7 +25,7 @@ var MMGR = window.MMGR || {};
   // Locked sessionStorage slot name (spec: architecture_lock).
   const KEY_NAME = 'mmgr_byo_ai';
 
-  // providers_v2 — the only providers the Connect flow may offer (Anthropic
+  // providers_v2 , the only providers the Connect flow may offer (Anthropic
   // joined in the fast-follow so its fallback ladder is reachable from the UI).
   const PROVIDERS = ['openai', 'google-gemini', 'anthropic'];
 

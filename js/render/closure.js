@@ -1,5 +1,5 @@
 /* ============================================================
-   My MaNaGeR — Closure Panel
+   My MaNaGeR , Closure Panel
    Punch List, Handover / Closeout Package, Warranty Tracker.
    Extracted from mmgr-render.js.
    ============================================================ */
@@ -43,7 +43,7 @@ var MMGR = window.MMGR || {};
       <td><select data-action="updField" data-module="PunchList" data-field="category" data-idx="${i}">${['Defect','Snag','Touch-up','Safety','Other'].map(v => `<option ${it.category === v ? 'selected' : ''}>${v}</option>`).join('')}</select></td>
       <td><select data-action="updField" data-module="PunchList" data-field="priority" data-idx="${i}" style="color:${p(it.priority)}">${['Low','Medium','High'].map(v => `<option ${it.priority === v ? 'selected' : ''}>${v}</option>`).join('')}</select></td>
       <td><select data-action="updField" data-module="PunchList" data-field="status" data-idx="${i}">${['open','inprogress','done'].map(v => `<option ${it.status === v ? 'selected' : ''}>${v}</option>`).join('')}</select></td>
-      <td><input type="text" value="${U.escapeHtml(it.notes || '')}" data-action="updField" data-module="PunchList" data-field="notes" data-idx="${i}" placeholder="—"></td>
+      <td><input type="text" value="${U.escapeHtml(it.notes || '')}" data-action="updField" data-module="PunchList" data-field="notes" data-idx="${i}" placeholder="-"></td>
       <td><button class="btn btn-s btn-d" data-action="delPunch" data-idx="${i}">×</button></td>
     </tr>`).join('');
   }
@@ -67,7 +67,7 @@ var MMGR = window.MMGR || {};
       <td><input type="text" value="${U.escapeHtml(x.item)}" data-action="updField" data-module="Handover" data-field="item" data-idx="${i}" style="min-width:150px" placeholder="Item / document"></td>
       <td><select data-action="updField" data-module="Handover" data-field="category" data-idx="${i}">${['O&M Manual','Warranty','As-Built','Certificates','Sign-off','Other'].map(v => `<option ${x.category === v ? 'selected' : ''}>${v}</option>`).join('')}</select></td>
       <td><select data-action="updField" data-module="Handover" data-field="status" data-idx="${i}" style="color:${x.status === 'filed' ? 'var(--green)' : x.status === 'ready' ? 'var(--gold)' : 'var(--amber)'}">${['required','ready','filed'].map(v => `<option ${x.status === v ? 'selected' : ''}>${v}</option>`).join('')}</select></td>
-      <td><input type="text" value="${U.escapeHtml(x.notes || '')}" data-action="updField" data-module="Handover" data-field="notes" data-idx="${i}" placeholder="—"></td>
+      <td><input type="text" value="${U.escapeHtml(x.notes || '')}" data-action="updField" data-module="Handover" data-field="notes" data-idx="${i}" placeholder="-"></td>
       <td><button class="btn btn-s btn-d" data-action="delHandoverItem" data-idx="${i}">×</button></td>
     </tr>`).join('');
   }
@@ -93,7 +93,7 @@ var MMGR = window.MMGR || {};
     }
     body.innerHTML = list.map((x, i) => {
       const left = dl(x.warrantyEnd);
-      const leftTxt = left === null ? '—' : left < 0 ? (Math.abs(left) + 'd ago') : left + 'd left';
+      const leftTxt = left === null ? '-' : left < 0 ? (Math.abs(left) + 'd ago') : left + 'd left';
       const leftColor = left === null ? 'var(--slate)' : left < 0 ? 'var(--danger)' : left <= 60 ? 'var(--amber)' : 'var(--green)';
       return `<tr>
       <td>${U.escapeHtml(x.id || 'WR' + (i+1))}</td>
@@ -102,7 +102,7 @@ var MMGR = window.MMGR || {};
       <td><input type="date" value="${x.warrantyStart || ''}" data-action="updField" data-module="Warranty" data-field="warrantyStart" data-idx="${i}"></td>
       <td><input type="date" value="${x.warrantyEnd || ''}" data-action="updField" data-module="Warranty" data-field="warrantyEnd" data-idx="${i}"></td>
       <td style="color:${leftColor}">${leftTxt}</td>
-      <td><input type="text" value="${U.escapeHtml(x.notes || '')}" data-action="updField" data-module="Warranty" data-field="notes" data-idx="${i}" placeholder="—"></td>
+      <td><input type="text" value="${U.escapeHtml(x.notes || '')}" data-action="updField" data-module="Warranty" data-field="notes" data-idx="${i}" placeholder="-"></td>
       <td><button class="btn btn-s btn-d" data-action="delWarranty" data-idx="${i}">×</button></td>
     </tr>`;
     }).join('');

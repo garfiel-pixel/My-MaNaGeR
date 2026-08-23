@@ -1,5 +1,5 @@
 /* ============================================================
-   My MaNaGeR — Rendering Engine
+   My MaNaGeR , Rendering Engine
    All panel rendering functions.
    ============================================================ */
 var MMGR = window.MMGR || {};
@@ -43,7 +43,7 @@ var MMGR = window.MMGR || {};
   // SINGLE-WRITE (CLOUD-BACKEND-ARCHITECTURE-PLAN §10 self-overwrite bug):
   // the old implementation wrote "Welcome, {userName}" into #greeting-text,
   // then IMMEDIATELY overwrote the parent #greeting's innerHTML with a
-  // time-of-day-only message — destroying the name on every render (this is
+  // time-of-day-only message , destroying the name on every render (this is
   // why the personalized greeting never appeared). Now the icon (time of
   // day) + text (time label + name suffix) are composed ONCE and written as
   // a single innerHTML assignment. The name is escapeHtml'd because it is
@@ -77,7 +77,7 @@ var MMGR = window.MMGR || {};
     if (sprintPanel) sprintPanel.classList.toggle('is-hide', meth !== 'agile');
     // SIDEBAR-HAMBURGER-TOGGLE-PLAN: the gate targets EVERY .sec-btn for the
     // section (top pill nav + desktop sidebar clones), not just #dmaic-nav by
-    // id — the sidebar mirrors the same visibility by construction.
+    // id , the sidebar mirrors the same visibility by construction.
     document.querySelectorAll('.sec-btn[data-section="dmaic"]').forEach(function (el) {
       el.classList.toggle('is-hide', meth !== 'hybrid');
     });
@@ -93,7 +93,7 @@ var MMGR = window.MMGR || {};
       ind.classList.toggle('on', !!locked);
       $('lk-lbl').textContent = s.methodology ? s.methodology.charAt(0).toUpperCase() + s.methodology.slice(1) : '';
     }
-    // Glass §5: the Lock button is a binary chip — solid when locked.
+    // Glass §5: the Lock button is a binary chip , solid when locked.
     const lockBtn = document.querySelector('[data-action="tglLock"]');
     if (lockBtn) lockBtn.classList.toggle('is-on', !!locked);
   }
@@ -115,8 +115,8 @@ var MMGR = window.MMGR || {};
     const atRisk = tasks.filter(t => U.isDueSoon(t.endDate, 3) && t.status !== 'completed').length;
     const issues = (s.issues || []).filter(i => i.status !== 'resolved' && i.status !== 'closed').length;
 
-    // Ring (STRUCTURAL-IA §1: brand-new project ≠ 0% — quiet the empty zero)
-    // circ = 2πr with r=39 — matches the ring markup (thicker 18px stroke,
+    // Ring (STRUCTURAL-IA §1: brand-new project ≠ 0% , quiet the empty zero)
+    // circ = 2πr with r=39 , matches the ring markup (thicker 18px stroke,
     // owner 2026-08-15).
     const pct = total ? Math.round((done / total) * 100) : 0;
     const circ = 245;
@@ -137,18 +137,18 @@ var MMGR = window.MMGR || {};
     // MARKET-FEATURE-ROADMAP A1: subcontractor compliance count on the
     // Dashboard Project Health card (same badge pattern as the risk counts).
     // renderDash runs on every renderAll, so this is ALSO where the
-    // Stakeholders nav-badge count stays fresh — the nav pill must reflect
+    // Stakeholders nav-badge count stays fresh , the nav pill must reflect
     // compliance even before the Stakeholders section is ever opened.
     const stkCmp = (ns.Stakeholders && ns.Stakeholders.getExpiringCompliance)
       ? ns.Stakeholders.getExpiringCompliance(s.stakeholders || [], 30).length
       : 0;
     syncStakeComplianceBadges(stkCmp);
     // §4 tiering: a non-zero Blocked/Overdue/Live-Issues count gets the
-    // strongest static treatment — existing --danger token, no motion.
+    // strongest static treatment , existing --danger token, no motion.
     const healthCard = $('health-card');
     if (healthCard) {
       healthCard.classList.toggle('has-danger', blocked > 0 || overdue > 0 || issues > 0);
-      // §1: brand-new project — quiet the zero badges too.
+      // §1: brand-new project , quiet the zero badges too.
       healthCard.classList.toggle('health-empty', total === 0);
     }
 
@@ -157,11 +157,11 @@ var MMGR = window.MMGR || {};
     if (n3) {
       if (total === 0) {
         // STRUCTURAL-IA §1: a brand-new project (no tasks at all) is NOT the
-        // same state as "all tasks complete" — give it a real empty state.
-        n3.innerHTML = '<li class="txt-sl">No tasks yet — add your first task to see prioritized next steps.</li>' +
+        // same state as "all tasks complete" , give it a real empty state.
+        n3.innerHTML = '<li class="txt-sl">No tasks yet , add your first task to see prioritized next steps.</li>' +
           '<li class="txt-sl"><button class="btn btn-g btn-s" data-action="showSec" data-section="wbs">+ Add Task</button></li>';
       } else if (done === total) {
-        n3.innerHTML = `<li class="n3-done"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-check-circle"></use></svg> ${done} of ${total} tasks complete — nothing pending.</li>`;
+        n3.innerHTML = `<li class="n3-done"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-check-circle"></use></svg> ${done} of ${total} tasks complete , nothing pending.</li>`;
       } else {
         const sorted = tasks
           .filter(t => t.status !== 'completed')
@@ -177,9 +177,9 @@ var MMGR = window.MMGR || {};
           .slice(0, 3);
         // The row text sits in a single-line ellipsis span (same pattern as
         // the health-row labels) so a long priority name can never wrap and
-        // break the 33px row rhythm — at any sidebar width (OWNER 2026-08-15
+        // break the 33px row rhythm , at any sidebar width (OWNER 2026-08-15
         // sidebar-only view narrowed the content column).
-        n3.innerHTML = sorted.map(t => `<li><span title="${U.escapeHtml(t.name)}">${U.escapeHtml(t.name)}${t.critical ? ' <svg class="ico" aria-hidden="true" style="color:var(--gold)"><use href="css/mmgr-icons.svg#i-target"></use></svg>' : ''}${t.endDate ? ' — due ' + U.fmtDateShort(t.endDate) : ''}</span></li>`).join('');
+        n3.innerHTML = sorted.map(t => `<li><span title="${U.escapeHtml(t.name)}">${U.escapeHtml(t.name)}${t.critical ? ' <svg class="ico" aria-hidden="true" style="color:var(--gold)"><use href="css/mmgr-icons.svg#i-target"></use></svg>' : ''}${t.endDate ? ' , due ' + U.fmtDateShort(t.endDate) : ''}</span></li>`).join('');
       }
     }
 
@@ -194,7 +194,7 @@ var MMGR = window.MMGR || {};
     if (budEl) {
       if (bud.length === 0) {
         // Empty: explain why + quiet the zero (§1.2).
-        budEl.textContent = '—';
+        budEl.textContent = '-';
         budEl.style.color = 'var(--slate)';
         if (budCard) budCard.classList.add('tier3');
       } else {
@@ -205,7 +205,7 @@ var MMGR = window.MMGR || {};
     }
     const budSub = $('dw-bud-sub');
     if (budSub) {
-      if (bud.length === 0) budSub.innerHTML = 'No budget lines yet — add one in Budget';
+      if (bud.length === 0) budSub.innerHTML = 'No budget lines yet , add one in Budget';
       else budSub.textContent = `Planned: $${planned.toLocaleString()} | Actual: $${actual.toLocaleString()}`;
     }
 
@@ -216,7 +216,7 @@ var MMGR = window.MMGR || {};
     const utilCard = $('dw-util-card');
     if (utilEl) {
       if (resources.length === 0) {
-        utilEl.textContent = '—';
+        utilEl.textContent = '-';
         utilEl.style.color = 'var(--slate)';
         if (utilCard) utilCard.classList.add('tier3');
       } else {
@@ -225,7 +225,7 @@ var MMGR = window.MMGR || {};
         if (utilCard) utilCard.classList.remove('tier3');
       }
     }
-    setVal('dw-util-sub', resources.length ? `Avg across ${resources.length} resources` : 'No resources added — add them in Resources');
+    setVal('dw-util-sub', resources.length ? `Avg across ${resources.length} resources` : 'No resources added , add them in Resources');
 
     // Pending Changes
     const changes = s.changes || [];
@@ -234,7 +234,7 @@ var MMGR = window.MMGR || {};
     const chgCard = $('dw-chg-card');
     if (chgEl) {
       if (changes.length === 0) {
-        chgEl.textContent = '—';
+        chgEl.textContent = '-';
         chgEl.style.color = 'var(--slate)';
         if (chgCard) chgCard.classList.add('tier3');
       } else {
@@ -260,13 +260,13 @@ var MMGR = window.MMGR || {};
       if (baseSub) baseSub.textContent = `vs baseline (${basePct}% at capture)`;
       if (baseCard) baseCard.classList.remove('tier3');
     } else if (baseEl) {
-      baseEl.textContent = '—';
+      baseEl.textContent = '-';
       baseEl.style.color = 'var(--slate)';
-      if (baseSub) baseSub.textContent = 'No baseline saved — use Save Baseline in Settings';
+      if (baseSub) baseSub.textContent = 'No baseline saved , use Save Baseline in Settings';
       if (baseCard) baseCard.classList.add('tier3');
     }
 
-    // Baseline variance table — schedule days per task + overall cost delta
+    // Baseline variance table , schedule days per task + overall cost delta
     const bvt = $('base-var-body');
     if (bvt) {
       const currentMap = {};
@@ -288,9 +288,9 @@ var MMGR = window.MMGR || {};
           bvt.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--slate);padding:14px">Save a baseline to see per-task schedule variance.</td></tr>';
         } else {
           bvt.innerHTML = rows.map(r =>
-            '<tr><td>' + U.escapeHtml(r.name) + '</td><td>' + U.escapeHtml(r.bEnd || '—') + '</td><td>' + U.escapeHtml(r.cEnd || '—') + '</td>' +
+            '<tr><td>' + U.escapeHtml(r.name) + '</td><td>' + U.escapeHtml(r.bEnd || '-') + '</td><td>' + U.escapeHtml(r.cEnd || '-') + '</td>' +
             '<td style="' + (r.schedVar === null ? '' : (r.schedVar > 0 ? 'color:var(--danger)' : r.schedVar < 0 ? 'color:var(--green)' : '')) + '">' +
-            (r.schedVar === null ? '—' : (r.schedVar > 0 ? '+' + r.schedVar + 'd' : r.schedVar + 'd')) + '</td></tr>'
+            (r.schedVar === null ? '-' : (r.schedVar > 0 ? '+' + r.schedVar + 'd' : r.schedVar + 'd')) + '</td></tr>'
           ).join('');
         }
       } else {
@@ -331,7 +331,7 @@ var MMGR = window.MMGR || {};
       }
     }
 
-    // Health Score (feature 1) — must be cheap; renders only its own card.
+    // Health Score (feature 1) , must be cheap; renders only its own card.
     if (ns.Health && ns.Health.render) ns.Health.render();
     // DMAIC progress signal (visible only while DMAIC is active)
     if (ns.Dmaic && ns.Dmaic.renderSignal) ns.Dmaic.renderSignal();
@@ -344,12 +344,12 @@ var MMGR = window.MMGR || {};
     renderPpc();
     // MARKET-FEATURE-ROADMAP C29: expiry & renewal rollup card.
     renderExpiryCard();
-    // Today's Decision Engine (ACTION-PLAN 1.1) — impact-scored ranking
+    // Today's Decision Engine (ACTION-PLAN 1.1) , impact-scored ranking
     if (ns.Decisions && ns.Decisions.render) ns.Decisions.render();
     // Milestone Timeline + Timeline Target status (feature 11)
     renderMilestoneTimeline();
     renderTimelineStatus();
-    // V3.3/V3.5 secondary panels (monolith port) — Lead-Time Tracker,
+    // V3.3/V3.5 secondary panels (monolith port) , Lead-Time Tracker,
     // Float Watch (+ Crash Candidates), Weather Variance, Schedule
     // Confidence. All read-only analytics over live state.
     renderLeadtimeTracker();
@@ -366,12 +366,12 @@ var MMGR = window.MMGR || {};
     renderWeatherLog();
     // Meetings (MEETING_TRACKING_SPEC)
     renderMeetingsPanel();
-    // Rank 2: Weekly/Daily Digest Engine — 'What Changed' diff + snapshot
+    // Rank 2: Weekly/Daily Digest Engine , 'What Changed' diff + snapshot
     if (ns.Digest && ns.Digest.render) ns.Digest.render();
   }
 
   // ---- Today's Focus View (MONOLITH-PORTING-GUIDE feature 10) ----
-  // Tasks active today, due today, due this week, or in progress — at a
+  // Tasks active today, due today, due this week, or in progress , at a
   // glance, without scrolling the full WBS. Status changes go through the
   // same updTaskField data-action the WBS uses.
   function renderTodayView() {
@@ -408,7 +408,7 @@ var MMGR = window.MMGR || {};
 
   // ---- Lookahead (MARKET-FEATURE-ROADMAP C7) ----
   // Short-horizon field view: every open task starting or finishing in the
-  // next 2 weeks (plus overdue carryover), grouped by week — distinct from
+  // next 2 weeks (plus overdue carryover), grouped by week , distinct from
   // the full Gantt. Status changes go through the same updTaskField the WBS
   // and Today's Focus use.
   function renderLookahead() {
@@ -436,7 +436,7 @@ var MMGR = window.MMGR || {};
       + group('This Week', thisWk, 'var(--gold)')
       + group('Next Week', nextWk, 'var(--green)')
       + (noEnd.length ? group('Starting Soon (no end date)', noEnd, 'var(--slate)') : '');
-    el.innerHTML = content || '<div class="es" style="padding:14px;font-size:.78rem">No tasks starting or finishing in the next 2 weeks — the schedule ahead is clear.</div>';
+    el.innerHTML = content || '<div class="es" style="padding:14px;font-size:.78rem">No tasks starting or finishing in the next 2 weeks , the schedule ahead is clear.</div>';
   }
 
   // ---- Percent Plan Complete (MARKET-FEATURE-ROADMAP C8) ----
@@ -452,7 +452,7 @@ var MMGR = window.MMGR || {};
     const hist = [1, 2, 3, 4].map(o => computePpcSafe(tasks, o)).reverse();
     const head = $('ppc-head');
     if (head) {
-      if (now.planned === 0) head.textContent = 'No tasks planned to finish this week — add end dates to schedule work.';
+      if (now.planned === 0) head.textContent = 'No tasks planned to finish this week , add end dates to schedule work.';
       else head.textContent = now.completed + ' of ' + now.planned + ' tasks planned this week completed (' + now.pct + '%)';
     }
     const overdue = tasks.filter(t => U.isOverdue(t.endDate) && t.status !== 'completed').length;
@@ -461,15 +461,15 @@ var MMGR = window.MMGR || {};
       const pct = h.pct === null ? 0 : h.pct;
       const w = h.planned ? pct : 2;
       const col = h.pct === null ? 'var(--border)' : pct >= 80 ? 'var(--green)' : pct >= 50 ? 'var(--amber)' : 'var(--danger)';
-      return `<div class="ppc-bar-row"><span class="ppc-bar-lbl">${lbl}</span><div class="ppc-bar-track"><div class="ppc-bar-fill" style="width:${Math.max(2, w)}%;background:${col}"></div></div><span class="ppc-bar-val">${h.pct === null ? '—' : pct + '%'}${h.planned ? ' (' + h.completed + '/' + h.planned + ')' : ''}</span></div>`;
+      return `<div class="ppc-bar-row"><span class="ppc-bar-lbl">${lbl}</span><div class="ppc-bar-track"><div class="ppc-bar-fill" style="width:${Math.max(2, w)}%;background:${col}"></div></div><span class="ppc-bar-val">${h.pct === null ? '-' : pct + '%'}${h.planned ? ' (' + h.completed + '/' + h.planned + ')' : ''}</span></div>`;
     }).join('');
-    el.innerHTML = `<div class="ppc-now">${now.planned ? `<span class="stat-xl" style="font-size:1.6rem;color:${now.pct >= 80 ? 'var(--green)' : now.pct >= 50 ? 'var(--amber)' : 'var(--danger)'}">${now.pct}%</span>` : '<span class="stat-xl" style="font-size:1.2rem;color:var(--slate)">—</span>'}</div>` +
+    el.innerHTML = `<div class="ppc-now">${now.planned ? `<span class="stat-xl" style="font-size:1.6rem;color:${now.pct >= 80 ? 'var(--green)' : now.pct >= 50 ? 'var(--amber)' : 'var(--danger)'}">${now.pct}%</span>` : '<span class="stat-xl" style="font-size:1.2rem;color:var(--slate)">-</span>'}</div>` +
       '<div class="ppc-bars">' + bars + '</div>' +
       (overdue ? `<div class="ppc-note"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-alert-triangle"></use></svg> ${overdue} task${overdue === 1 ? ' is' : 's are'} overdue from earlier weeks.</div>` : '') +
       '<div class="ppc-basis">Basis: tasks whose end date falls in each week, by completion status.</div>';
   }
 
-  // Safe wrapper — computePpc lives on Schedule; never let a missing module
+  // Safe wrapper , computePpc lives on Schedule; never let a missing module
   // kill the dashboard render.
   function computePpcSafe(tasks, offset) {
     if (ns.Schedule && ns.Schedule.computePpc) return ns.Schedule.computePpc(tasks, offset);
@@ -477,7 +477,7 @@ var MMGR = window.MMGR || {};
   }
 
   // ---- Expiry & Renewals dashboard card (MARKET-FEATURE-ROADMAP C29) ----
-  // Single rollup across COI/license/EMR, warranties, and permits — anything
+  // Single rollup across COI/license/EMR, warranties, and permits , anything
   // with a date coming due in the next 60 days (or already past).
   function renderExpiryCard() {
     const s = S();
@@ -527,8 +527,8 @@ var MMGR = window.MMGR || {};
     const daysToTarget = Math.round((target - today) / msPerDay);
     let status, cls;
     if (overrunDays <= 0) { status = overrunDays < 0 ? `Ahead of Target by ${Math.abs(overrunDays)}d` : 'On Target'; cls = 'bg'; }
-    else if (overrunDays <= 14) { status = `At Risk — ${overrunDays}d over target`; cls = 'ba'; }
-    else { status = `Over Target — ${overrunDays}d over`; cls = 'br'; }
+    else if (overrunDays <= 14) { status = `At Risk , ${overrunDays}d over target`; cls = 'ba'; }
+    else { status = `Over Target , ${overrunDays}d over`; cls = 'br'; }
     return { target: targetDate, start: (f.targetStart || f.start) || null, projected: projected.toISOString().slice(0, 10), overrunDays: overrunDays, daysToTarget: daysToTarget, status: status, cls: cls };
   }
 
@@ -560,7 +560,7 @@ var MMGR = window.MMGR || {};
   </div>`;
     if (hdrBadge) {
       if (t.overrunDays > 0) {
-        hdrBadge.textContent = (t.overrunDays <= 14 ? 'At risk — ' : 'Over — ') + t.overrunDays + 'd over target';
+        hdrBadge.textContent = (t.overrunDays <= 14 ? 'At risk , ' : 'Over , ') + t.overrunDays + 'd over target';
         hdrBadge.className = 'timeline-ind on ' + (t.overrunDays <= 14 ? 'ti-ba' : 'ti-br');
       } else {
         hdrBadge.classList.remove('on');
@@ -624,7 +624,7 @@ var MMGR = window.MMGR || {};
   // V3.3 / V3.5 Dashboard secondary panels (MONOLITH PORT)
   // ------------------------------------------------------------------
   // Lead-Time Tracker, Float Watch (+ Crash Candidates), Weather
-  // Variance, Schedule Confidence — exact ports of the monolith
+  // Variance, Schedule Confidence , exact ports of the monolith
   // renderLeadtimeTracker / renderFloatWatch / renderWeatherVariance /
   // renderScheduleConfidence, rewritten against the modular field names
   // (startDate/endDate, totalFloat/floatBaseline, leadTime) and the CSS
@@ -650,11 +650,11 @@ var MMGR = window.MMGR || {};
   function renderWeatherLog() { if (ns.RenderWeather) ns.RenderWeather.renderWeatherLog(); }
 
   // ==================================================================
-  // ACTION-PLAN Phase 3 — retention, professional and non-blocking
+  // ACTION-PLAN Phase 3 , retention, professional and non-blocking
   // ------------------------------------------------------------------
   // 3.1 Action-item aging (escalating visibility), 3.4 weekly baseline
   // narrative. 3.3 streak lives in state; both surfaces below are
-  // read-only analytics over live state — additive only, never gate core
+  // read-only analytics over live state , additive only, never gate core
   // paths.
   // ==================================================================
 
@@ -663,7 +663,7 @@ var MMGR = window.MMGR || {};
   // carried forward, comms-log action items (with their follow-up date
   // when set), and decision-log action items. Each is aged from its due
   // date (or creation date when no due date exists) and gets escalating
-  // visibility: amber at ≤7d overdue, red 8–21d, bold red beyond 21d.
+  // visibility: amber at ≤7d overdue, red 8-21d, bold red beyond 21d.
   function computeAgingActions(state) {
     const s = state || S();
     if (!s) return [];
@@ -709,7 +709,7 @@ var MMGR = window.MMGR || {};
     if (age <= 0) return { cls: 'bg', label: age === 0 ? 'due today' : 'due in ' + Math.abs(age) + 'd' };
     if (age <= 7) return { cls: 'ba', label: age + 'd overdue' };
     if (age <= 21) return { cls: 'br', label: age + 'd overdue' };
-    return { cls: 'br', label: age + 'd — STALE', stale: true };
+    return { cls: 'br', label: age + 'd , STALE', stale: true };
   }
 
   function renderActionAging() {
@@ -734,7 +734,7 @@ var MMGR = window.MMGR || {};
   // ---- 3.3 PM consistency streak (quiet, non-guilt) ----
   // Renders the consecutive-day counter already tracked by the state module
   // (ACTION-PLAN 3.3). Informational only: neutral copy, no toasts, never
-  // gates any core path. Client-side state — no server round-trip.
+  // gates any core path. Client-side state , no server round-trip.
   function renderStreak() {
     const el = $('streak-body');
     if (!el) return;
@@ -744,7 +744,7 @@ var MMGR = window.MMGR || {};
     const last = st.lastDate ? String(st.lastDate) : null;
     el.innerHTML = '<div class="stk-row"><div class="stk-num">' + count + (count === 1 ? ' day' : ' days') + '</div>' +
       '<div class="stk-meta">consecutive working days on this project' + (last ? ' · last activity ' + U.escapeHtml(last) : '') + '</div></div>' +
-      (count === 0 ? '<div class="stk-hint">The streak builds quietly as you update the plan — no pressure, no fuss.</div>' : '');
+      (count === 0 ? '<div class="stk-hint">The streak builds quietly as you update the plan , no pressure, no fuss.</div>' : '');
   }
 
   // ---- 3.4 Weekly baseline narrative ----
@@ -771,7 +771,7 @@ var MMGR = window.MMGR || {};
     if (slipped.length) {
       slipped.sort((a, b) => b.days - a.days);
       const total = slipped.reduce((n, t) => n + t.days, 0);
-      sentences.push(slipped.length + ' task' + (slipped.length > 1 ? 's' : '') + ' slipped by an average of ' + Math.round(total / slipped.length) + 'd since baseline' + (slipped[0] ? ' — worst: ' + slipped[0].name + ' (+' + slipped[0].days + 'd)' : '') + '.');
+      sentences.push(slipped.length + ' task' + (slipped.length > 1 ? 's' : '') + ' slipped by an average of ' + Math.round(total / slipped.length) + 'd since baseline' + (slipped[0] ? ' , worst: ' + slipped[0].name + ' (+' + slipped[0].days + 'd)' : '') + '.');
     }
     if (gained.length) {
       const total = gained.reduce((n, t) => n + t.days, 0);
@@ -786,7 +786,7 @@ var MMGR = window.MMGR || {};
     const baseDone = base.filter(t => t.status === 'completed').length;
     const curDone = cur.filter(t => t.status === 'completed').length;
     if (curDone !== baseDone) sentences.push('Completed tasks moved from ' + baseDone + ' to ' + curDone + ' since baseline.');
-    // Cost movement (planned $ only — actuals are live, not baseline)
+    // Cost movement (planned $ only , actuals are live, not baseline)
     const basePlanned = (s.baseline.budgetLines || []).reduce((n, l) => n + (+l.planned || 0), 0);
     const curPlanned = (s.budgetLines || []).reduce((n, l) => n + (+l.planned || 0), 0);
     if (basePlanned !== curPlanned) {
@@ -810,11 +810,11 @@ var MMGR = window.MMGR || {};
   // ---- Dirty Indicator ----
   // OWNER 2026-08-15: THREE states, driven by the cloud link + the FILE-
   // backup watermark (state.lastBackedUpAt, stamped by saveProjectFile).
-  //   1. Cloud-linked (Cloud.getCode()) -> GREEN "Cloud backed up" chip —
+  //   1. Cloud-linked (Cloud.getCode()) -> GREEN "Cloud backed up" chip , 
   //      the durable backup lives in the cloud and auto-syncs as the user
   //      works, so the alarming amber state is replaced entirely. Casual
   //      users who just add a task no longer get the "huh?" trigger.
-  //   2. Not linked + never file-backed-up -> amber "Not backed up" — with
+  //   2. Not linked + never file-backed-up -> amber "Not backed up" , with
   //      softened copy: autosave already keeps changes safe in this browser;
   //      a file backup is optional, save one whenever you're ready.
   //   3. Not linked + file-backed-up -> indicator hidden (clean).
@@ -829,14 +829,14 @@ var MMGR = window.MMGR || {};
     if (linked) {
       ind.classList.add('on', 'ci-cloud');
       ind.innerHTML = '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cloud"></use></svg> Cloud backed up';
-      ind.setAttribute('title', 'This project is backed up to the cloud — snapshots auto-sync as you work. Click for backup options (cloud or a portable .json file).');
+      ind.setAttribute('title', 'This project is backed up to the cloud , snapshots auto-sync as you work. Click for backup options (cloud or a portable .json file).');
     } else {
       ind.classList.remove('ci-cloud');
       backedUp = !!(s.lastBackedUpAt && s.updatedAt && s.lastBackedUpAt >= s.updatedAt);
       if (!backedUp) {
         ind.classList.add('on');
         ind.innerHTML = '● Not backed up';
-        ind.setAttribute('title', 'Your changes are safe in this browser (autosave). A file backup is optional — save one whenever you\u2019re ready, e.g. at the end of a task. Click for backup options.');
+        ind.setAttribute('title', 'Your changes are safe in this browser (autosave). A file backup is optional , save one whenever you\u2019re ready, e.g. at the end of a task. Click for backup options.');
       } else {
         ind.classList.remove('on');
         ind.innerHTML = '● Not backed up';
@@ -847,10 +847,10 @@ var MMGR = window.MMGR || {};
     const foot = $('bk-foot');
     if (foot) {
       foot.textContent = linked
-        ? 'Cloud backup active — a .json file copy is optional (e.g. to keep in your file manager).'
+        ? 'Cloud backup active , a .json file copy is optional (e.g. to keep in your file manager).'
         : (backedUp && s.lastBackedUpAt
           ? 'Last file backup: ' + new Date(s.lastBackedUpAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) + '.'
-          : 'No file backup yet — autosave keeps your changes on this device.');
+          : 'No file backup yet , autosave keeps your changes on this device.');
     }
   }
 
@@ -871,12 +871,12 @@ var MMGR = window.MMGR || {};
     if (ns.Defs && ns.Defs.render) ns.Defs.render();
   }
 
-  // Meetings panel (MEETING_TRACKING_SPEC) — delegates to the Meetings module.
+  // Meetings panel (MEETING_TRACKING_SPEC) , delegates to the Meetings module.
   function renderMeetingsPanel() {
     if (ns.Meetings && ns.Meetings.renderMeetings) ns.Meetings.renderMeetings();
   }
 
-  // Claim Pack panel (MASTER-ACTION-PLAN-v3-STRICT Rank 1) — delegates to the
+  // Claim Pack panel (MASTER-ACTION-PLAN-v3-STRICT Rank 1) , delegates to the
   // Claim module (slips cause tags, package preview).
   function renderClaimPanel() {
     if (ns.Claim && ns.Claim.render) ns.Claim.render();
@@ -887,7 +887,7 @@ var MMGR = window.MMGR || {};
     // editor code must not open a writable section outside its grant. The nav
     // grey-out (pointer-events:none + disabled) blocks mouse and keyboard on
     // the buttons, but in-panel jump buttons (empty-state "+ Add Task" calls
-    // data-action=showSec) and any direct showSection call would bypass it —
+    // data-action=showSec) and any direct showSection call would bypass it , 
     // guard the switch itself so every path is blocked, not just the nav.
     // View-only panels (dash/def/kan/gantt/claim/digest/baselinen/wxlog) are
     // never blocked; the server also enforces the scope on every save (B11).
@@ -896,7 +896,7 @@ var MMGR = window.MMGR || {};
       return;
     }
     // PROJECT-UX-NAV-WEATHER-EXPORT-DIRECTIVE DIR-2: every section switch
-    // starts from a consistent top position — a carried-over scroll offset
+    // starts from a consistent top position , a carried-over scroll offset
     // from a long section reads as a "jump" into unrelated content.
     window.scrollTo(0, 0);
     // Update nav buttons
@@ -911,11 +911,11 @@ var MMGR = window.MMGR || {};
     if (renderer) renderer();
     // DIR-7a: give the freshly rendered table inputs their accessible names.
     labelDynamicFields();
-    // Rank 3.4: viewport-aware layout detection — offer the one-time
+    // Rank 3.4: viewport-aware layout detection , offer the one-time
     // simplified-view prompt for dense sections on narrow screens.
     if (ns.Viewport && ns.Viewport.maybePrompt) ns.Viewport.maybePrompt(section);
     // PLAN-OF-ACTION-LIQUID-GLASS-UI §2: the SAME detection signal also
-    // drives the glass engine choice — one signal, two consumers (layout
+    // drives the glass engine choice , one signal, two consumers (layout
     // simplification and glass-engine selection). Section changes re-check
     // so a resize/switch into a narrow view never leaves a heavy engine on.
     if (ns.Glass && ns.Glass.sync) ns.Glass.sync();
@@ -940,7 +940,7 @@ var MMGR = window.MMGR || {};
     const collapsedIds = new Set();
     Object.keys(defExpanded).forEach(id => { if (defExpanded[id] === false) collapsedIds.add(id); });
     // 2.1 dependency-aware risk propagation: any task with an overdue
-    // predecessor is downstream of a slip — flagged inline, live.
+    // predecessor is downstream of a slip , flagged inline, live.
     const overdueIds = new Set(tasks.filter(t => t.status !== 'completed' && U.isOverdue(t.endDate)).map(t => String(t.id)));
     const visibleTasks = [];
     const phaseStack = []; // open phase ancestors: { indent, id }
@@ -970,16 +970,16 @@ var MMGR = window.MMGR || {};
           <span class="wbs-name">${U.escapeHtml(t.name)}</span>
           <label class="wb-milestone" title="Mark as Milestone"><input type="checkbox" ${t.milestone ? 'checked' : ''} data-action="tglMilestone" data-id="${U.escapeHtml(t.id)}"> <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-flag"></use></svg></label>
           ${t.critical ? '<span class="badge bo" style="font-size:.6rem;padding:1px 4px;margin-left:4px">CP</span>' : ''}
-          ${chainRisk ? '<span class="badge br" style="font-size:.6rem;padding:1px 4px;margin-left:4px" title="A predecessor is overdue — this downstream chain is at risk (2.1)">CHAIN</span>' : ''}
+          ${chainRisk ? '<span class="badge br" style="font-size:.6rem;padding:1px 4px;margin-left:4px" title="A predecessor is overdue , this downstream chain is at risk (2.1)">CHAIN</span>' : ''}
           ${t.leadTime ? '<span class="tt-lead-badge">LT</span>' : ''}
           ${t.recurring ? '<span class="tt-rec-badge"><svg class="ico" aria-hidden="true" style="font-size:.6rem"><use href="css/mmgr-icons.svg#i-refresh"></use></svg></span>' : ''}
           ${t.weatherExposed ? '<svg class="ico" aria-hidden="true" style="color:#38bdf8;font-size:.7rem" title="Weather-exposed"><use href="css/mmgr-icons.svg#i-cloud-rain"></use></svg>' : ''}
         </td>
-        <td><input type="text" value="${U.escapeHtml(t.assignee || '')}" data-action="updTaskField" data-id="${U.escapeHtml(t.id)}" data-field="assignee" placeholder="—"></td>
+        <td><input type="text" value="${U.escapeHtml(t.assignee || '')}" data-action="updTaskField" data-id="${U.escapeHtml(t.id)}" data-field="assignee" placeholder="-"></td>
         ${t.leadTime
           ? `<td><label class="wbs-lt-lbl">Submitted</label><input type="date" value="${t.submittedDate || ''}" data-action="updTaskField" data-id="${U.escapeHtml(t.id)}" data-field="submittedDate"></td>
              <td><label class="wbs-lt-lbl">Expected</label><input type="date" value="${t.expectedDate || ''}" data-action="updTaskField" data-id="${U.escapeHtml(t.id)}" data-field="expectedDate"></td>
-             <td><span class="wbs-lt-note">Lead-time task — tracked by dates, not % done</span></td>`
+             <td><span class="wbs-lt-note">Lead-time task , tracked by dates, not % done</span></td>`
           : `<td><input type="text" value="${U.escapeHtml(t.duration || '')}" data-action="updTaskField" data-id="${U.escapeHtml(t.id)}" data-field="duration" placeholder="days" style="width:60px"></td>
              <td><input type="date" value="${t.startDate || ''}" data-action="updTaskField" data-id="${U.escapeHtml(t.id)}" data-field="startDate"></td>
              <td><input type="date" value="${t.endDate || ''}" data-action="updTaskField" data-id="${U.escapeHtml(t.id)}" data-field="endDate"></td>`}
@@ -992,8 +992,8 @@ var MMGR = window.MMGR || {};
           </select>
         </td>
         <td style="white-space:nowrap">
-          <button class="btn btn-s ${t.weatherSensitive ? 'btn-wx' : 'btn-n'}" data-action="tglWeather" data-id="${U.escapeHtml(t.id)}" title="${t.weatherSensitive ? 'Weather-sensitive — buffer added for regional windows during cascade' : 'Mark weather-sensitive — adds selective buffer for regional windows during cascade'}" style="padding:5px 8px"><svg class="ico" aria-hidden="true" style="font-size:.62rem"><use href="css/mmgr-icons.svg#i-cloud-rain"></use></svg></button>
-          <button class="btn btn-s ${t.leadTime ? 'btn-lt' : 'btn-n'}" data-action="tglLeadTime" data-id="${U.escapeHtml(t.id)}" title="${t.leadTime ? 'Lead-Time — tracked by Submitted/Expected dates (click to unmark)' : 'Mark as Lead-Time — vendor/third-party wait tracked by Submitted/Expected dates (procurement, permits, deliveries)'}" style="padding:5px 8px"><svg class="ico" aria-hidden="true" style="font-size:.62rem"><use href="css/mmgr-icons.svg#i-clock"></use></svg></button>
+          <button class="btn btn-s ${t.weatherSensitive ? 'btn-wx' : 'btn-n'}" data-action="tglWeather" data-id="${U.escapeHtml(t.id)}" title="${t.weatherSensitive ? 'Weather-sensitive , buffer added for regional windows during cascade' : 'Mark weather-sensitive , adds selective buffer for regional windows during cascade'}" style="padding:5px 8px"><svg class="ico" aria-hidden="true" style="font-size:.62rem"><use href="css/mmgr-icons.svg#i-cloud-rain"></use></svg></button>
+          <button class="btn btn-s ${t.leadTime ? 'btn-lt' : 'btn-n'}" data-action="tglLeadTime" data-id="${U.escapeHtml(t.id)}" title="${t.leadTime ? 'Lead-Time , tracked by Submitted/Expected dates (click to unmark)' : 'Mark as Lead-Time , vendor/third-party wait tracked by Submitted/Expected dates (procurement, permits, deliveries)'}" style="padding:5px 8px"><svg class="ico" aria-hidden="true" style="font-size:.62rem"><use href="css/mmgr-icons.svg#i-clock"></use></svg></button>
           <button class="btn btn-s btn-n" data-action="indentTask" data-id="${U.escapeHtml(t.id)}" title="Indent">→</button>
           <button class="btn btn-s btn-n" data-action="outdentTask" data-id="${U.escapeHtml(t.id)}" title="Outdent">←</button>
           <button class="btn btn-s btn-d" data-action="delTask" data-id="${U.escapeHtml(t.id)}" title="Delete">×</button>
@@ -1045,7 +1045,7 @@ var MMGR = window.MMGR || {};
     }
 
     // Critical Path Highlighter (monolith S.cp): when on, the non-critical
-    // chain is dimmed via body.hl-critical — gold stays on the critical bars.
+    // chain is dimmed via body.hl-critical , gold stays on the critical bars.
     const hlOn = !!s.hlCritical;
     if (document.body) document.body.classList.toggle('hl-critical', hlOn);
     const hlChip = document.querySelector('[data-action="toggleCritical"]');
@@ -1134,12 +1134,12 @@ var MMGR = window.MMGR || {};
     const gc = $('gantt-chart');
     if (!gc) return;
 
-    // Remove any previous overlay FIRST — repeated renders/cascades must
+    // Remove any previous overlay FIRST , repeated renders/cascades must
     // never stack multiple SVGs.
     const oldArrows = gc.querySelector('.gantt-arrows');
     if (oldArrows) oldArrows.remove();
 
-    // When the Gantt panel is hidden, rects are all zeros — skip the overlay;
+    // When the Gantt panel is hidden, rects are all zeros , skip the overlay;
     // renderGantt redraws arrows the next time the section is shown.
     if (!gc.offsetParent) return;
 
@@ -1331,7 +1331,7 @@ var MMGR = window.MMGR || {};
   // ---- DMAIC ----
   // Full interactive renderer lives in js/mmgr-dmaic.js (feature 8); this
   // Charter is data-filled from live state on every entry (no event binding),
-  // so a shim keeps SECTION_RENDERERS wiring stable — switching back to the
+  // so a shim keeps SECTION_RENDERERS wiring stable , switching back to the
   // Charter tab re-reads state, so linked KPIs show current values.
   // Safe to call on every renderAll: updCharter saves on each input keystroke,
   // so the refill always reads state that already contains the user's edits.
@@ -1384,7 +1384,7 @@ var MMGR = window.MMGR || {};
       });
     };
     // MERGED-AI-CONTROL (audit 1.2): flags.aiWindow is gone. The fab and the
-    // drawer AI switch now both follow state.config.ai.tier — one control,
+    // drawer AI switch now both follow state.config.ai.tier , one control,
     // one meaning. The fab is hidden only when the engine is fully off, so
     // the entry point can never disagree with the tier value.
     const aiCfg = (ns.AiWin && ns.AiWin.getAiCfg) ? ns.AiWin.getAiCfg() : null;
@@ -1399,7 +1399,7 @@ var MMGR = window.MMGR || {};
     gate('[data-action="tglLeadtimeLane"]', 'leadtimeLane');
     gate('#weather-forecast-card', 'weatherForecast');
     // Full gate for the lead-time lane itself: the flag OFF hides the lane
-    // outright (even if kbShowLeadtime is true — otherwise the lane would
+    // outright (even if kbShowLeadtime is true , otherwise the lane would
     // stay visible with no toggle control to hide it). When the flag is ON,
     // the lane stays driven by kbShowLeadtime exactly as before.
     if (fl.leadtimeLane === false) {
@@ -1460,7 +1460,7 @@ var MMGR = window.MMGR || {};
         showSection('dash', document.querySelector('.sec-btn[data-section="dash"]'));
       }
     }
-    // DIR-3: pack state changed — re-evaluate the Core-Mode callout (toggling
+    // DIR-3: pack state changed , re-evaluate the Core-Mode callout (toggling
     // a pack on hides it even if the user is inside the drawer, not the Dash).
     renderCoreCallout();
   }
@@ -1482,12 +1482,12 @@ var MMGR = window.MMGR || {};
   // ---- DIR-7a (PROJECT-UX-NAV-WEATHER-EXPORT-DIRECTIVE, DYNAMIC half): the
   // JS-rendered updField/updSpendEntry table inputs (Budget / Resources /
   // Changes / Risks / Issues / Comms / Log / Documents / Stakeholders /
-  // CloseItems / spend log) carry no accessible name — the static a11y pass
+  // CloseItems / spend log) carry no accessible name , the static a11y pass
   // can't reach them. This pass derives one from the column header + the
   // row's first text cell, e.g. "Planned, Demolition", and runs after every
   // section render. External accessible names (aria-label / title / label[for]
   // written without our marker) are skipped so static labels and future
-  // per-field fixes are never clobbered — but labels THIS pass writes are
+  // per-field fixes are never clobbered , but labels THIS pass writes are
   // stamped data-a11y-auto="1" and refreshed on every pass, so an in-place
   // row update (task rename in one cell while a later column's input survives)
   // never leaves a stale derived label behind (review finding, 2026-08-11).
@@ -1511,7 +1511,7 @@ var MMGR = window.MMGR || {};
       if (cells[c].contains(inp)) continue; // never name a control after itself
       // A cell whose text lives in interactive children (a <select>'s option
       // list, an <input>'s value, a <button>'s label) is not a stable row
-      // label — skip it and look for a plain text cell (row id, task name).
+      // label , skip it and look for a plain text cell (row id, task name).
       if (cells[c].querySelector('input,select,textarea,button')) continue;
       const t = (cells[c].textContent || '').replace(/\s+/g, ' ').trim();
       if (t) return t.slice(0, 60);
@@ -1555,7 +1555,7 @@ var MMGR = window.MMGR || {};
         clone.querySelectorAll('input,select,textarea,button').forEach(function(n) { n.remove(); });
         const t = (clone.textContent || '').replace(/\s+/g, ' ').trim();
         if (t) setLabel(t.slice(0, 80));
-        else if (own) clearLabel(); // row lost its labelable text — drop the stale name
+        else if (own) clearLabel(); // row lost its labelable text , drop the stale name
         return;
       }
       const parts = [];
@@ -1564,7 +1564,7 @@ var MMGR = window.MMGR || {};
       const rl = rowLabelFor(row, inp);
       if (rl) parts.push(rl);
       if (parts.length) setLabel(parts.join(', '));
-      else if (own) clearLabel(); // nothing derivable now — drop the stale name
+      else if (own) clearLabel(); // nothing derivable now , drop the stale name
     });
   }
 
@@ -1600,11 +1600,11 @@ var MMGR = window.MMGR || {};
     }
     // DIR-7a: label any inputs the re-render just (re)created.
     labelDynamicFields();
-    // DIR-2: the sticky nav's offset tracks the header's real height — the
+    // DIR-2: the sticky nav's offset tracks the header's real height , the
     // greeting line changes height, so re-measure on every full render.
     if (ns.Viewport && ns.Viewport.syncHeaderStack) ns.Viewport.syncHeaderStack();
     // OWNER 2026-08-15: Controls-tab live previews (Copy As + Email Templates)
-    // must mirror the current state — App is loaded after Render, so guard.
+    // must mirror the current state , App is loaded after Render, so guard.
     if (window.MMGR && window.MMGR.App && window.MMGR.App.renderCtrlPreviews) {
       window.MMGR.App.renderCtrlPreviews();
     }
@@ -1613,7 +1613,7 @@ var MMGR = window.MMGR || {};
 
 
   // ==================================================================
-  // Phase C — Gantt interactions: drag-to-reschedule, clickable
+  // Phase C , Gantt interactions: drag-to-reschedule, clickable
   // dependency arrows, hover tooltip with float / weather padding.
   // ==================================================================
   let _ganttDrag = null; // { taskId, startX, origStartDate, origEndDate, minAllowed, moved }
@@ -1713,7 +1713,7 @@ var MMGR = window.MMGR || {};
     const newStart = bar ? bar.getAttribute('data-preview-start') : null;
     if (!newStart || newStart === task.startDate) return;
 
-    // Commit the drag as an undoable edit — this task only. A drag is a
+    // Commit the drag as an undoable edit , this task only. A drag is a
     // deliberate single-task nudge; re-scheduling the whole plan stays an
     // explicit action (Cascade Dates) so one mis-click can never rewrite the
     // rest of the project.
@@ -1729,7 +1729,7 @@ var MMGR = window.MMGR || {};
     });
     // Refresh float / critical annotations READ-ONLY (dates untouched) so the
     // TF badges and CP markers stay honest after the single-task move. This
-    // never rewrites the plan — a full re-schedule stays an explicit action.
+    // never rewrites the plan , a full re-schedule stays an explicit action.
     if (ns.Schedule && ns.Schedule.forwardPass && ns.Schedule.markCritical) {
       const fresh = (S().tasks || []).filter(x => x.startDate && x.endDate);
       let sc = ns.Schedule.forwardPass(fresh);
@@ -1867,7 +1867,7 @@ var MMGR = window.MMGR || {};
   }, true);
 
   // ==================================================================
-  // Phase F — Keyboard-first WBS: arrow navigation, Enter to edit name,
+  // Phase F , Keyboard-first WBS: arrow navigation, Enter to edit name,
   // visible focus ring. Also click-to-select for mouse users.
   // ==================================================================
   function wbsRows() {
@@ -1887,7 +1887,7 @@ var MMGR = window.MMGR || {};
 
   function startWbsNameEdit(row) {
     // Read-only scope (view-only codes): the task name is a <span>, so it is
-    // not covered by the input/select pointer-events guard — block renames
+    // not covered by the input/select pointer-events guard , block renames
     // here for both the click and Enter paths before any mutation can happen.
     if (document.body.classList.contains('readonly-mode')) return;
     const id = row.getAttribute('data-id');
@@ -1960,7 +1960,7 @@ var MMGR = window.MMGR || {};
     if (row) selectWbsRow(row);
   });
 
-  // Weather window inputs (dashboard card) — direct listeners, not
+  // Weather window inputs (dashboard card) , direct listeners, not
   // data-action (see updWxWindow comment). Bound lazily on the first panel
   // render so the card's inputs are always wired regardless of where or
   // when the scripts load; stub elements in tests simply no-op.

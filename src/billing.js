@@ -1,5 +1,5 @@
 /* ============================================================
-   BILLING TIER — LemonSqueezy integration
+   BILLING TIER , LemonSqueezy integration
    ------------------------------------------------------------
    Extracted from worker.js. The tier is DORMANT until configured:
    with none of LEMONSQUEEZY_WEBHOOK_SECRET / LEMONSQUEEZY_API_KEY /
@@ -126,7 +126,7 @@ export async function handleBillingCheckout(request, env) {
         const err = (data && data.errors && data.errors[0]) || {};
         detail = String(err.detail || err.title || '').slice(0, 300);
       } catch (e) { /* keep detail empty */ }
-      return json({ ok: false, error: 'checkout creation failed (LemonSqueezy HTTP ' + res.status + ')' + (detail ? ' — ' + detail : '') }, 502);
+      return json({ ok: false, error: 'checkout creation failed (LemonSqueezy HTTP ' + res.status + ')' + (detail ? ' , ' + detail : '') }, 502);
     }
     return json({ ok: true, checkoutUrl: url });
   } catch (e) {

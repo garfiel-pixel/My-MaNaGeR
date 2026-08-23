@@ -1,5 +1,5 @@
 /* ============================================================
-   My MaNaGeR — Today Decision Engine (ACTION-PLAN-COMPETITIVE-GAPS 1.1)
+   My MaNaGeR , Today Decision Engine (ACTION-PLAN-COMPETITIVE-GAPS 1.1)
    Ranked "needs you now" list on the Dashboard. Pulls from existing
    data sources and scores every item by IMPACT so the user sees
    what matters most, not just what is due soonest.
@@ -47,7 +47,7 @@ var MMGR = window.MMGR || {};
     const W = { schedule: 4, stalled: 2, risk: 6, budget: 8, action: 3 };
     const items = [];
 
-    // 1. Overdue tasks — schedule slip past their end date
+    // 1. Overdue tasks , schedule slip past their end date
     (s.tasks || []).forEach(t => {
       if (t.status === 'completed' || !t.endDate) return;
       const end = U.parseDL(t.endDate);
@@ -58,13 +58,13 @@ var MMGR = window.MMGR || {};
       items.push({
         src: 'Schedule',
         title: 'Task overdue',
-        detail: t.name + ' — ' + slip + 'd past end date',
+        detail: t.name + ' , ' + slip + 'd past end date',
         impact: Math.round(W.schedule * slip),
         reason: slip + ' days late'
       });
     });
 
-    // 2. Stalled tasks — planned start passed, work never started
+    // 2. Stalled tasks , planned start passed, work never started
     (s.tasks || []).forEach(t => {
       if (t.status !== 'todo' && t.status !== '') return;
       if (!t.startDate) return;
@@ -75,7 +75,7 @@ var MMGR = window.MMGR || {};
       items.push({
         src: 'Stalled',
         title: 'Work not started',
-        detail: t.name + ' — planned start ' + t.startDate + ' passed ' + days + 'd ago',
+        detail: t.name + ' , planned start ' + t.startDate + ' passed ' + days + 'd ago',
         impact: Math.round(W.stalled * Math.min(days, 30)),
         reason: 'stalled ' + days + 'd'
       });
@@ -89,13 +89,13 @@ var MMGR = window.MMGR || {};
       items.push({
         src: 'Risk',
         title: 'High risk open',
-        detail: (r.description || 'Untitled risk') + ' — ' + r.probability + ' / ' + r.impact,
+        detail: (r.description || 'Untitled risk') + ' , ' + r.probability + ' / ' + r.impact,
         impact: W.risk * sev,
         reason: r.probability + ' probability, ' + r.impact + ' impact'
       });
     });
 
-    // 4. Budget variance flag — actual spend past planned
+    // 4. Budget variance flag , actual spend past planned
     const planned = (s.budgetLines || []).reduce((sum, l) => sum + (+l.planned || 0), 0);
     const actual = (s.budgetLines || []).reduce((sum, l) => sum + (+l.actual || 0), 0);
     if (planned > 0 && actual > planned) {
@@ -121,7 +121,7 @@ var MMGR = window.MMGR || {};
       });
     }
 
-    // 6. Weather-risk days ahead (ACTION-PLAN 7.2) — only when the Forecast
+    // 6. Weather-risk days ahead (ACTION-PLAN 7.2) , only when the Forecast
     // module is live AND a cached forecast exists. Thresholds live in
     // mmgr-forecast.js (precip>=60 / heat>=32C / cold<=0C); the engine just
     // surfaces the nearest flagged day. Impact is fixed (12) so a weather
@@ -135,7 +135,7 @@ var MMGR = window.MMGR || {};
         items.push({
           src: 'Weather',
           title: 'Weather risk ahead',
-          detail: first.date + ' — ' + first.alerts.join(', ') +
+          detail: first.date + ' , ' + first.alerts.join(', ') +
             (first.affected.length ? ' (affects ' + first.affected.join(', ') + ')' : ''),
           impact: 12,
           reason: first.alerts.join(', ') + ' on ' + first.date
@@ -154,7 +154,7 @@ var MMGR = window.MMGR || {};
     if (!el) return;
     const items = computeTodayDecisions();
     if (!items.length) {
-      el.innerHTML = '<div class="es es-ok"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-check"></use></svg> Nothing needs you right now — all tracked signals are clear.</div>';
+      el.innerHTML = '<div class="es es-ok"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-check"></use></svg> Nothing needs you right now , all tracked signals are clear.</div>';
       return;
     }
     el.innerHTML = items.map(it => {

@@ -1,5 +1,5 @@
 /* ============================================================
-   My MaNaGeR — Health Score Module
+   My MaNaGeR , Health Score Module
    Ported from the monolith (MONOLITH-PORTING-GUIDE feature 1).
    computeHealthScore() holds the exact 5-factor weighted formula
    (Completion 30% / Schedule 25% / Budget 20% / Risk 15% /
@@ -13,7 +13,7 @@ var MMGR = window.MMGR || {};
 
   const U = ns.Utils;
 
-  // A budget line's actual $ — auto-derived from its own Spend Log entries
+  // A budget line's actual $ , auto-derived from its own Spend Log entries
   // once any exist (single source of truth), otherwise the manual value.
   // Lives here as a pure helper; the Spend module exposes the same math for
   // the cash-flow chart. Kept dependency-free so Health stays portable.
@@ -77,7 +77,7 @@ var MMGR = window.MMGR || {};
     const setE = (id, v, c) => { const el = document.getElementById(id); if (el) { el.textContent = v; if (c) el.style.color = c; } };
     const suffix = document.getElementById('health-score-suffix');
     if (!h) {
-      setE('health-score-num', '—', 'var(--slate)');
+      setE('health-score-num', '-', 'var(--slate)');
       if (suffix) suffix.classList.add('is-hide');
       setE('health-score-label', 'Add tasks to calculate', 'var(--slate)');
       const bar = document.getElementById('health-bar');
@@ -93,7 +93,7 @@ var MMGR = window.MMGR || {};
     _lastScore = h.score;
     const { score, f1, f2, f3, f4, f5, hasSchedule, hasBudget, hasRisks, hasChanges, weightSum } = h;
     // Distinguish "building baseline" (early project, normal) from a real
-    // concern — only treat as warning if there's enough real data behind it
+    // concern , only treat as warning if there's enough real data behind it
     // (weightSum) OR the schedule factor itself shows an actual problem.
     const earlyStage = weightSum < 0.6 && (f2 === null || f2 >= 80);
     const color = earlyStage ? 'var(--slate)' : score >= 70 ? 'var(--green)' : score >= 40 ? 'var(--amber)' : 'var(--danger)';
@@ -109,7 +109,7 @@ var MMGR = window.MMGR || {};
     if (bd) {
       bd.innerHTML = '<div id="health-narrative" style="color:var(--slate);font-style:italic;font-size:.72rem;margin-bottom:6px">' + U.escapeHtml(narrative) + '</div>' +
         (earlyStage
-        ? '<div style="color:var(--slate);font-style:italic;margin-bottom:4px">This number is mostly Completion % right now — normal for an early project, not a warning. It becomes a real signal once Budget/Risk/Change have data too.</div>'
+        ? '<div style="color:var(--slate);font-style:italic;margin-bottom:4px">This number is mostly Completion % right now , normal for an early project, not a warning. It becomes a real signal once Budget/Risk/Change have data too.</div>'
         : '') +
         [
           row('Completion (30%)', f1, true),
@@ -120,12 +120,12 @@ var MMGR = window.MMGR || {};
         ].join('') +
         (hasSchedule && hasBudget && hasRisks && hasChanges
           ? ''
-          : '<div style="margin-top:4px;color:var(--slate);font-style:italic">Score is weighted only across the factors above with real data — the rest count in automatically as you add them.</div>');
+          : '<div style="margin-top:4px;color:var(--slate);font-style:italic">Score is weighted only across the factors above with real data , the rest count in automatically as you add them.</div>');
     }
   }
 
   // ---- Narrative Health Score (ACTION-PLAN 1.3) ----
-  // Rule-based sentence generator — NO AI call. Explains WHY the score is
+  // Rule-based sentence generator , NO AI call. Explains WHY the score is
   // what it is: which weighted factor drags it, which factors are still
   // waiting on data (excluded from the weighting), and whether it moved
   // since the last render in this session. Regenerated on every render,
@@ -145,7 +145,7 @@ var MMGR = window.MMGR || {};
       if (v !== null && v !== undefined && (worst === null || v < worst.v)) worst = { k: k, v: v };
     });
     if (worst && worst.v < 80) {
-      parts.push(factorNames[worst.k] + ' is the main drag at ' + Math.round(worst.v) + ' — the rest score higher.');
+      parts.push(factorNames[worst.k] + ' is the main drag at ' + Math.round(worst.v) + ' , the rest score higher.');
     }
     const missing = [];
     if (!h.hasSchedule) missing.push('Schedule');
@@ -153,7 +153,7 @@ var MMGR = window.MMGR || {};
     if (!h.hasRisks) missing.push('Risk');
     if (!h.hasChanges) missing.push('Change');
     if (missing.length) {
-      parts.push('Waiting on data: ' + missing.join(', ') + ' — excluded from the weighting until they have real inputs.');
+      parts.push('Waiting on data: ' + missing.join(', ') + ' , excluded from the weighting until they have real inputs.');
     }
     if (!parts.length) parts.push('All weighted factors are healthy.');
     return parts.join(' ');

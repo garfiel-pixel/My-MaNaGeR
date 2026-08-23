@@ -1,5 +1,5 @@
 /* ============================================================
-   My MaNaGeR — Backup & Cloud-Sync UI
+   My MaNaGeR , Backup & Cloud-Sync UI
    Header backup indicator, auto-save debounce, backup popover.
    Extracted from mmgr-app.js.
    ============================================================ */
@@ -71,8 +71,8 @@ var MMGR = window.MMGR || {};
     if (!el) return;
     const C = window.MMGR.Cloud;
     el.textContent = (C && C.getCode && C.getCode())
-      ? 'Cloud-backed project — snapshots auto-sync to the cloud as you work.'
-      : 'File backup is optional — save a .json copy whenever you\u2019re ready (e.g. at the end of a task). Link to the cloud once in Settings for automatic backups.';
+      ? 'Cloud-backed project , snapshots auto-sync to the cloud as you work.'
+      : 'File backup is optional , save a .json copy whenever you\u2019re ready (e.g. at the end of a task). Link to the cloud once in Settings for automatic backups.';
   }
 
   function bkCloud() {
@@ -81,7 +81,7 @@ var MMGR = window.MMGR || {};
     if (C && C.getCode && C.getCode()) {
       if (C.saveToCloud) C.saveToCloud();
     } else {
-      // Not linked yet — open the drawer at the Cloud Backup section
+      // Not linked yet , open the drawer at the Cloud Backup section
       if (ns.App && ns.App.openDrwToSave) ns.App.openDrwToSave();
     }
   }

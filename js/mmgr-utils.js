@@ -1,5 +1,5 @@
 /* ============================================================
-   My MaNaGeR — Utility Functions Module
+   My MaNaGeR , Utility Functions Module
    ============================================================ */
 var MMGR = window.MMGR || {};
 
@@ -14,7 +14,7 @@ var MMGR = window.MMGR || {};
       const parts = str.split('-').map(Number);
       return new Date(parts[0], parts[1]-1, parts[2]);
     }
-    // DD/MM/YYYY or MM/DD/YYYY — distinguished by magnitude, since the two
+    // DD/MM/YYYY or MM/DD/YYYY , distinguished by magnitude, since the two
     // digit-only patterns are otherwise indistinguishable:
     //   first part > 12  → day-first  (DD/MM/YYYY)  e.g. 15/03/2026
     //   second part > 12 → month-first (MM/DD/YYYY) e.g. 03/15/2026 (US)
@@ -100,7 +100,7 @@ var MMGR = window.MMGR || {};
   }
 
   // Is this calendar day a working day under the given work week?
-  // workWeek = days worked per week: 5 → Mon–Fri, 6 → Mon–Sat, 7 → every day.
+  // workWeek = days worked per week: 5 → Mon-Fri, 6 → Mon-Sat, 7 → every day.
   function isWorkDay(d, workWeek) {
     if (typeof d === 'string') d = parseDL(d);
     if (!d || isNaN(d.getTime())) return false;
@@ -273,7 +273,7 @@ var MMGR = window.MMGR || {};
         if (el && el !== document.activeElement) {
           // Defensive guard: native picker inputs (date/time/month/week/
           // datetime-local) re-open their popup the moment they gain focus in
-          // Chrome. Never force focus back onto a picker-type input — that
+          // Chrome. Never force focus back onto a picker-type input , that
           // would pop the picker back open (the "dates are fighting me" bug).
           // Callers already skip rebuilding the WBS row when a date input has
           // focus (see updTaskField), so this is belt-and-suspenders for any

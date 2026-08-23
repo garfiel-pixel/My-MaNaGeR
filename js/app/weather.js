@@ -1,5 +1,5 @@
 /* ============================================================
-   My MaNaGeR — Weather Actions
+   My MaNaGeR , Weather Actions
    Geocoding, forecast refresh, location, logging, region.
    Extracted from mmgr-app.js.
    ============================================================ */
@@ -21,8 +21,8 @@ var MMGR = window.MMGR || {};
     const place = ($('wx-place-in') || {}).value || '';
     if (!place.trim()) { _toast('Enter a site city first.', 'err'); return; }
     const ok = await ns.Forecast.geocode(place.trim());
-    if (ok) { _toast('Site located — refresh for the forecast.', 'ok'); _R().renderAll(); }
-    else { _toast('Could not find that location — check the city name.', 'err'); }
+    if (ok) { _toast('Site located , refresh for the forecast.', 'ok'); _R().renderAll(); }
+    else { _toast('Could not find that location , check the city name.', 'err'); }
   }
 
   async function wxRefresh() {
@@ -39,7 +39,7 @@ var MMGR = window.MMGR || {};
 
   async function wxUseLocation() {
     if (!navigator.geolocation) {
-      _toast('Location lookup is unavailable in this browser — type your site city instead.', 'err');
+      _toast('Location lookup is unavailable in this browser , type your site city instead.', 'err');
       return;
     }
     _toast('Locating you…', 'ok');
@@ -49,7 +49,7 @@ var MMGR = window.MMGR || {};
         navigator.geolocation.getCurrentPosition(res, rej, { enableHighAccuracy: true, timeout: 15000, maximumAge: 300000 });
       });
     } catch (e) {
-      _toast('Could not get your location (permission or coverage) — type your site city instead.', 'err');
+      _toast('Could not get your location (permission or coverage) , type your site city instead.', 'err');
       return;
     }
     const lat = pos.coords.latitude;
@@ -65,9 +65,9 @@ var MMGR = window.MMGR || {};
     ns.State.updateState(function(s) { s.sitePlace = place; });
     try {
       await ns.Forecast.fetchForecast(lat, lon);
-      _toast('Forecast set for your current location' + (place ? ' — ' + place : '') + '.', 'ok');
+      _toast('Forecast set for your current location' + (place ? ' , ' + place : '') + '.', 'ok');
     } catch (e) {
-      _toast('Location saved, but the forecast could not be fetched (offline?) — regional windows remain.', 'err');
+      _toast('Location saved, but the forecast could not be fetched (offline?) , regional windows remain.', 'err');
     }
     _R().renderAll();
   }

@@ -1,18 +1,18 @@
 /* ============================================================
-   My MaNaGeR — Cloud Backup & Recovery (CLOUD-BACKEND-
+   My MaNaGeR , Cloud Backup & Recovery (CLOUD-BACKEND-
    ARCHITECTURE-PLAN Phase 1 + 2 + 3)
    ------------------------------------------------------------
    Renders the optional "Cloud Backup" section into the Controls
    drawer on project.html (#cloud-section, right next to
-   #drive-section). Strictly OPT-IN per project — a project with
+   #drive-section). Strictly OPT-IN per project , a project with
    no cloud link behaves exactly as before (fully local, zero
    backend dependency). Never gating, never required.
 
    Phase 1 (owner code + recovery):
-   - Create: POST /api/cloud/projects { projectId, name } — the
+   - Create: POST /api/cloud/projects { projectId, name } , the
      Worker generates the owner/recovery code and returns it
      EXACTLY ONCE. The plaintext code is shown here + kept in
-     sessionStorage (session memory only — never localStorage,
+     sessionStorage (session memory only , never localStorage,
      mirroring the Drive token convention) and is never shipped
      back to the server; saves/loads authenticate with it via the
      X-Owner-Code header.
@@ -29,7 +29,7 @@
      once. List + revoke are owner-only.
    - SCOPE IS ENFORCED SERVER-SIDE on every editor save (the
      Worker merges only granted sections into the blob). The UI
-     greying-out here is UX only — a compromised editor code
+     greying-out here is UX only , a compromised editor code
      cannot write outside its grant even by hitting the API
      directly.
    - An EDITOR enters their code via the "Load with Code" field
@@ -45,7 +45,7 @@
 
    Zero-throw: every network / GIS / DOM path is guarded. On a
    static host with no Worker API (serve.cjs), the section shows a
-   quiet "unavailable here" note and the page keeps working — the
+   quiet "unavailable here" note and the page keeps working , the
    cloud feature is additive, exactly like the Drive section.
 
    Namespaced as window.MMGR.Cloud (MMGR created by
@@ -65,7 +65,7 @@ var MMGR = window.MMGR || {};
 
   function $(id) { return document.getElementById(id); }
   function pid() { return ns.projectId || 'default'; }
-  // Local escape — the module cannot depend on mmgr-utils.js being loaded
+  // Local escape , the module cannot depend on mmgr-utils.js being loaded
   // first, and the owner code / name interpolations into innerHTML must be
   // escaped regardless (XSS hygiene, same rule as mmgr-render.js).
   function esc(v) {
@@ -102,7 +102,7 @@ var MMGR = window.MMGR || {};
       if (!raw) return null;
       const p = JSON.parse(raw);
       if (!p || !Array.isArray(p.sections)) return null;
-      // CLOUD-CODES-AND-DELETE: role ('editor' | 'view') — legacy stored
+      // CLOUD-CODES-AND-DELETE: role ('editor' | 'view') , legacy stored
       // scopes (pre-migration) were always editor; default them here so
       // no caller ever reads an undefined role.
       if (p.role !== 'view') p.role = 'editor';
@@ -117,7 +117,7 @@ var MMGR = window.MMGR || {};
   // A registered copy is a VIEW-ONLY snapshot of the cloud project on this
   // device. The registration lives server-side (offline_copies table, keyed
   // on the device id); the device id + copy id + the cloud revision this
-  // copy last pulled are stored here (localStorage — a copy must survive
+  // copy last pulled are stored here (localStorage , a copy must survive
   // reloads so the "Update offline copy" icon can persist).
   function deviceId() {
     try {
@@ -186,7 +186,7 @@ var MMGR = window.MMGR || {};
 
   // ---- read-only sign-in state via /api/auth/me ---------------------------
   // Independent of GoogleAuth's chip (which only mounts on app.html/admin.html
-  // hosts) — the cloud section reports its own state so recovery availability
+  // hosts) , the cloud section reports its own state so recovery availability
   // is visible on project.html too.
   async function checkMe(force) {
     if (_meChecked && !force) return _signedIn;
@@ -197,7 +197,7 @@ var MMGR = window.MMGR || {};
         const data = await res.json();
         _signedIn = !!(data && data.ok && data.user);
       }
-    } catch (e) { /* static host / offline — stays false */ }
+    } catch (e) { /* static host / offline , stays false */ }
     return _signedIn;
   }
 
@@ -267,20 +267,20 @@ var MMGR = window.MMGR || {};
   // When the create gate answers HTTP 402 {upgrade:true} (session-linked free
   // account over FREE_PROJECT_CAP), we set _upgradePending so render() shows an
   // upgrade banner + button; cloudUpgrade() opens the LemonSqueezy checkout.
-  // Dormant when billing is unconfigured — the server never 402s then, so the
+  // Dormant when billing is unconfigured , the server never 402s then, so the
   // banner never appears and this whole path is inert (byte-for-byte unchanged
   // behavior on the current deploy).
   let _upgradePending = false;
-  // AUTH MAINFRAME v2 — verified-email gate: set when create answers HTTP 403
+  // AUTH MAINFRAME v2 , verified-email gate: set when create answers HTTP 403
   // {verifyRequired:true} (unverified email account). Mirrors _upgradePending:
   // render() shows a confirm-your-email banner + a resend action. Dormant when
-  // email is unconfigured or the session is Google — the server never 403s then.
+  // email is unconfigured or the session is Google , the server never 403s then.
   let _verifyPending = false;
   let _createInFlight = false;
 
   async function createProject() {
     if (_createInFlight) return; // BUG-1: debounce rapid clicks
-    if (getCode()) { setStatus('This project is already linked to the cloud — use Save / Load below.', 'warn'); return; }
+    if (getCode()) { setStatus('This project is already linked to the cloud , use Save / Load below.', 'warn'); return; }
     _createInFlight = true;
     setStatus('Creating cloud project…', 'busy');
     try {
@@ -297,16 +297,16 @@ var MMGR = window.MMGR || {};
           // instead of a bare error (the client half of the billing tier).
           _upgradePending = true;
           await render();
-          setStatus((data && data.error) || 'Free plan limit reached — upgrade to link more projects.', 'err');
+          setStatus((data && data.error) || 'Free plan limit reached , upgrade to link more projects.', 'err');
         } else if (res.status === 403 && data && data.verifyRequired) {
           // AUTH MAINFRAME v2: the email account has not clicked its
           // confirmation link. Surface the inbox guidance + a resend
           // affordance instead of a bare error (mirrors the 402 pattern).
           _verifyPending = true;
           await render();
-          setStatus((data && data.error) || 'Verify your email to enable cloud projects — check your inbox for the confirmation link.', 'err');
+          setStatus((data && data.error) || 'Verify your email to enable cloud projects , check your inbox for the confirmation link.', 'err');
         } else if (res.status === 409) {
-          // BUG-1: project already linked — reload the drawer to show the
+          // BUG-1: project already linked , reload the drawer to show the
           // existing code instead of a confusing error.
           setStatus('This project is already linked to the cloud.', 'warn');
           await render();
@@ -319,7 +319,7 @@ var MMGR = window.MMGR || {};
       _verifyPending = false;
       setCode(data.ownerCode);
       await render();
-      setStatus('Cloud project linked — owner/recovery code: ' + data.ownerCode + '. Store it somewhere safe: if lost, only the linked Google account can recover it.', 'ok');
+      setStatus('Cloud project linked , owner/recovery code: ' + data.ownerCode + '. Store it somewhere safe: if lost, only the linked Google account can recover it.', 'ok');
     } catch (e) {
       setStatus('Cloud is unavailable on this host (needs the Worker API).', 'err');
     } finally {
@@ -327,7 +327,7 @@ var MMGR = window.MMGR || {};
     }
   }
 
-  // AUTH MAINFRAME v2 — resend the verification email for the signed-in
+  // AUTH MAINFRAME v2 , resend the verification email for the signed-in
   // account (the confirm-your-email banner's action). The endpoint answers a
   // generic message either way (no existence/status leak); the banner stays
   // until the account verifies or the drawer is reloaded.
@@ -338,7 +338,7 @@ var MMGR = window.MMGR || {};
       const me = await meRes.json().catch(function() { return null; });
       const email = (me && me.ok && me.user && me.user.email) ? me.user.email : '';
       if (!email) {
-        setStatus('You are not signed in with an email account — sign in to request a new link.', 'warn');
+        setStatus('You are not signed in with an email account , sign in to request a new link.', 'warn');
         return;
       }
       const res = await fetch('/api/auth/resend-verify', {
@@ -349,7 +349,7 @@ var MMGR = window.MMGR || {};
       });
       const data = await res.json().catch(function() { return {}; });
       if (res.ok && data && data.ok) {
-        setStatus((data && data.message) || 'If an account needs verification, a new confirmation link is on its way — check your inbox.', 'ok');
+        setStatus((data && data.message) || 'If an account needs verification, a new confirmation link is on its way , check your inbox.', 'ok');
       } else {
         setStatus((data && data.error) || 'Could not send the link (HTTP ' + res.status + ').', 'err');
       }
@@ -371,14 +371,14 @@ var MMGR = window.MMGR || {};
         if (res.status === 503) {
           _upgradePending = false;
           await render();
-          setStatus('Billing isn\u2019t configured on this server yet — no upgrade is available.', 'warn');
+          setStatus('Billing isn\u2019t configured on this server yet , no upgrade is available.', 'warn');
         } else {
           setStatus((data && data.error) || 'Checkout failed (HTTP ' + res.status + ').', 'err');
         }
         return;
       }
       window.open(data.checkoutUrl, '_blank', 'noopener');
-      setStatus('Checkout opened in a new tab — complete the purchase there, then create the project again.', 'ok');
+      setStatus('Checkout opened in a new tab , complete the purchase there, then create the project again.', 'ok');
     } catch (e) {
       setStatus('Cloud is unavailable on this host (needs the Worker API).', 'err');
     }
@@ -391,7 +391,7 @@ var MMGR = window.MMGR || {};
     if (oc) return { code: oc, header: 'X-Owner-Code' };
     if (ec) {
       const es = getEScope();
-      // CLOUD-CODES-AND-DELETE: a VIEW code travels under X-View-Code — the
+      // CLOUD-CODES-AND-DELETE: a VIEW code travels under X-View-Code , the
       // server only ever grants reads (role='view'); a view save is refused.
       return { code: ec, header: (es && es.role === 'view') ? 'X-View-Code' : 'X-Editor-Code' };
     }
@@ -402,7 +402,7 @@ var MMGR = window.MMGR || {};
   async function saveToCloud() {
     const cred = activeCredential();
     if (!cred) { setStatus('Create a cloud project first (button above).', 'warn'); return; }
-    // CLOUD-CODES-AND-DELETE: a viewer code is read-only everywhere — the
+    // CLOUD-CODES-AND-DELETE: a viewer code is read-only everywhere , the
     // server would refuse the save (X-View-Code is never accepted by /save),
     // so refuse it here with a plain explanation instead of a confusing 403.
     if (cred.header === 'X-View-Code') { setStatus('Viewer codes are read-only. You cannot save changes to the cloud. Ask the admin for an editor or owner code to edit.', 'warn'); return; }
@@ -422,7 +422,7 @@ var MMGR = window.MMGR || {};
       if (!res.ok || !data.ok) {
         let msg = (data && data.error) || 'Cloud save failed (HTTP ' + res.status + ').';
         // gap-audit H29: the 8 MB cap deserves a friendly message, not a bare 413.
-        if (res.status === 413) msg = 'Project too large for cloud (8 MB cap) — trim voice/claim data or use export/import instead.';
+        if (res.status === 413) msg = 'Project too large for cloud (8 MB cap) , trim voice/claim data or use export/import instead.';
         if (res.status === 403) { if (cred.header === 'X-Owner-Code') clearCode(); else clearECode(); }
         await render();
         setStatus(msg, 'err');
@@ -430,20 +430,20 @@ var MMGR = window.MMGR || {};
       }
       const prevSeen = getLastSeen();
       if (data.savedAt) setLastSeen(data.savedAt);
-      let statusMsg = 'Saved to cloud — ' + (data.savedAt || '').slice(0, 19).replace('T', ' ') + '.';
+      let statusMsg = 'Saved to cloud , ' + (data.savedAt || '').slice(0, 19).replace('T', ' ') + '.';
       if (data.actor === 'editor') {
         const scopeTxt = (data.scope || []).map(sectionLabel).join(', ');
         // REVIEW QUEUE (approved 2026-08-17, always on): an editor save is a
-        // PROPOSAL — the cloud does not move until the owner accepts it.
+        // PROPOSAL , the cloud does not move until the owner accepts it.
         // Say exactly that instead of claiming the save landed.
         if (data.review === 'pending') {
-          statusMsg = 'Saved for owner review (' + (data.editorLabel || 'editor') + ') — your change is pending acceptance before it reaches the cloud. Scope: ' + scopeTxt + '.';
+          statusMsg = 'Saved for owner review (' + (data.editorLabel || 'editor') + ') , your change is pending acceptance before it reaches the cloud. Scope: ' + scopeTxt + '.';
           if (data.blocked && data.blocked.length) statusMsg += ' Outside this code\u2019s scope: ' + data.blocked.map(sectionLabel).join(', ') + '.';
         } else if (data.review === 'noop') {
-          statusMsg = 'Saved as editor (' + (data.editorLabel || 'editor') + ') — nothing new within this code\u2019s scope to send for review.';
+          statusMsg = 'Saved as editor (' + (data.editorLabel || 'editor') + ') , nothing new within this code\u2019s scope to send for review.';
           if (data.blocked && data.blocked.length) statusMsg += ' Outside this code\u2019s scope: ' + data.blocked.map(sectionLabel).join(', ') + '.';
         } else {
-          statusMsg = 'Saved as editor (' + (data.editorLabel || 'editor') + ') — scope: ' + scopeTxt + '.';
+          statusMsg = 'Saved as editor (' + (data.editorLabel || 'editor') + ') , scope: ' + scopeTxt + '.';
           if (data.applied && data.applied.length) statusMsg += ' Applied: ' + data.applied.map(sectionLabel).join(', ') + '.';
           if (data.blocked && data.blocked.length) statusMsg += ' NOT saved (outside this code\u2019s scope): ' + data.blocked.map(sectionLabel).join(', ') + '.';
         }
@@ -452,9 +452,9 @@ var MMGR = window.MMGR || {};
       }
       // gap-audit B9: last-write-wins WITH a heads-up. If the server reports
       // the previous snapshot was written after our last known sync, someone
-      // else saved in between — say so instead of overwriting silently.
+      // else saved in between , say so instead of overwriting silently.
       if (data.previousUpdatedAt && prevSeen && data.previousUpdatedAt !== prevSeen) {
-        statusMsg += ' Another device saved since you last synced — this save overwrote it.';
+        statusMsg += ' Another device saved since you last synced , this save overwrote it.';
       }
       setStatus(statusMsg, 'ok');
     } catch (e) {
@@ -466,7 +466,7 @@ var MMGR = window.MMGR || {};
   // Fired by the app's debounced auto-save once the user goes idle (or on
   // pagehide for the final edits), keeping the cloud snapshot current so the
   // header's green "Cloud backed up" chip is honest. Works for BOTH owner
-  // and editor sessions — the Worker merges an editor's save through their
+  // and editor sessions , the Worker merges an editor's save through their
   // section scope server-side (cloudScopeMerge), so a silent push can only
   // ever touch the sections that editor is granted. Never toasts; failures
   // land quietly in the drawer status line and are retried on the next edit
@@ -497,14 +497,14 @@ var MMGR = window.MMGR || {};
       });
       const data = await res.json().catch(function() { return {}; });
       if (!res.ok || !data.ok) {
-        if (res.status === 403) clearCode(); // stale owner code — drop the link
-        setStatus('Auto cloud backup failed — open Cloud Backup and Save manually.', 'err');
+        if (res.status === 403) clearCode(); // stale owner code , drop the link
+        setStatus('Auto cloud backup failed , open Cloud Backup and Save manually.', 'err');
         return false;
       }
       if (data.savedAt) setLastSeen(data.savedAt);
       return true;
     } catch (e) {
-      // offline / Worker unavailable — retry on the next edit cycle
+      // offline / Worker unavailable , retry on the next edit cycle
       return false;
     } finally {
       _autoBusy = false;
@@ -537,17 +537,17 @@ var MMGR = window.MMGR || {};
         setStatus(msg, 'err');
         return;
       }
-      if (!data.state) { setStatus('No cloud snapshot saved for this project yet — save once from another device first.', 'warn'); return; }
+      if (!data.state) { setStatus('No cloud snapshot saved for this project yet , save once from another device first.', 'warn'); return; }
       try {
         localStorage.setItem('mmgr_state_' + pid(), JSON.stringify(data.state));
         localStorage.setItem('mmgr_unlocked_' + pid(), '1');
         localStorage.setItem('mmgr_scope_' + pid(), 'full');
         localStorage.setItem('mmgr_current_project', pid());
-      } catch (e) { /* storage blocked — status below still reports the outcome */ }
+      } catch (e) { /* storage blocked , status below still reports the outcome */ }
       if (data.role === 'view') setEScope(data.viewerLabel || data.editorLabel, data.scope || [], 'view');
       else if (data.role === 'editor') setEScope(data.editorLabel, data.scope || []);
       if (data.savedAt) setLastSeen(data.savedAt);
-      setStatus('Cloud snapshot restored — reloading.', 'ok');
+      setStatus('Cloud snapshot restored , reloading.', 'ok');
       setTimeout(function() { window.location.reload(); }, 1200);
     } catch (e) {
       setStatus('Cloud is unavailable on this host (needs the Worker API).', 'err');
@@ -563,7 +563,7 @@ var MMGR = window.MMGR || {};
   let _pendingSignInAction = null;
   function queueAfterSignIn(label, action) {
     _pendingSignInAction = { label: label, action: action };
-    setStatus('Sign in to continue — ' + label + ' runs automatically once you are signed in.', 'warn');
+    setStatus('Sign in to continue , ' + label + ' runs automatically once you are signed in.', 'warn');
     const GA = window.MMGR.GoogleAuth;
     if (GA && typeof GA.openSignInPrompt === 'function') {
       if (GA.openSignInPrompt()) return;
@@ -574,7 +574,7 @@ var MMGR = window.MMGR || {};
     if (!_pendingSignInAction) return;
     const p = _pendingSignInAction;
     _pendingSignInAction = null;
-    _meChecked = false; // checkMe cached "not signed in" — re-query the session
+    _meChecked = false; // checkMe cached "not signed in" , re-query the session
     try { p.action(); } catch (e) { /* the action guards itself */ }
   }
   document.addEventListener('mmgr:google-signed-in', resumePendingSignIn);
@@ -603,7 +603,7 @@ var MMGR = window.MMGR || {};
       setCode(data.ownerCode);
       clearECode();
       await render();
-      setStatus('New owner code issued: ' + data.ownerCode + ' — also below + Copy Code. The previous code no longer works.', 'ok');
+      setStatus('New owner code issued: ' + data.ownerCode + ' , also below + Copy Code. The previous code no longer works.', 'ok');
       if (data.recoveredAt) setLastSeen(data.recoveredAt);
     } catch (e) {
       setStatus('Cloud is unavailable on this host (needs the Worker API).', 'err');
@@ -621,7 +621,7 @@ var MMGR = window.MMGR || {};
   }
 
   // ---- load with a manually-entered code (fresh-device path) --------------
-  // The code could be an OWNER code or an EDITOR code — probe owner first,
+  // The code could be an OWNER code or an EDITOR code , probe owner first,
   // then editor. On success the credential is kept for this session so
   // subsequent saves work without re-entering it.
   async function loadWithCode() {
@@ -686,22 +686,22 @@ var MMGR = window.MMGR || {};
       setStatus('Code copied to the clipboard.', 'ok');
     } catch (e) {
       window.prompt('Code (select + copy):', cred.code);
-      setStatus('Code shown — copy it from the prompt.', 'ok');
+      setStatus('Code shown , copy it from the prompt.', 'ok');
     }
   }
 
   // =========================================================================
-  // PHASE 2 — editor code management (owner-only UI)
+  // PHASE 2 , editor code management (owner-only UI)
   // =========================================================================
 
   // Create: read the label + role + checked section boxes -> POST -> show code once.
   // CLOUD-CODES-AND-DELETE: a role picker ('editor' | 'view') sits next to the
-  // label — editor = can edit the granted sections, view = read-only everywhere
+  // label , editor = can edit the granted sections, view = read-only everywhere
   // with only the granted sections visible/enabled.
   async function createEditor() {
     const labelIn = $('cloud-editor-label-in');
     const label = (labelIn && labelIn.value || '').trim().slice(0, 60);
-    if (!label) { setStatus('Give this code a label first (e.g. \u201CSite Super — Riverside\u201D).', 'warn'); return; }
+    if (!label) { setStatus('Give this code a label first (e.g. \u201CSite Super , Riverside\u201D).', 'warn'); return; }
     const roleIn = $('cloud-editor-role');
     const role = roleIn && roleIn.value === 'view' ? 'view' : 'editor';
     const scope = [];
@@ -724,7 +724,7 @@ var MMGR = window.MMGR || {};
         return;
       }
       // gap-audit G23: park the code in a shown-once banner (render renders it
-      // prominently with a Copy button) — matching the owner-code flow's
+      // prominently with a Copy button) , matching the owner-code flow's
       // "copy this now" seriousness.
       setPendingEditorCode(data.editorCode, data.label, data.scope || [], data.role || 'editor');
       await render();
@@ -748,7 +748,7 @@ var MMGR = window.MMGR || {};
       const data = await res.json().catch(function() { return {}; });
       if (!res.ok || !data.ok) { wrap.innerHTML = '<div class="sr-hint">Could not load editor codes.</div>'; return; }
       const eds = data.editors || [];
-      if (!eds.length) { wrap.innerHTML = '<div class="sr-hint">No codes yet — create one above.</div>'; return; }
+      if (!eds.length) { wrap.innerHTML = '<div class="sr-hint">No codes yet , create one above.</div>'; return; }
       wrap.innerHTML = eds.map(function(e) {
         const isView = e.role === 'view';
         return '<div class="sr" style="font-size:.72rem;display:flex;align-items:center;gap:8px;flex-wrap:wrap">' +
@@ -762,7 +762,7 @@ var MMGR = window.MMGR || {};
     }
   }
 
-  // Revoke an editor code (owner-only) — the code stops working immediately.
+  // Revoke an editor code (owner-only) , the code stops working immediately.
   async function revokeEditor(id) {
     if (!id) return;
     if (!window.confirm('Revoke this code? It stops working immediately and cannot be restored.')) return;
@@ -784,7 +784,7 @@ var MMGR = window.MMGR || {};
   }
 
   // =========================================================================
-  // PHASE 3 — changelog (owner-only view + revert)
+  // PHASE 3 , changelog (owner-only view + revert)
   // =========================================================================
 
   async function listLog() {
@@ -799,12 +799,12 @@ var MMGR = window.MMGR || {};
       const data = await res.json().catch(function() { return {}; });
       if (!res.ok || !data.ok) { wrap.innerHTML = '<div class="sr-hint">Could not load the changelog.</div>'; return; }
       const entries = data.entries || [];
-      if (!entries.length) { wrap.innerHTML = '<div class="sr-hint">No cloud changes logged yet — save once from any device to start the log.</div>'; return; }
+      if (!entries.length) { wrap.innerHTML = '<div class="sr-hint">No cloud changes logged yet , save once from any device to start the log.</div>'; return; }
       wrap.innerHTML = entries.map(function(en) {
         // MCP-CHANGELOG-UI (backlog, 2026-08-12): entries imported from the MCP
         // AI sidecar (source === 'mcp', set server-side from import_key) render
         // with a distinct purple AI badge + "MCP AI" actor so AI-made changes
-        // never masquerade as the owner. Revert stays available — recordId
+        // never masquerade as the owner. Revert stays available , recordId
         // reverts were the whole point of the import pipeline.
         const isMCP = en.source === 'mcp';
         const hasDiffs = Array.isArray(en.diffs) && en.diffs.length > 0;
@@ -813,25 +813,25 @@ var MMGR = window.MMGR || {};
         let revertBtn = '<button class="btn btn-o btn-s" data-action="cloudLogRevert" data-id="' + en.id + '">Revert</button>';
         if (en.type === 'bulk') what = 'Full-state change (snapshot)';
         else if (en.type === 'revert') what = 'Revert of a previous change';
-        else if (en.type === 'recovery') { what = 'Owner code reissued (recovery)'; revertBtn = ''; } // not a content change — not revertible
+        else if (en.type === 'recovery') { what = 'Owner code reissued (recovery)'; revertBtn = ''; } // not a content change , not revertible
         // CLOUD-FIRST SYNC (2026-08-17): a 'broadcast' entry means the owner
         // pushed the current snapshot to all registered offline copies (or
         // auto-broadcast fired on save). A push is not a content change, so
-        // it is not revertible — exactly like 'recovery'.
+        // it is not revertible , exactly like 'recovery'.
         else if (en.type === 'broadcast') { what = 'Broadcast to offline copies'; revertBtn = ''; }
         // REVIEW QUEUE (2026-08-17): 'accepted' = the owner approved an
-        // inbound change (editor save applied or AI import acknowledged) —
+        // inbound change (editor save applied or AI import acknowledged) , 
         // carries the same leaf diffs as an 'edit', so it stays revertible.
-        // 'rejected' = the owner declined — nothing changed, not revertible.
+        // 'rejected' = the owner declined , nothing changed, not revertible.
         else if (en.type === 'accepted') {
-          what = (isMCP ? 'Accepted AI change (MCP)' : 'Accepted change from review') + (en.diffs && en.diffs.length ? ' — ' + en.diffs.length + ' field(s) changed' : '');
+          what = (isMCP ? 'Accepted AI change (MCP)' : 'Accepted change from review') + (en.diffs && en.diffs.length ? ' , ' + en.diffs.length + ' field(s) changed' : '');
         }
         else if (en.type === 'rejected') { what = (isMCP ? 'Rejected AI change (MCP)' : 'Rejected change from review'); revertBtn = ''; }
         else what = (en.diffs ? en.diffs.length : 0) + ' field(s) changed' + (en.section ? ' · ' + esc(sectionLabel(en.section)) : '');
-        if (isMCP && en.type !== 'accepted' && en.type !== 'rejected') what = 'Imported from AI (MCP) — ' + what;
+        if (isMCP && en.type !== 'accepted' && en.type !== 'rejected') what = 'Imported from AI (MCP) , ' + what;
         // Click-to-expand diffs (backlog, 2026-08-12): any entry carrying
         // field-level diffs (edit + revert entries; bulk rows only hold a
-        // snapshot key) gets a caret that reveals the before/after panel —
+        // snapshot key) gets a caret that reveals the before/after panel , 
         // pure DOM, view-only, never a server call.
         const toggleBtn = hasDiffs
           ? '<button type="button" class="cl-toggle" data-action="cloudLogToggleDiffs" data-id="' + en.id + '" aria-expanded="false" aria-controls="cl-diffs-' + en.id + '" aria-label="Show field diffs for entry ' + en.id + '" title="Show field-level before/after values"></button>'
@@ -841,7 +841,7 @@ var MMGR = window.MMGR || {};
           : '';
         return '<div class="sr" style="font-size:.72rem;display:flex;align-items:center;gap:8px;flex-wrap:wrap">' +
           '<span style="color:var(--gold)">' + esc(String(en.id)) + '</span>' +
-          (isMCP ? '<span class="badge-ai" title="Imported from the MCP AI changelog — reverts resolve by stable record id"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg> AI · MCP</span>' : '') +
+          (isMCP ? '<span class="badge-ai" title="Imported from the MCP AI changelog , reverts resolve by stable record id"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg> AI · MCP</span>' : '') +
           '<span>' + esc(who) + '</span><span class="sr-hint" style="margin:0">' + what + '</span>' +
           toggleBtn +
           revertBtn +
@@ -857,7 +857,7 @@ var MMGR = window.MMGR || {};
   // One diff value cell: primitives render as-is; whole-record values (MCP
   // imports diff entire records on add/delete) become compact JSON. Long
   // strings are ellipsis-truncated on screen with the full value in the
-  // title attribute. Everything is escaped — the values are server state.
+  // title attribute. Everything is escaped , the values are server state.
   function _clValImpl(v, absent, cls) {
     if (absent) return '<em class="cl-absent">absent</em>';
     let s;
@@ -873,7 +873,7 @@ var MMGR = window.MMGR || {};
   function clVal(v, absent, cls) { return ns.CloudDiffs ? ns.CloudDiffs.clVal(v, absent, cls) : _clValImpl(v, absent, cls); }
 
   // Build the field-level before/after panel markup for one entry (pure
-  // string builder — no DOM access, exposed as a test hook). Capped at 60
+  // string builder , no DOM access, exposed as a test hook). Capped at 60
   // rows; the server's leaf-diff cap (40) makes the cap a sanity guard.
   function _renderDiffPanelImpl(en) {
     const diffs = (Array.isArray(en.diffs) ? en.diffs : []).slice(0, 60);
@@ -895,7 +895,7 @@ var MMGR = window.MMGR || {};
   function renderDiffPanel(en) { return ns.CloudDiffs ? ns.CloudDiffs.renderDiffPanel(en) : _renderDiffPanelImpl(en); }
 
   // Toggle an entry's diff panel open/closed (no server call, nothing
-  // mutated — safe in view-only mode, hence in READONLY_SAFE_ACTIONS).
+  // mutated , safe in view-only mode, hence in READONLY_SAFE_ACTIONS).
   function toggleDiffs(id) { if (ns.CloudDiffs) ns.CloudDiffs.toggleDiffs(id); }
 
   async function revertLog(id) {
@@ -915,7 +915,7 @@ var MMGR = window.MMGR || {};
         setStatus((data && data.error) || 'Revert failed (HTTP ' + res.status + ').', 'err');
         return;
       }
-      setStatus('Reverted — the change is now undone on the cloud snapshot. Load from Cloud to pull it into this workspace.', 'ok');
+      setStatus('Reverted , the change is now undone on the cloud snapshot. Load from Cloud to pull it into this workspace.', 'ok');
       listLog();
     } catch (e) {
       setStatus('Cloud is unavailable on this host (needs the Worker API).', 'err');
@@ -923,13 +923,13 @@ var MMGR = window.MMGR || {};
   }
 
   // =========================================================================
-  // EDITOR-SCOPE UI — grey out panels an editor code cannot WRITE (UX only;
+  // EDITOR-SCOPE UI , grey out panels an editor code cannot WRITE (UX only;
   // the Worker enforces the scope regardless).
   // =========================================================================
   // gap-audit B11: the grey-out must mirror the SERVER's writable vocabulary
   // (worker.js CLOUD_SECTIONS), not block panels indiscriminately. Panels that
   // are VIEW-ONLY (dash/def/kan/gantt/claim/digest/baselinen/wxlog) read
-  // derived data and are deliberately not scoping targets — an editor can
+  // derived data and are deliberately not scoping targets , an editor can
   // always VIEW them; the server blocks their writes by construction. When the
   // canonical list is available (_sections, fetched from the Worker) it IS the
   // vocabulary, so the two can never drift; the static mirror below only
@@ -940,7 +940,7 @@ var MMGR = window.MMGR || {};
   // Mirrors applyEditorScope's block list exactly so the nav grey-out and the
   // section-switch guard (mmgr-render.js showSection) can never drift apart.
   // View-only panels (dash/def/kan/gantt/claim/digest/baselinen/wxlog) are
-  // never blocked — they read derived data and the server blocks their writes
+  // never blocked , they read derived data and the server blocks their writes
   // by construction (B11).
   function isSectionBlocked(section) { return ns.CloudScope ? ns.CloudScope.isSectionBlocked(section) : false; }
   function applyEditorScope() { if (ns.CloudScope) ns.CloudScope.applyEditorScope(); }
@@ -964,7 +964,7 @@ var MMGR = window.MMGR || {};
       if (!res.ok || !data.ok) return '';
       if (data.updatedAt) setLastSeen(data.updatedAt);
       const t = String(data.updatedAt || '').slice(0, 19).replace('T', ' ');
-      return t ? ('Last saved to cloud: ' + t) : 'No cloud snapshot yet — save once to start.';
+      return t ? ('Last saved to cloud: ' + t) : 'No cloud snapshot yet , save once to start.';
     } catch (e) { return ''; }
   }
 
@@ -974,18 +974,18 @@ var MMGR = window.MMGR || {};
   // OWNER 2026-08-15: Share & Access card in the Controls tab (#ctrl-share).
   // Single home for the owner code + editor-code manager (moved out of the
   // cloud section so the sharing feature is visible and not buried). The ids
-  // cloud-editor-* stay unchanged — createEditor/listEditors/revokeEditor
+  // cloud-editor-* stay unchanged , createEditor/listEditors/revokeEditor
   // keep working against them wherever they live.
   function renderShare() { if (ns.CloudShare) ns.CloudShare.renderShare(); }
 
   // ---- IN-PROJECT DELETE (owner 2026-08-17) ------------------------------
   let _delBusy = false;
   // Settings > Controls > bottom (Danger Zone): the owner deletes THIS
-  // cloud project from inside the project — the same owner-only soft delete
+  // cloud project from inside the project , the same owner-only soft delete
   // the launcher/admin use (every other user's copy becomes discontinued;
   // offline copies keep their last snapshot but get no more updates). The
   // confirm modal (#del-modal, static markup on project.html) asks "Are you
-  // sure?" and — for EMAIL accounts — requires the account password first
+  // sure?" and , for EMAIL accounts , requires the account password first
   // (POST /api/auth/verify-password, owner: "you have to put in your
   // password to verify the delete"). Google accounts have no password, so
   // the field stays hidden for them: their signed-in session IS the
@@ -1014,7 +1014,7 @@ var MMGR = window.MMGR || {};
         const data = await res.json();
         emailAccount = !!(data && data.ok && data.user && String(data.user.sub).indexOf('email:') === 0);
       }
-    } catch (e) { /* static host / offline — no field */ }
+    } catch (e) { /* static host / offline , no field */ }
     if (wrap) wrap.hidden = !emailAccount;
     modal.classList.add('on');
     if (emailAccount && pw) setTimeout(function () { pw.focus(); }, 60);
@@ -1085,7 +1085,7 @@ var MMGR = window.MMGR || {};
             if (idx !== -1) { recs.splice(idx, 1); localStorage.setItem('mmgr_admin_projects', JSON.stringify(recs)); }
           }
         }
-      } catch (e) { /* best-effort — cloud delete is the source of truth */ }
+      } catch (e) { /* best-effort , cloud delete is the source of truth */ }
       cloudDeleteClose();
       const App = window.MMGR.App;
       if (App && App.showToast) App.showToast('Project deleted. Every shared copy now shows as discontinued.', 'ok');
@@ -1102,7 +1102,7 @@ var MMGR = window.MMGR || {};
   // owner opens that project here, this seeds it into the session store so
   // publish → open → auto-sync works with zero re-typing. Runs silently,
   // never overrides a code the user already entered this session, and only
-  // reads the admin's own record — the code still lives in sessionStorage
+  // reads the admin's own record , the code still lives in sessionStorage
   // (same security posture as every other credential in this module).
   function adoptAdminRecordedCode() {
     if (getCode() || getECode()) return;
@@ -1114,7 +1114,7 @@ var MMGR = window.MMGR || {};
       const rec = recs.find(function (r) { return r && String(r.id) === pid(); });
       if (!rec || !rec.cloudOwnerCode) return;
       setCode(String(rec.cloudOwnerCode));
-    } catch (e) { /* read-only best effort — never throws */ }
+    } catch (e) { /* read-only best effort , never throws */ }
   }
 
   async function render() {
@@ -1126,17 +1126,17 @@ var MMGR = window.MMGR || {};
     const escope = getEScope();
     const signedIn = await checkMe();
     // The Controls-tab Share & Access card must mirror the same credential
-    // state — render it alongside the cloud section on every render pass.
+    // state , render it alongside the cloud section on every render pass.
     renderShare();
     // IN-PROJECT DELETE: reveal the Danger Zone only while an owner code is
-    // held (same render pass — one credential read, both surfaces).
+    // held (same render pass , one credential read, both surfaces).
     renderDangerZone();
 
     let body = '';
     if (!code && !ecode) {
       body =
         '<div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-folder"></use></svg> Cloud Backup (Owner or Editor Code)</span></div>' +
-        '<div class="sr-hint">Optional — link this project to the cloud so its state JSON lives in your backend (D1 + R2) and can be pulled back on any device. Never required; JSON export/import stays the guaranteed path.</div>' +
+        '<div class="sr-hint">Optional , link this project to the cloud so its state JSON lives in your backend (D1 + R2) and can be pulled back on any device. Never required; JSON export/import stays the guaranteed path.</div>' +
         '<div class="exp-row"><button class="btn btn-g btn-s" data-action="cloudCreate"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-upload"></use></svg> Create Cloud Project</button></div>' +
         '<div class="sr" style="margin-top:6px"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> On another device?</span></div>' +
         '<div class="sr-hint">Enter the owner code you copied when this project was first linked, or an editor code you were given (the code lives only in the creator\u2019s session, so a new device needs it typed in here):</div>' +
@@ -1145,7 +1145,7 @@ var MMGR = window.MMGR || {};
         '<button class="btn btn-n btn-s" data-action="cloudLoadWithCode"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Load with Code</button>' +
         '</div>';
     } else if (ecode && !code) {
-      // EDITOR / VIEWER MODE — scoped access; the server enforces the grant.
+      // EDITOR / VIEWER MODE , scoped access; the server enforces the grant.
       const isView = !!(escope && escope.role === 'view');
       const scopeTxt = escope && escope.sections && escope.sections.length
         ? escope.sections.map(sectionLabel).join(', ')
@@ -1163,21 +1163,21 @@ var MMGR = window.MMGR || {};
         // 2026-08-17) + "Update offline copy" when the copy is behind. The
         // server registers the copy; this device is view-only so the pull
         // overwrite is always safe (approved reconcile: copies never fight
-        // the cloud — the local auto-syncs up, the admin broadcasts down).
+        // the cloud , the local auto-syncs up, the admin broadcasts down).
         '<div class="sr" style="margin-top:8px"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Offline copy</span></div>' +
         '<div id="cloud-offline-copy-box"></div>' +
         // REVIEW QUEUE: the editor's own proposal status line (pending /
-        // accepted / rejected) — filled by cloudReviewMine() on render.
+        // accepted / rejected) , filled by cloudReviewMine() on render.
         '<div id="cloud-review-mine"></div>' +
-        '<div class="sr-hint">' + (isView ? 'Nothing you do here changes the cloud copy — reload anytime to see fresh data.' : 'Changes you save wait for the owner\u2019s review before they reach the cloud project — accepted edits are logged in the changelog.') + '</div>' +
+        '<div class="sr-hint">' + (isView ? 'Nothing you do here changes the cloud copy , reload anytime to see fresh data.' : 'Changes you save wait for the owner\u2019s review before they reach the cloud project , accepted edits are logged in the changelog.') + '</div>' +
         '<div id="cloud-last-sync" class="sr-hint" role="status" aria-live="polite"></div>';
     } else {
       // OWNER MODE (owner code in session). The owner code + editor-code
       // manager live in the Controls tab's Share & Access section
-      // (renderShare) — the cloud section keeps backup + changelog + webhooks.
+      // (renderShare) , the cloud section keeps backup + changelog + webhooks.
       body =
-        '<div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-folder"></use></svg> Cloud Backup — linked (owner)</span></div>' +
-        '<div class="sr-hint">Your owner code and editor codes are in <strong>Controls ▸ Share &amp; Access</strong> above. This section is the backup + history side: snapshots auto-sync to the cloud in the background as you work — Save now just pushes immediately; view the changelog, and wire webhooks.</div>' +
+        '<div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-folder"></use></svg> Cloud Backup , linked (owner)</span></div>' +
+        '<div class="sr-hint">Your owner code and editor codes are in <strong>Controls ▸ Share &amp; Access</strong> above. This section is the backup + history side: snapshots auto-sync to the cloud in the background as you work , Save now just pushes immediately; view the changelog, and wire webhooks.</div>' +
         '<div class="exp-row">' +
         '<button class="btn btn-n btn-s" data-action="cloudSave"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-upload"></use></svg> Save to Cloud</button>' +
         '<button class="btn btn-n btn-s" data-action="cloudLoad"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Load from Cloud</button>' +
@@ -1190,10 +1190,10 @@ var MMGR = window.MMGR || {};
         // ---- Phase 3: changelog ----
         '<div class="sr" style="margin-top:8px"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-calendar"></use></svg> Changelog</span>' +
         '<button class="btn btn-n btn-s" data-action="cloudLogList" style="margin-left:8px"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> View</button></div>' +
-        '<div class="sr-hint">Every save is logged with field-level before/after values (or a snapshot for bulk changes). Revert is owner-only and itself logged — history is never erased.</div>' +
+        '<div class="sr-hint">Every save is logged with field-level before/after values (or a snapshot for bulk changes). Revert is owner-only and itself logged , history is never erased.</div>' +
         '<div id="cloud-log-list"></div>' +
         // CLOUD-FIRST SYNC (PART 3, approved 2026-08-17): the owner's
-        // broadcast controls — manual "Broadcast to other projects" + the
+        // broadcast controls , manual "Broadcast to other projects" + the
         // per-project auto-broadcast toggle (owner decision: broadcast
         // overwrites copies when the admin clicks OR auto-broadcast is on).
         '<div class="sr" style="margin-top:8px"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-upload"></use></svg> Offline copies &amp; broadcast</span>' +
@@ -1203,17 +1203,17 @@ var MMGR = window.MMGR || {};
         '<input type="checkbox" id="cloud-auto-broadcast" data-action="cloudAutoBroadcast"> Auto-broadcast on every save (this project)</label>' +
         '<div id="cloud-offline-list" style="margin-top:6px"></div>' +
         // REVIEW QUEUE (approved 2026-08-17, always on): the owner's gate
-        // for changes from a non-owner source — editor saves and AI imports
+        // for changes from a non-owner source , editor saves and AI imports
         // wait here as proposals until the owner accepts (applies) or
         // rejects (discards). Nothing reaches the project without a decision.
         '<div class="sr" style="margin-top:8px"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-check"></use></svg> Review incoming changes</span>' +
         '<button class="btn btn-n btn-s" data-action="cloudReviewList" style="margin-left:8px"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> Refresh</button></div>' +
-        '<div class="sr-hint">Edits from editor codes (and AI imports) wait here for your decision — accept to apply them to the cloud project, reject to discard. The editor sees the outcome on their side.</div>' +
+        '<div class="sr-hint">Edits from editor codes (and AI imports) wait here for your decision , accept to apply them to the cloud project, reject to discard. The editor sees the outcome on their side.</div>' +
         '<div id="cloud-review-list"></div>' +
         // ---- MASTER-ACTION-PLAN RANK 9.2: opt-in webhooks (owner-only) ----
         '<div class="sr" style="margin-top:8px"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-zap"></use></svg> Webhooks</span>' +
         '<button class="btn btn-n btn-s" data-action="cloudWebhookList" style="margin-left:8px"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> List</button></div>' +
-        '<div class="sr-hint">Opt-in notifications: when this project\u2019s health score drops, or tomorrow is a weather-risk day, My MaNaGeR POSTs a signed event to your URL (X-MMGR-Signature HMAC header). Off by default — nothing fires until you add one.</div>' +
+        '<div class="sr-hint">Opt-in notifications: when this project\u2019s health score drops, or tomorrow is a weather-risk day, My MaNaGeR POSTs a signed event to your URL (X-MMGR-Signature HMAC header). Off by default , nothing fires until you add one.</div>' +
         '<div class="exp-row" style="flex-wrap:wrap">' +
         '<select id="cloud-webhook-event" class="ctl-in" aria-label="Webhook event">' +
         '<option value="health_dropped">Health score dropped</option>' +
@@ -1228,29 +1228,29 @@ var MMGR = window.MMGR || {};
     // Google sign-in strip (recovery only; create/save/load never need it).
     body += '<div class="sr" style="margin-top:8px"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-user"></use></svg> Google</span></div>';
     if (signedIn) {
-      // Provider-neutral: the session may be Google OR email+password —
+      // Provider-neutral: the session may be Google OR email+password , 
       // both issue the same mmgr_session cookie (sub='email:…' vs a
       // numeric Google sub), and recovery is gated on the sub match alone.
-      body += '<div class="sr-hint">Signed in — owner-code recovery is available for a linked project.</div>';
+      body += '<div class="sr-hint">Signed in , owner-code recovery is available for a linked project.</div>';
     } else {
-      body += '<div class="sr-hint">Optional — sign in with Google to enable owner-code recovery if the code is ever lost.</div>' +
+      body += '<div class="sr-hint">Optional , sign in with Google to enable owner-code recovery if the code is ever lost.</div>' +
         '<div class="exp-row"><button class="btn btn-n btn-s" data-action="cloudSignIn"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-user"></use></svg> Sign in with Google</button></div>' +
         '<div id="cloud-gis-host" class="is-hide"></div>';
     }
     // gap-audit E18: the cloud status line is a live region so save/load/
     // recover/unlink outcomes are announced to screen-reader users.
-    // Billing upgrade banner (only set by a real server 402 — see above).
+    // Billing upgrade banner (only set by a real server 402 , see above).
     if (_upgradePending) {
       body += '<div class="sr" style="border:1px solid var(--gold);background:rgba(var(--gold-rgb),.1);border-radius:var(--radius);padding:8px 10px;margin:6px 0" role="status">' +
-        '<div class="sr-hint" style="margin:0 0 6px"><strong>Free plan limit reached</strong> — you\u2019ve used all the linked cloud projects on the free plan. Upgrade to keep linking projects to the cloud.</div>' +
+        '<div class="sr-hint" style="margin:0 0 6px"><strong>Free plan limit reached</strong> , you\u2019ve used all the linked cloud projects on the free plan. Upgrade to keep linking projects to the cloud.</div>' +
         '<button class="btn btn-g btn-s" data-action="cloudUpgrade"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-zap"></use></svg> Upgrade plan</button>' +
         '</div>';
     }
-    // AUTH MAINFRAME v2 — verified-email gate banner (only set by a real
-    // server 403 {verifyRequired:true} — see createProject above).
+    // AUTH MAINFRAME v2 , verified-email gate banner (only set by a real
+    // server 403 {verifyRequired:true} , see createProject above).
     if (_verifyPending) {
       body += '<div class="sr" style="border:1px solid var(--gold);background:rgba(var(--gold-rgb),.1);border-radius:var(--radius);padding:8px 10px;margin:6px 0" role="status">' +
-        '<div class="sr-hint" style="margin:0 0 6px"><strong>Confirm your email</strong> — cloud projects unlock once you click the confirmation link we emailed you.</div>' +
+        '<div class="sr-hint" style="margin:0 0 6px"><strong>Confirm your email</strong> , cloud projects unlock once you click the confirmation link we emailed you.</div>' +
         '<button class="btn btn-n btn-s" data-action="cloudResendVerify"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-mail"></use></svg> Resend confirmation link</button>' +
         '</div>';
     }
@@ -1289,7 +1289,7 @@ var MMGR = window.MMGR || {};
           '<button class="btn btn-n btn-s" data-action="cloudUpdateCopy"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> Update offline copy</button>' +
           '<button class="btn btn-o btn-s" data-action="cloudRemoveCopy"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> Remove copy</button>' +
           '</div>' +
-          '<div class="sr-hint">Updates arrive automatically when the admin saves or broadcasts. The copy is view-only — nothing here can edit the project.</div>';
+          '<div class="sr-hint">Updates arrive automatically when the admin saves or broadcasts. The copy is view-only , nothing here can edit the project.</div>';
       }
     }
     if (code) {
@@ -1298,7 +1298,7 @@ var MMGR = window.MMGR || {};
     } else if (getECode() && !getCode()) {
       const escope2 = getEScope();
       // REVIEW QUEUE: an EDITOR's own proposal status (pending / accepted /
-      // rejected) — the "review list with status" visibility approved for
+      // rejected) , the "review list with status" visibility approved for
       // the source side. Viewers cannot save, so they have no proposals.
       if (!(escope2 && escope2.role === 'view')) cloudReviewMine();
     }
@@ -1328,7 +1328,7 @@ var MMGR = window.MMGR || {};
           const hint = document.createElement('span');
           hint.className = 'sr-hint';
           hint.style.margin = '0';
-          hint.textContent = 'Cloud API unavailable here — editor codes need the Worker.';
+          hint.textContent = 'Cloud API unavailable here , editor codes need the Worker.';
           scopeBox.appendChild(hint);
         }
       }
@@ -1344,7 +1344,7 @@ var MMGR = window.MMGR || {};
 
   // ---- sign-in entry (data-action) ----------------------------------------
   // Reveals the in-drawer GIS button AND pops the Google prompt immediately
-  // (one motion — no second click on a rendered button required).
+  // (one motion , no second click on a rendered button required).
   async function signIn() {
     const host = $('cloud-gis-host');
     if (!host) return;
@@ -1352,7 +1352,7 @@ var MMGR = window.MMGR || {};
     const ok = await renderSignInButton();
     if (!ok) {
       host.classList.add('is-hide');
-      setStatus('Google sign-in unavailable (offline or blocked) — recovery can wait.', 'warn');
+      setStatus('Google sign-in unavailable (offline or blocked) , recovery can wait.', 'warn');
       return;
     }
     const GA = window.MMGR.GoogleAuth;
@@ -1365,18 +1365,18 @@ var MMGR = window.MMGR || {};
   async function dropEditor() {
     clearECode();
     await render();
-    setStatus('Editor credential cleared — use the owner code (or Create) to link as owner.', 'warn');
+    setStatus('Editor credential cleared , use the owner code (or Create) to link as owner.', 'warn');
   }
 
   // ---- unlink from cloud (gap-audit B10) ---------------------------------
   // Deletes the CLOUD copy (D1 row, editor codes, changelog, R2 objects).
-  // This device's local project stays untouched — "keep local copy, stop
+  // This device's local project stays untouched , "keep local copy, stop
   // syncing". Owner-only, explicit confirm since it is irreversible.
   async function unlinkProject() {
     const cred = activeCredential();
     if (!cred) { setStatus('No cloud credential in this session.', 'warn'); return; }
     if (cred.header !== 'X-Owner-Code') { setStatus('Only the owner can unlink the project from cloud.', 'warn'); return; }
-    if (!window.confirm('Delete the CLOUD copy of this project? Your local data on this device stays — only the cloud snapshot, editor codes, and changelog are removed. This cannot be undone.')) return;
+    if (!window.confirm('Delete the CLOUD copy of this project? Your local data on this device stays , only the cloud snapshot, editor codes, and changelog are removed. This cannot be undone.')) return;
     setStatus('Unlinking from cloud…', 'busy');
     try {
       const res = await fetch('/api/cloud/projects/' + encodeURIComponent(pid()), {
@@ -1386,17 +1386,17 @@ var MMGR = window.MMGR || {};
       if (!res.ok || !data.ok) { setStatus((data && data.error) || 'Unlink failed (HTTP ' + res.status + ').', 'err'); return; }
       clearCode(); clearECode(); setLastSeen(''); clearPendingEditorCode();
       await render();
-      setStatus('Unlinked — the cloud copy is deleted. This device keeps its local data.', 'ok');
+      setStatus('Unlinked , the cloud copy is deleted. This device keeps its local data.', 'ok');
     } catch (e) {
       setStatus('Cloud is unavailable on this host (needs the Worker API).', 'err');
     }
   }
 
   // =========================================================================
-  // CLOUD-FIRST SYNC (PART 3, approved 2026-08-17) — offline copies +
+  // CLOUD-FIRST SYNC (PART 3, approved 2026-08-17) , offline copies +
   // broadcast. A registered copy is a VIEW-ONLY snapshot of this project on
   // this device (owner decision: "View-only"). It updates when the main
-  // device saves (live refresh on save — approved scope) or when the admin
+  // device saves (live refresh on save , approved scope) or when the admin
   // broadcasts. Reconcile model (owner): the local is connected to the cloud,
   // so changes made auto-sync up whenever a sync can happen, and the cloud
   // broadcasts down to copies when the admin clicks "Broadcast to other
@@ -1421,7 +1421,7 @@ var MMGR = window.MMGR || {};
       }
       setCopyRecord({ copyId: data.copyId, deviceId: deviceId(), lastCloudRev: data.revision || null });
       await render();
-      setStatus('Offline copy registered on this device — it updates when the project changes or the admin broadcasts. View-only.', 'ok');
+      setStatus('Offline copy registered on this device , it updates when the project changes or the admin broadcasts. View-only.', 'ok');
     } catch (e) {
       setStatus('Cloud is unavailable on this host (needs the Worker API).', 'err');
     }
@@ -1431,12 +1431,12 @@ var MMGR = window.MMGR || {};
   // full page reload: adopt the state in memory (State.adoptExternal) and
   // re-render (Render.renderAll), then stamp the copy's last_cloud_rev via
   // the X-Device-Id header the server uses for freshness tracking. silent =
-  // the live-refresh path (rev-changed push) — no status churn; manual clicks
+  // the live-refresh path (rev-changed push) , no status churn; manual clicks
   // get the friendly confirmation. Never throws.
   async function cloudUpdateCopy(silent) {
     const cred = activeCredential();
     const rec = getCopyRecord();
-    if (!cred || !rec) { setStatus('No offline copy registered on this device yet — use Make offline copy first.', 'warn'); return; }
+    if (!cred || !rec) { setStatus('No offline copy registered on this device yet , use Make offline copy first.', 'warn'); return; }
     if (!silent) setStatus('Updating offline copy…', 'busy');
     try {
       const headers = { 'Content-Type': 'application/json', 'X-Device-Id': rec.deviceId };
@@ -1453,13 +1453,13 @@ var MMGR = window.MMGR || {};
         if (!silent) setStatus(msg, 'err');
         return;
       }
-      if (!data.state) { if (!silent) setStatus('No cloud snapshot to pull yet — the admin needs to save once first.', 'warn'); return; }
+      if (!data.state) { if (!silent) setStatus('No cloud snapshot to pull yet , the admin needs to save once first.', 'warn'); return; }
       try {
         localStorage.setItem('mmgr_state_' + pid(), JSON.stringify(data.state));
         localStorage.setItem('mmgr_unlocked_' + pid(), '1');
         localStorage.setItem('mmgr_scope_' + pid(), 'full');
         localStorage.setItem('mmgr_current_project', pid());
-      } catch (e) { /* storage blocked — in-memory adopt below still applies */ }
+      } catch (e) { /* storage blocked , in-memory adopt below still applies */ }
       const S = window.MMGR.State;
       if (S && typeof S.adoptExternal === 'function') S.adoptExternal(data.state);
       const R = window.MMGR.Render;
@@ -1469,7 +1469,7 @@ var MMGR = window.MMGR || {};
         rec.lastCloudRev = data.savedAt;
         setCopyRecord(rec);
       }
-      if (!silent) setStatus('Offline copy updated — this device now matches the cloud (' + (data.savedAt || '').slice(0, 19).replace('T', ' ') + ').', 'ok');
+      if (!silent) setStatus('Offline copy updated , this device now matches the cloud (' + (data.savedAt || '').slice(0, 19).replace('T', ' ') + ').', 'ok');
     } catch (e) {
       if (!silent) setStatus('Cloud is unavailable on this host (needs the Worker API).', 'err');
     }
@@ -1489,9 +1489,9 @@ var MMGR = window.MMGR || {};
           method: 'DELETE', credentials: 'same-origin', headers: headers,
           body: JSON.stringify({ deviceId: rec.deviceId })
         });
-        // 404/403 on an already-gone copy is fine — the local record is the
+        // 404/403 on an already-gone copy is fine , the local record is the
         // source of truth for "this device has a copy" going forward.
-        if (!res.ok) { /* keep going — clear the local record either way */ }
+        if (!res.ok) { /* keep going , clear the local record either way */ }
       }
       clearCopyRecord();
       await render();
@@ -1519,7 +1519,7 @@ var MMGR = window.MMGR || {};
       const toggle = $('cloud-auto-broadcast');
       if (toggle) toggle.checked = !!data.autoBroadcast;
       if (!copies.length) {
-        wrap.innerHTML = '<div class="sr-hint">No offline copies registered yet — recipients click Make offline copy inside their view.</div>';
+        wrap.innerHTML = '<div class="sr-hint">No offline copies registered yet , recipients click Make offline copy inside their view.</div>';
         return;
       }
       wrap.innerHTML = copies.map(function(c) {
@@ -1535,7 +1535,7 @@ var MMGR = window.MMGR || {};
     }
   }
 
-  // Owner: manual "Broadcast to other projects" — pushes the current
+  // Owner: manual "Broadcast to other projects" , pushes the current
   // revision to every registered copy (connected ones refresh instantly via
   // the Presence DO) and records a changelog 'broadcast' entry.
   async function cloudBroadcast() {
@@ -1550,7 +1550,7 @@ var MMGR = window.MMGR || {};
       });
       const data = await res.json().catch(function() { return {}; });
       if (!res.ok || !data.ok) { setStatus((data && data.error) || 'Broadcast failed (HTTP ' + res.status + ').', 'err'); return; }
-      setStatus('Broadcast sent — ' + (data.copies || 0) + ' registered copy/copies will update to the current snapshot.', 'ok');
+      setStatus('Broadcast sent , ' + (data.copies || 0) + ' registered copy/copies will update to the current snapshot.', 'ok');
       cloudOfflineList();
     } catch (e) {
       setStatus('Cloud is unavailable on this host (needs the Worker API).', 'err');
@@ -1574,7 +1574,7 @@ var MMGR = window.MMGR || {};
         setStatus((data && data.error) || 'Auto-broadcast toggle failed (HTTP ' + res.status + ').', 'err');
         return;
       }
-      setStatus(enabled ? 'Auto-broadcast ON — every save also broadcasts to registered copies.' : 'Auto-broadcast OFF — broadcast manually when you want to push.', 'ok');
+      setStatus(enabled ? 'Auto-broadcast ON , every save also broadcasts to registered copies.' : 'Auto-broadcast OFF , broadcast manually when you want to push.', 'ok');
     } catch (e) {
       if (toggle) toggle.checked = !enabled;
       setStatus('Cloud is unavailable on this host (needs the Worker API).', 'err');
@@ -1606,18 +1606,18 @@ var MMGR = window.MMGR || {};
   // ones; decided rows show their status. Zero-throw.
   function cloudReviewList() { if (ns.CloudReview) ns.CloudReview.cloudReviewList(); }
 
-  // Editor: their own proposal status (pending / accepted / rejected) — the
+  // Editor: their own proposal status (pending / accepted / rejected) , the
   // "review list with status" visibility approved for the source side.
   function cloudReviewMine() { if (ns.CloudReview) ns.CloudReview.cloudReviewMine(); }
 
   // Toggle a proposal's diff panel (mirror of toggleDiffs, review list).
   function reviewToggleDiffs(id) { if (ns.CloudReview) ns.CloudReview.reviewToggleDiffs(id); }
 
-  // Owner: accept a proposal — the scoped merge applies to the cloud
+  // Owner: accept a proposal , the scoped merge applies to the cloud
   // snapshot (or the MCP audit row is written), changelog 'accepted'.
   function cloudReviewAccept(id) { if (ns.CloudReview) ns.CloudReview.cloudReviewAccept(id); }
 
-  // Owner: reject a proposal — discarded, changelog 'rejected', no state change.
+  // Owner: reject a proposal , discarded, changelog 'rejected', no state change.
   function cloudReviewReject(id) { if (ns.CloudReview) ns.CloudReview.cloudReviewReject(id); }
 
   // ---- copy the just-created editor code (shown-once banner, G23) ---------
@@ -1625,7 +1625,7 @@ var MMGR = window.MMGR || {};
   function editorCodeDone() { if (ns.CloudReview) ns.CloudReview.editorCodeDone(); }
 
   // ---- MASTER-ACTION-PLAN RANK 9.2: webhook management (owner-only) ------
-  // Opt-in notification endpoints (off by default — nothing exists until the
+  // Opt-in notification endpoints (off by default , nothing exists until the
   // owner adds one). All three mirror the editor/changelog patterns: owner
   // code in session, fetch, escape, render into a dedicated container.
   function webhookList() { if (ns.CloudWebhooks) ns.CloudWebhooks.webhookList(); }
@@ -1642,14 +1642,14 @@ var MMGR = window.MMGR || {};
   // The Presence WebSocket delivers `{type:'rev-changed', revision}` when the
   // main device saves or the admin broadcasts. A REGISTERED copy on this
   // device auto-pulls the fresh snapshot (view-only, so the overwrite is
-  // always safe — approved reconcile: copies never fight the cloud). Only
+  // always safe , approved reconcile: copies never fight the cloud). Only
   // viewers auto-pull; an editor with a registered copy pulls manually (their
-  // workspace may hold in-flight scoped edits — the manual button pushes
+  // workspace may hold in-flight scoped edits , the manual button pushes
   // local changes up first, then pulls, per the owner's auto-sync-up model).
   let _revPullBusy = false;
   document.addEventListener('mmgr:rev-changed', function(ev) {
     const rec = getCopyRecord();
-    if (!rec) return; // no copy on this device — nothing to refresh
+    if (!rec) return; // no copy on this device , nothing to refresh
     if (_revPullBusy) return;
     const escope = getEScope();
     const isView = !!(getECode() && !getCode() && escope && escope.role === 'view');
@@ -1711,7 +1711,7 @@ var MMGR = window.MMGR || {};
     cloudReviewReject: cloudReviewReject,
     reviewToggleDiffs: reviewToggleDiffs,
     // IN-PROJECT DELETE (owner 2026-08-17): Settings > Controls > Danger
-    // Zone — confirm modal + password verify + the owner-only soft delete.
+    // Zone , confirm modal + password verify + the owner-only soft delete.
     cloudDeleteOpen: cloudDeleteOpen,
     cloudDeleteClose: cloudDeleteClose,
     cloudDeleteConfirm: cloudDeleteConfirm,
@@ -1733,7 +1733,7 @@ var MMGR = window.MMGR || {};
   };
 
   // Render on boot (App.init calls this too via the guarded hook; the
-  // double-call is safe — render is idempotent).
+  // double-call is safe , render is idempotent).
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', render);
   } else {

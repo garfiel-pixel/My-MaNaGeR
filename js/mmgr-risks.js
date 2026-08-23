@@ -1,5 +1,5 @@
 /* ============================================================
-   My MaNaGeR — Risk & Issue Management Module
+   My MaNaGeR , Risk & Issue Management Module
    ============================================================ */
 var MMGR = window.MMGR || {};
 
@@ -66,7 +66,7 @@ var MMGR = window.MMGR || {};
   }
 
   // ---- Inspection Checklists (MARKET-FEATURE-ROADMAP C16) ----
-  // Trade/phase inspection checklists — deliberately separate from DMAIC
+  // Trade/phase inspection checklists , deliberately separate from DMAIC
   // (continuous improvement) and from the general task list. Each inspection
   // holds a pass/fail item checklist; status rolls up from item passes.
   function addInspection() {
@@ -87,7 +87,7 @@ var MMGR = window.MMGR || {};
       insp[field] = value;
       if (field === 'status' && value === 'closed') {
         // Closing an inspection requires every item to pass (or be manually
-        // overridden — the select still wins if items are incomplete).
+        // overridden , the select still wins if items are incomplete).
       }
     });
     if (evtType === 'input') return;
@@ -146,7 +146,7 @@ var MMGR = window.MMGR || {};
 
   // ---- Incident Register w/ corrective-action loop (C17) ----
   // Quality/safety incidents: report → investigation → corrective action →
-  // closed. The corrective-action closure loop is the roadmap's ask — an
+  // closed. The corrective-action closure loop is the roadmap's ask , an
   // incident is only 'closed' when root cause + corrective action are on
   // record and the status is driven through the loop.
   const INCIDENT_STATUSES = ['open', 'investigation', 'action', 'closed'];

@@ -1,5 +1,5 @@
 /* ============================================================
-   REVIEWS — public reviews window + cloud review queue
+   REVIEWS , public reviews window + cloud review queue
    ------------------------------------------------------------
    Extracted from worker.js. Public reviews (anyone can post,
    anyone can read) plus the cloud review queue (editor proposals
@@ -40,8 +40,8 @@ async function readReviewBody(request) {
 }
 
 function reviewPlainTextProblem(s) {
-  if (/[<>]/.test(s)) return 'plain text only — no HTML or markup in reviews';
-  if (/https?:\/\/|www\./i.test(s)) return 'plain text only — no links in reviews';
+  if (/[<>]/.test(s)) return 'plain text only , no HTML or markup in reviews';
+  if (/https?:\/\/|www\./i.test(s)) return 'plain text only , no links in reviews';
   return null;
 }
 
@@ -124,7 +124,7 @@ export async function handleReviewList(request, env, projectId, mine) {
   return json({ ok: true, proposals: mineList });
 }
 
-// cloudPushRevChangedIfCopies is still in worker.js — accept calls it
+// cloudPushRevChangedIfCopies is still in worker.js , accept calls it
 // via a parameter to avoid circular dependency
 export async function handleReviewAccept(request, env, projectId, reviewId, pushRevChanged) {
   const auth = await cloudAuthOwnerEither(request, env, projectId);

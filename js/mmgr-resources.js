@@ -1,5 +1,5 @@
 /* ============================================================
-   My MaNaGeR — Resource & Budget Management Module
+   My MaNaGeR , Resource & Budget Management Module
    ============================================================ */
 var MMGR = window.MMGR || {};
 
@@ -90,7 +90,7 @@ var MMGR = window.MMGR || {};
       s.budgetLines.push({
         id: U.genShortId('B'), category: '', planned: 0, actual: 0,
         notes: '', taskId: '', curve: 'linear',
-        // MARKET-FEATURE-ROADMAP A2: lien-waiver status tracking — US-convention
+        // MARKET-FEATURE-ROADMAP A2: lien-waiver status tracking , US-convention
         // labels per the roadmap (Jamaica legal verification is B7, still open).
         waiverStatus: 'pending', waiverReceivedAt: '',
         // MARKET-FEATURE-ROADMAP C12: committed-but-not-spent bucket. Null =
@@ -132,7 +132,7 @@ var MMGR = window.MMGR || {};
 
   // ---- Spend Log + Cash-Flow S-Curve (MONOLITH-PORTING-GUIDE feature 2) ----
   // Ported pure math over budgetLines + spendLog. All functions take state
-  // (or the specific arrays) as parameters — they never touch a live object.
+  // (or the specific arrays) as parameters , they never touch a live object.
 
   // Fraction of a spend window elapsed, shaped by the line's curve.
   // Shapes (monolith semantics): 'scurve' slow-fast-slow, 'front' heavy
@@ -265,7 +265,7 @@ var MMGR = window.MMGR || {};
   // ---- Pay Applications (MARKET-FEATURE-ROADMAP C13) ----
   // Draw-request register: a generated draft carries the live spend figure
   // (sum of budget-line actuals, the same source the Budget panel shows) so
-  // the amount is never hand-typed twice. Zero third-party — plain records.
+  // the amount is never hand-typed twice. Zero third-party , plain records.
   function currentPeriodLabel() {
     const d = new Date();
     const m = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.getMonth()];

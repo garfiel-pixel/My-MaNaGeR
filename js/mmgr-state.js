@@ -1,5 +1,5 @@
 /* ============================================================
-   My MaNaGeR — State Management Module
+   My MaNaGeR , State Management Module
    Schema versioning, persistence, and migration.
    ============================================================ */
 var MMGR = window.MMGR || {};
@@ -33,7 +33,7 @@ var MMGR = window.MMGR || {};
       tasks: [],
       // Meetings (completed history + live session)
       meetings: [],
-      // ACTION-PLAN 1.2: meeting-to-action closed loop — promises carried
+      // ACTION-PLAN 1.2: meeting-to-action closed loop , promises carried
       // from one meeting of a kind into the next (keyed by meeting kind).
       meetingPromises: {},
       activeMeeting: null,
@@ -83,7 +83,7 @@ var MMGR = window.MMGR || {};
       baseline: null,
       // Weather region driving selective schedule padding
       weatherRegion: 'northern-temperate',
-      // ACTION-PLAN 7: Open-Meteo forecast — one-time geocode + TTL cache,
+      // ACTION-PLAN 7: Open-Meteo forecast , one-time geocode + TTL cache,
       // plus the weather-delay daily log and the LD contract rate.
       siteLat: null,
       siteLon: null,
@@ -101,15 +101,15 @@ var MMGR = window.MMGR || {};
       kbShowLeadtime: false,
       // Monolith Critical Path Highlighter: dim non-critical Gantt bars
       hlCritical: false,
-      // Monolith Daily Field snapshot: { date, taskStates } — the state map
+      // Monolith Daily Field snapshot: { date, taskStates } , the state map
       // the Daily Field prompt diffs "completed since last snapshot" against.
       dailySnapshot: null,
       // Monolith focus mode: persists the F-key workspace across refreshes.
       focusMode: false,
-      // ACTION-PLAN 3.3: quiet PM consistency streak — consecutive calendar
+      // ACTION-PLAN 3.3: quiet PM consistency streak , consecutive calendar
       // days with at least one edit. Informational only, never gates or nags.
       streak: { count: 0, lastDate: null },
-      // ACTION-PLAN 3.2: stakeholder sentiment pulse — per-meeting team pulse
+      // ACTION-PLAN 3.2: stakeholder sentiment pulse , per-meeting team pulse
       // (positive/neutral/concerned), tracked over time as a sparkline.
       // Professional tone: no emoji, optional, never blocks meeting close.
       sentimentHistory: [],
@@ -117,21 +117,21 @@ var MMGR = window.MMGR || {};
       // file. The header dirty indicator compares this against updatedAt so
       // "Not backed up" is meaningful (not a 300ms flash during autosave).
       lastBackedUpAt: null,
-      // Phase 2: client feature flags — all default-on; switching a flag off
+      // Phase 2: client feature flags , all default-on; switching a flag off
       // hides the corresponding optional UI (Controls drawer > Features).
-      // MERGED-AI-CONTROL (audit 1.2): aiWindow is NOT a flag anymore — the
+      // MERGED-AI-CONTROL (audit 1.2): aiWindow is NOT a flag anymore , the
       // AI assistant is controlled by state.config.ai.tier (the drawer switch
       // is its master on/off). Only the four real UI modules stay flags.
       flags: { monteCarlo: true, ganttExport: true, leadtimeLane: true, weatherForecast: true },
-      // Phase 2: client-side error surface — last 20 errors, each with a
+      // Phase 2: client-side error surface , last 20 errors, each with a
       // timestamp and the source action, surfaced in the Controls drawer.
       errorLog: [],
       // Phase 3: reserved per-project config (future API keys/endpoints).
-      // Empty by default — see MMGR.Config in js/mmgr-net.js for the static
+      // Empty by default , see MMGR.Config in js/mmgr-net.js for the static
       // defaults every network call already routes through.
       config: {},
       // MASTER-ACTION-PLAN-v3-STRICT Rank 1.2: schedule slips as a
-      // FIRST-CLASS object — which tasks slipped vs the baseline, by how
+      // FIRST-CLASS object , which tasks slipped vs the baseline, by how
       // many days, each with a cause tag (weather / predecessor / change /
       // unknown), never silently blank. slipCauses holds explicit user
       // overrides keyed by taskId; computeSlips() in mmgr-claim.js derives
@@ -145,34 +145,34 @@ var MMGR = window.MMGR || {};
       digestSnapshot: null,
       // PLAN-OF-ACTION-AI-VOICE-SYNC-v1 Rank 2.3: agent-style preset outputs.
       // Each generated preset result is stored here as a structured field
-      // keyed by preset type — { at, tier, model, promptType, text, trace }.
+      // keyed by preset type , { at, tier, model, promptType, text, trace }.
       // Unified state only (constraint #1): no side-store. Every entry keeps
       // a `trace` of the exact state fields its text was drawn from, so the
       // zero-fabrication acceptance gate can be re-verified on every run.
       aiOutputs: {},
       // PLAN-OF-ACTION-AI-VOICE-SYNC-v1 Rank 4.4: per-field write timestamps.
-      // { fieldName: iso-string } — stamped on every save for the TOP-LEVEL
+      // { fieldName: iso-string } , stamped on every save for the TOP-LEVEL
       // fields (plus nested charter keys) whose JSON actually changed since
       // the previous save. This is the primitive the cross-device merge uses
       // for last-write-wins PER FIELD instead of whole-document overwrite.
       // Deliberately the lighter option over a CRDT rewrite (per the plan).
       fieldTs: {},
       // MASTER-ACTION-PLAN-v3-STRICT Rank 3.1 (PLAN-OF-ACTION-AI-VOICE-SYNC-v1
-      // Rank 3.4 companion): Core Mode vs Advanced Packs — progressive
+      // Rank 3.4 companion): Core Mode vs Advanced Packs , progressive
       // disclosure. New projects start in CORE ONLY (Dashboard + WBS +
       // Kanban + Charter + Definitions); each advanced pack is toggled on
       // explicitly, never by default. Existing saved projects are migrated
       // with all packs ON so nothing disappears for a user mid-project.
       packs: {
-        schedule: false,   // Schedule Science: Gantt / critical path / Monte Carlo
-        money: false,      // Money: Budget / EVM
+        schedule: false, // Schedule Science: Gantt / critical path / Monte Carlo
+        money: false, // Money: Budget / EVM
         governance: false, // Governance: RACI / Risk / Changes / Stakeholders / Log / Comms / Docs / Closure / Claim
-        field: false,      // Field: Weather / Meetings / Claim
+        field: false, // Field: Weather / Meetings / Claim
         quality: false     // Quality: DMAIC
       },
       // PROJECT-UX-NAV-WEATHER-EXPORT-DIRECTIVE DIR-3: Core-Mode onboarding
-      // callout memory. packsCalloutDismissed — the user clicked "Not now"
-      // and is never asked again; packsEverEnabled — any pack has been
+      // callout memory. packsCalloutDismissed , the user clicked "Not now"
+      // and is never asked again; packsEverEnabled , any pack has been
       // toggled on at least once, so a later toggle-OFF must not resurrect
       // the nudge (the directive: "once any pack has ever been toggled on
       // for that project, never show this callout again").
@@ -270,7 +270,7 @@ var MMGR = window.MMGR || {};
       return state;
     },
     6: function(state) {
-      // V5 -> V6: ACTION-PLAN 1.2 meeting-to-action closed loop — promises
+      // V5 -> V6: ACTION-PLAN 1.2 meeting-to-action closed loop , promises
       // carried from one meeting of a kind into the next meeting of the same
       // kind. Keyed by meeting kind (kickoff/weekly/risk/...).
       if (!state.meetingPromises) state.meetingPromises = {};
@@ -314,7 +314,7 @@ var MMGR = window.MMGR || {};
     10: function(state) {
       // V9 -> V10: ACTION-PLAN 3.2 sentiment pulse history + 7.3 manual
       // per-task weather float + item 23 rolling lead-time review stamps.
-      // All additive back-fills — old saved projects load cleanly.
+      // All additive back-fills , old saved projects load cleanly.
       if (!state.sentimentHistory) state.sentimentHistory = [];
       if (state.wxViewDays === undefined) state.wxViewDays = 7;
       (state.tasks || []).forEach(t => {
@@ -327,14 +327,14 @@ var MMGR = window.MMGR || {};
       return state;
     },
     11: function(state) {
-      // V10 -> V11: Phase 2/3 hardening — client feature flags, client-side
+      // V10 -> V11: Phase 2/3 hardening , client feature flags, client-side
       // error surface, reserved config object, and a charter KPI back-fill
       // (older seeds stored no kpis array; renderers already guarded with
       // `|| []`, this just normalizes the shape). All additive.
       if (!state.flags || typeof state.flags !== 'object' || Array.isArray(state.flags)) {
         state.flags = {};
       }
-      // MERGED-AI-CONTROL (audit 1.2): aiWindow is dropped from the backfill —
+      // MERGED-AI-CONTROL (audit 1.2): aiWindow is dropped from the backfill , 
       // the AI assistant now follows state.config.ai.tier, not a flag.
       ['monteCarlo', 'ganttExport', 'leadtimeLane', 'weatherForecast'].forEach(k => {
         if (state.flags[k] === undefined) state.flags[k] = true;
@@ -345,7 +345,7 @@ var MMGR = window.MMGR || {};
       return state;
     },
     12: function(state) {
-      // V11 -> V12: MASTER-ACTION-PLAN-v3-STRICT Rank 1.2 — schedule slips
+      // V11 -> V12: MASTER-ACTION-PLAN-v3-STRICT Rank 1.2 , schedule slips
       // (baseline-vs-actual delta as a first-class object) + user cause-tag
       // overrides. Additive back-fill: old saved projects get empty arrays.
       if (!Array.isArray(state.scheduleSlips)) state.scheduleSlips = [];
@@ -355,18 +355,18 @@ var MMGR = window.MMGR || {};
       return state;
     },
     13: function(state) {
-      // V12 -> V13: MASTER-ACTION-PLAN-v3-STRICT Rank 2.1 — digest reference
+      // V12 -> V13: MASTER-ACTION-PLAN-v3-STRICT Rank 2.1 , digest reference
       // point. Additive: old projects simply have no snapshot yet, and the
       // digest falls back to the baseline until the user pins one.
       if (state.digestSnapshot === undefined) state.digestSnapshot = null;
       return state;
     },
     14: function(state) {
-      // V13 -> V14: PLAN-OF-ACTION-AI-VOICE-SYNC-v1 Rank 1.5 — meeting
+      // V13 -> V14: PLAN-OF-ACTION-AI-VOICE-SYNC-v1 Rank 1.5 , meeting
       // voice capture fields. Transcript text lives on the meeting record
       // (unified state, portable in the .json export); capture state/method
       // are the visible recording indicators. Audio chunks never touch this
-      // path (IndexedDB only — see mmgr-voice.js). All additive back-fills.
+      // path (IndexedDB only , see mmgr-voice.js). All additive back-fills.
       const vf = function(m) {
         if (!m) return;
         if (m.transcript === undefined) m.transcript = '';
@@ -379,7 +379,7 @@ var MMGR = window.MMGR || {};
       return state;
     },
     15: function(state) {
-      // V14 -> V15: PLAN-OF-ACTION-AI-VOICE-SYNC-v1 Rank 2.3 — agent-style
+      // V14 -> V15: PLAN-OF-ACTION-AI-VOICE-SYNC-v1 Rank 2.3 , agent-style
       // preset outputs. Additive: old projects simply have no outputs yet.
       if (!state.aiOutputs || typeof state.aiOutputs !== 'object' || Array.isArray(state.aiOutputs)) {
         state.aiOutputs = {};
@@ -387,7 +387,7 @@ var MMGR = window.MMGR || {};
       return state;
     },
     16: function(state) {
-      // V15 -> V16: MASTER-ACTION-PLAN-v3-STRICT Rank 3.1 — Core Mode vs
+      // V15 -> V16: MASTER-ACTION-PLAN-v3-STRICT Rank 3.1 , Core Mode vs
       // Advanced Packs. EXISTING saved projects migrate with ALL packs ON so
       // the surface they already use never disappears mid-project; brand-new
       // projects (getDefaultState) start Core-only. Additive back-fill.
@@ -400,7 +400,7 @@ var MMGR = window.MMGR || {};
       return state;
     },
     17: function(state) {
-      // V16 -> V17: PLAN-OF-ACTION-AI-VOICE-SYNC-v1 Rank 4.4 — per-field
+      // V16 -> V17: PLAN-OF-ACTION-AI-VOICE-SYNC-v1 Rank 4.4 , per-field
       // timestamps. Additive back-fill: no map yet, the first save stamps it.
       if (!state.fieldTs || typeof state.fieldTs !== 'object' || Array.isArray(state.fieldTs)) {
         state.fieldTs = {};
@@ -408,7 +408,7 @@ var MMGR = window.MMGR || {};
       return state;
     },
     18: function(state) {
-      // V17 -> V18: PROJECT-UX-NAV-WEATHER-EXPORT-DIRECTIVE DIR-3 — Core-Mode
+      // V17 -> V18: PROJECT-UX-NAV-WEATHER-EXPORT-DIRECTIVE DIR-3 , Core-Mode
       // onboarding callout memory. Additive back-fill: pre-v16 saved projects
       // already migrated with all packs ON, so the callout stays hidden for
       // them; brand-new projects start at false and show the nudge once.
@@ -506,7 +506,7 @@ var MMGR = window.MMGR || {};
   // Re-migrates, replaces the in-memory state, and persists immediately.
   function adoptExternal(parsedState) {
     try {
-      // Same secret strip as importState — an adopted blob (multi-tab
+      // Same secret strip as importState , an adopted blob (multi-tab
       // "keep theirs", storage-event handoff) must not carry a key into
       // this device's live state either.
       stripSecrets(parsedState);
@@ -527,12 +527,12 @@ var MMGR = window.MMGR || {};
   // all-or-nothing replace adoptExternal performs. Each tracked top-level
   // field keeps whichever side has the NEWER per-field timestamp
   // (state.fieldTs, written by stampFieldTs on every save); timestamps that
-  // are missing defer to updatedAt, then to the LOCAL value — a tie never
+  // are missing defer to updatedAt, then to the LOCAL value , a tie never
   // loses local data. Returns a report of decisions (or null on invalid
   // input) so the caller can surface a human-readable summary.
   //
   // NOTE on exclusions: flags and config (including the AI provider key) are
-  // deliberately NOT in FIELD_KEYS — those are per-device preferences that
+  // deliberately NOT in FIELD_KEYS , those are per-device preferences that
   // must never leak across a merge. Do not "fix" that.
   function mergeExternal(parsedState) {
     const report = [];
@@ -541,7 +541,7 @@ var MMGR = window.MMGR || {};
       if (!incoming || typeof incoming !== 'object') return null;
       // Snapshot before mutating so a merge is undoable, like every other
       // destructive op (adopt, cascade, clear-all, baseline restore). Only
-      // pushed once, at the first actual adoption — a pure no-op merge
+      // pushed once, at the first actual adoption , a pure no-op merge
       // (nothing adopted) doesn't waste an undo slot.
       let undoPushed = false;
       const localTs = (_state.fieldTs && typeof _state.fieldTs === 'object') ? _state.fieldTs : {};
@@ -604,12 +604,12 @@ var MMGR = window.MMGR || {};
 
   // ---- Rank 4.4: per-field write timestamps ----
   // Top-level fields whose JSON changed since the LAST save get stamped with
-  // the current updatedAt (plus nested charter keys — those are edited as
+  // the current updatedAt (plus nested charter keys , those are edited as
   // subfields). The merge module (MMGR.Merge) reads these to decide
   // last-write-wins per field instead of replacing the whole document.
   const FIELD_KEYS = ['projectName', 'methodology', 'workWeek', 'theme', 'crosshairOn', 'userName', 'charter', 'tasks', 'meetings', 'meetingPromises', 'activeMeeting', 'resources', 'budgetLines', 'budgetEnvelope', 'spendLog', 'stakeholders', 'risks', 'issues', 'changes', 'logEntries', 'commsEntries', 'documents', 'closure', 'raci', 'sprint', 'dailySnapshots', 'dmaic', 'baseline', 'weatherRegion', 'siteLat', 'siteLon', 'sitePlace', 'wxCache', 'weatherLog', 'ldRate', 'wxViewDays', 'wxWindow', 'kbShowLeadtime', 'hlCritical', 'dailySnapshot', 'focusMode', 'streak', 'sentimentHistory', 'scheduleSlips', 'slipCauses', 'digestSnapshot', 'aiOutputs', 'packs', 'packsCalloutDismissed', 'packsEverEnabled',
     // MARKET-FEATURE-ROADMAP Section C registries (C1/C2/C3 shipped in
-    // batch 1 — these were missing from the whitelist, so their per-field
+    // batch 1 , these were missing from the whitelist, so their per-field
     // timestamps were never stamped and cloud-merge conflict resolution
     // could silently drop an editor's RFI/Submittal/Punch edits; C13/C16/
     // C17/C18/C26/C30/C11 registries ship in batch 2).
@@ -664,7 +664,7 @@ var MMGR = window.MMGR || {};
     if (opts && opts.backup) _state.lastBackedUpAt = _state.updatedAt;
     _dirty = true;
     // Rank 4.2: mirror into the IndexedDB journal on every save (immediate
-    // and debounced) — async fire-and-forget, never blocks or throws.
+    // and debounced) , async fire-and-forget, never blocks or throws.
     journalPut(_state);
     if (immediate) {
       try {
@@ -694,7 +694,7 @@ var MMGR = window.MMGR || {};
   // edits could die with it. The journal mirrors every save into IndexedDB
   // (async, fire-and-forget, never throws). On boot the newest record wins:
   // if the journal holds a newer updatedAt than localStorage, the state is
-  // restored from the journal — the crash case loses at most the in-flight
+  // restored from the journal , the crash case loses at most the in-flight
   // keystroke, never the last completed save. Audio chunks deliberately
   // stay out of this path (IndexedDB-only, see mmgr-voice.js); this journal
   // holds PROJECT STATE JSON only.
@@ -720,7 +720,7 @@ var MMGR = window.MMGR || {};
   }
 
   // Fire-and-forget mirror of the full state JSON into the journal. Never
-  // throws — the journal is a durability net, not a dependency.
+  // throws , the journal is a durability net, not a dependency.
   function journalPut(state) {
     jdb().then(function(db) {
       if (!db) return;
@@ -750,7 +750,7 @@ var MMGR = window.MMGR || {};
   // A debounced save() can be lost when the tab dies mid-edit: the 300ms
   // timer never fires. This synchronous write runs on beforeunload /
   // pagehide / visibilitychange(hidden) and guarantees the last edit lands
-  // in localStorage. It NEVER sets returnValue / preventDefault — the fix is
+  // in localStorage. It NEVER sets returnValue / preventDefault , the fix is
   // a silent flush, not a "leave site?" nag (no notification spam rule).
   function flushSave() {
     if (!_state || !_dirty) return;
@@ -768,14 +768,14 @@ var MMGR = window.MMGR || {};
   }
 
   // Rank 4.2: on boot, check the journal for a state at least as new as
-  // localStorage and adopt it (crash recovery). Async, best-effort — the app
+  // localStorage and adopt it (crash recovery). Async, best-effort , the app
   // already rendered with the localStorage copy; if the journal wins we swap
   // and re-render. Never throws.
   // Semantics: when localStorage has a record for this project, the journal
   // only wins on a STRICTLY newer updatedAt (normal case: journal == LS, no
   // swap). When localStorage has NO record (hard-kill wiped it, or a fresh
   // boot with a leftover journal), the journal record for this project key
-  // restores the last completed save — this is exactly the crash case.
+  // restores the last completed save , this is exactly the crash case.
   function restoreFromJournal() {
     return journalGet().then(function(rec) {
       if (!rec || !rec.json || !_state) return false;
@@ -806,7 +806,7 @@ var MMGR = window.MMGR || {};
     return _state;
   }
 
-  // ACTION-PLAN 3.3: quiet consistency streak — a calendar day counts toward
+  // ACTION-PLAN 3.3: quiet consistency streak , a calendar day counts toward
   // the streak when at least one updateState lands on it. Informational only
   // (non-guilt): no toasts, no gating, no badges on the critical path.
   // Simulated-client note: pure localStorage, no server round-trip needed.
@@ -844,8 +844,8 @@ var MMGR = window.MMGR || {};
   // AI-CLOUD-CONNECT-UI (DIR-2): provider secrets are stripped from the
   // OUTGOING portable .json and never re-adopted on import/adopt. The BYO AI
   // key lives only in the session vault (js/mmgr-ai-key.js); this strip is
-  // the load-bearing guarantee that a stale/legacy apiKey — e.g. one riding
-  // in an old pre-session-vault export — can never leak through the app's
+  // the load-bearing guarantee that a stale/legacy apiKey , e.g. one riding
+  // in an old pre-session-vault export , can never leak through the app's
   // own designed "portable data, single .json export" path. Works on a
   // passed object; the caller decides whether it's a deep clone (export) or
   // a freshly parsed incoming blob (import/adopt). Never mutates live state.
@@ -855,12 +855,12 @@ var MMGR = window.MMGR || {};
     if (!obj || typeof obj !== 'object') return obj;
     const cfg = obj.config;
     if (cfg && typeof cfg === 'object' && !Array.isArray(cfg)) {
-      // state.config.ai — the AI provider block (apiKey is the only secret;
+      // state.config.ai , the AI provider block (apiKey is the only secret;
       // tier/provider/endpoint/model are benign prefs).
       if (cfg.ai && typeof cfg.ai === 'object' && !Array.isArray(cfg.ai)) {
         SECRET_KEYS.forEach(function(k) { delete cfg.ai[k]; });
       }
-      // Config.api.keys — the reserved future provider/backup key object
+      // Config.api.keys , the reserved future provider/backup key object
       // (e.g. an eventual Google OAuth token / Cloudflare sync token per the
       // still-open Config.api.keys redesign). If present, never ship it.
       if (cfg.api && typeof cfg.api === 'object' && !Array.isArray(cfg.api) && cfg.api.keys && typeof cfg.api.keys === 'object') {
@@ -882,7 +882,7 @@ var MMGR = window.MMGR || {};
       const parsed = JSON.parse(jsonStr);
       // Strip any secret an old/incoming file may carry (post-fix exports
       // never include them, but a legacy file can). The session vault is the
-      // only home for keys now — an import must never re-seed state with one.
+      // only home for keys now , an import must never re-seed state with one.
       stripSecrets(parsed);
       const migrated = migrate(parsed);
       _state = migrated;

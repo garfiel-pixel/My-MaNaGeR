@@ -1,5 +1,5 @@
 /* ============================================================
-   My MaNaGeR — Stakeholder, Change & Log Management Module
+   My MaNaGeR , Stakeholder, Change & Log Management Module
    ============================================================ */
 var MMGR = window.MMGR || {};
 
@@ -17,7 +17,7 @@ var MMGR = window.MMGR || {};
         id: U.genShortId('S'), name: '', role: '',
         influence: 'Medium', interest: 'Medium', strategy: '', contact: '',
         // MARKET-FEATURE-ROADMAP A1/A5: subcontractor prequalification
-        // tracking — COI/license expiry dates + EMR (Experience Modification
+        // tracking , COI/license expiry dates + EMR (Experience Modification
         // Rate). All optional; existing records stay backward-compatible.
         coiExpiry: '', licenseExpiry: '', emr: '', emrVerifiedAt: ''
       });
@@ -25,7 +25,7 @@ var MMGR = window.MMGR || {};
     R.renderStakeholders();
   }
 
-  // MARKET-FEATURE-ROADMAP A1: pure helper — every stakeholder whose COI or
+  // MARKET-FEATURE-ROADMAP A1: pure helper , every stakeholder whose COI or
   // trade-license expiry falls within `withinDays` (default 30). Returns the
   // flagged subset with per-item expiry flags so the UI can badge precisely.
   // Same dependency-free pattern as the schedule audit helpers.
@@ -48,7 +48,7 @@ var MMGR = window.MMGR || {};
     });
   }
 
-  // MARKET-FEATURE-ROADMAP A5: EMR staleness — never verified counts as stale;
+  // MARKET-FEATURE-ROADMAP A5: EMR staleness , never verified counts as stale;
   // otherwise stale after `staleAfterDays` (default 365) since verification.
   function isEmrStale(stakeholder, staleAfterDays) {
     if (!stakeholder) return false;
@@ -131,7 +131,7 @@ var MMGR = window.MMGR || {};
   // ---- Expiry & renewal rollup (MARKET-FEATURE-ROADMAP C29) ----
   // One dashboard-wide "whose expiry is coming up" view across every dated
   // compliance artifact: subcontractor COI/license + EMR staleness, warranty
-  // periods, and permits. Pure function over live state — sorts by due date.
+  // periods, and permits. Pure function over live state , sorts by due date.
   function getExpiryRollup(withinDays) {
     const days = (withinDays === undefined || withinDays === null) ? 60 : +withinDays;
     const now = new Date();
@@ -147,19 +147,19 @@ var MMGR = window.MMGR || {};
     }
     (s.stakeholders || []).forEach(function(st) {
       const coi = dueIn(st.coiExpiry);
-      if (coi !== null && coi <= days) out.push({ kind: 'COI', label: (st.name || 'Stakeholder') + ' — COI', date: st.coiExpiry, daysLeft: coi });
+      if (coi !== null && coi <= days) out.push({ kind: 'COI', label: (st.name || 'Stakeholder') + ' , COI', date: st.coiExpiry, daysLeft: coi });
       const lic = dueIn(st.licenseExpiry);
-      if (lic !== null && lic <= days) out.push({ kind: 'License', label: (st.name || 'Stakeholder') + ' — license', date: st.licenseExpiry, daysLeft: lic });
-      if (isEmrStale(st) && (st.emr || st.emr !== undefined)) out.push({ kind: 'EMR', label: (st.name || 'Stakeholder') + ' — EMR re-verification', date: '', daysLeft: null });
+      if (lic !== null && lic <= days) out.push({ kind: 'License', label: (st.name || 'Stakeholder') + ' , license', date: st.licenseExpiry, daysLeft: lic });
+      if (isEmrStale(st) && (st.emr || st.emr !== undefined)) out.push({ kind: 'EMR', label: (st.name || 'Stakeholder') + ' , EMR re-verification', date: '', daysLeft: null });
     });
     (s.warrantyItems || []).forEach(function(w) {
       const dl = dueIn(w.warrantyEnd);
-      if (dl !== null && dl <= days) out.push({ kind: 'Warranty', label: (w.item || 'Warranty item') + ' — ' + (w.provider || 'provider'), date: w.warrantyEnd, daysLeft: dl });
+      if (dl !== null && dl <= days) out.push({ kind: 'Warranty', label: (w.item || 'Warranty item') + ' , ' + (w.provider || 'provider'), date: w.warrantyEnd, daysLeft: dl });
     });
     (s.permits || []).forEach(function(p) {
       if (p.status === 'expired' || p.status === 'closed') return;
       const dl = dueIn(p.expires);
-      if (dl !== null && dl <= days) out.push({ kind: 'Permit', label: (p.permitNo || p.id) + ' — ' + (p.agency || 'permit'), date: p.expires, daysLeft: dl });
+      if (dl !== null && dl <= days) out.push({ kind: 'Permit', label: (p.permitNo || p.id) + ' , ' + (p.agency || 'permit'), date: p.expires, daysLeft: dl });
     });
     return out.sort(function(a, b) {
       const da = a.date || '9999-12-31';

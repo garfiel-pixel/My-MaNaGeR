@@ -1,5 +1,5 @@
 /* ============================================================
-   My MaNaGeR — Cloud Diff Panel
+   My MaNaGeR , Cloud Diff Panel
    Click-to-expand before/after diff rendering.
    Extracted from mmgr-cloud.js.
    ============================================================ */

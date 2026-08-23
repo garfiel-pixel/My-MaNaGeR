@@ -1,5 +1,5 @@
 /* ============================================================
-   My MaNaGeR — Schedule Engine Module
+   My MaNaGeR , Schedule Engine Module
    Topological-sorted forward/backward pass, float calculation,
    critical path, selective weather padding, resource conflicts.
 
@@ -77,7 +77,7 @@ var MMGR = window.MMGR || {};
   // ---- Cycle Detection ----
   // Walks the predecessor graph and returns the ids of every task
   // participating in a circular predecessor chain. Must run before any
-  // cascade — Kahn's sort silently drops cycle members.
+  // cascade , Kahn's sort silently drops cycle members.
   function findCycles(tasks) {
     const taskMap = {};
     tasks.forEach(t => { taskMap[t.id] = t; });
@@ -132,7 +132,7 @@ var MMGR = window.MMGR || {};
       const rec = { id: t.id };
       // Duration is the PADDED duration when weather padding was applied to a
       // transient work clone (t._padDuration); otherwise the task's own
-      // duration. Read-only either way — never writes to the input.
+      // duration. Read-only either way , never writes to the input.
       const dur = parseInt(t._padDuration || t.duration) || 1;
       rec.weatherPad = (t._sched && t._sched.weatherPad) || 0;
       rec.paddedDuration = dur;
@@ -243,7 +243,7 @@ var MMGR = window.MMGR || {};
   // The buffer is expressed in the SAME unit as duration (working days): a
   // storm that lands on Saturday does not consume a working day, so only
   // working days inside a hostile window count toward padding. This is what
-  // drives SELECTIVE padding — a task gets buffer only for the days it
+  // drives SELECTIVE padding , a task gets buffer only for the days it
   // actually works inside a hostile window.
   function getWeatherOverlapDays(task, regionId) {
     if (!task || !task.startDate || !task.endDate) return 0;
@@ -284,7 +284,7 @@ var MMGR = window.MMGR || {};
   }
 
   // ---- Apply weather padding to a TRANSIENT work array ----
-  // The caller must pass a clone — this function annotates it in place so
+  // The caller must pass a clone , this function annotates it in place so
   // the pure forward pass can read the padded duration.
   function applyWeatherPadding(tasks, regionId, bufferDays) {
     tasks.forEach(t => {
@@ -293,7 +293,7 @@ var MMGR = window.MMGR || {};
         // getWeatherOverlapDays), the same unit as duration, so the buffer
         // composes with the schedule rather than inflating it.
         const baseDur = parseInt(t.duration) || 1;
-        // ACTION-PLAN 7.3: distributed weather float — a PM can assign extra
+        // ACTION-PLAN 7.3: distributed weather float , a PM can assign extra
         // buffer days to a SPECIFIC task (wxFloatPad, set on the Dashboard
         // Weather Exposure card). This is front-loaded float at the exact
         // weather-vulnerable point in the schedule, on top of the auto
@@ -314,7 +314,7 @@ var MMGR = window.MMGR || {};
   // whose start/end date would be rewritten, with before/after values.
   function computePlan(regionId, bufferDays) {
     const live = getTasks();
-    // Transient work clone — mutating it never touches live task data.
+    // Transient work clone , mutating it never touches live task data.
     const work = live.map(t => {
       const c = Object.assign({}, t);
       c.predecessors = t.predecessors ? t.predecessors.slice() : [];
@@ -409,18 +409,18 @@ var MMGR = window.MMGR || {};
       return false;
     }
 
-    // Cycle check BEFORE any computation — never allow a partial plan.
+    // Cycle check BEFORE any computation , never allow a partial plan.
     const cyclic = findCycles(tasks);
     if (cyclic.length > 0) {
       ns.App.showToast('Cyclic predecessor links detected: ' + cyclic.join(', ') + '. Break the loop to cascade.', 'err');
-      console.warn('Schedule cascade aborted — cycle involving:', cyclic);
+      console.warn('Schedule cascade aborted , cycle involving:', cyclic);
       return false;
     }
 
     const s = ns.State.getState();
     const region = regionId || s.weatherRegion || 'northern-temperate';
 
-    // Compute the plan on a transient clone first — nothing written yet.
+    // Compute the plan on a transient clone first , nothing written yet.
     const plan = computePlan(region, 5);
     const affected = plan.changes;
 
@@ -495,7 +495,7 @@ var MMGR = window.MMGR || {};
       const next = tasks[i + 1];
       const tLvl = t.indent !== undefined ? t.indent : (t.level || 0);
       const nLvl = next ? (next.indent !== undefined ? next.indent : (next.level || 0)) : 0;
-      return !(next && nLvl > tLvl); // leaf tasks only — not phase rollups
+      return !(next && nLvl > tLvl); // leaf tasks only , not phase rollups
     });
     return crit
       .filter(t => {
@@ -508,7 +508,7 @@ var MMGR = window.MMGR || {};
         const dur = Math.max(1, U.daysBetween(t.startDate, t.endDate) + 1);
         // Rough, conservative guideline: labor-intensive critical-path work
         // can often absorb ~25-30% compression with added crews/shifts before
-        // hitting real diminishing returns. Planning-level estimate only —
+        // hitting real diminishing returns. Planning-level estimate only , 
         // always confirm with whoever actually runs that crew.
         const recoverable = Math.max(1, Math.round(dur * 0.28));
         return { task: t, duration: dur, recoverable: recoverable };
@@ -589,10 +589,10 @@ var MMGR = window.MMGR || {};
     // cascade, so the audit and the live path never disagree).
     const cyclic = findCycles(tasks);
     if (cyclic.length > 0) {
-      issues.push({ severity: 'error', task: cyclic.join(', '), message: 'Cyclic predecessor links detected — these tasks cannot be scheduled' });
+      issues.push({ severity: 'error', task: cyclic.join(', '), message: 'Cyclic predecessor links detected , these tasks cannot be scheduled' });
     }
 
-    // Pure computation on transient clones — live tasks stay untouched.
+    // Pure computation on transient clones , live tasks stay untouched.
     const work = tasks.map(t => Object.assign({}, t));
     let sched = forwardPass(work);
     sched = backwardPass(work, sched);
@@ -660,7 +660,7 @@ var MMGR = window.MMGR || {};
     return max - Math.sqrt((1 - u) * (max - min) * (max - ml));
   }
 
-  // Pure simulation core — returns N sorted completion-date results for the
+  // Pure simulation core , returns N sorted completion-date results for the
   // given risk settings. Uses simple FS predecessor links (the current
   // schema has no SS/FF/type data, matching the schedule engine's model).
   function simulateSchedule(N, riskFactor, riskAdder) {
@@ -769,13 +769,13 @@ var MMGR = window.MMGR || {};
   // ---- MARKET-FEATURE-ROADMAP C7: Lookahead ----
   // Tasks that matter in the next N days (default 14): anything still open
   // that starts or finishes inside the horizon, PLUS overdue carryover that
-  // should already have finished. Pure function of tasks — no new state.
+  // should already have finished. Pure function of tasks , no new state.
   function lookaheadTasks(tasks, days) {
     const d = (days === undefined || days === null) ? 14 : +days;
     const today = new Date(); today.setHours(0, 0, 0, 0);
     const horizon = new Date(today); horizon.setDate(today.getDate() + d);
     // U.parseDL is the app's canonical date parser (local midnight for
-    // YYYY-MM-DD) — never new Date('YYYY-MM-DD'), which is UTC and drifts
+    // YYYY-MM-DD) , never new Date('YYYY-MM-DD'), which is UTC and drifts
     // across midnight boundaries on non-UTC machines.
     const p = (str) => U.parseDL(str);
     return (tasks || []).filter(function(t) {
@@ -795,7 +795,7 @@ var MMGR = window.MMGR || {};
   // ---- MARKET-FEATURE-ROADMAP C8: Percent Plan Complete (PPC) ----
   // Lean metric: of the tasks planned to finish in a given ISO week (Mon-Sun,
   // by endDate), how many are actually completed. weekOffset 0 = current week,
-  // -1 = last week, etc. pct is null when nothing was planned that week —
+  // -1 = last week, etc. pct is null when nothing was planned that week , 
   // never a fabricated 0%. Zero new state; pure function of task dates.
   function isoWeekStart(offset) {
     const d = new Date(); d.setHours(0, 0, 0, 0);
@@ -807,7 +807,7 @@ var MMGR = window.MMGR || {};
   function computePpc(tasks, weekOffset) {
     const start = isoWeekStart(weekOffset);
     const end = new Date(start); end.setDate(start.getDate() + 6);
-    // Same parseDL discipline as lookaheadTasks — local-midnight parsing.
+    // Same parseDL discipline as lookaheadTasks , local-midnight parsing.
     const due = (tasks || []).filter(function(t) {
       if (!t.endDate) return false;
       const e = U.parseDL(t.endDate);

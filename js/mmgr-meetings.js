@@ -1,12 +1,12 @@
 /* ============================================================
-   My MaNaGeR — Meeting Agendas & Live Meeting Tracking
+   My MaNaGeR , Meeting Agendas & Live Meeting Tracking
    Ported from the monolith (MEETING_TRACKING_SPEC.md).
 
    Two layers:
-   1. Static template library — MEET_TEMPLATES / MEET_KICKOFF_ITEMS /
+   1. Static template library , MEET_TEMPLATES / MEET_KICKOFF_ITEMS /
       MEET_RECURRING / MEET_SPECIALIZED / MEET_AGILE, rendered as
       copy-to-clipboard agenda cards (unchanged from the monolith).
-   2. Live Start/End tracking — start a meeting, check items off with
+   2. Live Start/End tracking , start a meeting, check items off with
       per-item notes, see elapsed time, end it to auto-log a Comms
       entry + permanent project record in S.meetings.
    ============================================================ */
@@ -38,7 +38,7 @@ var MMGR = window.MMGR || {};
   const MEET_RECURRING = [
     { k: 'weekly', t: 'Weekly Progress Review', d: 'Health Score, variances, blockers, next 7 days. Link to Dashboard.', dur: '30 min' },
     { k: 'risk', t: 'Risk Review', d: 'Re-score risks, retire closed, add emerging. Populates Risk panel.', dur: '45 min' },
-    { k: 'ccb', t: 'Change Control Board', d: 'Review CRs — approve/reject with impact assessment.', dur: '30 min' },
+    { k: 'ccb', t: 'Change Control Board', d: 'Review CRs , approve/reject with impact assessment.', dur: '30 min' },
     { k: 'daily', t: 'Daily Stand-up / Toolbox Talk', d: 'Yesterday / today / blockers + safety moment.', dur: '15 min' }
   ];
   const MEET_SPECIALIZED = [
@@ -52,10 +52,10 @@ var MMGR = window.MMGR || {};
   const MEET_AGILE = [
     { k: 'sprintplan', t: 'Sprint Planning', d: 'Commit to sprint backlog with team capacity.', dur: '60 min' },
     { k: 'sprintrev', t: 'Sprint Review', d: 'Demo completed work to stakeholders.', dur: '45 min' },
-    { k: 'retro', t: 'Retrospective', d: 'Continuous improvement — start/stop/continue.', dur: '45 min' }
+    { k: 'retro', t: 'Retrospective', d: 'Continuous improvement , start/stop/continue.', dur: '45 min' }
   ];
   const MEET_TEMPLATES = {
-    kickoff: { title: 'Project Kickoff', items: MEET_KICKOFF_ITEMS, dur: '60–90 min' },
+    kickoff: { title: 'Project Kickoff', items: MEET_KICKOFF_ITEMS, dur: '60-90 min' },
     weekly: { title: 'Weekly Progress Review', items: ['Health Score & KPI trend', 'Schedule variance & critical path', 'Budget variance (EV/PV/AC)', 'Open risks & issues', 'Blockers requiring escalation', 'Priorities for next 7 days', 'Action items'], dur: '30 min' },
     risk: { title: 'Risk Review', items: ['Review existing risks (re-score P × I)', 'Retire closed risks', 'Identify emerging risks', 'Confirm response owners', 'Update contingency reserve'], dur: '45 min' },
     ccb: { title: 'Change Control Board', items: ['Review open change requests', 'Assess scope/cost/schedule impact', 'Approve / reject / defer', 'Update baselines', 'Communicate decisions'], dur: '30 min' },
@@ -103,7 +103,7 @@ var MMGR = window.MMGR || {};
   // Optional one-tap pulse recorded during a live meeting. Stays out of the
   // way of meeting close: skipping it is always valid. History renders as a
   // quiet sparkline on the Meetings panel. Client-side only (localStorage
-  // state) — simulated-backend note: swap for a server call on migration.
+  // state) , simulated-backend note: swap for a server call on migration.
   const SENTIMENT_LABELS = { positive: 'Positive', neutral: 'Neutral', concerned: 'Concerned' };
   const SENTIMENT_COLORS = { positive: 'var(--green)', neutral: 'var(--amber)', concerned: 'var(--danger)' };
   const SENTIMENT_CAP = 60;
@@ -125,7 +125,7 @@ var MMGR = window.MMGR || {};
         st.sentimentHistory = st.sentimentHistory.slice(-SENTIMENT_CAP);
       }
     });
-    if (ns.App && ns.App.showToast) ns.App.showToast('Pulse recorded — ' + label, 'ok');
+    if (ns.App && ns.App.showToast) ns.App.showToast('Pulse recorded , ' + label, 'ok');
     renderSentimentHistory();
   }
 
@@ -141,7 +141,7 @@ var MMGR = window.MMGR || {};
     const bars = recent.map(h => {
       const color = SENTIMENT_COLORS[h.value] || 'var(--slate)';
       const d = h.date ? h.date.slice(0, 10) : '';
-      return '<div class="sent-bar" style="background:' + color + '" title="' + U.escapeHtml(d + ' — ' + h.label + (h.meeting ? ' (' + h.meeting + ')' : '')) + '"></div>';
+      return '<div class="sent-bar" style="background:' + color + '" title="' + U.escapeHtml(d + ' , ' + h.label + (h.meeting ? ' (' + h.meeting + ')' : '')) + '"></div>';
     }).join('');
     const pos = hist.filter(h => h.value === 'positive').length;
     const neu = hist.filter(h => h.value === 'neutral').length;
@@ -205,10 +205,10 @@ var MMGR = window.MMGR || {};
     if (!t) return;
     const s = ns.State.getState();
     const proj = (s.charter && s.charter.name) || '[Project Name]';
-    const hs = (ns.Health && ns.Health.get && ns.Health.get()) || '—';
+    const hs = (ns.Health && ns.Health.get && ns.Health.get()) || '-';
     const ts = new Date().toLocaleString();
     let txt = `[${ts} | My MaNaGeR | ${(s.methodology || '').toUpperCase()}]\n\n`;
-    txt += `${t.title.toUpperCase()} — AGENDA\n${'='.repeat(50)}\n`;
+    txt += `${t.title.toUpperCase()} , AGENDA\n${'='.repeat(50)}\n`;
     txt += `Project: ${proj}\nHealth Score: ${hs}\nDuration: ${t.dur}\nDate: ____________  Time: ____________\nFacilitator: ____________\nAttendees: ____________\n\n`;
     txt += `AGENDA ITEMS\n${'-'.repeat(50)}\n`;
     t.items.forEach((it, i) => { txt += `${i + 1}. ${it}\n   Notes: \n\n`; });
@@ -219,16 +219,16 @@ var MMGR = window.MMGR || {};
     txt += `NEXT MEETING\n${'-'.repeat(50)}\nDate: ____________  Focus: ____________\n\n`;
     txt += `→ Populate these panels next: Charter, WBS, RACI, Risks, Budget, Stakeholders\n`;
     U.copyToClipboard(txt);
-    if (ns.App && ns.App.showToast) ns.App.showToast(t.title + ' template copied — ready for your meeting!', 'ok');
+    if (ns.App && ns.App.showToast) ns.App.showToast(t.title + ' template copied , ready for your meeting!', 'ok');
   }
 
   function openMeetPrompt() {
     const s = ns.State.getState();
     const proj = (s.charter && s.charter.name) || '[Unnamed]';
-    const hs = (ns.Health && ns.Health.get && ns.Health.get()) || '—';
+    const hs = (ns.Health && ns.Health.get && ns.Health.get()) || '-';
     const meth = (s.methodology || 'waterfall').toUpperCase();
     const nRisks = (s.risks || []).length, nStk = (s.stakeholders || []).length, nTasks = (s.tasks || []).length;
-    const prompt = `# Custom Meeting Agenda Generator\n\n## Project Context\n- Name: ${proj}\n- Methodology: ${meth}\n- Current Health Score: ${hs}\n- WBS tasks: ${nTasks} | Risks: ${nRisks} | Stakeholders: ${nStk}\n\n## Request\nGenerate a fully structured meeting agenda for: [KICKOFF / WEEKLY / RISK REVIEW / STEERING COMMITTEE / PHASE-GATE / LESSONS LEARNED / OTHER — specify]\n\n## Required Sections\n1. Objective & expected outcomes\n2. Pre-work / materials to circulate in advance\n3. Sequential agenda items with time-boxes\n4. Discussion prompts for each item\n5. Decisions required\n6. Action item table (Owner / Due / Status)\n7. Links to which panels should be updated afterward (Charter, WBS, RACI, Risks, Budget, Stakeholders, Docs)\n8. Minutes template\n\nOptimize for: alignment, no gaps, actionable outputs, populating the project tool.`;
+    const prompt = `# Custom Meeting Agenda Generator\n\n## Project Context\n- Name: ${proj}\n- Methodology: ${meth}\n- Current Health Score: ${hs}\n- WBS tasks: ${nTasks} | Risks: ${nRisks} | Stakeholders: ${nStk}\n\n## Request\nGenerate a fully structured meeting agenda for: [KICKOFF / WEEKLY / RISK REVIEW / STEERING COMMITTEE / PHASE-GATE / LESSONS LEARNED / OTHER , specify]\n\n## Required Sections\n1. Objective & expected outcomes\n2. Pre-work / materials to circulate in advance\n3. Sequential agenda items with time-boxes\n4. Discussion prompts for each item\n5. Decisions required\n6. Action item table (Owner / Due / Status)\n7. Links to which panels should be updated afterward (Charter, WBS, RACI, Risks, Budget, Stakeholders, Docs)\n8. Minutes template\n\nOptimize for: alignment, no gaps, actionable outputs, populating the project tool.`;
     const txt = U.$('om-txt');
     if (txt) txt.value = prompt;
     const title = U.$('om-title');
@@ -263,7 +263,7 @@ var MMGR = window.MMGR || {};
     if (!t) return;
     const s = ns.State.getState();
     if (s.activeMeeting) {
-      if (ns.App && ns.App.showToast) ns.App.showToast('A meeting is already in progress — end or cancel it first.', 'err');
+      if (ns.App && ns.App.showToast) ns.App.showToast('A meeting is already in progress , end or cancel it first.', 'err');
       return;
     }
     ns.State.updateState(function(st) {
@@ -280,7 +280,7 @@ var MMGR = window.MMGR || {};
         items: items.map(text => ({ text: text, done: false, note: '' })),
         attendees: '',
         summary: '',
-        // Rank 1.5: voice capture fields — transcript text (unified state),
+        // Rank 1.5: voice capture fields , transcript text (unified state),
         // recording indicator + tier, and the IndexedDB session id (audio
         // chunks live in IndexedDB only, never in this JSON blob).
         // transcribeState: null=idle, 'transcribing', 'done', 'failed'
@@ -306,7 +306,7 @@ var MMGR = window.MMGR || {};
     renderActiveMeeting();
   }
 
-  // NOTE: no renderActiveMeeting() here — this fires on every keystroke and
+  // NOTE: no renderActiveMeeting() here , this fires on every keystroke and
   // re-rendering would steal focus out of the note input being typed in.
   function updMeetItemNote(i, val) {
     const s = ns.State.getState();
@@ -316,7 +316,7 @@ var MMGR = window.MMGR || {};
     });
   }
 
-  // Same focus discipline as updMeetItemNote — save only, don't re-render.
+  // Same focus discipline as updMeetItemNote , save only, don't re-render.
   function updMeetField(field, val) {
     const s = ns.State.getState();
     if (!s.activeMeeting) return;
@@ -342,13 +342,13 @@ var MMGR = window.MMGR || {};
       act.endedAt = endedAt;
       act.durationMin = durationMin;
       const doneCount = act.items.filter(i => i.done).length;
-      const lines = act.items.map(i => (i.done ? '[x] ' : '[ ] ') + i.text + (i.note ? ' — ' + i.note : '')).join('\n');
-      // ACTION-PLAN 1.2: meeting-to-action closed loop — unresolved agenda
+      const lines = act.items.map(i => (i.done ? '[x] ' : '[ ] ') + i.text + (i.note ? ' , ' + i.note : '')).join('\n');
+      // ACTION-PLAN 1.2: meeting-to-action closed loop , unresolved agenda
       // items and noted actions become "promises" carried into the NEXT
       // meeting of the same kind (rendered as the Last Meeting's Promises
       // ribbon). Unresolved items also flow into the auto-logged Comms
       // entry's actionItems field so Copy All carries them. This simulates
-      // a backend "meeting follow-up queue" — it's client-side state, so
+      // a backend "meeting follow-up queue" , it's client-side state, so
       // migrating to a real server later is a clean swap of this block.
       const unresolved = act.items.filter(i => !i.done);
       const noted = act.items.filter(i => i.done && (i.note || '').trim());
@@ -387,7 +387,7 @@ var MMGR = window.MMGR || {};
       st.meetings.unshift(JSON.parse(JSON.stringify(act)));
       st.activeMeeting = null;
     });
-    // Rank 1.5.4: rule-based extraction from the transcript (zero AI) —
+    // Rank 1.5.4: rule-based extraction from the transcript (zero AI) , 
     // writes decisions into the Decision Log and actions into the
     // Meeting-to-Action promises for the next meeting of the same kind.
     if (ns.Voice && ns.Voice.applyExtractionToState) {
@@ -398,7 +398,7 @@ var MMGR = window.MMGR || {};
     renderMeetings();
     stopElapsedTimer();
     if (ns.App && ns.App.showToast) {
-      ns.App.showToast(m.title + ' ended (' + durationMin + ' min, ' + m.items.filter(i => i.done).length + '/' + m.items.length + ' covered) — logged to Comms', 'ok');
+      ns.App.showToast(m.title + ' ended (' + durationMin + ' min, ' + m.items.filter(i => i.done).length + '/' + m.items.length + ' covered) , logged to Comms', 'ok');
     }
   }
 
@@ -422,15 +422,15 @@ var MMGR = window.MMGR || {};
     const proj = (s.charter && s.charter.name) || '[Project Name]';
     const ts = new Date().toLocaleString();
     let txt = `[${ts} | My MaNaGeR | ${(s.methodology || '').toUpperCase()}]\n\n`;
-    txt += `${m.title.toUpperCase()} — MINUTES\n${'='.repeat(50)}\n`;
+    txt += `${m.title.toUpperCase()} , MINUTES\n${'='.repeat(50)}\n`;
     txt += `Project: ${proj}\n`;
     txt += `Date: ${(m.endedAt || m.startedAt || '').slice(0, 10)}\n`;
-    txt += `Started: ${m.startedAt ? new Date(m.startedAt).toLocaleString() : '—'}\n`;
+    txt += `Started: ${m.startedAt ? new Date(m.startedAt).toLocaleString() : '-'}\n`;
     txt += `Duration: ${m.durationMin != null ? m.durationMin + ' min' : Math.max(0, Math.round((Date.now() - new Date(m.startedAt)) / 60000)) + ' min (in progress)'}\n`;
-    txt += `Attendees: ${(m.attendees || '—')}\n\n`;
+    txt += `Attendees: ${(m.attendees || '-')}\n\n`;
     txt += `AGENDA & NOTES\n${'-'.repeat(50)}\n`;
     (m.items || []).forEach((it, i) => {
-      txt += `${i + 1}. ${it.done ? '[x]' : '[ ]'} ${it.text}${it.note ? ' — ' + it.note : ''}\n`;
+      txt += `${i + 1}. ${it.done ? '[x]' : '[ ]'} ${it.text}${it.note ? ' , ' + it.note : ''}\n`;
     });
     if (m.summary) {
       txt += `\nCLOSING SUMMARY\n${'-'.repeat(50)}\n${m.summary}\n`;
@@ -440,7 +440,7 @@ var MMGR = window.MMGR || {};
     actions.forEach((a, i) => { txt += `${i + 1} | ${a.text} |  |  | Complete\n`; });
     if (!actions.length) txt += '1 |  |  |  | Open\n';
     U.copyToClipboard(txt);
-    if (ns.App && ns.App.showToast) ns.App.showToast('Minutes copied to clipboard — paste into your email or minutes doc.', 'ok');
+    if (ns.App && ns.App.showToast) ns.App.showToast('Minutes copied to clipboard , paste into your email or minutes doc.', 'ok');
   }
 
   // ---- Rendering (MEETING_TRACKING_SPEC §5) ----
@@ -454,7 +454,7 @@ var MMGR = window.MMGR || {};
     const hm = Math.floor(elapsedMin / 60), mm = elapsedMin % 60;
     const elapsedTxt = (hm ? hm + 'h ' : '') + mm + 'm';
     wrap.innerHTML = `<div class="card meet-live">
-      <div class="card-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-zap"></use></svg> ${U.escapeHtml(m.title)} — LIVE<span class="badge br meet-live-badge" id="meet-elapsed">${elapsedTxt} elapsed</span></div>
+      <div class="card-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-zap"></use></svg> ${U.escapeHtml(m.title)} , LIVE<span class="badge br meet-live-badge" id="meet-elapsed">${elapsedTxt} elapsed</span></div>
       <div class="meet-started">Started ${new Date(m.startedAt).toLocaleString()}</div>
       <div class="meet-attendees">
         <label class="cf-label">Attendees</label><input class="cf-input" value="${U.escapeHtml(m.attendees || '')}" data-action="updMeetField" data-field="attendees" placeholder="Names, roles...">
@@ -487,13 +487,13 @@ var MMGR = window.MMGR || {};
     if (!body) return;
     const meetings = s.meetings || [];
     if (!meetings.length) {
-      body.innerHTML = '<div class="meet-empty">No completed meetings yet — start one above and it lands here as a permanent record.</div>';
+      body.innerHTML = '<div class="meet-empty">No completed meetings yet , start one above and it lands here as a permanent record.</div>';
       return;
     }
     body.innerHTML = meetings.map(m => {
       const covered = m.items.filter(i => i.done).length;
       return `<div class="meet-hist-row">
-        <div><span class="meet-hist-name">${U.escapeHtml(m.title)}</span><span class="meet-hist-meta">${(m.endedAt || '').slice(0, 10)} · ${m.durationMin || '—'} min</span></div>
+        <div><span class="meet-hist-name">${U.escapeHtml(m.title)}</span><span class="meet-hist-meta">${(m.endedAt || '').slice(0, 10)} · ${m.durationMin || '-'} min</span></div>
         <div class="meet-hist-actions">
           <span class="badge ${covered === m.items.length ? 'bg' : 'ba'} meet-hist-badge">${covered}/${m.items.length} covered</span>
           <button class="btn btn-n btn-s" data-action="copyMeetingMinutes" data-id="${m.id}" title="Copy a Word-ready minutes block to the clipboard"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy Minutes</button>
@@ -510,7 +510,7 @@ var MMGR = window.MMGR || {};
   // Meeting-to-Action promises (st.meetingPromises[*] with sourceMeetingId),
   // and the Decision Log entries stamped with sourceMeetingId (transcript
   // extraction). A full snapshot is kept for a short UNDO window (~8s) so a
-  // mistaken tap restores everything exactly — then the snapshot is dropped.
+  // mistaken tap restores everything exactly , then the snapshot is dropped.
   let _delSnapshot = null;    // { at, meeting, comms, promises, logEntries, done }
   const DEL_UNDO_MS = 8000;
   function _dropDelSnapshot() { _delSnapshot = null; }

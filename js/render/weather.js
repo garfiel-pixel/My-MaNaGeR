@@ -1,5 +1,5 @@
 /* ============================================================
-   My MaNaGeR — Weather Rendering
+   My MaNaGeR , Weather Rendering
    Forecast strip, weather log, safety banner, LD/SRI,
    weather variance, float watch, lead-time tracker,
    schedule confidence, weather window inputs.
@@ -38,7 +38,7 @@ var MMGR = window.MMGR || {};
     const s = S();
     const lt = ((s && s.tasks) || []).filter(t => t.leadTime);
     if (!lt.length) {
-      el.innerHTML = '<div class="lt-empty">No lead-time tasks yet. In the WBS, mark any task as <strong>Lead-Time</strong> (or drag it onto the Lead-Time lane) to track vendor-side waits — procurement, utility applications, permits.</div>';
+      el.innerHTML = '<div class="lt-empty">No lead-time tasks yet. In the WBS, mark any task as <strong>Lead-Time</strong> (or drag it onto the Lead-Time lane) to track vendor-side waits , procurement, utility applications, permits.</div>';
       return;
     }
     const today = new Date(); today.setHours(0, 0, 0, 0);
@@ -57,7 +57,7 @@ var MMGR = window.MMGR || {};
           status = 'No expected date set';
         }
         const pct = (sub && exp && exp > sub) ? Math.round((today - sub) / (exp - sub) * 100) : null;
-        return '<tr><td>' + U.escapeHtml(t.name) + '</td><td>' + U.escapeHtml(t.submittedDate || '—') + '</td><td>' + U.escapeHtml(t.expectedDate || '—') + '</td><td class="' + cls + '">' + status + (pct !== null ? ' (' + Math.max(0, Math.min(100, pct)) + '% elapsed)' : '') + '</td></tr>';
+        return '<tr><td>' + U.escapeHtml(t.name) + '</td><td>' + U.escapeHtml(t.submittedDate || '-') + '</td><td>' + U.escapeHtml(t.expectedDate || '-') + '</td><td class="' + cls + '">' + status + (pct !== null ? ' (' + Math.max(0, Math.min(100, pct)) + '% elapsed)' : '') + '</td></tr>';
       }).join('') +
       '</tbody></table></div>';
   }

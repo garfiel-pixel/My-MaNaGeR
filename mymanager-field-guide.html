@@ -3,16 +3,16 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>My MaNaGeR — Field Guide</title>
-<meta name="description" content="A field guide to My MaNaGeR: the construction &amp; project management workspace. Learn every panel, template, and metric — sheet by sheet.">
+<title>My MaNaGeR , Field Guide</title>
+<meta name="description" content="A field guide to My MaNaGeR: the construction &amp; project management workspace. Learn every panel, template, and metric , sheet by sheet.">
 <link rel="icon" type="image/png" href="primary-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
 <style>
 /* ============================================================
-   MY MANAGER — FIELD GUIDE
-   Design system: "Working Drawing" — the site is styled as a set
+   MY MANAGER , FIELD GUIDE
+   Design system: "Working Drawing" , the site is styled as a set
    of construction/engineering drawing sheets. Every section opens
    with a title-block (sheet number, name, scale, revision) the
    way a real architectural sheet would. Grid = drafting paper.
@@ -58,7 +58,7 @@ body{
   position:relative;
 }
 
-/* drafting-paper grid — fixed, ambient, low-opacity */
+/* drafting-paper grid , fixed, ambient, low-opacity */
 body::before{
   content:"";
   position:fixed;inset:0;
@@ -167,7 +167,7 @@ ul,ol{list-style:none;}
 .site-signin{color:var(--brass-bright);}
 .site-signin:hover{background:rgba(207,154,82,.08);border-color:var(--brass);color:var(--brass-bright);}
 .site-signin:focus-visible{outline:2px solid var(--brass);outline-offset:1px;}
-/* OWNER 2026-08-17 — signed-in identity chip inside the guide's sign-in
+/* OWNER 2026-08-17 , signed-in identity chip inside the guide's sign-in
    triggers (same pattern as the marketing header, brass/cyan tokens). */
 .site-signin .sb-avatar{
   width:20px;height:20px;border-radius:50%;overflow:hidden;flex-shrink:0;
@@ -181,8 +181,8 @@ ul,ol{list-style:none;}
    the fixed chrome (scrollIntoView respects scroll-margin-top) */
 .sheet[id]{scroll-margin-top:24px;}
 
-/* ===== EMAIL SIGN-IN SHEET (2026-08-14 — shared mmgr-google-auth.js form) =====
-   Chrome sheet in the guide's own "Working Drawing" tokens — brass accent on ink.
+/* ===== EMAIL SIGN-IN SHEET (2026-08-14 , shared mmgr-google-auth.js form) =====
+   Chrome sheet in the guide's own "Working Drawing" tokens , brass accent on ink.
    The form itself sits on a solid card (never glass-on-content). */
 .mobile-bar-actions{display:flex;align-items:center;gap:8px;}
 .mobile-bar .site-signin{margin:0;padding:8px 12px;font-size:.78rem;}
@@ -245,7 +245,7 @@ ul,ol{list-style:none;}
 }
 .signin-sheet .signin-out:hover{border-color:#ff9d9d;color:#ff9d9d;}
 .signin-sheet .signin-out:focus-visible{outline:2px solid var(--brass);outline-offset:1px;}
-/* AUTH MAINFRAME 2026-08-17 — password change (email accounts) in the
+/* AUTH MAINFRAME 2026-08-17 , password change (email accounts) in the
    signed-in account row; [hidden] guards required (flex outranks hidden). */
 .signin-sheet .email-auth-pw{display:flex;flex-direction:column;gap:8px;align-items:stretch;}
 .signin-sheet .email-auth-pw[hidden]{display:none;}
@@ -351,7 +351,7 @@ main{flex:1;min-width:0;position:relative;}
 .hero-meta div{font-family:var(--mono);font-size:.68rem;color:var(--text-dimmer);letter-spacing:.04em;}
 .hero-meta b{display:block;color:var(--text-dim);font-size:.78rem;margin-bottom:3px;font-weight:600;}
 
-/* registration / crop marks — signature device, reused at every sheet head */
+/* registration / crop marks , signature device, reused at every sheet head */
 .reg-marks{position:absolute;inset:0;pointer-events:none;z-index:1;}
 .reg-marks span{position:absolute;width:15px;height:15px;opacity:.55;}
 .reg-marks span::before,.reg-marks span::after{content:"";position:absolute;background:var(--cyan);}
@@ -606,7 +606,7 @@ footer{padding:70px 64px 46px;position:relative;}
 <div id="scroll-progress"></div>
 
 <div class="mobile-bar">
-  <b>MY MANAGER — FIELD GUIDE</b>
+  <b>MY MANAGER , FIELD GUIDE</b>
   <div class="mobile-bar-actions">
     <button type="button" class="site-signin signin-trigger" aria-expanded="false" aria-controls="signin-sheet">Sign in</button>
     <button id="menuBtn" aria-label="Open sheet index"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 7H20M4 12H20M4 17H20" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
@@ -614,12 +614,12 @@ footer{padding:70px 64px 46px;position:relative;}
 </div>
 <div class="sidebar-scrim" id="scrim"></div>
 
-<!-- Email sign-in sheet (shared mmgr-google-auth.js form — 2026-08-14) -->
+<!-- Email sign-in sheet (shared mmgr-google-auth.js form , 2026-08-14) -->
 <div class="signin-sheet" id="signin-sheet" hidden>
   <div id="google-signin-button"></div>
   <div class="email-auth-divider"></div>
   <div id="marketing-email-auth"></div>
-  <p class="email-auth-note">Signing in only unlocks backup and moving projects between devices — the app itself needs no account.</p>
+  <p class="email-auth-note">Signing in only unlocks backup and moving projects between devices , the app itself needs no account.</p>
   <div class="signin-user" id="signin-user" hidden>
     <span class="signin-user-avatar" id="signin-user-avatar" title="Signed in"></span>
     <span class="signin-user-name" id="signin-user-name"></span>
@@ -706,13 +706,13 @@ footer{padding:70px 64px 46px;position:relative;}
 
   <main>
     <!-- ============ HERO ============ -->
-    <!-- Local photo (crane against sky) — brand-consistent hero backdrop. -->
+    <!-- Local photo (crane against sky) , brand-consistent hero backdrop. -->
     <section class="hero" id="top">
       <div class="hero-bg"></div>
       <div class="reg-marks"><span class="tl"></span><span class="tr"></span><span class="bl"></span><span class="br"></span></div>
       <span class="hero-eyebrow">Field Guide · New User Orientation</span>
       <h1>Read this app<br>the way you'd <em>read a set of plans.</em></h1>
-      <p class="hero-sub">My MaNaGeR is a construction &amp; project management workspace — Waterfall, Agile, or Hybrid, your call. This guide walks every panel, template, and number on the Dashboard so your first project starts on solid footing.</p>
+      <p class="hero-sub">My MaNaGeR is a construction &amp; project management workspace , Waterfall, Agile, or Hybrid, your call. This guide walks every panel, template, and number on the Dashboard so your first project starts on solid footing.</p>
       <div class="hero-cta">
         <a href="#welcome" class="btn btn-brass">Start with Sheet A-00 →</a>
         <a href="#quickstart" class="btn btn-ghost">Jump to Quick Start</a>
@@ -732,38 +732,38 @@ footer{padding:70px 64px 46px;position:relative;}
       </div>
 
       <span class="kicker">What you're looking at</span>
-      <p class="lede">My MaNaGeR is a single-page workspace for running a construction or capital project end‑to‑end — charter through closeout — without stitching together five different tools. Everything you enter feeds everything else: a task you add to the WBS shows up in the Gantt, the Kanban board, the RACI matrix, and the Dashboard's Health Score, automatically.</p>
+      <p class="lede">My MaNaGeR is a single-page workspace for running a construction or capital project end‑to‑end , charter through closeout , without stitching together five different tools. Everything you enter feeds everything else: a task you add to the WBS shows up in the Gantt, the Kanban board, the RACI matrix, and the Dashboard's Health Score, automatically.</p>
 
       <div class="prose">
-        <p>The app doesn't assume one delivery style. At the top of the screen you'll always find three tabs — <strong>Waterfall</strong>, <strong>Agile</strong>, and <strong>Hybrid</strong> — and the panels beneath reorganize around whichever one is active. Hover any of the three (before you pick) and a small card explains what that methodology changes and gives a worked example, so the choice isn't a guess.</p>
+        <p>The app doesn't assume one delivery style. At the top of the screen you'll always find three tabs , <strong>Waterfall</strong>, <strong>Agile</strong>, and <strong>Hybrid</strong> , and the panels beneath reorganize around whichever one is active. Hover any of the three (before you pick) and a small card explains what that methodology changes and gives a worked example, so the choice isn't a guess.</p>
       </div>
 
       <h3 class="h-sub">The three methodologies</h3>
       <div class="grid grid-3">
         <div class="card bracket">
-          <span class="cnum">01 — DEFAULT</span>
+          <span class="cnum">01 , DEFAULT</span>
           <h4>Waterfall</h4>
           <p>Sequential, date-driven delivery. WBS tasks cascade off predecessors, the Gantt shows a true critical path, and EVM (SPI/CPI) assumes a fixed baseline. Best when scope and sequence are locked before ground breaks.</p>
         </div>
         <div class="card bracket">
           <span class="cnum">02</span>
           <h4>Agile</h4>
-          <p>Sprint-based delivery. Reveals the Kanban board's sprint tools and unlocks three extra meeting templates — Sprint Planning, Sprint Review, Retrospective — under the Meetings panel.</p>
+          <p>Sprint-based delivery. Reveals the Kanban board's sprint tools and unlocks three extra meeting templates , Sprint Planning, Sprint Review, Retrospective , under the Meetings panel.</p>
         </div>
         <div class="card bracket">
           <span class="cnum">03</span>
           <h4>Hybrid</h4>
-          <p>Runs both models side by side — a Waterfall schedule for procurement and structural milestones, Agile sprints for design iteration or punch-list burndown.</p>
+          <p>Runs both models side by side , a Waterfall schedule for procurement and structural milestones, Agile sprints for design iteration or punch-list burndown.</p>
         </div>
       </div>
 
       <div class="divider-note">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 3L19 6V11C19 15.5 16 19.5 12 21C8 19.5 5 15.5 5 11V6L12 3Z" stroke="currentColor" stroke-width="1.6"/></svg>
-        <p><strong>Methodology Lock.</strong> Once your team commits, lock it in from Settings ▸ Controls. A gold padlock appears in the header as confirmation, and the app blocks mid-project switching — the same discipline as a signed-off drawing set.</p>
+        <p><strong>Methodology Lock.</strong> Once your team commits, lock it in from Settings ▸ Controls. A gold padlock appears in the header as confirmation, and the app blocks mid-project switching , the same discipline as a signed-off drawing set.</p>
       </div>
 
       <h3 class="h-sub">How the workspace is laid out</h3>
-      <p class="prose" style="margin-bottom:20px">One row of icon tabs runs across the top of the app — that's your entire project. Eighteen panels, grouped here the same way this guide is:</p>
+      <p class="prose" style="margin-bottom:20px">One row of icon tabs runs across the top of the app , that's your entire project. Eighteen panels, grouped here the same way this guide is:</p>
       <div class="grid grid-4">
         <div class="card"><span class="cnum">GROUP</span><h4>Core Docs</h4><p>Dashboard · Definitions · Charter</p></div>
         <div class="card"><span class="cnum">GROUP</span><h4>Plan &amp; Schedule</h4><p>WBS · Gantt · Kanban · RACI</p></div>
@@ -775,17 +775,17 @@ footer{padding:70px 64px 46px;position:relative;}
 
       <div class="divider-note" style="margin-top:32px">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 3L19 6V11C19 15.5 16 19.5 12 21C8 19.5 5 15.5 5 11V6L12 3Z" stroke="currentColor" stroke-width="1.6"/></svg>
-        <p><strong>Core Mode first, Advanced Packs when you need them.</strong> New projects open Core-only: Dashboard, Definitions, Charter, WBS, and Kanban. The heavier panels — Gantt &amp; critical path, Budget, RACI, Risk, Meetings, Claim Pack, DMAIC — are grouped into five <strong>Advanced Packs</strong> (Schedule Science, Money, Governance, Field, Quality) that start hidden. Turn any pack on in <strong>Settings ▸ Advanced Packs</strong>; its sections appear instantly, and nothing you enter while a pack is off is ever lost. If a panel you expected isn't in the sidebar navigation, that's the first thing to check — Sheet A-17 covers it.</p>
+        <p><strong>Core Mode first, Advanced Packs when you need them.</strong> New projects open Core-only: Dashboard, Definitions, Charter, WBS, and Kanban. The heavier panels , Gantt &amp; critical path, Budget, RACI, Risk, Meetings, Claim Pack, DMAIC , are grouped into five <strong>Advanced Packs</strong> (Schedule Science, Money, Governance, Field, Quality) that start hidden. Turn any pack on in <strong>Settings ▸ Advanced Packs</strong>; its sections appear instantly, and nothing you enter while a pack is off is ever lost. If a panel you expected isn't in the sidebar navigation, that's the first thing to check , Sheet A-17 covers it.</p>
       </div>
 
       <div class="divider-note" style="margin-top:32px">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><rect x="3" y="4" width="18" height="14" rx="2" stroke="currentColor" stroke-width="1.6"/><path d="M3 8H21" stroke="currentColor" stroke-width="1.6"/></svg>
-        <p><strong>Local-first, by design.</strong> Every change autosaves to your browser's LocalStorage as you type. The header indicator shows your backup state at a glance: green “Cloud backed up” when the project is linked to the cloud (snapshots auto-sync), amber “Not backed up” when it only lives in this browser's autosave and you haven't exported a portable .json yet. Nothing leaves your device unless you export it, sign in to the optional Google sync, or switch the AI engine to Cloud with your own key. Sheet A-15 covers backups properly.</p>
+        <p><strong>Local-first, by design.</strong> Every change autosaves to your browser's LocalStorage as you type. The header indicator shows your backup state at a glance: green "Cloud backed up" when the project is linked to the cloud (snapshots auto-sync), amber "Not backed up" when it only lives in this browser's autosave and you haven't exported a portable .json yet. Nothing leaves your device unless you export it, sign in to the optional Google sync, or switch the AI engine to Cloud with your own key. Sheet A-15 covers backups properly.</p>
       </div>
     </section>
 
     <!-- ============ PHOTO BAND ============ -->
-    <!-- Local photo (plans on a desk) — matches the guide's working-drawing theme. -->
+    <!-- Local photo (plans on a desk) , matches the guide's working-drawing theme. -->
     <div class="band reveal">
       <div class="band-bg" style="background-image:url('images/office-project-desk.webp')"></div>
       <div class="band-overlay"></div>
@@ -795,7 +795,7 @@ footer{padding:70px 64px 46px;position:relative;}
         <div class="band-stat">
           <div><b>18</b><span>Panels</span></div>
           <div><b>53</b><span>Glossary terms</span></div>
-          <div><b>0</b><span>API calls by default — Local AI is zero-key</span></div>
+          <div><b>0</b><span>API calls by default , Local AI is zero-key</span></div>
         </div>
       </div>
     </div>
@@ -807,24 +807,24 @@ footer{padding:70px 64px 46px;position:relative;}
         <div class="tblock-right"><div><b>Scale</b>Procedure</div></div>
       </div>
       <span class="kicker">Do these in order</span>
-      <p class="lede">Everything downstream — Health Score, EVM, RACI, the Dashboard — depends on a handful of fields being filled in first. Here's the sequence that gets a new project from blank to fully live.</p>
+      <p class="lede">Everything downstream , Health Score, EVM, RACI, the Dashboard , depends on a handful of fields being filled in first. Here's the sequence that gets a new project from blank to fully live.</p>
 
       <div class="flow">
         <div class="flow-item"><div class="flow-num"></div><div class="flow-body">
           <h4>Turn on the Advanced Packs you need</h4>
-          <p>Open <strong>Settings ▸ Advanced Packs</strong> and switch on whatever your project uses — Schedule Science for the Gantt &amp; critical path, Money for Budget &amp; Resources, Governance for Risk/RACI/Changes, Field for Meetings &amp; Claim Pack. New projects start Core-only (Sheet A-00), so this is the step that reveals most of the top nav.</p>
+          <p>Open <strong>Settings ▸ Advanced Packs</strong> and switch on whatever your project uses , Schedule Science for the Gantt &amp; critical path, Money for Budget &amp; Resources, Governance for Risk/RACI/Changes, Field for Meetings &amp; Claim Pack. New projects start Core-only (Sheet A-00), so this is the step that reveals most of the top nav.</p>
         </div></div>
         <div class="flow-item"><div class="flow-num"></div><div class="flow-body">
           <h4>Pick a methodology and set the basics</h4>
-          <p>Choose Waterfall, Agile, or Hybrid up top. Then open <strong>Settings ▸ Controls</strong> and set your name (personalizes the greeting) and your Work Week (3–7 days) — it feeds both Resource Utilization and Budget's labor-cost math.</p>
+          <p>Choose Waterfall, Agile, or Hybrid up top. Then open <strong>Settings ▸ Controls</strong> and set your name (personalizes the greeting) and your Work Week (3-7 days) , it feeds both Resource Utilization and Budget's labor-cost math.</p>
         </div></div>
         <div class="flow-item"><div class="flow-num"></div><div class="flow-body">
           <h4>Fill out the Charter</h4>
-          <p>Your project's identity document — Sponsor, stakeholders, requirements, deliverables, KPIs, scope, budget. Already have one written? Use <strong>Upload Existing Charter</strong> (.docx/.pdf/.txt) or <strong>Paste Charter Text</strong> to auto-fill the fields instead of retyping.</p>
+          <p>Your project's identity document , Sponsor, stakeholders, requirements, deliverables, KPIs, scope, budget. Already have one written? Use <strong>Upload Existing Charter</strong> (.docx/.pdf/.txt) or <strong>Paste Charter Text</strong> to auto-fill the fields instead of retyping.</p>
         </div></div>
         <div class="flow-item"><div class="flow-num"></div><div class="flow-body">
           <h4>Establish realistic target dates</h4>
-          <p>Before a single task exists, open the <strong>Charter Dates Prompt</strong> in the Charter panel — it reasons through a realistic duration, a weather-season contingency, and a management reserve, then proposes dates to lock in.</p>
+          <p>Before a single task exists, open the <strong>Charter Dates Prompt</strong> in the Charter panel , it reasons through a realistic duration, a weather-season contingency, and a management reserve, then proposes dates to lock in.</p>
         </div></div>
         <div class="flow-item"><div class="flow-num"></div><div class="flow-body">
           <h4>Build the WBS</h4>
@@ -832,11 +832,11 @@ footer{padding:70px 64px 46px;position:relative;}
         </div></div>
         <div class="flow-item"><div class="flow-num"></div><div class="flow-body">
           <h4>Set RACI</h4>
-          <p>Rows and columns populate live from your WBS tasks and your Resources/Stakeholders lists — nothing to re-enter. Click a cell to cycle Responsible → Accountable → Consulted → Informed.</p>
+          <p>Rows and columns populate live from your WBS tasks and your Resources/Stakeholders lists , nothing to re-enter. Click a cell to cycle Responsible → Accountable → Consulted → Informed.</p>
         </div></div>
         <div class="flow-item"><div class="flow-num"></div><div class="flow-body">
           <h4>Save a Baseline</h4>
-          <p><strong>Settings ▸ Controls ▸ Save Baseline</strong> snapshots your current schedule and budget before real work starts — the Dashboard's Baseline Variance card has nothing to compare against until you do this once.</p>
+          <p><strong>Settings ▸ Controls ▸ Save Baseline</strong> snapshots your current schedule and budget before real work starts , the Dashboard's Baseline Variance card has nothing to compare against until you do this once.</p>
         </div></div>
         <div class="flow-item"><div class="flow-num"></div><div class="flow-body">
           <h4>Open the Dashboard</h4>
@@ -844,7 +844,7 @@ footer{padding:70px 64px 46px;position:relative;}
         </div></div>
         <div class="flow-item"><div class="flow-num"></div><div class="flow-body">
           <h4>Back up to a file</h4>
-          <p>LocalStorage protects you against a closed tab, not a wiped browser. <strong>Settings ▸ Controls ▸ Save Project to File</strong> exports a portable .json — do this before switching devices or closing up for the day.</p>
+          <p>LocalStorage protects you against a closed tab, not a wiped browser. <strong>Settings ▸ Controls ▸ Save Project to File</strong> exports a portable .json , do this before switching devices or closing up for the day.</p>
         </div></div>
       </div>
     </section>
@@ -855,7 +855,7 @@ footer{padding:70px 64px 46px;position:relative;}
         <div class="tblock-right"><div><b>Scale</b>1 : 1 detail</div></div>
       </div>
       <span class="kicker">Where every number lives</span>
-      <p class="lede">The Dashboard is the only panel that reads from every other panel at once. Nothing here is manually entered — it's all calculated from your WBS, Budget, Risk register, and Charter the moment they have enough data to be honest about it.</p>
+      <p class="lede">The Dashboard is the only panel that reads from every other panel at once. Nothing here is manually entered , it's all calculated from your WBS, Budget, Risk register, and Charter the moment they have enough data to be honest about it.</p>
 
       <div class="tabs" data-tabgroup="dash">
         <button class="tab-btn active" data-tab="health">Health Score</button>
@@ -866,7 +866,7 @@ footer{padding:70px 64px 46px;position:relative;}
       </div>
 
       <div class="tab-panel active" data-panel="health">
-        <p class="prose">One number, 0–100, blending five weighted factors. Until there's enough of the project entered to calculate honestly, it reads <strong>"no data yet"</strong> instead of showing a fake score.</p>
+        <p class="prose">One number, 0-100, blending five weighted factors. Until there's enough of the project entered to calculate honestly, it reads <strong>"no data yet"</strong> instead of showing a fake score.</p>
         <table class="tbl">
           <thead><tr><th>Factor</th><th>Weight</th><th>Reads from</th></tr></thead>
           <tbody>
@@ -877,7 +877,7 @@ footer{padding:70px 64px 46px;position:relative;}
             <tr><td><strong>Change volume</strong></td><td class="num">10%</td><td>Pending / recent Change Requests</td></tr>
           </tbody>
         </table>
-        <p class="prose">This same score is what gets stamped at the top of every meeting agenda you copy from the Meetings panel — see Sheet A-09.</p>
+        <p class="prose">This same score is what gets stamped at the top of every meeting agenda you copy from the Meetings panel , see Sheet A-09.</p>
       </div>
 
       <div class="tab-panel" data-panel="evm">
@@ -893,24 +893,24 @@ footer{padding:70px 64px 46px;position:relative;}
 
       <div class="tab-panel" data-panel="timeline">
         <h4 class="h-mini">Timeline Target Tracker</h4>
-        <p class="prose">Compares the <strong>Target Completion Date</strong> you locked into the Charter against your <strong>Current Planned Finish</strong> — the latest end date across all scheduled tasks. Once you slip past target, a badge appears in the header from any panel; clicking it jumps straight back to this card.</p>
+        <p class="prose">Compares the <strong>Target Completion Date</strong> you locked into the Charter against your <strong>Current Planned Finish</strong> , the latest end date across all scheduled tasks. Once you slip past target, a badge appears in the header from any panel; clicking it jumps straight back to this card.</p>
         <h4 class="h-mini">Baseline Variance</h4>
-        <p class="prose">A different comparison: <strong>Settings ▸ Controls ▸ Save Baseline</strong> snapshots your schedule and budget at a moment in time. From then on, this card shows how far your live numbers have drifted from that snapshot — independent of the Charter's promised date.</p>
+        <p class="prose">A different comparison: <strong>Settings ▸ Controls ▸ Save Baseline</strong> snapshots your schedule and budget at a moment in time. From then on, this card shows how far your live numbers have drifted from that snapshot , independent of the Charter's promised date.</p>
       </div>
 
       <div class="tab-panel" data-panel="confidence">
-        <p class="prose">One unified view standing in for four separate checks — a single glance instead of four cards to answer "are we going to make it."</p>
+        <p class="prose">One unified view standing in for four separate checks , a single glance instead of four cards to answer "are we going to make it."</p>
         <div class="grid grid-2" style="margin-top:16px">
-          <div class="card bracket"><span class="cnum">MONTE CARLO</span><h4>Hit-probability</h4><p>Live odds of reaching the Charter's Target Completion Date — the same simulation engine as the full Monte Carlo panel (Sheet A-07), run as a lighter pass so the dashboard stays snappy.</p></div>
+          <div class="card bracket"><span class="cnum">MONTE CARLO</span><h4>Hit-probability</h4><p>Live odds of reaching the Charter's Target Completion Date , the same simulation engine as the full Monte Carlo panel (Sheet A-07), run as a lighter pass so the dashboard stays snappy.</p></div>
           <div class="card bracket"><span class="cnum">WEATHER</span><h4>Weather Variance</h4><p>Checks weather-exposed tasks against your Weather Window (a hurricane/rainy-season range plus buffer, set in Settings) and flags any without enough cushion.</p></div>
-          <div class="card bracket"><span class="cnum">CRASH</span><h4>Crash Candidates</h4><p>Ranks critical-path tasks by realistic recovery potential — e.g. "add another mason crew" — while excluding anything gated by permits, curing time, or third-party lead time, since more labor can't compress those.</p></div>
+          <div class="card bracket"><span class="cnum">CRASH</span><h4>Crash Candidates</h4><p>Ranks critical-path tasks by realistic recovery potential , e.g. "add another mason crew" , while excluding anything gated by permits, curing time, or third-party lead time, since more labor can't compress those.</p></div>
           <div class="card bracket"><span class="cnum">FLOAT</span><h4>Float Watch</h4><p>Lists tasks with little or no schedule slack, plus how much float has been consumed against your saved baseline. Recalculates every time you open the Dashboard.</p></div>
         </div>
-        <p class="prose" style="margin-top:20px">A separate <strong>Lead-Time Tracker</strong> card sits alongside these, listing days remaining or overdue for anything tracked as a Lead-Time task (permits, procurement) — see Sheet A-04.</p>
+        <p class="prose" style="margin-top:20px">A separate <strong>Lead-Time Tracker</strong> card sits alongside these, listing days remaining or overdue for anything tracked as a Lead-Time task (permits, procurement) , see Sheet A-04.</p>
       </div>
 
       <div class="tab-panel" data-panel="today">
-        <p class="prose">A same-day view of what's active right now — refreshed on demand, not on a timer, so it reflects exactly where things stood the last time you hit refresh. Sits beside the <strong>Next 3 Priority Actions</strong> list and the <strong>Active Issues &amp; Blockers</strong> card, which is also where you'll find the one-click <strong>Weekly Digest</strong> and <strong>Report Prompt</strong> buttons covered in Sheet A-13.</p>
+        <p class="prose">A same-day view of what's active right now , refreshed on demand, not on a timer, so it reflects exactly where things stood the last time you hit refresh. Sits beside the <strong>Next 3 Priority Actions</strong> list and the <strong>Active Issues &amp; Blockers</strong> card, which is also where you'll find the one-click <strong>Weekly Digest</strong> and <strong>Report Prompt</strong> buttons covered in Sheet A-13.</p>
       </div>
     </section>
     <!-- ============ A-03 CHARTER & DEFINITIONS ============ -->
@@ -920,7 +920,7 @@ footer{padding:70px 64px 46px;position:relative;}
         <div class="tblock-right"><div><b>Scale</b>Overview</div></div>
       </div>
       <span class="kicker">Your project's identity document</span>
-      <p class="lede">Fill the Charter out before real work begins. It locks the Sponsor, stakeholders, requirements, deliverables, KPIs, scope, and budget on record — everything downstream treats it as the source of truth.</p>
+      <p class="lede">Fill the Charter out before real work begins. It locks the Sponsor, stakeholders, requirements, deliverables, KPIs, scope, and budget on record , everything downstream treats it as the source of truth.</p>
 
       <div class="grid grid-3">
         <div class="card bracket">
@@ -931,27 +931,27 @@ footer{padding:70px 64px 46px;position:relative;}
         <div class="card bracket">
           <span class="cnum">OFFLINE</span>
           <h4>Paste Charter Text</h4>
-          <p>Same auto-fill logic, run on text you paste in directly — works with no connection at all.</p>
+          <p>Same auto-fill logic, run on text you paste in directly , works with no connection at all.</p>
         </div>
         <div class="card bracket">
           <span class="cnum">HANDOFF</span>
           <h4>Print Charter</h4>
-          <p>A clean, buttons-hidden printout of just the Charter — full text expanded, legible on paper regardless of your Dark/Light theme setting.</p>
+          <p>A clean, buttons-hidden printout of just the Charter , full text expanded, legible on paper regardless of your Dark/Light theme setting.</p>
         </div>
       </div>
 
       <h3 class="h-sub">KPIs, with a twist</h3>
-      <p class="prose">Add a name, a target value, and how it's measured — standard stuff. The twist: you can optionally link a KPI to a live in-app metric (Health Score, Timeline Variance, Open Risks, and others), and its current value and status will show automatically instead of you tracking it by hand.</p>
+      <p class="prose">Add a name, a target value, and how it's measured , standard stuff. The twist: you can optionally link a KPI to a live in-app metric (Health Score, Timeline Variance, Open Risks, and others), and its current value and status will show automatically instead of you tracking it by hand.</p>
 
-      <h3 class="h-sub">Definitions — the glossary that's actually useful</h3>
+      <h3 class="h-sub">Definitions , the glossary that's actually useful</h3>
       <p class="prose">53 plain-language PM and construction terms, each with a note on why it matters <em>inside this app specifically</em>, plus a worked example. A few samples:</p>
 
       <div class="grid grid-3" style="margin-top:16px">
-        <div class="card"><span class="cnum">TERM</span><h4>RACI</h4><p>Who's Responsible, Accountable, Consulted, Informed on each task — cross-referenced live against your WBS and people lists in Sheet A-05.</p></div>
-        <div class="card"><span class="cnum">TERM</span><h4>CPM</h4><p>Critical Path Method — the task chain that directly controls your finish date, highlighted in gold on the Gantt.</p></div>
-        <div class="card"><span class="cnum">TERM</span><h4>EVM</h4><p>Earned Value Management — the SPI/CPI math behind the Dashboard's forecast card, in Sheet A-02.</p></div>
+        <div class="card"><span class="cnum">TERM</span><h4>RACI</h4><p>Who's Responsible, Accountable, Consulted, Informed on each task , cross-referenced live against your WBS and people lists in Sheet A-05.</p></div>
+        <div class="card"><span class="cnum">TERM</span><h4>CPM</h4><p>Critical Path Method , the task chain that directly controls your finish date, highlighted in gold on the Gantt.</p></div>
+        <div class="card"><span class="cnum">TERM</span><h4>EVM</h4><p>Earned Value Management , the SPI/CPI math behind the Dashboard's forecast card, in Sheet A-02.</p></div>
       </div>
-      <p class="prose" style="margin-top:18px;font-size:.84rem;color:var(--text-dimmer)">The full 53-term list — including WBS, Monte Carlo, DMAIC, float, baseline, and the rest — lives in the app's Definitions panel, one click from the top nav.</p>
+      <p class="prose" style="margin-top:18px;font-size:.84rem;color:var(--text-dimmer)">The full 53-term list , including WBS, Monte Carlo, DMAIC, float, baseline, and the rest , lives in the app's Definitions panel, one click from the top nav.</p>
     </section>
     <!-- ============ A-04 WBS, GANTT & CRITICAL PATH ============ -->
     <section class="sheet reveal" id="wbs">
@@ -965,44 +965,44 @@ footer{padding:70px 64px 46px;position:relative;}
       <h3 class="h-sub">Three ways to build it</h3>
       <div class="grid grid-3">
         <div class="card bracket"><span class="cnum">MANUAL</span><h4>Add Task</h4><p>Build row by row. Indent / outdent to nest subtasks; collapse or expand the whole tree at once.</p></div>
-        <div class="card bracket"><span class="cnum">FAST</span><h4>WBS Text Import</h4><p>Paste a plain outline — blank line starts a new main task, indented lines become subtasks. Paste again later and it merges by matching name instead of duplicating.</p></div>
-        <div class="card bracket"><span class="cnum">AI-ASSISTED</span><h4>Import Dates for Existing WBS</h4><p>Pulls your live WBS into a prompt, asks your AI for a dated version, and merges the returned dates back in — nothing duplicated. Paste the dated outline back into the modal and it matches by task name: existing tasks are updated in place, so re-running it as the schedule evolves is always safe.</p></div>
+        <div class="card bracket"><span class="cnum">FAST</span><h4>WBS Text Import</h4><p>Paste a plain outline , blank line starts a new main task, indented lines become subtasks. Paste again later and it merges by matching name instead of duplicating.</p></div>
+        <div class="card bracket"><span class="cnum">AI-ASSISTED</span><h4>Import Dates for Existing WBS</h4><p>Pulls your live WBS into a prompt, asks your AI for a dated version, and merges the returned dates back in , nothing duplicated. Paste the dated outline back into the modal and it matches by task name: existing tasks are updated in place, so re-running it as the schedule evolves is always safe.</p></div>
       </div>
 
       <h3 class="h-sub">Two special task types</h3>
       <div class="grid grid-2">
-        <div class="card"><span class="cnum">TYPE</span><h4>Lead-Time</h4><p>For procurement, permits, or anything waiting on a third party. Tracked by Submitted Date / Expected Date instead of Start/End and % Complete. Shows as a dashed card in Kanban and a hatched bar in the Gantt — and feeds the Lead-Time Tracker on the Dashboard.</p></div>
-        <div class="card"><span class="cnum">TYPE</span><h4>Recurring</h4><p>For work that runs the whole project — weekly safety talks, ongoing QC. It carries a refresh badge in the WBS and Kanban and is tagged [RECURRING] in AI prompts so it reads differently from one-off tasks. It schedules like any other row: give it dates and it cascades with the rest.</p></div>
+        <div class="card"><span class="cnum">TYPE</span><h4>Lead-Time</h4><p>For procurement, permits, or anything waiting on a third party. Tracked by Submitted Date / Expected Date instead of Start/End and % Complete. Shows as a dashed card in Kanban and a hatched bar in the Gantt , and feeds the Lead-Time Tracker on the Dashboard.</p></div>
+        <div class="card"><span class="cnum">TYPE</span><h4>Recurring</h4><p>For work that runs the whole project , weekly safety talks, ongoing QC. It carries a refresh badge in the WBS and Kanban and is tagged [RECURRING] in AI prompts so it reads differently from one-off tasks. It schedules like any other row: give it dates and it cascades with the rest.</p></div>
       </div>
 
       <h3 class="h-sub">How dates cascade</h3>
-      <p class="prose">Enter a Task ID in the Pred. column. When that predecessor's end date changes, every downstream task recalculates automatically — with a cycle guard, so a circular dependency (A depends on B depends on A) can't lock up the math.</p>
+      <p class="prose">Enter a Task ID in the Pred. column. When that predecessor's end date changes, every downstream task recalculates automatically , with a cycle guard, so a circular dependency (A depends on B depends on A) can't lock up the math.</p>
 
       <div class="divider-note">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 8V12M12 16H12.01M21 12C21 16.97 16.97 21 12 21C7.03 21 3 16.97 3 12C3 7.03 7.03 3 12 3C16.97 3 21 7.03 21 12Z" stroke="currentColor" stroke-width="1.6"/></svg>
-        <p><strong>conf:high / conf:low tags.</strong> When AI-generated dates come back from the "Generate Dates" prompt, each line carries a confidence badge — high for low-variance work like pouring concrete, low for anything depending on outside parties. These tags feed directly into the Monte Carlo simulator, giving high-confidence tasks a tighter risk spread and low-confidence ones a wider one.</p>
+        <p><strong>conf:high / conf:low tags.</strong> When AI-generated dates come back from the "Generate Dates" prompt, each line carries a confidence badge , high for low-variance work like pouring concrete, low for anything depending on outside parties. These tags feed directly into the Monte Carlo simulator, giving high-confidence tasks a tighter risk spread and low-confidence ones a wider one.</p>
       </div>
 
       <h3 class="h-sub">On the Gantt itself</h3>
       <div class="grid grid-2">
         <div class="card"><span class="cnum">TOGGLE</span><h4>Critical Path Highlighter</h4><p>Illuminates in gold the exact chain of tasks controlling your final deadline; every non-critical task dims. Toggle it from the Gantt panel header.</p></div>
-        <div class="card"><span class="cnum">PASSIVE</span><h4>Deadline Pulse Alert</h4><p>Any task within 3 days of its end date pulses amber — on the Gantt bar and its Kanban card. No setup required.</p></div>
+        <div class="card"><span class="cnum">PASSIVE</span><h4>Deadline Pulse Alert</h4><p>Any task within 3 days of its end date pulses amber , on the Gantt bar and its Kanban card. No setup required.</p></div>
       </div>
 
       <div class="divider-note" style="margin-top:24px">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M4 4V20H20" stroke="currentColor" stroke-width="1.6"/><path d="M8 15L12 10L16 13L20 7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
-        <p><strong>The Audit → Correct → Reimport loop.</strong> Run the Schedule Audit prompt (Sheet A-13), feed its findings back into the Generate Dates prompt as context, reimport the corrected outline. This is a manual refinement cycle you drive as the schedule evolves — the app won't run it for you.</p>
+        <p><strong>The Audit → Correct → Reimport loop.</strong> Run the Schedule Audit prompt (Sheet A-13), feed its findings back into the Generate Dates prompt as context, reimport the corrected outline. This is a manual refinement cycle you drive as the schedule evolves , the app won't run it for you.</p>
       </div>
     </section>
 
     <!-- ============ PHOTO BAND 2 ============ -->
-    <!-- Local photo (brand-consistent site overview) — matches the marketing homepage band. -->
+    <!-- Local photo (brand-consistent site overview) , matches the marketing homepage band. -->
     <div class="band reveal">
       <div class="band-bg" style="background-image:url('images/site-overview-clean.webp')"></div>
       <div class="band-overlay"></div>
       <div class="band-content">
         <span class="kicker">Every task, one source of truth</span>
-        <h3>The WBS you build once shows up on the Gantt, the Kanban board, and the RACI matrix — never re-entered.</h3>
+        <h3>The WBS you build once shows up on the Gantt, the Kanban board, and the RACI matrix , never re-entered.</h3>
       </div>
     </div>
 
@@ -1022,16 +1022,16 @@ footer{padding:70px 64px 46px;position:relative;}
         <p class="prose">Your WBS tasks, viewed as cards across To Do / In Progress / Blocked / Completed.</p>
         <div class="grid grid-2" style="margin-top:16px">
           <div class="card"><span class="cnum">TOGGLE</span><h4>Show Lead-Time Lane</h4><p>Adds a dedicated swimlane for Lead-Time tasks so procurement and permit items don't clutter the normal columns.</p></div>
-          <div class="card"><span class="cnum">TOOL</span><h4>Populate Sprint</h4><p>Set a Sprint Start/End date and every "In Progress" task's dates clamp to fall inside that window — a fast way to timebox your current push.</p></div>
+          <div class="card"><span class="cnum">TOOL</span><h4>Populate Sprint</h4><p>Set a Sprint Start/End date and every "In Progress" task's dates clamp to fall inside that window , a fast way to timebox your current push.</p></div>
         </div>
       </div>
 
       <div class="tab-panel" data-panel="raci">
-        <p class="prose">Rows and columns pull live from your WBS tasks and your Resources/Stakeholders lists — add a person or task elsewhere and it appears here with nothing to re-enter.</p>
+        <p class="prose">Rows and columns pull live from your WBS tasks and your Resources/Stakeholders lists , add a person or task elsewhere and it appears here with nothing to re-enter.</p>
         <div class="grid grid-3" style="margin-top:16px">
           <div class="card"><span class="cnum">CLICK</span><h4>Cycle a cell</h4><p>Click to move Responsible → Accountable → Consulted → Informed → blank. Right-click, or Backspace with the cell focused, steps back.</p></div>
-          <div class="card"><span class="cnum"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3.5L21.5 20H2.5L12 3.5Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M12 10V14.6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="17.4" r="0.7" fill="currentColor"/></svg> ALERT</span><h4>External Accountable</h4><p>Flags when the person marked Accountable on a task is an external Stakeholder rather than an internal Resource — usually worth double-checking.</p></div>
-          <div class="card"><span class="cnum"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3.5L21.5 20H2.5L12 3.5Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M12 10V14.6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="17.4" r="0.7" fill="currentColor"/></svg> ALERT</span><h4>Overload warning</h4><p>Flags any task with nobody Accountable, and any person Accountable for more than 5 tasks — a possible bottleneck worth redistributing.</p></div>
+          <div class="card"><span class="cnum"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3.5L21.5 20H2.5L12 3.5Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M12 10V14.6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="17.4" r="0.7" fill="currentColor"/></svg> ALERT</span><h4>External Accountable</h4><p>Flags when the person marked Accountable on a task is an external Stakeholder rather than an internal Resource , usually worth double-checking.</p></div>
+          <div class="card"><span class="cnum"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3.5L21.5 20H2.5L12 3.5Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M12 10V14.6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="17.4" r="0.7" fill="currentColor"/></svg> ALERT</span><h4>Overload warning</h4><p>Flags any task with nobody Accountable, and any person Accountable for more than 5 tasks , a possible bottleneck worth redistributing.</p></div>
         </div>
       </div>
     </section>
@@ -1041,13 +1041,13 @@ footer{padding:70px 64px 46px;position:relative;}
         <div class="tblock-left"><span class="sheet-no">A-06</span><h2>Resources &amp; Budget</h2></div>
         <div class="tblock-right"><div><b>Scale</b>Overview</div></div>
       </div>
-      <span class="kicker">People, hours, and money — connected</span>
-      <p class="lede">Resources and Budget aren't two separate spreadsheets here. One setting — your Work Week — feeds both, and one button pushes labor straight from one panel into the other.</p>
+      <span class="kicker">People, hours, and money , connected</span>
+      <p class="lede">Resources and Budget aren't two separate spreadsheets here. One setting , your Work Week , feeds both, and one button pushes labor straight from one panel into the other.</p>
 
       <div class="grid grid-3">
         <div class="card bracket"><span class="cnum">STRIP</span><h4>Resource Utilization</h4><p>A visual bar per person showing how much of their available capacity is booked across active tasks. Over 100% means they're over-allocated.</p></div>
-        <div class="card bracket"><span class="cnum">SETTING</span><h4>Work Week</h4><p>Set in Settings ▸ Controls, 3–7 days. Determines how many working days someone actually has — and multiplies straight into Budget's labor cost math. Change it and both recalculate instantly.</p></div>
-        <div class="card bracket"><span class="cnum">BUTTON</span><h4>Push Resources to Budget</h4><p>Turns your Resources list directly into budget lines — no re-typing names, rates, or allocations a second time.</p></div>
+        <div class="card bracket"><span class="cnum">SETTING</span><h4>Work Week</h4><p>Set in Settings ▸ Controls, 3-7 days. Determines how many working days someone actually has , and multiplies straight into Budget's labor cost math. Change it and both recalculate instantly.</p></div>
+        <div class="card bracket"><span class="cnum">BUTTON</span><h4>Push Resources to Budget</h4><p>Turns your Resources list directly into budget lines , no re-typing names, rates, or allocations a second time.</p></div>
       </div>
 
       <h3 class="h-sub">Budget lines &amp; spend entries</h3>
@@ -1055,8 +1055,8 @@ footer{padding:70px 64px 46px;position:relative;}
 
       <h3 class="h-sub">Cash-Flow S-Curve &amp; Spend Log</h3>
       <div class="grid grid-2">
-        <div class="card bracket"><span class="cnum">CHART</span><h4>Cash-Flow Forecast</h4><p>An S-curve under the Budget panel plotting planned vs. actual cumulative spend across the schedule — shaped slow-fast-slow by default, or front/back-loaded per line. The Actual line is honest: it stays estimated until you log real spend entries.</p></div>
-        <div class="card bracket"><span class="cnum">LOG</span><h4>Spend Log</h4><p>Date-stamped entries against each budget line — the raw material the S-curve's Actual line and the Dashboard's Budget Variance card both read. Log it as it happens and the cash-flow picture stays current.</p></div>
+        <div class="card bracket"><span class="cnum">CHART</span><h4>Cash-Flow Forecast</h4><p>An S-curve under the Budget panel plotting planned vs. actual cumulative spend across the schedule , shaped slow-fast-slow by default, or front/back-loaded per line. The Actual line is honest: it stays estimated until you log real spend entries.</p></div>
+        <div class="card bracket"><span class="cnum">LOG</span><h4>Spend Log</h4><p>Date-stamped entries against each budget line , the raw material the S-curve's Actual line and the Dashboard's Budget Variance card both read. Log it as it happens and the cash-flow picture stays current.</p></div>
       </div>
     </section>
 
@@ -1067,16 +1067,16 @@ footer{padding:70px 64px 46px;position:relative;}
         <div class="tblock-right"><div><b>Scale</b>1 : 1 detail</div></div>
       </div>
       <span class="kicker">The register that feeds the Health Score</span>
-      <p class="lede">Fifteen percent of your Health Score comes straight from what's open here — so this panel earns its keep beyond just documentation.</p>
+      <p class="lede">Fifteen percent of your Health Score comes straight from what's open here , so this panel earns its keep beyond just documentation.</p>
 
       <div class="grid grid-2">
         <div class="card bracket"><span class="cnum">WORKFLOW</span><h4>Risk → Issue conversion</h4><p>Toggle the switch in the → Issue column and the row visually converts, moving to the Live Issues table with a red alert border. No re-entering the description.</p></div>
-        <div class="card bracket"><span class="cnum">SIMULATION</span><h4>Monte Carlo Simulator</h4><p>Runs 1,000 randomized trials of your schedule using each task's duration, your Risk Factor setting, and predecessor chains, then reports P10/P50/P80/P90 completion dates — a realistic range instead of one falsely-precise date. Set a Target Completion Date and it reports your probability of hitting it. Needs at least 2 dated tasks.</p></div>
+        <div class="card bracket"><span class="cnum">SIMULATION</span><h4>Monte Carlo Simulator</h4><p>Runs 1,000 randomized trials of your schedule using each task's duration, your Risk Factor setting, and predecessor chains, then reports P10/P50/P80/P90 completion dates , a realistic range instead of one falsely-precise date. Set a Target Completion Date and it reports your probability of hitting it. Needs at least 2 dated tasks.</p></div>
       </div>
 
       <div class="divider-note">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.6"/><path d="M9 12L11 14L15 9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        <p><strong>Where the spread comes from.</strong> Tasks tagged <span class="pill cyan">conf:high</span> during AI-assisted dating (Sheet A-04) get a tighter risk spread in the simulation; <span class="pill cyan">conf:low</span> tasks get a wider one — instead of every task sharing one blanket Risk Factor.</p>
+        <p><strong>Where the spread comes from.</strong> Tasks tagged <span class="pill cyan">conf:high</span> during AI-assisted dating (Sheet A-04) get a tighter risk spread in the simulation; <span class="pill cyan">conf:low</span> tasks get a wider one , instead of every task sharing one blanket Risk Factor.</p>
       </div>
     </section>
 
@@ -1087,13 +1087,13 @@ footer{padding:70px 64px 46px;position:relative;}
         <div class="tblock-right"><div><b>Scale</b>Overview</div></div>
       </div>
       <span class="kicker">The record-keeping panels</span>
-      <p class="lede">Four panels that mostly document decisions rather than calculate anything — but they're what you'll actually reach for in a scope dispute or a sponsor review.</p>
+      <p class="lede">Four panels that mostly document decisions rather than calculate anything , but they're what you'll actually reach for in a scope dispute or a sponsor review.</p>
 
       <div class="grid grid-4">
-        <div class="card"><span class="cnum">A</span><h4>Stakeholders</h4><p>Your engagement register — separate from internal Resources, and cross-checked against RACI's "external Accountable" alert.</p></div>
+        <div class="card"><span class="cnum">A</span><h4>Stakeholders</h4><p>Your engagement register , separate from internal Resources, and cross-checked against RACI's "external Accountable" alert.</p></div>
         <div class="card"><span class="cnum">B</span><h4>Changes</h4><p>Log Change Requests here; the Change Control Board meeting template (Sheet A-09) walks the approve/reject/defer decision.</p></div>
-        <div class="card"><span class="cnum">C</span><h4>Decision Log</h4><p>A running record of decisions made, separate from the Comms Log — useful when someone asks "wait, who approved that?"</p></div>
-        <div class="card"><span class="cnum">D</span><h4>Closure</h4><p>A closeout checklist plus a Lessons Learned form — What Went Well, Improvements, Recommendations. Trigger it as the project approaches completion.</p></div>
+        <div class="card"><span class="cnum">C</span><h4>Decision Log</h4><p>A running record of decisions made, separate from the Comms Log , useful when someone asks "wait, who approved that?"</p></div>
+        <div class="card"><span class="cnum">D</span><h4>Closure</h4><p>A closeout checklist plus a Lessons Learned form , What Went Well, Improvements, Recommendations. Trigger it as the project approaches completion.</p></div>
       </div>
     </section>
     <!-- ============ A-09 MEETINGS & AGENDA TEMPLATES ============ -->
@@ -1103,7 +1103,7 @@ footer{padding:70px 64px 46px;position:relative;}
         <div class="tblock-right"><div><b>Scale</b>1 : 1 detail</div><div><b>Templates</b>14</div></div>
       </div>
       <span class="kicker">Never build an agenda from scratch again</span>
-      <p class="lede">Every template compiles your live project data — Health Score, project name, the works — into a ready agenda and copies it straight to your clipboard. Paste it into a document, an email, or your meeting notes app.</p>
+      <p class="lede">Every template compiles your live project data , Health Score, project name, the works , into a ready agenda and copies it straight to your clipboard. Paste it into a document, an email, or your meeting notes app.</p>
 
       <div class="tabs" data-tabgroup="meet">
         <button class="tab-btn active" data-tab="kickoff">Project Kickoff</button>
@@ -1133,16 +1133,16 @@ footer{padding:70px 64px 46px;position:relative;}
         </div>
 
         <h4 class="h-mini">What "Copy Template" actually produces</h4>
-        <p class="prose">A timestamped, ready-to-paste agenda — project name and current Health Score stamped at the top, every item numbered with a notes line beneath it, and action-item / decisions / next-meeting sections at the bottom. Try it below — this is a real, working copy button.</p>
+        <p class="prose">A timestamped, ready-to-paste agenda , project name and current Health Score stamped at the top, every item numbered with a notes line beneath it, and action-item / decisions / next-meeting sections at the bottom. Try it below , this is a real, working copy button.</p>
         <div class="copy-demo">
-          <div class="copy-demo-head"><span>Preview — Project Kickoff</span><button class="copy-btn" data-copy="kickoff-demo">Copy</button></div>
+          <div class="copy-demo-head"><span>Preview , Project Kickoff</span><button class="copy-btn" data-copy="kickoff-demo">Copy</button></div>
           <pre id="kickoff-demo">[<b>Today's date/time</b> | My MaNaGeR | WATERFALL]
 
-PROJECT KICKOFF — AGENDA
+PROJECT KICKOFF , AGENDA
 ==================================================
 Project: <b>[Your Project Name]</b>
-Health Score: <b>—</b>
-Duration: 60–90 min
+Health Score: <b>-</b>
+Duration: 60-90 min
 Date: ____________  Time: ____________
 Facilitator: ____________
 Attendees: ____________
@@ -1199,8 +1199,8 @@ Date: ____________  Focus: ____________</pre>
 
       <h3 class="h-sub">Start/End tracking &amp; voice capture</h3>
       <div class="grid grid-2">
-        <div class="card bracket"><span class="cnum">TIMER</span><h4>Meeting Start/End time</h4><p>Start a meeting and the panel tracks elapsed time as it runs. End it and the meeting auto-logs to the Comms Log with attendees, decisions, and action items — no separate data-entry step.</p></div>
-        <div class="card bracket"><span class="cnum">VOICE</span><h4>Voice capture</h4><p>While a meeting is active you can capture it by voice — live captions or an offline transcript that lands on the meeting record. See Sheet A-10 for the full Voice Capture story, and Sheet A-11 for how a captured meeting feeds a Claim Pack.</p></div>
+        <div class="card bracket"><span class="cnum">TIMER</span><h4>Meeting Start/End time</h4><p>Start a meeting and the panel tracks elapsed time as it runs. End it and the meeting auto-logs to the Comms Log with attendees, decisions, and action items , no separate data-entry step.</p></div>
+        <div class="card bracket"><span class="cnum">VOICE</span><h4>Voice capture</h4><p>While a meeting is active you can capture it by voice , live captions or an offline transcript that lands on the meeting record. See Sheet A-10 for the full Voice Capture story, and Sheet A-11 for how a captured meeting feeds a Claim Pack.</p></div>
         <div class="card bracket"><span class="cnum">DELETE</span><h4>Delete + undo</h4><p>Every concluded meeting row has a Delete button (trash icon). Deleting removes the meeting record plus the Comms entry, decisions, and meeting-to-action promises it created; the confirm dialog is followed by a short Undo window in the toast, so a mistaken tap restores everything.</p></div>
       </div>
 
@@ -1223,20 +1223,20 @@ Date: ____________  Focus: ____________</pre>
         <div class="tblock-right"><div><b>Scale</b>1 : 1 detail</div></div>
       </div>
       <span class="kicker">Talk the minutes, not type them</span>
-      <p class="lede">Voice capture turns a running meeting into a written record on the spot — no phone recorder, no second screen. The transcript lands on the meeting's own record in project state, so it travels with the project file and can feed everything downstream (Sheet A-11 shows one very useful destination).</p>
+      <p class="lede">Voice capture turns a running meeting into a written record on the spot , no phone recorder, no second screen. The transcript lands on the meeting's own record in project state, so it travels with the project file and can feed everything downstream (Sheet A-11 shows one very useful destination).</p>
 
-      <h3 class="h-sub">Two capture tiers — one button</h3>
+      <h3 class="h-sub">Two capture tiers , one button</h3>
       <div class="grid grid-2">
-        <div class="card bracket"><span class="cnum">TIER 0</span><h4>Live captions (Web Speech API)</h4><p>Streams captions to the screen in real time while you talk. Needs a network connection and a browser with speech recognition — but it's circuit-broken: if recognition is unavailable or errors mid-meeting, capture keeps going and the transcript stays editable, so a dropped connection never ends your meeting or loses what you said.</p></div>
-        <div class="card bracket"><span class="cnum">TIER 1</span><h4>Offline whisper (batch-on-stop)</h4><p>A small offline speech model (whisper, no API key) transcribes the session when you stop capture — batch, not live. Live captions stream while you record; the full transcript is finalized on stop and saved to the meeting record. Works with zero keys and no account.</p></div>
+        <div class="card bracket"><span class="cnum">TIER 0</span><h4>Live captions (Web Speech API)</h4><p>Streams captions to the screen in real time while you talk. Needs a network connection and a browser with speech recognition , but it's circuit-broken: if recognition is unavailable or errors mid-meeting, capture keeps going and the transcript stays editable, so a dropped connection never ends your meeting or loses what you said.</p></div>
+        <div class="card bracket"><span class="cnum">TIER 1</span><h4>Offline whisper (batch-on-stop)</h4><p>A small offline speech model (whisper, no API key) transcribes the session when you stop capture , batch, not live. Live captions stream while you record; the full transcript is finalized on stop and saved to the meeting record. Works with zero keys and no account.</p></div>
       </div>
 
       <h3 class="h-sub">After capture</h3>
-      <p class="prose">The transcript is stored on the meeting record in unified state — it survives refresh, exports with the project file, and syncs like any other field. The app runs a rule-based (zero-AI) extraction over the text to pull out decisions and action items you can confirm before the meeting closes out (Sheet A-09 covers Start/End and the Comms auto-log).</p>
+      <p class="prose">The transcript is stored on the meeting record in unified state , it survives refresh, exports with the project file, and syncs like any other field. The app runs a rule-based (zero-AI) extraction over the text to pull out decisions and action items you can confirm before the meeting closes out (Sheet A-09 covers Start/End and the Comms auto-log).</p>
 
       <div class="divider-note">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 8V12M12 16H12.01M21 12C21 16.97 16.97 21 12 21C7.03 21 3 16.97 3 12C3 7.03 7.03 3 12 3C16.97 3 21 7.03 21 12Z" stroke="currentColor" stroke-width="1.6"/></svg>
-        <p><strong>Review before you trust.</strong> Transcripts are a working record, not a court reporter. In noisy or overlapping audio — a busy site, people talking over each other — detail can be lost or misheard. Skim the transcript against your memory of the meeting before it becomes the record of record.</p>
+        <p><strong>Review before you trust.</strong> Transcripts are a working record, not a court reporter. In noisy or overlapping audio , a busy site, people talking over each other , detail can be lost or misheard. Skim the transcript against your memory of the meeting before it becomes the record of record.</p>
       </div>
     </section>
 
@@ -1247,23 +1247,23 @@ Date: ____________  Focus: ____________</pre>
         <div class="tblock-right"><div><b>Scale</b>1 : 1 detail</div></div>
       </div>
       <span class="kicker">The delay story, compiled while it happens</span>
-      <p class="lede">A Claim Pack is a counsel-ready package built entirely from your project's own records — weather delays, schedule slips, liquidated-damages exposure, change control, and meeting decisions for a date range you choose. Nothing is re-typed; every section is pulled live from state.</p>
+      <p class="lede">A Claim Pack is a counsel-ready package built entirely from your project's own records , weather delays, schedule slips, liquidated-damages exposure, change control, and meeting decisions for a date range you choose. Nothing is re-typed; every section is pulled live from state.</p>
 
       <h3 class="h-sub">Generate a package</h3>
       <div class="grid grid-2">
-        <div class="card bracket"><span class="cnum">WINDOW</span><h4>Pick From / To dates</h4><p>In the Claim Pack tab, set the window you're claiming. The pack then scopes everything — slips, weather delays, LD exposure, changes, decisions — to that range.</p></div>
+        <div class="card bracket"><span class="cnum">WINDOW</span><h4>Pick From / To dates</h4><p>In the Claim Pack tab, set the window you're claiming. The pack then scopes everything , slips, weather delays, LD exposure, changes, decisions , to that range.</p></div>
         <div class="card bracket"><span class="cnum">GENERATE</span><h4>Generate Package</h4><p>One click compiles the full package: weather delay days, affected WBS tasks, LD/contract exposure (avoided vs incurred), baseline-vs-actual deltas, change control, and meeting decisions/action items. Copy All gets it into Word or your counsel's inbox.</p></div>
       </div>
 
       <h3 class="h-sub">Schedule Slip Log &amp; cause tagging</h3>
-      <p class="prose">Every task that slipped past its baseline end date appears in the Schedule Slip Log. Causes auto-tag from evidence — a weather delay on the same dates, a predecessor slip, a change request — and default to <em>unknown</em> where there's no evidence, so the log never silently pretends it knows. You can re-tag any slip manually with the dropdown. The Liquidated Damages Rollup splits exposure into <strong>avoided</strong> (weather cause) vs <strong>incurred</strong> (everything else) straight from those tags.</p>
+      <p class="prose">Every task that slipped past its baseline end date appears in the Schedule Slip Log. Causes auto-tag from evidence , a weather delay on the same dates, a predecessor slip, a change request , and default to <em>unknown</em> where there's no evidence, so the log never silently pretends it knows. You can re-tag any slip manually with the dropdown. The Liquidated Damages Rollup splits exposure into <strong>avoided</strong> (weather cause) vs <strong>incurred</strong> (everything else) straight from those tags.</p>
 
       <h3 class="h-sub">Voice-to-Claim</h3>
-      <p class="prose">This is where a captured meeting (Sheet A-10) earns its keep: a messy on-site dispute or a weather-stop conversation becomes a transcript, the rule-based extractor pulls the decisions and action items, and those land in state where the Claim Pack can cite them. Capture in the meeting, claim from the record — no re-narration.</p>
+      <p class="prose">This is where a captured meeting (Sheet A-10) earns its keep: a messy on-site dispute or a weather-stop conversation becomes a transcript, the rule-based extractor pulls the decisions and action items, and those land in state where the Claim Pack can cite them. Capture in the meeting, claim from the record , no re-narration.</p>
 
       <div class="divider-note">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M9 6H20M9 12H20M9 18H20" stroke="currentColor" stroke-width="1.6"/><path d="M4 6L5 7L7 5M4 12L5 13L7 11M4 18L5 19L7 17" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        <p><strong>Built from your records, on purpose.</strong> The Claim Pack never asks the AI to invent a delay — it compiles what you already logged. The 13th AI preset, <strong>Claim Pack</strong> (Sheet A-13), grounds an LLM in the same package for a written argument if you want one.</p>
+        <p><strong>Built from your records, on purpose.</strong> The Claim Pack never asks the AI to invent a delay , it compiles what you already logged. The 13th AI preset, <strong>Claim Pack</strong> (Sheet A-13), grounds an LLM in the same package for a written argument if you want one.</p>
       </div>
     </section>
 
@@ -1274,7 +1274,7 @@ Date: ____________  Focus: ____________</pre>
         <div class="tblock-right"><div><b>Scale</b>Overview</div></div>
       </div>
       <div class="grid grid-2">
-        <div class="card bracket"><span class="cnum">RECORD</span><h4>Comms Log</h4><p>Every material communication — meetings, calls, emails, site visits — with attendees, a summary, action items, and a follow-up date. Your record of reference in any scope dispute.</p></div>
+        <div class="card bracket"><span class="cnum">RECORD</span><h4>Comms Log</h4><p>Every material communication , meetings, calls, emails, site visits , with attendees, a summary, action items, and a follow-up date. Your record of reference in any scope dispute.</p></div>
         <div class="card bracket"><span class="cnum">REGISTER</span><h4>Document Register</h4><p>Tracks drawings, contracts, permits, specs, and inspection reports by version and status, with alerts for anything outstanding.</p></div>
       </div>
     </section>
@@ -1286,15 +1286,15 @@ Date: ____________  Focus: ____________</pre>
         <div class="tblock-right"><div><b>Scale</b>1 : 1 detail</div><div><b>Presets</b>13</div></div>
       </div>
       <span class="kicker">One master switch. Three engine tiers.</span>
-      <p class="lede">The AI Assistant compiles your live project data into structured output — reports, dates, audits, claim arguments. One master switch in the Settings drawer turns the whole assistant on or off, and the engine tier (Off / Local / Cloud) sits in the AI window header so you always know which one is live.</p>
+      <p class="lede">The AI Assistant compiles your live project data into structured output , reports, dates, audits, claim arguments. One master switch in the Settings drawer turns the whole assistant on or off, and the engine tier (Off / Local / Cloud) sits in the AI window header so you always know which one is live.</p>
 
       <h3 class="h-sub">The three tiers</h3>
       <div class="grid grid-3">
         <div class="card bracket"><span class="cnum">OFF</span><h4>Off</h4><p>The assistant is disabled and the floating AI button is hidden. Everything else in the app is untouched.</p></div>
-        <div class="card bracket"><span class="cnum">LOCAL</span><h4>Local — zero-key</h4><p>Runs in your browser, offline, with no API key and no account. "Zero-fabrication by construction": every line it writes traces to a real field in your project state — it derives, it doesn't invent numbers.</p></div>
-        <div class="card bracket"><span class="cnum">CLOUD</span><h4>Cloud — your own key</h4><p>Optional BYO-key tier that calls out to your chosen provider — OpenAI, Google Gemini, or Anthropic Claude — from the AI window's connection settings; Connect &amp; Test verifies the key live before Send unlocks. Your live project data is compiled into the prompt that leaves the browser — nothing else does. If a provider rate-limits the current model (HTTP 429/503), the app automatically retries on the next smaller model in that provider's fallback ladder — e.g. Gemini 2.0 Flash → Flash Lite → Flash Latest — and shows an amber “Fell back to …” badge naming the model that answered. A rejected key (401/403) is cleared immediately; it never quietly falls through to a smaller model with a bad key.</p></div>
+        <div class="card bracket"><span class="cnum">LOCAL</span><h4>Local , zero-key</h4><p>Runs in your browser, offline, with no API key and no account. "Zero-fabrication by construction": every line it writes traces to a real field in your project state , it derives, it doesn't invent numbers.</p></div>
+        <div class="card bracket"><span class="cnum">CLOUD</span><h4>Cloud , your own key</h4><p>Optional BYO-key tier that calls out to your chosen provider , OpenAI, Google Gemini, or Anthropic Claude , from the AI window's connection settings; Connect &amp; Test verifies the key live before Send unlocks. Your live project data is compiled into the prompt that leaves the browser , nothing else does. If a provider rate-limits the current model (HTTP 429/503), the app automatically retries on the next smaller model in that provider's fallback ladder , e.g. Gemini 2.0 Flash → Flash Lite → Flash Latest , and shows an amber "Fell back to …" badge naming the model that answered. A rejected key (401/403) is cleared immediately; it never quietly falls through to a smaller model with a bad key.</p></div>
       </div>
-      <p class="prose" style="margin-top:14px">The Settings-drawer switch and the header tier selector are the <em>same</em> control: switch the assistant Off and the tier is <strong>off</strong>; switch it On and it restores Local or your last tier. One control, one meaning — the floating AI button can never be visible while the engine is off.</p>
+      <p class="prose" style="margin-top:14px">The Settings-drawer switch and the header tier selector are the <em>same</em> control: switch the assistant Off and the tier is <strong>off</strong>; switch it On and it restores Local or your last tier. One control, one meaning , the floating AI button can never be visible while the engine is off.</p>
 
       <h3 class="h-sub">Thirteen presets</h3>
       <div class="grid grid-4">
@@ -1306,19 +1306,19 @@ Date: ____________  Focus: ____________</pre>
         <div class="card"><span class="cnum">06</span><h4>Schedule Audit</h4><p>CPM logic review of your WBS dates.</p></div>
         <div class="card"><span class="cnum">07</span><h4>Visual Output</h4><p>Asks the AI to return a self-contained HTML dashboard, including a RACI grid if you've built one.</p></div>
         <div class="card"><span class="cnum">08</span><h4>Change Impact</h4><p>Scope/schedule/cost/risk verdict on a pending Change Request before it goes to the Sponsor.</p></div>
-        <div class="card"><span class="cnum">09</span><h4>Client Update</h4><p>Plain-language update written for the paying client — no PM jargon.</p></div>
+        <div class="card"><span class="cnum">09</span><h4>Client Update</h4><p>Plain-language update written for the paying client , no PM jargon.</p></div>
         <div class="card"><span class="cnum">10</span><h4>Charter Dates</h4><p>Proposes realistic Target Start/Completion dates before a WBS exists (Sheet A-03).</p></div>
         <div class="card"><span class="cnum">11</span><h4>Generate Dates</h4><p>Returns your outline with dates and confidence tags attached (Sheet A-04).</p></div>
-        <div class="card"><span class="cnum">12</span><h4>Daily Field Report</h4><p>Same-day site-walk digest — see the snapshot diff below.</p></div>
+        <div class="card"><span class="cnum">12</span><h4>Daily Field Report</h4><p>Same-day site-walk digest , see the snapshot diff below.</p></div>
         <div class="card"><span class="cnum">13</span><h4>Claim Pack</h4><p>Grounds the engine in the compiled claim package (Sheet A-11) for a written delay argument.</p></div>
       </div>
 
-      <h3 class="h-sub">Copy-first and agent-style — both still work</h3>
-      <p class="prose">Every preset offers both flows. The chip loads the compiled prompt into the chat box — send it on the Cloud tier, or copy prompt + context to use any AI tool you already have; that copy path never goes away. The run button is agent-style: it generates the result and writes it back into project state under the preset's name, where it travels with the project file. Ten presets have a built-in Local generator that needs no key; the other three (Visual Output, Charter Dates, Generate Dates) need the Cloud tier for the run button — on Local they'll say so and stay copy-first. Generate Dates' returned outline is merged into your WBS through the <strong>Import Dates</strong> modal in the WBS panel (Sheet A-04), so nothing overwrites your schedule without you reviewing it.</p>
+      <h3 class="h-sub">Copy-first and agent-style , both still work</h3>
+      <p class="prose">Every preset offers both flows. The chip loads the compiled prompt into the chat box , send it on the Cloud tier, or copy prompt + context to use any AI tool you already have; that copy path never goes away. The run button is agent-style: it generates the result and writes it back into project state under the preset's name, where it travels with the project file. Ten presets have a built-in Local generator that needs no key; the other three (Visual Output, Charter Dates, Generate Dates) need the Cloud tier for the run button , on Local they'll say so and stay copy-first. Generate Dates' returned outline is merged into your WBS through the <strong>Import Dates</strong> modal in the WBS panel (Sheet A-04), so nothing overwrites your schedule without you reviewing it.</p>
 
       <div class="divider-note" style="margin-top:32px">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M3 9L7 5L11 9M7 5V19" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 15L17 19L13 15M17 19V5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        <p><strong>The Daily Field Report's diff.</strong> Click <strong>Snapshot Now</strong> next to the prompt title once the daily prompt is open — it saves today's task statuses, and tomorrow's run shows exactly what changed since that snapshot: tasks completed, the blocked-task count, new risks and issues, and budget movement. A same-day diff instead of a flat status dump.</p>
+        <p><strong>The Daily Field Report's diff.</strong> Click <strong>Snapshot Now</strong> next to the prompt title once the daily prompt is open , it saves today's task statuses, and tomorrow's run shows exactly what changed since that snapshot: tasks completed, the blocked-task count, new risks and issues, and budget movement. A same-day diff instead of a flat status dump.</p>
       </div>
     </section>
 
@@ -1328,10 +1328,10 @@ Date: ____________  Focus: ____________</pre>
         <div class="tblock-left"><span class="sheet-no">A-14</span><h2>DMAIC (Six Sigma Mode)</h2></div>
         <div class="tblock-right"><div><b>Scale</b>Overview</div></div>
       </div>
-      <p class="lede" style="margin-bottom:0">An optional workflow for working a recurring quality or process problem — <strong>Define, Measure, Analyze, Improve, Control</strong> — separate from one-off Change Requests, which are for scope changes rather than systemic issues. Switch on the <strong>Quality pack</strong> in Settings ▸ Advanced Packs and set your methodology to <strong>Hybrid</strong> to reveal its tab in the top nav; the Quality Review / DMAIC Check meeting template (Sheet A-09) is built to run alongside it.</p>
+      <p class="lede" style="margin-bottom:0">An optional workflow for working a recurring quality or process problem , <strong>Define, Measure, Analyze, Improve, Control</strong> , separate from one-off Change Requests, which are for scope changes rather than systemic issues. Switch on the <strong>Quality pack</strong> in Settings ▸ Advanced Packs and set your methodology to <strong>Hybrid</strong> to reveal its tab in the top nav; the Quality Review / DMAIC Check meeting template (Sheet A-09) is built to run alongside it.</p>
     </section>
     <!-- ============ PHOTO BAND 3 ============ -->
-    <!-- Local photo (finished interior) — "your space, your data". -->
+    <!-- Local photo (finished interior) , "your space, your data". -->
     <div class="band reveal">
       <div class="band-bg" style="background-image:url('images/finished-interior-living.webp')"></div>
       <div class="band-overlay"></div>
@@ -1347,55 +1347,55 @@ Date: ____________  Focus: ____________</pre>
         <div class="tblock-left"><span class="sheet-no">A-15</span><h2>Data, Backup &amp; Access</h2></div>
         <div class="tblock-right"><div><b>Scale</b>1 : 1 detail</div></div>
       </div>
-      <span class="kicker">Your project lives on your device — and goes where you go</span>
-      <p class="lede">Every change autosaves to this browser's LocalStorage the moment you make it — no save button, no network call. By default one project lives on one browser, on one device. Three deliberate paths move it anywhere else: the portable .json file, a USB/sync transfer, or — if you want it — the optional cloud backup. The app never requires an account; everything below is a choice.</p>
+      <span class="kicker">Your project lives on your device , and goes where you go</span>
+      <p class="lede">Every change autosaves to this browser's LocalStorage the moment you make it , no save button, no network call. By default one project lives on one browser, on one device. Three deliberate paths move it anywhere else: the portable .json file, a USB/sync transfer, or , if you want it , the optional cloud backup. The app never requires an account; everything below is a choice.</p>
 
-      <h3 class="h-sub">Backup from the header — the backup indicator</h3>
-      <p class="prose">The pill in the header tells you where your project stands and is the one-click backup door. <strong>Cloud-linked projects show a green “Cloud backed up” chip</strong> — the snapshot auto-syncs to the cloud as you work, so there is nothing to worry about. Projects not linked to the cloud show an amber <strong>“Not backed up”</strong> pill — your changes are safe in the browser's autosave either way, and a backup is optional; grab one whenever you're ready, e.g. at the end of a task. Click either pill and a small backup card opens with the two routes: <strong>Backup to cloud</strong> — once a project is linked (Settings ▸ Controls ▸ Cloud Backup), snapshots auto-sync and the card also saves straight to the cloud — and <strong>Backup to local (.json)</strong>, the portable file described below. The card's footer line tells you when the last file backup happened.</p>
+      <h3 class="h-sub">Backup from the header , the backup indicator</h3>
+      <p class="prose">The pill in the header tells you where your project stands and is the one-click backup door. <strong>Cloud-linked projects show a green "Cloud backed up" chip</strong> , the snapshot auto-syncs to the cloud as you work, so there is nothing to worry about. Projects not linked to the cloud show an amber <strong>"Not backed up"</strong> pill , your changes are safe in the browser's autosave either way, and a backup is optional; grab one whenever you're ready, e.g. at the end of a task. Click either pill and a small backup card opens with the two routes: <strong>Backup to cloud</strong> , once a project is linked (Settings ▸ Controls ▸ Cloud Backup), snapshots auto-sync and the card also saves straight to the cloud , and <strong>Backup to local (.json)</strong>, the portable file described below. The card's footer line tells you when the last file backup happened.</p>
 
       <div class="grid grid-3">
-        <div class="card bracket"><span class="cnum">EXPORT</span><h4>Save Project to File</h4><p>Settings ▸ Controls ▸ Save Project to File (or the header's “Not backed up” indicator ▸ <strong>Backup to local (.json)</strong>) writes a portable .json — your ticket to a new device, a teammate's laptop, or just peace of mind. Works everywhere, account or not.</p></div>
+        <div class="card bracket"><span class="cnum">EXPORT</span><h4>Save Project to File</h4><p>Settings ▸ Controls ▸ Save Project to File (or the header's "Not backed up" indicator ▸ <strong>Backup to local (.json)</strong>) writes a portable .json , your ticket to a new device, a teammate's laptop, or just peace of mind. Works everywhere, account or not.</p></div>
         <div class="card bracket"><span class="cnum">IMPORT</span><h4>Load Project from File</h4><p>Settings ▸ Controls ▸ Load Project from File, then pick a previously saved .json to restore it.</p></div>
         <div class="card bracket"><span class="cnum">SNAPSHOT</span><h4>Save Baseline</h4><p>A point-in-time snapshot of schedule and budget, feeding the Dashboard's Baseline Variance card (Sheet A-02).</p></div>
       </div>
 
       <h3 class="h-sub">Real-world moves: three scenarios</h3>
       <div class="grid grid-3">
-        <div class="card"><span class="cnum">USB</span><h4>Moving devices</h4><p>Export to .json, carry it on a stick or email it to yourself, open the new browser, Load Project from File. Done — no account needed.</p></div>
-        <div class="card"><span class="cnum">MOBILE</span><h4>Viewing on the phone</h4><p>The same .json opens in any browser. Since every field carries a per-field edit timestamp, when you take a copy back to the office, edits merge — newest write wins per field, not whole-file last-save.</p></div>
-        <div class="card"><span class="cnum">LOSS</span><h4>Device lost or wiped</h4><p>If a copy was exported, saved to the cloud, or synced, the project survives the device. This is the single most important habit: a closed tab is fine, a wiped browser is not — back it up before anything drastic.</p></div>
+        <div class="card"><span class="cnum">USB</span><h4>Moving devices</h4><p>Export to .json, carry it on a stick or email it to yourself, open the new browser, Load Project from File. Done , no account needed.</p></div>
+        <div class="card"><span class="cnum">MOBILE</span><h4>Viewing on the phone</h4><p>The same .json opens in any browser. Since every field carries a per-field edit timestamp, when you take a copy back to the office, edits merge , newest write wins per field, not whole-file last-save.</p></div>
+        <div class="card"><span class="cnum">LOSS</span><h4>Device lost or wiped</h4><p>If a copy was exported, saved to the cloud, or synced, the project survives the device. This is the single most important habit: a closed tab is fine, a wiped browser is not , back it up before anything drastic.</p></div>
       </div>
 
-      <h3 class="h-sub">Optional cloud backup — an owner code, an editor code, or a view-only code</h3>
-      <p class="prose">The <strong>Share &amp; Access</strong> section in Settings ▸ Controls is the single home for cloud sharing: it links a project to the backend (D1 + R2) so its state JSON lives off-device and can be pulled back on any device, and it is where the owner code and every editor code live. Once linked, the header switches to the green “Cloud backed up” chip and the app auto-syncs the snapshot in the background — roughly 25 seconds after you stop editing — so the off-device copy stays current without lifting a finger, and a final flush runs when you close the tab. This works for <strong>owner and editor</strong> sessions alike: an editor’s silent push is merged through their granted sections server-side, so it can never touch anything outside its scope. A separate Save button still exists for an immediate push, but it is never required for the copy to stay current. It is strictly opt-in per project, never required, and never gates a feature — the JSON export/import path above remains the guaranteed route on every device, signed in or not. Sign-in is routed too: if you trigger a cloud action that needs your Google account (recovering a lost owner code, publishing from the Admin panel) while signed out, the Google sign-in prompt appears at that exact moment and the action continues on its own once you’re signed in. Publishing from the Admin panel records the owner code for a project, so opening that project here adopts it automatically — publish, open, and auto-sync, zero re-typing.</p>
+      <h3 class="h-sub">Optional cloud backup , an owner code, an editor code, or a view-only code</h3>
+      <p class="prose">The <strong>Share &amp; Access</strong> section in Settings ▸ Controls is the single home for cloud sharing: it links a project to the backend (D1 + R2) so its state JSON lives off-device and can be pulled back on any device, and it is where the owner code and every editor code live. Once linked, the header switches to the green "Cloud backed up" chip and the app auto-syncs the snapshot in the background , roughly 25 seconds after you stop editing , so the off-device copy stays current without lifting a finger, and a final flush runs when you close the tab. This works for <strong>owner and editor</strong> sessions alike: an editor's silent push is merged through their granted sections server-side, so it can never touch anything outside its scope. A separate Save button still exists for an immediate push, but it is never required for the copy to stay current. It is strictly opt-in per project, never required, and never gates a feature , the JSON export/import path above remains the guaranteed route on every device, signed in or not. Sign-in is routed too: if you trigger a cloud action that needs your Google account (recovering a lost owner code, publishing from the Admin panel) while signed out, the Google sign-in prompt appears at that exact moment and the action continues on its own once you're signed in. Publishing from the Admin panel records the owner code for a project, so opening that project here adopts it automatically , publish, open, and auto-sync, zero re-typing.</p>
       <div class="grid grid-3">
-        <div class="card bracket"><span class="cnum">OWNER</span><h4>Owner code (create)</h4><p>Create Cloud Project generates a 16-character owner/recovery code shown EXACTLY ONCE — copy it and store it somewhere safe. You authenticate saves/loads with it; the plaintext is never stored server-side (only a salted hash), so a lost code is unrecoverable without the linked Google account.</p></div>
-        <div class="card bracket"><span class="cnum">EDITOR</span><h4>Editor codes (scoped)</h4><p>The owner can generate editor codes with a label and tick which sections each code may WRITE (WBS, Budget, Risks, Meetings…). Scope is enforced SERVER-SIDE on every save — an editor (or a leaked code) physically cannot touch anything outside its grant, and out-of-scope panels grey out as a visual hint. Revoke a code anytime; it stops working immediately.</p></div>
-        <div class="card bracket"><span class="cnum">VIEWER</span><h4>View-only access codes</h4><p>Access codes on app.html unlock projects read-only (view-only code = read-only project), independent of cloud — the app gate that protects every project. Cloud editor codes are about who may WRITE which sections; view codes are about who may OPEN the project at all.</p></div>
+        <div class="card bracket"><span class="cnum">OWNER</span><h4>Owner code (create)</h4><p>Create Cloud Project generates a 16-character owner/recovery code shown EXACTLY ONCE , copy it and store it somewhere safe. You authenticate saves/loads with it; the plaintext is never stored server-side (only a salted hash), so a lost code is unrecoverable without the linked Google account.</p></div>
+        <div class="card bracket"><span class="cnum">EDITOR</span><h4>Editor codes (scoped)</h4><p>The owner can generate editor codes with a label and tick which sections each code may WRITE (WBS, Budget, Risks, Meetings…). Scope is enforced SERVER-SIDE on every save , an editor (or a leaked code) physically cannot touch anything outside its grant, and out-of-scope panels grey out as a visual hint. Revoke a code anytime; it stops working immediately.</p></div>
+        <div class="card bracket"><span class="cnum">VIEWER</span><h4>View-only access codes</h4><p>Access codes on app.html unlock projects read-only (view-only code = read-only project), independent of cloud , the app gate that protects every project. Cloud editor codes are about who may WRITE which sections; view codes are about who may OPEN the project at all.</p></div>
       </div>
 
       <h3 class="h-sub">Save, load, recover, and unlink</h3>
       <div class="flow">
-        <div class="flow-item"><div class="flow-num"></div><div class="flow-body"><h4>Save to Cloud / Load from Cloud</h4><p>With the owner (or an editor) code in session, Save to Cloud pushes the current state; Load from Cloud replaces this device's workspace with the stored snapshot (it asks first — current local data would be overwritten). Each save records a changelog entry with field-level before/after values (or a snapshot for bulk changes).</p></div></div>
-        <div class="flow-item"><div class="flow-num"></div><div class="flow-body"><h4>On another device? Enter the code</h4><p>Load with Code accepts a 16-character owner, editor, or viewer code, pulls the snapshot, and keeps the credential for this session only. A fresh device just needs the code typed in — no account required. Prefer the launcher: the <strong>Have a code? Open a project</strong> entry on app.html resolves the code to its project from the cloud, so even a project this device has never seen opens with just the code.</p></div></div>
-        <div class="flow-item"><div class="flow-num"></div><div class="flow-body"><h4>Pinned into My Cloud Projects</h4><p>Open a shared project with an editor or viewer code while signed in to Google, and it <strong>pins into your own “My Cloud Projects”</strong> list on the launcher (server-side adoption: the grant follows the account, not the clipboard). Re-open it anytime with one click, no code re-typing: the pinned row re-reads the LIVE code, so a revoked code stops opening and a scope change applies immediately. An <strong>Unpin</strong> button on the card drops the pin from your list (the owner's project is untouched). While you hold a share code, offline-copy is disabled on purpose: Save Project to File, the export modal, and Drive backup are refused, because a shared project must never leave as a file (Sheet A-20).</p></div></div>
-        <div class="flow-item"><div class="flow-num"></div><div class="flow-body"><h4>Offline copies — live refresh, view-only (approved 2026-08-17)</h4><p>Inside a shared project, a viewer or editor can click <strong>Make offline copy</strong> in Cloud Backup: the server <strong>registers this device</strong> as an offline copy of the project. A registered copy is <strong>view-only by design</strong> — it can read and refresh, never edit — so there is nothing to lose when it updates. When the main device saves (or the owner broadcasts), every registered copy learns the cloud moved instantly over the presence channel and pulls the newest snapshot <strong>without a full page reload</strong>; an <strong>Update offline copy</strong> button stays available for a manual pull (viewers also auto-pull silently on save). The reconcile model is deliberate: the local device is connected to the cloud, so your changes automatically sync UP to the cloud whenever a sync can happen, and the cloud broadcasts DOWN to copies when the owner asks it to — copies never fight the cloud. This registered copy is a separate, sanctioned offline path from file export: while you hold a share code, Save Project to File / the export modal / Drive backup remain refused (a shared project must never leave as a file), but a registered offline copy is exactly the intended way to keep working offline.</p></div></div>
-        <div class="flow-item"><div class="flow-num"></div><div class="flow-body"><h4>Broadcast to other projects (owner)</h4><p>The owner's Cloud Backup section shows <strong>Offline copies &amp; broadcast</strong>: a list of every registered copy (device + last-pulled time) with per-copy <strong>Remove</strong>, plus <strong>Broadcast to other projects</strong> — one click pushes the current snapshot to every registered copy at once (connected copies refresh instantly; the rest pick it up on their next check) and logs a <strong>Broadcast to offline copies</strong> entry in the changelog. Turn on <strong>Auto-broadcast on every save</strong> and every save also broadcasts automatically, so copies stay current without a manual push. Because copies are view-only, a broadcast can never overwrite anyone's edits — the cloud is the single source of truth and copies mirror it.</p></div></div>
-        <div class="flow-item"><div class="flow-num"></div><div class="flow-body"><h4>Review incoming changes (owner) — approved 2026-08-17</h4><p>Edits from editor codes (and AI imports) no longer reach the cloud project directly — they wait in the owner's <strong>Review incoming changes</strong> section as proposals, and nothing is applied until the owner decides. Each proposal shows the source (the editor label, or the MCP AI badge), when it was proposed, and an expandable before/after diff of every changed field. <strong>Accept</strong> applies the change through the same server-side scope merge as a direct save (so an editor can still only change the sections their code is granted), logs an <strong>Accepted change from review</strong> entry in the changelog (revertible like any edit), and refreshes offline copies — <strong>Reject</strong> discards it and logs a <strong>Rejected change from review</strong> entry without touching the project. This review gate is always on: it is the admin's control over "changes from another source" — the owner's own saves apply instantly, viewers still cannot save, and an editor who saves repeatedly only ever leaves their newest proposal pending (last proposal wins). The editor's own Cloud Backup section shows their last change's status — pending, accepted (now in the cloud), or rejected.</p></div></div>
-        <div class="flow-item"><div class="flow-num"></div><div class="flow-body"><h4>Recover Owner Code (lost code)</h4><p>Recovery is gated on the Google account that was linked when the project was created: sign in with Google (optional identity, never required) and Recover Owner Code issues a NEW owner code — the old one stops working immediately, and the recovery itself is logged. Without the linked account, a lost owner code cannot be recovered; editor codes can always be re-issued by the owner.</p></div></div>
-        <div class="flow-item"><div class="flow-num"></div><div class="flow-body"><h4>Changelog — view and revert</h4><p>The owner can open the changelog to see who changed what and when (Owner or "Editor — label", field-level diffs, or "Full-state change" for bulk operations). Revert is owner-only and never erases history: it writes the recorded before-values back (or restores the snapshot) and logs the revert itself as a new entry — so a revert of a revert restores the pre-revert state.</p></div></div>
-        <div class="flow-item"><div class="flow-num"></div><div class="flow-body"><h4>Unlink from Cloud</h4><p>Unlink from Cloud deletes the CLOUD copy (snapshot, editor codes, changelog) and stops syncing — this device keeps its local data, so nothing you have here is lost. It is owner-only and irreversible for the cloud side; re-create the cloud project later if you change your mind.</p></div></div>
-        <div class="flow-item"><div class="flow-num"></div><div class="flow-body"><h4>Delete a project — inside the project, the launcher, or the Admin panel</h4><p>Three doors to the same owner-only delete. <strong>Inside the project</strong>: open Settings ▸ Controls and scroll to the bottom — the <strong>Danger Zone</strong> (shown only while your owner code is in session) has a <strong>Delete project</strong> button. It asks <strong>“Are you sure?”</strong>, and if you signed in with an email account it then asks for <strong>your account password to verify the delete</strong> (Google accounts have no password — being signed in is the verification). Confirming removes the project from the cloud backend for everyone and sends you back to the launcher. <strong>On the launcher</strong>, your cloud project cards carry a <strong>3-dot menu</strong>: <strong>Delete project</strong> asks you to be sure, then deletes with an <strong>Undo</strong> toast for a few seconds. A card someone SHARED with you offers <strong>Remove from my list</strong> instead — no one but the owner can delete the main version. <strong>From the Admin panel</strong>, Delete additionally removes your local list entry; if you miss the undo window, the Admin panel's <strong>Cloud Projects</strong> list shows the project in a <strong>Deleted</strong> state: <strong>Undo</strong> restores it (cloud included), or <strong>Delete permanently</strong> wipes it from the backend for good: the R2 snapshot, every code, adoptions and the changelog, with no undo.</p><p><strong>Discontinued — what happens to shared copies.</strong> When the owner deletes the main version, every shared copy does not vanish silently: it becomes <strong>discontinued</strong>. There is no continuation and no update — the card keeps its last state but can no longer be opened or updated (loads answer “project deleted”), and the launcher prompts the recipient to remove it with a <strong>Remove</strong> action. Offline copies keep their last snapshot on the device but receive <strong>no more updates</strong>. Only the owner can delete the main version; recipients only ever clear their own pin.</p></div></div>
+        <div class="flow-item"><div class="flow-num"></div><div class="flow-body"><h4>Save to Cloud / Load from Cloud</h4><p>With the owner (or an editor) code in session, Save to Cloud pushes the current state; Load from Cloud replaces this device's workspace with the stored snapshot (it asks first , current local data would be overwritten). Each save records a changelog entry with field-level before/after values (or a snapshot for bulk changes).</p></div></div>
+        <div class="flow-item"><div class="flow-num"></div><div class="flow-body"><h4>On another device? Enter the code</h4><p>Load with Code accepts a 16-character owner, editor, or viewer code, pulls the snapshot, and keeps the credential for this session only. A fresh device just needs the code typed in , no account required. Prefer the launcher: the <strong>Have a code? Open a project</strong> entry on app.html resolves the code to its project from the cloud, so even a project this device has never seen opens with just the code.</p></div></div>
+        <div class="flow-item"><div class="flow-num"></div><div class="flow-body"><h4>Pinned into My Cloud Projects</h4><p>Open a shared project with an editor or viewer code while signed in to Google, and it <strong>pins into your own "My Cloud Projects"</strong> list on the launcher (server-side adoption: the grant follows the account, not the clipboard). Re-open it anytime with one click, no code re-typing: the pinned row re-reads the LIVE code, so a revoked code stops opening and a scope change applies immediately. An <strong>Unpin</strong> button on the card drops the pin from your list (the owner's project is untouched). While you hold a share code, offline-copy is disabled on purpose: Save Project to File, the export modal, and Drive backup are refused, because a shared project must never leave as a file (Sheet A-20).</p></div></div>
+        <div class="flow-item"><div class="flow-num"></div><div class="flow-body"><h4>Offline copies , live refresh, view-only (approved 2026-08-17)</h4><p>Inside a shared project, a viewer or editor can click <strong>Make offline copy</strong> in Cloud Backup: the server <strong>registers this device</strong> as an offline copy of the project. A registered copy is <strong>view-only by design</strong> , it can read and refresh, never edit , so there is nothing to lose when it updates. When the main device saves (or the owner broadcasts), every registered copy learns the cloud moved instantly over the presence channel and pulls the newest snapshot <strong>without a full page reload</strong>; an <strong>Update offline copy</strong> button stays available for a manual pull (viewers also auto-pull silently on save). The reconcile model is deliberate: the local device is connected to the cloud, so your changes automatically sync UP to the cloud whenever a sync can happen, and the cloud broadcasts DOWN to copies when the owner asks it to , copies never fight the cloud. This registered copy is a separate, sanctioned offline path from file export: while you hold a share code, Save Project to File / the export modal / Drive backup remain refused (a shared project must never leave as a file), but a registered offline copy is exactly the intended way to keep working offline.</p></div></div>
+        <div class="flow-item"><div class="flow-num"></div><div class="flow-body"><h4>Broadcast to other projects (owner)</h4><p>The owner's Cloud Backup section shows <strong>Offline copies &amp; broadcast</strong>: a list of every registered copy (device + last-pulled time) with per-copy <strong>Remove</strong>, plus <strong>Broadcast to other projects</strong> , one click pushes the current snapshot to every registered copy at once (connected copies refresh instantly; the rest pick it up on their next check) and logs a <strong>Broadcast to offline copies</strong> entry in the changelog. Turn on <strong>Auto-broadcast on every save</strong> and every save also broadcasts automatically, so copies stay current without a manual push. Because copies are view-only, a broadcast can never overwrite anyone's edits , the cloud is the single source of truth and copies mirror it.</p></div></div>
+        <div class="flow-item"><div class="flow-num"></div><div class="flow-body"><h4>Review incoming changes (owner) , approved 2026-08-17</h4><p>Edits from editor codes (and AI imports) no longer reach the cloud project directly , they wait in the owner's <strong>Review incoming changes</strong> section as proposals, and nothing is applied until the owner decides. Each proposal shows the source (the editor label, or the MCP AI badge), when it was proposed, and an expandable before/after diff of every changed field. <strong>Accept</strong> applies the change through the same server-side scope merge as a direct save (so an editor can still only change the sections their code is granted), logs an <strong>Accepted change from review</strong> entry in the changelog (revertible like any edit), and refreshes offline copies , <strong>Reject</strong> discards it and logs a <strong>Rejected change from review</strong> entry without touching the project. This review gate is always on: it is the admin's control over "changes from another source" , the owner's own saves apply instantly, viewers still cannot save, and an editor who saves repeatedly only ever leaves their newest proposal pending (last proposal wins). The editor's own Cloud Backup section shows their last change's status , pending, accepted (now in the cloud), or rejected.</p></div></div>
+        <div class="flow-item"><div class="flow-num"></div><div class="flow-body"><h4>Recover Owner Code (lost code)</h4><p>Recovery is gated on the Google account that was linked when the project was created: sign in with Google (optional identity, never required) and Recover Owner Code issues a NEW owner code , the old one stops working immediately, and the recovery itself is logged. Without the linked account, a lost owner code cannot be recovered; editor codes can always be re-issued by the owner.</p></div></div>
+        <div class="flow-item"><div class="flow-num"></div><div class="flow-body"><h4>Changelog , view and revert</h4><p>The owner can open the changelog to see who changed what and when (Owner or "Editor , label", field-level diffs, or "Full-state change" for bulk operations). Revert is owner-only and never erases history: it writes the recorded before-values back (or restores the snapshot) and logs the revert itself as a new entry , so a revert of a revert restores the pre-revert state.</p></div></div>
+        <div class="flow-item"><div class="flow-num"></div><div class="flow-body"><h4>Unlink from Cloud</h4><p>Unlink from Cloud deletes the CLOUD copy (snapshot, editor codes, changelog) and stops syncing , this device keeps its local data, so nothing you have here is lost. It is owner-only and irreversible for the cloud side; re-create the cloud project later if you change your mind.</p></div></div>
+        <div class="flow-item"><div class="flow-num"></div><div class="flow-body"><h4>Delete a project , inside the project, the launcher, or the Admin panel</h4><p>Three doors to the same owner-only delete. <strong>Inside the project</strong>: open Settings ▸ Controls and scroll to the bottom , the <strong>Danger Zone</strong> (shown only while your owner code is in session) has a <strong>Delete project</strong> button. It asks <strong>"Are you sure?"</strong>, and if you signed in with an email account it then asks for <strong>your account password to verify the delete</strong> (Google accounts have no password , being signed in is the verification). Confirming removes the project from the cloud backend for everyone and sends you back to the launcher. <strong>On the launcher</strong>, your cloud project cards carry a <strong>3-dot menu</strong>: <strong>Delete project</strong> asks you to be sure, then deletes with an <strong>Undo</strong> toast for a few seconds. A card someone SHARED with you offers <strong>Remove from my list</strong> instead , no one but the owner can delete the main version. <strong>From the Admin panel</strong>, Delete additionally removes your local list entry; if you miss the undo window, the Admin panel's <strong>Cloud Projects</strong> list shows the project in a <strong>Deleted</strong> state: <strong>Undo</strong> restores it (cloud included), or <strong>Delete permanently</strong> wipes it from the backend for good: the R2 snapshot, every code, adoptions and the changelog, with no undo.</p><p><strong>Discontinued , what happens to shared copies.</strong> When the owner deletes the main version, every shared copy does not vanish silently: it becomes <strong>discontinued</strong>. There is no continuation and no update , the card keeps its last state but can no longer be opened or updated (loads answer "project deleted"), and the launcher prompts the recipient to remove it with a <strong>Remove</strong> action. Offline copies keep their last snapshot on the device but receive <strong>no more updates</strong>. Only the owner can delete the main version; recipients only ever clear their own pin.</p></div></div>
       </div>
 
-      <h3 class="h-sub">Optional Google identity — gates recovery, not the app</h3>
-      <p class="prose">Signing in with Google is entirely optional. It unlocks two conveniences: Google Drive backup/restore of your project files, and owner-code recovery for cloud projects. It never gates anything — create, save, load, and editor access all work with zero account. You can sign in later, or never. Email accounts (sign in with email instead) can change their password any time from the sign-in sheet, the launcher or admin account chip, or Settings ▸ Controls ▸ Profile — enter the current password plus the new one (8+ characters) and every other device is signed out immediately; this device stays signed in.</p>
+      <h3 class="h-sub">Optional Google identity , gates recovery, not the app</h3>
+      <p class="prose">Signing in with Google is entirely optional. It unlocks two conveniences: Google Drive backup/restore of your project files, and owner-code recovery for cloud projects. It never gates anything , create, save, load, and editor access all work with zero account. You can sign in later, or never. Email accounts (sign in with email instead) can change their password any time from the sign-in sheet, the launcher or admin account chip, or Settings ▸ Controls ▸ Profile , enter the current password plus the new one (8+ characters) and every other device is signed out immediately; this device stays signed in.</p>
 
-      <h3 class="h-sub">Copy All — your fastest way into Word</h3>
-      <p class="prose">Navigate to any panel and click <strong>Copy All</strong>. Everything visible on that view is compiled, timestamped, and placed on your clipboard — ready to paste straight into a Word document, an email, or a client report. It works the same way on every panel: WBS, Budget, Risk, RACI, Charter, all of it.</p>
+      <h3 class="h-sub">Copy All , your fastest way into Word</h3>
+      <p class="prose">Navigate to any panel and click <strong>Copy All</strong>. Everything visible on that view is compiled, timestamped, and placed on your clipboard , ready to paste straight into a Word document, an email, or a client report. It works the same way on every panel: WBS, Budget, Risk, RACI, Charter, all of it.</p>
 
       <h3 class="h-sub">Safety net: Clear All</h3>
-      <p class="prose">Hold the Clear All button for a full 10 seconds — a red bar fills across the bottom as you hold — and a 5-second undo window appears immediately after, so an accidental clear is always recoverable.</p>
+      <p class="prose">Hold the Clear All button for a full 10 seconds , a red bar fills across the bottom as you hold , and a 5-second undo window appears immediately after, so an accidental clear is always recoverable.</p>
     </section>
 
     <!-- ============ A-16 WEATHER & FORECAST ============ -->
@@ -1405,19 +1405,19 @@ Date: ____________  Focus: ____________</pre>
         <div class="tblock-right"><div><b>Scale</b>Overview</div></div>
       </div>
       <span class="kicker">Rain before it costs you a day</span>
-      <p class="lede">The Weather Risk Forecast panel pulls a live forecast for your site (Open-Meteo, cached 3 hours) and flags the days that matter to outdoor work — rain ≥60%, heat ≥32°C, cold ≤0°C — against the tasks that are weather-sensitive.</p>
+      <p class="lede">The Weather Risk Forecast panel pulls a live forecast for your site (Open-Meteo, cached 3 hours) and flags the days that matter to outdoor work , rain ≥60%, heat ≥32°C, cold ≤0°C , against the tasks that are weather-sensitive.</p>
 
       <div class="grid grid-3">
-        <div class="card bracket"><span class="cnum">SITE</span><h4>Set your site once</h4><p>Type the site city or address and hit <strong>Locate</strong> — it is looked up online for its exact coordinates, so the forecast is tailored to that precise spot (more specific input = more accurate). Prefer where you are right now? Tap <strong>Use my current location</strong> and the forecast pins your exact coordinates automatically. No location set? The forecast is a regional estimate, not site-specific — honest about that until you set one.</p></div>
-        <div class="card bracket"><span class="cnum">WINDOW</span><h4>7-day / 16-day view</h4><p>Toggle the horizon the forecast strip covers. The flags work the same either way: a day is a risk day when it clears a threshold and sits inside the next 7 days or overlaps a weather-sensitive task — and the Dashboard's buffer checks read the same flags.</p></div>
-        <div class="card bracket"><span class="cnum">LOG</span><h4>Weather Delay Log</h4><p>Log a delay day — date, condition, affected tasks — and it flows straight into the Schedule Slip Log and LD exposure math (Sheet A-11). Weather-caused slips read as <em>avoided</em> exposure.</p></div>
+        <div class="card bracket"><span class="cnum">SITE</span><h4>Set your site once</h4><p>Type the site city or address and hit <strong>Locate</strong> , it is looked up online for its exact coordinates, so the forecast is tailored to that precise spot (more specific input = more accurate). Prefer where you are right now? Tap <strong>Use my current location</strong> and the forecast pins your exact coordinates automatically. No location set? The forecast is a regional estimate, not site-specific , honest about that until you set one.</p></div>
+        <div class="card bracket"><span class="cnum">WINDOW</span><h4>7-day / 16-day view</h4><p>Toggle the horizon the forecast strip covers. The flags work the same either way: a day is a risk day when it clears a threshold and sits inside the next 7 days or overlaps a weather-sensitive task , and the Dashboard's buffer checks read the same flags.</p></div>
+        <div class="card bracket"><span class="cnum">LOG</span><h4>Weather Delay Log</h4><p>Log a delay day , date, condition, affected tasks , and it flows straight into the Schedule Slip Log and LD exposure math (Sheet A-11). Weather-caused slips read as <em>avoided</em> exposure.</p></div>
       </div>
 
-      <p class="prose" style="margin-top:22px">The Dashboard's Weather Variance card (Sheet A-02) cross-checks weather-exposed tasks against your Weather Window — the hurricane/rainy-season range plus buffer you set in Settings — and flags anything without enough cushion. The whole panel is a toggle: <strong>Settings ▸ Feature flags ▸ Weather Forecast Panel</strong> hides or reveals it.</p>
+      <p class="prose" style="margin-top:22px">The Dashboard's Weather Variance card (Sheet A-02) cross-checks weather-exposed tasks against your Weather Window , the hurricane/rainy-season range plus buffer you set in Settings , and flags anything without enough cushion. The whole panel is a toggle: <strong>Settings ▸ Feature flags ▸ Weather Forecast Panel</strong> hides or reveals it.</p>
 
       <div class="divider-note">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 8V12M12 16H12.01M21 12C21 16.97 16.97 21 12 21C7.03 21 3 16.97 3 12C3 7.03 7.03 3 12 3C16.97 3 21 7.03 21 12Z" stroke="currentColor" stroke-width="1.6"/></svg>
-        <p><strong>Forecast, not fortune-telling.</strong> Until a site location is set, weather windows are regional estimates. Set your site, review the flagged days weekly, and treat the forecast as an early-warning tool — the delay log is what actually counts on the claim side.</p>
+        <p><strong>Forecast, not fortune-telling.</strong> Until a site location is set, weather windows are regional estimates. Set your site, review the flagged days weekly, and treat the forecast as an early-warning tool , the delay log is what actually counts on the claim side.</p>
       </div>
     </section>
 
@@ -1429,15 +1429,15 @@ Date: ____________  Focus: ____________</pre>
       </div>
       <div class="grid grid-4">
         <div class="card"><span class="cnum">KEY: F</span><h4>Focus Mode</h4><p>Collapses everything except your active panel. Press F again to restore; an indicator confirms it's on.</p></div>
-        <div class="card"><span class="cnum">HEADER</span><h4>Status indicators</h4><p>The header shows backup status, timeline status, and methodology lock at a glance. The backup pill is green — “Cloud backed up” — when the project is linked to the cloud (auto-synced), amber — “Not backed up” — when it only lives in this browser. Click either for the two backup routes, cloud or local .json (Sheet A-15).</p></div>
-        <div class="card"><span class="cnum">NAV</span><h4>Sidebar navigation</h4><p>On desktop the left sidebar <em>is</em> the navigation — every section lives there, grouped by phase (Overview, Planning, Execution, Governance, Closeout, DMAIC). The hamburger in the header (or the one at the top of the sidebar) slides it away so the workspace takes the full screen — click again to bring it back. On phones the same hamburger opens the drawer.</p></div>
-        <div class="card"><span class="cnum">SETTING</span><h4>Theme</h4><p>Switch between the light (default) and dark theme. Your choice is saved per device and applies everywhere — the launcher, the admin panel, and every project — not just the project you happen to be in. Printouts (Sheet A-03) stay legible either way.</p></div>
+        <div class="card"><span class="cnum">HEADER</span><h4>Status indicators</h4><p>The header shows backup status, timeline status, and methodology lock at a glance. The backup pill is green , "Cloud backed up" , when the project is linked to the cloud (auto-synced), amber , "Not backed up" , when it only lives in this browser. Click either for the two backup routes, cloud or local .json (Sheet A-15).</p></div>
+        <div class="card"><span class="cnum">NAV</span><h4>Sidebar navigation</h4><p>On desktop the left sidebar <em>is</em> the navigation , every section lives there, grouped by phase (Overview, Planning, Execution, Governance, Closeout, DMAIC). The hamburger in the header (or the one at the top of the sidebar) slides it away so the workspace takes the full screen , click again to bring it back. On phones the same hamburger opens the drawer.</p></div>
+        <div class="card"><span class="cnum">SETTING</span><h4>Theme</h4><p>Switch between the light (default) and dark theme. Your choice is saved per device and applies everywhere , the launcher, the admin panel, and every project , not just the project you happen to be in. Printouts (Sheet A-03) stay legible either way.</p></div>
         <div class="card"><span class="cnum">SETTING</span><h4>Your Name</h4><p>Settings ▸ Controls ▸ Your Name personalizes the header greeting. Leave it blank for a generic welcome.</p></div>
-        <div class="card"><span class="cnum">COPY</span><h4>Copy As — explain before copy</h4><p>Settings ▸ Controls ▸ Copy As offers Slack, Email, and Client formats as cards, each with a short explanation of what it produces and a live preview of the actual compiled text, so you know exactly what you're getting before anything touches your clipboard. Click Copy on the card you want.</p></div>
-        <div class="card"><span class="cnum">SHARE</span><h4>Share &amp; Access</h4><p>Settings ▸ Controls ▸ Share &amp; Access is the single home for cloud sharing: link the project, see the owner code, and hand out scoped editor codes that can only write the sections you tick. Publishing from the Admin panel adopts that code here automatically — publish, open, and auto-sync.</p></div>
+        <div class="card"><span class="cnum">COPY</span><h4>Copy As , explain before copy</h4><p>Settings ▸ Controls ▸ Copy As offers Slack, Email, and Client formats as cards, each with a short explanation of what it produces and a live preview of the actual compiled text, so you know exactly what you're getting before anything touches your clipboard. Click Copy on the card you want.</p></div>
+        <div class="card"><span class="cnum">SHARE</span><h4>Share &amp; Access</h4><p>Settings ▸ Controls ▸ Share &amp; Access is the single home for cloud sharing: link the project, see the owner code, and hand out scoped editor codes that can only write the sections you tick. Publishing from the Admin panel adopts that code here automatically , publish, open, and auto-sync.</p></div>
       </div>
 
-      <h3 class="h-sub">Feature flags — the Settings drawer switches</h3>
+      <h3 class="h-sub">Feature flags , the Settings drawer switches</h3>
       <p class="prose">The Settings drawer's Feature flags section toggles optional UI modules. All default on; switch one off and it hides from the workspace. Nothing is ever deleted by flipping one.</p>
       <div class="grid grid-3">
         <div class="card"><span class="cnum">FLAG</span><h4>AI Assistant</h4><p>The master AI switch (Sheet A-13): Off disables the assistant and hides the floating AI button; On restores Local or your last engine tier.</p></div>
@@ -1445,11 +1445,11 @@ Date: ____________  Focus: ____________</pre>
         <div class="card"><span class="cnum">FLAG</span><h4>Gantt PNG Export</h4><p>Hides the Gantt panel's PNG export button when you don't need image handouts.</p></div>
         <div class="card"><span class="cnum">FLAG</span><h4>Kanban Lead-Time Lane</h4><p>Toggles the dedicated procurement/permits swimlane (Sheet A-05).</p></div>
         <div class="card"><span class="cnum">FLAG</span><h4>Weather Forecast Panel</h4><p>Shows or hides the weather risk panel (Sheet A-16).</p></div>
-        <div class="card"><span class="cnum">FLAG</span><h4>Advanced Packs</h4><p>Not a flag — the five Advanced Packs (Sheet A-00) reveal whole groups of panels at once from the same drawer.</p></div>
+        <div class="card"><span class="cnum">FLAG</span><h4>Advanced Packs</h4><p>Not a flag , the five Advanced Packs (Sheet A-00) reveal whole groups of panels at once from the same drawer.</p></div>
       </div>
 
       <h3 class="h-sub">Install it like an app</h3>
-      <p class="prose">My MaNaGeR is a PWA: use the browser's install prompt (or Add to Home Screen) and it opens in its own window with an icon, like a native app. And because it's offline-first, the whole workspace keeps working with no connection after the first load — WBS, Gantt, Budget, Risk, even the Local AI engine. That's a core promise of the app, not a fallback.</p>
+      <p class="prose">My MaNaGeR is a PWA: use the browser's install prompt (or Add to Home Screen) and it opens in its own window with an icon, like a native app. And because it's offline-first, the whole workspace keeps working with no connection after the first load , WBS, Gantt, Budget, Risk, even the Local AI engine. That's a core promise of the app, not a fallback.</p>
     </section>
 
     <!-- ============ A-18 WHEN SOMETHING LOOKS OFF ============ -->
@@ -1464,15 +1464,15 @@ Date: ____________  Focus: ____________</pre>
       <div class="flow">
         <div class="flow-item"><div class="flow-num"></div><div class="flow-body">
           <h4>Hard refresh after an update</h4>
-          <p>The app serves cached files first, so after a version update a normal refresh can keep showing the old screen — a setting appears to do nothing, or a panel you know exists is missing. A hard refresh (Ctrl+Shift+R / Cmd+Shift+R) pulls the new version. This is the fix for most "my change didn't apply" moments.</p>
+          <p>The app serves cached files first, so after a version update a normal refresh can keep showing the old screen , a setting appears to do nothing, or a panel you know exists is missing. A hard refresh (Ctrl+Shift+R / Cmd+Shift+R) pulls the new version. This is the fix for most "my change didn't apply" moments.</p>
         </div></div>
         <div class="flow-item"><div class="flow-num"></div><div class="flow-body">
           <h4>Find the error log</h4>
-          <p>The app keeps a client-side error log you can open from the UI and copy to your clipboard. If something misbehaves, <strong>Copy log</strong> and paste it into your bug report — it saves the person helping you a full round of questions.</p>
+          <p>The app keeps a client-side error log you can open from the UI and copy to your clipboard. If something misbehaves, <strong>Copy log</strong> and paste it into your bug report , it saves the person helping you a full round of questions.</p>
         </div></div>
         <div class="flow-item"><div class="flow-num"></div><div class="flow-body">
           <h4>Check whether you're view-only</h4>
-          <p>A project opened with a view-only access code blocks edits — toggles and save actions are rejected with a notice instead of silently working. If a switch flips and immediately flips back, you're almost certainly in view-only mode with the wrong code.</p>
+          <p>A project opened with a view-only access code blocks edits , toggles and save actions are rejected with a notice instead of silently working. If a switch flips and immediately flips back, you're almost certainly in view-only mode with the wrong code.</p>
         </div></div>
       </div>
     </section>
@@ -1483,20 +1483,20 @@ Date: ____________  Focus: ____________</pre>
         <div class="tblock-left"><span class="sheet-no">A-19</span><h2>Frequently Asked</h2></div>
         <div class="tblock-right"><div><b>Scale</b>Selected</div></div>
       </div>
-      <p class="lede">A short list to start with — the app's own Dashboard has a fuller FAQ tab if your question isn't here.</p>
+      <p class="lede">A short list to start with , the app's own Dashboard has a fuller FAQ tab if your question isn't here.</p>
 
       <div class="acc-list">
         <div class="acc-item">
           <button class="acc-q">Do I need an internet connection to use this?<span class="arrow">▶</span></button>
-          <div class="acc-a"><div class="acc-a-inner">Almost never. The whole workspace — WBS, Gantt, Budget, Risk, RACI — runs and saves fully offline, and the default Local AI engine (Sheet A-13) is zero-key and in-browser. You only need a connection for optional extras: live voice captions (Sheet A-10), the Cloud AI tier with your own key, Google sign-in sync, and the first-time download of the Charter parser.</div></div>
+          <div class="acc-a"><div class="acc-a-inner">Almost never. The whole workspace , WBS, Gantt, Budget, Risk, RACI , runs and saves fully offline, and the default Local AI engine (Sheet A-13) is zero-key and in-browser. You only need a connection for optional extras: live voice captions (Sheet A-10), the Cloud AI tier with your own key, Google sign-in sync, and the first-time download of the Charter parser.</div></div>
         </div>
         <div class="acc-item">
           <button class="acc-q">What happens if I clear my browser data?<span class="arrow">▶</span></button>
-          <div class="acc-a"><div class="acc-a-inner">Your project disappears with it, since it only ever lived in LocalStorage. This is exactly what Sheet A-15's Save Project to File is for — export a .json backup before doing anything that might wipe browser storage.</div></div>
+          <div class="acc-a"><div class="acc-a-inner">Your project disappears with it, since it only ever lived in LocalStorage. This is exactly what Sheet A-15's Save Project to File is for , export a .json backup before doing anything that might wipe browser storage.</div></div>
         </div>
         <div class="acc-item">
           <button class="acc-q">Can I switch methodology mid-project?<span class="arrow">▶</span></button>
-          <div class="acc-a"><div class="acc-a-inner">Yes, until you lock it. Methodology Lock (Sheet A-00) is an optional commitment device, not a permanent restriction — it just stops accidental switching once a team has agreed on an approach.</div></div>
+          <div class="acc-a"><div class="acc-a-inner">Yes, until you lock it. Methodology Lock (Sheet A-00) is an optional commitment device, not a permanent restriction , it just stops accidental switching once a team has agreed on an approach.</div></div>
         </div>
         <div class="acc-item">
           <button class="acc-q">Why does my Health Score say "no data yet"?<span class="arrow">▶</span></button>
@@ -1504,19 +1504,19 @@ Date: ____________  Focus: ____________</pre>
         </div>
         <div class="acc-item">
           <button class="acc-q">Does the Monte Carlo simulator need special setup?<span class="arrow">▶</span></button>
-          <div class="acc-a"><div class="acc-a-inner">Just two dated tasks minimum. Add a Target Completion Date in the Charter too, and it'll report your live probability of hitting it, not just a P10–P90 range.</div></div>
+          <div class="acc-a"><div class="acc-a-inner">Just two dated tasks minimum. Add a Target Completion Date in the Charter too, and it'll report your live probability of hitting it, not just a P10-P90 range.</div></div>
         </div>
         <div class="acc-item">
           <button class="acc-q">What's the difference between the Decision Log and the Comms Log?<span class="arrow">▶</span></button>
-          <div class="acc-a"><div class="acc-a-inner">Comms Log records that a conversation happened — attendees, summary, follow-up. Decision Log records what was actually decided as a result. In a dispute, you'll usually want both.</div></div>
+          <div class="acc-a"><div class="acc-a-inner">Comms Log records that a conversation happened , attendees, summary, follow-up. Decision Log records what was actually decided as a result. In a dispute, you'll usually want both.</div></div>
         </div>
         <div class="acc-item">
           <button class="acc-q">Is DMAIC required?<span class="arrow">▶</span></button>
-          <div class="acc-a"><div class="acc-a-inner">No — it's an optional panel for teams running a formal Six Sigma quality process. Most projects will never need to turn it on.</div></div>
+          <div class="acc-a"><div class="acc-a-inner">No , it's an optional panel for teams running a formal Six Sigma quality process. Most projects will never need to turn it on.</div></div>
         </div>
         <div class="acc-item">
           <button class="acc-q">What happens when the AI provider rate-limits me?<span class="arrow">▶</span></button>
-          <div class="acc-a"><div class="acc-a-inner">The Cloud tier (Sheet A-13) retries automatically on the next smaller model from the same provider — for example Gemini 2.0 Flash → Flash Lite → Flash Latest — and shows an amber “Fell back to …” badge in the chat so you know which model answered. Only capacity rejections (HTTP 429/503) trigger the fallback: a rejected key (401/403) clears your session key immediately instead of trying smaller models.</div></div>
+          <div class="acc-a"><div class="acc-a-inner">The Cloud tier (Sheet A-13) retries automatically on the next smaller model from the same provider , for example Gemini 2.0 Flash → Flash Lite → Flash Latest , and shows an amber "Fell back to …" badge in the chat so you know which model answered. Only capacity rejections (HTTP 429/503) trigger the fallback: a rejected key (401/403) clears your session key immediately instead of trying smaller models.</div></div>
         </div>
       </div>
     </section>
@@ -1527,32 +1527,32 @@ Date: ____________  Focus: ____________</pre>
         <div class="tblock-left"><span class="sheet-no">A-20</span><h2>Projects, Admin &amp; Create Your Own</h2></div>
         <div class="tblock-right"><div><b>Scale</b>1 : 1 detail</div></div>
       </div>
-      <span class="kicker">The launcher is the front door — the Admin panel is the workshop</span>
-      <p class="lede">When you open the app you land on the <strong>Projects launcher</strong> (app.html): the grid of project cards is every project this browser can reach — ones created on this device, plus published ones. Each card is protected by its own access code. Beside the <strong>Admin panel</strong> link in the left rail sits a second door, <strong>Create your own</strong> — an open-lock entry that leads to the same admin interface, where you can create your own project (your own admin point) from scratch.</p>
+      <span class="kicker">The launcher is the front door , the Admin panel is the workshop</span>
+      <p class="lede">When you open the app you land on the <strong>Projects launcher</strong> (app.html): the grid of project cards is every project this browser can reach , ones created on this device, plus published ones. Each card is protected by its own access code. Beside the <strong>Admin panel</strong> link in the left rail sits a second door, <strong>Create your own</strong> , an open-lock entry that leads to the same admin interface, where you can create your own project (your own admin point) from scratch.</p>
 
       <div class="grid grid-3">
-        <div class="card bracket"><span class="cnum">DOOR 1</span><h4>Admin panel</h4><p>The rail's shield entry. Sets up (or unlocks) the admin password, then shows the full project workshop: New Project, Import Project, the project list, Download Static Manifest, Export Backup, and the cloud admin section. The workshop stays on this device — nothing publishes until you choose to. Sign-in (Google) and the theme controls now live in the hamburger rail, keeping the workshop front page uncluttered.</p></div>
+        <div class="card bracket"><span class="cnum">DOOR 1</span><h4>Admin panel</h4><p>The rail's shield entry. Sets up (or unlocks) the admin password, then shows the full project workshop: New Project, Import Project, the project list, Download Static Manifest, Export Backup, and the cloud admin section. The workshop stays on this device , nothing publishes until you choose to. Sign-in (Google) and the theme controls now live in the hamburger rail, keeping the workshop front page uncluttered.</p></div>
         <div class="card bracket"><span class="cnum">DOOR 2</span><h4>Create your own</h4><p>The rail's open-lock entry, right beside Admin panel. Same destination, different intent: it is the visitor's invitation to build. Click it, set an admin password if this browser has none, and you are inside the workshop ready to create your first project.</p></div>
-        <div class="card bracket"><span class="cnum">RESULT</span><h4>Your own admin point</h4><p>A project you create in the workshop appears on the launcher instantly — no publish, no code, no deploy needed on your own device. It is locally owned: you open it with one click, and the card carries an "On this device" chip (Sheet A-15 covers sharing it with others).</p></div>
+        <div class="card bracket"><span class="cnum">RESULT</span><h4>Your own admin point</h4><p>A project you create in the workshop appears on the launcher instantly , no publish, no code, no deploy needed on your own device. It is locally owned: you open it with one click, and the card carries an "On this device" chip (Sheet A-15 covers sharing it with others).</p></div>
       </div>
 
       <h3 class="h-sub">One workshop, two doors</h3>
       <div class="flow">
-        <div class="flow-item"><div class="flow-num"></div><div class="flow-body"><h4>Land on the launcher</h4><p>Project cards in the grid; the rail groups them — All Projects, Cloud Projects, Backup &amp; Restore, Customize. An access code unlocks a published project's card; a locally-owned project opens with one click.</p></div></div>
-        <div class="flow-item"><div class="flow-num"></div><div class="flow-body"><h4>Click Create your own (or Admin panel)</h4><p>Both entries sit together in the Projects group of the rail. Create your own wears the open lock — the clearest way in for someone starting from zero.</p></div></div>
-        <div class="flow-item"><div class="flow-num"></div><div class="flow-body"><h4>First run: set an admin password</h4><p>A fresh browser shows the setup screen — choose an 8+ character password. Returning browsers ask for that same password to unlock the workshop. The hash stays in this browser only.</p></div></div>
-        <div class="flow-item"><div class="flow-num"></div><div class="flow-body"><h4>New Project</h4><p>The workshop's New Project button opens a form — title, description, status, and the access code(s) visitors will use. Save it and the project exists.</p></div></div>
-        <div class="flow-item"><div class="flow-num"></div><div class="flow-body"><h4>Import Project</h4><p>Moving between browsers or taking over someone's exported list? <strong>Import Project</strong> accepts a .json or .js file — a project state export from a project page, a single project record, an array of them, or a projects-data.js manifest — and adds each record to the list, generating a fresh access code for any that lack one.</p></div></div>
-        <div class="flow-item"><div class="flow-num"></div><div class="flow-body"><h4>Publish to Cloud</h4><p>Each project row has <strong>Publish to Cloud</strong>: one click creates the cloud project in the backend and drops its cloud ID beside the row, with the owner code copied to your clipboard. Sign in with Google (hamburger menu ▸ Account) first so the project links to your account and a lost code can be recovered. Opening that project on this device then adopts the recorded code automatically — publish, open, and auto-sync with zero re-typing.</p></div></div>
-        <div class="flow-item"><div class="flow-num"></div><div class="flow-body"><h4>Update Cloud Snapshot</h4><p>Once a project is cloud-linked, its row button becomes <strong>Update Cloud Snapshot</strong>: one click pushes the project's latest state straight to the cloud backend (POST /save) and confirms on screen — no file download, no manual upload. Perfect after editing a project's details here or after finishing a round of changes in the project itself. The static manifest (Download Static Manifest in the toolbar) remains the separate path for a self-hosted deployment that does not use the cloud backend at all.</p></div></div>
-        <div class="flow-item"><div class="flow-num"></div><div class="flow-body"><h4>Back on the launcher</h4><p>Your new project is already there — locally owned, instantly openable. When you want other people to reach it, publish it (Publish to Cloud for a code anyone can use, or Download Static Manifest + deploy for a self-hosted site, Sheet A-15); until then it is yours alone on this device.</p></div></div>
+        <div class="flow-item"><div class="flow-num"></div><div class="flow-body"><h4>Land on the launcher</h4><p>Project cards in the grid; the rail groups them , All Projects, Cloud Projects, Backup &amp; Restore, Customize. An access code unlocks a published project's card; a locally-owned project opens with one click.</p></div></div>
+        <div class="flow-item"><div class="flow-num"></div><div class="flow-body"><h4>Click Create your own (or Admin panel)</h4><p>Both entries sit together in the Projects group of the rail. Create your own wears the open lock , the clearest way in for someone starting from zero.</p></div></div>
+        <div class="flow-item"><div class="flow-num"></div><div class="flow-body"><h4>First run: set an admin password</h4><p>A fresh browser shows the setup screen , choose an 8+ character password. Returning browsers ask for that same password to unlock the workshop. The hash stays in this browser only.</p></div></div>
+        <div class="flow-item"><div class="flow-num"></div><div class="flow-body"><h4>New Project</h4><p>The workshop's New Project button opens a form , title, description, status, and the access code(s) visitors will use. Save it and the project exists.</p></div></div>
+        <div class="flow-item"><div class="flow-num"></div><div class="flow-body"><h4>Import Project</h4><p>Moving between browsers or taking over someone's exported list? <strong>Import Project</strong> accepts a .json or .js file , a project state export from a project page, a single project record, an array of them, or a projects-data.js manifest , and adds each record to the list, generating a fresh access code for any that lack one.</p></div></div>
+        <div class="flow-item"><div class="flow-num"></div><div class="flow-body"><h4>Publish to Cloud</h4><p>Each project row has <strong>Publish to Cloud</strong>: one click creates the cloud project in the backend and drops its cloud ID beside the row, with the owner code copied to your clipboard. Sign in with Google (hamburger menu ▸ Account) first so the project links to your account and a lost code can be recovered. Opening that project on this device then adopts the recorded code automatically , publish, open, and auto-sync with zero re-typing.</p></div></div>
+        <div class="flow-item"><div class="flow-num"></div><div class="flow-body"><h4>Update Cloud Snapshot</h4><p>Once a project is cloud-linked, its row button becomes <strong>Update Cloud Snapshot</strong>: one click pushes the project's latest state straight to the cloud backend (POST /save) and confirms on screen , no file download, no manual upload. Perfect after editing a project's details here or after finishing a round of changes in the project itself. The static manifest (Download Static Manifest in the toolbar) remains the separate path for a self-hosted deployment that does not use the cloud backend at all.</p></div></div>
+        <div class="flow-item"><div class="flow-num"></div><div class="flow-body"><h4>Back on the launcher</h4><p>Your new project is already there , locally owned, instantly openable. When you want other people to reach it, publish it (Publish to Cloud for a code anyone can use, or Download Static Manifest + deploy for a self-hosted site, Sheet A-15); until then it is yours alone on this device.</p></div></div>
         <div class="flow-item"><div class="flow-num"></div><div class="flow-body"><h4>Codes: editor, viewer, and the launcher door</h4><p>Cloud-linked project rows gain a <strong>Codes</strong> button (and the project's Share &amp; Access card offers the same). Pick a role: <strong>Editor</strong> (can change only the sections you tick) or <strong>Viewer</strong> (read-only: can see only the ticked sections, can touch nothing), give it a label, tick the sections, and the code is shown once: copy it now, it is never shown again. Anyone, anywhere, opens the launcher (app.html), uses the <strong>Have a code? Open a project</strong> entry, and the project loads straight from the cloud backend with exactly the sections their role grants (every other section is greyed out and unclickable, and the server refuses out-of-scope writes regardless). A signed-in recipient's load <strong>pins the project into their own My Cloud Projects</strong> list (an Unpin button on the card removes it), and while the share code is held, offline-copy is refused (no file export, no export modal, no Drive backup), so the project never leaves as a file (Sheet A-15). Viewer offline copies stay read-only.</p></div></div>
-        <div class="flow-item"><div class="flow-num"></div><div class="flow-body"><h4>Revoke and delete, with Undo</h4><p>Revoking a code in the Codes manager stops it immediately — its next use answers "This code was revoked by the project admin." Deleting a project row confirms first, then removes it from the cloud too: every code stops loading it ("This project was deleted by the admin."), and a <strong>Undo</strong> button in the toast restores everything — local, cloud, and codes — for a few seconds after the delete. Recipients never get a delete: they can only remove the project from their own device.</p></div></div>
+        <div class="flow-item"><div class="flow-num"></div><div class="flow-body"><h4>Revoke and delete, with Undo</h4><p>Revoking a code in the Codes manager stops it immediately , its next use answers "This code was revoked by the project admin." Deleting a project row confirms first, then removes it from the cloud too: every code stops loading it ("This project was deleted by the admin."), and a <strong>Undo</strong> button in the toast restores everything , local, cloud, and codes , for a few seconds after the delete. Recipients never get a delete: they can only remove the project from their own device.</p></div></div>
       </div>
 
       <div class="divider-note">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M6 11V7a6 6 0 0 1 11-3.5"/><rect x="4" y="11" width="16" height="10" rx="2"/></svg>
-        <p><strong>Local-first, always.</strong> Creating a project never requires an account, a deploy, or the cloud. The admin workshop, the password hash, and your created projects all live in this browser — publishing is a deliberate extra step that gates only other people's access, never yours.</p>
+        <p><strong>Local-first, always.</strong> Creating a project never requires an account, a deploy, or the cloud. The admin workshop, the password hash, and your created projects all live in this browser , publishing is a deliberate extra step that gates only other people's access, never yours.</p>
       </div>
     </section>
 
@@ -1562,25 +1562,25 @@ Date: ____________  Focus: ____________</pre>
         <div class="tblock-left"><span class="sheet-no">A-21</span><h2>Bids, Compliance &amp; Go/No-Go</h2></div>
         <div class="tblock-right"><div><b>Scale</b>1 : 1 detail</div></div>
       </div>
-      <span class="kicker">Pre-award rigor and proof-of-cover — all on the Stakeholders &amp; Budget panels, zero third-party setup</span>
-      <p class="lede">Four market-research features shipped together in the Stakeholders and Budget panels: subcontractor prequalification tracking (COI/license expiry and EMR staleness), lien-waiver status on budget lines, side-by-side bid leveling, and Go/No-Go opportunity scoring — plus an AI claim-compliance check. None of them need an account, an API key, or a subscription.</p>
+      <span class="kicker">Pre-award rigor and proof-of-cover , all on the Stakeholders &amp; Budget panels, zero third-party setup</span>
+      <p class="lede">Four market-research features shipped together in the Stakeholders and Budget panels: subcontractor prequalification tracking (COI/license expiry and EMR staleness), lien-waiver status on budget lines, side-by-side bid leveling, and Go/No-Go opportunity scoring , plus an AI claim-compliance check. None of them need an account, an API key, or a subscription.</p>
 
       <div class="grid grid-3">
-        <div class="card bracket"><span class="cnum">A1</span><h4>Prequalification tracking</h4><p>Every Stakeholder row now carries <strong>COI Expiry</strong>, <strong>License Expiry</strong>, <strong>EMR</strong> and <strong>EMR Verified</strong> columns. A date within the next 30 days turns red and gains a <strong>soon</strong> badge; an EMR with no verification date (or one older than a year) reads <strong>stale</strong>. The Stakeholders tab shows a red count pill when anything is due, and the Dashboard's Project Health card adds a <strong>Compliance Expiring</strong> line — the insurance-certificate pain point, surfaced before it bites.</p></div>
-        <div class="card bracket"><span class="cnum">A2</span><h4>Lien-waiver status</h4><p>The Budget table gains <strong>Waiver Status</strong> (pending / conditional / unconditional / not required) and <strong>Waiver Received</strong> date columns, plus a Lien Waivers rollup line under the summary cards counting received / pending / not-required. Note: the labels follow US construction convention — the Jamaica-specific legal mapping (roadmap B7) is still pending legal review, so treat the categories as tracking buckets, not legal advice.</p></div>
+        <div class="card bracket"><span class="cnum">A1</span><h4>Prequalification tracking</h4><p>Every Stakeholder row now carries <strong>COI Expiry</strong>, <strong>License Expiry</strong>, <strong>EMR</strong> and <strong>EMR Verified</strong> columns. A date within the next 30 days turns red and gains a <strong>soon</strong> badge; an EMR with no verification date (or one older than a year) reads <strong>stale</strong>. The Stakeholders tab shows a red count pill when anything is due, and the Dashboard's Project Health card adds a <strong>Compliance Expiring</strong> line , the insurance-certificate pain point, surfaced before it bites.</p></div>
+        <div class="card bracket"><span class="cnum">A2</span><h4>Lien-waiver status</h4><p>The Budget table gains <strong>Waiver Status</strong> (pending / conditional / unconditional / not required) and <strong>Waiver Received</strong> date columns, plus a Lien Waivers rollup line under the summary cards counting received / pending / not-required. Note: the labels follow US construction convention , the Jamaica-specific legal mapping (roadmap B7) is still pending legal review, so treat the categories as tracking buckets, not legal advice.</p></div>
         <div class="card bracket"><span class="cnum">A3 + A4</span><h4>Bid leveling &amp; Go/No-Go</h4><p>The Stakeholders panel hosts the <strong>Bid Leveling</strong> and <strong>Go / No-Go Scorecard</strong> cards. Bid Leveling starts in the <strong>Add Bid Package</strong> modal: package name, CSI Division Code, target baseline budget, bid deadline, and scope line items with estimated costs. Each package opens a leveled grid (rows = scope line items, columns = subcontractors) with <strong>Base Bid Total</strong>, <strong>Leveling Adjustments</strong> (missing scope added at target cost), <strong>True Leveled Total</strong>, and a green/red <strong>Variance to Budget</strong>; each subcontractor has an action row for Award Contract, View Original Proposal, or Send Post-Bid Clarification Email, and the lowest-leveled bid is flagged. The Go / No-Go Scorecard is a <strong>weighted questionnaire</strong>: categories carry weights (default 30/25/20/25%), each criterion is rated 1-5 stars, and a live automation bar shows the verdict, 75%+ GO, 50%+ REVIEW, below NO-GO.</p></div>
       </div>
 
       <h3 class="h-sub">Claim compliance check</h3>
       <div class="flow">
-        <div class="flow-item"><div class="flow-num"></div><div class="flow-body"><h4>Open the AI window, Presets tab</h4><p>The new <strong>Claim Compliance</strong> chip sits beside Claim Pack. It reviews the assembled claim package against a standard five-element checklist: delay narrative, supporting evidence references, cost impact breakdown, contractual basis, and requested relief — reporting each as present, missing, or unclear.</p></div></div>
-        <div class="flow-item"><div class="flow-num"></div><div class="flow-body"><h4>No key? Still works</h4><p>On the zero-key Local tier it runs a deterministic element audit of the same evidence the Claim Pack preset reads — slips, LD rollup, weather log, changes, decisions — and tells you honestly what is missing. On the Cloud tier the model writes the full element-by-element review.</p></div></div>
-        <div class="flow-item"><div class="flow-num"></div><div class="flow-body"><h4>Same evidence, never invented</h4><p>Both tiers read the same state fields the Claim Pack uses, so the compliance check and the claim draft can never disagree — and neither ever fabricates dates, amounts, or causes.</p></div></div>
+        <div class="flow-item"><div class="flow-num"></div><div class="flow-body"><h4>Open the AI window, Presets tab</h4><p>The new <strong>Claim Compliance</strong> chip sits beside Claim Pack. It reviews the assembled claim package against a standard five-element checklist: delay narrative, supporting evidence references, cost impact breakdown, contractual basis, and requested relief , reporting each as present, missing, or unclear.</p></div></div>
+        <div class="flow-item"><div class="flow-num"></div><div class="flow-body"><h4>No key? Still works</h4><p>On the zero-key Local tier it runs a deterministic element audit of the same evidence the Claim Pack preset reads , slips, LD rollup, weather log, changes, decisions , and tells you honestly what is missing. On the Cloud tier the model writes the full element-by-element review.</p></div></div>
+        <div class="flow-item"><div class="flow-num"></div><div class="flow-body"><h4>Same evidence, never invented</h4><p>Both tiers read the same state fields the Claim Pack uses, so the compliance check and the claim draft can never disagree , and neither ever fabricates dates, amounts, or causes.</p></div></div>
       </div>
 
       <div class="divider-note">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 8V12M12 16H12.01M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="currentColor" stroke-width="2"/></svg>
-        <p><strong>Tracked locally, decided with evidence.</strong> Every field here is plain project state — exportable, offline-first, and backward-compatible with existing records. Empty fields simply don't flag; nothing nags until a real date or missing verification makes it true.</p>
+        <p><strong>Tracked locally, decided with evidence.</strong> Every field here is plain project state , exportable, offline-first, and backward-compatible with existing records. Empty fields simply don't flag; nothing nags until a real date or missing verification makes it true.</p>
       </div>
     </section>
 
@@ -1591,24 +1591,24 @@ Date: ____________  Focus: ____________</pre>
         <div class="tblock-right"><div><b>Scale</b>1 : 1 detail</div></div>
       </div>
       <span class="kicker">Baseline communication workflows and the numbers that tell the field truth</span>
-      <p class="lede">Five core-competitor features shipped as plain in-app registers and dashboard cards — RFI tracking, submittal approvals, a dedicated punch list, a 2-week lookahead, and the lean Percent Plan Complete metric. All zero-dependency: they run on task/dates/status data already in the project, with no account or API key.</p>
+      <p class="lede">Five core-competitor features shipped as plain in-app registers and dashboard cards , RFI tracking, submittal approvals, a dedicated punch list, a 2-week lookahead, and the lean Percent Plan Complete metric. All zero-dependency: they run on task/dates/status data already in the project, with no account or API key.</p>
 
       <div class="grid grid-3">
-        <div class="card bracket"><span class="cnum">C1</span><h4>RFI Register</h4><p>In the <strong>Documents</strong> panel. Every Request for Information gets a lifecycle — open → routed → responded → closed — plus From / To, issued and due dates, the question, the response, and a <strong>Ball in Court</strong> field naming whose turn it is. The register header counts open vs closed. That "verbal clarification" that loses disputes now has its paper trail.</p></div>
-        <div class="card bracket"><span class="cnum">C2</span><h4>Submittal Register</h4><p>Beside the RFIs, also in <strong>Documents</strong>. Material and shop-drawing approvals track item, trade, submitted-to, submitted and response dates, and an approval status: pending → review → approved / approved-with-comments / rejected. Distinct from RFIs on purpose — approvals are not questions.</p></div>
+        <div class="card bracket"><span class="cnum">C1</span><h4>RFI Register</h4><p>In the <strong>Documents</strong> panel. Every Request for Information gets a lifecycle , open → routed → responded → closed , plus From / To, issued and due dates, the question, the response, and a <strong>Ball in Court</strong> field naming whose turn it is. The register header counts open vs closed. That "verbal clarification" that loses disputes now has its paper trail.</p></div>
+        <div class="card bracket"><span class="cnum">C2</span><h4>Submittal Register</h4><p>Beside the RFIs, also in <strong>Documents</strong>. Material and shop-drawing approvals track item, trade, submitted-to, submitted and response dates, and an approval status: pending → review → approved / approved-with-comments / rejected. Distinct from RFIs on purpose , approvals are not questions.</p></div>
         <div class="card bracket"><span class="cnum">C3</span><h4>Punch List</h4><p>A dedicated card at the top of the <strong>Closure</strong> panel, separate from the simple closeout checklist. Each punch item carries a <strong>location</strong> (e.g. Level 2, Room 204), an <strong>assigned to</strong>, a category (Defect / Snag / Touch-up / Safety / Other), a priority, and an open → in progress → done status. The card header shows done vs open at a glance.</p></div>
       </div>
 
       <h3 class="h-sub">Field metrics on the Dashboard</h3>
       <div class="flow">
-        <div class="flow-item"><div class="flow-num"></div><div class="flow-body"><h4>2-Week Lookahead</h4><p>Right under Today's Focus. Every open task starting or finishing in the next 14 days, grouped as Overdue Carryover / This Week / Next Week, with assignee and weather-exposed flags and a status dropdown so you can flip a task to done without leaving the view — the short-horizon "what's actually happening next" the field needs, distinct from the full Gantt.</p></div></div>
-        <div class="flow-item"><div class="flow-num"></div><div class="flow-body"><h4>Percent Plan Complete (PPC)</h4><p>Beside the lookahead. The lean metric: of the tasks planned to finish this week (by end date), how many are actually completed — shown as a big percentage with a four-week history of bars. Overdue carryover from earlier weeks is called out, and the card states its basis honestly: end-date-in-week vs completion status. No planned work that week shows a dash, never a fabricated 0%.</p></div></div>
-        <div class="flow-item"><div class="flow-num"></div><div class="flow-body"><h4>No new setup</h4><p>All five features read data you already keep — task dates and statuses, documents, closeout. Empty registers just show an empty state and a + button; nothing nags until you add rows.</p></div></div>
+        <div class="flow-item"><div class="flow-num"></div><div class="flow-body"><h4>2-Week Lookahead</h4><p>Right under Today's Focus. Every open task starting or finishing in the next 14 days, grouped as Overdue Carryover / This Week / Next Week, with assignee and weather-exposed flags and a status dropdown so you can flip a task to done without leaving the view , the short-horizon "what's actually happening next" the field needs, distinct from the full Gantt.</p></div></div>
+        <div class="flow-item"><div class="flow-num"></div><div class="flow-body"><h4>Percent Plan Complete (PPC)</h4><p>Beside the lookahead. The lean metric: of the tasks planned to finish this week (by end date), how many are actually completed , shown as a big percentage with a four-week history of bars. Overdue carryover from earlier weeks is called out, and the card states its basis honestly: end-date-in-week vs completion status. No planned work that week shows a dash, never a fabricated 0%.</p></div></div>
+        <div class="flow-item"><div class="flow-num"></div><div class="flow-body"><h4>No new setup</h4><p>All five features read data you already keep , task dates and statuses, documents, closeout. Empty registers just show an empty state and a + button; nothing nags until you add rows.</p></div></div>
       </div>
 
       <div class="divider-note">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M9 6H20M9 12H20M9 18H20" stroke="currentColor" stroke-width="2"/><path d="M4 6L5 7L7 5M4 12L5 13L7 11M4 18L5 19L7 17" stroke="currentColor" stroke-width="2"/></svg>
-        <p><strong>Same workspace, one more layer of rigor.</strong> RFIs and submittals give the communication workflow a register; the punch list keeps closeout defects honest; lookahead and PPC turn the schedule into a weekly commitment you can measure — all offline-first, all in your existing project file.</p>
+        <p><strong>Same workspace, one more layer of rigor.</strong> RFIs and submittals give the communication workflow a register; the punch list keeps closeout defects honest; lookahead and PPC turn the schedule into a weekly commitment you can measure , all offline-first, all in your existing project file.</p>
       </div>
     </section>
 
@@ -1619,24 +1619,24 @@ Date: ____________  Focus: ____________</pre>
         <div class="tblock-right"><div><b>Scale</b>1 : 1 detail</div></div>
       </div>
       <span class="kicker">Every remaining zero-setup register: money, inspections, incidents, paperwork, handover</span>
-      <p class="lede">Ten more core-competitor features shipped as plain in-app registers and dashboard cards — the ball-in-court rollup, a drawing distribution log, committed cost, pay applications, inspection checklists, an incident corrective-action loop, a handover package, a warranty tracker, a permit register, and one dashboard that watches every expiry. All zero-dependency, all offline-first, all reading data already in the project.</p>
+      <p class="lede">Ten more core-competitor features shipped as plain in-app registers and dashboard cards , the ball-in-court rollup, a drawing distribution log, committed cost, pay applications, inspection checklists, an incident corrective-action loop, a handover package, a warranty tracker, a permit register, and one dashboard that watches every expiry. All zero-dependency, all offline-first, all reading data already in the project.</p>
 
       <div class="grid grid-3">
-        <div class="card bracket"><span class="cnum">C12</span><h4>Committed Cost</h4><p>In the <strong>Budget</strong> panel. Every line gains its own <strong>Committed</strong> figure — the contractual bucket distinct from planned and spent. Leave it blank and it tracks the plan; set it to zero for a planning-stage line that isn't a commitment yet. The summary card shows the committed total and the <strong>committed-but-not-spent</strong> gap underneath.</p></div>
-        <div class="card bracket"><span class="cnum">C13</span><h4>Pay Applications</h4><p>Below the budget table. A draw-request register with a <strong>Generate from live spend</strong> button that drafts the current period's pay app at the exact figure the Budget panel shows — never hand-typed twice. Walk each one draft → submitted → approved, with submitted and approved dates on file.</p></div>
-        <div class="card bracket"><span class="cnum">C16</span><h4>Inspection Checklists</h4><p>In the <strong>Risk / Issues</strong> panel. Trade and phase inspections with their own pass/fail item rows — check every item and the inspection auto-advances to <strong>passed</strong>; fail one and it reopens. Deliberately separate from DMAIC (continuous improvement) and from the task list.</p></div>
+        <div class="card bracket"><span class="cnum">C12</span><h4>Committed Cost</h4><p>In the <strong>Budget</strong> panel. Every line gains its own <strong>Committed</strong> figure , the contractual bucket distinct from planned and spent. Leave it blank and it tracks the plan; set it to zero for a planning-stage line that isn't a commitment yet. The summary card shows the committed total and the <strong>committed-but-not-spent</strong> gap underneath.</p></div>
+        <div class="card bracket"><span class="cnum">C13</span><h4>Pay Applications</h4><p>Below the budget table. A draw-request register with a <strong>Generate from live spend</strong> button that drafts the current period's pay app at the exact figure the Budget panel shows , never hand-typed twice. Walk each one draft → submitted → approved, with submitted and approved dates on file.</p></div>
+        <div class="card bracket"><span class="cnum">C16</span><h4>Inspection Checklists</h4><p>In the <strong>Risk / Issues</strong> panel. Trade and phase inspections with their own pass/fail item rows , check every item and the inspection auto-advances to <strong>passed</strong>; fail one and it reopens. Deliberately separate from DMAIC (continuous improvement) and from the task list.</p></div>
         <div class="card bracket"><span class="cnum">C17</span><h4>Incident Register</h4><p>Beside the inspections, same panel. Quality and safety incidents walk a corrective-action loop: open → investigation → action → closed. Closing stamps the date; root cause and corrective action ride along so an incident can't be marked done without the loop on record.</p></div>
-        <div class="card bracket"><span class="cnum">C6</span><h4>Ball in Court</h4><p>Top of the <strong>Documents</strong> panel. One cross-module rollup of every open RFI, submittal, and issue with the person whose action is awaited, sorted by due date — the "whose turn is it" answer across the whole project, not module by module.</p></div>
-        <div class="card bracket"><span class="cnum">C11</span><h4>Drawing Distribution Log</h4><p>In <strong>Documents</strong>. Who received which drawing revision, when, and by what method (email / print / portal / hand) — the trail that keeps version disputes honest.</p></div>
+        <div class="card bracket"><span class="cnum">C6</span><h4>Ball in Court</h4><p>Top of the <strong>Documents</strong> panel. One cross-module rollup of every open RFI, submittal, and issue with the person whose action is awaited, sorted by due date , the "whose turn is it" answer across the whole project, not module by module.</p></div>
+        <div class="card bracket"><span class="cnum">C11</span><h4>Drawing Distribution Log</h4><p>In <strong>Documents</strong>. Who received which drawing revision, when, and by what method (email / print / portal / hand) , the trail that keeps version disputes honest.</p></div>
         <div class="card bracket"><span class="cnum">C30</span><h4>Permit Register</h4><p>Also in <strong>Documents</strong>. Permit numbers, types, agencies, issue and expiry dates, and a status walk applied → active → expiring → expired. Active permits that are running down get a days-left flag right in the row.</p></div>
         <div class="card bracket"><span class="cnum">C18</span><h4>Handover Package</h4><p>In the <strong>Closure</strong> panel. The bundled O&amp;M manual / warranty / as-built / certificate / sign-off package, each item walking required → ready → filed. The roadmap's closeout-package ask, separate from the simple checklist.</p></div>
-        <div class="card bracket"><span class="cnum">C26</span><h4>Warranty Tracker</h4><p>Beside the handover package. Warranty periods with start and end dates and a live <strong>time-left</strong> badge — green while healthy, amber inside 60 days, red once it lapses. Feeds the expiry rollup below.</p></div>
+        <div class="card bracket"><span class="cnum">C26</span><h4>Warranty Tracker</h4><p>Beside the handover package. Warranty periods with start and end dates and a live <strong>time-left</strong> badge , green while healthy, amber inside 60 days, red once it lapses. Feeds the expiry rollup below.</p></div>
       </div>
 
       <h3 class="h-sub">The expiry dashboard</h3>
       <div class="flow">
-        <div class="flow-item"><div class="flow-num"></div><div class="flow-body"><h4>Expiry &amp; Renewals</h4><p>On the <strong>Dashboard</strong>. One card watches everything with a date on it — subcontractor COI and license expiries, EMR re-verification staleness, warranty end dates, and permit expiries — anything due inside 60 days (or already past), each with a days-left badge. Nothing due, the card hides itself entirely.</p></div></div>
-        <div class="flow-item"><div class="flow-num"></div><div class="flow-body"><h4>Same-file rigor</h4><p>All ten features live in the existing project file — same export, same backup, same cloud sync, same offline behavior as every other panel. Nothing nags until a real date or a real row makes it true.</p></div></div>
+        <div class="flow-item"><div class="flow-num"></div><div class="flow-body"><h4>Expiry &amp; Renewals</h4><p>On the <strong>Dashboard</strong>. One card watches everything with a date on it , subcontractor COI and license expiries, EMR re-verification staleness, warranty end dates, and permit expiries , anything due inside 60 days (or already past), each with a days-left badge. Nothing due, the card hides itself entirely.</p></div></div>
+        <div class="flow-item"><div class="flow-num"></div><div class="flow-body"><h4>Same-file rigor</h4><p>All ten features live in the existing project file , same export, same backup, same cloud sync, same offline behavior as every other panel. Nothing nags until a real date or a real row makes it true.</p></div></div>
       </div>
 
       <div class="divider-note">
@@ -1652,12 +1652,12 @@ Date: ____________  Focus: ____________</pre>
         <div class="tblock-right"><div><b>Scale</b>1 : 1 detail</div></div>
       </div>
       <span class="kicker">The reviews page on the public site: read them, leave one, see it live instantly</span>
-      <p class="lede">The site's <strong>Reviews</strong> page (<a href="reviews.html">reviews.html</a>) is the public word-of-mouth wall. Anyone can leave a review — name optional, shown as <strong>Anonymous</strong> when blank — and it appears for everyone right away, no moderation, no gate. Plain text only: no HTML, no links, so what you see is exactly what the reviewer typed.</p>
+      <p class="lede">The site's <strong>Reviews</strong> page (<a href="reviews.html">reviews.html</a>) is the public word-of-mouth wall. Anyone can leave a review , name optional, shown as <strong>Anonymous</strong> when blank , and it appears for everyone right away, no moderation, no gate. Plain text only: no HTML, no links, so what you see is exactly what the reviewer typed.</p>
 
       <div class="grid grid-3">
-        <div class="card bracket"><span class="cnum">T7</span><h4>Leave a review</h4><p>On the page, the form asks for your <strong>name</strong> (optional), your <strong>review</strong> (required), and an optional <strong>1-5 star rating</strong>. Submit and it posts to the cloud backend and shows up at the top of the list for every visitor — with your stars under your name when you picked them. There is no approval queue — the owner's rule is that everyone sees all reviews instantly.</p></div>
+        <div class="card bracket"><span class="cnum">T7</span><h4>Leave a review</h4><p>On the page, the form asks for your <strong>name</strong> (optional), your <strong>review</strong> (required), and an optional <strong>1-5 star rating</strong>. Submit and it posts to the cloud backend and shows up at the top of the list for every visitor , with your stars under your name when you picked them. There is no approval queue , the owner's rule is that everyone sees all reviews instantly.</p></div>
         <div class="card bracket"><span class="cnum">T7</span><h4>Anonymous by default</h4><p>Leave the name blank and your review is signed <strong>Anonymous</strong>. No account is needed to post, and the app's offline-first principle still holds: reading the site never requires a connection beyond loading the page.</p></div>
-        <div class="card bracket"><span class="cnum">T7</span><h4>Plain text only</h4><p>Reviews accept plain text only — HTML and links are rejected, and the page renders everything as text. What a reviewer writes is exactly what everyone reads, nothing more.</p></div>
+        <div class="card bracket"><span class="cnum">T7</span><h4>Plain text only</h4><p>Reviews accept plain text only , HTML and links are rejected, and the page renders everything as text. What a reviewer writes is exactly what everyone reads, nothing more.</p></div>
       </div>
 
       <h3 class="h-sub">How it works</h3>
@@ -1668,19 +1668,19 @@ Date: ____________  Focus: ____________</pre>
 
       <div class="divider-note">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 3.5l2.6 5.4 5.9.9-4.3 4.1 1 5.9L12 17.1l-5.2 2.7 1-5.9L3.5 9.8l5.9-.9L12 3.5z" stroke="currentColor" stroke-width="1.6"/></svg>
-        <p><strong>Word of mouth, on record.</strong> Reviews are public on purpose — the site stands behind its users' own words. If you built something with My MaNaGeR, the Reviews page is the two-line way to say so.</p>
+        <p><strong>Word of mouth, on record.</strong> Reviews are public on purpose , the site stands behind its users' own words. If you built something with My MaNaGeR, the Reviews page is the two-line way to say so.</p>
       </div>
     </section>
 
     <!-- ============ CLOSING CTA BAND ============ -->
-    <!-- Local photo (completed kitchen) — the finished job. -->
+    <!-- Local photo (completed kitchen) , the finished job. -->
     <div class="band reveal" style="min-height:420px">
       <div class="band-bg" style="background-image:url('images/completed-kitchen.webp')"></div>
       <div class="band-overlay"></div>
       <div class="band-content" style="max-width:680px">
         <span class="kicker">Sheet A-24 and beyond</span>
         <h3>This index has room for what's next.</h3>
-        <p>New panels and features get their own sheet, numbered and slotted in — the guide grows the same way the app does. Twenty-five sheets so far, from Welcome (A-00) through the Public Reviews Window (A-24). For now: open My MaNaGeR in the next tab over, start with the Charter, and keep this page bookmarked.</p>
+        <p>New panels and features get their own sheet, numbered and slotted in , the guide grows the same way the app does. Twenty-five sheets so far, from Welcome (A-00) through the Public Reviews Window (A-24). For now: open My MaNaGeR in the next tab over, start with the Charter, and keep this page bookmarked.</p>
         <div class="hero-cta" style="margin-top:28px">
           <a href="#top" class="btn btn-brass">Back to the top ↑</a>
           <a href="#quickstart" class="btn btn-ghost">Revisit Quick Start</a>
@@ -1692,8 +1692,8 @@ Date: ____________  Focus: ____________</pre>
     <footer>
       <div class="footer-grid">
         <div class="footer-brand">
-          <h4>My MaNaGeR — Field Guide</h4>
-          <p>An unofficial companion guide to the My MaNaGeR workspace — twenty-four sheets, one per panel or workflow, built to sit open in a second tab while you learn the app.</p>
+          <h4>My MaNaGeR , Field Guide</h4>
+          <p>An unofficial companion guide to the My MaNaGeR workspace , twenty-four sheets, one per panel or workflow, built to sit open in a second tab while you learn the app.</p>
         </div>
         <div class="footer-cols">
           <div class="footer-col">
@@ -1735,7 +1735,7 @@ Date: ____________  Focus: ____________</pre>
       </div>
       <div class="footer-bottom">
         <span>MY MANAGER FIELD GUIDE · UNOFFICIAL COMPANION · DRAWN FOR V3.3.8</span>
-        <span>PHOTOGRAPHY VIA UNSPLASH — M. ZVADA · N. MISASTRA · SMKN 1 GANTAR · E. K · R. GARCIN</span>
+        <span>PHOTOGRAPHY VIA UNSPLASH , M. ZVADA · N. MISASTRA · SMKN 1 GANTAR · E. K · R. GARCIN</span>
       </div>
     </footer>
   </main>
@@ -1745,7 +1745,7 @@ Date: ____________  Focus: ____________</pre>
 <script src="js/marketing.js"></script>
 <script>
 /* ============================================================
-   JS — scrollspy, tabs, accordion, copy-to-clipboard,
+   JS , scrollspy, tabs, accordion, copy-to-clipboard,
    scroll-reveal, mobile sidebar, scroll progress.
    ============================================================ */
 (function(){

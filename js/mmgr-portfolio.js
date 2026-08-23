@@ -1,5 +1,5 @@
 /* ============================================================
-   My MaNaGeR — Portfolio Health Rollup (ACTION-PLAN 6.1)
+   My MaNaGeR , Portfolio Health Rollup (ACTION-PLAN 6.1)
    Loaded ONLY by app.html (the project dashboard / app entry).
 
    Reads every unlocked project's saved state from localStorage
@@ -95,7 +95,7 @@ var MMGR = window.MMGR || {};
     if (planned && actual > planned) { score += 15; reasons.push('over planned budget'); }
     const highRisks = (s.risks || []).filter(r => !r.issueId && (r.probability === 'High' || r.probability === 'high')).length;
     if (highRisks) { score += Math.min(15, highRisks * 5); reasons.push(highRisks + ' high risk' + (highRisks > 1 ? 's' : '')); }
-    // Weather-risk days in the next 7 days (ACTION-PLAN 7.6) — +4 each, cap 12.
+    // Weather-risk days in the next 7 days (ACTION-PLAN 7.6) , +4 each, cap 12.
     const wxDays = wxRiskDays(s);
     if (wxDays.length) {
       score += Math.min(12, wxDays.length * 4);
@@ -110,7 +110,7 @@ var MMGR = window.MMGR || {};
   // Pure read of the project's cached 16-day Open-Meteo forecast (written by
   // js/mmgr-forecast.js on the project viewer). Mirrors the same thresholds
   // (precip>=60, heat>=32C, cold<=0C) so the portfolio badge never disagrees
-  // with the viewer's own strip. No network call — the cache is client-side.
+  // with the viewer's own strip. No network call , the cache is client-side.
   function wxRiskDays(state) {
     const s = state || {};
     const c = s.wxCache;
@@ -127,7 +127,7 @@ var MMGR = window.MMGR || {};
   // ---- Rollup over all published projects ----
   // Reads each project's OWN saved state. Locked projects (no unlock
   // flag in this browser) can't be opened, so they're ranked last with
-  // a locked note — their data is never readable without the code.
+  // a locked note , their data is never readable without the code.
   function rank(projects) {
     const list = (projects || []).map(p => {
       const unlocked = localStorage.getItem('mmgr_unlocked_' + p.id) === '1';
@@ -155,7 +155,7 @@ var MMGR = window.MMGR || {};
 
   // ---- DASHBOARD-UI-REFRESH-SPEC §3: 3 metric summary cards ----
   // Active / At-Risk / Avg Health, computed from the SAME rank() data the
-  // strip uses — no invented numbers. Rendered ONLY when the page is in
+  // strip uses , no invented numbers. Rendered ONLY when the page is in
   // dark dashboard mode (spec §5: light mode stays untouched; the container
   // is display:none there anyway).
   function renderMetrics() {
@@ -171,7 +171,7 @@ var MMGR = window.MMGR || {};
     el.innerHTML =
       '<div class="db-metric"><div class="dm-label">Active Projects</div><div class="dm-value">' + unlocked.length + '</div></div>' +
       '<div class="db-metric"><div class="dm-label">At-Risk Projects</div><div class="dm-value">' + atRisk + '</div></div>' +
-      '<div class="db-metric"><div class="dm-label">Avg Health Score</div><div class="dm-value">' + (avg === null ? '&mdash;' : avg) + '<span class="dm-unit">/100</span></div></div>';
+      '<div class="db-metric"><div class="dm-label">Avg Health Score</div><div class="dm-value">' + (avg === null ? ', ' : avg) + '<span class="dm-unit">/100</span></div></div>';
   }
 
   // ---- Render into the dashboard's portfolio strip ----

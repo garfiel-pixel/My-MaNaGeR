@@ -1,8 +1,8 @@
 /* ============================================================
-   My MaNaGeR — "My Cloud Projects" dashboard (app.html launcher)
+   My MaNaGeR , "My Cloud Projects" dashboard (app.html launcher)
    A5-3 decision (2026-08-11): a signed-in Google owner sees every
    cloud-linked project under their account and can load any of
-   them without re-entering the owner code — the Worker's
+   them without re-entering the owner code , the Worker's
    GET /api/cloud/projects is session-gated (sub match) and
    POST /api/cloud/projects/:id/load accepts the linked owner
    session in place of a code.
@@ -10,7 +10,7 @@
    Self-contained on purpose: this file loads BEFORE mmgr-utils.js
    on app.html, so it must not touch MMGR.Utils. Zero inline
    handlers, zero dependencies beyond fetch + DOM. Every path
-   degrades silently — a static host without the Worker API, or a
+   degrades silently , a static host without the Worker API, or a
    missing session, simply leaves the section hidden.
    ============================================================ */
 (function() {
@@ -21,7 +21,7 @@
   const STATUS = 'cloud-dash-status';
   // NEW-UI-CREATION-BRIEF I1 follow-up (2026-08-14): the launcher rail also
   // carries a compact Cloud Projects accordion + an Upgrade to Premium button
-  // in the rail footer — both fed by the SAME fetches as the main dashboard
+  // in the rail footer , both fed by the SAME fetches as the main dashboard
   // (one network round-trip, two surfaces).
   const RAIL_CLOUD = 'rail-cloud-list';
   const RAIL_UPGRADE = 'rail-upgrade';
@@ -76,7 +76,7 @@
     try {
       res = await fetch('/api/cloud/projects', { method: 'GET', credentials: 'same-origin' });
     } catch (e) {
-      // Static host / offline — no Worker API. Leave the section hidden.
+      // Static host / offline , no Worker API. Leave the section hidden.
       dash.hidden = true;
       setRailCloudEmpty('Cloud sync is unavailable on this host.');
       return;
@@ -101,8 +101,8 @@
       // PART F T9: adopted (shared) projects render a role chip so a
       // recipient knows what a code grants before opening (read-only vs
       // scoped edit). LAUNCHER DELETE (owner 2026-08-17): every card now
-      // carries the 3-dot menu — the OWNER gets "Delete project" (confirm +
-      // undo toast); a shared card gets "Remove from my list" (unpin — the
+      // carries the 3-dot menu , the OWNER gets "Delete project" (confirm +
+      // undo toast); a shared card gets "Remove from my list" (unpin , the
       // owner's main version is never touched by anyone but the owner). A
       // shared card whose owner deleted the project renders DISCONTINUED:
       // no Load button, a notice that it can no longer be opened or
@@ -118,7 +118,7 @@
           '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-trash"></use></svg> Delete project' +
           '</button>';
       const discBanner = disc
-        ? '<div class="cd-disc" role="note"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-alert-triangle"></use></svg> Discontinued — the admin deleted this project. It can no longer be opened or updated. Remove it from your list.</div>'
+        ? '<div class="cd-disc" role="note"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-alert-triangle"></use></svg> Discontinued , the admin deleted this project. It can no longer be opened or updated. Remove it from your list.</div>'
         : '';
       const loadBtn = disc ? '' : '<button type="button" class="btn btn-g btn-s" data-cd-load="' + escapeHtml(p.projectId) + '" title="Open this project from the cloud snapshot">Load</button>';
       const discRemove = disc ? '<button type="button" class="btn btn-n btn-s" data-cd-unpin="' + escapeHtml(p.projectId) + '" data-cd-disc="1" title="Remove this discontinued project from your list">Remove</button>' : '';
@@ -139,12 +139,12 @@
 
   // ---- BILLING-UPGRADE-UI (app.html RAIL FOOTER, 2026-08-12/14) ----
   // Plan status lives in the rail footer where it is always visible (owner
-  // polish 2026-08-14: the main dashboard shows ONLY cloud projects — the
+  // polish 2026-08-14: the main dashboard shows ONLY cloud projects , the
   // plan/upgrade strip was removed from there). Paid plan -> a "Premium"
   // badge; free plan -> an "Upgrade to Premium" button. Both fed by the
   // session-gated /api/billing/status (same origin + cookie as the project
   // list above). Dormant-when-unconfigured: with no LEMONSQUEEZY_* secrets
-  // the worker answers configured:false and both stay hidden — byte-for-byte
+  // the worker answers configured:false and both stay hidden , byte-for-byte
   // unchanged on the current deploy. The button opens the checkout via
   // POST /api/billing/checkout (session-gated) and reports outcomes in the
   // existing live-region status line.
@@ -183,7 +183,7 @@
   }
 
   // ---- open the LemonSqueezy checkout (same contract as the drawer's
-  //      cloudUpgrade in mmgr-cloud.js — session-gated POST, open URL) ----
+  //      cloudUpgrade in mmgr-cloud.js , session-gated POST, open URL) ----
   async function upgradePlan() {
     setStatus('Opening checkout...');
     try {
@@ -195,7 +195,7 @@
         return;
       }
       window.open(data.checkoutUrl, '_blank', 'noopener');
-      setStatus('Checkout opened in a new tab — complete the purchase there, then refresh this page.');
+      setStatus('Checkout opened in a new tab , complete the purchase there, then refresh this page.');
     } catch (e) {
       setStatus('Could not reach the cloud service.', true);
     }
@@ -223,7 +223,7 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({})
       });
-      if (!res.ok) { setStatus('Could not load — check that this project is linked to the signed-in account.', true); return; }
+      if (!res.ok) { setStatus('Could not load , check that this project is linked to the signed-in account.', true); return; }
       const data = await res.json();
       if (!data || !data.ok) { setStatus('Could not load that project right now.', true); return; }
       if (data.state) {
@@ -232,7 +232,7 @@
           localStorage.setItem('mmgr_scope_' + projectId, 'full');
           localStorage.setItem('mmgr_state_' + projectId, JSON.stringify(data.state));
           // PART F T9: a load through an adoption row returns the LIVE code
-          // role + scope — seed the same session slot mmgr-cloud.js writes
+          // role + scope , seed the same session slot mmgr-cloud.js writes
           // (escopeKey) so the opened project applies the grant: viewers drop
           // into read-only from boot, editors get only their granted sections.
           // Without this, a pinned shared project would open full-access on
@@ -245,18 +245,18 @@
                 role: data.role === 'view' ? 'view' : 'editor'
               }));
               if (data.role === 'view') localStorage.setItem('mmgr_scope_' + projectId, 'readonly');
-            } catch (e) { /* ignore — server still enforces */ }
+            } catch (e) { /* ignore , server still enforces */ }
           }
-        } catch (e) { setStatus('Storage unavailable — could not open the project.', true); return; }
+        } catch (e) { setStatus('Storage unavailable , could not open the project.', true); return; }
         // Opens the project viewer with the same ?id= entry the editor-code
         // unlock uses.
         window.location.href = 'project.html?id=' + encodeURIComponent(projectId);
         return;
       }
-      // PART F T9: no snapshot yet — the OLD copy told the user to open it
+      // PART F T9: no snapshot yet , the OLD copy told the user to open it
       // once from "its Cloud section", which only makes sense for the OWNER.
       // A recipient who pinned a shared project has no Cloud section for
-      // someone else's project — explain clearly instead of dead-ending.
+      // someone else's project , explain clearly instead of dead-ending.
       setStatus(data.role === 'view' || data.role === 'editor'
         ? 'This shared project has no cloud snapshot yet. The admin needs to save it once first, then it will open here.'
         : 'This project has no cloud snapshot yet. Open it once from its Cloud section (Save to Cloud) and it will appear here.', true);
@@ -269,10 +269,10 @@
 
   // ---- PART F T9: unpin an adopted (shared) project ----
   // Recipient-only action: DELETE /api/cloud/projects/:id/adopt drops the
-  // adoption row. The owner's project is never touched — the row is keyed on
+  // adoption row. The owner's project is never touched , the row is keyed on
   // the recipient's own sub. On success the list reloads without the card.
   // LAUNCHER DELETE (2026-08-17): a DISCONTINUED project (the owner deleted
-  // the main version) is removed the same way — the recipient only ever
+  // the main version) is removed the same way , the recipient only ever
   // clears their own pin; there is nothing left to restore on their side.
   async function unpinProject(projectId, discontinued) {
     setStatus(discontinued ? 'Removing discontinued project…' : 'Removing from your list…');
@@ -296,11 +296,11 @@
 
   // ---- LAUNCHER DELETE (owner 2026-08-17) -------------------------------
   // The owner's 3-dot menu "Delete project" opens the #cdm confirm sheet
-  // (static markup on app.html — driven entirely from here, zero inline
+  // (static markup on app.html , driven entirely from here, zero inline
   // handlers) with the project name filled in; confirming calls the
   // existing session-gated POST .../delete (owner-only soft delete) and
   // surfaces an Undo pill for the ~5s window, mirroring the admin panel's
-  // delete flow. Shared cards NEVER reach this path — their menu only ever
+  // delete flow. Shared cards NEVER reach this path , their menu only ever
   // offers remove-from-my-list (the owner alone can delete the main version).
   let _pendingDelete = null;
   function openDeleteConfirm(projectId, name) {
@@ -363,7 +363,7 @@
   // One open menu at a time; clicking the card's 3-dot toggles it, any
   // click outside closes it, Escape closes menus + the confirm sheet.
   // projectId is [A-Za-z0-9_-] (sanitized server-side at create), so the
-  // attribute selectors are safe without CSS.escape — same reasoning as
+  // attribute selectors are safe without CSS.escape , same reasoning as
   // loadProject().
   function closeMenus() {
     const pops = document.querySelectorAll('.cd-menu-pop');
@@ -383,7 +383,7 @@
   }
 
   // ---- action-capable toast (same shared .toast/.toast-act CSS as the
-  //      admin panel's Undo pill — app.html's inline toast() has no action
+  //      admin panel's Undo pill , app.html's inline toast() has no action
   //      support, and this file loads before it anyway, so build our own) ----
   function notify(msg, type, action) {
     const existing = document.querySelector('.toast');
@@ -421,7 +421,7 @@
 
   // ---- events ----
   document.addEventListener('click', function(e) {
-    // 3-dot menu toggle — handled FIRST so a click on the button neither
+    // 3-dot menu toggle , handled FIRST so a click on the button neither
     // closes itself (outside-click logic below) nor leaks to card actions.
     const menuBtn = e.target && e.target.closest ? e.target.closest('[data-cd-menu]') : null;
     if (menuBtn) {
@@ -491,7 +491,7 @@
   // The launcher #grid is paged: up to PG_PER_PAGE cards per page with
   // prev/next + a counter, so a 9-project wall reads 1-2-3-4 -> next ->
   // 5-6-7-8 -> next -> 9 instead of a grid you count. Cards STAY in the DOM
-  // (the qa harnesses query .pcard) — hidden pages get .pg-off. The pager
+  // (the qa harnesses query .pcard) , hidden pages get .pg-off. The pager
   // (#pg-nav) lives OUTSIDE #grid so renderCards() innerHTML wipes can't
   // orphan it; a MutationObserver re-paginates after every render (boot,
   // reseed, admin import). Zero dependencies; never throws.
@@ -570,7 +570,7 @@
   }
 
   // Boot: render once the session state is known. restoreSession() in
-  // mmgr-google-auth.js is async; probe /api/auth/me ourselves — if a
+  // mmgr-google-auth.js is async; probe /api/auth/me ourselves , if a
   // session exists the list loads, otherwise the section stays hidden and
   // the sign-in event will reveal it.
   if (document.readyState === 'loading') {

@@ -1,13 +1,13 @@
 /* ============================================================
-   My MaNaGeR — /verify.html controller (AUTH MAINFRAME v2, 2026-08-17)
+   My MaNaGeR , /verify.html controller (AUTH MAINFRAME v2, 2026-08-17)
    ------------------------------------------------------------
    Reads ?token=, POSTs /api/auth/verify, drives the card states
    (loading / ok / error), and offers a fresh-link recovery form
    (POST /api/auth/resend-verify) when the 24h single-use token is
-   dead — the recoverable error path (Complete-States §11).
+   dead , the recoverable error path (Complete-States §11).
 
    External file on purpose: CSP script-src 'self', zero hash churn.
-   All rendered text uses textContent — nothing here can execute.
+   All rendered text uses textContent , nothing here can execute.
    ============================================================ */
 (function () {
   'use strict';

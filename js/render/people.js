@@ -1,5 +1,5 @@
 /* ============================================================
-   My MaNaGeR — People Panel
+   My MaNaGeR , People Panel
    Stakeholders, Changes, Log, RACI, RACI Heatmap, RACI Alerts,
    Communications.
    Extracted from mmgr-render.js.
@@ -35,7 +35,7 @@ var MMGR = window.MMGR || {};
     if (banner) {
       const n = expiring.length;
       const txt = n
-        ? n + ' stakeholder' + (n === 1 ? ' has' : 's have') + ' COI or license documentation expiring within ' + soon + ' days — see the Compliance columns below.'
+        ? n + ' stakeholder' + (n === 1 ? ' has' : 's have') + ' COI or license documentation expiring within ' + soon + ' days , see the Compliance columns below.'
         : '';
       banner.classList.toggle('is-hide', !n);
       const btxt = banner.querySelector('.stk-cmp-txt');
@@ -56,9 +56,9 @@ var MMGR = window.MMGR || {};
       const coiBad = coi && coi <= new Date(Date.now() + soon * 86400000);
       const licBad = lic && lic <= new Date(Date.now() + soon * 86400000);
       const emrStale = ns.Stakeholders && ns.Stakeholders.isEmrStale ? ns.Stakeholders.isEmrStale(stk) : false;
-      const coiCell = `<input type="date" value="${U.escapeHtml(stk.coiExpiry || '')}" class="${coiBad ? 'stk-exp-bad' : ''}" data-action="updField" data-module="Stakeholders" data-field="coiExpiry" data-idx="${i}" title="COI expiry${coiBad ? ' — expires within ' + soon + ' days' : ''}">${coiBad ? `<span class="badge br" title="Expires within ${soon} days">soon</span>` : ''}`;
-      const licCell = `<input type="date" value="${U.escapeHtml(stk.licenseExpiry || '')}" class="${licBad ? 'stk-exp-bad' : ''}" data-action="updField" data-module="Stakeholders" data-field="licenseExpiry" data-idx="${i}" title="Trade license expiry${licBad ? ' — expires within ' + soon + ' days' : ''}">${licBad ? `<span class="badge br" title="Expires within ${soon} days">soon</span>` : ''}`;
-      const emrCell = `<input type="text" value="${U.escapeHtml(stk.emr || '')}" data-action="updField" data-module="Stakeholders" data-field="emr" data-idx="${i}" style="width:52px" placeholder="0.00">${emrStale ? `<span class="badge br" title="EMR stale — verify or set a verification date">stale</span>` : ''}`;
+      const coiCell = `<input type="date" value="${U.escapeHtml(stk.coiExpiry || '')}" class="${coiBad ? 'stk-exp-bad' : ''}" data-action="updField" data-module="Stakeholders" data-field="coiExpiry" data-idx="${i}" title="COI expiry${coiBad ? ' , expires within ' + soon + ' days' : ''}">${coiBad ? `<span class="badge br" title="Expires within ${soon} days">soon</span>` : ''}`;
+      const licCell = `<input type="date" value="${U.escapeHtml(stk.licenseExpiry || '')}" class="${licBad ? 'stk-exp-bad' : ''}" data-action="updField" data-module="Stakeholders" data-field="licenseExpiry" data-idx="${i}" title="Trade license expiry${licBad ? ' , expires within ' + soon + ' days' : ''}">${licBad ? `<span class="badge br" title="Expires within ${soon} days">soon</span>` : ''}`;
+      const emrCell = `<input type="text" value="${U.escapeHtml(stk.emr || '')}" data-action="updField" data-module="Stakeholders" data-field="emr" data-idx="${i}" style="width:52px" placeholder="0.00">${emrStale ? `<span class="badge br" title="EMR stale , verify or set a verification date">stale</span>` : ''}`;
       return `<tr>
       <td>${U.escapeHtml(stk.id || 'S' + (i+1))}</td>
       <td><input type="text" value="${U.escapeHtml(stk.name)}" data-action="updField" data-module="Stakeholders" data-field="name" data-idx="${i}"></td>
@@ -109,7 +109,7 @@ var MMGR = window.MMGR || {};
       const hasRipple = days > 0 || cost > 0 || exposedLines > 0;
       const rippleHtml = hasRipple
         ? `<span style="color:${c.status === 'approved' ? 'var(--green)' : 'var(--amber)'}">~${days}d · ${exposedLines} lines${cost ? ' · $' + cost.toLocaleString() : ''}${downstreamTasks ? ' · ' + downstreamTasks + ' tasks' : ''}</span>`
-        : '—';
+        : '-';
       return `<tr>
       <td>${U.escapeHtml(c.id || 'C' + (i+1))}</td>
       <td><input type="date" value="${c.date || ''}" data-action="updField" data-module="Changes" data-field="date" data-idx="${i}"></td>
@@ -162,7 +162,7 @@ var MMGR = window.MMGR || {};
     if (Raci.refreshRaciTaskPicker) Raci.refreshRaciTaskPicker();
     if (tasks.length === 0 && persons.length === 0) {
       con.innerHTML = '<div class="es"><div class="ic"><svg class="ico" style="font-size:2rem" aria-hidden="true"><use href="css/mmgr-icons.svg#i-users"></use></svg></div>' +
-        '<div>No RACI matrix yet — add a task row and a person column using the two pickers above.</div></div>';
+        '<div>No RACI matrix yet , add a task row and a person column using the two pickers above.</div></div>';
       renderRaciAlerts();
       return;
     }
@@ -175,7 +175,7 @@ var MMGR = window.MMGR || {};
     }
     const esc = (s2) => (s2 || '').replace(/"/g, '&quot;');
     const legend = '<div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center;margin-bottom:12px;font-size:.7rem;color:var(--slate)">' +
-      Raci.RACI_CYCLE_FILTERED().map(k => `<span><span style="display:inline-block;width:18px;height:18px;line-height:18px;text-align:center;border-radius:4px;font-weight:800;background:${Raci.raciCellBg(k)};color:${Raci.raciCellFg(k)};border:1px solid ${Raci.raciCellFg(k)}">${k}</span> ${Raci.RACI_LABELS[k].split(' — ')[0]}</span>`).join('') +
+      Raci.RACI_CYCLE_FILTERED().map(k => `<span><span style="display:inline-block;width:18px;height:18px;line-height:18px;text-align:center;border-radius:4px;font-weight:800;background:${Raci.raciCellBg(k)};color:${Raci.raciCellFg(k)};border:1px solid ${Raci.raciCellFg(k)}">${k}</span> ${Raci.RACI_LABELS[k].split(' , ')[0]}</span>`).join('') +
       '<span style="margin-left:auto">Click a cell to cycle R → A → C → I → blank · Right-click to go back</span></div>';
     let html = legend + '<table class="dt"><thead><tr><th style="min-width:200px">Task / Deliverable</th>';
     persons.forEach((p, pi) => {
@@ -221,7 +221,7 @@ var MMGR = window.MMGR || {};
     const heat = (pct) => pct >= 75 ? 'var(--danger)' : pct >= 50 ? 'var(--amber)' : pct >= 25 ? 'var(--gold)' : 'var(--green)';
     el.innerHTML = '<div class="rst" style="margin-top:18px"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-bar-chart"></use></svg> Team Workload (4.2)</div>' +
       '<div class="rw-grid">' + rows.map(r => {
-        const nm = r.info.name || '—';
+        const nm = r.info.name || '-';
         const c = r.counts;
         const barColor = heat(r.pct);
         return `<div class="rw-cell">
@@ -251,14 +251,14 @@ var MMGR = window.MMGR || {};
       const aCount = persons.filter(p => matrix[t.id + '_' + p.id] === 'A').length;
       if (aCount > 1) {
         const ti = Raci.raciTaskInfo(t);
-        alerts.push(`"${ti.name}" has ${aCount} Accountable people — exactly one is expected.`);
+        alerts.push(`"${ti.name}" has ${aCount} Accountable people , exactly one is expected.`);
       }
     });
     persons.forEach(p => {
       const aCount = tasks.filter(t => matrix[t.id + '_' + p.id] === 'A').length;
       if (aCount > 5) {
         const pi = Raci.raciPersonInfo(p);
-        alerts.push(`${pi.name} is Accountable for ${aCount} tasks — consider redistributing.`);
+        alerts.push(`${pi.name} is Accountable for ${aCount} tasks , consider redistributing.`);
       }
     });
     el.innerHTML = alerts.map(a => `<div style="font-size:.72rem;color:var(--amber);margin-bottom:3px">${a}</div>`).join('');

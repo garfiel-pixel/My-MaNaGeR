@@ -1,14 +1,14 @@
 /* ============================================================
-   My MaNaGeR — Real-time presence (REAL-TIME-PRESENCE, 2026-08-12)
+   My MaNaGeR , Real-time presence (REAL-TIME-PRESENCE, 2026-08-12)
    Loaded ONLY by project.html. OPT-IN + purely additive: opens a
    WebSocket to /api/cloud/presence when this device holds valid
    access (linked Google session cookie, or a stored cloud owner/
-   editor code) and shows a quiet "N online — names" chip in the
-   header. If the socket cannot connect — offline, no access
-   evidence, worker down — the chip stays hidden and NOTHING else
+   editor code) and shows a quiet "N online , names" chip in the
+   header. If the socket cannot connect , offline, no access
+   evidence, worker down , the chip stays hidden and NOTHING else
    changes (offline-first is sacred). Presence shares only {name,
    since} per viewer, never project content. Handshake rejections
-   (403) give up after 3 tries — auth/availability won't self-heal.
+   (403) give up after 3 tries , auth/availability won't self-heal.
    ============================================================ */
 (function(ns) {
   'use strict';
@@ -30,8 +30,8 @@
   }
 
   // Access evidence for the handshake: the stored cloud owner/editor code if
-  // this device has one (sessionStorage only — never persisted). A linked
-  // Google session needs no code — the cookie rides the handshake.
+  // this device has one (sessionStorage only , never persisted). A linked
+  // Google session needs no code , the cookie rides the handshake.
   function accessEvidence() {
     var p = pid();
     if (!p) return null;
@@ -77,24 +77,24 @@
       } else if (msg.type === 'rev-changed') {
         // CLOUD-FIRST SYNC (PART 3, approved 2026-08-17): the main device
         // saved (or the admin broadcast). The server pushes ONLY the new
-        // revision over the socket — never project content — and the
+        // revision over the socket , never project content , and the
         // registered-copy logic in mmgr-cloud.js listens for this event and
         // pulls the fresh snapshot. Non-copy viewers simply ignore it.
         document.dispatchEvent(new CustomEvent('mmgr:rev-changed', {
           detail: { revision: msg.revision || null }
         }));
       } else if (msg.type === 'auth_error') {
-        // Auth rejected by server — close and don't retry.
+        // Auth rejected by server , close and don't retry.
         closedByUs = true;
         try { socket.close(); } catch (e) { /* ignore */ }
       }
-      // 'pong' is a keepalive ack — nothing to render.
+      // 'pong' is a keepalive ack , nothing to render.
     };
     socket.onclose = function() {
       stopPing();
       ws = null;
       if (closedByUs) return;
-      if (failedOpens >= 3) return; // 403/availability won't self-heal — stay quiet
+      if (failedOpens >= 3) return; // 403/availability won't self-heal , stay quiet
       failedOpens++;
       scheduleReconnect();
     };
@@ -124,7 +124,7 @@
     if (!others.length) { el.hidden = true; return; }
     var names = others.map(function(id) { return members[id].name || 'Viewer'; });
     var label = el.querySelector('[data-presence-label]');
-    if (label) label.textContent = others.length + ' online — ' + names.join(', ');
+    if (label) label.textContent = others.length + ' online , ' + names.join(', ');
     el.setAttribute('title', names.join(', ') + (names.length > 1 ? ' are viewing' : ' is viewing') + ' this project');
     el.hidden = false;
   }

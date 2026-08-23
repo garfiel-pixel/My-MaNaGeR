@@ -1,5 +1,5 @@
 /* ============================================================
-   My MaNaGeR — Client-side error surface (Phase 2)
+   My MaNaGeR , Client-side error surface (Phase 2)
    ------------------------------------------------------------
    A static-hosted SPA cannot ship logs to a server, so errors are
    captured client-side: the last 20 (timestamp + message + source
@@ -7,7 +7,7 @@
    Controls drawer. Hooks the window 'error' and
    'unhandledrejection' events at boot, and any module can record
    a deliberate, actionable entry via MMGR.Errors.log(msg, action).
-   Never throws — the error surface must survive its own failures.
+   Never throws , the error surface must survive its own failures.
    ============================================================ */
 var MMGR = window.MMGR || {};
 
@@ -22,7 +22,7 @@ var MMGR = window.MMGR || {};
 
   // ---- DIR-1b: opt-in remote error reporting (device-level slot) ----
   // Stored in localStorage (same family as mmgr_glass_mode / mmgr_sync_*),
-  // NEVER in project state — an opt-in webhook URL must not travel in the
+  // NEVER in project state , an opt-in webhook URL must not travel in the
   // .json export. Off by default; zero network activity while off.
   const REPORT_KEY = 'mmgr_err_report';
   const WEBHOOK_KEY = 'mmgr_err_webhook';
@@ -43,7 +43,7 @@ var MMGR = window.MMGR || {};
   }
 
   // Fire-and-forget remote report. Routed through MMGR.Net's circuit-breaker
-  // (the same module used for weather/AI) with maxRetries:0 — exactly ONE
+  // (the same module used for weather/AI) with maxRetries:0 , exactly ONE
   // POST attempt, no retry storm on a dead endpoint. Any failure degrades
   // silently to "still logged locally only"; never calls Errors.log() again
   // (that would re-enter and loop). https-only matches the deployed CSP
@@ -61,7 +61,7 @@ var MMGR = window.MMGR || {};
         action: entry.action || 'app',
         msg: entry.msg
       }, { maxRetries: 0 });
-    } catch (e) { /* silent — the entry stays logged locally only */ }
+    } catch (e) { /* silent , the entry stays logged locally only */ }
   }
 
   // Plain-text line for the export path (DIR-1a Copy/Download). Shares the
@@ -94,7 +94,7 @@ var MMGR = window.MMGR || {};
     } catch (e) { /* never throw from the error surface */ }
     _busy = false;
     // DIR-1b: the only hook that may leave this module. No-op when the
-    // toggle is off (default) — the log() behavior above is unchanged.
+    // toggle is off (default) , the log() behavior above is unchanged.
     if (entry) _report(entry);
   }
 
@@ -129,7 +129,7 @@ var MMGR = window.MMGR || {};
       ' ' + p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds());
   }
 
-  // Renders into #errlog-body (Controls drawer). Zero inline styles —
+  // Renders into #errlog-body (Controls drawer). Zero inline styles , 
   // classes come from css/mmgr.css (.errlog/.el-row/.el-ts/.el-act/...).
   function render() {
     const body = U.$('errlog-body');

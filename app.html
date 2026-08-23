@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <!--
-  My MaNaGeR — construction/project management workspace.
+  My MaNaGeR , construction/project management workspace.
   Icon system + access-control build by Garack.
 -->
 
@@ -33,13 +33,13 @@
 /* Premium backdrop layers above the fixed z-0 canvas on this page. */
 body.glass-premium .wrap{position:relative;z-index:1;}
 /* .toast styles live in the shared css/mmgr.css (owner 2026-08-15: polished
-   pill notifications — same on launcher, admin, and project viewer). */
+   pill notifications , same on launcher, admin, and project viewer). */
 .notice{margin:22px auto 40px;max-width:560px;display:flex;align-items:center;gap:14px;justify-content:center;text-align:left;background:var(--glass-fill-dark);border:var(--glass-border);border-radius:var(--squircle-md);padding:var(--pad-card);box-shadow:var(--glass-rim),var(--glass-shadow);}
 .notice .nt-ico{width:38px;height:38px;flex-shrink:0;border-radius:var(--radius-control);background:color-mix(in oklch,var(--amber) 14%,transparent);color:var(--amber);display:inline-flex;align-items:center;justify-content:center;}
 .notice .nt-ico .ico{width:18px;height:18px;}
 .notice .nt-txt{font-size:.78rem;font-weight:600;color:var(--text);line-height:1.5;}
 /* UI-DECLUTTER (unlock gate): pill CTAs matching the AI window treatment;
-   the modal footer is now just the two buttons — the redundant contact hint
+   the modal footer is now just the two buttons , the redundant contact hint
    was removed (the page notice + #om-desc already carry it). */
 #om .btn{border-radius:100px;padding:9px 22px;}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:18px;}
@@ -63,10 +63,10 @@ body.glass-premium .wrap{position:relative;z-index:1;}
 .pc-local{color:var(--green);border:1px solid rgba(16,185,129,.35);background:rgba(16,185,129,.1);}
 .pc-note{color:var(--amber);border:1px solid rgba(245,158,11,.3);background:rgba(245,158,11,.07);}
 .empty{grid-column:1/-1;text-align:center;padding:60px 20px;color:var(--slate);font-size:.82rem;}
-/* PROJECTS CAROUSEL (owner 2026-08-16): the project grid is paged — up to 4
+/* PROJECTS CAROUSEL (owner 2026-08-16): the project grid is paged , up to 4
    cards per page with prev/next + a counter, so a long wall reads
    1-2-3-4 → next → 5-6-7-8 → next → 9 instead of a grid you count. Cards STAY
-   in the DOM (harnesses query .pcard) — hidden pages get .pg-off. The pager
+   in the DOM (harnesses query .pcard) , hidden pages get .pg-off. The pager
    mirrors the launcher's glass card language (tokens only). */
 .pg-off{display:none;}
 .pg-nav{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:12px;margin-top:18px;}
@@ -98,7 +98,7 @@ body.glass-premium .wrap{position:relative;z-index:1;}
 .btn-n:hover{border-color:var(--slate);color:var(--text);}
 .contact-hint{font-size:.68rem;color:var(--slate);text-align:center;}
 @media(max-width:520px){.top h1{font-size:1.3rem;}}
-/* A5-3 (2026-08-11): multi-project "My Cloud Projects" dashboard — the
+/* A5-3 (2026-08-11): multi-project "My Cloud Projects" dashboard , the
    signed-in owner's cloud-linked projects, session-gated, each loadable
    without re-entering the code. Mirrors the .pf-card language. */
 .cloud-dash{max-width:1040px;margin:0 auto 28px;}
@@ -126,7 +126,7 @@ body.glass-premium .wrap{position:relative;z-index:1;}
    dark choice made anywhere persists everywhere with no flash. Kept inline in
    <head> so the class is set before any content renders (FOUC prevention).
    NEW-UI-CREATION-BRIEF I1 follow-up: on desktop (>=769px) the launcher rail
-   is PINNED OPEN by default — body.side-open is set pre-paint here so there
+   is PINNED OPEN by default , body.side-open is set pre-paint here so there
    is no layout flash; the hamburger toggles it (closes/reopens) on every
    viewport. Mobile stays drawer-closed by default. */
 (function(){ try {
@@ -146,7 +146,7 @@ body.glass-premium .wrap{position:relative;z-index:1;}
 </script>
 <script src="js/mmgr-theme.js" data-sync="1"></script>
 
-<!-- DASHBOARD-UI-REFRESH-SPEC: dark-dashboard nav rail (app.html only —
+<!-- DASHBOARD-UI-REFRESH-SPEC: dark-dashboard nav rail (app.html only , 
      visible in dark mode; ≤768px it becomes an off-canvas drawer opened by
      the hamburger in the header). Solid-content cards stay solid (Gate 6.1). -->
 <aside class="db-side" id="db-sidebar" aria-label="Dashboard navigation">
@@ -162,7 +162,7 @@ body.glass-premium .wrap{position:relative;z-index:1;}
     <div class="db-sub" id="rail-projects-list" hidden></div>
     <a class="db-link" href="admin.html"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-shield"></use></svg> Admin panel</a>
     <!-- CREATE-YOUR-OWN (owner directive 2026-08-15): the launcher's second
-         door into admin — an open-lock entry beside the Admin panel link that
+         door into admin , an open-lock entry beside the Admin panel link that
          sends visitors to the admin interface so they can create their own
          project (their own admin point). Same db-link language as Admin panel
          (replicated UI), i-unlock glyph, plain link close-on-nav behaviour. -->
@@ -191,7 +191,7 @@ body.glass-premium .wrap{position:relative;z-index:1;}
   <div class="db-foot">
     <!-- PLAN STATUS (NEW-UI-POLISH 2026-08-14): Premium badge when the
          account is on a paid plan, Upgrade to Premium button when on the
-         free plan — rendered by js/mmgr-cloud-dash.js loadPlan(); both
+         free plan , rendered by js/mmgr-cloud-dash.js loadPlan(); both
          hidden when billing is unconfigured. Pinned to the rail bottom so
          the plan + identity never scroll away with the nav. -->
     <div class="db-plan" id="rail-plan" hidden></div>
@@ -208,7 +208,7 @@ body.glass-premium .wrap{position:relative;z-index:1;}
     <button type="button" id="db-nav-btn" class="db-hamb" data-action="toggleSidebar" aria-label="Open menu" aria-expanded="false" aria-controls="db-sidebar"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-menu"></use></svg></button>
     <button type="button" id="db-theme-quick" class="db-quick" data-action="tglThemeQuick" aria-label="Switch to dark theme" title="Switch to dark theme"><svg class="ico" aria-hidden="true"><use id="db-theme-quick-ico" href="css/mmgr-icons.svg#i-moon"></use></svg></button>
     <!-- SIGNED-IN INDICATOR (NEW-UI-POLISH 2026-08-14): circular avatar at
-         the hero top-right — person icon when signed out (click opens the
+         the hero top-right , person icon when signed out (click opens the
          #siom sign-in modal), photo/initial + green dot + "Signed in" label
          when signed in (click opens the modal where sign-out lives). -->
     <button type="button" id="db-user-avatar" class="db-avatar" data-action="openSignIn" aria-label="Sign in" title="Sign in">
@@ -229,11 +229,9 @@ body.glass-premium .wrap{position:relative;z-index:1;}
        #btn-drive-backup / ...) are unchanged so js/mmgr-google-auth.js
        wiring keeps working as-is. -->
 
-  <div class="notice"><span class="nt-ico"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-lock"></use></svg></span><span class="nt-txt">Contact the admin to get an access code for this project.</span></div>
-
   <!-- DASHBOARD-UI-REFRESH-SPEC §3: portfolio summary metrics (Active /
        At-Risk / Avg Health), rendered by mmgr-portfolio.js renderMetrics()
-       only in dark dashboard mode — light mode stays untouched (§5). -->
+       only in dark dashboard mode , light mode stays untouched (§5). -->
   <div class="db-metrics" id="db-metrics" aria-label="Portfolio summary"></div>
 
   <!-- ACTION-PLAN 6.1: cross-project portfolio health rollup, ranked by
@@ -249,11 +247,13 @@ body.glass-premium .wrap{position:relative;z-index:1;}
   </div>
   <div class="grid" id="grid"><!-- cards render here --></div>
 
-  <!-- A5-3 (2026-08-11): My Cloud Projects — the signed-in owner's cloud-
+  <div class="notice"><span class="nt-ico"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-lock"></use></svg></span><span class="nt-txt">Contact the admin to get an access code for a project.</span></div>
+
+  <!-- A5-3 (2026-08-11): My Cloud Projects , the signed-in owner's cloud-
        linked projects, session-gated, rendered by js/mmgr-cloud-dash.js.
        NEW-UI-POLISH (2026-08-14): moved BELOW the regular project grid
-       (local-first platform — your projects come first, cloud follows) and
-       the plan/upgrade strip was removed from here — the plan status now
+       (local-first platform , your projects come first, cloud follows) and
+       the plan/upgrade strip was removed from here , the plan status now
        lives in the rail footer where it is always visible. Hidden until a
        valid session exists AND the Worker is present. -->
   <div class="cloud-dash" id="cloud-dash" hidden aria-label="My cloud projects">
@@ -266,7 +266,7 @@ body.glass-premium .wrap{position:relative;z-index:1;}
   </div>
 
   <!-- CLOUD-CODES-AND-DELETE (2026-08-16): the ONE place to enter any cloud
-       code — owner, editor, or viewer. The lookup resolves the code to its
+       code , owner, editor, or viewer. The lookup resolves the code to its
        project on the backend and opens it here; no shared URL needed beyond
        this site. Works from any device, any country. -->
   <div class="cloud-dash" id="code-entry" aria-label="Open a project with a code">
@@ -288,11 +288,11 @@ body.glass-premium .wrap{position:relative;z-index:1;}
 </div>
 
 <!-- Sign-in modal (NEW-UI-CREATION-BRIEF I1 follow-up, 2026-08-14): the
-     rail's Sign in button opens this CENTERED sheet with BOTH providers — the
+     rail's Sign in button opens this CENTERED sheet with BOTH providers , the
      Google button (#google-signin-button, rendered by GIS into the mount
      point) and the email/password form (mounted after it by
      js/mmgr-google-auth.js mountEmailAuth). Reuses the shared #om modal
-     sheet classes (.mb/.mh/.mbody). Optional identity — never gates the
+     sheet classes (.mb/.mh/.mbody). Optional identity , never gates the
      project grid or access-code unlock. -->
 <div id="siom" role="dialog" aria-modal="true" aria-label="Sign in">
   <div class="mb">
@@ -324,7 +324,7 @@ body.glass-premium .wrap{position:relative;z-index:1;}
 <!-- LAUNCHER DELETE (owner 2026-08-17): confirm sheet for deleting a cloud
      project from the My Cloud Projects launcher. Owner-only action (the
      session-gated POST /api/cloud/projects/:id/delete enforces it server-
-     side); driven entirely by js/mmgr-cloud-dash.js — zero inline handlers,
+     side); driven entirely by js/mmgr-cloud-dash.js , zero inline handlers,
      so the CSP hashes are untouched. Mirror of the #om sheet pattern; the
      card's 3-dot menu opens it with the project name filled in. -->
 <div id="cdm" role="dialog" aria-modal="true" aria-label="Delete cloud project">
@@ -353,7 +353,7 @@ body.glass-premium .wrap{position:relative;z-index:1;}
 <script src="js/mmgr-glass.js"></script>
 <script>
 /* ============================================================
-   Dashboard logic — renders cards from window.MMGR_PROJECTS,
+   Dashboard logic , renders cards from window.MMGR_PROJECTS,
    handles the unlock modal, and remembers unlocked projects
    in this browser via localStorage.
    ============================================================ */
@@ -362,7 +362,7 @@ let activeProject = null;
 /* ---- LOCAL-FIRST (ADMIN-PUBLISH-SYNC-AND-PROJECT-SELECT-POLISH DIR-1) ----
    Projects created on THIS device live in localStorage['mmgr_admin_projects']
    (admin.html). The creator must never need the publish/deploy step to open
-   what they just made — publishing projects-data.js gates only OTHER people's
+   what they just made , publishing projects-data.js gates only OTHER people's
    access. So the grid merges local projects with the published manifest, and
    a locally-owned project opens instantly with no code re-entry. */
 function localProjects(){
@@ -411,7 +411,7 @@ function renderCards(){
     const published = isPublishedProject(p.id);
     const status = (p.status || 'active').toLowerCase();
     const statusLabel = status.replace('-', ' ');
-    // A locally-owned project opens instantly — the creator's own access never
+    // A locally-owned project opens instantly , the creator's own access never
     // depends on the publish step. Chips explain the state on the card itself.
     const chips = local
       ? (published
@@ -452,7 +452,7 @@ function handleCardClick(id){
   const project = findProject(id);
   if(!project) return;
   // LOCAL-FIRST (DIR-1): a project owned on this device (created in
-  // admin.html) opens immediately — no code re-entry, no publish, no remote
+  // admin.html) opens immediately , no code re-entry, no publish, no remote
   // check. The publish/deploy step gates only OTHER people's access.
   if(isLocalProject(id)){
     localStorage.setItem('mmgr_unlocked_' + id, '1');
@@ -484,7 +484,7 @@ function closeModal(){
 }
 
 function toast(msg, type){
-  // Owner 2026-08-15: pill-shaped notification — icon circle + label +
+  // Owner 2026-08-15: pill-shaped notification , icon circle + label +
   // message, slide-up + fade-out. Shared markup/CSS with admin + project.
   const existing = document.querySelector('.toast');
   if (existing) existing.remove();
@@ -505,7 +505,7 @@ function toast(msg, type){
   setTimeout(()=>{ t.remove(); }, 3100);
 }
 
-// Device-level theme toggle — writes the same localStorage slot (mmgr_theme)
+// Device-level theme toggle , writes the same localStorage slot (mmgr_theme)
 // that project.html's Settings toggle and admin.html's switches use, so the
 // choice persists across launcher, admin, and app. el-scoped so multiple
 // instances on a page (launcher row / admin gate pill / header) stay in sync.
@@ -520,7 +520,7 @@ function tglTheme(el){
   if (window.MMGR && MMGR.Glass && MMGR.Glass.refreshTheme) MMGR.Glass.refreshTheme();
 }
 
-// Premium liquid-glass toggle — same device-level slot (mmgr_glass_mode) and
+// Premium liquid-glass toggle , same device-level slot (mmgr_glass_mode) and
 // capability floor as the project viewer's Settings toggle. On a narrow or
 // low-end device the preference is still saved; CSS glass simply stays on.
 function tglGlassMode(el){
@@ -536,7 +536,7 @@ function tglGlassMode(el){
     eff === 'premium' ? 'ok' : 'warn');
 }
 
-/* CLOUD-BACKEND-ARCHITECTURE-PLAN Phase 2 — editor-code unlock.
+/* CLOUD-BACKEND-ARCHITECTURE-PLAN Phase 2 , editor-code unlock.
    A cloud EDITOR code is not in the published manifest (it lives only in the
    Worker's D1 table), so the local hash check can never accept it. Probe the
    Worker's /load with X-Editor-Code: on success the cloud snapshot becomes
@@ -559,7 +559,7 @@ async function tryCloudEditorUnlock(id, code){
     try{
       sessionStorage.setItem('mmgr_cloud_ecode_' + id, String(code || '').trim());
       sessionStorage.setItem('mmgr_cloud_escope_' + id, JSON.stringify({label: data.editorLabel || '', sections: data.scope || []}));
-    }catch(e){ /* session storage blocked — editing still works this session */ }
+    }catch(e){ /* session storage blocked , editing still works this session */ }
     return true;
   }catch(e){ return false; }
 }
@@ -577,7 +577,7 @@ async function attemptUnlock(){
   btn.disabled = true; btn.textContent = 'Checking…';
   const hash = await mmgrHash(val);
   // Admin publishes view-only codes under roCodeHash (see admin.html); older
-  // hand-edited manifests may still use readOnlyCodeHash — accept both so the
+  // hand-edited manifests may still use readOnlyCodeHash , accept both so the
   // view-only unlock works for manifests produced either way.
   const roHash = activeProject.roCodeHash || activeProject.readOnlyCodeHash || '';
   if(hash === activeProject.codeHash || hash === roHash){
@@ -620,23 +620,23 @@ document.addEventListener('keydown', e=>{
 });
 
 /* ============================================================
-   Phase B — data-action event delegation.
+   Phase B , data-action event delegation.
    Zero inline onclick handlers remain in this page.
    ============================================================ */
 document.getElementById('db-sidebar').addEventListener('click', e=>{
-  // Accordion toggles (All Projects / Cloud / Backup / Customize) stay open —
+  // Accordion toggles (All Projects / Cloud / Backup / Customize) stay open , 
   // only plain navigation links close the drawer.
   if (e.target.closest('a') && !e.target.closest('[data-rail-toggle]')) { document.body.classList.remove('side-open'); syncSidebarAria(); }
 });
 
-/* NEW-UI-CREATION-BRIEF I1 follow-up — hamburger on ALL viewports. The
+/* NEW-UI-CREATION-BRIEF I1 follow-up , hamburger on ALL viewports. The
    rail is pinned open by default on desktop (body.side-open set in the
    early snippet); the hamburger closes and reopens it everywhere. Mobile
-   (≤768px) keeps the off-canvas drawer behavior — side-open shows the
+   (≤768px) keeps the off-canvas drawer behavior , side-open shows the
    drawer + scrim, and the hamburger stays clickable ABOVE the scrim (CSS
    z-index) so the same button always closes what it opened.
    NEW-UI-POLISH (2026-08-14): the icon stays the HAMBURGER in both states
-   — it never morphs into an X (owner: "should not be an X icon"). The
+   , it never morphs into an X (owner: "should not be an X icon"). The
    .is-open class rotates the lines 90deg and the rail slides in/out, so
    open/close is always obvious and always reversible from this button. */
 function toggleSidebar(){
@@ -646,7 +646,7 @@ function toggleSidebar(){
 function syncSidebarAria(){
   const open = document.body.classList.contains('side-open');
   // Both toggle buttons in step: the hero hamburger (#db-nav-btn) and the
-  // rail-head hamburger (.db-side-close — owner directive 2026-08-15: the
+  // rail-head hamburger (.db-side-close , owner directive 2026-08-15: the
   // rail closes via a hamburger, not a back arrow; it rotates 90deg while
   // open and returns to the plain hamburger when closed, exactly like the
   // hero button, so one gesture always reads the state).
@@ -694,7 +694,7 @@ function openSignIn(){
   // it. ensureGisButton() re-draws the button now that the modal is visible.
   try {
     if (window.MMGR && MMGR.GoogleAuth && MMGR.GoogleAuth.ensureGisButton) MMGR.GoogleAuth.ensureGisButton();
-  } catch(e){ /* GIS quirk — the boot render is the fallback */ }
+  } catch(e){ /* GIS quirk , the boot render is the fallback */ }
   const f = document.querySelector('#siom input, #siom .email-auth-toggle, #siom iframe');
   if (f && f.focus) { try { f.focus(); } catch(e){} }
 }
@@ -704,7 +704,7 @@ function closeSignIn(){
 }
 document.getElementById('siom').addEventListener('click', function(e){ if (e.target && e.target.id === 'siom') closeSignIn(); });
 
-/* Rail — All Projects accordion: every project (local + published) as a row;
+/* Rail , All Projects accordion: every project (local + published) as a row;
    clicking one opens it through the SAME unlock flow as the grid cards. */
 function renderRailProjects(){
   const list = document.getElementById('rail-projects-list');
@@ -725,7 +725,7 @@ function renderRailProjects(){
   }).join('');
 }
 
-/* Rail footer — user area: signed out = Sign in (opens #siom); signed in =
+/* Rail footer , user area: signed out = Sign in (opens #siom); signed in =
    name + Sign out. Rendered from the same events the auth module dispatches. */
 function renderRailUser(user){
   const area = document.getElementById('rail-user');
@@ -848,7 +848,7 @@ async function cloudCodeOpen(){
           role: ld.role === 'view' ? 'view' : 'editor'
         }));
       }
-    } catch (e) { /* storage blocked — open still proceeds below */ }
+    } catch (e) { /* storage blocked , open still proceeds below */ }
     window.location.href = 'project.html?id=' + encodeURIComponent(ld.projectId);
   } catch (e) {
     if (status) status.textContent = 'Could not reach the cloud service. Check your connection and try again.';
@@ -877,7 +877,7 @@ document.addEventListener('click', function(e){
   const fn = DASH_ACTION_MAP[el.getAttribute('data-action')];
   if (!fn) return;
   // Checkbox toggles own their click (theme): Chrome flips `checked` before
-  // this listener runs — no preventDefault, read the value as-is (same
+  // this listener runs , no preventDefault, read the value as-is (same
   // contract as the project viewer's theme toggle).
   if (el.tagName === 'INPUT' && el.type === 'checkbox'){ fn(el, e); return; }
   e.preventDefault();
@@ -885,11 +885,11 @@ document.addEventListener('click', function(e){
 });
 
 renderCards();
-/* CLOUD-BACKEND-ARCHITECTURE-PLAN Phase 2 — direct-link unlock for cloud
+/* CLOUD-BACKEND-ARCHITECTURE-PLAN Phase 2 , direct-link unlock for cloud
    codes. project.html bounces a locked visitor here as app.html?locked=<id>.
    If that project has a card in the grid, the user clicks it as usual; if it
    has NO card (the owner shared a cloud-linked project that is not in this
-   device's manifest or local list yet — exactly the editor-code case), open
+   device's manifest or local list yet , exactly the editor-code case), open
    the unlock modal for that id immediately so an owner or editor code can be
    entered. Never blocks boot. */
 (function(){
@@ -915,7 +915,7 @@ renderCards();
 })();
 if (window.MMGR && window.MMGR.Portfolio) window.MMGR.Portfolio.render();
 
-/* NEW-UI-CREATION-BRIEF I1 follow-up — boot the rail v2 surface: render the
+/* NEW-UI-CREATION-BRIEF I1 follow-up , boot the rail v2 surface: render the
    All Projects accordion list, set the moon/sun icon to the current theme,
    and sync the hamburger icon/aria with the early-apply side-open default
    (the desktop rail is pinned open pre-paint, so the hamburger must show the
@@ -926,13 +926,13 @@ syncSidebarAria();
 window.addEventListener('resize', function(){ syncSidebarAria(); });
 
 /* Deploy guard: every icon on this page is a <use href="css/mmgr-icons.svg#...">.
-   A missing sprite on the live host makes icons vanish silently — surface it
+   A missing sprite on the live host makes icons vanish silently , surface it
    loudly. HTTP(S) only, so local file:// testing stays quiet. */
 if (window.location.protocol === 'http:' || window.location.protocol === 'https:'){
-  fetch('css/mmgr-icons.svg').then(r=>{ if(!r.ok) console.warn('ICON SPRITE MISSING: css/mmgr-icons.svg returned ' + r.status + ' — upload the css/ folder (mmgr.css + mmgr-icons.svg) to the site root.'); })
-    .catch(()=>console.warn('ICON SPRITE MISSING: css/mmgr-icons.svg could not be fetched — upload the css/ folder to the site root.'));
+  fetch('css/mmgr-icons.svg').then(r=>{ if(!r.ok) console.warn('ICON SPRITE MISSING: css/mmgr-icons.svg returned ' + r.status + ' , upload the css/ folder (mmgr.css + mmgr-icons.svg) to the site root.'); })
+    .catch(()=>console.warn('ICON SPRITE MISSING: css/mmgr-icons.svg could not be fetched , upload the css/ folder to the site root.'));
 }
-// Rank 4.1 (MASTER-ACTION-PLAN Rank 4): PWA registration — cache-first
+// Rank 4.1 (MASTER-ACTION-PLAN Rank 4): PWA registration , cache-first
 // service worker for the app shell. localhost/HTTPS only.
 if ('serviceWorker' in navigator &&
     (window.location.protocol === 'https:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {

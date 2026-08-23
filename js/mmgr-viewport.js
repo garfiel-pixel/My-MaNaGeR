@@ -1,5 +1,5 @@
 /* ============================================================
-   My MaNaGeR — Viewport-Aware Layout Detection (Rank 3.4)
+   My MaNaGeR , Viewport-Aware Layout Detection (Rank 3.4)
    ------------------------------------------------------------
    Detection, not assumption: a narrow/portrait viewport is judged
    from the actual viewport (width/height ratio + orientation
@@ -7,7 +7,7 @@
 
    For views built for wide layouts (Gantt, RACI matrix, EVM /
    budget tables, WBS) on a narrow viewport, the user is offered a
-   SINGLE, dismissible prompt per device (stored in localStorage —
+   SINGLE, dismissible prompt per device (stored in localStorage , 
    the same device-level preference slot Rank 4's PWA layer uses;
    this is intentionally NOT project state, it is a screen
    preference). Never auto-switch silently, never re-prompt after
@@ -46,7 +46,7 @@ var MMGR = window.MMGR || {};
 
   // Hardware-capability floor (3.5.2): enough parallel cores AND a sane
   // devicePixelRatio. A genuine low-end profile reports premium as
-  // unavailable REGARDLESS of any stored preference — capability floor
+  // unavailable REGARDLESS of any stored preference , capability floor
   // overrides preference, preference never overrides incapability.
   function hasWebGL() {
     try {
@@ -95,7 +95,7 @@ var MMGR = window.MMGR || {};
     const w = window.innerWidth || document.documentElement.clientWidth || 0;
     const h = window.innerHeight || document.documentElement.clientHeight || 0;
     const portrait = (typeof window.matchMedia === 'function') && window.matchMedia('(orientation: portrait)').matches;
-    // Portrait ratio (w < h) OR a hard small-width cutoff — a phone held in
+    // Portrait ratio (w < h) OR a hard small-width cutoff , a phone held in
     // landscape still has a small width and gets the prompt.
     return portrait || w <= 640;
   }
@@ -130,7 +130,7 @@ var MMGR = window.MMGR || {};
   }
 
   // Toggle the "view full table" escape hatch for a panel (temporary, until
-  // the user leaves the section — the preference itself stays).
+  // the user leaves the section , the preference itself stays).
   function toggleFull(section) {
     const panel = U.$('panel-' + section);
     if (!panel) return;
@@ -167,7 +167,7 @@ var MMGR = window.MMGR || {};
     setPref(section, 'simple');
     applySimple(section, true);
     removePrompt(section);
-    if (ns.App && ns.App.showToast) ns.App.showToast('Simplified view on for this screen — toggle full table anytime from the panel.', 'ok');
+    if (ns.App && ns.App.showToast) ns.App.showToast('Simplified view on for this screen , toggle full table anytime from the panel.', 'ok');
   }
 
   // User dismissed: remember so it is never re-prompted on this device.

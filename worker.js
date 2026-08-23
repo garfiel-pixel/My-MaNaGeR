@@ -89,16 +89,16 @@ import {
 const INLINE_SCRIPT_HASHES = [
   "'sha256-LPhcYyVaGsoAWUYIPRyfwYSw2y82UmyNSa5ktKilmyA='", // project.html (head theme snippet — FOUC prevention)
   "'sha256-reza4vd5o52LWNUf9lzK6WjApdstd5sm4xVx+lcnK2M='", // project.html (body dark-mode transfer)
-  "'sha256-o+0No2XpbES4E5QJh31mY9JsJFqSmE+B4x+z1fNPjVc='", // project.html (main inline script)
-  "'sha256-knLs8LDuR5LRAqiVQWd+WvmZsVHhKn3TBzy0oSiOpCo='", // app.html (head theme + rail-open snippet — FOUC prevention)
+  "'sha256-jQGKXr3EKUJqelsBjB7GNSArKx9pbp38QHCOFoVCB3g='", // project.html (main inline script)
+  "'sha256-59YXuH6ak9jBNEE5DGbQyi6pC3MiFmPHLBdvphq/ElQ='", // app.html (head theme + rail-open snippet — FOUC prevention)
   "'sha256-PcY9TdIJsXGVPic0Qujx0Ov+GCt9gZG0hEtBVRDiLiM='", // app.html (body class transfer)
-  "'sha256-0EgjjIpml/T5plKUNHZdFDdch7kthOdkjc/5jKeEjX8='", // app.html (main inline script)
-  "'sha256-M1k/xpZtk8+IXDnnJCQoWcNTYR/4suhhG2ZZnYYuLD8='", // admin.html (head theme snippet — FOUC prevention)
+  "'sha256-LtRPaIV4KvGN/sHNnXSL8wSBDn6x8BIMpXbTDVf5U1Q='", // app.html (main inline script)
+  "'sha256-cCWiNSMtCJLjwt0mcR0GscIEccMUKMKocExGYJ4z96M='", // admin.html (head theme snippet — FOUC prevention)
   "'sha256-8rpgpTSjx7LcpleTm7RwTJ+pzjvndpRVDPiapb2gNo8='", // admin.html (body dark-mode transfer)
-  "'sha256-X90hx47K5Wed3kK6semkRqdr3BLX1r8wBn8iIhja0mU='", // admin.html (main inline script)
+  "'sha256-E7yiGOIyl3wYkOorh1fQgqNS+YxBEOsjuDyAF7I7J5g='", // admin.html (main inline script)
   "'sha256-Oa7ON+9A164SSXhnxu08mFn0V9Tj2SlZ2SzFXFoqKNE='", // dashboard.html
   "'sha256-bNdw0+64xL2//htoz+u3InKWYZNEHO/CnuZqtcJIBgU='", // seed-test.html
-  "'sha256-AxkduQ155AQ7I921Ow+mZyri0uQY4ygsDy1i/x/xbCc='", // mymanager-field-guide.html
+  "'sha256-7cQZf8bzyvMY1EwebBo5YuL3PZ9T/X5CTWFRXO3Aq5E='", // mymanager-field-guide.html
   "'sha256-c2U+m5SzyupzeOrPEiOjlnaSgS1KdAxZTFnYA5dW/Rk='", // monolith ref (block 1)
   "'sha256-Mvj9ZjVlVJ2yrW230N22X9aZl7s8NDVU8mXyscP1DHQ='"  // monolith ref (block 2)
 ].join(' ');

@@ -1,5 +1,5 @@
 /* ============================================================
-   My MaNaGeR — Definitions Tooltips
+   My MaNaGeR , Definitions Tooltips
    Floating tooltip for data-def elements.
    Extracted from mmgr-app.js.
    ============================================================ */

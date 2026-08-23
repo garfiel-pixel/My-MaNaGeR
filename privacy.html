@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <!--
-  My MaNaGeR — Privacy Policy.
+  My MaNaGeR , Privacy Policy.
   Matches the marketing site structure (about.html pattern).
   Content drawn from the actual codebase behavior (SECURITY-FIXES-IMPLEMENTATION-PLAN.md Finding 4).
 -->
@@ -91,60 +91,60 @@
       <h2>1. What We Collect</h2>
       <p>My MaNaGeR collects only the data necessary to provide the service:</p>
       <ul>
-        <li><strong>Account information</strong> &mdash; When you sign in with Google, we store your Google account identifier (sub), email address, and display name. For email/password accounts, we store your email address and a hashed password (PBKDF2-SHA256, never stored in plaintext).</li>
-        <li><strong>Project data</strong> &mdash; Everything you enter into the workspace: tasks, risks, budget lines, schedules, contacts, claims, meeting notes, and any other project information you create.</li>
-        <li><strong>Device identifier</strong> &mdash; A local device ID used for offline-copy tracking. This is a random identifier stored on your device, not linked to your identity.</li>
-        <li><strong>Billing information</strong> &mdash; If you subscribe to a paid plan, your subscription status is managed through LemonSqueezy. We do not store payment card details.</li>
+        <li><strong>Account information</strong> , When you sign in with Google, we store your Google account identifier (sub), email address, and display name. For email/password accounts, we store your email address and a hashed password (PBKDF2-SHA256, never stored in plaintext).</li>
+        <li><strong>Project data</strong> , Everything you enter into the workspace: tasks, risks, budget lines, schedules, contacts, claims, meeting notes, and any other project information you create.</li>
+        <li><strong>Device identifier</strong> , A local device ID used for offline-copy tracking. This is a random identifier stored on your device, not linked to your identity.</li>
+        <li><strong>Billing information</strong> , If you subscribe to a paid plan, your subscription status is managed through LemonSqueezy. We do not store payment card details.</li>
       </ul>
 
       <h2>2. Where Data Is Stored</h2>
       <ul>
-        <li><strong>Your browser</strong> &mdash; The primary copy of your project data lives in your browser's localStorage. This is the core of the offline-first design: the app works without any network connection, and your data stays on your device.</li>
-        <li><strong>Cloudflare R2</strong> &mdash; If you enable cloud sync, encrypted project state blobs are stored in Cloudflare R2 object storage. Cloudflare provides server-side encryption at rest for all stored objects.</li>
-        <li><strong>Cloudflare D1</strong> &mdash; Account metadata, project records, and session information are stored in Cloudflare D1 (SQLite-compatible database).</li>
+        <li><strong>Your browser</strong> , The primary copy of your project data lives in your browser's localStorage. This is the core of the offline-first design: the app works without any network connection, and your data stays on your device.</li>
+        <li><strong>Cloudflare R2</strong> , If you enable cloud sync, encrypted project state blobs are stored in Cloudflare R2 object storage. Cloudflare provides server-side encryption at rest for all stored objects.</li>
+        <li><strong>Cloudflare D1</strong> , Account metadata, project records, and session information are stored in Cloudflare D1 (SQLite-compatible database).</li>
       </ul>
       <p class="privacy-note">Project data stored on your device (localStorage) is not encrypted at the application level. If you share a device, use your operating system or browser's own encryption and lock features to protect your data.</p>
 
       <h2>3. How Data Is Protected</h2>
       <ul>
-        <li><strong>Encryption in transit</strong> &mdash; All communication between your browser and our servers uses HTTPS (TLS). We enforce HSTS with a one-year max-age.</li>
-        <li><strong>Encryption at rest</strong> &mdash; Cloud storage (R2 and D1) is encrypted at rest by Cloudflare's infrastructure. Owner codes and passwords are hashed with PBKDF2-SHA256 (100,000 iterations) and never stored in plaintext.</li>
-        <li><strong>Session security</strong> &mdash; Session cookies are HttpOnly, Secure, and SameSite=Lax, preventing JavaScript access and cross-site attacks.</li>
-        <li><strong>Access controls</strong> &mdash; Every cloud endpoint requires authentication. Owner codes, editor codes, and viewer codes are independently verified server-side on every request.</li>
-        <li><strong>Content Security Policy</strong> &mdash; A strict CSP prevents unauthorized script execution, framing, and data exfiltration.</li>
+        <li><strong>Encryption in transit</strong> , All communication between your browser and our servers uses HTTPS (TLS). We enforce HSTS with a one-year max-age.</li>
+        <li><strong>Encryption at rest</strong> , Cloud storage (R2 and D1) is encrypted at rest by Cloudflare's infrastructure. Owner codes and passwords are hashed with PBKDF2-SHA256 (100,000 iterations) and never stored in plaintext.</li>
+        <li><strong>Session security</strong> , Session cookies are HttpOnly, Secure, and SameSite=Lax, preventing JavaScript access and cross-site attacks.</li>
+        <li><strong>Access controls</strong> , Every cloud endpoint requires authentication. Owner codes, editor codes, and viewer codes are independently verified server-side on every request.</li>
+        <li><strong>Content Security Policy</strong> , A strict CSP prevents unauthorized script execution, framing, and data exfiltration.</li>
       </ul>
 
       <h2>4. Who We Share Data With</h2>
       <ul>
-        <li><strong>AI providers</strong> &mdash; If you use the AI assistant with your own API key (BYO-key), your chat messages are forwarded to the AI provider you selected (OpenAI, Anthropic, or Google Gemini). We do not log, store, or persist your API key or chat messages. The relay is stateless.</li>
-        <li><strong>LemonSqueezy</strong> &mdash; If you subscribe to a paid plan, your subscription status and account identifier are shared with LemonSqueezy for billing purposes.</li>
-        <li><strong>Resend</strong> &mdash; Transactional emails (account verification, password reset) are sent through Resend. Your email address is used only for these communications.</li>
+        <li><strong>AI providers</strong> , If you use the AI assistant with your own API key (BYO-key), your chat messages are forwarded to the AI provider you selected (OpenAI, Anthropic, or Google Gemini). We do not log, store, or persist your API key or chat messages. The relay is stateless.</li>
+        <li><strong>LemonSqueezy</strong> , If you subscribe to a paid plan, your subscription status and account identifier are shared with LemonSqueezy for billing purposes.</li>
+        <li><strong>Resend</strong> , Transactional emails (account verification, password reset) are sent through Resend. Your email address is used only for these communications.</li>
       </ul>
       <p>We do not sell, rent, or share your project data with any third party for advertising, analytics, or any purpose other than providing the service you requested.</p>
 
       <h2>5. Data Retention</h2>
       <ul>
-        <li><strong>Active accounts</strong> &mdash; Your data is retained as long as your account is active or you are using the service.</li>
-        <li><strong>Cloud projects</strong> &mdash; Projects with no owner activity for 180 days are automatically purged (deleted from both storage and database). You will receive a warning email before deletion if your account has a verified email address.</li>
-        <li><strong>Deleted projects</strong> &mdash; Projects you delete are hard-purged after a 7-day grace period.</li>
-        <li><strong>Account deletion</strong> &mdash; You may delete your account at any time. See Section 6 below.</li>
+        <li><strong>Active accounts</strong> , Your data is retained as long as your account is active or you are using the service.</li>
+        <li><strong>Cloud projects</strong> , Projects with no owner activity for 180 days are automatically purged (deleted from both storage and database). You will receive a warning email before deletion if your account has a verified email address.</li>
+        <li><strong>Deleted projects</strong> , Projects you delete are hard-purged after a 7-day grace period.</li>
+        <li><strong>Account deletion</strong> , You may delete your account at any time. See Section 6 below.</li>
       </ul>
 
-      <h2>6. Your Rights &mdash; Account Deletion</h2>
+      <h2>6. Your Rights , Account Deletion</h2>
       <p>You have the right to delete your account and all associated data at any time. Account deletion is permanent and irreversible. When you delete your account:</p>
       <ul>
         <li>All cloud projects you own are permanently deleted (database records, stored data, changelogs, editor codes, and offline copies).</li>
         <li>Your account record, session data, and subscription information are deleted.</li>
-        <li>Data stored locally in your browser (localStorage) is not affected by server-side deletion &mdash; you should clear your browser data separately if desired.</li>
+        <li>Data stored locally in your browser (localStorage) is not affected by server-side deletion , you should clear your browser data separately if desired.</li>
       </ul>
       <p>To delete your account, sign in and use the Delete Account option in your account settings. Email accounts require password verification; Google accounts require you to type a confirmation phrase.</p>
 
       <h2>7. Cookies</h2>
       <p>My MaNaGeR uses a single session cookie (<code>mmgr_session</code>) for authentication. This cookie is:</p>
       <ul>
-        <li>HttpOnly &mdash; inaccessible to JavaScript</li>
-        <li>Secure &mdash; only sent over HTTPS</li>
-        <li>SameSite=Lax &mdash; not sent with cross-site requests</li>
+        <li>HttpOnly , inaccessible to JavaScript</li>
+        <li>Secure , only sent over HTTPS</li>
+        <li>SameSite=Lax , not sent with cross-site requests</li>
         <li>Expires after 7 days of inactivity (with automatic renewal for active sessions, up to a 30-day maximum)</li>
       </ul>
       <p>We do not use tracking cookies, advertising cookies, or any third-party analytics cookies.</p>

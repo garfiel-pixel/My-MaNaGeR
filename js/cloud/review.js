@@ -1,5 +1,5 @@
 /* ============================================================
-   My MaNaGeR — Cloud Review Queue
+   My MaNaGeR , Cloud Review Queue
    Owner review list, accept/reject, editor status.
    Extracted from mmgr-cloud.js.
    ============================================================ */

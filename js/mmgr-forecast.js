@@ -130,7 +130,7 @@ var MMGR = window.MMGR || {};
       const risky = d.precip >= RISK_PRECIP || d.tMax >= HEAT_C || d.tMin <= COLD_C;
       if (!risky) return null;
       const dateObj = U.parseDL(d.date) || new Date(d.date + 'T00:00:00');
-      const within7 = dateObj >= today && dateObj <= new Date(today.getTime() + 7 * 86400000);
+      const within7 = dateObj >= today && dateObj <= new Date(today.getTime() + 7 * MMGR.Utils.MS_PER_DAY);
       const affected = wxTasks.filter(t => {
         const ts = U.parseDL(t.startDate), te = U.parseDL(t.endDate);
         if (!ts || !te) return false;
@@ -205,7 +205,7 @@ var MMGR = window.MMGR || {};
     if (!dated.length) return null;
     const minStart = new Date(Math.min.apply(null, dated.map(t => new Date(t.startDate).getTime())));
     const maxEnd = new Date(Math.max.apply(null, dated.map(t => new Date(t.endDate).getTime())));
-    const elapsed = Math.max(1, Math.round((maxEnd - minStart) / 86400000) + 1);
+    const elapsed = Math.max(1, Math.round((maxEnd - minStart) / MMGR.Utils.MS_PER_DAY) + 1);
     const wxDays = ((s && s.weatherLog) || []).length;
     const idx = Math.max(0, Math.round((1 - wxDays / elapsed) * 100));
     return { index: Math.min(100, idx), wxDays: wxDays, elapsed: elapsed };

@@ -301,7 +301,7 @@ var MMGR = window.MMGR || {};
       const dated = (s.tasks || []).filter(t => t.endDate);
       if (tgt && dated.length) {
         const projected = new Date(Math.max.apply(null, dated.map(t => new Date(t.endDate).getTime())));
-        const over = Math.round((projected.getTime() - new Date(tgt).getTime()) / 86400000);
+        const over = Math.round((projected.getTime() - new Date(tgt).getTime()) / MMGR.Utils.MS_PER_DAY);
         line('Target vs planned finish', tgt + ' → ' + projected.toISOString().slice(0, 10) + ' (' + (over > 0 ? '+' + over + 'd over' : over < 0 ? Math.abs(over) + 'd ahead' : 'on target') + ')');
       } else {
         line('Timeline', 'no target completion date and/or no dated tasks yet');
@@ -389,9 +389,14 @@ var MMGR = window.MMGR || {};
     });
     ns.State.updateState(function(s) {
       if (!s.config || typeof s.config !== 'object' || Array.isArray(s.config)) s.config = {};
-      if (!s.config.ai || typeof s.config.ai !== 'object' || Array.isArray(s.config.ai)) s.config.ai = {};
-      Object.keys(safe).forEach(function(k) { s.config.ai[k] = safe[k]; });
-      if (safe.tier !== undefined && safe.tier !== 'off') s.config.ai.lastTier = safe.tier;
+      // Atomic: build new AI config object, then assign in one step.
+      var cur = (s.config.ai && typeof s.config.ai === 'object' && !Array.isArray(s.config.ai)) ? s.config.ai : {};
+      var next = {};
+      var k;
+      for (k in cur) { if (cur.hasOwnProperty(k)) next[k] = cur[k]; }
+      for (k in safe) { if (safe.hasOwnProperty(k)) next[k] = safe[k]; }
+      if (safe.tier !== undefined && safe.tier !== 'off') next.lastTier = safe.tier;
+      s.config.ai = next;
     });
   }
 
@@ -716,7 +721,7 @@ var MMGR = window.MMGR || {};
         _t('tasks[].endDate');
       }
       if (tgt && proj) {
-        const over = Math.round((proj - new Date(tgt)) / 86400000);
+        const over = Math.round((proj - new Date(tgt)) / MMGR.Utils.MS_PER_DAY);
         _t('charter.targetCompletion');
         text += 'Projected finish: ' + proj.toISOString().slice(0, 10) + ' vs target ' + tgt + ' (' + (over > 0 ? '+' + over + 'd over' : over < 0 ? Math.abs(over) + 'd ahead' : 'on target') + ').\n';
       } else {

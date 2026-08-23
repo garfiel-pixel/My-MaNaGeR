@@ -27,7 +27,7 @@ var MMGR = window.MMGR || {};
   // portfolio never depends on the project viewer's module graph.
   function daysBetween(a, b) {
     const da = new Date(a); const db = new Date(b);
-    return Math.round((db - da) / 86400000);
+    return Math.round((db - da) / MMGR.Utils.MS_PER_DAY);
   }
   function isOverdue(endDate) {
     if (!endDate) return false;
@@ -116,7 +116,7 @@ var MMGR = window.MMGR || {};
     const c = s.wxCache;
     if (!c || !c.days || !c.days.length) return [];
     const today = new Date(); today.setHours(0, 0, 0, 0);
-    const in7 = new Date(today.getTime() + 7 * 86400000);
+    const in7 = new Date(today.getTime() + 7 * MMGR.Utils.MS_PER_DAY);
     return c.days.filter(d => {
       const dateObj = new Date(String(d.date).replace(/-/g, '/') + ' 00:00:00');
       if (isNaN(dateObj) || dateObj < today || dateObj > in7) return false;

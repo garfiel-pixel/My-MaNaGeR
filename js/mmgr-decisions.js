@@ -52,7 +52,7 @@ var MMGR = window.MMGR || {};
       if (t.status === 'completed' || !t.endDate) return;
       const end = U.parseDL(t.endDate);
       if (!end) return;
-      const days = Math.round((end - today) / 86400000);
+      const days = Math.round((end - today) / MMGR.Utils.MS_PER_DAY);
       if (days >= 0) return;
       const slip = Math.abs(days);
       items.push({
@@ -70,7 +70,7 @@ var MMGR = window.MMGR || {};
       if (!t.startDate) return;
       const st = U.parseDL(t.startDate);
       if (!st) return;
-      const days = Math.round((today - st) / 86400000);
+      const days = Math.round((today - st) / MMGR.Utils.MS_PER_DAY);
       if (days <= 0) return;
       items.push({
         src: 'Stalled',

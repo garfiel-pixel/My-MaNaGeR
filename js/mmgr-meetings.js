@@ -183,7 +183,7 @@ var MMGR = window.MMGR || {};
       const open = list.filter(p => !p.done).length;
       const doneCount = list.length - open;
       const rows = list.map((p, i) => {
-        const daysSince = p.sourceDate ? Math.round((today - new Date(p.sourceDate)) / 86400000) : 0;
+        const daysSince = p.sourceDate ? Math.round((today - new Date(p.sourceDate)) / MMGR.Utils.MS_PER_DAY) : 0;
         const overdue = !p.done && daysSince > 7;
         const badge = p.done
           ? '<span class="badge bg">done</span>'

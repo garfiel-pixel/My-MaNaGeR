@@ -332,7 +332,7 @@ ${(() => {
     if (!ts || !te || !winSt || !winEn) return;
     const ovStart = new Date(Math.max(ts, winSt));
     const ovEnd = new Date(Math.min(te, winEn));
-    if (ovStart <= ovEnd) wxDur += Math.round((ovEnd - ovStart) / 86400000) + 1;
+    if (ovStart <= ovEnd) wxDur += Math.round((ovEnd - ovStart) / MMGR.Utils.MS_PER_DAY) + 1;
   });
   return `Hurricane window: ${w.start || 'not set'} → ${w.end || 'not set'} | Charter buffer: ${w.bufferDays || 0} days | Weather-exposed duration in window: ${wxDur} days.\n**If weather-exposed duration exceeds the stated Charter buffer, flag it in your output as a schedule risk.**`;
 })()}`;
@@ -587,7 +587,7 @@ Generate a client-facing status update in plain language (no PM jargon):
       const inprog = tasks.filter(t => t.status === 'inprogress');
       const leadtimeNear = tasks.filter(t => {
         if (!t.leadTime || !t.expectedDate) return false;
-        const days = Math.round((U.parseDL(t.expectedDate) - today) / 86400000);
+        const days = Math.round((U.parseDL(t.expectedDate) - today) / MMGR.Utils.MS_PER_DAY);
         return days <= 7;
       });
       const nearCrit = tasks.filter(t => {
@@ -605,7 +605,7 @@ Generate a client-facing status update in plain language (no PM jargon):
       if (target && dated.length) {
         const tDate = new Date(target);
         const projected = new Date(Math.max.apply(null, dated.map(t => new Date(t.endDate || t.end).getTime())));
-        const over = Math.round((projected - tDate) / 86400000);
+        const over = Math.round((projected - tDate) / MMGR.Utils.MS_PER_DAY);
         tlLine = '## TIMELINE TARGET\nTarget Completion: ' + target + ' | Current Planned Finish: ' + projected.toISOString().slice(0, 10) + ' | ' + (over > 0 ? (over <= 14 ? 'At Risk , ' : 'Over target , ') + over + 'd over' : 'On or ahead of target') + '\n';
       }
       return ['# DAILY FIELD STATUS REPORT PROMPT',
@@ -632,7 +632,7 @@ Generate a client-facing status update in plain language (no PM jargon):
         '',
         '## LEAD-TIME NEARING EXPECTED DATE',
         leadtimeNear.length ? leadtimeNear.map(t => {
-          const days = Math.round((U.parseDL(t.expectedDate) - today) / 86400000);
+          const days = Math.round((U.parseDL(t.expectedDate) - today) / MMGR.Utils.MS_PER_DAY);
           return `- [${t.id}] ${t.name} , expected ${t.expectedDate} (${days < 0 ? 'OVERDUE by ' + Math.abs(days) + 'd' : days + 'd out'})`;
         }).join('\n') : '(none , no leadtime tasks close to expected date)',
         '',

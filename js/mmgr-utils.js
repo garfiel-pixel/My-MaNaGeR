@@ -317,7 +317,38 @@ var MMGR = window.MMGR || {};
     throttle: throttle,
     rerenderPreservingFocus: rerenderPreservingFocus,
     sanitize: sanitize,
-    copyToClipboard: copyToClipboard
+    copyToClipboard: copyToClipboard,
+
+    /* BUG #1: safe JSON.parse — prevents app crash on corrupt localStorage */
+    safeParse: function(raw, fallback) {
+      if (fallback === undefined) fallback = null;
+      try { return JSON.parse(raw); } catch (e) { return fallback; }
+    },
+
+    /* BUG #3: truncate list with overflow indicator */
+    truncateList: function(arr, limit, fmt) {
+      if (!arr || !arr.length) return '';
+      var shown = arr.slice(0, limit).map(fmt || function(x) { return String(x); });
+      var hidden = Math.max(0, arr.length - limit);
+      var result = shown.join('; ');
+      return hidden > 0 ? result + ' (and ' + hidden + ' more)' : result;
+    },
+
+    /* BUG #7: time constants — single source of truth for ms/day */
+    MS_PER_DAY: 86400000,
+
+    /* BUG #4: consistent date formatting */
+    fmtDate: function(d) {
+      d = d instanceof Date ? d : new Date(d);
+      return isNaN(d) ? '' : d.toISOString().slice(0, 10);
+    },
+    fmtDateLocal: function(d) {
+      d = d instanceof Date ? d : new Date(d);
+      return isNaN(d) ? '' : d.toLocaleDateString('en-US', {year:'numeric',month:'short',day:'numeric'});
+    },
+    fmtMoney: function(n) {
+      return n != null ? '$' + Number(n).toLocaleString() : '$0';
+    }
   };
 })(MMGR);
 window.MMGR = MMGR;

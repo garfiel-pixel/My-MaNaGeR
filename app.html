@@ -915,7 +915,8 @@ document.addEventListener('click', function(e){
   } catch(e) { /* seeding must never block boot */ }
 })();
 
-renderCards();
+/* renderCards runs after the deferred app-bundle.js loads (it defines MMGR_PROJECTS). */
+document.addEventListener('DOMContentLoaded', renderCards);
 
 /* CLOUD-BACKEND-ARCHITECTURE-PLAN Phase 2 , direct-link unlock for cloud
    codes. project.html bounces a locked visitor here as app.html?locked=<id>.

@@ -279,7 +279,7 @@
        button renders into #google-signin-button (added to all marketing
        signin-sheets 2026-08-22); the email form toggles behind it. Then
        restore the session so an already-signed-in visitor sees their state. */
-    GA.mountEmailAuth('marketing-email-auth', { showToggle: true });
+    if (!document.getElementById('email-auth-block')) GA.mountEmailAuth('marketing-email-auth', { showToggle: true });
     /* Re-render the GIS button when the sheet opens — GIS measures the host
        at render time, so a button drawn into a hidden host comes out 0x0.
        ensureGisButton() wipes a broken render and re-draws when measurable. */

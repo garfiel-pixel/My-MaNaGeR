@@ -251,8 +251,16 @@
         /* iOS Safari: re-render GIS button after sheet becomes visible.
            GIS needs the host to be measurable (not display:none) for the
            button iframe to have non-zero dimensions. */
-        if (!signinSheet.hidden && typeof GA.ensureGisButton === 'function') {
-          setTimeout(function(){ GA.ensureGisButton(); }, 60);
+        if (!signinSheet.hidden) {
+          if (typeof GA.ensureGisButton === 'function') {
+            setTimeout(function(){ GA.ensureGisButton(); }, 60);
+          }
+          /* If GIS never loaded, show the styled fallback button immediately
+             so the user always sees "Sign in with Google" + "Sign in with
+             email instead" — never a blank slot. */
+          if (typeof GA.showGoogleFallback === 'function') {
+            setTimeout(function(){ GA.showGoogleFallback(); }, 120);
+          }
         }
       });
     });

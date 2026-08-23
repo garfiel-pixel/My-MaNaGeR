@@ -1581,6 +1581,38 @@ var MMGR = window.MMGR || {};
     });
   }
 
+  // Show a styled fallback "Sign in with Google" button when GIS fails to
+  // load (offline / blocked / network). The button tries to init GIS on
+  // click; if GIS still isn't available, it shows a helpful message.
+  function showGoogleFallback() {
+    var host = $('google-signin-button');
+    if (!host) return;
+    // Don't show if GIS already rendered a button (iframe present)
+    if (host.querySelector('iframe')) return;
+    // Don't show if already signed in (chip is showing)
+    var chip = $('google-user-chip');
+    if (chip && !chip.hidden) return;
+    // Don't double-inject
+    if (host.querySelector('.gis-fallback-btn')) return;
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'gis-fallback-btn';
+    btn.innerHTML = '<svg class="ico" aria-hidden="true" style="width:18px;height:18px;margin-right:8px;vertical-align:middle"><use href="css/mmgr-icons.svg#i-user"></use></svg>Sign in with Google';
+    btn.addEventListener('click', function() {
+      if (gisReady()) {
+        initGIS();
+        // The GIS button should now be rendered; hide the fallback
+        var ifr = host.querySelector('iframe');
+        if (ifr) btn.remove();
+      } else {
+        btn.textContent = 'Google sign-in is unavailable right now. Use email sign-in below.';
+        btn.disabled = true;
+        btn.style.opacity = '0.6';
+      }
+    });
+    host.appendChild(btn);
+  }
+
   function boot() {
     mountEmailAuth();
     // AUTH MAINFRAME 2026-08-17 — password change mounts: any element marked
@@ -1606,7 +1638,7 @@ var MMGR = window.MMGR || {};
     let tries = 0;
     const t = setInterval(function() {
       if (gisReady()) { clearInterval(t); if (initGIS()) restoreSession(); }
-      else if (++tries > 40) { clearInterval(t); restoreSession(); }
+      else if (++tries > 40) { clearInterval(t); restoreSession(); showGoogleFallback(); }
     }, 250);
   }
 
@@ -1622,6 +1654,7 @@ var MMGR = window.MMGR || {};
     // T5 (2026-08-16): re-render the GIS button when its host becomes visible
     // (app.html modal open / admin rail open) if the boot render came out 0x0.
     ensureGisButton: ensureGisButton,
+    showGoogleFallback: showGoogleFallback,
     restoreSession: restoreSession,
     handleCredentialResponse: handleCredentialResponse,
     // OWNER 2026-08-15: session state getters (display-only) so other

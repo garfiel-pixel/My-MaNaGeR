@@ -196,6 +196,10 @@ ul,ol{list-style:none;}
 .signin-sheet #google-signin-button{display:flex;justify-content:center;min-height:44px;}
 .signin-sheet #google-signin-button[hidden]{display:none;}
 .signin-sheet .email-auth-divider{height:1px;background:var(--line);margin:4px 0;opacity:.5;}
+.signin-sheet .gis-fallback-btn{display:flex;align-items:center;justify-content:center;width:100%;padding:10px 16px;border-radius:8px;border:1px solid var(--line);background:var(--ink-3);color:var(--text);font:inherit;font-size:.86rem;font-weight:600;cursor:pointer;}
+.signin-sheet .gis-fallback-btn:hover{border-color:var(--brass);}
+.signin-sheet .gis-fallback-btn:focus-visible{outline:2px solid var(--brass);outline-offset:1px;}
+.signin-sheet .gis-fallback-btn:disabled{opacity:.6;cursor:default;}
 .signin-sheet .email-auth{
   display:flex;flex-direction:column;gap:8px;
   padding:12px;border-radius:10px;

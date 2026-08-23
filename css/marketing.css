@@ -500,6 +500,11 @@ body.dark-mode .signin-btn[aria-expanded="true"]{background:rgba(255,255,255,.16
 .signin-sheet #google-signin-button[hidden]{display:none;}
 /* Thin divider between Google button and email section. */
 .signin-sheet .email-auth-divider{height:1px;background:var(--border);margin:4px 0;opacity:.5;}
+/* Fallback Google button shown when GIS fails to load (offline/blocked). */
+.signin-sheet .gis-fallback-btn{display:flex;align-items:center;justify-content:center;width:100%;padding:10px 16px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text-primary);font:inherit;font-size:.86rem;font-weight:600;cursor:pointer;transition:background var(--tr),border-color var(--tr);}
+.signin-sheet .gis-fallback-btn:hover{border-color:var(--gold);background:rgba(var(--gold-rgb),.08);}
+.signin-sheet .gis-fallback-btn:focus-visible{outline:2px solid var(--gold);outline-offset:1px;}
+.signin-sheet .gis-fallback-btn:disabled{opacity:.6;cursor:default;border-color:var(--border);}
 /* Solid content card inside the glass sheet (Gate 6.1 — the form is dense
    interactive content, never glass-on-content). */
 .signin-sheet .email-auth{

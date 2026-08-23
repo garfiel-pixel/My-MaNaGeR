@@ -193,12 +193,16 @@ ul,ol{list-style:none;}
   background:var(--ink-2);border:1px solid var(--line);
   box-shadow:0 18px 50px rgba(0,0,0,.5);
 }
+.signin-sheet #google-signin-button{display:flex;justify-content:center;min-height:44px;}
+.signin-sheet #google-signin-button[hidden]{display:none;}
+.signin-sheet .email-auth-divider{height:1px;background:var(--line);margin:4px 0;opacity:.5;}
 .signin-sheet .email-auth{
   display:flex;flex-direction:column;gap:8px;
   padding:12px;border-radius:10px;
   background:var(--ink-3);border:1px solid var(--line);
 }
 .signin-sheet .email-auth-form{display:flex;flex-direction:column;gap:8px;}
+.signin-sheet .email-auth-form[hidden]{display:none;}
 .signin-sheet .email-auth-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
 .signin-sheet .email-auth-input{
   flex:1 1 150px;min-width:120px;padding:9px 10px;border-radius:8px;
@@ -216,7 +220,8 @@ ul,ol{list-style:none;}
 }
 .signin-sheet .email-auth-submit:hover{background:var(--brass-bright);}
 .signin-sheet .email-auth-submit:focus-visible{outline:2px solid var(--cyan);outline-offset:1px;}
-.signin-sheet .email-auth-alt{font-size:.74rem;color:var(--text-dimmer);}
+.signin-sheet .email-auth-alt{display:flex;flex-direction:column;gap:4px;font-size:.74rem;color:var(--text-dimmer);}
+.signin-sheet .email-auth-alt[hidden]{display:none;}
 .signin-sheet .email-auth-alt button{
   background:none;border:none;padding:0;color:var(--text-dim);
   text-decoration:underline;text-underline-offset:2px;cursor:pointer;font:inherit;
@@ -608,6 +613,7 @@ footer{padding:70px 64px 46px;position:relative;}
 <!-- Email sign-in sheet (shared mmgr-google-auth.js form — 2026-08-14) -->
 <div class="signin-sheet" id="signin-sheet" hidden>
   <div id="google-signin-button"></div>
+  <div class="email-auth-divider"></div>
   <div id="marketing-email-auth"></div>
   <p class="email-auth-note">Signing in only unlocks backup and moving projects between devices — the app itself needs no account.</p>
   <div class="signin-user" id="signin-user" hidden>

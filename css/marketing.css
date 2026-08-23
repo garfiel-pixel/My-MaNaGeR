@@ -494,6 +494,12 @@ body.dark-mode .signin-btn[aria-expanded="true"]{background:rgba(255,255,255,.16
 .signin-sheet .email-auth-submit{
   touch-action:manipulation;-webkit-touch-callout:none;
 }
+/* Google button centered inside the sheet. The GIS iframe is 200+ px wide;
+   flex-center prevents it from left-aligning against the glass edge. */
+.signin-sheet #google-signin-button{display:flex;justify-content:center;min-height:44px;}
+.signin-sheet #google-signin-button[hidden]{display:none;}
+/* Thin divider between Google button and email section. */
+.signin-sheet .email-auth-divider{height:1px;background:var(--border);margin:4px 0;opacity:.5;}
 /* Solid content card inside the glass sheet (Gate 6.1 — the form is dense
    interactive content, never glass-on-content). */
 .signin-sheet .email-auth{
@@ -502,6 +508,7 @@ body.dark-mode .signin-btn[aria-expanded="true"]{background:rgba(255,255,255,.16
   background:var(--card);border:1px solid var(--border);
 }
 .signin-sheet .email-auth-form{display:flex;flex-direction:column;gap:8px;}
+.signin-sheet .email-auth-form[hidden]{display:none;}
 .signin-sheet .email-auth-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
 .signin-sheet .email-auth-input{
   flex:1 1 150px;min-width:120px;padding:9px 10px;border-radius:9px;
@@ -518,10 +525,12 @@ body.dark-mode .signin-btn[aria-expanded="true"]{background:rgba(255,255,255,.16
 }
 .signin-sheet .email-auth-submit:hover{background:var(--gold-hover);}
 .signin-sheet .email-auth-submit:focus-visible{outline:2px solid var(--gold);outline-offset:1px;}
-.signin-sheet .email-auth-alt{font-size:.74rem;color:var(--text-secondary);}
+.signin-sheet .email-auth-alt{display:flex;flex-direction:column;gap:4px;font-size:.74rem;color:var(--text-secondary);}
+.signin-sheet .email-auth-alt[hidden]{display:none;}
 .signin-sheet .email-auth-alt button{
-  background:none;border:none;padding:0;color:var(--text-secondary);
+  background:none;border:none;padding:2px 0;color:var(--text-secondary);
   text-decoration:underline;text-underline-offset:2px;cursor:pointer;font:inherit;
+  text-align:left;
 }
 .signin-sheet .email-auth-alt button:focus-visible{outline:2px solid var(--gold);outline-offset:1px;border-radius:var(--radius-sm);}
 .signin-sheet .email-auth-err{font-size:.76rem;color:var(--status-danger);}

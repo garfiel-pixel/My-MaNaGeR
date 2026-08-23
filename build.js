@@ -230,3 +230,12 @@ if (buildCss) {
 }
 
 console.log('\nDone.');
+
+// Touch sw.js so its mtime is always newer than dist/ files.
+// This keeps verify:sw happy — the SW cache version must be the
+// newest asset in the SHELL list after every build.
+const swPath = path.join(ROOT, 'sw.js');
+if (fs.existsSync(swPath)) {
+  const now = new Date();
+  fs.utimesSync(swPath, now, now);
+}

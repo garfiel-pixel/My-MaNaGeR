@@ -512,6 +512,7 @@ var MMGR = window.MMGR || {};
       stripSecrets(parsedState);
       _state = migrate(parsedState);
       _dirty = false;
+      markAllDirty();
       save(true);
       _changeListeners.forEach(fn => fn('adopt'));
       return true;
@@ -573,8 +574,11 @@ var MMGR = window.MMGR || {};
         // and silently rejecting a genuinely-newer edit in the NEXT round
         // trip (device B edits 10:30, device A merged at 12:00 -> B's newer
         // edit loses to A's inflated 12:00 stamp). Keep the incoming stamp.
-        _lastSaveFingerprint = fingerprintOf(_state);
+        // Rebuild the per-field cache to match the POST-merge state so
+        // stampFieldTs sees no diff on the next save.
+        _fieldJsonCache = null;
         _dirty = false;
+        markAllDirty();
         save(true);
         _changeListeners.forEach(fn => fn('merge'));
       }
@@ -599,6 +603,9 @@ var MMGR = window.MMGR || {};
       _state = getDefaultState();
     }
     _dirty = false;
+    // Reset the per-field cache so the first save stamps everything.
+    _fieldJsonCache = null;
+    _dirtyFields = null;
     return _state;
   }
 
@@ -620,36 +627,48 @@ var MMGR = window.MMGR || {};
     // timestamps were never stamped and cloud-merge conflict resolution could
     // silently drop a teammate's bid leveling edits.
     'bidPackages', 'goNoGo'];
-  let _lastSaveFingerprint = null;
+  let _fieldJsonCache = null; // { fieldName: jsonString } — cached per-field serialization.
+  // Dirty-field tracking: updateState() marks fields whose top-level reference
+  // changed; stampFieldTs() only re-serializes dirty fields instead of all 60+.
+  let _dirtyFields = null; // null = all fields dirty (first save / full replace)
 
-  function fingerprintOf(s) {
-    const o = {};
-    FIELD_KEYS.forEach(function(k) { if (s[k] !== undefined) o[k] = s[k]; });
-    return JSON.stringify(o);
-  }
+  function markAllDirty() { _dirtyFields = null; }
 
   // Stamp fieldTs for every tracked key whose serialized value changed since
   // the previous save (or all keys on the first save). Called once per save.
   function stampFieldTs(nowIso) {
     if (!_state) return;
     if (!_state.fieldTs || typeof _state.fieldTs !== 'object') _state.fieldTs = {};
-    const fp = fingerprintOf(_state);
-    if (_lastSaveFingerprint === null) {
+    if (_fieldJsonCache === null) {
       // First save in this session: stamp everything once so old state has a
-      // complete map; subsequent saves only stamp what actually changed.
-      FIELD_KEYS.forEach(function(k) { if (_state[k] !== undefined) _state.fieldTs[k] = nowIso; });
-    } else if (fp !== _lastSaveFingerprint) {
-      // Recompute the per-key diff the cheap way: compare each key's own
-      // serialization against the last fingerprint (we kept the full JSON).
-      let last = null;
-      try { last = JSON.parse(_lastSaveFingerprint); } catch (e) { last = {}; }
+      // complete map; build the per-field cache for subsequent saves.
+      _fieldJsonCache = {};
       FIELD_KEYS.forEach(function(k) {
-        const a = _state[k] === undefined ? '__undef__' : JSON.stringify(_state[k]);
-        const b = last[k] === undefined ? '__undef__' : JSON.stringify(last[k]);
-        if (a !== b) _state.fieldTs[k] = nowIso;
+        if (_state[k] !== undefined) {
+          _state.fieldTs[k] = nowIso;
+          _fieldJsonCache[k] = JSON.stringify(_state[k]);
+        }
       });
+      _dirtyFields = new Set();
+      return;
     }
-    _lastSaveFingerprint = fp;
+    // Only check dirty fields (or all fields on full-replace mutations).
+    const keysToCheck = (_dirtyFields === null) ? FIELD_KEYS : Array.from(_dirtyFields);
+    _dirtyFields = new Set();
+    keysToCheck.forEach(function(k) {
+      if (_state[k] === undefined) {
+        if (_fieldJsonCache[k] !== undefined) {
+          _state.fieldTs[k] = nowIso;
+          delete _fieldJsonCache[k];
+        }
+        return;
+      }
+      const cur = JSON.stringify(_state[k]);
+      if (cur !== _fieldJsonCache[k]) {
+        _state.fieldTs[k] = nowIso;
+      }
+      _fieldJsonCache[k] = cur;
+    });
   }
 
   function save(immediate, opts) {
@@ -793,6 +812,7 @@ var MMGR = window.MMGR || {};
         // Either no localStorage record (crash case) or journal is newer.
         _state = migrate(parsed);
         _dirty = false;
+        markAllDirty();
         save(true);
         _changeListeners.forEach(fn => fn('journal-restore'));
         return true;
@@ -825,9 +845,19 @@ var MMGR = window.MMGR || {};
 
   function updateState(updater) {
     const s = getState();
+    // Snapshot top-level references BEFORE the updater to detect dirty fields.
+    const refs = {};
+    FIELD_KEYS.forEach(function(k) { refs[k] = s[k]; });
     updater(s);
     _touchStreak(s);
     _dirty = true;
+    // Mark fields whose top-level reference changed as dirty.
+    if (_dirtyFields === null) {
+      // Full-replace pending (e.g. adopt/merge); keep it dirty.
+    } else {
+      if (!_dirtyFields || !(_dirtyFields instanceof Set)) _dirtyFields = new Set();
+      FIELD_KEYS.forEach(function(k) { if (s[k] !== refs[k]) _dirtyFields.add(k); });
+    }
     save();
     _changeListeners.forEach(fn => fn('update'));
   }
@@ -886,6 +916,7 @@ var MMGR = window.MMGR || {};
       stripSecrets(parsed);
       const migrated = migrate(parsed);
       _state = migrated;
+      markAllDirty();
       save(true);
       _changeListeners.forEach(fn => fn('import'));
       return true;
@@ -901,6 +932,7 @@ var MMGR = window.MMGR || {};
     } catch(e) {}
     _state = getDefaultState();
     _dirty = false;
+    markAllDirty();
     _changeListeners.forEach(fn => fn('clear'));
   }
 
@@ -912,6 +944,8 @@ var MMGR = window.MMGR || {};
       budgetEnvelope: s.budgetEnvelope,
       capturedAt: new Date().toISOString()
     }));
+    // baseline is a top-level field; mark it dirty since we bypassed updateState.
+    if (_dirtyFields instanceof Set) _dirtyFields.add('baseline');
     save(true);
   }
 

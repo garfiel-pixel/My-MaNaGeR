@@ -337,37 +337,43 @@ var MMGR = window.MMGR || {};
     if (ns.Dmaic && ns.Dmaic.renderSignal) ns.Dmaic.renderSignal();
     // EVM (feature 4)
     if (ns.Evm && ns.Evm.render) ns.Evm.render();
-    // Today's Focus (feature 10)
-    renderTodayView();
-    // MARKET-FEATURE-ROADMAP C7/C8: 2-week Lookahead + Percent Plan Complete
-    renderLookahead();
-    renderPpc();
-    // MARKET-FEATURE-ROADMAP C29: expiry & renewal rollup card.
-    renderExpiryCard();
-    // Today's Decision Engine (ACTION-PLAN 1.1), impact-scored ranking
-    if (ns.Decisions && ns.Decisions.render) ns.Decisions.render();
-    // Milestone Timeline + Timeline Target status (feature 11)
-    renderMilestoneTimeline();
-    renderTimelineStatus();
-    // V3.3/V3.5 secondary panels (monolith port), Lead-Time Tracker,
-    // Float Watch (+ Crash Candidates), Weather Variance, Schedule
-    // Confidence. All read-only analytics over live state.
-    renderLeadtimeTracker();
-    renderFloatWatch();
-    renderWeatherVariance();
-    renderScheduleConfidence();
-    // ACTION-PLAN Phase 3: action aging + weekly baseline narrative
-    renderActionAging();
-    renderStreak();
-    renderBaselineNarrative();
-    // ACTION-PLAN Phase 7: Open-Meteo forecast + delay log + LD/SRI
-    renderSafetyBanner();
-    renderWeatherForecast();
-    renderWeatherLog();
-    // Meetings (MEETING_TRACKING_SPEC)
-    renderMeetingsPanel();
-    // Rank 2: Weekly/Daily Digest Engine, 'What Changed' diff + snapshot
-    if (ns.Digest && ns.Digest.render) ns.Digest.render();
+    // Defer non-critical below-the-fold sub-renderers so the initial paint
+    // lands fast. requestAnimationFrame yields to the browser's paint cycle
+    // before running the analytics panels (Today's Focus, Lookahead, PPC,
+    // Decision Engine, Lead-Time, Weather, Meetings, Digest, etc.).
+    requestAnimationFrame(function() {
+      // Today's Focus (feature 10)
+      renderTodayView();
+      // MARKET-FEATURE-ROADMAP C7/C8: 2-week Lookahead + Percent Plan Complete
+      renderLookahead();
+      renderPpc();
+      // MARKET-FEATURE-ROADMAP C29: expiry & renewal rollup card.
+      renderExpiryCard();
+      // Today's Decision Engine (ACTION-PLAN 1.1), impact-scored ranking
+      if (ns.Decisions && ns.Decisions.render) ns.Decisions.render();
+      // Milestone Timeline + Timeline Target status (feature 11)
+      renderMilestoneTimeline();
+      renderTimelineStatus();
+      // V3.3/V3.5 secondary panels (monolith port), Lead-Time Tracker,
+      // Float Watch (+ Crash Candidates), Weather Variance, Schedule
+      // Confidence. All read-only analytics over live state.
+      renderLeadtimeTracker();
+      renderFloatWatch();
+      renderWeatherVariance();
+      renderScheduleConfidence();
+      // ACTION-PLAN Phase 3: action aging + weekly baseline narrative
+      renderActionAging();
+      renderStreak();
+      renderBaselineNarrative();
+      // ACTION-PLAN Phase 7: Open-Meteo forecast + delay log + LD/SRI
+      renderSafetyBanner();
+      renderWeatherForecast();
+      renderWeatherLog();
+      // Meetings (MEETING_TRACKING_SPEC)
+      renderMeetingsPanel();
+      // Rank 2: Weekly/Daily Digest Engine, 'What Changed' diff + snapshot
+      if (ns.Digest && ns.Digest.render) ns.Digest.render();
+    });
   }
 
   // ---- Today's Focus View (MONOLITH-PORTING-GUIDE feature 10) ----

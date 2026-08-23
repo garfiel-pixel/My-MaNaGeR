@@ -15,7 +15,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <link rel="icon" type="image/png" href="primary-icon.png">
 <link rel="apple-touch-icon" href="primary-icon.png">
-<link rel="stylesheet" href="css/mmgr.css">
+<link rel="stylesheet" href="dist/mmgr.min.css">
 <!-- GOOGLE-OPERATOR-IDENTITY-v1: optional operator identity. async+defer so
      it never blocks first paint; if it never loads the page is unaffected. -->
 <script src="https://accounts.google.com/gsi/client" async defer></script>
@@ -38,6 +38,7 @@ body.glass-premium .wrap{position:relative;z-index:1;}
 .notice .nt-ico{width:38px;height:38px;flex-shrink:0;border-radius:var(--radius-control);background:color-mix(in oklch,var(--amber) 14%,transparent);color:var(--amber);display:inline-flex;align-items:center;justify-content:center;}
 .notice .nt-ico .ico{width:18px;height:18px;}
 .notice .nt-txt{font-size:.78rem;font-weight:600;color:var(--text);line-height:1.5;}
+.notice[hidden]{display:none!important;}
 /* UI-DECLUTTER (unlock gate): pill CTAs matching the AI window treatment;
    the modal footer is now just the two buttons , the redundant contact hint
    was removed (the page notice + #om-desc already carry it). */
@@ -247,7 +248,7 @@ body.glass-premium .wrap{position:relative;z-index:1;}
   </div>
   <div class="grid" id="grid"><!-- cards render here --></div>
 
-  <div class="notice"><span class="nt-ico"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-lock"></use></svg></span><span class="nt-txt">Contact the admin to get an access code for a project.</span></div>
+  <div class="notice" id="no-projects-hint" hidden><span class="nt-ico"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-lock"></use></svg></span><span class="nt-txt">Contact the admin to get an access code for a project.</span></div>
 
   <!-- A5-3 (2026-08-11): My Cloud Projects , the signed-in owner's cloud-
        linked projects, session-gated, rendered by js/mmgr-cloud-dash.js.
@@ -341,16 +342,21 @@ body.glass-premium .wrap{position:relative;z-index:1;}
   </div>
 </div>
 
-<script src="projects-data.js"></script>
-<script src="js/mmgr-utils.js"></script>
-<script src="js/mmgr-portfolio.js"></script>
-<script src="js/mmgr-google-auth.js"></script>
-<script src="js/mmgr-cloud-dash.js"></script>
-<!-- Premium liquid-glass engine (same modules the project viewer uses).
-     Loaded for the launcher's glass toggle + backdrop preview; Three.js is
-     only fetched from the pinned CDN when the engine actually activates. -->
-<script src="js/mmgr-viewport.js"></script>
-<script src="js/mmgr-glass.js"></script>
+<!-- Scripts: single minified bundle (7 modules). Falls back to individual
+     source files for local dev when dist/app-bundle.js does not exist. -->
+<script defer src="dist/app-bundle.js" onerror="window.__mmgrAppBundleMissing=1"></script>
+<script>
+/* Dev fallback: when dist/app-bundle.js is missing (local dev),
+   inject the individual source files. */
+document.addEventListener('DOMContentLoaded', function() {
+  if (!window.__mmgrAppBundleMissing) return;
+  var MMGR = window.MMGR || {};
+  ['projects-data.js','js/mmgr-utils.js','js/mmgr-portfolio.js',
+   'js/mmgr-google-auth.js','js/mmgr-cloud-dash.js',
+   'js/mmgr-viewport.js','js/mmgr-glass.js'
+  ].forEach(function(f) { var e = document.createElement('script'); e.src = f; document.body.appendChild(e); });
+});
+</script>
 <script>
 /* ============================================================
    Dashboard logic , renders cards from window.MMGR_PROJECTS,
@@ -401,10 +407,13 @@ function isUnlocked(id){ return localStorage.getItem('mmgr_unlocked_'+id) === '1
 function renderCards(){
   const grid = document.getElementById('grid');
   const projects = allProjects();
+  var hint = document.getElementById('no-projects-hint');
   if(!projects.length){
     grid.innerHTML = '<div class="empty">No projects yet. Add one from the Admin panel.</div>';
+    if (hint) hint.hidden = false;
     return;
   }
+  if (hint) hint.hidden = true;
   grid.innerHTML = projects.map(p => {
     const unlocked = isUnlocked(p.id);
     const local = isLocalProject(p.id);

@@ -15,7 +15,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes"><link rel="icon" type="image/png" href="primary-icon.png">
   <link rel="apple-touch-icon" href="primary-icon.png">
-<link rel="stylesheet" href="css/mmgr.css">
+<link rel="stylesheet" href="dist/mmgr.min.css">
 <!--
   Content Security Policy:
   - 'unsafe-eval' removed entirely.
@@ -57,7 +57,7 @@
       clicks "Connect Google" in Settings > Controls. It is a device label,
       never a gate , offline/CSP-blocked loads degrade to a toast.
 -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' 'sha256-jQGKXr3EKUJqelsBjB7GNSArKx9pbp38QHCOFoVCB3g=' 'sha256-LPhcYyVaGsoAWUYIPRyfwYSw2y82UmyNSa5ktKilmyA=' 'sha256-reza4vd5o52LWNUf9lzK6WjApdstd5sm4xVx+lcnK2M=' https://accounts.google.com https://unpkg.com; style-src 'self' 'unsafe-inline' https://accounts.google.com https://fonts.googleapis.com; img-src 'self' data:; font-src 'self' data:; connect-src 'self' https://api.open-meteo.com https://geocoding-api.open-meteo.com https://api.openai.com https://api.anthropic.com https://generativelanguage.googleapis.com https://github.com https://release-assets.githubusercontent.com https://accounts.google.com https://huggingface.co https://*.cdn.hf.co; frame-src https://accounts.google.com; base-uri 'self'; form-action 'self';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' 'sha256-QGpZbs5feaCjwpPp0+906ZIVPum27F+t6c16pf8K4LA=' 'sha256-jQGKXr3EKUJqelsBjB7GNSArKx9pbp38QHCOFoVCB3g=' 'sha256-LPhcYyVaGsoAWUYIPRyfwYSw2y82UmyNSa5ktKilmyA=' 'sha256-reza4vd5o52LWNUf9lzK6WjApdstd5sm4xVx+lcnK2M=' https://accounts.google.com https://unpkg.com; style-src 'self' 'unsafe-inline' https://accounts.google.com https://fonts.googleapis.com; img-src 'self' data:; font-src 'self' data:; connect-src 'self' https://api.open-meteo.com https://geocoding-api.open-meteo.com https://api.openai.com https://api.anthropic.com https://generativelanguage.googleapis.com https://github.com https://release-assets.githubusercontent.com https://accounts.google.com https://huggingface.co https://*.cdn.hf.co; frame-src https://accounts.google.com; base-uri 'self'; form-action 'self';">
 <script>
 /* Device-level theme (shared across launcher, admin, and app): applied before
    first paint from the same localStorage slot every theme toggle writes, so a
@@ -1614,61 +1614,42 @@
   </div>
 </div>
 
-<!-- Scripts -->
-<script src="js/mmgr-state.js"></script>
-<script src="js/mmgr-utils.js"></script>
-<script src="js/mmgr-net.js"></script>
-    <script src="js/render/financials.js"></script>
-    <script src="js/render/people.js"></script>
-    <script src="js/render/closure.js"></script>
-    <script src="js/render/documents.js"></script>
-    <script src="js/render/weather.js"></script>
-    <script src="js/render/kanban.js"></script>
-    <script src="js/render/risks.js"></script>
-    <script src="js/render/resources.js"></script>
-    <script src="js/mmgr-render.js"></script>
-<script src="js/mmgr-prompts.js"></script>
-<script src="js/mmgr-weather.js"></script>
-<script src="js/mmgr-field.js"></script>
-<script src="js/mmgr-schedule.js"></script>
-<script src="js/mmgr-resources.js"></script>
-<script src="js/mmgr-health.js"></script>
-<script src="js/mmgr-evm.js"></script>
-<script src="js/mmgr-dmaic.js"></script>  <script src="js/mmgr-meetings.js"></script>
-  <script src="js/mmgr-voice.js"></script>
-  <script src="js/mmgr-errors.js"></script>
-  <script src="js/mmgr-report.js"></script>
-<script src="js/mmgr-app.js"></script>
-<script src="js/app/weather.js"></script>
-<script src="js/app/backup.js"></script>
-<script src="js/app/export.js"></script>
-<script src="js/app/history.js"></script>
-<script src="js/app/definitions.js"></script>
-<script src="js/mmgr-presence.js"></script>
-<script src="js/mmgr-tasks.js"></script>
-<script src="js/mmgr-risks.js"></script>
-<script src="js/mmgr-stakeholders.js"></script>
-<script src="js/mmgr-bids.js"></script>
-<script src="js/mmgr-closure.js"></script>
-<script src="js/mmgr-raci.js"></script>  <script src="js/mmgr-charter.js"></script>
-  <script src="js/mmgr-defs.js"></script>
-  <script src="js/mmgr-portfolio.js"></script>
-  <script src="js/mmgr-forecast.js"></script>
-  <script src="js/mmgr-decisions.js"></script>
-  <script src="js/mmgr-claim.js"></script>
-  <script src="js/mmgr-digest.js"></script>
-  <script src="js/mmgr-ai-key.js"></script>
-  <script src="js/mmgr-ai.js"></script>
-  <script src="js/mmgr-viewport.js"></script>
-  <script src="js/mmgr-glass.js"></script>
-  <script src="js/mmgr-sync.js"></script>
-  <script src="js/mmgr-google-auth.js"></script>
-  <script src="js/mmgr-cloud.js"></script>
-  <script src="js/cloud/diffs.js"></script>
-  <script src="js/cloud/scope.js"></script>
-  <script src="js/cloud/share.js"></script>
-  <script src="js/cloud/review.js"></script>
-  <script src="js/cloud/webhooks.js"></script>
+<!-- Scripts: single minified bundle (55 modules concatenated by build.js).
+     In production the bundle is the only script request (1 HTTP round-trip
+     vs 55). For local dev without a prior build, the fallback detects the
+     missing bundle at DOMContentLoaded and injects the original source files. -->
+<script defer src="dist/bundle.js" onerror="window.__mmgrBundleMissing=1"></script>
+<script>
+/* Dev fallback: when dist/bundle.js is missing (local dev without a build),
+   dynamically inject the 55 individual source files in dependency order.
+   In production the bundle loads, __mmgrBundleMissing stays undefined,
+   and this entire block is a no-op. The fallback scripts are appended to
+   <body> synchronously — they block briefly but only in the dev path. */
+document.addEventListener('DOMContentLoaded', function() {
+  if (!window.__mmgrBundleMissing) return;
+  var MMGR = window.MMGR || {};
+  ['js/mmgr-state.js','js/mmgr-utils.js','js/mmgr-net.js',
+   'js/render/financials.js','js/render/people.js','js/render/closure.js',
+   'js/render/documents.js','js/render/weather.js','js/render/kanban.js',
+   'js/render/risks.js','js/render/resources.js','js/mmgr-render.js',
+   'js/mmgr-prompts.js','js/mmgr-weather.js','js/mmgr-field.js',
+   'js/mmgr-schedule.js','js/mmgr-resources.js','js/mmgr-health.js',
+   'js/mmgr-evm.js','js/mmgr-dmaic.js','js/mmgr-meetings.js',
+   'js/mmgr-voice.js','js/mmgr-errors.js','js/mmgr-report.js',
+   'js/mmgr-app.js','js/app/weather.js','js/app/backup.js',
+   'js/app/export.js','js/app/history.js','js/app/definitions.js',
+   'js/mmgr-presence.js','js/mmgr-tasks.js','js/mmgr-risks.js',
+   'js/mmgr-stakeholders.js','js/mmgr-bids.js','js/mmgr-closure.js',
+   'js/mmgr-raci.js','js/mmgr-charter.js','js/mmgr-defs.js',
+   'js/mmgr-portfolio.js','js/mmgr-forecast.js','js/mmgr-decisions.js',
+   'js/mmgr-claim.js','js/mmgr-digest.js','js/mmgr-ai-key.js',
+   'js/mmgr-ai.js','js/mmgr-viewport.js','js/mmgr-glass.js',
+   'js/mmgr-sync.js','js/mmgr-google-auth.js','js/mmgr-cloud.js',
+   'js/cloud/diffs.js','js/cloud/scope.js','js/cloud/share.js',
+   'js/cloud/review.js','js/cloud/webhooks.js'
+  ].forEach(function(f) { var e = document.createElement('script'); e.src = f; document.body.appendChild(e); });
+});
+</script>
   <script>
 /* Deploy guard: every icon in this app is a <use href="css/mmgr-icons.svg#...">.
    A missing sprite on the live host makes icons vanish silently , surface it

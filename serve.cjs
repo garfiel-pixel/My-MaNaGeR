@@ -27,12 +27,15 @@ const REVIEWS = [];
 const INLINE_SCRIPT_HASHES = [
   "'sha256-LPhcYyVaGsoAWUYIPRyfwYSw2y82UmyNSa5ktKilmyA='",
   "'sha256-reza4vd5o52LWNUf9lzK6WjApdstd5sm4xVx+lcnK2M='",
+  "'sha256-QGpZbs5feaCjwpPp0+906ZIVPum27F+t6c16pf8K4LA='",
   "'sha256-jQGKXr3EKUJqelsBjB7GNSArKx9pbp38QHCOFoVCB3g='",
   "'sha256-59YXuH6ak9jBNEE5DGbQyi6pC3MiFmPHLBdvphq/ElQ='",
   "'sha256-PcY9TdIJsXGVPic0Qujx0Ov+GCt9gZG0hEtBVRDiLiM='",
-  "'sha256-LtRPaIV4KvGN/sHNnXSL8wSBDn6x8BIMpXbTDVf5U1Q='",
+  "'sha256-wbQHVPUuBhoFCNBpJBX8hjCDtoBTwuDB/PIL4YAPbo4='",
+  "'sha256-6cm8By4LxG7o2HEW/Av42ySYb5kwhxxxP0Cj86/BxmY='",
   "'sha256-cCWiNSMtCJLjwt0mcR0GscIEccMUKMKocExGYJ4z96M='",
   "'sha256-8rpgpTSjx7LcpleTm7RwTJ+pzjvndpRVDPiapb2gNo8='",
+  "'sha256-O9lvE/vAuiMHUX3RQGR53K5h6w13/d2P16BoUBsYKAk='",
   "'sha256-E7yiGOIyl3wYkOorh1fQgqNS+YxBEOsjuDyAF7I7J5g='",
   "'sha256-Oa7ON+9A164SSXhnxu08mFn0V9Tj2SlZ2SzFXFoqKNE='",
   "'sha256-bNdw0+64xL2//htoz+u3InKWYZNEHO/CnuZqtcJIBgU='",
@@ -179,17 +182,40 @@ const server = http.createServer((req, res) => {
       }
     }
 
-    const file = path.join(ROOT, p);
+    let file = path.join(ROOT, p);
     if (!file.startsWith(ROOT)) { res.writeHead(403); res.end('forbidden'); return; }
     if (!fs.existsSync(file) || !fs.statSync(file).isFile()) {
-      res.writeHead(404, { 'Content-Type': 'text/plain' });
-      res.end('404 not found: ' + p);
-      return;
+      // CSS dev fallback: when dist/*.min.css is requested but doesn't exist
+      // (no prior build), serve the original source file transparently.
+      var cssFallback = {
+        'dist/mmgr.min.css': 'css/mmgr.css',
+        'dist/marketing.min.css': 'css/marketing.css'
+      };
+      if (cssFallback[p] && fs.existsSync(path.join(ROOT, cssFallback[p]))) {
+        file = path.join(ROOT, cssFallback[p]);
+      } else {
+        res.writeHead(404, { 'Content-Type': 'text/plain' });
+        res.end('404 not found: ' + p);
+        return;
+      }
     }
     const ext = path.extname(file).toLowerCase();
+    // Cache-Control parity with worker.js: HTML revalidates on every visit,
+    // static assets cache for 1 year (content changes are SW-cache-busted),
+    // JSON/manifest revalidate, everything else gets a short TTL.
+    var cc;
+    if (ext === '.html' || p === '/') {
+      cc = 'no-cache';
+    } else if (['.js', '.css', '.svg', '.png', '.ico', '.webp', '.woff', '.woff2', '.ttf', '.otf'].indexOf(ext) !== -1) {
+      cc = 'public, max-age=31536000, immutable';
+    } else if (ext === '.json' || ext === '.webmanifest') {
+      cc = 'no-cache';
+    } else {
+      cc = 'public, max-age=3600';
+    }
     const headers = Object.assign({
       'Content-Type': MIME[ext] || 'application/octet-stream',
-      'Cache-Control': 'no-store'
+      'Cache-Control': cc
     }, SECURITY_HEADERS);
     // Scoped CSP: only the vendored whisper runtime files get the relaxed
     // policy (see WHISPER_CSP above). Everything else stays strict.

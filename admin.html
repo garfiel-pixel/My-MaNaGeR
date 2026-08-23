@@ -11,7 +11,7 @@
 <title>My MaNaGeR | Admin</title>
 <meta name="robots" content="noindex, nofollow">
 <link rel="icon" type="image/png" href="primary-icon.png">
-<link rel="stylesheet" href="css/mmgr.css">
+<link rel="stylesheet" href="dist/mmgr.min.css">
 <!-- GOOGLE-OPERATOR-IDENTITY-v1: optional operator identity (admin chip).
      async+defer; the admin gate and password flow are completely untouched. -->
 <script src="https://accounts.google.com/gsi/client" async defer></script>
@@ -175,7 +175,7 @@ pre.snippet{background:#f8fafc;border:1px solid var(--border);border-radius:6px;
   <div class="gbox">
     <div class="icon"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-tool"></use></svg></div>
     <h1>Set Up Admin Access</h1>
-    <p>No admin password is set on this device yet. Choose one , it will be stored locally on this device. You'll be asked to re-enter it each time you open the admin panel.</p>
+    <p>No admin password is set on this device yet. Choose one now — it will be stored (hashed) locally on this device only. You'll need to re-enter it each time you open the admin panel, but it never leaves this browser.</p>
     <input id="setup-pass1" type="password" placeholder="New admin password (min 8 characters)" autocomplete="new-password">
     <input id="setup-pass2" type="password" placeholder="Confirm password" autocomplete="new-password">
     <div class="gerr" id="setup-err"></div>
@@ -479,9 +479,19 @@ pre.snippet{background:#f8fafc;border:1px solid var(--border);border-radius:6px;
 <!-- Premium liquid-glass engine (same modules the project viewer uses),
      loaded for the gate pill's glass toggle + backdrop preview. Three.js is
      only fetched from the pinned CDN when the engine actually activates. -->
-<script src="js/mmgr-utils.js"></script>
-<script src="js/mmgr-viewport.js"></script>
-<script src="js/mmgr-glass.js"></script>
+<!-- Scripts: single minified bundle (3 modules). Falls back to individual
+     source files for local dev when dist/admin-bundle.js does not exist. -->
+<script defer src="dist/admin-bundle.js" onerror="window.__mmgrAdminBundleMissing=1"></script>
+<script>
+/* Dev fallback: when dist/admin-bundle.js is missing (local dev),
+   inject the individual source files. */
+document.addEventListener('DOMContentLoaded', function() {
+  if (!window.__mmgrAdminBundleMissing) return;
+  var MMGR = window.MMGR || {};
+  ['js/mmgr-utils.js','js/mmgr-viewport.js','js/mmgr-glass.js'
+  ].forEach(function(f) { var e = document.createElement('script'); e.src = f; document.body.appendChild(e); });
+});
+</script>
 <script>
 /* ============================================================
    ADMIN PANEL , data model
@@ -1814,6 +1824,6 @@ if (window.location.protocol === 'http:' || window.location.protocol === 'https:
     .catch(()=>console.warn('ICON SPRITE MISSING: css/mmgr-icons.svg could not be fetched , upload the css/ folder to the site root.'));
 }
 </script>
-<script src="js/mmgr-google-auth.js"></script>
+<script defer src="js/mmgr-google-auth.js"></script>
 </body>
 </html>

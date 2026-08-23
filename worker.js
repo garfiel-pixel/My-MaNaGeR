@@ -89,12 +89,16 @@ import {
 const INLINE_SCRIPT_HASHES = [
   "'sha256-LPhcYyVaGsoAWUYIPRyfwYSw2y82UmyNSa5ktKilmyA='", // project.html (head theme snippet — FOUC prevention)
   "'sha256-reza4vd5o52LWNUf9lzK6WjApdstd5sm4xVx+lcnK2M='", // project.html (body dark-mode transfer)
+  "'sha256-QGpZbs5feaCjwpPp0+906ZIVPum27F+t6c16pf8K4LA='", // project.html (dev fallback script)
   "'sha256-jQGKXr3EKUJqelsBjB7GNSArKx9pbp38QHCOFoVCB3g='", // project.html (main inline script)
   "'sha256-59YXuH6ak9jBNEE5DGbQyi6pC3MiFmPHLBdvphq/ElQ='", // app.html (head theme + rail-open snippet — FOUC prevention)
   "'sha256-PcY9TdIJsXGVPic0Qujx0Ov+GCt9gZG0hEtBVRDiLiM='", // app.html (body class transfer)
-  "'sha256-LtRPaIV4KvGN/sHNnXSL8wSBDn6x8BIMpXbTDVf5U1Q='", // app.html (main inline script)
+  "'sha256-wbQHVPUuBhoFCNBpJBX8hjCDtoBTwuDB/PIL4YAPbo4='", // app.html (dev fallback script)
+  "'sha256-6cm8By4LxG7o2HEW/Av42ySYb5kwhxxxP0Cj86/BxmY='", // app.html (dashboard logic)
+
   "'sha256-cCWiNSMtCJLjwt0mcR0GscIEccMUKMKocExGYJ4z96M='", // admin.html (head theme snippet — FOUC prevention)
   "'sha256-8rpgpTSjx7LcpleTm7RwTJ+pzjvndpRVDPiapb2gNo8='", // admin.html (body dark-mode transfer)
+  "'sha256-O9lvE/vAuiMHUX3RQGR53K5h6w13/d2P16BoUBsYKAk='", // admin.html (dev fallback script)
   "'sha256-E7yiGOIyl3wYkOorh1fQgqNS+YxBEOsjuDyAF7I7J5g='", // admin.html (main inline script)
   "'sha256-Oa7ON+9A164SSXhnxu08mFn0V9Tj2SlZ2SzFXFoqKNE='", // dashboard.html
   "'sha256-bNdw0+64xL2//htoz+u3InKWYZNEHO/CnuZqtcJIBgU='", // seed-test.html
@@ -1529,6 +1533,27 @@ export default {
       const decorated = new Response(response.body, response);
       for (const [name, value] of Object.entries(HEADERS)) {
         decorated.headers.set(name, value);
+      }
+      // CACHE-CONTROL: HTML is revalidated on every visit (no-cache) so
+      // users always get the latest markup and inline-script CSP hashes.
+      // Static assets (JS, CSS, images, SVG, fonts) are immutable for 1
+      // year — content changes are cache-busted by the SW version bump.
+      // JSON/manifest files revalidate (they may change with schema or
+      // metadata updates). Everything else gets a short 1-hour TTL.
+      // The SW cache is the primary offline layer; these HTTP headers
+      // are a safety net for direct requests that bypass the SW.
+      const ext = normalized.replace(/.*\./, '').toLowerCase();
+      const IMMUTABLE = 'public, max-age=31536000, immutable';
+      const NO_CACHE  = 'no-cache';
+      const SHORT_TTL = 'public, max-age=3600';
+      if (/\.html$/.test(normalized) || normalized === '/' || ext === normalized.replace('/', '')) {
+        decorated.headers.set('Cache-Control', NO_CACHE);
+      } else if (['js', 'css', 'svg', 'png', 'ico', 'webp', 'woff', 'woff2', 'ttf', 'otf'].indexOf(ext) !== -1) {
+        decorated.headers.set('Cache-Control', IMMUTABLE);
+      } else if (ext === 'json' || ext === 'webmanifest') {
+        decorated.headers.set('Cache-Control', NO_CACHE);
+      } else {
+        decorated.headers.set('Cache-Control', SHORT_TTL);
       }
       // Scoped CSP: only the vendored whisper runtime files get the relaxed
       // policy (see WHISPER_CSP above). Everything else stays strict.

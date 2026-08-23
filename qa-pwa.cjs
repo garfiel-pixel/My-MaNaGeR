@@ -69,7 +69,7 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
     var shell = null;
     for (var i = 0; i < cacheNames.length; i++) {
       var c = await caches.open(cacheNames[i]);
-      var hit = await c.match('css/mmgr.css');
+      var hit = await c.match('dist/mmgr.min.css') || await c.match('css/mmgr.css');
       if (hit) { shell = cacheNames[i]; break; }
     }
     return { sw: true, reg: true, cache: shell !== null };

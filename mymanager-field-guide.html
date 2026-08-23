@@ -154,9 +154,8 @@ ul,ol{list-style:none;}
 
 .sidebar-toggle{display:none;}
 
-/* back-to-site link + email sign-in button in the sidebar brand block
-   (2026-08-14: sign-in wired by js/marketing.js via the .signin-trigger class) */
-.site-exit,.site-signin{
+/* back-to-site link in the sidebar brand block */
+.site-exit{
   display:inline-flex;align-items:center;justify-content:center;gap:7px;
   font-size:.78rem;font-weight:600;color:var(--cyan);
   margin:4px 26px 0;padding:7px 12px;border-radius:7px;
@@ -164,74 +163,11 @@ ul,ol{list-style:none;}
   transition:background .15s var(--ease),border-color .15s var(--ease),color .15s var(--ease);
 }
 .site-exit:hover{background:rgba(111,208,255,.08);border-color:var(--cyan-dim);color:var(--cyan);}
-.site-signin{color:var(--brass-bright);}
-.site-signin:hover{background:rgba(207,154,82,.08);border-color:var(--brass);color:var(--brass-bright);}
-.site-signin:focus-visible{outline:2px solid var(--brass);outline-offset:1px;}
-/* OWNER 2026-08-17 , signed-in identity chip inside the guide's sign-in
-   triggers (same pattern as the marketing header, brass/cyan tokens). */
-.site-signin .sb-avatar{
-  width:20px;height:20px;border-radius:50%;overflow:hidden;flex-shrink:0;
-  background:var(--brass);color:var(--ink);
-  display:flex;align-items:center;justify-content:center;
-  font-weight:800;font-size:.6rem;line-height:1;
-}
-.site-signin .sb-avatar img{width:100%;height:100%;object-fit:cover;display:block;}
-.site-signin .sb-name{max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 /* deep links from the marketing dropdowns land with breathing room below
    the fixed chrome (scrollIntoView respects scroll-margin-top) */
 .sheet[id]{scroll-margin-top:24px;}
 
-/* ===== EMAIL SIGN-IN SHEET (2026-08-14 , shared mmgr-google-auth.js form) =====
-   Chrome sheet in the guide's own "Working Drawing" tokens , brass accent on ink.
-   The form itself sits on a solid card (never glass-on-content). */
 .mobile-bar-actions{display:flex;align-items:center;gap:8px;}
-.mobile-bar .site-signin{margin:0;padding:8px 12px;font-size:.78rem;}
-
-.signin-sheet{
-  position:fixed;top:16px;right:16px;width:min(340px,calc(100vw - 24px));z-index:900;
-  padding:14px;border-radius:14px;
-  background:var(--ink-2);border:1px solid var(--line);
-  box-shadow:0 18px 50px rgba(0,0,0,.5);
-}
-.signin-sheet #google-signin-button{display:flex;justify-content:center;min-height:44px;}
-.signin-sheet #google-signin-button[hidden]{display:none;}
-.signin-sheet .email-auth-divider{height:1px;background:var(--line);margin:4px 0;opacity:.5;}
-.signin-sheet .gis-fallback-btn{display:flex;align-items:center;justify-content:center;width:100%;padding:10px 16px;border-radius:8px;border:1px solid var(--line);background:var(--ink-3);color:var(--text);font:inherit;font-size:.86rem;font-weight:600;cursor:pointer;}
-.signin-sheet .gis-fallback-btn:hover{border-color:var(--brass);}
-.signin-sheet .gis-fallback-btn:focus-visible{outline:2px solid var(--brass);outline-offset:1px;}
-.signin-sheet .gis-fallback-btn:disabled{opacity:.6;cursor:default;}
-.signin-sheet .email-auth{
-  display:flex;flex-direction:column;gap:8px;
-  padding:12px;border-radius:10px;
-  background:var(--ink-3);border:1px solid var(--line);
-}
-.signin-sheet .email-auth-form{display:flex;flex-direction:column;gap:8px;}
-.signin-sheet .email-auth-form[hidden]{display:none;}
-.signin-sheet .email-auth-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
-.signin-sheet .email-auth-input{
-  flex:1 1 150px;min-width:120px;padding:9px 10px;border-radius:8px;
-  border:1px solid var(--line);background:var(--ink);color:var(--text);
-  font:inherit;font-size:.86rem;
-}
-.signin-sheet .email-auth-input:focus-visible{outline:2px solid var(--brass);outline-offset:1px;}
-.signin-sheet .email-auth-input,.signin-sheet .email-auth-submit{touch-action:manipulation;-webkit-touch-callout:none;}
-.signin-sheet .email-auth-submit{
-  display:inline-flex;align-items:center;justify-content:center;
-  padding:9px 16px;border-radius:8px;border:1px solid transparent;
-  background:var(--brass);color:var(--ink);
-  font-size:.84rem;font-weight:700;line-height:1;cursor:pointer;
-  transition:background .15s var(--ease);
-}
-.signin-sheet .email-auth-submit:hover{background:var(--brass-bright);}
-.signin-sheet .email-auth-submit:focus-visible{outline:2px solid var(--cyan);outline-offset:1px;}
-.signin-sheet .email-auth-alt{display:flex;flex-direction:column;gap:4px;font-size:.74rem;color:var(--text-dimmer);}
-.signin-sheet .email-auth-alt[hidden]{display:none;}
-.signin-sheet .email-auth-alt button{
-  background:none;border:none;padding:0;color:var(--text-dim);
-  text-decoration:underline;text-underline-offset:2px;cursor:pointer;font:inherit;
-}
-.signin-sheet .email-auth-alt button:focus-visible{outline:2px solid var(--brass);outline-offset:1px;border-radius:4px;}
-.signin-sheet .email-auth-err{font-size:.76rem;color:#ff9d9d;}
 .signin-sheet .email-auth-note{font-size:.76rem;color:var(--text-dimmer);line-height:1.5;}
 .signin-sheet .signin-user{display:flex;flex-direction:column;gap:8px;align-items:flex-start;}
 .signin-sheet .signin-user[hidden]{display:none;}
@@ -608,26 +544,10 @@ footer{padding:70px 64px 46px;position:relative;}
 <div class="mobile-bar">
   <b>MY MANAGER , FIELD GUIDE</b>
   <div class="mobile-bar-actions">
-    <button type="button" class="site-signin signin-trigger" aria-expanded="false" aria-controls="signin-sheet">Sign in</button>
     <button id="menuBtn" aria-label="Open sheet index"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 7H20M4 12H20M4 17H20" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
   </div>
 </div>
 <div class="sidebar-scrim" id="scrim"></div>
-
-<!-- Email sign-in sheet (shared mmgr-google-auth.js form , 2026-08-14) -->
-<div class="signin-sheet" id="signin-sheet" hidden>
-  <div id="google-signin-button"></div>
-  <div class="email-auth-divider"></div>
-  <div id="marketing-email-auth"></div>
-  <p class="email-auth-note">Signing in only unlocks backup and moving projects between devices , the app itself needs no account.</p>
-  <div class="signin-user" id="signin-user" hidden>
-    <span class="signin-user-avatar" id="signin-user-avatar" title="Signed in"></span>
-    <span class="signin-user-name" id="signin-user-name"></span>
-    <span class="signin-user-sub" id="signin-user-sub"></span>
-    <span class="plan-pill" data-plan-badge hidden></span>
-    <button type="button" class="signin-out" id="signin-out">Sign out</button>
-  </div>
-</div>
 
 <div class="shell">
   <!-- ============ SIDEBAR / SHEET INDEX ============ -->
@@ -644,7 +564,7 @@ footer{padding:70px 64px 46px;position:relative;}
         <div><b>Status</b>Current</div>
       </div>
       <a class="site-exit" href="index.html">← Back to mymanager site</a>
-      <button type="button" class="site-signin signin-trigger" id="signin-btn" aria-expanded="false" aria-controls="signin-sheet">Sign in</button>
+
     </div>
     <nav class="sheet-nav" id="sheetNav">
       <div class="nav-group">

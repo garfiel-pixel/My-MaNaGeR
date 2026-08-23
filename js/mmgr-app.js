@@ -1133,41 +1133,10 @@ var MMGR = window.MMGR || {};
     showToast('Email template copied!', 'ok');
   }
 
-  // ---- 5.2 Definitions tooltips ----
-  // Any element carrying data-def="<term>" gets a floating tooltip from
-  // the Definitions glossary on hover. Delegated once, no inline handlers.
-  // The tooltip element is created once lazily (same pattern as the toast).
-  let _defTipEl = null;
-  let _defTipTimer = null;
-
-  function defTipFor(term) {
-    if (!ns.Defs || !ns.Defs.DATA) return null;
-    const entry = ns.Defs.DATA.find(d => d.term.toLowerCase() === String(term || '').toLowerCase());
-    return entry || null;
-  }
-
-  function showDefTip(el, term) {
-    const entry = defTipFor(term);
-    if (!entry) return;
-    if (_defTipTimer) { clearTimeout(_defTipTimer); _defTipTimer = null; }
-    if (!_defTipEl) {
-      _defTipEl = document.createElement('div');
-      _defTipEl.id = 'def-tooltip';
-      _defTipEl.className = 'def-tooltip';
-      document.body.appendChild(_defTipEl);
-    }
-    _defTipEl.innerHTML = '<div class="dt-term">' + U.escapeHtml(entry.term) + (entry.group ? '<span class="def-badge">' + U.escapeHtml(entry.group) + '</span>' : '') + '</div>' +
-      '<div class="dt-body">' + U.escapeHtml(entry.meaning) + '</div>';
-    _defTipEl.classList.add('vis');
-    const r = el.getBoundingClientRect();
-    _defTipEl.style.left = Math.min(r.left, window.innerWidth - 280) + 'px';
-    _defTipEl.style.top = (r.bottom + 8) + 'px';
-  }
-
-  function hideDefTip() {
-    if (_defTipTimer) { clearTimeout(_defTipTimer); _defTipTimer = null; }
-    if (_defTipEl) _defTipEl.classList.remove('vis');
-  }
+  // ---- 5.2 Definitions tooltips ---- (extracted to js/app/definitions.js)
+  function defTipFor(term) { return ns.AppDefs && ns.AppDefs.defTipFor ? ns.AppDefs.defTipFor(term) : null; }
+  function showDefTip(el, term) { if (ns.AppDefs && ns.AppDefs.showDefTip) ns.AppDefs.showDefTip(el, term); }
+  function hideDefTip() { if (ns.AppDefs && ns.AppDefs.hideDefTip) ns.AppDefs.hideDefTip(); }
 
   // ---- 5.x Gantt high-res PNG export ----
   // Renders the CURRENT schedule to an offscreen 2x canvas (bars + critical
@@ -1254,263 +1223,27 @@ var MMGR = window.MMGR || {};
     }, 'image/png');
   }
 
-  // ---- ACTION-PLAN 7 weather actions ----
-  // Open-Meteo is fetch-only (CSP connect-src permits api.open-meteo.com).
-  // All four handlers are client-side; failures degrade to a toast, never
-  // a throw, and the static regional windows remain the fallback.
-  async function wxGeocode() {
-    const place = (U.$('wx-place-in') || {}).value || '';
-    if (!place.trim()) { showToast('Enter a site city first.', 'err'); return; }
-    const ok = await ns.Forecast.geocode(place.trim());
-    if (ok) { showToast('Site located — refresh for the forecast.', 'ok'); R.renderAll(); }
-    else { showToast('Could not find that location — check the city name.', 'err'); }
-  }
+  // ---- Weather actions ---- (extracted to js/app/weather.js)
+  async function wxGeocode() { if (ns.AppWeather) ns.AppWeather.wxGeocode(); }
+  async function wxRefresh() { if (ns.AppWeather) ns.AppWeather.wxRefresh(); }
+  async function wxUseLocation() { if (ns.AppWeather) ns.AppWeather.wxUseLocation(); }
+  function wxLogToday() { if (ns.AppWeather) ns.AppWeather.wxLogToday(); }
+  function wxLogManual() { if (ns.AppWeather) ns.AppWeather.wxLogManual(); }
+  function wxCopyNotice() { if (ns.AppWeather) ns.AppWeather.wxCopyNotice(); }
+  function wxSetView(el) { if (ns.AppWeather) ns.AppWeather.wxSetView(el); }
+  function wxDelLogEntry(el) { if (ns.AppWeather) ns.AppWeather.wxDelLogEntry(el); }
 
-  async function wxRefresh() {
-    const s = S();
-    if (s.siteLat === null || s.siteLon === null) { showToast('Locate the site city first.', 'err'); return; }
-    try {
-      await ns.Forecast.fetchForecast(s.siteLat, s.siteLon);
-      showToast('Forecast refreshed.', 'ok');
-    } catch (e) {
-      showToast('Forecast unavailable (offline?). Using cached or regional windows.', 'err');
-    }
-    R.renderAll();
-  }
+  // ---- Hold / Clear / Undo / Redo ---- (extracted to js/app/history.js)
+  function startHold(section) { if (ns.AppHistory) ns.AppHistory.startHold(section); }
+  function cancelHold() { if (ns.AppHistory) ns.AppHistory.cancelHold(); }
+  function clearSection(section) { if (ns.AppHistory) ns.AppHistory.clearSection(section); }
+  function undoClr() { if (ns.AppHistory) ns.AppHistory.undoClr(); }
+  function undo() { if (ns.AppHistory) ns.AppHistory.undo(); }
+  function redo() { if (ns.AppHistory) ns.AppHistory.redo(); }
+  function updateUndoUi() { if (ns.AppHistory) ns.AppHistory.updateUndoUi(); }
 
-  // OWNER 2026-08-15: "Use my current location" — browser geolocation pins
-  // the exact coordinates where the user is right now and fetches the
-  // Open-Meteo forecast for them, so the weather is tailored to their
-  // location. Reverse-geocodes a friendly place label when it can. Never
-  // throws: denied permission / no coverage / insecure context all degrade
-  // to a toast pointing at the type-a-city path (the offline-safe fallback).
-  async function wxUseLocation() {
-    if (!navigator.geolocation) {
-      showToast('Location lookup is unavailable in this browser — type your site city instead.', 'err');
-      return;
-    }
-    showToast('Locating you…', 'ok');
-    let pos;
-    try {
-      pos = await new Promise(function(res, rej) {
-        navigator.geolocation.getCurrentPosition(res, rej, { enableHighAccuracy: true, timeout: 15000, maximumAge: 300000 });
-      });
-    } catch (e) {
-      showToast('Could not get your location (permission or coverage) — type your site city instead.', 'err');
-      return;
-    }
-    const lat = pos.coords.latitude;
-    const lon = pos.coords.longitude;
-    ns.State.updateState(function(s) {
-      s.siteLat = lat;
-      s.siteLon = lon;
-      s.sitePlace = '';
-    });
-    // Best-effort reverse label (Open-Meteo's geo API has no true reverse
-    // lookup, so this usually returns ''); fall back to a readable coordinate
-    // pair so the forecast header always shows where the weather is pinned.
-    let place = '';
-    try { place = (await ns.Forecast.reverseGeocode(lat, lon)) || ''; } catch (e) { place = ''; }
-    if (!place) place = lat.toFixed(2) + ', ' + lon.toFixed(2);
-    ns.State.updateState(function(s) { s.sitePlace = place; });
-    try {
-      await ns.Forecast.fetchForecast(lat, lon);
-      showToast('Forecast set for your current location' + (place ? ' — ' + place : '') + '.', 'ok');
-    } catch (e) {
-      showToast('Location saved, but the forecast could not be fetched (offline?) — regional windows remain.', 'err');
-    }
-    R.renderAll();
-  }
-
-  function wxLogToday() {
-    const s = S();
-    const today = U.todayStr();
-    // Affected tasks: weather-sensitive tasks running today.
-    const affected = (s.tasks || []).filter(t => t.weatherSensitive && t.startDate && t.endDate &&
-      U.parseDL(t.startDate) <= new Date() && U.parseDL(t.endDate) >= new Date()).map(t => t.id);
-    ns.Forecast.logWeatherDay(s, { note: '', affectedTaskIds: affected });
-    showToast('Weather day logged.', 'ok');
-    R.renderAll();
-  }
-
-  // ACTION-PLAN 25: manual on-site weather override. A PM can log today's
-  // ACTUAL conditions (hyperlocal reality beats API forecast) instead of the
-  // auto-pulled values — feeds the same dispute-ready daily log.
-  function wxLogManual() {
-    const s = S();
-    const condEl = U.$('wx-manual-cond');
-    const noteEl = U.$('wx-manual-note');
-    const condition = (condEl && condEl.value.trim()) || '';
-    if (!condition) { showToast('Enter the manual conditions first.', 'err'); return; }
-    const note = (noteEl && noteEl.value.trim()) || '';
-    const affected = (s.tasks || []).filter(t => t.weatherSensitive && t.startDate && t.endDate &&
-      U.parseDL(t.startDate) <= new Date() && U.parseDL(t.endDate) >= new Date()).map(t => t.id);
-    ns.Forecast.logWeatherDay(s, { note: note, affectedTaskIds: affected, manual: true, condition: condition });
-    if (condEl) condEl.value = '';
-    if (noteEl) noteEl.value = '';
-    showToast('Manual weather day logged.', 'ok');
-    R.renderAll();
-  }
-
-  function wxCopyNotice() {
-    U.copyToClipboard(ns.Forecast.subcontractorNotice(S()));
-    showToast('Subcontractor notice copied.', 'ok');
-  }
-
-  // ACTION-PLAN 7.1: forecast strip horizon toggle (7-day vs the 16-day
-  // Open-Meteo max, used as the monthly-rollup approximation). View-only
-  // preference; the forecast itself is never re-fetched by this toggle.
-  function wxSetView(el) {
-    const days = parseInt((el && el.getAttribute('data-days')) || '7', 10);
-    ns.State.updateState(function(s) { s.wxViewDays = days === 16 ? 16 : 7; });
-    R.renderAll();
-  }
-
-  function wxDelLogEntry(el) {
-    ns.Forecast.delWeatherLogEntry(parseInt(el.getAttribute('data-idx'), 10));
-    R.renderAll();
-  }
-
-  // ---- Hold to Clear ----
-  // Press and HOLD the Clear All button for 10s to confirm. The hold starts
-  // on pointerdown and is cancelled on release, pointer cancel, leaving the
-  // button, or losing window focus (see delegation in the event layer).
-  let holdTimer = null;
-  let holdShowedBar = false; // did THIS hold bring up the undo bar?
-  const HOLD_MSG_ON = ' Hold to clear — release to cancel';
-  const HOLD_MSG_OFF = ' Page cleared.';
-
-  function startHold(section) {
-    if (holdTimer) return; // already holding
-    const dur = U.$('ut');
-    if (dur) dur.textContent = '10';
-    // Only show the bar if it isn't already up with a real undo message —
-    // a pending "Page cleared. Undo" bar must not be discarded by a tap.
-    const ub = U.$('ub');
-    if (ub && !ub.classList.contains('vis')) {
-      ub.classList.add('vis');
-      holdShowedBar = true;
-    }
-    const msg = U.$('ub-msg');
-    if (msg) msg.textContent = HOLD_MSG_ON;
-    holdTimer = setInterval(() => {
-      const el = U.$('ut');
-      if (el) {
-        const v = parseInt(el.textContent) - 1;
-        el.textContent = v;
-        if (v <= 0) {
-          clearInterval(holdTimer);
-          holdTimer = null;
-          // The hold succeeded: the bar now legitimately shows "Page cleared."
-          // so a later hold-cancel must not hide it as if it were ours.
-          holdShowedBar = false;
-          clearSection(section);
-        }
-      }
-    }, 1000);
-  }
-
-  function cancelHold() {
-    if (!holdTimer) return;
-    clearInterval(holdTimer);
-    holdTimer = null;
-    if (holdShowedBar) {
-      const ub = U.$('ub');
-      if (ub) ub.classList.remove('vis');
-      holdShowedBar = false;
-    }
-    const msg = U.$('ub-msg');
-    if (msg) msg.textContent = HOLD_MSG_OFF;
-    const dur = U.$('ut');
-    if (dur) dur.textContent = '5';
-  }
-
-  function clearSection(section) {
-    // Make the whole clear undoable (persistent stack, not just the 5s bar)
-    ns.State.pushUndo();
-    ns.State.updateState(function(s) {
-      switch(section) {
-        case 'wbs': s.tasks = []; break;
-        case 'risk': s.risks = []; s.issues = []; break;
-        case 'log': s.logEntries = []; break;
-        case 'kan': s.tasks = s.tasks.filter(t => t.status === 'completed'); break;
-        case 'comms': s.commsEntries = []; break;
-      }
-    });
-    R.renderWbs();
-    R.renderKanban();
-    R.renderRisks();
-    R.renderLog();
-    R.renderComms();
-    R.renderDash();
-    const ub = U.$('ub');
-    if (ub) { ub.classList.add('vis'); setTimeout(() => ub.classList.remove('vis'), 5000); }
-    const msg = U.$('ub-msg');
-    if (msg) msg.textContent = HOLD_MSG_OFF;
-    updateUndoUi();
-  }
-
-  function undoClr() {
-    const ub = U.$('ub');
-    if (ub) ub.classList.remove('vis');
-    if (ns.State.undo()) {
-      R.renderAll();
-      if (ns.Charter) ns.Charter.loadCharterData();
-      if (ns.Sprint) ns.Sprint.loadSprintData();
-      showToast('Undone.', 'ok');
-    } else {
-      showToast('Nothing to undo.', 'err');
-    }
-    updateUndoUi();
-  }
-
-  // ---- Persistent Undo / Redo (command stack, 20 snapshots) ----
-  function undo() {
-    if (ns.State.undo()) {
-      R.renderAll();
-      if (ns.Charter) ns.Charter.loadCharterData();
-      if (ns.Sprint) ns.Sprint.loadSprintData();
-      showToast('Undone.', 'ok');
-    } else {
-      showToast('Nothing to undo.', 'err');
-    }
-    updateUndoUi();
-  }
-
-  function redo() {
-    if (ns.State.redo()) {
-      R.renderAll();
-      if (ns.Charter) ns.Charter.loadCharterData();
-      if (ns.Sprint) ns.Sprint.loadSprintData();
-      showToast('Redone.', 'ok');
-    } else {
-      showToast('Nothing to redo.', 'err');
-    }
-    updateUndoUi();
-  }
-
-  function updateUndoUi() {
-    const u = U.$('undo-btn');
-    if (u) u.textContent = 'Undo' + (ns.State.undoDepth() ? ' (' + ns.State.undoDepth() + ')' : '');
-    const r = U.$('redo-btn');
-    if (r) r.textContent = 'Redo' + (ns.State.redoDepth() ? ' (' + ns.State.redoDepth() + ')' : '');
-  }
-
-  // ---- Weather Region ----
-  function setRegion(val) {
-    ns.State.updateState(function(s) { s.weatherRegion = val; });
-    if (ns.Schedule && ns.Schedule.checkWeatherExposure) {
-      ns.Schedule.checkWeatherExposure((S().tasks || []), val);
-    }
-    R.renderWbs();
-    R.renderGantt();
-    let label = val;
-    if (ns.Weather && ns.Weather.getRegion) {
-      const r = ns.Weather.getRegion(val);
-      if (r && r.name) label = r.name;
-    }
-    showToast('Weather region: ' + label, 'ok');
-  }
+  // ---- Weather Region ---- (extracted to js/app/weather.js)
+  function setRegion(val) { if (ns.AppWeather && ns.AppWeather.setRegion) ns.AppWeather.setRegion(val); }
 
   // ---- Confirmation Dialog (replaces bare confirm() for destructive ops) ----
   let _cfmCb = null;
@@ -1815,91 +1548,14 @@ var MMGR = window.MMGR || {};
     openDrw();
   }
 
-  // ---- OWNER 2026-08-15: backup popover (header backup indicator) ----
-  // The indicator (green "Cloud backed up" when linked, amber "Not backed
-  // up" when not) opens a small glass card with the two backup routes:
-  // Backup to cloud (linked projects save immediately; unlinked projects
-  // route to the drawer's Cloud Backup section to link first) and Backup to
-  // local (.json export). Closed by outside click / Escape / choosing an
-  // option.
-
-  // Background cloud auto-sync debounce (see the State.onChange wiring):
-  // after CLOUD_AUTO_IDLE_MS of quiet, push the snapshot to the cloud for
-  // linked projects. Works for ANY cloud credential (owner OR editor — the
-  // Worker scopes an editor's merge server-side), so every edit in a linked
-  // project eventually reaches the cloud without a manual Save. Never throws;
-  // failures just wait for the next cycle.
-  let _cloudAutoTimer = null;
-  const CLOUD_AUTO_IDLE_MS = 25000;
-  function cloudLinked() {
-    const C = window.MMGR.Cloud;
-    if (!C) return false;
-    if (C.getCode && C.getCode()) return true;
-    if (C.getECode && C.getECode()) return true;
-    return false;
-  }
-  function scheduleCloudAutoSave() {
-    if (!cloudLinked()) return; // not cloud-linked
-    if (_cloudAutoTimer) clearTimeout(_cloudAutoTimer);
-    _cloudAutoTimer = setTimeout(function() {
-      _cloudAutoTimer = null;
-      const C = window.MMGR.Cloud;
-      if (C && C.autoSaveToCloud) { try { C.autoSaveToCloud(); } catch (e) { /* never throws */ } }
-    }, CLOUD_AUTO_IDLE_MS);
-  }
-
-  // OWNER 2026-08-15: flush a pending cloud save when the tab is hidden or
-  // closed so the final edits aren't lost — the auto-save uses keepalive so
-  // it survives pagehide; large states defer to the idle debounce (already
-  // fired in the common walk-away case).
-  function flushCloudAutoSave() {
-    if (!_cloudAutoTimer) return;
-    clearTimeout(_cloudAutoTimer);
-    _cloudAutoTimer = null;
-    if (!cloudLinked()) return;
-    const C = window.MMGR.Cloud;
-    if (C && C.autoSaveToCloud) { try { C.autoSaveToCloud({ keepalive: true }); } catch (e) { /* never throws */ } }
-  }
-  window.addEventListener('pagehide', flushCloudAutoSave);
-
-  function bkToggle() {
-    const pop = U.$('bk-pop');
-    const ind = U.$('dirty-ind');
-    if (!pop) return;
-    if (pop.hidden) {
-      bkSyncHint();
-      pop.hidden = false;
-      if (ind) ind.setAttribute('aria-expanded', 'true');
-    } else {
-      pop.hidden = true;
-      if (ind) ind.setAttribute('aria-expanded', 'false');
-    }
-  }
-  function bkClose() {
-    const pop = U.$('bk-pop');
-    const ind = U.$('dirty-ind');
-    if (pop && !pop.hidden) pop.hidden = true;
-    if (ind) ind.setAttribute('aria-expanded', 'false');
-  }
-  function bkSyncHint() {
-    const el = U.$('bk-cloud-hint');
-    if (!el) return;
-    const C = window.MMGR.Cloud;
-    el.textContent = (C && C.getCode && C.getCode())
-      ? 'Cloud-backed project — snapshots auto-sync to the cloud as you work.'
-      : 'File backup is optional — save a .json copy whenever you\u2019re ready (e.g. at the end of a task). Link to the cloud once in Settings for automatic backups.';
-  }
-  function bkCloud() {
-    const C = window.MMGR.Cloud;
-    bkClose();
-    if (C && C.getCode && C.getCode()) {
-      if (C.saveToCloud) C.saveToCloud();
-    } else {
-      // Not linked yet — open the drawer at the Cloud Backup section so the
-      // project can be linked (Create Cloud Project, then Save to Cloud).
-      openDrwToSave();
-    }
-  }
+  // ---- Backup & Cloud-Sync UI ---- (extracted to js/app/backup.js)
+  function cloudLinked() { return ns.AppBackup && ns.AppBackup.cloudLinked ? ns.AppBackup.cloudLinked() : false; }
+  function scheduleCloudAutoSave() { if (ns.AppBackup) ns.AppBackup.scheduleCloudAutoSave(); }
+  function flushCloudAutoSave() { if (ns.AppBackup) ns.AppBackup.flushCloudAutoSave(); }
+  function bkToggle() { if (ns.AppBackup) ns.AppBackup.bkToggle(); }
+  function bkClose() { if (ns.AppBackup) ns.AppBackup.bkClose(); }
+  function bkSyncHint() { if (ns.AppBackup) ns.AppBackup.bkSyncHint(); }
+  function bkCloud() { if (ns.AppBackup) ns.AppBackup.bkCloud(); }
 
   function openDrwToPrompts(type) {
     swDtab('prompt', null);
@@ -1910,73 +1566,13 @@ var MMGR = window.MMGR || {};
     showSec('dash', document.querySelector('.sec-btn'));
   }
 
-  // ---- Export Modal ----
-  function openOM() {
-    const modal = U.$('om');
-    const txt = U.$('om-txt');
-    if (!modal || !txt) return;
-    txt.value = ns.State.exportState();
-    modal.classList.add('open');
-  }
-
-  function closeOM() {
-    const modal = U.$('om');
-    if (modal) modal.classList.remove('open');
-  }
-
-  function cpOut() {
-    const txt = U.$('om-txt');
-    if (txt) { U.copyToClipboard(txt.value); showToast('Copied to clipboard!', 'ok'); }
-  }
-
-  function loadClip() {
-    navigator.clipboard.readText().then(text => {
-      if (text && ns.State.importState(text)) {
-        R.renderAll();
-        if (ns.Charter) ns.Charter.loadCharterData();
-        if (ns.Sprint) ns.Sprint.loadSprintData();
-        showToast('State loaded from clipboard!', 'ok');
-      } else {
-        showToast('Invalid state data in clipboard.', 'err');
-      }
-    }).catch(() => { showToast('Cannot read clipboard. Paste manually.', 'err'); });
-  }
-
-  // ---- File Import/Export ----
-  function saveProjectFile() {
-    const data = ns.State.exportState();
-    const blob = new Blob([data], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'mmgr-project-' + ns.projectId + '-' + U.todayStr() + '.json';
-    a.click();
-    URL.revokeObjectURL(url);
-    // Stamp the file-backup watermark (same timestamp as updatedAt) so the
-    // header dirty indicator clears — it returns the moment the project is
-    // edited again.
-    ns.State.save(true, { backup: true });
-    R.renderDirtyIndicator();
-    showToast('Project backed up to file!', 'ok');
-  }
-
-  function loadProjectFile(ev) {
-    const file = ev.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = function(e) {
-      if (ns.State.importState(e.target.result)) {
-        R.renderAll();
-        if (ns.Charter) ns.Charter.loadCharterData();
-        if (ns.Sprint) ns.Sprint.loadSprintData();
-        showToast('Project loaded!', 'ok');
-      } else {
-        showToast('Invalid project file.', 'err');
-      }
-    };
-    reader.readAsText(file);
-    ev.target.value = '';
-  }
+  // ---- Export & File I/O ---- (extracted to js/app/export.js)
+  function openOM() { if (ns.AppExport) ns.AppExport.openOM(); }
+  function closeOM() { if (ns.AppExport) ns.AppExport.closeOM(); }
+  function cpOut() { if (ns.AppExport) ns.AppExport.cpOut(); }
+  function loadClip() { if (ns.AppExport) ns.AppExport.loadClip(); }
+  function saveProjectFile() { if (ns.AppExport) ns.AppExport.saveProjectFile(); }
+  function loadProjectFile(ev) { if (ns.AppExport) ns.AppExport.loadProjectFile(ev); }
 
   // Rank 4.4: field-level merge of an exported project file into the current
   // plan. Every tracked field keeps whichever side is newer (per-field

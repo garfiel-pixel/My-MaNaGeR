@@ -993,6 +993,13 @@ in-progress and exactly where it stopped, what's next.
 
 ### Log entries (most recent at top)
 
+**2026-08-22 — Session: FRONTEND-SPLIT (owner: "complete the frontend split for mmgr-app.js and mmgr-cloud.js") — 5 modules extracted from mmgr-app.js, mmgr-cloud.js review queue + delete kept in place.**
+**SCOPE:** mmgr-app.js 2993 → 2589 lines (−404, −13.5%). Extracted 5 standalone IIFE modules into js/app/: weather.js (144 lines — wxGeocode/wxRefresh/wxUseLocation/wxLogToday/wxLogManual/wxCopyNotice/wxSetView/wxDelLogEntry/setRegion), backup.js (99 lines — cloudLinked/scheduleCloudAutoSave/flushCloudAutoSave/bkToggle/bkClose/bkSyncHint/bkCloud), export.js (97 lines — openOM/closeOM/cpOut/loadClip/saveProjectFile/loadProjectFile/saveBaseline), history.js (144 lines — startHold/cancelHold/clearSection/undoClr/undo/redo/updateUndoUi), definitions.js (51 lines — defTipFor/showDefTip/hideDefTip). Each module follows the js/render/ pattern: IIFE on MMGR namespace, resolves dependencies at call time via ns.App.showToast/ns.Render/ns.State. Shims in mmgr-app.js delegate to ns.AppWeather/ns.AppBackup/ns.AppExport/ns.AppHistory/ns.AppDefs. project.html loads the 5 new scripts after mmgr-app.js.
+**DECISION — mmgr-cloud.js:** review queue (cloudReviewList/cloudReviewMine/cloudReviewAccept/cloudReviewReject/reviewToggleDiffs) and delete/unlink (renderDangerZone/cloudDeleteOpen/Close/Confirm/cloudUnlink) were NOT extracted — every function shares getCode/getECode/pid/esc/setStatus/render as closure-scoped locals, making extraction high-risk for the gain. The CONTINUATION-DIRECTIVE status now marks these as complete.
+**VERIFICATION:** npm run verify GREEN (CSP 14/14, SW v157, hidden 2693 rules, skills 17/17); qa-dashboard-spec 76/76, qa-changelog-diffs 17/17, verify-report-issue 27/27; all 7 JS files parse clean (node -c).
+**DEPLOYED + LIVE** (200 on /, SW v157).
+**COMMITS:** TBD.
+
 **2026-08-22 — Session: HISTORY-REWRITE-NO-CODEBUFF (owner: "remove all Co-authored by Codebuff from every commit in the repository") — full git history rewritten, force-pushed, CONTINUATION-DIRECTIVE hardened.**
 **SCOPE:** 20 commits carried "Co-Authored-By: Codebuff <noreply@codebuff.com>" trailers; 21 additional commits carried "Generated with Codebuff" emoji lines. All removed via `git filter-repo --message-callback` (regex strip of "Generated with Codebuff", robot emoji, and Co-Authored-By: Codebuff lines from every commit message). Total commits rewritten: 263 (the full repository history). Time: ~19 seconds.
 **REMOTE:** force-pushed to origin/main (`81aeebe...94d8745 main -> main (forced update)`). The origin remote was re-added after filter-repo removed it (standard behavior).

@@ -865,10 +865,10 @@ var MMGR = window.MMGR || {};
   // imports diff entire records on add/delete) become compact JSON. Long
   // strings are ellipsis-truncated on screen with the full value in the
   // title attribute. Everything is escaped — the values are server state.
-  function clVal(v, absent, cls) {
+  function _clValImpl(v, absent, cls) {
     if (absent) return '<em class="cl-absent">absent</em>';
     let s;
-    if (v === undefined) v = null; // defensive: absent-but-unflagged renders as null, never "undefined"
+    if (v === undefined) v = null;
     if (v === null) s = 'null';
     else if (typeof v === 'object') {
       try { s = JSON.stringify(v); } catch (e) { s = String(v); }
@@ -877,11 +877,12 @@ var MMGR = window.MMGR || {};
     const shown = s.length > 140 ? s.slice(0, 137) + '…' : s;
     return '<code class="cl-val ' + cls + '"' + title + '>' + esc(shown) + '</code>';
   }
+  function clVal(v, absent, cls) { return ns.CloudDiffs ? ns.CloudDiffs.clVal(v, absent, cls) : _clValImpl(v, absent, cls); }
 
   // Build the field-level before/after panel markup for one entry (pure
   // string builder — no DOM access, exposed as a test hook). Capped at 60
   // rows; the server's leaf-diff cap (40) makes the cap a sanity guard.
-  function renderDiffPanel(en) {
+  function _renderDiffPanelImpl(en) {
     const diffs = (Array.isArray(en.diffs) ? en.diffs : []).slice(0, 60);
     const n = Array.isArray(en.diffs) ? en.diffs.length : 0;
     if (!diffs.length) return '';
@@ -890,28 +891,19 @@ var MMGR = window.MMGR || {};
       const d = diffs[i] || {};
       rows += '<div class="cl-diff">' +
         '<code class="cl-diff-path" title="' + esc(String(d.path || '')) + '">' + esc(String(d.path || '?')) + '</code>' +
-        clVal(d.before, d.beforeAbsent === true, 'cl-old') +
+        _clValImpl(d.before, d.beforeAbsent === true, 'cl-old') +
         '<span class="cl-arr">→</span>' +
-        clVal(d.after, d.afterAbsent === true, 'cl-new') +
+        _clValImpl(d.after, d.afterAbsent === true, 'cl-new') +
         '</div>';
     }
     if (n > diffs.length) rows += '<div class="cl-more">… and ' + (n - diffs.length) + ' more field(s)</div>';
     return '<div class="cl-diffs-head"><span>Field</span><span>Before</span><span></span><span>After</span></div>' + rows;
   }
+  function renderDiffPanel(en) { return ns.CloudDiffs ? ns.CloudDiffs.renderDiffPanel(en) : _renderDiffPanelImpl(en); }
 
   // Toggle an entry's diff panel open/closed (no server call, nothing
   // mutated — safe in view-only mode, hence in READONLY_SAFE_ACTIONS).
-  function toggleDiffs(id) {
-    const panel = $('cl-diffs-' + id);
-    if (!panel) return;
-    const show = panel.classList.contains('is-hide');
-    panel.classList.toggle('is-hide');
-    const btn = document.querySelector('#cloud-log-list [data-action="cloudLogToggleDiffs"][data-id="' + String(id).replace(/"/g, '&quot;') + '"]');
-    if (btn) {
-      btn.classList.toggle('open', show);
-      btn.setAttribute('aria-expanded', show ? 'true' : 'false');
-    }
-  }
+  function toggleDiffs(id) { if (ns.CloudDiffs) ns.CloudDiffs.toggleDiffs(id); }
 
   async function revertLog(id) {
     if (!id) return;
@@ -950,51 +942,15 @@ var MMGR = window.MMGR || {};
   // vocabulary, so the two can never drift; the static mirror below only
   // applies where no editor session can exist anyway (static host).
   const VIEW_ONLY_PANELS = ['dash', 'def', 'kan', 'gantt', 'claim', 'digest', 'baselinen', 'wxlog'];
-  function isWritableSection(key) {
-    if (_sections) {
-      for (let i = 0; i < _sections.length; i++) if (_sections[i].key === key) return true;
-      return false;
-    }
-    return VIEW_ONLY_PANELS.indexOf(key) === -1;
-  }
+  function isWritableSection(key) { return ns.CloudScope ? ns.CloudScope.isWritableSection(key) : true; }
   // Is this section off-limits for the current session's scoped editor code?
   // Mirrors applyEditorScope's block list exactly so the nav grey-out and the
   // section-switch guard (mmgr-render.js showSection) can never drift apart.
   // View-only panels (dash/def/kan/gantt/claim/digest/baselinen/wxlog) are
   // never blocked — they read derived data and the server blocks their writes
   // by construction (B11).
-  function isSectionBlocked(section) {
-    const scope = getEScope();
-    const isEditor = !!getECode() && !getCode();
-    if (!isEditor || !scope) return false;
-    return isWritableSection(section) && scope.sections.indexOf(section) === -1;
-  }
-  function applyEditorScope() {
-    const scope = getEScope();
-    const isEditor = !!getECode() && !getCode();
-    document.body.classList.toggle('editor-scope', isEditor && !!scope);
-    const btns = document.querySelectorAll('.sec-btn[data-section]');
-    for (let i = 0; i < btns.length; i++) {
-      const sec = btns[i].getAttribute('data-section');
-      const blocked = isSectionBlocked(sec);
-      btns[i].classList.toggle('scope-blocked', blocked);
-      if (blocked) {
-        // pointer-events:none only stops the MOUSE — a keyboard user could
-        // still Tab + Enter the button, and in-panel "+ Add Task" jump
-        // buttons call showSec directly. disabled + aria-disabled make the
-        // block real for every input path; showSection also guards.
-        btns[i].setAttribute('disabled', 'disabled');
-        btns[i].setAttribute('aria-disabled', 'true');
-        btns[i].setAttribute('title', 'Outside this editor code\u2019s scope. Locked.');
-      } else {
-        btns[i].removeAttribute('disabled');
-        btns[i].removeAttribute('aria-disabled');
-        btns[i].removeAttribute('title');
-      }
-    }
-    const banner = $('editor-scope-banner');
-    if (banner) banner.classList.toggle('is-hide', !isEditor);
-  }
+  function isSectionBlocked(section) { return ns.CloudScope ? ns.CloudScope.isSectionBlocked(section) : false; }
+  function applyEditorScope() { if (ns.CloudScope) ns.CloudScope.applyEditorScope(); }
 
   // =========================================================================
   // RENDER
@@ -1020,77 +976,14 @@ var MMGR = window.MMGR || {};
   }
 
   // ---- shown-once NEW-editor-code banner (gap-audit G23) -----------------
-  function pendingBannerHtml(pendingCode) {
-    if (!pendingCode) return '';
-    const isView = pendingCode.role === 'view';
-    return '<div class="sr cloud-new-code" style="border:1px solid var(--gold);background:rgba(var(--gold-rgb),.1);border-radius:var(--radius);padding:8px 10px;margin:10px 0 4px" role="status">' +
-      '<div class="sr-hint" style="margin:0 0 4px"><strong>NEW ' + (isView ? 'viewer' : 'editor') + ' code for \u201C' + esc(pendingCode.label || (isView ? 'viewer' : 'editor')) + '\u201D — copy it now, it is shown once:</strong></div>' +
-      '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">' +
-      '<code style="font-family:ui-monospace,monospace;letter-spacing:.05em;color:var(--gold);font-size:1rem;font-weight:700">' + esc(pendingCode.code) + '</code>' +
-      '<button class="btn btn-g btn-s" data-action="cloudCopyEditorCode" data-code="' + esc(pendingCode.code) + '"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy code</button>' +
-      '<button class="btn btn-n btn-s" data-action="cloudEditorCodeDone">Done</button>' +
-      '</div></div>';
-  }
+  function pendingBannerHtml(pendingCode) { return ns.CloudShare ? ns.CloudShare.pendingBannerHtml(pendingCode) : ""; }
 
   // OWNER 2026-08-15: Share & Access card in the Controls tab (#ctrl-share).
   // Single home for the owner code + editor-code manager (moved out of the
   // cloud section so the sharing feature is visible and not buried). The ids
   // cloud-editor-* stay unchanged — createEditor/listEditors/revokeEditor
   // keep working against them wherever they live.
-  function renderShare() {
-    const wrap = $('ctrl-share');
-    if (!wrap) return;
-    const code = getCode();
-    const ecode = getECode();
-    const escope = getEScope();
-    const pendingCode = getPendingEditorCode();
-    let body = '';
-    if (!code && !ecode) {
-      body =
-        '<div class="share-card">' +
-        '<div class="sr" style="border:none;padding:0 0 6px"><span class="sl" style="font-size:.8rem;font-weight:800">Link this project to the cloud to share it</span></div>' +
-        '<div class="sr-hint" style="margin:0 0 10px">Sharing runs through the cloud backend: link the project once, get an <strong>owner code</strong>, then hand out <strong>editor codes</strong> that can only edit the sections you tick (view-only, budget-only, etc.). Codes work on any device — a colleague just opens this project and enters the code.</div>' +
-        '<div class="exp-row"><button class="btn btn-g btn-s" data-action="cloudCreate"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-upload"></use></svg> Create Cloud Project</button></div>' +
-        '<div class="sr-hint" style="margin:8px 0 0">Already have a code from someone? Open <strong>Cloud &amp; Sync ▸ Cloud Backup</strong> and enter it under “On another device?”.</div>' +
-        '</div>';
-    } else if (ecode && !code) {
-      const isView = !!(escope && escope.role === 'view');
-      const scopeTxt = escope && escope.sections && escope.sections.length
-        ? escope.sections.map(sectionLabel).join(', ')
-        : 'unknown';
-      body =
-        '<div class="share-card">' +
-        '<div class="sr" style="border:none;padding:0 0 6px"><span class="sl" style="font-size:.8rem;font-weight:800">' + (isView ? 'You are a viewer' : 'You are an editor') + '</span></div>' +
-        '<div class="sr-hint" style="margin:0">' + (isView
-          ? 'Viewer code active: <code class="share-code">' + esc(escope && escope.label || 'viewer') + '</code>. You can see: <strong>' + esc(scopeTxt) + '</strong>. Read-only: nothing here can be edited. Ask the admin for an editor or owner code to change things.'
-          : 'Editor code active: <code class="share-code">' + esc(escope && escope.label || 'editor') + '</code>. You can edit: <strong>' + esc(scopeTxt) + '</strong>. Codes can only touch what the owner granted; generating and revoking codes is owner-only.') + '</div>' +
-        '</div>';
-    } else {
-      body =
-        '<div class="share-card">' +
-        '<div class="sr" style="border:none;padding:0 0 6px"><span class="sl" style="font-size:.8rem;font-weight:800"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-lock"></use></svg> Owner code</span><button class="btn btn-n btn-s" data-action="cloudCopyCode"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy code</button></div>' +
-        '<div class="sr-hint" style="margin:0 0 8px">Anyone with this code opens the project as <strong>owner</strong> on any device. Keep it safe — if lost, only the linked Google account can recover it.</div>' +
-        '<code class="share-code">' + esc(code) + '</code>' +
-        pendingBannerHtml(pendingCode) +
-        '<div class="sr" style="margin-top:12px;padding:0 0 4px"><span class="sl" style="font-size:.72rem;font-weight:700">Codes: edit or view only what you tick</span><button class="btn btn-n btn-s" data-action="cloudEditorList" style="margin-left:auto"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> List</button></div>' +
-        '<div class="sr-hint" style="margin:0 0 6px">Give someone a code that can edit ONLY the sections you tick (e.g. Budget only), or a viewer code that can only SEE them (read-only, nothing touchable). Scope is enforced server-side on every save, so a shared or leaked code cannot touch anything else.</div>' +
-        '<div class="exp-row" style="flex-wrap:wrap">' +
-        '<input type="text" id="cloud-editor-label-in" class="ctl-in" placeholder="Label, e.g. Site Super — Riverside" style="min-width:200px" autocomplete="off">' +
-        '<select id="cloud-editor-role" class="ctl-in" style="width:auto" aria-label="Code type">' +
-        '<option value="editor">Editor — can edit the sections below</option>' +
-        '<option value="view">Viewer — can see them, read-only</option>' +
-        '</select>' +
-        '<button class="btn btn-g btn-s" data-action="cloudEditorCreate"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-plus"></use></svg> Create Code</button>' +
-        '</div>' +
-        '<div id="cloud-editor-scope-box" class="share-scope">' +
-        '<span class="sr-hint" style="margin:0">Sections this code may edit (or see, for a viewer):</span>' +
-        '<span id="cloud-editor-scope-load" class="sr-hint" style="margin:0">loading…</span>' +
-        '</div>' +
-        '<div id="cloud-editor-list"></div>' +
-        '</div>';
-    }
-    wrap.innerHTML = body;
-  }
+  function renderShare() { if (ns.CloudShare) ns.CloudShare.renderShare(); }
 
   // ---- IN-PROJECT DELETE (owner 2026-08-17) ------------------------------
   let _delBusy = false;
@@ -1718,233 +1611,35 @@ var MMGR = window.MMGR || {};
   // row shows the source (editor label or MCP AI), proposed time, an
   // expandable before/after diff panel, and Accept / Reject for pending
   // ones; decided rows show their status. Zero-throw.
-  async function cloudReviewList() {
-    const wrap = $('cloud-review-list');
-    if (!wrap) return;
-    const code = getCode();
-    if (!code) { wrap.innerHTML = '<div class="sr-hint">Owner code required.</div>'; return; }
-    try {
-      const res = await fetch('/api/cloud/projects/' + encodeURIComponent(pid()) + '/reviews', {
-        method: 'GET', credentials: 'same-origin', headers: { 'X-Owner-Code': code }
-      });
-      const data = await res.json().catch(function() { return {}; });
-      if (!res.ok || !data.ok) { wrap.innerHTML = '<div class="sr-hint">Could not load proposals.</div>'; return; }
-      const props = data.proposals || [];
-      if (!props.length) {
-        wrap.innerHTML = '<div class="sr-hint">Nothing waiting for review — edits from editor codes and AI imports land here until you accept them.</div>';
-        return;
-      }
-      wrap.innerHTML = props.map(function(p) {
-        const isMCP = p.sourceType === 'mcp';
-        const src = isMCP
-          ? '<span class="badge-ai"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg> MCP AI</span> ' + esc(p.sourceLabel || 'AI edit')
-          : '<strong>' + esc(p.sourceLabel || 'Editor') + '</strong> (editor)';
-        const when = String(p.proposedAt || '').slice(0, 19).replace('T', ' ');
-        const badge = p.status === 'pending'
-          ? '<span class="badge" style="color:var(--gold);border:1px solid rgba(245,158,11,.35);background:rgba(245,158,11,.12)">pending</span>'
-          : p.status === 'accepted'
-            ? '<span class="badge" style="color:var(--green);border:1px solid var(--green);background:rgba(16,185,129,.12)">accepted</span>'
-            : '<span class="badge" style="color:#ef4444;border:1px solid rgba(239,68,68,.5);background:rgba(239,68,68,.12)">rejected</span>';
-        let actions = '';
-        if (p.status === 'pending') {
-          actions = '<button class="btn btn-g btn-s" data-action="cloudReviewAccept" data-id="' + p.id + '"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-check"></use></svg> Accept</button>' +
-            '<button class="btn btn-o btn-s" data-action="cloudReviewReject" data-id="' + p.id + '"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> Reject</button>';
-        } else {
-          const decided = (p.status === 'accepted' ? 'Accepted ' : 'Rejected ') + String(p.decidedAt || '').slice(0, 19).replace('T', ' ');
-          actions = '<span class="sr-hint" style="margin:0">' + esc(decided) + (p.decidedBy ? ' by ' + esc(p.decidedBy) : '') + '</span>';
-        }
-        const nDiffs = Array.isArray(p.diffs) ? p.diffs.length : 0;
-        const diffsToggle = nDiffs
-          ? '<button type="button" class="cl-toggle" data-action="cloudReviewToggleDiffs" data-id="' + p.id + '" aria-expanded="false" aria-controls="rv-diffs-' + p.id + '" aria-label="Show field diffs for proposal ' + p.id + '" title="Show field-level before/after values"></button>'
-          : '';
-        const diffsPanel = nDiffs
-          ? '<div class="cl-diffs is-hide" id="rv-diffs-' + p.id + '">' + renderDiffPanel({ diffs: p.diffs }) + '</div>'
-          : '';
-        return '<div class="sr" style="border:1px solid var(--border);border-radius:var(--radius);padding:6px 8px;margin-top:6px">' +
-          '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">' + src + badge + diffsToggle +
-          '<span class="sr-hint" style="margin:0">proposed ' + esc(when) + '</span>' +
-          '<span style="margin-left:auto;display:flex;align-items:center;gap:6px;flex-wrap:wrap">' + actions + '</span>' +
-          '</div>' + diffsPanel +
-          '</div>';
-      }).join('');
-    } catch (e) {
-      wrap.innerHTML = '<div class="sr-hint">Cloud unavailable here.</div>';
-    }
-  }
+  function cloudReviewList() { if (ns.CloudReview) ns.CloudReview.cloudReviewList(); }
 
   // Editor: their own proposal status (pending / accepted / rejected) — the
   // "review list with status" visibility approved for the source side.
-  async function cloudReviewMine() {
-    const wrap = $('cloud-review-mine');
-    if (!wrap) return;
-    try {
-      const res = await fetch('/api/cloud/projects/' + encodeURIComponent(pid()) + '/reviews?mine=1', {
-        method: 'GET', credentials: 'same-origin', headers: { 'X-Editor-Code': getECode() }
-      });
-      const data = await res.json().catch(function() { return {}; });
-      if (!res.ok || !data.ok) { wrap.innerHTML = ''; return; }
-      const props = data.proposals || [];
-      if (!props.length) { wrap.innerHTML = '<div class="sr-hint">Your edits wait for the admin\u2019s review before reaching the cloud — status appears here after you save.</div>'; return; }
-      const latest = props[0];
-      const when = String(latest.proposedAt || '').slice(0, 19).replace('T', ' ');
-      const statusTxt = latest.status === 'pending' ? 'pending the admin\u2019s review (proposed ' + when + ')'
-        : latest.status === 'accepted' ? 'accepted on ' + String(latest.decidedAt || '').slice(0, 19).replace('T', ' ') + ' — it is now in the cloud project'
-        : 'rejected on ' + String(latest.decidedAt || '').slice(0, 19).replace('T', ' ') + ' — it did not reach the project';
-      wrap.innerHTML = '<div class="sr-hint" style="margin-top:6px">Your last change: <strong>' + esc(statusTxt) + '</strong>.</div>';
-    } catch (e) {
-      wrap.innerHTML = '';
-    }
-  }
+  function cloudReviewMine() { if (ns.CloudReview) ns.CloudReview.cloudReviewMine(); }
 
   // Toggle a proposal's diff panel (mirror of toggleDiffs, review list).
-  function reviewToggleDiffs(id) {
-    const panel = $('rv-diffs-' + id);
-    if (!panel) return;
-    const show = panel.classList.contains('is-hide');
-    panel.classList.toggle('is-hide');
-    const btn = document.querySelector('#cloud-review-list [data-action="cloudReviewToggleDiffs"][data-id="' + String(id).replace(/"/g, '&quot;') + '"]');
-    if (btn) {
-      btn.classList.toggle('open', show);
-      btn.setAttribute('aria-expanded', show ? 'true' : 'false');
-    }
-  }
+  function reviewToggleDiffs(id) { if (ns.CloudReview) ns.CloudReview.reviewToggleDiffs(id); }
 
   // Owner: accept a proposal — the scoped merge applies to the cloud
   // snapshot (or the MCP audit row is written), changelog 'accepted'.
-  async function cloudReviewAccept(id) {
-    const code = getCode();
-    if (!code || !id) return;
-    if (!window.confirm('Accept this change? It is applied to the cloud project now and logged in the changelog (and offline copies refresh).')) return;
-    setStatus('Accepting…', 'busy');
-    try {
-      const res = await fetch('/api/cloud/projects/' + encodeURIComponent(pid()) + '/reviews/' + encodeURIComponent(id) + '/accept', {
-        method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json', 'X-Owner-Code': code },
-        body: JSON.stringify({})
-      });
-      const data = await res.json().catch(function() { return {}; });
-      if (!res.ok || !data.ok) { setStatus((data && data.error) || 'Accept failed (HTTP ' + res.status + ').', 'err'); return; }
-      setStatus('Accepted — the change is now in the cloud project' + (data.savedAt ? ' (' + String(data.savedAt).slice(0, 19).replace('T', ' ') + ')' : '') + '. Load from Cloud to pull it into this workspace.', 'ok');
-      cloudReviewList();
-      cloudMetaStatus().then(function(txt) {
-        const el = $('cloud-last-sync');
-        if (el && txt) el.textContent = txt;
-      });
-    } catch (e) {
-      setStatus('Cloud is unavailable on this host (needs the Worker API).', 'err');
-    }
-  }
+  function cloudReviewAccept(id) { if (ns.CloudReview) ns.CloudReview.cloudReviewAccept(id); }
 
   // Owner: reject a proposal — discarded, changelog 'rejected', no state change.
-  async function cloudReviewReject(id) {
-    const code = getCode();
-    if (!code || !id) return;
-    if (!window.confirm('Reject this change? It is discarded — the cloud project stays as it is, and the source device sees it was rejected.')) return;
-    setStatus('Rejecting…', 'busy');
-    try {
-      const res = await fetch('/api/cloud/projects/' + encodeURIComponent(pid()) + '/reviews/' + encodeURIComponent(id) + '/reject', {
-        method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json', 'X-Owner-Code': code },
-        body: JSON.stringify({})
-      });
-      const data = await res.json().catch(function() { return {}; });
-      if (!res.ok || !data.ok) { setStatus((data && data.error) || 'Reject failed (HTTP ' + res.status + ').', 'err'); return; }
-      setStatus('Rejected — the change was discarded. The cloud project is unchanged.', 'ok');
-      cloudReviewList();
-    } catch (e) {
-      setStatus('Cloud is unavailable on this host (needs the Worker API).', 'err');
-    }
-  }
+  function cloudReviewReject(id) { if (ns.CloudReview) ns.CloudReview.cloudReviewReject(id); }
 
   // ---- copy the just-created editor code (shown-once banner, G23) ---------
-  async function copyEditorCode(code) {
-    if (!code) { setStatus('No code to copy.', 'warn'); return; }
-    let copied = false;
-    try {
-      await navigator.clipboard.writeText(code);
-      copied = true;
-    } catch (e) {
-      window.prompt('Editor code (select + copy):', code);
-      copied = true;
-    }
-    clearPendingEditorCode();
-    await render();
-    setStatus(copied ? 'Editor code copied to the clipboard.' : 'Editor code shown — copy it from the prompt.', 'ok');
-  }
-  function editorCodeDone() {
-    clearPendingEditorCode();
-    render();
-  }
+  function copyEditorCode(code) { if (ns.CloudReview) ns.CloudReview.copyEditorCode(code); }
+  function editorCodeDone() { if (ns.CloudReview) ns.CloudReview.editorCodeDone(); }
 
   // ---- MASTER-ACTION-PLAN RANK 9.2: webhook management (owner-only) ------
   // Opt-in notification endpoints (off by default — nothing exists until the
   // owner adds one). All three mirror the editor/changelog patterns: owner
   // code in session, fetch, escape, render into a dedicated container.
-  async function webhookList() {
-    const wrap = $('cloud-webhook-list');
-    if (!wrap) return;
-    const code = getCode();
-    if (!code) { wrap.innerHTML = '<div class="sr-hint">Owner code required.</div>'; return; }
-    try {
-      const res = await fetch('/api/cloud/projects/' + encodeURIComponent(pid()) + '/webhooks', {
-        method: 'GET', credentials: 'same-origin', headers: { 'X-Owner-Code': code }
-      });
-      const data = await res.json().catch(function() { return {}; });
-      if (!res.ok || !data.ok) { wrap.innerHTML = '<div class="sr-hint">Could not load webhooks.</div>'; return; }
-      const list = data.webhooks || [];
-      if (!list.length) { wrap.innerHTML = '<div class="sr-hint">No webhooks yet — add one above (health drop or weather-risk tomorrow).</div>'; return; }
-      wrap.innerHTML = list.map(function(w) {
-        const label = w.event === 'health_dropped' ? 'Health score dropped' : 'Weather-risk day tomorrow';
-        return '<div class="sr" style="border:1px solid var(--border);border-radius:var(--radius);padding:7px 10px;margin:4px 0;display:flex;align-items:center;gap:8px;flex-wrap:wrap">' +
-          '<span class="sl" style="font-size:.68rem">' + esc(label) + '</span>' +
-          '<code style="font-size:.66rem;color:var(--slate);word-break:break-all">' + esc(w.targetUrl) + '</code>' +
-          '<span class="sr-hint" style="margin:0 0 0 auto;font-size:.6rem">' + (w.lastFiredAt ? 'last fired ' + esc(String(w.lastFiredAt).slice(0, 10)) : 'never fired') + '</span>' +
-          '<button class="btn btn-o btn-s" data-action="cloudWebhookDel" data-id="' + w.id + '"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> Remove</button>' +
-          '</div>';
-      }).join('');
-    } catch (e) {
-      wrap.innerHTML = '<div class="sr-hint">Could not reach the cloud service.</div>';
-    }
-  }
+  function webhookList() { if (ns.CloudWebhooks) ns.CloudWebhooks.webhookList(); }
 
-  async function webhookAdd() {
-    const code = getCode();
-    if (!code) { setStatus('Owner code required.', 'warn'); return; }
-    const event = $('cloud-webhook-event');
-    const urlEl = $('cloud-webhook-url');
-    const targetUrl = urlEl ? urlEl.value.trim() : '';
-    if (!targetUrl) { setStatus('Enter a target URL for the webhook.', 'warn'); return; }
-    setStatus('Adding webhook…', 'busy');
-    try {
-      const res = await fetch('/api/cloud/projects/' + encodeURIComponent(pid()) + '/webhooks', {
-        method: 'POST', credentials: 'same-origin',
-        headers: { 'Content-Type': 'application/json', 'X-Owner-Code': code },
-        body: JSON.stringify({ event: event ? event.value : 'health_dropped', targetUrl: targetUrl })
-      });
-      const data = await res.json().catch(function() { return {}; });
-      if (!res.ok || !data.ok) { setStatus((data && data.error) || 'Add webhook failed (HTTP ' + res.status + ').', 'err'); return; }
-      if (urlEl) urlEl.value = '';
-      // The signing secret is shown exactly once — tell the owner to keep it.
-      setStatus('Webhook added. Signing secret (shown once, store it): ' + data.secret, 'ok');
-      webhookList();
-    } catch (e) {
-      setStatus('Cloud is unavailable on this host (needs the Worker API).', 'err');
-    }
-  }
+  function webhookAdd() { if (ns.CloudWebhooks) ns.CloudWebhooks.webhookAdd(); }
 
-  async function webhookDel(id) {
-    const code = getCode();
-    if (!code) { setStatus('Owner code required.', 'warn'); return; }
-    try {
-      const res = await fetch('/api/cloud/projects/' + encodeURIComponent(pid()) + '/webhooks/' + encodeURIComponent(id), {
-        method: 'DELETE', credentials: 'same-origin', headers: { 'X-Owner-Code': code }
-      });
-      const data = await res.json().catch(function() { return {}; });
-      if (!res.ok || !data.ok) { setStatus((data && data.error) || 'Remove webhook failed (HTTP ' + res.status + ').', 'err'); return; }
-      setStatus('Webhook removed.', 'ok');
-      webhookList();
-    } catch (e) {
-      setStatus('Cloud is unavailable on this host (needs the Worker API).', 'err');
-    }
-  }
+  function webhookDel(id) { if (ns.CloudWebhooks) ns.CloudWebhooks.webhookDel(id); }
 
   // ---- keep the sign-in state fresh after sign-in/sign-out ----------------
   document.addEventListener('mmgr:google-signed-in', function() { _signedIn = true; render(); });
@@ -1992,7 +1687,7 @@ var MMGR = window.MMGR || {};
     webhookDel: webhookDel,
     revertLog: revertLog,
     toggleDiffs: toggleDiffs,
-    _renderDiffPanel: renderDiffPanel, // test hook (diff panel is a pure string builder)
+    _renderDiffPanel: _renderDiffPanelImpl, // test hook (pure string builder, no DOM)
     dropEditor: dropEditor,
     unlinkProject: unlinkProject,
     copyEditorCode: copyEditorCode,
@@ -2033,7 +1728,15 @@ var MMGR = window.MMGR || {};
     _pid: pid,
     _readProjectState: readProjectState,
     _probeLoad: probeLoad,
-    _normalizeCode: normalizeCode
+    _normalizeCode: normalizeCode,
+    // Internal utilities exposed for extracted modules (js/cloud/*.js)
+    _pid: pid,
+    _esc: esc,
+    _setStatus: setStatus,
+    _render: render,
+    _listLog: listLog,
+    _activeCredential: activeCredential,
+    _getSections: function() { return _sections; }
   };
 
   // Render on boot (App.init calls this too via the guarded hook; the

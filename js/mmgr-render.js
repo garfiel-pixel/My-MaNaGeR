@@ -648,6 +648,7 @@ var MMGR = window.MMGR || {};
   function renderScheduleConfidence() { if (ns.RenderWeather) ns.RenderWeather.renderScheduleConfidence(); }
   function renderWeatherForecast() { if (ns.RenderWeather) ns.RenderWeather.renderWeatherForecast(); }
   function renderWeatherLog() { if (ns.RenderWeather) ns.RenderWeather.renderWeatherLog(); }
+  function renderSafetyBanner() { if (ns.RenderWeather) ns.RenderWeather.renderSafetyBanner(); }
 
   // ==================================================================
   // ACTION-PLAN Phase 3 , retention, professional and non-blocking

@@ -38,7 +38,7 @@ const INLINE_SCRIPT_HASHES = [
   "'sha256-bNdw0+64xL2//htoz+u3InKWYZNEHO/CnuZqtcJIBgU='",
   "'sha256-7cQZf8bzyvMY1EwebBo5YuL3PZ9T/X5CTWFRXO3Aq5E='",
   "'sha256-c2U+m5SzyupzeOrPEiOjlnaSgS1KdAxZTFnYA5dW/Rk='",
-  "'sha256-Mvj9ZjVlVJ2yrW230N22X9aZl7s8NDVU8mXyscP1DHQ='"
+  "'sha256-Is0jD76ptemzKTfgnVGlSCSEHBJeveC1gRTl/Wv4JBw='"
 ].join(' ');
 const SECURITY_HEADERS = {
   'Content-Security-Policy': [

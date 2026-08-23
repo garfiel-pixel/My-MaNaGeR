@@ -423,9 +423,9 @@ var MMGR = window.MMGR || {};
       '<button type="button" class="email-auth-toggle">Sign in with email instead</button>' +
       '<form class="email-auth-form" novalidate hidden>' +
       '<div class="email-auth-row">' +
-      '<input type="email" class="email-auth-input" placeholder="Email" autocomplete="email" aria-label="Email" required>' +
-      '<input type="password" class="email-auth-input email-auth-pass" placeholder="Password (8+ chars)" autocomplete="current-password" aria-label="Password" minlength="8" required>' +
-      '<input type="text" class="email-auth-input email-auth-name" placeholder="Name (optional)" autocomplete="name" aria-label="Name" hidden>' +
+      '<input type="email" class="email-auth-input" placeholder="Email" autocomplete="email" aria-label="Email" inputmode="email" enterkeyhint="next" autocapitalize="none" required>' +
+      '<input type="password" class="email-auth-input email-auth-pass" placeholder="Password (8+ chars)" autocomplete="current-password" aria-label="Password" inputmode="text" enterkeyhint="done" autocapitalize="none" minlength="8" required>' +
+      '<input type="text" class="email-auth-input email-auth-name" placeholder="Name (optional)" autocomplete="name" aria-label="Name" inputmode="text" enterkeyhint="next" autocapitalize="words" hidden>' +
       '<button type="submit" class="btn btn-n btn-s email-auth-submit">Sign in</button>' +
       '</div>' +
       '<div class="email-auth-alt">' +
@@ -441,7 +441,7 @@ var MMGR = window.MMGR || {};
       '<p class="email-auth-reset-title"><strong>Reset your password</strong></p>' +
       '<p class="email-auth-reset-msg">Enter your email and we will send a reset link if an account exists for it.</p>' +
       '<div class="email-auth-row">' +
-      '<input type="email" class="email-auth-input" placeholder="Email" autocomplete="email" aria-label="Email for reset" required>' +
+      '<input type="email" class="email-auth-input" placeholder="Email" autocomplete="email" aria-label="Email for reset" inputmode="email" enterkeyhint="done" autocapitalize="none" required>' +
       '<button type="button" class="btn btn-n btn-s email-auth-submit email-auth-reset-submit">Send reset link</button>' +
       '</div>' +
       '<div class="email-auth-err" role="status" aria-live="polite"></div>' +
@@ -720,9 +720,9 @@ var MMGR = window.MMGR || {};
       '<p class="email-auth-pw-title"><strong>Change password</strong></p>' +
       '<p class="email-auth-pw-msg">You will stay signed in on this device. Every other device is signed out when the password changes.</p>' +
       '<div class="email-auth-row email-auth-pw-fields">' +
-      '<input type="password" class="email-auth-input email-auth-pw-cur" placeholder="Current password" autocomplete="current-password" aria-label="Current password" required>' +
-      '<input type="password" class="email-auth-input email-auth-pw-new" placeholder="New password (8+ chars)" autocomplete="new-password" aria-label="New password" minlength="8" required>' +
-      '<input type="password" class="email-auth-input email-auth-pw-conf" placeholder="Confirm new password" autocomplete="new-password" aria-label="Confirm new password" minlength="8" required>' +
+      '<input type="password" class="email-auth-input email-auth-pw-cur" placeholder="Current password" autocomplete="current-password" aria-label="Current password" inputmode="text" enterkeyhint="next" autocapitalize="none" required>' +
+      '<input type="password" class="email-auth-input email-auth-pw-new" placeholder="New password (8+ chars)" autocomplete="new-password" aria-label="New password" inputmode="text" enterkeyhint="next" autocapitalize="none" minlength="8" required>' +
+      '<input type="password" class="email-auth-input email-auth-pw-conf" placeholder="Confirm new password" autocomplete="new-password" aria-label="Confirm new password" inputmode="text" enterkeyhint="done" autocapitalize="none" minlength="8" required>' +
       '</div>' +
       '<div class="email-auth-row email-auth-pw-actions">' +
       '<button type="button" class="btn btn-g btn-s email-auth-pw-submit">Update password</button>' +

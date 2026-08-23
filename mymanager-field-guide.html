@@ -206,6 +206,7 @@ ul,ol{list-style:none;}
   font:inherit;font-size:.86rem;
 }
 .signin-sheet .email-auth-input:focus-visible{outline:2px solid var(--brass);outline-offset:1px;}
+.signin-sheet .email-auth-input,.signin-sheet .email-auth-submit{touch-action:manipulation;-webkit-touch-callout:none;}
 .signin-sheet .email-auth-submit{
   display:inline-flex;align-items:center;justify-content:center;
   padding:9px 16px;border-radius:8px;border:1px solid transparent;
@@ -606,6 +607,7 @@ footer{padding:70px 64px 46px;position:relative;}
 
 <!-- Email sign-in sheet (shared mmgr-google-auth.js form — 2026-08-14) -->
 <div class="signin-sheet" id="signin-sheet" hidden>
+  <div id="google-signin-button"></div>
   <div id="marketing-email-auth"></div>
   <p class="email-auth-note">Signing in only unlocks backup and moving projects between devices — the app itself needs no account.</p>
   <div class="signin-user" id="signin-user" hidden>

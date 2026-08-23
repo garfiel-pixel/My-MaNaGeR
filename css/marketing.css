@@ -481,6 +481,19 @@ body.dark-mode .signin-btn[aria-expanded="true"]{background:rgba(255,255,255,.16
   backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturate));
   border:var(--glass-edge);box-shadow:var(--glass-shadow);
 }
+/* iOS Safari: backdrop-filter on fixed-position containers can prevent the
+   virtual keyboard from appearing on input focus. Disable it on touch
+   devices where the glass is purely decorative (the form is solid inside). */
+@media (hover:none) and (pointer:coarse){
+  .signin-sheet{-webkit-backdrop-filter:none;backdrop-filter:none;}
+}
+/* iOS Safari: ensure inputs inside fixed-position sheets can trigger the
+   keyboard. The touch-action rule prevents iOS from interpreting taps as
+   scroll gestures before focus reaches the input. */
+.signin-sheet .email-auth-input,
+.signin-sheet .email-auth-submit{
+  touch-action:manipulation;-webkit-touch-callout:none;
+}
 /* Solid content card inside the glass sheet (Gate 6.1 — the form is dense
    interactive content, never glass-on-content). */
 .signin-sheet .email-auth{

@@ -248,6 +248,12 @@
     signinBtns.forEach(function(b){
       b.addEventListener('click', function(){
         setSigninOpen(signinSheet.hidden);
+        /* iOS Safari: re-render GIS button after sheet becomes visible.
+           GIS needs the host to be measurable (not display:none) for the
+           button iframe to have non-zero dimensions. */
+        if (!signinSheet.hidden && typeof GA.ensureGisButton === 'function') {
+          setTimeout(function(){ GA.ensureGisButton(); }, 60);
+        }
       });
     });
     document.addEventListener('keydown', function(e){
@@ -261,10 +267,15 @@
       setSigninOpen(false);
     });
 
-    /* One-time mount of the shared form inside the sheet (no Google button on
-       the marketing pages, so the toggle is hidden and the form shown). Then
+    /* Mount the shared form + Google button inside the sheet. The Google
+       button renders into #google-signin-button (added to all marketing
+       signin-sheets 2026-08-22); the email form toggles behind it. Then
        restore the session so an already-signed-in visitor sees their state. */
-    GA.mountEmailAuth('marketing-email-auth', { showToggle: false });
+    GA.mountEmailAuth('marketing-email-auth', { showToggle: true });
+    /* Re-render the GIS button when the sheet opens — GIS measures the host
+       at render time, so a button drawn into a hidden host comes out 0x0.
+       ensureGisButton() wipes a broken render and re-draws when measurable. */
+    if (typeof GA.ensureGisButton === 'function') GA.ensureGisButton();
     /* AUTH MAINFRAME 2026-08-17: the signed-in account row carries the
        Change-password entry for email accounts (mounted once here; the
        shared control hides itself unless the account has a password). */

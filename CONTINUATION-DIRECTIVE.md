@@ -106,11 +106,15 @@ directive documents.
   it does not draw a glyph. When a page gains an icon that doesn't exist yet, ADD a symbol
   to the sprite — never an emoji. Emojis in internal docs (md/json) are fine; served pages
   are not. New pages must pass the emoji scan before merging.
-- **NEVER push a commit carrying a Codebuff attribution footer (owner, 2026-08-14).**
-  No commit may include "Generated with Codebuff" or "Co-Authored-By: Codebuff
-  <noreply@codebuff.com>" — commit messages are plain Conventional Commits with no
-  third-party co-author trailer. History was rewritten on 2026-08-21 to strip all
-  existing Co-Authored-By tags from the commit log; this rule applies to every commit from now on.
+- **NEVER push a commit carrying a Codebuff attribution footer (owner, 2026-08-14, hardened 2026-08-22).**
+  No commit may include "Generated with Codebuff", the robot emoji, or
+  "Co-Authored-By: Codebuff <noreply@codebuff.com>" — commit messages are plain
+  Conventional Commits with no third-party co-author trailer and no AI-agent branding.
+  History was fully rewritten on 2026-08-22 via git-filter-repo to strip ALL Codebuff
+  traces (Co-Authored-By tags, Generated-with lines, emoji) from every commit in the
+  repository. The force-pushed result is the clean baseline. This rule applies to every
+  commit from now on — the goal is that no external observer can determine which AI tool
+  was used to generate the codebase.
 - A passed verification check is not a pause point — proceed to the next item once a
   check passes, don't stop to ask again.
 - Run local `wrangler dev` end-to-end tests plus the full `qa-*.cjs` battery before
@@ -988,6 +992,20 @@ Format: date/session marker, what was completed (with file/line specifics), what
 in-progress and exactly where it stopped, what's next.
 
 ### Log entries (most recent at top)
+
+**2026-08-22 — Session: HISTORY-REWRITE-NO-CODEBUFF (owner: "remove all Co-authored by Codebuff from every commit in the repository") — full git history rewritten, force-pushed, CONTINUATION-DIRECTIVE hardened.**
+**SCOPE:** 20 commits carried "Co-Authored-By: Codebuff <noreply@codebuff.com>" trailers; 21 additional commits carried "Generated with Codebuff" emoji lines. All removed via `git filter-repo --message-callback` (regex strip of "Generated with Codebuff", robot emoji, and Co-Authored-By: Codebuff lines from every commit message). Total commits rewritten: 263 (the full repository history). Time: ~19 seconds.
+**REMOTE:** force-pushed to origin/main (`81aeebe...94d8745 main -> main (forced update)`). The origin remote was re-added after filter-repo removed it (standard behavior).
+**VERIFICATION:** post-rewrite git log grep confirms 0 hits for "Co-Authored-By: Codebuff", 0 hits for "Generated with Codebuff", 0 hits for the robot emoji, 0 hits for noreply@codebuff. The sole remaining "Codebuff" mention is the docs commit subject "docs: ban Codebuff co-author footer on commits" (legitimate rule documentation, not an attribution).
+**CONTINUATION-DIRECTIVE:** rule at line ~109 updated to reflect the full 2026-08-22 rewrite (hardened language: no AI-agent branding, force-pushed clean baseline, goal is no external observer can determine which AI tool was used).
+**SECURITY RATIONALE (owner):** the Codebuff attribution revealed the AI tool used to generate the codebase. Removing it prevents external observers from identifying the tooling, which the owner considers a security measure.
+
+**2026-08-22 — Session: IPHONE-SIGNIN-AND-KEYBOARD-FIX (owner: "there is no Google option present to sign in from the marketing page on iPhone" + "clicking the button to put text in isn't showing any keyboard") — two iPhone bugs fixed, sw v155.**
+**BUG 1 — Google sign-in missing on marketing pages:** The marketing pages (index/features/about/contact/privacy + field guide) only mounted the email+password form via `mountEmailAuth('marketing-email-auth', { showToggle: false })` and had no `#google-signin-button` div, so GIS had nowhere to render the Google sign-in button. FIX: (1) Added `<div id="google-signin-button"></div>` above the `#marketing-email-auth` mount point in all 7 marketing pages (index/about/features/contact/privacy + field guide); (2) marketing.js changed `showToggle: false` to `showToggle: true` so users can toggle between Google and email; (3) Added `GA.ensureGisButton()` call on sign-in sheet open (with 60ms delay for iOS Safari measurement timing) so the GIS button re-renders into the now-visible host; (4) CSS: added touch-action:manipulation on form controls. CSP: zero inline-script edits, hashes unchanged. Files: index.html, about.html, features.html, contact.html, privacy.html, mymanager-field-guide.html, js/marketing.js, js/mmgr-google-auth.js, css/marketing.css.
+**BUG 2 — iOS keyboard not appearing on email/password inputs:** The email/password inputs inside the `position:fixed` `.signin-sheet` with `backdrop-filter` were not triggering the iOS virtual keyboard on iPhone 6 Plus. ROOT CAUSE: (1) iOS Safari's `backdrop-filter` on `position:fixed` containers can prevent the virtual keyboard from appearing on input focus (known iOS Safari bug on older devices); (2) missing `inputMode`/`enterkeyhint`/`autocapitalize` attributes on the dynamically-generated inputs; (3) iOS interpreting taps as scroll gestures before focus reaches the input. FIX: (1) CSS: `@media (hover:none) and (pointer:coarse)` disables backdrop-filter on `.signin-sheet` on touch devices (the form inside is solid, glass is purely decorative); (2) CSS: `touch-action:manipulation` on `.email-auth-input` and `.email-auth-submit` to prevent iOS scroll-gesture interference; (3) JS: added `inputmode="email"`/`"text"`, `enterkeyhint="next"`/`"done"`, `autocapitalize="none"`/`"words"` to all dynamically-generated inputs (login form, register form, forgot-password form, password-change form); (4) field guide's inline `.signin-sheet` styles gained the same `touch-action:manipulation` fix. Files: js/mmgr-google-auth.js, css/marketing.css, mymanager-field-guide.html.
+**VERIFICATION:** `npm run verify` GREEN (CSP 14/14 hashes unchanged, SW v155 > 54 SHELL assets, verify-hidden clean, 17/17 skills). `node -c` clean on marketing.js and mmgr-google-auth.js. sw.js CACHE bumped to v155.
+**NOTES:** (1) The GIS button on marketing pages requires the GIS script (`https://accounts.google.com/gsi/client`) to be loaded — it is already in the `<head>` of app.html and admin.html; marketing pages load it via mmgr-theme.js or the GIS init in mmgr-google-auth.js. If the GIS script fails to load (blocked/offline), the email+password form is the only sign-in option (zero-throw, same as app pages). (2) The iOS keyboard fix may need testing on a real iPhone 6 Plus — the backdrop-filter disable on touch devices and the touch-action:manipulation are the two key fixes; if the issue persists, the next step would be to investigate whether the `position:fixed` container itself needs adjustment for iOS viewport handling.
+**PENDING:** Owner tests the live site on iPhone 6 Plus to confirm both fixes work. If the keyboard issue persists, a deeper investigation into the fixed-positioning + iOS viewport interaction may be needed. The continuation directive's PART F and PART G tasks remain unchanged (T1-T9 complete, T7/T8 shipped, PART G approved and partially implemented).
 
 **2026-08-19 — Session: AUDIT-REMEDIATION-AND-UI-FIXES (owner: "move in this direction" + two live bug reports) — 8 audit findings fixed, 2 UI bugs fixed, deployed LIVE (version 430a1a96).**
 **AUDIT REMEDIATION (MYMANAGER-FULL-AUDIT.md 47 findings):**

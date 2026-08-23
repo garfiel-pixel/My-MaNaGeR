@@ -65,10 +65,10 @@ svg.ico use{fill:inherit;stroke:inherit;}
 /* ---- Dark Mode (opt-in only) ---- */
 body.dark-mode{
   --canvas:#090a0f;--card:#12141c;--border:#222533;--text:#e2e8f0;--slate:#8494a7;
-  --gold:#f59e0b;--green:#10b981;--danger:#ef4444;--amber:#f59e0b;--blue:#3b82f6;
+  --gold:#f59e0b;--green:#10b981;--danger:#ef4444;--amber:#d97706;--blue:#3b82f6;
   --purple:#a78bfa;
   --gold-rgb:245,158,11;
-  --amber-rgb:245,158,11;
+  --amber-rgb:217,119,6;
   --purple-rgb:167,139,250;
   --on-gold:#0b0c10;
   --tile-bg:rgba(0,0,0,.2);

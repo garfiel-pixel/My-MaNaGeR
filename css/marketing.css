@@ -1319,8 +1319,9 @@ body.dark-mode .signin-btn[aria-expanded="true"]{background:rgba(255,255,255,.16
 }
 
 /* SIGN-IN DORMANT (2026-08-23): the sign-in button and sheet are
-   hidden on all marketing pages. The HTML stays in the DOM for future
-   re-enablement; CSS hides them completely. Get Started fills the
-   header CTA position. */
-.signin-btn, .signin-trigger, .site-signin.signin-trigger{display:none!important;}
+   hidden on marketing pages when NOT signed in. When signed in,
+   the button becomes an identity chip (initial avatar + name)
+   and is visible. The sheet stays hidden always. Get Started
+   fills the header CTA position. */
+.signin-btn:not(.is-signedin), .signin-trigger:not(.is-signedin), .site-signin.signin-trigger:not(.is-signedin){display:none!important;}
 .signin-sheet{display:none!important;}

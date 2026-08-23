@@ -1317,3 +1317,10 @@ body.dark-mode .signin-btn[aria-expanded="true"]{background:rgba(255,255,255,.16
   .auth-recover form{flex-direction:column;}
   .auth-recover .btn{width:100%;}
 }
+
+/* SIGN-IN DORMANT (2026-08-23): the sign-in button and sheet are
+   hidden on all marketing pages. The HTML stays in the DOM for future
+   re-enablement; CSS hides them completely. Get Started fills the
+   header CTA position. */
+.signin-btn, .signin-trigger, .site-signin.signin-trigger{display:none!important;}
+.signin-sheet{display:none!important;}

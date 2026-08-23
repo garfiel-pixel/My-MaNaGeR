@@ -168,6 +168,8 @@ ul,ol{list-style:none;}
 .sheet[id]{scroll-margin-top:24px;}
 
 .mobile-bar-actions{display:flex;align-items:center;gap:8px;}
+.signin-btn,.signin-trigger,.site-signin.signin-trigger{display:none!important;}
+.signin-sheet{display:none!important;}
 .signin-sheet .email-auth-note{font-size:.76rem;color:var(--text-dimmer);line-height:1.5;}
 .signin-sheet .signin-user{display:flex;flex-direction:column;gap:8px;align-items:flex-start;}
 .signin-sheet .signin-user[hidden]{display:none;}
@@ -544,10 +546,26 @@ footer{padding:70px 64px 46px;position:relative;}
 <div class="mobile-bar">
   <b>MY MANAGER , FIELD GUIDE</b>
   <div class="mobile-bar-actions">
+    <button type="button" class="site-signin signin-trigger" aria-expanded="false" aria-controls="signin-sheet">Sign in</button>
     <button id="menuBtn" aria-label="Open sheet index"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 7H20M4 12H20M4 17H20" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
   </div>
 </div>
 <div class="sidebar-scrim" id="scrim"></div>
+
+<!-- Email sign-in sheet (dormant -- hidden via CSS, kept for future use) -->
+<div class="signin-sheet" id="signin-sheet" hidden>
+  <div id="google-signin-button"></div>
+  <div class="email-auth-divider"></div>
+  <div id="marketing-email-auth"></div>
+  <p class="email-auth-note">Signing in only unlocks backup and moving projects between devices, the app itself needs no account.</p>
+  <div class="signin-user" id="signin-user" hidden>
+    <span class="signin-user-avatar" id="signin-user-avatar" title="Signed in"></span>
+    <span class="signin-user-name" id="signin-user-name"></span>
+    <span class="signin-user-sub" id="signin-user-sub"></span>
+    <span class="plan-pill" data-plan-badge hidden></span>
+    <button type="button" class="signin-out" id="signin-out">Sign out</button>
+  </div>
+</div>
 
 <div class="shell">
   <!-- ============ SIDEBAR / SHEET INDEX ============ -->
@@ -564,6 +582,7 @@ footer{padding:70px 64px 46px;position:relative;}
         <div><b>Status</b>Current</div>
       </div>
       <a class="site-exit" href="index.html">← Back to mymanager site</a>
+      <button type="button" class="site-signin signin-trigger" id="signin-btn" aria-expanded="false" aria-controls="signin-sheet">Sign in</button>
 
     </div>
     <nav class="sheet-nav" id="sheetNav">

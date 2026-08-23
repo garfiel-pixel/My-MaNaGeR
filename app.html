@@ -899,9 +899,9 @@ document.addEventListener('DOMContentLoaded', function() {
   try {
     if (window.MMGR_DEMO_FILLED) {
       var key = 'mmgr_state_demo-filled';
-      if (!localStorage.getItem(key)) {
-        localStorage.setItem(key, JSON.stringify(window.MMGR_DEMO_FILLED));
-      }
+      // Always re-seed the demo: it is view-only and static, so stale
+      // cached data (wrong field names) must be overwritten on every visit.
+      localStorage.setItem(key, JSON.stringify(window.MMGR_DEMO_FILLED));
       localStorage.setItem('mmgr_unlocked_demo-filled', '1');
     }
     if (window.MMGR_DEMO_EMPTY) {

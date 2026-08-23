@@ -94,7 +94,7 @@ const INLINE_SCRIPT_HASHES = [
   "'sha256-59YXuH6ak9jBNEE5DGbQyi6pC3MiFmPHLBdvphq/ElQ='", // app.html (head theme + rail-open snippet — FOUC prevention)
   "'sha256-PcY9TdIJsXGVPic0Qujx0Ov+GCt9gZG0hEtBVRDiLiM='", // app.html (body class transfer)
   "'sha256-td9NUrAuxuQCDN61bNSzOzlI3wYV7fWTePO1wRxuhWU='", // app.html (dev fallback script)
-  "'sha256-4w5z56ZoM3xh/d2zh0c41szHt/iMUfL+yXHghGPik8M='", // app.html (dashboard logic)
+  "'sha256-20obLiCIa9SrtGjj/j11OHJbQkDKI/D1/exXGy0TblM='", // app.html (dashboard logic)
 
   "'sha256-cCWiNSMtCJLjwt0mcR0GscIEccMUKMKocExGYJ4z96M='", // admin.html (head theme snippet — FOUC prevention)
   "'sha256-8rpgpTSjx7LcpleTm7RwTJ+pzjvndpRVDPiapb2gNo8='", // admin.html (body dark-mode transfer)

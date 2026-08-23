@@ -58,7 +58,13 @@ var MMGR = window.MMGR || {};
     // If this browser opened the project with a view-only code, drop the
     // app into read-only mode (reduced view). A locally-owned project is
     // always full scope , the creator is never gated by a code they set.
-    ns.scope = locallyOwned ? 'full' : (localStorage.getItem('mmgr_scope_' + projectId) === 'readonly' ? 'readonly' : 'full');
+    // Demo projects are always view-only (readonly scope set above must
+    // not be overridden by the code-based scope path).
+    if (projectId === 'demo-filled') {
+      ns.scope = 'readonly';
+    } else {
+      ns.scope = locallyOwned ? 'full' : (localStorage.getItem('mmgr_scope_' + projectId) === 'readonly' ? 'readonly' : 'full');
+    }
     // CLOUD-CODES-AND-DELETE: a cloud VIEWER code (session escope role
     // 'view', set when the code was entered on the launcher or in the Cloud
     // drawer) drops the app into read-only mode from boot , every mutating

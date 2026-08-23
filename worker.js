@@ -266,6 +266,19 @@ async function verifyGoogleIdToken(idToken, clientId) {
 // local testing and never weakens access codes.
 // sessionKey, signSession, readSession imported from src/lib/http.js
 
+// ANALYTICS ENGINE (Rank 5): lightweight telemetry for panel adoption,
+// feature engagement, and error tracking. Zero-throw — if the binding
+// is absent (local dev without Analytics Engine), events are silently dropped.
+function trackEvent(env, idx1, idx2, blob1, blob2) {
+  if (!env || !env.ANALYTICS) return;
+  try {
+    env.ANALYTICS.writeDataPoint({
+      indexes: [String(idx1 || ''), String(idx2 || '')],
+      blobs: [String(blob1 || ''), String(blob2 || ''), new Date().toISOString()]
+    });
+  } catch (e) { /* telemetry must never block the request */ }
+}
+
 // AUTH-MAINFRAME: mint a session — random jti, issued-at, 7-day expiry —
 // record it in auth_sessions (so it can be revoked) and return the token.
 // A failed D1 write must never block sign-in; revocation then lapses to
@@ -1024,7 +1037,7 @@ async function handleApi(request, env, url) {
     const rl = await cloudRateCheck(request, 'general', env);
     if (rl.limited) return cloudRateLimited(rl.retryAfter);
     // POST = create (Phase 1); GET = session-gated owner project list (A5-3).
-    if (request.method === 'POST') return handleCloudCreate(request, env);
+    if (request.method === 'POST') { trackEvent(env, 'api', 'cloud-create'); return handleCloudCreate(request, env); }
     if (request.method === 'GET') return handleCloudProjectList(request, env);
   }
   const cloudMatch = path.match(/^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/(save|load|recover|meta|delete|restore|purge)$/);
@@ -1034,7 +1047,7 @@ async function handleApi(request, env, url) {
     const rl = await cloudRateCheck(request, op === 'recover' ? 'recover' : 'general');
     if (rl.limited) return cloudRateLimited(rl.retryAfter);
     if (op === 'meta' && request.method === 'GET') return handleCloudMeta(request, env, pid);
-    if (op === 'save' && request.method === 'POST') return handleCloudSave(request, env, pid, async function(env, projectId, now, actor) { await cloudPushRevChangedIfCopies(env, projectId, now, actor); });
+    if (op === 'save' && request.method === 'POST') { trackEvent(env, 'api', 'cloud-save', pid); return handleCloudSave(request, env, pid, async function(env, projectId, now, actor) { await cloudPushRevChangedIfCopies(env, projectId, now, actor); }); }
     if (op === 'load' && request.method === 'POST') return handleCloudLoad(request, env, pid);
     if (op === 'recover' && request.method === 'POST') return handleCloudRecover(request, env, pid);
     if (op === 'delete' && request.method === 'POST') return handleCloudProjectDelete(request, env, pid);
@@ -1396,7 +1409,8 @@ async function handleApi(request, env, url) {
 
   // POST /api/ai/chat (BYO-AI-KEY-SESSION-ONLY-v1 STEP-5) — stateless relay.
   if (path === '/api/ai/chat' && request.method === 'POST') {
-    return handleAiChat(request);
+    trackEvent(env, 'api', 'ai-chat');
+    return handleAiChat(request, env);
   }
 
   // POST /api/auth/logout -> clear the session cookie

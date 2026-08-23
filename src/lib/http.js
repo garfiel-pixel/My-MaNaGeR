@@ -126,11 +126,26 @@ export async function readSession(request, env) {
   const exp = Number(payload.exp);
   if (!Number.isFinite(exp) || exp * 1000 <= Date.now()) return null;
   if (payload.jti) {
+    // KV-CACHE (Rank 3): check KV first for recent revocation status.
+    // Avoids a D1 query on every authenticated request. TTL 60s — a
+    // revoked session takes at most 60s to propagate to the cache.
+    const kvKey = 'sess:' + payload.jti;
+    try {
+      if (env.KV) {
+        const cached = await env.KV.get(kvKey);
+        if (cached === 'revoked') return null;
+        if (cached === 'valid') return payload;
+      }
+    } catch (e) { /* KV failure must not block auth */ }
     let sessRow;
     try {
       sessRow = await env.DB.prepare('SELECT revoked_at FROM auth_sessions WHERE jti = ?').bind(payload.jti).first();
     } catch (e) { return null; }
-    if (!sessRow || sessRow.revoked_at) return null;
+    if (!sessRow || sessRow.revoked_at) {
+      try { if (env.KV) await env.KV.put(kvKey, 'revoked', { expirationTtl: 300 }); } catch (e) {}
+      return null;
+    }
+    try { if (env.KV) await env.KV.put(kvKey, 'valid', { expirationTtl: 60 }); } catch (e) {}
   }
   return payload;
 }

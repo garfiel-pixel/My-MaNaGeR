@@ -103,7 +103,7 @@ async function readAiBody(request) {
   try { return { body: JSON.parse(text) }; } catch (e) { return { bad: true }; }
 }
 
-export async function handleAiChat(request) {
+export async function handleAiChat(request, env) {
   const read = await readAiBody(request);
   if (read.tooLarge) return json({ ok: false, error: 'body too large' }, 413);
   if (read.bad) return json({ ok: false, error: 'bad request' }, 400);
@@ -119,8 +119,28 @@ export async function handleAiChat(request) {
   // Key for THIS request only , header preferred, body field accepted.
   const key = String(request.headers.get('X-User-Api-Key') || '').trim()
     || (typeof body.apiKey === 'string' ? String(body.apiKey).trim() : '');
-  if (!key) return json({ ok: false, error: 'missing api key' }, 401);
   if (!Array.isArray(body.messages) || !body.messages.length) return json({ ok: false, error: 'bad request' }, 400);
+
+  // WORKERS-AI-FIRST (Rank 2): if no BYO key and Workers AI binding is
+  // available, run inference at the edge — zero external calls, zero API
+  // keys in the browser, sub-100ms latency. Falls through to external
+  // providers when a key IS provided (user's own endpoint preference).
+  if (!key && env && env.AI) {
+    try {
+      const aiModel = '@cf/meta/llama-3.1-8b-instruct';
+      const aiResult = await env.AI.run(aiModel, {
+        messages: body.messages.map(function(m) {
+          return { role: m.role || 'user', content: m.content || '' };
+        })
+      });
+      const aiText = aiResult && aiResult.response;
+      if (aiText) return json({ ok: true, text: String(aiText), model: aiModel, source: 'workers-ai' });
+    } catch (e) {
+      // Workers AI failed — fall through to external providers
+    }
+  }
+
+  if (!key) return json({ ok: false, error: 'missing api key' }, 401);
   const ctrl = new AbortController();
   const timer = setTimeout(function() { ctrl.abort(); }, AI_TIMEOUT_MS);
   let upstream;

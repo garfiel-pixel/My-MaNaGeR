@@ -24,6 +24,10 @@ jobs:
       - name: Install dependencies
         run: npm install --ignore-scripts --no-audit --no-fund
 
+      # ── Build dist/ assets (needed for verify:sw SHELL checks) ────
+      - name: Build JS/CSS bundles
+        run: npm run build
+
       # ── Static integrity checks (no Cloudflare bindings needed) ─────
       - name: Verify CSP inline-script hashes
         run: npm run verify:csp
@@ -36,6 +40,9 @@ jobs:
 
       - name: Verify skills-lock integrity
         run: npm run verify:skills
+
+      - name: Verify module export wrappers
+        run: node tools/verify-render-exports.cjs
 
       # ── Deploy validation (dry-run, no credentials needed) ──────────
       # Catches DO export errors, syntax errors, missing imports in

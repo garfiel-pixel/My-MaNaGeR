@@ -999,11 +999,35 @@ var MMGR = window.MMGR || {};
     if (zone) zone.hidden = !show;
     if (body) body.hidden = !show;
   }
+  // PASSWORD-SAVE-FIX (2026-08-24): the delete-confirm password field is
+  // rendered dynamically when the modal opens and removed when it closes,
+  // so Chrome's password manager never sees a type="password" input in the
+  // static DOM (which triggers a spurious "save as password" prompt even
+  // when the field is hidden). The outer wrapper (#del-pw-wrap) stays in
+  // the HTML for layout; only the input itself is injected/removed.
+  function _ensureDelPwField() {
+    const fields = $('del-pw-fields');
+    if (!fields) return null;
+    let inp = $('del-pw');
+    if (inp) return inp;
+    inp = document.createElement('input');
+    inp.type = 'password';
+    inp.id = 'del-pw';
+    inp.className = 'email-auth-input email-auth-pw-cur';
+    inp.placeholder = 'Your account password';
+    inp.autocomplete = 'off';
+    inp.setAttribute('aria-label', 'Account password to verify the delete');
+    fields.appendChild(inp);
+    return inp;
+  }
+  function _removeDelPwField() {
+    const inp = $('del-pw');
+    if (inp && inp.parentNode) inp.parentNode.removeChild(inp);
+  }
   async function cloudDeleteOpen() {
     const modal = $('del-modal');
     if (!modal) return;
     const err = $('del-err'); if (err) err.textContent = '';
-    const pw = $('del-pw'); if (pw) pw.value = '';
     const wrap = $('del-pw-wrap');
     // Decide the field's visibility from the LIVE session: email account ->
     // password gate; Google/absent -> no field (session is the verification).
@@ -1017,7 +1041,10 @@ var MMGR = window.MMGR || {};
     } catch (e) { /* static host / offline , no field */ }
     if (wrap) wrap.hidden = !emailAccount;
     modal.classList.add('on');
-    if (emailAccount && pw) setTimeout(function () { pw.focus(); }, 60);
+    if (emailAccount) {
+      const pw = _ensureDelPwField();
+      if (pw) { pw.value = ''; setTimeout(function () { pw.focus(); }, 60); }
+    }
   }
   function cloudDeleteClose() {
     const modal = $('del-modal');
@@ -1025,6 +1052,7 @@ var MMGR = window.MMGR || {};
     _delBusy = false;
     const ok = $('del-ok'); if (ok) { ok.disabled = false; ok.textContent = 'Delete project'; }
     const err = $('del-err'); if (err) err.textContent = '';
+    _removeDelPwField();
   }
   async function cloudDeleteConfirm() {
     if (_delBusy) return;
@@ -1033,13 +1061,13 @@ var MMGR = window.MMGR || {};
     if (!code) { if (err) err.textContent = 'The owner code is missing from this session. Re-open the project with your owner code and try again.'; return; }
     const wrap = $('del-pw-wrap');
     const needsPw = !!(wrap && !wrap.hidden);
-    const pw = needsPw && $('del-pw') ? $('del-pw').value : '';
+    const pwInp = $('del-pw');
+    const pw = needsPw && pwInp ? pwInp.value : '';
     _delBusy = true;
     const ok = $('del-ok'); if (ok) { ok.disabled = true; ok.textContent = 'Deleting…'; }
     const reset = function () {
       _delBusy = false;
       if (ok) { ok.disabled = false; ok.textContent = 'Delete project'; }
-      const p = $('del-pw'); if (p) p.value = '';
     };
     try {
       // 1) Password gate (email accounts only).

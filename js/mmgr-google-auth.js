@@ -1492,7 +1492,7 @@ var MMGR = window.MMGR || {};
       '<option value="30"' + (cur === '30' ? ' selected' : '') + '>Every 30 min</option>' +
       '<option value="60"' + (cur === '60' ? ' selected' : '') + '>Every 60 min</option>' +
       '</select></div>' +
-      '<div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-lock"></use></svg> Passphrase</span><input type="password" class="ctl-in w150" data-action="driveSetPass" placeholder="' + (encryptionEnabled() ? 'Encryption on , enter to change' : 'Encrypt backups (optional)') + '" autocomplete="new-password"></div>' +
+      '<div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-lock"></use></svg> Passphrase</span><input type="password" class="ctl-in w150" data-action="driveSetPass" placeholder="' + (encryptionEnabled() ? 'Encryption on , enter to change' : 'Encrypt backups (optional)') + '" autocomplete="off"></div>' +
       '<div class="sr-hint">Set a passphrase to encrypt every backup (AES-256-GCM, PBKDF2 key) so AI keys and other project-state secrets never sit in Drive as plaintext. The passphrase stays on this device; re-enter it after restarting the browser. Clear it to go back to plaintext backups.</div>' +
       '<div id="drive-sync-status" class="drive-status"></div>';
   }

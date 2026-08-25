@@ -1124,7 +1124,7 @@
       </select>
       <button class="ai-byo-gear" id="ai-byo-gear" type="button" aria-expanded="false" aria-label="API key settings" title="API key settings , paste your key and Connect &amp; Test"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-settings"></use></svg></button>
       <div class="ai-byo-pop is-hide" id="ai-byo-pop" role="group" aria-label="API key setup">
-        <input type="password" id="ai-byo-key" class="ai-byo-key" placeholder="Paste your API key (session-only)" autocomplete="off" spellcheck="false" title="Session-only: your key stays in this browser, is never exported, and clears when you close the tab">
+        <input type="text" id="ai-byo-key" class="ai-byo-key" placeholder="Paste your API key (session-only)" autocomplete="off" spellcheck="false" title="Session-only: your key stays in this browser, is never exported, and clears when you close the tab" style="-webkit-text-security:disc;text-security:disc;">
         <button class="btn btn-g btn-s" id="ai-byo-connect" title="Save this session key and verify it with a live provider check"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-link"></use></svg> Connect &amp; Test</button>
         <button class="btn btn-n btn-s" id="ai-byo-clear" title="Forget the key in this session"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> Clear</button>
         <p class="ai-byo-sec">Your key stays in this browser for this session only , never stored on our servers, never in exports, cleared when you close the tab.</p>
@@ -1572,9 +1572,7 @@
       <p class="modal-txt" id="del-msg">Are you sure? This deletes the project from the cloud for everyone , editor and viewer codes stop working, every shared copy shows as <strong>discontinued</strong>, and offline copies keep their last snapshot but receive no more updates. There is no undo for anyone else; only you, the admin, can delete it.</p>
       <div class="email-auth-pw" id="del-pw-wrap" hidden>
         <p class="email-auth-pw-title" style="margin:0 0 4px"><strong>Verify your password</strong></p>
-        <div class="email-auth-row email-auth-pw-fields">
-          <input type="password" class="email-auth-input email-auth-pw-cur" id="del-pw" placeholder="Your account password" autocomplete="current-password" aria-label="Account password to verify the delete">
-        </div>
+        <div class="email-auth-row email-auth-pw-fields" id="del-pw-fields"></div>
         <p class="email-auth-pw-msg" style="margin:4px 0 0">Enter your account password to confirm the delete.</p>
       </div>
       <div class="gerr" id="del-err" aria-live="polite"></div>

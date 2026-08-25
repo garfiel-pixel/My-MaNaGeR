@@ -47,6 +47,26 @@ MMGR_MCP_DIR=mcp/projects MMGR_MCP_PROJECT=demo.json node mcp/server.mjs
 }
 ```
 
+### Cloud mode (live project via Worker API)
+
+```json
+{
+  "mcpServers": {
+    "mymanager-cloud": {
+      "command": "node",
+      "args": ["C:/path/to/mymanager/mcp/server.mjs"],
+      "env": {
+        "MMGR_MCP_CLOUD_URL": "https://my-manager.workers.dev",
+        "MMGR_MCP_CLOUD_PROJECT": "your-project-id",
+        "MMGR_MCP_OWNER_CODE": "XXXX-XXXX-XXXX-XXXX",
+        "MMGR_MCP_AI_KEY": "optional-cloud-key",
+        "MMGR_MCP_ALLOW_WRITES": "1"
+      }
+    }
+  }
+}
+```
+
 ### Cursor / Claude Code
 
 ```
@@ -65,18 +85,29 @@ mcp mymanager -s node C:/path/to/mymanager/mcp/server.mjs
 | `MMGR_MCP_PROVIDER` | `google-gemini` | `google-gemini` \| `openai` \| `anthropic` |
 | `MMGR_MCP_ALLOW_WRITES` | off | `=1` enables the owner-approved write tools |
 | `MMGR_MCP_TOKEN_TTL_MS` | `600000` | Approval-token lifetime (10 min) |
+| `MMGR_MCP_CLOUD_URL` | — | Worker URL for cloud mode (e.g. `https://my-manager.workers.dev`) |
+| `MMGR_MCP_CLOUD_PROJECT` | — | Cloud project ID to edit |
+| `MMGR_MCP_OWNER_CODE` | — | Owner code for full access |
+| `MMGR_MCP_EDITOR_CODE` | — | Editor code for scoped access |
 
 The cloud key is read from the environment **only** — it is never read from a project
 file and never written anywhere.
 
+Cloud mode: when `MMGR_MCP_CLOUD_URL` + `MMGR_MCP_CLOUD_PROJECT` + an auth code are
+set, `mmgr_list_projects` shows the cloud project, read tools fetch live state from
+the Worker API, and write tools (propose/approve/revert) save directly to the cloud.
+Changes are logged to a local sidecar (`mcp/projects/cloud-<id>.mcp-changelog.json`).
+Reverts apply inverse diffs and save back to the cloud. The stale-detection guard
+compares state hashes instead of file fingerprints.
+
 ---
 
-## Tool catalog (20 tools)
+## Tool catalog (31 tools)
 
 ### Read / analytics (no approval needed)
 | Tool | Returns |
 |---|---|
-| `mmgr_list_projects` | Available exported project files |
+| `mmgr_list_projects` | Available exported + cloud project files |
 | `mmgr_get_project_overview` | Health, EVM SPI/CPI, counts, target completion |
 | `mmgr_get_context` | Full sectioned Markdown context dump (same grounding the app uses) |
 | `mmgr_get_tasks` / `mmgr_get_task` | Task list (status filter + limit) / single task |
@@ -89,6 +120,17 @@ file and never written anywhere.
 | `mmgr_get_claim_slips` | Baseline slips with auto causes (weather/predecessor/other) |
 | `mmgr_get_changelog` | Every AI edit/revert, cloud-shaped entries |
 | `mmgr_answer_question` | **Local-first**; cloud fallback when the local engine can't ground it |
+| `mmgr_get_resources` | Resources (labor, equipment, materials, subcontractors) |
+| `mmgr_get_stakeholders` | Stakeholders with influence/interest/strategy |
+| `mmgr_get_meetings` | Recent meetings (last 10) with kind, attendees, minutes |
+| `mmgr_get_decisions` | Decision log with status, owner, rationale |
+| `mmgr_get_documents` | Registered documents with type and location |
+| `mmgr_get_bids` | Bid packages with budget, deadline, line items |
+| `mmgr_get_closure` | Project closure checklist + lessons learned |
+| `mmgr_get_sprint` | Current sprint name, start, end dates |
+| `mmgr_get_dmaic` | DMAIC quality methodology phase status |
+| `mmgr_get_spend_log` | Recent spend entries with amounts and totals |
+| `mmgr_get_weather_log` | Weather delay log with delay days and reasons |
 | `mmgr_list_writable_fields` | Introspect the write catalog + enums |
 
 ### Write (two-phase owner approval; gated behind `MMGR_MCP_ALLOW_WRITES=1`)
@@ -100,14 +142,18 @@ file and never written anywhere.
 | `mmgr_revert_change` | Undoes an MCP-AI change by changelog entry id; **logs a new revert row** (history never erased). |
 
 ### Write operations (validated)
-`task.add/update/delete`, `risk.add/update/delete`, `issue.add/update/delete`,
-`budgetLine.add/update/delete`, `change.update`, `charter.update`
+`task/risk/issue/resource/stakeholder/decision/document/bidPackage.add/update/delete`,
+`budgetLine.add/update/delete`, `change.update`, `charter.update`, `closure.update`,
+`sprint.update`, `spendLog.add`, `weatherLog.add`, `commsEntry.add`, `logEntry.add`,
+`dmaic.update`, `raci.update`
 
 Only **whitelisted fields per record type** may be written (matching the app's actual
 record shapes). Enums are enforced server-side: task status
 `todo|inprogress|blocked|completed`, risk level `Low|Medium|High`, issue status
-`open|inprogress|resolved|closed`, change status `submitted|review|approved|rejected|
-implemented|closed`.
+`open|inprogress|resolved|closed`, change status `submitted|review|approved|rejected|`
+`implemented|closed`, resource type `Labor|Equipment|Material|Subcontractor|Other`,
+stakeholder influence/interest `Low|Medium|High`, document type
+`spec|drawing|report|contract|photo|rfi|submittal|correspondence|other`.
 
 ---
 

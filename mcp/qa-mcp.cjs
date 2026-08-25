@@ -93,8 +93,8 @@ async function main() {
 
   const list = await c.rpc('tools/list', {});
   const names = list.tools.map(t => t.name);
-  check('H2 tools/list returns the full catalog (20 tools)',
-    names.length === 20 && ['mmgr_list_projects', 'mmgr_get_project_overview', 'mmgr_get_context', 'mmgr_answer_question', 'mmgr_propose_change', 'mmgr_approve_change', 'mmgr_reject_change', 'mmgr_revert_change', 'mmgr_list_writable_fields'].every(n => names.includes(n)), names.length);
+  check('H2 tools/list returns the full catalog (31 tools)',
+    names.length === 31 && ['mmgr_list_projects', 'mmgr_get_project_overview', 'mmgr_get_context', 'mmgr_answer_question', 'mmgr_propose_change', 'mmgr_approve_change', 'mmgr_reject_change', 'mmgr_revert_change', 'mmgr_list_writable_fields', 'mmgr_get_resources', 'mmgr_get_stakeholders', 'mmgr_get_meetings', 'mmgr_get_decisions', 'mmgr_get_documents', 'mmgr_get_bids', 'mmgr_get_closure', 'mmgr_get_sprint', 'mmgr_get_dmaic', 'mmgr_get_spend_log', 'mmgr_get_weather_log'].every(n => names.includes(n)), names.length);
 
   const projs = await c.rpc('tools/call', { name: 'mmgr_list_projects', arguments: {} });
   check('R1 list_projects finds the fixture', projs.structuredContent.projects.includes(projName), projs.structuredContent.projects);
@@ -117,6 +117,40 @@ async function main() {
   const ans2 = await c.rpc('tools/call', { name: 'mmgr_answer_question', arguments: { question: 'Write me a poetic haiku about the project.' } });
   check('R6 answer_question honestly declines without a cloud key',
     ans2.isError === true && /reasoning beyond local lookup/.test(ans2.content[0].text), ans2);
+
+  // R7-R17: new read tools for all project sections
+  const res = await c.rpc('tools/call', { name: 'mmgr_get_resources', arguments: {} });
+  check('R7 get_resources returns resources array', Array.isArray(res.structuredContent.resources), res);
+
+  const stk = await c.rpc('tools/call', { name: 'mmgr_get_stakeholders', arguments: {} });
+  check('R8 get_stakeholders returns stakeholders array', Array.isArray(stk.structuredContent.stakeholders), stk);
+
+  const mtg = await c.rpc('tools/call', { name: 'mmgr_get_meetings', arguments: {} });
+  check('R9 get_meetings returns meetings array', Array.isArray(mtg.structuredContent.meetings), mtg);
+
+  const dec = await c.rpc('tools/call', { name: 'mmgr_get_decisions', arguments: {} });
+  check('R10 get_decisions returns decisions array', Array.isArray(dec.structuredContent.decisions), dec);
+
+  const doc = await c.rpc('tools/call', { name: 'mmgr_get_documents', arguments: {} });
+  check('R11 get_documents returns documents array', Array.isArray(doc.structuredContent.documents), doc);
+
+  const bid = await c.rpc('tools/call', { name: 'mmgr_get_bids', arguments: {} });
+  check('R12 get_bids returns bidPackages array', Array.isArray(bid.structuredContent.bidPackages), bid);
+
+  const cls = await c.rpc('tools/call', { name: 'mmgr_get_closure', arguments: {} });
+  check('R13 get_closure returns closure object', cls.structuredContent.closure !== undefined, cls);
+
+  const spr = await c.rpc('tools/call', { name: 'mmgr_get_sprint', arguments: {} });
+  check('R14 get_sprint returns sprint object', spr.structuredContent.sprint !== undefined, spr);
+
+  const dmc = await c.rpc('tools/call', { name: 'mmgr_get_dmaic', arguments: {} });
+  check('R15 get_dmaic returns dmaic object', dmc.structuredContent.dmaic !== undefined, dmc);
+
+  const spl = await c.rpc('tools/call', { name: 'mmgr_get_spend_log', arguments: {} });
+  check('R16 get_spend_log returns entries array', Array.isArray(spl.structuredContent.entries), spl);
+
+  const wxl = await c.rpc('tools/call', { name: 'mmgr_get_weather_log', arguments: {} });
+  check('R17 get_weather_log returns entries array', Array.isArray(wxl.structuredContent.entries), wxl);
 
   const wOff = await c.rpc('tools/call', { name: 'mmgr_propose_change', arguments: { operations: [{ op: 'task.update', id: 't-2', status: 'completed' }] } });
   check('W1 write tools gated off without MMGR_MCP_ALLOW_WRITES=1',

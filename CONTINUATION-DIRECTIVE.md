@@ -2099,5 +2099,9 @@ Owner to annotate SECURITY-FIXES-PLAN.txt with implementation details, then agen
 
 ---
 
+**2026-08-26 — Session: CI FIXES — analytics dataset binding, D1 migrations, error handling hardening.** (1) ANALYTICS DATASET: updated Analytics Engine dataset from `mymanager_analytics` to `mmgr-events` in both wrangler.jsonc and wrangler.ci.jsonc to match the new Cloudflare Dashboard dataset. Comment in wrangler.jsonc updated. (2) CI D1 MIGRATIONS: added `wrangler d1 migrations apply my-manager-db --local --config wrangler.ci.jsonc` step to `.github/workflows/ci.yml` after wrangler dev starts and before Tier 2 tests — ensures cloud_projects and all other tables exist when tests run against a fresh local D1 database. (3) ERROR HANDLING: fixed worker.js outer catch block to return JSON `{ok:false, error:'not found'}` with `Content-Type: application/json` instead of plain-text `"Not Found"` — the previous plain-text response caused test harness `.ownerCode.slice()` to crash with TypeError on `undefined`. Deploy dry-run confirms `env.ANALYTICS (mmgr-events)` binding. VERIFICATION: npm run verify GREEN (CSP 17/17, SW v201, hidden 14 pages, skills 17/17, exports 76+26), qa-dashboard-spec 78/78, qa-changelog-diffs 17/17, qa-ai-relay RELAY_GATE PASS, node --check worker.js clean. COMMIT `028a202` fix(ci) + PUSHED + DEPLOYED (version `fdf20322-2110-4d31-9e1f-615509a39b66`, 8 uploaded / 173 cached, 180.83 KiB). POST-DEPLOY LIVE VERIFY: /api/health 200. REMAINING (unchanged): buy + verify mymanager.app in Resend + flip RESEND_FROM_EMAIL; owner eyeball of the new front page + password UI; owner walks the live cloud-first flows; frontend split (mmgr-app.js 2,265 / mmgr-cloud.js 1,771).
+
+---
+
 *This file is the working source of truth for continuing this project across sessions.
 Keep it updated. Do not let a session end without updating the STATUS LOG.*

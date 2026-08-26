@@ -87,11 +87,11 @@ jobs:
       - name: "T2: Start wrangler dev (background)"
         id: wrangler-start
         run: |
-          npx wrangler dev --port 8787 &
-          sleep 5
+          npx wrangler dev --port 8787 --no-bundle --log-level error &
+          sleep 8
           for i in 1 2 3 4 5; do
-            curl -s http://localhost:8787/api/health && break
-            sleep 2
+            curl -sf http://localhost:8787/api/health && break
+            sleep 3
           done
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -189,7 +189,11 @@ jobs:
 
       - name: "Stop wrangler dev"
         if: always()
-        run: pkill -f "wrangler dev" || true
+        run: |
+          pkill -f "wrangler dev" || true
+          sleep 2
+          # Force kill any remaining wrangler processes
+          pkill -9 -f "wrangler" || true
 
       # ── CI Summary ──────────────────────────────────────────────────
       - name: CI Summary

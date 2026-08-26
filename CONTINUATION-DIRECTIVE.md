@@ -1086,6 +1086,24 @@ in-progress and exactly where it stopped, what's next.
 **FILES MODIFIED:** css/mmgr.css (brand tokens, dark mode, sidebar, db-tokens), css/marketing.css (brand tokens, dark mode, hero), tools/qa-dashboard-spec.cjs (token checks, contrast pairs, renderMetrics checks), sw.js (v210), .gitignore (web-research/).
 **NEW FILES:** web-research/research.py, web-research/README.md.
 
+**2026-08-26 — Session: CORRECTIVE-FIXES — mobile scroll, theme switcher, settings drawer, deploy images, hero gold, controls collapse, skeptical audit.**
+**SCOPE:** Owner-reported issues from live site testing on iPhone + desktop: broken mobile scrolling, non-functional theme switcher, transparent settings drawer, missing marketing images, blue hero headline, verbose controls text, redundant sign-in button.
+**(1) DEPLOY IMAGES:** Previous deploys excluded images/ directory via --exclude='images'. Removed exclusion — hero photos, site photos, and all webp assets now included in staging copy. Deploy size 5.2MB (under 25MB limit).
+**(2) SYNC THEME COLOR:** syncThemeColor() in mmgr-theme.js used old cold colors (#090a0f dark, #f4f5f7 light). Updated to warm palette (#1a1614 dark, #F5EFE6 light) matching the new token system.
+**(3) MOBILE HAMBURGER SCROLL:** Marketing .mobile-menu had no overflow. Added max-height:calc(100vh - var(--header-h) - 24px) + overflow-y:auto. iPhone users can now scroll through all menu options.
+**(4) FIELD GUIDE SIDEBAR SCROLL:** Field guide .sidebar on mobile (<=980px) had height:100vh but no overflow. Added overflow-y:auto + -webkit-overflow-scrolling:touch. iPhone users can now scroll the navigation.
+**(5) APP SIDEBAR TEXT OVERFLOW:** #app-sidebar added overflow-x:hidden + -webkit-overflow-scrolling:touch. Prevents text from dragging out of the box on iPhone.
+**(6) SETTINGS DRAWER DARK MODE:** .drw-sheet in dark mode used glass-fill-dark-hover (rgba 12% opacity) — too transparent, showed project cards through settings. Changed to solid surface-raised bg, 24px blur, stronger drop-shadow.
+**(7) HERO BLUE-TO-GOLD:** .hero h1 .teal changed from var(--teal) to var(--gold). Hero headline 'one workspace' now uses brand orange instead of cyan.
+**(8) CONTROLS COLLAPSIBLE:** 7 fmt-desc elements in project.html wrapped in <details class='fmt-more'> with summary 'What is this for?'. CSS added for details/summary styling (gold accent, rotate arrow).
+**(9) ADMIN PREF-ROW MOBILE:** Added @media(max-width:600px) for .pref-row: flex-wrap, no fixed centering, responsive width.
+**(10) SIGN-IN BUTTON HIDDEN:** .db-signin in app.html set to display:none. Sidebar shows sign-in status at bottom-left instead.
+**(11) SKEPTICAL AUDIT:** Ran manual audit (skill not installed). Results: all CSS vars defined, all 5 main JS files pass syntax check, all data-action handlers present (47 'missing' ones are in inline scripts), snap-daily-btn created dynamically at runtime, all CSS classes have matching rules.
+**VERIFICATION:** npm run verify GREEN (CSP 17/17, SW v212). qa-dashboard-spec 74/74. verify-contrast 18/18. verify-delegate-gate clean.
+**DEPLOYED:** version 5b305123 (images included, warm theme, all fixes).
+**FILES MODIFIED:** css/mmgr.css (drawer, sidebar overflow, sign-in hidden, fmt-more), css/marketing.css (mobile-menu scroll, hero gold), js/mmgr-theme.js (syncThemeColor), project.html (fmt-desc details wrapping), mymanager-field-guide.html (sidebar scroll), admin.html (pref-row mobile), sw.js (v212).
+**REMAINING:** Google sign-in prompt when already signed in (backend session check issue, not CSS). Control+Shift+R should work with new SW v212.
+
 **2026-08-25 — Session: PATH-TO-10-10-PUNCH-LIST-2 — shared components, color-as-state, JSDoc types, export gate fix.**
 **SCOPE:** Remaining punch list items: shared component layer, color-as-state audit, JSDoc type annotations, export-verify gate fix.
 **(1) SHARED COMPONENT LAYER (Task 4 from punch list):** New `js/app/components.js` — shared UI component templates: `badge(text, variant, opts)` with semantic variant mapping (done/active/overdue/caution/progress/hold), `aiBadge(label, title)` for the MCP AI sparkle badge, `reviewBadge(status)` for pending/accepted/rejected review proposal badges, and `showToast(msg, type, action)` shared toast (eliminates the duplicate in mmgr-cloud-dash.js). Wired into build.js (APP_MODULES + APP_LAUNCHER_MODULES), project.html fallback script list, and app.html fallback script list. mmgr-cloud-dash.js `notify()` now delegates to `MMGR.Components.showToast()` instead of its own 30-line duplicate. cloud/review.js `badge` variable now uses `MMGR.Components.reviewBadge()` with a fallback.

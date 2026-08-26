@@ -1104,6 +1104,14 @@ in-progress and exactly where it stopped, what's next.
 **FILES MODIFIED:** css/mmgr.css (drawer, sidebar overflow, sign-in hidden, fmt-more), css/marketing.css (mobile-menu scroll, hero gold), js/mmgr-theme.js (syncThemeColor), project.html (fmt-desc details wrapping), mymanager-field-guide.html (sidebar scroll), admin.html (pref-row mobile), sw.js (v212).
 **REMAINING:** Google sign-in prompt when already signed in (backend session check issue, not CSS). Control+Shift+R should work with new SW v212.
 
+**2026-08-26 — Session: DIST-REBUILD — root cause of Control+Shift+R breakage identified and fixed.**
+**SCOPE:** Owner reported Control+Shift+R breaks the page completely. Investigation revealed dist/ bundles were stale (Aug 25) while source CSS was updated (Aug 26). SW caches dist files, not source files. Hard refresh served old cached dist with old token values.
+**(1) ROOT CAUSE:** dist/mmgr.min.css and dist/marketing.min.css were built before the brand token redesign. SW SHELL list references dist/ files. When user does Control+Shift+R, browser bypasses page cache but SW still serves old cached dist files. Old tokens (#92400e gold, #f4f5f7 canvas) conflict with new dark-mode rules → page breaks.
+**(2) FIX:** Ran npm run build to regenerate all dist bundles with fresh CSS tokens. dist/mmgr.min.css: 158KB (27.6% reduction), dist/marketing.min.css: 43KB (32.3% reduction). All JS bundles also rebuilt.
+**(3) RE-DEPLOY:** Staging copy now includes fresh dist files + images/ directory. Deployed version a330f046. 6 new/modified assets uploaded (dist bundles).
+**(4) VERIFICATION:** npm run verify GREEN. qa-dashboard-spec 74/74. verify-contrast 18/18. All JS files pass syntax check. All CSS vars defined.
+**KEY LEARNING:** When CSS source files change, dist/ MUST be rebuilt before deploy. The SW caches dist files, not source files. Stale dist = broken hard refresh.
+
 **2026-08-25 — Session: PATH-TO-10-10-PUNCH-LIST-2 — shared components, color-as-state, JSDoc types, export gate fix.**
 **SCOPE:** Remaining punch list items: shared component layer, color-as-state audit, JSDoc type annotations, export-verify gate fix.
 **(1) SHARED COMPONENT LAYER (Task 4 from punch list):** New `js/app/components.js` — shared UI component templates: `badge(text, variant, opts)` with semantic variant mapping (done/active/overdue/caution/progress/hold), `aiBadge(label, title)` for the MCP AI sparkle badge, `reviewBadge(status)` for pending/accepted/rejected review proposal badges, and `showToast(msg, type, action)` shared toast (eliminates the duplicate in mmgr-cloud-dash.js). Wired into build.js (APP_MODULES + APP_LAUNCHER_MODULES), project.html fallback script list, and app.html fallback script list. mmgr-cloud-dash.js `notify()` now delegates to `MMGR.Components.showToast()` instead of its own 30-line duplicate. cloud/review.js `badge` variable now uses `MMGR.Components.reviewBadge()` with a fallback.

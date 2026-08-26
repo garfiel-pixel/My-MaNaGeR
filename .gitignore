@@ -5,5 +5,8 @@ node_modules/
 .dev.vars
 dist/
 
+# Local research toolkit (Playwright binaries are huge)
+web-research/
+
 # Stray terminal capture from a server-failure session (not project content)
 Windows PowerShell from last session due to server failures.txt

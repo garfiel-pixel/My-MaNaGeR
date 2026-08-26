@@ -26,7 +26,8 @@ const path = require('path');
 const os = require('os');
 const crypto = require('crypto');
 
-const { chromePath: CHROME, BASE, PORT } = require('./chrome-launcher.cjs');
+const { chromePath: CHROME, BASE: _BASE, PORT } = require('./chrome-launcher.cjs');
+const BASE = process.env.WRANGLER_DEV_URL || _BASE;
 const ROOT = path.resolve(__dirname, '..');
 
 let ws = null; let msgId = 0; const pending = new Map();
@@ -59,13 +60,29 @@ const WRANGLER_JS = globalWranglerJs();
 // directory the dev server's own writes trigger the asset watcher, which
 // reloads the worker, which writes state again — an infinite reload loop
 // (observed live: 400+ "Reloading local server" lines, health never answered).
-const PERSIST_DIR = path.join(os.tmpdir(), 'mmgr-cloud-wstate-' + Date.now());
+const USE_EXTERNAL = !!process.env.WRANGLER_DEV_URL;
+const PERSIST_DIR = USE_EXTERNAL
+  ? '/tmp/mmgr-wrangler-state'
+  : path.join(os.tmpdir(), 'mmgr-cloud-wstate-' + Date.now());
 
 let proc = null;          // wrangler dev child
 let devLog = '';          // captured wrangler stdout+stderr (plaintext scan)
 
 function startWrangler() {
   return new Promise((resolve, reject) => {
+    if (USE_EXTERNAL) {
+      log('using external wrangler at ' + process.env.WRANGLER_DEV_URL + ' (skipping local start)…');
+      // Verify the external server is up
+      (async () => {
+        try {
+          const r = await fetch(process.env.WRANGLER_DEV_URL + '/api/health');
+          const body = await r.json().catch(() => null);
+          if (r.ok && body && body.ok === true) return resolve();
+          return reject(new Error('external wrangler health check failed: ' + r.status));
+        } catch (e) { return reject(new Error('external wrangler not reachable: ' + e.message)); }
+      })();
+      return;
+    }
     log('starting wrangler dev on :' + PORT + ' (local D1 + R2 emulation, persist ' + PERSIST_DIR + ')…');
     // Apply the migration into the SAME external persist dir the dev server
     // will use, so the cloud_projects table exists on first boot.
@@ -110,6 +127,7 @@ function startWrangler() {
   });
 }
 function stopWrangler() {
+  if (USE_EXTERNAL) return;
   try { proc && proc.kill(); } catch (e) {}
 }
 

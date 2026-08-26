@@ -188,7 +188,7 @@ async function api(pathname, opts) {
 }
 
 // ---- real-browser plumbing (same CDP pattern as qa-cloud-phase1 phase B) ---
-const { chromePath: CHROME, BASE, DEBUG_PORT: PORT } = require('./chrome-launcher.cjs');
+const { chromePath: CHROME, BASE, PORT } = require('./chrome-launcher.cjs');
 let ws = null; let msgId = 0; const pending = new Map();
 function launchChrome(profileDir, port) {
   return new Promise((resolve, reject) => {

@@ -2103,5 +2103,9 @@ Owner to annotate SECURITY-FIXES-PLAN.txt with implementation details, then agen
 
 ---
 
+**2026-08-26 — Session: CI BUNDLING FIX — esbuild pre-bundle + --no-bundle root cause.** (1) ROOT CAUSE: CI workflow pre-bundled worker.js via esbuild into worker.ci.js then ran wrangler dev with `--no-bundle`, causing workerd to fail resolving bare ESM imports. All API routes silently returned 404, crashing the cloud test harness. (2) FIX: changed `wrangler.ci.jsonc` main from `worker.ci.js` to `worker.js`, removed the esbuild pre-bundle step from ci.yml, removed `--no-bundle` flag — wrangler's own bundler now resolves all imports correctly. Deployed version `95792a92-26e2-4f9f-9282-fa82a8c3c02e`. POST-DEPLOY LIVE VERIFY: /api/health 200. REMAINING (unchanged): buy + verify mymanager.app in Resend + flip RESEND_FROM_EMAIL; owner eyeball of the new front page + password UI; owner walks the live cloud-first flows; frontend split (mmgr-app.js 2,265 / mmgr-cloud.js 1,771).
+
+---
+
 *This file is the working source of truth for continuing this project across sessions.
 Keep it updated. Do not let a session end without updating the STATUS LOG.*

@@ -88,17 +88,26 @@ jobs:
         id: wrangler-start
         run: |
           rm -rf dist/ .wrangler/
-          npx wrangler dev --config wrangler.ci.jsonc --port 8787 --ip 127.0.0.1 --persist-to /tmp/mmgr-wrangler-state > /tmp/wrangler.log 2>&1 &
+          # Use tee so wrangler output is both logged and captured
+          npx wrangler dev --config wrangler.ci.jsonc --port 8787 --ip 127.0.0.1 --persist-to /tmp/mmgr-wrangler-state 2>&1 | tee /tmp/wrangler.log &
           WPID=$!
           echo "Wrangler PID: $WPID"
+          READY=0
           for i in $(seq 1 30); do
             if curl -sf http://127.0.0.1:8787/api/health > /dev/null 2>&1; then
+              READY=1
               echo "Wrangler dev is ready on 127.0.0.1:8787"
               break
             fi
+            echo "Attempt $i: waiting for wrangler..."
             sleep 2
           done
-          curl -sf http://127.0.0.1:8787/api/health || { echo "FATAL: wrangler not responding"; cat /tmp/wrangler.log; exit 1; }
+          if [ $READY -eq 0 ]; then
+            echo "FATAL: wrangler not responding after 60s"
+            echo "--- Wrangler startup log (last 100 lines) ---"
+            tail -100 /tmp/wrangler.log
+            exit 1
+          fi
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

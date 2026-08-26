@@ -87,10 +87,10 @@ jobs:
       - name: "T2: Start wrangler dev (background)"
         id: wrangler-start
         run: |
-          nohup npx wrangler dev --port 8787 --log-level error > /dev/null 2>&1 &
+          nohup npx wrangler dev --port 8787 --ip 0.0.0.0 --log-level error > /dev/null 2>&1 &
           echo "Waiting for Wrangler to spin up..."
-          timeout 30 bash -c 'until echo > /dev/tcp/localhost/8787; do sleep 1; done' || exit 1
-          curl -sf http://localhost:8787/api/health
+          timeout 30 bash -c 'until echo > /dev/tcp/127.0.0.1/8787; do sleep 1; done' || exit 1
+          curl -sf http://127.0.0.1:8787/api/health
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -99,91 +99,91 @@ jobs:
         if: success() && steps.wrangler-start.outcome == 'success'
         run: node tools/qa-cloud-phase1.cjs
         env:
-          WRANGLER_DEV_URL: http://localhost:8787
+          WRANGLER_DEV_URL: http://127.0.0.1:8787
 
       - name: "T2: Cloud phase 2 (editors, scope, changelog)"
         if: success() && steps.wrangler-start.outcome == 'success'
         run: node tools/qa-cloud-phase2.cjs
         env:
-          WRANGLER_DEV_URL: http://localhost:8787
+          WRANGLER_DEV_URL: http://127.0.0.1:8787
 
       - name: "T2: Cloud codes + delete"
         if: success() && steps.wrangler-start.outcome == 'success'
         run: node tools/qa-cloud-codes-delete.cjs
         env:
-          WRANGLER_DEV_URL: http://localhost:8787
+          WRANGLER_DEV_URL: http://127.0.0.1:8787
 
       - name: "T2: Cloud import"
         if: success() && steps.wrangler-start.outcome == 'success'
         run: node tools/qa-cloud-import.cjs
         env:
-          WRANGLER_DEV_URL: http://localhost:8787
+          WRANGLER_DEV_URL: http://127.0.0.1:8787
 
       - name: "T2: Email auth"
         if: success() && steps.wrangler-start.outcome == 'success'
         run: node tools/qa-email-auth.cjs
         env:
-          WRANGLER_DEV_URL: http://localhost:8787
+          WRANGLER_DEV_URL: http://127.0.0.1:8787
 
       - name: "T2: Reviews"
         if: success() && steps.wrangler-start.outcome == 'success'
         run: node tools/qa-reviews.cjs
         env:
-          WRANGLER_DEV_URL: http://localhost:8787
+          WRANGLER_DEV_URL: http://127.0.0.1:8787
 
       - name: "T2: Rank 9 API"
         if: success() && steps.wrangler-start.outcome == 'success'
         run: node tools/qa-rank9-api.cjs
         env:
-          WRANGLER_DEV_URL: http://localhost:8787
+          WRANGLER_DEV_URL: http://127.0.0.1:8787
 
       - name: "T2: T9 adoption"
         if: success() && steps.wrangler-start.outcome == 'success'
         run: node tools/qa-t9-adoption.cjs
         env:
-          WRANGLER_DEV_URL: http://localhost:8787
+          WRANGLER_DEV_URL: http://127.0.0.1:8787
 
       - name: "T2: Presence"
         if: success() && steps.wrangler-start.outcome == 'success'
         run: node tools/qa-presence.cjs
         env:
-          WRANGLER_DEV_URL: http://localhost:8787
+          WRANGLER_DEV_URL: http://127.0.0.1:8787
 
       - name: "T2: Prefs roundtrip"
         if: success() && steps.wrangler-start.outcome == 'success'
         run: node tools/qa-prefs-roundtrip.cjs
         env:
-          WRANGLER_DEV_URL: http://localhost:8787
+          WRANGLER_DEV_URL: http://127.0.0.1:8787
 
       - name: "T2: AI badge E2E"
         if: success() && steps.wrangler-start.outcome == 'success'
         run: node tools/qa-ai-badge-e2e.cjs
         env:
-          WRANGLER_DEV_URL: http://localhost:8787
+          WRANGLER_DEV_URL: http://127.0.0.1:8787
 
       - name: "T2: Market features"
         if: success() && steps.wrangler-start.outcome == 'success'
         run: node tools/qa-market-features.cjs
         env:
-          WRANGLER_DEV_URL: http://localhost:8787
+          WRANGLER_DEV_URL: http://127.0.0.1:8787
 
       - name: "T2: Offline copies"
         if: success() && steps.wrangler-start.outcome == 'success'
         run: node tools/qa-offline-copies.cjs
         env:
-          WRANGLER_DEV_URL: http://localhost:8787
+          WRANGLER_DEV_URL: http://127.0.0.1:8787
 
       - name: "T2: Cloud autosave + signin"
         if: success() && steps.wrangler-start.outcome == 'success'
         run: node tools/verify-cloud-autosave-signin.cjs
         env:
-          WRANGLER_DEV_URL: http://localhost:8787
+          WRANGLER_DEV_URL: http://127.0.0.1:8787
 
       - name: "T2: Controls admin"
         if: success() && steps.wrangler-start.outcome == 'success'
         run: node tools/verify-controls-admin.cjs
         env:
-          WRANGLER_DEV_URL: http://localhost:8787
+          WRANGLER_DEV_URL: http://127.0.0.1:8787
 
       - name: "Stop wrangler dev"
         if: always()

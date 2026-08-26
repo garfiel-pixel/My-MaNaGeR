@@ -35,11 +35,5 @@
   ],
   "analytics_engine_datasets": [
     { "binding": "ANALYTICS", "dataset": "mmgr-events" }
-  ],
-  "assets": {
-    "binding": "ASSETS",
-    "directory": ".",
-    "not_found_handling": "single-page-application",
-    "run_worker_first": true
-  }
+  ]
 }

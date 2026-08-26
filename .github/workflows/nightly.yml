@@ -60,9 +60,10 @@ jobs:
       # ── All Tier 2 scripts (with wrangler dev) ────────────────────
       - name: "Start wrangler dev"
         run: |
-          nohup npx wrangler dev --port 8787 --ip 0.0.0.0 --log-level error > /dev/null 2>&1 &
+          nohup npx wrangler dev --port 8787 --ip 127.0.0.1 --log-level error > /dev/null 2>&1 &
           echo "Waiting for Wrangler to spin up..."
           timeout 30 bash -c 'until echo > /dev/tcp/127.0.0.1/8787; do sleep 1; done' || exit 1
+          echo "Wrangler dev is listening on 127.0.0.1:8787"
           curl -sf http://127.0.0.1:8787/api/health
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}

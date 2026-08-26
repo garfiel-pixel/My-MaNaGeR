@@ -3,7 +3,7 @@
   "name": "my-manager",
   "compatibility_date": "2026-08-23",
   "compatibility_flags": ["nodejs_compat"],
-  "main": "worker.ci.js",
+  "main": "worker.js",
   "vars": {
     "GOOGLE_CLIENT_ID": "297970704704-m05hgt93lfaq286q90br8c96ffg1aph3.apps.googleusercontent.com"
   },

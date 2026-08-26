@@ -1,0 +1,45 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "my-manager",
+  "compatibility_date": "2026-08-23",
+  "compatibility_flags": ["nodejs_compat"],
+  "main": "worker.js",
+  "vars": {
+    "GOOGLE_CLIENT_ID": "297970704704-m05hgt93lfaq286q90br8c96ffg1aph3.apps.googleusercontent.com"
+  },
+  // CI-only: stripped AI, Vectorize, Durable Objects, service bindings
+  // that cause infinite reload loops in local wrangler dev.
+  "ratelimits": [
+    {
+      "name": "RATE_LIMITER",
+      "namespace_id": "1001",
+      "simple": { "limit": 60, "period": 60 }
+    }
+  ],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "my-manager-db",
+      "database_id": "bd19fcdf-736e-4ce9-afba-5a8e8f5aa16c",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "R2",
+      "bucket_name": "my-manager-state"
+    }
+  ],
+  "kv_namespaces": [
+    { "binding": "KV", "id": "c1d3fa573457452699af2dab30979e9c" }
+  ],
+  "analytics_engine_datasets": [
+    { "binding": "ANALYTICS", "dataset": "mymanager_analytics" }
+  ],
+  "assets": {
+    "binding": "ASSETS",
+    "directory": ".",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": true
+  }
+}

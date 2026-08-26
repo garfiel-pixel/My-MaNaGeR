@@ -60,7 +60,7 @@ jobs:
       # ── All Tier 2 scripts (with wrangler dev) ────────────────────
       - name: "Start wrangler dev"
         run: |
-          npx wrangler dev --port 8787 --ip 127.0.0.1 > /tmp/wrangler.log 2>&1 &
+          npx wrangler dev --config wrangler.ci.jsonc --port 8787 --ip 127.0.0.1 > /tmp/wrangler.log 2>&1 &
           WPID=$!
           echo "Wrangler PID: $WPID"
           sleep 10

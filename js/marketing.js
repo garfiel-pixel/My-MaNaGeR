@@ -191,12 +191,13 @@
     var nm = document.getElementById('signin-user-name');
     var sub = document.getElementById('signin-user-sub');
     var av = document.getElementById('signin-user-avatar');
-    /* STABILIZATION 2026-08-16: the identity now leads with the profile
-       picture , Google photo when available, otherwise the first letter of
-       the name (the app.html avatar pattern). Written via DOM APIs so
-       remote data can't inject. */
     if (av) {
       av.innerHTML = '';
+      var displayName = (user && (user.name || user.email || user.sub || '')) || '';
+      var cleanName = displayName.replace(/^email:/i, '');
+      var initial = cleanName.charAt(0).toUpperCase() || '?';
+      av.title = 'Signed in as ' + (cleanName || 'User') + ' - click to manage';
+      av.setAttribute('aria-label', 'Signed in as ' + (cleanName || 'User'));
       if (user && user.picture) {
         var img = document.createElement('img');
         img.src = user.picture;
@@ -204,10 +205,6 @@
         img.referrerPolicy = 'no-referrer';
         av.appendChild(img);
       } else {
-        /* Extract initial from name, email, or sub (email: prefixed).
-           Defensive: sub 'email:user@example.com' → 'U', name 'John Doe' → 'J'. */
-        var src = (user && (user.name || user.email || user.sub || '')) || '';
-        var initial = src.replace(/^email:/i, '').charAt(0).toUpperCase() || '?';
         av.textContent = initial;
       }
     }

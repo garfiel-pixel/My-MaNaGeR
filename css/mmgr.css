@@ -1271,7 +1271,7 @@ hr.div{border:none;border-top:1px solid var(--border);margin:14px 0;}
    signed-in identity — small name-initial avatar (or Google photo) + name,
    mirroring the app.html rail. The Premium pill inside is a [data-plan-badge]
    mount filled by mmgr-google-auth.js refreshPlan(). */
-.si-chip .gchip-avatar{width:22px;height:22px;font-size:.6rem;}
+.si-chip .gchip-avatar{width:22px;height:22px;font-size:.6rem;background:var(--slate);color:#fff;}
 .hdr-chip-name{max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 /* Shared Premium pill (app pages): rendered into [data-plan-badge] mounts by
    mmgr-google-auth.js refreshPlan() — project.html header chip, admin rail.
@@ -2163,7 +2163,7 @@ body.glass-premium.dark-mode .mouse-glow{background:radial-gradient(circle,rgba(
 #google-signin-button{min-height:40px;display:flex;align-items:center;}
 #google-user-chip{display:flex;align-items:center;gap:8px;padding:3px 6px 3px 3px;border:var(--glass-border);border-radius:100px;background:var(--glass-fill-dark);box-shadow:var(--glass-rim);font-size:.74rem;color:var(--text);max-width:100%;}
 #google-signin-button[hidden],#google-user-chip[hidden]{display:none;}
-.gchip-avatar{width:30px;height:30px;flex-shrink:0;border-radius:50%;overflow:hidden;background:var(--gold);color:#0b0c10;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.82rem;}
+.gchip-avatar{width:30px;height:30px;flex-shrink:0;border-radius:50%;overflow:hidden;background:var(--slate);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.82rem;}
 .gchip-avatar-img{width:100%;height:100%;object-fit:cover;display:block;}
 .gchip-name{font-weight:600;max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .gchip-out{border:1px solid var(--border);background:transparent;color:var(--slate);border-radius:100px;padding:4px 10px;font-size:.68rem;font-weight:600;cursor:pointer;transition:all var(--tr);}
@@ -2816,7 +2816,7 @@ body.db-page .db-avatar-ring{
   box-shadow:0 1px 3px rgba(16,24,40,.08);
 }
 body.db-page .db-avatar .ico{width:16px;height:16px;}
-body.db-page .db-avatar-init{font-size:.8rem;font-weight:800;color:var(--gold);}
+body.db-page .db-avatar-init{font-size:.8rem;font-weight:800;color:#fff;background:var(--slate);border-radius:50%;width:100%;height:100%;display:flex;align-items:center;justify-content:center;}
 body.db-page .db-avatar-img{width:100%;height:100%;border-radius:50%;object-fit:cover;display:block;}
 body.db-page .db-avatar-dot{
   position:absolute;right:-2px;bottom:-2px;width:11px;height:11px;border-radius:50%;
@@ -2853,7 +2853,7 @@ body.db-page .pcard:nth-child(6){animation-delay:.25s;}
 /* ---- dark dashboard overrides for the new chrome ---- */
 body.dark-mode.db-page .db-avatar:hover{background:color-mix(in oklch,var(--db-accent) 10%,transparent);}
 body.dark-mode.db-page .db-avatar-ring{background:var(--db-surface);border-color:var(--db-border);color:var(--db-text-secondary);}
-body.dark-mode.db-page .db-avatar-init{color:var(--db-accent);}
+body.dark-mode.db-page .db-avatar-init{color:#fff;background:var(--db-accent);}
 body.dark-mode.db-page .db-avatar-dot{border-color:var(--db-surface);}
 body.dark-mode.db-page .db-avatar-txt{color:var(--db-text-secondary);}
 body.dark-mode.db-page .db-avatar.is-in .db-avatar-txt{color:var(--db-accent);}

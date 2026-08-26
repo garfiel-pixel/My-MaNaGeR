@@ -58,6 +58,7 @@ body.dark-mode .gbox input{background:rgba(0,0,0,.3);}
 .pref-row{position:fixed;left:50%;transform:translateX(-50%);bottom:22px;display:flex;gap:18px;align-items:center;padding:8px 18px;border:var(--glass-border);border-radius:100px;background:var(--glass-fill-dark);box-shadow:var(--glass-rim),var(--glass-shadow);z-index:60;}
 .pref{display:inline-flex;align-items:center;gap:7px;font-size:.7rem;color:var(--slate);cursor:pointer;}
 .pref .tgl{margin:0;}
+@media(max-width:600px){.pref-row{left:12px;right:12px;transform:none;width:auto;justify-content:center;flex-wrap:wrap;gap:10px;padding:10px 12px;border-radius:16px;}.pref{font-size:.65rem;}}
 /* Premium backdrop layers above the fixed z-0 canvas on this page. */
 body.glass-premium .gatewrap{position:relative;z-index:1;}
 body.glass-premium header{position:relative;z-index:1;}

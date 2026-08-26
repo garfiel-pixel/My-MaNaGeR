@@ -62,7 +62,7 @@
 
   /** Sync <meta name="theme-color"> to the browser chrome bar. */
   function syncThemeColor(dark) {
-    var c = dark ? '#090a0f' : '#f4f5f7';
+    var c = dark ? '#1a1614' : '#F5EFE6';
     var meta = document.querySelector('meta[name="theme-color"]');
     if (!meta) { meta = document.createElement('meta'); meta.name = 'theme-color'; document.head.appendChild(meta); }
     meta.setAttribute('content', c);

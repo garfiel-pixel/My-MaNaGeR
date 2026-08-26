@@ -292,7 +292,8 @@ body.nav-open #nav-scrim{opacity:1;pointer-events:auto;}
   transform:translateX(-105%);visibility:hidden;
   transition:transform var(--release-duration) var(--ease-ios),visibility var(--release-duration);
   box-shadow:0 12px 40px rgba(0,0,0,.18);
-  display:flex;flex-direction:column;overflow-y:auto;}
+  display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden;
+  -webkit-overflow-scrolling:touch;}
 /* Rail head: same hamburger as the header button, bare icon (no box),
    rotated 90deg while the rail is open — one smooth spring (doctrine 3). */
 .sb-head{display:flex;align-items:center;justify-content:space-between;padding:14px 16px 10px;border-bottom:1px solid var(--border);margin-bottom:12px;flex-shrink:0;position:sticky;top:0;background:var(--sidebar);z-index:1;}
@@ -1176,6 +1177,11 @@ body.readonly-mode .btn[data-action]:not([data-action="showSec"]):not([data-acti
 .fmt-title .ico{width:16px;height:16px;color:var(--gold);}
 .fmt-desc{font-size:.72rem;line-height:1.55;color:var(--slate);margin:0 0 9px;}
 .fmt-desc code{font-size:.68rem;color:var(--gold);background:rgba(var(--gold-rgb),.07);padding:1px 4px;border-radius:4px;}
+.fmt-more{margin:0 0 9px;}
+.fmt-more summary{font-size:.7rem;color:var(--gold);cursor:pointer;font-weight:600;list-style:none;}
+.fmt-more summary::-webkit-details-marker{display:none;}
+.fmt-more summary::before{content:'\25B6';font-size:.55rem;margin-right:5px;transition:transform .15s ease;}
+.fmt-more[open] summary::before{transform:rotate(90deg);}
 .fmt-preview{display:block;width:100%;max-height:150px;overflow:auto;margin:0 0 2px;padding:9px 10px;background:var(--canvas);border:1px solid var(--border);border-radius:8px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.66rem;line-height:1.6;white-space:pre-wrap;word-break:break-word;color:var(--text);}
 .fmt-preview:empty{display:none;}
 /* Share & Access card (mmgr-cloud.js renderShare) */
@@ -1469,7 +1475,8 @@ body.dark-mode .bk-pop{background:var(--glass-fill-dark-hover);}
      three-area rhythm (≤520px below is already a single column). */
   #panel-dash .g3>.card:last-child{grid-column:1/-1;}
   .sec-nav{position:fixed;top:0;left:0;bottom:0;width:min(84vw,320px);margin:0;padding:70px 12px 20px;
-    flex-direction:column;align-items:stretch;gap:12px;overflow-y:auto;background:var(--card);
+    flex-direction:column;align-items:stretch;gap:12px;overflow-y:auto;overflow-x:hidden;
+    -webkit-overflow-scrolling:touch;background:var(--card);
     border-right:1px solid var(--border);z-index:95;transform:translateX(-105%);
     transition:transform .24s var(--ease-ios);box-shadow:0 12px 40px rgba(0,0,0,.18);}
   body.nav-open .sec-nav{transform:translateX(0);}
@@ -1638,10 +1645,10 @@ header{position:sticky;top:0;z-index:100;}
    superellipse clip-path corners read as cut-in / "eating out" and are gone).
    #drw keeps the positioning frame + a filter drop-shadow that follows the
    rounded silhouette. */
-.drw-sheet{background:var(--glass-fill-dark-hover);border-left:var(--glass-border);
-  backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturate));
-  -webkit-backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturate));
-  box-shadow:var(--glass-rim);}
+.drw-sheet{background:var(--surface-raised);border-left:1px solid var(--border);
+  backdrop-filter:blur(24px) saturate(180%);
+  -webkit-backdrop-filter:blur(24px) saturate(180%);
+  box-shadow:-4px 0 24px rgba(0,0,0,.35);}
 /* Desktop: round the drawer's LEFT corners (the right edge is flush with the
    viewport, so it stays square — edge-to-edge per §6.2). Mobile is full-width
    and edge-to-edge on both sides, so it keeps square corners. */
@@ -2683,9 +2690,7 @@ body.db-page .db-user{display:flex;align-items:center;gap:8px;min-height:32px;}
 body.db-page .db-user-name{flex:1;min-width:0;display:inline-flex;align-items:center;gap:6px;font-size:.72rem;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 body.db-page .db-user-name .ico{width:14px;height:14px;color:var(--gold);flex-shrink:0;}
 body.db-page .db-signin{
-  flex:1;display:inline-flex;align-items:center;justify-content:center;gap:6px;
-  padding:8px 10px;border:1px solid var(--border);background:transparent;color:var(--slate);
-  border-radius:100px;font-size:.72rem;font-weight:700;cursor:pointer;
+  display:none; /* Hidden: sidebar shows sign-in status at bottom-left */
 }
 body.db-page .db-signin:hover{color:var(--gold);border-color:var(--gold);}
 body.db-page .db-signin:focus-visible{outline:2px solid var(--gold);outline-offset:2px;}

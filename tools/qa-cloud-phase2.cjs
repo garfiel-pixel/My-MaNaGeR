@@ -63,6 +63,8 @@ setTimeout(() => { log('WATCHDOG — harness exceeded 360s'); try { proc && proc
 
 // ---- wrangler location ----------------------------------------------------
 function globalWranglerJs() {
+  const localP = path.join(__dirname, '..', 'node_modules', 'wrangler', 'bin', 'wrangler.js');
+  if (fs.existsSync(localP)) return localP;
   try {
     const npmCmd = process.platform === 'win32' ? 'npm.cmd' : 'npm';
     const root = execFileSync(npmCmd, ['root', '-g'], { encoding: 'utf8', shell: process.platform === 'win32' }).trim();

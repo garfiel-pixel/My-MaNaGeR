@@ -40,6 +40,10 @@ setTimeout(() => { log('WATCHDOG — harness exceeded 300s'); try { proc && proc
 // ---- wrangler location ----------------------------------------------------
 // npm is npm.cmd on Windows — execFileSync('npm') would throw ENOENT there.
 function globalWranglerJs() {
+  // 1. Local node_modules (CI and project-local installs)
+  const localP = path.join(__dirname, '..', 'node_modules', 'wrangler', 'bin', 'wrangler.js');
+  if (fs.existsSync(localP)) return localP;
+  // 2. Global npm install
   try {
     const npmCmd = process.platform === 'win32' ? 'npm.cmd' : 'npm';
     const root = execFileSync(npmCmd, ['root', '-g'], { encoding: 'utf8', shell: process.platform === 'win32' }).trim();

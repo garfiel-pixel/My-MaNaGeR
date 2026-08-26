@@ -202,7 +202,7 @@ async function startWrangler(mode) {
   if (!configured) {
     try {
       execFileSync(process.execPath,
-        [WRANGLER_JS, 'd1', 'migrations', 'apply', 'my-manager-db', '--local', '--persist-to', PERSIST_DIR],
+        [WRANGLER_JS, 'd1', 'migrations', 'apply', 'my-manager-db', '--local', '--config', 'wrangler.ci.jsonc', '--persist-to', PERSIST_DIR],
         { cwd: ROOT, stdio: 'ignore', timeout: 90000 });
     } catch (e) { log('migrations apply (best-effort): ' + e.message); }
   }

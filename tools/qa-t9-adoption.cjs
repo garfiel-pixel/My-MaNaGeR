@@ -72,10 +72,10 @@ function startWrangler() {
     log('starting wrangler dev on :' + PORT + ' (local D1 + R2, migration 0011)…');
     try {
       execFileSync(process.execPath,
-        [WRANGLER_JS, 'd1', 'migrations', 'apply', 'my-manager-db', '--local', '--persist-to', PERSIST_DIR],
+        [WRANGLER_JS, 'd1', 'migrations', 'apply', 'my-manager-db', '--local', '--config', 'wrangler.ci.jsonc', '--persist-to', PERSIST_DIR],
         { cwd: ROOT, stdio: 'ignore', timeout: 120000 });
     } catch (e) { log('migrations apply (best-effort): ' + e.message); }
-    proc = spawn(process.execPath, [WRANGLER_JS, 'dev', '--port', String(PORT), '--ip', '127.0.0.1', '--persist-to', PERSIST_DIR,
+    proc = spawn(process.execPath, [WRANGLER_JS, 'dev', '--config', 'wrangler.ci.jsonc', '--port', String(PORT), '--ip', '127.0.0.1', '--persist-to', PERSIST_DIR,
       '--var', 'GOOGLE_CLIENT_SECRET:' + SECRET,
       '--var', 'ADMIN_CODE:' + ADMIN_CODE], {
       cwd: ROOT,

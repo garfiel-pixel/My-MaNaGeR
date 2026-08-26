@@ -95,10 +95,10 @@ function wsClient(url, cookie) {
 async function main() {
   fs.rmSync(PERSIST, { recursive: true, force: true });
   fs.mkdirSync(PERSIST, { recursive: true });
-  execFileSync(process.execPath, [WRANGLER_JS, 'd1', 'migrations', 'apply', 'my-manager-db', '--local', '--persist-to', PERSIST], { stdio: 'ignore' });
+  execFileSync(process.execPath, [WRANGLER_JS, 'd1', 'migrations', 'apply', 'my-manager-db', '--local', '--config', 'wrangler.ci.jsonc', '--persist-to', PERSIST], { stdio: 'ignore' });
   console.log('qa-presence: migrations applied (local persist)');
 
-  const dev = spawn(process.execPath, [WRANGLER_JS, 'dev', '--port', String(PORT), '--ip', '127.0.0.1', '--persist-to', PERSIST,
+  const dev = spawn(process.execPath, [WRANGLER_JS, 'dev', '--config', 'wrangler.ci.jsonc', '--port', String(PORT), '--ip', '127.0.0.1', '--persist-to', PERSIST,
     '--var', 'GOOGLE_CLIENT_SECRET:' + SECRET, '--var', 'ADMIN_CODE:' + ADMIN], { stdio: ['ignore', 'pipe', 'pipe'] });
   dev.stdout.on('data', d => process.stdout.write('[dev] ' + d));
   dev.stderr.on('data', d => process.stdout.write('[dev!] ' + d));

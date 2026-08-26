@@ -93,11 +93,10 @@ jobs:
           rm -rf $STAGING && mkdir -p $STAGING
           cp worker.js wrangler.ci.jsonc package.json $STAGING/
           cp -r src/ migrations/ $STAGING/
-          ln -s ${{ github.workspace }}/node_modules $STAGING/node_modules
           cp -r css/ js/ images/ $STAGING/
           cp *.html sw.js manifest.webmanifest favicon.png high-contrast-icon.png primary-icon.png $STAGING/ 2>/dev/null || true
           cd $STAGING
-          npx wrangler dev --config wrangler.ci.jsonc --port 8787 --ip 127.0.0.1 > /tmp/wrangler.log 2>&1 &
+          NODE_PATH=${{ github.workspace }}/node_modules npx wrangler dev --config wrangler.ci.jsonc --port 8787 --ip 127.0.0.1 > /tmp/wrangler.log 2>&1 &
           WPID=$!
           cd ${{ github.workspace }}
           echo "Wrangler PID: $WPID"

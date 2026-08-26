@@ -453,10 +453,25 @@ async function phaseB() {
     log('--- last dev log ---'); log(devLog.slice(-1500));
     process.exit(1);
   }
-  // Log wrangler startup output for diagnosis
   log('--- wrangler dev log (last 500 chars) ---');
   log(devLog.slice(-500));
   log('--- end wrangler log ---');
+
+  // RAW DIAGNOSTIC: hit endpoints directly and log everything
+  try {
+    const d1 = await fetch(BASE + '/api/health');
+    log('DIAG health: status=' + d1.status + ' ct=' + d1.headers.get('content-type'));
+    log('DIAG health body: ' + (await d1.text()).slice(0, 300));
+    const d2 = await fetch(BASE + '/api/cloud/projects', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ projectId: 'diag-test', name: 'diag' })
+    });
+    log('DIAG create: status=' + d2.status + ' ct=' + d2.headers.get('content-type'));
+    log('DIAG create body: ' + (await d2.text()).slice(0, 300));
+  } catch (diagErr) {
+    log('DIAG error: ' + diagErr.message);
+  }
 
   try {
     const ctx = await phaseA();

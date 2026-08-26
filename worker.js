@@ -194,7 +194,10 @@ export default {
 
       return decorated;
     } catch (e) {
-      return new Response('Not Found', { status: 404 });
+      return new Response(JSON.stringify({ ok: false, error: 'not found' }), {
+        status: 404,
+        headers: { 'Content-Type': 'application/json' }
+      });
     }
   }
 };

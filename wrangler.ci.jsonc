@@ -34,7 +34,7 @@
     { "binding": "KV", "id": "c1d3fa573457452699af2dab30979e9c" }
   ],
   "analytics_engine_datasets": [
-    { "binding": "ANALYTICS", "dataset": "mymanager_analytics" }
+    { "binding": "ANALYTICS", "dataset": "mmgr-events" }
   ],
   "assets": {
     "binding": "ASSETS",

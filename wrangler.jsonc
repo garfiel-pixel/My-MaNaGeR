@@ -95,9 +95,9 @@
     { "binding": "KV", "id": "c1d3fa573457452699af2dab30979e9c" }
   ],
   // ANALYTICS ENGINE — panel adoption + feature engagement telemetry (Rank 5).
-  // Enabled 2026-08-25: dataset "mymanager_analytics" in Cloudflare Dashboard.
+  // Enabled 2026-08-25: dataset "mmgr-events" in Cloudflare Dashboard.
   "analytics_engine_datasets": [
-    { "binding": "ANALYTICS", "dataset": "mymanager_analytics" }
+    { "binding": "ANALYTICS", "dataset": "mmgr-events" }
   ],
   // REAL-TIME PRESENCE (deferred cloud item, 2026-08-12): one Presence
   // Durable Object per project id — holds the live WebSocket roster only

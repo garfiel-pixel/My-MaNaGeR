@@ -60,31 +60,15 @@ jobs:
       # ── All Tier 2 scripts (with wrangler dev) ────────────────────
       - name: "Start wrangler dev"
         run: |
-          STAGING=/tmp/mmgr-ci-staging
-          rm -rf $STAGING && mkdir -p $STAGING
-          cp worker.js wrangler.ci.jsonc package.json $STAGING/
-          cp -r src/ migrations/ $STAGING/
-          cp -r css/ js/ images/ $STAGING/
-          cp *.html sw.js manifest.webmanifest favicon.png high-contrast-icon.png primary-icon.png $STAGING/ 2>/dev/null || true
-          cd $STAGING
-          NODE_PATH=${{ github.workspace }}/node_modules npx wrangler dev --config wrangler.ci.jsonc --port 8787 --ip 127.0.0.1 > /tmp/wrangler.log 2>&1 &
+          rm -rf dist/ .wrangler/
+          npx wrangler dev --config wrangler.ci.jsonc --no-bundle --port 8787 --ip 127.0.0.1 --persist-to /tmp/mmgr-wrangler-state > /tmp/wrangler.log 2>&1 &
           WPID=$!
-          cd ${{ github.workspace }}
           echo "Wrangler PID: $WPID"
-          sleep 8
-          echo "--- Wrangler startup log ---"
-          cat /tmp/wrangler.log
-          echo "--- End wrangler log ---"
-          if ! kill -0 $WPID 2>/dev/null; then
-            echo "ERROR: wrangler dev exited prematurely"
-            exit 1
-          fi
-          for i in $(seq 1 15); do
+          for i in $(seq 1 30); do
             if curl -sf http://127.0.0.1:8787/api/health > /dev/null 2>&1; then
               echo "Wrangler dev is ready on 127.0.0.1:8787"
               break
             fi
-            echo "Attempt $i: waiting..."
             sleep 2
           done
           curl -sf http://127.0.0.1:8787/api/health || { echo "FATAL: wrangler not responding"; cat /tmp/wrangler.log; exit 1; }

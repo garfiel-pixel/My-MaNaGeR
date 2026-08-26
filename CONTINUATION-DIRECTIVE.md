@@ -1070,6 +1070,22 @@ in-progress and exactly where it stopped, what's next.
 **VERIFICATION:** npm run verify GREEN (CSP 17/17, SW v209). tools/verify-delegate-gate.cjs passes clean.
 **FILES MODIFIED:** js/mmgr-app.js (showToast delegate), tools/verify-delegate-gate.cjs (new), .github/workflows/ci.yml (new T1 step + summary row).
 
+**2026-08-26 — Session: BRAND-TOKEN-REDESIGN — warm orange/gold brand, semantic token system, warm dark mode, marketing gold branding, QA updates.**
+**SCOPE:** Master Plan Phases 1-12: establish final brand rules, build semantic token system, update app and marketing CSS, fix dark mode identity, update QA gates.
+**(1) BRAND TOKENS (Phase 1+2):** Replaced cool-gray canvas (#F5EFE6 warm off-white) with warm tones. New semantic tokens: --brand (#D96B27 orange), --brand-hover, --brand-subtle, --brand-on; --accent-cyan (#00BCD4 secondary); --success (#2E7D32), --info (#1565C0), --warning (#E65100), --danger (#C62828); --canvas, --sidebar (#FDFBF7), --surface, --surface-raised; --text (#333333), --text-heading (#000000), --text-secondary (#555555), --text-muted (#666666); --premium-gold (#FFE082). Legacy aliases (--gold, --green, --amber, --blue) preserved for backward compat.
+**(2) DARK MODE (Phase 4):** Warm dark canvas (#1a1614), warm dark surfaces (#242019), muted gold-orange brand (#E8923A). Removed all cold blue-black tones. Semantic colors adapted for dark (brighter variants for contrast). No neon, no cyan branding.
+**(3) MARKETING (Phase 5+6):** Updated marketing tokens: --gold=#D96B27 (brand orange), --teal=#00BCD4 (secondary cyan, used sparingly), --header-navy stays warm charcoal (#1C1917). Hero headline .teal span changed from #7DD3FC to var(--teal). Hero overlay comment updated from 'deep-blue tint' to 'warm charcoal tint'. Marketing dark mode uses warm dark tones.
+**(4) SIDEBAR:** Added --sidebar token (#FDFBF7 light, #1e1a17 dark). Sidebar uses --sidebar instead of --card for distinct warm background.
+**(5) DASHBOARD TOKENS:** Updated --db-* tokens: --db-gold=#E8923A (warm), --db-jet-black=#1a1614 (warm dark), --db-surface=#242019, --db-surface-raised=#2e2922, --db-border=#3a342c, --db-muted-slate=#9a8e80.
+**(6) QA UPDATES (Phase 9):** qa-dashboard-spec.cjs: replaced --db-fluor-blue/--db-thin-air token checks with --db-gold/--db-gold-soft. Updated contrast pairs to new warm dark hex values. Updated renderMetrics checks to match no-op state. All 74/74 pass.
+**(7) THEME SYSTEM (Phase 7):** Verified Light/Dark/System only. mmgr-theme.js sends palette:'default' to backend. Legacy palette API preserved for backward compat (Phase 8).
+**(8) renderMetrics (Phase 10):** Verified as harmless no-op. Called by render(), exported in API. Keeps call chain intact.
+**(9) CONTRAST (Phase 12):** verify-contrast.cjs: 18/18 pass WCAG 2.2 AA. Both mmgr.css and marketing.css covered.
+**(10) WEB RESEARCH TOOLKIT:** Created web-research/ folder with research.py (Playwright + BeautifulSoup) and README.md. Added to .gitignore. Verified working: fetches pages, parses HTML, researches GitHub API.
+**VERIFICATION:** npm run verify GREEN (CSP 17/17, SW v210). qa-dashboard-spec 74/74. verify-contrast 18/18. verify-delegate-gate clean.
+**FILES MODIFIED:** css/mmgr.css (brand tokens, dark mode, sidebar, db-tokens), css/marketing.css (brand tokens, dark mode, hero), tools/qa-dashboard-spec.cjs (token checks, contrast pairs, renderMetrics checks), sw.js (v210), .gitignore (web-research/).
+**NEW FILES:** web-research/research.py, web-research/README.md.
+
 **2026-08-25 — Session: PATH-TO-10-10-PUNCH-LIST-2 — shared components, color-as-state, JSDoc types, export gate fix.**
 **SCOPE:** Remaining punch list items: shared component layer, color-as-state audit, JSDoc type annotations, export-verify gate fix.
 **(1) SHARED COMPONENT LAYER (Task 4 from punch list):** New `js/app/components.js` — shared UI component templates: `badge(text, variant, opts)` with semantic variant mapping (done/active/overdue/caution/progress/hold), `aiBadge(label, title)` for the MCP AI sparkle badge, `reviewBadge(status)` for pending/accepted/rejected review proposal badges, and `showToast(msg, type, action)` shared toast (eliminates the duplicate in mmgr-cloud-dash.js). Wired into build.js (APP_MODULES + APP_LAUNCHER_MODULES), project.html fallback script list, and app.html fallback script list. mmgr-cloud-dash.js `notify()` now delegates to `MMGR.Components.showToast()` instead of its own 30-line duplicate. cloud/review.js `badge` variable now uses `MMGR.Components.reviewBadge()` with a fallback.

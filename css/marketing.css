@@ -19,22 +19,22 @@
 /* ---------- 1. Design tokens (exact palette — use these only) ---------- */
 :root{
   /* surfaces */
-  --bg:            #F8FAFC;   /* main page background (near-white) */
-  --bg-warm:       #F5F3EF;   /* alternate warm section tone (gold-white) */
-  --header-navy:   #1C1917;   /* STONE-900 — footer/page-hero/guide band/photo overlays */
+  --bg:            #F5EFE6;   /* warm off-white — matches app canvas */
+  --bg-warm:       #F0EBE1;   /* alternate warm section tone */
+  --header-navy:   #1C1917;   /* warm charcoal — footer/page-hero/guide band/photo overlays */
   --card:          #FFFFFF;
-  --border:        #E2E8F0;  /* accents — GOLD family (matching the app's identity).
-     Gold is the hero color. Green for success. Red for danger. */
-  --gold:          #b45309;   /* primary accent — gold-600 */
-  --gold-hover:    #d97706;   /* gold-500 hover */
-  --gold-deep:     #92400e;   /* gold-700 text accent on white */
-  --gold-rgb:      180,83,9;  /* rgba(var(--gold-rgb),a) — tokenized gold fills */
-  --teal:          #047857;   /* secondary/positive accent — green */
-  --teal-deep:     #065f46;   /* green deep */
-  --danger:        #EF4444;
+  --border:        #E5E0D8;  /* warm neutral border */
+  /* Brand: orange/gold = identity. Cyan = secondary accent. */
+  --gold:          #D96B27;   /* primary brand orange */
+  --gold-hover:    #C25A1B;   /* brand hover */
+  --gold-deep:     #A84A15;   /* brand deep — text accent on white */
+  --gold-rgb:      217,107,39;
+  --teal:          #00BCD4;   /* secondary accent — cyan, used sparingly */
+  --teal-deep:     #0097A7;   /* cyan deep */
+  --danger:        #C62828;
   --purple:        #8B5CF6;
   /* accent readable on the dark band (footer, page-hero, photo overlay) */
-  --accent-on-navy:#FCD34D;   /* gold-300 on stone-900 = 8.5:1 */
+  --accent-on-navy:#FFE082;   /* premium gold on warm charcoal */
 
   /* Gold ramp + locked status palette.
      Use gold tokens for surfaces, borders, and hover fills.
@@ -92,13 +92,13 @@
    appearances — no palette switching.
    ============================================================ */
 body.dark-mode{
-  --bg:#0c0a09;--bg-warm:#1c1917;--header-navy:#0c0a09;--card:#1c1917;--border:#292524;
-  /* GOLD accents on dark — matching the app's dark mode identity. */
-  --gold:#F59E0B;--gold-hover:#FBBF24;--gold-deep:#FCD34D;--gold-rgb:245,158,11;
-  --teal:#34D399;--teal-deep:#10B981;--danger:#f87171;--purple:#a78bfa;
-  --accent-on-navy:#FCD34D;
-  --text-primary:#f5f5f4;--text-secondary:#a8a29e;--on-navy:#f5f5f4;--on-gold:#1C1917;
-  --glass-tint:rgba(12,10,9,.8);--glass-tint-soft:rgba(12,10,9,.6);
+  /* Warm dark — same My MaNaGeR identity, not cyan/neon */
+  --bg:#1a1614;--bg-warm:#1e1a17;--header-navy:#1a1614;--card:#242019;--border:#3a342c;
+  --gold:#E8923A;--gold-hover:#F0A050;--gold-deep:#FFD080;--gold-rgb:232,146,58;
+  --teal:#4DD0E1;--teal-deep:#26C6DA;--danger:#EF5350;--purple:#b39ddb;
+  --accent-on-navy:#FFE082;
+  --text-primary:#e8e0d8;--text-secondary:#9a8e80;--on-navy:#e8e0d8;--on-gold:#1a1614;
+  --glass-tint:rgba(26,22,20,.8);--glass-tint-soft:rgba(26,22,20,.6);
   --glass-specular:linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,.02) 42%,rgba(255,255,255,0));
   --glass-edge:1px solid rgba(255,255,255,.12);
 }
@@ -651,10 +651,10 @@ body.dark-mode .signin-btn[aria-expanded="true"]{background:rgba(255,255,255,.16
   -webkit-user-select:none;
   pointer-events:none;
 }
-/* navy gradient + gold/teal tints keep the H1 and CTAs high-contrast over the photo */
+/* warm charcoal overlay + gold tints keep the H1 and CTAs high-contrast over the photo */
 .hero-overlay{
   position:absolute;inset:0;pointer-events:none;z-index:1;
-  /* deep-blue tint over the photo (OWNER 2026-08-17: blue + white) */
+  /* warm charcoal tint over the photo */
   background:
     radial-gradient(52% 70% at 82% 6%,rgba(var(--gold-rgb),.22),transparent 62%),
     radial-gradient(44% 64% at 12% 90%,rgba(var(--gold-rgb),.12),transparent 60%),
@@ -676,10 +676,9 @@ body.dark-mode .signin-btn[aria-expanded="true"]{background:rgba(255,255,255,.16
   font-weight:800;letter-spacing:-.025em;line-height:1.06;
   margin:18px 0 18px;
 }
-.hero h1 .gold{color:var(--accent-on-navy);}
-.hero h1 .teal{color:#7DD3FC;}
-/* the h1 spans sit on the deep-blue photo overlay — always bright (dark/cyan
-   themes already override via their own blocks). */
+.hero h1 .gold{color:var(--gold);}
+.hero h1 .teal{color:var(--teal);}
+/* the h1 spans sit on the warm charcoal photo overlay — always bright */
 .hero-sub{
   font-size:clamp(1.125rem,1.5vw,1.18rem);
   line-height:1.75;
@@ -929,7 +928,7 @@ body.dark-mode .signin-btn[aria-expanded="true"]{background:rgba(255,255,255,.16
 .footer-brand p{font-size:.86rem;margin:14px 0 20px;max-width:34ch;}
 .footer-col b{
   display:block;font-size:.7rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;
-  /* bright blue readable on the deep-blue band (blue-300, 7.6:1) */
+  /* text readable on the dark overlay band */
   color:var(--accent-on-navy);margin-bottom:14px;
 }
 .footer-col a{

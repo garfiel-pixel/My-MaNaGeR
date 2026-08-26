@@ -38,7 +38,7 @@ function check(name, ok, detail) {
 
 console.log('DASHBOARD-UI-REFRESH-SPEC gate');
 console.log('--- 1. CSS tokens + component rules (dark-scoped) ---');
-const tokens = ['--db-fluor-blue', '--db-thin-air', '--db-jet-black', '--db-canvas',
+const tokens = ['--db-gold', '--db-gold-soft', '--db-jet-black', '--db-canvas',
   '--db-surface', '--db-surface-raised', '--db-accent', '--db-accent-soft',
   '--db-border', '--db-text-secondary'];
 for (const t of tokens) check('token ' + t, css.includes(t + ':'), t);
@@ -82,8 +82,8 @@ console.log('--- 4. mmgr-portfolio.js renderMetrics ---');
 check('renderMetrics() defined', /function renderMetrics\(\)/.test(portfolio));
 check('render() calls renderMetrics', /function render\(\) {\s*renderMetrics\(\)/.test(portfolio));
 check('renderMetrics in API', /renderMetrics: renderMetrics/.test(portfolio));
-check('dark-mode gate in renderMetrics', /classList\.contains\('dark-mode'\)/.test(portfolio));
-check('no invented numbers (uses rank())', portfolio.includes('const ranked = rank(projects);') && portfolio.includes('atRisk'));
+check('renderMetrics is a no-op (launcher metrics removed per UI plan)', /el\.innerHTML = '';/.test(portfolio));
+check('render() still calls renderMetrics', /function render\(\) {\s*renderMetrics\(\)/.test(portfolio));
 
 console.log('--- 5. WCAG 2.2 contrast on recorded pairs (Gate 4.1/4.3) ---');
 function lum(hex) {
@@ -96,15 +96,13 @@ function ratio(a, b) {
   return (l1 + 0.05) / (l2 + 0.05);
 }
 const pairs = [
-  ['--db-fluor-blue on --db-canvas', '50E8F4', '0A0A0A'],
-  ['--db-thin-air on --db-canvas', 'C7F8FE', '0A0A0A'],
-  ['--db-fluor-blue on --db-surface', '50E8F4', '121212'],
-  ['--db-thin-air on --db-surface', 'C7F8FE', '121212'],
-  ['--db-fluor-blue on --db-surface-raised', '50E8F4', '1A1A1A'],
-  ['--db-text-secondary on --db-surface', '9FD8DE', '121212'],
-  ['--db-text-secondary on --db-surface-raised', '9FD8DE', '1A1A1A'],
-  ['--text on --db-surface', 'E2E8F0', '121212'],
-  ['--db-jet-black on --db-accent', '0A0A0A', '50E8F4']
+  ['--db-gold on --db-canvas', 'E8923A', '0A0A0A'],
+  ['--db-gold on --db-surface', 'E8923A', '121212'],
+  ['--db-gold on --db-surface-raised', 'E8923A', '1A1A1A'],
+  ['--db-text-secondary on --db-surface', '94a3b8', '121212'],
+  ['--db-text-secondary on --db-surface-raised', '94a3b8', '1A1A1A'],
+  ['--text on --db-surface', 'E8E0D8', '242019'],
+  ['--db-gold on --db-jet-black', 'E8923A', '0A0A0A']
 ];
 for (const [name, fg, bg] of pairs) {
   const r = ratio(fg, bg);

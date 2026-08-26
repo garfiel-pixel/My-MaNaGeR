@@ -10,21 +10,54 @@ svg.ico use{fill:inherit;stroke:inherit;}
 
 /* ---- Design Tokens ---- */
 :root{
-  /* Light-first palette: crisp white cards on a cool-gray canvas, near-black
-     text, restrained high-contrast accents. Dark mode is an opt-in override
+  /* My MaNaGeR brand: warm orange-gold identity, warm off-white canvas,
+     restrained high-contrast accents. Dark mode is an opt-in override
      (body.dark-mode) — never the default presentation. */
-  --canvas:#f4f5f7;--card:#ffffff;--border:#e5e7eb;--text:#0f172a;--slate:#5a6b80;
-  --surface:#ffffff;       /* Level 1: work surfaces / cards / panels */
-  --surface-raised:#f8fafc; /* Level 2: focused / elevated surfaces */
-  --gold:#92400e;--green:#047857;--danger:#dc2626;--amber:#c2410c;--blue:#2563eb;
-  --purple:#8b5cf6;   /* DMAIC/quality accents */
-  --gold-rgb:146,64,14;    /* rgba(var(--gold-rgb),a) — tokenized gold fills (restrained) */
-  --amber-rgb:194,65,12;  /* rgba(var(--amber-rgb),a) — tokenized amber fills */
-  --purple-rgb:139,92,246;  /* rgba(var(--purple-rgb),a) — tokenized purple fills (AI badge) */
-  --on-gold:#ffffff;   /* foreground placed on gold surfaces (light) */
-  --on-primary:#ffffff; /* foreground on primary action surfaces */
-  --tile-bg:#f8fafc;    /* dashboard stat tiles (EVM etc.) */
-  --track-bg:#eef1f6;   /* progress-bar track wells */
+  /* -- Surface hierarchy -- */
+  --canvas:#F5EFE6;     /* warm off-white — Level 0 */
+  --sidebar:#FDFBF7;    /* very light warm — sidebar background */
+  --card:#ffffff;       /* crisp white — Level 1 cards */
+  --surface:#ffffff;    /* Level 1: work surfaces / cards / panels */
+  --surface-raised:#f8f5f0; /* Level 2: focused / elevated surfaces */
+  --border:#e5e0d8;     /* warm neutral border */
+  /* -- Text hierarchy -- */
+  --text:#333333;       /* body text */
+  --text-heading:#000000; /* headings — pure black */
+  --text-secondary:#555555; /* secondary text */
+  --text-muted:#666666; /* muted/supporting text */
+  --slate:#666666;
+  /* -- Brand (orange/gold = identity) -- */
+  --brand:#D96B27;      /* primary brand orange */
+  --brand-hover:#C25A1B; /* brand hover state */
+  --brand-subtle:rgba(217,107,39,0.08); /* subtle brand tint */
+  --brand-on:#ffffff;   /* foreground on brand surfaces */
+  --gold:#D96B27;       /* alias: gold = brand for backward compat */
+  --gold-rgb:217,107,39;
+  /* -- Accent cyan (secondary, restrained) -- */
+  --accent-cyan:#00BCD4;
+  --accent-cyan-subtle:rgba(0,188,212,0.08);
+  /* -- Semantic status -- */
+  --success:#2E7D32;    /* green = active/healthy */
+  --success-subtle:rgba(46,125,50,0.08);
+  --info:#1565C0;       /* blue = planning/informational */
+  --info-subtle:rgba(21,101,192,0.08);
+  --warning:#E65100;    /* orange = alert/attention */
+  --warning-subtle:rgba(230,81,0,0.08);
+  --danger:#C62828;     /* red = blocked/danger */
+  --danger-subtle:rgba(198,40,40,0.08);
+  --purple:#8b5cf6;     /* DMAIC/quality accents */
+  /* -- Legacy aliases (kept for backward compat, migrate to semantic) -- */
+  --green:#2E7D32;
+  --amber:#E65100;
+  --blue:#1565C0;
+  /* -- Foreground on brand -- */
+  --on-gold:#ffffff;
+  --on-primary:#ffffff;
+  /* -- Functional surfaces -- */
+  --tile-bg:#f8f5f0;
+  --track-bg:#e8e2da;
+  /* -- Premium gold accent -- */
+  --premium-gold:#FFE082;
   --radius:8px;
   /* MMGR-NEW-UI-CREATION-BRIEF §4.1 — Law of Nested Radii: outer = inner + padding */
   --radius-control:8px;   /* inner controls: buttons, inputs, rail links */
@@ -67,17 +100,46 @@ svg.ico use{fill:inherit;stroke:inherit;}
 
 /* ---- Dark Mode (opt-in only) ---- */
 body.dark-mode{
-  --canvas:#090a0f;--card:#12141c;--border:#222533;--text:#e2e8f0;--slate:#8494a7;
-  --surface:#12141c;       /* Level 1: work surfaces / cards / panels */
-  --surface-raised:#1a1d27; /* Level 2: focused / elevated surfaces */
-  --gold:#f59e0b;--green:#10b981;--danger:#ef4444;--amber:#d97706;--blue:#3b82f6;
-  --purple:#a78bfa;
-  --gold-rgb:245,158,11;
-  --amber-rgb:217,119,6;
-  --purple-rgb:167,139,250;
-  --on-gold:#0b0c10;
-  --on-primary:#0b0c10;
-  --tile-bg:rgba(0,0,0,.2);
+  /* Warm dark canvas — same My MaNaGeR identity, not cyan/neon */
+  --canvas:#1a1614;       /* warm near-black */
+  --sidebar:#1e1a17;      /* warm dark sidebar */
+  --card:#242019;         /* warm dark surface */
+  --surface:#242019;      /* Level 1: work surfaces / cards / panels */
+  --surface-raised:#2e2922; /* Level 2: focused / elevated surfaces */
+  --border:#3a342c;       /* warm dark border */
+  --text:#e8e0d8;         /* warm off-white text */
+  --text-heading:#f5f0eb;
+  --text-secondary:#c4b8a8;
+  --text-muted:#9a8e80;
+  --slate:#9a8e80;
+  /* Brand: muted gold-orange (not neon, not cyan) */
+  --brand:#E8923A;        /* muted gold-orange for dark */
+  --brand-hover:#F0A050;
+  --brand-subtle:rgba(232,146,58,0.12);
+  --brand-on:#1a1614;
+  --gold:#E8923A;
+  --gold-rgb:232,146,58;
+  /* Accent cyan: secondary only */
+  --accent-cyan:#4DD0E1;
+  --accent-cyan-subtle:rgba(77,208,225,0.10);
+  /* Semantic: green/amber/red/blue — same roles as light */
+  --success:#66BB6A;
+  --success-subtle:rgba(102,187,106,0.12);
+  --info:#64B5F6;
+  --info-subtle:rgba(100,181,246,0.12);
+  --warning:#FFB74D;
+  --warning-subtle:rgba(255,183,77,0.12);
+  --danger:#EF5350;
+  --danger-subtle:rgba(239,83,80,0.12);
+  --green:#66BB6A;
+  --amber:#FFB74D;
+  --blue:#64B5F6;
+  --purple:#b39ddb;
+  --purple-rgb:179,157,219;
+  --amber-rgb:255,183,77;
+  --on-gold:#1a1614;
+  --on-primary:#1a1614;
+  --tile-bg:rgba(255,255,255,.04);
   --track-bg:rgba(255,255,255,.06);
   /* Glass reads as white-frost over a dark canvas; rim is a specular highlight */
   --glass-blur:20px;
@@ -226,14 +288,14 @@ body.nav-open #nav-scrim{opacity:1;pointer-events:auto;}
 #nav-scrim{position:fixed;inset:0;background:rgba(0,22,25,.45);opacity:0;pointer-events:none;transition:opacity var(--tr);z-index:94;}
 body.nav-open #nav-scrim{opacity:1;pointer-events:auto;}
 #app-sidebar{position:fixed;top:var(--hdr-h,64px);left:0;bottom:0;width:240px;z-index:96;
-  background:var(--card);border-right:1px solid var(--border);
+  background:var(--sidebar);border-right:1px solid var(--border);
   transform:translateX(-105%);visibility:hidden;
   transition:transform var(--release-duration) var(--ease-ios),visibility var(--release-duration);
   box-shadow:0 12px 40px rgba(0,0,0,.18);
   display:flex;flex-direction:column;overflow-y:auto;}
 /* Rail head: same hamburger as the header button, bare icon (no box),
    rotated 90deg while the rail is open — one smooth spring (doctrine 3). */
-.sb-head{display:flex;align-items:center;justify-content:space-between;padding:14px 16px 10px;border-bottom:1px solid var(--border);margin-bottom:12px;flex-shrink:0;position:sticky;top:0;background:var(--card);z-index:1;}
+.sb-head{display:flex;align-items:center;justify-content:space-between;padding:14px 16px 10px;border-bottom:1px solid var(--border);margin-bottom:12px;flex-shrink:0;position:sticky;top:0;background:var(--sidebar);z-index:1;}
 .sb-title{display:inline-flex;align-items:center;gap:8px;font-size:.72rem;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--gold);}
 .sb-title .ico{font-size:.8rem;}
 .sb-close{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;
@@ -2181,17 +2243,17 @@ body.dark-mode .sync-suggest{background:rgba(245,158,11,.10);border-color:rgba(2
 .db-side,.db-hamb,.db-scrim,.db-metrics{display:none;}
 body.dark-mode.db-page{
   /* TIER 1 — primitives (raw values) */
-  --db-gold:#f59e0b;            /* muted gold accent — same identity as light mode */
-  --db-gold-soft:#fbbf24;       /* lighter gold for secondary use */
-  --db-jet-black:#0A0A0A;       /* page canvas (owner override of #001619; not #000 so shadows/elevation keep depth) */
-  --db-muted-slate:#94a3b8;     /* muted secondary text — neutral slate */
+  --db-gold:#E8923A;            /* muted gold-orange — warm dark identity */
+  --db-gold-soft:#F0A050;       /* lighter gold for secondary use */
+  --db-jet-black:#1a1614;       /* warm dark canvas */
+  --db-muted-slate:#9a8e80;     /* warm muted secondary text */
   /* TIER 2 — semantic (dashboard-scoped; --db- prefix so nothing can leak) */
   --db-canvas:var(--db-jet-black);
-  --db-surface:#121212;
-  --db-surface-raised:#1a1a1a;
+  --db-surface:#242019;
+  --db-surface-raised:#2e2922;
   --db-accent:var(--db-gold);
   --db-accent-soft:var(--db-gold-soft);
-  --db-border:#262626;
+  --db-border:#3a342c;
   --db-text-secondary:var(--db-muted-slate);
   background:var(--db-canvas);
   color:var(--text);            /* #e2e8f0 — 16.06:1 on canvas, 15.20:1 on surface (AAA) */

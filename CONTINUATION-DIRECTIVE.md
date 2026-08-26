@@ -2107,5 +2107,9 @@ Owner to annotate SECURITY-FIXES-PLAN.txt with implementation details, then agen
 
 ---
 
+**2026-08-26 — Session: QA HARNESS FIX — self-referencing service binding breaks local dev.** (1) ROOT CAUSE: all 12 test harnesses (qa-cloud-phase1/2, qa-cloud-codes-delete, qa-cloud-import, qa-email-auth, qa-presence, qa-reviews, qa-rank9-api, qa-t9-adoption, qa-prefs-roundtrip, qa-offline-copies, qa-ai-badge-e2e) started their own wrangler dev using the default `wrangler.jsonc`, which has a self-referencing service binding (`INTERNAL_AUTH` -> `my-manager`) plus AI, Vectorize, and Durable Object bindings that break local dev. The SPA fallback served `index.html` for `GET /api/health` (faking a passing health check), but `POST /api/cloud/projects` got a 404 because the worker never loaded. (2) FIX: all 12 harnesses now pass `--config wrangler.ci.jsonc` to every `wrangler dev`, `wrangler d1 migrations apply`, and `wrangler d1 execute` call. `wrangler.ci.jsonc` strips the problematic bindings while keeping D1, R2, KV, Analytics, and Rate Limiter. Deployed version `a1fa5155-d106-443f-ae67-ca5adf9b8b22`. POST-DEPLOY LIVE VERIFY: /api/health 200. REMAINING (unchanged): buy + verify mymanager.app in Resend + flip RESEND_FROM_EMAIL; owner eyeball of the new front page + password UI; owner walks the live cloud-first flows; frontend split (mmgr-app.js 2,265 / mmgr-cloud.js 1,771).
+
+---
+
 *This file is the working source of truth for continuing this project across sessions.
 Keep it updated. Do not let a session end without updating the STATUS LOG.*

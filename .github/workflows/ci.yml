@@ -87,21 +87,29 @@ jobs:
       - name: "T2: Start wrangler dev (background)"
         id: wrangler-start
         run: |
+          # Run from a clean staging dir so wrangler's file watcher
+          # doesn't detect dist/, .wrangler/ state, or log changes.
+          STAGING=/tmp/mmgr-ci-staging
+          rm -rf $STAGING && mkdir -p $STAGING
+          cp worker.js wrangler.ci.jsonc package.json $STAGING/
+          cp -r src/ migrations/ $STAGING/
+          ln -s ${{ github.workspace }}/node_modules $STAGING/node_modules
+          cp -r css/ js/ images/ $STAGING/
+          cp *.html sw.js manifest.webmanifest favicon.png high-contrast-icon.png primary-icon.png $STAGING/ 2>/dev/null || true
+          cd $STAGING
           npx wrangler dev --config wrangler.ci.jsonc --port 8787 --ip 127.0.0.1 > /tmp/wrangler.log 2>&1 &
           WPID=$!
+          cd ${{ github.workspace }}
           echo "Wrangler PID: $WPID"
-          sleep 10
-          # Show wrangler output for debugging
+          sleep 8
           echo "--- Wrangler startup log ---"
           cat /tmp/wrangler.log
           echo "--- End wrangler log ---"
-          # Check if process is still alive
           if ! kill -0 $WPID 2>/dev/null; then
             echo "ERROR: wrangler dev exited prematurely"
             exit 1
           fi
-          # Wait for port with retry
-          for i in $(seq 1 20); do
+          for i in $(seq 1 15); do
             if curl -sf http://127.0.0.1:8787/api/health > /dev/null 2>&1; then
               echo "Wrangler dev is ready on 127.0.0.1:8787"
               break
@@ -109,7 +117,6 @@ jobs:
             echo "Attempt $i: waiting..."
             sleep 2
           done
-          # Final check
           curl -sf http://127.0.0.1:8787/api/health || { echo "FATAL: wrangler not responding"; cat /tmp/wrangler.log; exit 1; }
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -210,9 +217,10 @@ jobs:
         run: |
           echo "--- Final wrangler log ---"
           cat /tmp/wrangler.log 2>/dev/null || true
-          pkill -f "wrangler dev" || true
+          pkill -f "wrangler" || true
           sleep 2
           pkill -9 -f "wrangler" || true
+          rm -rf /tmp/mmgr-ci-staging 2>/dev/null || true
 
       # ── CI Summary ──────────────────────────────────────────────────
       - name: CI Summary

@@ -60,10 +60,19 @@ jobs:
       # ── All Tier 2 scripts (with wrangler dev) ────────────────────
       - name: "Start wrangler dev"
         run: |
+          STAGING=/tmp/mmgr-ci-staging
+          rm -rf $STAGING && mkdir -p $STAGING
+          cp worker.js wrangler.ci.jsonc package.json $STAGING/
+          cp -r src/ migrations/ $STAGING/
+          ln -s ${{ github.workspace }}/node_modules $STAGING/node_modules
+          cp -r css/ js/ images/ $STAGING/
+          cp *.html sw.js manifest.webmanifest favicon.png high-contrast-icon.png primary-icon.png $STAGING/ 2>/dev/null || true
+          cd $STAGING
           npx wrangler dev --config wrangler.ci.jsonc --port 8787 --ip 127.0.0.1 > /tmp/wrangler.log 2>&1 &
           WPID=$!
+          cd ${{ github.workspace }}
           echo "Wrangler PID: $WPID"
-          sleep 10
+          sleep 8
           echo "--- Wrangler startup log ---"
           cat /tmp/wrangler.log
           echo "--- End wrangler log ---"
@@ -71,7 +80,7 @@ jobs:
             echo "ERROR: wrangler dev exited prematurely"
             exit 1
           fi
-          for i in $(seq 1 20); do
+          for i in $(seq 1 15); do
             if curl -sf http://127.0.0.1:8787/api/health > /dev/null 2>&1; then
               echo "Wrangler dev is ready on 127.0.0.1:8787"
               break
@@ -164,9 +173,10 @@ jobs:
         run: |
           echo "--- Final wrangler log ---"
           cat /tmp/wrangler.log 2>/dev/null || true
-          pkill -f "wrangler dev" || true
+          pkill -f "wrangler" || true
           sleep 2
           pkill -9 -f "wrangler" || true
+          rm -rf /tmp/mmgr-ci-staging 2>/dev/null || true
 
       # ── Nightly summary ────────────────────────────────────────────
       - name: Nightly Summary

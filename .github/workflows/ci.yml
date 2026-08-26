@@ -87,7 +87,7 @@ jobs:
       - name: "T2: Start wrangler dev (background)"
         id: wrangler-start
         run: |
-          npx wrangler dev --port 8787 --no-bundle --log-level error &
+          npx wrangler dev --port 8787 --log-level error &
           sleep 8
           for i in 1 2 3 4 5; do
             curl -sf http://localhost:8787/api/health && break

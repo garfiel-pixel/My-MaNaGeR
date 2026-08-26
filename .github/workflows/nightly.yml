@@ -60,12 +60,10 @@ jobs:
       # ── All Tier 2 scripts (with wrangler dev) ────────────────────
       - name: "Start wrangler dev"
         run: |
-          npx wrangler dev --port 8787 &
-          sleep 8
-          for i in 1 2 3 4 5 6 7 8; do
-            curl -s http://localhost:8787/api/health && break
-            sleep 3
-          done
+          nohup npx wrangler dev --port 8787 --log-level error > /dev/null 2>&1 &
+          echo "Waiting for Wrangler to spin up..."
+          timeout 30 bash -c 'until echo > /dev/tcp/localhost/8787; do sleep 1; done' || exit 1
+          curl -sf http://localhost:8787/api/health
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -147,7 +145,10 @@ jobs:
 
       - name: "Stop wrangler dev"
         if: always()
-        run: pkill -f "wrangler dev" || true
+        run: |
+          pkill -f "wrangler dev" || true
+          sleep 2
+          pkill -9 -f "wrangler" || true
 
       # ── Nightly summary ────────────────────────────────────────────
       - name: Nightly Summary

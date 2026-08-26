@@ -84,17 +84,22 @@ jobs:
         run: node tools/verify-dynamic-labels.cjs
 
       # ── TIER 2: Needs wrangler dev (D1/R2 emulation) ────────────────
+      - name: "T2: Pre-bundle worker for CI"
+        run: |
+          # Pre-bundle worker.js + all imports into a single file so
+          # --no-bundle works (workerd can't resolve bare ESM imports).
+          npx esbuild worker.js --bundle --platform=node --format=esm \
+            --external:node_modules \
+            --outfile=worker.ci.js 2>&1 | tail -3
+          echo "worker.ci.js ready ($(wc -c < worker.ci.js) bytes)"
+
       - name: "T2: Start wrangler dev (background)"
         id: wrangler-start
         run: |
-          # --no-bundle skips esbuild: no output files = no watcher reload loop.
-          # workerd resolves ESM imports natively from source files on disk.
-          # --persist-to keeps Miniflare state outside the watched directory.
           rm -rf dist/ .wrangler/
           npx wrangler dev --config wrangler.ci.jsonc --no-bundle --port 8787 --ip 127.0.0.1 --persist-to /tmp/mmgr-wrangler-state > /tmp/wrangler.log 2>&1 &
           WPID=$!
           echo "Wrangler PID: $WPID"
-          # Give server time to start (no esbuild = fast startup)
           for i in $(seq 1 30); do
             if curl -sf http://127.0.0.1:8787/api/health > /dev/null 2>&1; then
               echo "Wrangler dev is ready on 127.0.0.1:8787"

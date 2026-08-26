@@ -58,6 +58,13 @@ jobs:
         run: node tools/verify-dynamic-labels.cjs
 
       # ── All Tier 2 scripts (with wrangler dev) ────────────────────
+      - name: "Pre-bundle worker for CI"
+        run: |
+          npx esbuild worker.js --bundle --platform=node --format=esm \
+            --external:node_modules \
+            --outfile=worker.ci.js 2>&1 | tail -3
+          echo "worker.ci.js ready ($(wc -c < worker.ci.js) bytes)"
+
       - name: "Start wrangler dev"
         run: |
           rm -rf dist/ .wrangler/

@@ -337,6 +337,59 @@ var MMGR = window.MMGR || {};
     if (ns.Dmaic && ns.Dmaic.renderSignal) ns.Dmaic.renderSignal();
     // EVM (feature 4)
     if (ns.Evm && ns.Evm.render) ns.Evm.render();
+    // ---- Attention card (UI-UX doc §7.1): items needing immediate action ----
+    const attnEl = $('attention-body');
+    if (attnEl) {
+      const attnItems = [];
+      if (overdue > 0) attnItems.push({ label: overdue + ' task' + (overdue > 1 ? 's' : '') + ' overdue', cls: 'br' });
+      if (blocked > 0) attnItems.push({ label: blocked + ' task' + (blocked > 1 ? 's' : '') + ' blocked', cls: 'br' });
+      if (issues > 0) attnItems.push({ label: issues + ' live issue' + (issues > 1 ? 's' : ''), cls: 'br' });
+      if (atRisk > 0) attnItems.push({ label: atRisk + ' task' + (atRisk > 1 ? 's' : '') + ' due soon', cls: 'ba' });
+      const expiringCompliance = (ns.Stakeholders && ns.Stakeholders.getExpiringCompliance)
+        ? ns.Stakeholders.getExpiringCompliance(s.stakeholders || [], 30).length : 0;
+      if (expiringCompliance > 0) attnItems.push({ label: expiringCompliance + ' compliance item' + (expiringCompliance > 1 ? 's' : '') + ' expiring', cls: 'ba' });
+      const attnCard = $('attention-card');
+      if (attnCard) attnCard.classList.toggle('has-items', attnItems.length > 0);
+      if (attnItems.length === 0) {
+        attnEl.innerHTML = '<div class="fb-sm"><span style="color:var(--green)">Everything looks clear.</span><span class="badge bg">OK</span></div>';
+      } else {
+        attnEl.innerHTML = attnItems.map(function(it) {
+          return '<div class="fb-sm"><span>' + it.label + '</span><span class="badge ' + it.cls + '">!</span></div>';
+        }).join('');
+      }
+    }
+
+    // ---- This Week card (UI-UX doc §7.3): planned / completed / carryover ----
+    const twEl = $('this-week-body');
+    if (twEl) {
+      if (total === 0) {
+        twEl.innerHTML = '<div class="txt-sl">No tasks scheduled this week.</div>';
+      } else {
+        const now = new Date();
+        const weekStart = new Date(now);
+        weekStart.setDate(now.getDate() - now.getDay());
+        weekStart.setHours(0, 0, 0, 0);
+        const weekEnd = new Date(weekStart);
+        weekEnd.setDate(weekStart.getDate() + 7);
+        const thisWeekPlanned = tasks.filter(function(t) {
+          if (t.status === 'completed' || !t.endDate) return false;
+          const d = new Date(t.endDate);
+          return d >= weekStart && d < weekEnd;
+        }).length;
+        const thisWeekDone = tasks.filter(function(t) {
+          if (t.status !== 'completed' || !t.endDate) return false;
+          const d = new Date(t.endDate);
+          return d >= weekStart && d < weekEnd;
+        }).length;
+        const carryover = tasks.filter(function(t) {
+          return t.status !== 'completed' && t.endDate && new Date(t.endDate) < weekStart;
+        }).length;
+        twEl.innerHTML = '<div class="fb-sm"><span>Planned this week</span><span class="badge bo">' + thisWeekPlanned + '</span></div>' +
+          '<div class="fb-sm"><span>Completed this week</span><span class="badge bg">' + thisWeekDone + '</span></div>' +
+          '<div class="fb-sm"><span>Carryover (past due)</span><span class="badge ' + (carryover > 0 ? 'br' : 'bs') + '">' + carryover + '</span></div>';
+      }
+    }
+
     // Defer non-critical below-the-fold sub-renderers so the initial paint
     // lands fast. requestAnimationFrame yields to the browser's paint cycle
     // before running the analytics panels (Today's Focus, Lookahead, PPC,

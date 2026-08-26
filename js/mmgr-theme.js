@@ -1,172 +1,182 @@
 /* ============================================================
-   My MaNaGeR , Device Theme Helper (palette + dark)
+   My MaNaGeR , Device Theme Helper (Light / Dark / System)
    ------------------------------------------------------------
-   THEME-SYSTEM-AND-MOBILE-UI-ACTION-PLAN §2.3/§4.1 (2026-08-11)
+   Single early-load helper shared by EVERY page (app, project,
+   admin, launcher, and marketing pages). Applies the saved
+   theme before first paint. External file on purpose — covered
+   by CSP script-src 'self' with zero inline-hash churn.
 
-   Single early-load helper shared by EVERY page (app, project, admin,
-   launcher, and the four marketing pages). It applies the saved theme
-   before first paint , external file on purpose, so it is covered by the
-   CSP script-src 'self' policy with zero inline-hash churn.
+   One axis: appearance mode
+     'light'  — warm gold accent on clean light interface
+     'dark'   — muted gold accent on professional dark interface
+     'system' — follow OS prefers-color-scheme (default)
 
-   Two independent axes:
-     - palette  : 'default' (current gold system) | 'cyan' (fluorescent blue)
-                  -> <html data-theme="...">   (storage key: mmgr_palette)
-     - dark     : body.dark-mode               (storage key: mmgr_theme,
-                  existing device slot, values 'dark' | 'light' , UNCHANGED
-                  contract; the plan's "mmgr_theme = palette" naming would
-                  have clobbered the shipped dark toggle, so the palette
-                  lives in its own slot).
+   Storage key: mmgr_theme = 'light' | 'dark' | 'system'
+   (backward-compatible: existing 'dark'/'light' values work;
+    old 'mmgr_palette' key is retired.)
 
-   Persistence order (plan §2.3):
-     1. Backend , PUT /api/cloud/prefs/theme (session-gated, R2-backed)
-        whenever the user picks a palette on an app page (script tag
-        carries data-sync="1"); GET is pulled once per load once a device
-        has synced (mmgr_palette_backend flag) so the signed-in account's
-        preference follows the user across devices.
-     2. localStorage , mmgr_palette / mmgr_theme cache; applies instantly,
-        works offline.
-     3. Default , 'default' + light.
+   CSS mechanics:
+     - body.dark-mode is toggled when effective mode is dark
+     - :root in mmgr.css defines light tokens
+     - body.dark-mode in mmgr.css overrides with dark tokens
+     - No palette switching — one brand, two appearances
 
-   FUTURE THEME RECIPE (plan §8): add a 'name' to KNOWN below, a matching
-   [data-theme="name"] CSS block in mmgr.css + marketing.css, a
-   <button data-pal="name"> in the pickers, and accept the string in the
-   worker endpoint. No other code changes.
+   Persistence:
+     1. Backend (app pages with data-sync="1") when available
+     2. localStorage cache — instant, works offline
+     3. Default — system (follows OS preference)
+
+   NO-EMOJI HARD GATE (owner 2026-08-13): zero emoji in any
+   served page or JS string that renders into a page. Theme
+   picker uses SVG icons only.
    ============================================================ */
 (function () {
   'use strict';
 
-  var PAL_KEY = 'mmgr_palette';         // 'default' | 'cyan' (palette slot)
-  var DARK_KEY = 'mmgr_theme';          // 'dark' | 'light' (existing slot)
-  var BACK_FLAG_KEY = 'mmgr_palette_backend'; // '1' after a successful backend round-trip
-  var KNOWN = { 'default': true, 'cyan': true };
+  var MODE_KEY = 'mmgr_theme';       // 'light' | 'dark' | 'system'
+  var BACK_KEY = 'mmgr_theme_backend'; // '1' after a successful backend round-trip
+  var KNOWN = { 'light': 1, 'dark': 1, 'system': 1 };
 
-  // data-sync="1" on the <script> tag enables the backend path (app pages).
+  // data-sync="1" on the <script> tag enables the backend path.
   var SYNC = !!(document.currentScript && document.currentScript.getAttribute('data-sync') === '1');
 
-  function read(key) { try { return localStorage.getItem(key); } catch (e) { return null; } }
-  function write(key, val) { try { localStorage.setItem(key, val); } catch (e) {} }
+  function read(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+  function write(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
 
-  function currentPalette() {
-    var v = read(PAL_KEY);
-    return KNOWN[v] ? v : 'default';
+  /** Current stored mode (default: system). */
+  function currentMode() {
+    var v = read(MODE_KEY);
+    return KNOWN[v] ? v : 'system';
   }
-  function isDark() { return read(DARK_KEY) === 'dark'; }
 
-  // theme-color sync per palette/dark (browser chrome bar; plan Phase D).
-  var THEME_COLORS = {
-    'default': { light: '#D4AF37', dark: '#090a0f' },
-    'cyan':    { light: '#0f766e', dark: '#001619' }
-  };
-  function syncThemeColor(pal, dark) {
-    var c = (THEME_COLORS[pal] || THEME_COLORS['default'])[dark ? 'dark' : 'light'];
+  /** Whether OS dark preference is active. */
+  function osDark() {
+    return !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  }
+
+  /** Effective dark state: dark when mode=dark, or mode=system + OS dark. */
+  function isDark() {
+    var mode = currentMode();
+    return mode === 'dark' || (mode === 'system' && osDark());
+  }
+
+  /** Sync <meta name="theme-color"> to the browser chrome bar. */
+  function syncThemeColor(dark) {
+    var c = dark ? '#090a0f' : '#f4f5f7';
     var meta = document.querySelector('meta[name="theme-color"]');
-    if (!meta) {
-      meta = document.createElement('meta');
-      meta.name = 'theme-color';
-      document.head.appendChild(meta);
-    }
+    if (!meta) { meta = document.createElement('meta'); meta.name = 'theme-color'; document.head.appendChild(meta); }
     meta.setAttribute('content', c);
   }
 
-  // Reflect the palette onto the root element + every picker on the page.
-  function apply(pal, opts) {
-    opts = opts || {};
-    pal = KNOWN[pal] ? pal : 'default';
-    var root = document.documentElement;
-    if (root) root.setAttribute('data-theme', pal);
-    if (opts.dark !== undefined && document.body) {
-      document.body.classList.toggle('dark-mode', !!opts.dark);
+  /**
+   * Apply the current theme mode.
+   * Sets body.dark-mode class + updates picker aria states + syncs glass.
+   */
+  function apply() {
+    var dark = isDark();
+    var mode = currentMode();
+    if (document.body) {
+      document.body.classList.toggle('dark-mode', dark);
     }
+    // Update all theme-mode picker buttons on the page.
     var btns = document.querySelectorAll('.pal-btn[data-pal]');
     for (var i = 0; i < btns.length; i++) {
-      btns[i].setAttribute('aria-pressed', btns[i].getAttribute('data-pal') === pal ? 'true' : 'false');
+      var match = btns[i].getAttribute('data-pal') === mode;
+      btns[i].setAttribute('aria-pressed', match ? 'true' : 'false');
     }
-    syncThemeColor(pal, opts.dark !== undefined ? !!opts.dark : isDark());
-    return pal;
+    syncThemeColor(dark);
+    return mode;
   }
 
-  function pushBackend(pal) {
+  /** Push current mode to the cloud backend (app pages only). */
+  function pushBackend() {
     if (!SYNC) return;
     try {
       fetch('/api/cloud/prefs/theme', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ palette: pal, dark: isDark() })
+        body: JSON.stringify({ palette: 'default', dark: isDark() })
       }).then(function (r) {
-        if (r.ok) write(BACK_FLAG_KEY, '1');
-      }).catch(function () { /* offline / no worker , localStorage remains the cache */ });
-    } catch (e) { /* ignore */ }
+        if (r.ok) write(BACK_KEY, '1');
+      }).catch(function () {});
+    } catch (e) {}
   }
 
+  /** Pull saved mode from the cloud backend (app pages only). */
   function pullBackend() {
     if (!SYNC) return;
-    // RACE GUARD: if the user picked a palette in this session before the GET
-    // resolved, the stored backend value is stale relative to their choice , 
-    // skip the pull entirely (their pick will be pushed by setPalette and wins).
     if (_userTouched) return;
     try {
       fetch('/api/cloud/prefs/theme', { headers: { 'Accept': 'application/json' } })
         .then(function (r) { return r.ok ? r.json() : null; })
         .then(function (d) {
           if (!d || !d.ok || !d.theme) return;
-          if (_userTouched) return; // user picked mid-flight , their choice wins
-          var pal = KNOWN[d.theme.palette] ? d.theme.palette : null;
-          if (pal === null && typeof d.theme.dark !== 'boolean') return;
-          if (pal !== null) write(PAL_KEY, pal);
-          write(DARK_KEY, d.theme.dark ? 'dark' : 'light');
-          write(BACK_FLAG_KEY, '1');
-          apply(pal === null ? currentPalette() : pal, { dark: !!d.theme.dark });
+          if (_userTouched) return;
+          // Backend may still send old palette format — map to mode.
+          var dark = !!d.theme.dark;
+          var mode = dark ? 'dark' : 'light';
+          write(MODE_KEY, mode);
+          write(BACK_KEY, '1');
+          apply();
           syncGlass();
-        }).catch(function () { /* backend unreachable , keep local cache */ });
-    } catch (e) { /* ignore */ }
+        }).catch(function () {});
+    } catch (e) {}
   }
 
-  // The user made a choice in THIS session , the backend pull must never
-  // clobber it (a stale GET could resolve after a fresh click and overwrite
-  // the pick; see pullBackend's guard below).
   var _userTouched = false;
 
-  // Keep the premium-glass shader in step with palette changes (it has its own
-  // uCyan uniform, refreshed via MMGR.Glass.refreshTheme , the dark toggle in
-  // mmgr-app.js already refreshes it on light/dark flips).
+  /** Keep premium-glass shader in step. */
   function syncGlass() {
-    // Glass.refreshTheme is internally guarded (_state.active && _state.uniforms)
-    // and existence-checked here, so there is no throw path.
     var G = window.MMGR && window.MMGR.Glass;
     if (G && G.refreshTheme) G.refreshTheme();
   }
 
-  function setPalette(pal) {
-    pal = KNOWN[pal] ? pal : 'default';
+  /**
+   * Set the theme mode and persist it.
+   * @param {string} mode - 'light' | 'dark' | 'system'
+   */
+  function setMode(mode) {
+    mode = KNOWN[mode] ? mode : 'system';
     _userTouched = true;
-    write(PAL_KEY, pal);
-    apply(pal, { dark: isDark() });
+    write(MODE_KEY, mode);
+    apply();
     syncGlass();
-    pushBackend(pal);
-    return pal;
+    pushBackend();
   }
 
-  // One delegated listener serves every picker on the page (no inline JS,
-  // no CSP hash churn , the buttons carry data-pal, not data-action).
+  /** Listen for OS preference changes when mode is 'system'. */
+  function watchSystemPreference() {
+    if (!window.matchMedia) return;
+    var mq = window.matchMedia('(prefers-color-scheme: dark)');
+    var handler = function () {
+      if (currentMode() === 'system') apply();
+    };
+    if (mq.addEventListener) { mq.addEventListener('change', handler); }
+    else if (mq.addListener) { mq.addListener(handler); }
+  }
+
+  // --- Event delegation: one listener serves every picker on the page ---
   document.addEventListener('click', function (e) {
     var b = e.target && e.target.closest ? e.target.closest('[data-pal]') : null;
     if (!b) return;
     e.preventDefault();
-    setPalette(b.getAttribute('data-pal'));
+    setMode(b.getAttribute('data-pal'));
   });
 
-  // Boot: apply the saved theme instantly (pre-paint), then let the backend
-  // override once per load on devices that have synced before. On pages that
-  // load this helper in <head> (the four marketing pages) document.body does
-  // not exist yet, so the dark-mode class is applied again once the DOM is
-  // ready , otherwise body.dark-mode would never engage there.
-  apply(currentPalette(), { dark: isDark() });
+  // --- Boot ---
+  apply();
+  // On pages where the script loads in <head>, body doesn't exist yet.
+  // Re-apply once DOM is ready so body.dark-mode engages on marketing pages.
   if (!document.body) {
     document.addEventListener('DOMContentLoaded', function () {
-      apply(currentPalette(), { dark: isDark() });
+      apply();
+      watchSystemPreference();
     });
+  } else {
+    watchSystemPreference();
   }
-  if (read(BACK_FLAG_KEY) === '1') {
+  // Pull from backend once per load (if previously synced).
+  if (read(BACK_KEY) === '1') {
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', pullBackend);
     } else {
@@ -174,9 +184,10 @@
     }
   }
 
+  // --- Public API ---
   window.MMGRTheme = {
-    get: currentPalette,
-    set: setPalette,
+    getMode: currentMode,
+    setMode: setMode,
     isDark: isDark,
     apply: apply
   };

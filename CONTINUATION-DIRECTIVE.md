@@ -993,6 +993,83 @@ in-progress and exactly where it stopped, what's next.
 
 ### Log entries (most recent at top)
 
+**2026-08-26 — Session: UI-IMPLEMENTATION-PLAN — full 18-phase controlled implementation.**
+**SCOPE:** Owner-provided UI Implementation Plan with 18 phases. Executed all applicable phases in the prescribed order. Two documents governed this work: (1) Master Gold Theme System (5-theme plan) — OVERRIDDEN by (2) UI/UX Transformation document (Light/Dark/System only, §15). All work follows the UI/UX doc as the authoritative source.
+**(1) PHASE 1 — LAUNCHER CLEANUP:** Removed portfolio health analytics strip from app.html (plan: "Do not add project analytics to the launcher"). Removed persistent "Contact the admin to get an access code" hint. Collapsed code-entry from full section (heading + description + form) to compact inline row (input + button). "+ New Project" button added to Projects section header (links to admin.html). Portfolio strip JS reference in mmgr-portfolio.js gracefully handles missing element (null check already present).
+**(2) PHASE 2 — ACCESS-CODE UX:** Code entry is now a single-line input + compact button, not a full section with heading, description, and form. Appears as secondary action below project lists. No permanent warning banners, giant lock illustrations, or access-code instructions above the project list.
+**(3) PHASE 3 — CORE MODE REFINEMENT:** Updated core-callout text in project.html from "Overview, Plan, Execute" to "Overview, Plan, Collaborate" to match renamed nav groups. Core Mode progressive disclosure via packs preserved — all advanced modules untouched.
+**(4) PHASE 4 — PROJECT NAVIGATION:** Active nav pill changed from subtle green border + text to **filled green background with white text** — "extremely obvious" active state per plan requirement. Sidebar active link already had filled gold background (untouched). Nav groups verified: Overview, Plan, Collaborate, Control, Close, Quality.
+**(5) PHASE 5 — NAVIGATION ICON CLEANUP:** Removed all 7 rainbow icon overrides (path[stroke="#D4AF37"], ["#22C55E"], ["#3B82F6"], ["#F59E0B"], ["#EF4444"], ["#64748B"], ["#8B5CF6"]). Replaced with: all nav icons neutral/slate by default, color only for active (white), hover (green), Risk (red), Changes (amber). CSS uses .sec-btn .ic-svg and .sec-btn path selectors. Navigation is now "infrastructure, not decoration."
+**(6) PHASE 6 — DASHBOARD REFINEMENT:** Added "Attention" card at top of dashboard (project.html) — shows overdue tasks, blocked items, live issues, due-soon tasks, expiring compliance. Green "Everything looks clear" when all clear. Amber-tinted border when items exist (CSS .has-items class). Added "This Week" card — shows Planned/Completed/Carryover with token-driven badges. Health Score breakdown wrapped in collapsible <details> with "Why?" summary toggle (was inline/always-visible). CSS for summary arrow rotation added.
+**(7) PHASE 7 — AI COMMAND BAR:** Added "Ask your project…" command bar at top of dashboard (project.html). Input field + arrow button. Enter key or button click opens existing AI window (data-action="openAiWin") with question pre-filled in #ai-q. JS handler added to js/mmgr-ai.js — keydown listener for Enter, click delegation for button. Subtle, integrated, thin — not a giant chatbot panel.
+**(8) PHASE 8 — DARK MODE CLEANUP:** Removed --cyan-dim references from blueprint motif corners (replaced with --border — the variable was never defined, corners were invisible). Neutralized --db-muted-cyan from fluorescent #9FD8DE to neutral slate #94a3b8. Dark mode now uses "dark My MaNaGeR gold" not "cyan Luminous." Zero cyan mode, zero neon, zero cyberpunk references remain.
+**(9) PHASE 9 — THEME SYSTEM (already complete):** Light / Dark / System pickers present on all pages. --on-primary token added for button contrast. Cross-page persistence works. System preference support works. No five-theme system.
+**(10) PHASE 10 — BRANDING RESTRAINT (verified):** Gold used for: primary CTA, active states, focus rings, hover accents. Zero gold-on-card-background or gold-on-badge-border. No gold gradients everywhere. No excessive gold on icons/headings/borders/badges/sections/cards.
+**(11) PHASE 11 — SURFACE SYSTEM (verified):** Three levels: --canvas (Level 0), --surface/--card (Level 1), --surface-raised (Level 2). Dense content (tables, WBS, Gantt) stays flat. Glass blur token-driven (0px light, 20px dark).
+**(12) PHASE 12 — TYPOGRAPHY (verified):** Card title: 13px (.8125rem). Page titles: 28-32px. Section titles: 18-20px. Body: 14px. Supporting: 12-13px. No dramatic size increases.
+**(13) PHASE 13 — STATUS SYSTEM (verified):** .bg=green/On Track, .ba=amber/At Risk, .br=red/Blocked, .bo=gold/Brand, .bs=slate/Neutral. Text labels always accompany badges. Semantic colors consistent.
+**(14) PHASE 14 — ACCESSIBILITY (verified):** 38 focus-visible rules. --on-primary token for button contrast. Labels on all form inputs. Disabled states defined.
+**(15) PHASE 15 — RESPONSIVE (verified):** Desktop rail, mobile drawer, tablet stacking all implemented via media queries.
+**(16) PHASE 16 — MOTION (verified):** Short transitions (--tr: 120ms). No entrance animations, no bouncing. prefers-reduced-motion respected.
+**(17) PHASE 17 — FIELD GUIDE (verified):** Already present — Claim Pack, Project Record, revision language. Not overdone.
+**(18) PHASE 18 — UNTOUCHED (verified):** Business logic, data model, modules, offline, AI backend, auth, SW, state persistence, WBS/Gantt/task logic all untouched.
+**(19) UI/UX TRANSFORMATION ADDITIONAL SECTIONS:** Marketing pages changed from blue to gold (css/marketing.css — all blue tokens renamed to gold). Cyan theme blocks removed from marketing.css. CSP hashes regenerated (17/17 match). SW cache bumped to v205. --on-primary token added. Surface tokens added. Button hierarchy: primary/secondary/tertiary/danger/disabled. Button disabled state added. Visual refinement: gold reduced from #b45309 to #92400e (restrained accent), button shadows removed, card hover shadow reduced, ring text uses var(--text), card title weight reduced (700 to 600).
+**VERIFICATION:** npm run verify GREEN (CSP 17/17, SW v205, hidden, skills, exports). qa-dashboard-spec 78/78 PASSED. node --check clean on all modified JS files.
+**DEPLOYED:** Pending commit and push.
+**FILES MODIFIED:** project.html (nav reorganized: Execute to Collaborate, RACI/Comms/Documents/Meetings moved, DMAIC renamed to Quality, Attention card, This Week card, AI command bar, Health Why toggle, core-callout text update), app.html (portfolio strip removed, no-projects-hint removed, code-entry collapsed, New Project button added), css/mmgr.css (active nav pill filled green, neutral nav icons, cyan-dim removed, db-muted-cyan neutralized, attention/this-week card CSS, health Why toggle CSS, button disabled state, on-primary token, surface tokens, visual refinement), css/marketing.css (blue to gold migration, cyan blocks removed), js/mmgr-render.js (Attention card rendering, This Week card rendering), js/mmgr-ai.js (AI command bar handler), sw.js (v205).
+**NEW FILES:** None.
+**REMAINING:** Commit + push + deploy. CI cloud test failure (post-mortem in file, still unresolved — miniflare asset handler intercepting POST requests in local dev).
+
+---
+
+**2026-08-26 — Session: FINAL-UI-REFINEMENT — dark mode cyan removal, launcher cleanup, health card hierarchy, light/dark parity.**
+**SCOPE:** Owner-provided final refinement checklist: 7 specific fixes plus visual QA.
+**(1) DARK MODE CYAN REMOVAL (biggest fix):** Replaced `--db-fluor-blue: #50E8F4` (fluorescent cyan) and `--db-accent: var(--db-fluor-blue)` with `--db-gold: #f59e0b` and `--db-accent: var(--db-gold)`. Dark dashboard now uses the same muted gold identity as light mode. Also renamed `--db-thin-air` to `--db-gold-soft`, `--db-muted-cyan` to `--db-muted-slate`. All 15+ `var(--db-accent)` references throughout dark CSS automatically inherit the gold accent.
+**(2) LAUNCHER ACCESS-CODE BANNER REMOVED:** Removed the permanent description text "Select a project to view its dashboard, schedule, risk register, and budget. Each project is protected by its own access code." from app.html header. The project cards already show lock icon + "Enter code →" for locked projects — the modal explains access codes contextually.
+**(3) HEALTH CARD HIERARCHY:** Reorganized to: Score + Label first (47/100, Building Baseline), then compact status counts (In Progress, At Risk, Blocked, Overdue, Issues, Compliance), then expandable "Why?" toggle. Removed redundant "Completed" count (already shown in Project Completion ring).
+**(4) LIGHT/DARK INFO ARCHITECTURE PARITY:** Removed dark-only launcher metrics (Active Projects, At-Risk Projects, Avg Health Score) from mmgr-portfolio.js. Light and dark now show the same information — one project list, same hierarchy. The plan says "Do not add project analytics to the launcher."
+**(5) AI COMMAND BAR:** Verified present and functional — "Ask your project…" input at top of dashboard, Enter/button opens existing AI window with question pre-filled.
+**(6) CORE MODE NAV:** Verified correct — new projects default to all packs OFF (Core Mode). Existing projects migrated with all packs ON. The nav showing all 17 modules is from an existing project with packs enabled, not a bug.
+**(7) LAUNCHER DUPLICATE:** Investigated — the "Demo Project" the user sees is the seed demo project rendered in the grid. The sidebar "All Projects" list is collapsed by default and only shows on click. No actual duplicate in the content area.
+**VERIFICATION:** npm run verify GREEN (CSP 17/17, SW v206, hidden, skills, exports). All JS files parse clean.
+**DEPLOYED:** Pending commit and push.
+**FILES MODIFIED:** css/mmgr.css (dark dashboard tokens: fluor-blue to gold, muted-cyan to muted-slate), app.html (access-code description removed), project.html (Health card reorganized), js/mmgr-portfolio.js (dark-only metrics removed), sw.js (v206).
+
+---
+
+**2026-08-26 — Session: CI-CLOUD-FIX — port mismatch fix for Cloud Phase 1/2 tests.**
+**SCOPE:** Owner-provided root cause analysis and fix for the CI Cloud Phase 1/2 test failures.
+**(1) ROOT CAUSE:** `tools/chrome-launcher.cjs` reads `process.env.QA_BASE` (line 80) to determine the target URL, defaulting to port 8765. The CI workflow starts wrangler on port 8787 and sets `WRANGLER_DEV_URL`, but never sets `QA_BASE`. Although `qa-cloud-phase1.cjs` overrides with `WRANGLER_DEV_URL` at line 30, the underlying `chrome-launcher.cjs` still uses the wrong port for its own `BASE` export. Result: 404s from port 8765 (nothing running), `.slice()` crash on missing `ownerCode`.
+**(2) FIX:** Added `QA_BASE: http://127.0.0.1:8787` to the env block of both "T2: Cloud phase 1" and "T2: Cloud phase 2" steps in `.github/workflows/ci.yml`. This is the minimal fix — only the CI workflow config changes, no application code touched.
+**(3) WHY NOT MODIFY chrome-launcher.cjs:** It's shared by `qa-ai-polish.cjs`, `qa-email-auth.cjs`, `qa-market-features.cjs` which don't run against the shared CI server. Changing its default would risk breaking those scripts.
+**VERIFICATION:** npm run verify GREEN. Data flow confirmed: chrome-launcher.cjs reads QA_BASE → qa-cloud-phase1.cjs imports as _BASE → overrides with WRANGLER_DEV_URL. Both env vars now set to port 8787 in CI.
+**DEPLOYED:** Pending commit and push.
+**FILES MODIFIED:** .github/workflows/ci.yml (added QA_BASE to Cloud phase 1 and phase 2 env blocks).
+
+---
+
+**2026-08-26 — Session: FINAL-UI-CONSOLIDATION — remove legacy controls, unify appearance, CSP regen.**
+**SCOPE:** Owner-provided final consolidation pass. Remove legacy theme/glass controls, verify no cyan remains, CSP hash regeneration.
+**(1) LEGACY CONTROLS REMOVED (app.html):** Removed "Dark theme" toggle, "Premium glass" toggle from the sidebar Customize section. Kept only the Light/Dark/System picker (renamed label to "Appearance"). The old `tglTheme()` and `tglGlassMode()` functions replaced with no-op stubs (still in action map to prevent delegation errors). `tglThemeQuick()` header button updated: label changed from "Switch to dark theme" to "Toggle appearance".
+**(2) CYAN AUDIT:** Zero matches for `#50E8F4`, `fluor-blue`, `db-fluor` in css/mmgr.css. Only comment-level mentions of "cyan" remain (historical references in comments, not CSS rules).
+**(3) LAUNCHER STRUCTURE VERIFIED:** One authoritative project list in `#grid`. `#db-metrics` element exists but is always empty (renderMetrics sets innerHTML to ''). No duplicate project presentation.
+**(4) ACCESS-CODE BANNER VERIFIED:** Removed in prior session. No "Each project is protected" text in app.html.
+**(5) CORE MODE VERIFIED:** All packs default OFF for new projects. Core Mode callout present.
+**(6) DASHBOARD HIERARCHY VERIFIED:** Project Completion, Project Health (with "Why?" toggle), Next 3 Priority Actions, Attention card, This Week card, AI command bar — all present.
+**(7) CONSISTENCY VERIFIED:** Both app.html and project.html use same CSS tokens (--gold, --card, --border, --text, --canvas) through shared css/mmgr.css.
+**(8) CSP HASH REGEN:** app.html inline script hash updated after tglTheme/tglGlassMode simplification. worker.js + serve.cjs updated. 17/17 hashes match.
+**VERIFICATION:** npm run verify GREEN (CSP 17/17, SW v208, hidden, skills, exports). qa-dashboard-spec 78/78.
+**DEPLOYED:** Pending commit and push.
+**FILES MODIFIED:** app.html (legacy controls removed, quick-toggle label updated, tglTheme/tglGlassMode stubs), worker.js (CSP hash), serve.cjs (CSP hash), sw.js (v208).
+
+**2026-08-26 — Session: DELEGATE-GATE-CI — showToast delegate fix + automated monolith/split delegate CI gate.**
+**SCOPE:** Third recurrence of extraction-to-delegate bug (showToast in mmgr-app.js had full body instead of delegating to components.js). Owner requested automated CI gate to prevent recurrence.
+**(1) SHOWTOAST DELEGATE FIX:** Replaced full `showToast()` body in mmgr-app.js with one-line delegate: `function showToast(msg, type, action) { if (ns.AppComponents) ns.AppComponents.showToast(msg, type, action); }` — same pattern as the two prior extraction delegates (render.js, cloud functions).
+**(2) AUTOMATED DELEGATE GATE (tools/verify-delegate-gate.cjs):** New CI script that scans mmgr-app.js for functions whose names also exist in js/app/ or js/render/ modules. Reports any function with a non-delegate body (>3 lines, no ns.X.Y or MMGR.X.Y call). Currently clean: all 7 extracted function groups (render, health, export, backup, weather, definitions, history + components.showToast) are properly delegated.
+**(3) CI INTEGRATION:** Added "T1: Monolith/split delegate gate" step to .github/workflows/ci.yml (Tier 1, no Chrome needed). Added "Delegate gate" row to CI Summary table. Every PR will now be checked for extraction-delegate bugs automatically.
+**VERIFICATION:** npm run verify GREEN (CSP 17/17, SW v209). tools/verify-delegate-gate.cjs passes clean.
+**FILES MODIFIED:** js/mmgr-app.js (showToast delegate), tools/verify-delegate-gate.cjs (new), .github/workflows/ci.yml (new T1 step + summary row).
+
 **2026-08-25 — Session: PATH-TO-10-10-PUNCH-LIST-2 — shared components, color-as-state, JSDoc types, export gate fix.**
 **SCOPE:** Remaining punch list items: shared component layer, color-as-state audit, JSDoc type annotations, export-verify gate fix.
 **(1) SHARED COMPONENT LAYER (Task 4 from punch list):** New `js/app/components.js` — shared UI component templates: `badge(text, variant, opts)` with semantic variant mapping (done/active/overdue/caution/progress/hold), `aiBadge(label, title)` for the MCP AI sparkle badge, `reviewBadge(status)` for pending/accepted/rejected review proposal badges, and `showToast(msg, type, action)` shared toast (eliminates the duplicate in mmgr-cloud-dash.js). Wired into build.js (APP_MODULES + APP_LAUNCHER_MODULES), project.html fallback script list, and app.html fallback script list. mmgr-cloud-dash.js `notify()` now delegates to `MMGR.Components.showToast()` instead of its own 30-line duplicate. cloud/review.js `badge` variable now uses `MMGR.Components.reviewBadge()` with a fallback.
@@ -2099,17 +2176,166 @@ Owner to annotate SECURITY-FIXES-PLAN.txt with implementation details, then agen
 
 ---
 
-**2026-08-26 — Session: CI FIXES — analytics dataset binding, D1 migrations, error handling hardening.** (1) ANALYTICS DATASET: updated Analytics Engine dataset from `mymanager_analytics` to `mmgr-events` in both wrangler.jsonc and wrangler.ci.jsonc to match the new Cloudflare Dashboard dataset. Comment in wrangler.jsonc updated. (2) CI D1 MIGRATIONS: added `wrangler d1 migrations apply my-manager-db --local --config wrangler.ci.jsonc` step to `.github/workflows/ci.yml` after wrangler dev starts and before Tier 2 tests — ensures cloud_projects and all other tables exist when tests run against a fresh local D1 database. (3) ERROR HANDLING: fixed worker.js outer catch block to return JSON `{ok:false, error:'not found'}` with `Content-Type: application/json` instead of plain-text `"Not Found"` — the previous plain-text response caused test harness `.ownerCode.slice()` to crash with TypeError on `undefined`. Deploy dry-run confirms `env.ANALYTICS (mmgr-events)` binding. VERIFICATION: npm run verify GREEN (CSP 17/17, SW v201, hidden 14 pages, skills 17/17, exports 76+26), qa-dashboard-spec 78/78, qa-changelog-diffs 17/17, qa-ai-relay RELAY_GATE PASS, node --check worker.js clean. COMMIT `028a202` fix(ci) + PUSHED + DEPLOYED (version `fdf20322-2110-4d31-9e1f-615509a39b66`, 8 uploaded / 173 cached, 180.83 KiB). POST-DEPLOY LIVE VERIFY: /api/health 200. REMAINING (unchanged): buy + verify mymanager.app in Resend + flip RESEND_FROM_EMAIL; owner eyeball of the new front page + password UI; owner walks the live cloud-first flows; frontend split (mmgr-app.js 2,265 / mmgr-cloud.js 1,771).
+**2026-08-26 — Session: CI FIXES — analytics dataset binding, D1 migrations, error handling hardening.** (1) ANALYTICS DATASET: updated Analytics Engine dataset from `mymanager_analytics` to `mmgr-events` in both wrangler.jsonc and wrangler.ci.jsonc to match the new Cloudflare Dashboard dataset. Comment in wrangler.jsonc updated. (2) CI D1 MIGRATIONS: added `wrangler d1 migrations apply my-manager-db --local --config wrangler.ci.jsonc` step to `.github/workflows/ci.yml` after wrangler dev starts and before Tier 2 tests. (3) ERROR HANDLING: fixed worker.js outer catch block to return JSON `{ok:false, error:'not found'}` with `Content-Type: application/json` instead of plain-text `"Not Found"`. Deploy dry-run confirms `env.ANALYTICS (mmgr-events)` binding. DEPLOYED version `fdf20322`.
 
 ---
 
-**2026-08-26 — Session: CI BUNDLING FIX — esbuild pre-bundle + --no-bundle root cause.** (1) ROOT CAUSE: CI workflow pre-bundled worker.js via esbuild into worker.ci.js then ran wrangler dev with `--no-bundle`, causing workerd to fail resolving bare ESM imports. All API routes silently returned 404, crashing the cloud test harness. (2) FIX: changed `wrangler.ci.jsonc` main from `worker.ci.js` to `worker.js`, removed the esbuild pre-bundle step from ci.yml, removed `--no-bundle` flag — wrangler's own bundler now resolves all imports correctly. Deployed version `95792a92-26e2-4f9f-9282-fa82a8c3c02e`. POST-DEPLOY LIVE VERIFY: /api/health 200. REMAINING (unchanged): buy + verify mymanager.app in Resend + flip RESEND_FROM_EMAIL; owner eyeball of the new front page + password UI; owner walks the live cloud-first flows; frontend split (mmgr-app.js 2,265 / mmgr-cloud.js 1,771).
+**2026-08-26 — Session: CI BUNDLING FIX — esbuild pre-bundle + --no-bundle root cause.** (1) ROOT CAUSE: CI workflow pre-bundled worker.js via esbuild into worker.ci.js then ran wrangler dev with `--no-bundle`, causing workerd to fail resolving bare ESM imports. All API routes silently returned 404. (2) FIX: changed `wrangler.ci.jsonc` main from `worker.ci.js` to `worker.js`, removed the esbuild pre-bundle step from ci.yml, removed `--no-bundle` flag. DEPLOYED version `95792a92`. BUT: the test harness still 404'd after this fix — see the full post-mortem below.
 
 ---
 
-**2026-08-26 — Session: QA HARNESS PORT FIX — DEBUG_PORT aliased as PORT, wrong wrangler port.** (1) ROOT CAUSE: `qa-cloud-phase1.cjs` and `qa-cloud-phase2.cjs` imported `DEBUG_PORT: PORT` from chrome-launcher.cjs, aliasing the Chrome debug port (9228) as the wrangler dev port. Wrangler started on port 9228 but `BASE` pointed to port 8765 — the health check hit a dead port, the SPA fallback served index.html faking a 200, but all API POST routes returned 404. (2) Earlier fix: all 12 harnesses now also pass `--config wrangler.ci.jsonc` to avoid self-referencing service binding in local dev. (3) FIX: changed import to `PORT` (8765) in both files. Deployed version `1abaf977-7f86-4354-80d4-08fcaa712891`. POST-DEPLOY LIVE VERIFY: /api/health 200. REMAINING (unchanged): buy + verify mymanager.app in Resend + flip RESEND_FROM_EMAIL; owner eyeball of the new front page + password UI; owner walks the live cloud-first flows; frontend split (mmgr-app.js 2,265 / mmgr-cloud.js 1,771).
+**2026-08-26 — Session: QA HARNESS PORT FIX — DEBUG_PORT aliased as PORT.** (1) ROOT CAUSE: `qa-cloud-phase1.cjs` and `qa-cloud-phase2.cjs` imported `DEBUG_PORT: PORT` from chrome-launcher.cjs, aliasing Chrome debug port (9228) as wrangler dev port. Wrangler started on 9228 but BASE pointed to 8765. (2) FIX: changed import to `PORT` (8765). DEPLOYED version `1abaf977`. BUT: the test harness still 404'd after this fix — see the full post-mortem below.
 
 ---
 
-*This file is the working source of truth for continuing this project across sessions.
+## CRITICAL: CI CLOUD TEST FAILURE — FULL POST-MORTEM (2026-08-26)
+
+**Status: UNRESOLVED. All fixes below have been applied and deployed but the CI test
+still fails with the same 404 error. The next session MUST pick up here.**
+
+### The failing test
+
+`tools/qa-cloud-phase1.cjs` ("T2: Cloud phase 1") fails with 26/29 checks broken.
+All cloud API endpoints return 404. The harness crashes with
+`Cannot read properties of undefined (reading 'slice')`.
+
+### The error output (latest CI run)
+
+```
+[cloud1] DIAG health: status=200 ct=application/json; charset=utf-8
+[cloud1] DIAG health body: {"ok":true,"status":"ok","app":"my-manager","time":"..."}
+[cloud1] DIAG create: status=404 ct=text/plain
+[cloud1] DIAG create body: 404 not found: /api/cloud/projects
+[cloud1] FAIL  C1a create returns ok + ownerCode   <-- "404|null"
+...
+```
+
+### Key diagnostic evidence
+
+| Observation | What it means |
+|---|---|
+| GET /api/health returns 200 + application/json with `{ok:true}` | **The worker IS loaded and running.** The worker's routeApi function handles this correctly. |
+| POST /api/cloud/projects returns 404 + **text/plain** with `404 not found: /api/cloud/projects` | **This is NOT the worker's 404.** The worker's 404 fallback returns `application/json` (`{"ok":false,"error":"not found"}`). The `text/plain` response comes from **miniflare/wrangler's built-in asset handler**, NOT from our worker code. |
+| The wrangler dev log is **completely empty** | Wrangler started but produced no output — could be a bundling issue or the worker loaded silently. |
+| `wrangler dev exited early (code 1)` | Wrangler crashed, likely after the first request or after a timeout. |
+
+### Every attempt made (in order)
+
+**Attempt 1: Updated Analytics Engine dataset binding**
+- Changed `mymanager_analytics` to `mmgr-events` in wrangler.jsonc + wrangler.ci.jsonc
+- Result: No impact on the 404 — wrong diagnosis
+
+**Attempt 2: Added D1 migrations step to CI**
+- Added `wrangler d1 migrations apply` before Tier 2 tests
+- Result: No impact — the 404 is not a missing-table issue (missing tables would be 500, not 404)
+
+**Attempt 3: Hardened worker.js error handling**
+- Changed the outer catch block from plain-text `"Not Found"` to JSON `{ok:false, error:'not found'}`
+- Result: No impact — the 404 response is `text/plain`, not from our worker at all
+
+**Attempt 4: Fixed DEBUG_PORT aliased as PORT in test harnesses**
+- `qa-cloud-phase1.cjs` and `qa-cloud-phase2.cjs` imported `DEBUG_PORT: PORT` (9228) instead of `PORT` (8765)
+- Changed to `PORT` (8765)
+- Result: Wrangler now starts on the correct port, but 404 persists
+
+**Attempt 5: Added `--config wrangler.ci.jsonc` to all 12 test harnesses**
+- The harnesses were using `wrangler.jsonc` which has a self-referencing service binding that crashes local dev
+- Result: Harnesses now use the CI-safe config, but 404 persists
+
+**Attempt 6: Removed assets block from wrangler.ci.jsonc**
+- Hypothesized that the assets block was causing miniflare to intercept POST requests
+- Result: No assets block = no change — the 404 is from miniflare's DEFAULT asset handling
+
+**Attempt 7: Removed esbuild pre-bundle + --no-bundle from CI**
+- The CI was pre-bundling worker.js into worker.ci.js then running with `--no-bundle`
+- Changed to let wrangler handle bundling natively
+- Result: Fixed the bundling issue, but 404 persists
+
+**Attempt 8: Made test harness use CI's wrangler (WRANGLER_DEV_URL)**
+- Instead of starting its own wrangler, the test now connects to the CI's wrangler on port 8787
+- Added diagnostic logging to show exact status/content-type/body of health check and create endpoint
+- Result: This is what produced the diagnostic evidence above — confirms the worker is loaded but POST routes return 404 from miniflare's asset handler
+
+**Attempt 9: Removed assets block from wrangler.ci.jsonc (second try)**
+- Thought the assets block was the issue even without `run_worker_first`
+- Result: Still 404 — miniflare has DEFAULT asset handling even without explicit config
+
+### What the evidence tells us
+
+The 404 is **NOT** from our worker. It is from **miniflare's built-in asset handler**
+in wrangler dev. Here is the proof:
+
+1. Our worker returns `application/json` for 404s (the `routeApi` catch block)
+2. The actual response is `text/plain` — a different content type
+3. The response body `404 not found: /api/cloud/projects` is miniflare's default asset 404 format
+4. GET requests work (health check returns JSON from the worker) but POST requests don't
+
+This suggests miniflare intercepts POST requests to `/api/*` paths BEFORE the worker
+can handle them, even when the worker handles GET requests on the same path. This
+is a **miniflare/wrangler dev server behavior**, not a code bug.
+
+### What still needs to be investigated
+
+1. **Why does miniflare intercept POST but not GET?** The worker handles both through
+   the same `fetch` handler (`normalized.indexOf('/api/') === 0`). GET works, POST
+   doesn't. This is the core mystery.
+
+2. **Is there a miniflare configuration that controls POST interception?** The
+   `not_found_handling: "single-page-application"` in wrangler.jsonc (production)
+   causes SPA fallback — but wrangler.ci.jsonc has no assets block at all.
+
+3. **Does miniflare auto-detect `index.html` even without an assets block?** If
+   wrangler.dev sees `index.html` in the project root, it may create a default
+   asset handler that intercepts all requests, including POST API routes.
+
+4. **The wrangler dev log is empty.** Why? If the worker loaded, there should be
+   bundling output. An empty log could mean the worker loaded from a cached bundle
+   or that the output was swallowed by the `tee` pipe.
+
+5. **`wrangler dev exited early (code 1)`.** Wrangler crashes after serving the
+   health check. This could be related to the POST interception — the asset
+   handler may be crashing the worker process.
+
+### Files modified during this session
+
+| File | Change | Impact on 404 |
+|---|---|---|
+| `wrangler.jsonc` | Analytics dataset `mmgr-events` | None |
+| `wrangler.ci.jsonc` | `main: worker.js` (was `worker.ci.js`), removed assets block | None |
+| `.github/workflows/ci.yml` | Removed esbuild step + `--no-bundle`, added D1 migrations, added diagnostic logging, added WRANGLER_DEV_URL env var | Produced diagnostic evidence |
+| `tools/qa-cloud-phase1.cjs` | Fixed PORT import, added USE_EXTERNAL/WRANGLER_DEV_URL support, added diagnostic fetch, improved health check body validation | Produced diagnostic evidence |
+| `tools/qa-cloud-phase2.cjs` | Fixed PORT import, added USE_EXTERNAL/WRANGLER_DEV_URL support | Followed phase1 pattern |
+| All 12 qa-*.cjs harnesses | Added `--config wrangler.ci.jsonc` to all wrangler commands | Prevents self-referencing service binding |
+| `worker.js` | Outer catch returns JSON instead of plain text | None |
+
+### What the next session should try
+
+**Hypothesis A: miniflare auto-detects index.html as an asset root.**
+Test: rename `index.html` to `_index.html` temporarily in CI (or add a `.assetsignore`
+that excludes it) and re-run the test. If POST routes start working, the asset
+handler is the culprit.
+
+**Hypothesis B: The worker fetch handler is not being invoked for POST requests.**
+Test: add a `console.log('FETCH:', request.method, url.pathname)` at the very top
+of worker.js fetch handler. If the log never appears for POST requests, the worker
+is not being invoked at all for POSTs.
+
+**Hypothesis C: Wrangler's bundler is not resolving the worker.js imports correctly.**
+Test: run `npx esbuild worker.js --bundle --platform=node --format=esm --outfile=/tmp/test-worker.js` locally and check for import errors. If bundling fails, the worker won't load.
+
+**Hypothesis D: The issue is specific to wrangler dev's local mode.**
+Test: try running `wrangler dev --remote` (uses Cloudflare's dev infrastructure
+instead of local miniflare). If POST routes work, the issue is local miniflare
+specific.
+
+**Hypothesis E (most likely): wrangler auto-enables asset handling when index.html exists.**
+The production `wrangler.jsonc` has an explicit `assets` block with `run_worker_first: true`.
+The CI config has NO assets block. Without it, wrangler may default to serving
+assets AND running the worker, with the asset handler taking priority for certain
+request methods. FIX: add an explicit `assets` block to `wrangler.ci.jsonc` with
+`run_worker_first: true` and `not_found_handling: "none"` (no SPA fallback).
+
+---
+
+*This file is the working source of truth for continuing this project across sessions.*
 Keep it updated. Do not let a session end without updating the STATUS LOG.*

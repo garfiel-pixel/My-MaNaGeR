@@ -57,14 +57,16 @@
       clicks "Connect Google" in Settings > Controls. It is a device label,
       never a gate , offline/CSP-blocked loads degrade to a toast.
 -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' 'sha256-DDYVqby/7w6QiwGTikwlcwwnf1qHWgEmMUmSvXmqy7E=' 'sha256-jQGKXr3EKUJqelsBjB7GNSArKx9pbp38QHCOFoVCB3g=' 'sha256-LPhcYyVaGsoAWUYIPRyfwYSw2y82UmyNSa5ktKilmyA=' 'sha256-reza4vd5o52LWNUf9lzK6WjApdstd5sm4xVx+lcnK2M=' https://accounts.google.com https://unpkg.com; style-src 'self' 'unsafe-inline' https://accounts.google.com https://fonts.googleapis.com; img-src 'self' data:; font-src 'self' data:; connect-src 'self' https://api.open-meteo.com https://geocoding-api.open-meteo.com https://api.openai.com https://api.anthropic.com https://generativelanguage.googleapis.com https://github.com https://release-assets.githubusercontent.com https://accounts.google.com https://huggingface.co https://*.cdn.hf.co; frame-src https://accounts.google.com; base-uri 'self'; form-action 'self';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' 'sha256-DDYVqby/7w6QiwGTikwlcwwnf1qHWgEmMUmSvXmqy7E=' 'sha256-jQGKXr3EKUJqelsBjB7GNSArKx9pbp38QHCOFoVCB3g=' 'sha256-EpNwfibNigIpP+EoyoK4EVYj2pdTPuejviaFxStcja0=' 'sha256-reza4vd5o52LWNUf9lzK6WjApdstd5sm4xVx+lcnK2M=' https://accounts.google.com https://unpkg.com; style-src 'self' 'unsafe-inline' https://accounts.google.com https://fonts.googleapis.com; img-src 'self' data:; font-src 'self' data:; connect-src 'self' https://api.open-meteo.com https://geocoding-api.open-meteo.com https://api.openai.com https://api.anthropic.com https://generativelanguage.googleapis.com https://github.com https://release-assets.githubusercontent.com https://accounts.google.com https://huggingface.co https://*.cdn.hf.co; frame-src https://accounts.google.com; base-uri 'self'; form-action 'self';">
 <script>
 /* Device-level theme (shared across launcher, admin, and app): applied before
    first paint from the same localStorage slot every theme toggle writes, so a
    dark choice made anywhere persists everywhere with no flash. Kept inline in
    <head> so the class is set before any content renders (FOUC prevention). */
 (function(){ try {
-  if (localStorage.getItem('mmgr_theme') === 'dark') document.documentElement.classList.add('dark-mode');
+  var t = localStorage.getItem('mmgr_theme');
+  var dark = t === 'dark' || (t !== 'light' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  if (dark) document.documentElement.classList.add('dark-mode');
 } catch (e) {} })();
 </script>
 </head>
@@ -154,32 +156,33 @@
     <button class="sec-btn active" data-action="showSec" data-section="dash"><svg class="ic-svg" viewBox="0 0 24 24" fill="none"><path d="M3 9L12 4L21 9V19C21 20.1 20.1 21 19 21H5C3.9 21 3 20.1 3 19V9Z" stroke="#D4AF37" stroke-width="2"/><path d="M9 21V12H15V21" stroke="#D4AF37" stroke-width="2"/></svg>Dashboard</button>
     <button class="sec-btn" data-action="showSec" data-section="def"><svg class="ic-svg" viewBox="0 0 24 24" fill="none"><path d="M12 6C10.5 4.5 8 4 4 4V18C8 18 10.5 18.5 12 20C13.5 18.5 16 18 20 18V4C16 4 13.5 4.5 12 6Z" stroke="#D4AF37" stroke-width="2" stroke-linejoin="round"/><path d="M12 6V20" stroke="#D4AF37" stroke-width="2"/></svg>Definitions</button>
     </div>
-    <div class="nav-group"><span class="nav-group-label">Planning</span>
+    <div class="nav-group"><span class="nav-group-label">Plan</span>
+
     <button class="sec-btn" data-action="showSec" data-section="charter"><svg class="ic-svg" viewBox="0 0 24 24" fill="none"><path d="M12 3L19 6V11C19 15.5 16 19.5 12 21C8 19.5 5 15.5 5 11V6L12 3Z" stroke="#D4AF37" stroke-width="2" stroke-linejoin="round"/><path d="M9 12L11 14L15 9" stroke="#D4AF37" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Charter</button>
     <button class="sec-btn" data-action="showSec" data-section="wbs"><svg class="ic-svg" viewBox="0 0 24 24" fill="none"><rect x="4" y="6" width="16" height="13" rx="2" stroke="#D4AF37" stroke-width="2"/><path d="M8 10H16M8 14H12" stroke="#D4AF37" stroke-width="2"/></svg>WBS</button>
     <button class="sec-btn" data-action="showSec" data-section="gantt" data-pack="schedule" id="gnav"><svg class="ic-svg" viewBox="0 0 24 24" fill="none"><path d="M4 6H14M4 12H18M4 18H10" stroke="#D4AF37" stroke-width="2" stroke-linecap="round"/></svg>Gantt</button>
     </div>
-    <div class="nav-group"><span class="nav-group-label">Execution</span>
+    <div class="nav-group"><span class="nav-group-label">Collaborate</span>
     <button class="sec-btn" data-action="showSec" data-section="kan" id="knav"><svg class="ic-svg" viewBox="0 0 24 24" fill="none"><rect x="4" y="4" width="16" height="16" rx="2" stroke="#D4AF37" stroke-width="2"/><path d="M9 4V20M15 4V20" stroke="#D4AF37" stroke-width="2"/></svg>Kanban</button>
     <button class="sec-btn" data-action="showSec" data-section="res" data-pack="money"><svg class="ic-svg" viewBox="0 0 24 24" fill="none"><path d="M5 18H19" stroke="#22C55E" stroke-width="2"/><path d="M12 4C8.5 4 5.5 7 5.5 11V18H18.5V11C18.5 7 15.5 4 12 4Z" stroke="#22C55E" stroke-width="2"/></svg>Resources</button>
     <button class="sec-btn" data-action="showSec" data-section="bud" data-pack="money"><svg class="ic-svg" viewBox="0 0 24 24" fill="none"><path d="M21 7H3V17H21V7Z" stroke="#D4AF37" stroke-width="2" stroke-linejoin="round"/><path d="M17 10H7" stroke="#D4AF37" stroke-width="2"/><path d="M3 7L12 12L21 7" stroke="#D4AF37" stroke-width="2"/></svg>Budget</button>
+    <button class="sec-btn" data-action="showSec" data-section="raci" data-pack="governance"><svg class="ic-svg" viewBox="0 0 24 24" fill="none"><circle cx="8" cy="8" r="3" stroke="#3B82F6" stroke-width="2"/><circle cx="16" cy="8" r="3" stroke="#3B82F6" stroke-width="2"/><circle cx="12" cy="16" r="3" stroke="#3B82F6" stroke-width="2"/></svg>RACI</button>
+    <button class="sec-btn" data-action="showSec" data-section="comms" data-pack="governance"><svg class="ic-svg" viewBox="0 0 24 24" fill="none"><path d="M4 5C4 3.9 4.9 3 6 3H18C19.1 3 20 3.9 20 5V14C20 15.1 19.1 16 18 16H9L5 20V16H6C4.9 16 4 15.1 4 14V5Z" stroke="#D4AF37" stroke-width="2" stroke-linejoin="round"/><path d="M8 8H16M8 11H13" stroke="#D4AF37" stroke-width="2" stroke-linecap="round"/></svg>Comms Log</button>
+    <button class="sec-btn" data-action="showSec" data-section="docs" data-pack="governance"><svg class="ic-svg" viewBox="0 0 24 24" fill="none"><path d="M14 2H6C4.89543 2 4 2.89543 4 4V20C4 21.1046 4.89543 22 6 22H18C19.1046 22 20 21.1046 20 20V8L14 2Z" stroke="#64748B" stroke-width="2"/><path d="M14 2V8H20" stroke="#64748B" stroke-width="2"/></svg>Documents</button>
+    <button class="sec-btn" data-action="showSec" data-section="meet" data-pack="field"><svg class="ic-svg" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8" stroke="#22C55E" stroke-width="2"/><path d="M9 12L11 14L15 9" stroke="#22C55E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Meetings</button>
     </div>
-    <div class="nav-group"><span class="nav-group-label">Governance</span>
+    <div class="nav-group"><span class="nav-group-label">Control</span>
     <button class="sec-btn" data-action="showSec" data-section="stk" data-pack="governance"><svg class="ic-svg" viewBox="0 0 24 24" fill="none"><circle cx="9" cy="8" r="3" stroke="#3B82F6" stroke-width="2"/><path d="M3 20C3 16.5 5.5 14 9 14C12.5 14 15 16.5 15 20" stroke="#3B82F6" stroke-width="2"/><circle cx="17" cy="7" r="2.3" stroke="#3B82F6" stroke-width="2"/><path d="M14.5 13.2C17.5 13.6 20 15.7 20 19" stroke="#3B82F6" stroke-width="2"/></svg>Stakeholders<span class="sec-badge is-hide" title="Stakeholder compliance expiring within 30 days">0</span></button>
     <button class="sec-btn" data-action="showSec" data-section="chg" data-pack="governance"><svg class="ic-svg" viewBox="0 0 24 24" fill="none"><path d="M4 12C4 7.6 7.6 4 12 4C15 4 17.6 5.7 19 8.2M20 12C20 16.4 16.4 20 12 20C9 20 6.4 18.3 5 15.8" stroke="#F59E0B" stroke-width="2" stroke-linecap="round"/><path d="M19 4V8.2H14.8M5 20V15.8H9.2" stroke="#F59E0B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Changes</button>
     <button class="sec-btn" data-action="showSec" data-section="log" data-pack="governance"><svg class="ic-svg" viewBox="0 0 24 24" fill="none"><path d="M9 6H20M9 12H20M9 18H20" stroke="#D4AF37" stroke-width="2" stroke-linecap="round"/><path d="M4 6L5 7L7 5" stroke="#D4AF37" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 12L5 13L7 11" stroke="#D4AF37" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 18L5 19L7 17" stroke="#D4AF37" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Decision Log</button>
     <button class="sec-btn" data-action="showSec" data-section="risk" data-pack="governance"><svg class="ic-svg" viewBox="0 0 24 24" fill="none"><path d="M12 8V12M12 16H12.01M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="#EF4444" stroke-width="2"/></svg>Risk / Issues</button>
+    </div>
+    <div class="nav-group"><span class="nav-group-label">Close</span>
     <button class="sec-btn" data-action="showSec" data-section="claim" data-pack="field"><svg class="ic-svg" viewBox="0 0 24 24" fill="none"><path d="M9 6H20M9 12H20M9 18H20" stroke="#D4AF37" stroke-width="2" stroke-linecap="round"/><path d="M4 6L5 7L7 5M4 12L5 13L7 11M4 18L5 19L7 17" stroke="#D4AF37" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Claim Pack</button>
-    </div>
-    <div class="nav-group"><span class="nav-group-label">Closeout</span>
     <button class="sec-btn" data-action="showSec" data-section="close" data-pack="governance"><svg class="ic-svg" viewBox="0 0 24 24" fill="none"><path d="M12 4L20 12L12 20L4 12L12 4Z" stroke="#D4AF37" stroke-width="2"/><path d="M12 8V16" stroke="#D4AF37" stroke-width="2"/></svg>Closure</button>
-    <button class="sec-btn" data-action="showSec" data-section="raci" data-pack="governance"><svg class="ic-svg" viewBox="0 0 24 24" fill="none"><circle cx="8" cy="8" r="3" stroke="#3B82F6" stroke-width="2"/><circle cx="16" cy="8" r="3" stroke="#3B82F6" stroke-width="2"/><circle cx="12" cy="16" r="3" stroke="#3B82F6" stroke-width="2"/></svg>RACI</button>
-    <button class="sec-btn" data-action="showSec" data-section="comms" data-pack="governance"><svg class="ic-svg" viewBox="0 0 24 24" fill="none"><path d="M4 5C4 3.9 4.9 3 6 3H18C19.1 3 20 3.9 20 5V14C20 15.1 19.1 16 18 16H9L5 20V16H6C4.9 16 4 15.1 4 14V5Z" stroke="#D4AF37" stroke-width="2" stroke-linejoin="round"/><path d="M8 8H16M8 11H13" stroke="#D4AF37" stroke-width="2" stroke-linecap="round"/></svg>Comms Log</button>
-    <button class="sec-btn" data-action="showSec" data-section="docs" data-pack="governance"><svg class="ic-svg" viewBox="0 0 24 24" fill="none"><path d="M14 2H6C4.89543 2 4 2.89543 4 4V20C4 21.1046 4.89543 22 6 22H18C19.1046 22 20 21.1046 20 20V8L14 2Z" stroke="#64748B" stroke-width="2"/><path d="M14 2V8H20" stroke="#64748B" stroke-width="2"/></svg>Documents</button>
     </div>
-    <div class="nav-group"><span class="nav-group-label">DMAIC</span>
+    <div class="nav-group"><span class="nav-group-label">Quality</span>
     <button class="sec-btn is-hide" data-action="showSec" data-section="dmaic" data-pack="quality" id="dmaic-nav" data-dual-gate="1"><svg class="ic-svg" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8" stroke="#8B5CF6" stroke-width="2"/><circle cx="12" cy="12" r="4" stroke="#8B5CF6" stroke-width="2"/><circle cx="12" cy="12" r="0.6" stroke="#8B5CF6" stroke-width="2"/></svg>DMAIC</button>
-    <button class="sec-btn" data-action="showSec" data-section="meet" data-pack="field"><svg class="ic-svg" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8" stroke="#22C55E" stroke-width="2"/><path d="M9 12L11 14L15 9" stroke="#22C55E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Meetings</button>
     </div>
   </nav>
   <!-- Mobile nav scrim (closes the drawer on tap-out; see tglNav) -->
@@ -204,11 +207,29 @@
          been toggled on AND the user hasn't dismissed it. Hidden forever after
          any pack is toggled on or "Not now" is clicked. -->
     <div class="core-callout is-hide" id="core-callout" role="note">
-      <div class="core-callout-txt"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-orb"></use></svg> <strong>Core Mode is on.</strong> Only the essential sections are shown (Dashboard, Definitions, Charter, WBS, Kanban). Turn on Risk, Budget, RACI, Meetings, Claim Pack and more , one click, nothing hidden is ever lost.</div>
+      <div class="core-callout-txt"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-orb"></use></svg> <strong>Core Mode is on.</strong> Only the essential sections are shown (Overview, Plan, Collaborate). Turn on Risk, Budget, RACI, Meetings, Claim Pack and more — one click, nothing hidden is ever lost.</div>
       <div class="core-callout-actions">
         <button class="btn btn-g btn-s" data-action="openPacks"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-settings"></use></svg> Turn on Advanced Packs</button>
         <button class="btn btn-n btn-s" data-action="dismissPacksCallout" aria-label="Dismiss this tip , never show it again">Not now</button>
       </div>
+    </div>
+    <!-- AI COMMAND BAR (Phase 7): subtle top-level Ask your project -->
+    <div class="card" id="ai-command-card" style="padding:10px 14px;">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <svg class="ico" aria-hidden="true" style="color:var(--purple);flex-shrink:0;"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg>
+        <input type="text" id="ai-command-input" placeholder="Ask your project…" aria-label="Ask your project a question" style="flex:1;border:none;background:transparent;color:var(--text);font-size:.85rem;outline:none;font-family:inherit;">
+        <button type="button" class="btn btn-ghost btn-s" id="ai-command-btn" data-action="openAiWin"><svg class="ico" aria-hidden="true" style="width:14px;height:14px;"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg></button>
+      </div>
+    </div>
+    <!-- ATTENTION (UI-UX doc §7.1): highest-priority items requiring action -->
+    <div class="card mt-lg" id="attention-card">
+      <div class="card-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-zap"></use></svg> Attention</div>
+      <div id="attention-body"><div class="txt-sl">Everything looks clear.</div></div>
+    </div>
+    <!-- THIS WEEK (UI-UX doc §7.3): planned / completed / carryover -->
+    <div class="card mt-lg" id="this-week-card">
+      <div class="card-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-calendar"></use></svg> This Week</div>
+      <div id="this-week-body"><div class="txt-sl">No tasks scheduled this week.</div></div>
     </div>
     <div class="g3">
       <div class="card" id="completion-card">
@@ -223,23 +244,24 @@
       </div>
       <div class="card blueprint" id="health-card">
         <div class="card-title" data-def="Health Score">Project Health</div>
-        <div class="col-g8">
-          <div class="fb-sm"><span>In Progress</span><span class="badge bg" id="h-ip">0</span></div>
-          <div class="fb-sm"><span>At Risk (Due Soon)</span><span class="badge ba" id="h-ar">0</span></div>
-          <div class="fb-sm"><span>Blocked</span><span class="badge br" id="h-bl">0</span></div>
-          <div class="fb-sm"><span>Completed</span><span class="badge bg" id="h-dn">0</span></div>
-          <div class="fb-sm"><span>Overdue</span><span class="badge br" id="h-od">0</span></div>
-          <div class="fb-sm"><span>Live Issues</span><span class="badge br" id="h-is">0</span></div>
-          <div class="fb-sm"><span>Compliance Expiring</span><span class="badge br" id="h-coi">0</span></div>
-        </div>
-        <!-- Weighted Health Score (MONOLITH-PORTING-GUIDE feature 1) -->
+        <!-- Score first (UI/UX plan §6: "42 / 100, Needs Attention") -->
         <div class="health-section">
           <div class="hs-row">
             <div class="hs-num-box"><div class="hs-num" id="health-score-num">-</div><div class="hs-suffix" id="health-score-suffix">/100</div></div>
             <div class="hs-main"><div class="hs-track"><div id="health-bar"></div></div><div id="health-score-label"></div></div>
           </div>
-          <div id="health-breakdown"></div>
         </div>
+        <!-- Compact status counts -->
+        <div class="col-g8" style="margin-top:8px;">
+          <div class="fb-sm"><span>In Progress</span><span class="badge bg" id="h-ip">0</span></div>
+          <div class="fb-sm"><span>At Risk</span><span class="badge ba" id="h-ar">0</span></div>
+          <div class="fb-sm"><span>Blocked</span><span class="badge br" id="h-bl">0</span></div>
+          <div class="fb-sm"><span>Overdue</span><span class="badge br" id="h-od">0</span></div>
+          <div class="fb-sm"><span>Issues</span><span class="badge br" id="h-is">0</span></div>
+          <div class="fb-sm"><span>Compliance</span><span class="badge br" id="h-coi">0</span></div>
+        </div>
+        <!-- Expandable explanation -->
+        <details id="health-breakdown-wrap" style="margin-top:6px"><summary style="font-size:.72rem;color:var(--slate);cursor:pointer;user-select:none;">Why?</summary><div id="health-breakdown"></div></details>
       </div>
       <div class="card">
         <div class="card-title">Next 3 Priority Actions</div>
@@ -1307,7 +1329,7 @@
 
     <div class="ctl-sec"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-palette"></use></svg> Appearance</div>
     <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-moon"></use></svg> Light / Dark Theme</span><label class="tgl"><input type="checkbox" id="thm-tgl" aria-label="Light / Dark Theme" data-action="tglTheme"><span class="tsl"></span></label></div>
-    <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-palette"></use></svg> Color Theme</span><span class="pal-switch" role="group" aria-label="Color theme"><button type="button" class="pal-btn" data-pal="default" aria-pressed="true">Default</button><button type="button" class="pal-btn" data-pal="cyan" aria-pressed="false">Cyan</button></span></div>
+    <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-palette"></use></svg> Theme Mode</span><span class="pal-switch" role="group" aria-label="Theme mode"><button type="button" class="pal-btn" data-pal="light" aria-pressed="false">Light</button><button type="button" class="pal-btn" data-pal="dark" aria-pressed="false">Dark</button><button type="button" class="pal-btn" data-pal="system" aria-pressed="true">System</button></span></div>
     <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-crosshair"></use></svg> Crosshair Cursor</span><label class="tgl"><input type="checkbox" id="ch-tgl" aria-label="Crosshair Cursor" data-action="tglCh"><span class="tsl"></span></label></div>
     <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-orb"></use></svg> Premium Visual Mode</span><label class="tgl"><input type="checkbox" id="glass-tgl" aria-label="Premium Visual Mode" data-action="tglGlassMode"><span class="tsl"></span></label></div>
     <div class="sr-hint">Premium visual mode , uses more graphics power (WebGL liquid-glass backdrop). Off by default; requires a capable device. CSS glass is the universal default for everyone else.</div>

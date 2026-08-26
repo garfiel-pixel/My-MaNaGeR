@@ -157,7 +157,9 @@ pre.snippet{background:#f8fafc;border:1px solid var(--border);border-radius:6px;
    dark choice made anywhere persists everywhere , the gate screens included.
    Kept inline in <head> so the class is set before any content renders (FOUC prevention). */
 (function(){ try {
-  if (localStorage.getItem('mmgr_theme') === 'dark') document.documentElement.classList.add('dark-mode');
+  var t = localStorage.getItem('mmgr_theme');
+  var dark = t === 'dark' || (t !== 'light' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  if (dark) document.documentElement.classList.add('dark-mode');
 } catch (e) {} })();
 </script>
 </head>
@@ -200,7 +202,7 @@ pre.snippet{background:#f8fafc;border:1px solid var(--border);border-radius:6px;
 <div class="pref-row" id="gate-prefs">
   <span class="pref"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-moon"></use></svg> Dark<label class="tgl"><input type="checkbox" id="thm-tgl" data-action="tglTheme" aria-label="Toggle dark theme"><span class="tsl"></span></label></span>
   <span class="pref"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-orb"></use></svg> Glass<label class="tgl"><input type="checkbox" id="glass-tgl" data-action="tglGlassMode" aria-label="Toggle premium liquid-glass backdrop"><span class="tsl"></span></label></span>
-  <span class="pref"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-palette"></use></svg> Theme<span class="pal-switch" role="group" aria-label="Color theme"><button type="button" class="pal-btn" data-pal="default" aria-pressed="true">Default</button><button type="button" class="pal-btn" data-pal="cyan" aria-pressed="false">Cyan</button></span></span>
+  <span class="pref"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-palette"></use></svg> Theme<span class="pal-switch" role="group" aria-label="Theme mode"><button type="button" class="pal-btn" data-pal="light" aria-pressed="false">Light</button><button type="button" class="pal-btn" data-pal="dark" aria-pressed="false">Dark</button><button type="button" class="pal-btn" data-pal="system" aria-pressed="true">System</button></span></span>
 </div>
 
 <!-- ═══ MAIN ADMIN UI ═══ -->
@@ -309,7 +311,7 @@ pre.snippet{background:#f8fafc;border:1px solid var(--border);border-radius:6px;
     </div>
     <div class="rail-group"><span class="rail-label">Customize</span>
       <span class="rail-ctl-row"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-moon"></use></svg> Dark theme <label class="tgl"><input type="checkbox" data-action="tglTheme" aria-label="Toggle dark theme"><span class="tsl"></span></label></span>
-      <span class="rail-ctl-row"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-palette"></use></svg> Color theme <span class="pal-switch" role="group" aria-label="Color theme"><button type="button" class="pal-btn" data-pal="default" aria-pressed="true">Default</button><button type="button" class="pal-btn" data-pal="cyan" aria-pressed="false">Cyan</button></span></span>
+      <span class="rail-ctl-row"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-palette"></use></svg> Color theme <span class="pal-switch" role="group" aria-label="Theme mode"><button type="button" class="pal-btn" data-pal="light" aria-pressed="false">Light</button><button type="button" class="pal-btn" data-pal="dark" aria-pressed="false">Dark</button><button type="button" class="pal-btn" data-pal="system" aria-pressed="true">System</button></span></span>
       <span class="rail-ctl-row"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-orb"></use></svg> Premium glass <label class="tgl"><input type="checkbox" data-action="tglGlassMode" aria-label="Toggle premium liquid-glass backdrop"><span class="tsl"></span></label></span>
     </div>
   </aside>
@@ -717,13 +719,11 @@ function lockAdmin(){
 // choice persists across admin, launcher, and app. el-scoped so the gate pill
 // and the header switch stay in sync regardless of which is visible.
 function tglTheme(el){
-  const dark = el ? !el.checked : localStorage.getItem('mmgr_theme') === 'dark';
+  const cur = window.MMGRTheme && MMGRTheme.isDark ? MMGRTheme.isDark() : (localStorage.getItem('mmgr_theme') === 'dark');
+  const dark = el ? !el.checked : !cur;
   document.body.classList.toggle('dark-mode', dark);
   try { localStorage.setItem('mmgr_theme', dark ? 'dark' : 'light'); } catch(e){}
-  // Keep every instance of this toggle on the page in step (gate pill + header)
-  // so flipping one never leaves the other disagreeing with the saved pref.
   document.querySelectorAll('[data-action="tglTheme"]').forEach(t => { t.checked = !dark; });
-  // Keep the premium glass shader's dark flag in step (if the engine is up).
   if (window.MMGR && MMGR.Glass && MMGR.Glass.refreshTheme) MMGR.Glass.refreshTheme();
 }
 
@@ -1809,7 +1809,7 @@ initGate();
 // (gate pill + header , the early-apply snippet already handled the gate's
 // body class before paint) and boot the premium engine if allowed.
 (function(){
-  const dark = localStorage.getItem('mmgr_theme') === 'dark';
+  const dark = window.MMGRTheme && MMGRTheme.isDark ? MMGRTheme.isDark() : (localStorage.getItem('mmgr_theme') === 'dark');
   document.querySelectorAll('[data-action="tglTheme"]').forEach(t => { t.checked = !dark; });
   const glass = !!(window.MMGR && MMGR.Viewport && MMGR.Viewport.getGlassMode() === 'premium');
   document.querySelectorAll('[data-action="tglGlassMode"]').forEach(g => { g.checked = glass; });

@@ -14,12 +14,15 @@ svg.ico use{fill:inherit;stroke:inherit;}
      text, restrained high-contrast accents. Dark mode is an opt-in override
      (body.dark-mode) — never the default presentation. */
   --canvas:#f4f5f7;--card:#ffffff;--border:#e5e7eb;--text:#0f172a;--slate:#5a6b80;
-  --gold:#b45309;--green:#047857;--danger:#dc2626;--amber:#c2410c;--blue:#2563eb;
+  --surface:#ffffff;       /* Level 1: work surfaces / cards / panels */
+  --surface-raised:#f8fafc; /* Level 2: focused / elevated surfaces */
+  --gold:#92400e;--green:#047857;--danger:#dc2626;--amber:#c2410c;--blue:#2563eb;
   --purple:#8b5cf6;   /* DMAIC/quality accents */
-  --gold-rgb:180,83,9;    /* rgba(var(--gold-rgb),a) — tokenized gold fills */
+  --gold-rgb:146,64,14;    /* rgba(var(--gold-rgb),a) — tokenized gold fills (restrained) */
   --amber-rgb:194,65,12;  /* rgba(var(--amber-rgb),a) — tokenized amber fills */
   --purple-rgb:139,92,246;  /* rgba(var(--purple-rgb),a) — tokenized purple fills (AI badge) */
   --on-gold:#ffffff;   /* foreground placed on gold surfaces (light) */
+  --on-primary:#ffffff; /* foreground on primary action surfaces */
   --tile-bg:#f8fafc;    /* dashboard stat tiles (EVM etc.) */
   --track-bg:#eef1f6;   /* progress-bar track wells */
   --radius:8px;
@@ -65,12 +68,15 @@ svg.ico use{fill:inherit;stroke:inherit;}
 /* ---- Dark Mode (opt-in only) ---- */
 body.dark-mode{
   --canvas:#090a0f;--card:#12141c;--border:#222533;--text:#e2e8f0;--slate:#8494a7;
+  --surface:#12141c;       /* Level 1: work surfaces / cards / panels */
+  --surface-raised:#1a1d27; /* Level 2: focused / elevated surfaces */
   --gold:#f59e0b;--green:#10b981;--danger:#ef4444;--amber:#d97706;--blue:#3b82f6;
   --purple:#a78bfa;
   --gold-rgb:245,158,11;
   --amber-rgb:217,119,6;
   --purple-rgb:167,139,250;
   --on-gold:#0b0c10;
+  --on-primary:#0b0c10;
   --tile-bg:rgba(0,0,0,.2);
   --track-bg:rgba(255,255,255,.06);
   /* Glass reads as white-frost over a dark canvas; rim is a specular highlight */
@@ -90,69 +96,14 @@ body.dark-mode{
 }
 
 /* ============================================================
-   CYAN THEME (optional palette) — THEME-SYSTEM-AND-MOBILE-UI-ACTION-PLAN §3
+   SYSTEM THEME — follows OS prefers-color-scheme
    ------------------------------------------------------------
-   The active palette lives on <html data-theme="default|cyan"> (applied
-   pre-paint by js/mmgr-theme.js). Cyan maps the fluorescent-blue palette
-   onto the EXISTING token names — every component that already uses
-   var(--gold)/var(--canvas)/… follows automatically. Default = current
-   gold system; cyan is an alternative, never a replacement.
-
-   FUTURE THEME RECIPE (plan §8): copy one of these two blocks, rename the
-   selector to [data-theme="name"], override the same token names, add a
-   <button data-pal="name"> to the pickers, and let the backend accept the
-   new string. No component CSS changes needed.
+   When mmgr_theme = 'system' (the default), the effective mode
+   is determined by the OS preference. The mmgr-theme.js helper
+   toggles body.dark-mode on <body> at runtime. No CSS media
+   query override is needed here — body.dark-mode already carries
+   the full dark token set above. System mode is a JS-only concern.
    ============================================================ */
-html[data-theme="cyan"]{
-  --canvas:#eefafc;--card:#ffffff;--border:#b8e8ef;--text:#001619;--slate:#3d6b73;
-  --gold:#0f766e;--green:#047857;--danger:#dc2626;--amber:#c2410c;--blue:#0d9488;
-  --purple:#7c3aed;
-  --gold-rgb:15,118,110;
-  --amber-rgb:194,65,12;
-  --purple-rgb:124,58,237;
-  --on-gold:#ffffff;
-  --tile-bg:#f2fcfd;
-  --track-bg:#e2f6f9;
-  /* cyan light keeps the retired-glass solid surfaces; hairline goes cyan */
-  --glass-blur:0px;
-  --glass-saturate:100%;
-  --glass-fill-dark:#ffffff;
-  --glass-fill-dark-hover:#eefafc;
-  --glass-fill-dark-active:#e2f6f9;
-  --glass-rim:inset 0 1px 0 rgba(0,22,25,0.04);
-  --glass-rim-strong:inset 0 1px 0 #ffffff;
-  --glass-border:1px solid #b8e8ef;
-  --glass-shadow:0 1px 2px rgba(0,22,25,0.05),0 6px 18px rgba(0,22,25,0.07);
-  --toggle-on-bg:#0f766e;
-  --toggle-on-fg:#ffffff;
-  --toggle-off-bg:rgba(0,22,25,0.07);
-  --toggle-off-fg:#0f172a;
-}
-html[data-theme="cyan"] body.dark-mode{
-  --canvas:#001619;--card:#0a2a2e;--border:rgba(80,232,244,0.18);--text:#c7f8fe;--slate:#7ab8c0;
-  --gold:#50e8f4;--green:#2dd4bf;--danger:#f87171;--amber:#fbbf24;--blue:#22d3ee;
-  --purple:#a78bfa;
-  --gold-rgb:80,232,244;
-  --amber-rgb:251,191,36;
-  --purple-rgb:167,139,250;
-  --on-gold:#001619;
-  --tile-bg:rgba(0,0,0,.2);
-  --track-bg:rgba(80,232,244,.08);
-  /* frosted glass reads cyan-tinted over the blue-charcoal canvas */
-  --glass-blur:20px;
-  --glass-saturate:180%;
-  --glass-fill-dark:rgba(80,232,244,0.07);
-  --glass-fill-dark-hover:rgba(80,232,244,0.11);
-  --glass-fill-dark-active:rgba(80,232,244,0.15);
-  --glass-rim:inset 0 1px 0 rgba(80,232,244,0.18);
-  --glass-rim-strong:inset 0 1px 0 rgba(80,232,244,0.3);
-  --glass-border:1px solid rgba(80,232,244,0.18);
-  --glass-shadow:0 8px 24px rgba(0,0,0,0.4);
-  --toggle-on-bg:#50e8f4;
-  --toggle-on-fg:#001619;
-  --toggle-off-bg:rgba(80,232,244,0.12);
-  --toggle-off-fg:#c7f8fe;
-}
 
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 
@@ -160,6 +111,13 @@ body{
   font-family:"Inter",-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",Roboto,sans-serif;
   background:var(--canvas);color:var(--text);min-height:100vh;overflow-x:hidden;
   cursor:default;letter-spacing:-0.01em;font-feature-settings:"cv02","cv03","cv04","cv11";
+  -webkit-tap-highlight-color:transparent;
+  -webkit-text-size-adjust:100%;
+  text-size-adjust:100%;
+}
+/* Safe area insets for notch devices (iPhone X+, Android 10+) */
+@supports(padding:max(0px)){
+  body{padding:max(0px,env(safe-area-inset-bottom));}
 }
 
 /* ---- Wrong-code modal shake (CLAUDE-BUG-AUDIT-2026-08-11 #2) ---- */
@@ -173,13 +131,13 @@ body{
    stroke="#D4AF37" etc. presentation attributes — CSS attribute selectors
    override those (presentation attrs are the lowest-priority source), so the
    icons re-tint live when the palette/dark theme switches. */
-.sec-btn path[stroke="#D4AF37"]{stroke:var(--gold);}
-.sec-btn path[stroke="#22C55E"]{stroke:var(--green);}
-.sec-btn path[stroke="#3B82F6"]{stroke:var(--blue);}
-.sec-btn path[stroke="#F59E0B"]{stroke:var(--amber);}
-.sec-btn path[stroke="#EF4444"]{stroke:var(--danger);}
-.sec-btn path[stroke="#64748B"]{stroke:var(--slate);}
-.sec-btn path[stroke="#8B5CF6"]{stroke:var(--purple);}
+/* Nav icons: neutral by default (Phase 5). Color only for active, status, alerts. */
+.sec-btn .ic-svg,.sec-btn path{stroke:var(--slate);transition:stroke var(--tr);}
+.sec-btn:hover .ic-svg,.sec-btn:hover path{stroke:var(--green);}
+.sec-btn.active .ic-svg,.sec-btn.active path{stroke:var(--on-gold);}
+/* Status-colored icons: keep red for Risk, amber for Changes */
+.sec-btn[data-section="risk"] .ic-svg path{stroke:var(--danger);}
+.sec-btn[data-section="chg"] .ic-svg path{stroke:var(--amber);}
 
 /* ---- Color-theme palette picker (THEME-SYSTEM-AND-MOBILE-UI-ACTION-PLAN §4.1) ---- */
 .pal-switch{display:inline-flex;align-items:center;gap:2px;padding:2px;background:var(--track-bg);border:1px solid var(--border);border-radius:100px;}
@@ -197,7 +155,7 @@ body:not(.crosshair-on) #cx,body:not(.crosshair-on) #cy{display:none;}
 
 /* ---- Header ---- */
 #app-header{position:sticky;top:0;z-index:100;background:var(--card);border-bottom:1px solid var(--border);padding:12px 24px;display:flex;align-items:center;justify-content:space-between;gap:20px;}
-.greeting{font-size:1.05rem;font-weight:800;color:var(--gold);letter-spacing:-.01em;white-space:nowrap;}
+.greeting{font-size:1.05rem;font-weight:700;color:var(--text);letter-spacing:-.01em;white-space:nowrap;}
 .tab-ctrl{display:flex;background:var(--track-bg);border-radius:100px;padding:4px;gap:2px;}
 .tab-btn{position:relative;z-index:1;padding:8px 18px;border:none;background:transparent;color:var(--slate);font-size:.85rem;font-weight:600;border-radius:100px;cursor:pointer;transition:color var(--tr);}
 .tab-btn:focus-visible{outline:2px solid var(--gold);outline-offset:2px;}
@@ -342,11 +300,12 @@ body.sidebar-open .nav-btn .ico,body.sidebar-open .sb-close .ico{transform:rotat
 .nav-group + .nav-group{position:relative;padding-left:14px;margin-left:4px;}
 .nav-group + .nav-group::before{content:'';position:absolute;left:0;top:18%;height:64%;width:1px;background:var(--border);}
 .nav-group-label{font-size:.58rem;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--slate);margin-right:2px;white-space:nowrap;}
-.sec-btn{padding:6px 14px;border:1px solid var(--border);border-radius:100px;background:transparent;color:var(--slate);font-size:.78rem;cursor:pointer;transition:all var(--tr);display:inline-flex;align-items:center;gap:6px;}
+.sec-btn{padding:6px 14px;border:1px solid var(--border);border-radius:100px;background:transparent;color:var(--slate);font-size:.8125rem;cursor:pointer;transition:all var(--tr);display:inline-flex;align-items:center;gap:6px;}
 .sec-btn:focus-visible{outline:2px solid var(--gold);outline-offset:2px;}
-.sec-btn.active,.sec-btn:hover{border-color:var(--green);color:var(--green);}
-/* The active pill stays the strongest signal in the nav — brighter than the group dividers */
-.sec-nav .sec-btn.active{box-shadow:0 0 0 1px var(--green);background:rgba(16,185,129,.08);}
+.sec-btn.active{border-color:var(--green);color:var(--on-gold);background:var(--green);font-weight:700;}
+.sec-btn:hover{border-color:var(--green);color:var(--green);}
+/* The active pill is the strongest signal in the nav — filled background */
+.sec-nav .sec-btn.active{box-shadow:0 0 0 1px var(--green);}
 .ic-svg{width:18px;height:18px;flex-shrink:0;vertical-align:-3px;}
 .ic-ct{width:20px;height:20px;flex-shrink:0;margin-right:4px;vertical-align:-4px;}
 /* UI-MODERNIZATION 2026-08-14 (dashboard-alignment audit, follow-up): with
@@ -475,6 +434,16 @@ body.sidebar-open .nav-btn .ico,body.sidebar-open .sb-close .ico{transform:rotat
 .core-callout-txt{display:flex;align-items:center;gap:10px;font-size:.8rem;line-height:1.5;color:var(--text);max-width:660px;}
 .core-callout-txt .ico{color:var(--gold);flex-shrink:0;}
 .core-callout-actions{display:flex;gap:8px;align-items:center;flex-shrink:0;flex-wrap:wrap;}
+/* Attention card (UI-UX doc §7.1) — gold-tinted when items are pending */
+#attention-card.has-items{border-color:rgba(var(--amber-rgb),.4);background:linear-gradient(180deg,rgba(var(--amber-rgb),.06),var(--card) 50%);}
+#attention-card .fb-sm .badge{min-width:24px;justify-content:center;}
+/* This Week card */
+#this-week-card .fb-sm .badge{min-width:24px;justify-content:center;}
+/* Health Score Why? toggle */
+#health-breakdown-wrap summary{list-style:none;display:inline-flex;align-items:center;gap:4px;}
+#health-breakdown-wrap summary::before{content:'\25B8';font-size:.6rem;transition:transform var(--tr);}
+#health-breakdown-wrap[open] summary::before{transform:rotate(90deg);}
+#health-breakdown-wrap summary::-webkit-details-marker{display:none;}
 .panel{display:none;}
 .panel.active{display:block;}
 
@@ -496,12 +465,12 @@ body.sidebar-open .nav-btn .ico,body.sidebar-open .sb-close .ico{transform:rotat
 .card.blueprint{position:relative;}
 .card.blueprint::before,.card.blueprint::after{
   content:"";position:absolute;width:10px;height:10px;
-  border-top:1.5px solid var(--cyan-dim);border-left:1.5px solid var(--cyan-dim);
+  border-top:1.5px solid var(--border);border-left:1.5px solid var(--border);
   top:-1px;left:-1px;opacity:.7;pointer-events:none;
 }
 .card.blueprint::after{
   top:auto;left:auto;bottom:-1px;right:-1px;
-  border:none;border-bottom:1.5px solid var(--cyan-dim);border-right:1.5px solid var(--cyan-dim);
+  border:none;border-bottom:1.5px solid var(--border);border-right:1.5px solid var(--border);
 }
 
 /* ---- Cards ---- */
@@ -510,8 +479,8 @@ body.sidebar-open .nav-btn .ico,body.sidebar-open .sb-close .ico{transform:rotat
    driven by the design tokens (light: blur 0, crisp solid; dark: frosted).
    Dense tables inside stay flat/opaque — readability is never traded. */
 .card{background:var(--glass-fill-dark);border:var(--glass-border);border-radius:var(--squircle-md);padding:20px;margin-bottom:18px;box-shadow:var(--glass-rim),var(--glass-shadow);backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturate));-webkit-backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturate));transition:border-color var(--tr),background var(--tr),box-shadow var(--tr);}
-.card:hover{border-color:#cbd5e1;box-shadow:var(--glass-rim),0 4px 20px rgba(16,24,40,.08);}
-.card-title{font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--slate);margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;min-width:0;}
+.card:hover{border-color:#d1d5db;box-shadow:var(--glass-rim),0 2px 8px rgba(16,24,40,.06);}
+.card-title{font-size:.8125rem;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--slate);margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;min-width:0;}
 
 /* ---- Grids ---- */
 .g2{display:grid;grid-template-columns:1fr 1fr;gap:18px;}
@@ -569,7 +538,7 @@ body.sidebar-open .nav-btn .ico,body.sidebar-open .sb-close .ico{transform:rotat
    circumference. "No tasks yet" / "N% Completed" still fit the hole. */
 .ring-bg{fill:none;stroke:var(--border);stroke-width:18;}
 .ring-fill{fill:none;stroke:var(--green);stroke-width:18;stroke-linecap:round;transition:stroke-dashoffset .5s ease;}
-.ring-txt{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:.82rem;font-weight:700;color:var(--gold);text-align:center;line-height:1.15;padding:4px;}
+.ring-txt{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:.82rem;font-weight:700;color:var(--text);text-align:center;line-height:1.15;padding:4px;}
 
 /* ---- Badges ---- */
 .badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:100px;font-size:.72rem;font-weight:600;font-variant-numeric:tabular-nums;}
@@ -627,8 +596,8 @@ body.sidebar-open .nav-btn .ico,body.sidebar-open .sb-close .ico{transform:rotat
 .btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:var(--radius);border:none;font-size:.8rem;font-weight:600;cursor:pointer;transition:all var(--tr);line-height:1.4;}
 .btn:focus-visible{outline:2px solid var(--gold);outline-offset:2px;}
 .btn:active,.kc:active{filter:brightness(1.1);transform:scale(.98);}
-.btn-g{background:var(--green);color:#fff;box-shadow:0 1px 3px rgba(4,120,87,.25);}.btn-g:hover{background:#03644f;box-shadow:0 2px 8px rgba(4,120,87,.35);}
-.btn-o{background:var(--gold);color:var(--on-gold);box-shadow:0 1px 3px rgba(var(--gold-rgb),.3);}.btn-o:hover{background:#92400e;box-shadow:0 2px 8px rgba(var(--gold-rgb),.4);}
+.btn-g{background:var(--green);color:#fff;}.btn-g:hover{background:#03644f;}
+.btn-o{background:var(--gold);color:var(--on-primary);}.btn-o:hover{background:var(--gold-dark,#7c2d12);}
 .btn-n{background:transparent;border:1px solid var(--border);color:var(--slate);}.btn-n:hover{border-color:var(--gold);color:var(--gold);background:rgba(var(--gold-rgb),.04);}
 .btn-d{background:transparent;border:1px solid rgba(220,53,69,.3);color:var(--danger);}.btn-d:hover{background:rgba(220,53,69,.08);border-color:var(--danger);}
 .btn-s{padding:5px 10px;font-size:.72rem;}
@@ -636,6 +605,7 @@ body.sidebar-open .nav-btn .ico,body.sidebar-open .sb-close .ico{transform:rotat
 .btn-pill{border-radius:100px;padding:8px 20px;}
 .btn-icon{padding:6px;border-radius:var(--radius);}
 .btn-ghost{background:transparent;border:none;color:var(--slate);padding:6px 10px;}.btn-ghost:hover{color:var(--gold);background:rgba(var(--gold-rgb),.06);}
+.btn:disabled,.btn[disabled]{opacity:.45;cursor:not-allowed;pointer-events:none;}
 /* Modern admin toolbar */
 .toolbar{display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap;align-items:center;}
 .toolbar .btn{white-space:nowrap;}
@@ -2205,24 +2175,24 @@ body.dark-mode .sync-suggest{background:rgba(245,158,11,.10);border-color:rgba(2
    glass), fluorescent-blue accent, thin-air secondary text. Everything is
    scoped to body.dark-mode.db-page, so the LIGHT launcher and every other
    page stay byte-for-byte unchanged (spec §5). All ratios MEASURED
-   (WCAG 2.2, Gate 4.3) — see per-token comments. --db-fluor-blue on a
+   (WCAG 2.2, Gate 4.3) — see per-token comments. --db-gold on a
    light surface is 1.48:1 and must never be used there.
    ============================================================ */
 .db-side,.db-hamb,.db-scrim,.db-metrics{display:none;}
 body.dark-mode.db-page{
   /* TIER 1 — primitives (raw values) */
-  --db-fluor-blue:#50E8F4;      /* fluorescent accent — 13.38:1 on --db-canvas, 12.66:1 on --db-surface (AAA) */
-  --db-thin-air:#C7F8FE;        /* light secondary accent — 17.24:1 on --db-canvas, 16.31:1 on --db-surface (AAA) */
+  --db-gold:#f59e0b;            /* muted gold accent — same identity as light mode */
+  --db-gold-soft:#fbbf24;       /* lighter gold for secondary use */
   --db-jet-black:#0A0A0A;       /* page canvas (owner override of #001619; not #000 so shadows/elevation keep depth) */
-  --db-muted-cyan:#9FD8DE;      /* muted secondary text — 11.91:1 on --db-surface, 11.07:1 on raised (AAA) */
+  --db-muted-slate:#94a3b8;     /* muted secondary text — neutral slate */
   /* TIER 2 — semantic (dashboard-scoped; --db- prefix so nothing can leak) */
   --db-canvas:var(--db-jet-black);
   --db-surface:#121212;
   --db-surface-raised:#1a1a1a;
-  --db-accent:var(--db-fluor-blue);
-  --db-accent-soft:var(--db-thin-air);
+  --db-accent:var(--db-gold);
+  --db-accent-soft:var(--db-gold-soft);
   --db-border:#262626;
-  --db-text-secondary:var(--db-muted-cyan);
+  --db-text-secondary:var(--db-muted-slate);
   background:var(--db-canvas);
   color:var(--text);            /* #e2e8f0 — 16.06:1 on canvas, 15.20:1 on surface (AAA) */
 }
@@ -3096,4 +3066,13 @@ body.dark-mode.db-page .db-auto-lbl{color:var(--db-text-secondary);}
 @media (prefers-reduced-motion:reduce){
   .toast{animation:none;}
   .toast.is-out{animation:none;opacity:0;}
+  .ai-fab{animation:none;}
+  #ai-win.open{animation:none;}
+  #ai-win.open .mb{animation:none;}
+  .ai-bubble,.ai-bot{animation:none;}
+  .ai-typing span{animation:none;}
+  .voice-dot{animation:none;}
+  .gb.pls,.kc.pls{animation:none;}
+  .pulse-attn{animation:none;}
+  *{transition-duration:0s!important;animation-duration:0s!important;}
 }

@@ -667,41 +667,10 @@ var MMGR = window.MMGR || {};
   // x / alert-triangle), one-word label (Done / Error / Note), full-contrast
   // message, slide-up + hold + graceful fade-out. Shared markup + the .toast
   // CSS in css/mmgr.css (same as app.html / admin.html) , one look everywhere.
+  // DELEGATE: real implementation lives in js/app/components.js (MMGR.Components.showToast).
+  // This one-liner keeps the local call-site unchanged while the monolith shrinks.
   function showToast(msg, type, action) {
-    const existing = document.querySelector('.toast');
-    if (existing) existing.remove();
-    const isErr = type === 'err' || type === 'error';
-    const isWarn = type === 'warn';
-    const t = document.createElement('div');
-    t.className = 'toast ' + (isErr ? 'err' : (isWarn ? 'warn' : 'ok'));
-    // GAP-AUDIT-CLOUD-31 (E18): the toast is a live region so async outcomes
-    // (AI answers, save confirmations, errors) reach screen readers. Errors
-    // are assertive; confirmations/warnings stay polite.
-    t.setAttribute('role', isErr ? 'alert' : 'status');
-    t.setAttribute('aria-live', isErr ? 'assertive' : 'polite');
-    const icon = isErr ? 'i-x' : (isWarn ? 'i-alert-triangle' : 'i-check-circle');
-    const label = isErr ? 'Error' : (isWarn ? 'Note' : 'Done');
-    t.innerHTML = '<span class="toast-ico"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#' + icon + '"></use></svg></span>' +
-                  '<span class="toast-body"><b></b><span></span></span>' +
-                  (action && action.label ? '<button type="button" class="toast-act" role="button">' + U.escapeHtml(action.label) + '</button>' : '');
-    t.querySelector('b').textContent = label;
-    t.querySelector('.toast-body > span').textContent = msg;
-    const actBtn = t.querySelector('.toast-act');
-    if (actBtn) {
-      // T6 (2026-08-16): destructive actions keep a short undo window , the
-      // toast holds ~6s while the snapshot lives, so the user can restore.
-      actBtn.addEventListener('click', function() {
-        clearTimeout(t._outTimer);
-        t.classList.remove('is-out');
-        if (action && action.onClick) { try { action.onClick(); } catch (e) { /* caller handles */ } }
-        t.classList.add('is-out');
-        setTimeout(() => t.remove(), 450);
-      });
-    }
-    document.body.appendChild(t);
-    const hold = (action && action.label) ? 6000 : 2600;
-    t._outTimer = setTimeout(() => t.classList.add('is-out'), hold);
-    setTimeout(() => t.remove(), hold + 500);
+    if (window.MMGR && MMGR.Components && MMGR.Components.showToast) { MMGR.Components.showToast(msg, type, action); }
   }
 
   // ---- Methodology Learning Card ----

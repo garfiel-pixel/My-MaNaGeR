@@ -1691,6 +1691,35 @@ var MMGR = window.MMGR || {};
     document.addEventListener('pointercancel', onUp);
   })();
 
+  // ---- Dashboard command bar (Phase 7) ----
+  // Wires #ai-command-input to pre-fill the AI window and open it.
+  document.addEventListener('keydown', function(e) {
+    if (e.key !== 'Enter') return;
+    var inp = document.getElementById('ai-command-input');
+    if (!inp || document.activeElement !== inp) return;
+    var val = inp.value.trim();
+    if (!val) return;
+    e.preventDefault();
+    // Pre-fill the AI window's question field and open it
+    var aiQ = U.$('ai-q');
+    if (aiQ) aiQ.value = val;
+    open();
+    inp.value = '';
+  });
+  document.addEventListener('click', function(e) {
+    var btn = e.target.closest ? e.target.closest('#ai-command-btn') : null;
+    if (!btn) return;
+    var inp = document.getElementById('ai-command-input');
+    if (!inp) return;
+    var val = inp.value.trim();
+    if (val) {
+      var aiQ = U.$('ai-q');
+      if (aiQ) aiQ.value = val;
+    }
+    open();
+    inp.value = '';
+  });
+
   // ---- API ----
   ns.AiWin = {
     open: open,

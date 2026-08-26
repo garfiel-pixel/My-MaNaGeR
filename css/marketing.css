@@ -7,12 +7,9 @@
      (header, primary buttons, floating controls, modals, sheets)
    - Solid         -> content layer ONLY
      (hero text, feature cards, body copy, tables, lists, media)
-   - BRIGHT BLUE is the primary accent on every marketing surface (OWNER
-     2026-08-17: blue + white + black text, three colors). The legacy
-     --gold/--teal token NAMES now carry the blue family — never rename
-     them, never reintroduce gold/teal to the default theme. The cyan
-     alternative theme keeps its teal/cyan identity by overriding the same
-     tokens.
+   -   GOLD is the primary accent on every marketing surface, matching the app's
+     identity. The legacy --gold/--teal token NAMES carry the gold family.
+     The product should feel like one brand across marketing + app.
    - Dark mode re-maps BOTH surface and text tokens in one change — never
      black-on-black (hard gate).
    - Never stack glass on glass.
@@ -23,39 +20,35 @@
 :root{
   /* surfaces */
   --bg:            #F8FAFC;   /* main page background (near-white) */
-  --bg-warm:       #F1F5FB;   /* alternate cool section tone (blue-white, OWNER 2026-08-17) */
-  --header-navy:   #1E3A8A;   /* DEEP BLUE — footer/page-hero/guide band/photo overlays */
+  --bg-warm:       #F5F3EF;   /* alternate warm section tone (gold-white) */
+  --header-navy:   #1C1917;   /* STONE-900 — footer/page-hero/guide band/photo overlays */
   --card:          #FFFFFF;
-  --border:        #E2E8F0;
-
-  /* accents — BRIGHT BLUE family (OWNER 2026-08-17: blue + white + black).
-     Token names are legacy gold/teal; values are blue. Do not rename. */
-  --gold:          #2563EB;   /* primary accent — bright blue-600 (white on it = 4.54:1) */
-  --gold-hover:    #3B82F6;   /* blue-500 hover */
-  --gold-deep:     #1D4ED8;   /* blue-700 text accent on white (7.1:1) */
-  --gold-rgb:      37,99,235; /* rgba(var(--gold-rgb),a) — tokenized blue fills */
-  --teal:          #3B82F6;   /* secondary/positive accent — blue-500 */
-  --teal-deep:     #1D4ED8;   /* blue-700 */
+  --border:        #E2E8F0;  /* accents — GOLD family (matching the app's identity).
+     Gold is the hero color. Green for success. Red for danger. */
+  --gold:          #b45309;   /* primary accent — gold-600 */
+  --gold-hover:    #d97706;   /* gold-500 hover */
+  --gold-deep:     #92400e;   /* gold-700 text accent on white */
+  --gold-rgb:      180,83,9;  /* rgba(var(--gold-rgb),a) — tokenized gold fills */
+  --teal:          #047857;   /* secondary/positive accent — green */
+  --teal-deep:     #065f46;   /* green deep */
   --danger:        #EF4444;
   --purple:        #8B5CF6;
-  /* accent readable on the deep-blue band (footer, page-hero, photo overlay) */
-  --accent-on-navy:#93C5FD;   /* blue-300 on #1E3A8A = 7.6:1 */
+  /* accent readable on the dark band (footer, page-hero, photo overlay) */
+  --accent-on-navy:#FCD34D;   /* gold-300 on stone-900 = 8.5:1 */
 
-  /* COLOR-PALETTE-PROPOSAL: Blueprint blue ramp + locked status palette.
-     Added 2026-08-19. These sit alongside the legacy gold/teal names above
-     (which carry the same blue values). Use these NEW tokens for surfaces,
-     borders, and hover fills that need finer gradation than the legacy set.
+  /* Gold ramp + locked status palette.
+     Use gold tokens for surfaces, borders, and hover fills.
      Status tokens are LOCKED: badges/alerts/indicators ONLY, never decorative.
      Rule: "If a color isn't telling you the state of something, it must be
-     blue, white, black, or a shade of blue." */
-  --blue-50:       #EFF4FC;   /* tinted surfaces, hover fills */
-  --blue-100:      #D7E3F7;   /* subtle fills, disabled states */
-  --blue-300:      #7FA8E8;   /* borders/icons on dark surfaces */
-  --blue-500:      #2D6CDF;   /* proposal primary (close to --gold #2563EB) */
-  --blue-700:      #1B4CA6;   /* proposal hover/pressed, headings on white */
-  --blue-900:      #0F2E6B;   /* proposal deep surfaces, dark-mode chrome */
-  --canvas:        #F4F6FA;   /* proposal app background (cool-toned, close to --bg) */
-  --ink:           #10151F;   /* proposal body text (slightly lifted off pure black) */
+     gold, white, black, or a shade of gold." */
+  --gold-50:       #FFFBEB;   /* tinted surfaces, hover fills */
+  --gold-100:      #FEF3C7;   /* subtle fills, disabled states */
+  --gold-300:      #FCD34D;   /* borders/icons on dark surfaces */
+  --gold-500:      #F59E0B;   /* gold primary */
+  --gold-700:      #B45309;   /* gold hover/pressed, headings on white */
+  --gold-900:      #78350F;   /* gold deep surfaces, dark-mode chrome */
+  --canvas:        #F9FAFB;   /* app background (neutral) */
+  --ink:           #1F2937;   /* body text (neutral) */
   --status-danger: #C4342B;   /* over budget, blocked, critical risk */
   --status-warning:#B4740E;   /* at risk, pending, due soon */
   --status-success:#16794D;   /* on track, approved, healthy */
@@ -69,8 +62,8 @@
   /* Liquid Glass stack (functional layer only) */
   --glass-blur:    18px;
   --glass-saturate:1.6;
-  --glass-tint:    rgba(30,58,138,.72);
-  --glass-tint-soft:rgba(30,58,138,.55);
+  --glass-tint:    rgba(28,25,23,.72);
+  --glass-tint-soft:rgba(28,25,23,.55);
   --glass-edge:    1px solid rgba(255,255,255,.16);
   --glass-specular:linear-gradient(180deg,rgba(255,255,255,.16),rgba(255,255,255,.03) 42%,rgba(255,255,255,0));
   --glass-shadow:  0 10px 34px rgba(15,23,42,.16);
@@ -91,61 +84,21 @@
 }
 
 /* ============================================================
-   PALETTE + DARK THEMES — THEME-SYSTEM-AND-MOBILE-UI-ACTION-PLAN §2.2/§3
+   DARK MODE — follows OS preference when mode = 'system'
    ------------------------------------------------------------
-   The active palette lives on <html data-theme="default|cyan"> (applied
-   pre-paint by js/mmgr-theme.js — loaded on every marketing page). Cyan maps
-   the fluorescent-blue palette onto the SAME token names below, so no
-   component rule changes. Device dark mode (body.dark-mode, same localStorage
-   slot the app uses) gets its own coherent token set. Default = current gold
-   system; cyan is an alternative, never a replacement.
-
-   FUTURE THEME RECIPE (plan §8): copy a block below, rename the selector to
-   [data-theme="name"], override the same tokens, add a <button data-pal="name">
-   to the header picker. Nothing else changes.
+   The mmgr-theme.js helper toggles body.dark-mode based on the
+   stored mode ('light' | 'dark' | 'system'). When mode is 'system',
+   body.dark-mode follows OS prefers-color-scheme. One brand, two
+   appearances — no palette switching.
    ============================================================ */
-html[data-theme="cyan"]{
-  --bg:#eefafc;--bg-warm:#e2f5f8;--header-navy:#001619;--card:#ffffff;--border:#b8e8ef;
-  --gold:#0f766e;--gold-hover:#0d9488;--gold-deep:#0b5d57;--gold-rgb:15,118,110;
-  --teal:#0d9488;--teal-deep:#0f766e;--danger:#dc2626;--purple:#7c3aed;
-  --text-primary:#001619;--text-secondary:#3d6b73;--on-navy:#f8fafc;--on-gold:#ffffff;
-  --glass-tint:rgba(0,22,25,.72);--glass-tint-soft:rgba(0,22,25,.55);
-  --glass-specular:linear-gradient(180deg,rgba(255,255,255,.16),rgba(255,255,255,.03) 42%,rgba(255,255,255,0));
-  --glass-edge:1px solid rgba(255,255,255,.16);
-}
-/* CYAN-LIGHT ON ALWAYS-DARK SURFACES (owner 2026-08-17 — dark bg must carry
-   light text/accents). The cyan LIGHT theme's --gold/--teal are dark teals
-   chosen for the light page background, but the hero h1 spans, the hero stats
-   figures, and the footer sit on theme-independent dark navy (photo overlay /
-   footer band). Reuse the cyan DARK theme's bright values (50e8f4 / 2dd4bf)
-   so the accent stays readable there; the rest of the page keeps the dark-teal
-   light-theme identity untouched. */
-html[data-theme="cyan"] .hero h1 .gold,
-html[data-theme="cyan"] .hero-stats b,
-html[data-theme="cyan"] .footer-col b,
-html[data-theme="cyan"] .footer-bottom a:hover,
-html[data-theme="cyan"] .brand b span{color:#50e8f4;}
-html[data-theme="cyan"] .hero h1 .teal{color:#2dd4bf;}
-html[data-theme="cyan"] body.dark-mode{
-  --bg:#001619;--bg-warm:#06262b;--header-navy:#001013;--card:#0a2a2e;--border:rgba(80,232,244,.18);
-  --gold:#50e8f4;--gold-hover:#7beef9;--gold-deep:#2bc4d4;--gold-rgb:80,232,244;
-  --teal:#2dd4bf;--teal-deep:#14b8a6;--danger:#f87171;--purple:#a78bfa;
-  --text-primary:#c7f8fe;--text-secondary:#7ab8c0;--on-navy:#c7f8fe;--on-gold:#001619;
-  --glass-tint:rgba(0,22,25,.78);--glass-tint-soft:rgba(0,22,25,.62);
-  --glass-specular:linear-gradient(180deg,rgba(80,232,244,.10),rgba(80,232,244,.02) 42%,rgba(80,232,244,0));
-  --glass-edge:1px solid rgba(80,232,244,.22);
-}
-/* Device dark mode for the public pages (helper applies body.dark-mode when the
-   shared mmgr_theme slot is 'dark') — coherent slate set, gold accent retained. */
 body.dark-mode{
-  --bg:#0b1120;--bg-warm:#0f172a;--header-navy:#0b1120;--card:#131c2e;--border:#243349;
-  /* BRIGHT BLUE accents on dark (OWNER 2026-08-17): dark text on dark bg is a
-     hard gate — surfaces AND text re-map together. #60A5FA on #0b1120 = 7.5:1. */
-  --gold:#60A5FA;--gold-hover:#93C5FD;--gold-deep:#93C5FD;--gold-rgb:96,165,250;
-  --teal:#7DD3FC;--teal-deep:#60A5FA;--danger:#f87171;--purple:#a78bfa;
-  --accent-on-navy:#93C5FD;
-  --text-primary:#e2e8f0;--text-secondary:#94a3b8;--on-navy:#e2e8f0;--on-gold:#0f172a;
-  --glass-tint:rgba(2,6,17,.8);--glass-tint-soft:rgba(2,6,17,.6);
+  --bg:#0c0a09;--bg-warm:#1c1917;--header-navy:#0c0a09;--card:#1c1917;--border:#292524;
+  /* GOLD accents on dark — matching the app's dark mode identity. */
+  --gold:#F59E0B;--gold-hover:#FBBF24;--gold-deep:#FCD34D;--gold-rgb:245,158,11;
+  --teal:#34D399;--teal-deep:#10B981;--danger:#f87171;--purple:#a78bfa;
+  --accent-on-navy:#FCD34D;
+  --text-primary:#f5f5f4;--text-secondary:#a8a29e;--on-navy:#f5f5f4;--on-gold:#1C1917;
+  --glass-tint:rgba(12,10,9,.8);--glass-tint-soft:rgba(12,10,9,.6);
   --glass-specular:linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,.02) 42%,rgba(255,255,255,0));
   --glass-edge:1px solid rgba(255,255,255,.12);
 }
@@ -209,7 +162,7 @@ svg.ico use{fill:inherit;stroke:inherit;}
 .eyebrow::before{content:"";width:30px;height:2px;background:var(--gold);border-radius:2px;}
 .section-head{max-width:640px;margin-bottom:46px;}
 .section-head h2{
-  font-size:clamp(1.7rem,3.4vw,2.4rem);
+  font-size:clamp(1.25rem,2.8vw,1.625rem);
   font-weight:800;letter-spacing:-.025em;line-height:1.12;
   margin:14px 0 12px;
 }
@@ -230,10 +183,7 @@ svg.ico use{fill:inherit;stroke:inherit;}
   border-bottom:1px solid rgba(15,23,42,.08);
   box-shadow:0 10px 34px rgba(15,23,42,.08);
 }
-html[data-theme="cyan"] .site-header{
-  background:rgba(238,250,252,.8);
-  border-bottom:1px solid rgba(13,148,136,.14);
-}
+
 body.dark-mode .site-header{
   background:var(--glass-specular),var(--glass-tint);
   border-bottom:var(--glass-edge);
@@ -313,12 +263,11 @@ body.dark-mode .site-nav a.nav-link[aria-current="page"]{color:#fff;}
 .btn:active{transform:scale(.96);}
 .btn-gold{
   background:var(--gold);color:var(--on-gold);
-  box-shadow:0 6px 18px rgba(var(--gold-rgb),.35),inset 0 1px 0 rgba(255,255,255,.45);
+  box-shadow:0 1px 3px rgba(var(--gold-rgb),.2);
 }
 .btn-gold:hover{
   background:var(--gold-hover);
-  transform:translateY(-1px);
-  box-shadow:0 10px 26px rgba(var(--gold-rgb),.45),inset 0 1px 0 rgba(255,255,255,.55);
+  box-shadow:0 2px 8px rgba(var(--gold-rgb),.3);
 }
 .btn-gold:active{transform:translateY(0) scale(.97);}
 .btn-ghost-light{
@@ -405,8 +354,8 @@ body.dark-mode .signin-btn[aria-expanded="true"]{background:rgba(255,255,255,.16
   width:min(300px,calc(100vw - 32px));z-index:130;
   padding:20px 22px 12px;border-radius:18px;
   background:var(--card);
-  border:1px solid var(--blue-100);
-  box-shadow:0 20px 50px -12px rgba(15,23,42,.18),0 0 0 1px rgba(45,108,223,.08);
+  border:1px solid var(--gold-100);
+  box-shadow:0 20px 50px -12px rgba(15,23,42,.18),0 0 0 1px rgba(var(--gold-rgb),.08);
   opacity:0;visibility:hidden;
   transition:opacity var(--tr),transform var(--tr),visibility var(--tr);
 }
@@ -436,7 +385,7 @@ body.dark-mode .signin-btn[aria-expanded="true"]{background:rgba(255,255,255,.16
 .nav-dd-cols .nav-dd-list{columns:3;}
 .nav-dd-tall .nav-dd-list{columns:4;}
 /* Free-flowing text rows: plain links that hover to the accent.
-   COLOR-PALETTE-PROPOSAL tokens: --blue-500 primary, --blue-50 hover fill.
+   Gold tokens: --gold-500 primary, --gold-50 hover fill.
    break-inside:avoid keeps a row from splitting across columns. */
 .nav-dd-item{
   display:block;break-inside:avoid;
@@ -444,17 +393,17 @@ body.dark-mode .signin-btn[aria-expanded="true"]{background:rgba(255,255,255,.16
   color:var(--ink);font-size:.86rem;font-weight:600;line-height:1.45;
   transition:color var(--tr),background var(--tr);
 }
-.nav-dd-item:hover{color:var(--blue-700);background:var(--blue-50);}
-.nav-dd-item:focus-visible{outline:2px solid var(--blue-500);outline-offset:-1px;border-radius:8px;}
+.nav-dd-item:hover{color:var(--gold-700);background:var(--gold-50);}
+.nav-dd-item:focus-visible{outline:2px solid var(--gold-500);outline-offset:-1px;border-radius:8px;}
 /* Foot = one long horizontal hairline, then the link text. */
 .nav-dd-foot{
   display:block;max-width:1180px;margin:14px auto 0;
-  padding:12px 10px 0;border-top:1px solid var(--blue-100);
+  padding:12px 10px 0;border-top:1px solid var(--gold-100);
   color:var(--text-secondary);font-size:.78rem;font-weight:600;
   transition:color var(--tr),background var(--tr);
   border-radius:8px;
 }
-.nav-dd-foot:hover{color:var(--blue-700);background:var(--blue-50);}
+.nav-dd-foot:hover{color:var(--gold-700);background:var(--gold-50);}
 /* highlight flash for a dropdown-selected section (gold ring + soft glow) */
 .dd-flash{animation:dd-flash 2.6s ease;}
 @keyframes dd-flash{
@@ -708,8 +657,8 @@ body.dark-mode .signin-btn[aria-expanded="true"]{background:rgba(255,255,255,.16
   /* deep-blue tint over the photo (OWNER 2026-08-17: blue + white) */
   background:
     radial-gradient(52% 70% at 82% 6%,rgba(var(--gold-rgb),.22),transparent 62%),
-    radial-gradient(44% 64% at 12% 90%,rgba(59,130,246,.16),transparent 60%),
-    linear-gradient(90deg,rgba(30,58,138,.94) 0%,rgba(30,58,138,.86) 38%,rgba(30,58,138,.7) 74%,rgba(30,58,138,.84) 100%);
+    radial-gradient(44% 64% at 12% 90%,rgba(var(--gold-rgb),.12),transparent 60%),
+    linear-gradient(90deg,rgba(28,25,23,.94) 0%,rgba(28,25,23,.86) 38%,rgba(28,25,23,.7) 74%,rgba(28,25,23,.84) 100%);
 }
 /* faint drafting-grid texture — decorative, solid, palette-neutral */
 .hero::before{
@@ -723,7 +672,7 @@ body.dark-mode .signin-btn[aria-expanded="true"]{background:rgba(255,255,255,.16
 }
 .hero-inner{position:relative;z-index:3;display:grid;grid-template-columns:1.15fr .85fr;gap:56px;align-items:center;}
 .hero h1{
-  font-size:clamp(2.2rem,5.2vw,3.6rem);
+  font-size:clamp(1.75rem,4vw,2.25rem);
   font-weight:800;letter-spacing:-.025em;line-height:1.06;
   margin:18px 0 18px;
 }
@@ -783,7 +732,7 @@ body.dark-mode .signin-btn[aria-expanded="true"]{background:rgba(255,255,255,.16
 }
 .hc-bar i{position:absolute;inset:0 auto 0 0;border-radius:6px;}
 .hc-bar.gold i{background:linear-gradient(90deg,var(--gold),var(--gold-hover));width:68%;}
-.hc-bar.teal i{background:linear-gradient(90deg,var(--blue-700),var(--blue-500));width:84%;}
+.hc-bar.teal i{background:linear-gradient(90deg,var(--gold-700),var(--gold-500));width:84%;}
 .hc-bar.navy i{background:linear-gradient(90deg,var(--gold-deep),var(--header-navy));width:41%;}
 .hc-meta{display:flex;justify-content:space-between;font-size:.68rem;color:var(--text-secondary);margin-top:7px;}
 .hero-card.offset{margin-left:auto;width:86%;}
@@ -895,7 +844,7 @@ body.dark-mode .signin-btn[aria-expanded="true"]{background:rgba(255,255,255,.16
   position:relative;overflow:hidden;
   background:
     radial-gradient(50% 90% at 88% 10%,rgba(var(--gold-rgb),.2),transparent 60%),
-    radial-gradient(45% 80% at 8% 100%,rgba(59,130,246,.16),transparent 60%),
+    radial-gradient(45% 80% at 8% 100%,rgba(var(--gold-rgb),.12),transparent 60%),
     var(--header-navy);
   color:var(--on-navy);border-radius:var(--radius-lg);
   padding:56px 58px;
@@ -929,7 +878,7 @@ body.dark-mode .signin-btn[aria-expanded="true"]{background:rgba(255,255,255,.16
 }
 .photo-band .pb-overlay{
   position:absolute;inset:0;pointer-events:none;
-  background:linear-gradient(100deg,rgba(30,58,138,.94) 0%,rgba(30,58,138,.86) 34%,rgba(30,58,138,.64) 68%,rgba(30,58,138,.82) 100%);
+  background:linear-gradient(100deg,rgba(28,25,23,.94) 0%,rgba(28,25,23,.86) 34%,rgba(28,25,23,.64) 68%,rgba(28,25,23,.82) 100%);
 }
 /* drafting-grid texture, same device as .guide-band */
 .photo-band::before{
@@ -1002,7 +951,7 @@ body.dark-mode .signin-btn[aria-expanded="true"]{background:rgba(255,255,255,.16
     var(--header-navy);
   color:var(--on-navy);padding:74px 0 60px;
 }
-.page-hero h1{font-size:clamp(1.9rem,4vw,2.7rem);font-weight:800;letter-spacing:-.025em;line-height:1.08;margin:14px 0 12px;}
+.page-hero h1{font-size:clamp(1.5rem,3.2vw,2rem);font-weight:800;letter-spacing:-.025em;line-height:1.12;margin:14px 0 12px;}
 .page-hero p{color:rgba(248,250,252,.75);max-width:56ch;font-size:1.04rem;line-height:1.55;}
 .crumbs{font-size:.74rem;letter-spacing:.08em;text-transform:uppercase;color:var(--accent-on-navy);font-weight:700;}
 .crumbs a:hover{text-decoration:underline;}

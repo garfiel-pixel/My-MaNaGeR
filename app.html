@@ -131,7 +131,9 @@ body.glass-premium .wrap{position:relative;z-index:1;}
    is no layout flash; the hamburger toggles it (closes/reopens) on every
    viewport. Mobile stays drawer-closed by default. */
 (function(){ try {
-  if (localStorage.getItem('mmgr_theme') === 'dark') document.documentElement.classList.add('dark-mode');
+  var t = localStorage.getItem('mmgr_theme');
+  var dark = t === 'dark' || (t !== 'light' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  if (dark) document.documentElement.classList.add('dark-mode');
   if (window.matchMedia && window.matchMedia('(min-width:769px)').matches) document.documentElement.classList.add('side-open');
 } catch (e) {} })();
 </script>
@@ -184,9 +186,7 @@ body.glass-premium .wrap{position:relative;z-index:1;}
     <div class="db-g">Customize</div>
     <button type="button" class="db-link" data-rail-toggle="rail-customize" aria-expanded="false" aria-controls="rail-customize"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-palette"></use></svg> Customize <svg class="ico ico-caret" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg></button>
     <div class="db-sub db-customize" id="rail-customize" hidden>
-      <span class="db-ctl-row"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-moon"></use></svg> Dark theme <label class="tgl"><input type="checkbox" id="thm-tgl" data-action="tglTheme" aria-label="Toggle dark theme"><span class="tsl"></span></label></span>
-      <span class="db-ctl-row"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-palette"></use></svg> Color theme <span class="pal-switch" role="group" aria-label="Color theme"><button type="button" class="pal-btn" data-pal="default" aria-pressed="true">Default</button><button type="button" class="pal-btn" data-pal="cyan" aria-pressed="false">Cyan</button></span></span>
-      <span class="db-ctl-row"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-orb"></use></svg> Premium glass <label class="tgl"><input type="checkbox" id="glass-tgl" data-action="tglGlassMode" aria-label="Toggle premium liquid-glass backdrop"><span class="tsl"></span></label></span>
+      <span class="db-ctl-row"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-palette"></use></svg> Appearance <span class="pal-switch" role="group" aria-label="Theme mode"><button type="button" class="pal-btn" data-pal="light" aria-pressed="false">Light</button><button type="button" class="pal-btn" data-pal="dark" aria-pressed="false">Dark</button><button type="button" class="pal-btn" data-pal="system" aria-pressed="true">System</button></span></span>
     </div>
   </nav>
   <div class="db-foot">
@@ -207,7 +207,7 @@ body.glass-premium .wrap{position:relative;z-index:1;}
 <div class="wrap">
   <div class="top" id="top">
     <button type="button" id="db-nav-btn" class="db-hamb" data-action="toggleSidebar" aria-label="Open menu" aria-expanded="false" aria-controls="db-sidebar"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-menu"></use></svg></button>
-    <button type="button" id="db-theme-quick" class="db-quick" data-action="tglThemeQuick" aria-label="Switch to dark theme" title="Switch to dark theme"><svg class="ico" aria-hidden="true"><use id="db-theme-quick-ico" href="css/mmgr-icons.svg#i-moon"></use></svg></button>
+    <button type="button" id="db-theme-quick" class="db-quick" data-action="tglThemeQuick" aria-label="Toggle appearance" title="Toggle light/dark"><svg class="ico" aria-hidden="true"><use id="db-theme-quick-ico" href="css/mmgr-icons.svg#i-moon"></use></svg></button>
     <!-- SIGNED-IN INDICATOR (NEW-UI-POLISH 2026-08-14): circular avatar at
          the hero top-right , person icon when signed out (click opens the
          #siom sign-in modal), photo/initial + green dot + "Signed in" label
@@ -217,7 +217,6 @@ body.glass-premium .wrap{position:relative;z-index:1;}
       <span class="db-avatar-txt">Sign in</span>
     </button>
     <h1><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg> <span class="mark">My</span> MaNaGeR Projects</h1>
-    <p>Select a project to view its dashboard, schedule, risk register, and budget. Each project is protected by its own access code.</p>
   </div>
 
   <!-- GOOGLE-OPERATOR-IDENTITY-v1: the optional operator identity surface
@@ -235,20 +234,17 @@ body.glass-premium .wrap{position:relative;z-index:1;}
        only in dark dashboard mode , light mode stays untouched (§5). -->
   <div class="db-metrics" id="db-metrics" aria-label="Portfolio summary"></div>
 
-  <!-- ACTION-PLAN 6.1: cross-project portfolio health rollup, ranked by
-       urgency (reads each unlocked project's saved state locally). -->
-  <div class="pf-strip" id="portfolio-strip" aria-label="Portfolio health rollup"></div>
-
   <!-- SECTION HEADER (visual-analysis fix 2026-08-14): the local/published
        grid and the cloud section below are explicitly labeled so the two
        project lists can never be confused (Cloud vs Local). -->
-  <div class="db-sec" aria-label="Projects">
-    <h2 class="db-sec-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-folder"></use></svg> Projects</h2>
-    <span class="db-sec-sub">On this device and published. Open one to get to work</span>
+  <div class="db-sec" aria-label="Projects" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+    <div><h2 class="db-sec-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-folder"></use></svg> Projects</h2>
+    <span class="db-sec-sub">On this device and published. Open one to get to work</span></div>
+    <a href="admin.html" class="btn btn-o btn-s" style="text-decoration:none;"><svg class="ico" aria-hidden="true" style="width:14px;height:14px;"><use href="css/mmgr-icons.svg#i-plus"></use></svg> New Project</a>
   </div>
   <div class="grid" id="grid"><!-- cards render here --></div>
 
-  <div class="notice" id="no-projects-hint" hidden><span class="nt-ico"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-lock"></use></svg></span><span class="nt-txt">Contact the admin to get an access code for a project.</span></div>
+
 
   <!-- A5-3 (2026-08-11): My Cloud Projects , the signed-in owner's cloud-
        linked projects, session-gated, rendered by js/mmgr-cloud-dash.js.
@@ -270,20 +266,12 @@ body.glass-premium .wrap{position:relative;z-index:1;}
        code , owner, editor, or viewer. The lookup resolves the code to its
        project on the backend and opens it here; no shared URL needed beyond
        this site. Works from any device, any country. -->
-  <div class="cloud-dash" id="code-entry" aria-label="Open a project with a code">
-    <div class="cd-head">
-      <h2><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-lock"></use></svg> Have a code? Open a project</h2>
-      <span class="cd-sub">Owner, editor, or viewer code. Works from any device</span>
-    </div>
-    <div class="cd-list" style="grid-template-columns:1fr;max-width:580px">
-      <div style="background:var(--tile-bg);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;display:flex;flex-direction:column;gap:10px">
-        <input id="code-entry-in" type="text" maxlength="32" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="XXXX-XXXX-XXXX-XXXX" aria-label="Project code" style="background:#f8fafc;border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-size:1rem;letter-spacing:.1em;padding:10px 12px;font-family:ui-monospace,monospace;outline:none">
-        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-          <button type="button" class="btn btn-g" id="code-entry-btn" data-action="cloudCodeOpen"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Open from Cloud</button>
-          <span class="cd-status" id="code-entry-status" role="status" aria-live="polite"></span>
-        </div>
-        <p class="cd-sub" style="margin:0">Enter a code you were given for a project. It loads straight from the cloud backend, no prior device history needed. Viewer codes open read-only.</p>
-      </div>
+  <!-- Secondary action: open with access code (Phase 2 — contextual, not prominent) -->
+  <div class="cloud-dash" id="code-entry" aria-label="Open a project with a code" style="margin-top:8px;">
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+      <input id="code-entry-in" type="text" maxlength="32" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="XXXX-XXXX-XXXX-XXXX" aria-label="Project code" style="background:var(--tile-bg);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-size:.82rem;letter-spacing:.08em;padding:8px 12px;font-family:ui-monospace,monospace;outline:none;flex:1;min-width:180px;max-width:280px;">
+      <button type="button" class="btn btn-n btn-s" id="code-entry-btn" data-action="cloudCodeOpen"><svg class="ico" aria-hidden="true" style="width:14px;height:14px;"><use href="css/mmgr-icons.svg#i-download"></use></svg> Open with code</button>
+      <span class="cd-status" id="code-entry-status" role="status" aria-live="polite"></span>
     </div>
   </div>
 </div>
@@ -518,32 +506,11 @@ function toast(msg, type){
 // that project.html's Settings toggle and admin.html's switches use, so the
 // choice persists across launcher, admin, and app. el-scoped so multiple
 // instances on a page (launcher row / admin gate pill / header) stay in sync.
-function tglTheme(el){
-  const dark = el ? !el.checked : localStorage.getItem('mmgr_theme') === 'dark';
-  document.body.classList.toggle('dark-mode', dark);
-  try { localStorage.setItem('mmgr_theme', dark ? 'dark' : 'light'); } catch(e){}
-  // Keep every instance of this toggle on the page in step (launcher row /
-  // admin gate pill + header) so no control can disagree with the pref.
-  document.querySelectorAll('[data-action="tglTheme"]').forEach(t => { t.checked = !dark; });
-  // Keep the premium glass shader's dark flag in step (if the engine is up).
-  if (window.MMGR && MMGR.Glass && MMGR.Glass.refreshTheme) MMGR.Glass.refreshTheme();
-}
-
-// Premium liquid-glass toggle , same device-level slot (mmgr_glass_mode) and
-// capability floor as the project viewer's Settings toggle. On a narrow or
-// low-end device the preference is still saved; CSS glass simply stays on.
-function tglGlassMode(el){
-  const on = el ? el.checked : (window.MMGR && MMGR.Viewport && MMGR.Viewport.getGlassMode() === 'premium');
-  if (window.MMGR && MMGR.Viewport) MMGR.Viewport.setGlassMode(on ? 'premium' : 'css');
-  if (window.MMGR && MMGR.Glass) MMGR.Glass.sync();
-  // Keep every instance of this toggle on the page in step (see tglTheme).
-  document.querySelectorAll('[data-action="tglGlassMode"]').forEach(g => { g.checked = on; });
-  const eff = (window.MMGR && MMGR.Viewport && MMGR.Viewport.effectiveGlassMode) ? MMGR.Viewport.effectiveGlassMode() : 'css';
-  toast(on
-    ? (eff === 'premium' ? 'Premium liquid-glass mode on.' : 'Preference saved. This device uses CSS glass.')
-    : 'Premium visual mode off. CSS glass stays on.',
-    eff === 'premium' ? 'ok' : 'warn');
-}
+// Legacy dark/glass toggles removed — appearance is now handled by
+// mmgr-theme.js (Light / Dark / System). These stubs remain in the action
+// map so no-op references don't throw.
+function tglTheme(){}
+function tglGlassMode(){}
 
 /* CLOUD-BACKEND-ARCHITECTURE-PLAN Phase 2 , editor-code unlock.
    A cloud EDITOR code is not in the published manifest (it lives only in the
@@ -671,7 +638,8 @@ function syncSidebarAria(){
    mmgr_theme slot the dark checkboxes write, keeps every toggle instance in
    step, and swaps its own icon (moon in light → sun in dark). */
 function tglThemeQuick(){
-  const dark = localStorage.getItem('mmgr_theme') !== 'dark';
+  const cur = window.MMGRTheme && MMGRTheme.isDark ? MMGRTheme.isDark() : (localStorage.getItem('mmgr_theme') === 'dark');
+  const dark = !cur;
   document.body.classList.toggle('dark-mode', dark);
   try { localStorage.setItem('mmgr_theme', dark ? 'dark' : 'light'); } catch(e){}
   document.querySelectorAll('[data-action="tglTheme"]').forEach(t => { t.checked = !dark; });
@@ -937,7 +905,7 @@ document.addEventListener('DOMContentLoaded', function() {
 // (the early-apply snippet already handled the body class before paint) and
 // boot the premium engine if the preference + capability floor allow it.
 (function(){
-  const dark = localStorage.getItem('mmgr_theme') === 'dark';
+  const dark = window.MMGRTheme && MMGRTheme.isDark ? MMGRTheme.isDark() : (localStorage.getItem('mmgr_theme') === 'dark');
   document.querySelectorAll('[data-action="tglTheme"]').forEach(t => { t.checked = !dark; });
   const glass = !!(window.MMGR && MMGR.Viewport && MMGR.Viewport.getGlassMode() === 'premium');
   document.querySelectorAll('[data-action="tglGlassMode"]').forEach(g => { g.checked = glass; });

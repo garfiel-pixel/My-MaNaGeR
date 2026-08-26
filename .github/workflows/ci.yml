@@ -83,6 +83,10 @@ jobs:
         id: qa-labels
         run: node tools/verify-dynamic-labels.cjs
 
+      - name: "T1: Monolith/split delegate gate"
+        id: qa-delegate
+        run: node tools/verify-delegate-gate.cjs
+
       # ── TIER 2: Needs wrangler dev (D1/R2 emulation) ────────────────
       - name: "T2: Start wrangler dev (background)"
         id: wrangler-start
@@ -123,12 +127,14 @@ jobs:
         run: node tools/qa-cloud-phase1.cjs
         env:
           WRANGLER_DEV_URL: http://127.0.0.1:8787
+          QA_BASE: http://127.0.0.1:8787
 
       - name: "T2: Cloud phase 2 (editors, scope, changelog)"
         if: success() && steps.wrangler-start.outcome == 'success'
         run: node tools/qa-cloud-phase2.cjs
         env:
           WRANGLER_DEV_URL: http://127.0.0.1:8787
+          QA_BASE: http://127.0.0.1:8787
 
       - name: "T2: Cloud codes + delete"
         if: success() && steps.wrangler-start.outcome == 'success'
@@ -238,3 +244,4 @@ jobs:
           echo "| AI relay | ${{ steps.qa-ai-relay.outcome }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Report issue | ${{ steps.qa-report.outcome }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Dynamic labels | ${{ steps.qa-labels.outcome }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Delegate gate | ${{ steps.qa-delegate.outcome }} |" >> $GITHUB_STEP_SUMMARY

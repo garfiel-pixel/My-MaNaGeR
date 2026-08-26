@@ -18,8 +18,7 @@
 const { spawn } = require('child_process');
 const fs = require('fs');
 
-const CHROME = 'C:/Program Files/Google/Chrome/Application/chrome.exe';
-const PORT = 9336;
+const { chromePath: CHROME, BASE, DEBUG_PORT: PORT } = require('./chrome-launcher.cjs');
 const ROOT = 'C:/Users/Garfield/Downloads/mymanager-fixed';
 const userDir = 'C:/tmp/chrome-gates-' + Date.now();
 

@@ -1,8 +1,7 @@
 /* TEMPORARY — verifies WBS input typing survives the updTaskField re-render. Deleted after. */
 const { spawn } = require('child_process');
 const path = require('path');
-const CHROME = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
-const PORT = 9226;
+const { chromePath: CHROME, BASE, DEBUG_PORT: PORT } = require('./tools/chrome-launcher.cjs');
 const PROFILE = path.join(require('os').tmpdir(), 'mmgr-ty-' + Date.now());
 let ws, msgId = 0; const pending = new Map();
 const log = (s) => { process.stdout.write('[ty] ' + s + '\n'); };

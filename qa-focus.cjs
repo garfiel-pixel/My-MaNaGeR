@@ -1,8 +1,7 @@
 /* TEMPORARY — probes focus/rebuild behavior during change-triggered re-renders. Deleted after. */
 const { spawn } = require('child_process');
 const path = require('path');
-const CHROME = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
-const PORT = 9227;
+const { chromePath: CHROME, BASE, DEBUG_PORT: PORT } = require('./tools/chrome-launcher.cjs');
 const PROFILE = path.join(require('os').tmpdir(), 'mmgr-foc-' + Date.now());
 let ws, msgId = 0; const pending = new Map();
 const log = (s) => { process.stdout.write('[fc] ' + s + '\n'); };

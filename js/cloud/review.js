@@ -39,11 +39,9 @@ var MMGR = window.MMGR || {};
  ? '<span class="badge-ai"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg> MCP AI</span> ' + esc(p.sourceLabel || 'AI edit')
  : '<strong>' + esc(p.sourceLabel || 'Editor') + '</strong> (editor)';
  const when = String(p.proposedAt || '').slice(0, 19).replace('T', ' ');
- const badge = p.status === 'pending'
- ? '<span class="badge" style="color:var(--gold);border:1px solid rgba(245,158,11,.35);background:rgba(245,158,11,.12)">pending</span>'
- : p.status === 'accepted'
- ? '<span class="badge" style="color:var(--green);border:1px solid var(--green);background:rgba(16,185,129,.12)">accepted</span>'
- : '<span class="badge" style="color:#ef4444;border:1px solid rgba(239,68,68,.5);background:rgba(239,68,68,.12)">rejected</span>';
+ const badge = MMGR.Components && MMGR.Components.reviewBadge
+ ? MMGR.Components.reviewBadge(p.status)
+ : '<span class="badge" style="color:var(--amber);border:1px solid rgba(var(--amber-rgb),.35);background:rgba(var(--amber-rgb),.12)">' + (p.status || 'pending') + '</span>';
  let actions = '';
  if (p.status === 'pending') {
  actions = '<button class="btn btn-g btn-s" data-action="cloudReviewAccept" data-id="' + p.id + '"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-check"></use></svg> Accept</button>' +

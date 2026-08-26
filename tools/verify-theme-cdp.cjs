@@ -10,8 +10,7 @@
    ============================================================ */
 const { spawn } = require('child_process');
 
-const CHROME = 'C:/Program Files/Google/Chrome/Application/chrome.exe';
-const PORT = 9337;
+const { chromePath: CHROME, BASE, DEBUG_PORT: PORT } = require('./chrome-launcher.cjs');
 const ROOT = 'C:/Users/Garfield/Downloads/mymanager-fixed';
 const userDir = 'C:/tmp/chrome-theme-' + Date.now();
 

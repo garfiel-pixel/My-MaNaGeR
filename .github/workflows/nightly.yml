@@ -1,0 +1,160 @@
+name: Nightly Full Suite
+
+on:
+  schedule:
+    # Run every night at 3:00 AM UTC
+    - cron: '0 3 * * *'
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  full-suite:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund
+
+      - name: Build JS/CSS bundles
+        run: npm run build
+
+      # ── All static checks ─────────────────────────────────────────
+      - name: Verify CSP hashes
+        run: npm run verify:csp
+
+      - name: Verify service worker
+        run: npm run verify:sw
+
+      - name: Verify hidden attributes
+        run: npm run verify:hidden
+
+      - name: Verify skills lock
+        run: npm run verify:skills
+
+      - name: Verify module exports
+        run: node tools/verify-render-exports.cjs
+
+      - name: Wrangler deploy dry-run
+        run: npx wrangler deploy --dry-run
+
+      # ── All Tier 1 scripts ────────────────────────────────────────
+      - name: "T1: Dashboard spec"
+        run: node tools/qa-dashboard-spec.cjs
+
+      - name: "T1: Changelog diffs"
+        run: node tools/qa-changelog-diffs.cjs
+
+      - name: "T1: AI relay"
+        run: node tools/qa-ai-relay.cjs
+
+      - name: "T1: Report issue"
+        run: node tools/verify-report-issue.cjs
+
+      - name: "T1: Dynamic labels"
+        run: node tools/verify-dynamic-labels.cjs
+
+      # ── All Tier 2 scripts (with wrangler dev) ────────────────────
+      - name: "Start wrangler dev"
+        run: |
+          npx wrangler dev --port 8787 &
+          sleep 8
+          for i in 1 2 3 4 5 6 7 8; do
+            curl -s http://localhost:8787/api/health && break
+            sleep 3
+          done
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      - name: "T2: Cloud phase 1"
+        run: node tools/qa-cloud-phase1.cjs
+        env:
+          WRANGLER_DEV_URL: http://localhost:8787
+
+      - name: "T2: Cloud phase 2"
+        run: node tools/qa-cloud-phase2.cjs
+        env:
+          WRANGLER_DEV_URL: http://localhost:8787
+
+      - name: "T2: Cloud codes + delete"
+        run: node tools/qa-cloud-codes-delete.cjs
+        env:
+          WRANGLER_DEV_URL: http://localhost:8787
+
+      - name: "T2: Cloud import"
+        run: node tools/qa-cloud-import.cjs
+        env:
+          WRANGLER_DEV_URL: http://localhost:8787
+
+      - name: "T2: Email auth"
+        run: node tools/qa-email-auth.cjs
+        env:
+          WRANGLER_DEV_URL: http://localhost:8787
+
+      - name: "T2: Reviews"
+        run: node tools/qa-reviews.cjs
+        env:
+          WRANGLER_DEV_URL: http://localhost:8787
+
+      - name: "T2: Rank 9 API"
+        run: node tools/qa-rank9-api.cjs
+        env:
+          WRANGLER_DEV_URL: http://localhost:8787
+
+      - name: "T2: T9 adoption"
+        run: node tools/qa-t9-adoption.cjs
+        env:
+          WRANGLER_DEV_URL: http://localhost:8787
+
+      - name: "T2: Presence"
+        run: node tools/qa-presence.cjs
+        env:
+          WRANGLER_DEV_URL: http://localhost:8787
+
+      - name: "T2: Prefs roundtrip"
+        run: node tools/qa-prefs-roundtrip.cjs
+        env:
+          WRANGLER_DEV_URL: http://localhost:8787
+
+      - name: "T2: AI badge E2E"
+        run: node tools/qa-ai-badge-e2e.cjs
+        env:
+          WRANGLER_DEV_URL: http://localhost:8787
+
+      - name: "T2: Market features"
+        run: node tools/qa-market-features.cjs
+        env:
+          WRANGLER_DEV_URL: http://localhost:8787
+
+      - name: "T2: Offline copies"
+        run: node tools/qa-offline-copies.cjs
+        env:
+          WRANGLER_DEV_URL: http://localhost:8787
+
+      - name: "T2: Cloud autosave + signin"
+        run: node tools/verify-cloud-autosave-signin.cjs
+        env:
+          WRANGLER_DEV_URL: http://localhost:8787
+
+      - name: "T2: Controls admin"
+        run: node tools/verify-controls-admin.cjs
+        env:
+          WRANGLER_DEV_URL: http://localhost:8787
+
+      - name: "Stop wrangler dev"
+        if: always()
+        run: pkill -f "wrangler dev" || true
+
+      # ── Nightly summary ────────────────────────────────────────────
+      - name: Nightly Summary
+        if: always()
+        run: |
+          echo "## Nightly Full Suite Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Run at: $(date -u)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "All Tier 1 and Tier 2 QA scripts executed." >> $GITHUB_STEP_SUMMARY

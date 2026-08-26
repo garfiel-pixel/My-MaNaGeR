@@ -382,41 +382,15 @@
     }
   }
 
-  // ---- action-capable toast (same shared .toast/.toast-act CSS as the
-  //      admin panel's Undo pill , app.html's inline toast() has no action
-  //      support, and this file loads before it anyway, so build our own) ----
+  // ---- toast (delegates to shared MMGR.Components.showToast from
+  //      js/app/components.js, which loads before this file) ----
   function notify(msg, type, action) {
-    const existing = document.querySelector('.toast');
-    if (existing) existing.remove();
-    const isErr = type === 'error' || type === 'err';
-    const isWarn = type === 'warn';
-    const t = document.createElement('div');
-    t.className = 'toast ' + (isErr ? 'err' : (isWarn ? 'warn' : 'ok'));
-    t.setAttribute('role', isErr ? 'alert' : 'status');
-    t.setAttribute('aria-live', isErr ? 'assertive' : 'polite');
-    const icon = isErr ? 'i-x' : (isWarn ? 'i-alert-triangle' : 'i-check-circle');
-    const label = isErr ? 'Error' : (isWarn ? 'Note' : 'Done');
-    t.innerHTML = '<span class="toast-ico"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#' + icon + '"></use></svg></span>' +
-                  '<span class="toast-body"><b></b><span></span></span>';
-    t.querySelector('b').textContent = label;
-    t.querySelector('.toast-body > span').textContent = msg;
-    let hideT = null; let killT = null;
-    if (action && action.label) {
-      const act = document.createElement('button');
-      act.type = 'button';
-      act.className = 'toast-act';
-      act.textContent = action.label;
-      act.addEventListener('click', function() {
-        clearTimeout(hideT); clearTimeout(killT);
-        t.remove();
-        try { action.fn && action.fn(); } catch (e) { /* the action guards itself */ }
-      });
-      t.querySelector('.toast-body').appendChild(act);
+    var C = MMGR.Components;
+    if (C && C.showToast) {
+      // Map action.fn to action.onClick for the shared implementation
+      var a = action ? { label: action.label, onClick: action.fn } : undefined;
+      C.showToast(msg, type, a);
     }
-    document.body.appendChild(t);
-    const hold = (action && action.label) ? 4600 : 2600;
-    hideT = setTimeout(function() { t.classList.add('is-out'); }, hold);
-    killT = setTimeout(function() { t.remove(); }, hold + 500);
   }
 
   // ---- events ----

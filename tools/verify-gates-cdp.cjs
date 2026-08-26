@@ -4,7 +4,7 @@
 const { spawn } = require('child_process');
 const fs = require('fs');
 
-const chrome = 'C:/Program Files/Google/Chrome/Application/chrome.exe';
+const { chromePath: chrome } = require('./chrome-launcher.cjs');
 const port = 9334;
 const userDir = 'C:/tmp/chrome-cdp-' + Date.now();
 const root = 'C:/Users/Garfield/Downloads/mymanager-fixed';

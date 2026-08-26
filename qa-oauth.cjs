@@ -23,9 +23,7 @@
    ============================================================ */
 const { spawn } = require('child_process');
 const path = require('path');
-const CHROME = 'C:\\\\Program Files\\\\Google\\\\Chrome\\\\Application\\\\chrome.exe';
-const PORT = 9247;
-const BASE = 'http://127.0.0.1:8765';
+const { chromePath: CHROME, BASE, DEBUG_PORT: PORT } = require('./tools/chrome-launcher.cjs');
 const PROFILE = path.join(require('os').tmpdir(), 'mmgr-oauth-' + Date.now());
 const CLIENT_ID = '297970704704-m05hgt93lfaq286q90br8c96ffg1aph3.apps.googleusercontent.com';
 

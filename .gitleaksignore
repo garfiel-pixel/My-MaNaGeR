@@ -1,0 +1,10 @@
+# Gitleaks allowlist — known false positives in this codebase
+# The Google Client ID is public (embedded in frontend HTML) — not a secret.
+worker.js:GOOGLE_CLIENT_ID
+# The database IDs are public metadata, not credentials.
+wrangler.jsonc:database_id
+wrangler.jsonc:namespace_id
+# package.json version strings sometimes look like secrets.
+package.json:1.0.0
+# wrangler.jsonc vars are non-secret public values.
+wrangler.jsonc:GOOGLE_CLIENT_ID

@@ -27,9 +27,7 @@
    ============================================================ */
 const { spawn } = require('child_process');
 const path = require('path');
-const CHROME = 'C:\\\\Program Files\\\\Google\\\\Chrome\\\\Application\\\\chrome.exe';
-const PORT = 9242;
-const BASE = 'http://127.0.0.1:8765';
+const { chromePath: CHROME, BASE, DEBUG_PORT: PORT } = require('./tools/chrome-launcher.cjs');
 const PROFILE = path.join(require('os').tmpdir(), 'mmgr-glass-' + Date.now());
 let ws, msgId = 0;
 const pending = new Map();

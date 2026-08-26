@@ -654,9 +654,7 @@ async function phase4() {
 // after every attempt, and hides on Google/signed-out states. This phase
 // loads the REAL app.html from the wrangler dev origin, injects a real
 // session cookie (email + forged google), and drives every state.
-const PW_CHROME = process.platform === 'win32'
-  ? 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'
-  : '/usr/bin/google-chrome';
+const { chromePath: PW_CHROME } = require('./chrome-launcher.cjs');
 let pwWs = null; let pwMsgId = 0; const pwPending = new Map();
 function pwLaunchChrome(profileDir, port) {
   return new Promise((resolve, reject) => {

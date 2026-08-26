@@ -5,9 +5,7 @@
    (serve.cjs must be on :8765). */
 const { spawn } = require('child_process');
 const path = require('path');
-const CHROME = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
-const PORT = 9244;
-const BASE = 'http://127.0.0.1:8765';
+const { chromePath: CHROME, BASE, DEBUG_PORT: PORT } = require('./chrome-launcher.cjs');
 const PROFILE = path.join(require('os').tmpdir(), 'mmgr-ai-polish-' + Date.now());
 let ws, msgId = 0; const pending = new Map();
 const log = (s) => process.stdout.write('[polish] ' + s + '\n');

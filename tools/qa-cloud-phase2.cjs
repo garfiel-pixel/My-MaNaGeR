@@ -51,8 +51,6 @@ const path = require('path');
 const os = require('os');
 const crypto = require('crypto');
 
-const PORT = 8792;
-const BASE = 'http://127.0.0.1:' + PORT;
 const ROOT = path.resolve(__dirname, '..');
 const ADMIN_CODE = 'QA-ADMIN-' + Date.now().toString(36).toUpperCase();
 
@@ -188,7 +186,7 @@ async function api(pathname, opts) {
 }
 
 // ---- real-browser plumbing (same CDP pattern as qa-cloud-phase1 phase B) ---
-const CHROME = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
+const { chromePath: CHROME, BASE, DEBUG_PORT: PORT } = require('./chrome-launcher.cjs');
 let ws = null; let msgId = 0; const pending = new Map();
 function launchChrome(profileDir, port) {
   return new Promise((resolve, reject) => {

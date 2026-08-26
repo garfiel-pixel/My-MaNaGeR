@@ -60,8 +60,13 @@ const APP_MODULES = [
   'js/mmgr-errors.js',
   'js/mmgr-report.js',
   // App controller
-  'js/mmgr-app.js',
+  // Shared component templates (loaded before render modules)
+  'js/app/components.js',
   // App sub-modules (extracted from mmgr-app.js)
+  'js/app/confirm.js',
+  'js/app/copy-text.js',
+  'js/app/sidebar.js',
+  'js/mmgr-app.js',
   'js/app/weather.js',
   'js/app/backup.js',
   'js/app/export.js',
@@ -113,6 +118,7 @@ const APP_LAUNCHER_MODULES = [
   'projects-data.js',
   'demo-data.js',
   'js/mmgr-utils.js',
+  'js/app/components.js',
   'js/mmgr-portfolio.js',
   'js/mmgr-google-auth.js',
   'js/mmgr-cloud-dash.js',

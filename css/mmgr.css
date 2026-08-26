@@ -1717,7 +1717,7 @@ body.dark-mode .btn-warn:hover{background:#d97706;}
 
 /* §6.7 status badges — active/completed solid, on-hold/planning frosted */
 .badge.active,.badge.completed{background:rgba(16,185,129,.18);color:var(--green);border:1px solid var(--green);backdrop-filter:none;}
-.badge.on-hold{background:var(--glass-fill-dark);color:var(--gold);border:1px solid rgba(245,158,11,.35);
+.badge.on-hold{background:var(--glass-fill-dark);color:var(--amber);border:1px solid rgba(var(--amber-rgb),.35);
   backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturate));
   -webkit-backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturate));}
 .badge.planning{background:var(--glass-fill-dark);color:var(--blue);border:1px solid rgba(59,130,246,.35);

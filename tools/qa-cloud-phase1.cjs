@@ -26,9 +26,7 @@ const path = require('path');
 const os = require('os');
 const crypto = require('crypto');
 
-const PORT = 8791;
-const BASE = 'http://127.0.0.1:' + PORT;
-const CHROME = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
+const { chromePath: CHROME, BASE, DEBUG_PORT: PORT } = require('./chrome-launcher.cjs');
 const ROOT = path.resolve(__dirname, '..');
 
 let ws = null; let msgId = 0; const pending = new Map();

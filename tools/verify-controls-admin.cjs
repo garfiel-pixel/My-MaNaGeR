@@ -9,9 +9,7 @@
    ============================================================ */
 const { spawn } = require('child_process');
 
-const CHROME = 'C:/Program Files/Google/Chrome/Application/chrome.exe';
-const PORT = 9341;
-const BASE = 'http://127.0.0.1:8765';
+const { chromePath: CHROME, BASE, DEBUG_PORT: PORT } = require('./chrome-launcher.cjs');
 const userDir = 'C:/tmp/chrome-ctrl-' + Date.now();
 
 const delay = ms => new Promise(r => setTimeout(r, ms));

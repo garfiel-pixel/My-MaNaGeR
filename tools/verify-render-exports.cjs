@@ -161,7 +161,11 @@ if (renderExportFails === 0) {
 
 console.log('\n=== A1: app module export completeness ===\n');
 const appDir = path.join(ROOT, 'js', 'app');
-const appFiles = fs.readdirSync(appDir).filter(f => f.endsWith('.js'));
+// components.js is a standalone utility module (badge/toast), not an extracted
+// function group — its exports are accessed directly via MMGR.Components.*
+// and do not need delegation wrappers in mmgr-app.js.
+const APP_EXCLUDE = new Set(['components.js']);
+const appFiles = fs.readdirSync(appDir).filter(f => f.endsWith('.js') && !APP_EXCLUDE.has(f));
 const appSrc = fs.readFileSync(path.join(ROOT, 'js', 'mmgr-app.js'), 'utf8');
 
 for (const file of appFiles) {

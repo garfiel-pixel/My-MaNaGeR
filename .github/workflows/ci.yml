@@ -16,10 +16,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for gitleaks
 
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+
+      # ── Secrets scanning (Backend Security #2) ──────────────────────
+      - name: Gitleaks secrets scan
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Install dependencies
         run: npm install --ignore-scripts --no-audit --no-fund
@@ -30,35 +38,176 @@ jobs:
 
       # ── Static integrity checks (no Cloudflare bindings needed) ─────
       - name: Verify CSP inline-script hashes
+        id: csp
         run: npm run verify:csp
 
       - name: Verify service-worker cache version
+        id: sw
         run: npm run verify:sw
 
       - name: Verify hidden-attribute wiring
+        id: hidden
         run: npm run verify:hidden
 
       - name: Verify skills-lock integrity
+        id: skills
         run: npm run verify:skills
 
       - name: Verify module export wrappers
+        id: exports
         run: node tools/verify-render-exports.cjs
 
       # ── Deploy validation (dry-run, no credentials needed) ──────────
-      # Catches DO export errors, syntax errors, missing imports in
-      # worker.js. wrangler filters .git/node_modules from upload.
       - name: Wrangler deploy dry-run
+        id: deploy
         run: npx wrangler deploy --dry-run
 
-      # ── Pure-static QA gates (no Chrome, no wrangler dev) ───────────
-      - name: QA — dashboard spec (tokens, markup, icons, contrast)
+      # ── TIER 1: Pure-static QA gates (no Chrome, no wrangler dev) ──
+      - name: "T1: Dashboard spec (tokens, markup, icons, contrast)"
+        id: qa-dashboard
         run: node tools/qa-dashboard-spec.cjs
 
-      - name: QA — changelog diff expand
+      - name: "T1: Changelog diff expand"
+        id: qa-changelog
         run: node tools/qa-changelog-diffs.cjs
 
-      - name: QA — AI relay (provider routing, auth, headers)
+      - name: "T1: AI relay (provider routing, auth, headers)"
+        id: qa-ai-relay
         run: node tools/qa-ai-relay.cjs
 
-      - name: QA — report-issue payload (PII/budget exclusion)
+      - name: "T1: Report-issue payload (PII/budget exclusion)"
+        id: qa-report
         run: node tools/verify-report-issue.cjs
+
+      - name: "T1: Dynamic labels accessibility"
+        id: qa-labels
+        run: node tools/verify-dynamic-labels.cjs
+
+      # ── TIER 2: Needs wrangler dev (D1/R2 emulation) ────────────────
+      - name: "T2: Start wrangler dev (background)"
+        id: wrangler-start
+        run: |
+          npx wrangler dev --port 8787 &
+          sleep 5
+          for i in 1 2 3 4 5; do
+            curl -s http://localhost:8787/api/health && break
+            sleep 2
+          done
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      - name: "T2: Cloud phase 1 (create/save/load/meta)"
+        if: success() && steps.wrangler-start.outcome == 'success'
+        run: node tools/qa-cloud-phase1.cjs
+        env:
+          WRANGLER_DEV_URL: http://localhost:8787
+
+      - name: "T2: Cloud phase 2 (editors, scope, changelog)"
+        if: success() && steps.wrangler-start.outcome == 'success'
+        run: node tools/qa-cloud-phase2.cjs
+        env:
+          WRANGLER_DEV_URL: http://localhost:8787
+
+      - name: "T2: Cloud codes + delete"
+        if: success() && steps.wrangler-start.outcome == 'success'
+        run: node tools/qa-cloud-codes-delete.cjs
+        env:
+          WRANGLER_DEV_URL: http://localhost:8787
+
+      - name: "T2: Cloud import"
+        if: success() && steps.wrangler-start.outcome == 'success'
+        run: node tools/qa-cloud-import.cjs
+        env:
+          WRANGLER_DEV_URL: http://localhost:8787
+
+      - name: "T2: Email auth"
+        if: success() && steps.wrangler-start.outcome == 'success'
+        run: node tools/qa-email-auth.cjs
+        env:
+          WRANGLER_DEV_URL: http://localhost:8787
+
+      - name: "T2: Reviews"
+        if: success() && steps.wrangler-start.outcome == 'success'
+        run: node tools/qa-reviews.cjs
+        env:
+          WRANGLER_DEV_URL: http://localhost:8787
+
+      - name: "T2: Rank 9 API"
+        if: success() && steps.wrangler-start.outcome == 'success'
+        run: node tools/qa-rank9-api.cjs
+        env:
+          WRANGLER_DEV_URL: http://localhost:8787
+
+      - name: "T2: T9 adoption"
+        if: success() && steps.wrangler-start.outcome == 'success'
+        run: node tools/qa-t9-adoption.cjs
+        env:
+          WRANGLER_DEV_URL: http://localhost:8787
+
+      - name: "T2: Presence"
+        if: success() && steps.wrangler-start.outcome == 'success'
+        run: node tools/qa-presence.cjs
+        env:
+          WRANGLER_DEV_URL: http://localhost:8787
+
+      - name: "T2: Prefs roundtrip"
+        if: success() && steps.wrangler-start.outcome == 'success'
+        run: node tools/qa-prefs-roundtrip.cjs
+        env:
+          WRANGLER_DEV_URL: http://localhost:8787
+
+      - name: "T2: AI badge E2E"
+        if: success() && steps.wrangler-start.outcome == 'success'
+        run: node tools/qa-ai-badge-e2e.cjs
+        env:
+          WRANGLER_DEV_URL: http://localhost:8787
+
+      - name: "T2: Market features"
+        if: success() && steps.wrangler-start.outcome == 'success'
+        run: node tools/qa-market-features.cjs
+        env:
+          WRANGLER_DEV_URL: http://localhost:8787
+
+      - name: "T2: Offline copies"
+        if: success() && steps.wrangler-start.outcome == 'success'
+        run: node tools/qa-offline-copies.cjs
+        env:
+          WRANGLER_DEV_URL: http://localhost:8787
+
+      - name: "T2: Cloud autosave + signin"
+        if: success() && steps.wrangler-start.outcome == 'success'
+        run: node tools/verify-cloud-autosave-signin.cjs
+        env:
+          WRANGLER_DEV_URL: http://localhost:8787
+
+      - name: "T2: Controls admin"
+        if: success() && steps.wrangler-start.outcome == 'success'
+        run: node tools/verify-controls-admin.cjs
+        env:
+          WRANGLER_DEV_URL: http://localhost:8787
+
+      - name: "Stop wrangler dev"
+        if: always()
+        run: pkill -f "wrangler dev" || true
+
+      # ── CI Summary ──────────────────────────────────────────────────
+      - name: CI Summary
+        if: always()
+        run: |
+          echo "## CI Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Check | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Gitleaks scan | ${{ steps.gitleaks.outcome }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| CSP hashes | ${{ steps.csp.outcome }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Service Worker | ${{ steps.sw.outcome }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Hidden attributes | ${{ steps.hidden.outcome }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Skills lock | ${{ steps.skills.outcome }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Module exports | ${{ steps.exports.outcome }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Wrangler dry-run | ${{ steps.deploy.outcome }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Dashboard spec | ${{ steps.qa-dashboard.outcome }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Changelog diffs | ${{ steps.qa-changelog.outcome }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| AI relay | ${{ steps.qa-ai-relay.outcome }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Report issue | ${{ steps.qa-report.outcome }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Dynamic labels | ${{ steps.qa-labels.outcome }} |" >> $GITHUB_STEP_SUMMARY

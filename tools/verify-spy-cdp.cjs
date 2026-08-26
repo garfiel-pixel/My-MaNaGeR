@@ -3,7 +3,7 @@
    and reports spy state + scroll positions. Run: node tools/verify-spy-cdp.js */
 const { spawn } = require('child_process');
 
-const chrome = 'C:/Program Files/Google/Chrome/Application/chrome.exe';
+const { chromePath: chrome } = require('./chrome-launcher.cjs');
 const port = 9333;
 const userDir = 'C:/tmp/chrome-cdp-' + Date.now();
 const proc = spawn(chrome, [

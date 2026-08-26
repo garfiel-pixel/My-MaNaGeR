@@ -21,8 +21,7 @@ const os = require('os');
 const path = require('path');
 const fs = require('fs');
 
-const CHROME = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
-const BASE = 'http://127.0.0.1:8765';
+const { chromePath: CHROME, BASE, DEBUG_PORT: PORT } = require('./chrome-launcher.cjs');
 const PROFILE = path.join(os.tmpdir(), 'mmgr-dynlabels-' + Date.now());
 let ws, msgId = 0;
 const pending = new Map();

@@ -443,137 +443,16 @@ var MMGR = window.MMGR || {};
   const SIDEBAR_KEY = 'mmgr_sidebar';
   let _sidebarUserTouched = false;
 
-  function readDevicePref(key) { try { return localStorage.getItem(key); } catch (e) { return null; } }
-  function writeDevicePref(key, v) { try { localStorage.setItem(key, v); } catch (e) {} }
-
-  // OWNER 2026-08-15: the sidebar is the ONLY desktop view , the legacy
-  // mmgr_sidebar pref no longer gates it. body.sidebar-on is therefore always
-  // applied; body.sidebar-open is the rail's transient open/closed state.
+  // ---- Sidebar delegation shims (extracted to js/app/sidebar.js) ----
+  function readDevicePref(key) { return ns.AppSidebar ? ns.AppSidebar.readDevicePref(key) : null; }
+  function writeDevicePref(key, v) { if (ns.AppSidebar) ns.AppSidebar.writeDevicePref(key, v); }
   function sidebarEnabled() { return true; }
-
-  // Reflect the pref onto <body> + the settings toggle. aria-expanded is
-  // VIEWPORT-AWARE: on mobile it tracks the drawer (tglNav owns it there);
-  // on desktop it tracks the overlay's temporary open state.
-  // BUG-9: the hamburger is always visible on desktop regardless of pref.
-  function syncSidebarChrome() {
-    const on = sidebarEnabled();
-    document.body.classList.toggle('sidebar-on', on);
-    // BUG-10 (2026-08-14): the overlay sidebar must ALWAYS open at the top.
-    // visibility:hidden does NOT reset an overflow scroll container, so a
-    // previously-scrolled sidebar would re-open mid-list (Governance/Closeout/
-    // DMAIC visible, Overview hidden above the fold). Reset whenever the
-    // overlay is open , covers every open path (hamburger, settings toggle,
-    // backend pull, boot-with-pref) in one place, idempotently.
-    if (document.body.classList.contains('sidebar-open')) {
-      const sb = U.$('app-sidebar');
-      if (sb) sb.scrollTop = 0;
-    }
-    const btn = U.$('nav-btn');
-    if (btn) {
-      const mobile = window.innerWidth <= 768;
-      btn.setAttribute('aria-expanded', mobile ? 'false' : (document.body.classList.contains('sidebar-open') ? 'true' : 'false'));
-      btn.setAttribute('aria-controls', mobile ? 'sec-nav' : 'app-sidebar');
-    }
-    const tgl = U.$('sb-tgl');
-    if (tgl) tgl.checked = on;
-  }
-
-  // BUG-9: temporary open/close of the overlay sidebar (hamburger, × button,
-  // Escape, section click). The overlay is always available on desktop , no
-  // pref gate. The persisted layout preference (sidebar-on) is kept for
-  // backward compat but no longer controls hamburger visibility.
-  function setSidebarOpen(open) {
-    document.body.classList.toggle('sidebar-open', !!open);
-    syncSidebarChrome();
-  }
-
-  // BUG-9: Preference toggle (settings switch) now controls whether the
-  // sidebar overlay opens by DEFAULT on page load. Turning it on opens the
-  // overlay; turning it off closes it. The hamburger is always available
-  // regardless of this pref. Local write first (instant), then a best-effort
-  // backend push when signed in.
-  function toggleSidebar() {
-    _sidebarUserTouched = true;
-    const on = !sidebarEnabled();
-    writeDevicePref(SIDEBAR_KEY, on ? 'on' : 'off');
-    document.body.classList.toggle('sidebar-open', on);
-    syncSidebarChrome();
-    pushSidebarBackend(on);
-  }
-
-  function pushSidebarBackend(on) {
-    try {
-      fetch('/api/cloud/prefs/theme', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sidebar: on ? 'on' : 'off' })
-      }).then(function (r) {
-        // Same arming flag the theme helper uses: any successful round trip
-        // enables the one-per-load backend pull on this device.
-        if (r.ok) writeDevicePref('mmgr_palette_backend', '1');
-      }).catch(function () { /* offline / no worker , localStorage is the cache */ });
-    } catch (e) { /* ignore */ }
-  }
-
-  // One-per-load backend pull (mirrors js/mmgr-theme.js): only on a device
-  // that has already synced SOME pref, and only until a LOCAL sidebar pref
-  // exists , the signed-in account's saved layout then follows across devices
-  // without ever clobbering a fresh local choice.
-  function pullSidebarBackend() {
-    if (_sidebarUserTouched) return;
-    if (readDevicePref('mmgr_palette_backend') !== '1') return; // never synced , nothing to pull
-    if (readDevicePref(SIDEBAR_KEY) != null) return;            // local pref wins
-    try {
-      fetch('/api/cloud/prefs/theme', { headers: { 'Accept': 'application/json' } })
-        .then(function (r) { return r.ok ? r.json() : null; })
-        .then(function (d) {
-          if (!d || !d.ok || !d.theme) return;
-          if (_sidebarUserTouched) return; // user chose mid-flight , their pick wins
-          const v = d.theme.sidebar;
-          if (v !== 'on' && v !== 'off') return;
-          writeDevicePref(SIDEBAR_KEY, v);
-          document.body.classList.toggle('sidebar-open', v === 'on');
-          syncSidebarChrome();
-        }).catch(function () { /* backend unreachable , keep local cache */ });
-    } catch (e) { /* ignore */ }
-  }
-
-  // Build the sidebar content by CLONING the horizontal .sec-nav groups (one
-  // source of truth , the links/actions can never drift), stripping the ids
-  // (the originals own them: gnav/knav/dmaic-nav), and keeping every clone's
-  // pack/methodology visibility mirrored to its original forever. Active-state
-  // sync needs no mirror: showSection's global .sec-btn query already covers
-  // both navs. Placement after <main> keeps document.querySelector first-
-  // matches on the ORIGINAL top nav, so programmatic showSection calls
-  // highlight the top pill exactly as before.
-  function buildSidebar() {
-    const sb = U.$('app-sidebar');
-    const nav = U.$('sec-nav');
-    if (!sb || !nav) return;
-    const groups = nav.querySelectorAll('.nav-group');
-    for (let i = 0; i < groups.length; i++) {
-      const c = groups[i].cloneNode(true);
-      c.querySelectorAll('[id]').forEach(function (el) { el.removeAttribute('id'); });
-      sb.appendChild(c);
-    }
-    // Mirror .is-hide (pack/methodology gates) from the originals to the
-    // clones. The render gates in mmgr-render.js already use global .sec-btn
-    // selectors (renderPacks/renderMethodology) that cover the clones too, so
-    // this observer is a drift-proofing safety net, not the driver.
-    const mo = new MutationObserver(function (muts) {
-      for (let i = 0; i < muts.length; i++) {
-        const m = muts[i];
-        if (m.type !== 'attributes' || m.attributeName !== 'class') continue;
-        const orig = m.target;
-        if (!orig.classList || !orig.classList.contains('sec-btn')) continue;
-        const sec = orig.getAttribute('data-section');
-        if (!sec) continue;
-        const twin = sb.querySelector('.sec-btn[data-section="' + sec + '"]');
-        if (twin) twin.classList.toggle('is-hide', orig.classList.contains('is-hide'));
-      }
-    });
-    mo.observe(nav, { subtree: true, attributes: true, attributeFilter: ['class'] });
-  }
+  function syncSidebarChrome() { if (ns.AppSidebar) ns.AppSidebar.syncSidebarChrome(); }
+  function setSidebarOpen(open) { if (ns.AppSidebar) ns.AppSidebar.setSidebarOpen(open); }
+  function toggleSidebar() { if (ns.AppSidebar) ns.AppSidebar.toggleSidebar(); }
+  function pushSidebarBackend(on) { if (ns.AppSidebar) ns.AppSidebar.pushSidebarBackend(on); }
+  function pullSidebarBackend() { if (ns.AppSidebar) ns.AppSidebar.pullSidebarBackend(); }
+  function buildSidebar() { if (ns.AppSidebar) ns.AppSidebar.buildSidebar(); }
 
 
   // ---- PLAN-OF-ACTION-AI-VOICE-SYNC-v1 4.5: optional Google identity ----
@@ -874,275 +753,14 @@ var MMGR = window.MMGR || {};
     if (mlcTimer) clearTimeout(mlcTimer);
   }
 
-  // ---- Copy All ----
-  // Section-specific formatted blocks for the ported sections (RACI, Comms,
-  // Docs, Meetings) match the monolith's exports; everything else falls
-  // back to the generic table-dump.
-  function cpAllPage(section) {
-    const s = ns.State.getState();
-    const ts = `[Copied: ${new Date().toLocaleString()} | My MaNaGeR | ${((s && s.methodology) || '').toUpperCase()}]`;
-    let text = ts + '\n\n';
-    if (section === 'raci' && ns.Raci && ns.Raci.raciExportBlock) {
-      text += 'RACI MATRIX\n' + '='.repeat(40) + '\n' + ns.Raci.raciExportBlock();
-      U.copyToClipboard(text);
-      showToast('Copied!', 'ok');
-      return;
-    }
-    if (section === 'comms') {
-      text += 'COMMUNICATION LOG\n' + '='.repeat(40) + '\n';
-      ((s && s.commsEntries) || []).forEach(c => {
-        text += `[${c.id}] ${c.date} | ${c.type} | ${c.attendees}\n  Summary: ${c.summary}\n  Actions: ${c.actionItems}\n  Follow-up: ${c.followUp || '-'}\n\n`;
-      });
-      U.copyToClipboard(text);
-      showToast('Copied!', 'ok');
-      return;
-    }
-    if (section === 'docs') {
-      text += 'DOCUMENT REGISTER\n' + '='.repeat(40) + '\n';
-      ((s && s.documents) || []).forEach(d => {
-        text += `[${d.id}] ${d.docNo} | ${d.title} | ${d.type} v${d.version} | ${d.status} | ${d.responsible} | Issued: ${d.dateIssued || '-'} | ${d.notes || ''}\n`;
-      });
-      U.copyToClipboard(text);
-      showToast('Copied!', 'ok');
-      return;
-    }
-    // ACTION-PLAN 7.4: dispute-ready weather delay log export (date,
-    // conditions, note, affected tasks + LD exposure). Client-side text , 
-    // no server round-trip; the log itself is localStorage state.
-    if (section === 'wxlog') {
-      text += 'WEATHER DELAY LOG (DISPUTE RECORD)\n' + '='.repeat(40) + '\n';
-      const log = (s && s.weatherLog) || [];
-      if (log.length) {
-        log.forEach(e => {
-          text += e.date + ' | ' + (e.condition || '-') + (e.note ? ' | Note: ' + e.note : '') +
-            (e.affectedTaskIds && e.affectedTaskIds.length ? ' | Affected: ' + e.affectedTaskIds.join(', ') : '') + '\n';
-        });
-      } else {
-        text += 'No weather delay days logged yet.\n';
-      }
-      if (ns.Forecast && ns.Forecast.ldExposure) {
-        const ld = ns.Forecast.ldExposure(s);
-        text += '\nLD EXPOSURE\n' + '-'.repeat(30) + '\n' +
-          'Logged days: ' + ld.days + ' | LD rate: $' + Number(ld.rate).toLocaleString() + '/day | Exposure: $' + Number(ld.exposure).toLocaleString() + '\n';
-      }
-      U.copyToClipboard(text);
-      showToast('Weather log copied!', 'ok');
-      return;
-    }
-    if (section === 'meet' && ns.Meetings) {
-      const M = ns.Meetings;
-      text += 'MEETING AGENDAS & TEMPLATES\n' + '='.repeat(40) + '\n\nPRE-PROJECT KICKOFF (' + M.MEET_TEMPLATES.kickoff.dur + ')\n' + '-'.repeat(30) + '\n';
-      M.MEET_KICKOFF_ITEMS.forEach((it, i) => { text += (i + 1) + '. ' + it + '\n'; });
-      text += '\nRECURRING TEMPLATES\n' + '-'.repeat(30) + '\n';
-      M.MEET_RECURRING.concat(M.MEET_SPECIALIZED).forEach(m => { text += '• ' + m.t + ' (' + m.dur + ') , ' + m.d + '\n'; });
-      if (s && (s.methodology === 'agile' || s.methodology === 'hybrid')) {
-        text += '\nAGILE CEREMONIES\n' + '-'.repeat(30) + '\n';
-        M.MEET_AGILE.forEach(m => { text += '• ' + m.t + ' (' + m.dur + ') , ' + m.d + '\n'; });
-      }
-      U.copyToClipboard(text);
-      showToast('All meeting templates copied!', 'ok');
-      return;
-    }
-    // ACTION-PLAN 3.4: the weekly baseline narrative feeds Copy All , a
-    // client-side plain-English diff, no server round-trip.
-    if (section === 'baselinen') {
-      text += 'WHAT CHANGED THIS WEEK\n' + '='.repeat(40) + '\n';
-      const narr = ns.Render && ns.Render.computeBaselineNarrative ? ns.Render.computeBaselineNarrative(s) : null;
-      if (narr) {
-        narr.forEach(n => { text += '• ' + n + '\n'; });
-      } else {
-        text += 'No baseline captured yet , Settings > Controls > Save Baseline.\n';
-      }
-      text += '\nCURRENT PLAN (tasks)\n' + '='.repeat(40) + '\n';
-      ((s && s.tasks) || []).forEach(t => {
-        text += '[' + t.id + '] ' + t.name + ' | ' + (t.status || '') + ' | ' + (t.startDate || '-') + ' → ' + (t.endDate || '-') + '\n';
-      });
-      U.copyToClipboard(text);
-      showToast('Copied!', 'ok');
-      return;
-    }
-    // MASTER-ACTION-PLAN-v3-STRICT Rank 1.1: the one-click claim/delay
-    // package , composed live from unified state via the Claim module,
-    // windowed by the Claim Pack tab's date range. Client-side text, same
-    // zero-server Copy All path.
-    if (section === 'claim' && ns.Claim) {
-      const fromEl = U.$('claim-from');
-      const toEl = U.$('claim-to');
-      const pack = ns.Claim.buildClaimPack(s, fromEl ? fromEl.value : '', toEl ? toEl.value : '');
-      text += ns.Claim.claimPackText(pack);
-      U.copyToClipboard(text);
-      showToast('Claim pack copied!', 'ok');
-      return;
-    }
-    // MASTER-ACTION-PLAN-v3-STRICT Rank 2.1: the auto-generated "what
-    // changed" digest , diffed against the pinned reference point (or the
-    // baseline) and copied as plain text. Local generation only.
-    if (section === 'digest' && ns.Digest && ns.Digest.computeDigest && ns.Digest.buildDigestText) {
-      text += ns.Digest.buildDigestText(ns.Digest.computeDigest(s));
-      U.copyToClipboard(text);
-      showToast('Digest copied!', 'ok');
-      return;
-    }
-    const body = U.$(section + '-body');
-    if (!body) return;
-    text = Array.from(body.querySelectorAll('tr')).map(tr =>
-      Array.from(tr.querySelectorAll('td,th')).map(td => td.textContent.trim()).join(' | ')
-    ).join('\n');
-    U.copyToClipboard(text);
-    showToast('Copied!', 'ok');
-  }
-
-  // ============================================================
-  // ACTION-PLAN Phase 5 , export & polish
-  // ============================================================
-
-  // ---- 5.1 Multi-format Copy All ----
-  // Existing cpAllPage copies per-section tables. These three variants
-  // compose the SAME live state into share-format text: a Slack digest,
-  // an email digest, and a printable client summary. Pure client-side
-  // composition (simulated backend: no server round-trip).
-  function _fmtMoney(n) { return '$' + Number(n || 0).toLocaleString(); }
-
-  function buildDigest(s) {
-    const lines = [];
-    const f = (s.charter) || {};
-    lines.push('*' + (s.projectName || f.name || 'Project') + '*');
-    lines.push('Status: ' + (f.status || '-') + ' | Methodology: ' + ((s.methodology || 'waterfall').toUpperCase()));
-    const tasks = s.tasks || [];
-    const done = tasks.filter(t => t.status === 'completed').length;
-    const overdue = tasks.filter(t => U.isOverdue(t.endDate) && t.status !== 'completed').length;
-    lines.push('Tasks: ' + done + '/' + tasks.length + ' complete' + (overdue ? ' | *' + overdue + ' overdue*' : ''));
-    if (f.targetCompletion) {
-      const t = ns.Render && ns.Render.computeTimelineStatus ? ns.Render.computeTimelineStatus(s) : null;
-      if (t) lines.push('Timeline: ' + t.status + (t.overrunDays > 0 ? ' (+' + t.overrunDays + 'd)' : ''));
-    }
-    const risks = (s.risks || []).filter(r => !r.issueId && (r.probability === 'High' || r.probability === 'high'));
-    if (risks.length) lines.push('High risks: ' + risks.map(r => r.description).join('; '));
-    const issues = (s.issues || []).filter(i => i.status !== 'resolved' && i.status !== 'closed');
-    if (issues.length) lines.push('Open issues: ' + issues.map(i => i.description).join('; '));
-    const planned = (s.budgetLines || []).reduce((n, l) => n + (+l.planned || 0), 0);
-    const actual = (s.budgetLines || []).reduce((n, l) => n + (+l.actual || 0), 0);
-    lines.push('Budget: ' + _fmtMoney(actual) + ' spent of ' + _fmtMoney(planned) + ' planned' + (planned > actual ? '' : ' | *over planned*'));
-    if (ns.Render && ns.Render.computeAgingActions) {
-      const open = ns.Render.computeAgingActions(s).filter(a => (a.age || 0) > 0).length;
-      if (open) lines.push('Action items past due: ' + open);
-    }
-    return lines.join('\n');
-  }
-
-  // Explain-before-copy builders (owner 2026-08-15): the exact text each
-  // Copy As format produces , used BOTH by cpFormats (the copy action) and
-  // by renderCtrlPreviews (the live previews in the Controls tab), so the
-  // preview is always byte-identical to what gets copied.
-  function copyAsText(kind) {
-    const s = ns.State.getState();
-    const ts = new Date().toLocaleString();
-    if (kind === 'slack') {
-      return '*My MaNaGeR , Weekly Digest* (' + ts + ')\n' + buildDigest(s);
-    } else if (kind === 'email') {
-      const body = buildDigest(s).replace(/\*/g, '');
-      return 'Subject: Project Digest , ' + (s.projectName || '') + '\n\nHi team,\n\n' + body.replace(/\n/g, '\n') + '\n\n, My MaNaGeR\n';
-    } else if (kind === 'client') {
-      // Printable client summary , clean text, no markup, safe to paste into
-      // a doc or print directly.
-      const f = (s.charter) || {};
-      const tasks = s.tasks || [];
-      const done = tasks.filter(t => t.status === 'completed').length;
-      const lines = [];
-      lines.push('CLIENT PROJECT SUMMARY');
-      lines.push('='.repeat(40));
-      lines.push('Project: ' + (s.projectName || f.name || '-'));
-      lines.push('Status: ' + (f.status || '-'));
-      lines.push('Prepared: ' + ts);
-      lines.push('');
-      lines.push('PROGRESS');
-      lines.push('-'.repeat(30));
-      lines.push('Completion: ' + (tasks.length ? Math.round(done / tasks.length * 100) : 0) + '% (' + done + ' of ' + tasks.length + ' tasks)');
-      if (f.targetCompletion) lines.push('Target completion: ' + f.targetCompletion);
-      lines.push('');
-      lines.push('KEY METRICS');
-      lines.push('-'.repeat(30));
-      const planned = (s.budgetLines || []).reduce((n, l) => n + (+l.planned || 0), 0);
-      const actual = (s.budgetLines || []).reduce((n, l) => n + (+l.actual || 0), 0);
-      lines.push('Budget: ' + _fmtMoney(actual) + ' spent / ' + _fmtMoney(planned) + ' planned');
-      lines.push('Open issues: ' + (s.issues || []).filter(i => i.status !== 'resolved' && i.status !== 'closed').length);
-      lines.push('Open high risks: ' + (s.risks || []).filter(r => !r.issueId && (r.probability === 'High' || r.probability === 'high')).length);
-      lines.push('');
-      lines.push('GENERATED BY MY MANAGER');
-      return lines.join('\n');
-    }
-    return '';
-  }
-
-  // Live previews for the Copy As + Email Template cards. textContent only
-  // (the previews are plain text , never innerHTML). Wired into the render
-  // tail so they always mirror the current state.
-  function renderCtrlPreviews() {
-    const set = function(id, txt) {
-      const el = U.$(id);
-      if (el) el.textContent = txt || '';
-    };
-    set('pv-slack', copyAsText('slack'));
-    set('pv-email', copyAsText('email'));
-    set('pv-client', copyAsText('client'));
-    set('pv-tpl-status', emailTplText('status'));
-    set('pv-tpl-change', emailTplText('change'));
-    set('pv-tpl-risk', emailTplText('risk'));
-    set('pv-tpl-closure', emailTplText('closure'));
-  }
-
-  function cpFormats(kind) {
-    const txt = copyAsText(kind);
-    if (!txt) { showToast('Nothing to copy yet.', 'warn'); return; }
-    U.copyToClipboard(txt);
-    const label = kind === 'slack' ? 'Slack digest' : (kind === 'email' ? 'Email digest' : 'Client summary');
-    showToast(label + ' copied!', 'ok');
-  }
-
-  // ---- MONOLITH-FEATURE-PARITY-DIRECTIVES RESTORE-3: one-click email
-  // template generator (Status Update / Change Request / Risk Escalation /
-  // Closure Sign-Off). Restored as the monolith's ORIGINAL static, zero-AI
-  // version , every button copies a ready-to-send email draft built from
-  // live project state, so it works with no model configured and remains the
-  // guaranteed fallback. BACKLOG B-N (2026-08-12): the same body is now also
-  // exposed as a pure emailTplText(kind) getter so the AI window's LOCAL
-  // tier can return it verbatim (zero-fabrication baseline) while the Cloud
-  // tier drafts an AI-polished 'email' preset on top , the buttons below are
-  // unchanged and never depend on a model.
-  function emailTplText(kind) {
-    const s = ns.State.getState();
-    const f = s.charter || {};
-    const pn = f.name || '[Project Name]';
-    // The current charter schema has no PM field , the signer is deliberately
-    // a distinct placeholder rather than reusing the sponsor, so the email
-    // does not imply the sponsor wrote it.
-    const pm = '[PM]';
-    const sp = f.sponsor || '[Sponsor]';
-    const tasks = s.tasks || [];
-    const tot = tasks.length;
-    const dn = tasks.filter(t => t.status === 'completed').length;
-    const pct = tot ? Math.round(dn / tot * 100) : 0;
-    const openIssues = (s.issues || []).filter(i => i.status !== 'resolved' && i.status !== 'closed');
-    let body = '';
-    if (kind === 'status') {
-      body = 'Subject: ' + pn + ' , Weekly Status Update\n\nHi ' + sp + ',\n\nQuick status on ' + pn + ' as of ' + new Date().toLocaleDateString() + ':\n• Overall progress: ' + pct + '% Completed (' + dn + '/' + tot + ' tasks)\n• In Progress: ' + tasks.filter(t => t.status === 'inprogress').length + '\n• Blocked: ' + tasks.filter(t => t.status === 'blocked').length + '\n• Live issues: ' + openIssues.length + '\n\nNext priorities:\n' + (tasks.filter(t => t.status !== 'completed').slice(0, 3).map(t => '  - ' + (t.name || t.id)).join('\n') || '  - (none)') + '\n\nRegards,\n' + pm;
-    } else if (kind === 'change') {
-      const pending = (s.changes || []).filter(c => c.status === 'submitted' || c.status === 'review');
-      body = 'Subject: ' + pn + ' , Change Request for Approval\n\nHi ' + sp + ',\n\nA change request has been raised on ' + pn + '. Please review the impact below and confirm approval:\n\n' + (pending.map(c => '• ' + (c.title || '(untitled)') + ' (Sched ' + (c.schedImpact || '-') + ', Cost ' + (c.costImpact || '-') + ') , Requester: ' + (c.requester || '-') + '\n  Notes: ' + (c.notes || '')).join('\n') || '(no pending changes)') + '\n\nAwaiting your decision.\n\nRegards,\n' + pm;
-    } else if (kind === 'risk') {
-      const highRisks = (s.risks || []).filter(r => !r.issueId && (r.probability === 'High' || r.probability === 'Very High' || r.impact === 'High' || r.impact === 'Very High'));
-      body = 'Subject: ' + pn + ' , Risk / Issue Escalation\n\nHi ' + sp + ',\n\nThe following items require attention on ' + pn + ':\n\nACTIVE ISSUES:\n' + (openIssues.map(r => '• [' + (r.id || 'I?') + '] ' + r.description + ' | Owner: ' + (r.owner || '-') + ' | Target: ' + (r.targetDate || '-')).join('\n') || '(none)') + '\n\nHIGH RISKS:\n' + (highRisks.map(r => '• [' + (r.id || 'R?') + '] ' + r.description + ' | Prob ' + r.probability + ' | Impact ' + r.impact + ' | Mitigation: ' + (r.mitigation || '-')).join('\n') || '(none)') + '\n\nRegards,\n' + pm;
-    } else {
-      const items = (s.closure && s.closure.items) || [];
-      body = 'Subject: ' + pn + ' , Closure Sign-Off Request\n\nHi ' + sp + ',\n\n' + pn + ' is ready for formal closure. Summary:\n• Overall: ' + pct + '% Completed\n• Deliverables checklist: ' + items.filter(c => c.done).length + '/' + items.length + ' complete\n\nLessons learned and final report attached. Please confirm sign-off.\n\nRegards,\n' + pm;
-    }
-    return body;
-  }
-
-  function emailTpl(kind) {
-    U.copyToClipboard(emailTplText(kind));
-    showToast('Email template copied!', 'ok');
-  }
+  // ---- Copy All / Export Text ---- (extracted to js/app/copy-text.js)
+  function cpAllPage(section) { if (ns.AppCopy) ns.AppCopy.cpAllPage(section); }
+  function buildDigest(s) { return ns.AppCopy ? ns.AppCopy.buildDigest(s) : ''; }
+  function copyAsText(kind) { return ns.AppCopy ? ns.AppCopy.copyAsText(kind) : ''; }
+  function renderCtrlPreviews() { if (ns.AppCopy) ns.AppCopy.renderCtrlPreviews(); }
+  function cpFormats(kind) { if (ns.AppCopy) ns.AppCopy.cpFormats(kind); }
+  function emailTplText(kind) { return ns.AppCopy ? ns.AppCopy.emailTplText(kind) : ''; }
+  function emailTpl(kind) { if (ns.AppCopy) ns.AppCopy.emailTpl(kind); }
 
   // ---- 5.2 Definitions tooltips ---- (extracted to js/app/definitions.js)
   function defTipFor(term) { return ns.AppDefs && ns.AppDefs.defTipFor ? ns.AppDefs.defTipFor(term) : null; }
@@ -1257,71 +875,10 @@ var MMGR = window.MMGR || {};
   function setRegion(val) { if (ns.AppWeather && ns.AppWeather.setRegion) ns.AppWeather.setRegion(val); }
 
   // ---- Confirmation Dialog (replaces bare confirm() for destructive ops) ----
-  let _cfmCb = null;
-  let _cfmCancelCb = null;
-  function askConfirm(opts) {
-    const modal = U.$('cfm-modal');
-    if (!modal) {
-      // No dialog in the DOM: fall back to native confirm so safety holds.
-      if (window.confirm((opts && opts.message) || 'Confirm?')) {
-        if (opts && opts.onOk) opts.onOk();
-      }
-      return;
-    }
-    _cfmCb = (opts && opts.onOk) || null;
-    _cfmCancelCb = (opts && opts.onCancel) || null;
-    const title = U.$('cfm-title');
-    if (title) title.textContent = (opts && opts.title) || 'Confirm';
-    const msg = U.$('cfm-msg');
-    if (msg) msg.textContent = (opts && opts.message) || '';
-    const items = U.$('cfm-items');
-    if (items) {
-      const list = (opts && opts.items) || [];
-      if (list.length) {
-        items.classList.remove('is-hide');
-        items.innerHTML = '<div class="cfm-list-label">Affected task IDs:</div><div class="cfm-list">' +
-          list.map(id => '<code>' + U.escapeHtml(id) + '</code>').join('') + '</div>';
-      } else {
-        items.classList.add('is-hide');
-      }
-    }
-    const okBtn = U.$('cfm-ok');
-    if (okBtn) {
-      okBtn.textContent = (opts && opts.confirmLabel) || 'Confirm';
-      if (opts && opts.danger) {
-        okBtn.classList.add('btn-d');
-        okBtn.classList.remove('btn-g');
-      } else {
-        okBtn.classList.add('btn-g');
-        okBtn.classList.remove('btn-d');
-      }
-    }
-    const cancelBtn = U.$('cfm-cancel');
-    if (cancelBtn) cancelBtn.textContent = (opts && opts.cancelLabel) || 'Cancel';
-    modal.classList.add('on');
-  }
-
-  function cfmOk() {
-    const modal = U.$('cfm-modal');
-    if (modal) modal.classList.remove('on');
-    const items = U.$('cfm-items');
-    if (items) items.classList.add('is-hide');
-    const cb = _cfmCb;
-    _cfmCb = null;
-    _cfmCancelCb = null;
-    if (cb) cb();
-  }
-
-  function cfmCancel() {
-    const modal = U.$('cfm-modal');
-    if (modal) modal.classList.remove('on');
-    const items = U.$('cfm-items');
-    if (items) items.classList.add('is-hide');
-    const cb = _cfmCancelCb;
-    _cfmCb = null;
-    _cfmCancelCb = null;
-    if (cb) cb();
-  }
+  // ---- Confirmation Dialog ---- (extracted to js/app/confirm.js)
+  function askConfirm(opts) { if (ns.AppConfirm) ns.AppConfirm.askConfirm(opts); }
+  function cfmOk() { if (ns.AppConfirm) ns.AppConfirm.cfmOk(); }
+  function cfmCancel() { if (ns.AppConfirm) ns.AppConfirm.cfmCancel(); }
 
   // ---- Multi-tab Conflict Resolution ----
   let _pendingExternal = null;
@@ -1364,19 +921,9 @@ var MMGR = window.MMGR || {};
     }
   }
 
-  // Close every custom modal we own (Escape key path). An Escape on the
-  // confirmation dialog behaves exactly like Cancel , the onCancel callback
-  // (e.g. a Gantt-drag rollback) must still run.
-  function closeModals() {
-    ['cfm-modal', 'conflict-modal', 'del-modal'].forEach(id => {
-      const el = U.$(id);
-      if (el) el.classList.remove('on');
-    });
-    const cb = _cfmCancelCb;
-    _cfmCb = null;
-    _cfmCancelCb = null;
-    if (cb) cb();
-  }
+  // Close every custom modal we own (Escape key path).
+  // (extracted to js/app/confirm.js)
+  function closeModals() { if (ns.AppConfirm) ns.AppConfirm.closeModals(); }
 
   // ---- Baseline Restore (undoable) ----
   function restoreBaseline() {

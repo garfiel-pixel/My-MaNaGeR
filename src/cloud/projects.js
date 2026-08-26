@@ -431,3 +431,35 @@ export async function cloudPushRevChangedIfCopies(env, projectId, now, actor) {
     }
   } catch (e) { /* sync push is additive — never fail a save */ }
 }
+
+// ---- Scheduled purge: orphaned + soft-deleted projects ----
+// Imported by worker.js scheduled() handler.
+import { CLOUD_ORPHAN_RETENTION_MS, CLOUD_DELETED_PURGE_MS } from '../lib/http.js';
+
+export async function purgeStaleCloudProjects(env) {
+  const cutoff = new Date(Date.now() - CLOUD_ORPHAN_RETENTION_MS).toISOString();
+  const rows = await env.DB.prepare(
+    'SELECT project_id, owner_label FROM cloud_projects WHERE last_owner_seen_at IS NOT NULL AND last_owner_seen_at < ? ORDER BY last_owner_seen_at ASC LIMIT 200'
+  ).bind(cutoff).all();
+  const stale = (rows && rows.results) || [];
+  const purged = [];
+  for (let i = 0; i < stale.length; i++) {
+    const pid = stale[i].project_id;
+    await cloudDeleteProjectFully(env, pid);
+    await env.DB.prepare('DELETE FROM cloud_projects WHERE project_id = ?').bind(pid).run();
+    purged.push({ projectId: pid, label: stale[i].owner_label || null, purgedAt: new Date().toISOString() });
+  }
+  // Hard-purge soft-deleted (admin-deleted) projects past grace window
+  const delCutoff = new Date(Date.now() - CLOUD_DELETED_PURGE_MS).toISOString();
+  const delRows = await env.DB.prepare(
+    'SELECT project_id FROM cloud_projects WHERE deleted_at IS NOT NULL AND deleted_at < ? ORDER BY deleted_at ASC LIMIT 200'
+  ).bind(delCutoff).all();
+  const gone = (delRows && delRows.results) || [];
+  for (let i = 0; i < gone.length; i++) {
+    const pid = gone[i].project_id;
+    await cloudDeleteProjectFully(env, pid);
+    await env.DB.prepare('DELETE FROM cloud_projects WHERE project_id = ?').bind(pid).run();
+    purged.push({ projectId: pid, label: 'deleted', purgedAt: new Date().toISOString() });
+  }
+  return { purged: purged, checked: stale.length };
+}

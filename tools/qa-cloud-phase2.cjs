@@ -107,9 +107,16 @@ function startWrangler() {
         const timer = setTimeout(function() { ctrl.abort(); }, 3000);
         const r = await fetch(BASE + '/api/health', { signal: ctrl.signal });
         clearTimeout(timer);
-        if (r.ok) return resolve();
+        if (r.ok) {
+          const body = await r.json().catch(() => null);
+          if (body && body.ok === true) return resolve();
+          log('health check got 200 but worker not loaded (SPA fallback?) — body: ' + JSON.stringify(body).slice(0, 200));
+        }
       } catch (e) { /* not up yet */ }
-      if (Date.now() - t0 > 120000) return reject(new Error('wrangler dev did not come up in 120s'));
+      if (Date.now() - t0 > 120000) {
+        log('wrangler dev log (last 2000 chars):\n' + devLog.slice(-2000));
+        return reject(new Error('wrangler dev did not come up in 120s'));
+      }
       setTimeout(poll, 1500);
     };
     poll();

@@ -33,7 +33,7 @@ let ws = null; let msgId = 0; const pending = new Map();
 const log = (s) => { process.stdout.write('[cloud1] ' + s + '\n'); };
 const delay = ms => new Promise(r => setTimeout(r, ms));
 const results = [];
-const check = (name, val, detail) => { results.push({ name, val }); log((val ? 'PASS' : 'FAIL') + '  ' + name + (val ? '' : '   <-- ' + JSON.stringify(detail).slice(0, 400))); };
+const check = (name, val, detail) => { results.push({ name, val }); const d = (detail === undefined || detail === null) ? String(detail) : detail; log((val ? 'PASS' : 'FAIL') + '  ' + name + (val ? '' : '   <-- ' + JSON.stringify(d).slice(0, 400))); };
 
 setTimeout(() => { log('WATCHDOG — harness exceeded 300s'); try { proc && proc.kill(); } catch (e) {} process.exit(2); }, 300000).unref();
 
@@ -84,6 +84,8 @@ function startWrangler() {
     proc.on('error', (e) => reject(new Error('wrangler spawn failed: ' + e.message)));
     proc.on('exit', (code) => { if (code !== 0 && code !== null) log('wrangler dev exited early (code ' + code + ')'); });
     // Wait for /api/health (up to 120s — first boot bundles the worker).
+    // Must verify the RESPONSE BODY — SPA fallback serves index.html (200)
+    // even when the worker is dead, so a bare r.ok check is misleading.
     const t0 = Date.now();
     const poll = async () => {
       try {
@@ -91,9 +93,17 @@ function startWrangler() {
         const timer = setTimeout(function() { ctrl.abort(); }, 3000);
         const r = await fetch(BASE + '/api/health', { signal: ctrl.signal });
         clearTimeout(timer);
-        if (r.ok) return resolve();
+        if (r.ok) {
+          const body = await r.json().catch(() => null);
+          if (body && body.ok === true) return resolve();
+          // Status 200 but body is HTML (SPA fallback) — worker not loaded
+          log('health check got 200 but worker not loaded (SPA fallback?) — body: ' + JSON.stringify(body).slice(0, 200));
+        }
       } catch (e) { /* not up yet or timed out */ }
-      if (Date.now() - t0 > 120000) return reject(new Error('wrangler dev did not come up in 120s'));
+      if (Date.now() - t0 > 120000) {
+        log('wrangler dev log (last 2000 chars):\n' + devLog.slice(-2000));
+        return reject(new Error('wrangler dev did not come up in 120s'));
+      }
       setTimeout(poll, 1500);
     };
     poll();
@@ -436,14 +446,17 @@ async function phaseB() {
 // ============================================================================
 (async () => {
   if (!WRANGLER_JS) { log('FATAL: global wrangler not found (npm root -g)'); process.exit(1); }
-  log('wrangler at: ' + WRANGLER_JS);
-  try {
+  log('wrangler at: ' + WRANGLER_JS);  try {
     await startWrangler();
   } catch (e) {
     log('FATAL: ' + e.message);
     log('--- last dev log ---'); log(devLog.slice(-1500));
     process.exit(1);
   }
+  // Log wrangler startup output for diagnosis
+  log('--- wrangler dev log (last 500 chars) ---');
+  log(devLog.slice(-500));
+  log('--- end wrangler log ---');
 
   try {
     const ctx = await phaseA();

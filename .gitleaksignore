@@ -1,6 +1,9 @@
 # Gitleaks allowlist — known false positives in this codebase
 # Format: <commit>:<file>:<rule-id>:<line>
 
+# Self-referential: old commit of this file had a comment quoting a flagged pattern
+41874ba25dd560a3b06e107669d3d1bed24889ea:.gitleaksignore:generic-api-key:4
+
 # Doc example showing a fake API key inside a "what NOT to do" code block
 # (two SHAs: original commit + latest commit that touched the repo)
 258eaec9813f2f68609c55746e7e33a74cc30171:.agents/skills/workers-best-practices/references/rules.md:generic-api-key:82

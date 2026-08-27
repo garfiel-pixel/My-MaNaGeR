@@ -91,7 +91,7 @@ jobs:
       - name: "T2: Start wrangler dev (background)"
         id: wrangler-start
         run: |
-          rm -rf dist/ .wrangler/
+          rm -rf .wrangler/
           npx wrangler d1 migrations apply my-manager-db --local --config wrangler.ci.jsonc --persist-to /tmp/mmgr-wrangler-state
           # Use tee so wrangler output is both logged and captured
           npx wrangler dev --config wrangler.ci.jsonc --port 8787 --ip 127.0.0.1 --persist-to /tmp/mmgr-wrangler-state 2>&1 | tee /tmp/wrangler.log &

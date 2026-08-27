@@ -28,6 +28,24 @@ const crypto = require('crypto');
 
 const { chromePath: CHROME, BASE: _BASE, PORT } = require('./chrome-launcher.cjs');
 const BASE = process.env.WRANGLER_DEV_URL || _BASE;
+
+// ---- R2 blob decryption (mirrors src/lib/http.js cloudDecryptState) -------
+const R2_ENC_VERSION = 2;
+const R2_ENC_KDF_ITERS = 100000;
+function r2B64ToBytes(b64) { const bin = atob(b64); const out = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i); return out; }
+async function r2DeriveKey(ownerCodeHash, saltHex) {
+  const material = await crypto.subtle.importKey('raw', new TextEncoder().encode(ownerCodeHash), 'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey({ name: 'PBKDF2', salt: new TextEncoder().encode(saltHex), iterations: R2_ENC_KDF_ITERS, hash: 'SHA-256' }, material, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+}
+async function r2DecryptBlob(raw, ownerCodeHash, ownerCodeSalt) {
+  let parsed; try { parsed = JSON.parse(raw); } catch (e) { return null; }
+  if (!parsed || parsed.v === undefined || parsed.v === 1) return parsed; // legacy plaintext
+  if (parsed.v !== R2_ENC_VERSION || !parsed.iv || !parsed.data) return parsed;
+  const salt = parsed.salt || ownerCodeSalt;
+  const key = await r2DeriveKey(ownerCodeHash, salt);
+  const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: r2B64ToBytes(parsed.iv) }, key, r2B64ToBytes(parsed.data));
+  return JSON.parse(new TextDecoder().decode(pt));
+}
 const ROOT = path.resolve(__dirname, '..');
 
 let ws = null; let msgId = 0; const pending = new Map();
@@ -175,10 +193,10 @@ function queryD1(sql) {
 // Miniflare persists R2 objects under .wrangler/state/v3/r2/<bucket>/…;
 // returns { path, content } for the first file whose path ends with the key
 // OR whose content matches the marker (layout-agnostic).
-function findR2Blob(keySuffix, marker) {
+async function findR2Blob(keySuffix, marker, ownerCodeHash, ownerCodeSalt) {
   const root = path.join(PERSIST_DIR, 'v3', 'r2');
   if (!fs.existsSync(root)) return null;
-  const hits = [];
+  const candidates = [];
   const walk = (d) => {
     let entries = [];
     try { entries = fs.readdirSync(d, { withFileTypes: true }); } catch (e) { return; }
@@ -188,15 +206,28 @@ function findR2Blob(keySuffix, marker) {
       else if (e.isFile()) {
         try {
           const content = fs.readFileSync(p, 'utf8');
-          const keyMatch = keySuffix && p.split(path.sep).join('/').endsWith(keySuffix);
-          const markerMatch = marker && content.indexOf(marker) > -1;
-          if (keyMatch || markerMatch) hits.push({ path: p, content });
+          candidates.push({ path: p, content });
         } catch (err) { /* skip locked/partial */ }
       }
     }
   };
   walk(root);
-  return hits[0] || null;
+  // Check each candidate: plaintext marker match, or decrypt then check
+  for (const c of candidates) {
+    const keyMatch = keySuffix && c.path.split(path.sep).join('/').endsWith(keySuffix);
+    const markerMatch = marker && c.content.indexOf(marker) > -1;
+    if (keyMatch || markerMatch) return c;
+    // Try decrypting (handles encrypted blobs)
+    if (marker && ownerCodeHash && ownerCodeSalt) {
+      try {
+        const decrypted = await r2DecryptBlob(c.content, ownerCodeHash, ownerCodeSalt);
+        if (decrypted && JSON.stringify(decrypted).indexOf(marker) > -1) {
+          return { path: c.path, content: JSON.stringify(decrypted) };
+        }
+      } catch (e) { /* not encrypted or decrypt failed */ }
+    }
+  }
+  return null;
 }
 
 // ---- HTTP helpers ----------------------------------------------------------
@@ -244,7 +275,12 @@ async function phaseA() {
   rows = queryD1('SELECT latest_r2_key FROM cloud_projects WHERE project_id = ' + q(PID));
   check('C2c D1 row now references the R2 key', !!rows && rows[0] && rows[0].latest_r2_key === KEY, rows);
 
-  const blob = findR2Blob(KEY, STATE_MARKER);
+  // Query owner credentials for R2 blob decryption (set during create)
+  rows = queryD1('SELECT owner_code_salt, owner_code_hash FROM cloud_projects WHERE project_id = ' + q(PID));
+  const blobCreds = rows && rows[0];
+  const blobHash = blobCreds ? blobCreds.owner_code_hash : '';
+  const blobSalt = blobCreds ? blobCreds.owner_code_salt : '';
+  const blob = await findR2Blob(KEY, STATE_MARKER, blobHash, blobSalt);
   let blobState = null;
   try { if (blob) blobState = JSON.parse(blob.content); } catch (e) { /* not JSON */ }
   check('C2d state blob found in local R2 emulation', !!blob, blob ? blob.path : 'no blob');

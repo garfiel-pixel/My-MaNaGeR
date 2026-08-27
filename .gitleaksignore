@@ -1,10 +1,31 @@
 # Gitleaks allowlist — known false positives in this codebase
-# The Google Client ID is public (embedded in frontend HTML) — not a secret.
-worker.js:GOOGLE_CLIENT_ID
-# The database IDs are public metadata, not credentials.
-wrangler.jsonc:database_id
-wrangler.jsonc:namespace_id
-# package.json version strings sometimes look like secrets.
-package.json:1.0.0
-# wrangler.jsonc vars are non-secret public values.
-wrangler.jsonc:GOOGLE_CLIENT_ID
+# Format: <commit>:<file>:<rule-id>:<line>
+
+# Doc example: "API_KEY": "sk-live-abc123..." in a "what NOT to do" code block
+# (two SHAs: original commit + latest commit that touched the repo)
+258eaec9813f2f68609c55746e7e33a74cc30171:.agents/skills/workers-best-practices/references/rules.md:generic-api-key:82
+e3381dfa5c8a69b4b6c19ad1f446e61b5ce748b8:.agents/skills/workers-best-practices/references/rules.md:generic-api-key:82
+
+# Doc example: "API_KEY": "REDACTED" in bindings patterns reference
+258eaec9813f2f68609c55746e7e33a74cc30171:.agents/skills/cloudflare/references/bindings/patterns.md:generic-api-key:82
+
+# Doc example: const apiKey = 'REDACTED' in bindings patterns reference
+258eaec9813f2f68609c55746e7e33a74cc30171:.agents/skills/cloudflare/references/bindings/patterns.md:generic-api-key:182
+
+# Test mock: s.config.ai.apiKey = 'REDACTED' in QA test
+2edc5113435bf489dbe9753298a2609d871985fd:qa-ai.cjs:generic-api-key:368
+
+# Test mock: apiKey: 'REDACTED' in QA Drive smoke test
+71ead17f23a9dfb70c73f17dffeb3ddf8a86a470:qa-drive-smoke.cjs:generic-api-key:276
+
+# Test constant: const SECRET = 'REDACTED' in presence QA
+07c285d475e12749dfa3d9f7afd13d87721829ba:tools/qa-presence.cjs:generic-api-key:51
+
+# Test constant: const SECRET = 'REDACTED' in rank9 API QA
+07c285d475e12749dfa3d9f7afd13d87721829ba:tools/qa-rank9-api.cjs:generic-api-key:68
+
+# Test constant: const SECRET = 'REDACTED' in prefs roundtrip QA
+b5397ae3b31840da95bdd41ccf836d52d6f2cbf7:tools/qa-prefs-roundtrip.cjs:generic-api-key:65
+
+# Reference: const ACCESS_HASH = 'REDACTED' in monolith feature reference
+1f848ffdb00de8e35d9be463dd257a02454295b9:monolith html to reference from all features.html:generic-api-key:1550

@@ -131,6 +131,7 @@ jobs:
         env:
           WRANGLER_DEV_URL: http://127.0.0.1:8787
           QA_BASE: http://127.0.0.1:8787
+          ADMIN_CODE: QA-ADMIN-CI
 
       - name: "T2: Cloud codes + delete"
         if: success() && steps.wrangler-start.outcome == 'success'

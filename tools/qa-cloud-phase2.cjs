@@ -52,7 +52,7 @@ const os = require('os');
 const crypto = require('crypto');
 
 const ROOT = path.resolve(__dirname, '..');
-const ADMIN_CODE = 'QA-ADMIN-' + Date.now().toString(36).toUpperCase();
+const ADMIN_CODE = process.env.ADMIN_CODE || ('QA-ADMIN-' + Date.now().toString(36).toUpperCase());
 
 const log = (s) => { process.stdout.write('[cloud2] ' + s + '\n'); };
 const delay = ms => new Promise(r => setTimeout(r, ms));

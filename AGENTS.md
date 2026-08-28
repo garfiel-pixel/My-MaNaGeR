@@ -94,6 +94,104 @@ How to load: use your skill-loading mechanism on the skill **name** below
    not. New/changed pages must pass the emoji scan before merging (regex over
    U+1F000–1FAFF, 2600–27BF, 2B00–2BFF, FE0F, 1F1E6–1F1FF).
 
+## Hard-won knowledge (do not repeat these mistakes)
+
+These lessons come from real production incidents and wasted sessions.
+Each one cost hours to diagnose. Read them before touching the build.
+
+### 1. NEVER `taskkill //F //IM node.exe` — it kills the agent itself
+
+The agent process runs as `node.exe`. Running `taskkill //F //IM node.exe`
+or equivalent kills the agent's own PID, crashing the session instantly.
+Multiple prior sessions died this way. To check for stale processes:
+
+```bash
+# SAFE: inspect command lines before touching anything
+wmic process where "name='node.exe'" get ProcessId,CommandLine /format:list
+# Kill ONLY a specific PID you identified as stale — never by image name
+```
+
+### 2. Bundle staleness is the #1 silent killer of edits
+
+`dist/bundle.js` (project.html) and `dist/app-bundle.js` (app.html) are
+minified concatenations of the `js/` source files. They load first via
+`<script defer src="dist/bundle.js">`. The dev fallback that loads
+individual source files only triggers when the bundle 404s (`onerror`).
+
+**If you edit `js/*.js` but forget to rebuild, the bundle's old code runs.
+Your changes appear to have no effect.** This is the single most common
+cause of "why is my code change not working" in this repo.
+
+After ANY source change, always rebuild:
+
+```bash
+node build.js          # builds all bundles: app, launcher, admin, marketing, CSS
+node build.js --app    # project.html bundle only (most common)
+```
+
+The QA server (`serve.cjs`) serves files directly from disk, so `curl` may
+show your changes — but the browser loads the stale bundle. Always verify
+by checking the bundle content: `grep -c 'yourNewFunction' dist/bundle.js`.
+
+### 3. `renderDash()` / `renderAll()` wrap sub-renderers in `requestAnimationFrame`
+
+Many sub-renderers (weather log, leadtime tracker, decisions, aging,
+baseline narrative, forecast, meetings, etc.) execute inside a
+`requestAnimationFrame` callback in `renderDash()`. Calling `renderDash()`
+and immediately checking the DOM will see stale results because the RAF
+has not fired yet.
+
+**Fix:** split the render call and DOM check into separate steps with a RAF
+flush between them:
+
+```javascript
+await ev('MMGR.Render.renderDash();');  // trigger render
+await ev(FLUSH_RAF);                    // flush the RAF queue
+await delay(200);                       // let DOM settle
+// now check DOM
+```
+
+The `FLUSH_RAF` constant in `qa-full.cjs` fires two nested RAFs to drain
+the queue.
+
+### 4. Production strips `.html` extensions — test assertions must handle both
+
+The Cloudflare Worker serves static assets and rewrites `/project.html`
+to `/project` (307 redirect). Tests that assert on `location.href` or
+`location.pathname` must accept both forms:
+
+```javascript
+// CORRECT: handles both local dev and production
+location.pathname.indexOf('project.html') > -1 || location.pathname.indexOf('/project') > -1
+```
+
+### 5. Chrome HTTP cache breaks QA between runs
+
+The `Cache-Control: immutable` header on static assets causes Chrome to
+serve stale files from the OS-level cache, even with a fresh user profile.
+Add `--disk-cache-size=0` to the Chrome launch args in `qa-full.cjs` to
+prevent this.
+
+### 6. D1 WAL may not be visible immediately after Worker writes
+
+The Worker's D1 binding writes to WAL, but `node:sqlite` reads from the
+main database. After a Worker write, a direct `queryD1()` may return stale
+or empty results. Use `queryD1Retry()` (up to 3 attempts, 200ms apart)
+in `tools/qa-cloud-phase2.cjs`.
+
+### 7. Deploy staging recipe — never deploy from the repo root
+
+`wrangler.jsonc` assets directory is `.` and wrangler uploads EVERYTHING
+(not honoring `.gitignore`). Always create a clean staging copy first:
+
+```bash
+node build.js  # rebuild bundles first
+rm -rf /tmp/mmgr-deploy && mkdir -p /tmp/mmgr-deploy
+tar --exclude='.git' --exclude='.wrangler' --exclude='node_modules' \
+  --exclude='.agents' --exclude='_archive' -cf - . | tar -xf - -C /tmp/mmgr-deploy
+cd /tmp/mmgr-deploy && npx wrangler deploy
+```
+
 ## Editing workflow
 
 1. Identify which skills apply (table above) and load them.

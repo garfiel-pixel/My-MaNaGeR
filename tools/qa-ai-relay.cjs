@@ -23,7 +23,7 @@ const { pathToFileURL } = require('url');
 
 const results = [];
 const log = (s) => process.stdout.write('[relay] ' + s + '\n');
-const check = (name, val, detail) => { results.push({ name, val }); log((val ? 'PASS ' : 'FAIL ') + name + (val ? '' : '  <-- ' + JSON.stringify(detail))); };
+const check = (name, val, detail) => { results.push({ name, val }); log((val ? 'PASS ' : 'FAIL ') + name + (val ? '' : '  <-- ' + JSON.stringify(detail === undefined ? null : detail))); };
 
 (async () => {
   // Import worker.js as an ES module.

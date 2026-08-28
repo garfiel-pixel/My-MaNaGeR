@@ -79,7 +79,7 @@ async function bootChrome(port, profile, url) {
   }
 
   const proc = await bootChrome(9245, PROFILE);
-  const check = (name, val, detail) => { results.push({ name, val, detail }); log((val ? 'PASS' : 'FAIL') + ' ' + name + (val ? '' : '  <-- ' + JSON.stringify(detail))); };
+  const check = (name, val, detail) => { results.push({ name, val, detail }); log((val ? 'PASS' : 'FAIL') + ' ' + name + (val ? '' : '  <-- ' + JSON.stringify(detail === undefined ? null : detail))); };
 
   try {
     // Seed a project with rows in EVERY module that renders table inputs.

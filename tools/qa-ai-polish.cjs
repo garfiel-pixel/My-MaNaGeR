@@ -33,7 +33,7 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
   };
 
   const results = [];
-  const check = (name, val, detail) => { results.push({ name, val }); log((val ? 'PASS' : 'FAIL') + ' ' + name + (val ? '' : '  <-- ' + JSON.stringify(detail))); };
+  const check = (name, val, detail) => { results.push({ name, val }); log((val ? 'PASS' : 'FAIL') + ' ' + name + (val ? '' : '  <-- ' + JSON.stringify(detail === undefined ? null : detail))); };
 
   await send('Page.navigate', { url: BASE + '/app.html' }); await delay(2500);
   await ev(`(function(){

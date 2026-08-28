@@ -257,8 +257,20 @@ async function phaseA() {
   const codeRe = /^[A-Z2-9]{4}(-[A-Z2-9]{4}){3}$/;
   check('C1b owner code format XXXX-XXXX-XXXX-XXXX (no 0/O/1/I/L)', codeRe.test(CODE), CODE);
 
-  let rows = queryD1('SELECT project_id, owner_code_salt, owner_code_hash, owner_label, google_sub, latest_r2_key FROM cloud_projects WHERE project_id = ' + q(PID));
+  // Retry post-create read — same WAL read-visibility race defense as P2.1d.
+  let rows = null;
+  for (let _attempt = 0; _attempt < 3; _attempt++) {
+    rows = queryD1('SELECT project_id, owner_code_salt, owner_code_hash, owner_label, google_sub, latest_r2_key FROM cloud_projects WHERE project_id = ' + q(PID));
+    if (rows && rows.length > 0) break;
+    log('C1c: row not visible on attempt ' + (_attempt + 1) + ', retrying in 200ms…');
+    await delay(200);
+  }
   const row = rows && rows[0];
+  if (!row) {
+    log('C1c DIAGNOSTIC (all retries exhausted): create.body=' + JSON.stringify(create.body));
+    log('C1c DIAGNOSTIC: rows=' + JSON.stringify(rows));
+    log('C1c DIAGNOSTIC: PID=' + PID);
+  }
   check('C1c D1 row written (project_id + label)', !!row && row.project_id === PID && row.owner_label === NAME, rows);
   check('C1d D1 row exists before any save (latest_r2_key NULL)', !!row && row.latest_r2_key === null, row);
 

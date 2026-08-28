@@ -57,7 +57,7 @@ const ADMIN_CODE = 'QA-ADMIN-' + Date.now().toString(36).toUpperCase();
 const log = (s) => { process.stdout.write('[cloud2] ' + s + '\n'); };
 const delay = ms => new Promise(r => setTimeout(r, ms));
 const results = [];
-const check = (name, val, detail) => { results.push({ name, val }); log((val ? 'PASS' : 'FAIL') + '  ' + name + (val ? '' : '   <-- ' + JSON.stringify(detail).slice(0, 500))); };
+const check = (name, val, detail) => { results.push({ name, val }); log((val ? 'PASS' : 'FAIL') + '  ' + name + (val ? '' : '   <-- ' + JSON.stringify(detail === undefined ? null : detail).slice(0, 500))); };
 
 setTimeout(() => { log('WATCHDOG — harness exceeded 360s'); try { proc && proc.kill(); } catch (e) {} process.exit(2); }, 360000).unref();
 
@@ -349,9 +349,25 @@ function baseState(pid, name) {
     const EDITOR_ID = edCreate.body ? edCreate.body.editorId : null;
     check('P2.1c editor code format XXXX-XXXX-XXXX-XXXX', /^[A-Z2-9]{4}(-[A-Z2-9]{4}){3}$/.test(EC), EC);
 
-    // A4: D1 hash row — never plaintext
-    let edRows = queryD1('SELECT label, scope, code_salt, code_hash FROM cloud_editor_codes WHERE project_id = ' + q(PID));
+    // A4: D1 hash row — never plaintext.
+    // Retry up to 3× with a short delay: the INSERT via the Worker's D1
+    // binding may not be immediately visible to the out-of-process
+    // node:sqlite reader (WAL read-visibility race — not yet root-caused,
+    // but cheap to defend against). If all retries fail, log full
+    // diagnostics so CI gives us the picture in one run.
+    let edRows = null;
+    for (let _attempt = 0; _attempt < 3; _attempt++) {
+      edRows = queryD1('SELECT label, scope, code_salt, code_hash FROM cloud_editor_codes WHERE project_id = ' + q(PID));
+      if (edRows && edRows.length > 0) break;
+      log('P2.1d: row not visible on attempt ' + (_attempt + 1) + ', retrying in 200ms…');
+      await delay(200);
+    }
     const edRow = edRows && edRows[0];
+    if (!edRow) {
+      log('P2.1d DIAGNOSTIC (all retries exhausted): edCreate.body=' + JSON.stringify(edCreate.body));
+      log('P2.1d DIAGNOSTIC: edRows=' + JSON.stringify(edRows));
+      log('P2.1d DIAGNOSTIC: PID=' + PID);
+    }
     check('P2.1d editor row stored with scope JSON', !!edRow && JSON.stringify(JSON.parse(edRow.scope)) === JSON.stringify(['wbs', 'bud']) && edRow.label === 'Site Super', edRow);
     const edSalt = edRow ? edRow.code_salt : '';
     const edHash = edRow ? edRow.code_hash : '';

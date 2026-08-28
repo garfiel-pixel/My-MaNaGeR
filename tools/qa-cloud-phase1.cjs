@@ -80,7 +80,7 @@ const WRANGLER_JS = globalWranglerJs();
 // (observed live: 400+ "Reloading local server" lines, health never answered).
 const USE_EXTERNAL = !!process.env.WRANGLER_DEV_URL;
 const PERSIST_DIR = USE_EXTERNAL
-  ? '/tmp/mmgr-wrangler-state'
+  ? (process.env.QA_PERSIST_DIR || path.join(os.tmpdir(), 'mmgr-wrangler-state'))
   : path.join(os.tmpdir(), 'mmgr-cloud-wstate-' + Date.now());
 
 let proc = null;          // wrangler dev child
@@ -162,8 +162,25 @@ function d1File() {
   }
   return null;
 }
+// When an external wrangler dev is running, its WAL lock prevents direct
+// sqlite reads. Copy the file to a temp location first (safe even with WAL).
+function d1FileCopy() {
+  const src = d1File();
+  if (!src) return null;
+  if (!USE_EXTERNAL) return src; // no copy needed when we own the process
+  try {
+    const tmp = path.join(os.tmpdir(), 'mmgr-d1-copy-' + Date.now() + '.sqlite');
+    fs.copyFileSync(src, tmp);
+    // Also copy WAL/SHM if present so the copy is consistent
+    const srcWal = src + '-wal';
+    const srcShm = src + '-shm';
+    try { if (fs.existsSync(srcWal)) fs.copyFileSync(srcWal, tmp + '-wal'); } catch (e) {}
+    try { if (fs.existsSync(srcShm)) fs.copyFileSync(srcShm, tmp + '-shm'); } catch (e) {}
+    return tmp;
+  } catch (e) { log('D1 copy failed: ' + e.message); return src; }
+}
 function queryD1(sql) {
-  const f = d1File();
+  const f = d1FileCopy();
   if (f && typeof require('node:sqlite') === 'object') {
     try {
       const { DatabaseSync } = require('node:sqlite');
@@ -171,8 +188,22 @@ function queryD1(sql) {
       const rows = [];
       for (const row of db.prepare(sql).all()) rows.push(row);
       db.close();
+      // Clean up the temp copy
+      if (USE_EXTERNAL && f !== d1File()) {
+        try { fs.unlinkSync(f); } catch (e) {}
+        try { fs.unlinkSync(f + '-wal'); } catch (e) {}
+        try { fs.unlinkSync(f + '-shm'); } catch (e) {}
+      }
       return rows;
-    } catch (e) { log('node:sqlite read failed (' + e.message + ') — trying wrangler d1 execute'); }
+    } catch (e) {
+      log('node:sqlite read failed (' + e.message + ') — trying wrangler d1 execute');
+      // Clean up failed copy
+      if (USE_EXTERNAL && f !== d1File()) {
+        try { fs.unlinkSync(f); } catch (e) {}
+        try { fs.unlinkSync(f + '-wal'); } catch (e) {}
+        try { fs.unlinkSync(f + '-shm'); } catch (e) {}
+      }
+    }
   }
   if (WRANGLER_JS) {
     try {

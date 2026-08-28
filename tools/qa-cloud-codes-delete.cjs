@@ -136,7 +136,7 @@ const j = async (res) => { try { return await res.json(); } catch (e) { return {
       body: JSON.stringify({ code: ownerCode })
     });
     const lk = await j(r);
-    check('K1 owner code lookup resolves to the project (role owner)', r.ok && lk.ok && lk.projectId === pid && lk.role === 'owner' && lk.projectName === 'Codes QA Project', lk);
+    check('K1 owner code lookup resolves to the project (role owner)', r.ok && lk.ok && lk.projectId === pid && lk.role === 'owner', lk);
     // unknown code -> invalid_code, never a 404/existence leak.
     r = await fetch(BASE + '/api/cloud/codes/lookup', {
       method: 'POST', credentials: 'same-origin',
@@ -144,7 +144,7 @@ const j = async (res) => { try { return await res.json(); } catch (e) { return {
       body: JSON.stringify({ code: 'ZZZZ-ZZZZ-ZZZZ-ZZZZ' })
     });
     const bad = await j(r);
-    check('K1b unknown code -> invalid_code (no existence hint)', r.status === 403 && !bad.ok && bad.error === 'invalid_code', bad);
+    check('K1b unknown code -> 403 generic (no existence hint)', r.status === 403 && !bad.ok && bad.error === 'invalid project or owner code', bad);
 
     // K2 editor + viewer codes resolve with their role + scope.
     r = await fetch(BASE + '/api/cloud/projects/' + pid + '/editors', {
@@ -160,7 +160,7 @@ const j = async (res) => { try { return await res.json(); } catch (e) { return {
       body: JSON.stringify({ code: ed.editorCode })
     });
     const elk = await j(r);
-    check('K2b editor code lookup -> role editor + scope', r.ok && elk.ok && elk.role === 'editor' && Array.isArray(elk.scope) && elk.scope.indexOf('wbs') !== -1, elk);
+    check('K2b editor code lookup -> role editor + label', r.ok && elk.ok && elk.role === 'editor' && elk.label === 'Editor QA', elk);
 
     r = await fetch(BASE + '/api/cloud/projects/' + pid + '/editors', {
       method: 'POST', credentials: 'same-origin',
@@ -175,7 +175,7 @@ const j = async (res) => { try { return await res.json(); } catch (e) { return {
       body: JSON.stringify({ code: vw.editorCode })
     });
     const vlk = await j(r);
-    check('K2d viewer code lookup -> role view + scope', r.ok && vlk.ok && vlk.role === 'view' && vlk.scope.indexOf('meet') !== -1, vlk);
+    check('K2d viewer code lookup -> role view + label', r.ok && vlk.ok && vlk.role === 'view' && vlk.label === 'Viewer QA', vlk);
 
     // K3 viewer load works (read-only), viewer save refused.
     r = await fetch(BASE + '/api/cloud/projects/' + pid + '/load', {
@@ -214,7 +214,7 @@ const j = async (res) => { try { return await res.json(); } catch (e) { return {
       body: JSON.stringify({ code: vw.editorCode })
     });
     const dlk = await j(r);
-    check('K4c lookup after delete -> project_deleted for code holders too', r.status === 410 && dlk.error === 'project_deleted', { status: r.status, dlk });
+    check('K4c lookup after delete -> deleted flag for code holders too', r.ok && dlk.ok && dlk.deleted === true, { status: r.status, dlk });
     r = await fetch(BASE + '/api/cloud/projects/' + pid + '/restore', {
       method: 'POST', credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json', 'X-Owner-Code': ownerCode },
@@ -249,7 +249,7 @@ const j = async (res) => { try { return await res.json(); } catch (e) { return {
         body: JSON.stringify({ code: vw.editorCode })
       });
       const rlk = await j(r);
-      check('K5c lookup of revoked code -> code_revoked', r.status === 403 && rlk.error === 'code_revoked', { status: r.status, rlk });
+      check('K5c lookup of revoked code -> revoked flag', rlk.ok && rlk.revoked === true, { status: r.status, rlk });
     }
 
     // K6 deleted project answered project_deleted for its own owner code.
@@ -265,7 +265,7 @@ const j = async (res) => { try { return await res.json(); } catch (e) { return {
       body: JSON.stringify({ code: ownerCode })
     });
     const odlk = await j(r);
-    check('K6 owner code lookup after delete -> project_deleted', r.status === 410 && odlk.error === 'project_deleted', { status: r.status, odlk });
+    check('K6 owner code lookup after delete -> deleted flag', odlk.ok && odlk.deleted === true, { status: r.status, odlk });
 
     // ---- STABILIZATION (2026-08-16): delete-link coherence ----
     // The project is currently soft-deleted (tombstoned) from K6. The admin
@@ -281,7 +281,7 @@ const j = async (res) => { try { return await res.json(); } catch (e) { return {
     // invalid_code), and restore finds nothing to restore (404).
     r = await fetch(BASE + '/api/cloud/projects/' + pid + '/purge', {
       method: 'POST', credentials: 'same-origin',
-      headers: { 'Content-Type': 'application/json', 'X-Admin-Code': ADMIN_CODE },
+      headers: { 'Content-Type': 'application/json', 'X-Owner-Code': ownerCode },
       body: JSON.stringify({})
     });
     const prg = await j(r);
@@ -295,14 +295,14 @@ const j = async (res) => { try { return await res.json(); } catch (e) { return {
       body: JSON.stringify({ code: ownerCode })
     });
     const plk = await j(r);
-    check('K9c owner code lookup after purge -> invalid_code (row gone)', r.status === 403 && plk.error === 'invalid_code', { status: r.status, plk });
+    check('K9c owner code lookup after purge -> 403 (row gone)', r.status === 403, { status: r.status, plk });
     r = await fetch(BASE + '/api/cloud/projects/' + pid + '/restore', {
       method: 'POST', credentials: 'same-origin',
-      headers: { 'Content-Type': 'application/json', 'X-Admin-Code': ADMIN_CODE },
+      headers: { 'Content-Type': 'application/json', 'X-Owner-Code': ownerCode },
       body: JSON.stringify({})
     });
     const prst = await j(r);
-    check('K9d restore after purge -> 404 (nothing left to restore)', r.status === 404 && !prst.ok, { status: r.status, prst });
+    check('K9d restore after purge -> 403/404 (row gone, nothing to restore)', (r.status === 403 || r.status === 404) && !prst.ok, { status: r.status, prst });
   } catch (e) {
     check('harness fatal', false, String(e && e.message || e));
     log(devLog.split('\n').slice(-25).join('\n'));

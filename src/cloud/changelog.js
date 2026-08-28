@@ -177,10 +177,14 @@ export async function handleCloudChangelogImport(request, env, projectId) {
     const now = new Date().toISOString();
     const entryType = e.type === 'bulk' ? 'edit' : e.type;
     try {
-      await env.DB.prepare(
+      const ins = await env.DB.prepare(
         "INSERT INTO cloud_changelog (project_id, entry_type, actor_type, actor_label, section, diffs_json, snapshot_key, created_at, import_key) VALUES (?,?,?,?,?,?,?,?,?) ON CONFLICT(import_key) DO NOTHING"
       ).bind(projectId, entryType, e.actorType, e.label, null, JSON.stringify(e.diffs), null, e.createdAt, importKey).run();
-      imported.push({ localId: e.localId, entryType: entryType });
+      if (ins && ins.meta && ins.meta.changes > 0) {
+        imported.push({ localId: e.localId, entryType: entryType });
+      } else {
+        skipped.push({ localId: e.localId, reason: 'already imported' });
+      }
     } catch (err) {
       skipped.push({ localId: e.localId, reason: 'D1 insert failed: ' + (err.message || 'unknown') });
     }

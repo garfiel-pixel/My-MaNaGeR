@@ -78,7 +78,7 @@ const WRANGLER_JS = globalWranglerJs();
 // so that queryD1 reads the same D1 that the API calls write to.
 const USE_EXTERNAL = !!process.env.WRANGLER_DEV_URL;
 const PERSIST_DIR = USE_EXTERNAL
-  ? (process.env.QA_PERSIST_DIR || '/tmp/mmgr-wrangler-state')
+  ? (process.env.QA_PERSIST_DIR || path.join(os.tmpdir(), 'mmgr-wrangler-state'))
   : path.join(os.tmpdir(), 'mmgr-cloud-wstate2-' + Date.now());
 const DEV_VARS = path.join(ROOT, '.dev.vars');
 

@@ -167,26 +167,28 @@ if (args.dry_run) { console.log('[import] DRY RUN — ' + pending.length + ' ent
   if (res.status === 429) fail('rate limited — ' + (body && body.error || 'try again in a minute'), 2);
   if (!res.ok) fail('import failed (HTTP ' + res.status + '): ' + JSON.stringify(body).slice(0, 300));
   const b = body || {};
-  for (let i = 0; i < (b.imported || []).length; i++) {
-    const im = b.imported[i];
-    ledger.entries[String(im.localId)] = { cloudId: im.cloudId, at: new Date().toISOString() };
+  const importedEntries = b.importedEntries || b.imported || [];
+  const skippedEntries = b.skippedEntries || b.skipped || [];
+  for (let i = 0; i < importedEntries.length; i++) {
+    const im = importedEntries[i];
+    ledger.entries[String(im.localId)] = { cloudId: im.cloudId || im.id, at: new Date().toISOString() };
   }
   try {
     const tmp = ledgerPath + '.tmp';
     fs.writeFileSync(tmp, JSON.stringify(ledger, null, 2));
     fs.renameSync(tmp, ledgerPath);
   } catch (e) { console.warn('[import] warn: ledger not written (' + e.message + ') — server dedupe still prevents duplicates'); }
-  console.log('[import] imported=' + (b.imported || []).length + ' skipped=' + (b.skipped || []).length);
-  for (let i = 0; i < (b.imported || []).length; i++) {
-    const im = b.imported[i];
-    console.log('  OK  #' + im.localId + ' -> cloud entry ' + im.cloudId + ' (' + im.type + (im.section ? ', ' + im.section : '') + ')');
+  console.log('[import] imported=' + importedEntries.length + ' skipped=' + skippedEntries.length);
+  for (let i = 0; i < importedEntries.length; i++) {
+    const im = importedEntries[i];
+    console.log('  OK  #' + im.localId + ' -> cloud entry ' + (im.cloudId || im.id || '?') + ' (' + im.entryType + (im.section ? ', ' + im.section : '') + ')');
   }
-  for (let i = 0; i < (b.skipped || []).length; i++) {
-    const sk = b.skipped[i];
+  for (let i = 0; i < skippedEntries.length; i++) {
+    const sk = skippedEntries[i];
     console.log('  --  #' + sk.localId + ' skipped: ' + sk.reason);
   }
-  const failed = (b.skipped || []).filter(function(s) { return s.reason !== 'already imported'; });
-  if ((b.imported || []).length === 0 && failed.length) {
+  const failed = skippedEntries.filter(function(s) { return s.reason !== 'already imported'; });
+  if (importedEntries.length === 0 && failed.length) {
     console.error('[import] nothing imported — all pending entries were skipped (see reasons above)');
     process.exit(2);
   }

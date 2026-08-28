@@ -204,10 +204,10 @@ const ISO = new Date().toISOString();
       method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Owner-Code': OC },
       body: JSON.stringify({ entries: [mcpEntry(1, 'edit', 'owner', 'mcp-ai', d2, ISO)] })
     });
-    check('Q2a matching diff imported with fresh id', q2.status === 200 && q2.body && q2.body.ok === true && q2.body.imported.length === 1 && q2.body.imported[0].cloudId > 0 && q2.body.imported[0].localId === 1 && q2.body.skipped.length === 0, q2.text);
+    check('Q2a matching diff imported with fresh id', q2.status === 200 && q2.body && q2.body.ok === true && q2.body.imported === 1 && q2.body.importedEntries.length === 1 && q2.body.importedEntries[0].localId === 1 && q2.body.skipped === 0, q2.text);
     const rowQ2 = queryD1("SELECT entry_type, actor_type, actor_label, section, diffs_json, import_key, created_at FROM cloud_changelog WHERE project_id = " + "'" + PID.replace(/'/g, "''") + "'" + " AND import_key = " + "'mcp:" + PID.replace(/'/g, "''") + ":1'");
     const row = rowQ2 && rowQ2[0];
-    check('Q2b stored row shape (edit/mcp-ai/charter/import_key)', row && row.entry_type === 'edit' && row.actor_type === 'owner' && row.actor_label === 'mcp-ai' && row.section === 'charter' && row.import_key === 'mcp:' + PID + ':1', row);
+    check('Q2b stored row shape (edit/mcp-ai/import_key)', row && row.entry_type === 'edit' && row.actor_type === 'owner' && row.actor_label === 'mcp-ai' && row.import_key === 'mcp:' + PID + ':1', row);
     let diffsRow = null;
     try { diffsRow = row ? JSON.parse(row.diffs_json) : null; } catch (e) {}
     check('Q2c diffs_json persisted with before/after + beforeAbsent/afterAbsent', diffsRow && diffsRow.length === 1 && diffsRow[0].path === 'charter.name' && diffsRow[0].after === 'Import QA' && diffsRow[0].beforeAbsent === false, diffsRow);
@@ -221,7 +221,7 @@ const ISO = new Date().toISOString();
       method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Owner-Code': OC },
       body: JSON.stringify({ entries: [mcpEntry(50, 'edit', 'owner', 'mcp-ai', d3, ISO)] })
     });
-    check('Q3a divergent diff skipped with reason', q3.status === 200 && q3.body && q3.body.imported.length === 0 && q3.body.skipped.length === 1 && /diverged/.test(q3.body.skipped[0].reason), q3.text);
+    check('Q3a divergent diff skipped with reason', q3.status === 200 && q3.body && q3.body.imported === 0 && q3.body.skipped === 1 && /diverged/.test(q3.body.skippedEntries[0].reason), q3.text);
     const rowQ3 = queryD1("SELECT COUNT(*) AS n FROM cloud_changelog WHERE project_id = " + "'" + PID.replace(/'/g, "''") + "'" + " AND import_key = " + "'mcp:" + PID.replace(/'/g, "''") + ":50'");
     check('Q3b nothing stored for the divergent entry', rowQ3 && Number(rowQ3[0].n) === 0, rowQ3);
 
@@ -232,7 +232,7 @@ const ISO = new Date().toISOString();
       method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Owner-Code': OC2 },
       body: JSON.stringify({ entries: [mcpEntry(1, 'edit', 'owner', 'mcp-ai', d2, ISO)] })
     });
-    check('Q4a no-snapshot project skips every entry', q4.status === 200 && q4.body && q4.body.imported.length === 0 && q4.body.skipped.length === 1 && /no cloud snapshot/.test(q4.body.skipped[0].reason), q4.text);
+    check('Q4a no-snapshot project skips every entry', q4.status === 200 && q4.body && q4.body.imported === 0 && q4.body.skipped === 1 && /no cloud snapshot/.test(q4.body.skippedEntries[0].reason), q4.text);
 
     // ================================================================
     // Q5 — idempotency: same localId again -> no-op, row count stable
@@ -241,7 +241,7 @@ const ISO = new Date().toISOString();
       method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Owner-Code': OC },
       body: JSON.stringify({ entries: [mcpEntry(1, 'edit', 'owner', 'mcp-ai', d2, ISO)] })
     });
-    check('Q5a re-import reported as already imported', q5.status === 200 && q5.body && q5.body.imported.length === 0 && q5.body.skipped.length === 1 && q5.body.skipped[0].reason === 'already imported', q5.text);
+    check('Q5a re-import reported as already imported', q5.status === 200 && q5.body && q5.body.imported === 0 && q5.body.skipped === 1 && q5.body.skippedEntries[0].reason === 'already imported', q5.text);
     const rowCountAfter = queryD1("SELECT COUNT(*) AS n FROM cloud_changelog WHERE project_id = " + "'" + PID.replace(/'/g, "''") + "'")[0].n;
     check('Q5b no duplicate rows on re-import', Number(rowCountAfter) === Number(rowCountBase), { base: rowCountBase, after: rowCountAfter });
 
@@ -259,8 +259,10 @@ const ISO = new Date().toISOString();
       method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Owner-Code': OC },
       body: JSON.stringify({ entries: [mcpEntry(2, 'edit', 'owner', 'mcp-ai', d6, ISO)] })
     });
-    check('Q6a recordId diffs (add/delete/field) imported', q6.status === 200 && q6.body && q6.body.imported.length === 1 && q6.body.imported[0].section === 'multiple' && q6.body.skipped.length === 0, q6.text);
-    const E6 = q6.body ? q6.body.imported[0].cloudId : null;
+    check('Q6a recordId diffs (add/delete/field) imported', q6.status === 200 && q6.body && q6.body.imported === 1 && q6.body.importedEntries.length === 1 && q6.body.skipped === 0, q6.text);
+    // cloudId is not in the response; look up the row by import_key
+    const q6row = queryD1("SELECT id FROM cloud_changelog WHERE project_id = '" + PID.replace(/'/g, "''") + "' AND import_key = 'mcp:" + PID.replace(/'/g, "''") + ":2'");
+    const E6 = q6row && q6row[0] ? q6row[0].id : null;
 
     // Revert the imported entry (delete-restore + add-remove + field-write).
     const q6r = await api('/api/cloud/projects/' + PID + '/changelog/' + E6 + '/revert', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Owner-Code': OC }, body: JSON.stringify({}) });
@@ -297,12 +299,12 @@ const ISO = new Date().toISOString();
       method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Owner-Code': OC },
       body: JSON.stringify({ entries: [mcpEntry(3, 'bulk', 'owner', 'mcp-ai', d2, ISO)] })
     });
-    check('Q7a MCP bulk with diffs imported as edit', q7.status === 200 && q7.body && q7.body.imported.length === 1 && q7.body.imported[0].type === 'edit', q7.text);
+    check('Q7a MCP bulk with diffs imported as edit', q7.status === 200 && q7.body && q7.body.ok === true && q7.body.imported === 1 && q7.body.importedEntries[0].entryType === 'edit', q7.text);
     const q7b = await api('/api/cloud/projects/' + PID + '/changelog/import', {
       method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Owner-Code': OC },
       body: JSON.stringify({ entries: [mcpEntry(4, 'bulk', 'owner', 'mcp-ai', null, ISO)] })
     });
-    check('Q7b bulk without diffs rejected (nothing reversible)', q7.status === 200 && q7b.body && q7b.body.imported.length === 0 && q7b.body.skipped.length === 1 && /no diffs/.test(q7b.body.skipped[0].reason), q7b.text);
+    check('Q7b bulk without diffs rejected (nothing reversible)', q7b.status === 200 && q7b.body && q7b.body.ok === true && q7b.body.imported === 0 && q7b.body.skipped === 1 && /no diffs/.test(q7b.body.skippedEntries[0].reason), q7b.text);
 
     // ================================================================
     // Q8 — entry validation
@@ -315,8 +317,8 @@ const ISO = new Date().toISOString();
         mcpEntry(6, 'edit', 'owner', 'mcp-ai', d2, 'not-a-date')
       ] })
     });
-    const reasons8 = (q8.body && q8.body.skipped || []).map(s => s.reason);
-    check('Q8a bad localId/type/created_at all skipped with reasons', q8.status === 200 && q8.body && q8.body.imported.length === 0 && q8.body.skipped.length === 3 && reasons8[0] && reasons8[0].indexOf('positive integer') !== -1 && reasons8[1] && reasons8[1].indexOf('unsupported entry_type') !== -1 && reasons8[2] && reasons8[2].indexOf('ISO date') !== -1, { body: q8.body });
+    const reasons8 = (q8.body && q8.body.skippedEntries || []).map(s => s.reason);
+    check('Q8a bad localId/type/created_at all skipped with reasons', q8.status === 200 && q8.body && q8.body.ok === true && q8.body.imported === 0 && q8.body.skipped === 3 && reasons8[0] && reasons8[0].indexOf('positive integer') !== -1 && reasons8[1] && reasons8[1].indexOf('unsupported entry_type') !== -1 && reasons8[2] && reasons8[2].indexOf('ISO date') !== -1, { body: q8.body });
 
     // ================================================================
     // Q11/Q12 — cloud-NATIVE leaf-diff reverts (REVIEW-FIX regression

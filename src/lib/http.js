@@ -768,11 +768,11 @@ export function cloudRevertDiff(s, d) {
     if (idx < 0 || idx >= list.length) return false;
     const rec = list[idx];
     if (!rec || typeof rec !== 'object') return false;
-    rec[field] = d.after;
+    rec[field] = d.before;
     return true;
   }
   if (idx < 0 || idx >= list.length) return false;
-  list[idx] = d.after;
+  list[idx] = d.before;
   return true;
 }
 

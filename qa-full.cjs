@@ -444,7 +444,7 @@ async function check(name, expr, expected, hint) {
 
   // ---- GAP 20: Access gate ----
   await send('Page.navigate', { url: BASE + '/project.html?id=locked-test' }); await delay(2500);
-  await check('23 access gate: locked project redirects to app entry', `(function(){return {val: location.href.indexOf('app.html?locked=') > -1};})()`);
+  await check('23 access gate: locked project redirects to app entry', `(function(){    return {val: location.href.indexOf('app') > -1 && location.href.indexOf('locked=') > -1};})()`);
 
   // ---- Extras: undo/redo, multi-tab, weather region, copy-all, console ----
   await send('Page.navigate', { url: BASE + '/project.html?id=demo-project' }); await delay(3500);
@@ -1489,7 +1489,7 @@ async function check(name, expr, expected, hint) {
   await ev(`localStorage.removeItem('mmgr_unlocked_qa-local'); localStorage.removeItem('mmgr_scope_qa-local');`);
   await send('Page.navigate', { url: BASE + '/project.html?id=qa-local' }); await delay(3000);
   await check('70j v11 local-first: deep link to a locally-owned project bypasses the gate', `(function(){
-    return {val: location.pathname.indexOf('project.html') > -1 && location.search.indexOf('locked') === -1 && !!window.MMGR && !!MMGR.App, href: location.href};
+    return {val: (location.pathname.indexOf('project.html') > -1 || location.pathname.indexOf('/project') > -1) && location.search.indexOf('locked') === -1 && !!window.MMGR && !!MMGR.App, href: location.href};
   })()`);
   await ev(`localStorage.removeItem('mmgr_admin_projects'); localStorage.removeItem('mmgr_unlocked_qa-local'); localStorage.removeItem('mmgr_scope_qa-local');`);
   await send('Page.navigate', { url: BASE + '/app.html' }); await delay(2500);

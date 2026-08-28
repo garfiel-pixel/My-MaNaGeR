@@ -74,7 +74,12 @@ function globalWranglerJs() {
   return null;
 }
 const WRANGLER_JS = globalWranglerJs();
-const PERSIST_DIR = path.join(os.tmpdir(), 'mmgr-cloud-wstate2-' + Date.now());
+// When WRANGLER_DEV_URL is set (CI), use the external wrangler's persist dir
+// so that queryD1 reads the same D1 that the API calls write to.
+const USE_EXTERNAL = !!process.env.WRANGLER_DEV_URL;
+const PERSIST_DIR = USE_EXTERNAL
+  ? (process.env.QA_PERSIST_DIR || '/tmp/mmgr-wrangler-state')
+  : path.join(os.tmpdir(), 'mmgr-cloud-wstate2-' + Date.now());
 const DEV_VARS = path.join(ROOT, '.dev.vars');
 
 let proc = null;
@@ -85,6 +90,18 @@ function startWrangler() {
     // The harness must configure ADMIN_CODE for the admin checks; the
     // .dev.vars file is gitignored and removed on exit.
     try { fs.writeFileSync(DEV_VARS, 'ADMIN_CODE=' + ADMIN_CODE + '\n'); } catch (e) {}
+    if (USE_EXTERNAL) {
+      log('using external wrangler at ' + process.env.WRANGLER_DEV_URL + ' (persist ' + PERSIST_DIR + ')');
+      (async () => {
+        try {
+          const r = await fetch(process.env.WRANGLER_DEV_URL + '/api/health');
+          const body = await r.json().catch(() => null);
+          if (r.ok && body && body.ok === true) return resolve();
+          return reject(new Error('external wrangler health check failed: ' + r.status));
+        } catch (e) { return reject(new Error('external wrangler not reachable: ' + e.message)); }
+      })();
+      return;
+    }
     log('starting wrangler dev on :' + PORT + ' (local D1 + R2, ADMIN_CODE configured)…');
     try {
       execFileSync(process.execPath,

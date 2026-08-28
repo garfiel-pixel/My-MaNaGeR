@@ -180,6 +180,17 @@ function queryD1(sql) {
   }
   return null;
 }
+// Retry wrapper: the WAL may not be visible to node:sqlite immediately
+// after the Worker's D1 binding writes. Retries up to 3x with 200ms delay.
+async function queryD1Retry(sql, label) { label = label || 'd1-read';
+  for (let _attempt = 0; _attempt < 3; _attempt++) {
+    const rows = queryD1(sql);
+    if (rows && rows.length > 0) return rows;
+    log(label + ': row not visible on attempt ' + (_attempt + 1) + ', retrying in 200ms...');
+    await delay(200);
+  }
+  return queryD1(sql);
+}
 function findR2Blob(keySuffix, marker) {
   const root = path.join(PERSIST_DIR, 'v3', 'r2');
   if (!fs.existsSync(root)) return null;
@@ -519,7 +530,7 @@ function baseState(pid, name) {
     });
     check('P3.1a small owner save returns changelog entry id + type edit', save2.status === 200 && save2.body && save2.body.changelog && save2.body.changelog.type === 'edit' && save2.body.changelog.id > 0, save2.text);
     const E1 = save2.body ? save2.body.changelog.id : null;
-    let logRows = queryD1('SELECT id, entry_type, actor_type, actor_label, section, diffs_json FROM cloud_changelog WHERE project_id = ' + q(PID) + ' ORDER BY id DESC');
+    let logRows = await queryD1Retry('SELECT id, entry_type, actor_type, actor_label, section, diffs_json FROM cloud_changelog WHERE project_id = ' + q(PID) + ' ORDER BY id DESC');
     const e1Row = logRows && logRows[0];
     let e1Diffs = null;
     try { if (e1Row && e1Row.diffs_json) e1Diffs = JSON.parse(e1Row.diffs_json); } catch (err) {}
@@ -540,7 +551,7 @@ function baseState(pid, name) {
     check('P3.2c owner revert ok, returns revert entry id', rev1.status === 200 && rev1.body && rev1.body.ok === true && rev1.body.revertEntryId > 0, rev1.text);
     const ownerLoad2 = await api('/api/cloud/projects/' + PID + '/load', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Owner-Code': OC }, body: JSON.stringify({}) });
     check('P3.2d blob restored to the before-value after revert', !!ownerLoad2.body.state && ownerLoad2.body.state.charter.name === NAME, ownerLoad2.body && ownerLoad2.body.state && ownerLoad2.body.state.charter);
-    logRows = queryD1('SELECT id, entry_type, actor_type, actor_label, section, diffs_json FROM cloud_changelog WHERE project_id = ' + q(PID) + ' ORDER BY id DESC');
+    logRows = await queryD1Retry('SELECT id, entry_type, actor_type, actor_label, section, diffs_json FROM cloud_changelog WHERE project_id = ' + q(PID) + ' ORDER BY id DESC');
     check('P3.2e revert logged a NEW entry (history preserved)', !!logRows && logRows[0].entry_type === 'revert' && logRows[0].actor_type === 'owner' && logRows.length >= 2, logRows && logRows.map(r => r.entry_type));
 
     // B4: revert of the revert -> original change restored, another entry
@@ -560,13 +571,13 @@ function baseState(pid, name) {
     check('P3.3a editor save ok (pending review)', edSaveAttr.status === 200 && edSaveAttr.body && edSaveAttr.body.ok === true && edSaveAttr.body.review === 'pending' && !!edSaveAttr.body.reviewId, edSaveAttr.text);
     // Attribution: the proposal row carries the editor code label; accepting
     // logs the changelog 'accepted' entry (owner-decided) with the diffs.
-    logRows = queryD1('SELECT source_label, status, editor_code_id FROM cloud_reviews WHERE project_id = ' + q(PID) + ' AND status = \'pending\' ORDER BY id DESC LIMIT 1');
+    logRows = await queryD1Retry('SELECT source_label, status, editor_code_id FROM cloud_reviews WHERE project_id = ' + q(PID) + ' AND status = \'pending\' ORDER BY id DESC LIMIT 1');
     check('P3.3b proposal attributed to the editor code label', !!logRows && logRows[0].source_label === 'Site Super' && logRows[0].editor_code_id !== null, logRows && logRows[0]);
     const accAttr = await api('/api/cloud/projects/' + PID + '/reviews/' + edSaveAttr.body.reviewId + '/accept', {
       method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Owner-Code': OC }, body: JSON.stringify({})
     });
     check('P3.3c accept logs the accepted entry', accAttr.status === 200 && accAttr.body && accAttr.body.ok === true && accAttr.body.status === 'accepted', accAttr.text);
-    logRows = queryD1('SELECT entry_type, actor_type, diffs_json FROM cloud_changelog WHERE project_id = ' + q(PID) + ' ORDER BY id DESC');
+    logRows = await queryD1Retry('SELECT entry_type, actor_type, diffs_json FROM cloud_changelog WHERE project_id = ' + q(PID) + ' ORDER BY id DESC');
     check('P3.3d newest changelog entry is accepted with diffs', !!logRows && logRows[0].entry_type === 'accepted' && logRows[0].actor_type === 'owner' && !!logRows[0].diffs_json, logRows && logRows[0]);
     const editorRevokeAttempt = await api('/api/cloud/projects/' + PID + '/changelog/' + E1 + '/revert', {
       method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Editor-Code': EC }, body: JSON.stringify({})
@@ -600,7 +611,7 @@ function baseState(pid, name) {
     });
     check('P3.5a bulk save returns changelog entry type bulk', saveBig.status === 200 && saveBig.body && saveBig.body.changelog && saveBig.body.changelog.type === 'bulk', saveBig.text);
     const bulkId = saveBig.body ? saveBig.body.changelog.id : null;
-    logRows = queryD1('SELECT snapshot_key FROM cloud_changelog WHERE id = ' + bulkId);
+    logRows = await queryD1Retry('SELECT snapshot_key FROM cloud_changelog WHERE id = ' + bulkId, "changelog-read");
     const snapKey = logRows && logRows[0] ? logRows[0].snapshot_key : null;
     const snapBlob = snapKey ? findR2Blob(snapKey.split('/').pop(), PRE_BULK_MARKER) : null;
     check('P3.5b bulk entry references an R2 snapshot of the pre-change blob', !!snapKey && !!snapBlob, { snapKey, snap: snapBlob && snapBlob.path });
@@ -612,7 +623,7 @@ function baseState(pid, name) {
     const blobAfterBulkRev = ownerLoad4.body && ownerLoad4.body.state;
     check('P3.5d bulk revert restored the snapshot (1 task, charter v2)', !!blobAfterBulkRev && Array.isArray(blobAfterBulkRev.tasks) && blobAfterBulkRev.tasks.length === 1 && blobAfterBulkRev.charter.name === NAME + '-v2', blobAfterBulkRev && { tasks: blobAfterBulkRev.tasks.length, charter: blobAfterBulkRev.charter && blobAfterBulkRev.charter.name });
     // revert the bulk revert -> 12 tasks again
-    logRows = queryD1('SELECT id, snapshot_key FROM cloud_changelog WHERE project_id = ' + q(PID) + ' ORDER BY id DESC');
+    logRows = await queryD1Retry('SELECT id, snapshot_key FROM cloud_changelog WHERE project_id = ' + q(PID) + ' ORDER BY id DESC');
     const bulkRevId = logRows && logRows[0] ? logRows[0].id : null;
     const revBulk2 = await api('/api/cloud/projects/' + PID + '/changelog/' + bulkRevId + '/revert', {
       method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Owner-Code': OC }, body: JSON.stringify({})
@@ -689,8 +700,8 @@ function baseState(pid, name) {
     check('P5.3a unlink ok (owner)', unlink.status === 200 && unlink.body && unlink.body.ok === true, unlink.text);
     const afterUnlink = await api('/api/cloud/projects/' + PIDC + '/load', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Owner-Code': OCC }, body: JSON.stringify({}) });
     check('P5.3b load after unlink -> generic 403 (cloud copy gone)', afterUnlink.status === 403 && afterUnlink.body && afterUnlink.body.error === 'invalid project or owner code', afterUnlink.text);
-    const unlinkRows = queryD1('SELECT COUNT(*) AS n FROM cloud_projects WHERE project_id = ' + q(PIDC));
-    const unlinkEdRows = queryD1('SELECT COUNT(*) AS n FROM cloud_editor_codes WHERE project_id = ' + q(PIDC));
+    const unlinkRows = await queryD1Retry('SELECT COUNT(*) AS n FROM cloud_projects WHERE project_id = ' + q(PIDC));
+    const unlinkEdRows = await queryD1Retry('SELECT COUNT(*) AS n FROM cloud_editor_codes WHERE project_id = ' + q(PIDC));
     check('P5.3c unlink removed D1 rows (project + editor codes)', unlinkRows && unlinkRows[0] && unlinkRows[0].n === 0 && unlinkEdRows && unlinkEdRows[0] && unlinkEdRows[0].n === 0, { unlinkRows, unlinkEdRows });
     const unlinkByEditor = await api('/api/cloud/projects/' + PID, { method: 'DELETE', headers: { 'X-Editor-Code': EC2 } });
     check('P5.3d an editor code cannot unlink (generic 403)', unlinkByEditor.status === 403 && unlinkByEditor.body && unlinkByEditor.body.error === 'invalid project or owner code', unlinkByEditor.text);

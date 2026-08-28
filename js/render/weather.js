@@ -59,7 +59,21 @@ var MMGR = window.MMGR || {};
  const pct = (sub && exp && exp > sub) ? Math.round((today - sub) / (exp - sub) * 100) : null;
  return '<tr><td>' + U.escapeHtml(t.name) + '</td><td>' + U.escapeHtml(t.submittedDate || '-') + '</td><td>' + U.escapeHtml(t.expectedDate || '-') + '</td><td class="' + cls + '">' + status + (pct !== null ? ' (' + Math.max(0, Math.min(100, pct)) + '% elapsed)' : '') + '</td></tr>';
  }).join('') +
- '</tbody></table></div>';
+ '</tbody></table></div>' +
+ // Rolling 3-Month review section
+ '<div class="lt-section"><div class="lt-section-h">Rolling 3-Month</div><div class="ox"><table class="dt"><thead><tr><th>Task</th><th>Last Reviewed</th><th>Status</th><th></th></tr></thead><tbody>' +
+ lt.map(t => {
+ const lastReview = t.leadtimeUpdatedAt ? U.parseDL(t.leadtimeUpdatedAt) : null;
+ const threeMonthsAgo = new Date(today); threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+ const isStale = !lastReview || lastReview < threeMonthsAgo;
+ const reviewLabel = lastReview ? lastReview.toLocaleDateString('en-US', {month:'short', day:'numeric', year:'numeric'}) : 'Never';
+ return '<tr class="ltr-roll"><td>' + U.escapeHtml(t.name) + '</td>' +
+ '<td>' + U.escapeHtml(reviewLabel) + '</td>' +
+ '<td>' + (isStale ? '<span class="badge br">Stale</span>' : '<span class="badge bg">Reviewed</span>') + '</td>' +
+ '<td><button class="btn btn-s btn-g" data-action="tglLeadtimeReview" data-id="' + U.escapeHtml(t.id) + '">Review</button></td>' +
+ '</tr>';
+ }).join('') +
+ '</tbody></table></div></div>';
   }
 
   // ---- Float Watch ----

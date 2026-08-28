@@ -46,7 +46,7 @@ const ROOT = path.resolve(__dirname, '..');
 const log = (s) => { process.stdout.write('[qci] ' + s + '\n'); };
 const delay = ms => new Promise(r => setTimeout(r, ms));
 const results = [];
-const check = (name, val, detail) => { results.push({ name, val }); log((val ? 'PASS' : 'FAIL') + '  ' + name + (val ? '' : '   <-- ' + JSON.stringify(detail).slice(0, 500))); };
+const check = (name, val, detail) => { results.push({ name, val }); log((val ? 'PASS' : 'FAIL') + '  ' + name + (val ? '' : '   <-- ' + JSON.stringify(detail === undefined ? null : detail).slice(0, 500))); };
 
 let proc = null;
 let devLog = '';

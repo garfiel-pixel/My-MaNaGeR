@@ -50,7 +50,7 @@ const delay = ms => new Promise(r => setTimeout(r, ms));
 const results = [];
 const check = (name, val, detail) => {
   results.push({ name, val });
-  log((val ? 'PASS' : 'FAIL') + '  ' + name + (val ? '' : '   <-- ' + JSON.stringify(detail).slice(0, 400)));
+  log((val ? 'PASS' : 'FAIL') + '  ' + name + (val ? '' : '   <-- ' + JSON.stringify(detail === undefined ? null : detail).slice(0, 400)));
 };
 
 setTimeout(() => { log('WATCHDOG — harness exceeded 300s'); try { proc && proc.kill(); } catch (e) {} process.exit(2); }, 300000).unref();

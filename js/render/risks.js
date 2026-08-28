@@ -41,6 +41,12 @@ var MMGR = window.MMGR || {};
  const risks = (state && state.risks) || [];
  const scale = { 'Low': 1, 'low': 1, 'Medium': 2, 'medium': 2, 'High': 3, 'high': 3 };
  return risks.filter(r => !r.issueId).reduce((sum, r) => {
+ // Use dollar-based costImpactEstimate when available (weighted by
+ // probability), fall back to the 1-9 ordinal scale.
+ if (r.costImpactEstimate) {
+   const pFactor = { 'Low': 0.3, 'low': 0.3, 'Medium': 0.5, 'medium': 0.5, 'High': 0.7, 'high': 0.7 };
+   return sum + Math.round((pFactor[r.probability] || 0.5) * (+r.costImpactEstimate || 0));
+ }
  const p = scale[r.probability] || 1;
  const i = scale[r.impact] || 1;
  return sum + (p * i);
@@ -48,8 +54,10 @@ var MMGR = window.MMGR || {};
   }
 
   function contingencyTotal(state) {
- const risks = (state && state.risks) || [];
- return risks.filter(r => !r.issueId).reduce((sum, r) => sum + (parseImpactCost(r.contingency) || 0), 0);
+ const s = state || ns.State.getState();
+ // Sum dollar amounts from budget lines flagged as contingency reserves.
+ const bud = (s.budgetLines || []).filter(l => l.isContingency);
+ return bud.reduce((sum, l) => sum + (+l.planned || 0), 0);
   }
 
   let _riskFilter = null;
@@ -120,13 +128,23 @@ var MMGR = window.MMGR || {};
  if (!risks.length) {
  body.innerHTML = emptyStateRow(8, 'No risks tracked yet.', '<button class="btn btn-g btn-s" data-action="addRisk">+ Add Risk</button>');
  return;
- }
- body.innerHTML = risks.map((r, i) => {
+ }  const tasks = (s && s.tasks) || [];
+  body.innerHTML = risks.map((r, i) => {
  const scale = { 'Low': 1, 'Medium': 2, 'High': 3 };
  const score = (scale[r.probability] || 1) * (scale[r.impact] || 1);
  const cls = score >= 6 ? 'txt-danger' : score >= 4 ? 'txt-warn' : 'txt-green';
+ // LINKED-TASK PROPAGATION: if the risk is linked to an overdue task,
+ // flag it LATE so the project manager sees the cascade.
+ let linkedTag = '';
+ if (r.linkedTaskId) {
+   const lt = tasks.find(t => t.id === r.linkedTaskId);
+   if (lt) {
+     const overdue = lt.endDate && U.isOverdue(lt.endDate) && lt.status !== 'completed';
+     linkedTag = ' <span style="font-size:.7rem">(' + U.escapeHtml(lt.name) + (overdue ? ' <span class="txt-danger">LATE</span>' : '') + ')</span>';
+   }
+ }
  return '<tr class="' + cls + '">' +
- '<td>' + U.escapeHtml(r.name) + '</td>' +
+ '<td>' + U.escapeHtml(r.name) + linkedTag + '</td>' +
  '<td>' + U.escapeHtml(r.probability || 'Low') + '</td>' +
  '<td>' + U.escapeHtml(r.impact || 'Low') + '</td>' +
  '<td>' + U.escapeHtml(r.contingency || '-') + '</td>' +

@@ -214,11 +214,11 @@
       </div>
     </div>
     <!-- AI COMMAND BAR (Phase 7): subtle top-level Ask your project -->
-    <div class="card" id="ai-command-card" style="padding:10px 14px;">
-      <div style="display:flex;align-items:center;gap:10px;">
-        <svg class="ico" aria-hidden="true" style="color:var(--purple);flex-shrink:0;"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg>
-        <input type="text" id="ai-command-input" placeholder="Ask your project…" aria-label="Ask your project a question" style="flex:1;border:none;background:transparent;color:var(--text);font-size:.85rem;outline:none;font-family:inherit;">
-        <button type="button" class="btn btn-ghost btn-s" id="ai-command-btn" data-action="openAiWin"><svg class="ico" aria-hidden="true" style="width:14px;height:14px;"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg></button>
+    <div class="card ai-cmd-card" id="ai-command-card">
+      <div class="ai-cmd-row">
+        <svg class="ico ai-cmd-icon" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg>
+        <input type="text" id="ai-command-input" placeholder="Ask your project…" aria-label="Ask your project a question">
+        <button type="button" class="btn btn-ghost btn-s" id="ai-command-btn" data-action="openAiWin"><svg class="ico ai-cmd-arrow" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg></button>
       </div>
     </div>
     <!-- ATTENTION (UI-UX doc §7.1): highest-priority items requiring action -->
@@ -252,16 +252,17 @@
           </div>
         </div>
         <!-- Compact status counts -->
-        <div class="col-g8" style="margin-top:8px;">
+        <div class="col-g8 col-mt8">
           <div class="fb-sm"><span>In Progress</span><span class="badge bg" id="h-ip">0</span></div>
           <div class="fb-sm"><span>At Risk</span><span class="badge ba" id="h-ar">0</span></div>
           <div class="fb-sm"><span>Blocked</span><span class="badge br" id="h-bl">0</span></div>
+          <div class="fb-sm"><span>Done</span><span class="badge bg" id="h-dn">0</span></div>
           <div class="fb-sm"><span>Overdue</span><span class="badge br" id="h-od">0</span></div>
           <div class="fb-sm"><span>Issues</span><span class="badge br" id="h-is">0</span></div>
           <div class="fb-sm"><span>Compliance</span><span class="badge br" id="h-coi">0</span></div>
         </div>
         <!-- Expandable explanation -->
-        <details id="health-breakdown-wrap" style="margin-top:6px"><summary style="font-size:.72rem;color:var(--slate);cursor:pointer;user-select:none;">Why?</summary><div id="health-breakdown"></div></details>
+        <details id="health-breakdown-wrap" class="hb-wrap"><summary class="hb-toggle">Why?</summary><div id="health-breakdown"></div></details>
       </div>
       <div class="card">
         <div class="card-title">Next 3 Priority Actions</div>
@@ -1146,7 +1147,7 @@
       </select>
       <button class="ai-byo-gear" id="ai-byo-gear" type="button" aria-expanded="false" aria-label="API key settings" title="API key settings , paste your key and Connect &amp; Test"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-settings"></use></svg></button>
       <div class="ai-byo-pop is-hide" id="ai-byo-pop" role="group" aria-label="API key setup">
-        <input type="text" id="ai-byo-key" class="ai-byo-key" placeholder="Paste your API key (session-only)" autocomplete="off" spellcheck="false" title="Session-only: your key stays in this browser, is never exported, and clears when you close the tab" style="-webkit-text-security:disc;text-security:disc;">
+        <input type="text" id="ai-byo-key" class="ai-byo-key" placeholder="Paste your API key (session-only)" autocomplete="off" spellcheck="false" title="Session-only: your key stays in this browser, is never exported, and clears when you close the tab">
         <button class="btn btn-g btn-s" id="ai-byo-connect" title="Save this session key and verify it with a live provider check"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-link"></use></svg> Connect &amp; Test</button>
         <button class="btn btn-n btn-s" id="ai-byo-clear" title="Forget the key in this session"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> Clear</button>
         <p class="ai-byo-sec">Your key stays in this browser for this session only , never stored on our servers, never in exports, cleared when you close the tab.</p>
@@ -1593,9 +1594,9 @@
     <div class="mbody">
       <p class="modal-txt" id="del-msg">Are you sure? This deletes the project from the cloud for everyone , editor and viewer codes stop working, every shared copy shows as <strong>discontinued</strong>, and offline copies keep their last snapshot but receive no more updates. There is no undo for anyone else; only you, the admin, can delete it.</p>
       <div class="email-auth-pw" id="del-pw-wrap" hidden>
-        <p class="email-auth-pw-title" style="margin:0 0 4px"><strong>Verify your password</strong></p>
+        <p class="email-auth-pw-title pw-title"><strong>Verify your password</strong></p>
         <div class="email-auth-row email-auth-pw-fields" id="del-pw-fields"></div>
-        <p class="email-auth-pw-msg" style="margin:4px 0 0">Enter your account password to confirm the delete.</p>
+        <p class="email-auth-pw-msg pw-msg">Enter your account password to confirm the delete.</p>
       </div>
       <div class="gerr" id="del-err" aria-live="polite"></div>
     </div>

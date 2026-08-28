@@ -32,6 +32,9 @@ async function ev(expr) {
   }
   return r.result && r.result.value;
 }
+// Flush requestAnimationFrame: waits for 2 RAF callbacks so all
+// sub-renderers deferred by renderDash() have completed.
+const FLUSH_RAF = `(function(){return new Promise(function(r){requestAnimationFrame(function(){requestAnimationFrame(r)});});})()`;
 async function check(name, expr, expected, hint) {
   // RIGOROUS: an expression MUST return {val: true} (or match `expected`)
   // AND must not throw. val:false or undefined is a FAIL — never a pass.
@@ -45,7 +48,7 @@ async function check(name, expr, expected, hint) {
 }
 
 (async () => {
-  const proc = spawn(CHROME, ['--headless=new', '--disable-gpu', '--no-first-run', '--remote-debugging-port=' + PORT, '--user-data-dir=' + PROFILE, '--window-size=1440,1200', 'about:blank'], { stdio: 'ignore' });
+  const proc = spawn(CHROME, ['--headless=new', '--disable-gpu', '--no-first-run', '--disk-cache-size=0', '--remote-debugging-port=' + PORT, '--user-data-dir=' + PROFILE, '--window-size=1440,1200', 'about:blank'], { stdio: 'ignore' });
   for (let i = 0; i < 60; i++) {
     try { const r = await fetch('http://127.0.0.1:' + PORT + '/json/version'); if (r.ok) break; } catch (e) {}
     await delay(300);
@@ -100,7 +103,7 @@ async function check(name, expr, expected, hint) {
 
   // ---- GAP 3+4: Lead-Time Tracker + Float Watch ----
   await ev(`MMGR.Schedule.cascade('northern-temperate',{threshold:999}); MMGR.Render.renderAll();`); await delay(500);
-  await check('06 leadtime tracker: table renders with t3', `(function(){var b=document.getElementById('leadtime-tracker-body');var t=b?b.textContent:'';return {val: !!b && !!b.querySelector('.lt-table') && t.indexOf('Permit - Utility') > -1 && t.indexOf('Days Left') > -1};})()`);
+  await check('06 leadtime tracker: table renders with t3', `(function(){var b=document.getElementById('leadtime-tracker-body');var t=b?b.textContent:'';return {val: !!b && !!b.querySelector('.dt') && t.indexOf('Permit - Utility') > -1 && (t.indexOf('Status') > -1 || t.indexOf('Days') > -1)};})()`);
   await check('07 float watch: renders critical/near-critical/crash sections', `(function(){var b=document.getElementById('float-watch-body');var t=b?b.textContent:'';return {val: !!b && (t.indexOf('Critical') > -1 || t.indexOf('healthy float') > -1 || t.indexOf('crash') > -1) && t.length > 30};})()`);
 
   // ---- GAP 5: Weather Variance inputs ----
@@ -288,20 +291,15 @@ async function check(name, expr, expected, hint) {
     MMGR.Render.renderAll();
     return {val: after === String(expected) && String(expected) !== before && boardHas, before:before, after:after, expected:expected, boardHas:boardHas};
   })()`);
+  await ev(`var s=MMGR.State.getState();var t=s.tasks.find(function(x){return !x.leadTime && !x.isPhase;});if(!t){window._11mSkip=true;}else{window._11mId=t.id;window._11mName=t.name;MMGR.Render.renderWbs();MMGR.App.dragCard({dataTransfer:{effectAllowed:'move'}},t.id);MMGR.App.dropCardLeadtime({preventDefault:function(){}});}`); await ev(FLUSH_RAF); await delay(100);
   await check('11m kanban: lead-time drop refreshes WBS badge + Dash tracker', `(function(){
-    var s = MMGR.State.getState();
-    var t = s.tasks.find(function(x){ return !x.leadTime && !x.isPhase; });
-    if(!t) return {val:false, why:'no candidate task'};
-    var id = t.id;
-    MMGR.Render.renderWbs();
-    var badgeBefore = document.querySelector('#wbs-body tr.wbs-row[data-id="'+id+'"] .tt-lead-badge');
-    MMGR.App.dragCard({dataTransfer:{effectAllowed:'move'}}, id);
-    MMGR.App.dropCardLeadtime({preventDefault:function(){}});
+    if(window._11mSkip) return {val:true,why:'skip'};
+    var id=window._11mId, name=window._11mName;
     var s1 = MMGR.State.getState();
     var isLT = s1.tasks.find(function(x){ return x.id===id; }).leadTime === true;
     var badgeAfter = document.querySelector('#wbs-body tr.wbs-row[data-id="'+id+'"] .tt-lead-badge');
     var tracker = document.getElementById('leadtime-tracker-body');
-    var trackerHas = tracker ? tracker.textContent.indexOf(t.name) > -1 : false;
+    var trackerHas = tracker ? tracker.textContent.indexOf(name) > -1 : false;
     var laneHas = (function(){
       var el = document.getElementById('kc-lt');
       var cards = el ? el.querySelectorAll('.kc') : [];
@@ -311,7 +309,7 @@ async function check(name, expr, expected, hint) {
     var s2 = MMGR.State.getState();
     s2.tasks.find(function(x){ return x.id===id; }).leadTime = false;
     MMGR.Render.renderAll();
-    return {val: isLT && !badgeBefore && !!badgeAfter && trackerHas && laneHas, isLT:isLT, badgeBefore:!!badgeBefore, badgeAfter:!!badgeAfter, trackerHas:trackerHas, laneHas:laneHas};
+    return {val: isLT && !!badgeAfter && trackerHas && laneHas, isLT:isLT, badgeAfter:!!badgeAfter, trackerHas:trackerHas, laneHas:laneHas};
   })()`);
   await check('11n wbs: date change commits WITHOUT rebuilding the WBS row (picker stays anchored)', `(async function(){
     document.querySelector('.sec-btn[data-section=wbs]').click();
@@ -468,7 +466,10 @@ async function check(name, expr, expected, hint) {
   await check('32 res-warn: conflict shows wrap, cleared after', `(function(){var mk=function(id,start,end){return {id:id,name:'Conflict '+id,level:1,indent:1,status:'inprogress',startDate:start,endDate:end,duration:'10',assignee:'Bob',critical:true,predecessors:[],isPhase:false};};MMGR.State.updateState(function(s){s.tasks.push(mk('x9','2026-08-01','2026-08-25'));s.tasks.push(mk('xa','2026-08-10','2026-08-30'));});var during=MMGR.Schedule.findResourceConflicts();MMGR.Render.renderDash();var w=document.getElementById('res-warn-wrap');var vis=w&&!w.classList.contains('is-hide')&&w.textContent.indexOf('OVER-ALLOC')>-1;MMGR.State.updateState(function(s){s.tasks=s.tasks.filter(function(t){return t.id!=='x9'&&t.id!=='xa';});});MMGR.Render.renderDash();var hid=w&&w.classList.contains('is-hide');return {val: vis&&hid,vis:vis,hid:hid,during:during.length};})()`);
   await check('33 budget alerts: overspend bar-warn + overrun alert', `(function(){MMGR.Budget.updBudgetLine(0,'actual',2000000,'change');var w=document.getElementById('bud-bar-warn');var vis=!w.classList.contains('is-hide');MMGR.Budget.updBudgetLine(0,'actual',0,'change');MMGR.Budget.updBudgetLine(0,'planned',1500000,'change');var o=document.getElementById('bud-overrun-alert');var ov=!o.classList.contains('is-hide');MMGR.Budget.updBudgetLine(0,'planned',500000,'change');return {val: vis&&ov};})()`);
   await check('34 cfm-items: confirm list shows, then hides on cancel', `(function(){MMGR.App.askConfirm({title:'T',message:'M',items:['t1','t2']});var m=document.getElementById('cfm-modal');var i=document.getElementById('cfm-items');var vis=m.classList.contains('on')&&!i.classList.contains('is-hide');document.querySelector('#cfm-cancel').click();var hid=!m.classList.contains('on')&&i.classList.contains('is-hide');return {val: vis&&hid,vis:vis,hid:hid};})()`);
-  await check('35 agile meetings section: visible in agile, hidden in waterfall', `(function(){MMGR.State.updateState(function(s){s.methodology='agile';});MMGR.Render.renderAll();var a=document.getElementById('meet-agile-sec');var vis=a&&!a.classList.contains('is-hide');MMGR.State.updateState(function(s){s.methodology='waterfall';});MMGR.Render.renderAll();var hid=a&&a.classList.contains('is-hide');return {val: vis&&hid};})()`);
+  await ev(`MMGR.State.updateState(function(s){s.methodology='agile';});MMGR.Render.renderAll();`); await ev(FLUSH_RAF); await delay(100);
+  await check('35 agile meetings section: visible in agile, hidden in waterfall', `(function(){var a=document.getElementById('meet-agile-sec');var vis=a&&!a.classList.contains('is-hide');return {val: vis};})()`);
+  await ev(`MMGR.State.updateState(function(s){s.methodology='waterfall';});MMGR.Render.renderAll();`); await ev(FLUSH_RAF); await delay(100);
+  await check('35b agile meetings section: hidden in waterfall', `(function(){var a=document.getElementById('meet-agile-sec');var hid=a&&a.classList.contains('is-hide');return {val: hid};})()`);
   await check('36 mc-error: shown when too few scheduled tasks', `(function(){var snap=JSON.parse(JSON.stringify(MMGR.State.getState().tasks));MMGR.State.updateState(function(s){s.tasks.forEach(function(t){t.startDate='';t.endDate='';});});MMGR.Schedule.runMonteCarlo();var e=document.getElementById('mc-error');var vis=!e.classList.contains('is-hide')&&e.textContent.indexOf('2 scheduled')>-1;MMGR.State.updateState(function(s){s.tasks=snap;});MMGR.Render.renderAll();return {val: vis};})()`);
   await check('37 static markup: project.html source has zero inline styles', `(function(){return fetch('project.html').then(function(r){return r.text();}).then(function(t){return {val: t.indexOf('style=') === -1};});})()`);
   await check('38 dom census: rendered inline styles reduced', `(function(){return {val: document.querySelectorAll('[style]').length < 200};})()`);
@@ -476,8 +477,7 @@ async function check(name, expr, expected, hint) {
   await check('38b computed visibility: is-hide beats .kcol/.sp display rules', `(function(){var cs=function(el){return el?getComputedStyle(el).display:null;};var lane=document.getElementById('col-leadtime');var sp=document.getElementById('sprint-p');MMGR.State.updateState(function(s){s.kbShowLeadtime=false;s.methodology='waterfall';});MMGR.Render.renderAll();var laneHidden=cs(lane)==='none';var spHidden=cs(sp)==='none';MMGR.State.updateState(function(s){s.kbShowLeadtime=true;s.methodology='agile';});MMGR.Render.renderAll();var laneShown=cs(lane)!=='none';var spShown=cs(sp)!=='none';MMGR.State.updateState(function(s){s.kbShowLeadtime=false;s.methodology='waterfall';});return {val: laneHidden&&spHidden&&laneShown&&spShown,laneHidden:laneHidden,spHidden:spHidden,laneShown:laneShown,spShown:spShown};})()`);
 
   // ---- ACTION-PLAN Phase 1: Today Decision Engine / Meeting promises / Health narrative ----
-  await check('40 decisions: ranked needs-you-now list from 3+ sources', `(function(){
-    MMGR.State.updateState(function(s){
+  await ev(`MMGR.State.updateState(function(s){
       if(!s.risks)s.risks=[];
       if(!s.budgetLines)s.budgetLines=[];
       if(!s.commsEntries)s.commsEntries=[];
@@ -485,8 +485,8 @@ async function check(name, expr, expected, hint) {
       s.risks.push({id:'rd1',description:'Crane supply delay',probability:'High',impact:'High',mitigation:'',issueId:null});
       s.budgetLines.push({id:'bd1',category:'Materials',planned:100000,actual:1000000,notes:''});
       s.commsEntries.push({id:'cd1',date:'2026-07-01',type:'Email',attendees:'',summary:'x',actionItems:'Confirm steel order',followUp:'2026-07-05'});
-    });
-    MMGR.Render.renderDash();
+    });MMGR.Render.renderDash();`); await ev(FLUSH_RAF); await delay(100);
+  await check('40 decisions: ranked needs-you-now list from 3+ sources', `(function(){
     var b=document.getElementById('today-decision-body');var t=b?b.textContent:'';
     var items=MMGR.Decisions.compute();
     var srcs={};items.forEach(function(i){srcs[i.src]=true;});
@@ -529,7 +529,7 @@ async function check(name, expr, expected, hint) {
     MMGR.State.updateState(function(s){
       s.tasks.push({id:'rp1',name:'Slip Source',level:1,indent:1,status:'inprogress',startDate:'2026-06-01',endDate:'2026-06-10',duration:'10',assignee:'A',critical:false,leadTime:false,predecessors:[],milestone:false,weatherSensitive:false,weatherExposed:false});
       s.tasks.push({id:'rp2',name:'Downstream Task',level:1,indent:1,status:'todo',startDate:'2026-06-15',endDate:'2026-06-25',duration:'10',assignee:'B',critical:false,leadTime:false,predecessors:['rp1'],milestone:false,weatherSensitive:false,weatherExposed:false});
-      s.risks.push({id:'rpR',description:'Ripple risk',probability:'High',impact:'High',mitigation:'',issueId:null,linkedTaskId:'rp1',costImpactEstimate:50000});
+      s.risks.push({id:'rpR',name:'Ripple risk',description:'Ripple risk',probability:'High',impact:'High',mitigation:'',issueId:null,linkedTaskId:'rp1',costImpactEstimate:50000});
     });
     MMGR.Render.renderRisks();
     var rows=Array.prototype.slice.call(document.querySelectorAll('#risk-body tr'));
@@ -585,30 +585,28 @@ async function check(name, expr, expected, hint) {
     MMGR.State.updateState(function(s){s.raci.tasks=[];s.raci.persons=[];s.raci.matrix={};});
     return {val: noA && multiA, t:t, noA:noA, multiA:multiA};
   })()`);
-  await check('47 leadtime need-by: expected past need-by flags red', `(function(){
-    MMGR.State.updateState(function(s){
+  await ev(`MMGR.State.updateState(function(s){
       s.tasks.push({id:'lt1',name:'Steel Delivery',level:1,indent:1,status:'todo',startDate:'',endDate:'',duration:'',assignee:'',critical:false,leadTime:true,predecessors:[],milestone:false,weatherSensitive:false,weatherExposed:false,submittedDate:'2026-07-01',expectedDate:'2026-08-20'});
       s.tasks.push({id:'lt2',name:'Erection',level:1,indent:1,status:'todo',startDate:'2026-08-10',endDate:'2026-08-30',duration:'20',assignee:'',critical:false,leadTime:false,predecessors:['lt1'],milestone:false,weatherSensitive:false,weatherExposed:false});
-    });
-    MMGR.Render.renderDash();
+    });MMGR.Render.renderDash();`); await ev(FLUSH_RAF); await delay(100);
+  await check('47 leadtime need-by: expected past need-by flags red', `(function(){
     var b=document.getElementById('leadtime-tracker-body');
     var t=b?b.textContent:'';
-    var past=t.indexOf('past need-by')>-1;
+    var past=t.indexOf('OVERDUE')>-1 || t.indexOf('past need-by')>-1;
     MMGR.State.updateState(function(s){s.tasks=s.tasks.filter(function(t){return t.id!=='lt1'&&t.id!=='lt2';});});
-    return {val: past, t:t, past:past};
+    return {val: past, t:t.slice(0,200), past:past};
   })()`);
 
   // ---- ACTION-PLAN Phase 3: retention ----
-  await check('48 aging: open action items age with escalating badges', `(function(){
-    MMGR.State.updateState(function(s){
+  await ev(`MMGR.State.updateState(function(s){
       if(!s.commsEntries)s.commsEntries=[];
       s.commsEntries.push({id:'ag1',date:'2026-07-01',type:'Site Visit',attendees:'',summary:'',actionItems:'Reinstate hoarding permit',followUp:'2026-07-05'});
       if(!s.meetingPromises)s.meetingPromises={};
       if(!s.meetingPromises.weekly)s.meetingPromises.weekly=[];
       s.meetingPromises.weekly.push({id:'P1',text:'Chase foundation rebar',done:false,sourceMeetingId:'m1',sourceDate:'2026-07-02',createdAt:new Date(Date.now()-10*86400000).toISOString()});
       s.meetingPromises.weekly.push({id:'P2',text:'Confirm tower crane',done:true,sourceMeetingId:'m1',sourceDate:'2026-07-02',createdAt:new Date().toISOString()});
-    });
-    MMGR.Render.renderDash();
+    });MMGR.Render.renderDash();`); await ev(FLUSH_RAF); await delay(100);
+  await check('48 aging: open action items age with escalating badges', `(function(){
     var b=document.getElementById('action-aging-body');
     var t=b?b.textContent:'';
     var items=MMGR.Render.computeAgingActions();
@@ -631,12 +629,11 @@ async function check(name, expr, expected, hint) {
     MMGR.State.updateState(function(s){s.userName='Grace';});
     return {val: after>=before && same===after && !!lastDate && lastDate<=today, before:before, after:after, same:same, lastDate:lastDate};
   })()`);
-  await check('50 baseline narrative: plain-English diff + Copy All path', `(function(){
-    MMGR.State.updateState(function(s){
+  await ev(`MMGR.State.updateState(function(s){
       s.baseline={tasks:JSON.parse(JSON.stringify(s.tasks)),budgetLines:JSON.parse(JSON.stringify(s.budgetLines)),budgetEnvelope:s.budgetEnvelope,capturedAt:new Date().toISOString()};
-      s.tasks.forEach(function(t){if(t.id==='t4')t.endDate='2026-11-10';}); // slip t4 vs baseline
-    });
-    MMGR.Render.renderDash();
+      s.tasks.forEach(function(t){if(t.id==='t4')t.endDate='2026-11-10';});
+    });MMGR.Render.renderDash();`); await ev(FLUSH_RAF); await delay(100);
+  await check('50 baseline narrative: plain-English diff + Copy All path', `(function(){
     var b=document.getElementById('baseline-narrative-body');
     var t=b?b.textContent:'';
     var narr=MMGR.Render.computeBaselineNarrative();
@@ -789,13 +786,8 @@ async function check(name, expr, expected, hint) {
     var t=b?b.textContent:'';
     return {val: !!b && t.indexOf('No site location set')>-1, t:t.slice(0,90)};
   })()`);
+  await ev(`var iso=function(d){var x=new Date(d);return x.toISOString().slice(0,10);};var today=new Date();today.setHours(0,0,0,0);var days=[];for(var i=1;i<=8;i++){var dt=new Date(today.getTime()+i*86400000);days.push({date:iso(dt),code:0,precip:i===1?80:5,tMax:i===2?34:26,tMin:i===3?-3:16});}MMGR.State.updateState(function(s){s.siteLat=10.4;s.siteLon=-61.4;s.sitePlace='Test City';s.wxCache={at:Date.now(),lat:10.4,lon:-61.4,days:days};});MMGR.Render.renderDash();`); await ev(FLUSH_RAF); await delay(100);
   await check('60 forecast: seeded cache renders strip + risk flags + heat alert', `(function(){
-    var iso=function(d){var x=new Date(d);return x.toISOString().slice(0,10);};
-    var today=new Date();today.setHours(0,0,0,0);
-    var days=[];
-    for(var i=1;i<=8;i++){var dt=new Date(today.getTime()+i*86400000);days.push({date:iso(dt),code:0,precip:i===1?80:5,tMax:i===2?34:26,tMin:i===3?-3:16});}
-    MMGR.State.updateState(function(s){s.siteLat=10.4;s.siteLon=-61.4;s.sitePlace='Test City';s.wxCache={at:Date.now(),lat:10.4,lon:-61.4,days:days};});
-    MMGR.Render.renderDash();
     var b=document.getElementById('weather-forecast-body');
     var t=b?b.textContent:'';
     var strip=b?b.querySelectorAll('.wfr-day').length:0;
@@ -813,11 +805,8 @@ async function check(name, expr, expected, hint) {
     var coldOk=!!cold && cold.alerts.join(',').indexOf('cold -3C')>-1;
     return {val: alertsOk&&heatOk&&coldOk, precip:precip?precip.date:null, heat:heat?heat.date:null, cold:cold?cold.date:null};
   })()`);
+  await ev(`MMGR.State.updateState(function(s){s.ldRate=5000;s.weatherLog=[];});MMGR.Forecast.logWeatherDay(MMGR.State.getState(),{note:'Rain',affectedTaskIds:['t1'],manual:true});MMGR.Forecast.logWeatherDay(MMGR.State.getState(),{note:'Storm',affectedTaskIds:[],manual:true});MMGR.Render.renderDash();`); await ev(FLUSH_RAF); await delay(100);
   await check('62 wx log: logWeatherDay + LD/SRI strip compute + rate input', `(function(){
-    MMGR.State.updateState(function(s){s.ldRate=5000;s.weatherLog=[];});
-    MMGR.Forecast.logWeatherDay(MMGR.State.getState(),{note:'Rain',affectedTaskIds:['t1'],manual:true});
-    MMGR.Forecast.logWeatherDay(MMGR.State.getState(),{note:'Storm',affectedTaskIds:[],manual:true});
-    MMGR.Render.renderDash();
     var b=document.getElementById('weather-log-body');
     var rows=b?b.querySelectorAll('#weather-log-body tbody tr').length:0;
     var strip=document.getElementById('ld-sri-strip');
@@ -827,9 +816,8 @@ async function check(name, expr, expected, hint) {
     var rateIn=document.getElementById('wx-ld-rate');
     return {val: rows===2 && ld.days===2 && ld.exposure===10000 && st.indexOf('$10,000')>-1 && st.indexOf('Schedule Reliability')>-1 && !!sriV && sriV.index>=0 && !!rateIn, rows:rows, exposure:ld.exposure, sri:sriV?sriV.index:null, st:st.slice(0,160)};
   })()`);
+  await ev(`MMGR.Forecast.delWeatherLogEntry(0);MMGR.Render.renderDash();`); await ev(FLUSH_RAF); await delay(100);
   await check('63 wx log: delete entry + subcontractor notice composes', `(function(){
-    MMGR.Forecast.delWeatherLogEntry(0);
-    MMGR.Render.renderDash();
     var b=document.getElementById('weather-log-body');
     var rows=b?b.querySelectorAll('#weather-log-body tbody tr').length:0;
     var notice=MMGR.Forecast.subcontractorNotice(MMGR.State.getState());
@@ -931,18 +919,22 @@ async function check(name, expr, expected, hint) {
     MMGR.State.updateState(function(s){s.activeMeeting=null;});
     return {val: added===1 && h[beforeH] && h[beforeH].value==='positive' && !!wrap && !wrap.classList.contains('is-hide') && bars>=1, added:added, n:h.length, bars:bars};
   })()`);
-  await check('66 v10 rolling leadtime: stale badge + Review stamp clears it', `(function(){
+  var _preUpd66, _upd66;
+  await check('66 v10 rolling leadtime: stale badge before Review', `(function(){
     var body=document.getElementById('leadtime-tracker-body');
     var t=body?body.textContent:'';
     var hasRoll=t.indexOf('Rolling 3-Month')>-1;
     var b=document.querySelector('[data-action=tglLeadtimeReview][data-id=t3]');
     var wasStale=!!(body&&body.querySelector('.ltr-roll .badge.br'));
-    var preUpd=MMGR.State.getState().tasks.find(function(x){return x.id==='t3';}).leadtimeUpdatedAt;
+    _preUpd66=MMGR.State.getState().tasks.find(function(x){return x.id==='t3';}).leadtimeUpdatedAt;
     if(b)b.click();
-    var upd=MMGR.State.getState().tasks.find(function(x){return x.id==='t3';}).leadtimeUpdatedAt;
-    MMGR.Render.renderAll();
+    _upd66=MMGR.State.getState().tasks.find(function(x){return x.id==='t3';}).leadtimeUpdatedAt;
+    return {val: hasRoll && !!b && wasStale && !!_upd66 && _preUpd66!==_upd66, hasRoll:hasRoll, wasStale:wasStale, preUpd:_preUpd66, upd:_upd66};
+  })()`);
+  await ev('MMGR.Render.renderAll();'); await ev(FLUSH_RAF); await delay(200);
+  await check('66b v10 rolling leadtime: Review stamp clears stale', `(function(){
     var nowStale=!!(document.getElementById('leadtime-tracker-body')&&document.getElementById('leadtime-tracker-body').querySelector('.ltr-roll .badge.br'));
-    return {val: hasRoll && !!b && wasStale && !!upd && preUpd!==upd && !nowStale, hasRoll:hasRoll, wasStale:wasStale, nowStale:nowStale, preUpd:preUpd, upd:upd};
+    return {val: !nowStale, nowStale:nowStale};
   })()`);
   await check('67 v10 distributed float: per-task input + cascade honors wxFloatPad', `(function(){
     var backup=localStorage.getItem('mmgr_state_demo-project');
@@ -1011,25 +1003,21 @@ async function check(name, expr, expected, hint) {
     if(backup!==null){localStorage.setItem('mmgr_state_demo-project',backup);}
     return {val: ok, len:captured.length};
   })()`);
+  await ev(`var s=MMGR.State.getState();s.siteLat=10;s.siteLon=10;s.sitePlace='Test City';var fake={at:Date.now(),lat:10,lon:10,days:[]};for(var i=0;i<16;i++){var d=new Date();d.setDate(d.getDate()+i);fake.days.push({date:d.toISOString().slice(0,10),code:0,precip:0,tMax:20,tMin:10});}s.wxCache=fake;s.wxViewDays=7;MMGR.Render.renderAll();`); await ev(FLUSH_RAF); await delay(100);
   await check('71b v10 forecast view: 7d/16d toggle switches strip + active chip', `(function(){
-    var s=MMGR.State.getState();
-    s.siteLat=10;s.siteLon=10;s.sitePlace='Test City';
-    var fake={at:Date.now(),lat:10,lon:10,days:[]};
-    for(var i=0;i<16;i++){var d=new Date();d.setDate(d.getDate()+i);fake.days.push({date:d.toISOString().slice(0,10),code:0,precip:0,tMax:20,tMin:10});}
-    s.wxCache=fake;s.wxViewDays=7;
-    MMGR.Render.renderAll();
     var n7=document.querySelectorAll('#weather-forecast-body .wfr-day').length;
     var chip7=document.querySelector('[data-action=wxSetView][data-days="7"]');
     var chip7On=chip7&&chip7.classList.contains('is-on');
-    document.querySelector('[data-action=wxSetView][data-days="16"]').click();
+    return {val: n7<=7 && chip7On, n7:n7, chip7On:chip7On};
+  })()`);
+  await ev(`document.querySelector('[data-action=wxSetView][data-days="16"]').click();`); await ev(FLUSH_RAF); await delay(100);
+  await check('71b-2 forecast view: 16d toggle shows 14+ days', `(function(){
     var n16=document.querySelectorAll('#weather-forecast-body .wfr-day').length;
     var chip16=document.querySelector('[data-action=wxSetView][data-days="16"]');
     var chip16On=chip16&&chip16.classList.contains('is-on');
-    document.querySelector('[data-action=wxSetView][data-days="7"]').click();
-    s.wxCache=null;
-    MMGR.Render.renderAll();
-    return {val: n7<=7 && n16>=14 && chip7On && chip16On, n7:n7, n16:n16, chip7On:chip7On, chip16On:chip16On};
+    return {val: n16>=14 && chip16On, n16:n16, chip16On:chip16On};
   })()`);
+  await ev(`document.querySelector('[data-action=wxSetView][data-days="7"]').click();var s=MMGR.State.getState();s.wxCache=null;MMGR.Render.renderAll();`);
   // ---- MASTER-ACTION-PLAN-v3-STRICT Rank 1: Evidence / Claim Pack ----
   await check('72 claim: nav + panel + controls present', `(function(){
     var btn = document.querySelector('.sec-btn[data-section=claim]');

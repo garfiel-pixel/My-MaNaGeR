@@ -1880,18 +1880,11 @@ body.dark-mode .pcard:hover{box-shadow:var(--glass-rim),0 12px 30px rgba(0,0,0,.
 .sent-counts{display:flex;gap:12px;font-size:.68rem;margin-top:8px;}
 .sent-n{color:var(--slate);margin-left:auto;}
 
-/* ---- item 23: rolling 3-month lead-time ---- */
-.ltr-roll{margin-top:12px;border-top:1px solid var(--border);padding-top:10px;}
-.ltr-head{font-size:.74rem;font-weight:700;color:var(--slate);display:flex;gap:8px;align-items:baseline;flex-wrap:wrap;}
-.ltr-sub{font-weight:400;font-size:.66rem;color:var(--slate);}
-.ltr-row{display:flex;align-items:center;gap:8px;padding:4px 0;flex-wrap:wrap;}
-.ltr-name{font-size:.72rem;min-width:150px;color:var(--text);}
-.ltr-segs{display:flex;gap:2px;}
-.ltr-seg{width:9px;height:12px;border-radius:2px;background:var(--border);}
-.ltr-clear{background:rgba(16,185,129,.35);}
-.ltr-near{background:rgba(245,158,11,.55);}
-.ltr-due{background:rgba(239,68,68,.55);}
-.ltr-empty{font-size:.72rem;color:var(--slate);padding:6px 0;}
+/* ---- item 23: rolling 3-month lead-time review ---- */
+.lt-section{margin-top:16px;border-top:1px solid var(--border);padding-top:12px;}
+.lt-section-h{font-size:.74rem;font-weight:700;color:var(--text);margin-bottom:8px;letter-spacing:.3px;}
+.ltr-roll td{font-size:.72rem;}
+body.dark-mode .ltr-roll td{color:var(--text);}
 
 /* ---- 7.3 distributed weather float ---- */
 .wx-dist{margin-top:12px;border-top:1px solid var(--border);padding-top:10px;}
@@ -3129,6 +3122,19 @@ body.dark-mode.db-page .db-auto-lbl{color:var(--db-text-secondary);}
 .toast-act:focus-visible{outline:2px solid var(--gold);outline-offset:1px;}
 @keyframes toast-in{from{opacity:0;transform:translate(-50%,14px);}to{opacity:1;transform:translate(-50%,0);}}
 @keyframes toast-out{from{opacity:1;transform:translate(-50%,0);}to{opacity:0;transform:translate(-50%,10px);}}
+/* Inline-style removal: CSS classes replacing inline styles in project.html */
+.ai-cmd-card{padding:10px 14px;}
+.ai-cmd-row{display:flex;align-items:center;gap:10px;}
+.ai-cmd-icon{color:var(--purple);flex-shrink:0;}
+#ai-command-input{flex:1;border:none;background:transparent;color:var(--text);font-size:.85rem;outline:none;font-family:inherit;}
+.ai-cmd-arrow{width:14px;height:14px;}
+.col-mt8{margin-top:8px;}
+.hb-wrap{margin-top:6px;}
+.hb-toggle{font-size:.72rem;color:var(--slate);cursor:pointer;user-select:none;}
+.ai-byo-key{-webkit-text-security:disc;text-security:disc;}
+.pw-title{margin:0 0 4px;}
+.pw-msg{margin:4px 0 0;}
+
 /* reduced motion: no slide, instant appearance + hard fade */
 @media (prefers-reduced-motion:reduce){
   .toast{animation:none;}

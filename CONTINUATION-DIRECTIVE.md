@@ -1025,6 +1025,15 @@ in-progress and exactly where it stopped, what's next.
 **KEY LEARNING:** Not all tests can share a wrangler. Tests with custom `--var GOOGLE_CLIENT_SECRET` each need their own wrangler with their own secret. The shared wrangler only works for tests that don't need custom signing secrets.
 **(8) COMMIT & PUSH:** `82f18ac` — 19 files, 339 ins/del. Pushed `main -> main`. GitHub Actions triggered.
 
+**2026-08-29 — Session 3: CI PHASE 2 RATE-LIMITER + ADMIN_CODE FIX.**
+**SCOPE:** CI Phase 2 test failed with 3 errors (P3.2g revert-of-revert, P3.3a editor save, harness crash). Investigated wrangler logs and found two root causes.
+**(1) RATE-LIMITER KEY COLLAPSE:** `cloudRateKey()` in `src/lib/http.js` prioritized `CF-Connecting-IP` over owner/editor code. In CI (miniflare), all requests come from `127.0.0.1`, so every API call shared one 60/60s bucket. The Phase 2 test makes 60+ requests across multiple projects, tripping the limit. Fix: reordered `cloudRateKey()` to prefer code-based keying — each owner/editor code gets its own bucket regardless of source IP.
+**(2) ADMIN_CODE MISMATCH:** `wrangler.ci.jsonc` had `ADMIN_CODE: "QA-TEST-ADMIN"` but the CI workflow and all test scripts expected `QA-ADMIN-CI`. Fix: changed to `"QA-ADMIN-CI"`.
+**(3) VERIFICATION:** Phase 2 85/85 PASS, npm run verify GREEN.
+**(4) COMMIT & PUSH:** `fd56005` (rate limit fix) + `ca714ae` (admin code fix) + `9f23861` (reflection docs). All pushed to `main`.
+**FILES MODIFIED:** src/lib/http.js (rate limit key priority), wrangler.ci.jsonc (ADMIN_CODE value).
+**KEY LEARNING:** In miniflare, `CF-Connecting-IP` is always `127.0.0.1`. Rate limiting by IP collapses all requests into one bucket. Code-based keying is correct for per-tenant rate limiting in both local dev and production.
+
 **2026-08-26 — Session: UI-IMPLEMENTATION-PLAN — full 18-phase controlled implementation.**
 **SCOPE:** Owner-provided UI Implementation Plan with 18 phases. Executed all applicable phases in the prescribed order. Two documents governed this work: (1) Master Gold Theme System (5-theme plan) — OVERRIDDEN by (2) UI/UX Transformation document (Light/Dark/System only, §15). All work follows the UI/UX doc as the authoritative source.
 **(1) PHASE 1 — LAUNCHER CLEANUP:** Removed portfolio health analytics strip from app.html (plan: "Do not add project analytics to the launcher"). Removed persistent "Contact the admin to get an access code" hint. Collapsed code-entry from full section (heading + description + form) to compact inline row (input + button). "+ New Project" button added to Projects section header (links to admin.html). Portfolio strip JS reference in mmgr-portfolio.js gracefully handles missing element (null check already present).

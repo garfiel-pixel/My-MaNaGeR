@@ -302,8 +302,8 @@ const CLOUD_RATE = {
 const _cloudBuckets = new Map();
 
 export async function cloudRateKey(request, headerNames) {
-  const ip = request.headers.get('CF-Connecting-IP');
-  if (ip) return 'ip:' + ip;
+  // Prefer code-based keying so each owner/editor gets its own bucket.
+  // IP fallback only when no code header is present (anonymous requests).
   for (let i = 0; i < headerNames.length; i++) {
     const code = String(request.headers.get(headerNames[i]) || '').trim();
     if (code) {
@@ -316,6 +316,8 @@ export async function cloudRateKey(request, headerNames) {
       } catch (e) { return 'anon'; }
     }
   }
+  const ip = request.headers.get('CF-Connecting-IP');
+  if (ip) return 'ip:' + ip;
   return 'anon';
 }
 

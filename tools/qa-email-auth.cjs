@@ -901,6 +901,7 @@ async function phase5() {
     await startEmailStub();
     await startWrangler('email');
     await phase3();
+    await startWrangler('email');
     await phase4();
     await phase5();
 

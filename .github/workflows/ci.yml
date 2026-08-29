@@ -194,34 +194,9 @@ jobs:
         if: success() && steps.wrangler-start.outcome == 'success'
         run: node tools/qa-offline-copies.cjs
 
-      - name: "T2: Wrangler restart for browser tests"
-        if: success() && steps.wrangler-start.outcome == 'success'
-        run: |
-          echo "Restarting wrangler with fresh state for browser tests..."
-          pkill -f "wrangler" 2>/dev/null || true
-          sleep 3
-          rm -rf /tmp/mmgr-wrangler-state 2>/dev/null
-          npx wrangler d1 migrations apply my-manager-db --local --config wrangler.ci.jsonc --persist-to /tmp/mmgr-wrangler-state
-          npx wrangler dev --config wrangler.ci.jsonc --port 8787 --ip 127.0.0.1 --persist-to /tmp/mmgr-wrangler-state >> /tmp/wrangler.log 2>&1 &
-          for i in $(seq 1 30); do
-            if curl -sf http://127.0.0.1:8787/api/health > /dev/null 2>&1; then
-              echo "Wrangler ready on :8787"
-              break
-            fi
-            sleep 2
-          done
-          curl -sf http://127.0.0.1:8787/api/health > /dev/null 2>&1 || { echo "FATAL: wrangler restart failed"; exit 1; }
-          # Wait for static asset serving to stabilize
-          sleep 5
-          curl -sf http://127.0.0.1:8787/dist/bundle.js > /dev/null 2>&1 || { echo "FATAL: static assets not ready"; exit 1; }
-          echo "Wrangler fully ready (health + assets OK)"
-
       - name: "T2: Cloud autosave + signin"
         if: success() && steps.wrangler-start.outcome == 'success'
         run: node tools/verify-cloud-autosave-signin.cjs
-        env:
-          WRANGLER_DEV_URL: http://127.0.0.1:8787
-          QA_BASE: http://127.0.0.1:8787
 
       - name: "T2: Wrangler restart for controls admin"
         if: success() && steps.wrangler-start.outcome == 'success'

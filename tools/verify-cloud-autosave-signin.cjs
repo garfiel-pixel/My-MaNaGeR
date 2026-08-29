@@ -8,31 +8,83 @@
           auto-publishes after sign-in; re-click skips sign-in
    Run: node tools/verify-cloud-autosave-signin.cjs
    ============================================================ */
-const { spawn } = require('child_process');
+const { spawn, execFileSync } = require('child_process');
+const path = require('path');
+const fs = require('fs');
+const os = require('os');
 
-const { chromePath: CHROME, BASE, DEBUG_PORT: PORT } = require('./chrome-launcher.cjs');
-const userDir = 'C:/tmp/chrome-cas-' + Date.now();
+const ROOT = path.resolve(__dirname, '..');
+const log = (s) => process.stdout.write(s + '\n');
+
+// ---- Wrangler startup (self-contained, like other T2 harnesses) ----
+const WRANGLER_JS = (function () {
+  const local = path.join(ROOT, 'node_modules', 'wrangler', 'bin', 'wrangler.js');
+  if (fs.existsSync(local)) return local;
+  try { return execFileSync(process.execPath, ['npm', 'root', '-g'], { encoding: 'utf8' }).trim() + '/wrangler/bin/wrangler.js'; } catch (e) {}
+  return local;
+})();
+const PORT = parseInt(process.env.QA_PORT || '8797', 10);
+const PERSIST_DIR = path.join(os.tmpdir(), 'mmgr-cas-wstate-' + Date.now());
+let wranglerProc = null;
+
+async function startWrangler() {
+  log('[cas] starting wrangler dev on :' + PORT + '...');
+  try {
+    execFileSync(process.execPath, [WRANGLER_JS, 'd1', 'migrations', 'apply', 'my-manager-db', '--local', '--config', 'wrangler.ci.jsonc', '--persist-to', PERSIST_DIR], { cwd: ROOT, stdio: 'ignore' });
+  } catch (e) { /* migrations may already be applied */ }
+  wranglerProc = spawn(process.execPath, [WRANGLER_JS, 'dev', '--config', 'wrangler.ci.jsonc', '--port', String(PORT), '--ip', '127.0.0.1', '--persist-to', PERSIST_DIR], {
+    cwd: ROOT, stdio: 'ignore',
+    env: Object.assign({}, process.env, { ADMIN_CODE: 'QA-CAS-ADMIN' })
+  });
+  wranglerProc.on('error', (e) => { log('[cas] wrangler spawn error: ' + e.message); });
+  wranglerProc.on('exit', (code) => { log('[cas] wrangler exited code=' + code); wranglerProc = null; });
+  for (let i = 0; i < 40; i++) {
+    try {
+      const r = await fetch('http://127.0.0.1:' + PORT + '/api/health');
+      if (r.ok) { log('[cas] wrangler ready on :' + PORT); return; }
+    } catch (e) {}
+    await delay(2000);
+  }
+  throw new Error('wrangler dev did not come up in 80s');
+}
+
+function stopWrangler() {
+  if (wranglerProc) { try { wranglerProc.kill(); } catch (e) {} wranglerProc = null; }
+}
+
+// ---- Chrome launcher ----
+const { chromePath: CHROME, DEBUG_PORT } = require('./chrome-launcher.cjs');
+const CHROME_PORT = DEBUG_PORT;
+const BASE = 'http://127.0.0.1:' + PORT;
+const userDir = path.join(os.tmpdir(), 'chrome-cas-' + Date.now());
 
 const delay = ms => new Promise(r => setTimeout(r, ms));
 
+// Watchdog
+setTimeout(() => { log('WATCHDOG TIMEOUT'); stopWrangler(); process.exit(2); }, 180000);
+
 const proc = spawn(CHROME, [
   '--headless=new', '--disable-gpu', '--no-first-run', '--no-sandbox',
-  '--remote-allow-origins=*', '--remote-debugging-port=' + PORT,
+  '--remote-allow-origins=*', '--remote-debugging-port=' + CHROME_PORT,
   '--user-data-dir=' + userDir, '--window-size=1280,900', 'about:blank'
 ], { stdio: 'ignore' });
 
 const results = [];
 function check(name, val, detail) {
   results.push({ name, val: !!val, detail });
-  console.log((val ? '[PASS] ' : '[FAIL] ') + name + (val ? '' : '  <-- ' + JSON.stringify(detail)));
+  log((val ? '[PASS] ' : '[FAIL] ') + name + (val ? '' : '  <-- ' + JSON.stringify(detail)));
 }
 
 (async () => {
+  // Start our own wrangler
+  await startWrangler();
+
+  // Wait for Chrome
   for (let i = 0; i < 60; i++) {
-    try { const r = await fetch('http://127.0.0.1:' + PORT + '/json/version'); if (r.ok) break; } catch (e) {}
+    try { const r = await fetch('http://127.0.0.1:' + CHROME_PORT + '/json/version'); if (r.ok) break; } catch (e) {}
     await delay(300);
   }
-  const targets = await (await fetch('http://127.0.0.1:' + PORT + '/json')).json();
+  const targets = await (await fetch('http://127.0.0.1:' + CHROME_PORT + '/json')).json();
   const ws = new WebSocket(targets.find(t => t.type === 'page').webSocketDebuggerUrl);
   const pending = new Map();
   let id = 0;
@@ -53,8 +105,6 @@ function check(name, val, detail) {
   await send('Runtime.enable'); await send('Page.enable');
 
   // ---- C1: editor-session auto-save fires with X-Editor-Code ---------------
-  // Seed on the RIGHT origin: land once, store the admin record + a local
-  // project state, then re-navigate so the page boots unlocked with data.
   await send('Page.navigate', { url: BASE + '/project.html?id=qa-edit' });
   await delay(2500);
   await ev(`(function(){
@@ -189,8 +239,9 @@ function check(name, val, detail) {
 
   try { await send('Page.close'); } catch (e) {}
   try { proc.kill(); } catch (e) {}
+  stopWrangler();
   const failed = results.filter(r => !r.val);
-  console.log('========================================');
-  console.log(results.length + ' checks, ' + failed.length + ' failed');
+  log('========================================');
+  log(results.length + ' checks, ' + failed.length + ' failed');
   process.exit(failed.length ? 1 : 0);
-})().catch(e => { console.log('HARNESS ERROR: ' + (e && e.stack || e)); try { proc.kill(); } catch (x) {} process.exit(1); });
+})().catch(e => { log('HARNESS ERROR: ' + (e && e.stack || e)); try { proc.kill(); } catch (x) {} stopWrangler(); process.exit(1); });

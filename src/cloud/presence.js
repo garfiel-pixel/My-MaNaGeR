@@ -48,8 +48,20 @@ export async function handlePresenceUpgrade(request, env, url) {
       else { await cloudTimingSink(); return cloudForbidden(); }
     }
   }
-  // (b) Code-based auth: the code is sent as the first WebSocket message.
+  // (b) Code-based auth: owner code in URL query string.
   try {
+    const isUpgrade = (request.headers.get('Upgrade') || '').toLowerCase() === 'websocket';
+    if (!authed && !isUpgrade) { await cloudTimingSink(); return cloudForbidden(); }
+    if (!authed) {
+      const code = String(url.searchParams.get('code') || '').trim();
+      if (code) {
+        const projRow = await env.DB.prepare('SELECT owner_code_hash, owner_code_salt FROM cloud_projects WHERE project_id = ?').bind(projectId).first();
+        if (projRow) {
+          const hash = await hashOwnerCode(code, projRow.owner_code_salt);
+          if (codesEqual(hash, projRow.owner_code_hash)) { authed = true; name = 'Owner'; }
+        }
+      }
+    }
     if (!authed) {
       const headers = new Headers(request.headers);
       headers.set('X-Presence-Name', encodeURIComponent(name));
@@ -101,9 +113,7 @@ export class Presence {
     const server = pair[1];
     server.serializeAttachment({ id: id, name: name, since: Date.now(), lastSeen: Date.now(), authed: !needsAuth, authProject: authProject });
     this.state.acceptWebSocket(server);
-    if (needsAuth) {
-      // Code-based auth: wait for the first message with the code.
-    } else {
+    {
       const members = [];
       for (const ws of this.state.getWebSockets()) {
         const a = ws.deserializeAttachment();

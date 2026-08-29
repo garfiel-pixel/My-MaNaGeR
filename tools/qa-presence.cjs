@@ -31,16 +31,17 @@ const path = require('path');
 const crypto = require('crypto');
 
 function globalWranglerJs() {
+  // 1. Local node_modules (CI and project-local installs)
+  try {
+    const lp = path.join(__dirname, '..', 'node_modules', 'wrangler', 'bin', 'wrangler.js');
+    if (fs.existsSync(lp)) return lp;
+  } catch (e) { /* fall through */ }
+  // 2. Global npm install
   try {
     const npmCmd = process.platform === 'win32' ? 'npm.cmd' : 'npm';
     const root = execFileSync(npmCmd, ['root', '-g'], { encoding: 'utf8', shell: process.platform === 'win32' }).trim();
     const p = path.join(root, 'wrangler', 'bin', 'wrangler.js');
     if (fs.existsSync(p)) return p;
-  } catch (e) { /* fall through */ }
-  // Fallback: local node_modules (CI, no global wrangler)
-  try {
-    const lp = path.join(__dirname, '..', 'node_modules', 'wrangler', 'bin', 'wrangler.js');
-    if (fs.existsSync(lp)) return lp;
   } catch (e) { /* fall through */ }
   return null;
 }

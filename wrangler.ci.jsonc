@@ -8,11 +8,19 @@
     "GOOGLE_CLIENT_ID": "297970704704-m05hgt93lfaq286q90br8c96ffg1aph3.apps.googleusercontent.com",
     "ADMIN_CODE": "QA-ADMIN-CI"
   },
-  // CI-only: stripped AI, Vectorize, Durable Objects, service bindings
-  // that cause infinite reload loops in local wrangler dev.
+  // CI-only: stripped AI, Vectorize, and service bindings that cause
+  // infinite reload loops in local wrangler dev.
   // RATE_LIMITER binding omitted — in-memory fallback (max:30/min/key)
   // resets on each wrangler restart, avoiding cross-phase rate-limit
   // accumulation that causes false 429s in the email-auth test.
+  "durable_objects": {
+    "bindings": [
+      { "name": "PRESENCE", "class_name": "Presence" }
+    ]
+  },
+  "migrations": [
+    { "tag": "v1-presence", "new_sqlite_classes": ["Presence"] }
+  ],
   "d1_databases": [
     {
       "binding": "DB",

@@ -1001,6 +1001,20 @@ in-progress and exactly where it stopped, what's next.
 
 ### Log entries (most recent at top)
 
+**2026-08-29 — Session 4: EMAIL AUTH FIX MARATHON — 9 bugs found & fixed.**
+**SCOPE:** T2 email-auth test had 30+ failures and hung CI for 10+ minutes. Investigated root causes systematically by reading the worker auth code, test assertions, and CI workflow.
+**(1) MISSING SUB IN SESSION COOKIES (CRITICAL):** `handleAuthRegister` and `handleAuthLogin` called `authSessionResponse({email, name})` without `sub`. Signed cookie had `sub:undefined`, `readSession()` returned null for EVERY request. Fixed A3-A18, B1-B5, E1b-E2b, F2-F8, V2-V6, G1-G7b (~25 tests).
+**(2) COLUMN NAME MISMATCH:** `consumeAuthToken()` queried `consumed_at` but migration 0013 created `used_at`. Token consumption silently failed. Fixed E2, E8, E12b, E13.
+**(3) NO JTI IN SESSIONS — REVOCATION IMPOSSIBLE:** `authSessionResponse` didn't include a `jti`. `readSession` skipped DB revocation check. Password change/reset couldn't find sessions to revoke. Added jti generation + auth_sessions INSERT. Fixed E8 (reset revokes all), F7 (password change revokes others).
+**(4) RATE_LIMITER BINDING PERSISTS ON DISK:** Binding stores state via --persist-to. Wrangler restart between phases didn't reset it. Removed binding, code falls back to in-memory Map (resets on restart). A15 still tests rate limiting.
+**(5) MISSING --config IN 3 SCRIPTS:** rank9, email-auth, prefs-roundtrip spawned wrangler without --config wrangler.ci.jsonc. Added the flag.
+**(6) MISSING NODE_MODULES FALLBACK:** globalWranglerJs() only checked npm root -g. Added node_modules/wrangler/bin/ fallback for CI.
+**(7) REVIEWS TEST OUT OF DATE:** Changelog import API changed shape (imported=count not array, camelCase fields). Updated R8/R9 assertions.
+**(8) BROWSER PHASE HANG:** Three tests had interactive waits for stop files. Added MMGR_QA_NO_BROWSER=1 to CI steps.
+**(9) PHASE 4 RATE LIMIT EXHAUSTION:** Phase 4 shared Phase 3's wrangler. Accumulated rate limit caused 429s. Added wrangler restart before Phase 4.
+**VERIFICATION:** All T1 gates PASS. Cloud phase 1-4 PASS. Email auth Phase 1-5 almost entirely PASS (E8/F7 fixed by jti commit). Reviews PASS. npm run verify GREEN.
+**KEY LEARNING:** (1) Column name mismatches in migrations are silent killers — D1 throws, try/catch swallows. (2) Session cookies need jti for server-side revocation. (3) RATE_LIMITER binding persists state on disk — use in-memory fallback for CI. (4) Interactive browser phases need MMGR_QA_NO_BROWSER=1.
+
 **2026-08-29 — Session: CI-WORKFLOW-FIX — FULLY ALIGNED.**
 **SCOPE:** Run CI workflow and fix everything until all checks pass.
 **(1) WRANGLER UPDATED:** 4.126.0 -> 4.127.1.

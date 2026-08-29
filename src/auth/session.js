@@ -62,7 +62,7 @@ export async function handleAuthRegister(request, env) {
       emailSent = await sendAuthEmail(env, email, 'Confirm your My MaNaGeR account', authVerifyEmailBody(name, origin, vtoken));
     } catch (e) { /* mail failure must never break signup */ }
   }
-  return authSessionResponse({ email: email, name: name }, env, emailSent);
+  return authSessionResponse({ sub: 'email:' + email, email: email, name: name }, env, emailSent);
 }
 
 export async function handleAuthLogin(request, env) {
@@ -97,7 +97,7 @@ export async function handleAuthLogin(request, env) {
     return json({ ok: false, error: 'invalid email or password' }, 401);
   }
   try { await env.DB.prepare('DELETE FROM auth_login_guard WHERE email = ?').bind(email).run(); } catch (e) { /* best-effort */ }
-  return authSessionResponse({ email: row.email, name: row.name }, env);
+  return authSessionResponse({ sub: 'email:' + row.email, email: row.email, name: row.name }, env);
 }
 
 export async function handleAuthPasswordChange(request, env) {

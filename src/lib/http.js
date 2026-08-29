@@ -215,10 +215,10 @@ export async function consumeAuthToken(env, rawToken, purpose) {
   const jti = payload.j;
   if (!jti) return null;
   try {
-    const row = await env.DB.prepare('SELECT consumed_at FROM auth_tokens WHERE id = ?').bind(jti).first();
+    const row = await env.DB.prepare('SELECT used_at FROM auth_tokens WHERE id = ?').bind(jti).first();
     if (!row) return null;
-    if (row.consumed_at) return null;
-    await env.DB.prepare('UPDATE auth_tokens SET consumed_at = ? WHERE id = ? AND consumed_at IS NULL')
+    if (row.used_at) return null;
+    await env.DB.prepare('UPDATE auth_tokens SET used_at = ? WHERE id = ? AND used_at IS NULL')
       .bind(new Date().toISOString(), jti).run();
   } catch (e) { return null; }
   return payload.e || null;

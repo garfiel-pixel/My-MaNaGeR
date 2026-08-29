@@ -383,9 +383,9 @@ async function phase1() {
   // A15 — rate burst LAST in this phase. Probes a NEVER-REGISTERED email so
   // the per-account lockout guard (auth_login_guard, 5 fails -> lock) never
   // engages — what is under test here is the RATE LIMITER (authLogin bucket,
-  // 30/min), and an unknown email keeps the generic-401 path (no guard row).
+  // 60/min), and an unknown email keeps the generic-401 path (no guard row).
   let saw429 = 0, saw401 = 0, retryAfter = null;
-  for (let i = 0; i < 40; i++) {
+  for (let i = 0; i < 80; i++) {
     const r = await api('/api/auth/login', { method: 'POST', headers: jsonHeaders, body: JSON.stringify({ email: 'rate-limit-probe@example.com', password: 'brute-' + i }) });
     if (r.status === 429) { saw429++; retryAfter = r.headers.get('Retry-After'); }
     else if (r.status === 401) saw401++;
@@ -629,7 +629,7 @@ async function phase4() {
   // IN-PROJECT DELETE (2026-08-17): the destructive-action verification
   // gate. Session-gated, email accounts ONLY, same timing-safe PBKDF2 check
   // as the password change; rides the authLogin bucket (this phase stays
-  // well under 30/min). The graceCookie session survived F7 (its password is
+  // well under 60/min). The graceCookie session survived F7 (its password is
   // now 'grace-pass-3'); the forged google cookie shape is reused from F8.
   log('--- PHASE 4b (verify-password contract — /api/auth/verify-password) ---');
 
@@ -853,7 +853,7 @@ async function phase5() {
     await pwSetCookie(forgeGB64 + '.' + forgeGSig);
     await pwCdp('Page.navigate', { url: BASE + '/app.html' });
     let g8 = null;
-    for (let i = 0; i < 40; i++) {
+    for (let i = 0; i < 80; i++) {
       await delay(500);
       g8 = await pwEv(`(function(){
         var chip = document.getElementById('google-user-chip');
@@ -869,7 +869,7 @@ async function phase5() {
     await pwCdp('Network.deleteCookies', { name: 'mmgr_session', url: BASE + '/' });
     await pwCdp('Page.navigate', { url: BASE + '/app.html' });
     let g9 = null;
-    for (let i = 0; i < 40; i++) {
+    for (let i = 0; i < 80; i++) {
       await delay(500);
       g9 = await pwEv(`(function(){
         var chip = document.getElementById('google-user-chip');

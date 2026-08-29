@@ -138,3 +138,12 @@ but need a CI run to confirm.
 | tools/qa-offline-copies.cjs | Reverted externalWranglerGuard, restored stopWrangler |
 | tools/qa-ai-badge-e2e.cjs | Changed const BASE → let BASE, added USE_EXTERNAL override |
 | .github/workflows/ci.yml | Removed WRANGLER_DEV_URL from tests that start own wrangler |
+
+## Commit & Push
+
+| Item | Detail |
+|------|--------|
+| Commit | `82f18ac` — `fix(ci): align T2 tests with shared wrangler and fix miniflare crashes` |
+| Files | 19 changed, 339 insertions, 100 deletions |
+| Push | `main -> main` on github.com/garfiel-pixel/My-MaNaGeR |
+| CI trigger | Pushed at 2026-08-28, GitHub Actions workflow running |

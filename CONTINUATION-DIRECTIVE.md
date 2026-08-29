@@ -1023,6 +1023,7 @@ in-progress and exactly where it stopped, what's next.
 **(7) HONEST STATUS:** 6 shared-wrangler tests proven locally. 11 self-starting wrangler tests crash on Windows (miniflare instability) but should pass on Linux CI.
 **FILES MODIFIED:** wrangler.ci.jsonc (ADMIN_CODE), .github/workflows/ci.yml (removed WRANGLER_DEV_URL for self-starting tests), tools/qa-email-auth.cjs, tools/qa-reviews.cjs, tools/qa-rank9-api.cjs, tools/qa-t9-adoption.cjs, tools/qa-presence.cjs, tools/qa-prefs-roundtrip.cjs, tools/qa-offline-copies.cjs, tools/qa-ai-badge-e2e.cjs.
 **KEY LEARNING:** Not all tests can share a wrangler. Tests with custom `--var GOOGLE_CLIENT_SECRET` each need their own wrangler with their own secret. The shared wrangler only works for tests that don't need custom signing secrets.
+**(8) COMMIT & PUSH:** `82f18ac` — 19 files, 339 ins/del. Pushed `main -> main`. GitHub Actions triggered.
 
 **2026-08-26 — Session: UI-IMPLEMENTATION-PLAN — full 18-phase controlled implementation.**
 **SCOPE:** Owner-provided UI Implementation Plan with 18 phases. Executed all applicable phases in the prescribed order. Two documents governed this work: (1) Master Gold Theme System (5-theme plan) — OVERRIDDEN by (2) UI/UX Transformation document (Light/Dark/System only, §15). All work follows the UI/UX doc as the authoritative source.

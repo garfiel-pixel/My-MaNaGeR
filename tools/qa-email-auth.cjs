@@ -178,6 +178,12 @@ let devLog = '';
 
 // ---- wrangler scaffolding (same as qa-prefs-roundtrip.cjs) ---------------
 function globalWranglerJs() {
+  // 1. Local node_modules (CI and project-local installs)
+  try {
+    const lp = path.join(__dirname, '..', 'node_modules', 'wrangler', 'bin', 'wrangler.js');
+    if (fs.existsSync(lp)) return lp;
+  } catch (e) { /* fall through */ }
+  // 2. Global npm install
   try {
     const npmCmd = process.platform === 'win32' ? 'npm.cmd' : 'npm';
     const root = execFileSync(npmCmd, ['root', '-g'], { encoding: 'utf8', shell: process.platform === 'win32' }).trim();

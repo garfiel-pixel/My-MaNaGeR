@@ -59,6 +59,11 @@ function globalWranglerJs() {
     const p = path.join(root, 'wrangler', 'bin', 'wrangler.js');
     if (fs.existsSync(p)) return p;
   } catch (e) { /* fall through */ }
+  // Fallback: local node_modules (CI, no global wrangler)
+  try {
+    const lp = path.join(__dirname, '..', 'node_modules', 'wrangler', 'bin', 'wrangler.js');
+    if (fs.existsSync(lp)) return lp;
+  } catch (e) { /* fall through */ }
   return null;
 }
 const WRANGLER_JS = globalWranglerJs();

@@ -1,3 +1,37 @@
+# Session Reflection — 2026-08-29 (Session 6: Autosave-Signin Fix)
+
+## Objective
+Fix verify-cloud-autosave-signin.cjs (8/8 FAIL in CI) — all checks fail because wrangler dev crashes during the long T2 run.
+
+## Root Cause
+The autosave-signin test relied on the shared wrangler dev instance (port 8787). After running 30+ T2 tests, the shared wrangler crashes (known workerd/miniflare instability — `kj::getCaughtExceptionAsKj` on Linux CI). Chrome shows "This site can't be reached" error pages, so `window.MMGR` is undefined and all checks fail.
+
+## Fix
+Made the test self-contained — starts its own wrangler on port 8797 with fresh D1/R2 state, runs all 8 checks, and stops it. Removed the now-unnecessary wrangler restart step from ci.yml.
+
+## Test Results
+- `verify-cloud-autosave-signin.cjs`: 8/8 PASS (was 0/8)
+- `verify-controls-admin.cjs`: 10/10 PASS (was gated behind autosave failure)
+- `qa-cloud-codes-delete.cjs`: 23/23 PASS locally (flaky in CI — workerd crash, not code bug)
+
+## Key Learnings
+1. Self-contained tests that start their own wrangler are more reliable than shared-instance tests
+2. The `kj::getCaughtExceptionAsKj` crash is workerd instability on Linux CI — not fixable in our code
+3. The autosave test code itself was always correct (8/8 PASS locally) — the failure was purely infrastructure
+
+## Files Modified
+| File | Change |
+|------|--------|
+| tools/verify-cloud-autosave-signin.cjs | Added self-starting wrangler (port 8797), removed dependency on shared wrangler |
+| .github/workflows/ci.yml | Removed wrangler restart step before autosave test |
+
+## Commits
+| Hash | Message |
+|------|--------|
+| 6b8dd9a | fix(test): make autosave-signin self-contained with own wrangler |
+
+---
+
 # Session Reflection — 2026-08-29 (Session 5: Frontend Split Fixes + CI Hardening)
 
 ## Objective

@@ -1001,6 +1001,15 @@ in-progress and exactly where it stopped, what's next.
 
 ### Log entries (most recent at top)
 
+**2026-08-29 — Session 6: AUTOSAVE-SIGNIN FIX — self-contained test.**
+**SCOPE:** verify-cloud-autosave-signin.cjs fails 8/8 in CI (wrangler dev crashes during long T2 run, Chrome sees "This site can't be resolved", window.MMGR undefined).
+**(1) ROOT CAUSE:** Test relied on shared wrangler (port 8787). After 30+ T2 tests, workerd crashes (known kj::getCaughtExceptionAsKj instability on Linux CI). All checks fail because Chrome can't reach the server.
+**(2) FIX:** Made test self-contained — starts its own wrangler on port 8797 with fresh D1/R2 state. Removed wrangler restart step from ci.yml.
+**(3) RESULTS:** autosave-signin 8/8 PASS (was 0/8). controls-admin 10/10 PASS (gated behind autosave). codes-delete 23/23 PASS locally (flaky in CI, workerd crash, not code bug).
+**(4) KEY LEARNING:** Self-contained tests that start their own wrangler are more reliable than shared-instance tests. The autosave test code was always correct — failure was purely infrastructure.
+**FILES MODIFIED:** tools/verify-cloud-autosave-signin.cjs, .github/workflows/ci.yml.
+**COMMIT:** `6b8dd9a`.
+
 **2026-08-29 — Session 5: FRONTEND SPLIT FIXES + CI HARDENING — 7 bugs found & fixed.**
 **SCOPE:** Fix renderInspections/renderIncidents dropped during frontend split, fix CI reload cascade, fix remaining test failures, run full local test suite.
 **(1) DROPPED RENDER FUNCTIONS (Bug 10):** During js/render/* extraction, `renderInspections()` and `renderIncidents()` were dropped entirely. Mutation handlers in mmgr-risks.js still called `R.renderRisks()` but the render functions lived in `js/render/closure.js`. Fix: added both renderers to closure.js, wired into renderClosure(), changed all 10 mutation handlers to call `R.renderClosure()`. Result: qa-market-features 61/61 PASS.

@@ -122,8 +122,15 @@ export async function handleAuthPasswordChange(request, env) {
   const newHash = await authHashPassword(next, salt);
   await env.DB.prepare('UPDATE auth_users SET password_hash = ? WHERE email = ?').bind(salt + ':' + newHash, email).run();
   try {
+    const toRevoke = await env.DB.prepare('SELECT jti FROM auth_sessions WHERE sub = ? AND revoked_at IS NULL AND jti != ?')
+      .bind(session.sub, session.jti || '').all();
     await env.DB.prepare('UPDATE auth_sessions SET revoked_at = ? WHERE sub = ? AND revoked_at IS NULL AND jti != ?')
       .bind(new Date().toISOString(), session.sub, session.jti || '').run();
+    if (env.KV && toRevoke.results) {
+      for (const r of toRevoke.results) {
+        try { await env.KV.put('sess:' + r.jti, 'revoked', { expirationTtl: 300 }); } catch (e) {}
+      }
+    }
   } catch (e) { /* best-effort */ }
   return json({ ok: true });
 }
@@ -200,8 +207,15 @@ export async function handleAuthReset(request, env) {
   const newHash = await authHashPassword(next, salt);
   await env.DB.prepare('UPDATE auth_users SET password_hash = ? WHERE email = ?').bind(salt + ':' + newHash, email).run();
   try {
+    const toRevoke = await env.DB.prepare('SELECT jti FROM auth_sessions WHERE sub = ? AND revoked_at IS NULL')
+      .bind('email:' + email).all();
     await env.DB.prepare('UPDATE auth_sessions SET revoked_at = ? WHERE sub = ? AND revoked_at IS NULL')
       .bind(new Date().toISOString(), 'email:' + email).run();
+    if (env.KV && toRevoke.results) {
+      for (const r of toRevoke.results) {
+        try { await env.KV.put('sess:' + r.jti, 'revoked', { expirationTtl: 300 }); } catch (e) {}
+      }
+    }
     await env.DB.prepare('DELETE FROM auth_login_guard WHERE email = ?').bind(email).run();
   } catch (e) { /* best-effort */ }
   return json({ ok: true });

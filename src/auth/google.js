@@ -132,6 +132,9 @@ export async function handleAuthLogout(request, env) {
     try {
       await env.DB.prepare('UPDATE auth_sessions SET revoked_at = ? WHERE jti = ?')
         .bind(new Date().toISOString(), sess.jti).run();
+      if (env.KV) {
+        try { await env.KV.put('sess:' + sess.jti, 'revoked', { expirationTtl: 300 }); } catch (e) {}
+      }
     } catch (e) { /* best-effort */ }
   }
   return new Response(JSON.stringify({ ok: true }), {
@@ -153,8 +156,15 @@ export async function handleAuthLogoutAll(request, env) {
   const sess = await readSession(request, env);
   if (sess && sess.sub) {
     try {
+      const toRevoke = await env.DB.prepare('SELECT jti FROM auth_sessions WHERE sub = ? AND revoked_at IS NULL')
+        .bind(sess.sub).all();
       await env.DB.prepare('UPDATE auth_sessions SET revoked_at = ? WHERE sub = ? AND revoked_at IS NULL')
         .bind(new Date().toISOString(), sess.sub).run();
+      if (env.KV && toRevoke.results) {
+        for (const r of toRevoke.results) {
+          try { await env.KV.put('sess:' + r.jti, 'revoked', { expirationTtl: 300 }); } catch (e) {}
+        }
+      }
     } catch (e) { /* best-effort */ }
   }
   return new Response(JSON.stringify({ ok: true }), {

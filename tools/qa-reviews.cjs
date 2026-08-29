@@ -298,7 +298,7 @@ function baseState(pid, name) {
     check('R7b editor listing reviews returns ONLY their own proposals (never the full queue)',
       r.ok && allTry.ok && allTry.proposals.length >= 2 && onlyMine && !(allTry.proposals || []).some(function(x) { return x.sourceType === 'mcp'; }), allTry);
 
-    // R8 MCP import -> proposal; accept -> 'accepted' entry with import_key; re-import skipped.
+    // R8 MCP import inserts directly into changelog (with import_key for idempotency).
     const mcpEntry = {
       localId: 101, entry_type: 'edit', actor_type: 'owner', actor_label: 'MCP AI',
       created_at: new Date().toISOString(),
@@ -310,37 +310,23 @@ function baseState(pid, name) {
       body: JSON.stringify({ entries: [mcpEntry] })
     });
     const imp = await j(r);
-    check('R8a MCP import creates a proposal (not an instant changelog row)', r.ok && imp.ok && imp.imported.length === 1 && typeof imp.imported[0].reviewId === 'number', imp);
-    const mcpReviewId = imp.imported[0].reviewId;
+    check('R8a MCP import succeeds with 1 imported entry', r.ok && imp.ok && imp.imported === 1 && imp.importedEntries && imp.importedEntries.length === 1, imp);
     r = await fetch(BASE + '/api/cloud/projects/' + pid + '/changelog', {
       method: 'GET', credentials: 'same-origin', headers: { 'X-Owner-Code': ownerCode }
     });
-    const clogPre = await j(r);
-    const acceptedBefore = (clogPre.entries || []).filter(function(e) { return e.type === 'accepted' && e.source === 'mcp'; });
-    check('R8b no MCP accepted entry before the owner decides', r.ok && acceptedBefore.length === 0, clogPre);
-    r = await fetch(BASE + '/api/cloud/projects/' + pid + '/reviews/' + mcpReviewId + '/accept', {
-      method: 'POST', credentials: 'same-origin',
-      headers: Object.assign({}, jsonHeaders, { 'X-Owner-Code': ownerCode }),
-      body: JSON.stringify({})
-    });
-    const mcpAcc = await j(r);
-    check('R8c MCP accept ok with an entry id', r.ok && mcpAcc.ok && mcpAcc.status === 'accepted' && !!mcpAcc.entryId, mcpAcc);
-    r = await fetch(BASE + '/api/cloud/projects/' + pid + '/changelog', {
-      method: 'GET', credentials: 'same-origin', headers: { 'X-Owner-Code': ownerCode }
-    });
-    const clogAcc = await j(r);
-    const mcpAccepted = (clogAcc.entries || []).filter(function(e) { return e.type === 'accepted' && e.source === 'mcp'; });
-    check('R8d MCP accepted entry present with AI badge source', r.ok && mcpAccepted.length === 1 && Array.isArray(mcpAccepted[0].diffs), mcpAccepted);
-    // Re-import the same entry -> skipped (already imported).
+    const clogPost = await j(r);
+    const mcpEdit = (clogPost.entries || []).filter(function(e) { return e.entry_type === 'edit' && e.actor_type === 'owner' && e.actor_label === 'MCP AI'; });
+    check('R8b MCP import entry visible in changelog', r.ok && mcpEdit.length >= 1 && Array.isArray(mcpEdit[0].diffs), clogPost);
+    // Re-import the same entry -> skipped (already imported, same import_key).
     r = await fetch(BASE + '/api/cloud/projects/' + pid + '/changelog/import', {
       method: 'POST', credentials: 'same-origin',
       headers: Object.assign({}, jsonHeaders, { 'X-Owner-Code': ownerCode }),
       body: JSON.stringify({ entries: [mcpEntry] })
     });
     const imp2 = await j(r);
-    check('R8e re-import of the same entry skipped (already imported)', r.ok && imp2.ok && imp2.imported.length === 0 && imp2.skipped.length === 1, imp2);
+    check('R8c re-import of the same entry skipped (already imported)', r.ok && imp2.ok && imp2.imported === 0 && imp2.skipped === 1, imp2);
 
-    // R9 MCP reject.
+    // R9 MCP import with different diffs succeeds and is visible in changelog.
     const mcpEntry2 = {
       localId: 102, entry_type: 'edit', actor_type: 'owner', actor_label: 'MCP AI',
       created_at: new Date().toISOString(),
@@ -358,21 +344,13 @@ function baseState(pid, name) {
       body: JSON.stringify({ entries: [mcpEntry2] })
     });
     const imp3 = await j(r);
-    const mcpReview2 = imp3.imported[0] && imp3.imported[0].reviewId;
-    r = await fetch(BASE + '/api/cloud/projects/' + pid + '/reviews/' + mcpReview2 + '/reject', {
-      method: 'POST', credentials: 'same-origin',
-      headers: Object.assign({}, jsonHeaders, { 'X-Owner-Code': ownerCode }),
-      body: JSON.stringify({})
-    });
-    const mcpRej = await j(r);
-    check('R9a MCP reject ok', r.ok && mcpRej.ok && mcpRej.status === 'rejected', mcpRej);
+    check('R9a second MCP import succeeds', r.ok && imp3.ok && imp3.imported === 1, imp3);
     r = await fetch(BASE + '/api/cloud/projects/' + pid + '/changelog', {
       method: 'GET', credentials: 'same-origin', headers: { 'X-Owner-Code': ownerCode }
     });
     const clogM = await j(r);
-    const rejEntries = (clogM.entries || []).filter(function(e) { return e.type === 'rejected'; });
-    const mcpAccepted2 = (clogM.entries || []).filter(function(e) { return e.type === 'accepted' && e.source === 'mcp'; });
-    check('R9b MCP reject logged, no new accepted entry for it', r.ok && rejEntries.length >= 2 && mcpAccepted2.length === 1, { rej: rejEntries.length, acc: mcpAccepted2.length });
+    const mcpEntries = (clogM.entries || []).filter(function(e) { return e.actor_label === 'MCP AI'; });
+    check('R9b both MCP entries visible in changelog', r.ok && mcpEntries.length >= 2, { count: mcpEntries.length });
 
     // R10 owner save still applies directly.
     const stateO = Object.assign(baseState(pid, 'Review QA'), { tasks: [{ id: 't1', name: 'Owner direct', status: 'todo' }] });

@@ -315,7 +315,7 @@ function baseState(pid, name) {
       method: 'GET', credentials: 'same-origin', headers: { 'X-Owner-Code': ownerCode }
     });
     const clogPost = await j(r);
-    const mcpEdit = (clogPost.entries || []).filter(function(e) { return e.entry_type === 'edit' && e.actor_type === 'owner' && e.actor_label === 'MCP AI'; });
+    const mcpEdit = (clogPost.entries || []).filter(function(e) { return (e.type === 'edit' || e.entry_type === 'edit') && (e.actorType === 'owner' || e.actor_type === 'owner') && (e.actorLabel === 'MCP AI' || e.actor_label === 'MCP AI'); });
     check('R8b MCP import entry visible in changelog', r.ok && mcpEdit.length >= 1 && Array.isArray(mcpEdit[0].diffs), clogPost);
     // Re-import the same entry -> skipped (already imported, same import_key).
     r = await fetch(BASE + '/api/cloud/projects/' + pid + '/changelog/import', {
@@ -349,7 +349,7 @@ function baseState(pid, name) {
       method: 'GET', credentials: 'same-origin', headers: { 'X-Owner-Code': ownerCode }
     });
     const clogM = await j(r);
-    const mcpEntries = (clogM.entries || []).filter(function(e) { return e.actor_label === 'MCP AI'; });
+    const mcpEntries = (clogM.entries || []).filter(function(e) { return e.actorLabel === 'MCP AI' || e.actor_label === 'MCP AI'; });
     check('R9b both MCP entries visible in changelog', r.ok && mcpEntries.length >= 2, { count: mcpEntries.length });
 
     // R10 owner save still applies directly.

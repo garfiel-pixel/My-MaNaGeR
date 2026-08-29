@@ -221,12 +221,13 @@ const authHeaders = (cookie) => cookie ? { 'Cookie': 'mmgr_session=' + cookie, '
     log('READY port=' + PORT + ' subA=' + SUB_A);
     log('browser device A: http://127.0.0.1:' + PORT + '/app.html  (cookieA, pick cyan)');
     log('browser device B: http://127.0.0.1:' + PORT + '/app.html  (same account, stale local default -> pull overrides to cyan)');
-    log('waiting for browser phase (stop file: ' + STOP_FILE + ')…');
-
-    const t0 = Date.now();
-    while (Date.now() - t0 < 1200000) {
-      if (fs.existsSync(STOP_FILE)) break;
-      await delay(1000);
+    if (!process.env.MMGR_QA_NO_BROWSER) {
+      log('waiting for browser phase (stop file: ' + STOP_FILE + ')…');
+      const t0 = Date.now();
+      while (Date.now() - t0 < 1200000) {
+        if (fs.existsSync(STOP_FILE)) break;
+        await delay(1000);
+      }
     }
   } catch (e) {
     log('FATAL harness exception: ' + (e && e.stack || e));

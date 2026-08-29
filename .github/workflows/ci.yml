@@ -181,7 +181,6 @@ jobs:
         run: node tools/qa-ai-badge-e2e.cjs
         env:
           MMGR_QA_NO_BROWSER: 1
-        env:
           WRANGLER_DEV_URL: http://127.0.0.1:8787
 
       - name: "T2: Market features"

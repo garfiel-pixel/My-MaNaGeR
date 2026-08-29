@@ -169,13 +169,14 @@ function baseState(pid, name) {
     try { fs.writeFileSync(STATE_FILE, JSON.stringify({ pid: PID, ownerCode: OC, port: PORT, entryId: ENTRY_ID, name: NAME })); } catch (e) {}
     log('READY pid=' + PID + ' code=' + OC + ' port=' + PORT + ' entry=' + ENTRY_ID);
     log('browser: http://127.0.0.1:' + PORT + '/project.html?id=' + PID);
-    log('waiting for browser phase (stop file: ' + STOP_FILE + ')…');
-
-    // Keep alive until the stop file appears (or a 15-min watchdog).
-    const t0 = Date.now();
-    while (Date.now() - t0 < 900000) {
-      if (fs.existsSync(STOP_FILE)) break;
-      await delay(1000);
+    if (!process.env.MMGR_QA_NO_BROWSER) {
+      log('waiting for browser phase (stop file: ' + STOP_FILE + ')…');
+      // Keep alive until the stop file appears (or a 15-min watchdog).
+      const t0 = Date.now();
+      while (Date.now() - t0 < 900000) {
+        if (fs.existsSync(STOP_FILE)) break;
+        await delay(1000);
+      }
     }
   } catch (e) {
     log('FATAL harness exception: ' + (e && e.stack || e));

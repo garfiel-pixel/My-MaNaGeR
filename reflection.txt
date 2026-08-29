@@ -1,3 +1,115 @@
+# Session Reflection — 2026-08-29 (Session 5: Frontend Split Fixes + CI Hardening)
+
+## Objective
+Fix renderInspections/renderIncidents dropped during frontend split, fix all remaining CI failures, run full local test suite.
+
+## Root Causes Found & Fixed
+
+### Bug 10: renderInspections/renderIncidents Dropped During Frontend Split
+**Files:** `js/render/closure.js`, `js/mmgr-risks.js`
+**Problem:** During the js/render/* extraction, `renderInspections()` and `renderIncidents()` were dropped entirely. The mutation handlers in `mmgr-risks.js` still existed and updated state correctly, but they called `R.renderRisks()` — which renders the risks panel, not the closure panel where inspections/incidents now live. The containers `#insp-body` and `#inc-body` stayed empty.
+
+**Fix:** Added both render functions to `js/render/closure.js` inside the `RenderClosure` module, wired them into `renderClosure()`. Changed all 10 inspection/incident mutation handlers from `R.renderRisks()` to `R.renderClosure()`:
+- addInspection, updInspection, toggleInspItem, updInspItem, addInspItem, delInspItem, delInspection
+- addIncident, updIncident, delIncident
+
+**Tests fixed:** C16 inspection rendered with item rows, C17 incident rendered with closure fields
+**Result:** qa-market-features.cjs 61/61 PASS (was 0/61 before fix, 58/61 after adding render functions but before fixing mutation handlers)
+
+### Bug 11: Duplicate `env:` Key in ci.yml for AI Badge E2E
+**File:** `.github/workflows/ci.yml`
+**Problem:** The AI badge E2E step had two `env:` keys (one for `MMGR_QA_NO_BROWSER`, one for `WRANGLER_DEV_URL`). YAML parsers keep only the last key, silently dropping the first. MMGR_QA_NO_BROWSER never reached the script.
+
+**Fix:** Merged into one `env:` block with both variables.
+
+### Bug 12: MMGR_QA_NO_BROWSER Not Implemented in 2 Scripts
+**Files:** `tools/qa-prefs-roundtrip.cjs`, `tools/qa-ai-badge-e2e.cjs`
+**Problem:** `MMGR_QA_NO_BROWSER` was only checked in `qa-email-auth.cjs`. The other two scripts had unconditional 20-min/15-min waits for browser phases.
+
+**Fix:** Added `if (!process.env.MMGR_QA_NO_BROWSER)` guard to both scripts.
+
+### Bug 13: `.dev.vars` Write Causes Reload Cascade
+**Files:** `tools/qa-cloud-codes-delete.cjs`, `tools/qa-cloud-phase2.cjs`
+**Problem:** These scripts wrote `.dev.vars` into the repo root for their own standalone wrangler instances. The shared long-lived instance's file watcher detected every change and hot-reloaded. This caused ~30 reload cycles between T2 steps, and any request landing mid-reload got a 503.
+
+**Fix:** Removed `writeFileSync(DEV_VARS, ...)` and `unlinkSync(DEV_VARS)` from both scripts. Added `'--var', 'ADMIN_CODE:' + ADMIN_CODE` to the spawn args instead.
+
+### Bug 14: qa-ai-badge-e2e.cjs Null Guard + Stale Test Shape
+**File:** `tools/qa-ai-badge-e2e.cjs`
+**Problem:** (a) Line 160 checked `imp.body.imported.length` but `imported` is a count (number), not an array — undefined.length. (b) A3/A4 assertions used the old API response shape (`imp.imported[0].reviewId`) instead of the current `{imported: count, importedEntries: [{localId, entryType}]}`.
+
+**Fix:** (a) Added `Array.isArray(imp.body.imported)` guard. (b) Updated A3 to check `imp.body.imported === 1` and `importedEntries[0].entryType === 'edit'`. Updated A4 to get ENTRY_ID from the changelog list response instead of the import response.
+
+### Bug 15: Presence DO Binding Missing from wrangler.ci.jsonc
+**File:** `wrangler.ci.jsonc`
+**Problem:** CI config stripped all Durable Objects. Presence endpoint returned 503 on every request; WebSocket upgrades crashed workerd.
+
+**Fix:** Added `PRESENCE` DO binding + migration to `wrangler.ci.jsonc`. Also fixed presence.js: non-WebSocket unauthed requests now return 403 directly, router validates owner code from URL, DO sends init to all connections immediately.
+
+**Tests fixed:** qa-presence.cjs 11/11 PASS
+
+### Bug 16: KV Session Cache Not Invalidated on Revocation
+**Files:** `src/auth/session.js`, `src/auth/google.js`
+**Problem:** `readSession()` caches `sess:<jti>='valid'` in KV for 60 seconds. All four revocation handlers (reset, password-change, logout, logout-all) only wrote to D1, never touched KV. A session with a warm KV cache kept authenticating for up to 60 seconds after revocation.
+
+**Fix:** Added SELECT-then-KV-invalidate pattern to all four handlers. Each now queries affected jtis, updates D1, then writes 'revoked' to KV per jti.
+
+## Local Test Results (this session)
+| Test | Result |
+|------|--------|
+| npm run build | PASS |
+| npm run verify (all 5) | PASS |
+| T1: Dashboard spec | 74/74 PASS |
+| T1: Changelog diffs | PASS |
+| T1: AI relay | PASS |
+| T1: Report issue | 27/27 PASS |
+| T1: Dynamic labels | 3/3 PASS |
+| T1: Delegate gate | PASS |
+| T2: Cloud Phase 1 (HTTP) | 24/24 PASS |
+| T2: Cloud Phase 1 (browser C4) | BLOCKED — workerd crashes on Windows |
+| T2: Cloud Phase 2 | 85/85 PASS |
+| T2: Cloud Import | 35/35 PASS |
+| T2: Cloud Codes+Delete | 23/23 PASS |
+| T2: AI Badge E2E | 5/5 PASS |
+| T2: Market Features | 61/61 PASS |
+| T2: Self-starting tests | BLOCKED — workerd crashes on Windows |
+
+## Key Learnings
+
+1. **Dropped render functions are silent no-ops** — When the frontend split moved render functions to new modules, functions that weren't explicitly exported/dispatched just disappeared. Nothing crashed; containers stayed empty. Always grep for function names after module extraction.
+
+2. **YAML duplicate keys are silently dropped** — GitHub Actions is strict about this. Always merge env vars into one block.
+
+3. **`.dev.vars` in repo root triggers wrangler reloads** — Any file change in the CWD triggers hot-reload, regardless of which wrangler process owns the file. Use `--var` on CLI instead.
+
+4. **workerd crashes on Windows** — The `kj::getCaughtExceptionAsKj` broken-pipe error is consistent miniflare instability on Windows. Tests that spawn their own wrangler cannot run locally. Trust CI (Linux) for these.
+
+5. **Import API response shape changed** — `imported` is now a count (number), not an array. The actual entries are in `importedEntries`. Same pattern as the reviews fix earlier.
+
+## Files Modified This Session
+| File | Change |
+|------|--------|
+| js/render/closure.js | Added renderInspections() + renderIncidents() |
+| js/mmgr-risks.js | Changed 10 mutation handlers from R.renderRisks() to R.renderClosure() |
+| .github/workflows/ci.yml | Merged duplicate env: key; added MMGR_QA_NO_BROWSER to 3 steps |
+| tools/qa-prefs-roundtrip.cjs | Added MMGR_QA_NO_BROWSER gate |
+| tools/qa-ai-badge-e2e.cjs | Fixed null guard, updated A3/A4 for API shape change |
+| tools/qa-cloud-codes-delete.cjs | Removed .dev.vars write, added --var CLI |
+| tools/qa-cloud-phase2.cjs | Removed .dev.vars write, added --var CLI |
+| wrangler.ci.jsonc | Added PRESENCE DO binding + migration |
+| src/cloud/presence.js | Non-WebSocket 403, owner code validation, DO init fix |
+| src/auth/session.js | KV invalidation on reset + password change |
+| src/auth/google.js | KV invalidation on logout + logout-all |
+
+## Commits Pushed
+| Hash | Message |
+|------|---------|
+| ff56a86 | fix(ui): restore renderInspections/renderIncidents dropped during frontend split |
+
+(Assorted earlier commits in this session: ci.yml fixes, .dev.vars fixes, presence DO fix, KV invalidation fix)
+
+---
+
 # Session Reflection — 2026-08-29 (Session 4: Email Auth Fix Marathon)
 
 ## Objective

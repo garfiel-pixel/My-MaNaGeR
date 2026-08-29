@@ -1001,6 +1001,19 @@ in-progress and exactly where it stopped, what's next.
 
 ### Log entries (most recent at top)
 
+**2026-08-29 — Session 5: FRONTEND SPLIT FIXES + CI HARDENING — 7 bugs found & fixed.**
+**SCOPE:** Fix renderInspections/renderIncidents dropped during frontend split, fix CI reload cascade, fix remaining test failures, run full local test suite.
+**(1) DROPPED RENDER FUNCTIONS (Bug 10):** During js/render/* extraction, `renderInspections()` and `renderIncidents()` were dropped entirely. Mutation handlers in mmgr-risks.js still called `R.renderRisks()` but the render functions lived in `js/render/closure.js`. Fix: added both renderers to closure.js, wired into renderClosure(), changed all 10 mutation handlers to call `R.renderClosure()`. Result: qa-market-features 61/61 PASS.
+**(2) DUPLICATE YAML KEY (Bug 11):** ci.yml AI badge E2E step had two `env:` keys. YAML parsers keep only the last. Fix: merged into one block.
+**(3) MMGR_QA_NO_BROWSER MISSING (Bug 12):** Only implemented in qa-email-auth.cjs. Fix: added gate to qa-prefs-roundtrip.cjs and qa-ai-badge-e2e.cjs.
+**(4) .DEV.VARS RELOAD CASCADE (Bug 13):** qa-cloud-codes-delete.cjs and qa-cloud-phase2.cjs wrote .dev.vars to repo root, triggering shared wrangler hot-reloads. Fix: removed file writes, use --var CLI args instead.
+**(5) AI-BADGE-E2E TEST SHAPE (Bug 14):** imported is a count (number), not array. Fix: updated assertions + null guard.
+**(6) PRESENCE DO MISSING (Bug 15):** wrangler.ci.jsonc had no PRESENCE Durable Object binding. Fix: added binding + migration + presence.js auth fixes. qa-presence 11/11 PASS.
+**(7) KV SESSION CACHE (Bug 16):** Revocation handlers wrote to D1 but not KV. Fix: SELECT-then-KV-invalidate pattern on all 4 handlers.
+**(8) LOCAL TEST RESULTS:** T1 all green, T2 HTTP tests all green (Phase 1 24/24, Phase 2 85/85, Import 35/35, Codes+Delete 23/23, AI-Badge 5/5, Market 61/61). Browser/self-starting tests blocked on Windows (workerd instability). COMMIT: `ff56a86` (renderInspections/Incidents fix).
+**FILES MODIFIED:** js/render/closure.js, js/mmgr-risks.js, .github/workflows/ci.yml, tools/qa-prefs-roundtrip.cjs, tools/qa-ai-badge-e2e.cjs, tools/qa-cloud-codes-delete.cjs, tools/qa-cloud-phase2.cjs, wrangler.ci.jsonc, src/cloud/presence.js, src/auth/session.js, src/auth/google.js.
+**KEY LEARNING:** Dropped render functions are silent no-ops after module extraction. Always grep for function names. YAML duplicate keys are silently dropped. .dev.vars in repo root triggers hot-reloads. workerd crashes consistently on Windows.
+
 **2026-08-29 — Session 4: EMAIL AUTH FIX MARATHON — 9 bugs found & fixed.**
 **SCOPE:** T2 email-auth test had 30+ failures and hung CI for 10+ minutes. Investigated root causes systematically by reading the worker auth code, test assertions, and CI workflow.
 **(1) MISSING SUB IN SESSION COOKIES (CRITICAL):** `handleAuthRegister` and `handleAuthLogin` called `authSessionResponse({email, name})` without `sub`. Signed cookie had `sub:undefined`, `readSession()` returned null for EVERY request. Fixed A3-A18, B1-B5, E1b-E2b, F2-F8, V2-V6, G1-G7b (~25 tests).

@@ -108,12 +108,81 @@ var MMGR = window.MMGR || {};
     }).join('');
   }
 
+  // ---- Inspection Checklists (MARKET-FEATURE-ROADMAP C16) ----
+  function renderInspections() {
+    const s = S();
+    if (!s) return;
+    const body = $('insp-body');
+    if (!body) return;
+    const list = s.inspections || [];
+    const sum = $('insp-sum');
+    const passed = list.filter(x => x.status === 'passed' || x.status === 'closed').length;
+    if (sum) sum.textContent = list.length ? (passed + ' passed \u00b7 ' + (list.length - passed) + ' open') : '';
+    if (list.length === 0) {
+      body.innerHTML = emptyStateRow(8, 'No inspection checklists yet.', '<button class="btn btn-g btn-s" data-action="addInspection">+ Add Inspection</button>');
+      return;
+    }
+    const statusColor = (st) => st === 'passed' || st === 'closed' ? 'var(--green)' : st === 'failed' ? 'var(--danger)' : 'var(--amber)';
+    body.innerHTML = list.map((x, i) => {
+      const items = x.items || [];
+      const itemRows = items.map((it, j) => `<div style="display:flex;align-items:center;gap:8px;padding:3px 0">
+        <input type="checkbox" ${it.pass ? 'checked' : ''} data-action="inspItemToggle" data-idx="${i}" data-iidx="${j}" title="Pass / fail">
+        <input type="text" value="${U.escapeHtml(it.text)}" data-action="updInspItem" data-field="text" data-idx="${i}" data-iidx="${j}" placeholder="Checklist item" style="flex:1;min-width:120px">
+        <input type="text" value="${U.escapeHtml(it.notes || '')}" data-action="updInspItem" data-field="notes" data-idx="${i}" data-iidx="${j}" placeholder="\u2014" style="width:130px">
+        <button class="btn btn-s btn-d" data-action="delInspItem" data-idx="${i}" data-iidx="${j}" title="Remove item">×</button>
+      </div>`).join('');
+      return `<tr>
+        <td>${U.escapeHtml(x.id || 'INSP' + (i+1))}</td>
+        <td><input type="text" value="${U.escapeHtml(x.title)}" data-action="updField" data-module="Inspections" data-field="title" data-idx="${i}" style="min-width:130px" placeholder="Inspection title"></td>
+        <td><input type="text" value="${U.escapeHtml(x.trade || '')}" data-action="updField" data-module="Inspections" data-field="trade" data-idx="${i}" style="width:90px" placeholder="Trade"></td>
+        <td><input type="text" value="${U.escapeHtml(x.area || '')}" data-action="updField" data-module="Inspections" data-field="area" data-idx="${i}" style="width:100px" placeholder="Area"></td>
+        <td><input type="date" value="${x.date || ''}" data-action="updField" data-module="Inspections" data-field="date" data-idx="${i}"></td>
+        <td style="min-width:220px">${itemRows}
+          <button class="btn btn-s btn-g" data-action="addInspItem" data-idx="${i}">+ item</button>
+        </td>
+        <td><select data-action="updField" data-module="Inspections" data-field="status" data-idx="${i}" style="color:${statusColor(x.status)}">${['open','passed','failed','closed'].map(v => `<option ${x.status === v ? 'selected' : ''}>${v}</option>`).join('')}</select></td>
+        <td><button class="btn btn-s btn-d" data-action="delInspection" data-idx="${i}">×</button></td>
+      </tr>`;
+    }).join('');
+  }
+
+  // ---- Incident Register (MARKET-FEATURE-ROADMAP C17) ----
+  function renderIncidents() {
+    const s = S();
+    if (!s) return;
+    const body = $('inc-body');
+    if (!body) return;
+    const list = s.incidents || [];
+    const sum = $('inc-sum');
+    const open = list.filter(x => x.status !== 'closed').length;
+    if (sum) sum.textContent = list.length ? (open + ' open \u00b7 ' + (list.length - open) + ' closed') : '';
+    if (list.length === 0) {
+      body.innerHTML = emptyStateRow(10, 'No incidents logged.', '<button class="btn btn-g btn-s" data-action="addIncident">+ Log Incident</button>');
+      return;
+    }
+    const statusColor = (st) => st === 'closed' ? 'var(--green)' : st === 'action' ? 'var(--gold)' : st === 'investigation' ? 'var(--amber)' : 'var(--danger)';
+    body.innerHTML = list.map((x, i) => `<tr>
+      <td>${U.escapeHtml(x.id || 'INC' + (i+1))}</td>
+      <td><input type="date" value="${x.date || ''}" data-action="updField" data-module="Incidents" data-field="date" data-idx="${i}"></td>
+      <td><select data-action="updField" data-module="Incidents" data-field="type" data-idx="${i}">${['Safety','Quality','Environmental'].map(v => `<option ${x.type === v ? 'selected' : ''}>${v}</option>`).join('')}</select></td>
+      <td><select data-action="updField" data-module="Incidents" data-field="severity" data-idx="${i}" style="color:${x.severity === 'High' ? 'var(--danger)' : x.severity === 'Medium' ? 'var(--amber)' : 'var(--slate)'}">${['Low','Medium','High','Critical'].map(v => `<option ${x.severity === v ? 'selected' : ''}>${v}</option>`).join('')}</select></td>
+      <td><input type="text" value="${U.escapeHtml(x.description)}" data-action="updField" data-module="Incidents" data-field="description" data-idx="${i}" style="min-width:150px" placeholder="What happened"></td>
+      <td><input type="text" value="${U.escapeHtml(x.owner || '')}" data-action="updField" data-module="Incidents" data-field="owner" data-idx="${i}" style="width:90px" placeholder="Owner"></td>
+      <td><select data-action="updField" data-module="Incidents" data-field="status" data-idx="${i}" style="color:${statusColor(x.status)}">${(ns.Incidents && ns.Incidents.statuses || ['open','investigation','action','closed']).map(v => `<option ${x.status === v ? 'selected' : ''}>${v}</option>`).join('')}</select></td>
+      <td><input type="text" value="${U.escapeHtml(x.rootCause || '')}" data-action="updField" data-module="Incidents" data-field="rootCause" data-idx="${i}" style="width:120px" placeholder="Root cause"></td>
+      <td><input type="text" value="${U.escapeHtml(x.correctiveAction || '')}" data-action="updField" data-module="Incidents" data-field="correctiveAction" data-idx="${i}" style="width:120px" placeholder="Corrective action"></td>
+      <td><button class="btn btn-s btn-d" data-action="delIncident" data-idx="${i}">×</button></td>
+    </tr>`).join('');
+  }
+
   function renderClosure() {
     const s = S();
     if (!s) return;
     renderPunchList();
     renderHandover();
     renderWarranty();
+    renderInspections();
+    renderIncidents();
     if (!s.closure) return;
     const items = s.closure.items || [];
     const chk = $('close-chk');

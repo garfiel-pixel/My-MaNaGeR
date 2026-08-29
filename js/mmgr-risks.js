@@ -77,7 +77,7 @@ var MMGR = window.MMGR || {};
         status: 'open', items: [{ text: '', pass: false, notes: '' }], notes: ''
       });
     });
-    R.renderRisks();
+    R.renderClosure();
   }
 
   function updInspection(index, field, value, evtType) {
@@ -91,7 +91,7 @@ var MMGR = window.MMGR || {};
       }
     });
     if (evtType === 'input') return;
-    R.renderRisks();
+    R.renderClosure();
   }
 
   // Item pass/fail toggle. Closing rule: when all items pass, the inspection
@@ -106,7 +106,7 @@ var MMGR = window.MMGR || {};
       if (items.length && checked === items.length) insp.status = 'passed';
       else if (insp.status === 'passed') insp.status = 'open';
     });
-    R.renderRisks();
+    R.renderClosure();
   }
 
   function updInspItem(index, itemIdx, field, value, evtType) {
@@ -116,7 +116,7 @@ var MMGR = window.MMGR || {};
     });
     // Focus discipline: save on keystroke, re-render on blur/commit.
     if (evtType === 'input') return;
-    R.renderRisks();
+    R.renderClosure();
   }
 
   function addInspItem(index) {
@@ -126,7 +126,7 @@ var MMGR = window.MMGR || {};
       if (!insp.items) insp.items = [];
       insp.items.push({ text: '', pass: false, notes: '' });
     });
-    R.renderRisks();
+    R.renderClosure();
   }
 
   function delInspItem(index, itemIdx) {
@@ -134,14 +134,14 @@ var MMGR = window.MMGR || {};
       const insp = s.inspections && s.inspections[index];
       if (insp && insp.items) insp.items.splice(itemIdx, 1);
     });
-    R.renderRisks();
+    R.renderClosure();
   }
 
   function delInspection(index) {
     ns.State.updateState(function(s) {
       if (s.inspections) s.inspections.splice(index, 1);
     });
-    R.renderRisks();
+    R.renderClosure();
   }
 
   // ---- Incident Register w/ corrective-action loop (C17) ----
@@ -160,7 +160,7 @@ var MMGR = window.MMGR || {};
         rootCause: '', correctiveAction: '', closedDate: ''
       });
     });
-    R.renderRisks();
+    R.renderClosure();
   }
 
   function updIncident(index, field, value, evtType) {
@@ -175,14 +175,14 @@ var MMGR = window.MMGR || {};
       }
     });
     if (evtType === 'input') return;
-    R.renderRisks();
+    R.renderClosure();
   }
 
   function delIncident(index) {
     ns.State.updateState(function(s) {
       if (s.incidents) s.incidents.splice(index, 1);
     });
-    R.renderRisks();
+    R.renderClosure();
   }
 
   // ---- API ----

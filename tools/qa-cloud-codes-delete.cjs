@@ -68,7 +68,7 @@ function globalWranglerJs() {
 }
 const WRANGLER_JS = globalWranglerJs();
 const PERSIST_DIR = path.join(os.tmpdir(), 'mmgr-codes-wstate-' + Date.now());
-const DEV_VARS = path.join(ROOT, '.dev.vars');
+
 
 let proc = null;
 let devLog = '';
@@ -81,10 +81,8 @@ function startWrangler() {
         [WRANGLER_JS, 'd1', 'migrations', 'apply', 'my-manager-db', '--local', '--config', 'wrangler.ci.jsonc', '--persist-to', PERSIST_DIR],
         { cwd: ROOT, stdio: 'ignore', timeout: 120000 });
     } catch (e) { log('migrations apply (best-effort): ' + e.message); }
-    // The harness must configure ADMIN_CODE for the admin-list + fortify
-    // checks; .dev.vars is gitignored and removed on exit (phase2 pattern).
-    try { fs.writeFileSync(DEV_VARS, 'ADMIN_CODE=' + ADMIN_CODE + '\n'); } catch (e) { log('could not write .dev.vars: ' + e.message); }
-    proc = spawn(process.execPath, [WRANGLER_JS, 'dev', '--config', 'wrangler.ci.jsonc', '--port', String(PORT), '--ip', '127.0.0.1', '--persist-to', PERSIST_DIR], {
+    proc = spawn(process.execPath, [WRANGLER_JS, 'dev', '--config', 'wrangler.ci.jsonc', '--port', String(PORT), '--ip', '127.0.0.1', '--persist-to', PERSIST_DIR,
+      '--var', 'ADMIN_CODE:' + ADMIN_CODE], {
       cwd: ROOT,
       env: Object.assign({}, process.env, { WRANGLER_SEND_METRICS: 'false' }),
       stdio: ['ignore', 'pipe', 'pipe']
@@ -110,7 +108,6 @@ function startWrangler() {
 }
 function stopWrangler() {
   try { proc && proc.kill(); } catch (e) {}
-  try { fs.unlinkSync(DEV_VARS); } catch (e) {}
 }
 
 const j = async (res) => { try { return await res.json(); } catch (e) { return {}; } };

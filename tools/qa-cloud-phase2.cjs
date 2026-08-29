@@ -80,16 +80,11 @@ const USE_EXTERNAL = !!process.env.WRANGLER_DEV_URL;
 const PERSIST_DIR = USE_EXTERNAL
   ? (process.env.QA_PERSIST_DIR || path.join(os.tmpdir(), 'mmgr-wrangler-state'))
   : path.join(os.tmpdir(), 'mmgr-cloud-wstate2-' + Date.now());
-const DEV_VARS = path.join(ROOT, '.dev.vars');
-
 let proc = null;
 let devLog = '';
 
 function startWrangler() {
   return new Promise((resolve, reject) => {
-    // The harness must configure ADMIN_CODE for the admin checks; the
-    // .dev.vars file is gitignored and removed on exit.
-    try { fs.writeFileSync(DEV_VARS, 'ADMIN_CODE=' + ADMIN_CODE + '\n'); } catch (e) {}
     if (USE_EXTERNAL) {
       log('using external wrangler at ' + process.env.WRANGLER_DEV_URL + ' (persist ' + PERSIST_DIR + ')');
       (async () => {
@@ -108,7 +103,8 @@ function startWrangler() {
         [WRANGLER_JS, 'd1', 'migrations', 'apply', 'my-manager-db', '--local', '--config', 'wrangler.ci.jsonc', '--persist-to', PERSIST_DIR],
         { cwd: ROOT, stdio: 'ignore', timeout: 90000 });
     } catch (e) { log('migrations apply (best-effort): ' + e.message); }
-    proc = spawn(process.execPath, [WRANGLER_JS, 'dev', '--config', 'wrangler.ci.jsonc', '--port', String(PORT), '--ip', '127.0.0.1', '--persist-to', PERSIST_DIR], {
+    proc = spawn(process.execPath, [WRANGLER_JS, 'dev', '--config', 'wrangler.ci.jsonc', '--port', String(PORT), '--ip', '127.0.0.1', '--persist-to', PERSIST_DIR,
+      '--var', 'ADMIN_CODE:' + ADMIN_CODE], {
       cwd: ROOT,
       env: Object.assign({}, process.env, { WRANGLER_SEND_METRICS: 'false' }),
       stdio: ['ignore', 'pipe', 'pipe']
@@ -141,7 +137,6 @@ function startWrangler() {
 }
 function stopWrangler() {
   try { proc && proc.kill(); } catch (e) {}
-  try { fs.unlinkSync(DEV_VARS); } catch (e) {}
 }
 
 // ---- D1 direct inspection (same read-only sqlite approach as phase 1) -----
@@ -347,7 +342,7 @@ function baseState(pid, name) {
 
 (async () => {
   if (!WRANGLER_JS) { log('FATAL: global wrangler not found (npm root -g)'); process.exit(1); }
-  try { await startWrangler(); } catch (e) { log('FATAL: ' + e.message); log('--- last dev log ---'); log(devLog.slice(-1500)); try { fs.unlinkSync(DEV_VARS); } catch (err) {} process.exit(1); }
+  try { await startWrangler(); } catch (e) { log('FATAL: ' + e.message); log('--- last dev log ---'); log(devLog.slice(-1500)); process.exit(1); }
 
   try {
     // ==================================================================

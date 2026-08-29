@@ -157,7 +157,7 @@ function baseState(pid, name) {
       body: JSON.stringify({ entries: [{ localId: 1, entry_type: 'edit', actor_type: 'owner', actor_label: 'mcp-ai', diffs_json: d, created_at: ISO }] })
     });
     check('A3 MCP entry imported', imp.status === 200 && imp.body && imp.body.imported.length === 1 && imp.body.skipped.length === 0 && imp.body.imported[0].section === 'multiple', imp.text);
-    const ENTRY_ID = imp.body && imp.body.imported.length ? imp.body.imported[0].cloudId : null;
+    const ENTRY_ID = imp.body && Array.isArray(imp.body.imported) && imp.body.imported.length ? imp.body.imported[0].cloudId : null;
 
     // ---- changelog list carries the badge data ------------------------------
     const list = await api('/api/cloud/projects/' + PID + '/changelog', { method: 'GET', headers: { 'X-Owner-Code': OC } });

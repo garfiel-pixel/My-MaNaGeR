@@ -10,13 +10,9 @@
   },
   // CI-only: stripped AI, Vectorize, Durable Objects, service bindings
   // that cause infinite reload loops in local wrangler dev.
-  "ratelimits": [
-    {
-      "name": "RATE_LIMITER",
-      "namespace_id": "1001",
-      "simple": { "limit": 60, "period": 60 }
-    }
-  ],
+  // RATE_LIMITER binding omitted — in-memory fallback (max:30/min/key)
+  // resets on each wrangler restart, avoiding cross-phase rate-limit
+  // accumulation that causes false 429s in the email-auth test.
   "d1_databases": [
     {
       "binding": "DB",

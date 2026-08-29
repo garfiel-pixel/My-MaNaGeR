@@ -194,12 +194,56 @@ jobs:
         if: success() && steps.wrangler-start.outcome == 'success'
         run: node tools/qa-offline-copies.cjs
 
+      - name: "T2: Wrangler health check + restart if dead"
+        if: success() && steps.wrangler-start.outcome == 'success'
+        run: |
+          if ! curl -sf http://127.0.0.1:8787/api/health > /dev/null 2>&1; then
+            echo "Wrangler dev is dead — restarting..."
+            pkill -f "wrangler" 2>/dev/null || true
+            sleep 2
+            rm -rf /tmp/mmgr-wrangler-state 2>/dev/null
+            npx wrangler d1 migrations apply my-manager-db --local --config wrangler.ci.jsonc --persist-to /tmp/mmgr-wrangler-state
+            npx wrangler dev --config wrangler.ci.jsonc --port 8787 --ip 127.0.0.1 --persist-to /tmp/mmgr-wrangler-state >> /tmp/wrangler.log 2>&1 &
+            for i in $(seq 1 30); do
+              if curl -sf http://127.0.0.1:8787/api/health > /dev/null 2>&1; then
+                echo "Wrangler restarted and ready"
+                break
+              fi
+              sleep 2
+            done
+            curl -sf http://127.0.0.1:8787/api/health > /dev/null 2>&1 || { echo "FATAL: wrangler restart failed"; exit 1; }
+          else
+            echo "Wrangler dev is alive"
+          fi
+
       - name: "T2: Cloud autosave + signin"
         if: success() && steps.wrangler-start.outcome == 'success'
         run: node tools/verify-cloud-autosave-signin.cjs
         env:
           WRANGLER_DEV_URL: http://127.0.0.1:8787
           QA_BASE: http://127.0.0.1:8787
+
+      - name: "T2: Wrangler health check (before controls admin)"
+        if: success() && steps.wrangler-start.outcome == 'success'
+        run: |
+          if ! curl -sf http://127.0.0.1:8787/api/health > /dev/null 2>&1; then
+            echo "Wrangler dev is dead — restarting..."
+            pkill -f "wrangler" 2>/dev/null || true
+            sleep 2
+            rm -rf /tmp/mmgr-wrangler-state 2>/dev/null
+            npx wrangler d1 migrations apply my-manager-db --local --config wrangler.ci.jsonc --persist-to /tmp/mmgr-wrangler-state
+            npx wrangler dev --config wrangler.ci.jsonc --port 8787 --ip 127.0.0.1 --persist-to /tmp/mmgr-wrangler-state >> /tmp/wrangler.log 2>&1 &
+            for i in $(seq 1 30); do
+              if curl -sf http://127.0.0.1:8787/api/health > /dev/null 2>&1; then
+                echo "Wrangler restarted and ready"
+                break
+              fi
+              sleep 2
+            done
+            curl -sf http://127.0.0.1:8787/api/health > /dev/null 2>&1 || { echo "FATAL: wrangler restart failed"; exit 1; }
+          else
+            echo "Wrangler dev is alive"
+          fi
 
       - name: "T2: Controls admin"
         if: success() && steps.wrangler-start.outcome == 'success'

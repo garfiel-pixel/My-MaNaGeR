@@ -189,6 +189,8 @@ function globalWranglerJs() {
 const WRANGLER_JS = globalWranglerJs();
 const PERSIST_DIR = path.join(TMP, 'mmgr-email-auth-wstate-' + Date.now());
 
+// email-auth REQUIRES its own wrangler (custom vars: RESEND, LEMONSQUEEZY, etc.)
+const { stopWranglerIfLocal } = require('./wrangler-ci-helpers.cjs');
 async function startWrangler(mode) {
   // mode: 'dormant' (phase 1 — no secrets) | 'configured' (phase 2 — LS) | 'email' (phase 3 — LS + Resend stub)
   const configured = mode === 'configured' || mode === 'email';
@@ -262,7 +264,7 @@ async function startWrangler(mode) {
 }
 function stopWrangler() {
   try { fs.rmSync(STOP_FILE, { force: true }); } catch (e) { /* ignore */ }
-  try { proc && proc.kill(); } catch (e) { /* ignore */ }
+  stopWranglerIfLocal(proc);
 }
 
 async function api(pathname, opts) {

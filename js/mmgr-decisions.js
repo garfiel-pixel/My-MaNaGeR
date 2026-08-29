@@ -23,8 +23,8 @@ var MMGR = window.MMGR || {};
 
   // ---- Pure scoring over live state (no DOM, no writes) ----
   function riskSeverity(r) {
-    const p = (r.probability || '').toLowerCase();
-    const i = (r.impact || '').toLowerCase();
+    const p = String(r.probability || '').toLowerCase();
+    const i = String(r.impact || '').toLowerCase();
     if (p === 'high' && i === 'high') return 3;
     if ((p === 'high' && i === 'medium') || (p === 'medium' && i === 'high')) return 2;
     if (p === 'medium' && i === 'medium') return 1;

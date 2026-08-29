@@ -37,7 +37,7 @@ const path = require('path');
 const os = require('os');
 
 const PORT = 8795;
-const BASE = 'http://127.0.0.1:' + PORT;
+let BASE = 'http://127.0.0.1:' + PORT;
 const ROOT = path.resolve(__dirname, '..');
 
 const SECRET = 'qa-reviews-secret-9d2f7c1b';
@@ -103,9 +103,7 @@ function startWrangler() {
     poll();
   });
 }
-function stopWrangler() {
-  try { proc && proc.kill(); } catch (e) {}
-}
+function stopWrangler() { try { proc && proc.kill(); } catch(e) {} }
 
 const j = async (res) => { try { return await res.json(); } catch (e) { return {}; } };
 const jsonHeaders = { 'Content-Type': 'application/json' };

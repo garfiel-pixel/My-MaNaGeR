@@ -35,7 +35,7 @@ const path = require('path');
 const os = require('os');
 
 const PORT = 8798;
-const BASE = 'http://127.0.0.1:' + PORT;
+let BASE = 'http://127.0.0.1:' + PORT;
 const ROOT = path.resolve(__dirname, '..');
 
 const SECRET = 'qa-t9-adoption-secret-7f1a9c3e';
@@ -101,9 +101,7 @@ function startWrangler() {
     poll();
   });
 }
-function stopWrangler() {
-  try { proc && proc.kill(); } catch (e) {}
-}
+function stopWrangler() { try { proc && proc.kill(); } catch(e) {} }
 
 const j = async (res) => { try { return await res.json(); } catch (e) { return {}; } };
 const jsonHeaders = { 'Content-Type': 'application/json' };

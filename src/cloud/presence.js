@@ -49,18 +49,22 @@ export async function handlePresenceUpgrade(request, env, url) {
     }
   }
   // (b) Code-based auth: the code is sent as the first WebSocket message.
-  if (!authed) {
+  try {
+    if (!authed) {
+      const headers = new Headers(request.headers);
+      headers.set('X-Presence-Name', encodeURIComponent(name));
+      headers.set('X-Presence-Auth', 'required');
+      headers.set('X-Presence-Project', projectId);
+      const upgraded = new Request(request.url, { method: request.method, headers: headers });
+      return await env.PRESENCE.get(env.PRESENCE.idFromName(projectId)).fetch(upgraded);
+    }
     const headers = new Headers(request.headers);
     headers.set('X-Presence-Name', encodeURIComponent(name));
-    headers.set('X-Presence-Auth', 'required');
-    headers.set('X-Presence-Project', projectId);
     const upgraded = new Request(request.url, { method: request.method, headers: headers });
-    return env.PRESENCE.get(env.PRESENCE.idFromName(projectId)).fetch(upgraded);
+    return await env.PRESENCE.get(env.PRESENCE.idFromName(projectId)).fetch(upgraded);
+  } catch (e) {
+    return json({ ok: false, error: 'presence not available' }, 503);
   }
-  const headers = new Headers(request.headers);
-  headers.set('X-Presence-Name', encodeURIComponent(name));
-  const upgraded = new Request(request.url, { method: request.method, headers: headers });
-  return env.PRESENCE.get(env.PRESENCE.idFromName(projectId)).fetch(upgraded);
 }
 
 // ---- rev-changed push (fire-and-forget from save path) --------------------
@@ -119,11 +123,18 @@ export class Presence {
       const data = JSON.parse(msg);
       if (data && data.type === 'auth' && !att.authed) {
         try {
-          const res = await this.env.INTERNAL_AUTH.fetch('https://presence.internal/auth', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ projectId: att.authProject, code: data.code })
-          });
+          let res;
+          try {
+            res = await this.env.INTERNAL_AUTH.fetch('https://presence.internal/auth', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ projectId: att.authProject, code: data.code })
+            });
+          } catch (authErr) {
+            ws.send(JSON.stringify({ type: 'auth_error' }));
+            ws.close(4001, 'presence not available');
+            return;
+          }
           const r = await res.json();
           if (r.ok) {
             att.authed = true;

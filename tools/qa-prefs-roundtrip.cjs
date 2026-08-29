@@ -54,7 +54,7 @@ const os = require('os');
 const crypto = require('crypto');
 
 const PORT = 8795;
-const BASE = 'http://127.0.0.1:' + PORT;
+let BASE = 'http://127.0.0.1:' + PORT;
 const ROOT = path.resolve(__dirname, '..');
 const TMP = os.tmpdir();
 const STATE_FILE = path.join(TMP, 'mmgr-prefs-e2e-state.json');
@@ -140,7 +140,7 @@ async function startWrangler() {
 }
 function stopWrangler() {
   try { fs.rmSync(STOP_FILE, { force: true }); } catch (e) {}
-  try { proc && proc.kill(); } catch (e) {}
+  try { proc && proc.kill(); } catch(e) {};
 }
 
 async function api(pathname, opts) {

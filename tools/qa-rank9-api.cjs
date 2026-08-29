@@ -60,7 +60,7 @@ const crypto = require('crypto');
 
 const PORT = 8798;
 const RECV_PORT = 8797;
-const BASE = 'http://127.0.0.1:' + PORT;
+let BASE = 'http://127.0.0.1:' + PORT;
 const ROOT = path.resolve(__dirname, '..');
 const TMP = os.tmpdir();
 const STOP_FILE = path.join(TMP, 'mmgr-rank9-stop');
@@ -132,7 +132,7 @@ async function startWrangler() {
 }
 function stopWrangler() {
   try { fs.rmSync(STOP_FILE, { force: true }); } catch (e) { /* ignore */ }
-  try { proc && proc.kill(); } catch (e) { /* ignore */ }
+  try { proc && proc.kill(); } catch(e) {};
 }
 
 async function api(pathname, opts) {

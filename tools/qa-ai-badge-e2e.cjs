@@ -26,7 +26,7 @@ const path = require('path');
 const os = require('os');
 
 const PORT = 8794;
-const BASE = 'http://127.0.0.1:' + PORT;
+let BASE = 'http://127.0.0.1:' + PORT;
 const ROOT = path.resolve(__dirname, '..');
 const TMP = os.tmpdir();
 const STATE_FILE = path.join(TMP, 'mmgr-ai-e2e-state.json');
@@ -53,7 +53,10 @@ function globalWranglerJs() {
 const WRANGLER_JS = globalWranglerJs();
 const PERSIST_DIR = path.join(TMP, 'mmgr-ai-e2e-wstate-' + Date.now());
 
+const { USE_EXTERNAL, externalWranglerGuard, stopWranglerIfLocal } = require('./wrangler-ci-helpers.cjs');
+if (USE_EXTERNAL && process.env.WRANGLER_DEV_URL) BASE = process.env.WRANGLER_DEV_URL;
 async function startWrangler() {
+  const ext = externalWranglerGuard(log); if (ext) return ext;
   try {
     fs.rmSync(STOP_FILE, { force: true });
     fs.rmSync(STATE_FILE, { force: true });
@@ -87,7 +90,7 @@ async function startWrangler() {
 }
 function stopWrangler() {
   try { fs.rmSync(STOP_FILE, { force: true }); } catch (e) {}
-  try { proc && proc.kill(); } catch (e) {}
+  stopWranglerIfLocal(proc);
 }
 
 async function api(pathname, opts) {

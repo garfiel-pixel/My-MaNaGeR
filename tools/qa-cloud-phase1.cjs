@@ -518,8 +518,14 @@ async function phaseB() {
   // (confirm() would return false and the load would silently no-op).
   await ev('window.confirm = function(){ return true; }; true');
   await ev(`(function(){var i=document.getElementById("cloud-code-in");if(i){i.value="ZZZZ-ZZZZ-ZZZZ-ZZZZ";i.dispatchEvent(new Event("input",{bubbles:true}));}return true;})()`);
-  await clickWhen('[data-action=cloudLoadWithCode]'); await delay(2500);
-  const wrongStatus = await ev('(function(){var s=document.getElementById("cloud-status");return s?s.className+" | "+s.textContent:"";})()');
+  await clickWhen('[data-action=cloudLoadWithCode]');
+  // probeLoad does 3 sequential API calls with PBKDF2 hashing — wait for status to settle
+  let wrongStatus = '';
+  for (let i = 0; i < 30; i++) {
+    await delay(1000);
+    wrongStatus = await ev('(function(){var s=document.getElementById("cloud-status");return s?s.className+" | "+s.textContent:"";})()');
+    if (wrongStatus.indexOf('ds-busy') === -1) break;
+  }
   const stateAfterWrong = await ev('(function(){try{return JSON.parse(localStorage.getItem("mmgr_state_' + PID + '")).marker;}catch(e){return null;}})()');
   check('C4f wrong code rejected on fresh device (status err)', typeof wrongStatus === 'string' && wrongStatus.indexOf('ds-err') > -1, wrongStatus);
   check('C4g wrong code left local state untouched', stateAfterWrong === 'device-b-stale', stateAfterWrong);

@@ -324,9 +324,11 @@ export async function cloudRateCheck(request, bucket, env) {
   const key = await cloudRateKey(request, headers);
   const ns = bucket + ':' + key;
   if (env && env.RATE_LIMITER) {
-    const { success } = await env.RATE_LIMITER.limit({ key: ns });
-    if (!success) return { limited: true, retryAfter: 60 };
-    return { limited: false };
+    try {
+      const { success } = await env.RATE_LIMITER.limit({ key: ns });
+      if (!success) return { limited: true, retryAfter: 60 };
+      return { limited: false };
+    } catch (e) { /* binding unavailable — fall through to in-memory */ }
   }
   const cfg = CLOUD_RATE[bucket] || CLOUD_RATE.general;
   const now = Date.now();

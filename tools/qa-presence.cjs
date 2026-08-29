@@ -50,7 +50,7 @@ const PORT = 8796;
 const PERSIST = path.join(os.tmpdir(), 'mmgr-presence-e2e-' + Date.now());
 const SECRET = 'presence-test-secret-1234567890';
 const ADMIN = 'PRESENCE-ADMIN';
-const BASE = 'http://127.0.0.1:' + PORT;
+let BASE = 'http://127.0.0.1:' + PORT;
 
 let passes = 0, fails = 0;
 function check(name, ok, detail) {
@@ -93,10 +93,12 @@ function wsClient(url, cookie) {
 }
 
 async function main() {
-  fs.rmSync(PERSIST, { recursive: true, force: true });
-  fs.mkdirSync(PERSIST, { recursive: true });
-  execFileSync(process.execPath, [WRANGLER_JS, 'd1', 'migrations', 'apply', 'my-manager-db', '--local', '--config', 'wrangler.ci.jsonc', '--persist-to', PERSIST], { stdio: 'ignore' });
-  console.log('qa-presence: migrations applied (local persist)');
+  {
+    fs.rmSync(PERSIST, { recursive: true, force: true });
+    fs.mkdirSync(PERSIST, { recursive: true });
+    execFileSync(process.execPath, [WRANGLER_JS, 'd1', 'migrations', 'apply', 'my-manager-db', '--local', '--config', 'wrangler.ci.jsonc', '--persist-to', PERSIST], { stdio: 'ignore' });
+    console.log('qa-presence: migrations applied (local persist)');
+  }
 
   const dev = spawn(process.execPath, [WRANGLER_JS, 'dev', '--config', 'wrangler.ci.jsonc', '--port', String(PORT), '--ip', '127.0.0.1', '--persist-to', PERSIST,
     '--var', 'GOOGLE_CLIENT_SECRET:' + SECRET, '--var', 'ADMIN_CODE:' + ADMIN], { stdio: ['ignore', 'pipe', 'pipe'] });
@@ -156,7 +158,7 @@ async function main() {
     console.error('qa-presence ERROR:', e && e.message);
     process.exit(2);
   } finally {
-    try { dev.kill('SIGTERM'); } catch (e) { /* ignore */ }
+    if (dev) try { dev.kill('SIGTERM'); } catch (e) { /* ignore */ }
     await sleep(1200);
     try { process.kill(dev.pid); } catch (e) { /* already gone */ }
   }

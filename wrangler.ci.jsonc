@@ -6,7 +6,7 @@
   "main": "worker.js",
   "vars": {
     "GOOGLE_CLIENT_ID": "297970704704-m05hgt93lfaq286q90br8c96ffg1aph3.apps.googleusercontent.com",
-    "ADMIN_CODE": "QA-TEST-ADMIN"
+    "ADMIN_CODE": "QA-ADMIN-CI"
   },
   // CI-only: stripped AI, Vectorize, Durable Objects, service bindings
   // that cause infinite reload loops in local wrangler dev.

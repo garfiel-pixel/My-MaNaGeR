@@ -232,7 +232,13 @@ export function authVerifyEmailBody(name, origin, token) {
 }
 
 export async function authSessionResponse(user, env, emailSent) {
-  const token = await signSession({ sub: user.sub, email: user.email || '', name: user.name || '', exp: Math.floor(Date.now() / 1000) + 604800 }, await sessionKey(env));
+  const jti = crypto.randomUUID();
+  const expSec = Math.floor(Date.now() / 1000) + 604800;
+  const token = await signSession({ sub: user.sub, email: user.email || '', name: user.name || '', jti: jti, exp: expSec }, await sessionKey(env));
+  try {
+    await env.DB.prepare('INSERT INTO auth_sessions (jti, sub, created_at, expires_at) VALUES (?,?,?,?)')
+      .bind(jti, user.sub, new Date().toISOString(), new Date(expSec * 1000).toISOString()).run();
+  } catch (e) { /* session write must never break login */ }
   return new Response(JSON.stringify({ ok: true, user: { sub: user.sub, email: user.email || '', name: user.name || '' }, emailSent: !!emailSent }), {
     status: 200,
     headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'Set-Cookie': sessionSetCookie(token) }

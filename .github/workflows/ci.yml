@@ -151,6 +151,8 @@ jobs:
       - name: "T2: Email auth"
         if: success() && steps.wrangler-start.outcome == 'success'
         run: node tools/qa-email-auth.cjs
+        env:
+          MMGR_QA_NO_BROWSER: 1
 
       - name: "T2: Reviews"
         if: success() && steps.wrangler-start.outcome == 'success'
@@ -171,10 +173,14 @@ jobs:
       - name: "T2: Prefs roundtrip"
         if: success() && steps.wrangler-start.outcome == 'success'
         run: node tools/qa-prefs-roundtrip.cjs
+        env:
+          MMGR_QA_NO_BROWSER: 1
 
       - name: "T2: AI badge E2E"
         if: success() && steps.wrangler-start.outcome == 'success'
         run: node tools/qa-ai-badge-e2e.cjs
+        env:
+          MMGR_QA_NO_BROWSER: 1
         env:
           WRANGLER_DEV_URL: http://127.0.0.1:8787
 

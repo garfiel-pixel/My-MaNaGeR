@@ -107,7 +107,7 @@ async function startWrangler() {
       { cwd: ROOT, stdio: 'ignore', timeout: 90000 });
   } catch (e) { log('migrations apply (best-effort): ' + e.message); }
   const args = [
-    WRANGLER_JS, 'dev', '--port', String(PORT), '--ip', '127.0.0.1', '--persist-to', PERSIST_DIR,
+    WRANGLER_JS, 'dev', '--config', 'wrangler.ci.jsonc', '--port', String(PORT), '--ip', '127.0.0.1', '--persist-to', PERSIST_DIR,
     // --test-scheduled exposes GET /__scheduled?cron=… so the harness can drive
     // the REAL scheduled() handler (and therefore evaluateWebhooks) on demand.
     '--test-scheduled',

@@ -215,7 +215,7 @@ async function startWrangler(mode) {
     } catch (e) { log('migrations apply (best-effort): ' + e.message); }
   }
   const args = [
-    WRANGLER_JS, 'dev', '--port', String(PORT), '--ip', '127.0.0.1', '--persist-to', PERSIST_DIR,
+    WRANGLER_JS, 'dev', '--config', 'wrangler.ci.jsonc', '--port', String(PORT), '--ip', '127.0.0.1', '--persist-to', PERSIST_DIR,
     '--var', 'GOOGLE_CLIENT_SECRET:' + SECRET,
     '--var', 'ADMIN_CODE:' + ADMIN_CODE
   ];

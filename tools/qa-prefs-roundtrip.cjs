@@ -119,7 +119,7 @@ async function startWrangler() {
       { cwd: ROOT, stdio: 'ignore', timeout: 90000 });
   } catch (e) { log('migrations apply (best-effort): ' + e.message); }
   proc = spawn(process.execPath, [
-    WRANGLER_JS, 'dev', '--port', String(PORT), '--ip', '127.0.0.1', '--persist-to', PERSIST_DIR,
+    WRANGLER_JS, 'dev', '--config', 'wrangler.ci.jsonc', '--port', String(PORT), '--ip', '127.0.0.1', '--persist-to', PERSIST_DIR,
     '--var', 'GOOGLE_CLIENT_SECRET:' + SECRET,
     '--var', 'ADMIN_CODE:' + ADMIN_CODE
   ], {

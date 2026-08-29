@@ -147,3 +147,28 @@ but need a CI run to confirm.
 | Files | 19 changed, 339 insertions, 100 deletions |
 | Push | `main -> main` on github.com/garfiel-pixel/My-MaNaGeR |
 | CI trigger | Pushed at 2026-08-28, GitHub Actions workflow running |
+
+## Session 3: CI Phase 2 Fix (2026-08-29)
+
+### Problem
+CI Phase 2 test failed with 3 errors:
+1. P3.2g: revert-of-revert — load got 429 Too Many Requests
+2. P3.3a: editor save — save got 429 Too Many Requests  
+3. harness crashed — workerd connection reset after 429s
+
+### Root Causes Found
+1. **Rate limiter key was IP-based**: `cloudRateKey()` prioritized `CF-Connecting-IP` over code-based keying. In CI (miniflare), all requests come from `127.0.0.1`, so ALL requests shared one rate-limit bucket. The Phase 2 test makes 60+ requests across multiple projects, exceeding the 60/60s limit.
+
+2. **ADMIN_CODE mismatch**: `wrangler.ci.jsonc` had `ADMIN_CODE: "QA-TEST-ADMIN"` but the CI workflow and tests expected `QA-ADMIN-CI`.
+
+### Fixes Applied
+1. **src/lib/http.js**: Reordered `cloudRateKey()` to prioritize code-based keying over IP. Each owner/editor code now gets its own rate-limit bucket regardless of source IP.
+2. **wrangler.ci.jsonc**: Changed `ADMIN_CODE` from `QA-TEST-ADMIN` to `QA-ADMIN-CI`.
+
+### Verification
+- Phase 2: 85/85 PASS (was 44/47)
+- npm run verify: ALL CHECKS PASSED
+- Both commits pushed to main
+
+### Key Learning
+In miniflare (local dev), `CF-Connecting-IP` is set to `127.0.0.1` for all requests. Rate limiting by IP collapses all requests into one bucket. Code-based keying is correct for per-tenant rate limiting.

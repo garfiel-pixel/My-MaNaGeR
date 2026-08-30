@@ -610,7 +610,8 @@ var MMGR = window.MMGR || {};
       setStatus('New owner code issued: ' + data.ownerCode + ' , also below + Copy Code. The previous code no longer works.', 'ok');
       if (data.recoveredAt) setLastSeen(data.recoveredAt);
     } catch (e) {
-      setStatus('Cloud is unavailable on this host (needs the Worker API).', 'err');
+      console.error('[recoverCode] catch:', e && e.message, e && e.stack);
+      setStatus('Cloud is unavailable on this host (needs the Worker API). [' + (e && e.message || 'unknown') + ']', 'err');
     }
   }
 
@@ -1303,7 +1304,7 @@ var MMGR = window.MMGR || {};
     if (code) {
       var mcpUrlInput = $('mcp-url');
       if (mcpUrlInput) {
-        var projectId = C.pid || '';
+        var projectId = pid();
         mcpUrlInput.value = window.location.origin + '/api/mcp/' + encodeURIComponent(projectId);
       }
     }

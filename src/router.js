@@ -40,6 +40,7 @@ import { handleAdminCloudList } from './admin.js';
 import { handleReviewsCreate, handleReviewsList, handleReviewList,
   handleReviewAccept, handleReviewReject } from './reviews.js';
 import { handleAiChat } from './ai-proxy.js';
+import { handleMcpServer } from './mcp/server.js';
 import { handleAuthGoogle, handleAuthMe, handleAuthLogout, handleAuthLogoutAll, mintSession } from './auth/google.js';
 import { handleAuthRegister, handleAuthLogin, handleAuthPasswordChange,
   handleAuthVerifyPassword, handleAuthVerify, handleAuthForgot,
@@ -414,7 +415,13 @@ export async function routeApi(request, env, url) {
       return handleAiChat(request, env);
     }
 
-    // 15. 404 FALLBACK
+    // 15. MCP SERVER — per-project Model Context Protocol endpoint
+    const mcpMatch = path.match(/^\/api\/mcp\/([A-Za-z0-9_-]{1,64})$/);
+    if (mcpMatch) {
+      return handleMcpServer(request, env, mcpMatch[1]);
+    }
+
+    // 16. 404 FALLBACK
     return json({ ok: false, error: 'not found' }, 404);
   } catch (e) {
     trackError(env, 'api-unhandled', e, { path: url.pathname, method: request.method });

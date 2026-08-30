@@ -427,6 +427,7 @@ var MMGR = window.MMGR || {};
     const cloudRow = U.$('ai-cfg-cloud');
     if (cloudRow) cloudRow.classList.toggle('is-hide', (cfg.tier || 'off') !== 'cloud');
     syncByoStatus();
+    syncMcpToggle();
     syncSendGate();
     // Engine-status pill in the chat header. AI-CLOUD-CONNECT-UI (DIR-1): the
     // cloud label reads the SAME canonical status field as the chip and the
@@ -477,6 +478,24 @@ var MMGR = window.MMGR || {};
     const patch = { connectionStatus: status };
     if (status === 'connected') patch.lastTestedAt = new Date().toISOString();
     setAiCfg(patch);
+  }
+
+  // MCP TOGGLE: show only when tier=cloud + key connected. Persisted per-project.
+  function syncMcpToggle() {
+    var mcpRow = U.$('ai-cfg-mcp');
+    var mcpCb = U.$('ai-mcp-toggle');
+    if (!mcpRow) return;
+    var cfg = getAiCfg();
+    var isConnected = getConnectionState() === 'connected';
+    var showMcp = (cfg.tier || 'off') === 'cloud' && isConnected;
+    mcpRow.style.display = showMcp ? '' : 'none';
+    // Restore saved state
+    if (mcpCb) {
+      var pid = window.MMGR && MMGR.App && MMGR.App.projectId ? MMGR.App.projectId : '';
+      var saved = false;
+      try { saved = localStorage.getItem('mmgr_mcp_toggle_' + pid) === '1'; } catch(e) {}
+      mcpCb.checked = saved;
+    }
   }
 
   function syncByoStatus() {
@@ -1040,7 +1059,21 @@ var MMGR = window.MMGR || {};
     if (!directOnly) {
       let res;
       try {
-        res = await ns.Net.post('/api/ai/chat', { provider: provider, model: model, messages: messages, context: ctx || '' }, {
+        // MCP: include project context params when toggle is ON
+        var mcpPayload = { provider: provider, model: model, messages: messages, context: ctx || '' };
+        var mcpCb = U.$('ai-mcp-toggle');
+        if (mcpCb && mcpCb.checked && window.MMGR && MMGR.Render && MMGR.Render.getProjectId) {
+          var pid = MMGR.App.projectId;
+          var ocode = '';
+          try { ocode = sessionStorage.getItem('mmgr_cloud_code_' + pid) || ''; } catch(e) {}
+          var ecode = '';
+          try { ecode = sessionStorage.getItem('mmgr_cloud_ecode_' + pid) || ''; } catch(e) {}
+          if (pid && (ocode || ecode)) {
+            mcpPayload.mcpProjectId = pid;
+            mcpPayload.mcpCode = ocode || ecode;
+          }
+        }
+        res = await ns.Net.post('/api/ai/chat', mcpPayload, {
           headers: { 'Content-Type': 'application/json', 'X-User-Api-Key': key },
           timeoutMs: 30000, maxRetries: 1
         });

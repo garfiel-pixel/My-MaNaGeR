@@ -1153,6 +1153,17 @@
         <p class="ai-byo-sec">Your key stays in this browser for this session only , never stored on our servers, never in exports, cleared when you close the tab.</p>
       </div>
     </div>
+    <!-- MCP TOGGLE: when enabled, the AI gets live project context (tasks,
+         budget, risks, etc.) injected into the system prompt. Only available
+         when a BYO API key is connected. Per-project, persisted to localStorage. -->
+    <div class="ai-conn-row" id="ai-cfg-mcp" style="display:none;">
+      <label class="ai-mcp-toggle" for="ai-mcp-toggle" style="display:flex;align-items:center;gap:8px;font-size:.74rem;color:var(--text);cursor:pointer;">
+        <input type="checkbox" id="ai-mcp-toggle" data-action="aiToggleMcp" style="margin:0;">
+        <svg class="ico" aria-hidden="true" style="width:14px;height:14px;color:var(--gold)"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg>
+        <span>MCP Tools</span>
+      </label>
+      <span class="ai-byo-sec" style="font-size:.64rem;margin:0">AI reads your live project data</span>
+    </div>
     <div class="mbody ai-body">
       <!-- AI-WINDOW-LAYOUT-SCROLL-AND-INPUT-BUG-DIRECTIVE DIR-1: Chat/Presets
            segment , the one-click presets moved out of the scroll-competing

@@ -103,6 +103,52 @@ async function readAiBody(request) {
   try { return { body: JSON.parse(text) }; } catch (e) { return { bad: true }; }
 }
 
+// MCP CONTEXT INJECTION: when the client sends mcpProjectId + mcpCode,
+// fetch the project state and inject it into the system prompt so the AI
+// can reference real project data (tasks, budget, risks, etc.).
+async function buildMcpContext(env, projectId, code) {
+  if (!projectId || !code) return '';
+  try {
+    const key = 'projects/' + projectId + '/latest.json';
+    const row = await env.DB.prepare(
+      'SELECT latest_r2_key, owner_code_hash, owner_code_salt FROM cloud_projects WHERE project_id = ?'
+    ).bind(projectId).first();
+    if (!row || !row.latest_r2_key) return '';
+    // Import cloudReadState
+    const { cloudReadState } = await import('./lib/http.js');
+    const state = await cloudReadState(env, key, row.owner_code_hash, row.owner_code_salt);
+    if (!state) return '';
+    // Build a compact context summary
+    const tasks = Array.isArray(state.tasks) ? state.tasks : [];
+    const budgetLines = Array.isArray(state.budgetLines) ? state.budgetLines : [];
+    const risks = Array.isArray(state.risks) ? state.risks : [];
+    const issues = Array.isArray(state.issues) ? state.issues : [];
+    const meetings = Array.isArray(state.meetings) ? state.meetings : [];
+    const weatherLog = Array.isArray(state.weatherLog) ? state.weatherLog : [];
+    const totalPlanned = budgetLines.reduce((s, l) => s + (+l.planned || 0), 0);
+    const totalActual = budgetLines.reduce((s, l) => s + (+l.actual || 0), 0);
+    const completed = tasks.filter(t => t.status === 'completed').length;
+    const overdue = tasks.filter(t => t.status !== 'completed' && t.endDate && new Date(t.endDate) < new Date()).length;
+    const highRisks = risks.filter(r => /high/i.test(r.probability || '') && /high/i.test(r.impact || '')).length;
+    return [
+      '\n## PROJECT DATA (MCP context for project: ' + projectId + ')',
+      'Tasks: ' + tasks.length + ' total, ' + completed + ' completed, ' + overdue + ' overdue',
+      tasks.slice(0, 20).map(t => '  - [' + (t.status || 'todo') + '] ' + (t.name || t.id) + (t.endDate ? ' (due ' + t.endDate + ')' : '') + (t.critical ? ' [CRITICAL]' : '')).join('\n'),
+      'Budget: $' + totalPlanned.toLocaleString() + ' planned, $' + totalActual.toLocaleString() + ' actual',
+      budgetLines.slice(0, 10).map(l => '  - ' + (l.name || l.id) + ': $' + (+l.planned || 0).toLocaleString() + ' planned / $' + (+l.actual || 0).toLocaleString() + ' actual').join('\n'),
+      'Risks: ' + risks.length + ' total, ' + highRisks + ' high',
+      risks.slice(0, 10).map(r => '  - [' + (r.probability || '?') + '/' + (r.impact || '?') + '] ' + (r.description || r.id) + (r.status ? ' (' + r.status + ')' : '')).join('\n'),
+      'Issues: ' + issues.length,
+      'Meetings: ' + meetings.length,
+      'Weather delays: ' + weatherLog.filter(w => +w.delayDays > 0).length + ' days logged',
+      '\nTo suggest changes to this project, describe what should change and the user will review it in the Cloud section.',
+      'Do NOT fabricate data — use only what is shown above. If data is missing, say so.\n'
+    ].join('\n');
+  } catch (e) {
+    return '';
+  }
+}
+
 export async function handleAiChat(request, env) {
   const read = await readAiBody(request);
   if (read.tooLarge) return json({ ok: false, error: 'body too large' }, 413);
@@ -111,15 +157,25 @@ export async function handleAiChat(request, env) {
   if (!body || typeof body !== 'object') return json({ ok: false, error: 'bad request' }, 400);
   const provider = String(body.provider || '').toLowerCase();
   if (!AI_PROVIDERS[provider]) return json({ ok: false, error: 'unsupported provider' }, 400);
-  // GEMINI-MODEL-FALLBACK-LADDER (DIR-3): optional per-attempt model override
-  // (client-driven ladder). Strictly validated; an invalid value falls back
-  // to the provider default instead of erroring.
   const reqModel = (typeof body.model === 'string' && GEMINI_MODEL_RE.test(body.model)) ? body.model : null;
   const model = reqModel || AI_PROVIDERS[provider].model;
-  // Key for THIS request only , header preferred, body field accepted.
   const key = String(request.headers.get('X-User-Api-Key') || '').trim()
     || (typeof body.apiKey === 'string' ? String(body.apiKey).trim() : '');
   if (!Array.isArray(body.messages) || !body.messages.length) return json({ ok: false, error: 'bad request' }, 400);
+
+  // MCP: inject project context if mcpProjectId + mcpCode provided
+  if (body.mcpProjectId && body.mcpCode) {
+    const mcpCtx = await buildMcpContext(env, body.mcpProjectId, body.mcpCode);
+    if (mcpCtx) {
+      // Prepend MCP context to the system message
+      const sysIdx = body.messages.findIndex(function(m) { return m && m.role === 'system'; });
+      if (sysIdx >= 0) {
+        body.messages[sysIdx] = { role: 'system', content: body.messages[sysIdx].content + mcpCtx };
+      } else {
+        body.messages.unshift({ role: 'system', content: 'You are an AI assistant for a construction project management app called My MaNaGeR. You have access to the user\'s live project data below.' + mcpCtx });
+      }
+    }
+  }
 
   // WORKERS-AI-FIRST (Rank 2): if no BYO key and Workers AI binding is
   // available, run inference at the edge — zero external calls, zero API

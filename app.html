@@ -122,6 +122,12 @@ body.glass-premium .wrap{position:relative;z-index:1;}
 .pf-reason{font-size:.66rem;color:var(--slate);margin-top:4px;font-style:italic;}
 /* Hide sign-in icon from header — keep it in sidebar only */
 #db-user-avatar{display:none!important;}
+/* CLS PREVENTION: reserve space for dynamic content areas so cards
+   rendering after initial paint don't shift the layout. */
+#grid:empty,#demo-grid:empty{min-height:120px;}
+#db-metrics:empty{min-height:0;}
+/* Sidebar margin: smooth transition, no shift on desktop open */
+@media(min-width:769px){.wrap{will-change:margin-left;}}
 /* PROJECT SEARCH modal */
 #ps-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:2000;align-items:center;justify-content:center;}
 #ps-modal.open{display:flex;}

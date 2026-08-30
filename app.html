@@ -120,6 +120,8 @@ body.glass-premium .wrap{position:relative;z-index:1;}
 .pf-title{font-size:.8rem;font-weight:800;line-height:1.35;}
 .pf-meta{font-size:.68rem;color:var(--slate);margin-top:4px;}
 .pf-reason{font-size:.66rem;color:var(--slate);margin-top:4px;font-style:italic;}
+/* Hide sign-in icon from header — keep it in sidebar only */
+#db-user-avatar{display:none!important;}
 </style>
 <script>
 /* Device-level theme (shared across launcher, admin, and app): applied before
@@ -132,7 +134,7 @@ body.glass-premium .wrap{position:relative;z-index:1;}
    viewport. Mobile stays drawer-closed by default. */
 (function(){ try {
   var t = localStorage.getItem('mmgr_theme');
-  var dark = t === 'dark' || (t !== 'light' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  var dark = t === 'dark';
   if (dark) document.documentElement.classList.add('dark-mode');
   if (window.matchMedia && window.matchMedia('(min-width:769px)').matches) document.documentElement.classList.add('side-open');
 } catch (e) {} })();
@@ -186,7 +188,7 @@ body.glass-premium .wrap{position:relative;z-index:1;}
     <div class="db-g">Customize</div>
     <button type="button" class="db-link" data-rail-toggle="rail-customize" aria-expanded="false" aria-controls="rail-customize"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-palette"></use></svg> Customize <svg class="ico ico-caret" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg></button>
     <div class="db-sub db-customize" id="rail-customize" hidden>
-      <span class="db-ctl-row"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-palette"></use></svg> Appearance <span class="pal-switch" role="group" aria-label="Theme mode"><button type="button" class="pal-btn" data-pal="light" aria-pressed="false">Light</button><button type="button" class="pal-btn" data-pal="dark" aria-pressed="false">Dark</button><button type="button" class="pal-btn" data-pal="system" aria-pressed="true">System</button></span></span>
+      <span class="db-ctl-row"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-palette"></use></svg> Appearance <span class="pal-switch" role="group" aria-label="Theme mode"><button type="button" class="pal-btn" data-pal="light" aria-pressed="false">Light</button><button type="button" class="pal-btn" data-pal="dark" aria-pressed="false">Dark</button></span></span>
     </div>
   </nav>
   <div class="db-foot">

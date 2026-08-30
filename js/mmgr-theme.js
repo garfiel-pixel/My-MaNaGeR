@@ -35,7 +35,7 @@
 
   var MODE_KEY = 'mmgr_theme';       // 'light' | 'dark' | 'system'
   var BACK_KEY = 'mmgr_theme_backend'; // '1' after a successful backend round-trip
-  var KNOWN = { 'light': 1, 'dark': 1, 'system': 1 };
+  var KNOWN = { 'light': 1, 'dark': 1 };
 
   // data-sync="1" on the <script> tag enables the backend path.
   var SYNC = !!(document.currentScript && document.currentScript.getAttribute('data-sync') === '1');
@@ -46,7 +46,8 @@
   /** Current stored mode (default: system). */
   function currentMode() {
     var v = read(MODE_KEY);
-    return KNOWN[v] ? v : 'system';
+    if (v === 'system') v = 'light'; // System option removed — default to light
+    return KNOWN[v] ? v : 'light';
   }
 
   /** Whether OS dark preference is active. */
@@ -54,10 +55,9 @@
     return !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
   }
 
-  /** Effective dark state: dark when mode=dark, or mode=system + OS dark. */
+  /** Effective dark state: dark when mode=dark. */
   function isDark() {
-    var mode = currentMode();
-    return mode === 'dark' || (mode === 'system' && osDark());
+    return currentMode() === 'dark';
   }
 
   /** Sync <meta name="theme-color"> to the browser chrome bar. */

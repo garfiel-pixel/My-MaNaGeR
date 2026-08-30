@@ -25,15 +25,15 @@ const REVIEWS = [];
 // becomes an invalid directive and the browser rejects the WHOLE policy,
 // silently breaking every inline script. Must match worker.js exactly.
 const INLINE_SCRIPT_HASHES = [
-  "'sha256-EpNwfibNigIpP+EoyoK4EVYj2pdTPuejviaFxStcja0='",
+  "'sha256-zUtIgMoGZXbdKSIgoC/fhYlGEPJluAGG4nNBJOwnNWU='",
   "'sha256-reza4vd5o52LWNUf9lzK6WjApdstd5sm4xVx+lcnK2M='",
   "'sha256-DDYVqby/7w6QiwGTikwlcwwnf1qHWgEmMUmSvXmqy7E='",
   "'sha256-jQGKXr3EKUJqelsBjB7GNSArKx9pbp38QHCOFoVCB3g='",
-  "'sha256-PBVhwGodCD6bet0iUCYQwP+7aSdLYiFJE8/iMGCojww='",
+  "'sha256-V17jc57FVLihwVclv0KysBB8hWAaQToQbR/SXHJtzEo='",
   "'sha256-PcY9TdIJsXGVPic0Qujx0Ov+GCt9gZG0hEtBVRDiLiM='",
   "'sha256-YCro8lbLi7sxkyRUO/k3RRsBdaIELQhDpVbA2FIpQHY='",
   "'sha256-Oqy5N0qJtk4BVtm3ZhC+XhpXFpoCEOIx605qrD8adGo='",
-  "'sha256-FEF+f8iUMSNEtxDxwFEMU4YDC+FYP19A11UeQ63WQow='",
+  "'sha256-mKjC/XtpqhUGoL8mk27AfI+ZUAamESA089+ia8dbRiI='",
   "'sha256-8rpgpTSjx7LcpleTm7RwTJ+pzjvndpRVDPiapb2gNo8='",
   "'sha256-O9lvE/vAuiMHUX3RQGR53K5h6w13/d2P16BoUBsYKAk='",
   "'sha256-/cWZx9YWLn6M4LL3W0jiHWFh8Q4HE6BXDo2d8LPBiik='",

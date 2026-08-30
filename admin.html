@@ -159,7 +159,7 @@ pre.snippet{background:#f8fafc;border:1px solid var(--border);border-radius:6px;
    Kept inline in <head> so the class is set before any content renders (FOUC prevention). */
 (function(){ try {
   var t = localStorage.getItem('mmgr_theme');
-  var dark = t === 'dark' || (t !== 'light' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  var dark = t === 'dark';
   if (dark) document.documentElement.classList.add('dark-mode');
 } catch (e) {} })();
 </script>

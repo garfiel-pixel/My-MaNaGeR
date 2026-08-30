@@ -22,15 +22,15 @@ export { Presence };  // wrangler requires DO classes in the entrypoint
 // CSP hash list must match the current served inline scripts — see the
 // regen command in the comment below.
 const INLINE_SCRIPT_HASHES = [
-  "'sha256-EpNwfibNigIpP+EoyoK4EVYj2pdTPuejviaFxStcja0='", // project.html (head theme snippet — FOUC prevention)
+  "'sha256-zUtIgMoGZXbdKSIgoC/fhYlGEPJluAGG4nNBJOwnNWU='", // project.html (head theme snippet — FOUC prevention)
   "'sha256-reza4vd5o52LWNUf9lzK6WjApdstd5sm4xVx+lcnK2M='", // project.html (body dark-mode transfer)
   "'sha256-DDYVqby/7w6QiwGTikwlcwwnf1qHWgEmMUmSvXmqy7E='", // project.html (dev fallback script)
   "'sha256-jQGKXr3EKUJqelsBjB7GNSArKx9pbp38QHCOFoVCB3g='", // project.html (main inline script)
-  "'sha256-PBVhwGodCD6bet0iUCYQwP+7aSdLYiFJE8/iMGCojww='", // app.html (head theme + rail-open snippet — FOUC prevention)
+  "'sha256-V17jc57FVLihwVclv0KysBB8hWAaQToQbR/SXHJtzEo='", // app.html (head theme + rail-open snippet — FOUC prevention)
   "'sha256-PcY9TdIJsXGVPic0Qujx0Ov+GCt9gZG0hEtBVRDiLiM='", // app.html (body class transfer)
   "'sha256-YCro8lbLi7sxkyRUO/k3RRsBdaIELQhDpVbA2FIpQHY='", // app.html (dev fallback script)
   "'sha256-Oqy5N0qJtk4BVtm3ZhC+XhpXFpoCEOIx605qrD8adGo='", // app.html (dashboard logic)
-  "'sha256-FEF+f8iUMSNEtxDxwFEMU4YDC+FYP19A11UeQ63WQow='", // admin.html (head theme snippet — FOUC prevention)
+  "'sha256-mKjC/XtpqhUGoL8mk27AfI+ZUAamESA089+ia8dbRiI='", // admin.html (head theme snippet — FOUC prevention)
   "'sha256-8rpgpTSjx7LcpleTm7RwTJ+pzjvndpRVDPiapb2gNo8='", // admin.html (body dark-mode transfer)
   "'sha256-O9lvE/vAuiMHUX3RQGR53K5h6w13/d2P16BoUBsYKAk='", // admin.html (dev fallback script)
   "'sha256-/cWZx9YWLn6M4LL3W0jiHWFh8Q4HE6BXDo2d8LPBiik='", // admin.html (main inline script)

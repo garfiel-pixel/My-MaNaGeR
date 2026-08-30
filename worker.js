@@ -22,23 +22,23 @@ export { Presence };  // wrangler requires DO classes in the entrypoint
 // CSP hash list must match the current served inline scripts — see the
 // regen command in the comment below.
 const INLINE_SCRIPT_HASHES = [
-  "'sha256-zUtIgMoGZXbdKSIgoC/fhYlGEPJluAGG4nNBJOwnNWU='", // project.html (head theme snippet — FOUC prevention)
-  "'sha256-reza4vd5o52LWNUf9lzK6WjApdstd5sm4xVx+lcnK2M='", // project.html (body dark-mode transfer)
-  "'sha256-DDYVqby/7w6QiwGTikwlcwwnf1qHWgEmMUmSvXmqy7E='", // project.html (dev fallback script)
-  "'sha256-jQGKXr3EKUJqelsBjB7GNSArKx9pbp38QHCOFoVCB3g='", // project.html (main inline script)
-  "'sha256-V17jc57FVLihwVclv0KysBB8hWAaQToQbR/SXHJtzEo='", // app.html (head theme + rail-open snippet — FOUC prevention)
-  "'sha256-PcY9TdIJsXGVPic0Qujx0Ov+GCt9gZG0hEtBVRDiLiM='", // app.html (body class transfer)
-  "'sha256-YCro8lbLi7sxkyRUO/k3RRsBdaIELQhDpVbA2FIpQHY='", // app.html (dev fallback script)
-  "'sha256-Q4Te9lW2oJarjZtBj4GWOXADh5o6nxGpHQ7sn8Y4CtU='", // app.html (dashboard logic)
-  "'sha256-mKjC/XtpqhUGoL8mk27AfI+ZUAamESA089+ia8dbRiI='", // admin.html (head theme snippet — FOUC prevention)
-  "'sha256-8rpgpTSjx7LcpleTm7RwTJ+pzjvndpRVDPiapb2gNo8='", // admin.html (body dark-mode transfer)
-  "'sha256-O9lvE/vAuiMHUX3RQGR53K5h6w13/d2P16BoUBsYKAk='", // admin.html (dev fallback script)
-  "'sha256-/cWZx9YWLn6M4LL3W0jiHWFh8Q4HE6BXDo2d8LPBiik='", // admin.html (main inline script)
-  "'sha256-Oa7ON+9A164SSXhnxu08mFn0V9Tj2SlZ2SzFXFoqKNE='", // dashboard.html
-  "'sha256-bNdw0+64xL2//htoz+u3InKWYZNEHO/CnuZqtcJIBgU='", // seed-test.html
-  "'sha256-7cQZf8bzyvMY1EwebBo5YuL3PZ9T/X5CTWFRXO3Aq5E='", // mymanager-field-guide.html
-  "'sha256-c2U+m5SzyupzeOrPEiOjlnaSgS1KdAxZTFnYA5dW/Rk='", // monolith ref (block 1)
-  "'sha256-Is0jD76ptemzKTfgnVGlSCSEHBJeveC1gRTl/Wv4JBw='" // monolith ref (block 2)
+  "'sha256-zUtIgMoGZXbdKSIgoC/fhYlGEPJluAGG4nNBJOwnNWU='",
+  "'sha256-reza4vd5o52LWNUf9lzK6WjApdstd5sm4xVx+lcnK2M='",
+  "'sha256-DDYVqby/7w6QiwGTikwlcwwnf1qHWgEmMUmSvXmqy7E='",
+  "'sha256-jQGKXr3EKUJqelsBjB7GNSArKx9pbp38QHCOFoVCB3g='",
+  "'sha256-V17jc57FVLihwVclv0KysBB8hWAaQToQbR/SXHJtzEo='",
+  "'sha256-PcY9TdIJsXGVPic0Qujx0Ov+GCt9gZG0hEtBVRDiLiM='",
+  "'sha256-YCro8lbLi7sxkyRUO/k3RRsBdaIELQhDpVbA2FIpQHY='",
+  "'sha256-0ClGyXQvVuKjD2j+moq9D66Nv7cI0WXUP/5Cc1YFsEo='",
+  "'sha256-mKjC/XtpqhUGoL8mk27AfI+ZUAamESA089+ia8dbRiI='",
+  "'sha256-8rpgpTSjx7LcpleTm7RwTJ+pzjvndpRVDPiapb2gNo8='",
+  "'sha256-O9lvE/vAuiMHUX3RQGR53K5h6w13/d2P16BoUBsYKAk='",
+  "'sha256-/cWZx9YWLn6M4LL3W0jiHWFh8Q4HE6BXDo2d8LPBiik='",
+  "'sha256-Oa7ON+9A164SSXhnxu08mFn0V9Tj2SlZ2SzFXFoqKNE='",
+  "'sha256-bNdw0+64xL2//htoz+u3InKWYZNEHO/CnuZqtcJIBgU='",
+  "'sha256-7cQZf8bzyvMY1EwebBo5YuL3PZ9T/X5CTWFRXO3Aq5E='",
+  "'sha256-c2U+m5SzyupzeOrPEiOjlnaSgS1KdAxZTFnYA5dW/Rk='",
+  "'sha256-Is0jD76ptemzKTfgnVGlSCSEHBJeveC1gRTl/Wv4JBw='"
 ].join(' ');
 
 const CSP = [

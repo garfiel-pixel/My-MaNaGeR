@@ -176,7 +176,7 @@ body.glass-premium .wrap{position:relative;z-index:1;}
     <button type="button" class="db-link" data-rail-toggle="rail-cloud-list" aria-expanded="false" aria-controls="rail-cloud-list"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cloud"></use></svg> Cloud Projects <svg class="ico ico-caret" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg></button>
     <div class="db-sub" id="rail-cloud-list" hidden></div>
     <button type="button" class="db-link" data-rail-toggle="rail-recover" aria-expanded="false" aria-controls="rail-recover"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> Recover Deleted <svg class="ico ico-caret" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg></button>
-    <div class="db-sub" id="rail-recover" hidden><div class="db-sub-empty">Sign in to see deleted projects.</div></div>
+    <div class="db-sub" id="rail-recover" hidden><div class="db-sub-empty" id="recover-rail-msg">Deleted projects will be shown here for 5 days.</div><div id="recover-rail-list"></div></div>
     <button type="button" class="db-link" data-rail-toggle="rail-backup" aria-expanded="false" aria-controls="rail-backup"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> Backup &amp; Restore <svg class="ico ico-caret" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg></button>
     <div class="db-sub db-backup" id="rail-backup" hidden>
       <div class="db-backup-btns">
@@ -190,7 +190,7 @@ body.glass-premium .wrap{position:relative;z-index:1;}
     <div class="db-g">Customize</div>
     <button type="button" class="db-link" data-rail-toggle="rail-customize" aria-expanded="false" aria-controls="rail-customize"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-palette"></use></svg> Customize <svg class="ico ico-caret" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg></button>
     <div class="db-sub db-customize" id="rail-customize" hidden>
-      <span class="db-ctl-row"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-palette"></use></svg> Appearance <span class="pal-switch" role="group" aria-label="Theme mode"><button type="button" class="pal-btn" data-pal="light" aria-pressed="false">Light</button><button type="button" class="pal-btn" data-pal="dark" aria-pressed="false">Dark</button></span></span>
+      <span class="db-ctl-row db-ctl-col"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-palette"></use></svg> <span>Appearance</span><span class="pal-switch" role="group" aria-label="Theme mode"><button type="button" class="pal-btn" data-pal="light" aria-pressed="false">Light</button><button type="button" class="pal-btn" data-pal="dark" aria-pressed="false">Dark</button></span></span>
       <span class="db-ctl-row"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-orb"></use></svg> Premium Glass <label class="tgl"><input type="checkbox" id="glass-tgl" data-action="tglGlassMode" aria-label="Toggle premium liquid-glass backdrop"><span class="tsl"></span></label></span>
     </div>
   </nav>
@@ -243,8 +243,7 @@ body.glass-premium .wrap{position:relative;z-index:1;}
        grid and the cloud section below are explicitly labeled so the two
        project lists can never be confused (Cloud vs Local). -->
   <div class="db-sec" aria-label="Projects" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
-    <div><h2 class="db-sec-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-folder"></use></svg> Projects</h2>
-    <span class="db-sec-sub">On this device and published. Open one to get to work</span></div>
+    <div><h2 class="db-sec-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-folder"></use></svg> Projects</h2></div>
     <a href="admin.html" class="btn btn-o btn-s" style="text-decoration:none;"><svg class="ico" aria-hidden="true" style="width:14px;height:14px;"><use href="css/mmgr-icons.svg#i-plus"></use></svg> New Project</a>
   </div>
   <div class="grid" id="grid"><!-- user project cards render here --></div>
@@ -253,7 +252,7 @@ body.glass-premium .wrap{position:relative;z-index:1;}
   <div id="demo-sec" class="db-sec" aria-label="Demo Projects" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-top:24px;">
     <div><h2 class="db-sec-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-orb"></use></svg> Demo Projects</h2>
     <span class="db-sec-sub">Explore sample projects to see what the app can do</span></div>
-    <button type="button" id="demo-hide-btn" class="btn btn-n btn-s" style="white-space:nowrap;"><svg class="ico" aria-hidden="true" style="width:14px;height:14px;"><use href="css/mmgr-icons.svg#i-x"></use></svg> Hide demos</button>
+    <button type="button" id="demo-hide-btn" class="btn btn-n btn-s" style="white-space:nowrap;"><svg class="ico" aria-hidden="true" style="width:14px;height:14px;"><use id="demo-hide-icon" href="css/mmgr-icons.svg#i-x"></use></svg> <span id="demo-hide-label">Hide demos</span></button>
   </div>
   <div class="grid" id="demo-grid"><!-- demo project cards render here --></div>
 
@@ -648,7 +647,14 @@ document.addEventListener('keydown', e=>{
 // Hide demos toggle — persists to localStorage, separates demo projects
 // from user projects so the main grid stays clean.
 document.getElementById('demo-hide-btn').addEventListener('click', function() {
-  try { localStorage.setItem('mmgr_demos_hidden', '1'); } catch(e) {}
+  var hidden = false;
+  try { hidden = localStorage.getItem('mmgr_demos_hidden') === '1'; } catch(e) {}
+  var next = !hidden;
+  try { localStorage.setItem('mmgr_demos_hidden', next ? '1' : '0'); } catch(e) {}
+  var lbl = document.getElementById('demo-hide-label');
+  var ico = document.getElementById('demo-hide-icon');
+  if (lbl) lbl.textContent = next ? 'Show demos' : 'Hide demos';
+  if (ico) ico.setAttribute('href', next ? 'css/mmgr-icons.svg#i-plus' : 'css/mmgr-icons.svg#i-x');
   renderCards();
 });
 

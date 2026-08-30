@@ -1485,6 +1485,7 @@ window.MMGR = MMGR;
     'aiRun': () => window.MMGR.AiWin.runQuestion(),
     'aiCopyOut': () => window.MMGR.AiWin.copyOut(),
     'aiSetTier': (el) => { window.MMGR.AiWin.setAiCfg({ tier: el.value }); window.MMGR.AiWin.syncSettingsUI(); },
+    'aiVoiceToggle': () => { if (window.MMGR && MMGR.Voice) MMGR.Voice.toggleAiRecording(); },
     // MERGED-AI-CONTROL (audit 1.2): the drawer's AI Assistant switch is now
     // the single AI on/off control , it reads/writes state.config.ai.tier
     // directly (flags.aiWindow is dropped as a gate). OFF -> tier 'off'; ON

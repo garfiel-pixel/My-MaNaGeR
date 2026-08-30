@@ -1076,7 +1076,7 @@
      Copy-to-clipboard first; a generative API-key path can be dropped in
      later without redesign (see js/mmgr-ai.js). -->
 <button id="ai-fab" class="ai-fab" data-action="openAiWin" aria-label="Open AI Assistant" title="AI Assistant , preset prompts, free-form question, project context"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg></button>
-<div id="ai-win" data-action="closeAiWinBg">
+<div id="ai-win">
   <!-- AI-WINDOW-RESIZE: eight edge/corner drag handles (data-edge) wired in
        js/mmgr-ai.js; the size is persisted per device in localStorage
        (mmgr_ai_size, same device-pref slot pattern as mmgr_theme). -->
@@ -1209,6 +1209,7 @@
          native tooltip hosted on the wrapper span (Chrome suppresses title
          tooltips on disabled buttons). -->
     <div class="mf ai-inputbar">
+      <button type="button" class="ai-voice-btn" id="ai-voice-btn" data-action="aiVoiceToggle" title="Voice input (whisper transcription)" aria-label="Toggle voice input"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-mic"></use></svg></button>
       <textarea id="ai-q" class="ai-q" rows="1" placeholder="Ask anything about this project…" title="Enter to send · Shift+Enter for a new line"></textarea>
       <span class="ai-send-wrap" id="ai-send-wrap" title="Send"><button class="ai-send" id="ai-send" data-action="aiRun" title="Send"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-zap"></use></svg> Send</button></span>
     </div>

@@ -168,8 +168,14 @@ const authHeaders = (cookie) => cookie ? { 'Cookie': 'mmgr_session=' + cookie, '
     const cookieA = await signSession({ sub: SUB_A, email: EMAIL_A, name: 'Alice', picture: '', exp: now + 604800 }, SECRET);
     const cookieB = await signSession({ sub: SUB_B, email: EMAIL_B, name: 'Bob', picture: '', exp: now + 604800 }, SECRET);
     const cookieExpired = await signSession({ sub: SUB_A, email: EMAIL_A, name: 'Alice', picture: '', exp: now - 3600 }, SECRET);
-    // Tampered cookie: same payload string, signature flipped at the last byte.
-    const cookieTampered = cookieA.slice(0, -1) + (cookieA.slice(-1) === 'A' ? 'B' : 'A');
+    // Tampered cookie: same payload string, HMAC signature modified.
+    // NOTE: we flip a character in the MIDDLE of the HMAC (not the last
+    // base64 char) because the final char of a 32-byte SHA-256 HMAC
+    // encodes only padding bits that don't affect any decoded byte.
+    const dotA = cookieA.indexOf('.');
+    const sigA = cookieA.slice(dotA + 1);
+    const midIdx = Math.floor(sigA.length / 2);
+    const cookieTampered = cookieA.slice(0, dotA + 1) + sigA.slice(0, midIdx) + (sigA[midIdx] === 'A' ? 'B' : 'A') + sigA.slice(midIdx + 1);
 
     // ---- auth guards: every failure is the SAME generic 403 ----------------
     const p1 = await api(PREFS, { method: 'PUT', headers: authHeaders(null), body: JSON.stringify({ palette: 'cyan' }) });

@@ -764,8 +764,14 @@ function closeSignIn(){
   const m = document.getElementById('siom');
   if (m) m.classList.remove('open');
 }
-document.getElementById('siom').addEventListener('click', function(e){ if (e.target && e.target.id === 'siom') closeSignIn(); });
-document.getElementById('ps-modal').addEventListener('click', function(e){ if (e.target && e.target.id === 'ps-modal') closeProjectSearch(); });
+function _bindModalBackdrops(){
+  var siom = document.getElementById('siom');
+  if (siom && !siom._bdBound) { siom._bdBound = true; siom.addEventListener('click', function(e){ if (e.target && e.target.id === 'siom') closeSignIn(); }); }
+  var psModal = document.getElementById('ps-modal');
+  if (psModal && !psModal._bdBound) { psModal._bdBound = true; psModal.addEventListener('click', function(e){ if (e.target && e.target.id === 'ps-modal') closeProjectSearch(); }); }
+}
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', _bindModalBackdrops);
+else _bindModalBackdrops();
 
 /* Rail , All Projects accordion: every project (local + published) as a row;
    clicking one opens it through the SAME unlock flow as the grid cards. */

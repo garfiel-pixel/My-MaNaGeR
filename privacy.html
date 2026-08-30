@@ -1,15 +1,16 @@
 <!DOCTYPE html>
 <!--
-  My MaNaGeR , Privacy Policy.
-  Matches the marketing site structure (about.html pattern).
-  Content drawn from the actual codebase behavior (SECURITY-FIXES-IMPLEMENTATION-PLAN.md Finding 4).
+  My MaNaGeR — Global Privacy Policy & User Agreement
+  Effective Date: August 30, 2026
+  Last Revised: August 30, 2026
+  This document governs all use of the Application across all jurisdictions.
 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Privacy Policy | My MaNaGeR</title>
-<meta name="description" content="Privacy Policy for My MaNaGeR: how we collect, store, and protect your construction project data.">
+<title>Privacy Policy & Terms of Service | My MaNaGeR</title>
+<meta name="description" content="Global Privacy Policy and Terms of Service for My MaNaGeR construction project management workspace.">
 <link rel="icon" type="image/png" href="primary-icon.png">
 <link rel="stylesheet" href="dist/marketing.min.css">
 <script src="js/mmgr-theme.js"></script>
@@ -40,14 +41,12 @@
       </a>
     </div>
     <button type="button" class="signin-btn signin-trigger" id="signin-btn" aria-expanded="false" aria-controls="signin-sheet">Sign in</button>
-
     <button class="nav-toggle" id="nav-toggle" aria-label="Open menu" aria-expanded="false" aria-controls="mobile-menu">
       <svg class="ico" aria-hidden="true" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
     </button>
   </div>
 </header>
 
-<!-- Email sign-in sheet (dormant -- hidden via CSS, kept for future use) -->
 <div class="signin-sheet" id="signin-sheet" hidden>
   <div id="google-signin-button"></div>
   <div class="email-auth-divider"></div>
@@ -79,85 +78,241 @@
 <main id="main">
   <section class="page-hero">
     <div class="container">
-      <span class="crumbs"><a href="index.html">Home</a> &middot; Privacy Policy</span>
-      <h1>Privacy Policy</h1>
-      <p>How My MaNaGeR collects, stores, and protects your construction project data.</p>
-      <p class="privacy-updated">Last updated: August 21, 2026</p>
+      <span class="crumbs"><a href="index.html">Home</a> &middot; Privacy &amp; Terms</span>
+      <h1>Privacy Policy &amp; Terms of Service</h1>
+      <p>Global data privacy policy and binding user agreement for My MaNaGeR.</p>
+      <p class="privacy-updated">Effective Date: August 30, 2026</p>
     </div>
   </section>
 
   <section class="section">
     <div class="container privacy-content">
 
-      <h2>1. What We Collect</h2>
-      <p>My MaNaGeR collects only the data necessary to provide the service:</p>
+      <!-- ============================================================ -->
+      <!-- PART I: GLOBAL DATA PRIVACY POLICY                            -->
+      <!-- ============================================================ -->
+
+      <h2>Part I: Global Data Privacy Policy</h2>
+      <p>This Privacy Policy governs the use of My MaNaGeR ("the Application"), an offline-first, local-browser construction project management workspace deployed as static web assets via Cloudflare Workers. This document establishes how the Application natively honors global data sovereignty laws, including but not limited to the EU General Data Protection Regulation (GDPR), the California Consumer Privacy Act (CCPA/CPRA), Canada's PIPEDA, Brazil's LGPD, India's DPDP Act, South Africa's POPIA, and Australian Privacy Principles across all continents and jurisdictions.</p>
+
+      <h3>1. Core Principle: Local-First Privacy (Data Minimization)</h3>
+      <p>The Application is architected as a local-first utility. We do not operate remote application databases for user project data, server-side data collection mechanisms, user tracking endpoints, or analytical profiling systems.</p>
       <ul>
-        <li><strong>Account information</strong> , When you sign in with Google, we store your Google account identifier (sub), email address, and display name. For email/password accounts, we store your email address and a hashed password (PBKDF2-SHA256, never stored in plaintext).</li>
-        <li><strong>Project data</strong> , Everything you enter into the workspace: tasks, risks, budget lines, schedules, contacts, claims, meeting notes, and any other project information you create.</li>
-        <li><strong>Device identifier</strong> , A local device ID used for offline-copy tracking. This is a random identifier stored on your device, not linked to your identity.</li>
-        <li><strong>Billing information</strong> , If you subscribe to a paid plan, your subscription status is managed through LemonSqueezy. We do not store payment card details.</li>
+        <li><strong>Absolute User Control:</strong> Every piece of information input into the platform, including work breakdown structures (WBS), schedules, budgets, risk matrix evaluations, field voice notes, meeting minutes, procurement sheets, claims packages, and all other project data, is stored exclusively in your local web browser sandbox (localStorage, IndexedDB). No project data leaves your device during standard operation.</li>
+        <li><strong>Zero Server Transmission of Project Data:</strong> Your project data is never uploaded, transferred, shared, or sold to us or any remote third-party server during standard operation. Closing your browser tab preserves your information natively on your local device. The Application functions fully offline with zero network dependency.</li>
+        <li><strong>No Behavioral Profiling:</strong> The Application contains zero advertising SDKs, zero tracking pixels, zero analytics beacons, and zero monetization hooks that observe, profile, or monetize your usage patterns, workflows, or project content.</li>
       </ul>
 
-      <h2>2. Where Data Is Stored</h2>
+      <h3>2. Statutory Data Subject Rights (Global Compliance)</h3>
+      <p>International data privacy frameworks guarantee citizens specific legal protections regarding their Personal Identifiable Information (PII). Because of the Application's decentralized architecture, these rights are automatically executed and managed directly by the user without requiring any request to the Application operator:</p>
       <ul>
-        <li><strong>Your browser</strong> , The primary copy of your project data lives in your browser's localStorage. This is the core of the offline-first design: the app works without any network connection, and your data stays on your device.</li>
-        <li><strong>Cloudflare R2</strong> , If you enable cloud sync, encrypted project state blobs are stored in Cloudflare R2 object storage. Cloudflare provides server-side encryption at rest for all stored objects.</li>
-        <li><strong>Cloudflare D1</strong> , Account metadata, project records, and session information are stored in Cloudflare D1 (SQLite-compatible database).</li>
-      </ul>
-      <p class="privacy-note">Project data stored on your device (localStorage) is not encrypted at the application level. If you share a device, use your operating system or browser's own encryption and lock features to protect your data.</p>
-
-      <h2>3. How Data Is Protected</h2>
-      <ul>
-        <li><strong>Encryption in transit</strong> , All communication between your browser and our servers uses HTTPS (TLS). We enforce HSTS with a one-year max-age.</li>
-        <li><strong>Encryption at rest</strong> , Cloud storage (R2 and D1) is encrypted at rest by Cloudflare's infrastructure. Owner codes and passwords are hashed with PBKDF2-SHA256 (100,000 iterations) and never stored in plaintext.</li>
-        <li><strong>Session security</strong> , Session cookies are HttpOnly, Secure, and SameSite=Lax, preventing JavaScript access and cross-site attacks.</li>
-        <li><strong>Access controls</strong> , Every cloud endpoint requires authentication. Owner codes, editor codes, and viewer codes are independently verified server-side on every request.</li>
-        <li><strong>Content Security Policy</strong> , A strict CSP prevents unauthorized script execution, framing, and data exfiltration.</li>
+        <li><strong>Right to Access &amp; Portability (GDPR Art. 20, CCPA &sect;1798.100):</strong> You have immediate, unrestricted access to 100% of your project data at all times. You can extract your complete workspace configuration into a portable, machine-readable .json file at any time via Settings &gt; Controls &gt; Save Project to File. No request to the operator is required.</li>
+        <li><strong>Right to Erasure / Right to be Forgotten (GDPR Art. 17, CCPA &sect;1798.105):</strong> Because the Application does not collect, store, or hold your project data on any remote server, we cannot delete it for you. You execute your right to complete erasure instantly by clearing your browser's cache, cookies, and local site data storage. This action is irreversible and immediate.</li>
+        <li><strong>Right to Opt-Out of Sale and Targeted Advertising (CCPA &sect;1798.120, CPRA &sect;1798.185):</strong> The Application does not sell, rent, license, or share your personal information or project data with any third party for advertising, marketing, analytics, or any commercial purpose. There is nothing to opt out of; the data never leaves your device.</li>
+        <li><strong>Right to Non-Discrimination (CCPA &sect;1798.125):</strong> The Application provides identical functionality regardless of whether you exercise any privacy right. No service degradation, feature restriction, or pricing differential applies to users who exercise their data rights.</li>
+        <li><strong>Right to Correct (CPRA &sect;1798.106):</strong> You may correct any data at any time by editing it directly within the Application. No request to the operator is necessary.</li>
+        <li><strong>Right to Know (CCPA &sect;1798.100, GDPR Art. 15):</strong> This Privacy Policy constitutes the entirety of our data practices. We collect no project data. The only server-side data is account metadata (email, hashed password, subscription status) for users who voluntarily sign in for cloud sync features.</li>
       </ul>
 
-      <h2>4. Who We Share Data With</h2>
+      <h3>3. Account Data (Voluntary Cloud Sync Only)</h3>
+      <p>If you voluntarily sign in and enable cloud sync, the following limited account metadata is stored server-side:</p>
       <ul>
-        <li><strong>AI providers</strong> , If you use the AI assistant with your own API key (BYO-key), your chat messages are forwarded to the AI provider you selected (OpenAI, Anthropic, or Google Gemini). We do not log, store, or persist your API key or chat messages. The relay is stateless.</li>
-        <li><strong>LemonSqueezy</strong> , If you subscribe to a paid plan, your subscription status and account identifier are shared with LemonSqueezy for billing purposes.</li>
-        <li><strong>Resend</strong> , Transactional emails (account verification, password reset) are sent through Resend. Your email address is used only for these communications.</li>
+        <li><strong>Account identifiers:</strong> Google account sub (opaque ID), email address, display name, or for email accounts: email + PBKDF2-SHA256 hashed password (100,000 iterations; plaintext never stored).</li>
+        <li><strong>Project metadata:</strong> Project ID, project name/label, owner code hash (PBKDF2; plaintext never stored), editor/viewer code hashes, timestamps (created_at, last_owner_seen_at, deleted_at), and latest R2 storage key reference.</li>
+        <li><strong>Encrypted state blobs:</strong> If you enable cloud backup, your project state is encrypted client-side (AES-256-GCM, key derived from owner code via PBKDF2) before upload to Cloudflare R2. The encryption key never leaves your browser. We cannot decrypt your data.</li>
+        <li><strong>Session cookie:</strong> A single HttpOnly, Secure, SameSite=Lax session cookie (mmgr_session) for authentication. Expires after 30 days with automatic renewal for active sessions. Contains no project data.</li>
       </ul>
-      <p>We do not sell, rent, or share your project data with any third party for advertising, analytics, or any purpose other than providing the service you requested.</p>
+      <p>You may delete your account and all associated server-side data at any time via the Application's account settings. Account deletion is permanent and irreversible.</p>
 
-      <h2>5. Data Retention</h2>
+      <h3>4. Cross-Border Data Flows &amp; Third-Party APIs</h3>
       <ul>
-        <li><strong>Active accounts</strong> , Your data is retained as long as your account is active or you are using the service.</li>
-        <li><strong>Cloud projects</strong> , Projects with no owner activity for 180 days are automatically purged (deleted from both storage and database). You will receive a warning email before deletion if your account has a verified email address.</li>
-        <li><strong>Deleted projects</strong> , Projects you delete are hard-purged after a 7-day grace period.</li>
-        <li><strong>Account deletion</strong> , You may delete your account at any time. See Section 6 below.</li>
+        <li><strong>No Cross-Border Leakage (Standard Operation):</strong> All standard application processes operate entirely client-side within your browser. No international cross-border data transfers occur during local calculations, local browser-embedded AI tasks, Monte Carlo simulations, or offline project management.</li>
+        <li><strong>User-Authorized Third-Party Connections:</strong> If you explicitly elect to use external features, you establish a direct, unmediated communication pipeline between your local browser and those specific third-party providers. These features include:
+          <ul>
+            <li>Google Sign-In (Google LLC, terms at policies.google.com)</li>
+            <li>Google Drive backup sync (Google LLC)</li>
+            <li>Live weather forecasts (Open-Meteo, open source, no API key required)</li>
+            <li>BYO API key AI processing (OpenAI, Google Gemini, Anthropic Claude, or any compatible provider you configure)</li>
+            <li>Email authentication (Resend transactional email service)</li>
+            <li>Payment processing (LemonSqueezy, for optional paid plans only)</li>
+          </ul>
+        </li>
+        <li><strong>User Assumes Third-Party Compliance Responsibility:</strong> You assume full legal responsibility for verifying that each external provider you connect to complies with your regional data protection mandates. The Application operator has no control over, and assumes no liability for, the data practices of third-party providers you voluntarily connect to.</li>
       </ul>
 
-      <h2>6. Your Rights , Account Deletion</h2>
-      <p>You have the right to delete your account and all associated data at any time. Account deletion is permanent and irreversible. When you delete your account:</p>
+      <h3>5. Data Retention &amp; Automatic Purging</h3>
       <ul>
-        <li>All cloud projects you own are permanently deleted (database records, stored data, changelogs, editor codes, and offline copies).</li>
-        <li>Your account record, session data, and subscription information are deleted.</li>
-        <li>Data stored locally in your browser (localStorage) is not affected by server-side deletion , you should clear your browser data separately if desired.</li>
+        <li><strong>Local data:</strong> Retained in your browser indefinitely until you clear it or the browser purges it. No server-side copy exists unless you enabled cloud sync.</li>
+        <li><strong>Cloud projects (owner inactive):</strong> Projects with no owner activity for 180 days are automatically purged from all storage (D1 database, R2 blobs, editor codes, changelogs, adoptions, offline copies).</li>
+        <li><strong>Soft-deleted projects:</strong> Projects you delete are held in a tombstone state for 7 days, then hard-purged from all storage permanently.</li>
+        <li><strong>Account deletion:</strong> All server-side data (account record, sessions, cloud projects, editor codes, changelogs, adoptions) is permanently deleted immediately upon account deletion request.</li>
       </ul>
-      <p>To delete your account, sign in and use the Delete Account option in your account settings. Email accounts require password verification; Google accounts require you to type a confirmation phrase.</p>
 
-      <h2>7. Cookies</h2>
-      <p>My MaNaGeR uses a single session cookie (<code>mmgr_session</code>) for authentication. This cookie is:</p>
+      <h3>6. Children's Online Privacy Protection</h3>
+      <p>The Application does not collect, process, or aggregate information from any individual, including minors under any age threshold worldwide, natively satisfying the requirements of the United States COPPA, the United Kingdom Age Appropriate Design Code, and global equivalents. The Application is intended for use by licensed construction professionals and project managers of legal working age.</p>
+
+      <h3>7. Do Not Track &amp; Global Privacy Control</h3>
+      <p>The Application honors Do Not Track (DNT) browser signals and Global Privacy Control (GPC) headers. When detected, all optional telemetry and analytics (if any are enabled in future versions) are automatically suppressed. Given the Application's local-first architecture, DNT/GPC compliance is inherent in the design.</p>
+
+      <h3>8. Data Breach Notification</h3>
+      <p>Because the Application does not store project data on any remote server, a data breach of our infrastructure cannot expose your project data. In the event of a breach affecting account metadata (email addresses, hashed passwords), we will notify affected users within 72 hours as required by GDPR Art. 33 and applicable breach notification laws. Account passwords are hashed with PBKDF2-SHA256 (100,000 iterations) and cannot be reverse-engineered from the hash.</p>
+
+      <h3>9. Changes to This Policy</h3>
+      <p>We may update this privacy policy from time to time. The "Last Revised" date at the top of this page will be updated. Material changes will be posted on this page. Continued use of the Application after changes constitutes acceptance of the updated policy. Your only remedy if you do not agree to changes is to stop using the Application and delete your data.</p>
+
+      <h3>10. Contact &amp; Data Protection Officer</h3>
+      <p>For questions about this privacy policy or your data, contact us at <a href="mailto:admin@mymanager.app">admin@mymanager.app</a>. For GDPR-related inquiries, you may also contact the relevant supervisory authority in your EU member state.</p>
+
+      <!-- ============================================================ -->
+      <!-- PART II: GLOBAL TERMS OF SERVICE                              -->
+      <!-- ============================================================ -->
+
+      <hr style="margin:3rem 0;border:none;border-top:1px solid var(--border);">
+      <h2>Part II: Terms of Service (User Agreement)</h2>
+      <p>By accessing, browsing, or using My MaNaGeR ("the Application"), you ("User") agree to be bound by these Terms of Service ("Terms"). If you do not agree to these Terms in their entirety, you must immediately cease all use of the Application and delete all local copies of your data. Your continued use constitutes irrevocable acceptance of these Terms.</p>
+
+      <h3>1. Acceptance &amp; Binding Agreement</h3>
+      <p>These Terms constitute a legally binding agreement between you and the Application operator. By accessing or using the Application, you represent and warrant that: (a) you are at least 18 years of age or the legal working age in your jurisdiction; (b) you have the legal capacity to enter into binding agreements; (c) your use of the Application will comply with all applicable local, national, and international laws and regulations; and (d) you have read, understood, and agree to be bound by these Terms and the Privacy Policy above.</p>
+
+      <h3>2. Nature of the Service</h3>
+      <p>My MaNaGeR is provided as an open-source, client-side, browser-based static interface for construction project management. It is accessed freely without mandatory user account creation, paid subscription barriers, or recurring cloud fees. The Application is a productivity and organizational tool; it is not a replacement for professional judgment, licensed engineering analysis, or site safety protocols.</p>
+
+      <h3>3. User Responsibility for Data &amp; Backups</h3>
+      <p>Because the Application operates on a decentralized, local-first design paradigm, you are the absolute and sole custodian of your project documentation, metrics, and configurations.</p>
       <ul>
-        <li>HttpOnly , inaccessible to JavaScript</li>
-        <li>Secure , only sent over HTTPS</li>
-        <li>SameSite=Lax , not sent with cross-site requests</li>
-        <li>Expires after 7 days of inactivity (with automatic renewal for active sessions, up to a 30-day maximum)</li>
+        <li><strong>Risk of Data Loss:</strong> You explicitly acknowledge and accept that standard web browser behaviors, including but not limited to browser updates, cache clearing routines, incognito/private browsing sessions, storage quota enforcement, operating system updates, device hardware failures, factory resets, and accidental user actions, can permanently and irrecoverably wipe your local project database. You assume all risk of data loss.</li>
+        <li><strong>Strict Duty to Back Up:</strong> It is your sole obligation to manually export and safeguard your data by utilizing the Save Project to File export function or the optional cloud sync feature to maintain redundant backups. You are solely responsible for implementing your own backup schedule and disaster recovery plan.</li>
+        <li><strong>No Liability for Lost Data:</strong> The Application operator, open-source contributors, GitHub repository owners, and hosting platform maintainers accept zero responsibility or liability for corrupted files, lost project data, operational downtime, data breaches on your device, or any other data-related losses. You use the Application entirely at your own risk.</li>
       </ul>
-      <p>We do not use tracking cookies, advertising cookies, or any third-party analytics cookies.</p>
 
-      <h2>8. Children's Privacy</h2>
-      <p>My MaNaGeR is not directed at children under 13. We do not knowingly collect personal information from children.</p>
+      <h3>4. Professional Use Disclaimers</h3>
+      <ul>
+        <li><strong>Not a Certified Life-Safety System:</strong> The Application is a logistical, administrative, and organizational framework. It is not certified, validated, or approved as an automated life-safety application, structural engineering calculation tool, safety-critical industrial command utility, or professional engineering software of record.</li>
+        <li><strong>Mandatory Professional Review:</strong> Any scheduling dependencies, crane hoisting windows, severe weather buffer margins, concrete curing workflows, structural safety metrics, risk assessments, budget projections, or compliance evaluations logged or generated within this Application must be independently audited, reviewed, verified, and explicitly stamped by a locally licensed Professional Engineer (PE), Registered Architect (RA), or equivalent regional regulatory authority before deployment on any active job site or use in any contractual, legal, or regulatory proceeding.</li>
+        <li><strong>No Professional Relationship:</strong> Your use of the Application does not create any professional services relationship, fiduciary duty, agency relationship, or joint venture between you and the Application operator. The Application is a tool, not a professional service provider.</li>
+      </ul>
 
-      <h2>9. Changes to This Policy</h2>
-      <p>We may update this privacy policy from time to time. Changes will be posted on this page with an updated date. Continued use of the service after changes constitutes acceptance of the updated policy.</p>
+      <h3>5. AI-Generated Outputs</h3>
+      <p>The Application offers built-in local browser AI features and optional third-party Cloud AI API integrations to formulate project digests, weekly summaries, claims pack configurations, weather analysis, and other analytical outputs.</p>
+      <ul>
+        <li><strong>Approximations Only:</strong> All AI responses, claim pack formulations, automated financial breakdowns, risk assessments, weather analyses, and all other AI-generated content are mathematical and probabilistic approximations derived from user-provided inputs. They are generated by machine learning models that may produce inaccurate, incomplete, outdated, or fabricated information ("hallucinations"). They do not constitute formal legal counsel, binding financial accounting audits, certified project risk assurances, engineering calculations, or professional opinions of any kind.</li>
+        <li><strong>User Verification Required:</strong> You assume complete liability, risk, and responsibility for independently verifying the factual, technical, legal, and mathematical accuracy of all AI-generated content before utilizing it within formal contractual negotiations, union arbitrations, legal court proceedings, regulatory submissions, safety documentation, or any other professional or legal context.</li>
+        <li><strong>No Warranty on AI Outputs:</strong> The Application operator makes no warranty, express or implied, regarding the accuracy, completeness, reliability, timeliness, or fitness for purpose of any AI-generated content. You rely on AI outputs entirely at your own risk.</li>
+      </ul>
 
-      <h2>10. Contact</h2>
-      <p>For questions about this privacy policy or your data, contact us at <a href="mailto:admin@mymanager.app">admin@mymanager.app</a>.</p>
+      <h3>6. User Conduct &amp; Prohibited Uses</h3>
+      <p>You agree not to:</p>
+      <ul>
+        <li>Use the Application for any unlawful purpose or in violation of any applicable law, regulation, or professional licensing requirement;</li>
+        <li>Attempt to reverse-engineer, decompile, disassemble, or extract proprietary source code, encryption keys, or proprietary algorithms from the Application (beyond rights granted by the open-source license);</li>
+        <li>Upload or transmit malicious code, viruses, or any harmful material through the Application;</li>
+        <li>Use automated tools (bots, scrapers, crawlers) to access or interact with the Application's cloud API endpoints in a manner that exceeds reasonable usage or circumvents rate limiting;</li>
+        <li>Share, resell, sublicense, or commercially redistribute the Application or any derivative thereof without separate written authorization;</li>
+        <li>Use the Application to process data that you do not have the legal right to process, including but not limited to trade secrets, classified information, or personal data of third parties without their informed consent;</li>
+        <li>Impersonate any person or entity, or misrepresent your affiliation with any person or entity while using the Application;</li>
+        <li>Attempt to gain unauthorized access to any part of the Application, its cloud API, or any connected systems, accounts, or databases.</li>
+      </ul>
+
+      <h3>7. Intellectual Property</h3>
+      <ul>
+        <li><strong>Application License:</strong> The Application is open-source software. Your use of the Application is governed by the applicable open-source license specified in the repository. The open-source license grants you specific rights and imposes specific obligations; these Terms supplement but do not replace that license.</li>
+        <li><strong>Your Content:</strong> You retain all ownership rights to your project data, documents, images, and all other content you create or upload to the Application. The Application operator claims no ownership interest in your content.</li>
+        <li><strong>Trademark:</strong> The "My MaNaGeR" name, logo, and branding are the property of the Application operator. You may not use these marks without prior written permission.</li>
+      </ul>
+
+      <h3>8. Third-Party Services &amp; Integrations</h3>
+      <p>The Application integrates with or connects to third-party services (Google, OpenAI, Anthropic, Open-Meteo, LemonSqueezy, Resend, Cloudflare). Your use of these third-party services is governed by their respective terms of service and privacy policies. The Application operator:</p>
+      <ul>
+        <li>Does not control, endorse, or assume responsibility for any third-party service;</li>
+        <li>Makes no warranty regarding the availability, accuracy, security, or legality of any third-party service;</li>
+        <li>Shall not be liable for any loss, damage, or harm arising from your use of or reliance on any third-party service;</li>
+        <li>Strongly recommends that you review each third-party provider's terms and privacy policy before connecting.</li>
+      </ul>
+
+      <h3>9. Optional Paid Features</h3>
+      <p>If you subscribe to a paid plan through LemonSqueezy:</p>
+      <ul>
+        <li>Payment processing is handled entirely by LemonSqueezy. We do not store payment card details.</li>
+        <li>Subscription fees are non-refundable except as required by applicable consumer protection law.</li>
+        <li>We reserve the right to modify pricing with 30 days' notice. Continued use after a price change constitutes acceptance of the new pricing.</li>
+        <li>Account deletion cancels your subscription. You are responsible for confirming cancellation with LemonSqueezy if needed.</li>
+      </ul>
+
+      <h3>10. Availability &amp; Service Modifications</h3>
+      <ul>
+        <li>The Application is provided on an "as available" and "as is" basis. We do not guarantee uninterrupted access, uptime, or availability.</li>
+        <li>We reserve the right to modify, suspend, or discontinue any part of the Application at any time without prior notice.</li>
+        <li>Scheduled maintenance windows may temporarily affect cloud sync features. Local functionality remains unaffected.</li>
+        <li>We shall not be liable for any interruption, suspension, or termination of the Application or any of its features.</li>
+      </ul>
+
+      <h3>11. Indemnification</h3>
+      <p>To the maximum extent permitted by applicable law, you agree to indemnify, defend, and hold harmless the Application operator, its developers, contributors, and affiliates from and against any and all claims, liabilities, damages, losses, costs, and expenses (including reasonable attorneys' fees) arising out of or relating to:</p>
+      <ul>
+        <li>Your use of the Application;</li>
+        <li>Your violation of these Terms;</li>
+        <li>Your violation of any applicable law, regulation, or professional standard;</li>
+        <li>Any content you create, upload, or share through the Application;</li>
+        <li>Your interactions with third-party services connected through the Application;</li>
+        <li>Any professional decisions made based on data, calculations, AI outputs, or recommendations generated by the Application;</li>
+        <li>Any data loss, corruption, or security breach affecting your device or data.</li>
+      </ul>
+
+      <h3>12. Limitation of Liability</h3>
+      <p><strong>TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE INTERNATIONAL LAW, IN NO EVENT SHALL THE APPLICATION OPERATOR, DEVELOPERS, CONTRIBUTORS, AFFILIATES, OR ANY ASSOCIATED PARTY BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, PUNITIVE, EXEMPLARY, OR CONSEQUENTIAL DAMAGES, INCLUDING BUT NOT LIMITED TO:</strong></p>
+      <ul>
+        <li>PROJECT COST OVERRUNS, RUNAWAY COSTS, OR BUDGET EXCEEDANCES;</li>
+        <li>ON-SITE MATERIAL WASTAGE, SPOILAGE, OR PROCUREMENT LOSSES;</li>
+        <li>LABOR DISPUTES, WORK STOPPAGES, OR EMPLOYMENT CLAIMS;</li>
+        <li>SCHEDULE DELAYS, LIQUIDATED DAMAGES, OR PENALTY ASSESSMENTS;</li>
+        <li>PHYSICAL ACCIDENTS, PERSONAL INJURY, OR PROPERTY DAMAGE;</li>
+        <li>LOSS OF USE, DATA, REVENUE, OR COMMERCIAL PROFITS;</li>
+        <li>BUSINESS INTERRUPTION OR LOSS OF BUSINESS OPPORTUNITY;</li>
+        <li>PROFESSIONAL LICENSE REVOCATION OR REGULATORY SANCTIONS;</li>
+        <li>CLAIM REJECTIONS, INSURANCE DISPUTES, OR LITIGATION COSTS;</li>
+        <li>ANY OTHER INDIRECT, INCIDENTAL, OR CONSEQUENTIAL LOSS WHATSOEVER;</li>
+      </ul>
+      <p><strong>HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE), ARISING IN ANY WAY OUT OF THE USE OF THIS APPLICATION, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.</strong></p>
+      <p><strong>THE TOTAL AGGREGATE LIABILITY OF THE APPLICATION OPERATOR UNDER THESE TERMS SHALL NOT EXCEED THE GREATER OF: (A) THE AMOUNT YOU PAID TO THE APPLICATION OPERATOR IN THE TWELVE (12) MONTHS IMMEDIATELY PRECEDING THE CLAIM, OR (B) ONE HUNDRED UNITED STATES DOLLARS (USD $100.00).</strong></p>
+      <p><strong>SOME JURISDICTIONS DO NOT ALLOW THE EXCLUSION OR LIMITATION OF CERTAIN DAMAGES. IN SUCH JURISDICTIONS, THE ABOVE LIMITATIONS MAY NOT APPLY TO YOU TO THE EXTENT PROHIBITED BY APPLICABLE LAW. IN SUCH CASES, THE APPLICATION OPERATOR'S LIABILITY IS LIMITED TO THE FULLEST EXTENT PERMITTED BY APPLICABLE LAW.</strong></p>
+
+      <h3>13. Disclaimer of Warranties</h3>
+      <p><strong>THE APPLICATION IS PROVIDED ON AN "AS IS" AND "AS AVAILABLE" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, TITLE, NON-INFRINGEMENT, OPERATIONAL UPTIME, ACCURACY, COMPLETENESS, RELIABILITY, OR SECURITY.</strong></p>
+      <p><strong>THE APPLICATION OPERATOR DOES NOT WARRANT THAT: (A) THE APPLICATION WILL BE UNINTERRUPTED, ERROR-FREE, OR SECURE; (B) DEFECTS WILL BE CORRECTED; (C) THE APPLICATION OR SERVERS ARE FREE OF VIRUSES OR OTHER HARMFUL COMPONENTS; (D) AI-OUTPUTS ARE ACCURATE, COMPLETE, OR RELIABLE; OR (E) THE APPLICATION WILL MEET YOUR SPECIFIC REQUIREMENTS OR EXPECTATIONS.</strong></p>
+
+      <h3>14. Dispute Resolution &amp; Governing Law</h3>
+      <ul>
+        <li><strong>Informal Resolution:</strong> Before initiating any formal dispute resolution proceeding, you agree to first contact the Application operator at <a href="mailto:admin@mymanager.app">admin@mymanager.app</a> and attempt to resolve the dispute informally for a period of at least thirty (30) calendar days.</li>
+        <li><strong>Governing Law:</strong> These Terms shall be governed by and construed in accordance with the laws of the jurisdiction in which the Application operator is domiciled, without regard to its conflict-of-law provisions.</li>
+        <li><strong>Arbitration:</strong> Any dispute that cannot be resolved informally shall be resolved through binding arbitration administered in accordance with the rules of a mutually agreed-upon arbitration service. The arbitration shall be conducted in English. The arbitrator's decision shall be final and binding.</li>
+        <li><strong>Class Action Waiver:</strong> To the maximum extent permitted by applicable law, you agree that any dispute resolution proceedings will be conducted on an individual basis and not as a class, consolidated, or representative action. You waive any right to participate in a class action lawsuit or class-wide arbitration.</li>
+        <li><strong>Exception for Injunctive Relief:</strong> Notwithstanding the foregoing, either party may seek injunctive or other equitable relief in any court of competent jurisdiction to prevent the actual or threatened infringement, misappropriation, or violation of intellectual property rights.</li>
+      </ul>
+
+      <h3>15. Modifications to Terms</h3>
+      <p>We reserve the right to update these Terms at any time by modifying this page. The "Effective Date" at the top of this page will be updated upon any change. Material changes will be indicated by updating the revision date. Your continued use of the Application after any modification constitutes your acceptance of the modified Terms. If you do not agree to the modified Terms, you must immediately stop using the Application and delete all local data. Your sole remedy for disagreement with modified Terms is to discontinue use.</p>
+
+      <h3>16. Severability</h3>
+      <p>If any provision of these Terms is held to be invalid, illegal, or unenforceable by a court of competent jurisdiction, the remaining provisions shall remain in full force and effect. The invalid provision shall be modified to the minimum extent necessary to make it valid and enforceable while preserving its original intent.</p>
+
+      <h3>17. Entire Agreement</h3>
+      <p>These Terms, together with the Privacy Policy above and the applicable open-source license, constitute the entire agreement between you and the Application operator regarding your use of the Application. These Terms supersede all prior and contemporaneous agreements, understandings, negotiations, and discussions, whether oral or written, regarding the subject matter herein.</p>
+
+      <h3>18. Waiver</h3>
+      <p>No waiver of any provision of these Terms shall be deemed a further or continuing waiver of such provision or any other provision. The Application operator's failure to assert any right or provision under these Terms shall not constitute a waiver of such right or provision.</p>
+
+      <h3>19. Force Majeure</h3>
+      <p>The Application operator shall not be liable for any failure or delay in performing its obligations under these Terms where such failure or delay results from any cause beyond its reasonable control, including but not limited to natural disasters, pandemics, war, terrorism, government actions, power failures, internet outages, Cloudflare service disruptions, or other force majeure events.</p>
+
+      <h3>20. Open-Source Contributions</h3>
+      <p>Any intentional modifications, localized codebase forks, or pull requests submitted back to the upstream GitHub repository must strictly adhere to the technical conventions, commit styling formatting rules, local validation hooks (npm run verify), and security architectural constraints outlined within the repository's master AGENTS.md document. Contributions that violate these standards will be rejected.</p>
+
+      <h3>21. Contact</h3>
+      <p>For questions about these Terms, contact us at <a href="mailto:admin@mymanager.app">admin@mymanager.app</a>.</p>
+
+      <hr style="margin:3rem 0;border:none;border-top:1px solid var(--border);">
+
+      <p style="text-align:center;font-size:.82rem;color:var(--text-secondary);">This document was last revised on August 30, 2026. By using My MaNaGeR, you acknowledge that you have read, understood, and agree to be bound by both the Privacy Policy (Part I) and the Terms of Service (Part II) set forth above.</p>
 
     </div>
   </section>
@@ -176,7 +331,7 @@
       <a href="features.html">Features</a>
       <a href="about.html">About</a>
       <a href="contact.html">Contact</a>
-      <a href="privacy.html" aria-current="page">Privacy</a>
+      <a href="privacy.html" aria-current="page">Privacy &amp; Terms</a>
     </div>
     <p class="footer-copy">&copy; 2026 My MaNaGeR. All rights reserved.</p>
   </div>

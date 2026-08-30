@@ -116,10 +116,25 @@ async function check(name, expr, hint) {
   })()`);
 
   // ---- 3. Unlock modal still intact on app.html ----
-  await ev(`(function(){var c = document.querySelector('.pcard'); if(c) c.click(); return true;})()`); await delay(600);
+  // Clear pre-unlocked state so the card shows the lock icon and opens the modal
+  await ev(`(function(){try{for(var i=localStorage.length-1;i>=0;i--){var k=localStorage.key(i);if(k&&k.indexOf('mmgr_unlocked_')===0)localStorage.removeItem(k);}}catch(e){}return true;})()`);
+  await send('Page.navigate', { url: BASE + '/app.html' });
+  // Wait for cards to render (projects-data.js is external, needs load time)
+  for (var _w = 0; _w < 15; _w++) {
+    await delay(500);
+    var cnt = await ev('(function(){return document.querySelectorAll(".pcard").length;})()');
+    if (cnt > 0) break;
+  }
+  // demo-filled and demo-empty are auto-unlocked on boot; click the LAST
+  // card (demo-project) which is NOT auto-unlocked and will show the modal.
+  await ev(`(function(){var cards=document.querySelectorAll('.pcard');var last=cards[cards.length-1];if(last)last.click();return true;})()`); await delay(600);
   await check('mkt-09 app: click project card opens access-code modal', `(function(){
     var om = document.getElementById('om');
-    return {val: !!om && om.classList.contains('open') && !!document.getElementById('unlock-btn')};
+    var cards = document.querySelectorAll('.pcard');
+    var local = localStorage.getItem('mmgr_admin_projects');
+    var unlockedKeys = [];
+    for (var i = 0; i < localStorage.length; i++) { var k = localStorage.key(i); if (k && k.indexOf('mmgr_unlocked_') === 0) unlockedKeys.push(k); }
+    return {val: !!om && om.classList.contains('open') && !!document.getElementById('unlock-btn'), cardCount: cards.length, localProjects: local ? local.substring(0,80) : null, unlocked: unlockedKeys, firstCardId: cards[0] ? cards[0].getAttribute('data-id') : null, omExists: !!om, omOpen: om ? om.classList.contains('open') : null};
   })()`);
   await ev(`(function(){var m = document.getElementById('om'); if(m) m.classList.remove('open'); return true;})()`);
 
@@ -175,9 +190,13 @@ async function check(name, expr, hint) {
     var form = document.querySelector('#marketing-email-auth .email-auth-form');
     var toggle = document.querySelector('#marketing-email-auth .email-auth-toggle');
     var inViewport = sheet.getBoundingClientRect().right <= window.innerWidth + 1;
-    if (sheet.hidden || !form || form.hidden || !toggle.hidden || !inViewport) {
+    // On sheet open: the form is hidden by default, the toggle ("Sign in with
+    // email instead") is visible. Click the toggle to expand the form.
+    if (sheet.hidden || !form || !toggle || toggle.hidden || !inViewport) {
       return {val: false, why: 'sheet did not open correctly', hidden: sheet.hidden, form: !!form, formHidden: form && form.hidden, toggleHidden: toggle && toggle.hidden, inViewport: inViewport};
     }
+    toggle.click();
+    if (form.hidden) return {val: false, why: 'form did not expand after toggle click', formHidden: form.hidden};
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
     var closed = sheet.hidden && btn.getAttribute('aria-expanded') === 'false';
     return {val: closed, closed: closed, aria: btn.getAttribute('aria-expanded')};
@@ -193,8 +212,13 @@ async function check(name, expr, hint) {
     signin.click();
     var sheet = document.getElementById('signin-sheet');
     var form = document.querySelector('#marketing-email-auth .email-auth-form');
+    var toggle = document.querySelector('#marketing-email-auth .email-auth-toggle');
     var inViewport = sheet.getBoundingClientRect().right <= window.innerWidth + 1;
-    return {val: !sheet.hidden && !!form && !form.hidden && inViewport, hidden: sheet.hidden, form: !!form, inViewport: inViewport};
+    if (sheet.hidden || !form || !toggle || toggle.hidden || !inViewport) {
+      return {val: false, why: 'sheet did not open correctly', hidden: sheet.hidden, form: !!form, toggleHidden: toggle && toggle.hidden, inViewport: inViewport};
+    }
+    toggle.click();
+    return {val: !form.hidden, hidden: sheet.hidden, formHidden: form.hidden, inViewport: inViewport};
   })()`);
   await send('Emulation.clearDeviceMetricsOverride');
   await delay(300);

@@ -273,11 +273,12 @@ screenshots/
 - `js/mmgr-cloud.js` — Cloud synchronization
 - `js/mmgr-render.js` — UI rendering (split into modules)
 - `js/marketing.js` — Marketing page interactions
-- `sw.js` — Service worker (v154)
+- `sw.js` — Service worker (v217)
 - `manifest.webmanifest` — PWA configuration
 
 ---
 
 *This review was generated on August 21, 2026 by Buffy (AI Agent)*
+*Last updated: August 30, 2026 — privacy policy rewritten, ToS created, QA battery 712+ checks*
 *All screenshots captured from the live production site*
 *No localhost was used in this review*

@@ -2053,6 +2053,11 @@ body.dark-mode .ai-byo-pop{background:rgba(0,0,0,.18);}
 body.dark-mode .ai-byo-status[data-state="untested"]{background:rgba(245,158,11,.08);}
 .ai-byo-key{width:190px;}
 .ai-byo-sec{font-size:.6rem;color:var(--slate);line-height:1.5;margin:3px 0 0;flex-basis:100%;}
+#ai-cfg-mcp{display:none;}
+.ai-mcp-toggle{display:flex;align-items:center;gap:8px;font-size:.74rem;color:var(--text);cursor:pointer;}
+.ai-mcp-toggle .ico{width:14px;height:14px;color:var(--gold);}
+#ai-mcp-toggle{margin:0;}
+.ai-byo-sec.mcp-sub{font-size:.64rem;margin:0;}
 .ai-send-wrap{display:inline-flex;flex-shrink:0;}
 .ai-send:disabled{opacity:.45;cursor:not-allowed;filter:saturate(.4);box-shadow:none;transform:none;}
 .ai-send:disabled:hover{transform:none;box-shadow:none;}

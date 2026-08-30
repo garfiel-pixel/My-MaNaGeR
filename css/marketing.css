@@ -1271,3 +1271,8 @@ body.dark-mode .signin-btn[aria-expanded="true"]{background:rgba(255,255,255,.16
    The sign-in sheet is controlled by the hidden attribute via JS
    — never hide it with CSS (GIS needs a visible host to render). */
 .signin-btn:not(.is-signedin), .signin-trigger:not(.is-signedin), .site-signin.signin-trigger:not(.is-signedin){display:none!important;}
+/* OWNER 2026-08-14: at mobile widths the sign-in button sits beside the hamburger.
+   The desktop-only .header-cta-desktop hides via its own media query. */
+@media (max-width:880px){
+  .site-header .signin-btn:not(.is-signedin), .site-header .signin-trigger:not(.is-signedin){display:inline-flex!important;}
+}

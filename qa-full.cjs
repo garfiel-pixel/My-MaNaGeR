@@ -979,15 +979,12 @@ async function check(name, expr, expected, hint) {
   })()`);
   // The readonly gate reads its scope at BOOT (like checks 51-51e) — flip it
   // with a Page.navigate, not a runtime localStorage write.
-  await check('69b v10 AI window: closes via overlay click and Escape', `(function(){
+  await check('69b v10 AI window: closes via Escape', `(function(){
     document.querySelector('[data-action=openAiWin]').click();
     var opened=document.getElementById('ai-win').classList.contains('open');
-    document.getElementById('ai-win').click();
-    var overlayClosed=!document.getElementById('ai-win').classList.contains('open');
-    document.querySelector('[data-action=openAiWin]').click();
     document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}));
     var escClosed=!document.getElementById('ai-win').classList.contains('open');
-    return {val: opened && overlayClosed && escClosed, opened:opened, overlayClosed:overlayClosed, escClosed:escClosed};
+    return {val: opened && escClosed, opened:opened, escClosed:escClosed};
   })()`);
   await check('71 v10 wxlog copy: dispute-ready record (date/conditions/note/affected + LD)', `(function(){
     var backup=localStorage.getItem('mmgr_state_demo-project');

@@ -64,7 +64,7 @@ window.MMGR_PROJECTS = [
     "description": "Seed-test demo project used by the QA battery.",
     "status": "active",
     "file": "project.html?id=demo-project",
-    "codeHash": "",
+    "codeHash": "5b583f9cc37f83fa78453b41c1516a1f23510fd367396523f36bd58b7dcb87f7",
     "roCodeHash": "852eb69ba700845b83817984dc535ada337ba11cc4a1d3b92bce1ae0b873cb5c",
     "demo": true,
     "demoType": "filled"

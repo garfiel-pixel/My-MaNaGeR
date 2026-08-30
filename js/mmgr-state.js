@@ -744,11 +744,16 @@ var MMGR = window.MMGR || {};
         // and silently rejecting a genuinely-newer edit in the NEXT round
         // trip (device B edits 10:30, device A merged at 12:00 -> B's newer
         // edit loses to A's inflated 12:00 stamp). Keep the incoming stamp.
-        // Rebuild the per-field cache to match the POST-merge state so
+        // Build the per-field cache to match the POST-merge state so
         // stampFieldTs sees no diff on the next save.
-        _fieldJsonCache = null;
+        _fieldJsonCache = {};
+        FIELD_KEYS.forEach(function(k) {
+          if (_state[k] !== undefined) {
+            _fieldJsonCache[k] = JSON.stringify(_state[k]);
+          }
+        });
+        _dirtyFields = new Set();
         _dirty = false;
-        markAllDirty();
         save(true);
         _changeListeners.forEach(fn => fn('merge'));
       }

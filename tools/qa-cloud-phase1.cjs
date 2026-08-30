@@ -481,6 +481,10 @@ async function phaseB() {
     return true;
   })()`);
   await send('Page.navigate', { url: BASE + '/project.html?id=' + PID }); await delay(5000);
+  // Capture JS errors from page load
+  const pageLoadErrors = await ev('(function(){return window.__consoleErrors||[];})()');
+  log('DIAG page-load console errors: ' + JSON.stringify(pageLoadErrors));
+  await ev('(function(){window.__consoleErrors=[];window.onerror=function(m,s,l,c,e){window.__consoleErrors.push(m+" @ "+s+":"+l+":"+c);};window.addEventListener("unhandledrejection",function(e){window.__consoleErrors.push("unhandled:"+((e.reason&&e.reason.message)||e.reason||"unknown"));});return true;})()');
   await clickWhen('[data-action=openDrw]'); await delay(500);
   await clickWhen('[data-action=swDtab][data-tab=ctrl]'); await delay(500);
   const uiHasSection = await ev('(function(){var s=document.getElementById("cloud-section");return !!(s && s.querySelector("[data-action=cloudCreate]"));})()');
@@ -488,9 +492,19 @@ async function phaseB() {
   await clickWhen('[data-action=cloudCreate]'); await delay(2500);
   uiCode = await ev('(function(){return (window.MMGR.Cloud && MMGR.Cloud.getCode()) || sessionStorage.getItem("mmgr_cloud_code_' + PID + '") || "";})()');
   check('C4c create stores the owner code in sessionStorage (session-only)', typeof uiCode === 'string' && uiCode.length > 0, uiCode);
+  // DIAGNOSTIC: verify browser can fetch from inside the page context
+  const browserFetchOk = await ev('(async function(){try{var r=await fetch("/api/health");var j=await r.json();return j&&j.ok?"ok":"bad-body";}catch(e){return "error:"+e.message;}})()');
+  log('DIAG browser-fetch /api/health from Chrome context: ' + JSON.stringify(browserFetchOk));
+  const browserConsoleErrors = await ev('(function(){return window.__consoleErrors || [];})()');
+  log('DIAG browser console errors (if captured): ' + JSON.stringify(browserConsoleErrors));
+  // Capture console errors going forward
+  await ev('(function(){window.__consoleErrors=[];window.onerror=function(m,s,l,c,e){window.__consoleErrors.push(m+" @ "+s+":"+l+":"+c);};window.addEventListener("unhandledrejection",function(e){window.__consoleErrors.push("unhandled:"+((e.reason&&e.reason.message)||e.reason||"unknown"));});return true;})()');
   // Save the seeded device-A state (distinct from the HTTP-saved STATE) so a
   // later load from the fresh device must return THIS blob.
   await clickWhen('[data-action=cloudSave]'); await delay(2500);
+  // Capture post-save console errors and status
+  const postSaveErrors = await ev('(function(){return window.__consoleErrors||[];})()');
+  log('DIAG post-save console errors: ' + JSON.stringify(postSaveErrors));
   const saveStatus = await ev('(function(){var s=document.getElementById("cloud-status");return s?s.className+" | "+s.textContent:"";})()');
   check('C4d Save to Cloud succeeded from the UI (status ok)', typeof saveStatus === 'string' && saveStatus.indexOf('ds-ok') > -1, saveStatus);
   try { ws.close(); } catch (e) {}

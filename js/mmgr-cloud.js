@@ -321,7 +321,9 @@ var MMGR = window.MMGR || {};
       await render();
       setStatus('Cloud project linked , owner/recovery code: ' + data.ownerCode + '. Store it somewhere safe: if lost, only the linked Google account can recover it.', 'ok');
     } catch (e) {
-      setStatus('Cloud is unavailable on this host (needs the Worker API).', 'err');
+      var _detail = (e && (e.message || e.name || String(e))) || 'unknown';
+      setStatus('Cloud is unavailable on this host (needs the Worker API). [' + _detail + ']', 'err');
+      console.error('[cloud] createProject failed:', e);
     } finally {
       _createInFlight = false;
     }
@@ -458,7 +460,9 @@ var MMGR = window.MMGR || {};
       }
       setStatus(statusMsg, 'ok');
     } catch (e) {
-      setStatus('Cloud is unavailable on this host (needs the Worker API).', 'err');
+      var _detail = (e && (e.message || e.name || String(e))) || 'unknown';
+      setStatus('Cloud is unavailable on this host (needs the Worker API). [' + _detail + ']', 'err');
+      console.error('[cloud] saveToCloud failed:', e);
     }
   }
 

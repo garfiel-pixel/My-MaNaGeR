@@ -1001,6 +1001,19 @@ in-progress and exactly where it stopped, what's next.
 
 ### Log entries (most recent at top)
 
+**2026-08-30 — Session 9: AI SIDEBAR + UI POLISH ROUND 2 — AI panel, voice input, demo toggle, recover rail, stacked theme.**
+**SCOPE:** Owner's second UI polish directive: convert AI window to right sidebar, add voice input, fix demo toggle (show/hide), fix Recover Deleted rail, stack theme toggles, simplify project header.
+**(1) AI WINDOW → RIGHT SIDEBAR:** `css/mmgr.css` converted `#ai-win` from full-screen overlay (`position:fixed;inset:0;background:rgba(...)`) to fixed right sidebar (`top:var(--hdr-h);right:0;bottom:0;width:420px;border-left`). Removed backdrop blur, added slide-in animation. Resize handles removed (not needed for fixed-width sidebar). `project.html` removed `data-action="closeAiWinBg"` (no backdrop).
+**(2) VOICE INPUT BUTTON:** Added `i-mic` SVG icon to sprite. `project.html` gained `<button class="ai-voice-btn" data-action="aiVoiceToggle">` before AI textarea. `css/mmgr.css` added voice button styles (42px circle, gold hover, red pulse when recording). `js/mmgr-app.js` added `aiVoiceToggle` action delegating to `MMGR.Voice.toggleAiRecording()`.
+**(3) DEMO TOGGLE FIX:** `app.html` demo-hide button now reads current localStorage state and toggles bidirectionally. Label updates "Hide demos" ↔ "Show demos", icon updates `i-x` ↔ `i-plus`. Previously was one-way (only hide, never unhide).
+**(4) RECOVER DELETED RAIL FIX:** Changed `#rail-recover` from hardcoded "Sign in to see deleted projects" to "Deleted projects will be shown here for 5 days." with proper element IDs.
+**(5) THEME SWITCHER STACKED:** Added `db-ctl-col` class to Appearance row. `css/mmgr.css` added vertical layout rules: `flex-direction:column`, full-width buttons, top/bottom corner radius.
+**(6) PROJECT HEADER SIMPLIFIED:** Removed `<span class="db-sec-sub">On this device and published...</span>` subtitle.
+**(7) CSP HASH REGEN:** All 17 inline-script hashes regenerated in correct order (project.html, app.html, admin.html, then standalone files). Worker.js and serve.cjs synced.
+**(8) SW BUMP:** Cache v216 → v217.
+**(9) DEPLOY:** Version `00944741-d6e0-4aa6-a2a7-ac20691705da`. 10 assets uploaded.
+**FILES MODIFIED:** `app.html`, `css/mmgr.css`, `css/mmgr-icons.svg`, `js/mmgr-app.js`, `project.html`, `sw.js`, `worker.js`, `serve.cjs`.
+
 **2026-08-30 — Session 8: UI POLISH + DEPLOY MARATHON — theme, demos, delete, recover, glass, favicon, marketing.**
 **SCOPE:** Execute owner's full UI polish directive: theme switcher to Light/Dark only, hide header sign-in icon, new favicon, Premium Glass toggle restored, demo projects separated into own section with hide option, delete flow with 5-day grace recovery, Recover Deleted Projects section, marketing hero gradient polish. Two deploys.
 **(1) THEME SWITCHER SIMPLIFIED:** Removed "System" option from sidebar Customize section (app.html). `mmgr-theme.js`: KNOWN map dropped 'system', currentMode() defaults to 'light' instead of 'system', isDark() simplified to `currentMode() === 'dark'`. All three pages' inline FOUC scripts simplified to `var dark = t === 'dark'` (no OS preference fallback). Owner: "Only keep light and dark theme do not care about no system."

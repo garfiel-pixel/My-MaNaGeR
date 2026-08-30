@@ -22,7 +22,7 @@
     14. AI relay
     15. 404 fallback
    ============================================================ */
-import { json, sameOriginOnly, cloudRateCheck, cloudRateLimited } from './lib/http.js';
+import { json, sameOriginOnly, cloudRateCheck, cloudRateLimited, readSession, cloudForbidden } from './lib/http.js';
 import { trackError, structuredLog } from './lib/observe.js';
 import { handleBillingWebhook, handleBillingStatus, handleBillingCheckout } from './billing.js';
 import { handleCloudProjectList, handleCloudCreate, handleCloudSave, handleCloudLoad,
@@ -160,7 +160,7 @@ export async function routeApi(request, env, url) {
         });
         return json({ ok: true, deleted: deleted });
       } catch (e) {
-        console.error('deleted-projects-list error:', e && e.message);
+        console.error('deleted-list error:', e && e.message);
         return json({ ok: false, error: 'internal server error' }, 500);
       }
     }

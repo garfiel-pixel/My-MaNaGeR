@@ -172,7 +172,9 @@ function check(name, val, detail) {
           statusMentionsSignIn: /Sign in to continue/.test(statusText),
           recoverFiredAfter: calls.some(u => u.indexOf('/recover') > -1),
           recoverSucceeded: /New owner code issued/.test((document.getElementById('cloud-status') || {}).textContent || ''),
-          statusAfter: (document.getElementById('cloud-status') || {}).textContent || '' };
+          statusAfter: (document.getElementById('cloud-status') || {}).textContent || '',
+          meLog: window.__meLog || [],
+          allCalls: calls.slice(-10) };
       } finally {
         window.fetch = origFetch;
         window.__signedIn = false;

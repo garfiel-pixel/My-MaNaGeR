@@ -8,9 +8,11 @@
    Run: node tools/verify-controls-admin.cjs
    ============================================================ */
 const { spawn } = require('child_process');
+const os = require('os');
+const path = require('path');
 
 const { chromePath: CHROME, BASE, DEBUG_PORT: PORT } = require('./chrome-launcher.cjs');
-const userDir = 'C:/tmp/chrome-ctrl-' + Date.now();
+const userDir = path.join(os.tmpdir(), 'chrome-ctrl-' + Date.now());
 
 const delay = ms => new Promise(r => setTimeout(r, ms));
 

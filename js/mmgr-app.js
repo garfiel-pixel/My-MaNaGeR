@@ -1547,6 +1547,7 @@ window.MMGR = MMGR;
     'cloudCopyEditorCode': (el) => { const C = window.MMGR.Cloud; if (C && C.copyEditorCode && el) C.copyEditorCode(el.getAttribute('data-code')); },
     'cloudEditorCodeDone': () => { const C = window.MMGR.Cloud; if (C && C.editorCodeDone) C.editorCodeDone(); },
     'cloudCopyCode': () => { const C = window.MMGR.Cloud; if (C && C.copyCode) C.copyCode(); },
+    'mcpCopyUrl': () => { var inp = document.getElementById('mcp-url'); if (inp && inp.value) { navigator.clipboard.writeText(inp.value).then(function() { var st = document.getElementById('mcp-status'); if (st) st.textContent = 'Copied to clipboard.'; setTimeout(function() { var s = document.getElementById('mcp-status'); if (s) s.textContent = ''; }, 2000); }).catch(function() { inp.select(); document.execCommand('copy'); }); } },
     'cloudSignIn': () => { const C = window.MMGR.Cloud; if (C && C.signIn) C.signIn(); },
     'cloudLoadWithCode': () => { const C = window.MMGR.Cloud; if (C && C.loadWithCode) C.loadWithCode(); },
     // CLOUD-BACKEND-ARCHITECTURE-PLAN Phase 2/3: editor-code management

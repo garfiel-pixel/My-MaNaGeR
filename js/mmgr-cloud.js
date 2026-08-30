@@ -1254,7 +1254,16 @@ var MMGR = window.MMGR || {};
         '<input type="url" id="cloud-webhook-url" class="ctl-in" placeholder="https://hooks.example.com/mmgr" style="min-width:220px" autocomplete="off" spellcheck="false">' +
         '<button class="btn btn-g btn-s" data-action="cloudWebhookAdd"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-plus"></use></svg> Add Webhook</button>' +
         '</div>' +
-        '<div id="cloud-webhook-list"></div>';
+        '<div id="cloud-webhook-list"></div>' +
+        // MCP SERVER: per-project Model Context Protocol endpoint
+        '<div class="sr" style="margin-top:8px"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg> MCP Server</span></div>' +
+        '<div class="sr-hint">Connect external AI tools (Claude Desktop, Cursor, Windsurf) to this project via the Model Context Protocol. The AI can read your project data and suggest changes (which go through your review queue).</div>' +
+        '<div class="exp-row" style="flex-wrap:wrap;align-items:center;gap:8px">' +
+        '<input type="text" id="mcp-url" class="ctl-in" readonly style="flex:1;min-width:200px;font-family:ui-monospace,monospace;font-size:.72rem;letter-spacing:.02em;background:var(--tile-bg)" value="" aria-label="MCP Server URL">' +
+        '<button class="btn btn-n btn-s" data-action="mcpCopyUrl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy</button>' +
+        '</div>' +
+        '<div class="sr-hint" style="margin-top:4px">In your MCP client, add this server with: Authorization: Bearer &lt;your-owner-code&gt;</div>' +
+        '<div id="mcp-status" class="sr-hint" role="status" aria-live="polite"></div>';
     }
 
     // Google sign-in strip (recovery only; create/save/load never need it).
@@ -1289,6 +1298,15 @@ var MMGR = window.MMGR || {};
     body += '<div id="cloud-status" class="drive-status" role="status" aria-live="polite"></div>';
 
     wrap.innerHTML = body;
+
+    // MCP SERVER URL: fill the read-only input with the project's MCP endpoint.
+    if (code) {
+      var mcpUrlInput = $('mcp-url');
+      if (mcpUrlInput) {
+        var projectId = C.pid || '';
+        mcpUrlInput.value = window.location.origin + '/api/mcp/' + encodeURIComponent(projectId);
+      }
+    }
 
     // gap-audit B8: fill the last-synced line from /meta (owner + editor modes).
     if (code || ecode) {

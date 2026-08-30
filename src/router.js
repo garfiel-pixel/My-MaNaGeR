@@ -147,17 +147,22 @@ export async function routeApi(request, env, url) {
     if (path === '/api/cloud/projects/deleted' && request.method === 'GET') {
       const r = await rl(request, 'general', env);
       if (r) return r;
-      const session = await readSession(request, env);
-      if (!session || !session.sub) return cloudForbidden();
-      const graceMs = 5 * 24 * 60 * 60 * 1000; // 5-day grace period
-      const cutoff = new Date(Date.now() - graceMs).toISOString();
-      const rows = await env.DB.prepare(
-        'SELECT project_id, owner_label, deleted_at FROM cloud_projects WHERE google_sub = ? AND deleted_at IS NOT NULL AND deleted_at > ? ORDER BY deleted_at DESC'
-      ).bind(session.sub, cutoff).all();
-      const deleted = (rows.results || []).map(function(r) {
-        return { projectId: r.project_id, label: r.owner_label || r.project_id, deletedAt: r.deleted_at };
-      });
-      return json({ ok: true, deleted: deleted });
+      try {
+        const session = await readSession(request, env);
+        if (!session || !session.sub) return cloudForbidden();
+        const graceMs = 5 * 24 * 60 * 60 * 1000; // 5-day grace period
+        const cutoff = new Date(Date.now() - graceMs).toISOString();
+        const rows = await env.DB.prepare(
+          'SELECT project_id, owner_label, deleted_at FROM cloud_projects WHERE google_sub = ? AND deleted_at IS NOT NULL AND deleted_at > ? ORDER BY deleted_at DESC'
+        ).bind(session.sub, cutoff).all();
+        const deleted = (rows.results || []).map(function(r) {
+          return { projectId: r.project_id, label: r.owner_label || r.project_id, deletedAt: r.deleted_at };
+        });
+        return json({ ok: true, deleted: deleted });
+      } catch (e) {
+        console.error('deleted-projects-list error:', e && e.message);
+        return json({ ok: false, error: 'internal server error' }, 500);
+      }
     }
 
     // CODE LOOKUP

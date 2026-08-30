@@ -45,7 +45,7 @@ const CSP = [
   "default-src 'self'",
   "script-src 'self' 'wasm-unsafe-eval' https://unpkg.com https://accounts.google.com https://apis.google.com " + INLINE_SCRIPT_HASHES,
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com",
-  "img-src 'self' data: blob:",
+  "img-src 'self' data: blob: https://lh3.googleusercontent.com https://*.googleusercontent.com",
   "media-src 'self' data: blob:",
   "font-src 'self' data: https://fonts.gstatic.com",
   "connect-src 'self' https: https://accounts.google.com https://oauth2.googleapis.com blob:",

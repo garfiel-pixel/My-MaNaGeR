@@ -112,9 +112,13 @@ function check(name, val, detail) {
   await ev(`localStorage.setItem('mmgr_admin_projects', JSON.stringify([{id:'qa-ctrl',title:'QA Ctrl',description:'',status:'active',file:'project.html?id=qa-ctrl',code:'QACTL1',codeHash:'x'}]));`);
   await send('Page.navigate', { url: BASE + '/project.html?id=qa-ctrl' });
   await delay(3500);
+  // Open the drawer AND switch to the Controls tab (db-ctrl starts hidden via is-hide).
+  await ev(`(function(){
+    MMGR.App.openDrw();
+    MMGR.App.swDtab('ctrl', document.querySelector('.dtab[data-tab="ctrl"]'));
+  })()`);
+  await delay(1000);
   const p1 = await ev(`(function(){
-    const drw = document.getElementById('drw');
-    if (drw) drw.classList.add('open');
     const share = document.getElementById('ctrl-share');
     const shareCards = share ? share.querySelectorAll('.share-card').length : 0;
     const shareText = share ? (share.textContent || '') : '';

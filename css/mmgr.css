@@ -2173,8 +2173,16 @@ body.dark-mode .cause-sel{background-color:rgba(0,0,0,.25);}
   z-index:0;pointer-events:none;display:block;
 }
 body.glass-premium #app-main{position:relative;z-index:1;}
-body.glass-premium #app-header{position:relative;z-index:2;}
+body.glass-premium #app-header{position:sticky;top:0;z-index:100;background:var(--card);}
 body.glass-premium .sec-nav{position:relative;z-index:1;}
+/* Premium Glass: keep sidebar fixed + on top so it never detaches from the header */
+body.glass-premium .db-side{z-index:200!important;}
+/* Premium Glass performance: containment + reduced glow for weaker devices */
+@supports (contain:layout style){
+  body.glass-premium .pcard,body.glass-premium .cd-card,body.glass-premium .pf-card{contain:layout style;}
+}
+body.glass-premium .mouse-glow{width:260px;height:260px;margin:-130px 0 0 -130px;transition:opacity .5s ease;}
+body.glass-premium.dark-mode .mouse-glow{background:radial-gradient(circle,rgba(99,102,241,.14) 0%,rgba(99,102,241,.06) 34%,rgba(99,102,241,0) 70%);}
 /* INTEGRATED-STRUCTURE-API-WINDOW plan §2: mouse-tracking glossy glow — a
    radial highlight that follows the cursor across the premium backdrop.
    Positioned via --mouse-x/--mouse-y custom properties that mmgr-glass.js

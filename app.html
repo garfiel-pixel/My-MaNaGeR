@@ -13,7 +13,7 @@
 <meta name="theme-color" content="#D4AF37">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<link rel="icon" type="image/png" href="primary-icon.png">
+<link rel="icon" href="icon.svg">
 <link rel="apple-touch-icon" href="primary-icon.png">
 <link rel="stylesheet" href="dist/mmgr.min.css">
 <!-- GOOGLE-OPERATOR-IDENTITY-v1: optional operator identity. async+defer so
@@ -122,6 +122,23 @@ body.glass-premium .wrap{position:relative;z-index:1;}
 .pf-reason{font-size:.66rem;color:var(--slate);margin-top:4px;font-style:italic;}
 /* Hide sign-in icon from header — keep it in sidebar only */
 #db-user-avatar{display:none!important;}
+/* PROJECT SEARCH modal */
+#ps-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:2000;align-items:center;justify-content:center;}
+#ps-modal.open{display:flex;}
+#ps-modal .mb{background:var(--card);border:1px solid var(--border);border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.25);overflow:hidden;}
+#ps-modal .mh{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--border);}
+#ps-modal .mt{font-size:.88rem;font-weight:700;display:flex;align-items:center;gap:8px;}
+#ps-modal .dc{background:none;border:none;cursor:pointer;color:var(--slate);padding:4px;border-radius:6px;}
+#ps-modal .dc:hover{color:var(--text);background:rgba(0,0,0,.05);}
+#ps-modal .mbody{padding:14px 18px;}
+#ps-modal input{width:100%;background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:.88rem;padding:10px 14px;font-family:inherit;outline:none;transition:border-color .15s;}
+#ps-modal input:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(var(--gold-rgb),.12);}
+.ps-item{display:flex;flex-direction:column;gap:2px;width:100%;text-align:left;padding:10px 12px;border:1px solid transparent;border-radius:8px;background:transparent;cursor:pointer;font:inherit;transition:background .15s;}
+.ps-item:hover{background:color-mix(in oklch,var(--gold) 8%,transparent);border-color:var(--border);}
+.ps-item-title{font-size:.82rem;font-weight:700;color:var(--text);}
+.ps-item-desc{font-size:.68rem;color:var(--slate);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.ps-item-badge{font-size:.58rem;font-weight:700;color:var(--green);letter-spacing:.04em;}
+.ps-empty{text-align:center;padding:20px;color:var(--slate);font-size:.82rem;}
 </style>
 <script>
 /* Device-level theme (shared across launcher, admin, and app): applied before
@@ -213,11 +230,10 @@ body.glass-premium .wrap{position:relative;z-index:1;}
   <div class="top" id="top">
     <button type="button" id="db-nav-btn" class="db-hamb" data-action="toggleSidebar" aria-label="Open menu" aria-expanded="false" aria-controls="db-sidebar"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-menu"></use></svg></button>
     <button type="button" id="db-theme-quick" class="db-quick" data-action="tglThemeQuick" aria-label="Toggle appearance" title="Toggle light/dark"><svg class="ico" aria-hidden="true"><use id="db-theme-quick-ico" href="css/mmgr-icons.svg#i-moon"></use></svg></button>
-    <!-- SIGNED-IN INDICATOR (NEW-UI-POLISH 2026-08-14): circular avatar at
-         the hero top-right , person icon when signed out (click opens the
-         #siom sign-in modal), photo/initial + green dot + "Signed in" label
-         when signed in (click opens the modal where sign-out lives). -->
-    <button type="button" id="db-user-avatar" class="db-avatar" data-action="openSignIn" aria-label="Sign in" title="Sign in">
+    <!-- SEARCH: project search for users with many projects -->
+    <button type="button" id="db-search-btn" class="db-quick" data-action="openProjectSearch" aria-label="Search projects" title="Search projects"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-search"></use></svg></button>
+    <!-- SIGNED-IN INDICATOR (hidden — sign-in lives in sidebar only) -->
+    <button type="button" id="db-user-avatar" class="db-avatar" data-action="openSignIn" aria-label="Sign in" title="Sign in" style="display:none;">
       <span class="db-avatar-box"><span class="db-avatar-ring"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-user"></use></svg></span><span class="db-avatar-dot" hidden></span></span>
       <span class="db-avatar-txt">Sign in</span>
     </button>
@@ -250,8 +266,7 @@ body.glass-premium .wrap{position:relative;z-index:1;}
 
   <!-- DEMO PROJECTS SECTION — separate from user projects, collapsible -->
   <div id="demo-sec" class="db-sec" aria-label="Demo Projects" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-top:24px;">
-    <div><h2 class="db-sec-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-orb"></use></svg> Demo Projects</h2>
-    <span class="db-sec-sub">Explore sample projects to see what the app can do</span></div>
+    <div><h2 class="db-sec-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-orb"></use></svg> Demo Projects</h2></div>
     <button type="button" id="demo-hide-btn" class="btn btn-n btn-s" style="white-space:nowrap;"><svg class="ico" aria-hidden="true" style="width:14px;height:14px;"><use id="demo-hide-icon" href="css/mmgr-icons.svg#i-x"></use></svg> <span id="demo-hide-label">Hide demos</span></button>
   </div>
   <div class="grid" id="demo-grid"><!-- demo project cards render here --></div>
@@ -640,6 +655,7 @@ document.addEventListener('keydown', e=>{
   if(e.key==='Escape'){
     closeModal();
     closeSignIn();
+    closeProjectSearch();
     if (document.body.classList.contains('side-open')){ document.body.classList.remove('side-open'); syncSidebarAria(); }
   }
 });
@@ -743,6 +759,7 @@ function closeSignIn(){
   if (m) m.classList.remove('open');
 }
 document.getElementById('siom').addEventListener('click', function(e){ if (e.target && e.target.id === 'siom') closeSignIn(); });
+document.getElementById('ps-modal').addEventListener('click', function(e){ if (e.target && e.target.id === 'ps-modal') closeProjectSearch(); });
 
 /* Rail , All Projects accordion: every project (local + published) as a row;
    clicking one opens it through the SAME unlock flow as the grid cards. */
@@ -899,6 +916,68 @@ async function cloudCodeOpen(){
 const entryInput = document.getElementById('code-entry-in');
 if (entryInput) entryInput.addEventListener('keydown', function(e){ if (e.key === 'Enter') cloudCodeOpen(); });
 
+/* PROJECT SEARCH: modal overlay to search/filter projects by name */
+function openProjectSearch(){
+  var modal = document.getElementById('ps-modal');
+  if (!modal) return;
+  modal.classList.add('open');
+  var input = document.getElementById('ps-input');
+  if (input) { input.value = ''; input.focus(); renderProjectResults(''); }
+}
+function closeProjectSearch(){
+  var modal = document.getElementById('ps-modal');
+  if (modal) modal.classList.remove('open');
+}
+function renderProjectResults(query){
+  var list = document.getElementById('ps-list');
+  if (!list) return;
+  var q = (query || '').toLowerCase().trim();
+  var all = [];
+  // User projects
+  try {
+    var raw = localStorage.getItem('mmgr_projects');
+    if (raw) all = JSON.parse(raw);
+  } catch(e) {}
+  // Include MMGR_PROJECTS (manifest)
+  (window.MMGR_PROJECTS || []).forEach(function(p) {
+    if (p && p.id && !all.find(function(x){ return x.id === p.id; })) all.push(p);
+  });
+  var filtered = q ? all.filter(function(p) {
+    return (p.title || p.id || '').toLowerCase().indexOf(q) > -1 || (p.description || '').toLowerCase().indexOf(q) > -1;
+  }) : all;
+  if (!filtered.length) {
+    list.innerHTML = '<div class="ps-empty">' + (q ? 'No projects match "' + q.replace(/</g,'&lt;') + '"' : 'No projects found') + '</div>';
+    return;
+  }
+  list.innerHTML = filtered.map(function(p) {
+    var title = (p.title || p.id || 'Untitled');
+    var desc = p.description || '';
+    var unlocked = false;
+    try { unlocked = localStorage.getItem('mmgr_unlocked_' + p.id) === '1'; } catch(e) {}
+    return '<button type="button" class="ps-item" data-ps-id="' + (p.id || '').replace(/"/g, '&quot;') + '">' +
+      '<span class="ps-item-title">' + title.replace(/</g, '&lt;') + '</span>' +
+      (desc ? '<span class="ps-item-desc">' + desc.replace(/</g, '&lt;').substring(0, 80) + '</span>' : '') +
+      (unlocked ? '<span class="ps-item-badge">Unlocked</span>' : '') +
+      '</button>';
+  }).join('');
+}
+// Search input event
+(function() {
+  var input = document.getElementById('ps-input');
+  if (input) input.addEventListener('input', function() { renderProjectResults(this.value); });
+  // Click on result opens the project
+  document.addEventListener('click', function(e) {
+    var item = e.target.closest('.ps-item');
+    if (item) {
+      var id = item.getAttribute('data-ps-id');
+      if (id) {
+        closeProjectSearch();
+        window.location.href = 'project.html?id=' + encodeURIComponent(id);
+      }
+    }
+  });
+})();
+
 const DASH_ACTION_MAP = {
   'cloudCodeOpen': () => cloudCodeOpen(),
   'closeModal': () => closeModal(),
@@ -909,6 +988,8 @@ const DASH_ACTION_MAP = {
   'tglThemeQuick': () => tglThemeQuick(),
   'openSignIn': () => openSignIn(),
   'closeSignIn': () => closeSignIn(),
+  'openProjectSearch': () => openProjectSearch(),
+  'closeProjectSearch': () => closeProjectSearch(),
   'signOutRail': () => { if (window.MMGR && MMGR.GoogleAuth && MMGR.GoogleAuth.signOut) MMGR.GoogleAuth.signOut(); }
 };
 document.addEventListener('click', function(e){
@@ -1004,5 +1085,17 @@ if ('serviceWorker' in navigator &&
   });
 }
 </script>
+
+<!-- PROJECT SEARCH modal -->
+<div id="ps-modal" role="dialog" aria-modal="true" aria-label="Search projects">
+  <div class="mb" style="max-width:520px;width:95%;">
+    <div class="mh"><span class="mt"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-search"></use></svg> Search Projects</span><button type="button" class="dc" data-action="closeProjectSearch"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg></button></div>
+    <div class="mbody">
+      <input id="ps-input" type="text" placeholder="Type a project name..." autocomplete="off" autofocus style="margin-bottom:12px;">
+      <div id="ps-list" style="max-height:50vh;overflow-y:auto;"></div>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>

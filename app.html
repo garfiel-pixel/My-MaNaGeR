@@ -175,6 +175,8 @@ body.glass-premium .wrap{position:relative;z-index:1;}
     <div class="db-g">Cloud</div>
     <button type="button" class="db-link" data-rail-toggle="rail-cloud-list" aria-expanded="false" aria-controls="rail-cloud-list"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cloud"></use></svg> Cloud Projects <svg class="ico ico-caret" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg></button>
     <div class="db-sub" id="rail-cloud-list" hidden></div>
+    <button type="button" class="db-link" data-rail-toggle="rail-recover" aria-expanded="false" aria-controls="rail-recover"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> Recover Deleted <svg class="ico ico-caret" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg></button>
+    <div class="db-sub" id="rail-recover" hidden><div class="db-sub-empty">Sign in to see deleted projects.</div></div>
     <button type="button" class="db-link" data-rail-toggle="rail-backup" aria-expanded="false" aria-controls="rail-backup"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> Backup &amp; Restore <svg class="ico ico-caret" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg></button>
     <div class="db-sub db-backup" id="rail-backup" hidden>
       <div class="db-backup-btns">
@@ -189,6 +191,7 @@ body.glass-premium .wrap{position:relative;z-index:1;}
     <button type="button" class="db-link" data-rail-toggle="rail-customize" aria-expanded="false" aria-controls="rail-customize"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-palette"></use></svg> Customize <svg class="ico ico-caret" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg></button>
     <div class="db-sub db-customize" id="rail-customize" hidden>
       <span class="db-ctl-row"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-palette"></use></svg> Appearance <span class="pal-switch" role="group" aria-label="Theme mode"><button type="button" class="pal-btn" data-pal="light" aria-pressed="false">Light</button><button type="button" class="pal-btn" data-pal="dark" aria-pressed="false">Dark</button></span></span>
+      <span class="db-ctl-row"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-orb"></use></svg> Premium Glass <label class="tgl"><input type="checkbox" id="glass-tgl" data-action="tglGlassMode" aria-label="Toggle premium liquid-glass backdrop"><span class="tsl"></span></label></span>
     </div>
   </nav>
   <div class="db-foot">
@@ -244,7 +247,15 @@ body.glass-premium .wrap{position:relative;z-index:1;}
     <span class="db-sec-sub">On this device and published. Open one to get to work</span></div>
     <a href="admin.html" class="btn btn-o btn-s" style="text-decoration:none;"><svg class="ico" aria-hidden="true" style="width:14px;height:14px;"><use href="css/mmgr-icons.svg#i-plus"></use></svg> New Project</a>
   </div>
-  <div class="grid" id="grid"><!-- cards render here --></div>
+  <div class="grid" id="grid"><!-- user project cards render here --></div>
+
+  <!-- DEMO PROJECTS SECTION — separate from user projects, collapsible -->
+  <div id="demo-sec" class="db-sec" aria-label="Demo Projects" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-top:24px;">
+    <div><h2 class="db-sec-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-orb"></use></svg> Demo Projects</h2>
+    <span class="db-sec-sub">Explore sample projects to see what the app can do</span></div>
+    <button type="button" id="demo-hide-btn" class="btn btn-n btn-s" style="white-space:nowrap;"><svg class="ico" aria-hidden="true" style="width:14px;height:14px;"><use href="css/mmgr-icons.svg#i-x"></use></svg> Hide demos</button>
+  </div>
+  <div class="grid" id="demo-grid"><!-- demo project cards render here --></div>
 
 
 
@@ -275,6 +286,18 @@ body.glass-premium .wrap{position:relative;z-index:1;}
       <button type="button" class="btn btn-n btn-s" id="code-entry-btn" data-action="cloudCodeOpen"><svg class="ico" aria-hidden="true" style="width:14px;height:14px;"><use href="css/mmgr-icons.svg#i-download"></use></svg> Open with code</button>
       <span class="cd-status" id="code-entry-status" role="status" aria-live="polite"></span>
     </div>
+  </div>
+
+  <!-- RECOVER DELETED PROJECTS — owner-only tab showing soft-deleted
+       cloud projects within their 5-day grace period. RESTORE is a full
+       undo (server + local). -->
+  <div class="cloud-dash" id="recover-dash" hidden aria-label="Recover deleted projects">
+    <div class="cd-head">
+      <h2><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> Recover Deleted Projects</h2>
+      <span class="cd-sub">Deleted within the last 5 days. Restore to bring them back.</span>
+    </div>
+    <div class="cd-list" id="recover-list" role="list"></div>
+    <div class="cd-status" id="recover-status" role="status" aria-live="polite"></div>
   </div>
 </div>
 
@@ -396,46 +419,71 @@ function isUnlocked(id){ return localStorage.getItem('mmgr_unlocked_'+id) === '1
 
 function renderCards(){
   const grid = document.getElementById('grid');
+  const demoGrid = document.getElementById('demo-grid');
+  const demoSec = document.getElementById('demo-sec');
   const projects = allProjects();
   var hint = document.getElementById('no-projects-hint');
-  if(!projects.length){
+  // Separate user projects from demo projects
+  var userProjects = projects.filter(function(p) { return !p.demo; });
+  var demoProjects = projects.filter(function(p) { return !!p.demo; });
+  // Check if demos are hidden by the user
+  var demosHidden = false;
+  try { demosHidden = localStorage.getItem('mmgr_demos_hidden') === '1'; } catch(e) {}
+  // Render user projects
+  if(!userProjects.length){
     grid.innerHTML = '<div class="empty">No projects yet. Add one from the Admin panel.</div>';
     if (hint) hint.hidden = false;
+  } else {
+    if (hint) hint.hidden = true;
+    grid.innerHTML = userProjects.map(p => {
+      const unlocked = isUnlocked(p.id);
+      const local = isLocalProject(p.id);
+      const published = isPublishedProject(p.id);
+      const status = (p.status || 'active').toLowerCase();
+      const statusLabel = status.replace('-', ' ');
+      const chips = local
+        ? (published
+            ? '<span class="pc-chip pc-local">On this device</span>'
+            : '<span class="pc-chip pc-local">On this device</span><span class="pc-chip pc-note">Not published. Visitors can\'t see this yet</span>')
+        : '';
+      const cta = local
+        ? '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg> Open'
+        : (unlocked ? '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-check"></use></svg> Unlocked, open <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg>' : 'Enter code <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg>');
+      return '<button class="pcard ' + (unlocked ? 'unlocked' : '') + '" data-id="' + p.id + '" aria-label="Open ' + escapeHtml(p.title) + '">' +
+        '<div class="pc-head"><div class="pc-title">' + escapeHtml(p.title) + '</div>' +
+        '<div class="pc-lock">' + (local || unlocked ? '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-unlock"></use></svg>' : '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-lock"></use></svg>') + '</div></div>' +
+        (chips ? '<div class="pc-chips">' + chips + '</div>' : '') +
+        '<div class="pc-desc">' + escapeHtml(p.description || '') + '</div>' +
+        '<div class="pc-foot"><span class="badge ' + status + '">' + escapeHtml(statusLabel) + '</span>' +
+        '<span class="pc-cta">' + cta + '</span></div>' +
+        '</button>';
+    }).join('');
+    grid.querySelectorAll('.pcard').forEach(function(card) {
+      card.addEventListener('click', function() { handleCardClick(card.dataset.id); });
+    });
+  }
+  // Render demo projects (separate section)
+  if (!demoGrid) return;
+  if (demosHidden || !demoProjects.length) {
+    if (demoSec) demoSec.hidden = true;
+    demoGrid.innerHTML = '';
     return;
   }
-  if (hint) hint.hidden = true;
-  grid.innerHTML = projects.map(p => {
-    const unlocked = isUnlocked(p.id);
-    const local = isLocalProject(p.id);
-    const published = isPublishedProject(p.id);
-    const status = (p.status || 'active').toLowerCase();
-    const statusLabel = status.replace('-', ' ');
-    // A locally-owned project opens instantly , the creator's own access never
-    // depends on the publish step. Chips explain the state on the card itself.
-    const chips = local
-      ? (published
-          ? '<span class="pc-chip pc-local">On this device</span>'
-          : '<span class="pc-chip pc-local">On this device</span><span class="pc-chip pc-note">Not published. Visitors can\'t see this yet</span>')
-      : '';
-    const cta = local
-      ? '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg> Open'
-      : (unlocked ? '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-check"></use></svg> Unlocked, open <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg>' : 'Enter code <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg>');
-    return `
-      <button class="pcard ${unlocked ? 'unlocked' : ''}" data-id="${p.id}" aria-label="Open ${escapeHtml(p.title)}">
-        <div class="pc-head">
-          <div class="pc-title">${escapeHtml(p.title)}</div>
-          <div class="pc-lock">${local || unlocked ? '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-unlock"></use></svg>' : '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-lock"></use></svg>'}</div>
-        </div>
-        ${chips ? '<div class="pc-chips">' + chips + '</div>' : ''}
-        <div class="pc-desc">${escapeHtml(p.description || '')}</div>
-        <div class="pc-foot">
-          <span class="badge ${status}">${escapeHtml(statusLabel)}</span>
-          <span class="pc-cta">${cta}</span>
-        </div>
-      </button>`;
+  if (demoSec) demoSec.hidden = false;
+  demoGrid.innerHTML = demoProjects.map(function(p) {
+    var status = (p.status || 'active').toLowerCase();
+    var statusLabel = status.replace('-', ' ');
+    var cta = '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg> Explore';
+    return '<button class="pcard" data-id="' + p.id + '" aria-label="Explore ' + escapeHtml(p.title) + '">' +
+      '<div class="pc-head"><div class="pc-title">' + escapeHtml(p.title) + '</div>' +
+      '<div class="pc-lock"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-orb"></use></svg></div></div>' +
+      '<div class="pc-desc">' + escapeHtml(p.description || '') + '</div>' +
+      '<div class="pc-foot"><span class="badge ' + status + '">' + escapeHtml(statusLabel) + '</span>' +
+      '<span class="pc-cta">' + cta + '</span></div>' +
+      '</button>';
   }).join('');
-  grid.querySelectorAll('.pcard').forEach(card=>{
-    card.addEventListener('click', ()=>handleCardClick(card.dataset.id));
+  demoGrid.querySelectorAll('.pcard').forEach(function(card) {
+    card.addEventListener('click', function() { handleCardClick(card.dataset.id); });
   });
 }
 
@@ -512,7 +560,7 @@ function toast(msg, type){
 // mmgr-theme.js (Light / Dark / System). These stubs remain in the action
 // map so no-op references don't throw.
 function tglTheme(){}
-function tglGlassMode(){}
+function tglGlassMode(){ if (window.MMGR && MMGR.App && MMGR.App.tglGlassMode) MMGR.App.tglGlassMode(); }
 
 /* CLOUD-BACKEND-ARCHITECTURE-PLAN Phase 2 , editor-code unlock.
    A cloud EDITOR code is not in the published manifest (it lives only in the
@@ -595,6 +643,13 @@ document.addEventListener('keydown', e=>{
     closeSignIn();
     if (document.body.classList.contains('side-open')){ document.body.classList.remove('side-open'); syncSidebarAria(); }
   }
+});
+
+// Hide demos toggle — persists to localStorage, separates demo projects
+// from user projects so the main grid stays clean.
+document.getElementById('demo-hide-btn').addEventListener('click', function() {
+  try { localStorage.setItem('mmgr_demos_hidden', '1'); } catch(e) {}
+  renderCards();
 });
 
 /* ============================================================

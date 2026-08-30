@@ -657,9 +657,10 @@ body.dark-mode .signin-btn[aria-expanded="true"]{background:rgba(255,255,255,.16
   position:absolute;inset:0;pointer-events:none;z-index:1;
   /* warm charcoal tint over the photo */
   background:
-    radial-gradient(52% 70% at 82% 6%,rgba(var(--gold-rgb),.22),transparent 62%),
-    radial-gradient(44% 64% at 12% 90%,rgba(var(--gold-rgb),.12),transparent 60%),
-    linear-gradient(90deg,rgba(28,25,23,.94) 0%,rgba(28,25,23,.86) 38%,rgba(28,25,23,.7) 74%,rgba(28,25,23,.84) 100%);
+    radial-gradient(52% 70% at 82% 6%,rgba(var(--gold-rgb),.18),transparent 55%),
+    radial-gradient(44% 64% at 12% 90%,rgba(var(--gold-rgb),.10),transparent 55%),
+    radial-gradient(60% 50% at 50% 50%,rgba(var(--gold-rgb),.06),transparent 70%),
+    linear-gradient(90deg,rgba(28,25,23,.92) 0%,rgba(28,25,23,.84) 35%,rgba(28,25,23,.68) 70%,rgba(28,25,23,.82) 100%);
 }
 /* faint drafting-grid texture — decorative, solid, palette-neutral */
 .hero::before{

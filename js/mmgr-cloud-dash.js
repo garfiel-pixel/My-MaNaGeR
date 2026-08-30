@@ -306,7 +306,7 @@
   function openDeleteConfirm(projectId, name) {
     _pendingDelete = { id: projectId, name: name || projectId };
     const d = document.getElementById('cdm-desc');
-    if (d) d.textContent = 'Deleting "' + (name || projectId) + '" removes it from the cloud backend. Every shared copy stops working (discontinued) and it disappears from your launcher. You can undo this for a few seconds after confirming.';
+    if (d) d.textContent = 'Deleting "' + (name || projectId) + '" removes it from the cloud backend. Every shared copy stops working (discontinued) and it disappears from your launcher. You can undo this for a few seconds after confirming. After that, you have 5 days to recover it from the Recover Deleted Projects section.';
     const err = document.getElementById('cdm-err');
     if (err) err.textContent = '';
     const m = document.getElementById('cdm');
@@ -331,7 +331,7 @@
         return;
       }
       closeDeleteConfirm();
-      notify('"' + (name || projectId) + '" deleted from the cloud.', 'ok', { label: 'Undo', fn: function() { restoreProject(projectId, name); } });
+      notify('"' + (name || projectId) + '" deleted. You have 5 days to recover it.', 'ok', { label: 'Undo', fn: function() { restoreProject(projectId, name); } });
       setStatus('');
       loadList();
     } catch (e) {
@@ -543,14 +543,96 @@
     paginateGrid();
   }
 
+  // ---- RECOVER DELETED PROJECTS (5-day grace) --------------------------
+  // Owner-only tab showing soft-deleted cloud projects within the grace
+  // period. RESTORE is a full undo (server + local). The endpoint filters
+  // to the signed-in owner's sub and only returns rows deleted within
+  // the last 5 days.
+  var RECOVER_DASH = 'recover-dash';
+  var RECOVER_LIST = 'recover-list';
+  var RECOVER_STATUS = 'recover-status';
+
+  function loadDeletedProjects() {
+    var dash = document.getElementById(RECOVER_DASH);
+    var list = document.getElementById(RECOVER_LIST);
+    var status = document.getElementById(RECOVER_STATUS);
+    if (!dash || !list) return;
+    // Only show if signed in
+    fetch('/api/auth/me', { credentials: 'same-origin' }).then(function(r) { return r.json(); }).then(function(me) {
+      if (!me || !me.ok || !me.user) { dash.hidden = true; return; }
+      return fetch('/api/cloud/projects/deleted', { method: 'GET', credentials: 'same-origin' });
+    }).then(function(res) {
+      if (!res) return;
+      if (!res.ok) { dash.hidden = true; return; }
+      return res.json();
+    }).then(function(data) {
+      if (!data || !data.ok) { dash.hidden = true; return; }
+      var deleted = data.deleted || [];
+      if (!deleted.length) { dash.hidden = true; return; }
+      dash.hidden = false;
+      list.innerHTML = deleted.map(function(p) {
+        var when = p.deletedAt ? fmtDate(p.deletedAt) : 'unknown';
+        return '<div class="cd-card" role="listitem">' +
+          '<div class="cd-title">' + escapeHtml(p.label || p.projectId) + '</div>' +
+          '<div class="cd-meta">' + escapeHtml(p.projectId || '') + '<br>Deleted ' + escapeHtml(when) + '</div>' +
+          '<div class="cd-actions">' +
+          '<button type="button" class="btn btn-g btn-s" data-cd-recover="' + escapeHtml(p.projectId) + '" data-cd-recover-name="' + escapeHtml(p.label || p.projectId) + '">Restore</button>' +
+          '</div>' +
+          '</div>';
+      }).join('');
+      // Also populate the rail recover section
+      var railRec = document.getElementById('rail-recover');
+      if (railRec) {
+        railRec.innerHTML = deleted.map(function(p) {
+          return '<button type="button" class="db-project" data-cd-recover="' + escapeHtml(p.projectId) + '" data-cd-recover-name="' + escapeHtml(p.label || p.projectId) + '" title="Restore ' + escapeHtml(p.label || p.projectId) + '">' +
+            '<span class="db-project-ico"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg></span>' +
+            '<span class="db-project-name">' + escapeHtml(p.label || p.projectId) + '</span>' +
+            '</button>';
+        }).join('');
+      }
+    }).catch(function() { dash.hidden = true; });
+  }
+
+  function recoverProject(projectId, name) {
+    var status = document.getElementById(RECOVER_STATUS);
+    if (status) status.textContent = 'Restoring project...';
+    fetch('/api/cloud/projects/' + encodeURIComponent(projectId) + '/restore', {
+      method: 'POST', credentials: 'same-origin'
+    }).then(function(r) { return r.json(); }).then(function(data) {
+      if (!data || !data.ok) {
+        if (status) status.textContent = (data && data.error) || 'Could not restore the project.';
+        return;
+      }
+      notify('"' + (name || projectId) + '" restored successfully.', 'ok');
+      if (status) status.textContent = '';
+      loadDeletedProjects();
+      loadList(); // refresh main cloud list too
+    }).catch(function() {
+      if (status) status.textContent = 'Could not reach the cloud service.';
+    });
+  }
+
+  // ---- events for recover section ----
+  document.addEventListener('click', function(e) {
+    var rec = e.target && e.target.closest ? e.target.closest('[data-cd-recover]') : null;
+    if (rec) {
+      e.preventDefault();
+      var id = rec.getAttribute('data-cd-recover');
+      var name = rec.getAttribute('data-cd-recover-name') || id;
+      recoverProject(id, name);
+      return;
+    }
+  });
+
   // Boot: render once the session state is known. restoreSession() in
   // mmgr-google-auth.js is async; probe /api/auth/me ourselves , if a
   // session exists the list loads, otherwise the section stays hidden and
   // the sign-in event will reveal it.
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', function() { loadList(); initGridPager(); });
+    document.addEventListener('DOMContentLoaded', function() { loadList(); initGridPager(); loadDeletedProjects(); });
   } else {
     loadList();
     initGridPager();
+    loadDeletedProjects();
   }
 })();

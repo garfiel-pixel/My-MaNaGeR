@@ -2544,5 +2544,64 @@ exception. Based on the diagnostic result:
 
 ---
 
+**2026-09-01 — Session: RESEARCH + ORPHAN WARNINGS + DOMAIN TRANSITION PLAN — Email Service blocked by .workers.dev, Resend fallback, full transition docs.**
+(1) **Orphan warning emails** (src/lib/http.js, src/cloud/projects.js): Added `sendOrphanWarningEmail()` that sends 14-day advance notice before project archival. Initially built for Cloudflare Email Service (`env.EMAIL.send()`), but discovered `.workers.dev` subdomains don't support Email Service (requires SPF/DKIM/DMARC DNS records on a domain you own). Swapped to existing Resend-based `sendAuthEmail()` — zero new dependencies. `purgeStaleCloudProjects()` now has two phases: Phase 1 sends warnings to projects approaching deadline, Phase 2 hard-purges past deadline. (2) **R2 encryption confirmed LIVE**: `cloudEncryptState()`/`cloudDecryptState()` already implemented in src/lib/http.js with AES-256-GCM, PBKDF2 key derivation, versioned blob format. (3) **Orphan retention confirmed 180d**: `CLOUD_ORPHAN_RETENTION_MS` already set. (4) **Gold-as-status audit confirmed fixed**: `completed: 'bg'` (green), `.bo` only for caution/critical. (5) **Research completed**: bid leveling UX (Downtobid 3-stage process), progressive disclosure (Userpilot 13 examples, 37.5% activation rate), SaaS AI bar patterns (DesignKey teardowns of Linear/Vercel/Stripe), R2 encryption (Web Crypto API full-surface confirmed), Cloudflare Email Service (native Workers binding, requires custom domain). (6) **Custom domain transition plan**: Full documentation of every feature blocked by .workers.dev, exact steps to transition, estimated 1-2 hours from purchase to full operation. See STATUS LOG entry below for complete details.
+
+---
+
+## CUSTOM DOMAIN TRANSITION PLAN (BLOCKED UNTIL DOMAIN PURCHASED)
+
+The app runs on `garfieldprocis.workers.dev` — a Cloudflare-managed `.workers.dev` subdomain. This blocks features requiring domain ownership for DNS configuration.
+
+### BLOCKED FEATURES
+
+| # | Feature | Impact | Why blocked | Current workaround |
+|---|---|---|---|---| 
+| 1 | **Cloudflare Email Service** | HIGH | Requires SPF/DKIM/DMARC DNS records on owned domain | Resend API (third-party, rate limits, pricing) |
+| 2 | **Email deliverability** | MEDIUM | Without SPF/DKIM, emails may hit spam | Resend uses their own domain (onboarding@resend.dev) |
+| 3 | **Google OAuth production** | LOW-MED | .workers.dev redirect URI looks unprofessional | Works but may require verification in future |
+| 4 | **PWA install prompt** | LOW | Some browsers block install prompt on .workers.dev | PWA works but install may not appear on all devices |
+| 5 | **Professional branding** | HIGH | .workers.dev looks like dev URL, not production | Works but unprofessional for B2B sales |
+| 6 | **SSL certificates** | LOW | .workers.dev uses shared SSL | Works fine, custom domain gets dedicated cert |
+
+### TRANSITION CHECKLIST (when domain purchased)
+
+1. [ ] Buy domain and add to Cloudflare account
+2. [ ] Workers > Triggers > Custom Domains > Add domain
+3. [ ] Verify DNS propagation (`dig yourdomain.com`)
+4. [ ] Google Cloud Console: add new domain as authorized redirect URI
+5. [ ] Resend dashboard: add and verify custom domain for email sending
+6. [ ] Update `wrangler.jsonc` if any hardcoded origins exist
+7. [ ] Update `RESEND_FROM_EMAIL` secret to use new domain
+8. [ ] Rebuild and deploy (`node build.js && npm run verify`)
+9. [ ] Test all auth flows (Google sign-in, email/password)
+10. [ ] Test email delivery (register new account, verify confirmation arrives)
+11. [ ] Test PWA install prompt on Android + iOS
+12. [ ] Update marketing pages if any URLs reference workers.dev
+13. [ ] Update field guide if any documentation references workers.dev
+14. [ ] Monitor email deliverability for 1 week after transition
+15. [ ] Remove old .workers.dev custom domain mapping (optional)
+
+### CODE THAT NEEDS NO CHANGES (dynamic origin)
+
+The app uses `request.url` origin dynamically everywhere:
+- `src/auth/session.js`: email verification links
+- `src/auth/google.js`: OAuth flow
+- `worker.js`: CSP headers
+- All cloud API routes
+
+Only hardcoded reference: `GOOGLE_CLIENT_ID` in wrangler.jsonc vars (domain-agnostic).
+
+### ESTIMATED TIMELINE
+- Domain purchase: 5 minutes
+- Cloudflare setup: 10 minutes
+- DNS propagation: 5-15 minutes (Cloudflare DNS)
+- Google OAuth update: 5 minutes
+- Resend domain verification: 10-30 minutes
+- Testing: 30 minutes
+- **Total: ~1-2 hours from purchase to full custom domain operation**
+
+---
+
 *This file is the working source of truth for continuing this project across sessions.*
 Keep it updated. Do not let a session end without updating the STATUS LOG.*

@@ -301,4 +301,155 @@ Commits: fd58366, b22cb87, 95e273b, a24f4c4, ae831bf, 4c08794, 128d4c3, PENDING
 - a24f4c4: Dollar sign fix (fmtNum/fmtDollars split)
 - ae831bf: Escape key to close panel
 - 4c08794: Focus-visible styles for accessibility
-- All deployed: version 98685460 live at my-manager.garfieldprocis.workers.dev
+- 2c465f6: Admin sidebar CSS specificity fix (!important)
+- 2ff1a13: Email Service binding + orphan warning code
+- ff555b0: Swapped to Resend (Email Service needs custom domain)
+- All deployed: live at my-manager.garfieldprocis.workers.dev
+
+=== CUSTOM DOMAIN TRANSITION PLAN (BLOCKED UNTIL DOMAIN PURCHASED) ===
+
+The app currently runs on garfieldprocis.workers.dev — a Cloudflare-managed
+.subdomain. This limits several features that require domain ownership for
+DNS record configuration (SPF, DKIM, DMARC, CNAME). Below is every
+feature that is blocked, degraded, or would improve with a custom domain,
+plus the exact steps to transition when a domain is purchased.
+
+--- BLOCKED FEATURES ---
+
+1. CLOUDFLARE EMAIL SERVICE (HIGH IMPACT)
+   What it is: Native Workers email sending via env.EMAIL.send() — no API
+   keys, no third-party, free on all plans.
+   Why blocked: Requires SPF/DKIM/DMARC DNS records, which can only be
+   configured on a domain you own (not .workers.dev).
+   Current workaround: Resend API (sendAuthEmail in src/lib/http.js).
+   Resend works but is a third-party dependency with its own rate limits
+   and pricing tier.
+   What you get with custom domain:
+   - Free unlimited transactional emails (orphan warnings, auth, alerts)
+   - Native Workers binding (no API key management)
+   - Automatic SPF/DKIM/DMARC (Cloudflare configures it)
+   - Better deliverability (emails sent from YOUR domain, not resend.dev)
+   Transition steps:
+   a. Onboard domain in Cloudflare dashboard > Compute > Email Service
+   b. Add [[send_email]] binding to wrangler.jsonc
+   c. Replace sendAuthEmail Resend calls with env.EMAIL.send()
+   d. Update RESEND_FROM_EMAIL to use your domain
+
+2. EMAIL DELIVERABILITY (MEDIUM IMPACT)
+   What it is: Without custom domain SPF/DKIM, emails from Resend may
+   land in spam more often. Resend uses their own domain (onboarding@
+   resend.dev) when no custom domain is configured.
+   Why blocked: SPF/DKIM records require domain ownership.
+   Current state: Emails work but come from resend.dev, which some
+   mail providers flag as suspicious for business communications.
+   What you get with custom domain:
+   - Emails sent from noreply@yourdomain.com (not resend.dev)
+   - SPF record authorizes YOUR server to send
+   - DKIM signature proves authenticity
+   - DMARC policy prevents spoofing
+   - Near-perfect inbox placement
+   Transition steps:
+   a. Configure Resend with your custom domain (Resend dashboard > Domains)
+   b. Add the DNS records Resend provides (TXT for SPF, CNAME for DKIM)
+   c. Update RESEND_FROM_EMAIL to noreply@yourdomain.com
+   d. Verify domain in Resend dashboard
+
+3. GOOGLE OAUTH PRODUCTION CLEANUP (LOW-MEDIUM IMPACT)
+   What it is: Google Sign-In redirect URIs currently use
+   garfieldprocis.workers.dev. This works but looks unprofessional and
+   may cause issues with Google's verification requirements.
+   Why blocked: Google OAuth requires exact redirect URI matching.
+   Current state: Works on .workers.dev (Google allows it).
+   What you get with custom domain:
+   - Clean redirect URI: yourdomain.com (not workers.dev subdomain)
+   - Better trust signal for users (no unfamiliar domain in OAuth flow)
+   - Google may require verification for .workers.dev in the future
+   Transition steps:
+   a. Add yourdomain.com as authorized redirect URI in Google Cloud Console
+   b. Update GOOGLE_CLIENT_ID if needed (same client, new redirect)
+   c. No code changes needed (app uses request.url origin dynamically)
+
+4. PWA INSTALL PROMPT (LOW IMPACT)
+   What it is: Some browsers (especially Chrome on Android) require a
+   custom domain for the full PWA install prompt to appear.
+   Why blocked: .workers.dev is considered a "protected" origin by
+   some browsers.
+   Current state: PWA works on .workers.dev but install prompt may
+   not appear on all devices.
+   What you get with custom domain:
+   - Reliable install prompt on all devices
+   - Better PWA score in Lighthouse
+   - Professional app-like experience
+   Transition steps:
+   a. Add custom domain to Cloudflare Workers (Settings > Triggers >
+      Custom Domains)
+   b. Update manifest.webmanifest start_url if needed
+   c. Update sw.js cache version after domain change
+
+5. PROFESSIONAL BRANDING (HIGH IMPACT for business)
+   What it is: garfieldprocis.workers.dev looks like a development
+   URL, not a production product. Construction companies evaluating
+   software will notice this.
+   Why blocked: .workers.dev is Cloudflare's managed subdomain.
+   Current state: Works but unprofessional for B2B sales.
+   What you get with custom domain:
+   - yourcompany.com or my-manager.yourdomain.com
+   - Trust signal for enterprise buyers
+   - Brand consistency across marketing and product
+   - SEO benefits (custom domains rank better)
+   Transition steps:
+   a. Buy domain (Namecheap, Cloudflare Registrar, Google Domains)
+   b. Add domain to Cloudflare (if not already)
+   c. Workers > Triggers > Custom Domains > Add yourdomain.com
+   d. DNS propagates automatically (Cloudflare manages it)
+
+6. SSL CERTIFICATES (LOW IMPACT)
+   What it is: .workers.dev gets Cloudflare's shared SSL. Custom
+   domains get dedicated SSL certificates.
+   Why blocked: Custom SSL requires domain ownership.
+   Current state: Works fine on .workers.dev.
+   What you get with custom domain:
+   - Dedicated SSL certificate for your domain
+   - No shared certificate warnings in some enterprise environments
+   Transition steps: Automatic — Cloudflare provisions SSL for custom
+   domains added to Workers.
+
+--- TRANSITION CHECKLIST (when domain is purchased) ---
+
+1. [ ] Buy domain and add to Cloudflare account
+2. [ ] Workers > Triggers > Custom Domains > Add domain
+3. [ ] Verify DNS propagation (dig yourdomain.com)
+4. [ ] Google Cloud Console: add new domain as authorized redirect URI
+5. [ ] Resend dashboard: add and verify custom domain for email sending
+6. [ ] Update wrangler.jsonc if any hardcoded origins exist
+7. [ ] Update RESEND_FROM_EMAIL secret to use new domain
+8. [ ] Rebuild and deploy (node build.js && npm run verify)
+9. [ ] Test all auth flows (Google sign-in, email/password)
+10. [ ] Test email delivery (register new account, verify confirmation arrives)
+11. [ ] Test PWA install prompt on Android + iOS
+12. [ ] Update marketing pages if any URLs reference workers.dev
+13. [ ] Update field guide if any documentation references workers.dev
+14. [ ] Monitor email deliverability for 1 week after transition
+15. [ ] Remove old .workers.dev custom domain mapping (optional —
+       keep as fallback during transition)
+
+--- CODE THAT NEEDS NO CHANGES (dynamic origin) ---
+
+The app already uses request.url origin dynamically in:
+- src/auth/session.js: email verification links use request.url origin
+- src/auth/google.js: OAuth flow uses request.url origin
+- worker.js: CSP headers use request.url origin
+- All cloud API routes: use request.url origin
+
+This means the app will work on ANY domain without code changes.
+The only hardcoded reference is GOOGLE_CLIENT_ID in wrangler.jsonc
+vars, which is domain-agnostic (client ID works on any domain).
+
+--- ESTIMATED TIMELINE ---
+- Domain purchase: 5 minutes
+- Cloudflare setup: 10 minutes
+- DNS propagation: 5-15 minutes (Cloudflare DNS)
+- Google OAuth update: 5 minutes
+- Resend domain verification: 10-30 minutes
+- Testing: 30 minutes
+- Total: ~1-2 hours from purchase to full custom domain operation

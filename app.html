@@ -265,8 +265,8 @@ body.glass-premium .wrap{position:relative;z-index:1;}
        grid and the cloud section below are explicitly labeled so the two
        project lists can never be confused (Cloud vs Local). -->
   <div class="db-sec" aria-label="Projects" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
-    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;"><h2 class="db-sec-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-folder"></use></svg> Projects</h2><input type="text" id="grid-search" placeholder="Filter projects..." autocomplete="off" style="background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:.78rem;padding:6px 12px;width:180px;font-family:inherit;outline:none;transition:border-color .15s;" aria-label="Filter projects by name"><button type="button" id="grid-search-clear" class="btn btn-n btn-s" style="display:none;padding:4px 8px;font-size:.72rem;" aria-label="Clear search"><svg class="ico" aria-hidden="true" style="width:12px;height:12px;"><use href="css/mmgr-icons.svg#i-x"></use></svg></button></div>
-    <a href="admin.html" class="btn btn-o btn-s" style="text-decoration:none;"><svg class="ico" aria-hidden="true" style="width:14px;height:14px;"><use href="css/mmgr-icons.svg#i-plus"></use></svg> New Project</a>
+    <div><h2 class="db-sec-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-folder"></use></svg> Projects</h2></div>
+    <div style="display:flex;align-items:center;gap:8px;"><button type="button" id="grid-search-btn" class="btn btn-n btn-s" data-action="openProjectSearch" style="white-space:nowrap;"><svg class="ico" aria-hidden="true" style="width:14px;height:14px;"><use href="css/mmgr-icons.svg#i-search"></use></svg> Search</button><a href="admin.html" class="btn btn-o btn-s" style="text-decoration:none;"><svg class="ico" aria-hidden="true" style="width:14px;height:14px;"><use href="css/mmgr-icons.svg#i-plus"></use></svg> New Project</a></div>
   </div>
   <div class="grid" id="grid"><!-- user project cards render here --></div>
 
@@ -443,16 +443,8 @@ function renderCards(){
   const demoSec = document.getElementById('demo-sec');
   const projects = allProjects();
   var hint = document.getElementById('no-projects-hint');
-  // Grid search filter
-  var searchEl = document.getElementById('grid-search');
-  var fq = searchEl ? (searchEl.value || '').toLowerCase().trim() : '';
-  var clearBtn = document.getElementById('grid-search-clear');
-  if (clearBtn) clearBtn.style.display = fq ? 'inline-flex' : 'none';
   // Separate user projects from demo projects
   var userProjects = projects.filter(function(p) { return !p.demo; });
-  if (fq) userProjects = userProjects.filter(function(p) {
-    return (p.title || p.id || '').toLowerCase().indexOf(fq) > -1 || (p.description || '').toLowerCase().indexOf(fq) > -1;
-  });
   var demoProjects = projects.filter(function(p) { return !!p.demo; });
   // Check if demos are hidden by the user
   var demosHidden = false;
@@ -953,15 +945,20 @@ function renderProjectResults(query){
   if (!list) return;
   var q = (query || '').toLowerCase().trim();
   var all = [];
-  // User projects
+  // User projects (local)
   try {
     var raw = localStorage.getItem('mmgr_projects');
     if (raw) all = JSON.parse(raw);
   } catch(e) {}
-  // Include MMGR_PROJECTS (manifest)
+  // Include MMGR_PROJECTS (manifest + cloud)
   (window.MMGR_PROJECTS || []).forEach(function(p) {
     if (p && p.id && !all.find(function(x){ return x.id === p.id; })) all.push(p);
   });
+  // Include demo projects
+  try {
+    if (window.MMGR_DEMO_FILLED) all.push({id:'demo-filled',title:'Demo: Filled Project',description:'A pre-filled demo project showcasing all workspace sections.',demo:true});
+    if (window.MMGR_DEMO_EMPTY) all.push({id:'demo-empty',title:'Demo: Empty Project',description:'A blank demo project for exploring the workspace.',demo:true});
+  } catch(e) {}
   var filtered = q ? all.filter(function(p) {
     return (p.title || p.id || '').toLowerCase().indexOf(q) > -1 || (p.description || '').toLowerCase().indexOf(q) > -1;
   }) : all;
@@ -974,10 +971,11 @@ function renderProjectResults(query){
     var desc = p.description || '';
     var unlocked = false;
     try { unlocked = localStorage.getItem('mmgr_unlocked_' + p.id) === '1'; } catch(e) {}
+    var badge = p.demo ? '<span class="ps-item-badge" style="color:var(--gold)">Demo</span>' : (unlocked ? '<span class="ps-item-badge">Unlocked</span>' : '');
     return '<button type="button" class="ps-item" data-ps-id="' + (p.id || '').replace(/"/g, '&quot;') + '">' +
       '<span class="ps-item-title">' + title.replace(/</g, '&lt;') + '</span>' +
       (desc ? '<span class="ps-item-desc">' + desc.replace(/</g, '&lt;').substring(0, 80) + '</span>' : '') +
-      (unlocked ? '<span class="ps-item-badge">Unlocked</span>' : '') +
+      badge +
       '</button>';
   }).join('');
 }
@@ -1024,23 +1022,6 @@ document.addEventListener('click', function(e){
   e.preventDefault();
   fn(el, e);
 });
-
-/* GRID SEARCH: real-time filter of project cards as user types */
-(function(){
-  var searchEl = document.getElementById('grid-search');
-  var clearBtn = document.getElementById('grid-search-clear');
-  if (searchEl) {
-    searchEl.addEventListener('input', function(){ renderCards(); });
-    searchEl.addEventListener('keydown', function(e){
-      if (e.key === 'Escape') { searchEl.value = ''; renderCards(); }
-    });
-  }
-  if (clearBtn) {
-    clearBtn.addEventListener('click', function(){
-      if (searchEl) { searchEl.value = ''; searchEl.focus(); renderCards(); }
-    });
-  }
-})();
 
 /* DEMO PROJECT SEEDING + RENDER: both run after the deferred app-bundle.js
    loads (it defines MMGR_PROJECTS, MMGR_DEMO_FILLED, MMGR_DEMO_EMPTY). */
@@ -1128,7 +1109,7 @@ if ('serviceWorker' in navigator &&
   <div class="mb" style="max-width:520px;width:95%;">
     <div class="mh"><span class="mt"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-search"></use></svg> Search Projects</span><button type="button" class="dc" data-action="closeProjectSearch"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg></button></div>
     <div class="mbody">
-      <input id="ps-input" type="text" placeholder="Type a project name..." autocomplete="off" autofocus style="margin-bottom:12px;">
+      <input id="ps-input" type="text" placeholder="Type a project name or keyword..." autocomplete="off" autofocus style="margin-bottom:12px;">
       <div id="ps-list" style="max-height:50vh;overflow-y:auto;"></div>
     </div>
   </div>

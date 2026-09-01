@@ -1507,6 +1507,8 @@ window.MMGR = MMGR;
     // writes a device-level preference only (localStorage, never project
     // state), so it is safe in view-only, exactly like the viewport prefs.
     'tglGlassMode': () => window.MMGR.App.tglGlassMode(),
+    // Calculator toggle (floating draggable FAB).
+    'toggleCalc': () => { const C = window.MMGR.Calculator; if (C && C.toggle) C.toggle(); },
     // THEME-SYSTEM-AND-MOBILE-UI-ACTION-PLAN §4.2: mobile nav drawer toggle.
     'tglNav': () => window.MMGR.App.tglNav(),
     'tglSidebar': () => window.MMGR.App.tglSidebar(),

@@ -402,6 +402,8 @@ var MMGR = window.MMGR || {};
 
   // ---- save ---------------------------------------------------------------
   async function saveToCloud() {
+    /* DEMO GUARD: demo projects are code-based, non-cloud. */
+    if (ns.projectId === 'demo-filled' || ns.projectId === 'demo-empty') { setStatus('Demo projects cannot be saved to the cloud.', 'warn'); return; }
     const cred = activeCredential();
     if (!cred) { setStatus('Create a cloud project first (button above).', 'warn'); return; }
     // CLOUD-CODES-AND-DELETE: a viewer code is read-only everywhere , the

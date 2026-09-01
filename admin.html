@@ -75,14 +75,14 @@ header h1{font-size:1rem;display:flex;align-items:center;gap:8px;font-weight:800
 /* Admin uses the same db-side class system as app.html for the sidebar.
    Override the top offset to match admin's sticky header height. */
 body.admin-page .db-side{top:var(--hdr-h,64px);}
-/* Admin sidebar reveal: body.sidebar-open slides the rail in (same pattern
-   as app.html's body.side-open but admin uses its own class name). */
-body.sidebar-open .db-side{transform:translateX(0);visibility:visible;}
-body.sidebar-open .db-scrim{opacity:1;pointer-events:auto;}
+/* Admin sidebar reveal: body.side-open slides the rail in, matching
+   the shared mmgr.css db-page pattern exactly. */
+body.admin-page.side-open .db-side{transform:translateX(0);visibility:visible;}
+body.admin-page.side-open .db-scrim{opacity:1;pointer-events:auto;}
 @media(min-width:769px){
   body.admin-page .db-side{display:flex;}
   body.admin-page .db-side-close .ico{transition:transform .18s ease;}
-  body.sidebar-open .db-side-close .ico{transform:rotate(90deg);}
+  body.admin-page.side-open .db-side-close .ico{transform:rotate(90deg);}
 }
 /* STABILIZATION (2026-08-16): the Cloud Projects list's "Deleted" state , 
    a tombstoned project renders with a danger badge + note + Undo / Delete
@@ -570,17 +570,10 @@ function toast(msg, type, action){
   killT = setTimeout(()=>{ t.remove(); }, hold + 500);
 }
 
-/* ── seed data: one worked demo example on a totally fresh browser ── */
-const DEMO_SEED = [{
-  id: 'demo-project',
-  title: 'Demo Project, Riverside Tower Renovation',
-  description: 'A working example wired up end-to-end so you can test the unlock flow before adding your own projects.',
-  status: 'active',
-  file: 'project.html?id=demo-project',
-  code: 'TRYME2026',
-  codeHash: '5b583f9cc37f83fa78453b41c1516a1f23510fd367396523f36bd58b7dcb87f7',
-  isDemo: true
-}];
+/* Demo projects (demo-filled / demo-empty) live on the app page only;
+   they are code-based, non-deletable, and non-cloud. The admin panel
+   starts empty — the admin creates their own projects. */
+const DEMO_SEED = [];
 
 let projects = [];
 
@@ -878,7 +871,9 @@ function enterAdmin(){
    ============================================================ */
 function renderProjects(){
   const list = document.getElementById('project-list');
-  if(!projects.length){
+  /* Filter out code-based demo projects — they live on the app page only */
+  const adminProjects = projects.filter(function(p){ return !p.isDemo && !(p.id && p.id.indexOf('demo-') === 0); });
+  if(!adminProjects.length){
     list.innerHTML = '<div class="empty">No projects yet. Click "+ Add Project" to create your first one.</div>';
     return;
   }
@@ -889,7 +884,7 @@ function renderProjects(){
       staleLive.map(function(s){ return escapeHtml(s.title); }).join(', ') +
       '), still visible to visitors until you publish.</div>'
     : '';
-  list.innerHTML = staleLine + projects.map((p, i) => {
+  list.innerHTML = staleLine + adminProjects.map((p, i) => {
     const status = (p.status||'active').toLowerCase();
     const published = isPublishedRecord(p);
     const codeDisplay = p.code
@@ -1715,8 +1710,7 @@ function _admIdx(el){
    shows, Escape + scrim tap close. Mirrors project.html's tglNav pattern so
    every surface behaves the same. */
 function tglAdminNav(){
-  const open = document.body.classList.toggle('sidebar-open');
-  document.body.classList.toggle('side-open', open);
+  const open = document.body.classList.toggle('side-open');
   const btn = document.getElementById('nav-btn');
   if (btn) btn.setAttribute('aria-expanded', open ? 'true' : 'false');
   // T5 (2026-08-16): the rail's Google button was rendered at boot while the
@@ -1730,19 +1724,21 @@ function tglAdminNav(){
   }
 }
 function closeAdminNav(){
-  document.body.classList.remove('sidebar-open');
   document.body.classList.remove('side-open');
   const btn = document.getElementById('nav-btn');
   if (btn) btn.setAttribute('aria-expanded', 'false');
 }
 // Rail navigation closes the drawer (mobile) / overlay (desktop) after use.
-// Customize controls (theme/glass toggles + palette buttons) stay open so
-// the user can try them live , same contract as the app.html rail.
+// Customize controls (theme/glass toggles + palette buttons) and the close
+// button (tglNav) stay open — they handle their own state via the action map.
 document.addEventListener('click', function(e){
   const rail = e.target.closest('#app-sidebar');
   if (!rail) return;
   if (e.target.closest('.db-ctl-row') || e.target.closest('.rail-ctl-row')) return;
-  if (e.target.closest('a') || e.target.closest('[data-action]')) closeAdminNav();
+  if (e.target.closest('.db-side-close')) return;
+  const actionEl = e.target.closest('[data-action]');
+  if (actionEl && (actionEl.getAttribute('data-action') === 'tglNav')) return;
+  if (e.target.closest('a') || actionEl) closeAdminNav();
 });
 // Keep the rail aligned under the sticky header (it starts below --hdr-h).
 function syncAdminHdr(){
@@ -1837,12 +1833,13 @@ initGate();
 // boot() call may race with session restore. Listen for the event to catch
 // late arrivals, and also poll once after DOMContentLoaded.
 document.addEventListener('mmgr:user-changed', function(e){
+  var signedIn = !!(e && e.detail);
   var eb = document.getElementById('email-auth-block');
   var gb = document.getElementById('google-signin-button');
   var uc = document.getElementById('google-user-chip');
-  if (eb) eb.hidden = true;
-  if (gb) gb.hidden = true;
-  if (uc) uc.hidden = false;
+  if (eb) eb.hidden = signedIn;
+  if (gb) gb.hidden = signedIn;
+  if (uc) uc.hidden = !signedIn;
 });
 
 // Reflect the device-level theme + glass preferences on every admin switch

@@ -3306,6 +3306,7 @@ body.dark-mode.db-page .db-auto-lbl{color:var(--db-text-secondary);}
 }
 .calc-history-item:hover{background:color-mix(in oklch,var(--gold) 8%,transparent);}
 .calc-history-item.calc-history-copied{background:rgba(16,185,129,.15);}
+.calc-btn:focus-visible,.calc-tab:focus-visible,.calc-action:focus-visible,.calc-fab:focus-visible,.calc-close:focus-visible{outline:2px solid var(--gold);outline-offset:2px;}
 @media(prefers-reduced-motion:reduce){
   .calc-panel{transition:none!important;transform:none!important;opacity:1!important;}
   .calc-result-show{animation:none!important;}

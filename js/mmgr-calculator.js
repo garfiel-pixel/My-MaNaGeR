@@ -458,7 +458,7 @@
         var x = parseFloat(document.getElementById('pct-x').value) || 0;
         var y = parseFloat(document.getElementById('pct-y').value) || 0;
         var res = (x / 100) * y;
-        r = x + '% of ' + fmtBig(y) + ' = ' + fmtBig(res);
+        r = x + '% of ' + fmtNum(y) + ' = ' + fmtNum(res);
         showResult('pct-result', r);
         addHistory(r);
         break;
@@ -467,7 +467,7 @@
         var a = parseFloat(document.getElementById('pct-a').value) || 0;
         var b = parseFloat(document.getElementById('pct-b').value) || 0;
         var pct = b !== 0 ? (a / b) * 100 : 0;
-        r = a + ' is ' + pct.toFixed(2) + '% of ' + fmtBig(b);
+        r = a + ' is ' + pct.toFixed(2) + '% of ' + fmtNum(b);
         showResult('pct-result2', r);
         addHistory(r);
         break;
@@ -477,7 +477,7 @@
         var to = parseFloat(document.getElementById('pct-to').value) || 0;
         var chg = from !== 0 ? ((to - from) / Math.abs(from)) * 100 : 0;
         var dir = chg >= 0 ? 'increase' : 'decrease';
-        r = Math.abs(chg).toFixed(2) + '% ' + dir + ' from ' + fmtBig(from) + ' to ' + fmtBig(to);
+        r = Math.abs(chg).toFixed(2) + '% ' + dir + ' from ' + fmtNum(from) + ' to ' + fmtNum(to);
         showResult('pct-result3', r);
         addHistory(r);
         break;
@@ -485,7 +485,7 @@
       case 'area-rect': {
         var w = parseFloat(document.getElementById('area-rect-w').value) || 0;
         var h = parseFloat(document.getElementById('area-rect-h').value) || 0;
-        r = 'Area = ' + fmtBig(w * h) + ' sq units';
+        r = 'Area = ' + fmtNum(w * h) + ' sq units';
         showResult('area-rect-result', r);
         addHistory(r);
         break;
@@ -496,7 +496,7 @@
         var sc = parseFloat(document.getElementById('area-tri-c').value) || 0;
         var s = (sa + sb + sc) / 2;
         var area = Math.sqrt(Math.max(0, s * (s - sa) * (s - sb) * (s - sc)));
-        r = 'Area = ' + fmtBig(area) + ' sq units (Heron\'s formula)';
+        r = 'Area = ' + fmtNum(area) + ' sq units (Heron\'s formula)';
         showResult('area-tri-result', r);
         addHistory(r);
         break;
@@ -504,7 +504,7 @@
       case 'area-circle': {
         var rad = parseFloat(document.getElementById('area-circ-r').value) || 0;
         var ca = Math.PI * rad * rad;
-        r = 'Area = ' + fmtBig(ca) + ' sq units | Circumference = ' + fmtBig(2 * Math.PI * rad);
+        r = 'Area = ' + fmtNum(ca) + ' sq units | Circumference = ' + fmtNum(2 * Math.PI * rad);
         showResult('area-circle-result', r);
         addHistory(r);
         break;
@@ -513,7 +513,7 @@
         var pa = parseFloat(document.getElementById('area-trap-a').value) || 0;
         var pb = parseFloat(document.getElementById('area-trap-b').value) || 0;
         var ph = parseFloat(document.getElementById('area-trap-h').value) || 0;
-        r = 'Area = ' + fmtBig((pa + pb) / 2 * ph) + ' sq units';
+        r = 'Area = ' + fmtNum((pa + pb) / 2 * ph) + ' sq units';
         showResult('area-trap-result', r);
         addHistory(r);
         break;
@@ -526,7 +526,7 @@
         var conv = allConvs.find(function(c) { return c.from === parts[0] && c.to === parts[1]; });
         if (conv) {
           var res = val * conv.factor;
-          r = fmtBig(val) + ' ' + parts[0].toUpperCase() + ' = ' + fmtBig(res) + ' ' + parts[1].toUpperCase();
+          r = fmtNum(val) + ' ' + parts[0].toUpperCase() + ' = ' + fmtNum(res) + ' ' + parts[1].toUpperCase();
           showResult('conv-result', r);
           addHistory(r);
         }
@@ -550,7 +550,7 @@
         var mp = parseFloat(document.getElementById('mk-pct').value) || 0;
         var price = cost * (1 + mp / 100);
         var profit = price - cost;
-        r = 'Price: ' + fmtBig(price) + ' | Profit: ' + fmtBig(profit) + ' (' + mp + '% markup)';
+        r = 'Price: ' + fmtDollars(price) + ' | Profit: ' + fmtDollars(profit) + ' (' + mp + '% markup)';
         showResult('mk-result', r);
         addHistory(r);
         break;
@@ -559,7 +559,7 @@
         var mc = parseFloat(document.getElementById('mg-cost').value) || 0;
         var mgp = parseFloat(document.getElementById('mg-pct').value) || 0;
         var sp = mgp < 100 ? mc / (1 - mgp / 100) : 0;
-        r = 'Selling Price: ' + fmtBig(sp) + ' | Profit: ' + fmtBig(sp - mc) + ' (' + mgp + '% margin)';
+        r = 'Selling Price: ' + fmtDollars(sp) + ' | Profit: ' + fmtDollars(sp - mc) + ' (' + mgp + '% margin)';
         showResult('mg-result', r);
         addHistory(r);
         break;
@@ -568,7 +568,7 @@
         var dp = parseFloat(document.getElementById('disc-price').value) || 0;
         var dpct = parseFloat(document.getElementById('disc-pct').value) || 0;
         var saved = dp * dpct / 100;
-        r = 'Final: ' + fmtBig(dp - saved) + ' | Saved: ' + fmtBig(saved);
+        r = 'Final: ' + fmtDollars(dp - saved) + ' | Saved: ' + fmtDollars(saved);
         showResult('disc-result', r);
         addHistory(r);
         break;
@@ -577,7 +577,7 @@
         var ta = parseFloat(document.getElementById('tax-amt').value) || 0;
         var tp = parseFloat(document.getElementById('tax-pct').value) || 0;
         var taxAmt = ta * tp / 100;
-        r = 'Tax: ' + fmtBig(taxAmt) + ' | Total: ' + fmtBig(ta + taxAmt);
+        r = 'Tax: ' + fmtDollars(taxAmt) + ' | Total: ' + fmtDollars(ta + taxAmt);
         showResult('tax-result', r);
         addHistory(r);
         break;
@@ -585,7 +585,7 @@
       case 'unit-cost': {
         var uq = parseFloat(document.getElementById('uc-qty').value) || 0;
         var ur = parseFloat(document.getElementById('uc-rate').value) || 0;
-        r = 'Total: ' + fmtBig(uq * ur) + ' (' + uq + ' x $' + ur.toFixed(2) + ')';
+        r = 'Total: ' + fmtDollars(uq * ur) + ' (' + uq + ' x $' + ur.toFixed(2) + ')';
         showResult('uc-result', r);
         addHistory(r);
         break;
@@ -596,7 +596,7 @@
         var lp = parseInt(document.getElementById('lc-people').value) || 1;
         var ld = parseInt(document.getElementById('lc-days').value) || 1;
         var total = lh * lr * lp * ld;
-        r = 'Total: ' + fmtBig(total) + ' (' + lp + ' workers x ' + lh + ' hrs/day x ' + ld + ' days x $' + lr.toFixed(2) + '/hr)';
+        r = 'Total: ' + fmtDollars(total) + ' (' + lp + ' workers x ' + lh + ' hrs/day x ' + ld + ' days x $' + lr.toFixed(2) + '/hr)';
         showResult('lc-result', r);
         addHistory(r);
         break;
@@ -607,7 +607,7 @@
         var mw = parseFloat(document.getElementById('mc-waste').value) || 0;
         var base = mq * mrate;
         var withWaste = base * (1 + mw / 100);
-        r = 'Base: ' + fmtBig(base) + ' | With ' + mw + '% waste: ' + fmtBig(withWaste);
+        r = 'Base: ' + fmtDollars(base) + ' | With ' + mw + '% waste: ' + fmtDollars(withWaste);
         showResult('mc-result', r);
         addHistory(r);
         break;
@@ -616,7 +616,7 @@
         var cb = parseFloat(document.getElementById('ct-base').value) || 0;
         var cp = parseFloat(document.getElementById('ct-pct').value) || 0;
         var cont = cb * cp / 100;
-        r = 'Contingency: ' + fmtBig(cont) + ' | Total with contingency: ' + fmtBig(cb + cont);
+        r = 'Contingency: ' + fmtDollars(cont) + ' | Total with contingency: ' + fmtDollars(cb + cont);
         showResult('ct-result', r);
         addHistory(r);
         break;
@@ -645,9 +645,13 @@
     return n.toLocaleString('en-US', { maximumFractionDigits: 8 });
   }
 
-  function fmtBig(n) {
-    if (Math.abs(n) >= 1e12) return '$' + n.toExponential(4);
-    return '$' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  function fmtNum(n) {
+    if (Math.abs(n) >= 1e12) return n.toExponential(4);
+    return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  function fmtDollars(n) {
+    return '$' + fmtNum(n);
   }
 
   function updateConvPairs(category) {

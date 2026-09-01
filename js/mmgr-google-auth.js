@@ -155,6 +155,14 @@ var MMGR = window.MMGR || {};
     const chip = $('google-user-chip');
     if (btn) btn.hidden = false;
     if (chip) chip.hidden = true;
+    // Reset the #siom modal title + hint to sign-in state
+    const siom = $('siom');
+    if (siom) {
+      const titleEl = siom.querySelector('.mt');
+      if (titleEl) titleEl.textContent = 'Sign in';
+      const hintEl = siom.querySelector('.si-hint');
+      if (hintEl) hintEl.textContent = 'Sign in with Google or use your email. Optional, for cloud sync, backups, and your cloud projects.';
+    }
     // OWNER 2026-08-15: project.html header chip hides when signed out.
     const hc = $('hdr-signin');
     if (hc) hc.hidden = true;
@@ -202,6 +210,15 @@ var MMGR = window.MMGR || {};
     // Signed in (Google OR email) -> the email form collapses behind the chip.
     const eb = $('email-auth-block');
     if (eb) eb.hidden = true;
+    // Update the #siom modal title + hint to reflect signed-in state
+    // so the user doesn't see "Sign in" when already authenticated.
+    const siom = $('siom');
+    if (siom) {
+      const titleEl = siom.querySelector('.mt');
+      if (titleEl) titleEl.textContent = 'Account';
+      const hintEl = siom.querySelector('.si-hint');
+      if (hintEl) hintEl.textContent = 'Signed in as ' + (user.email || user.name || user.sub || 'your account') + '.';
+    }
     // Page-level notification covering EVERY signed-in path (session
     // restore, Google, email) so a page without a chip (the marketing
     // sign-in sheet) can render its own signed-in state. App pages listen

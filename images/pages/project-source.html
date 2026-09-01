@@ -57,7 +57,7 @@
       clicks "Connect Google" in Settings > Controls. It is a device label,
       never a gate , offline/CSP-blocked loads degrade to a toast.
 -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' 'sha256-zUtIgMoGZXbdKSIgoC/fhYlGEPJluAGG4nNBJOwnNWU=' 'sha256-reza4vd5o52LWNUf9lzK6WjApdstd5sm4xVx+lcnK2M=' 'sha256-DDYVqby/7w6QiwGTikwlcwwnf1qHWgEmMUmSvXmqy7E=' 'sha256-SOdsdeUaBMC/g/FSW5vXZk+K1tRpA9U5QM/9rJa1RLs=' https://accounts.google.com https://unpkg.com; style-src 'self' 'unsafe-inline' https://accounts.google.com https://fonts.googleapis.com; img-src 'self' data: blob: https://lh3.googleusercontent.com https://*.googleusercontent.com; font-src 'self' data:; connect-src 'self' https://api.open-meteo.com https://geocoding-api.open-meteo.com https://api.openai.com https://api.anthropic.com https://generativelanguage.googleapis.com https://github.com https://release-assets.githubusercontent.com https://accounts.google.com https://huggingface.co https://*.cdn.hf.co; frame-src https://accounts.google.com; base-uri 'self'; form-action 'self';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' 'sha256-DDYVqby/7w6QiwGTikwlcwwnf1qHWgEmMUmSvXmqy7E=' 'sha256-jQGKXr3EKUJqelsBjB7GNSArKx9pbp38QHCOFoVCB3g=' 'sha256-EpNwfibNigIpP+EoyoK4EVYj2pdTPuejviaFxStcja0=' 'sha256-reza4vd5o52LWNUf9lzK6WjApdstd5sm4xVx+lcnK2M=' https://accounts.google.com https://unpkg.com; style-src 'self' 'unsafe-inline' https://accounts.google.com https://fonts.googleapis.com; img-src 'self' data:; font-src 'self' data:; connect-src 'self' https://api.open-meteo.com https://geocoding-api.open-meteo.com https://api.openai.com https://api.anthropic.com https://generativelanguage.googleapis.com https://github.com https://release-assets.githubusercontent.com https://accounts.google.com https://huggingface.co https://*.cdn.hf.co; frame-src https://accounts.google.com; base-uri 'self'; form-action 'self';">
 <script>
 /* Device-level theme (shared across launcher, admin, and app): applied before
    first paint from the same localStorage slot every theme toggle writes, so a
@@ -65,11 +65,10 @@
    <head> so the class is set before any content renders (FOUC prevention). */
 (function(){ try {
   var t = localStorage.getItem('mmgr_theme');
-  var dark = t === 'dark';
+  var dark = t === 'dark' || (t !== 'light' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
   if (dark) document.documentElement.classList.add('dark-mode');
 } catch (e) {} })();
 </script>
-<link rel="modulepreload" href="dist/bundle.js">
 </head>
 <body>
 <script>
@@ -215,11 +214,11 @@
       </div>
     </div>
     <!-- AI COMMAND BAR (Phase 7): subtle top-level Ask your project -->
-    <div class="card ai-cmd-card" id="ai-command-card">
-      <div class="ai-cmd-row">
-        <svg class="ico ai-cmd-icon" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg>
-        <input type="text" id="ai-command-input" placeholder="Ask your project…" aria-label="Ask your project a question">
-        <button type="button" class="btn btn-ghost btn-s" id="ai-command-btn" data-action="openAiWin"><svg class="ico ai-cmd-arrow" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg></button>
+    <div class="card" id="ai-command-card" style="padding:10px 14px;">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <svg class="ico" aria-hidden="true" style="color:var(--purple);flex-shrink:0;"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg>
+        <input type="text" id="ai-command-input" placeholder="Ask your project…" aria-label="Ask your project a question" style="flex:1;border:none;background:transparent;color:var(--text);font-size:.85rem;outline:none;font-family:inherit;">
+        <button type="button" class="btn btn-ghost btn-s" id="ai-command-btn" data-action="openAiWin"><svg class="ico" aria-hidden="true" style="width:14px;height:14px;"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg></button>
       </div>
     </div>
     <!-- ATTENTION (UI-UX doc §7.1): highest-priority items requiring action -->
@@ -253,17 +252,16 @@
           </div>
         </div>
         <!-- Compact status counts -->
-        <div class="col-g8 col-mt8">
+        <div class="col-g8" style="margin-top:8px;">
           <div class="fb-sm"><span>In Progress</span><span class="badge bg" id="h-ip">0</span></div>
           <div class="fb-sm"><span>At Risk</span><span class="badge ba" id="h-ar">0</span></div>
           <div class="fb-sm"><span>Blocked</span><span class="badge br" id="h-bl">0</span></div>
-          <div class="fb-sm"><span>Done</span><span class="badge bg" id="h-dn">0</span></div>
           <div class="fb-sm"><span>Overdue</span><span class="badge br" id="h-od">0</span></div>
           <div class="fb-sm"><span>Issues</span><span class="badge br" id="h-is">0</span></div>
           <div class="fb-sm"><span>Compliance</span><span class="badge br" id="h-coi">0</span></div>
         </div>
         <!-- Expandable explanation -->
-        <details id="health-breakdown-wrap" class="hb-wrap"><summary class="hb-toggle">Why?</summary><div id="health-breakdown"></div></details>
+        <details id="health-breakdown-wrap" style="margin-top:6px"><summary style="font-size:.72rem;color:var(--slate);cursor:pointer;user-select:none;">Why?</summary><div id="health-breakdown"></div></details>
       </div>
       <div class="card">
         <div class="card-title">Next 3 Priority Actions</div>
@@ -1077,7 +1075,7 @@
      Copy-to-clipboard first; a generative API-key path can be dropped in
      later without redesign (see js/mmgr-ai.js). -->
 <button id="ai-fab" class="ai-fab" data-action="openAiWin" aria-label="Open AI Assistant" title="AI Assistant , preset prompts, free-form question, project context"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg></button>
-<div id="ai-win">
+<div id="ai-win" data-action="closeAiWinBg">
   <!-- AI-WINDOW-RESIZE: eight edge/corner drag handles (data-edge) wired in
        js/mmgr-ai.js; the size is persisted per device in localStorage
        (mmgr_ai_size, same device-pref slot pattern as mmgr_theme). -->
@@ -1148,22 +1146,11 @@
       </select>
       <button class="ai-byo-gear" id="ai-byo-gear" type="button" aria-expanded="false" aria-label="API key settings" title="API key settings , paste your key and Connect &amp; Test"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-settings"></use></svg></button>
       <div class="ai-byo-pop is-hide" id="ai-byo-pop" role="group" aria-label="API key setup">
-        <input type="text" id="ai-byo-key" class="ai-byo-key" placeholder="Paste your API key (session-only)" autocomplete="off" spellcheck="false" title="Session-only: your key stays in this browser, is never exported, and clears when you close the tab">
+        <input type="text" id="ai-byo-key" class="ai-byo-key" placeholder="Paste your API key (session-only)" autocomplete="off" spellcheck="false" title="Session-only: your key stays in this browser, is never exported, and clears when you close the tab" style="-webkit-text-security:disc;text-security:disc;">
         <button class="btn btn-g btn-s" id="ai-byo-connect" title="Save this session key and verify it with a live provider check"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-link"></use></svg> Connect &amp; Test</button>
         <button class="btn btn-n btn-s" id="ai-byo-clear" title="Forget the key in this session"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> Clear</button>
         <p class="ai-byo-sec">Your key stays in this browser for this session only , never stored on our servers, never in exports, cleared when you close the tab.</p>
       </div>
-    </div>
-    <!-- MCP TOGGLE: when enabled, the AI gets live project context (tasks,
-         budget, risks, etc.) injected into the system prompt. Only available
-         when a BYO API key is connected. Per-project, persisted to localStorage. -->
-    <div class="ai-conn-row" id="ai-cfg-mcp">
-      <label class="ai-mcp-toggle" for="ai-mcp-toggle">
-        <input type="checkbox" id="ai-mcp-toggle" data-action="aiToggleMcp">
-        <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg>
-        <span>MCP Tools</span>
-      </label>
-      <span class="ai-byo-sec mcp-sub">AI reads your live project data</span>
     </div>
     <div class="mbody ai-body">
       <!-- AI-WINDOW-LAYOUT-SCROLL-AND-INPUT-BUG-DIRECTIVE DIR-1: Chat/Presets
@@ -1221,7 +1208,6 @@
          native tooltip hosted on the wrapper span (Chrome suppresses title
          tooltips on disabled buttons). -->
     <div class="mf ai-inputbar">
-      <button type="button" class="ai-voice-btn" id="ai-voice-btn" data-action="aiVoiceToggle" title="Voice input (whisper transcription)" aria-label="Toggle voice input"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-mic"></use></svg></button>
       <textarea id="ai-q" class="ai-q" rows="1" placeholder="Ask anything about this project…" title="Enter to send · Shift+Enter for a new line"></textarea>
       <span class="ai-send-wrap" id="ai-send-wrap" title="Send"><button class="ai-send" id="ai-send" data-action="aiRun" title="Send"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-zap"></use></svg> Send</button></span>
     </div>
@@ -1300,17 +1286,17 @@
     <div class="sr-hint ctl-lead">The same live project state, in three share formats. Read what each one is for , then copy it.</div>
     <div class="fmt-card">
       <div class="fmt-head"><span class="fmt-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-users"></use></svg> Slack Digest</span><button class="btn btn-g btn-s" data-action="cpFormats" data-kind="slack" title="Copy the Slack-formatted digest"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy</button></div>
-      <details class="fmt-more"><summary>What is this for?</summary><p class="fmt-desc">Slack is the team chat app many crews use for quick updates. This format uses Slack's bold <code>*asterisks*</code> markup so headings and warnings stand out when pasted into a channel.</p></details>
+      <p class="fmt-desc">Slack is the team chat app many crews use for quick updates. This format uses Slack's bold <code>*asterisks*</code> markup so headings and warnings stand out when pasted into a channel.</p>
       <pre class="fmt-preview" id="pv-slack" aria-label="Slack digest preview (live)"></pre>
     </div>
     <div class="fmt-card">
       <div class="fmt-head"><span class="fmt-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-mail"></use></svg> Email Digest</span><button class="btn btn-g btn-s" data-action="cpFormats" data-kind="email" title="Copy the email digest"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy</button></div>
-      <details class="fmt-more"><summary>What is this for?</summary><p class="fmt-desc">A ready-to-paste email for your sponsor or team: subject line included, plain text, no chat markup. Paste it straight into your mail client.</p></details>
+      <p class="fmt-desc">A ready-to-paste email for your sponsor or team: subject line included, plain text, no chat markup. Paste it straight into your mail client.</p>
       <pre class="fmt-preview" id="pv-email" aria-label="Email digest preview (live)"></pre>
     </div>
     <div class="fmt-card">
       <div class="fmt-head"><span class="fmt-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-file-text"></use></svg> Client Summary</span><button class="btn btn-g btn-s" data-action="cpFormats" data-kind="client" title="Copy the printable client summary"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy</button></div>
-      <details class="fmt-more"><summary>What is this for?</summary><p class="fmt-desc">A clean, printable one-page summary for a client or stakeholder: progress, key metrics, open issues. No internal risk detail , just what a client needs to know.</p></details>
+      <p class="fmt-desc">A clean, printable one-page summary for a client or stakeholder: progress, key metrics, open issues. No internal risk detail , just what a client needs to know.</p>
       <pre class="fmt-preview" id="pv-client" aria-label="Client summary preview (live)"></pre>
     </div>
 
@@ -1322,22 +1308,22 @@
     <div class="sr-hint ctl-lead">Ready-to-send drafts built from live project data , each is a full email with subject line. Read the preview, then copy and paste into your mail client.</div>
     <div class="fmt-card">
       <div class="fmt-head"><span class="fmt-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-calendar"></use></svg> Status Update</span><button class="btn btn-n btn-s" data-action="emailTpl" data-kind="status" title="Copy the weekly status update email"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy</button></div>
-      <details class="fmt-more"><summary>What is this for?</summary><p class="fmt-desc">The regular weekly update to your sponsor: overall progress, tasks in progress, blockers, live issues, and next priorities.</p></details>
+      <p class="fmt-desc">The regular weekly update to your sponsor: overall progress, tasks in progress, blockers, live issues, and next priorities.</p>
       <pre class="fmt-preview" id="pv-tpl-status" aria-label="Status update email preview (live)"></pre>
     </div>
     <div class="fmt-card">
       <div class="fmt-head"><span class="fmt-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> Change Request</span><button class="btn btn-n btn-s" data-action="emailTpl" data-kind="change" title="Copy the change request approval email"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy</button></div>
-      <details class="fmt-more"><summary>What is this for?</summary><p class="fmt-desc">Asks for approval on pending change requests, with the schedule and cost impact of each one so the decision is informed.</p></details>
+      <p class="fmt-desc">Asks for approval on pending change requests, with the schedule and cost impact of each one so the decision is informed.</p>
       <pre class="fmt-preview" id="pv-tpl-change" aria-label="Change request email preview (live)"></pre>
     </div>
     <div class="fmt-card">
       <div class="fmt-head"><span class="fmt-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-alert-triangle"></use></svg> Risk Escalation</span><button class="btn btn-n btn-s" data-action="emailTpl" data-kind="risk" title="Copy the risk / issue escalation email"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy</button></div>
-      <details class="fmt-more"><summary>What is this for?</summary><p class="fmt-desc">Escalates open issues and high risks that need attention, each with its owner and target date so nothing slips through.</p></details>
+      <p class="fmt-desc">Escalates open issues and high risks that need attention, each with its owner and target date so nothing slips through.</p>
       <pre class="fmt-preview" id="pv-tpl-risk" aria-label="Risk escalation email preview (live)"></pre>
     </div>
     <div class="fmt-card">
       <div class="fmt-head"><span class="fmt-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-check-circle"></use></svg> Closure Sign-Off</span><button class="btn btn-n btn-s" data-action="emailTpl" data-kind="closure" title="Copy the closure sign-off email"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy</button></div>
-      <details class="fmt-more"><summary>What is this for?</summary><p class="fmt-desc">Formally asks the sponsor to sign off the project: overall completion and the deliverables checklist status.</p></details>
+      <p class="fmt-desc">Formally asks the sponsor to sign off the project: overall completion and the deliverables checklist status.</p>
       <pre class="fmt-preview" id="pv-tpl-closure" aria-label="Closure sign-off email preview (live)"></pre>
     </div>
 
@@ -1607,9 +1593,9 @@
     <div class="mbody">
       <p class="modal-txt" id="del-msg">Are you sure? This deletes the project from the cloud for everyone , editor and viewer codes stop working, every shared copy shows as <strong>discontinued</strong>, and offline copies keep their last snapshot but receive no more updates. There is no undo for anyone else; only you, the admin, can delete it.</p>
       <div class="email-auth-pw" id="del-pw-wrap" hidden>
-        <p class="email-auth-pw-title pw-title"><strong>Verify your password</strong></p>
+        <p class="email-auth-pw-title" style="margin:0 0 4px"><strong>Verify your password</strong></p>
         <div class="email-auth-row email-auth-pw-fields" id="del-pw-fields"></div>
-        <p class="email-auth-pw-msg pw-msg">Enter your account password to confirm the delete.</p>
+        <p class="email-auth-pw-msg" style="margin:4px 0 0">Enter your account password to confirm the delete.</p>
       </div>
       <div class="gerr" id="del-err" aria-live="polite"></div>
     </div>
@@ -1692,67 +1678,6 @@ if (window.location.protocol === 'http:' || window.location.protocol === 'https:
   fetch('css/mmgr-icons.svg').then(r=>{ if(!r.ok) console.warn('ICON SPRITE MISSING: css/mmgr-icons.svg returned ' + r.status + ' , upload the css/ folder (mmgr.css + mmgr-icons.svg) to the site root.'); })
     .catch(()=>console.warn('ICON SPRITE MISSING: css/mmgr-icons.svg could not be fetched , upload the css/ folder to the site root.'));
 }
-// CONTROLS ACCORDION (owner: "use a drop down system instead of it being
-// fluttered with a lot of information"). Each .ctl-sec in #db-ctrl becomes
-// a clickable toggle; content between sections is wrapped in a collapsible
-// group. Sections listed in ALWAYS_OPEN stay expanded (keyboard shortcuts,
-// workspace, etc.). Advanced Packs opens by default (directed to from
-// the website).
-(function(){
-  var ctrl = document.getElementById('db-ctrl');
-  if (!ctrl) return;
-  var ALWAYS_OPEN = {'Profile':1,'Share & Access':1,'Workspace':1};
-  var SECS = Array.prototype.slice.call(ctrl.querySelectorAll('.ctl-sec'));
-  SECS.forEach(function(sec, i){
-    // Add caret icon
-    var caret = document.createElement('svg');
-    caret.setAttribute('class','ico ico-caret');
-    caret.setAttribute('aria-hidden','true');
-    caret.innerHTML = '<use href="css/mmgr-icons.svg#i-arrow-right"></use>';
-    sec.appendChild(caret);
-    // Determine if always open
-    var label = (sec.textContent || '').trim();
-    var isOpen = !!ALWAYS_OPEN[label] || (label === 'Advanced Packs');
-    if (isOpen) sec.classList.add('open');
-    // Only toggle sections that have content after them
-    // (skip sections like Danger Zone that are conditional)
-    if (label === 'Danger Zone') return;
-    sec.setAttribute('data-ctl-toggle','');
-    sec.setAttribute('role','button');
-    sec.setAttribute('tabindex','0');
-    sec.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
-    // Collect siblings until next .ctl-sec or end of #db-ctrl
-    var group = document.createElement('div');
-    group.className = 'ctl-sec-group' + (isOpen ? '' : ' collapsed');
-    var next = sec.nextElementSibling;
-    var toMove = [];
-    while (next && !next.classList.contains('ctl-sec')) {
-      toMove.push(next);
-      next = next.nextElementSibling;
-    }
-    toMove.forEach(function(el){ group.appendChild(el); });
-    sec.parentNode.insertBefore(group, sec.nextSibling);
-    // Click/keyboard handler
-    function toggle(){
-      var open = sec.classList.toggle('open');
-      group.classList.toggle('collapsed', !open);
-      sec.setAttribute('aria-expanded', open ? 'true' : 'false');
-      // Set max-height for transition
-      if (open) {
-        group.style.maxHeight = group.scrollHeight + 'px';
-        setTimeout(function(){ group.style.maxHeight = 'none'; }, 260);
-      } else {
-        group.style.maxHeight = group.scrollHeight + 'px';
-        requestAnimationFrame(function(){ group.style.maxHeight = '0px'; });
-      }
-    }
-    sec.addEventListener('click', toggle);
-    sec.addEventListener('keydown', function(e){
-      if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); toggle(); }
-    });
-  });
-})();
-
 // Rank 4.1 (MASTER-ACTION-PLAN Rank 4): PWA registration , cache-first
 // service worker for the app shell. localhost/HTTPS only (SW requires a
 // secure context); a missing registration must never break the app.

@@ -1064,6 +1064,10 @@ body.gantt-dragging .gb{cursor:grabbing;}
 /* ACTION-PLAN 4.1: view-only scope — a static amber strip under the header */
 #readonly-banner{position:sticky;top:0;z-index:1500;display:flex;align-items:center;justify-content:center;gap:8px;background:rgba(245,158,11,.12);border-bottom:1px solid rgba(245,158,11,.35);color:var(--gold);font-size:.72rem;padding:6px 14px;letter-spacing:.3px;}
 #readonly-banner.is-hide{display:none;}
+/* Mobile: non-sticky so it doesn't stack with the header; compact single-line */
+@media(max-width:768px){
+  #readonly-banner{position:relative;z-index:auto;padding:5px 12px;font-size:.68rem;}
+}
 /* CLOUD-BACKEND-ARCHITECTURE-PLAN Phase 2 — scoped-editor workspace chrome.
    The banner + greyed nav are UX only: the Worker enforces the editor
    code's section scope server-side on every save, so even a compromised
@@ -1169,6 +1173,14 @@ body.readonly-mode .btn[data-action]:not([data-action="showSec"]):not([data-acti
 .ctl-sec{display:flex;align-items:center;gap:7px;font-size:.68rem;font-weight:800;text-transform:uppercase;letter-spacing:.6px;color:var(--gold);margin:20px 0 9px;padding-top:14px;border-top:1px solid var(--border);}
 #db-ctrl .ctl-sec:first-child{margin-top:0;padding-top:0;border-top:none;}
 .ctl-sec .ico{width:14px;height:14px;color:var(--gold);}
+/* Collapsible accordion sections in Controls drawer */
+.ctl-sec[data-ctl-toggle]{cursor:pointer;user-select:none;}
+.ctl-sec[data-ctl-toggle]:hover{color:var(--brand);}
+.ctl-sec[data-ctl-toggle] .ico-caret{margin-left:auto;width:12px;height:12px;flex-shrink:0;transition:transform .18s ease;}
+.ctl-sec[data-ctl-toggle].open .ico-caret{transform:rotate(90deg);}
+.ctl-sec-group{overflow:hidden;transition:max-height .25s ease;}
+.ctl-sec-group.collapsed{max-height:0!important;overflow:hidden;}
+@media (prefers-reduced-motion:reduce){.ctl-sec-group{transition:none;}}
 .ctl-lead{font-size:.7rem;color:var(--slate);margin:0 0 10px;}
 /* Explain-before-copy cards: what the format is, a live preview, then copy. */
 .fmt-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:13px 14px;margin-bottom:12px;box-shadow:0 1px 2px rgba(15,23,42,.04);}

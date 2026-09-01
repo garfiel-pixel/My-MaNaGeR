@@ -99,11 +99,6 @@
   "analytics_engine_datasets": [
     { "binding": "ANALYTICS", "dataset": "mmgr-events" }
   ],
-  // EMAIL SERVICE — native Workers email sending (orphan warnings, account alerts).
-  // Requires domain onboarding in Cloudflare dashboard: Compute > Email Service > Email Sending.
-  "send_email": [
-    { "name": "EMAIL" }
-  ],
   // REAL-TIME PRESENCE (deferred cloud item, 2026-08-12): one Presence
   // Durable Object per project id — holds the live WebSocket roster only
   // ({id, name, since}, never project content). SQLite-backed class so

@@ -1,102 +1,34 @@
-# Session Reflection — 2026-08-31 (Session 10: UI Polish Round 3)
+Session: 2026-08-31 (UI Fixes Continuation)
+Deploy: 230a9d15-7d3d-44e9-bea9-b6caa0a1c0a2 (v220)
 
-## Objective
-Execute the owner's third UI polish directive: fix cloud project delete trigger visibility,
-tone down dark theme glass, fix marketing dark theme dropdown contrast, restart carousel
-animation on viewport return, standardize favicon, fix field guide sign-in, and verify
-admin panel already has the required sidebar elements.
+Completed this session:
+1. CSP hash regen - corrected drifted hashes after project.html accordion init
+   (worker.js, serve.cjs, project.html meta CSP all synced to 17 hashes)
+2. Mobile view-only banner - position:relative at <=768px (non-sticky, no clutter)
+3. Controls drawer accordion - data-ctl-toggle sections with CSS transitions
+4. Sign-in modal state - #siom title/hint update for signed-in users
+5. Field guide sign-in - restyled trigger as bordered chip with fixed-position
+   glass sheet panel matching marketing page pattern
+6. Admin sidebar footer - added user identity chip, premium badge, sign-in
+   button + mmgr:user-changed listener to hide email auth when Google-signed-in
+7. App page search/moon overlap - repositioned search button to right:54px
+8. Real-time grid filter - inline search input above project grid filtering
+   by name/description as user types, clear button, Escape to reset
+9. Controls accordion caret icons - 14px absolutely positioned arrows
+10. Dark theme glass polish (prior commit) - blur 20->12px, fill 0.08->0.05
+11. Marketing dark dropdown contrast fix (prior commit)
+12. Feature bar carousel restart on return (prior commit)
+13. Favicon standardization (prior commit)
 
-## What Was Accomplished
+Tests: verify ALL PASSED, qa-marketing 20/20, qa-dashboard-spec 77/77
 
-### 1. Cloud Card 3-Dot Menu Hover Visibility
-- `css/mmgr.css`: The 3-dot delete/options menu on cloud project cards was always
-  visible. Now hidden by default (`opacity:0;pointer-events:none`) and revealed on
-  card hover/focus (`.cd-card:hover .cd-menu, .cd-card:focus-within .cd-menu`).
-  The delete option remains behind the trigger menu, never directly visible.
-  Transition added for smooth fade-in.
-
-### 2. Dark Theme Glass Polish
-- `css/mmgr.css` body.dark-mode block: Glass-blur reduced 20px → 12px,
-  glass-saturate 180% → 140%, glass-fill-dark 0.08 → 0.05, glass-fill-dark-hover
-  0.12 → 0.08, glass-fill-dark-active 0.16 → 0.11, rim 0.15 → 0.08,
-  rim-strong 0.28 → 0.18, border 0.10 → 0.07, shadow 0.35 → 0.25.
-  The glass is now a subtle complement rather than an overpowering gloss.
-
-### 3. Marketing Dark Theme Dropdown Contrast
-- `css/marketing.css`: Added `body.dark-mode .nav-dd-item` rules ensuring
-  dropdown items are always readable against the panel background in dark mode.
-  Text uses `--text-primary`, hover uses `--gold` with 12% opacity fill.
-
-### 4. Marketing Carousel Restart on Viewport Return
-- `js/marketing.js`: Added IntersectionObserver on the `.features` track.
-  When the feature bar scrolls back into view after being hidden, the auto-tick
-  timer restarts automatically. Previously the tick only paused/resumed on
-  hover/visibilitychange but not on viewport re-entry.
-
-### 5. Favicon Standardization
-- `admin.html`: Changed from `icon.svg` to `primary-icon.png`
-- `project.html`: Changed from `icon.svg` to `primary-icon.png`
-- `app.html`: Changed from `icon.svg` to `primary-icon.png`
-- `index.html`: Kept gold-spark SVG identity per owner's directive
-
-### 6. Field Guide Sign-In Fix
-- `mymanager-field-guide.html`: Changed CSS rule from hiding all non-signedin
-  triggers to only hiding generic `.signin-btn` marketing CTAs. The field guide's
-  `.site-signin.signin-trigger` elements are now always visible.
-- `css/marketing.css`: Same fix — `.site-signin.signin-trigger` now always visible,
-  while `.signin-btn` and `.signin-trigger` remain dormant on marketing pages.
-
-### 7. Admin Panel Sidebar (Verified Already Complete)
-- The admin panel already has: user chip with avatar/name (auth-bar),
-  Premium badge (plan-pill), light/dark theme toggle, color theme picker,
-  premium glass toggle — all in the rail's Account and Customize groups.
-
-### 8. Admin Sidebar Dark Theme (Verified Already Complete)
-- `css/mmgr.css` already has comprehensive `body.dark-mode.db-page` overrides
-  for every admin rail element (hamburger, quick toggle, projects, backup,
-  customize, user area, sign-in/out).
-
-## Test Results
-- `npm run verify`: ALL CHECKS PASSED (CSP 17/17, SW v217, hidden 15 pages,
-  skills 17/17, exports all pass)
-- `node build.js`: All 6 bundles + 2 CSS built successfully
-- `qa-marketing`: 20/20 PASS
-- `qa-dashboard-spec`: 77/77 PASS
-- `qa-changelog-diffs`: All gates PASS
-
-## Files Modified
-| File | Change |
-|------|--------|
-| `css/mmgr.css` | Cloud card menu hover visibility, dark theme glass polish |
-| `css/marketing.css` | Dark theme dropdown contrast, sign-in visibility fix |
-| `js/marketing.js` | Carousel restart on viewport return via IntersectionObserver |
-| `admin.html` | Favicon standardized to primary-icon.png |
-| `project.html` | Favicon standardized to primary-icon.png |
-| `app.html` | Favicon standardized to primary-icon.png |
-| `index.html` | Kept gold-spark SVG favicon (owner's directive) |
-| `mymanager-field-guide.html` | Sign-in button visibility fix |
-
-## Key Learnings
-
-1. **Cloud card menu visibility**: The 3-dot menu pattern (opacity + pointer-events
-   toggled by card hover) is a clean way to hide secondary actions while keeping
-   them accessible. The delete option stays behind the trigger, never directly visible.
-
-2. **Dark theme glass tuning**: Reducing glass-blur from 20px to 12px and glass-fill
-   opacity from 0.08 to 0.05 makes the glass a subtle complement rather than
-   overpowering. The key variables are --glass-blur, --glass-fill-dark, --glass-rim,
-   --glass-border, and --glass-shadow.
-
-3. **Carousel viewport restart**: IntersectionObserver is the correct pattern for
-   restarting animations when elements scroll back into view. The existing
-   visibilitychange handler covers tab switching but not scroll-away-and-back.
-
-4. **CSS specificity for sign-in visibility**: The `display:none!important` rule
-   for dormant sign-in buttons needed to be scoped more carefully — the field
-   guide's `.site-signin.signin-trigger` should always be visible since it's a
-   simple sidebar action, not a marketing CTA.
-
-## Remaining Work
-- Mobile view-only clutter fix (needs browser inspection)
-- Local sign-in option visibility when signed in via email
-- Project settings controls dropdown/accordion restructuring
+Lessons learned:
+- CSP hash computation must NOT use .trim() on inline script content -
+  the browser hashes the raw bytes including whitespace
+- Hash order in worker.js/serve.cjs must match the file-by-file extraction
+  order in verify-csp-hashes.cjs (project->app->admin->dashboard->
+  seed-test->field-guide->features.html) exactly, not just as a set
+- serve.cjs needs full restart (kill old PID) after hash changes - the
+  in-memory SPA server caches the CSP header
+- Position:absolute buttons need distinct right/left offsets or they stack
+- Grid search filtering is simplest done as a renderCards() filter step

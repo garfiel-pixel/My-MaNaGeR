@@ -860,25 +860,30 @@ var MMGR = window.MMGR || {};
     // Rank 4.2: mirror into the IndexedDB journal on every save (immediate
     // and debounced) , async fire-and-forget, never blocks or throws.
     journalPut(_state);
-    if (immediate) {
-      try {
-        localStorage.setItem(getProjectKey(), JSON.stringify(_state));
-        _dirty = false;
-      } catch(e) {
-        console.warn('State save failed:', e);
+    // Size guard: warn if state exceeds 4MB (localStorage limit is 5MB)
+    try {
+      const json = JSON.stringify(_state);
+      if (json.length > 4194304) {
+        console.warn('State is ' + (json.length / 1048576).toFixed(1) + 'MB. Consider trimming large text fields to avoid data loss.');
       }
-      return;
+      if (immediate) {
+        localStorage.setItem(getProjectKey(), json);
+        _dirty = false;
+        return;
+      }
+      if (_saveTimer) clearTimeout(_saveTimer);
+      _saveTimer = setTimeout(() => {
+        try {
+          localStorage.setItem(getProjectKey(), json);
+          _dirty = false;
+          _changeListeners.forEach(fn => fn('save'));
+        } catch(e) {
+          console.warn('State save failed:', e);
+        }
+      }, 300);
+    } catch(e) {
+      console.warn('State save failed:', e);
     }
-    if (_saveTimer) clearTimeout(_saveTimer);
-    _saveTimer = setTimeout(() => {
-      try {
-        localStorage.setItem(getProjectKey(), JSON.stringify(_state));
-        _dirty = false;
-        _changeListeners.forEach(fn => fn('save'));
-      } catch(e) {
-        console.warn('State save failed:', e);
-      }
-    }, 300);
   }
 
   // ---- Rank 4.2: persistent write-ahead journal (IndexedDB) ----

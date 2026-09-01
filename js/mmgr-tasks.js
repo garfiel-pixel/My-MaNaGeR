@@ -352,8 +352,10 @@ var MMGR = window.MMGR || {};
     const template = U.$('id-template');
     if (!modal || !template) return;
     const s = S();
-    const tasks = (s.tasks || []).filter(t => !t.isPhase);
-    template.value = tasks.map(t => `${t.name} (${t.duration || '?'}d)`).join('\n');
+    const tasks = (Array.isArray(s.tasks) ? s.tasks : []).filter(t => !t.isPhase);
+    // Show format hint in the template area so user knows the expected format
+    const hint = '# Format: Task Name (Xd) [YYYY-MM-DD \u2192 YYYY-MM-DD]\n# X = duration in days. Paste your dictated list below:\n\n';
+    template.value = hint + tasks.map(t => `${t.name} (${t.duration || '?'}d) [${t.startDate || 'YYYY-MM-DD'} \u2192 ${t.endDate || 'YYYY-MM-DD'}]`).join('\n');
     // Fresh modal: clear the editable field and disable the Fill In button
     // until a valid preview exists, so state never carries across opens.
     const source = U.$('id-source');
@@ -384,10 +386,10 @@ var MMGR = window.MMGR || {};
     let ok = false;
     try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
     if (ok) {
-      ns.App.showToast('Copied , paste it wherever you\'re going to dictate.', 'ok');
+      ns.App.showToast('Copied! Paste into any AI and ask: "Add start/end dates for each task. Format: Task (Xd) [YYYY-MM-DD \u2192 YYYY-MM-DD]"', 'ok');
     } else {
       U.copyToClipboard(template.value);
-      ns.App.showToast('Copied to clipboard.', 'ok');
+      ns.App.showToast('Copied! Paste into any AI and ask: "Add start/end dates for each task. Format: Task (Xd) [YYYY-MM-DD \u2192 YYYY-MM-DD]"', 'ok');
     }
   }
 
@@ -403,7 +405,7 @@ var MMGR = window.MMGR || {};
       if (commitBtn) commitBtn.disabled = true;
       return;
     }
-    const lines = text.split('\n').filter(l => l.trim());
+    const lines = text.split('\n').filter(l => l.trim() && !l.trim().startsWith('#'));
     let html = '<table class="dt" style="font-size:.74rem"><thead><tr><th>Task</th><th>Duration</th><th>Start</th><th>End</th></tr></thead><tbody>';
     let validCount = 0;
     for (const line of lines) {
@@ -423,7 +425,7 @@ var MMGR = window.MMGR || {};
     if (!source) return;
     const text = source.value.trim();
     if (!text) { ns.App.showToast('No data to import.', 'err'); return; }
-    const lines = text.split('\n').filter(l => l.trim());
+    const lines = text.split('\n').filter(l => l.trim() && !l.trim().startsWith('#'));
     // Bulk import is destructive , make it undoable.
     ns.State.pushUndo();
     let created = 0, updated = 0;

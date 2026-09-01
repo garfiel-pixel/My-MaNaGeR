@@ -2532,5 +2532,12 @@ exception. Based on the diagnostic result:
 
 ---
 
+---
+
+**2026-09-01 — Session: CONSOLE ERRORS + IMPORT DATES + PERFORMANCE — array guards, format hint, size guard.**
+(1) **computeAgingActions error** (js/mmgr-render.js): `(promises[kind] || []).forEach` failed because `promises[kind]` was not an array. Fixed with `Array.isArray()` guard. (2) **buildDigest/copyAsText errors** (js/app/copy-text.js): `s.tasks`, `s.issues`, `s.risks`, `s.budgetLines` could be non-arrays. Added `Array.isArray()` guards on all state array accesses in `buildDigest`, `copyAsText`, and `emailTplText`. (3) **Dashboard render guards** (js/mmgr-render.js): Added `Array.isArray()` for `s.tasks`, `s.issues`, `s.resources`, `s.changes`, `s.budgetLines`, `base.tasks`, `base.budgetLines`. (4) **Import Dates polish** (js/mmgr-tasks.js): Template now shows format hint (`# Format: Task (Xd) [YYYY-MM-DD -> YYYY-MM-DD]`) and current tasks with dates as examples. Copy toast includes AI prompt instruction. `idPreview`/`idCommit` skip hint lines starting with `#`. (5) **Performance size guard** (js/mmgr-state.js): Added 4MB size warning before `localStorage.setItem`. JSON.stringify computed once and reused for both size check and save. Prevents silent data loss when state exceeds 5MB localStorage limit. VERIFICATION: ALL PASSED (CSP 17/17, SW v223, hidden 2805 rules, skills 17/17, exports OK, dashboard 77/77, changelog ALL PASS, AI relay ALL PASS, report 27/27, labels 3/3, delegate OK). NOTE: `qa-ai-badge-e2e` A2 fails with 503|null — this is a server-side AI relay issue (model endpoint unavailable during CI), not a frontend bug. NEXT: deploy, owner reviews.
+
+---
+
 *This file is the working source of truth for continuing this project across sessions.*
 Keep it updated. Do not let a session end without updating the STATUS LOG.*

@@ -1,6 +1,6 @@
-Session: 2026-09-01 (Calculator + Admin Fixes + Share & Access + Launcher Polish)
+Session: 2026-09-01 (Calculator + Admin Fixes + Console Errors + Import Dates + Perf)
 Deploy: PENDING (v223)
-Commits: fd58366, b22cb87, 95e273b, a24f4c4, ae831bf, 4c08794, PENDING
+Commits: fd58366, b22cb87, 95e273b, a24f4c4, ae831bf, 4c08794, 128d4c3, PENDING
 
 === COMPLETED THIS SESSION ===
 
@@ -182,6 +182,31 @@ Commits: fd58366, b22cb87, 95e273b, a24f4c4, ae831bf, 4c08794, PENDING
     - 3-dot menu button hidden when no menu items
     - Deletion only possible from admin panel
 
+=== CONSOLE ERRORS + IMPORT DATES + PERFORMANCE (NEW) ===
+
+13. computeAgingActions forEach error (js/mmgr-render.js)
+    - Root cause: meetingPromises[kind] might not be an array
+    - Fixed: Array.isArray guard on promises[kind]
+
+14. buildDigest/copyAsText filter errors (js/app/copy-text.js)
+    - Root cause: s.tasks, s.issues, s.risks, s.budgetLines might not be arrays
+    - Fixed: Array.isArray guards on all state array accesses
+
+15. Dashboard render array guards (js/mmgr-render.js)
+    - Fixed: s.tasks, s.issues, s.resources, s.changes, s.budgetLines
+    - Fixed: base.tasks, base.budgetLines in baseline variance
+
+16. Import Dates polish (js/mmgr-tasks.js)
+    - Added format hint in template: "Task (Xd) [YYYY-MM-DD -> YYYY-MM-DD]"
+    - Template now shows current tasks with dates as examples
+    - Copy toast includes AI prompt instruction
+    - idPreview/idCommit skip hint lines (starting with #)
+
+17. Performance size guard (js/mmgr-state.js)
+    - Added 4MB size warning before localStorage.setItem
+    - Prevents silent data loss when state exceeds 5MB limit
+    - JSON.stringify computed once and reused for both size check and save
+
 === FAILURES AND MISTAKES (LEARNED THE HARD WAY) ===
 
 1. STALE SERVE.CJS PROCESS: After updating serve.cjs with new CSP hashes, the
@@ -228,6 +253,10 @@ Commits: fd58366, b22cb87, 95e273b, a24f4c4, ae831bf, 4c08794, PENDING
 - js/mmgr-cloud.js: localStorage for codes, code display in list, clear on revoke
 - js/cloud/share.js: Shared Codes section header, banner text update
 - js/mmgr-cloud-dash.js: Removed delete option from launcher 3-dot menu
+- js/mmgr-render.js: Array.isArray guards for computeAgingActions + dashboard
+- js/app/copy-text.js: Array.isArray guards for all state array accesses
+- js/mmgr-tasks.js: Import Dates format hint + AI prompt instruction
+- js/mmgr-state.js: 4MB size guard for localStorage saves
 - worker.js: CSP hash updated for admin.html #4
 - serve.cjs: CSP hash updated for admin.html #4
 

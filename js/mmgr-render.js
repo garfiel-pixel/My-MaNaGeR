@@ -106,14 +106,14 @@ var MMGR = window.MMGR || {};
     // (a pack toggled on elsewhere must hide it the moment the user returns
     // to the Dashboard).
     renderCoreCallout();
-    const tasks = s.tasks;
+    const tasks = Array.isArray(s.tasks) ? s.tasks : [];
     const total = tasks.length;
     const done = tasks.filter(t => t.status === 'completed').length;
     const ip = tasks.filter(t => t.status === 'inprogress').length;
     const blocked = tasks.filter(t => t.status === 'blocked').length;
     const overdue = tasks.filter(t => U.isOverdue(t.endDate) && t.status !== 'completed').length;
     const atRisk = tasks.filter(t => U.isDueSoon(t.endDate, 3) && t.status !== 'completed').length;
-    const issues = (s.issues || []).filter(i => i.status !== 'resolved' && i.status !== 'closed').length;
+    const issues = (Array.isArray(s.issues) ? s.issues : []).filter(i => i.status !== 'resolved' && i.status !== 'closed').length;
 
     // Ring (STRUCTURAL-IA §1: brand-new project != 0%, quiet the empty zero)
     // circ = 2pi*r with r=39, matches the ring markup (thicker 18px stroke,
@@ -185,7 +185,7 @@ var MMGR = window.MMGR || {};
 
     // ---- Dashboard stat cards (STRUCTURAL-IA §1 empty states + §4 tiering) ----
     // Budget Variance
-    const bud = s.budgetLines || [];
+    const bud = Array.isArray(s.budgetLines) ? s.budgetLines : [];
     const planned = bud.reduce((sum, l) => sum + (+l.planned || 0), 0);
     const actual = bud.reduce((sum, l) => sum + (+l.actual || 0), 0);
     const variance = planned - actual;
@@ -210,7 +210,7 @@ var MMGR = window.MMGR || {};
     }
 
     // Resource Utilization
-    const resources = s.resources || [];
+    const resources = Array.isArray(s.resources) ? s.resources : [];
     const avgUtil = resources.length ? Math.round(resources.reduce((sum, r) => sum + (ns.Resources && ns.Resources.resUtil ? ns.Resources.resUtil(r) : (+r.utilization || 0)), 0) / resources.length) : 0;
     const utilEl = $('dw-util');
     const utilCard = $('dw-util-card');
@@ -228,7 +228,7 @@ var MMGR = window.MMGR || {};
     setVal('dw-util-sub', resources.length ? `Avg across ${resources.length} resources` : 'No resources added, add them in Resources');
 
     // Pending Changes
-    const changes = s.changes || [];
+    const changes = Array.isArray(s.changes) ? s.changes : [];
     const pending = changes.filter(c => c.status === 'submitted' || c.status === 'review').length;
     const chgEl = $('dw-chg');
     const chgCard = $('dw-chg-card');
@@ -250,7 +250,7 @@ var MMGR = window.MMGR || {};
     const baseSub = $('dw-base-sub');
     const baseCard = $('dw-base-card');
     if (base && baseEl) {
-      const baseTasks = base.tasks || [];
+      const baseTasks = Array.isArray(base.tasks) ? base.tasks : [];
       const baseDone = baseTasks.filter(t => t.status === 'completed').length;
       const basePct = baseTasks.length ? Math.round((baseDone / baseTasks.length) * 100) : 0;
       const currentPct = total ? Math.round((done / total) * 100) : 0;
@@ -270,14 +270,14 @@ var MMGR = window.MMGR || {};
     const bvt = $('base-var-body');
     if (bvt) {
       const currentMap = {};
-      (s.tasks || []).forEach(t => { currentMap[t.id] = t; });
+      (Array.isArray(s.tasks) ? s.tasks : []).forEach(t => { currentMap[t.id] = t; });
       let costVar = null;
       if (base && base.tasks) {
-        const basePlanned = (base.budgetLines || []).reduce((sum, l) => sum + (+l.planned || 0), 0);
+        const basePlanned = (Array.isArray(base.budgetLines) ? base.budgetLines : []).reduce((sum, l) => sum + (+l.planned || 0), 0);
         const curPlanned = bud.reduce((sum, l) => sum + (+l.planned || 0), 0);
         if (basePlanned > 0 || curPlanned > 0) costVar = curPlanned - basePlanned;
         const rows = [];
-        (base.tasks || []).forEach(bt => {
+        (Array.isArray(base.tasks) ? base.tasks : []).forEach(bt => {
           const cur = currentMap[bt.id];
           if (!cur) return;
           let schedVar = null;
@@ -734,7 +734,7 @@ var MMGR = window.MMGR || {};
     // Meeting promises (source of truth for the closed loop)
     const promises = s.meetingPromises || {};
     Object.keys(promises).forEach(kind => {
-      (promises[kind] || []).forEach(p => {
+      (Array.isArray(promises[kind]) ? promises[kind] : []).forEach(p => {
         if (p.done) return;
         const created = p.createdAt ? U.parseDL(p.createdAt.slice(0, 10)) : null;
         items.push({ text: p.text, src: 'Meeting promise', kind: kind, age: daysFrom(created), due: created });

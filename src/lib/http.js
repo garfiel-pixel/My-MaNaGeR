@@ -896,3 +896,27 @@ export async function cloudAuthAnyAccess(request, env, projectId) {
 
 export const CLOUD_ORPHAN_RETENTION_MS = 180 * 24 * 60 * 60 * 1000; // 180 days — was 365, tightened for sensitive company data
 export const CLOUD_DELETED_PURGE_MS = 7 * 24 * 60 * 60 * 1000;
+
+// Warning window: send email 14 days before orphan purge.
+export const CLOUD_ORPHAN_WARN_MS = 14 * 24 * 60 * 60 * 1000;
+
+// Send a warning email to the project owner before orphan purge.
+// Uses Cloudflare Email Service native binding (env.EMAIL.send).
+// Returns true if sent, false if not (missing binding, no email, etc.).
+export async function sendOrphanWarningEmail(env, projectId, ownerEmail, daysLeft) {
+  if (!env || !env.EMAIL) return false;
+  if (!ownerEmail) return false;
+  try {
+    await env.EMAIL.send({
+      to: ownerEmail,
+      from: 'noreply@' + (env.SEND_EMAIL_DOMAIN || 'my-manager.garfieldprocis.workers.dev'),
+      subject: 'My MaNaGeR: Your project "' + projectId + '" will be archived in ' + daysLeft + ' days',
+      text: 'Hi,\n\nYour cloud project "' + projectId + '" has not been accessed for a while and will be permanently archived in ' + daysLeft + ' days.\n\nTo keep it active, open the project in My MaNaGeR before the deadline.\n\nIf you no longer need this project, no action is required.\n\n- My MaNaGeR',
+      html: '<p>Hi,</p><p>Your cloud project <strong>' + projectId + '</strong> has not been accessed for a while and will be <strong>permanently archived in ' + daysLeft + ' days</strong>.</p><p>To keep it active, open the project in My MaNaGeR before the deadline.</p><p>If you no longer need this project, no action is required.</p><p>- My MaNaGeR</p>'
+    });
+    return true;
+  } catch (e) {
+    console.error('orphan warning email failed for ' + projectId + ':', e && e.message);
+    return false;
+  }
+}

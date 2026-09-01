@@ -12,7 +12,8 @@ import { json, cloudForbidden, cloudProjectDeleted, cloudTimingSink, cloudDummyH
   cloudAuthOwnerByCode, cloudAuthOwnerSession, cloudAuthOwnerEither,
   cloudAuthEditor, cloudAuthViewer, cloudAdopt, cloudAuthAdoption,
   readCloudBody, readSession,
-  CLOUD_SECTIONS, authEmailConfigured } from '../lib/http.js';
+  CLOUD_SECTIONS, authEmailConfigured,
+  CLOUD_ORPHAN_WARN_MS, sendOrphanWarningEmail } from '../lib/http.js';
 import { billingConfigured, billingFreeCap } from '../billing.js';
 
 const CLOUD_STATE_SECRET_PATHS = [
@@ -437,7 +438,31 @@ export async function cloudPushRevChangedIfCopies(env, projectId, now, actor) {
 import { CLOUD_ORPHAN_RETENTION_MS, CLOUD_DELETED_PURGE_MS } from '../lib/http.js';
 
 export async function purgeStaleCloudProjects(env) {
-  const cutoff = new Date(Date.now() - CLOUD_ORPHAN_RETENTION_MS).toISOString();
+  const now = Date.now();
+  const cutoff = new Date(now - CLOUD_ORPHAN_RETENTION_MS).toISOString();
+  const warnCutoff = new Date(now - CLOUD_ORPHAN_RETENTION_MS + CLOUD_ORPHAN_WARN_MS).toISOString();
+
+  // Phase 1: Send warning emails to projects approaching the purge deadline (14 days out).
+  const warnRows = await env.DB.prepare(
+    'SELECT project_id, owner_label, google_sub FROM cloud_projects WHERE last_owner_seen_at IS NOT NULL AND last_owner_seen_at < ? AND last_owner_seen_at >= ? ORDER BY last_owner_seen_at ASC LIMIT 200'
+  ).bind(warnCutoff, cutoff).all();
+  const warned = [];
+  for (const row of ((warnRows && warnRows.results) || [])) {
+    // Look up owner email from auth_users
+    let email = null;
+    try {
+      const userRow = await env.DB.prepare('SELECT email FROM auth_users WHERE sub = ?').bind(row.google_sub).first();
+      if (userRow && userRow.email) email = userRow.email;
+    } catch (e) { /* email lookup best-effort */ }
+    // Calculate days remaining until purge
+    const lastSeen = new Date(row.last_owner_seen_at).getTime();
+    const purgeAt = lastSeen + CLOUD_ORPHAN_RETENTION_MS;
+    const daysLeft = Math.max(1, Math.ceil((purgeAt - now) / (24 * 60 * 60 * 1000)));
+    const sent = await sendOrphanWarningEmail(env, row.project_id, email, daysLeft);
+    if (sent) warned.push(row.project_id);
+  }
+
+  // Phase 2: Hard-purge projects past the retention deadline.
   const rows = await env.DB.prepare(
     'SELECT project_id, owner_label FROM cloud_projects WHERE last_owner_seen_at IS NOT NULL AND last_owner_seen_at < ? ORDER BY last_owner_seen_at ASC LIMIT 200'
   ).bind(cutoff).all();
@@ -461,5 +486,5 @@ export async function purgeStaleCloudProjects(env) {
     await env.DB.prepare('DELETE FROM cloud_projects WHERE project_id = ?').bind(pid).run();
     purged.push({ projectId: pid, label: 'deleted', purgedAt: new Date().toISOString() });
   }
-  return { purged: purged, checked: stale.length };
+  return { purged: purged, checked: stale.length, warned: warned.length };
 }

@@ -1,100 +1,102 @@
-# Session Reflection — 2026-08-30 (Session 9: AI Sidebar + UI Polish Round 2)
+# Session Reflection — 2026-08-31 (Session 10: UI Polish Round 3)
 
 ## Objective
-Execute the owner's second UI polish directive: convert AI window from full-screen overlay
-to right sidebar panel, add voice input button, fix demo projects toggle (show/hide),
-fix Recover Deleted rail (proper signed-in state), stack theme toggles vertically,
-remove redundant project header subtitle, and clean up CSS/script conflicts.
+Execute the owner's third UI polish directive: fix cloud project delete trigger visibility,
+tone down dark theme glass, fix marketing dark theme dropdown contrast, restart carousel
+animation on viewport return, standardize favicon, fix field guide sign-in, and verify
+admin panel already has the required sidebar elements.
 
 ## What Was Accomplished
 
-### 1. AI Window → Right Sidebar Panel
-- `css/mmgr.css`: Converted `#ai-win` from `position:fixed;inset:0` full-screen overlay
-  to `position:fixed;top:var(--hdr-h);right:0;bottom:0;width:420px` right sidebar
-- Removed backdrop blur overlay (no semi-transparent background behind the panel)
-- Added slide-in animation from right (`aiSlideIn` keyframe)
-- Removed resize handles (not needed for fixed-width sidebar)
-- Updated `#ai-win .mb` to `width:100%;height:100%;border-radius:0`
-- `project.html`: Removed `data-action="closeAiWinBg"` from `#ai-win` (no backdrop to click)
+### 1. Cloud Card 3-Dot Menu Hover Visibility
+- `css/mmgr.css`: The 3-dot delete/options menu on cloud project cards was always
+  visible. Now hidden by default (`opacity:0;pointer-events:none`) and revealed on
+  card hover/focus (`.cd-card:hover .cd-menu, .cd-card:focus-within .cd-menu`).
+  The delete option remains behind the trigger menu, never directly visible.
+  Transition added for smooth fade-in.
 
-### 2. Voice Input Button
-- `css/mmgr-icons.svg`: Added `i-mic` SVG symbol (microphone icon)
-- `project.html`: Added `<button class="ai-voice-btn" data-action="aiVoiceToggle">` before
-  the AI textarea input
-- `css/mmgr.css`: Added `.ai-voice-btn` styles (42px circle, gold hover, red pulse animation
-  when recording)
-- `js/mmgr-app.js`: Added `aiVoiceToggle` action to ACTION_MAP, delegating to
-  `MMGR.Voice.toggleAiRecording()` (existing whisper infrastructure)
+### 2. Dark Theme Glass Polish
+- `css/mmgr.css` body.dark-mode block: Glass-blur reduced 20px → 12px,
+  glass-saturate 180% → 140%, glass-fill-dark 0.08 → 0.05, glass-fill-dark-hover
+  0.12 → 0.08, glass-fill-dark-active 0.16 → 0.11, rim 0.15 → 0.08,
+  rim-strong 0.28 → 0.18, border 0.10 → 0.07, shadow 0.35 → 0.25.
+  The glass is now a subtle complement rather than an overpowering gloss.
 
-### 3. Demo Projects Toggle Fix
-- `app.html`: Changed "Hide demos" button to a proper toggle
-  - Label updates: "Hide demos" ↔ "Show demos"
-  - Icon updates: `i-x` ↔ `i-plus`
-  - State reads from AND writes to `localStorage('mmgr_demos_hidden')` as `'1'`/`'0'`
-  - Previously was one-way (only hide, never unhide)
+### 3. Marketing Dark Theme Dropdown Contrast
+- `css/marketing.css`: Added `body.dark-mode .nav-dd-item` rules ensuring
+  dropdown items are always readable against the panel background in dark mode.
+  Text uses `--text-primary`, hover uses `--gold` with 12% opacity fill.
 
-### 4. Recover Deleted Rail Fix
-- `app.html`: Changed `#rail-recover` content from hardcoded "Sign in to see deleted projects"
-  to "Deleted projects will be shown here for 5 days." with proper ID'd elements
-  (`#recover-rail-msg`, `#recover-rail-list`)
+### 4. Marketing Carousel Restart on Viewport Return
+- `js/marketing.js`: Added IntersectionObserver on the `.features` track.
+  When the feature bar scrolls back into view after being hidden, the auto-tick
+  timer restarts automatically. Previously the tick only paused/resumed on
+  hover/visibilitychange but not on viewport re-entry.
 
-### 5. Theme Switcher Stacked
-- `app.html`: Added `db-ctl-col` class to the Appearance `db-ctl-row`
-- `css/mmgr.css`: Added vertical layout rules for `.db-ctl-col .pal-switch`:
-  - `flex-direction:column` instead of default horizontal
-  - Each `.pal-btn` gets `width:100%;text-align:center`
-  - First button gets top corners, second gets bottom corners
-  - Prevents horizontal scroll in sidebar
+### 5. Favicon Standardization
+- `admin.html`: Changed from `icon.svg` to `primary-icon.png`
+- `project.html`: Changed from `icon.svg` to `primary-icon.png`
+- `app.html`: Changed from `icon.svg` to `primary-icon.png`
+- `index.html`: Kept gold-spark SVG identity per owner's directive
 
-### 6. Project Header Simplified
-- `app.html`: Removed `<span class="db-sec-sub">On this device and published...</span>`
-  from the Projects section header
+### 6. Field Guide Sign-In Fix
+- `mymanager-field-guide.html`: Changed CSS rule from hiding all non-signedin
+  triggers to only hiding generic `.signin-btn` marketing CTAs. The field guide's
+  `.site-signin.signin-trigger` elements are now always visible.
+- `css/marketing.css`: Same fix — `.site-signin.signin-trigger` now always visible,
+  while `.signin-btn` and `.signin-trigger` remain dormant on marketing pages.
 
-### 7. CSP Hash Regeneration
-- Regenerated all 17 inline-script SHA-256 hashes across app.html, project.html, admin.html,
-  dashboard.html, seed-test.html, field-guide.html, monolith ref
-- `worker.js` and `serve.cjs` updated with correct order (project.html first, then app.html,
-  admin.html, then standalone files)
+### 7. Admin Panel Sidebar (Verified Already Complete)
+- The admin panel already has: user chip with avatar/name (auth-bar),
+  Premium badge (plan-pill), light/dark theme toggle, color theme picker,
+  premium glass toggle — all in the rail's Account and Customize groups.
 
-### 8. Service Worker Version Bump
-- `sw.js`: Cache version bumped from `v216` to `v217`
+### 8. Admin Sidebar Dark Theme (Verified Already Complete)
+- `css/mmgr.css` already has comprehensive `body.dark-mode.db-page` overrides
+  for every admin rail element (hamburger, quick toggle, projects, backup,
+  customize, user area, sign-in/out).
 
 ## Test Results
-- `npm run verify`: ALL CHECKS PASSED (CSP, SW, hidden attr, skills, exports)
+- `npm run verify`: ALL CHECKS PASSED (CSP 17/17, SW v217, hidden 15 pages,
+  skills 17/17, exports all pass)
+- `node build.js`: All 6 bundles + 2 CSS built successfully
+- `qa-marketing`: 20/20 PASS
 - `qa-dashboard-spec`: 77/77 PASS
-- `qa-changelog-diffs`: ALL GATES PASSED
-- Live health: `{"ok":true}`
-
-## Deploy
-- Version ID: `00944741-d6e0-4aa6-a2a7-ac20691705da`
-- URL: https://my-manager.garfieldprocis.workers.dev
-- 10 static assets uploaded, 125 unchanged
+- `qa-changelog-diffs`: All gates PASS
 
 ## Files Modified
 | File | Change |
 |------|--------|
-| `app.html` | Demo toggle, recover rail, theme stacked, header simplified |
-| `css/mmgr.css` | AI sidebar, voice button, stacked theme, vertical toggles |
-| `css/mmgr-icons.svg` | Added `i-mic` symbol |
-| `js/mmgr-app.js` | Added `aiVoiceToggle` action |
-| `project.html` | Voice button, removed backdrop click handler |
-| `sw.js` | Cache v216 → v217 |
-| `worker.js` | CSP hashes regenerated + reordered |
-| `serve.cjs` | CSP hashes regenerated + reordered |
+| `css/mmgr.css` | Cloud card menu hover visibility, dark theme glass polish |
+| `css/marketing.css` | Dark theme dropdown contrast, sign-in visibility fix |
+| `js/marketing.js` | Carousel restart on viewport return via IntersectionObserver |
+| `admin.html` | Favicon standardized to primary-icon.png |
+| `project.html` | Favicon standardized to primary-icon.png |
+| `app.html` | Favicon standardized to primary-icon.png |
+| `index.html` | Kept gold-spark SVG favicon (owner's directive) |
+| `mymanager-field-guide.html` | Sign-in button visibility fix |
 
 ## Key Learnings
 
-1. **AI overlay → sidebar conversion**: The full-screen backdrop (`position:fixed;inset:0;
-   background:rgba(...)`) pattern converts cleanly to a fixed sidebar by changing to
-   `top:var(--hdr-h);right:0;bottom:0;width:420px` and removing the backdrop layer.
-   The `open()`/`close()` functions in mmgr-ai.js only toggle a class, so no JS changes
-   were needed for the open/close mechanism.
+1. **Cloud card menu visibility**: The 3-dot menu pattern (opacity + pointer-events
+   toggled by card hover) is a clean way to hide secondary actions while keeping
+   them accessible. The delete option stays behind the trigger, never directly visible.
 
-2. **CSP hash order matters**: The verify script scans files in a specific order (project.html
-   first, then app.html, then admin.html, then standalone files). Hashes MUST be in that
-   order in `INLINE_SCRIPT_HASHES`. Getting the count right (17) is necessary but not
-   sufficient — the ORDER must match too.
+2. **Dark theme glass tuning**: Reducing glass-blur from 20px to 12px and glass-fill
+   opacity from 0.08 to 0.05 makes the glass a subtle complement rather than
+   overpowering. The key variables are --glass-blur, --glass-fill-dark, --glass-rim,
+   --glass-border, and --glass-shadow.
 
-3. **Toggle pattern**: A proper toggle needs bidirectional state (read current + set next),
-   not just one-way. The old "Hide demos" was fire-and-forget; the fix reads the current
-   localStorage value and flips it, updating the label and icon accordingly.
+3. **Carousel viewport restart**: IntersectionObserver is the correct pattern for
+   restarting animations when elements scroll back into view. The existing
+   visibilitychange handler covers tab switching but not scroll-away-and-back.
+
+4. **CSS specificity for sign-in visibility**: The `display:none!important` rule
+   for dormant sign-in buttons needed to be scoped more carefully — the field
+   guide's `.site-signin.signin-trigger` should always be visible since it's a
+   simple sidebar action, not a marketing CTA.
+
+## Remaining Work
+- Mobile view-only clutter fix (needs browser inspection)
+- Local sign-in option visibility when signed in via email
+- Project settings controls dropdown/accordion restructuring

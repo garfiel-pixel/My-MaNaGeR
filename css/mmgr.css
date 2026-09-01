@@ -142,15 +142,15 @@ body.dark-mode{
   --tile-bg:rgba(255,255,255,.04);
   --track-bg:rgba(255,255,255,.06);
   /* Glass reads as white-frost over a dark canvas; rim is a specular highlight */
-  --glass-blur:20px;
-  --glass-saturate:180%;
-  --glass-fill-dark:rgba(255,255,255,0.08);
-  --glass-fill-dark-hover:rgba(255,255,255,0.12);
-  --glass-fill-dark-active:rgba(255,255,255,0.16);
-  --glass-rim:inset 0 1px 0 rgba(255,255,255,0.15);
-  --glass-rim-strong:inset 0 1px 0 rgba(255,255,255,0.28);
-  --glass-border:1px solid rgba(255,255,255,0.10);
-  --glass-shadow:0 8px 24px rgba(0,0,0,0.35);
+  --glass-blur:12px;
+  --glass-saturate:140%;
+  --glass-fill-dark:rgba(255,255,255,0.05);
+  --glass-fill-dark-hover:rgba(255,255,255,0.08);
+  --glass-fill-dark-active:rgba(255,255,255,0.11);
+  --glass-rim:inset 0 1px 0 rgba(255,255,255,0.08);
+  --glass-rim-strong:inset 0 1px 0 rgba(255,255,255,0.18);
+  --glass-border:1px solid rgba(255,255,255,0.07);
+  --glass-shadow:0 4px 16px rgba(0,0,0,0.25);
   --toggle-on-bg:#ffffff;
   --toggle-on-fg:#111827;
   --toggle-off-bg:rgba(255,255,255,0.10);
@@ -3023,7 +3023,13 @@ body.db-page .cd-menu{
   display:inline-flex;align-items:center;justify-content:center;
   width:28px;height:28px;padding:0;border-radius:8px;cursor:pointer;
   border:1px solid transparent;background:transparent;color:var(--text-secondary);
-  transition:border-color var(--tr),background var(--tr),color var(--tr);
+  opacity:0;pointer-events:none;
+  transition:opacity var(--tr),border-color var(--tr),background var(--tr),color var(--tr);
+}
+body.db-page .cd-card:hover .cd-menu,
+body.db-page .cd-card:focus-within .cd-menu,
+body.db-page .cd-menu:focus-visible{
+  opacity:1;pointer-events:auto;
 }
 body.db-page .cd-menu .ico{width:16px;height:16px;}
 body.db-page .cd-menu:hover{border-color:var(--border);background:color-mix(in oklch,var(--text) 6%,transparent);color:var(--text);}

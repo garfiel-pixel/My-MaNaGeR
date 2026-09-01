@@ -562,6 +562,18 @@
       document.addEventListener('visibilitychange', function(){
         if (document.hidden) stop(); else play();
       });
+      /* Restart the auto-tick when the feature bar scrolls back into view
+         (owner: "when a user interacts and leaves for a while, the animation
+         doesn't restart"). IntersectionObserver watches the track element;
+         when it becomes visible again after being hidden, play() restarts. */
+      if (window.IntersectionObserver) {
+        var featIO = new IntersectionObserver(function(entries) {
+          entries.forEach(function(entry) {
+            if (entry.isIntersecting) play(); else stop();
+          });
+        }, { threshold: 0.1 });
+        featIO.observe(featTrack);
+      }
       if (!paused) play();
     })();
   }

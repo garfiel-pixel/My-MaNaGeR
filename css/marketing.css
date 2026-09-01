@@ -395,6 +395,9 @@ body.dark-mode .signin-btn[aria-expanded="true"]{background:rgba(255,255,255,.16
 }
 .nav-dd-item:hover{color:var(--gold-700);background:var(--gold-50);}
 .nav-dd-item:focus-visible{outline:2px solid var(--gold-500);outline-offset:-1px;border-radius:8px;}
+/* Dark mode: ensure dropdown items are always readable against the panel background */
+body.dark-mode .nav-dd-item{color:var(--text-primary);}
+body.dark-mode .nav-dd-item:hover{color:var(--gold);background:rgba(var(--gold-rgb),.12);}
 /* Foot = one long horizontal hairline, then the link text. */
 .nav-dd-foot{
   display:block;max-width:1180px;margin:14px auto 0;
@@ -1269,8 +1272,12 @@ body.dark-mode .signin-btn[aria-expanded="true"]{background:rgba(255,255,255,.16
    the button becomes an identity chip (initial avatar + name)
    and is visible. Get Started fills the header CTA position.
    The sign-in sheet is controlled by the hidden attribute via JS
-   — never hide it with CSS (GIS needs a visible host to render). */
-.signin-btn:not(.is-signedin), .signin-trigger:not(.is-signedin), .site-signin.signin-trigger:not(.is-signedin){display:none!important;}
+   — never hide it with CSS (GIS needs a visible host to render).
+   EXCEPTION: field guide .site-signin triggers are always visible
+   (the guide is a reference doc where sign-in is a simple sidebar
+   action, not a marketing CTA). */
+.signin-btn:not(.is-signedin), .signin-trigger:not(.is-signedin){display:none!important;}
+.site-signin.signin-trigger{display:inline-flex!important;}
 /* OWNER 2026-08-14: at mobile widths the sign-in button sits beside the hamburger.
    The desktop-only .header-cta-desktop hides via its own media query. */
 @media (max-width:880px){

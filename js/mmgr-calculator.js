@@ -810,9 +810,19 @@
 
   /* Auto-show FAB on load */
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', show);
+    document.addEventListener('DOMContentLoaded', init);
   } else {
+    init();
+  }
+
+  function init() {
     show();
+    document.addEventListener('keydown', function(e) {
+      if (e.ctrlKey && e.shiftKey && e.key === 'C') {
+        e.preventDefault();
+        toggle();
+      }
+    });
   }
 
 })();

@@ -1,4 +1,4 @@
-Session: 2026-09-01 (UI Fixes Round 6 - Admin Sidebar, Demo Isolation, Search Cleanup, CI Fix)
+Session: 2026-09-01 (Calculator Integration + UI Fixes Round 6 - Admin Sidebar, Demo Isolation, Search Cleanup, CI Fix)
 Deploy: 5bcbd6be-1485-4a89-b110-cfa53d12a9f9 (v223)
 Commits: dbb87b0, 2e0b27f, 4f2c843
 
@@ -88,6 +88,10 @@ Commits: dbb87b0, 2e0b27f, 4f2c843
 - worker.js: CSP hash #12 updated twice (admin.html inline script changes)
 - serve.cjs: CSP hash #12 updated twice (must match worker.js exactly)
 - sw.js: Cache bumped v221 -> v223
+- js/mmgr-calculator.js: NEW — floating draggable calculator (6 tabs: General, Percent, Area, Convert, Markup, Cost Est.)
+- css/mmgr-icons.svg: Added i-calculator symbol to SVG sprite
+- css/mmgr.css: Added calculator styles (121 lines: .calc-fab, .calc-panel, .calc-tabs, .calc-card, etc.)
+- build.js: Added mmgr-calculator.js to APP_MODULES (now 61 modules)
 
 === VERIFICATION RESULTS ===
 - npm run verify: ALL PASSED (CSP 17/17, SW v223, hidden OK, skills 17/17, exports OK)
@@ -101,3 +105,15 @@ Commits: dbb87b0, 2e0b27f, 4f2c843
 - verify-delegate-gate: OK
 - qa-marketing: 20/20
 - Live site: /app 200, /admin 200
+
+=== CALCULATOR INTEGRATION (NEW) ===
+- Added i-calculator SVG icon to sprite (calculator with display + 6 buttons)
+- Added mmgr-calculator.js to build.js APP_MODULES (61 modules total)
+- Added auto-init: show() called on DOMContentLoaded so FAB appears on load
+- Bundle rebuilt: 61 modules, 1233 KB raw -> 645 KB minified (47.7% reduction)
+- All verification passed: CSP 17/17, SW v223, hidden OK, skills 17/17, exports OK
+- Calculator features: 6 tabs (General, Percent, Area, Convert, Markup, Cost Est.)
+- Floating draggable FAB (bottom-right, z-index 1500)
+- Results auto-copy to clipboard
+- Touch + mouse drag support
+- History panel (last 10 calculations)

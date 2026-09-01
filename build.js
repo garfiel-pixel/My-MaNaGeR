@@ -103,6 +103,8 @@ const APP_MODULES = [
   'js/cloud/share.js',
   'js/cloud/review.js',
   'js/cloud/webhooks.js',
+  // Calculator (floating draggable FAB)
+  'js/mmgr-calculator.js',
 ];
 
 // ---- Marketing pages bundle ----

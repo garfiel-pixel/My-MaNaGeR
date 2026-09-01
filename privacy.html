@@ -120,6 +120,7 @@
         <li><strong>Account identifiers:</strong> Google account sub (opaque ID), email address, display name, or for email accounts: email + PBKDF2-SHA256 hashed password (100,000 iterations; plaintext never stored).</li>
         <li><strong>Project metadata:</strong> Project ID, project name/label, owner code hash (PBKDF2; plaintext never stored), editor/viewer code hashes, timestamps (created_at, last_owner_seen_at, deleted_at), and latest R2 storage key reference.</li>
         <li><strong>Encrypted state blobs:</strong> If you enable cloud backup, your project state is encrypted client-side (AES-256-GCM, key derived from owner code via PBKDF2) before upload to Cloudflare R2. The encryption key never leaves your browser. We cannot decrypt your data.</li>
+        <li><strong>Local data is not encrypted:</strong> Project data stored on your device (in localStorage/IndexedDB) is stored in plaintext by the browser. If you share a device or are concerned about local access, use your operating system's or browser's own encryption and lock features. This is an architectural trade-off of the offline-first design.</li>
         <li><strong>Session cookie:</strong> A single HttpOnly, Secure, SameSite=Lax session cookie (mmgr_session) for authentication. Expires after 30 days with automatic renewal for active sessions. Contains no project data.</li>
       </ul>
       <p>You may delete your account and all associated server-side data at any time via the Application's account settings. Account deletion is permanent and irreversible.</p>

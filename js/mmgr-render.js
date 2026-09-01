@@ -227,11 +227,15 @@ var MMGR = window.MMGR || {};
     }
     setVal('dw-util-sub', resources.length ? `Avg across ${resources.length} resources` : 'No resources added, add them in Resources');
 
-    // Pending Changes
+    // Pending Changes + Change Rollup (C15)
     const changes = Array.isArray(s.changes) ? s.changes : [];
     const pending = changes.filter(c => c.status === 'submitted' || c.status === 'review').length;
+    const approved = changes.filter(c => c.status === 'approved');
+    const totalCostImpact = approved.reduce((sum, c) => sum + (parseFloat(c.costImpact) || 0), 0);
+    const totalSchedImpact = approved.reduce((sum, c) => sum + (parseInt(c.schedImpact) || 0), 0);
     const chgEl = $('dw-chg');
     const chgCard = $('dw-chg-card');
+    const chgSub = $('dw-chg-sub');
     if (chgEl) {
       if (changes.length === 0) {
         chgEl.textContent = '';
@@ -239,8 +243,20 @@ var MMGR = window.MMGR || {};
         if (chgCard) chgCard.classList.add('tier3');
       } else {
         chgEl.textContent = pending;
-        chgEl.style.color = '';
+        chgEl.style.color = pending > 0 ? 'var(--amber)' : '';
         if (chgCard) chgCard.classList.remove('tier3');
+      }
+    }
+    if (chgSub) {
+      if (approved.length === 0) {
+        chgSub.textContent = changes.length > 0 ? pending + ' awaiting approval' : 'No changes logged';
+      } else {
+        const costStr = totalCostImpact !== 0 ? (totalCostImpact > 0 ? '+' : '') + '$' + Math.abs(totalCostImpact).toLocaleString() : '';
+        const schedStr = totalSchedImpact !== 0 ? (totalSchedImpact > 0 ? '+' : '') + totalSchedImpact + 'd' : '';
+        const parts = [approved.length + ' approved'];
+        if (costStr) parts.push('Cost: ' + costStr);
+        if (schedStr) parts.push('Schedule: ' + schedStr);
+        chgSub.textContent = parts.join(' | ');
       }
     }
 
@@ -300,6 +316,35 @@ var MMGR = window.MMGR || {};
       if (costEl) {
         costEl.textContent = costVar === null ? 'n/a' : ((costVar >= 0 ? '+' : '') + '$' + Math.abs(costVar).toLocaleString());
         costEl.style.color = costVar === null ? 'var(--slate)' : (costVar > 0 ? 'var(--danger)' : 'var(--green)');
+      }
+    }
+
+    // C9: Cycle Time — avg planned vs actual duration for completed tasks
+    const cycleEl = $('dw-cycle');
+    const cycleSub = $('dw-cycle-sub');
+    const cycleCard = $('dw-cycle-card');
+    if (cycleEl) {
+      const completedTasks = tasks.filter(t => t.startDate && t.endDate && t.status === 'completed');
+      if (completedTasks.length === 0) {
+        cycleEl.textContent = '-';
+        cycleEl.style.color = 'var(--slate)';
+        if (cycleSub) cycleSub.textContent = 'Complete tasks to see cycle time';
+        if (cycleCard) cycleCard.classList.add('tier3');
+      } else {
+        const plannedDurs = completedTasks.map(t => U.daysBetween(t.startDate, t.endDate));
+        const avgPlanned = Math.round(plannedDurs.reduce((a, b) => a + b, 0) / plannedDurs.length);
+        // Actual duration: from startDate to completedDate (or today if no completedDate)
+        const actualDurs = completedTasks.map(t => {
+          const start = t.startDate;
+          const end = t.completedDate || U.todayStr();
+          return U.daysBetween(start, end);
+        });
+        const avgActual = Math.round(actualDurs.reduce((a, b) => a + b, 0) / actualDurs.length);
+        const diff = avgActual - avgPlanned;
+        cycleEl.textContent = avgActual + 'd';
+        cycleEl.style.color = diff <= 0 ? 'var(--green)' : diff <= 3 ? 'var(--amber)' : 'var(--danger)';
+        if (cycleSub) cycleSub.textContent = 'Planned avg: ' + avgPlanned + 'd | Variance: ' + (diff >= 0 ? '+' : '') + diff + 'd (' + completedTasks.length + ' tasks)';
+        if (cycleCard) cycleCard.classList.remove('tier3');
       }
     }
 

@@ -8,7 +8,7 @@ Agents: do not execute these; leave them for the owner.
 ## Path to 10/10 — Items needing the owner
 
 ### Backend Architecture
-- [ ] **Analytics Engine enablement** — The Analytics Engine binding is commented out in wrangler.jsonc pending dashboard enablement. Enable at: https://dash.cloudflare.com/fe39273e10025384ffa49822709a6632/workers/analytics-engine then uncomment the binding block.
+- [x] **Analytics Engine enablement** — DONE: Dataset `mmgr-events` created in Cloudflare dashboard, binding `ANALYTICS` already in wrangler.jsonc. Takes effect on next deploy.
 - [x] **Idempotency key D1 migration** — DONE: Migration `0016_idempotency_keys.sql` created. Idempotency sweep added to worker.js scheduled handler.
 
 ### Backend Security

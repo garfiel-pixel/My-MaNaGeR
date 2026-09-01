@@ -87,6 +87,14 @@ var MMGR = window.MMGR || {};
       const task = (s.tasks || []).find(t => t.id === id);
       if (task) {
         task[field] = value;
+        // C9: stamp completedDate when status changes to completed
+        if (field === 'status' && value === 'completed' && !task.completedDate) {
+          task.completedDate = U.todayStr();
+        }
+        // Clear completedDate if status changes away from completed
+        if (field === 'status' && value !== 'completed' && task.completedDate) {
+          delete task.completedDate;
+        }
         if (field === 'duration' || field === 'startDate') {
           if (task.startDate && task.duration) {
             const dur = parseInt(task.duration);

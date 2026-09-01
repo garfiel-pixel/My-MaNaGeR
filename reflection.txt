@@ -294,6 +294,34 @@ Commits: fd58366, b22cb87, 95e273b, a24f4c4, ae831bf, 4c08794, 128d4c3, PENDING
 - Emoji scan: Clean (zero emoji in served files)
 - Live site: /app 200, /admin 200
 
+=== ENHANCEMENTS COMPLETED THIS SESSION ===
+
+20. D1 Migration Trigger Audit (O1)
+    - Checked all migrations for CREATE TRIGGER with BEGIN...END blocks
+    - Result: CLEAN — no triggers found, no risk of lowercase begin bug
+
+21. Privacy Policy + localStorage tradeoff (S4+S5)
+    - privacy.html already existed and was comprehensive
+    - Added explicit "Local data is not encrypted" notice (S5)
+    - Documents the offline-first architectural trade-off
+
+22. Account Deletion (S2) — ALREADY DONE
+    - handleAuthDeleteAccount already in src/auth/session.js (lines 258-317)
+    - Full cascade: R2 + D1 tables + session cookie clearing
+    - Password confirmation for email accounts, DELETE phrase for Google
+    - Subscription block, route at src/router.js:368
+
+23. Change Rollup Dashboard Card (C15)
+    - Enhanced #dw-chg-card to show cost/schedule impact of approved changes
+    - Shows: count pending, approved count, total cost impact, total schedule impact
+    - Subtitle updates dynamically with rollup data
+
+24. Cycle-Time Metrics Dashboard Card (C9)
+    - Added completedDate stamp to tasks when status changes to completed
+    - New #dw-cycle-card shows avg actual vs planned duration for completed tasks
+    - Variance coloring: green (on/ahead), amber (slight delay), danger (behind)
+    - Shows task count and planned vs actual comparison
+
 === DEPLOY HISTORY ===
 - fd58366: Calculator integration (initial build + auto-init)
 - b22cb87: Ctrl+Shift+C keyboard shortcut

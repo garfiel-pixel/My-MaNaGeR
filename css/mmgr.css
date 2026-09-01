@@ -1174,10 +1174,10 @@ body.readonly-mode .btn[data-action]:not([data-action="showSec"]):not([data-acti
 #db-ctrl .ctl-sec:first-child{margin-top:0;padding-top:0;border-top:none;}
 .ctl-sec .ico{width:14px;height:14px;color:var(--gold);}
 /* Collapsible accordion sections in Controls drawer */
-.ctl-sec[data-ctl-toggle]{cursor:pointer;user-select:none;}
+.ctl-sec[data-ctl-toggle]{cursor:pointer;user-select:none;position:relative;padding-right:24px;}
 .ctl-sec[data-ctl-toggle]:hover{color:var(--brand);}
-.ctl-sec[data-ctl-toggle] .ico-caret{margin-left:auto;width:12px;height:12px;flex-shrink:0;transition:transform .18s ease;}
-.ctl-sec[data-ctl-toggle].open .ico-caret{transform:rotate(90deg);}
+.ctl-sec[data-ctl-toggle] .ico-caret{position:absolute;right:4px;top:50%;transform:translateY(-50%) rotate(0deg);width:14px;height:14px;flex-shrink:0;transition:transform .18s ease;color:var(--gold);}
+.ctl-sec[data-ctl-toggle].open .ico-caret{transform:translateY(-50%) rotate(90deg);}
 .ctl-sec-group{overflow:hidden;transition:max-height .25s ease;}
 .ctl-sec-group.collapsed{max-height:0!important;overflow:hidden;}
 @media (prefers-reduced-motion:reduce){.ctl-sec-group{transition:none;}}

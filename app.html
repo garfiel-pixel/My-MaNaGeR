@@ -235,9 +235,9 @@ body.glass-premium .wrap{position:relative;z-index:1;}
 <div class="wrap">
   <div class="top" id="top">
     <button type="button" id="db-nav-btn" class="db-hamb" data-action="toggleSidebar" aria-label="Open menu" aria-expanded="false" aria-controls="db-sidebar"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-menu"></use></svg></button>
-    <button type="button" id="db-theme-quick" class="db-quick" data-action="tglThemeQuick" aria-label="Toggle appearance" title="Toggle light/dark"><svg class="ico" aria-hidden="true"><use id="db-theme-quick-ico" href="css/mmgr-icons.svg#i-moon"></use></svg></button>
+    <button type="button" id="db-theme-quick" class="db-quick" data-action="tglThemeQuick" aria-label="Toggle appearance" title="Toggle light/dark" style="right:12px;"><svg class="ico" aria-hidden="true"><use id="db-theme-quick-ico" href="css/mmgr-icons.svg#i-moon"></use></svg></button>
     <!-- SEARCH: project search for users with many projects -->
-    <button type="button" id="db-search-btn" class="db-quick" data-action="openProjectSearch" aria-label="Search projects" title="Search projects"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-search"></use></svg></button>
+    <button type="button" id="db-search-btn" class="db-quick" data-action="openProjectSearch" aria-label="Search projects" title="Search projects" style="right:54px;"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-search"></use></svg></button>
     <!-- SIGNED-IN INDICATOR (hidden — sign-in lives in sidebar only) -->
     <button type="button" id="db-user-avatar" class="db-avatar" data-action="openSignIn" aria-label="Sign in" title="Sign in" style="display:none;">
       <span class="db-avatar-box"><span class="db-avatar-ring"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-user"></use></svg></span><span class="db-avatar-dot" hidden></span></span>
@@ -265,7 +265,7 @@ body.glass-premium .wrap{position:relative;z-index:1;}
        grid and the cloud section below are explicitly labeled so the two
        project lists can never be confused (Cloud vs Local). -->
   <div class="db-sec" aria-label="Projects" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
-    <div><h2 class="db-sec-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-folder"></use></svg> Projects</h2></div>
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;"><h2 class="db-sec-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-folder"></use></svg> Projects</h2><input type="text" id="grid-search" placeholder="Filter projects..." autocomplete="off" style="background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:.78rem;padding:6px 12px;width:180px;font-family:inherit;outline:none;transition:border-color .15s;" aria-label="Filter projects by name"><button type="button" id="grid-search-clear" class="btn btn-n btn-s" style="display:none;padding:4px 8px;font-size:.72rem;" aria-label="Clear search"><svg class="ico" aria-hidden="true" style="width:12px;height:12px;"><use href="css/mmgr-icons.svg#i-x"></use></svg></button></div>
     <a href="admin.html" class="btn btn-o btn-s" style="text-decoration:none;"><svg class="ico" aria-hidden="true" style="width:14px;height:14px;"><use href="css/mmgr-icons.svg#i-plus"></use></svg> New Project</a>
   </div>
   <div class="grid" id="grid"><!-- user project cards render here --></div>
@@ -443,8 +443,16 @@ function renderCards(){
   const demoSec = document.getElementById('demo-sec');
   const projects = allProjects();
   var hint = document.getElementById('no-projects-hint');
+  // Grid search filter
+  var searchEl = document.getElementById('grid-search');
+  var fq = searchEl ? (searchEl.value || '').toLowerCase().trim() : '';
+  var clearBtn = document.getElementById('grid-search-clear');
+  if (clearBtn) clearBtn.style.display = fq ? 'inline-flex' : 'none';
   // Separate user projects from demo projects
   var userProjects = projects.filter(function(p) { return !p.demo; });
+  if (fq) userProjects = userProjects.filter(function(p) {
+    return (p.title || p.id || '').toLowerCase().indexOf(fq) > -1 || (p.description || '').toLowerCase().indexOf(fq) > -1;
+  });
   var demoProjects = projects.filter(function(p) { return !!p.demo; });
   // Check if demos are hidden by the user
   var demosHidden = false;
@@ -1016,6 +1024,23 @@ document.addEventListener('click', function(e){
   e.preventDefault();
   fn(el, e);
 });
+
+/* GRID SEARCH: real-time filter of project cards as user types */
+(function(){
+  var searchEl = document.getElementById('grid-search');
+  var clearBtn = document.getElementById('grid-search-clear');
+  if (searchEl) {
+    searchEl.addEventListener('input', function(){ renderCards(); });
+    searchEl.addEventListener('keydown', function(e){
+      if (e.key === 'Escape') { searchEl.value = ''; renderCards(); }
+    });
+  }
+  if (clearBtn) {
+    clearBtn.addEventListener('click', function(){
+      if (searchEl) { searchEl.value = ''; searchEl.focus(); renderCards(); }
+    });
+  }
+})();
 
 /* DEMO PROJECT SEEDING + RENDER: both run after the deferred app-bundle.js
    loads (it defines MMGR_PROJECTS, MMGR_DEMO_FILLED, MMGR_DEMO_EMPTY). */

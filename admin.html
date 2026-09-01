@@ -304,16 +304,19 @@ pre.snippet{background:#f8fafc;border:1px solid var(--border);border-radius:6px;
         <div id="google-signin-button"></div>
         <div id="google-user-chip" hidden></div>
       </div>
-      <!-- STABILIZATION 2026-08-16: Premium pill beside the signed-in chip , 
-           a [data-plan-badge] mount filled by mmgr-google-auth.js
-           refreshPlan(), matching the app.html rail footer. Hidden when the
-           plan is free or billing is unconfigured. -->
-      <span class="plan-pill" id="admin-plan-badge" data-plan-badge hidden></span>
     </div>
     <div class="rail-group"><span class="rail-label">Customize</span>
       <span class="rail-ctl-row"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-moon"></use></svg> Dark theme <label class="tgl"><input type="checkbox" data-action="tglTheme" aria-label="Toggle dark theme"><span class="tsl"></span></label></span>
       <span class="rail-ctl-row"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-palette"></use></svg> Color theme <span class="pal-switch" role="group" aria-label="Theme mode"><button type="button" class="pal-btn" data-pal="light" aria-pressed="false">Light</button><button type="button" class="pal-btn" data-pal="dark" aria-pressed="false">Dark</button><button type="button" class="pal-btn" data-pal="system" aria-pressed="true">System</button></span></span>
       <span class="rail-ctl-row"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-orb"></use></svg> Premium glass <label class="tgl"><input type="checkbox" data-action="tglGlassMode" aria-label="Toggle premium liquid-glass backdrop"><span class="tsl"></span></label></span>
+    </div>
+    <!-- Admin rail footer: user identity + premium badge + sign out,
+         matching the app.html db-foot pattern. -->
+    <div class="rail-group" style="margin-top:auto;padding-top:12px;border-top:1px solid var(--border);">
+      <span class="plan-pill" id="admin-plan-badge" data-plan-badge hidden></span>
+      <div id="admin-user-footer" style="display:flex;flex-direction:column;gap:6px;">
+        <button type="button" class="rail-link" id="admin-signin-btn" data-action="openSignIn"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-user"></use></svg> Sign in</button>
+      </div>
     </div>
   </aside>
   <div id="nav-scrim" data-action="tglNav" aria-hidden="true"></div>
@@ -1805,6 +1808,19 @@ document.getElementById('import-project-file').addEventListener('change', functi
 });
 
 initGate();
+
+// Hide email auth form + GIS button when already signed in (Google or email).
+// The showUser() function in mmgr-google-auth.js handles this, but the
+// boot() call may race with session restore. Listen for the event to catch
+// late arrivals, and also poll once after DOMContentLoaded.
+document.addEventListener('mmgr:user-changed', function(e){
+  var eb = document.getElementById('email-auth-block');
+  var gb = document.getElementById('google-signin-button');
+  var uc = document.getElementById('google-user-chip');
+  if (eb) eb.hidden = true;
+  if (gb) gb.hidden = true;
+  if (uc) uc.hidden = false;
+});
 
 // Reflect the device-level theme + glass preferences on every admin switch
 // (gate pill + header , the early-apply snippet already handled the gate's

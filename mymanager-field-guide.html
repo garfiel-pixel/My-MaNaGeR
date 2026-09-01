@@ -168,10 +168,23 @@ ul,ol{list-style:none;}
 .sheet[id]{scroll-margin-top:24px;}
 
 .mobile-bar-actions{display:flex;align-items:center;gap:8px;}
-/* Field guide sign-in: show the button on mobile bar always, and in the sidebar on desktop. Hide only the marketing-style signin-btn (not the site-signin triggers). */
-.signin-btn:not(.is-signedin){display:none!important;}
-.site-signin.signin-trigger{display:inline-flex!important;}
+/* Field guide sign-in: simple chip in sidebar + mobile bar. When signed in,
+   the trigger shows user identity (via marketing.js renderSigninTriggers).
+   The sheet is a glass panel anchored below the button. */
+.site-signin.signin-trigger{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:6px 12px;border-radius:8px;border:1px solid var(--border);
+  background:var(--card);color:var(--text);font-size:.78rem;font-weight:600;
+  cursor:pointer;transition:background .15s,border-color .15s;
+}
+.site-signin.signin-trigger:hover{border-color:var(--brass);background:rgba(var(--brass-rgb,207,154,82),.08);}
+.site-signin.signin-trigger.is-signedin{border-color:var(--green);color:var(--green);}
 .mobile-bar .signin-trigger{display:inline-flex!important;}
+.signin-sheet{position:fixed;top:var(--hdr-h,64px);right:16px;z-index:2000;
+  width:340px;max-width:calc(100vw - 32px);max-height:calc(100vh - 100px);overflow-y:auto;
+  background:var(--card);border:1px solid var(--border);border-radius:12px;
+  padding:16px;box-shadow:0 8px 32px rgba(0,0,0,.18);}
+.signin-sheet[hidden]{display:none!important;}
 .signin-sheet .email-auth-note{font-size:.76rem;color:var(--text-dimmer);line-height:1.5;}
 .signin-sheet .signin-user{display:flex;flex-direction:column;gap:8px;align-items:flex-start;}
 .signin-sheet .signin-user[hidden]{display:none;}

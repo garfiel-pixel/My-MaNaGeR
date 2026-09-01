@@ -297,13 +297,14 @@ pre.snippet{background:#f8fafc;border:1px solid var(--border);border-radius:6px;
       <div class="db-g">Customize</div>
       <button type="button" class="db-link" data-rail-toggle="rail-admin-customize" aria-expanded="false" aria-controls="rail-admin-customize"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-palette"></use></svg> Customize <svg class="ico ico-caret" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg></button>
       <div class="db-sub" id="rail-admin-customize" hidden>
-        <span class="db-ctl-row db-ctl-col"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-palette"></use></svg> <span>Appearance</span><span class="pal-switch" role="group" aria-label="Theme mode"><button type="button" class="pal-btn" data-pal="light" aria-pressed="false">Light</button><button type="button" class="pal-btn" data-pal="dark" aria-pressed="false">Dark</button></span></span>
-        <span class="db-ctl-row"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-orb"></use></svg> Premium Glass <label class="tgl"><input type="checkbox" id="glass-tgl" data-action="tglGlassMode" aria-label="Toggle premium liquid-glass backdrop"><span class="tsl"></span></label></span>
+        <span class="rail-ctl-row"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg> Premium</span>
+        <span class="rail-ctl-row"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-palette"></use></svg> <span>Appearance</span><span class="pal-switch" role="group" aria-label="Theme mode"><button type="button" class="pal-btn" data-pal="light" aria-pressed="false">Light</button><button type="button" class="pal-btn" data-pal="dark" aria-pressed="false">Dark</button></span></span>
+        <span class="rail-ctl-row"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-orb"></use></svg> Premium Glass <label class="tgl"><input type="checkbox" id="glass-tgl" data-action="tglGlassMode" aria-label="Toggle premium liquid-glass backdrop"><span class="tsl"></span></label></span>
       </div>
     </nav>
     <div class="db-foot">
       <div class="db-plan" id="rail-plan" hidden></div>
-      <div class="db-user" id="rail-user">
+      <div class="db-user auth-bar" id="rail-user">
         <div id="google-signin-button"></div>
         <div id="google-user-chip" hidden></div>
         <button type="button" class="db-signin" data-action="openSignIn"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-user"></use></svg> Sign in</button>
@@ -570,10 +571,18 @@ function toast(msg, type, action){
   killT = setTimeout(()=>{ t.remove(); }, hold + 500);
 }
 
-/* Demo projects (demo-filled / demo-empty) live on the app page only;
-   they are code-based, non-deletable, and non-cloud. The admin panel
-   starts empty — the admin creates their own projects. */
-const DEMO_SEED = [];
+/* Seed data for the admin panel. Demo projects (demo-filled / demo-empty)
+   live on the app page only and are filtered out of renderProjects().
+   This seed provides a starter project for the admin workflow. */
+const DEMO_SEED = [{
+  id: 'starter-project',
+  title: 'Starter Project',
+  description: 'A starter project to get you going. Edit or delete this to start fresh.',
+  status: 'active',
+  file: 'project.html?id=starter-project',
+  code: 'START2026',
+  codeHash: ''
+}];
 
 let projects = [];
 

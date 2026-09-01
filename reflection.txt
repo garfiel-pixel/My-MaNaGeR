@@ -1,6 +1,6 @@
-Session: 2026-09-01 (Calculator Integration + UI Fixes Round 6 - Admin Sidebar, Demo Isolation, Search Cleanup, CI Fix)
-Deploy: 5bcbd6be-1485-4a89-b110-cfa53d12a9f9 (v223)
-Commits: dbb87b0, 2e0b27f, 4f2c843
+Session: 2026-09-01 (Calculator Integration + Polish + UI Fixes Round 6)
+Deploy: 98685460-519c-49d8-b807-1943e9992fb6 (v223)
+Commits: fd58366, b22cb87, 95e273b, a24f4c4, ae831bf, 4c08794
 
 === COMPLETED THIS SESSION ===
 
@@ -106,14 +106,109 @@ Commits: dbb87b0, 2e0b27f, 4f2c843
 - qa-marketing: 20/20
 - Live site: /app 200, /admin 200
 
-=== CALCULATOR INTEGRATION (NEW) ===
-- Added i-calculator SVG icon to sprite (calculator with display + 6 buttons)
-- Added mmgr-calculator.js to build.js APP_MODULES (61 modules total)
-- Added auto-init: show() called on DOMContentLoaded so FAB appears on load
-- Bundle rebuilt: 61 modules, 1233 KB raw -> 645 KB minified (47.7% reduction)
-- All verification passed: CSP 17/17, SW v223, hidden OK, skills 17/17, exports OK
-- Calculator features: 6 tabs (General, Percent, Area, Convert, Markup, Cost Est.)
-- Floating draggable FAB (bottom-right, z-index 1500)
-- Results auto-copy to clipboard
-- Touch + mouse drag support
-- History panel (last 10 calculations)
+=== CALCULATOR INTEGRATION (COMPLETED) ===
+1. BUILD INTEGRATION (build.js, js/mmgr-calculator.js)
+   - Added mmgr-calculator.js to APP_MODULES (61 modules, was 55)
+   - Added auto-init: show() on DOMContentLoaded so FAB appears on load
+   - Bundle: 1233 KB raw -> 646 KB minified (47.7% reduction)
+
+2. SVG ICON (css/mmgr-icons.svg)
+   - Added i-calculator symbol (calculator with display + 6 buttons)
+   - Referenced by FAB and panel title
+
+3. KEYBOARD SHORTCUT (js/mmgr-calculator.js)
+   - Ctrl+Shift+C toggles calculator open/closed
+   - Registered in init() alongside auto-show
+
+4. ESCAPE KEY (js/mmgr-calculator.js)
+   - Escape closes panel when open (_open check)
+   - Only fires when calculator is open, won't interfere with other handlers
+
+5. CONTROLS DRAWER BUTTON (project.html, js/mmgr-app.js)
+   - Added Calculator row in Appearance section (i-calculator icon + Open button)
+   - Added toggleCalc entry in ACTION_MAP calling MMGR.Calculator.toggle()
+   - Three ways to open: FAB click, Ctrl+Shift+C, Controls drawer button
+
+6. DOLLAR SIGN FIX (js/mmgr-calculator.js)
+   - Renamed fmtBig() to fmtNum() (no $ prefix)
+   - Added fmtDollars() wrapper for monetary values only
+   - Monetary: Markup, Margin, Discount, Tax, Unit Cost, Labor, Material, Contingency
+   - Non-monetary: Percent, Area, Conversion, Concrete Volume
+
+7. CSS POLISH (css/mmgr.css)
+   - Added :focus-visible styles for calc-btn, calc-tab, calc-action, calc-fab, calc-close
+   - Matches codebase pattern: outline:2px solid var(--gold);outline-offset:2px
+   - Prefers-reduced-motion kills panel transition and result animation
+
+8. ACCESSIBILITY AUDIT
+   - All design tokens correct (15 tokens, light + dark mode)
+   - Dark mode: panel #242019, header #1a1614, text #e8e0d8, gold #E8923A
+   - Panel has role=dialog, aria-label; FAB has aria-label
+   - All inputs have aria-label attributes
+   - Zero emoji in served files (hard gate)
+
+=== FAILURES AND MISTAKES (LEARNED THE HARD WAY) ===
+
+1. STALE SERVE.CJS PROCESS: After updating serve.cjs with new CSP hashes, the
+   old process was still running. The verify script passed (it reads the file),
+   but the live server served old headers. Chrome silently blocked ALL inline
+   scripts. Functions like `handleSetupPassword`, `ADMIN_ACTION_MAP`, `projects`
+   were all `undefined`. LESSON: ALWAYS restart serve.cjs after editing it.
+   The verify script reads the file on disk — it does NOT check what the
+   running process is serving.
+
+2. DUPLICATE SEARCH BUTTONS: Added a search button to the Projects section
+   header AND kept the existing header search icon. User explicitly said
+   "You do not need two searches in one page." LESSON: check for existing
+   functionality before adding new UI.
+
+3. CSP HASH DRIFT: Every edit to an inline <script> block changes the hash.
+   Forgot this multiple times. LESSON: automate hash regeneration — always
+   recompute after ANY inline script edit.
+
+4. CI TEST SELECTOR MISMATCH: The verify-controls-admin.cjs test expects
+   specific CSS class names (.auth-bar, .rail-ctl-row) and DOM structure.
+   When I rewrote the admin sidebar, I used different class names (db-ctl-row
+   instead of rail-ctl-row, db-user instead of auth-bar). LESSON: always run
+   the full CI battery locally before pushing — read the test expectations
+   and match them.
+
+5. DEMO_SEED CLEARED: I cleared the admin DEMO_SEED to empty array, but the
+   CI test S3 expects at least one project row in the admin panel. LESSON:
+   read CI test expectations before removing seed data.
+
+6. DEPLOY STAGING: First deploy attempt excluded src/ directory (worker imports
+   failed). Second attempt excluded images (needed for deployment). LESSON:
+   the tar exclude list must include vendor, tools, screenshots, temp files,
+   but MUST include src/, worker.js, sw.js, and all HTML/JS/CSS.
+
+=== FILES MODIFIED ===
+- js/mmgr-calculator.js: NEW — floating draggable calculator (6 tabs, ~830 lines)
+- css/mmgr-icons.svg: Added i-calculator symbol to SVG sprite
+- css/mmgr.css: Calculator styles (132 lines) + focus-visible styles
+- build.js: Added mmgr-calculator.js to APP_MODULES (61 modules)
+- js/mmgr-app.js: Added toggleCalc to ACTION_MAP
+- project.html: Added Calculator button in Controls drawer Appearance section
+- reflection.txt: Updated with calculator session details
+- CONTINUATION-DIRECTIVE.md: Updated STATUS LOG
+
+=== VERIFICATION RESULTS (FINAL) ===
+- npm run verify: ALL PASSED (CSP 17/17, SW v223, hidden 2805 rules, skills 17/17, exports OK)
+- wrangler deploy --dry-run: OK
+- qa-dashboard-spec: 77/77 PASS
+- qa-changelog-diffs: ALL PASS
+- qa-ai-relay: ALL PASS
+- verify-report-issue: 27/27 PASS
+- verify-dynamic-labels: 3/3 PASS
+- verify-delegate-gate: OK
+- Emoji scan: Clean (zero emoji in served files)
+- Live site: /app 200, /admin 200
+
+=== DEPLOY HISTORY ===
+- fd58366: Calculator integration (initial build + auto-init)
+- b22cb87: Ctrl+Shift+C keyboard shortcut
+- 95e273b: Controls drawer button + ACTION_MAP entry
+- a24f4c4: Dollar sign fix (fmtNum/fmtDollars split)
+- ae831bf: Escape key to close panel
+- 4c08794: Focus-visible styles for accessibility
+- All deployed: version 98685460 live at my-manager.garfieldprocis.workers.dev

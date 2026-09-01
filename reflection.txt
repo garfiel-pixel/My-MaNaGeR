@@ -1,34 +1,32 @@
-Session: 2026-08-31 (UI Fixes Continuation)
-Deploy: 230a9d15-7d3d-44e9-bea9-b6caa0a1c0a2 (v220)
+Session: 2026-08-31 (UI Fixes Continuation - Round 5)
+Deploy: 172530b2-85d5-4a3e-9516-074da4d604bc (v221)
 
 Completed this session:
-1. CSP hash regen - corrected drifted hashes after project.html accordion init
-   (worker.js, serve.cjs, project.html meta CSP all synced to 17 hashes)
-2. Mobile view-only banner - position:relative at <=768px (non-sticky, no clutter)
-3. Controls drawer accordion - data-ctl-toggle sections with CSS transitions
-4. Sign-in modal state - #siom title/hint update for signed-in users
-5. Field guide sign-in - restyled trigger as bordered chip with fixed-position
-   glass sheet panel matching marketing page pattern
-6. Admin sidebar footer - added user identity chip, premium badge, sign-in
-   button + mmgr:user-changed listener to hide email auth when Google-signed-in
-7. App page search/moon overlap - repositioned search button to right:54px
-8. Real-time grid filter - inline search input above project grid filtering
-   by name/description as user types, clear button, Escape to reset
-9. Controls accordion caret icons - 14px absolutely positioned arrows
-10. Dark theme glass polish (prior commit) - blur 20->12px, fill 0.08->0.05
-11. Marketing dark dropdown contrast fix (prior commit)
-12. Feature bar carousel restart on return (prior commit)
-13. Favicon standardization (prior commit)
+1. Admin sidebar completely rewritten to use db-side class system
+   matching app.html layout (db-side-head, db-nav, db-link, db-g,
+   db-sub, db-foot). Body gets admin-page + db-page classes.
+2. Admin rail footer: renderRailUser() shows name + sign out when
+   signed in, Sign in button when signed out. mmgr:user-changed
+   listener hides email-auth-block + google-signin-button when
+   Google-signed-in. openSignIn action wired.
+3. Search moved from inline grid input to existing search modal.
+   Modal now includes cloud + demo projects. Search button added
+   to section header beside New Project.
+4. Controls accordion caret icons: 14px gold arrows, absolutely
+   positioned on right side of section headers.
+5. Field guide sign-in: restyled as bordered chip with fixed-position
+   glass panel matching marketing page pattern.
+6. Admin FOUC script sets side-open on desktop for db-side CSS.
+7. tglAdminNav syncs side-open class; click handler recognizes
+   both db-ctl-row and rail-ctl-row.
 
 Tests: verify ALL PASSED, qa-marketing 20/20, qa-dashboard-spec 77/77
 
-Lessons learned:
-- CSP hash computation must NOT use .trim() on inline script content -
-  the browser hashes the raw bytes including whitespace
-- Hash order in worker.js/serve.cjs must match the file-by-file extraction
-  order in verify-csp-hashes.cjs (project->app->admin->dashboard->
-  seed-test->field-guide->features.html) exactly, not just as a set
-- serve.cjs needs full restart (kill old PID) after hash changes - the
-  in-memory SPA server caches the CSP header
-- Position:absolute buttons need distinct right/left offsets or they stack
-- Grid search filtering is simplest done as a renderCards() filter step
+Lessons:
+- Admin sidebar had to be converted from rail-group/rail-link classes
+  to db-side/db-link/db-g classes to match app.html visual layout
+- The mmgr:user-changed event is the canonical way to sync auth state
+  across all surfaces; mountEmailAuth inserts email-auth-block as
+  sibling after google-signin-button, so hiding both is required
+- Search modal already had real-time filtering; the inline grid input
+  was redundant - just needed the modal to include all project types

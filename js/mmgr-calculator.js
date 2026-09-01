@@ -825,6 +825,8 @@
       if (e.ctrlKey && e.shiftKey && e.key === 'C') {
         e.preventDefault();
         toggle();
+      } else if (e.key === 'Escape' && _open) {
+        close();
       }
     });
   }

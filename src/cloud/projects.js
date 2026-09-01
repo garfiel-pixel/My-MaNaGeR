@@ -358,11 +358,28 @@ export async function handleCloudCodeLookup(request, env) {
   ).bind(fp).first();
   if (!row) {
     const ownerRow = await env.DB.prepare('SELECT project_id, google_name, deleted_at FROM cloud_projects WHERE owner_code_fingerprint = ?').bind(fp).first();
-    if (!ownerRow) {
-      await Promise.all([cloudDummyHash(), cloudTimingSink()]);
-      return cloudForbidden();
+    if (ownerRow) {
+      return json({ ok: true, projectId: ownerRow.project_id, role: 'owner', label: ownerRow.google_name || 'Owner', deleted: !!ownerRow.deleted_at });
     }
-    return json({ ok: true, projectId: ownerRow.project_id, role: 'owner', label: ownerRow.google_name || 'Owner', deleted: !!ownerRow.deleted_at });
+    // C19: Check client codes
+    const { verifyClientCode } = await import('./client-codes.js');
+    // We need to try all projects for this code (client codes are per-project)
+    const clientProjects = await env.DB.prepare('SELECT project_id FROM cloud_client_codes').all();
+    for (const cp of (clientProjects.results || [])) {
+      const clientResult = await verifyClientCode(code, cp.project_id, env);
+      if (clientResult) {
+        return json({
+          ok: true,
+          projectId: clientResult.projectId,
+          role: 'client',
+          label: 'Client',
+          sections: clientResult.sections,
+          deleted: false
+        });
+      }
+    }
+    await Promise.all([cloudDummyHash(), cloudTimingSink()]);
+    return cloudForbidden();
   }
   if (!row.active) return json({ ok: true, projectId: row.project_id, role: row.role, label: row.label || (row.role === 'view' ? 'Viewer' : 'Editor'), revoked: true, deleted: !!row.deleted_at });
   return json({ ok: true, projectId: row.project_id, role: row.role, label: row.label || (row.role === 'view' ? 'Viewer' : 'Editor'), deleted: !!row.deleted_at });

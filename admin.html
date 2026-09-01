@@ -304,6 +304,7 @@ pre.snippet{background:#f8fafc;border:1px solid var(--border);border-radius:6px;
         <span class="rail-ctl-row"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg> Premium</span>
         <span class="rail-ctl-row"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-palette"></use></svg> <span>Appearance</span><span class="pal-switch" role="group" aria-label="Theme mode"><button type="button" class="pal-btn" data-pal="light" aria-pressed="false">Light</button><button type="button" class="pal-btn" data-pal="dark" aria-pressed="false">Dark</button></span></span>
         <span class="rail-ctl-row"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-orb"></use></svg> Premium Glass <label class="tgl"><input type="checkbox" id="glass-tgl" data-action="tglGlassMode" aria-label="Toggle premium liquid-glass backdrop"><span class="tsl"></span></label></span>
+        <span class="rail-ctl-row"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-users"></use></svg> Cross-Project Resources <label class="tgl"><input type="checkbox" id="xproj-tgl" data-action="tglCrossProject" aria-label="Toggle shared resources across projects"><span class="tsl"></span></label></span>
       </div>
     </nav>
     <div class="db-foot">
@@ -402,6 +403,15 @@ pre.snippet{background:#f8fafc;border:1px solid var(--border);border-radius:6px;
       <div id="codes-scope" style="font-size:.72rem;color:var(--slate);margin-bottom:10px;line-height:1.6"><span style="margin:0">Sections this code may edit (or see, for a viewer):</span><span id="codes-scope-load" style="margin:0"> loading…</span></div>
       <div id="codes-reveal" style="border:1px solid var(--gold);background:rgba(var(--gold-rgb),.1);border-radius:var(--radius);padding:8px 10px;margin:10px 0;font-size:.76rem" hidden role="status"></div>
       <div id="codes-list" style="font-size:.72rem;color:var(--slate)">Loading codes…</div>
+      <!-- C19: Client Code Section -->
+      <div style="border-top:1px solid var(--border);margin-top:12px;padding-top:12px">
+        <div style="font-size:.78rem;font-weight:600;margin-bottom:8px"><svg class="ico" aria-hidden="true" style="width:14px;height:14px"><use href="css/mmgr-icons.svg#i-user"></use></svg> Client Access (Read-Only)</div>
+        <p style="font-size:.72rem;color:var(--slate);margin:0 0 8px;line-height:1.5">Generate a client code with section toggles. The client can only see the sections you enable.</p>
+        <div id="client-sections" style="font-size:.72rem;color:var(--slate);margin-bottom:8px;line-height:1.8"></div>
+        <button class="btn btn-g btn-s" data-action="createClientCode"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-plus"></use></svg> Create Client Code</button>
+        <div id="client-code-reveal" style="border:1px solid var(--gold);background:rgba(var(--gold-rgb),.1);border-radius:var(--radius);padding:8px 10px;margin:10px 0;font-size:.76rem" hidden role="status"></div>
+        <div id="client-codes-list" style="font-size:.72rem;color:var(--slate);margin-top:8px"></div>
+      </div>
     </div>
   </div>
 </div>
@@ -719,6 +729,12 @@ function lockAdmin(){
 // that project.html's Settings toggle and the launcher's switch use, so the
 // choice persists across admin, launcher, and app. el-scoped so the gate pill
 // and the header switch stay in sync regardless of which is visible.
+function tglCrossProject(){
+  const tgl = document.getElementById('xproj-tgl');
+  const enabled = tgl ? tgl.checked : false;
+  try { localStorage.setItem('mmgr_cross_project', enabled ? '1' : '0'); } catch(e){}
+  toast(enabled ? 'Cross-Project Resources enabled. You can now import resources from other projects.' : 'Cross-Project Resources disabled.');
+}
 function tglTheme(el){
   const cur = window.MMGRTheme && MMGRTheme.isDark ? MMGRTheme.isDark() : (localStorage.getItem('mmgr_theme') === 'dark');
   const dark = el ? !el.checked : !cur;
@@ -1596,6 +1612,8 @@ function openCodesManager(i){
   document.getElementById('codes-role').value = 'editor';
   document.getElementById('codes-list').textContent = 'Loading codes…';
   document.getElementById('codes-om').classList.add('show');
+  initClientSections();
+  listClientCodes();
   codesFetchSections().then(function(secs){
     const box = document.getElementById('codes-scope');
     const loadEl = document.getElementById('codes-scope-load');
@@ -1706,6 +1724,104 @@ async function revokeCloudCode(id){
   });
 }
 
+/* ── C19: Client Code Functions ── */
+const CLIENT_SECTIONS = [
+  {key:'dash',label:'Dashboard'},{key:'def',label:'Definitions'},{key:'charter',label:'Charter'},
+  {key:'wbs',label:'WBS'},{key:'gantt',label:'Gantt'},{key:'kan',label:'Kanban'},
+  {key:'res',label:'Resources'},{key:'bud',label:'Budget'},{key:'raci',label:'RACI'},
+  {key:'comms',label:'Comms Log'},{key:'docs',label:'Documents'},{key:'meet',label:'Meetings'},
+  {key:'stk',label:'Stakeholders'},{key:'chg',label:'Changes'},{key:'log',label:'Decision Log'},
+  {key:'risk',label:'Risk / Issues'},{key:'claim',label:'Claim Pack'},{key:'close',label:'Closure'}
+];
+function initClientSections(){
+  const box = document.getElementById('client-sections');
+  if (!box || box.children.length) return;
+  CLIENT_SECTIONS.forEach(function(s){
+    const lbl = document.createElement('label');
+    lbl.style.cssText = 'display:inline-flex;align-items:center;gap:4px;margin:2px 10px 2px 0;font-size:.72rem;color:var(--text)';
+    const cb = document.createElement('input');
+    cb.type = 'checkbox'; cb.value = s.key;
+    if (s.key === 'dash') cb.checked = true; // default: dashboard only
+    lbl.appendChild(cb);
+    lbl.appendChild(document.createTextNode(s.label));
+    box.appendChild(lbl);
+  });
+}
+async function createClientCode(){
+  const p = (_codesIdx !== null) && projects[_codesIdx];
+  const code = codesOwnerCode();
+  if (!p || !code){ toast('No owner code recorded for this project.', 'error'); return; }
+  const sections = [];
+  document.querySelectorAll('#client-sections input[type=checkbox]:checked').forEach(function(cb){ sections.push(cb.value); });
+  if (!sections.length){ toast('Tick at least one section the client can see.', 'warn'); return; }
+  try{
+    const res = await fetch('/api/cloud/projects/' + encodeURIComponent(p.cloudId) + '/client-codes', {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json', 'X-Owner-Code': code },
+      body: JSON.stringify({ sections: sections })
+    });
+    const data = await res.json().catch(()=>({}));
+    if (!res.ok || !data.ok){ toast((data && data.error) || 'Client code creation failed.', 'error'); return; }
+    const reveal = document.getElementById('client-code-reveal');
+    reveal.hidden = false;
+    reveal.innerHTML = '<strong style="font-size:.76rem">NEW client code. Copy it now, it is shown once:</strong> ' +
+      '<code style="font-family:ui-monospace,monospace;letter-spacing:.05em;color:var(--gold);font-weight:700">' + escapeHtml(data.code) + '</code> ' +
+      '<button class="btn btn-g btn-s" onclick="navigator.clipboard.writeText(\'' + escapeHtml(data.code) + '\')"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy</button>' +
+      '<div style="font-size:.7rem;color:var(--slate);margin-top:4px">Sections: ' + sections.join(', ') + '</div>';
+    toast('Client code created. Copy it from the panel.');
+    listClientCodes();
+  }catch(e){
+    toast('Cloud API unreachable on this host.', 'error');
+  }
+}
+async function listClientCodes(){
+  const wrap = document.getElementById('client-codes-list');
+  const p = (_codesIdx !== null) && projects[_codesIdx];
+  const code = codesOwnerCode();
+  if (!p || !code || !wrap){ return; }
+  try{
+    const res = await fetch('/api/cloud/projects/' + encodeURIComponent(p.cloudId) + '/client-codes', {
+      method: 'GET', credentials: 'same-origin', headers: { 'X-Owner-Code': code }
+    });
+    const data = await res.json().catch(()=>({}));
+    if (!res.ok || !data.ok){ wrap.textContent = 'Could not load client codes.'; return; }
+    const codes = data.codes || [];
+    if (!codes.length){ wrap.textContent = 'No client codes yet.'; return; }
+    wrap.innerHTML = '<div style="font-weight:600;margin-bottom:4px">Active Client Codes:</div>' +
+      codes.map(function(c){
+        return '<div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid var(--border)">' +
+          '<span style="color:var(--gold)">Client</span>' +
+          '<span style="color:var(--slate)">sections: ' + (c.sections || []).join(', ') + ' · ' + (c.created_at || '').slice(0,10) + '</span>' +
+          '<button class="btn btn-d btn-s" data-action="revokeClientCode" data-id="' + c.id + '"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> Revoke</button>' +
+          '</div>';
+      }).join('');
+  }catch(e){
+    wrap.textContent = 'Cloud API unreachable.';
+  }
+}
+async function revokeClientCode(id){
+  const p = (_codesIdx !== null) && projects[_codesIdx];
+  const code = codesOwnerCode();
+  if (!p || !code || !id) return;
+  admConfirm({
+    title: 'Revoke this client code?',
+    message: 'The client loses access immediately.',
+    danger: true,
+    confirmLabel: 'Revoke',
+    onOk: async function(){
+      try{
+        const res = await fetch('/api/cloud/projects/' + encodeURIComponent(p.cloudId) + '/client-codes/' + encodeURIComponent(id), {
+          method: 'DELETE', credentials: 'same-origin', headers: { 'X-Owner-Code': code }
+        });
+        const data = await res.json().catch(()=>({}));
+        if (!res.ok || !data.ok){ toast((data && data.error) || 'Revoke failed.', 'error'); return; }
+        toast('Client code revoked.');
+        listClientCodes();
+      }catch(e){ toast('Cloud API unreachable.', 'error'); }
+    }
+  });
+}
+
 /* ── wire up Enter-to-submit on the two gate screens ── */
 document.getElementById('setup-pass2').addEventListener('keydown', e=>{ if(e.key==='Enter') handleSetupPassword(); });
 document.getElementById('login-pass').addEventListener('keydown', e=>{ if(e.key==='Enter') handleLogin(); });
@@ -1806,6 +1922,7 @@ const ADMIN_ACTION_MAP = {
   'tglNav': () => tglAdminNav(),
   'tglTheme': (el) => tglTheme(el),
   'tglGlassMode': (el) => tglGlassMode(el),
+  'tglCrossProject': () => tglCrossProject(),
   'openSignIn': () => { var GA = window.MMGR && MMGR.GoogleAuth ? MMGR.GoogleAuth : null; if (GA && GA.openSignInPrompt) GA.openSignInPrompt(); },
   'cloudAdminList': () => cloudAdminList(),
   'cloudAdminReissue': (el) => cloudAdminReissue(el.getAttribute('data-id')),
@@ -1815,6 +1932,8 @@ const ADMIN_ACTION_MAP = {
   'closeCodesModal': () => closeCodesModal(),
   'codesCreate': () => createCloudCode(),
   'codesRevoke': (el) => revokeCloudCode(el.getAttribute('data-id')),
+  'createClientCode': () => createClientCode(),
+  'revokeClientCode': (el) => revokeClientCode(el.getAttribute('data-id')),
   'codesCopyReveal': (el) => { const c = el.getAttribute('data-code'); if (c && navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(c).then(()=>toast('Code copied.')).catch(()=>toast('Copy manually.','warn')); }
 };
 document.addEventListener('click', function(e){

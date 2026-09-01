@@ -329,6 +329,77 @@ var MMGR = window.MMGR || {};
     updEnvelope: updEnvelope
   };
 
+  // ---- Time Tracking (MARKET-FEATURE-ROADMAP C27) ----
+  // Per-task hours log for field crew.
+  function addTimeEntry() {
+    ns.State.updateState(function(s) {
+      if (!s.timeEntries) s.timeEntries = [];
+      s.timeEntries.push({
+        id: U.genShortId('TE'), task: '', resource: '', date: '',
+        hours: '', notes: ''
+      });
+    });
+    R.renderResources();
+  }
+
+  function updTimeEntry(index, field, value, evtType) {
+    ns.State.updateState(function(s) {
+      if (s.timeEntries && s.timeEntries[index]) {
+        s.timeEntries[index][field] = (field === 'hours') ? parseFloat(value) || 0 : value;
+      }
+    });
+    if (evtType === 'input') return;
+    R.renderResources();
+  }
+
+  function delTimeEntry(index) {
+    ns.State.updateState(function(s) {
+      if (s.timeEntries) s.timeEntries.splice(index, 1);
+    });
+    R.renderResources();
+  }
+
+  ns.TimeTracking = {
+    addTimeEntry: addTimeEntry,
+    updTimeEntry: updTimeEntry,
+    delTimeEntry: delTimeEntry
+  };
+
+  // ---- Equipment Log (MARKET-FEATURE-ROADMAP C28) ----
+  // Equipment usage, maintenance, allocation.
+  function addEquipment() {
+    ns.State.updateState(function(s) {
+      if (!s.equipment) s.equipment = [];
+      s.equipment.push({
+        id: U.genShortId('EQ'), name: '', type: '', status: 'active',
+        ownership: 'owned', vendor: '', startDate: '', endDate: '',
+        cost: '', maintenanceDate: '', notes: ''
+      });
+    });
+    R.renderResources();
+  }
+
+  function updEquipment(index, field, value, evtType) {
+    ns.State.updateState(function(s) {
+      if (s.equipment && s.equipment[index]) s.equipment[index][field] = value;
+    });
+    if (evtType === 'input') return;
+    R.renderResources();
+  }
+
+  function delEquipment(index) {
+    ns.State.updateState(function(s) {
+      if (s.equipment) s.equipment.splice(index, 1);
+    });
+    R.renderResources();
+  }
+
+  ns.Equipment = {
+    addEquipment: addEquipment,
+    updEquipment: updEquipment,
+    delEquipment: delEquipment
+  };
+
   ns.PayApps = {
     addPayApp: addPayApp,
     genPayApp: genPayApp,

@@ -801,7 +801,15 @@ var MMGR = window.MMGR || {};
     // Go/No-Go scorecards were missing from the whitelist, so their per-field
     // timestamps were never stamped and cloud-merge conflict resolution could
     // silently drop a teammate's bid leveling edits.
-    'bidPackages', 'goNoGo'];
+    'bidPackages', 'goNoGo',
+    // C10 Procurement Log (material orders, delivery tracking)
+    'procurement',
+    // C27 Time Tracking (per-task hours log)
+    'timeEntries',
+    // C28 Equipment Log (rental/ownership/maintenance)
+    'equipment',
+    // C24 Template Library
+    'projectTemplates'];
   let _fieldJsonCache = null; // { fieldName: jsonString } — cached per-field serialization.
   // Dirty-field tracking: updateState() marks fields whose top-level reference
   // changed; stampFieldTs() only re-serializes dirty fields instead of all 60+.

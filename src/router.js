@@ -30,6 +30,7 @@ import { handleCloudProjectList, handleCloudCreate, handleCloudSave, handleCloud
   handleCloudProjectDelete, handleCloudProjectRestore, handleCloudProjectPurge,
   handleCloudUnadopt, cloudPushRevChangedIfCopies } from './cloud/projects.js';
 import { handleCloudEditorCreate, handleCloudEditorList, handleCloudEditorRevoke } from './cloud/editors.js';
+import { handleCloudClientCodeCreate, handleCloudClientCodeList, handleCloudClientCodeRevoke, verifyClientCode, CLIENT_SECTIONS, SECTION_LABELS } from './cloud/client-codes.js';
 import { handleCloudChangelogList, handleCloudChangelogRevert, handleCloudChangelogImport } from './cloud/changelog.js';
 import { handleCloudPrefsGet, handleCloudPrefsPut, handleCloudBroadcast, handleCloudAutoBroadcast,
   handleOfflineCopyRegister, handleOfflineCopyList, handleOfflineCopyDelete } from './cloud/sync.js';
@@ -297,6 +298,20 @@ export async function routeApi(request, env, url) {
       const r = await rl(request, 'general', env);
       if (r) return r;
       return handleCloudEditorRevoke(request, env, cloudEditorDelMatch[1], cloudEditorDelMatch[2]);
+    }
+    // C19: Client Codes (read-only, section-filtered access)
+    const cloudClientMatch = path.match(/^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/client-codes$/);
+    if (cloudClientMatch) {
+      const r = await rl(request, 'general', env);
+      if (r) return r;
+      if (request.method === 'POST') return handleCloudClientCodeCreate(request, env, cloudClientMatch[1]);
+      if (request.method === 'GET') return handleCloudClientCodeList(request, env, cloudClientMatch[1]);
+    }
+    const cloudClientDelMatch = path.match(/^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/client-codes\/(\d+)$/);
+    if (cloudClientDelMatch && request.method === 'DELETE') {
+      const r = await rl(request, 'general', env);
+      if (r) return r;
+      return handleCloudClientCodeRevoke(request, env, cloudClientDelMatch[1], cloudClientDelMatch[2]);
     }
     const cloudLogMatch = path.match(/^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/changelog$/);
     if (cloudLogMatch && request.method === 'GET') {

@@ -369,6 +369,13 @@ body.sidebar-open .nav-btn .ico,body.sidebar-open .sb-close .ico{transform:rotat
 .sec-btn:hover{border-color:var(--green);color:var(--green);}
 /* The active pill is the strongest signal in the nav — filled background */
 .sec-nav .sec-btn.active{box-shadow:0 0 0 1px var(--green);}
+/* U1: AI Assistant Bar */
+.ai-bar{position:sticky;top:var(--hdr-h,64px);z-index:90;background:var(--glass-fill-dark);border-bottom:1px solid var(--border);padding:8px 16px;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+.ai-bar-inner{display:flex;align-items:center;gap:8px;max-width:900px;margin:0 auto}
+.ai-bar-result{margin-top:8px;padding:10px 12px;background:var(--tile-bg);border-radius:6px;font-size:.78rem;line-height:1.5;max-height:300px;overflow-y:auto;border:1px solid var(--border)}
+.ai-bar-result:empty{display:none}
+body.dark-mode .ai-bar{background:rgba(30,30,30,.9)}
+body.dark-mode .ai-bar-result{background:rgba(40,40,40,.8);border-color:rgba(255,255,255,.1)}
 .ic-svg{width:18px;height:18px;flex-shrink:0;vertical-align:-3px;}
 .ic-ct{width:20px;height:20px;flex-shrink:0;margin-right:4px;vertical-align:-4px;}
 /* UI-MODERNIZATION 2026-08-14 (dashboard-alignment audit, follow-up): with

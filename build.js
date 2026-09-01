@@ -105,6 +105,7 @@ const APP_MODULES = [
   'js/cloud/webhooks.js',
   // Calculator (floating draggable FAB)
   'js/mmgr-calculator.js',
+  'js/mmgr-templates.js',
 ];
 
 // ---- Marketing pages bundle ----

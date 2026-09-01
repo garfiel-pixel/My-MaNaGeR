@@ -481,6 +481,93 @@ var MMGR = window.MMGR || {};
     ns.App.showToast('Dates imported , ' + created + ' created, ' + updated + ' updated.', 'ok');
   }
 
+  // ---- Task Comments (C21 @mentions) ----
+  function addTaskComment(taskId, text, author) {
+    ns.State.updateState(function(s) {
+      const task = (s.tasks || []).find(t => t.id === taskId);
+      if (!task) return;
+      if (!task.comments) task.comments = [];
+      // Extract @mentions from text
+      const mentionRegex = /@(\w+(?:\s+\w+)?)/g;
+      const mentions = [];
+      let match;
+      while ((match = mentionRegex.exec(text)) !== null) {
+        mentions.push(match[1]);
+      }
+      task.comments.push({
+        id: U.genShortId('CM'),
+        author: author || (s.userName || 'Admin'),
+        text: text,
+        mentions: mentions,
+        timestamp: new Date().toISOString()
+      });
+    });
+    R.renderWbs();
+  }
+
+  function delTaskComment(taskId, commentId) {
+    ns.State.updateState(function(s) {
+      const task = (s.tasks || []).find(t => t.id === taskId);
+      if (task && task.comments) {
+        task.comments = task.comments.filter(c => c.id !== commentId);
+      }
+    });
+    R.renderWbs();
+  }
+
+  // ---- Task Follow-Up (C21 accountability tracking) ----
+  function setTaskFollowUp(taskId, assignee, dueDate) {
+    ns.State.updateState(function(s) {
+      const task = (s.tasks || []).find(t => t.id === taskId);
+      if (!task) return;
+      task.followUp = {
+        assignee: assignee || '',
+        dueDate: dueDate || '',
+        status: 'pending',
+        createdAt: new Date().toISOString()
+      };
+    });
+    R.renderWbs();
+    R.renderDash();
+  }
+
+  function completeTaskFollowUp(taskId) {
+    ns.State.updateState(function(s) {
+      const task = (s.tasks || []).find(t => t.id === taskId);
+      if (task && task.followUp) {
+        task.followUp.status = 'completed';
+        task.followUp.completedAt = new Date().toISOString();
+      }
+    });
+    R.renderWbs();
+    R.renderDash();
+  }
+
+  function clearTaskFollowUp(taskId) {
+    ns.State.updateState(function(s) {
+      const task = (s.tasks || []).find(t => t.id === taskId);
+      if (task) delete task.followUp;
+    });
+    R.renderWbs();
+    R.renderDash();
+  }
+
+  // ---- Get stakeholders for @mention autocomplete ----
+  function getStakeholderNames() {
+    const s = ns.State.getState();
+    if (!s) return [];
+    const names = [];
+    // From resources
+    (s.resources || []).forEach(function(r) {
+      if (r.name && names.indexOf(r.name) === -1) names.push(r.name);
+    });
+    // From stakeholders
+    (s.stakeholders || []).forEach(function(st) {
+      if (st.name && names.indexOf(st.name) === -1) names.push(st.name);
+    });
+    return names.sort();
+  }
+
   // ---- API ----
   ns.Tasks = {
     addTask: addTask,
@@ -505,7 +592,13 @@ var MMGR = window.MMGR || {};
     closeImportDates: closeImportDates,
     idPreview: idPreview,
     idCommit: idCommit,
-    copyIdTemplate: copyIdTemplate
+    copyIdTemplate: copyIdTemplate,
+    addTaskComment: addTaskComment,
+    delTaskComment: delTaskComment,
+    setTaskFollowUp: setTaskFollowUp,
+    completeTaskFollowUp: completeTaskFollowUp,
+    clearTaskFollowUp: clearTaskFollowUp,
+    getStakeholderNames: getStakeholderNames
   };
 
   // Alias for backward compat with inline onclick

@@ -163,6 +163,48 @@ var MMGR = window.MMGR || {};
     }).join('');
   }
 
+  // ---- Procurement Log (MARKET-FEATURE-ROADMAP C10) ----
+  function renderProcurement() {
+    const s = S();
+    if (!s) return;
+    const body = $('proc-body');
+    if (!body) return;
+    const list = s.procurement || [];
+    const sum = $('proc-sum');
+    const ordered = list.filter(x => x.status === 'ordered').length;
+    const inTransit = list.filter(x => x.status === 'in-transit').length;
+    if (sum) sum.textContent = list.length ? (ordered + ' ordered, ' + inTransit + ' in transit') : '';
+    if (list.length === 0) {
+      body.innerHTML = emptyStateRow(9, 'No procurement items tracked yet.', '<button class="btn btn-g btn-s" data-action="addProcurement">+ Add Order</button>');
+      return;
+    }
+    function dl(d) {
+      if (!d) return null;
+      const dt = new Date(d);
+      if (isNaN(dt.getTime())) return null;
+      return Math.round((dt.getTime() - Date.now()) / 86400000);
+    }
+    const statusColor = (st) => st === 'received' ? 'var(--green)' : st === 'in-transit' ? 'var(--gold)' : st === 'ordered' ? 'var(--slate)' : st === 'cancelled' ? 'var(--danger)' : 'var(--slate)';
+    body.innerHTML = list.map((x, i) => {
+      const left = dl(x.expectedDate);
+      const etaTxt = left === null ? '' : left < 0 ? ' <span style="color:var(--danger)">overdue ' + Math.abs(left) + 'd</span>' : left <= 7 ? ' <span style="color:var(--amber)">' + left + 'd left</span>' : '';
+      return `<tr>
+      <td>${U.escapeHtml(x.id || 'PO' + (i+1))}</td>
+      <td><input type="text" value="${U.escapeHtml(x.material)}" data-action="updField" data-module="Procurement" data-field="material" data-idx="${i}" style="min-width:120px" placeholder="Material"></td>
+      <td><input type="text" value="${U.escapeHtml(x.vendor || '')}" data-action="updField" data-module="Procurement" data-field="vendor" data-idx="${i}" style="min-width:100px" placeholder="Vendor"></td>
+      <td><input type="text" value="${U.escapeHtml(x.quantity || '')}" data-action="updField" data-module="Procurement" data-field="quantity" data-idx="${i}" style="width:60px" placeholder="Qty"></td>
+      <td><input type="text" value="${U.escapeHtml(x.unit || '')}" data-action="updField" data-module="Procurement" data-field="unit" data-idx="${i}" style="width:50px" placeholder="Unit"></td>
+      <td><input type="date" value="${x.orderDate || ''}" data-action="updField" data-module="Procurement" data-field="orderDate" data-idx="${i}"></td>
+      <td><input type="date" value="${x.expectedDate || ''}" data-action="updField" data-module="Procurement" data-field="expectedDate" data-idx="${i}">${etaTxt}</td>
+      <td><input type="date" value="${x.receivedDate || ''}" data-action="updField" data-module="Procurement" data-field="receivedDate" data-idx="${i}"></td>
+      <td><select data-action="updField" data-module="Procurement" data-field="status" data-idx="${i}" style="color:${statusColor(x.status)}">${['ordered','in-transit','received','cancelled'].map(v => `<option ${x.status === v ? 'selected' : ''}>${v}</option>`).join('')}</select></td>
+      <td><input type="text" value="${U.escapeHtml(x.cost || '')}" data-action="updField" data-module="Procurement" data-field="cost" data-idx="${i}" style="width:80px" placeholder="$"></td>
+      <td><input type="text" value="${U.escapeHtml(x.notes || '')}" data-action="updField" data-module="Procurement" data-field="notes" data-idx="${i}" placeholder="-"></td>
+      <td><button class="btn btn-s btn-d" data-action="delProcurement" data-idx="${i}">×</button></td>
+    </tr>`;
+    }).join('');
+  }
+
   function renderDocuments() {
     const s = S();
     if (!s) return;
@@ -171,6 +213,7 @@ var MMGR = window.MMGR || {};
     renderBallInCourt();
     renderDrawLog();
     renderPermits();
+    renderProcurement();
     const body = $('doc-body');
     if (!body) return;
     const docs = s.documents || [];
@@ -198,6 +241,7 @@ var MMGR = window.MMGR || {};
     renderBallInCourt: renderBallInCourt,
     renderDrawLog: renderDrawLog,
     renderPermits: renderPermits,
+    renderProcurement: renderProcurement,
     renderDocuments: renderDocuments
   };
 })(MMGR);

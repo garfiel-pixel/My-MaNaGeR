@@ -107,6 +107,91 @@ var MMGR = window.MMGR || {};
   }
 
   // ---- Init ----
+  // U1: AI Assistant Bar
+  function initAiBar() {
+    const input = U.$('ai-bar-input');
+    const sendBtn = U.$('ai-bar-send');
+    const result = U.$('ai-bar-result');
+    if (!input || !sendBtn || !result) return;
+
+    function askProject() {
+      const q = input.value.trim();
+      if (!q) return;
+      result.hidden = false;
+      result.innerHTML = '<div style="color:var(--slate)">Thinking...</div>';
+      input.value = '';
+
+      // Simple local analysis based on project state
+      const s = S();
+      if (!s) { result.innerHTML = '<div>No project data loaded.</div>'; return; }
+      const lower = q.toLowerCase();
+      let answer = '';
+
+      // Overdue tasks
+      if (lower.indexOf('overdue') > -1 || lower.indexOf('late') > -1 || lower.indexOf('behind') > -1) {
+        const tasks = (s.tasks || []).filter(t => t.status !== 'completed' && t.endDate && new Date(t.endDate) < new Date());
+        if (tasks.length) {
+          answer = '<strong>' + tasks.length + ' overdue task(s):</strong><ul style="margin:4px 0;padding-left:16px">' +
+            tasks.map(t => '<li>' + U.escapeHtml(t.name) + ' (due ' + t.endDate + ')</li>').join('') + '</ul>';
+        } else {
+          answer = 'No overdue tasks. All on track.';
+        }
+      }
+      // Budget overruns
+      else if (lower.indexOf('budget') > -1 || lower.indexOf('overrun') > -1 || lower.indexOf('cost') > -1) {
+        const lines = s.budgetLines || [];
+        const overruns = lines.filter(l => (+l.actual || 0) > (+l.planned || 0));
+        if (overruns.length) {
+          answer = '<strong>' + overruns.length + ' budget line(s) over budget:</strong><ul style="margin:4px 0;padding-left:16px">' +
+            overruns.map(l => '<li>' + U.escapeHtml(l.category || l.description) + ': $' + (+l.actual || 0).toLocaleString() + ' / $' + (+l.planned || 0).toLocaleString() + '</li>').join('') + '</ul>';
+        } else {
+          answer = 'No budget overruns detected.';
+        }
+      }
+      // Tasks summary
+      else if (lower.indexOf('task') > -1 || lower.indexOf('schedule') > -1) {
+        const tasks = s.tasks || [];
+        const todo = tasks.filter(t => t.status === 'todo').length;
+        const inprog = tasks.filter(t => t.status === 'inprogress').length;
+        const done = tasks.filter(t => t.status === 'completed').length;
+        answer = '<strong>Task Summary:</strong> ' + todo + ' to do, ' + inprog + ' in progress, ' + done + ' completed (' + tasks.length + ' total)';
+      }
+      // Risks
+      else if (lower.indexOf('risk') > -1) {
+        const risks = s.risks || [];
+        const open = risks.filter(r => !r.status || r.status === 'open');
+        answer = '<strong>' + open.length + ' open risk(s)</strong> out of ' + risks.length + ' total.';
+      }
+      // Resources
+      else if (lower.indexOf('resource') > -1 || lower.indexOf('team') > -1) {
+        const res = s.resources || [];
+        const overAlloc = res.filter(r => (+r.utilization || 0) > 100);
+        answer = '<strong>' + res.length + ' resource(s)</strong> registered.' + (overAlloc.length ? ' ' + overAlloc.length + ' over-allocated.' : ' All within capacity.');
+      }
+      // Help
+      else if (lower.indexOf('help') > -1 || lower.indexOf('what can') > -1) {
+        answer = '<strong>I can answer questions about:</strong><ul style="margin:4px 0;padding-left:16px">' +
+          '<li>Overdue tasks (What is overdue?)</li>' +
+          '<li>Budget status (Show budget overruns)</li>' +
+          '<li>Task summary (How many tasks?)</li>' +
+          '<li>Risks (What are the risks?)</li>' +
+          '<li>Resources (Show team status)</li>' +
+          '</ul>';
+      }
+      // Default
+      else {
+        answer = 'I can help with: overdue tasks, budget status, task summaries, risks, and resources. Try asking What is overdue or Show budget overruns.';
+      }
+
+      result.innerHTML = answer;
+    }
+
+    sendBtn.addEventListener('click', askProject);
+    input.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') askProject();
+    });
+  }
+
   function init() {
     if (!checkAccess()) return;
 
@@ -245,6 +330,9 @@ var MMGR = window.MMGR || {};
     if (splash) {
       requestAnimationFrame(() => splash.classList.add('off'));
     }
+
+    // U1: AI Assistant Bar
+    initAiBar();
 
     // Keyboard shortcuts
     document.addEventListener('keydown', function(e) {
@@ -1333,6 +1421,36 @@ window.MMGR = MMGR;
     'addTask': () => window.MMGR.Tasks.addTask(),
     'delTask': (el) => window.MMGR.Tasks.delTask(el.getAttribute('data-id')),
     'indentTask': (el) => window.MMGR.Tasks.indentTask(el.getAttribute('data-id')),
+    'addTaskComment': (el) => {
+      const taskId = el.getAttribute('data-id');
+      const input = document.getElementById('comment-input-' + taskId);
+      if (input && input.value.trim()) {
+        window.MMGR.Tasks.addTaskComment(taskId, input.value.trim());
+        input.value = '';
+      }
+    },
+    'delTaskComment': (el) => window.MMGR.Tasks.delTaskComment(el.getAttribute('data-task-id'), el.getAttribute('data-comment-id')),
+    'setTaskFollowUp': (el) => {
+      const taskId = el.getAttribute('data-id');
+      const assignee = prompt('Follow-up assignee:');
+      const dueDate = prompt('Due date (YYYY-MM-DD):');
+      if (assignee) window.MMGR.Tasks.setTaskFollowUp(taskId, assignee, dueDate);
+    },
+    'completeTaskFollowUp': (el) => window.MMGR.Tasks.completeTaskFollowUp(el.getAttribute('data-id')),
+    'clearTaskFollowUp': (el) => window.MMGR.Tasks.clearTaskFollowUp(el.getAttribute('data-id')),
+    'toggleTaskComments': (el) => { if (ns.Render && ns.Render.toggleTaskComments) ns.Render.toggleTaskComments(el.getAttribute('data-id')); },
+    'saveAsTemplate': () => {
+      const name = prompt('Template name:');
+      if (name) { window.MMGR.Templates.saveAsTemplate(name); alert('Template saved: ' + name); }
+    },
+    'applyTemplate': (el) => {
+      const tplId = el.getAttribute('data-tpl-id');
+      if (tplId) window.MMGR.Templates.applyTemplate(tplId);
+    },
+    'deleteTemplate': (el) => {
+      const tplId = el.getAttribute('data-tpl-id');
+      if (tplId && confirm('Delete this template?')) window.MMGR.Templates.deleteTemplate(tplId);
+    },
     'outdentTask': (el) => window.MMGR.Tasks.outdentTask(el.getAttribute('data-id')),
     'tglPhase': (el) => window.MMGR.Tasks.tglPhase(el.getAttribute('data-id')),
     'tglWeather': (el) => window.MMGR.Tasks.tglWeather(el.getAttribute('data-id')),
@@ -1437,6 +1555,12 @@ window.MMGR = MMGR;
     'delDrawLog': (el) => window.MMGR.DrawingLog.delDrawLog(parseInt(el.getAttribute('data-idx'))),
     'addPermit': () => window.MMGR.Permits.addPermit(),
     'delPermit': (el) => window.MMGR.Permits.delPermit(parseInt(el.getAttribute('data-idx'))),
+    'addProcurement': () => window.MMGR.Procurement.addProcurement(),
+    'delProcurement': (el) => window.MMGR.Procurement.delProcurement(parseInt(el.getAttribute('data-idx'))),
+    'addTimeEntry': () => window.MMGR.TimeTracking.addTimeEntry(),
+    'delTimeEntry': (el) => window.MMGR.TimeTracking.delTimeEntry(parseInt(el.getAttribute('data-idx'))),
+    'addEquipment': () => window.MMGR.Equipment.addEquipment(),
+    'delEquipment': (el) => window.MMGR.Equipment.delEquipment(parseInt(el.getAttribute('data-idx'))),
     'addKPI': () => window.MMGR.Charter.addKPI(),
     'delKPI': (el) => window.MMGR.Charter.delKPI(parseInt(el.getAttribute('data-idx'))),
     'openChartUp': () => window.MMGR.Charter.openChartUp(),
@@ -1782,7 +1906,10 @@ window.MMGR = MMGR;
         'Handover':     { ns: 'Handover', fn: 'updHandoverItem' },
         'Warranty':     { ns: 'Warranty', fn: 'updWarranty' },
         'DrawingLog':   { ns: 'DrawingLog', fn: 'updDrawLog' },
-        'Permits':      { ns: 'Permits', fn: 'updPermit' }
+        'Permits':      { ns: 'Permits', fn: 'updPermit' },
+        'Procurement':  { ns: 'Procurement', fn: 'updProcurement' },
+        'TimeTracking': { ns: 'TimeTracking', fn: 'updTimeEntry' },
+        'Equipment':    { ns: 'Equipment', fn: 'updEquipment' }
       };
       const target = MODULE_UPDATERS[module];
       if (!target) { console.warn('updField: no updater mapped for module "' + module + '"'); return; }

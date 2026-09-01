@@ -81,6 +81,40 @@ var MMGR = window.MMGR || {};
     const tc = tcpi === null ? '' : tcpi <= 1 ? 'var(--green)' : tcpi <= 1.1 ? 'var(--amber)' : 'var(--danger)';
     setE('evm-tcpi', tcpi !== null ? tcpi.toFixed(2) : 'N/A', tc);
     setE('evm-tcpi-lbl', tcpi !== null ? (tcpi <= 1 ? 'On pace for original budget' : tcpi <= 1.1 ? 'Tight but achievable' : 'Must improve efficiency to hit budget') : '', tc);
+
+    // C14 Cost-to-Complete: burn-rate projection
+    var burnEl = document.getElementById('evm-burn');
+    var monthsEl = document.getElementById('evm-months');
+    var confEl = document.getElementById('evm-conf');
+    var confLbl = document.getElementById('evm-conf-lbl');
+    if (burnEl && monthsEl && confEl) {
+      // Compute burn rate from actual cost over project duration
+      var burnRate = 0;
+      var monthsLeft = null;
+      var confidence = '-';
+      var confColor = '';
+      if (ac > 0 && e && etc !== null) {
+        // Estimate months from start to today
+        var state = ns.State ? ns.State.getState() : null;
+        var tasks = state && state.tasks ? state.tasks : [];
+        var startDates = tasks.map(function(t) { return t.startDate ? new Date(t.startDate) : null; }).filter(function(d) { return d && !isNaN(d.getTime()); });
+        var projectStart = startDates.length ? new Date(Math.min.apply(null, startDates.map(function(d) { return d.getTime(); }))) : new Date();
+        var monthsElapsed = Math.max(1, (Date.now() - projectStart.getTime()) / (30.44 * 86400000)); // avg days per month
+        burnRate = ac / monthsElapsed;
+        if (burnRate > 0) monthsLeft = etc / burnRate;
+        // Confidence based on CPI trend
+        if (cpi !== null) {
+          if (cpi >= 1) { confidence = 'High'; confColor = 'var(--green)'; }
+          else if (cpi >= 0.8) { confidence = 'Medium'; confColor = 'var(--amber)'; }
+          else { confidence = 'Low'; confColor = 'var(--danger)'; }
+        }
+      }
+      burnEl.textContent = burnRate > 0 ? fmt$(burnRate) : 'N/A';
+      monthsEl.textContent = monthsLeft !== null ? monthsLeft.toFixed(1) : 'N/A';
+      confEl.textContent = confidence;
+      confEl.style.color = confColor;
+      if (confLbl) confLbl.textContent = confidence === 'High' ? 'CPI on target' : confidence === 'Medium' ? 'Monitor closely' : confidence === 'Low' ? 'Needs corrective action' : '';
+    }
   }
 
   // ---- API ----

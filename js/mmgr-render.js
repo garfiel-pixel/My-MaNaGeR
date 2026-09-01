@@ -1079,6 +1079,8 @@ var MMGR = window.MMGR || {};
           ${t.leadTime ? '<span class="tt-lead-badge">LT</span>' : ''}
           ${t.recurring ? '<span class="tt-rec-badge"><svg class="ico" aria-hidden="true" style="font-size:.6rem"><use href="css/mmgr-icons.svg#i-refresh"></use></svg></span>' : ''}
           ${t.weatherExposed ? '<svg class="ico" aria-hidden="true" style="color:#38bdf8;font-size:.7rem" title="Weather-exposed"><use href="css/mmgr-icons.svg#i-cloud-rain"></use></svg>' : ''}
+          ${(t.comments && t.comments.length) ? '<span class="badge" style="font-size:.6rem;padding:1px 5px;margin-left:4px;background:var(--gold);color:#fff;cursor:pointer" title="' + t.comments.length + ' comment(s)" data-action="toggleTaskComments" data-id="' + U.escapeHtml(t.id) + '">' + t.comments.length + ' cmnts</span>' : ''}
+          ${t.followUp ? '<span class="badge ' + (t.followUp.status === 'completed' ? 'bg' : 'bo') + '" style="font-size:.6rem;padding:1px 5px;margin-left:4px" title="Follow-up: ' + U.escapeHtml(t.followUp.assignee) + ' by ' + (t.followUp.dueDate || 'no date') + '"><svg class="ico" aria-hidden="true" style="font-size:.55rem"><use href="css/mmgr-icons.svg#i-flag"></use></svg> ' + U.escapeHtml(t.followUp.assignee) + '</span>' : ''}
         </td>
         <td><input type="text" value="${U.escapeHtml(t.assignee || '')}" data-action="updTaskField" data-id="${U.escapeHtml(t.id)}" data-field="assignee" placeholder="--"></td>
         ${t.leadTime
@@ -1105,6 +1107,69 @@ var MMGR = window.MMGR || {};
         </td>
       </tr>`;
     }).join('');
+    // Render comment section for selected task
+    renderTaskComments();
+  }
+
+  // ---- Task Comments (C21) ----
+  let _selectedTaskId = null;
+  function toggleTaskComments(taskId) {
+    _selectedTaskId = (_selectedTaskId === taskId) ? null : taskId;
+    renderTaskComments();
+  }
+
+  function renderTaskComments() {
+    const el = $('task-comments');
+    if (!el) return;
+    if (!_selectedTaskId) { el.innerHTML = ''; el.hidden = true; return; }
+    const s = S();
+    if (!s) return;
+    const task = (s.tasks || []).find(t => t.id === _selectedTaskId);
+    if (!task) { el.innerHTML = ''; el.hidden = true; return; }
+    el.hidden = false;
+    const comments = task.comments || [];
+    const stakeholders = (ns.Tasks && ns.Tasks.getStakeholderNames) ? ns.Tasks.getStakeholderNames() : [];
+    const mentionList = stakeholders.map(n => '<option value="' + U.escapeHtml(n) + '">').join('');
+    let html = '<div class="card m0a mt8" style="padding:12px">';
+    html += '<div style="font-size:.78rem;font-weight:600;margin-bottom:8px">Comments for: ' + U.escapeHtml(task.name) + ' <button class="btn btn-s btn-n" style="float:right" data-action="toggleTaskComments" data-id="' + U.escapeHtml(task.id) + '">Close</button></div>';
+    // Comment list
+    if (comments.length) {
+      html += '<div style="max-height:200px;overflow-y:auto;margin-bottom:8px">';
+      comments.forEach(function(c) {
+        // Highlight @mentions
+        let text = U.escapeHtml(c.text).replace(/@(\w+(?:\s+\w+)?)/g, '<span style="color:var(--gold);font-weight:600">@$1</span>');
+        html += '<div style="padding:6px 8px;border-bottom:1px solid var(--border);font-size:.75rem">';
+        html += '<span style="font-weight:600">' + U.escapeHtml(c.author) + '</span> ';
+        html += '<span style="color:var(--slate);font-size:.65rem">' + new Date(c.timestamp).toLocaleString() + '</span> ';
+        html += '<button class="btn btn-s btn-d" style="font-size:.6rem;padding:1px 4px;float:right" data-action="delTaskComment" data-task-id="' + U.escapeHtml(task.id) + '" data-comment-id="' + U.escapeHtml(c.id) + '">x</button>';
+        html += '<div style="margin-top:2px">' + text + '</div>';
+        html += '</div>';
+      });
+      html += '</div>';
+    }
+    // Comment input
+    html += '<div style="display:flex;gap:6px">';
+    html += '<input type="text" id="comment-input-' + U.escapeHtml(task.id) + '" placeholder="Type @ to mention a stakeholder..." list="stakeholder-list" style="flex:1;font-size:.75rem;padding:4px 8px;border:1px solid var(--border);border-radius:4px">';
+    html += '<button class="btn btn-g btn-s" data-action="addTaskComment" data-id="' + U.escapeHtml(task.id) + '">Post</button>';
+    html += '</div>';
+    html += '<datalist id="stakeholder-list">' + mentionList + '</datalist>';
+    // Follow-up section
+    if (task.followUp) {
+      const fu = task.followUp;
+      html += '<div style="margin-top:8px;padding:6px 8px;background:var(--tile-bg);border-radius:4px;font-size:.75rem">';
+      html += '<strong>Follow-up:</strong> ' + U.escapeHtml(fu.assignee);
+      if (fu.dueDate) html += ' by ' + fu.dueDate;
+      html += ' <span class="badge ' + (fu.status === 'completed' ? 'bg' : 'bo') + '" style="font-size:.6rem">' + fu.status + '</span> ';
+      if (fu.status === 'pending') {
+        html += '<button class="btn btn-s btn-g" style="font-size:.65rem" data-action="completeTaskFollowUp" data-id="' + U.escapeHtml(task.id) + '">Complete</button> ';
+      }
+      html += '<button class="btn btn-s btn-d" style="font-size:.65rem" data-action="clearTaskFollowUp" data-id="' + U.escapeHtml(task.id) + '">Remove</button>';
+      html += '</div>';
+    } else {
+      html += '<div style="margin-top:8px"><button class="btn btn-n btn-s" style="font-size:.7rem" data-action="setTaskFollowUp" data-id="' + U.escapeHtml(task.id) + '">+ Set Follow-up</button></div>';
+    }
+    html += '</div>';
+    el.innerHTML = html;
   }
 
   // ---- WBS Schedule-Issues Banner (RESTORE-7) ----
@@ -1430,6 +1495,8 @@ var MMGR = window.MMGR || {};
   // ---- Resources ---- (extracted to js/render/resources.js)
   function renderResources() { if (ns.RenderResources) ns.RenderResources.renderResources(); }
   function renderResourceLeveling() { if (ns.RenderResources) ns.RenderResources.renderResourceLeveling(); }
+  function renderTimeTracking() { if (ns.RenderResources) ns.RenderResources.renderTimeTracking(); }
+  function renderEquipment() { if (ns.RenderResources) ns.RenderResources.renderEquipment(); }
 
   // ---- Financials ---- (extracted to js/render/financials.js)
   function fmt$(n) { return ns.RenderFinancials ? ns.RenderFinancials.fmt$(n) : ""; }
@@ -1463,6 +1530,7 @@ var MMGR = window.MMGR || {};
   function renderBallInCourt() { if (ns.RenderDocs) ns.RenderDocs.renderBallInCourt(); }
   function renderDrawLog() { if (ns.RenderDocs) ns.RenderDocs.renderDrawLog(); }
   function renderPermits() { if (ns.RenderDocs) ns.RenderDocs.renderPermits(); }
+  function renderProcurement() { if (ns.RenderDocs) ns.RenderDocs.renderProcurement(); }
   function renderDocuments() { if (ns.RenderDocs) ns.RenderDocs.renderDocuments(); }
 
   // ---- DMAIC ----
@@ -1745,6 +1813,8 @@ var MMGR = window.MMGR || {};
     if (window.MMGR && window.MMGR.App && window.MMGR.App.renderCtrlPreviews) {
       window.MMGR.App.renderCtrlPreviews();
     }
+    // C24: Template Library list
+    renderTemplates();
   }
 
 
@@ -2112,6 +2182,8 @@ var MMGR = window.MMGR || {};
     renderWbs: renderWbs,
     renderGantt: renderGantt,
     renderKanban: renderKanban,
+    toggleTaskComments: toggleTaskComments,
+    renderTaskComments: renderTaskComments,
     // RESTORE-1: risk matrix click-to-filter actions (view-only).
     riskMatrixCell: riskMatrixCell,
     clearRiskFilter: clearRiskFilter,
@@ -2179,7 +2251,32 @@ var MMGR = window.MMGR || {};
     // DIR-3: Core-Mode onboarding callout visibility.
     renderCoreCallout: renderCoreCallout,
     // DIR-7a (dynamic half): accessible names for rendered table inputs.
-    labelDynamicFields: labelDynamicFields
+    labelDynamicFields: labelDynamicFields,
+    // C24 Template Library
+    renderTemplates: renderTemplates
   };
+
+  // ---- C24 Template Library ----
+  function renderTemplates() {
+    const el = $('template-list');
+    if (!el) return;
+    const s = S();
+    const Templates = ns.Templates;
+    if (!Templates) { el.innerHTML = ''; return; }
+    const all = Templates.getAllTemplates();
+    if (!all.length) { el.innerHTML = '<div style="font-size:.75rem;color:var(--slate);padding:8px">No templates yet. Save your current project as a template to reuse it.</div>'; return; }
+    el.innerHTML = all.map(function(t) {
+      const taskCount = (t.tasks || []).length;
+      const budgetCount = (t.budgetLines || []).length;
+      const dateStr = t.createdAt ? new Date(t.createdAt).toLocaleDateString() : 'Built-in';
+      return '<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;border:1px solid var(--border);border-radius:4px;margin-bottom:4px;font-size:.75rem">' +
+        '<div style="flex:1"><strong>' + U.escapeHtml(t.name) + '</strong> ' +
+        '<span style="color:var(--slate)">' + taskCount + ' tasks, ' + budgetCount + ' budget lines</span> ' +
+        '<span style="color:var(--slate);font-size:.65rem">' + dateStr + '</span></div>' +
+        '<button class="btn btn-g btn-s" style="font-size:.65rem" data-action="applyTemplate" data-tpl-id="' + U.escapeHtml(t.id) + '">Apply</button>' +
+        (t.builtin ? '' : ' <button class="btn btn-s btn-d" style="font-size:.65rem" data-action="deleteTemplate" data-tpl-id="' + U.escapeHtml(t.id) + '">x</button>') +
+        '</div>';
+    }).join('');
+  }
 })(MMGR);
 window.MMGR = MMGR;

@@ -2608,5 +2608,58 @@ Only hardcoded reference: `GOOGLE_CLIENT_ID` in wrangler.jsonc vars (domain-agno
 
 ---
 
+**2026-09-01 — Session: SECTION-C-FEATURES-BATCH — C10 Procurement Log + C27 Time Tracking + C28 Equipment Log + C14 Cost-to-Complete shipped.**
+Four zero-third-party-dependency features built in one pass, all following the existing register/CRUD pattern:
+
+**C10 Procurement Log** (Material orders, delivery tracking, lead times): `state.procurement` + `ns.Procurement` CRUD in js/mmgr-closure.js (addProcurement/updProcurement/delProcurement), renderProcurement in js/render/documents.js, card in Documents panel (Material/Vendor/Qty/Unit/Ordered/Expected/Received/Status/Cost/Notes), status workflow ordered->in-transit->received->cancelled with ETA warnings (overdue red, <=7d amber). FIELD_KEYS, ACTION_MAP, MODULE_UPDATERS all wired.
+
+**C27 Time Tracking** (Per-task hours log): `state.timeEntries` + `ns.TimeTracking` CRUD in js/mmgr-resources.js, renderTimeTracking in js/render/resources.js, card in Resources panel (Task/Resource/Date/Hours/Notes), summary shows total hours. FIELD_KEYS, ACTION_MAP, MODULE_UPDATERS all wired.
+
+**C28 Equipment Log** (Rental/ownership/maintenance): `state.equipment` + `ns.Equipment` CRUD in js/mmgr-resources.js, renderEquipment in js/render/resources.js, card in Resources panel (Name/Type/Status/Ownership/Vendor/Start/Maintenance/Notes), status active/maintenance/retired (color-coded), ownership owned/rented/leased. FIELD_KEYS, ACTION_MAP, MODULE_UPDATERS all wired.
+
+**C14 Cost-to-Complete** (Extends existing EVM card): burn-rate projection (actual cost / months elapsed), months-to-completion estimate (ETC / burn rate), confidence indicator (High/Medium/Low based on CPI). New tiles in project.html EVM card. Calculation in js/mmgr-evm.js.
+
+Web research completed backing each feature with industry best practices (Procore/FieldMaterials for procurement, EAC/ETC formulas for cost-to-complete, mobile-first task-based time tracking, TCO framework for equipment).
+
+**Items needing owner input (deferred):** C19 Client portal (branding/design), C23 Cross-project resources (de-scoped as bloat), C25 Sheet redline (scope decision needed), U1 AI bar (major UX change), U2 Core vs Advanced mode (major UX change), O3 Rate-Limit Tuning (needs traffic data).
+
+**Items deferred to next session:** C21 @mentions (autocomplete UI needed), C24 Template library, U3 Empty-state onboarding (most panels already have empty states).
+
+VERIFICATION: ALL PASSED (CSP, SW v224, hidden, skills, exports); qa-market-features 61/61. DEPLOY: PENDING (v224). COMMITS: PENDING.
+
+---
+
+**2026-09-01 — Session: C21-C24-U1-FEATURES — @mentions, Template Library, AI Bar shipped.**
+
+**C21 @Mentions + Task Comments + Follow-Up:** Task comments CRUD in js/mmgr-tasks.js (addTaskComment/delTaskComment), follow-up tracking (setTaskFollowUp/completeTaskFollowUp/clearTaskFollowUp), stakeholder name extraction from Resources + Stakeholders panels for @mention autocomplete (datalist). Comment count badges + follow-up badges on WBS task rows. Comment input section below WBS table with highlighted @mentions. ACTION_MAP entries wired.
+
+**C24 Template Library:** NEW js/mmgr-templates.js module with 3 built-in templates (Residential, Commercial, Renovation) containing pre-filled WBS tasks + budget lines. Save current project as template, apply template (merges tasks + budget lines), delete custom templates. Card in Controls panel with template list. Added to build.js APP_MODULES. State key 'projectTemplates' in FIELD_KEYS.
+
+**U1 AI Assistant Bar:** Sticky bar at top of workspace (below header, above panels). Input field + Ask button. Local analysis for: overdue tasks, budget overruns, task summary, risks, resources. Enter key to submit. Dark mode support. CSS in css/mmgr.css, JS initAiBar() in mmgr-app.js called during init().
+
+**U3 Empty-State Onboarding:** Audited all panels - most already have empty states. Form-based panels (Charter, DMAIC) always show forms. No additional work needed.
+
+**Owner decisions received:** C23 Cross-Project Resources = YES (toggle in admin panel, notify users); C25 Sheet Redline = SKIP; U1 AI Bar = Option B (top bar + panels below); U2 Core vs Advanced = Keep packs on, toggle in settings; O3 Rate-Limit = Later.
+
+**Items deferred to next session:** C19 Client Portal (admin codes with section toggles - needs DB migration + worker routes + admin UI), C23 Cross-Project Resources (toggle in admin panel).
+
+VERIFICATION: ALL PASSED (CSP, SW v224, hidden, skills, exports); qa-market-features 61/61; qa-dashboard-spec 77/77. DEPLOY: PENDING. COMMITS: PENDING.
+
+---
+
+**2026-09-01 — Session: C19-CLIENT-PORTAL + C23-CROSS-PROJECT — Client codes with section toggles + admin toggle shipped.**
+
+**C19 Client Portal:** New migration 0017_client_codes.sql (cloud_client_codes table with project_id, code_hash, code_salt, sections JSON, created_at, expires_at). New module src/cloud/client-codes.js with CRUD (handleCloudClientCodeCreate/List/Revoke) + verifyClientCode for launcher authentication. Router routes added for POST/GET/DELETE /api/cloud/projects/:id/client-codes. handleCloudCodeLookup in projects.js now checks client codes after editor/owner codes. Admin UI: Client Access section in codes modal with 18 section checkboxes (dash through close), create/reveal/copy/revoke flow. Client codes grant read-only access to specific panels only.
+
+**C23 Cross-Project Resources:** Toggle in admin.html Customize section with localStorage persistence (mmgr_cross_project). Toast notification on toggle. Actual import functionality deferred to next session.
+
+**CSP Hash Regen:** All 17 inline script hashes regenerated for worker.js + serve.cjs after admin.html changes.
+
+**Items deferred:** C21 @mention autocomplete polish, C23 import functionality, Skills enhancement, Deploy.
+
+VERIFICATION: ALL PASSED (CSP 17/17, SW, hidden, skills, exports); qa-market-features 61/61; qa-dashboard-spec 77/77; wrangler deploy --dry-run PASSED. DEPLOY: PENDING. COMMITS: PENDING.
+
+---
+
 *This file is the working source of truth for continuing this project across sessions.*
 Keep it updated. Do not let a session end without updating the STATUS LOG.*

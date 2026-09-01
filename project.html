@@ -189,6 +189,16 @@
   <!-- Mobile nav scrim (closes the drawer on tap-out; see tglNav) -->
   <div id="nav-scrim" data-action="tglNav" aria-hidden="true"></div>
 
+  <!-- U1: AI Assistant Bar -->
+  <div id="ai-bar" class="ai-bar">
+    <div class="ai-bar-inner">
+      <svg class="ico" aria-hidden="true" style="color:var(--gold)"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg>
+      <input type="text" id="ai-bar-input" placeholder="Ask your project anything... (e.g. What's overdue? Show budget overruns)" aria-label="Ask your project a question" style="flex:1;border:none;background:transparent;font-size:.8rem;color:var(--text-primary);outline:none;padding:4px 8px">
+      <button class="btn btn-g btn-s" id="ai-bar-send" style="font-size:.7rem;padding:4px 10px">Ask</button>
+    </div>
+    <div id="ai-bar-result" class="ai-bar-result" hidden></div>
+  </div>
+
   <!-- Methodology Learning Card -->
   <div id="meth-learn-card" class="mlc-card is-hide">
     <div class="fb-top">
@@ -350,6 +360,12 @@
         <div class="evm-tile-sm"><div class="evm-tile-label-sm" title="Variance at Completion">VAC</div><div class="evm-tile-val-sm" id="evm-vac">-</div><div class="evm-tile-sub-sm">Var. at Completion</div></div>
         <div class="evm-tile-sm"><div class="evm-tile-label-sm" title="To-Complete Performance Index">TCPI</div><div class="evm-tile-val-sm" id="evm-tcpi">-</div><div class="evm-tile-sub-sm" id="evm-tcpi-lbl"></div></div>
       </div>
+      <!-- C14 Cost-to-Complete: burn-rate projection -->
+      <div class="evm-grid3" id="evm-ctc-row" style="margin-top:10px;border-top:1px solid var(--border);padding-top:10px">
+        <div class="evm-tile-sm"><div class="evm-tile-label-sm" title="Current burn rate per month">Burn Rate</div><div class="evm-tile-val-sm" id="evm-burn">-</div><div class="evm-tile-sub-sm">$/month</div></div>
+        <div class="evm-tile-sm"><div class="evm-tile-label-sm" title="Months remaining at current burn rate">Months Left</div><div class="evm-tile-val-sm" id="evm-months">-</div><div class="evm-tile-sub-sm">at current rate</div></div>
+        <div class="evm-tile-sm"><div class="evm-tile-label-sm" title="Burn rate confidence based on CPI trend">Confidence</div><div class="evm-tile-val-sm" id="evm-conf">-</div><div class="evm-tile-sub-sm" id="evm-conf-lbl"></div></div>
+      </div>
     </div>
     <!-- Milestone Timeline (feature 11) -->
     <div class="card mt-lg" id="milestone-timeline-card">
@@ -496,6 +512,7 @@
           <th class="w120">End</th><th class="w120">Status</th><th class="w96">Actions</th>
         </tr></thead><tbody id="wbs-body"></tbody></table>
       </div>
+      <div id="task-comments" hidden></div>
     </div>
   </div>
 
@@ -591,6 +608,26 @@
       </tr></thead><tbody id="res-body"></tbody></table></div>
       <!-- Resource Leveling visual (MONOLITH-PORTING-GUIDE feature 6) -->
       <div id="res-leveling"></div>
+    </div>
+
+    <!-- Time Tracking (C27) -->
+    <div class="card m0a mt16">
+      <div class="card-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clock"></use></svg> Time Tracking<span class="ct-sub" id="time-sum"></span>
+        <div class="g6"><button class="btn btn-g btn-s" data-action="addTimeEntry">+ Log Time</button></div>
+      </div>
+      <div class="ox"><table class="dt"><thead><tr>
+        <th class="w50">ID</th><th>Task</th><th>Resource</th><th class="w110">Date</th><th class="w60">Hours</th><th>Notes</th><th class="w50"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> </th>
+      </tr></thead><tbody id="time-body"></tbody></table></div>
+    </div>
+
+    <!-- Equipment Log (C28) -->
+    <div class="card m0a mt16">
+      <div class="card-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-shield"></use></svg> Equipment Log<span class="ct-sub" id="equip-sum"></span>
+        <div class="g6"><button class="btn btn-g btn-s" data-action="addEquipment">+ Add Equipment</button></div>
+      </div>
+      <div class="ox"><table class="dt"><thead><tr>
+        <th class="w50">ID</th><th>Name</th><th class="w90">Type</th><th class="w90">Status</th><th class="w90">Ownership</th><th>Vendor</th><th class="w110">Start</th><th class="w110">Maintenance</th><th>Notes</th><th class="w50"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> </th>
+      </tr></thead><tbody id="equip-body"></tbody></table></div>
     </div>
   </div>
 
@@ -1001,6 +1038,17 @@
         <th class="w110">Issued</th><th class="w110">Expires</th><th class="w100">Status</th><th>Notes</th><th class="w50"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> </th>
       </tr></thead><tbody id="permit-body"></tbody></table></div>
     </div>
+
+    <!-- Procurement Log (C10) -->
+    <div class="card m0a mt16">
+      <div class="card-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clock"></use></svg> Procurement Log<span class="ct-sub" id="proc-sum"></span>
+        <div class="g6"><button class="btn btn-g btn-s" data-action="addProcurement">+ Add Order</button></div>
+      </div>
+      <div class="ox"><table class="dt"><thead><tr>
+        <th class="w50">ID</th><th>Material</th><th>Vendor</th><th class="w60">Qty</th><th class="w50">Unit</th>
+        <th class="w110">Ordered</th><th class="w110">Expected</th><th class="w110">Received</th><th class="w100">Status</th><th class="w80">Cost</th><th>Notes</th><th class="w50"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> </th>
+      </tr></thead><tbody id="proc-body"></tbody></table></div>
+    </div>
   </div>
 
   <!-- ═══ DMAIC ═══ -->
@@ -1293,6 +1341,14 @@
          codes with section-scope toggles (view-only / edit-budget / etc). -->
     <div class="ctl-sec"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-shield"></use></svg> Share &amp; Access</div>
     <div id="ctrl-share" role="region" aria-label="Sharing and access codes"></div>
+
+    <!-- C24 Template Library -->
+    <div class="ctl-sec"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Templates</div>
+    <div class="sr-hint ctl-lead">Save your current schedule and budget as a reusable template, or apply a built-in template to get started quickly.</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+      <button class="btn btn-g btn-s" data-action="saveAsTemplate">+ Save as Template</button>
+    </div>
+    <div id="template-list"></div>
 
     <!-- ACTION-PLAN 5.1: multi-format Copy All (Slack / email / client) , 
          rebuilt as explain-before-copy cards: what each format is for, a

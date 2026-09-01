@@ -385,6 +385,41 @@ var MMGR = window.MMGR || {};
     delPermit: delPermit
   };
 
+  // ---- Procurement Log (MARKET-FEATURE-ROADMAP C10) ----
+  // Material orders, delivery tracking, lead times.
+  function addProcurement() {
+    ns.State.updateState(function(s) {
+      if (!s.procurement) s.procurement = [];
+      s.procurement.push({
+        id: U.genShortId('PO'), material: '', vendor: '', quantity: '',
+        unit: '', orderDate: '', expectedDate: '', receivedDate: '',
+        status: 'ordered', cost: '', notes: ''
+      });
+    });
+    R.renderDocuments();
+  }
+
+  function updProcurement(index, field, value, evtType) {
+    ns.State.updateState(function(s) {
+      if (s.procurement && s.procurement[index]) s.procurement[index][field] = value;
+    });
+    if (evtType === 'input') return;
+    R.renderDocuments();
+  }
+
+  function delProcurement(index) {
+    ns.State.updateState(function(s) {
+      if (s.procurement) s.procurement.splice(index, 1);
+    });
+    R.renderDocuments();
+  }
+
+  ns.Procurement = {
+    addProcurement: addProcurement,
+    updProcurement: updProcurement,
+    delProcurement: delProcurement
+  };
+
   ns.BallInCourt = {
     getBallInCourt: getBallInCourt
   };

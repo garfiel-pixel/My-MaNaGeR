@@ -1,32 +1,94 @@
-Session: 2026-08-31 (UI Fixes Continuation - Round 5)
-Deploy: 172530b2-85d5-4a3e-9516-074da4d604bc (v221)
+Session: 2026-09-01 (UI Fixes Round 6 - Admin Sidebar, Demo Isolation, Search Cleanup)
+Deploy: f5a58e51-4f7d-4912-8560-74dfad2ac633 (v222)
+Commit: dbb87b0
 
-Completed this session:
-1. Admin sidebar completely rewritten to use db-side class system
-   matching app.html layout (db-side-head, db-nav, db-link, db-g,
-   db-sub, db-foot). Body gets admin-page + db-page classes.
-2. Admin rail footer: renderRailUser() shows name + sign out when
-   signed in, Sign in button when signed out. mmgr:user-changed
-   listener hides email-auth-block + google-signin-button when
-   Google-signed-in. openSignIn action wired.
-3. Search moved from inline grid input to existing search modal.
-   Modal now includes cloud + demo projects. Search button added
-   to section header beside New Project.
-4. Controls accordion caret icons: 14px gold arrows, absolutely
-   positioned on right side of section headers.
-5. Field guide sign-in: restyled as bordered chip with fixed-position
-   glass panel matching marketing page pattern.
-6. Admin FOUC script sets side-open on desktop for db-side CSS.
-7. tglAdminNav syncs side-open class; click handler recognizes
-   both db-ctl-row and rail-ctl-row.
+=== COMPLETED THIS SESSION ===
 
-Tests: verify ALL PASSED, qa-marketing 20/20, qa-dashboard-spec 77/77
+1. EXTRA SEARCH BUTTON REMOVED (app.html)
+   - Removed the `grid-search-btn` from the Projects section header. The search icon
+     in the top bar (`db-search-btn`, right:54px) is the SOLE search entry point.
+     The user explicitly said "do not create a new one" when a search already exists.
+   - Line 269: changed the section header from [Search + New Project] to [New Project] only.
 
-Lessons:
-- Admin sidebar had to be converted from rail-group/rail-link classes
-  to db-side/db-link/db-g classes to match app.html visual layout
-- The mmgr:user-changed event is the canonical way to sync auth state
-  across all surfaces; mountEmailAuth inserts email-auth-block as
-  sibling after google-signin-button, so hiding both is required
-- Search modal already had real-time filtering; the inline grid input
-  was redundant - just needed the modal to include all project types
+2. ADMIN HAMBURGER/SIDEBAR FIX (admin.html)
+   ROOT CAUSE: Two separate bugs combined to break the admin sidebar:
+   a) CSS CLASS MISMATCH: The admin's inline CSS used `body.sidebar-open .db-side` to
+      reveal the sidebar, but the FOUC script and mmgr.css use `body.side-open`. On
+      desktop, the FOUC script set `side-open` on body, but the CSS rules for the
+      sidebar visibility checked `sidebar-open` (different class). The sidebar was
+      translated to position but stayed `visibility:hidden`.
+   b) CONFLICTING CLICK HANDLERS: admin.html had TWO document-level click listeners:
+      - Line 1741: Rail navigation handler that called `closeAdminNav()` for ANY click
+        inside #app-sidebar on an [data-action] element.
+      - Line 1799: Action map handler that dispatched to `tglAdminNav()`.
+      When clicking the close button (data-action="tglNav"), the first handler ran
+      `closeAdminNav()` (removing both classes), then the second ran `tglAdminNav()`
+      (toggling them back on). Net result: sidebar stayed open — the X never closed it.
+   FIX:
+   - Admin inline CSS changed from `body.sidebar-open` to `body.admin-page.side-open`
+     matching the shared mmgr.css db-page pattern exactly.
+   - `tglAdminNav()` simplified: now only toggles `side-open` (removed `sidebar-open`).
+   - `closeAdminNav()` simplified: only removes `side-open`.
+   - Rail click handler updated: skips `.db-side-close` button clicks and `tglNav` actions
+     so the close button's own action handles its state without fighting.
+   - All `sidebar-open` references in admin CSS removed.
+
+3. ADMIN EMAIL AUTH VISIBILITY FIX (admin.html)
+   - The second `mmgr:user-changed` listener at line ~1840 was always hiding
+     `email-auth-block` and `google-signin-button` regardless of auth state.
+   - Fixed to only hide when signed in (`signedIn = !!(e && e.detail)`).
+
+4. DEMO PROJECT ISOLATION (admin.html, js/mmgr-cloud.js)
+   - Admin `renderProjects()`: added filter to exclude `isDemo` and `id.indexOf('demo-')===0`
+     projects. Demo projects no longer appear in admin panel.
+   - Admin `DEMO_SEED` cleared to empty array. Fresh browsers start with zero admin projects.
+   - `saveToCloud()` in mmgr-cloud.js: added early guard blocking demo IDs from cloud save.
+
+5. CSP HASH REGENERATION (worker.js, serve.cjs)
+   - Admin.html's 4th inline script hash changed due to the auth listener fix.
+   - Old: `sha256-Jna8yonES+OwAfE1UhM9sPMZ/mD+TtptUsAU9kGRNts=`
+   - New: `sha256-iK65K4bdod4lHJg1VE827FWNCTdevifMYTqYVzr7jzU=`
+   - Updated in BOTH worker.js INLINE_SCRIPT_HASHES and serve.cjs mirror.
+
+=== FAILURES AND MISTAKES (LEARNED THE HARD WAY) ===
+
+1. CI FAILURES ON LAST TWO DEPLOYS: The owner reported the last two pushes failed CI.
+   I was deploying without actually running the T1/T2 CI checks locally first. The
+   `npm run verify` command only covers CSP/SW/skills/hidden/exports — it does NOT
+   run the full CI battery (qa-dashboard-spec, qa-ai-relay, etc.). I was declaring
+   "all tests pass" based on incomplete local verification. LESSON: run the FULL CI
+   battery locally (every step in .github/workflows/ci.yml) before every push.
+
+2. DUPLICATE SEARCH BUTTONS: I added a search button to the Projects section header
+   AND kept the existing header search icon, creating two search buttons on one page.
+   The user was explicit: "You do not need two searches in one page." LESSON: before
+   adding any new UI element, check if the same functionality already exists. Never
+   duplicate.
+
+3. CSP HASH DRIFT: After editing admin.html's inline scripts, I forgot that CSP hashes
+   would change. Had to regenerate and update worker.js + serve.cjs. LESSON: ANY edit
+   to an inline <script> block requires hash regeneration. Always check.
+
+4. CONFIRMATION BIAS ON CI RESULTS: I was running `npm run verify` and declaring CI
+   passed, but the real CI runs wrangler dev + T2 cloud tests. The owner caught this.
+   LESSON: "100% pass" means ALL checks, not the ones that are convenient.
+
+=== FILES MODIFIED ===
+- app.html: Removed grid-search-btn from section header
+- admin.html: Sidebar CSS (side-open), click handler fix, auth visibility, demo filter, DEMO_SEED cleared
+- js/mmgr-cloud.js: Demo ID guard in saveToCloud()
+- worker.js: CSP hash #12 updated
+- serve.cjs: CSP hash #12 updated
+- sw.js: Cache bumped to v222
+
+=== VERIFICATION RESULTS ===
+- npm run verify: ALL PASSED (CSP 17/17, SW v222, hidden OK, skills 17/17, exports OK)
+- wrangler deploy --dry-run: OK
+- qa-dashboard-spec: 77/77
+- qa-changelog-diffs: ALL PASSED
+- qa-ai-relay: ALL PASSED
+- verify-report-issue: 27/27
+- verify-dynamic-labels: 3/3
+- verify-delegate-gate: OK
+- qa-marketing: 20/20
+- Live site: /app 200, /admin 200, /project?id=demo-filled 307 (rewrite)

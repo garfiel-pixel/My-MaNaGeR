@@ -75,12 +75,14 @@ header h1{font-size:1rem;display:flex;align-items:center;gap:8px;font-weight:800
 /* Admin uses the same db-side class system as app.html for the sidebar.
    Override the top offset to match admin's sticky header height. */
 body.admin-page .db-side{top:var(--hdr-h,64px);}
-/* Admin sidebar reveal: body.side-open slides the rail in, matching
-   the shared mmgr.css db-page pattern exactly. */
-body.admin-page.side-open .db-side{display:flex;transform:translateX(0);visibility:visible;}
-body.admin-page.side-open .db-scrim{display:block;opacity:1;pointer-events:auto;}
+/* Admin sidebar reveal: override the shared .db-side{display:none} baseline.
+   Specificity must beat body.dark-mode.db-page rules (0,3,0+). */
+body.admin-page .db-side{display:none!important;}
+body.admin-page.side-open .db-side{display:flex!important;transform:translateX(0);visibility:visible;}
+body.admin-page.side-open .db-scrim{display:block!important;opacity:1;pointer-events:auto;}
+body.admin-page .db-scrim{display:none!important;}
 @media(min-width:769px){
-  body.admin-page .db-side{display:flex;}
+  body.admin-page .db-side{display:flex!important;transform:translateX(0);visibility:visible;}
   body.admin-page .db-side-close .ico{transition:transform .18s ease;}
   body.admin-page.side-open .db-side-close .ico{transform:rotate(90deg);}
 }

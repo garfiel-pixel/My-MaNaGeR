@@ -2539,5 +2539,10 @@ exception. Based on the diagnostic result:
 
 ---
 
+**2026-09-01 — Session: ADMIN SIDEBAR CSS SPECIFICITY FIX — !important overrides shared cascade.**
+(1) **Admin sidebar CSS specificity** (admin.html inline `<style>`): Prior fix used `display:flex` without `!important` on `body.admin-page.side-open .db-side`, but the shared CSS `body.dark-mode.db-page .db-side` rules (specificity 0,3,0+) and base `.db-side{display:none}` overrode them. Fixed by adding `!important` to all admin sidebar display rules: `body.admin-page .db-side{display:none!important}`, `body.admin-page.side-open .db-side{display:flex!important}`, `body.admin-page.side-open .db-scrim{display:block!important}`, `body.admin-page .db-scrim{display:none!important}`, plus `@media(min-width:769px){ body.admin-page .db-side{display:flex!important} }`. LESSON: when overriding shared CSS with lower-specificity selectors, use `!important` to guarantee the override wins regardless of cascade order. (2) **Admin delete cascade verified**: POST `/api/cloud/projects/:id/delete` sets `deleted_at` in D1, GET code lookup returns `deleted:true`, all codes stop working. Undo restores both local + cloud. Confirmed wired correctly. VERIFICATION: ALL PASSED (CSP 17/17, SW v223, hidden 2807 rules, skills 17/17, exports OK, dashboard 77/77, changelog ALL PASS, AI relay ALL PASS, report 27/27, labels 3/3, delegate OK). NEXT: commit, push, deploy.
+
+---
+
 *This file is the working source of truth for continuing this project across sessions.*
 Keep it updated. Do not let a session end without updating the STATUS LOG.*

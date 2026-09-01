@@ -1,4 +1,4 @@
-Session: 2026-09-01 (Calculator + Admin Fixes + Console Errors + Import Dates + Perf)
+Session: 2026-09-01 (Calculator + Admin Fixes + Console Errors + Import Dates + Perf + Sidebar CSS)
 Deploy: PENDING (v223)
 Commits: fd58366, b22cb87, 95e273b, a24f4c4, ae831bf, 4c08794, 128d4c3, PENDING
 
@@ -260,8 +260,30 @@ Commits: fd58366, b22cb87, 95e273b, a24f4c4, ae831bf, 4c08794, 128d4c3, PENDING
 - worker.js: CSP hash updated for admin.html #4
 - serve.cjs: CSP hash updated for admin.html #4
 
+=== ADMIN SIDEBAR CSS SPECIFICITY FIX (NEW) ===
+
+18. Admin sidebar still not working after prior fix (admin.html)
+    - Root cause: the prior fix set visibility:visible and display:flex
+      WITHOUT !important. The shared CSS body.dark-mode.db-page rules
+      (specificity 0,3,0+) and base .db-side{display:none} overrode them.
+    - Fix: Added !important to all admin sidebar display rules:
+      body.admin-page .db-side{display:none!important}
+      body.admin-page.side-open .db-side{display:flex!important}
+      body.admin-page.side-open .db-scrim{display:block!important}
+      body.admin-page .db-scrim{display:none!important}
+      @media(min-width:769px){ body.admin-page .db-side{display:flex!important} }
+    - LESSON: when overriding shared CSS with lower-specificity selectors,
+      use !important to guarantee the override wins regardless of cascade order.
+
+19. Admin delete cascade verified (admin.html + src/cloud/projects.js)
+    - POST /api/cloud/projects/:id/delete sets deleted_at in D1
+    - GET /api/cloud/projects/:code returns deleted:true for all holders
+    - All codes stop working: project_deleted response
+    - Undo restores both local + cloud via POST /restore
+    - Confirmed wired correctly.
+
 === VERIFICATION RESULTS (FINAL) ===
-- npm run verify: ALL PASSED (CSP 17/17, SW v223, hidden 2805 rules, skills 17/17, exports OK)
+- npm run verify: ALL PASSED (CSP 17/17, SW v223, hidden 2807 rules, skills 17/17, exports OK)
 - wrangler deploy --dry-run: OK
 - qa-dashboard-spec: 77/77 PASS
 - qa-changelog-diffs: ALL PASS

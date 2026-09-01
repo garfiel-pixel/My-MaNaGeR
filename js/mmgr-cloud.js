@@ -163,17 +163,17 @@ var MMGR = window.MMGR || {};
   function pendingCodeKey() { return 'mmgr_cloud_pending_ecode_' + pid(); }
   function getPendingEditorCode() {
     try {
-      const raw = sessionStorage.getItem(pendingCodeKey());
+      const raw = localStorage.getItem(pendingCodeKey());
       if (!raw) return null;
       const p = JSON.parse(raw);
       return (p && p.code) ? p : null;
     } catch (e) { return null; }
   }
   function setPendingEditorCode(code, label, scope, role) {
-    try { sessionStorage.setItem(pendingCodeKey(), JSON.stringify({ code: code, label: label || '', scope: scope || [], role: role === 'view' ? 'view' : 'editor' })); } catch (e) { /* ignore */ }
+    try { localStorage.setItem(pendingCodeKey(), JSON.stringify({ code: code, label: label || '', scope: scope || [], role: role === 'view' ? 'view' : 'editor' })); } catch (e) { /* ignore */ }
   }
   function clearPendingEditorCode() {
-    try { sessionStorage.removeItem(pendingCodeKey()); } catch (e) { /* ignore */ }
+    try { localStorage.removeItem(pendingCodeKey()); } catch (e) { /* ignore */ }
   }
 
   // ---- status line (reuses the drive-status classes already in mmgr.css) --
@@ -758,9 +758,12 @@ var MMGR = window.MMGR || {};
       if (!eds.length) { wrap.innerHTML = '<div class="sr-hint">No codes yet , create one above.</div>'; return; }
       wrap.innerHTML = eds.map(function(e) {
         const isView = e.role === 'view';
+        const storedCode = getPendingEditorCode();
+        const codeVal = (storedCode && storedCode.code && storedCode.label === e.label) ? storedCode.code : null;
         return '<div class="sr" style="font-size:.72rem;display:flex;align-items:center;gap:8px;flex-wrap:wrap">' +
           '<span style="color:var(--gold)">' + esc(e.label || (isView ? 'Viewer' : 'Editor')) + '</span>' +
           '<span class="sr-hint" style="margin:0">' + (isView ? 'viewer · ' : 'editor · ') + esc((e.scope || []).map(sectionLabel).join(', ')) + ' · ' + esc(String(e.createdAt || '').slice(0, 10)) + '</span>' +
+          (codeVal ? '<code style="font-family:ui-monospace,monospace;letter-spacing:.05em;color:var(--gold);font-size:.82rem;font-weight:700">' + esc(codeVal) + '</code><button class="btn btn-g btn-s" data-action="cloudCopyEditorCode" data-code="' + esc(codeVal) + '"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy</button>' : '') +
           (e.active ? '<button class="btn btn-d btn-s" data-action="cloudEditorRevoke" data-id="' + e.id + '">Revoke</button>' : '<span class="sr-hint" style="margin:0">revoked</span>') +
           '</div>';
       }).join('');
@@ -782,6 +785,7 @@ var MMGR = window.MMGR || {};
       });
       const data = await res.json().catch(function() { return {}; });
       if (!res.ok || !data.ok) { setStatus((data && data.error) || 'Revoke failed (HTTP ' + res.status + ').', 'err'); return; }
+      clearPendingEditorCode();
       await render();
       setStatus('Editor code revoked.', 'ok');
       listEditors();

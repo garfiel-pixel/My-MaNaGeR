@@ -77,8 +77,8 @@ header h1{font-size:1rem;display:flex;align-items:center;gap:8px;font-weight:800
 body.admin-page .db-side{top:var(--hdr-h,64px);}
 /* Admin sidebar reveal: body.side-open slides the rail in, matching
    the shared mmgr.css db-page pattern exactly. */
-body.admin-page.side-open .db-side{transform:translateX(0);visibility:visible;}
-body.admin-page.side-open .db-scrim{opacity:1;pointer-events:auto;}
+body.admin-page.side-open .db-side{display:flex;transform:translateX(0);visibility:visible;}
+body.admin-page.side-open .db-scrim{display:block;opacity:1;pointer-events:auto;}
 @media(min-width:769px){
   body.admin-page .db-side{display:flex;}
   body.admin-page .db-side-close .ico{transition:transform .18s ease;}
@@ -922,6 +922,7 @@ function renderProjects(){
           ${p.cloudId ? `<span>Cloud: <code>${escapeHtml(p.cloudId)}</code> <button class="btn btn-n btn-s" data-action="copyCloudCode" data-idx="${i}" title="Copy the cloud owner code to share access"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy code</button></span>` : ''}
         </div>
         <div class="prow-actions">
+          <button class="btn btn-g btn-s" data-action="adminOpenProject" data-idx="${i}"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-folder-open"></use></svg> Open</button>
           <button class="btn btn-n btn-s" data-action="openProjectModal" data-idx="${i}"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-edit"></use></svg> Edit</button>
           <button class="btn btn-n btn-s" data-action="regenerateCode" data-idx="${i}"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> New Code</button>
           <button class="btn btn-n btn-s" data-action="openSnippetModal" data-idx="${i}"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-link"></use></svg> URL</button>
@@ -1065,6 +1066,16 @@ function openProjectModal(index){
 function closeProjectModal(){
   document.getElementById('om').classList.remove('show');
   editingIndex = null;
+}
+function adminOpenProject(i){
+  const p = projects[i];
+  if (!p) return;
+  // Build the URL with the project code so the user opens as admin.
+  const code = p.code || '';
+  const id = p.id || '';
+  let url = 'project.html?id=' + encodeURIComponent(id);
+  if (code) url += '&code=' + encodeURIComponent(code);
+  window.open(url, '_blank');
 }
 function syncSlug(){
   if(slugManuallyEdited) return;
@@ -1759,6 +1770,7 @@ window.addEventListener('resize', function(){ syncAdminHdr(); });
 const ADMIN_ACTION_MAP = {
   'adminSetupPassword': () => handleSetupPassword(),
   'adminLogin': () => handleLogin(),
+  'adminOpenProject': (el) => adminOpenProject(_admIdx(el)),
   'changePassword': () => openPasswordModal(),
   'admCfmOk': () => admCfmOk(),
   'admCfmCancel': () => admCfmCancel(),

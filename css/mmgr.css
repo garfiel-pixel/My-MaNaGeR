@@ -3231,7 +3231,7 @@ body.dark-mode.db-page .db-auto-lbl{color:var(--db-text-secondary);}
 .calc-tab{
   flex:0 0 auto;padding:5px 10px;border:none;border-radius:var(--radius-control);
   background:transparent;color:var(--slate);font-size:.7rem;font-weight:600;cursor:pointer;
-  white-space:nowrap;transition:color .15s,background .15s;
+  white-space:nowrap;transition:color .15s,background .15s;display:flex;align-items:center;justify-content:center;min-height:26px;
 }
 .calc-tab:hover{color:var(--text);background:color-mix(in oklch,var(--gold) 8%,transparent);}
 .calc-tab.active{color:var(--gold);background:color-mix(in oklch,var(--gold) 12%,transparent);}

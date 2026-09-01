@@ -2527,5 +2527,10 @@ exception. Based on the diagnostic result:
 
 ---
 
+**2026-09-01 — Session: ADMIN FIXES + SHARE & ACCESS + LAUNCHER POLISH — hamburger, codes, deletion, tab glow.**
+(1) **Admin hamburger fix** (admin.html): Root cause was shared CSS `.db-side{display:none}` overriding admin's `visibility:visible`. Fixed by adding `display:flex` to `body.admin-page.side-open .db-side` and `display:block` to `body.admin-page.side-open .db-scrim`. (2) **Calculator tab glow** (css/mmgr.css): `.calc-tab` background only covered top of text. Fixed by adding `display:flex;align-items:center;justify-content:center;min-height:26px`. (3) **Admin panel Open button** (admin.html): Added `adminOpenProject()` function that opens project with admin code via `window.open()`. Added green Open button to each project row. Registered in `ADMIN_ACTION_MAP`. (4) **Share & Access code persistence** (js/mmgr-cloud.js): Changed `sessionStorage` to `localStorage` for pending editor codes. Codes now persist across tab closes until explicitly revoked. `listEditors()` shows stored code values with Copy button. `revokeEditor()` clears code from localStorage. Banner text: "stays until revoked" (not "shown once"). (5) **Share & Access declutter** (js/cloud/share.js): Renamed section to "Shared Codes" with users icon. Simplified description. (6) **Launcher delete removed** (js/mmgr-cloud-dash.js): Removed Delete project option from owner 3-dot menu. Only shared cards retain Remove option. 3-dot menu hidden when empty. Deletion now admin-panel-only. (7) **CSP hash regen** (worker.js, serve.cjs): admin.html #4 hash updated after inline script changes. VERIFICATION: ALL PASSED (CSP 17/17, SW v223, hidden 2805 rules, skills 17/17, exports OK, dashboard 77/77, changelog ALL PASS, AI relay ALL PASS, report 27/27, labels 3/3, delegate OK). NEXT: deploy, owner reviews live site.
+
+---
+
 *This file is the working source of truth for continuing this project across sessions.*
 Keep it updated. Do not let a session end without updating the STATUS LOG.*

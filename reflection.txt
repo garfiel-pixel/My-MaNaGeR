@@ -1,6 +1,6 @@
-Session: 2026-09-01 (Calculator Integration + Polish + UI Fixes Round 6)
-Deploy: 98685460-519c-49d8-b807-1943e9992fb6 (v223)
-Commits: fd58366, b22cb87, 95e273b, a24f4c4, ae831bf, 4c08794
+Session: 2026-09-01 (Calculator + Admin Fixes + Share & Access + Launcher Polish)
+Deploy: PENDING (v223)
+Commits: fd58366, b22cb87, 95e273b, a24f4c4, ae831bf, 4c08794, PENDING
 
 === COMPLETED THIS SESSION ===
 
@@ -147,6 +147,41 @@ Commits: fd58366, b22cb87, 95e273b, a24f4c4, ae831bf, 4c08794
    - All inputs have aria-label attributes
    - Zero emoji in served files (hard gate)
 
+=== ADMIN + SHARE & ACCESS + LAUNCHER FIXES (NEW) ===
+
+7. ADMIN HAMBURGER FIX (admin.html)
+   - Root cause: shared CSS hides .db-side with display:none, but admin CSS
+     only set visibility:visible when side-open toggled
+   - Fixed by adding display:flex to body.admin-page.side-open .db-side
+   - Also added display:block to body.admin-page.side-open .db-scrim
+
+8. CALCULATOR TAB GLOW FIX (css/mmgr.css)
+   - Tab background only covered top of text, not full area
+   - Fixed by adding display:flex, align-items:center, justify-content:center,
+     min-height:26px to .calc-tab
+
+9. ADMIN PANEL OPEN BUTTON (admin.html)
+   - Added adminOpenProject function that opens project with admin code
+   - Added Open button (btn-g) to each admin project row
+   - Registered in ADMIN_ACTION_MAP
+
+10. SHARE & ACCESS CODE PERSISTENCE (js/mmgr-cloud.js)
+    - Changed sessionStorage to localStorage for pending editor codes
+    - Codes now persist across tab closes until explicitly revoked
+    - listEditors() now shows stored code values with Copy button
+    - revokeEditor() clears code from localStorage
+    - Banner text updated: stays until revoked (not shown once)
+
+11. SHARE & ACCESS DECLUTTER (js/cloud/share.js)
+    - Renamed section header to "Shared Codes" with users icon
+    - Simplified description text
+
+12. LAUNCHER DELETE REMOVED (js/mmgr-cloud-dash.js)
+    - Removed Delete project option from owner 3-dot menu
+    - Only shared cards retain Remove from my list option
+    - 3-dot menu button hidden when no menu items
+    - Deletion only possible from admin panel
+
 === FAILURES AND MISTAKES (LEARNED THE HARD WAY) ===
 
 1. STALE SERVE.CJS PROCESS: After updating serve.cjs with new CSP hashes, the
@@ -185,12 +220,16 @@ Commits: fd58366, b22cb87, 95e273b, a24f4c4, ae831bf, 4c08794
 === FILES MODIFIED ===
 - js/mmgr-calculator.js: NEW — floating draggable calculator (6 tabs, ~830 lines)
 - css/mmgr-icons.svg: Added i-calculator symbol to SVG sprite
-- css/mmgr.css: Calculator styles (132 lines) + focus-visible styles
+- css/mmgr.css: Calculator styles (132 lines) + focus-visible + tab glow fix
 - build.js: Added mmgr-calculator.js to APP_MODULES (61 modules)
 - js/mmgr-app.js: Added toggleCalc to ACTION_MAP
 - project.html: Added Calculator button in Controls drawer Appearance section
-- reflection.txt: Updated with calculator session details
-- CONTINUATION-DIRECTIVE.md: Updated STATUS LOG
+- admin.html: Sidebar display:flex fix, adminOpenProject function + button
+- js/mmgr-cloud.js: localStorage for codes, code display in list, clear on revoke
+- js/cloud/share.js: Shared Codes section header, banner text update
+- js/mmgr-cloud-dash.js: Removed delete option from launcher 3-dot menu
+- worker.js: CSP hash updated for admin.html #4
+- serve.cjs: CSP hash updated for admin.html #4
 
 === VERIFICATION RESULTS (FINAL) ===
 - npm run verify: ALL PASSED (CSP 17/17, SW v223, hidden 2805 rules, skills 17/17, exports OK)

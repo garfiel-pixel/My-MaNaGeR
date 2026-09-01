@@ -32,7 +32,7 @@ var MMGR = window.MMGR || {};
  if (!pendingCode) return '';
  const isView = pendingCode.role === 'view';
  return '<div class="sr cloud-new-code" style="border:1px solid var(--gold);background:rgba(var(--gold-rgb),.1);border-radius:var(--radius);padding:8px 10px;margin:10px 0 4px" role="status">' +
- '<div class="sr-hint" style="margin:0 0 4px"><strong>NEW ' + (isView ? 'viewer' : 'editor') + ' code for \u201C' + esc(pendingCode.label || (isView ? 'viewer' : 'editor')) + '\u201D - copy it now, it is shown once:</strong></div>' +
+ '<div class="sr-hint" style="margin:0 0 4px"><strong>NEW ' + (isView ? 'viewer' : 'editor') + ' code for \u201C' + esc(pendingCode.label || (isView ? 'viewer' : 'editor')) + '\u201D - copy it and share. Stays until revoked:</strong></div>' +
  '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">' +
  '<code style="font-family:ui-monospace,monospace;letter-spacing:.05em;color:var(--gold);font-size:1rem;font-weight:700">' + esc(pendingCode.code) + '</code>' +
  '<button class="btn btn-g btn-s" data-action="cloudCopyEditorCode" data-code="' + esc(pendingCode.code) + '"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy code</button>' +
@@ -75,8 +75,8 @@ var MMGR = window.MMGR || {};
  '<div class="sr-hint" style="margin:0 0 8px">Anyone with this code opens the project as <strong>owner</strong> on any device. Keep it safe - if lost, only the linked Google account can recover it.</div>' +
  '<code class="share-code">' + esc(code) + '</code>' +
  pendingBannerHtml(pendingCode) +
- '<div class="sr" style="margin-top:12px;padding:0 0 4px"><span class="sl" style="font-size:.72rem;font-weight:700">Codes: edit or view only what you tick</span><button class="btn btn-n btn-s" data-action="cloudEditorList" style="margin-left:auto"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> List</button></div>' +
- '<div class="sr-hint" style="margin:0 0 6px">Give someone a code that can edit ONLY the sections you tick (e.g. Budget only), or a viewer code that can only SEE them (read-only, nothing touchable). Scope is enforced server-side on every save, so a shared or leaked code cannot touch anything else.</div>' +
+ '<div class="sr" style="margin-top:12px;padding:0 0 4px"><span class="sl" style="font-size:.72rem;font-weight:700"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-users"></use></svg> Shared Codes</span><button class="btn btn-n btn-s" data-action="cloudEditorList" style="margin-left:auto"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> Refresh</button></div>' +
+ '<div class="sr-hint" style="margin:0 0 6px">Create a code for a colleague. They enter it on any device to access this project. Scope is enforced server-side.</div>' +
  '<div class="exp-row" style="flex-wrap:wrap">' +
  '<input type="text" id="cloud-editor-label-in" class="ctl-in" placeholder="Label, e.g. Site Super - Riverside" style="min-width:200px" autocomplete="off">' +
  '<select id="cloud-editor-role" class="ctl-in" style="width:auto" aria-label="Code type">' +

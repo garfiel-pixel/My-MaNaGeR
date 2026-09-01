@@ -114,17 +114,16 @@
         ? '<button type="button" class="cd-menu-item" role="menuitem" data-cd-unpin="' + escapeHtml(p.projectId) + '"' + (disc ? ' data-cd-disc="1"' : '') + '>' +
           '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> ' + (disc ? 'Remove discontinued project' : 'Remove from my list') +
           '</button>'
-        : '<button type="button" class="cd-menu-item cd-menu-danger" role="menuitem" data-cd-del="' + escapeHtml(p.projectId) + '" data-cd-del-name="' + escapeHtml(title) + '">' +
-          '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-trash"></use></svg> Delete project' +
-          '</button>';
+        : '';
       const discBanner = disc
         ? '<div class="cd-disc" role="note"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-alert-triangle"></use></svg> Discontinued , the admin deleted this project. It can no longer be opened or updated. Remove it from your list.</div>'
         : '';
       const loadBtn = disc ? '' : '<button type="button" class="btn btn-g btn-s" data-cd-load="' + escapeHtml(p.projectId) + '" title="Open this project from the cloud snapshot">Load</button>';
       const discRemove = disc ? '<button type="button" class="btn btn-n btn-s" data-cd-unpin="' + escapeHtml(p.projectId) + '" data-cd-disc="1" title="Remove this discontinued project from your list">Remove</button>' : '';
+      const hasMenu = !!menuItem;
       return '<div class="cd-card' + (disc ? ' cd-disc-card' : '') + '" role="listitem">' +
-        '<button type="button" class="cd-menu" data-cd-menu="' + escapeHtml(p.projectId) + '" aria-haspopup="menu" aria-expanded="false" aria-label="Project options for ' + escapeHtml(title) + '"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-more"></use></svg></button>' +
-        '<div class="cd-menu-pop" hidden role="menu" data-cd-menu-pop="' + escapeHtml(p.projectId) + '" aria-label="Options for ' + escapeHtml(title) + '">' + menuItem + '</div>' +
+        (hasMenu ? '<button type="button" class="cd-menu" data-cd-menu="' + escapeHtml(p.projectId) + '" aria-haspopup="menu" aria-expanded="false" aria-label="Project options for ' + escapeHtml(title) + '"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-more"></use></svg></button>' +
+        '<div class="cd-menu-pop" hidden role="menu" data-cd-menu-pop="' + escapeHtml(p.projectId) + '" aria-label="Options for ' + escapeHtml(title) + '">' + menuItem + '</div>' : '') +
         '<div class="cd-title">' + escapeHtml(title) + chip + '</div>' +
         '<div class="cd-meta">' + escapeHtml(p.projectId || '') + '<br>' + escapeHtml(when) + (p.linkedName ? '<br>Shared by ' + escapeHtml(p.linkedName) : '') + '</div>' +
         discBanner +

@@ -1,4 +1,4 @@
-Session: 2026-09-02 (Bug Hunt + UI Fixes + Local CI Replication)
+Session: 2026-09-02 (Bug Hunt + UI Fixes + Single-AI-Entry + Local CI Replication)
 Deploy: DEPLOYED 2026-09-02 - version 7705018a (https://my-manager.garfieldprocis.workers.dev)
 Commits: 8b1afa1 (fix(ui) wave), b3c1a06 (chore: skills/docs/wrangler pin) - pushed to main
 CI: GitHub Actions run #194 SUCCESS (all steps green on Linux, incl. T2 phase2 browser tests)
@@ -71,10 +71,32 @@ CI: GitHub Actions run #194 SUCCESS (all steps green on Linux, incl. T2 phase2 b
 - CONTINUATION-DIRECTIVE.md: STATUS LOG Session 11 entry
 - reflection.txt: this file
 
+=== FOLLOW-UP: SINGLE AI ENTRY (owner: "2 AI boxes at top = a loop, keep one") ===
+- project.html project workspace had TWO ask-AI surfaces at the top: the sticky
+  full-width #ai-bar (under the header on EVERY section, answered only from canned
+  local keyword matches in a strip) and the Dashboard .ai-cmd-card (#ai-command-card)
+  that opens the real AI assistant. Owner picked: keep the Dashboard card.
+- Removed the sticky bar entirely: project.html markup, initAiBar() + its init() call
+  in mmgr-app.js (88 lines deleted), .ai-bar CSS in mmgr.css.
+- Polished the command card: labeled green Ask button (was a cryptic arrow-only
+  ghost button), ASCII placeholder "Ask your project anything...", min-width:0 input,
+  and a ONE-CLICK flow - new askFromCommandBar() in mmgr-ai.js opens the assistant
+  with the question pre-filled AND auto-runs it (runQuestion) after 120ms, so Ask
+  answers instead of requiring a second Send inside the window. Empty Ask still just
+  opens the assistant. The floating sparkle FAB stays as the always-available launcher.
+- sw.js bumped to v227 (shell change). verify green (CSP 17/17, SW v227, hidden, skills).
+- In-browser verified (headless Chrome with --disk-cache-size=0): sticky bar absent,
+  1 command card, click Ask -> window opens prefilled -> thread updates with the run.
+  GOTCHA RE-LEARNED: the project's own AGENTS.md #5 - Chrome HTTP disk cache serves
+  the stale immutable bundle even after SW cache clear; the first test session showed
+  the OLD prefill-only code until a clean --disk-cache-size=0 Chrome was used.
+- COMMIT cea1f10 pushed; GitHub Actions CI SUCCESS (run 33713521262, all steps green).
+- DEPLOYED version e4e2fb50 (2026-09-02); live smoke test confirms #ai-bar gone and
+  the Ask command card served.
+
 === ITEMS STILL DEFERRED ===
-1. (RESOLVED) Commit/push/deploy - DONE 2026-09-02: commits 8b1afa1 + b3c1a06 pushed,
-   GitHub Actions CI #194 SUCCESS on Linux (the Windows-only workerd browser crash did
-   not occur there - confirmed environmental), deployed version 7705018a
+1. (RESOLVED) Bug-fix wave commit/push/deploy - DONE 2026-09-02: commits 8b1afa1 +
+   b3c1a06 pushed, GitHub Actions CI #194 SUCCESS on Linux, deployed 7705018a
 2. C23 actual cross-project data sharing (toggle + import UI exist, no server sync)
 3. C19 Client Portal deploy items as previously listed
 

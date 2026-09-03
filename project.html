@@ -189,16 +189,6 @@
   <!-- Mobile nav scrim (closes the drawer on tap-out; see tglNav) -->
   <div id="nav-scrim" data-action="tglNav" aria-hidden="true"></div>
 
-  <!-- U1: AI Assistant Bar -->
-  <div id="ai-bar" class="ai-bar">
-    <div class="ai-bar-inner">
-      <svg class="ico" aria-hidden="true" style="color:var(--gold)"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg>
-      <input type="text" id="ai-bar-input" placeholder="Ask your project anything... (e.g. What's overdue? Show budget overruns)" aria-label="Ask your project a question" style="flex:1;border:none;background:transparent;font-size:.8rem;color:var(--text-primary);outline:none;padding:4px 8px">
-      <button class="btn btn-g btn-s" id="ai-bar-send" style="font-size:.7rem;padding:4px 10px">Ask</button>
-    </div>
-    <div id="ai-bar-result" class="ai-bar-result" hidden></div>
-  </div>
-
   <!-- Methodology Learning Card -->
   <div id="meth-learn-card" class="mlc-card is-hide">
     <div class="fb-top">
@@ -224,12 +214,13 @@
         <button class="btn btn-n btn-s" data-action="dismissPacksCallout" aria-label="Dismiss this tip , never show it again">Not now</button>
       </div>
     </div>
-    <!-- AI COMMAND BAR (Phase 7): subtle top-level Ask your project -->
+    <!-- AI COMMAND CARD: the single Ask-your-project entry point. Opens the
+         AI assistant with the question pre-filled and runs it (mmgr-ai.js). -->
     <div class="card ai-cmd-card" id="ai-command-card">
       <div class="ai-cmd-row">
         <svg class="ico ai-cmd-icon" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg>
-        <input type="text" id="ai-command-input" placeholder="Ask your project…" aria-label="Ask your project a question">
-        <button type="button" class="btn btn-ghost btn-s" id="ai-command-btn" data-action="openAiWin"><svg class="ico ai-cmd-arrow" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg></button>
+        <input type="text" id="ai-command-input" placeholder="Ask your project anything..." aria-label="Ask your project a question" title="Type a question, then press Enter">
+        <button type="button" class="btn btn-g btn-s" id="ai-command-btn" data-action="openAiWin" aria-label="Ask your project">Ask</button>
       </div>
     </div>
     <!-- ATTENTION (UI-UX doc §7.1): highest-priority items requiring action -->

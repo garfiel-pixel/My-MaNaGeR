@@ -1724,33 +1724,34 @@ var MMGR = window.MMGR || {};
     document.addEventListener('pointercancel', onUp);
   })();
 
-  // ---- Dashboard command bar (Phase 7) ----
-  // Wires #ai-command-input to pre-fill the AI window and open it.
+  // ---- Dashboard command card ----
+  // The single Ask-your-project entry point: opens the AI assistant with the
+  // question pre-filled and runs it right away (one action, no second Send).
+  function askFromCommandBar(e) {
+    var inp = document.getElementById('ai-command-input');
+    if (!inp) return;
+    var val = inp.value.trim();
+    inp.value = '';
+    open();
+    if (!val) return; // empty Ask just opens the assistant
+    var aiQ = U.$('ai-q');
+    if (aiQ) aiQ.value = val;
+    // Small delay lets the window settle (thread seed + focus) before the run.
+    setTimeout(function() {
+      if (typeof runQuestion === 'function') runQuestion();
+    }, 120);
+  }
   document.addEventListener('keydown', function(e) {
     if (e.key !== 'Enter') return;
     var inp = document.getElementById('ai-command-input');
     if (!inp || document.activeElement !== inp) return;
-    var val = inp.value.trim();
-    if (!val) return;
     e.preventDefault();
-    // Pre-fill the AI window's question field and open it
-    var aiQ = U.$('ai-q');
-    if (aiQ) aiQ.value = val;
-    open();
-    inp.value = '';
+    askFromCommandBar(e);
   });
   document.addEventListener('click', function(e) {
     var btn = e.target.closest ? e.target.closest('#ai-command-btn') : null;
     if (!btn) return;
-    var inp = document.getElementById('ai-command-input');
-    if (!inp) return;
-    var val = inp.value.trim();
-    if (val) {
-      var aiQ = U.$('ai-q');
-      if (aiQ) aiQ.value = val;
-    }
-    open();
-    inp.value = '';
+    askFromCommandBar(e);
   });
 
   // ---- API ----

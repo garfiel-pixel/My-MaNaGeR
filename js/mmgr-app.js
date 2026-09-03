@@ -212,91 +212,6 @@ var MMGR = window.MMGR || {};
     }, true);
   }
 
-  // U1: AI Assistant Bar
-  function initAiBar() {
-    const input = U.$('ai-bar-input');
-    const sendBtn = U.$('ai-bar-send');
-    const result = U.$('ai-bar-result');
-    if (!input || !sendBtn || !result) return;
-
-    function askProject() {
-      const q = input.value.trim();
-      if (!q) return;
-      result.hidden = false;
-      result.innerHTML = '<div style="color:var(--slate)">Thinking...</div>';
-      input.value = '';
-
-      // Simple local analysis based on project state
-      const s = S();
-      if (!s) { result.innerHTML = '<div>No project data loaded.</div>'; return; }
-      const lower = q.toLowerCase();
-      let answer = '';
-
-      // Overdue tasks
-      if (lower.indexOf('overdue') > -1 || lower.indexOf('late') > -1 || lower.indexOf('behind') > -1) {
-        const tasks = (s.tasks || []).filter(t => t.status !== 'completed' && t.endDate && new Date(t.endDate) < new Date());
-        if (tasks.length) {
-          answer = '<strong>' + tasks.length + ' overdue task(s):</strong><ul style="margin:4px 0;padding-left:16px">' +
-            tasks.map(t => '<li>' + U.escapeHtml(t.name) + ' (due ' + t.endDate + ')</li>').join('') + '</ul>';
-        } else {
-          answer = 'No overdue tasks. All on track.';
-        }
-      }
-      // Budget overruns
-      else if (lower.indexOf('budget') > -1 || lower.indexOf('overrun') > -1 || lower.indexOf('cost') > -1) {
-        const lines = s.budgetLines || [];
-        const overruns = lines.filter(l => (+l.actual || 0) > (+l.planned || 0));
-        if (overruns.length) {
-          answer = '<strong>' + overruns.length + ' budget line(s) over budget:</strong><ul style="margin:4px 0;padding-left:16px">' +
-            overruns.map(l => '<li>' + U.escapeHtml(l.category || l.description) + ': $' + (+l.actual || 0).toLocaleString() + ' / $' + (+l.planned || 0).toLocaleString() + '</li>').join('') + '</ul>';
-        } else {
-          answer = 'No budget overruns detected.';
-        }
-      }
-      // Tasks summary
-      else if (lower.indexOf('task') > -1 || lower.indexOf('schedule') > -1) {
-        const tasks = s.tasks || [];
-        const todo = tasks.filter(t => t.status === 'todo').length;
-        const inprog = tasks.filter(t => t.status === 'inprogress').length;
-        const done = tasks.filter(t => t.status === 'completed').length;
-        answer = '<strong>Task Summary:</strong> ' + todo + ' to do, ' + inprog + ' in progress, ' + done + ' completed (' + tasks.length + ' total)';
-      }
-      // Risks
-      else if (lower.indexOf('risk') > -1) {
-        const risks = s.risks || [];
-        const open = risks.filter(r => !r.status || r.status === 'open');
-        answer = '<strong>' + open.length + ' open risk(s)</strong> out of ' + risks.length + ' total.';
-      }
-      // Resources
-      else if (lower.indexOf('resource') > -1 || lower.indexOf('team') > -1) {
-        const res = s.resources || [];
-        const overAlloc = res.filter(r => (+r.utilization || 0) > 100);
-        answer = '<strong>' + res.length + ' resource(s)</strong> registered.' + (overAlloc.length ? ' ' + overAlloc.length + ' over-allocated.' : ' All within capacity.');
-      }
-      // Help
-      else if (lower.indexOf('help') > -1 || lower.indexOf('what can') > -1) {
-        answer = '<strong>I can answer questions about:</strong><ul style="margin:4px 0;padding-left:16px">' +
-          '<li>Overdue tasks (What is overdue?)</li>' +
-          '<li>Budget status (Show budget overruns)</li>' +
-          '<li>Task summary (How many tasks?)</li>' +
-          '<li>Risks (What are the risks?)</li>' +
-          '<li>Resources (Show team status)</li>' +
-          '</ul>';
-      }
-      // Default
-      else {
-        answer = 'I can help with: overdue tasks, budget status, task summaries, risks, and resources. Try asking What is overdue or Show budget overruns.';
-      }
-
-      result.innerHTML = answer;
-    }
-
-    sendBtn.addEventListener('click', askProject);
-    input.addEventListener('keydown', function(e) {
-      if (e.key === 'Enter') askProject();
-    });
-  }
-
   function init() {
     if (!checkAccess()) return;
 
@@ -438,9 +353,6 @@ var MMGR = window.MMGR || {};
 
     // C21: @mention dropdown
     initMentionDropdown();
-
-    // U1: AI Assistant Bar
-    initAiBar();
 
     // Keyboard shortcuts
     document.addEventListener('keydown', function(e) {

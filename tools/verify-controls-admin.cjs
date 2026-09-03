@@ -74,7 +74,7 @@ function check(name, val, detail) {
   })()`);
   check('S1 admin header: no sign-in / theme in header', !a1.hdrSignin && !a1.hdrTheme, a1);
   check('S1 admin rail: auth-bar mount + sign-in + chip in rail', a1.railAuth && a1.railSignin && a1.railChip, a1);
-  check('S1 admin rail: Customize rows (theme/palette/glass)', a1.railCtl === 3, a1);
+  check('S1 admin rail: Customize rows (premium/appearance/glass/cross-project)', a1.railCtl === 4, a1);
   check('S2 admin toolbar: Import Project present', a1.toolbarTxt.indexOf('Import Project') > -1, a1.toolbarTxt);
   check('S2 admin: import file input present', a1.fileInput === true, a1);
 

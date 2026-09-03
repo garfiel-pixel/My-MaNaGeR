@@ -25,8 +25,15 @@ var MMGR = window.MMGR || {};
     const body = $('res-body');
     if (!body) return;
     const resources = s.resources || [];
+    // C23: Cross-project import button
+    let crossProjectBtn = '';
+    try {
+      if (localStorage.getItem('mmgr_cross_project') === '1') {
+        crossProjectBtn = ' <button class="btn btn-n btn-s" data-action="importCrossProjectResources" style="font-size:.65rem">Import from Other Project</button>';
+      }
+    } catch(e) {}
     if (resources.length === 0) {
-      body.innerHTML = emptyStateRow(9, 'No resources added yet.', '<button class="btn btn-g btn-s" data-action="addResource">+ Add Resource</button>');
+      body.innerHTML = emptyStateRow(9, 'No resources added yet.', '<button class="btn btn-g btn-s" data-action="addResource">+ Add Resource</button>' + crossProjectBtn);
       renderResourceLeveling();
       return;
     }

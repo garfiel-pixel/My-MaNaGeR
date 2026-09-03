@@ -791,8 +791,14 @@
   }
 
   function toggle() {
+    // Toggle the PANEL open/closed (not the FAB's visibility) - the Controls
+    // drawer's "Open" button and the Ctrl+Shift+C shortcut both route here,
+    // and both promise to open/close the calculator (FIX 2026-09-02: the old
+    // implementation flipped the floating button's display instead, so "Open"
+    // never opened anything). The FAB itself stays available via show().
     build();
-    _icon.style.display = _icon.style.display === 'none' || !_icon.style.display ? 'flex' : 'none';
+    show();
+    if (_open) close(); else open();
   }
 
   function show() {

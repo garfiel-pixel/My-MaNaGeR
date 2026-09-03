@@ -78,13 +78,29 @@ body.admin-page .db-side{top:var(--hdr-h,64px);}
 /* Admin sidebar: override ALL shared .db-side rules (display, transform,
    position, visibility). The shared CSS sets display:flex + position:fixed
    + transform:translateX(-100%) on body.db-page .db-side. Every admin rule
-   needs !important to guarantee the override wins regardless of cascade. */
-body.admin-page .db-side{display:none!important;transform:none!important;visibility:hidden!important;}
+   needs !important to guarantee the override wins regardless of cascade.
+   SIDEBAR FIX (2026-09-02, owner): the old desktop override pinned the rail
+   open at every width while the base scrim rule still fired whenever
+   side-open was set (and the FOUC script sets   side-open at boot on
+   desktop), so the page loaded dimmed and clicking the hamburger only
+   toggled the scrim - the rail never slid. Desktop now mirrors app.html:
+   rail pinned open at boot, the hamburger slides it away/back with the
+   wrap margin and NO scrim; mobile keeps the off-canvas drawer + scrim,
+   now with the shared slide curve (transform-based, not display:none). */
+body.admin-page .db-side{display:flex!important;transform:translateX(-105%)!important;visibility:hidden!important;
+  transition:transform var(--release-duration) var(--ease-ios),visibility var(--release-duration);}
 body.admin-page.side-open .db-side{display:flex!important;transform:translateX(0)!important;visibility:visible!important;}
-body.admin-page.side-open .db-scrim{display:block!important;opacity:1!important;pointer-events:auto!important;}
 body.admin-page .db-scrim{display:none!important;}
+body.admin-page.side-open .db-scrim{display:block!important;opacity:1!important;pointer-events:auto!important;}
 @media(min-width:769px){
-  body.admin-page .db-side{display:flex!important;transform:translateX(0)!important;visibility:visible!important;}
+  /* Desktop: the rail is pinned open at boot (FOUC adds side-open at
+     >=769px); the hamburger closes/reopens it exactly like app.html, so
+     the closed state is off-canvas with the shared slide curve. The scrim
+     is mobile-only here - it must never dim the page behind the pinned
+     rail (that dim-only toggle WAS the reported bug). */
+  body.admin-page .db-scrim,body.admin-page.side-open .db-scrim{display:none!important;}
+  body.admin-page.side-open main{margin-left:264px;}
+  body.admin-page main{transition:margin-left var(--release-duration) var(--ease-ios);}
   body.admin-page .db-side-close .ico{transition:transform .18s ease;}
   body.admin-page.side-open .db-side-close .ico{transform:rotate(90deg);}
 }
@@ -1879,6 +1895,19 @@ document.addEventListener('click', function(e){
   const actionEl = e.target.closest('[data-action]');
   if (actionEl && (actionEl.getAttribute('data-action') === 'tglNav')) return;
   if (e.target.closest('a') || actionEl) closeAdminNav();
+});
+/* Rail accordion toggle ([data-rail-toggle]) - same delegated handler as
+   app.html (FIX 2026-09-02: admin.html had the Customize button + panel but
+   no handler, so the accordion silently did nothing). */
+document.addEventListener('click', function(e){
+  const t = e.target && e.target.closest ? e.target.closest('[data-rail-toggle]') : null;
+  if (!t) return;
+  const panel = document.getElementById(t.getAttribute('data-rail-toggle'));
+  if (!panel) return;
+  const open = panel.hidden;
+  panel.hidden = !open;
+  t.classList.toggle('open', open);
+  t.setAttribute('aria-expanded', open ? 'true' : 'false');
 });
 // Keep the rail aligned under the sticky header (it starts below --hdr-h).
 function syncAdminHdr(){

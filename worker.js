@@ -33,12 +33,12 @@ const INLINE_SCRIPT_HASHES = [
   "'sha256-MzcCfwD1bzQgud6c9E3dtHdhial4J76NEjpP3ysFwtM='",
   "'sha256-PcY9TdIJsXGVPic0Qujx0Ov+GCt9gZG0hEtBVRDiLiM='",
   "'sha256-O9lvE/vAuiMHUX3RQGR53K5h6w13/d2P16BoUBsYKAk='",
-  "'sha256-AugHL+e9iaClVirjOYEOjLdjvtUFFOTQI880zqQOU7A='",
+  "'sha256-HTJq2qNbFwE9kW6urYWRNi8fH7QhpiR7CWl4fzOFAWw='",
   "'sha256-Oa7ON+9A164SSXhnxu08mFn0V9Tj2SlZ2SzFXFoqKNE='",
   "'sha256-bNdw0+64xL2//htoz+u3InKWYZNEHO/CnuZqtcJIBgU='",
   "'sha256-7cQZf8bzyvMY1EwebBo5YuL3PZ9T/X5CTWFRXO3Aq5E='",
   "'sha256-c2U+m5SzyupzeOrPEiOjlnaSgS1KdAxZTFnYA5dW/Rk='",
-  "'sha256-Is0jD76ptemzKTfgnVGlSCSEHBJeveC1gRTl/Wv4JBw='"
+  "'sha256-Is0jD76ptemzKTfgnVGlSCSEHBJeveC1gRTl/Wv4JBw='",
 ].join(' ');
 
 const CSP = [

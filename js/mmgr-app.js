@@ -107,6 +107,111 @@ var MMGR = window.MMGR || {};
   }
 
   // ---- Init ----
+  // C21: @mention dropdown for task comments
+  function initMentionDropdown() {
+    let _mentionIdx = -1; // keyboard selection index
+    
+    function selectMention(input, name) {
+      const val = input.value;
+      const atIdx = val.lastIndexOf('@');
+      if (atIdx > -1) {
+        input.value = val.substring(0, atIdx) + '@' + name + ' ';
+      }
+      input.focus();
+      const dropdown = document.getElementById('mention-dropdown');
+      if (dropdown) { dropdown.style.display = 'none'; dropdown.innerHTML = ''; }
+      _mentionIdx = -1;
+    }
+    
+    function renderMentionItems(dropdown, matches) {
+      _mentionIdx = -1;
+      // Stakeholder names are user-entered (RACI people) - escape fully so a
+      // name containing markup can never inject HTML into the dropdown.
+      const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      dropdown.innerHTML = matches.map((n, i) =>
+        '<div class="mention-item" role="option" aria-selected="false" style="padding:7px 10px;cursor:pointer;font-size:.75rem;border-bottom:1px solid var(--border);transition:background .1s" data-name="' + esc(n) + '" data-idx="' + i + '">' +
+        '<span style="color:var(--gold);font-weight:600">@</span> ' + esc(n) + '</div>'
+      ).join('');
+    }
+    
+    document.addEventListener('input', function(e) {
+      if (!e.target.id || !e.target.id.startsWith('comment-input-')) return;
+      const input = e.target;
+      const val = input.value;
+      const atIdx = val.lastIndexOf('@');
+      const dropdown = document.getElementById('mention-dropdown');
+      if (!dropdown) return;
+
+      if (atIdx === -1 || (atIdx > 0 && val[atIdx - 1] !== ' ')) {
+        dropdown.style.display = 'none';
+        return;
+      }
+
+      const query = val.substring(atIdx + 1).toLowerCase();
+      const stakeholders = window._mentionStakeholders || [];
+      const matches = stakeholders.filter(n => n.toLowerCase().indexOf(query) > -1).slice(0, 8);
+
+      if (!matches.length) {
+        dropdown.style.display = 'none';
+        return;
+      }
+
+      renderMentionItems(dropdown, matches);
+      dropdown.style.display = 'block';
+    });
+    
+    // Keyboard navigation (arrow keys + Enter + Escape)
+    document.addEventListener('keydown', function(e) {
+      if (!e.target.id || !e.target.id.startsWith('comment-input-')) return;
+      const dropdown = document.getElementById('mention-dropdown');
+      if (!dropdown || dropdown.style.display === 'none') return;
+      const items = dropdown.querySelectorAll('.mention-item');
+      if (!items.length) return;
+      
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        _mentionIdx = Math.min(_mentionIdx + 1, items.length - 1);
+        items.forEach((it, i) => {
+          // rgba(var(--gold-rgb), .08) - the codebase's established form; the
+          // old 'rgba(var(--gold-rgb,.08))' was invalid CSS (missing alpha
+          // argument) so the selection highlight never rendered.
+          it.style.background = i === _mentionIdx ? 'rgba(var(--gold-rgb), .08)' : '';
+          it.setAttribute('aria-selected', i === _mentionIdx ? 'true' : 'false');
+        });
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        _mentionIdx = Math.max(_mentionIdx - 1, 0);
+        items.forEach((it, i) => {
+          it.style.background = i === _mentionIdx ? 'rgba(var(--gold-rgb), .08)' : '';
+          it.setAttribute('aria-selected', i === _mentionIdx ? 'true' : 'false');
+        });
+      } else if (e.key === 'Enter' && _mentionIdx >= 0) {
+        e.preventDefault();
+        selectMention(e.target, items[_mentionIdx].getAttribute('data-name'));
+      } else if (e.key === 'Escape') {
+        dropdown.style.display = 'none';
+        _mentionIdx = -1;
+      }
+    });
+
+    document.addEventListener('click', function(e) {
+      if (e.target.classList.contains('mention-item')) {
+        const name = e.target.getAttribute('data-name');
+        const input = e.target.closest('.card') ? e.target.closest('.card').querySelector('input[id^="comment-input-"]') : null;
+        if (input && name) selectMention(input, name);
+      }
+    });
+
+    document.addEventListener('blur', function(e) {
+      if (e.target.id && e.target.id.startsWith('comment-input-')) {
+        setTimeout(function() {
+          const dropdown = document.getElementById('mention-dropdown');
+          if (dropdown) { dropdown.style.display = 'none'; _mentionIdx = -1; }
+        }, 200);
+      }
+    }, true);
+  }
+
   // U1: AI Assistant Bar
   function initAiBar() {
     const input = U.$('ai-bar-input');
@@ -330,6 +435,9 @@ var MMGR = window.MMGR || {};
     if (splash) {
       requestAnimationFrame(() => splash.classList.add('off'));
     }
+
+    // C21: @mention dropdown
+    initMentionDropdown();
 
     // U1: AI Assistant Bar
     initAiBar();
@@ -1439,6 +1547,81 @@ window.MMGR = MMGR;
     'completeTaskFollowUp': (el) => window.MMGR.Tasks.completeTaskFollowUp(el.getAttribute('data-id')),
     'clearTaskFollowUp': (el) => window.MMGR.Tasks.clearTaskFollowUp(el.getAttribute('data-id')),
     'toggleTaskComments': (el) => { if (ns.Render && ns.Render.toggleTaskComments) ns.Render.toggleTaskComments(el.getAttribute('data-id')); },
+    'importCrossProjectResources': () => {
+      // Build a modal listing localStorage projects with their resources
+      const currentId = ns.projectId || '';
+      const projects = [];
+      try {
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i);
+          if (k && k.startsWith('mmgr_state_')) {
+            const pid = k.replace('mmgr_state_', '');
+            if (pid === currentId) continue;
+            try {
+              const st = JSON.parse(localStorage.getItem(k));
+              const res = (st && st.resources && st.resources.length) ? st.resources : [];
+              if (res.length) {
+                projects.push({ id: pid, name: st.charter && st.charter.projectName ? st.charter.projectName : pid, resources: res });
+              }
+            } catch(e) {}
+          }
+        }
+      } catch(e) {}
+      if (!projects.length) { showToast('No other projects with resources found on this device.', 'warn'); return; }
+      // Show modal
+      let html = '<div class="card m0a" style="padding:16px;max-width:500px"><div style="font-weight:600;font-size:.85rem;margin-bottom:10px">Import Resources from Another Project</div>';
+      projects.forEach(function(p) {
+        const curRes = (S().resources || []).map(r => r.name.toLowerCase());
+        const newRes = p.resources.filter(r => r.name && curRes.indexOf(r.name.toLowerCase()) === -1);
+        html += '<div style="border:1px solid var(--border);border-radius:6px;padding:10px;margin-bottom:8px">';
+        html += '<div style="font-weight:600;font-size:.8rem">' + U.escapeHtml(p.name) + ' <span style="color:var(--slate);font-size:.7rem">(' + p.resources.length + ' resources, ' + newRes.length + ' new)</span></div>';
+        if (newRes.length) {
+          html += '<div style="font-size:.72rem;color:var(--slate);margin:4px 0">New: ' + newRes.map(r => U.escapeHtml(r.name)).join(', ') + '</div>';
+          html += '<button class="btn btn-g btn-s" style="font-size:.7rem" data-action="doImportResources" data-src-id="' + U.escapeHtml(p.id) + '" data-count="' + newRes.length + '">Import ' + newRes.length + ' resource(s)</button>';
+        } else {
+          html += '<div style="font-size:.72rem;color:var(--slate)">All resources already in this project.</div>';
+        }
+        html += '</div>';
+      });
+      html += '<button class="btn btn-n btn-s" style="font-size:.7rem;margin-top:4px" data-action="closeImportModal">Cancel</button>';
+      html += '</div>';
+      const overlay = document.createElement('div');
+      overlay.id = 'import-modal';
+      overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:200;display:flex;align-items:center;justify-content:center';
+      overlay.innerHTML = html;
+      overlay.addEventListener('click', function(e) {
+        if (e.target === overlay || e.target.getAttribute('data-action') === 'closeImportModal') overlay.remove();
+      });
+      document.body.appendChild(overlay);
+    },
+    'doImportResources': (el) => {
+      const srcId = el.getAttribute('data-src-id');
+      if (!srcId) return;
+      try {
+        const srcState = JSON.parse(localStorage.getItem('mmgr_state_' + srcId));
+        const srcRes = (srcState && srcState.resources) || [];
+        const curNames = (S().resources || []).map(r => r.name.toLowerCase());
+        const toImport = srcRes.filter(r => r.name && curNames.indexOf(r.name.toLowerCase()) === -1);
+        if (!toImport.length) { showToast('All resources already imported.', 'warn'); return; }
+        ns.State.updateState(function(st) {
+          if (!st.resources) st.resources = [];
+          toImport.forEach(function(r) {
+            st.resources.push({
+              id: U.genShortId('R'), name: r.name, type: r.type || 'Labor',
+              role: r.role || '', availability: r.availability || 100,
+              rate: r.rate || 0, hoursAllocated: r.hoursAllocated || 0, utilization: 0
+            });
+          });
+        });
+        const modal = document.getElementById('import-modal');
+        if (modal) modal.remove();
+        R.renderResources();
+        showToast('Imported ' + toImport.length + ' resource(s).', 'ok');
+      } catch(e) {
+        showToast('Import failed: ' + e.message, 'err');
+      }
+    },
+    'closeImportModal': () => { const m = document.getElementById('import-modal'); if (m) m.remove(); },
     'saveAsTemplate': () => {
       const name = prompt('Template name:');
       if (name) { window.MMGR.Templates.saveAsTemplate(name); alert('Template saved: ' + name); }

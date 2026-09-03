@@ -1147,12 +1147,15 @@ var MMGR = window.MMGR || {};
       });
       html += '</div>';
     }
-    // Comment input
+    // Comment input with @mention dropdown
+    html += '<div style="position:relative">';
     html += '<div style="display:flex;gap:6px">';
-    html += '<input type="text" id="comment-input-' + U.escapeHtml(task.id) + '" placeholder="Type @ to mention a stakeholder..." list="stakeholder-list" style="flex:1;font-size:.75rem;padding:4px 8px;border:1px solid var(--border);border-radius:4px">';
+    html += '<input type="text" id="comment-input-' + U.escapeHtml(task.id) + '" placeholder="Type @ to mention a stakeholder..." style="flex:1;font-size:.75rem;padding:4px 8px;border:1px solid var(--border);border-radius:4px" autocomplete="off">';
     html += '<button class="btn btn-g btn-s" data-action="addTaskComment" data-id="' + U.escapeHtml(task.id) + '">Post</button>';
     html += '</div>';
-    html += '<datalist id="stakeholder-list">' + mentionList + '</datalist>';
+    // Mention dropdown (hidden by default)
+    html += '<div id="mention-dropdown" class="mention-dropdown" role="listbox" style="display:none;position:absolute;bottom:100%;left:0;right:0;background:var(--color-surface, var(--glass-fill-dark));border:1px solid var(--border);border-radius:6px;max-height:160px;overflow-y:auto;z-index:100;box-shadow:0 -4px 16px rgba(0,0,0,.18);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)"></div>';
+    html += '</div>';
     // Follow-up section
     if (task.followUp) {
       const fu = task.followUp;
@@ -1170,6 +1173,11 @@ var MMGR = window.MMGR || {};
     }
     html += '</div>';
     el.innerHTML = html;
+    // C21: stakeholder names for the @mention dropdown are set DIRECTLY from
+    // JS (a <script> tag injected via innerHTML never executes, and would be
+    // CSP-blocked anyway - this was the silent no-op that made the dropdown
+    // never appear). Kept on the shared global the handler reads.
+    window._mentionStakeholders = stakeholders;
   }
 
   // ---- WBS Schedule-Issues Banner (RESTORE-7) ----

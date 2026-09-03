@@ -507,3 +507,78 @@ If any item is unchecked, the correct status is **blocked**, not "shipped with a
 9. Re-run the full checklist in §12 as a required CI step on every PR that touches styles.
 
 When followed to the letter, the result is not merely "clean" — it is provably coherent (one token source of truth), provably accessible (measured, not assumed, contrast), and provably resilient (every effect degrades gracefully instead of breaking). That provability is the actual bar this doctrine sets: not "looks good," but "can be shown to be correct."
+
+---
+
+## 14. My MaNaGeR Project-Specific Token Map
+
+This project uses a warm gold/amber brand palette with the following key tokens:
+
+### Primitives (Tier 1)
+```css
+--gold-400: #E8B84A;   /* brand gold */
+--gold-600: #B45309;   /* brand gold dark */
+--gold-700: #92400E;   /* brand gold darker */
+--teal-500: #0D9488;   /* secondary accent */
+--navy-900: #0F172A;   /* dark text */
+--slate-950: #090A0F;  /* darkest */
+--slate-900: #12141C;  /* dark surface */
+--slate-800: #1A1C28;  /* raised surface */
+--slate-700: #222533;  /* border */
+--slate-400: #94A3B8;  /* secondary text */
+--slate-300: #64748B;  /* muted text */
+--slate-200: #E2E8F0;  /* light border */
+--white: #FFFFFF;
+--green-500: #059669;  /* success */
+--red-600: #DC2626;    /* danger */
+--amber-600: #D97706;  /* warning */
+--blue-600: #2563EB;   /* info */
+```
+
+### Semantic (Tier 2)
+```css
+--color-brand-primary: var(--gold-400);
+--color-brand-primary-fill: var(--gold-600);
+--color-brand-secondary: var(--teal-500);
+--color-canvas: #F7F8FA;
+--color-surface: var(--white);
+--color-text-primary: var(--navy-900);
+--color-success: var(--green-500);
+--color-danger: var(--red-600);
+--color-warning: var(--amber-600);
+--color-info: var(--blue-600);
+```
+
+### Dark mode overrides
+```css
+[data-theme="dark"] {
+  --color-canvas: var(--slate-950);
+  --color-surface: var(--slate-900);
+  --color-surface-raised: var(--slate-800);
+  --color-text-primary: var(--slate-200);
+  --color-success: var(--green-400);
+  --color-danger: var(--red-400);
+  --color-warning: var(--amber-400);
+  --color-info: var(--blue-400);
+}
+```
+
+### Dashboard-specific tokens
+```css
+--db-gold: #E8923A;          /* warm dark accent */
+--db-jet-black: #1a1614;     /* warm dark canvas */
+--db-surface: #242019;       /* warm dark surface */
+--db-surface-raised: #2e2922;
+--db-border: #3a342c;
+--db-muted-slate: #9a8e80;
+```
+
+### Critical rules for this project
+1. NEVER use cold blue-black tones in dark mode (use warm #1a1614)
+2. NEVER use fluorescent cyan (#50E8F4) — use muted gold (#E8923A)
+3. Gold is reserved for brand elements only (active tab, focus ring, CTA)
+4. Status colors use semantic tokens (--green, --amber, --red), never brand gold
+5. Glass surfaces are chrome-only, never on dense content
+6. Every component ships ALL 11 states (empty, loading, error, success, disabled, focus, dark mode, reduced motion, reduced transparency)
+7. Field guide entry must ship with every new feature in the SAME change
+8. No emoji on served pages — SVG icons only (sprite symbols or inline SVG)

@@ -47,7 +47,7 @@
       "source": "alinaqi/maggy",
       "sourceType": "github",
       "skillPath": "skills/pwa-development/SKILL.md",
-      "computedHash": "356d9a26a8435778bb3bb906f5198814c48872ae87485ae97f4da3c10a0cfcc5"
+      "computedHash": "af9dbacc859c6277b9cf67a2f336e961ac24c57b72586dc1d6e3bf35da008eb9"
     },
     "qa-expert": {
       "source": "daymade/claude-code-skills",
@@ -71,7 +71,7 @@
       "source": "cloudflare/skills",
       "sourceType": "github",
       "skillPath": "skills/workers-best-practices/SKILL.md",
-      "computedHash": "420e1ad3eaeb8ed2016e6b34fff3757de6aa39899ec2bd6e9784a29c38e70f9a"
+      "computedHash": "ed10766f3d829f6792113ab5797e82f93c77f90cf97b5ae2772c641211d7cc53"
     },
     "wrangler": {
       "source": "cloudflare/skills",
@@ -83,19 +83,19 @@
       "source": "local",
       "sourceType": "local",
       "skillPath": ".agents/skills/skeptical-code-audit/SKILL.md",
-      "computedHash": "d50ee47f3df22bb73bbcea85f193c1986f68f92de3ed123e091e81edd47bebf0"
+      "computedHash": "c60c5d7dffbebf705cebae1ad1c5f525f50614053565f3e6f855f8677dd96f5b"
     },
     "universal-ui-architect": {
       "source": "local",
       "sourceType": "local",
       "skillPath": ".agents/skills/universal-ui-architect/SKILL.md",
-      "computedHash": "3db2fc5619ea353ed36ca6bbf963b0129133fb74630f9a87f47c98b8a246c464"
+      "computedHash": "de02a424342376830e494978ad5bbec7ae0699c412825e2d272e1035940bd38a"
     },
     "ui-modernization": {
       "source": "local",
       "sourceType": "local",
       "skillPath": ".agents/skills/ui-modernization/SKILL.md",
-      "computedHash": "531d1b7651d47771e8c68275035cb16e0d0a5c4949c2541e03735ebfe5aeb62e"
+      "computedHash": "23185631ce2d857d13683f491832add25a21fe3908c946dde3507d0e9848e82c"
     }
   }
 }

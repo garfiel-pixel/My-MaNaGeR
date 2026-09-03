@@ -1,44 +1,91 @@
-Session: 2026-09-01 (C19 Client Portal + C23 Cross-Project Resources + Skills Enhancement)
-Deploy: PENDING (v225)
+Session: 2026-09-02 (Bug Hunt + UI Fixes + Local CI Replication)
+Deploy: PENDING (v226)
 Commits: PENDING
 
 === COMPLETED THIS SESSION ===
 
-1. C19: CLIENT PORTAL (admin-generated read-only codes with section toggles)
-   - New migration: migrations/0017_client_codes.sql (cloud_client_codes table)
-   - New module: src/cloud/client-codes.js (CRUD + verifyClientCode)
-   - Router routes: POST/GET/DELETE /api/cloud/projects/:id/client-codes
-   - Code lookup: handleCloudCodeLookup now checks client codes
-   - Admin UI: Client Access section in codes modal with section checkboxes
-   - Section toggles for all 18 panels (dash, def, charter, wbs, gantt, kan, res, bud, raci, comms, docs, meet, stk, chg, log, risk, claim, close)
-   - Client code reveal + copy + revoke functionality
+1. BUG HUNT (per owner request: audit, bring findings, fix the mention work + admin sidebar)
+   Found 7 real bugs. Fixed 6; the last (C21 @mention keyboard-highlight CSS) was fixed
+   as part of the mention batch. All fixes verified in-browser with headless Chrome.
 
-2. C23: CROSS-PROJECT RESOURCES (toggle in admin panel)
-   - Toggle in admin.html Customize section
-   - localStorage persistence (mmgr_cross_project)
-   - Toast notification on toggle
+   a. C21 @MENTION DROPDOWN DEAD ON ARRIVAL (HIGH) - the whole feature silently no-oped.
+      renderTaskComments() wrote window._mentionStakeholders via a <script> inside an
+      innerHTML string. Scripts injected via innerHTML never execute (HTML spec), and
+      project.html's hash-only CSP would block them anyway. No other writer existed, so
+      the dropdown never rendered. Fix: set window._mentionStakeholders directly in JS
+      after el.innerHTML = html; (CSP-safe). Verified: typing "@Ma" shows the dropdown,
+      ArrowDown highlights, Enter inserts the mention.
+   b. MENTION KEYBOARD HIGHLIGHT INVALID CSS (MEDIUM): 'rgba(var(--gold-rgb,.08))' is
+      invalid (--gold-rgb is already r,g,b so rgba() lost its alpha arg; browsers drop
+      it). Fix: rgba(var(--gold-rgb), .08) - the repo's own established pattern.
+   c. MENTION ITEM ESCAPING (LOW): names escaped only quotes, not < >. Fix: also escape
+      < and >.
+   d. ADMIN SIDEBAR NEVER SLIDES (owner-reported): clicking the hamburger only dimmed
+      the screen (scrim) but the off-canvas panel never slid out; on desktop the rail
+      was force-pinned so side-open had no visible effect. Fix: rewrote admin.html's
+      sidebar CSS so the drawer slides on mobile (<=768px) and the rail pins + content
+      shifts on desktop, with scrim, X close, and hamburger all wired and verified.
+   e. CALCULATOR "Open" BUTTON DID NOTHING: toggleCalc flipped the FAB's visibility
+      instead of opening/closing the panel. Fix in js/mmgr-calculator.js. Verified.
+   f. ADMIN RAIL "CUSTOMIZE" ACCORDION DEAD: admin.html's data-rail-toggle button had
+      no click handler (app.html has a delegated one; admin.html never got it). Fix:
+      ported the delegated handler into admin.html's inline script. Requires CSP hash
+      regen (done). Verified.
 
-3. CSP HASH REGEN
-   - All 17 inline script hashes regenerated for worker.js + serve.cjs
-   - Admin.html changes triggered hash drift
+2. CSP HASH REGEN TOOL (tools/regen-csp-hashes.cjs) - NEW
+   Regenerates the INLINE_SCRIPT_HASHES arrays in worker.js AND serve.cjs after any
+   inline-script edit. verify-csp-hashes.cjs now passes 17/17. NOTE FOR NEXT SESSIONS:
+   first version over-matched and DELETED worker.js content past the array (fixed with
+   a regex that stops at the first semicolon; restored from git). Always run
+   `node --check worker.js` + `node tools/verify-csp-hashes.cjs` after regen.
+
+3. SW VERSION BUMP v225 -> v226 (admin.html + rebuilt bundles are SHELL assets)
+   npm run verify:sw passes - mmgr-shell-v226 newer than all 35 SHELL assets.
+
+=== LOCAL CI REPLICATION (owner gate: run CI locally before push/deploy) ===
+- Static: node build.js, verify:csp (17/17), verify:sw (v226), verify:hidden,
+  verify:skills (17/17), render-export wrappers - ALL PASS
+- npx wrangler deploy --dry-run - PASS
+- T1: qa-dashboard-spec, qa-changelog-diffs, qa-ai-relay, verify-report-issue,
+  verify-dynamic-labels, verify-delegate-gate - ALL PASS
+- T2 (wrangler.ci.jsonc dev on 8787): phase1 29/29 PASS, codes+delete 23/23 PASS,
+  import 35/35 PASS, phase2 67/69 PASS.
+- The ONLY 2 phase2 failures (P2.10f browser Save + downstream harness crash) are the
+  DOCUMENTED Windows workerd dev crash: empty `[ERROR]`, process dies mid-browser-phase
+  at the Presence-WebSocket + D1-read point. Prior sessions logged the same:
+  "workerd crashes consistently on Windows", "Browser/self-starting tests blocked on
+  Windows". worker.js diff this session = ONLY the 2 CSP hash lines, so the crash
+  cannot come from these changes. Minimal repro (auth WS 101 + 20x D1 reads) does NOT
+  crash workerd - only the full browser page lifecycle does.
 
 === FILES MODIFIED ===
-- src/cloud/client-codes.js: NEW - Client code CRUD + verify
-- src/router.js: Client code routes + import
-- src/cloud/projects.js: Client code lookup in handleCloudCodeLookup
-- admin.html: Client code UI + cross-project toggle + CSP hashes
-- worker.js: CSP hashes updated (17 hashes)
-- serve.cjs: CSP hashes updated (17 hashes)
-- migrations/0017_client_codes.sql: NEW - client_codes table
-
-=== VERIFICATION RESULTS ===
-- npm run verify: ALL PASSED (CSP 17/17, SW, hidden, skills, exports)
-- npm run qa:market-features: 61/61 PASS
-- npm run qa:dashboard-spec: 77/77 PASS
-- wrangler deploy --dry-run: PASSED
+- admin.html: sidebar slide-out CSS + rail-toggle accordion handler + CSP hash change
+- js/mmgr-render.js: mention stakeholders set directly + < > escaping
+- js/mmgr-app.js: rgba() highlight fix
+- js/mmgr-calculator.js: toggleCalc opens/closes the panel
+- worker.js: INLINE_SCRIPT_HASHES updated (2 lines, no logic change)
+- serve.cjs: INLINE_SCRIPT_HASHES updated (mirror)
+- sw.js: v225 -> v226
+- tools/regen-csp-hashes.cjs: NEW hash-regen utility
+- CONTINUATION-DIRECTIVE.md: STATUS LOG Session 11 entry
+- reflection.txt: this file
 
 === ITEMS STILL DEFERRED ===
-1. C21 @mention autocomplete polish (datalist works, could add visual dropdown)
-2. C23 actual import functionality (toggle exists, import UI needed)
-3. Skills enhancement (planned but not started)
-4. Deploy pending
+1. Commit/push/deploy - PENDING owner go (local CI fully green EXCEPT the Windows-only
+   workerd browser crash; Linux GitHub Actions CI is the authoritative gate)
+2. C23 actual cross-project data sharing (toggle + import UI exist, no server sync)
+3. C19 Client Portal deploy items as previously listed
+
+=== KEY LEARNING ===
+1. innerHTML <script> never executes - a whole feature can silently no-op with no error.
+   Grep for window.* writes and confirm real writers when a feature "does nothing".
+2. rgba(var(--x-rgb, fallback)) needs the alpha OUTSIDE the parens: rgba(var(--x-rgb), .08).
+3. Windows local wrangler dev: workerd crashes under full browser-page load; kill zombie
+   workerd.exe PIDs by PID before restarts (they hold the port and hang every request);
+   always --persist-to the harness default (os.tmpdir()/mmgr-wrangler-state) or phase2's
+   direct D1/R2 reads fail; apply D1 migrations to a fresh persist dir BEFORE boot or
+   every cloud API 500s with "no such table".
+4. Every inline-script edit in a page with CSP needs hash regen in BOTH worker.js and
+   serve.cjs - use tools/regen-csp-hashes.cjs and verify.
+5. Do not restart wrangler while zombie instances hold the port - netstat may show
+   LISTENING from a dead PID; requests hang in CLOSE_WAIT forever.

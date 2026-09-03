@@ -119,6 +119,54 @@ This skill covers Workers-specific best practices and code review. For related t
 - **Workflows**: see [Rules of Workflows](https://developers.cloudflare.com/workflows/build/rules-of-workflows/)
 - **Wrangler CLI commands**: load the `wrangler` skill
 
+## My MaNaGeR Project-Specific Worker Architecture
+
+This project has a specific Worker architecture that must be understood before making changes:
+
+### Worker structure
+- `worker.js` — thin shell: CSP headers, static asset serving, route dispatch via `src/router.js`
+- `src/router.js` — path matching + delegation to route handlers (no business logic)
+- `src/auth/` — Google OAuth + email/password auth (google.js, session.js)
+- `src/cloud/` — cloud API handlers (projects.js, editors.js, presence.js, sync.js, changelog.js, client-codes.js)
+- `src/lib/` — shared utilities (http.js for encryption/rate-limiting, observe.js for idempotency/logging, validate.js for schema validation)
+- `src/billing.js` — LemonSqueezy integration
+- `src/reviews.js` — public review system
+
+### Route pattern
+Routes are matched in src/router.js with simple path prefix matching. Each route handler is an async function that receives (request, env, ctx) and returns a Response. Auth-gated routes check session cookies via readSession() from src/auth/session.js.
+
+### Database pattern
+D1 is used for relational data (projects, editors, reviews, auth). R2 is used for large blobs (project state JSON, reviews). Migrations are raw SQL in migrations/ directory. Schema changes require new migration files.
+
+### Key bindings
+- `DB` — D1 database binding
+- `R2` — R2 bucket binding
+- `PRESENCE` — Durable Object for real-time presence
+- `KV` — KV namespace for session cache
+- `AI` — Workers AI binding (optional)
+- `ANALYTICS` — Analytics Engine binding (optional)
+
+### Deployment pattern
+```bash
+# Build bundles first
+node build.js
+
+# Create clean staging copy (wrangler uploads EVERYTHING in .)
+rm -rf /tmp/mmgr-deploy && mkdir -p /tmp/mmgr-deploy
+tar --exclude='.git' --exclude='.wrangler' --exclude='node_modules' \
+  --exclude='.agents' --exclude='_archive' -cf - . | tar -xf - -C /tmp/mmgr-deploy
+
+# Deploy from staging
+cd /tmp/mmgr-deploy && npx wrangler deploy
+```
+
+### Common pitfalls
+1. **CSP hash drift**: Editing inline scripts requires regenerating hashes in worker.js AND serve.cjs
+2. **SW cache stale**: After editing CSS/JS, run `node build.js` to rebuild dist/ AND bump SW cache
+3. **Route conflicts**: New routes must not overlap with existing path prefixes
+4. **D1 WAL visibility**: After Worker writes, D1 reads may be stale — use retry logic
+5. **Rate limiting**: Per-key sliding window buckets (save/load/recover/meta)
+
 ## Principles
 
 - **Be certain.** Retrieve before flagging. If unsure about an API, config field, or pattern, fetch the docs first.

@@ -326,3 +326,62 @@ ANOTHER EXAMPLE ----------------------------------------------------------------
 |  | 🔒 Need a private workspace? Contact your system admin to register an access code. |  |
 |  +-----------------------------------------------------------------------------------+  |
 +-----------------------------------------------------------------------------------------+ LAYOUT MATTERS DONT JUST SLAP THINGS TOGETHER LIKE ANY OTHER AI STRUCTURE IT MAKE IT MODERN NOT JUST SOME ICONS ON A SCREEN TO JUST CLICK CLICK CLICK 
+
+## My MaNaGeR Project-Specific UI Patterns
+
+### Token system
+The project uses a three-tier token system:
+- **Primitives**: Raw color values (--gold-400, --slate-900, etc.)
+- **Semantic**: Intent-carrying names (--color-brand-primary, --color-surface, etc.)
+- **Component**: Scoped to UI parts (--button-bg-primary, --table-row-hover, etc.)
+
+### Glass surfaces
+Glass (backdrop-filter: blur) is used ONLY on chrome elements:
+- Header/navigation bar
+- Floating controls/panels
+- Modals and sheets
+- Toast notifications
+
+Glass is NEVER used on dense content (tables, forms, long text). Dense content sits on solid `--color-surface` or `--color-surface-raised`.
+
+### Dark mode tokens
+Dark mode uses warm tones (--db-gold: #E8923A, --db-jet-black: #1a1614, --db-surface: #242019). Never cold blue-black tones. The dark theme re-maps BOTH surface AND text tokens in the same change.
+
+### Card language
+Every card, add-form, and nested panel uses the app's card language:
+- `--glass-fill-dark` or `--color-surface` background
+- `--glass-border` or `1px solid var(--border)`
+- `--squircle-md` radius
+- `--pad-card` padding
+- Never a flat `--tile-bg` square box with hard corners
+
+### Badge/status system
+- `.bg` = green/On Track
+- `.ba` = amber/At Risk  
+- `.br` = red/Blocked
+- `.bo` = gold/Brand (caution)
+- `.bs` = slate/Neutral
+- Text labels always accompany badges
+
+### Toast notifications
+Toasts are pill-shaped glass chips with:
+- Circular icon tile + one-word label + message
+- Types: ok (green), err (danger), warn (amber)
+- Smooth slide-up + hold + graceful fade-out
+- `prefers-reduced-motion` kills the slide
+
+### Empty states
+Every panel must have an empty state when no data exists. The pattern:
+- Icon + heading + description + action button
+- Example: "No permits added yet. Click Add to track permits and inspections."
+
+### Responsive breakpoints
+- Mobile: <=600px (stacked layout, hamburger nav)
+- Tablet: 601-768px (partial grid)
+- Desktop: >768px (full grid, sidebar rail)
+
+### Focus states
+ONE app-wide focus ring: gold border + soft ring. No per-component focus rules. `--on-primary` token ensures button contrast.
+
+### Field guide
+Every new feature MUST ship with its field guide entry (mymanager-field-guide.html) in the SAME change. The field guide is the app's companion and must never drift.

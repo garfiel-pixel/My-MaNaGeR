@@ -29,6 +29,28 @@ This happened repeatedly in the reference session: a first regex pass claimed 68
 
 Likewise, don't assume a null match is a false positive OR a real bug — check each one. In the session, some `getElementById`-style hits were dynamic prefix concatenations (`'kc-' + i`) that are correct-but-invisible-to-static-grep; others were genuinely missing DOM elements referenced by wrapped helpers (`setVal()` wrapping `$()`), which regex missed on the first pass until the search was broadened to catch wrapper functions too.
 
+## Project-Specific Architecture (My MaNaGeR)
+
+This codebase has specific patterns that affect auditing:
+
+### Module extraction pattern
+Many functions were extracted from monolith files (mmgr-app.js, mmgr-render.js, mmgr-cloud.js) into sub-modules (js/app/*.js, js/render/*.js, js/cloud/*.js). The monolith keeps a **one-line delegation shim** that forwards to the extracted module. The delegation gate (tools/verify-delegate-gate.cjs) catches functions where the monolith still has a full body instead of a shim. When auditing, check both the shim AND the extracted module — the shim must be ≤3 lines and call ns.X.Y(); the extracted module must have the real implementation.
+
+### ACTION_MAP pattern
+Event handling uses a global ACTION_MAP object in mmgr-app.js. Every `data-action="X"` in HTML must have `'X': () => ...` in ACTION_MAP. The admin panel (admin.html) has its own ADMIN_ACTION_MAP. Action maps are per-page — project.html actions are in mmgr-app.js, admin.html actions are in the inline <script> block.
+
+### MODULE_UPDATERS pattern
+After every save, MODULE_UPDATERS maps state keys to their render functions. If a new feature adds a state key (e.g. `state.procurement`), it needs both a FIELD_KEYS entry AND a MODULE_UPDATERS entry, otherwise the feature's UI won't refresh after save.
+
+### CSP hash synchronization
+Inline <script> blocks in project.html, app.html, and admin.html have SHA-256 hashes in worker.js AND serve.cjs. Editing any inline script requires regenerating BOTH the worker.js and serve.cjs hash arrays. Stale hashes silently break pages (content security policy blocks the script).
+
+### State key registration
+New features must register their state key in FIELD_KEYS (mmgr-state.js). Without this, the key won't survive save/restore/merge cycles and will be silently lost.
+
+### Render shim pattern
+Render functions extracted to js/render/*.js are accessed via mmgr-render.js shims. The shims must be called from renderDash()/renderAll() or the relevant render function, otherwise the feature's UI never initializes.
+
 ## Audit checklist
 
 Run these checks systematically across every relevant file, not just the one currently open. Adapt names/patterns to the actual codebase.
@@ -71,3 +93,21 @@ Don't report a "finding" that turned out to be a false positive after the manual
 5. Re-run the affected checks to confirm the fix resolved them and didn't break anything else
 6. Run the project's existing automated tests if present
 7. Report using the structure above
+
+## Quick Audit Commands for This Project
+
+```bash
+# Syntax check all JS files
+find js/ src/ -name '*.js' | xargs -I{} node --check {}
+
+# Check ACTION_MAP completeness
+node -e "const fs=require('fs');const app=fs.readFileSync('js/mmgr-app.js','utf8');const map=app.match(/ACTION_MAP[^{]*\{([^}]+)\}/s)?.[1]||'';const html=fs.readFileSync('project.html','utf8');const actions=[...html.matchAll(/data-action=\"([^\"]+)\"/g)].map(m=>m[1]);const missing=actions.filter(a=>!map.includes(a));console.log('Missing:',missing.length,missing)"
+
+# Check FIELD_KEYS registration
+node -e "const fs=require('fs');const state=fs.readFileSync('js/mmgr-state.js','utf8');const keys=state.match(/FIELD_KEYS[^{]*\{([^}]+)\}/s)?.[1]||'';console.log('Keys:',keys.split(',').length)"
+
+# Run verification suite
+npm run verify
+npm run qa:market-features
+npm run qa:dashboard-spec
+```

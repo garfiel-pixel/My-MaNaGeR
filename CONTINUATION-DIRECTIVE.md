@@ -1001,6 +1001,16 @@ in-progress and exactly where it stopped, what's next.
 
 ### Log entries (most recent at top)
 
+**2026-09-02 — Session 11: BUG HUNT + UI FIXES + LOCAL CI REPLICATION — 7 bugs found, 6 fixed and browser-verified; local CI gate blocked only by the documented Windows workerd crash.**
+**SCOPE:** Bug hunt across the app per owner request (bring findings + fix the recent @mention work + the admin hamburger/sidebar), then run the full CI workflow locally before commit/push/deploy.
+**(1) BUG HUNT FINDINGS:** C21 @mention dropdown was DEAD ON ARRIVAL — `renderTaskComments()` wrote `window._mentionStakeholders` via a `<script>` inside an `innerHTML` string (scripts injected via innerHTML never execute, and project.html's hash-only CSP would block it anyway); no other writer exists. Keyboard-highlight CSS used `rgba(var(--gold-rgb,.08))` (missing the alpha arg — `--gold-rgb` is already `r,g,b`) so the browser silently dropped the highlight. Item names escaped only `"` not `<`/`>`. Admin sidebar (hamburger) applied `side-open` but the panel never slid out (only the scrim dimmed) on the mobile drawer. Calculator Controls-drawer button said "Open" but `toggleCalc` flipped the FAB's visibility instead of opening the panel. Admin rail "Customize" accordion button had no click handler (app.html has one, admin.html didn't).
+**(2) FIXES (all browser-verified via headless Chrome against serve.cjs):** js/mmgr-render.js — set `window._mentionStakeholders` directly after `innerHTML` (CSP-safe) + escape `<`/`>`; js/mmgr-app.js — `rgba(var(--gold-rgb), .08)` (the repo's established pattern); admin.html — rewrote the sidebar open/close CSS so the off-canvas drawer actually slides (mobile) and the rail pins correctly (>=769px), with scrim + X + hamburger all toggling cleanly, plus ported the `data-rail-toggle` accordion handler into the inline script; js/mmgr-calculator.js — `toggleCalc` now opens/closes the PANEL. New tool `tools/regen-csp-hashes.cjs` regenerates the INLINE_SCRIPT_HASHES arrays in worker.js + serve.cjs after any inline-script edit (the admin.html edit changed a hash); CSP verify passes 17/17. sw.js bumped v225 -> v226 (admin.html + bundles are SHELL assets). Bundles rebuilt (`node build.js`).
+**(3) VERIFICATION:** `npm run verify` ALL GREEN (CSP 17/17, SW v226 newer than all 35 SHELL assets, hidden wiring, skills-lock 17/17, render-export wrappers). In-browser: admin sidebar open/close via hamburger AND X verified; @mention dropdown renders matches, ArrowDown highlights, Enter inserts; calculator Open button opens the panel.
+**(4) LOCAL CI REPLICATION (owner gate: run CI locally before push/deploy):** Static checks (build, verify:csp, verify:sw, verify:hidden, verify:skills, exports) ALL PASS. `npx wrangler deploy --dry-run` PASS. T1 static QA tools ALL PASS (qa-dashboard-spec, qa-changelog-diffs, qa-ai-relay, verify-report-issue, verify-dynamic-labels, verify-delegate-gate). T2 vs local wrangler dev (wrangler.ci.jsonc, port 8787): cloud phase1 29/29 PASS, codes+delete 23/23 PASS, import 35/35 PASS, phase2 67/69 PASS. The ONLY 2 failures are phase2 P2.10f (browser editor-mode Save) + its downstream "harness crashed" — both caused by the DOCUMENTED Windows workerd dev crash (empty `✘ [ERROR]`, process dies mid-browser-phase at the Presence-WebSocket + D1-read point; worker.js served zero app errors before death). This matches the project's own prior log entries: "workerd crashes consistently on Windows" (Session 5), "Browser/self-starting tests blocked on Windows (workerd instability)". worker.js diff for this session is ONLY the 2 CSP hash lines, so the crash cannot be caused by these changes. A minimal curl repro (project create + authenticated Presence WS 101 + 20x concurrent D1 reads) did NOT crash workerd — the crash needs the full browser page lifecycle.
+**(5) LOCAL WRANGLER RECIPE (learned, for next session):** (a) always kill stray wrangler/workerd PIDs before starting (Windows leaves zombie workerd.exe holding the port — requests hang forever); (b) start with `--persist-to "$(os.tmpdir())/mmgr-wrangler-state"` (the harness's default PERSIST_DIR — direct D1/R2 verification reads FAIL if the instance persists anywhere else); (c) apply migrations FIRST via `npx wrangler d1 migrations apply my-manager-db --local --config wrangler.ci.jsonc --persist-to <same dir>` (fresh persist dirs have NO schema — all phase2 editor tests 500 with "no such table"); (d) `WRANGLER_SEND_METRICS=false`.
+**FILES MODIFIED:** admin.html, js/mmgr-render.js, js/mmgr-app.js, js/mmgr-calculator.js, worker.js (CSP hashes only), serve.cjs (CSP hashes only), sw.js (v226), tools/regen-csp-hashes.cjs (NEW), CONTINUATION-DIRECTIVE.md, reflection.txt.
+**STATUS / NEXT:** All fixes done + verified. Everything green except the Windows-only phase2 browser crash (documented infra limit — Linux CI is the authoritative gate and prior sessions shipped under the same condition). NOT yet committed/pushed/deployed — awaiting owner go per the phase rule (no Codebuff attribution footer, Conventional Commits, commit only relevant files, do not stage the pre-existing unrelated modified files like skills/*.md, *.txt notes, images/pages/*).
+
 **2026-08-30 — Session 10: QA BATTERY + PRIVACY/TERMS + DEPLOY — full QA pass, privacy policy rewrite, ToS creation, CI wired scripts.**
 **SCOPE:** Full QA battery run (706+ checks across 18 suites), fix 5 of 7 QA failures, enhance privacy policy to bulletproof global compliance, create Terms of Service, wire missing QA scripts into package.json, deploy.
 **(1) QA BATTERY:** Ran all 18 QA suites. Results: 712 passed, 2 pre-existing failures (O02b oauth timing, P13 merge stamp). Fixed: #37 (inline styles in project.html moved to CSS), mkt-09 (test clicked auto-unlocked demo card), mkt-16/17 (mobile sign-in hidden by CSS rule + test assumed wrong UX state), #69b (AI panel overlay click impossible when .mb fills panel).
@@ -2658,6 +2668,28 @@ VERIFICATION: ALL PASSED (CSP, SW v224, hidden, skills, exports); qa-market-feat
 **Items deferred:** C21 @mention autocomplete polish, C23 import functionality, Skills enhancement, Deploy.
 
 VERIFICATION: ALL PASSED (CSP 17/17, SW, hidden, skills, exports); qa-market-features 61/61; qa-dashboard-spec 77/77; wrangler deploy --dry-run PASSED. DEPLOY: PENDING. COMMITS: PENDING.
+
+---
+
+**2026-09-01 — Session: SKILLS-ENHANCEMENT + C21-POLISH + C23-IMPORT + CI-FIX + DEPLOY.**
+
+**SCOPE:** Enhance all 5 project-authored skills with latest project knowledge, polish C21 @mention dropdown, build C23 cross-project import modal, fix verify-controls-admin CI failure, update wrangler.
+
+**(1) SKILLS ENHANCEMENT (5 skills updated):** skeptical-code-audit gained My MaNaGeR architecture (ACTION_MAP, FIELD_KEYS, MODULE_UPDATERS, CSP hash sync, render shims) + quick audit commands. pwa-development gained SHELL array pattern, build pipeline integration, CSP hash sync, offline-first architecture. workers-best-practices gained Worker structure (worker.js -> src/router.js -> handlers), route pattern, DB pattern, key bindings, deployment pattern, common pitfalls. universal-ui-architect gained project-specific token map (primitives, semantic, dark mode, dashboard tokens) + critical rules. ui-modernization gained token system, glass surfaces, dark mode tokens, card language, badge system, toasts, empty states, responsive breakpoints, focus states, field guide.
+
+**(2) C21 @MENTION POLISH:** Enhanced initMentionDropdown with ArrowUp/ArrowDown/Enter/Escape keyboard navigation + visual highlight on selected item (gold background) + role="listbox" and aria-selected attributes + enhanced dropdown styling (backdrop-filter, rounded corners, better shadow).
+
+**(3) C23 CROSS-PROJECT IMPORT:** Replaced prompt-based import with proper modal UI. Modal lists all localStorage projects with their resources, shows count of new vs existing per project, Import button per project, Cancel button. New doImportResources action with duplicate detection + closeImportModal action.
+
+**(4) SKILLS LOCK UPDATE:** tools/update-skill-hashes.cjs created (recursive file hash matching verify-skills-lock.cjs algorithm). 5 stale hashes fixed: pwa-development, workers-best-practices, skeptical-code-audit, universal-ui-architect, ui-modernization.
+
+**(5) CI FIX (verify-controls-admin.cjs):** Updated railCtl check from 3 to 4 (Premium, Appearance, Glass, Cross-Project Resources). Admin panel now has 4 rail-ctl-row elements.
+
+**(6) WRANGLER UPDATE:** 4.127.1 -> 4.128.0.
+
+**FILES MODIFIED:** .agents/skills/skeptical-code-audit/SKILL.md, .agents/skills/pwa-development/SKILL.md, .agents/skills/workers-best-practices/SKILL.md, .agents/skills/universal-ui-architect/SKILL.md, .agents/skills/ui-modernization/SKILL.md, js/mmgr-app.js, js/mmgr-render.js, skills-lock.json, tools/update-skill-hashes.cjs (NEW), tools/verify-controls-admin.cjs, package.json, package-lock.json.
+
+**VERIFICATION:** ALL PASSED (CSP 17/17, SW, hidden, skills 17/17, exports); qa-market-features 61/61; qa-dashboard-spec 77/77; wrangler deploy --dry-run PASSED. DEPLOY: PENDING. COMMITS: PENDING.
 
 ---
 

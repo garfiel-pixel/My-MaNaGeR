@@ -12,6 +12,29 @@ effort: medium
 
 **Purpose:** Build Progressive Web Apps that work offline, install like native apps, and deliver fast, reliable experiences across all devices.
 
+## My MaNaGeR Project-Specific PWA Architecture
+
+This project uses a custom service worker (sw.js) with a SHELL array pattern. Key facts:
+
+### SHELL array pattern
+The service worker caches a specific list of assets in the SHELL array. When new JS modules are added, they MUST be added to sw.js SHELL and the cache version bumped. The SW version string (`MMGR_SW_VERSION`) serves as the cache key.
+
+### Build pipeline integration
+`node build.js` rebuilds all dist/ bundles AND touches sw.js to bump the cache version. After editing any CSS or JS source file, always run `node build.js` to rebuild dist/ AND bump the SW cache.
+
+### CSP hash synchronization
+Inline scripts in HTML files have SHA-256 hashes that must match the actual script content. The hashes are stored in worker.js AND serve.cjs. Editing inline scripts requires regenerating BOTH.
+
+### Offline-first architecture
+All project data lives in localStorage. Cloud sync is opt-in per project. The app works fully offline with no network dependency. The SW only caches static assets (HTML, CSS, JS, images) — never dynamic API responses.
+
+### Key commands
+```bash
+node build.js          # Rebuild all bundles + bump SW cache
+npm run verify         # Verify CSP hashes, SW cache, hidden elements, skills
+node build.js --app    # Rebuild project.html bundle only
+```
+
 ---
 
 ## Core PWA Requirements

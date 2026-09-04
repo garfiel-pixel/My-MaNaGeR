@@ -947,6 +947,7 @@ body.dark-mode .nav-dd-item:hover{color:var(--gold);background:rgba(var(--gold-r
 }
 .footer-bottom a{color:rgba(248,250,252,.55);}
 .footer-bottom a:hover{color:var(--gold);}
+.footer-legal{display:inline-flex;align-items:center;gap:.55em;}
 
 /* ---------- 13. Inner pages (about / features / contact) ---------- */
 .page-hero{

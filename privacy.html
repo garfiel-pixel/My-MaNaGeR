@@ -2,8 +2,12 @@
 <!--
   My MaNaGeR — Global Privacy Policy & User Agreement
   Effective Date: August 30, 2026
-  Last Revised: August 30, 2026
+  Last Revised: September 4, 2026
   This document governs all use of the Application across all jurisdictions.
+  Revision 2026-09-04: corrected the at-rest encryption description (the
+  R2 envelope is applied server-side in the Worker, not in the browser),
+  corrected the session-cookie lifetime to 7 days, and added explicit
+  cookies/local-storage and infrastructure-processor disclosure.
 -->
 <html lang="en">
 <head>
@@ -81,7 +85,12 @@
       <span class="crumbs"><a href="index.html">Home</a> &middot; Privacy &amp; Terms</span>
       <h1>Privacy Policy &amp; Terms of Service</h1>
       <p>Global data privacy policy and binding user agreement for My MaNaGeR.</p>
-      <p class="privacy-updated">Effective Date: August 30, 2026</p>
+      <p class="privacy-updated">Effective Date: August 30, 2026 · Last Revised: September 4, 2026</p>
+      <p class="privacy-toc">
+        <a href="#privacy">Privacy Policy</a> &middot;
+        <a href="#terms">Terms of Service</a> &middot;
+        <a href="#contact-legal">Contact</a>
+      </p>
     </div>
   </section>
 
@@ -92,7 +101,7 @@
       <!-- PART I: GLOBAL DATA PRIVACY POLICY                            -->
       <!-- ============================================================ -->
 
-      <h2>Part I: Global Data Privacy Policy</h2>
+      <h2 id="privacy">Part I: Global Data Privacy Policy</h2>
       <p>This Privacy Policy governs the use of My MaNaGeR ("the Application"), an offline-first, local-browser construction project management workspace deployed as static web assets via Cloudflare Workers. This document establishes how the Application natively honors global data sovereignty laws, including but not limited to the EU General Data Protection Regulation (GDPR), the California Consumer Privacy Act (CCPA/CPRA), Canada's PIPEDA, Brazil's LGPD, India's DPDP Act, South Africa's POPIA, and Australian Privacy Principles across all continents and jurisdictions.</p>
 
       <h3>1. Core Principle: Local-First Privacy (Data Minimization)</h3>
@@ -115,13 +124,19 @@
       </ul>
 
       <h3>3. Account Data (Voluntary Cloud Sync Only)</h3>
-      <p>If you voluntarily sign in and enable cloud sync, the following limited account metadata is stored server-side:</p>
+      <p>If you voluntarily sign in and enable cloud sync, the following limited account metadata is processed server-side. The lawful basis for this processing is the performance of the service you request (sign-in, cloud backup, moving projects between devices) and, where required, your consent given when you enable the feature. Project data that never leaves your device is not processed by us at all; it remains under your exclusive control.</p>
       <ul>
         <li><strong>Account identifiers:</strong> Google account sub (opaque ID), email address, display name, or for email accounts: email + PBKDF2-SHA256 hashed password (100,000 iterations; plaintext never stored).</li>
         <li><strong>Project metadata:</strong> Project ID, project name/label, owner code hash (PBKDF2; plaintext never stored), editor/viewer code hashes, timestamps (created_at, last_owner_seen_at, deleted_at), and latest R2 storage key reference.</li>
-        <li><strong>Encrypted state blobs:</strong> If you enable cloud backup, your project state is encrypted client-side (AES-256-GCM, key derived from owner code via PBKDF2) before upload to Cloudflare R2. The encryption key never leaves your browser. We cannot decrypt your data.</li>
+        <li><strong>Encrypted state blobs (at rest):</strong> If you enable cloud backup, your project state is encrypted at rest before storage in Cloudflare R2 using an AES-256-GCM envelope applied server-side in the Worker. The encryption key is derived from your owner code's PBKDF2-SHA256 hash and a per-project salt held in the database; the raw owner code is never stored and cannot be recovered from the hash. A copy of the R2 bucket without database access would expose only ciphertext. Where encryption cannot be applied, a plaintext fallback is used (legacy blobs are also read as plaintext for compatibility). Decryption capability necessarily resides with the server infrastructure that operates cloud sync; if you require data that cannot be read by any server, do not enable cloud sync and keep the project fully local.</li>
         <li><strong>Local data is not encrypted:</strong> Project data stored on your device (in localStorage/IndexedDB) is stored in plaintext by the browser. If you share a device or are concerned about local access, use your operating system's or browser's own encryption and lock features. This is an architectural trade-off of the offline-first design.</li>
-        <li><strong>Session cookie:</strong> A single HttpOnly, Secure, SameSite=Lax session cookie (mmgr_session) for authentication. Expires after 30 days with automatic renewal for active sessions. Contains no project data.</li>
+      </ul>
+      <h3>3.1 Cookies &amp; Local Storage</h3>
+      <p>The Application places no advertising, marketing, or third-party tracking cookies. The only cookies and browser storage used are:</p>
+      <ul>
+        <li><strong>Session cookie (mmgr_session):</strong> A single HttpOnly, Secure, SameSite=Lax cookie issued when you sign in, used for authentication on cloud features. Expires after 7 days. Contains no project data.</li>
+        <li><strong>Local site storage (localStorage/IndexedDB):</strong> Stores your project data and preferences (theme, palette, view mode, dock settings, project files). This data never leaves your device except through features you explicitly enable (cloud sync, export, sharing codes). You can clear it at any time through your browser's site-data controls.</li>
+        <li><strong>No fingerprinting or cross-site identifiers:</strong> No device fingerprinting, tracking pixels, or identifiers shared across sites.</li>
       </ul>
       <p>You may delete your account and all associated server-side data at any time via the Application's account settings. Account deletion is permanent and irreversible.</p>
 
@@ -138,6 +153,7 @@
             <li>Payment processing (LemonSqueezy, for optional paid plans only)</li>
           </ul>
         </li>
+        <li><strong>Infrastructure processors:</strong> The Application's cloud features are operated on Cloudflare's Workers, D1 database, R2 storage, and CDN edge. Cloudflare acts as an infrastructure processor: it handles and stores the limited account and project metadata described in Section 3 on servers it operates, and its edge servers may retain standard, short-lived request logs. Cloudflare's own privacy policy and data-processing terms apply to that handling.</li>
         <li><strong>User Assumes Third-Party Compliance Responsibility:</strong> You assume full legal responsibility for verifying that each external provider you connect to complies with your regional data protection mandates. The Application operator has no control over, and assumes no liability for, the data practices of third-party providers you voluntarily connect to.</li>
       </ul>
 
@@ -162,21 +178,21 @@
       <p>We may update this privacy policy from time to time. The "Last Revised" date at the top of this page will be updated. Material changes will be posted on this page. Continued use of the Application after changes constitutes acceptance of the updated policy. Your only remedy if you do not agree to changes is to stop using the Application and delete your data.</p>
 
       <h3>10. Contact &amp; Data Protection Officer</h3>
-      <p>For questions about this privacy policy or your data, contact us at <a href="mailto:admin@mymanager.app">admin@mymanager.app</a>. For GDPR-related inquiries, you may also contact the relevant supervisory authority in your EU member state.</p>
+      <p id="contact-legal">For questions about this privacy policy, your data, or to exercise any data-subject right, contact us at <a href="mailto:admin@mymanager.app">admin@mymanager.app</a>. For GDPR-related inquiries, you may also contact the relevant supervisory authority in your EU member state.</p>
 
       <!-- ============================================================ -->
       <!-- PART II: GLOBAL TERMS OF SERVICE                              -->
       <!-- ============================================================ -->
 
       <hr style="margin:3rem 0;border:none;border-top:1px solid var(--border);">
-      <h2>Part II: Terms of Service (User Agreement)</h2>
+      <h2 id="terms">Part II: Terms of Service (User Agreement)</h2>
       <p>By accessing, browsing, or using My MaNaGeR ("the Application"), you ("User") agree to be bound by these Terms of Service ("Terms"). If you do not agree to these Terms in their entirety, you must immediately cease all use of the Application and delete all local copies of your data. Your continued use constitutes irrevocable acceptance of these Terms.</p>
 
       <h3>1. Acceptance &amp; Binding Agreement</h3>
       <p>These Terms constitute a legally binding agreement between you and the Application operator. By accessing or using the Application, you represent and warrant that: (a) you are at least 18 years of age or the legal working age in your jurisdiction; (b) you have the legal capacity to enter into binding agreements; (c) your use of the Application will comply with all applicable local, national, and international laws and regulations; and (d) you have read, understood, and agree to be bound by these Terms and the Privacy Policy above.</p>
 
       <h3>2. Nature of the Service</h3>
-      <p>My MaNaGeR is provided as an open-source, client-side, browser-based static interface for construction project management. It is accessed freely without mandatory user account creation, paid subscription barriers, or recurring cloud fees. The Application is a productivity and organizational tool; it is not a replacement for professional judgment, licensed engineering analysis, or site safety protocols.</p>
+      <p>My MaNaGeR is provided as a client-side, browser-based static interface for construction project management, deployed over the Internet from Cloudflare's edge. It is accessed freely without mandatory user account creation, paid subscription barriers, or recurring cloud fees. The Application is a productivity and organizational tool; it is not a replacement for professional judgment, licensed engineering analysis, or site safety protocols.</p>
 
       <h3>3. User Responsibility for Data &amp; Backups</h3>
       <p>Because the Application operates on a decentralized, local-first design paradigm, you are the absolute and sole custodian of your project documentation, metrics, and configurations.</p>
@@ -216,7 +232,7 @@
 
       <h3>7. Intellectual Property</h3>
       <ul>
-        <li><strong>Application License:</strong> The Application is open-source software. Your use of the Application is governed by the applicable open-source license specified in the repository. The open-source license grants you specific rights and imposes specific obligations; these Terms supplement but do not replace that license.</li>
+        <li><strong>Application Source Code:</strong> The Application's source code is published publicly at <a href="https://github.com/garfiel-pixel/My-MaNaGeR">github.com/garfiel-pixel/My-MaNaGeR</a> for transparency and review. These Terms grant you a personal, non-exclusive, non-transferable right to use the Application as a hosted service. Unless and until a specific open-source license is applied in that repository, all rights in the source code are reserved to the operator; nothing in these Terms grants you any license to the source code itself.</li>
         <li><strong>Your Content:</strong> You retain all ownership rights to your project data, documents, images, and all other content you create or upload to the Application. The Application operator claims no ownership interest in your content.</li>
         <li><strong>Trademark:</strong> The "My MaNaGeR" name, logo, and branding are the property of the Application operator. You may not use these marks without prior written permission.</li>
       </ul>
@@ -313,7 +329,7 @@
 
       <hr style="margin:3rem 0;border:none;border-top:1px solid var(--border);">
 
-      <p style="text-align:center;font-size:.82rem;color:var(--text-secondary);">This document was last revised on August 30, 2026. By using My MaNaGeR, you acknowledge that you have read, understood, and agree to be bound by both the Privacy Policy (Part I) and the Terms of Service (Part II) set forth above.</p>
+      <p style="text-align:center;font-size:.82rem;color:var(--text-secondary);">This document was last revised on September 4, 2026. By using My MaNaGeR, you acknowledge that you have read, understood, and agree to be bound by both the Privacy Policy (Part I) and the Terms of Service (Part II) set forth above.</p>
 
     </div>
   </section>

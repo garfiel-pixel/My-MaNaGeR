@@ -574,6 +574,39 @@ history force-pushed (c0be9f0...c28f6d5). Rule now codified as
 AGENTS.md project-critical rule 8: no AI-assistant credit in any
 commit, ever.
 
+LEGAL WAVE RECORD (2026-09-04, SHIPPED) - privacy.html bulletproof
+revision + marketing footer legal links (owner request: launch legal
+pages on the marketing pages, bottom/footer preferred). Accuracy
+audit vs code found and fixed: (1) R2 envelope encryption is applied
+SERVER-side in the Worker (src/lib/http.js cloudEncryptState: AES-
+256-GCM, PBKDF2 key from owner_code_hash+salt), not client-side with
+a key that never leaves the browser - corrected + honest caveat added
+(server can decrypt; go fully local if that matters); (2) session
+cookie is 7 days (SESSION_MAX_AGE=604800), not 30 - corrected;
+(3) IP section now states source-available (public GitHub repo) with
+all rights reserved absent an explicit open-source license (no LICENSE
+file in repo) instead of claiming "open-source software"; (4) added
+Cookies & Local Storage disclosure (mmgr_session 7-day HttpOnly/
+Secure/SameSite=Lax, localStorage/IndexedDB site data, no third-party
+cookies, no fingerprinting) + Cloudflare infrastructure-processor
+disclosure (Workers/D1/R2/CDN edge logs) + GDPR lawful-basis sentence
++ #privacy/#terms id anchors + in-page TOC + contact anchor.
+Verified retention numbers already accurate (180-day orphan purge with
+14-day warning email; 7-day soft-delete tombstone CLOUD_DELETED_PURGE_MS).
+Contact admin@mymanager.app kept (consistent site-wide, owner's alias).
+Marketing footer: Privacy Policy (privacy.html#privacy) + Terms of
+Service (privacy.html#terms) added to the footer-bottom of index,
+features, about, contact, reviews (previously the legal page was
+orphaned - zero marketing links). No inline scripts touched -> CSP
+hashes UNCHANGED; sw bumped v237. QA: NEW tools/qa-legal-links.cjs
+6/6 (all 5 footers link both docs + anchors/TOC resolve); npm run
+verify ALL GREEN (CSP 17, sw v237, hidden 2857); emoji clean.
+
+DEPLOY WAVE (2026-09-04): single staging-copy deploy brings production
+fully current - Phase 3 (rose-gold + 3D deck), Phase 4 (C19 client
+codes), the CI harness fixes, and this legal wave (last production
+deploy was Phase 2). No migrations pending.
+
 --------------------------------------------------------------------
 AREA F - BACKLOG / DIRECTIVE DEFERRED ITEMS (for completeness)
 --------------------------------------------------------------------

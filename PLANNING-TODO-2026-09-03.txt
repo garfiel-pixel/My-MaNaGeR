@@ -459,8 +459,17 @@ items. QA: tools/qa-admin-recovery.cjs (self-contained: wrangler dev
 wrangler.ci.jsonc flag flips + mock mail stub). CSP hashes regenerated
 (17), sw v233. Verification: npm run verify ALL GREEN; qa-admin-
 recovery 24/24; node --check all; emoji scan clean on served pages.
-PARKED: production deploy of the Phase 2 wave (worker.js + migration
-0018 apply to remote D1) needs the owner's go; wrangler dry-run green.
+DEPLOYED 2026-09-03 (owner go): migration 0018_admin_recovery_otp
+applied to remote D1 (wrangler d1 migrations apply my-manager-db
+--remote, 3 commands ok) THEN staging-copy deploy -> Current Version
+ID 0f7539ba-4e32-4502-bb73-d6dcf549c106. Post-deploy smoke: /api/health
+200; GET /api/auth/admin-recovery/status + POST .../send with NO cookie
+-> 401 'not signed in' (routes live, session-gated before the dormant
+503 - unauthenticated callers learn nothing); /admin serves the
+recovery markup (forgot-screen/rc-om/openForgot/submitRecoveryCode,
+16 hits); sw.js serves mmgr-shell-v233. Tier A remains dormant in
+production: EMAIL_RECOVERY_ENABLED=false var; flip only after a
+verified sending domain exists.
 
 --------------------------------------------------------------------
 AREA F - BACKLOG / DIRECTIVE DEFERRED ITEMS (for completeness)

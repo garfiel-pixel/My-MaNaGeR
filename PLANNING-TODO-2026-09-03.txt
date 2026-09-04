@@ -383,7 +383,7 @@ AREA G - ADMIN PASSWORD RECOVERY, TWO TIER (owner D8)
 --------------------------------------------------------------------
 The admin password is device-local (hashed). Recovery spec adopted:
 
-G1. [ ] TIER B - LOCAL RECOVERY CODE (active now):
+G1. [x] TIER B - LOCAL RECOVERY CODE (SHIPPED 2026-09-03):
      - At admin account creation (Setup screen), generate a crypto-
        random recovery code (>=24 chars, base32-ish, no 0/O/1/I).
      - Show it ONCE in a modal: "Save this now - it will not be shown
@@ -400,7 +400,7 @@ G1. [ ] TIER B - LOCAL RECOVERY CODE (active now):
      - 5 wrong attempts -> 15-minute cooldown lock (local-only).
      - Lost code -> explicit UI copy: only path is local wipe + re-setup
        (never hidden).
-G2. [ ] TIER A - EMAIL OTP (build now, flag OFF): EMAIL_RECOVERY_ENABLED
+G2. [x] TIER A - EMAIL OTP (SHIPPED 2026-09-03, flag OFF): EMAIL_RECOVERY_ENABLED
      env/config flag, default false. Only offered to SIGNED-IN admins
      with a verified email on file (never local-only sessions - Tier B
      handles those).
@@ -417,14 +417,50 @@ G2. [ ] TIER A - EMAIL OTP (build now, flag OFF): EMAIL_RECOVERY_ENABLED
        unlock email-based recovery." Signed-in admin sees Tier A option
        greyed/"Coming soon" until the flag flips (surface built +
        testable now without live email cost).
-G3. [ ] Forgot password? link (Area D2) routes into this flow: setup-
+G3. [x] Forgot password? link (SHIPPED 2026-09-03, rides G1): setup-
        completion + signed-out = Tier B; signed-in = Tier B field +
        Tier A (when flag on).
-G4. [ ] QA: local recovery code happy path + wrong-code cooldown + code
-     rotation; Tier A testable behind the flag WITHOUT live email via
-     the DECIDED mock mail server (harness sets RESEND_API_BASE to a
-     local http mock, captures the real email body, extracts the OTP
-     - no echo variable).
+G4. [x] QA (SHIPPED 2026-09-03): tools/qa-admin-recovery.cjs 24/24 -
+     Tier B browser flows (setup show-once modal + checkbox gate,
+     lock + cooldown persisted across reload, rotation, lost-code
+     wipe, legacy no-code guidance, signed-out passive Tier A line)
+     + Tier A server (flag-off 503, verified-email gate, mock mail
+     RESEND_API_BASE capture of the REAL email body -> OTP extracted,
+     wrong/right/replay, newest-invalidates, 5-attempt 429 lock even
+     for the correct code, 3/hr cap, unauthenticated 401).
+
+--------------------------------------------------------------------
+--------------------------------------------------------------------
+PHASE 2 EXECUTION RECORD (2026-09-03, SHIPPED) - AREA G two-tier
+admin password recovery complete. Tier B (active, admin.html): PBKDF2
+helpers (Web Crypto 100k iters, salt, no deps), 24-char base32 code at
+setup + rotation, show-once modal #rc-om (checkbox-gated Done; Escape
+never closes it), forgot gate screen (#forgot-screen: code step + new-
+password step + lost-code wipe via admConfirm + Tier A zone), 5-wrong
+/ 15-min lock with live countdown persisted in localStorage, case-
+insensitive code entry, rotation issues a fresh code and kills the old
+one. Tier A (dormant, EMAIL_RECOVERY_ENABLED=false in wrangler.jsonc +
+wrangler.ci.jsonc; 503 when off): migration 0018_admin_recovery_otp.sql
+(id/sub/email/otp_hash salt:pbkdf2/created/expires/used/attempt_count,
+(sub,created) index) + NEW src/auth/recovery.js (status/send/verify:
+session-gated, email-auth needs auth_users.email_verified=1, Google
+session emails treated Google-verified - the FLAG question resolved:
+the session cookie DOES carry email for both, verified in google.js
+mintSession + session.js; 8-char unambiguous OTP, hashOwnerCode PBKDF2,
+15-min expiry, single-use conditional UPDATE, newest-send stamps
+used_at on older rows, attempt_count>=5 -> 429 Retry-After, 3 sends/hr
+DB-counted, code-only email via sendAuthEmail + RESEND_API_BASE seam) +
+router routes (/status GET, /send POST authForgot bucket, /verify POST
+authLogin bucket) + worker.js daily sweep added admin_recovery_otp.
+Client forgot panel Tier A zone probes /status: signed-out passive
+line, verified+flag-on active send/verify (no rotation), flag-off
+'coming soon' + masked email. Field guide Door 1 flow gains recovery
+items. QA: tools/qa-admin-recovery.cjs (self-contained: wrangler dev
+wrangler.ci.jsonc flag flips + mock mail stub). CSP hashes regenerated
+(17), sw v233. Verification: npm run verify ALL GREEN; qa-admin-
+recovery 24/24; node --check all; emoji scan clean on served pages.
+PARKED: production deploy of the Phase 2 wave (worker.js + migration
+0018 apply to remote D1) needs the owner's go; wrangler dry-run green.
 
 --------------------------------------------------------------------
 AREA F - BACKLOG / DIRECTIVE DEFERRED ITEMS (for completeness)

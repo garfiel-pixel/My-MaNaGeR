@@ -6,7 +6,12 @@
   "main": "worker.js",
   "vars": {
     "GOOGLE_CLIENT_ID": "297970704704-m05hgt93lfaq286q90br8c96ffg1aph3.apps.googleusercontent.com",
-    "ADMIN_CODE": "QA-ADMIN-CI"
+    "ADMIN_CODE": "QA-ADMIN-CI",
+    // AREA G2 (owner D8): Tier A admin-recovery email OTP. Default false;
+    // tools/qa-admin-recovery.cjs overrides to true with --var + points
+    // RESEND_API_BASE at its local mock mail server (captures the real
+    // email body to extract the OTP — no echo seam).
+    "EMAIL_RECOVERY_ENABLED": false
   },
   // CI-only: stripped AI, Vectorize, and service bindings that cause
   // infinite reload loops in local wrangler dev.

@@ -33,7 +33,7 @@ const INLINE_SCRIPT_HASHES = [
   "'sha256-7BIp3SE8LrjSq5puH0lRtmP51SnLzcmBy32sBq0Zcps='",
   "'sha256-PcY9TdIJsXGVPic0Qujx0Ov+GCt9gZG0hEtBVRDiLiM='",
   "'sha256-O9lvE/vAuiMHUX3RQGR53K5h6w13/d2P16BoUBsYKAk='",
-  "'sha256-YI6lFfotmcCyndk41lqgsxR9bOxVW4GqfsDV+PvqhaA='",
+  "'sha256-VjoNiryGPhCG4AA7iJW02q9OZB/DlW7Q8IykgUfGlSQ='",
   "'sha256-Oa7ON+9A164SSXhnxu08mFn0V9Tj2SlZ2SzFXFoqKNE='",
   "'sha256-bNdw0+64xL2//htoz+u3InKWYZNEHO/CnuZqtcJIBgU='",
   "'sha256-7cQZf8bzyvMY1EwebBo5YuL3PZ9T/X5CTWFRXO3Aq5E='",
@@ -127,7 +127,13 @@ export default {
         .bind(s1).run();
       const tokenSweep = await env.DB.prepare('DELETE FROM auth_tokens WHERE expires_at < ? OR (used_at IS NOT NULL AND used_at < ?) OR (revoked_at IS NOT NULL AND revoked_at < ?)')
         .bind(s7, s7, s7).run();
-      console.log('auth sweep: sessions=' + ((sessSweep.meta && sessSweep.meta.changes) || 0) + ' guards=' + ((guardSweep.meta && guardSweep.meta.changes) || 0) + ' tokens=' + ((tokenSweep.meta && tokenSweep.meta.changes) || 0));
+      // AREA G2: expired or long-consumed admin-recovery OTP rows (mirrors auth_tokens).
+      let otpSweep = { meta: { changes: 0 } };
+      try {
+        otpSweep = await env.DB.prepare('DELETE FROM admin_recovery_otp WHERE expires_at < ? OR (used_at IS NOT NULL AND used_at < ?)')
+          .bind(s7, s7).run();
+      } catch (e) { /* table may not exist yet (pre-migration) */ }
+      console.log('auth sweep: sessions=' + ((sessSweep.meta && sessSweep.meta.changes) || 0) + ' guards=' + ((guardSweep.meta && guardSweep.meta.changes) || 0) + ' tokens=' + ((tokenSweep.meta && tokenSweep.meta.changes) || 0) + ' otp=' + ((otpSweep.meta && otpSweep.meta.changes) || 0));
     } catch (e) {
       console.error('auth sweep failed:', e && e.message);
     }

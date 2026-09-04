@@ -69,6 +69,28 @@ body.dark-mode .gbox input{background:rgba(0,0,0,.3);}
 .gbox .btn.is-busy .spin-dot{display:block;position:absolute;left:50%;top:50%;margin:-7.5px 0 0 -7.5px;}
 @keyframes gspin{to{transform:rotate(360deg)}}
 @media (prefers-reduced-motion:reduce){.gbox .btn .spin-dot{animation:none;}}
+/* ── AREA G admin recovery (Tier B local code + Tier A email OTP surface) ── */
+.rc-code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.9rem;letter-spacing:.08em;
+  background:rgba(var(--gold-rgb),.08);border:1px dashed rgba(var(--gold-rgb),.35);color:var(--text);
+  border-radius:var(--radius);padding:12px;margin:6px 0 12px;user-select:all;word-break:break-all;text-align:center;}
+.rc-code + .mbody-actions{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px;}
+.rc-cb{display:flex;align-items:flex-start;gap:8px;font-size:.78rem;color:var(--slate);line-height:1.45;cursor:pointer;text-align:left;}
+.rc-cb input{margin-top:2px;}
+.rc-divider{display:flex;align-items:center;gap:12px;color:var(--slate);font-size:.7rem;margin:16px 0;}
+.rc-divider::before,.rc-divider::after{content:'';flex:1;height:1px;background:var(--border);}
+.forgot-link{background:none;border:none;padding:0;margin-top:14px;font-size:.78rem;color:var(--gold);cursor:pointer;text-decoration:underline;text-underline-offset:3px;font-family:inherit;}
+.forgot-link:hover{color:var(--text);}
+#forgot-screen .gbox{text-align:left;}
+#forgot-screen h1{text-align:center;}
+#forgot-screen .gbox .btn{margin-top:4px;}
+.gbox-sub{font-size:.76rem;color:var(--slate);margin-bottom:12px;line-height:1.5;}
+#tierA-zone{font-size:.76rem;}
+#tierA-zone .btn{margin-top:6px;}
+.rec-lock-note{display:flex;gap:8px;align-items:flex-start;font-size:.76rem;color:var(--danger);background:rgba(239,68,68,.07);border:1px solid rgba(239,68,68,.28);border-radius:var(--radius);padding:9px 11px;margin-bottom:10px;line-height:1.5;}
+.rec-lock-note[hidden]{display:none;}
+.rec-lost summary{cursor:pointer;font-size:.76rem;color:var(--slate);margin:8px 0 4px;}
+.rec-lost{font-size:.74rem;color:var(--slate);line-height:1.5;}
+.rec-lost p{margin:6px 0 10px;}
 
 /* ── bottom dock (owner D3/D6/D11): the old gate-prefs pill below was
      promoted into the shared .dock in css/mmgr.css — one canonical
@@ -158,10 +180,10 @@ main{max-width:1000px;margin:0 auto;padding:26px 24px 70px;}
 /* ── modal chrome (overlay only; .mb skeleton is shared) ── */
 #om{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:2000;align-items:center;justify-content:center;padding:20px;overflow-y:auto;}
 #om.show{display:flex;}
-#adm-cfm,#pw-om,#adm-conflict,#snip-om,#codes-om{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:2100;align-items:center;justify-content:center;padding:20px;overflow-y:auto;}
-#adm-cfm.show,#pw-om.show,#adm-conflict.show,#snip-om.show,#codes-om.show{display:flex;}
+#adm-cfm,#pw-om,#adm-conflict,#snip-om,#codes-om,#rc-om{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:2100;align-items:center;justify-content:center;padding:20px;overflow-y:auto;}
+#adm-cfm.show,#pw-om.show,#adm-conflict.show,#snip-om.show,#codes-om.show,#rc-om.show{display:flex;}
 /* admin modals keep the narrower width + entrance animation (admin layout) */
-#om .mb,#snip-om .mb,#adm-cfm .mb,#pw-om .mb,#adm-conflict .mb,#codes-om .mb{width:520px;max-width:100%;max-height:88vh;animation:mIn .25s cubic-bezier(.25,1,.5,1);}
+#om .mb,#snip-om .mb,#adm-cfm .mb,#pw-om .mb,#adm-conflict .mb,#codes-om .mb,#rc-om .mb{width:520px;max-width:100%;max-height:88vh;animation:mIn .25s cubic-bezier(.25,1,.5,1);}
 @keyframes mIn{from{opacity:0;transform:translateY(10px) scale(.98)}to{opacity:1;transform:none}}
 @media (prefers-reduced-motion:reduce){.mb{animation:none!important;}}
 .pw-box{width:420px;max-width:100%;}
@@ -243,7 +265,89 @@ pre.snippet{background:#f8fafc;border:1px solid var(--border);border-radius:6px;
     </span>
     <div class="gerr" id="login-err" role="alert"></div>
     <button class="btn btn-g full" data-action="adminLogin" type="submit"><span class="btn-txt">Unlock Admin Panel</span><span class="spin-dot" aria-hidden="true"></span></button>
+    <button type="button" class="forgot-link" data-action="openForgot">Forgot password?</button>
   </form>
+</div>
+
+<!-- ═══ GATE: recovery (AREA G — Tier B local code + Tier A email OTP) ═══ -->
+<div class="gatewrap hidden" id="forgot-screen">
+  <div class="gbox">
+    <div class="icon"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-shield"></use></svg></div>
+    <h1>Recover Admin Access</h1>
+
+    <!-- STEP: enter the device recovery code (Tier B, primary) -->
+    <div id="forgot-step-code">
+      <div class="rec-lock-note" id="rec-lock-note" hidden><svg class="ico" aria-hidden="true" style="width:15px;height:15px;flex:none;margin-top:1px"><use href="css/mmgr-icons.svg#i-alert-triangle"></use></svg><span id="rec-lock-text"></span></div>
+      <div class="field">
+        <label for="rec-code">Recovery code</label>
+        <input id="rec-code" type="text" autocomplete="off" spellcheck="false" autocapitalize="characters" placeholder="Enter your 24-character recovery code">
+        <p class="gbox-sub" style="margin:6px 0 0">Enter the code you saved when you set up the admin password. A successful recovery sets a new password and shows a fresh code.</p>
+      </div>
+      <div class="gerr" id="rec-err" role="alert"></div>
+      <button class="btn btn-g full" data-action="submitRecoveryCode"><span class="btn-txt">Use Recovery Code</span><span class="spin-dot" aria-hidden="true"></span></button>
+      <details class="rec-lost">
+        <summary>I lost my recovery code</summary>
+        <p>The recovery code is stored only on this device and cannot be recovered or reset remotely. The only path is to wipe the admin password on this device and set it up again (projects are not affected).</p>
+        <button class="btn btn-d" data-action="resetAdminLocal">Reset admin password on this device</button>
+      </details>
+      <div class="rc-divider">or use email recovery</div>
+      <div id="tierA-zone">
+        <p class="gbox-sub" id="tierA-line" style="margin-bottom:6px">Checking signed-in email recovery…</p>
+        <div id="tierA-send">
+          <button class="btn btn-n btn-s" data-action="sendAdminRecovery"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-mail"></use></svg> Send code to <span id="tierA-mask"></span></button>
+        </div>
+        <div id="tierA-otp-row" hidden>
+          <div class="field" style="margin:10px 0 4px">
+            <label for="tierA-otp">Email recovery code</label>
+            <input id="tierA-otp" type="text" autocomplete="one-time-code" spellcheck="false" autocapitalize="characters" placeholder="Code emailed to you">
+          </div>
+          <button class="btn btn-g btn-s" data-action="verifyAdminRecovery">Verify code</button>
+          <div class="gerr" id="tierA-err" role="alert"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP: set a new password after a successful recovery -->
+    <div id="forgot-step-set" class="hidden">
+      <div class="gbox-sub" id="rec-set-copy" style="margin-top:2px"></div>
+      <div class="field">
+        <label class="sr-only" for="rec-new1">New admin password</label>
+        <span class="pw-wrap">
+          <input id="rec-new1" type="password" placeholder="New admin password (min 8 characters)" autocomplete="new-password">
+          <button type="button" class="pw-eye" data-action="tglPwVis" data-target="rec-new1" aria-pressed="false" aria-controls="rec-new1"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-eye"></use></svg><span class="sr-only">Show password</span></button>
+        </span>
+      </div>
+      <div class="field">
+        <label class="sr-only" for="rec-new2">Confirm new admin password</label>
+        <span class="pw-wrap">
+          <input id="rec-new2" type="password" placeholder="Confirm password" autocomplete="new-password">
+          <button type="button" class="pw-eye" data-action="tglPwVis" data-target="rec-new2" aria-pressed="false" aria-controls="rec-new2"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-eye"></use></svg><span class="sr-only">Show password</span></button>
+        </span>
+      </div>
+      <div class="gerr" id="rec-set-err" role="alert"></div>
+      <button class="btn btn-g full" data-action="submitRecoveredPassword"><span class="btn-txt">Save New Password</span><span class="spin-dot" aria-hidden="true"></span></button>
+    </div>
+
+    <button type="button" class="forgot-link" style="display:block;margin:16px auto 0;text-align:center" data-action="forgotBack">Back to login</button>
+  </div>
+</div>
+
+<!-- ═══ Show-once recovery-code modal (Tier B setup + rotation) ═══ -->
+<div id="rc-om">
+  <div class="mb">
+    <div class="mh"><span class="mt"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-shield"></use></svg> Save Your Recovery Code</span></div>
+    <div class="mbody">
+      <p style="font-size:.78rem;color:var(--slate);line-height:1.55;margin:0 0 4px">This is the only way to recover this device's admin password if you forget it. <strong>It will not be shown again.</strong> Copy it and store it somewhere safe (a password manager or a printed note).</p>
+      <pre class="rc-code" id="rc-code-text"></pre>
+      <div class="mbody-actions">
+        <button class="btn btn-n btn-s" data-action="copyRecoveryCode"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy code</button>
+        <label class="rc-cb"><input type="checkbox" id="rc-saved-cb"> I have saved my recovery code somewhere safe</label>
+      </div>
+    </div>
+    <div class="mf">
+      <button class="btn btn-g full" data-action="confirmRecoverySaved" id="rc-done" disabled>Done</button>
+    </div>
+  </div>
 </div>
 
 <!-- ═══ MAIN ADMIN UI ═══ -->
@@ -716,7 +820,7 @@ function deletedButLiveProjects(){
    ADMIN GATE , password setup / login / session
    ============================================================ */
 function showScreen(id){
-  ['setup-screen','login-screen','admin-app'].forEach(s=>{
+  ['setup-screen','login-screen','forgot-screen','admin-app'].forEach(s=>{
     document.getElementById(s).classList.toggle('hidden', s!==id);
   });
   // The gate preference pill (theme + premium glass) belongs to the gate
@@ -744,7 +848,10 @@ async function handleSetupPassword(){
     localStorage.setItem('mmgr_admin_pass_hash', await sha256(p1));
     sessionStorage.setItem('mmgr_admin_session','1');
     err.textContent = '';
-    enterAdmin();
+    // AREA G (Tier B): a brand-new admin always receives a one-time
+    // recovery code BEFORE the panel unlocks (G1 show-once + save gate).
+    const rcode = await rcStoreNewCode();
+    openRecoveryModal(rcode, enterAdmin);
   }finally{
     gateBusy(btn, false);
   }
@@ -785,6 +892,329 @@ function tglPwVis(btn){
   if (sr) sr.textContent = show ? 'Hide password' : 'Show password';
   btn.setAttribute('aria-pressed', show ? 'true' : 'false');
   input.focus();
+}
+/* ============================================================
+   ADMIN PASSWORD RECOVERY — AREA G (owner D8, two tier)
+   ------------------------------------------------------------
+   TIER B (active): device-local 24-char recovery code generated at
+   admin setup + on every rotation, shown ONCE behind a save checkbox.
+   Stored PBKDF2-SHA256 ~100k iters + random salt (DECIDED 09-03 —
+   never raw SHA); 5 wrong attempts -> 15-minute lock; a successful
+   code recovery rotates the code; a lost code's only path is the
+   explicit local wipe + re-setup below (never hidden).
+   TIER A (dormant): email OTP for signed-in admins via the server
+   endpoints below (flag EMAIL_RECOVERY_ENABLED; status/send/verify).
+   ============================================================ */
+var RC_KEY_HASH = 'mmgr_admin_recovery_hash';
+var RC_KEY_CREATED = 'mmgr_admin_recovery_created_at';
+var RC_KEY_ATTEMPTS = 'mmgr_admin_recovery_attempts';
+var RC_KEY_LOCKED = 'mmgr_admin_recovery_locked_until';
+var RC_MAX_ATTEMPTS = 5;
+var RC_LOCK_MS = 15 * 60 * 1000;
+var _rcOnDone = null;   // run when the show-once modal's Done is clicked
+var _rcRotate = false;  // Tier B recovery rotates the code; Tier A does not
+var _rcTick = null;     // lock countdown interval handle
+
+function rcEq(a, b){
+  if (typeof a !== 'string' || typeof b !== 'string' || a.length !== b.length) return false;
+  var d = 0;
+  for (var i = 0; i < a.length; i++) d |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return d === 0;
+}
+function rcRandHex(n){
+  const b = new Uint8Array(n);
+  crypto.getRandomValues(b);
+  return Array.from(b, function(x){ return x.toString(16).padStart(2, '0'); }).join('');
+}
+async function rcPbkdf2Hex(code, saltHex){
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(String(code || '').trim().toUpperCase()), 'PBKDF2', false, ['deriveBits']);
+  const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', salt: new TextEncoder().encode(saltHex || ''), iterations: 100000, hash: 'SHA-256' }, key, 256);
+  return Array.from(new Uint8Array(bits), function(x){ return x.toString(16).padStart(2, '0'); }).join('');
+}
+async function rcStoreNewCode(){
+  const code = generateCode(24); // base32-ish, no 0/O/1/I (existing helper)
+  const salt = rcRandHex(16);
+  const hash = await rcPbkdf2Hex(code, salt);
+  try{
+    localStorage.setItem(RC_KEY_HASH, salt + ':' + hash);
+    localStorage.setItem(RC_KEY_CREATED, new Date().toISOString());
+    localStorage.setItem(RC_KEY_ATTEMPTS, '0');
+    localStorage.removeItem(RC_KEY_LOCKED);
+  }catch(e){}
+  return code;
+}
+function rcStoredHash(){
+  try{ return localStorage.getItem(RC_KEY_HASH) || ''; }catch(e){ return ''; }
+}
+function rcLockMs(){
+  try{
+    const v = localStorage.getItem(RC_KEY_LOCKED);
+    if (!v) return 0;
+    return Math.max(0, new Date(v).getTime() - Date.now());
+  }catch(e){ return 0; }
+}
+function rcFmt(ms){
+  const m = Math.floor(ms / 60000);
+  const s = Math.floor((ms % 60000) / 1000);
+  return (m > 0 ? m + 'm ' : '') + s + 's';
+}
+function rcStopTick(){
+  if (_rcTick){ clearInterval(_rcTick); _rcTick = null; }
+}
+
+/* ---- show-once modal (setup + rotation), checkbox-gated close ---- */
+function openRecoveryModal(code, onDone){
+  document.getElementById('rc-code-text').textContent = code;
+  const cb = document.getElementById('rc-saved-cb');
+  cb.checked = false;
+  document.getElementById('rc-done').disabled = true;
+  _rcOnDone = onDone || null;
+  document.getElementById('rc-om').classList.add('show');
+}
+function confirmRecoverySaved(){
+  if (!document.getElementById('rc-saved-cb').checked) return; // gate
+  document.getElementById('rc-om').classList.remove('show');
+  const cb = _rcOnDone;
+  _rcOnDone = null;
+  if (cb) cb();
+}
+function copyRecoveryCode(){
+  const code = document.getElementById('rc-code-text').textContent;
+  if (navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(code).then(function(){ toast('Recovery code copied.'); }).catch(function(){ toast('Copy the code manually.', 'warn'); });
+  } else {
+    toast('Copy the code manually.', 'warn');
+  }
+}
+
+/* ---- forgot-password gate flow ---- */
+function rcRefreshLockUi(){
+  const note = document.getElementById('rec-lock-note');
+  if (!note) return;
+  const inp = document.getElementById('rec-code');
+  const btn = document.querySelector('#forgot-step-code [data-action="submitRecoveryCode"]');
+  const ms = rcLockMs();
+  if (ms > 0){
+    note.hidden = false;
+    document.getElementById('rec-lock-text').textContent = 'Too many wrong attempts. Recovery is locked for ' + rcFmt(ms) + '. Try again after the timer.';
+    if (inp) inp.disabled = true;
+    if (btn) btn.disabled = true;
+    if (!_rcTick) _rcTick = setInterval(rcRefreshLockUi, 1000);
+  } else {
+    note.hidden = true;
+    if (inp) inp.disabled = false;
+    if (btn) btn.disabled = false;
+    rcStopTick();
+  }
+}
+function openForgot(){
+  rcStopTick();
+  _rcRotate = false;
+  document.getElementById('forgot-step-code').classList.remove('hidden');
+  document.getElementById('forgot-step-set').classList.add('hidden');
+  ['rec-err','rec-set-err','tierA-err'].forEach(function(id){ document.getElementById(id).textContent = ''; });
+  document.getElementById('rec-code').value = '';
+  document.getElementById('rec-new1').value = '';
+  document.getElementById('rec-new2').value = '';
+  document.getElementById('tierA-otp').value = '';
+  document.getElementById('tierA-otp-row').hidden = true;
+  showScreen('forgot-screen');
+  rcRefreshLockUi();
+  rcLoadTierA();
+  setTimeout(function(){ const i = document.getElementById('rec-code'); if (i) i.focus(); }, 60);
+}
+function forgotBack(){
+  rcStopTick();
+  document.getElementById('login-err').textContent = '';
+  showScreen('login-screen');
+  setTimeout(function(){ document.getElementById('login-pass').focus(); }, 50);
+}
+function rcShowSetStep(){
+  document.getElementById('forgot-step-code').classList.add('hidden');
+  const set = document.getElementById('forgot-step-set');
+  set.classList.remove('hidden');
+  document.getElementById('rec-set-copy').textContent = _rcRotate
+    ? 'Code verified. Choose a new admin password — a fresh recovery code will be shown once before you continue.'
+    : 'Email verified. Choose a new admin password to unlock the panel.';
+  document.getElementById('rec-new1').value = '';
+  document.getElementById('rec-new2').value = '';
+  document.getElementById('rec-set-err').textContent = '';
+  setTimeout(function(){ document.getElementById('rec-new1').focus(); }, 60);
+}
+async function submitRecoveryCode(){
+  if (rcLockMs() > 0){ rcRefreshLockUi(); return; }
+  const stored = rcStoredHash();
+  const err = document.getElementById('rec-err');
+  const code = (document.getElementById('rec-code').value || '').trim().toUpperCase();
+  if (!stored){
+    err.textContent = 'No recovery code is set on this device. Your only path is resetting the admin password below.';
+    return;
+  }
+  const btn = document.querySelector('#forgot-step-code [data-action="submitRecoveryCode"]');
+  if (btn && btn.disabled) return;
+  gateBusy(btn, true);
+  try{
+    if (!code){ err.textContent = 'Enter your recovery code.'; return; }
+    const sep = stored.indexOf(':');
+    const salt = sep > 0 ? stored.slice(0, sep) : '';
+    const expected = sep > 0 ? stored.slice(sep + 1) : '';
+    const actual = await rcPbkdf2Hex(code, salt);
+    if (rcEq(actual, expected)){
+      try{
+        localStorage.setItem(RC_KEY_ATTEMPTS, '0');
+        localStorage.removeItem(RC_KEY_LOCKED);
+      }catch(e){}
+      err.textContent = '';
+      _rcRotate = true;
+      rcShowSetStep();
+    } else {
+      let attempts = 0;
+      try{ attempts = (parseInt(localStorage.getItem(RC_KEY_ATTEMPTS) || '0', 10) || 0) + 1; }catch(e){ attempts = 1; }
+      try{ localStorage.setItem(RC_KEY_ATTEMPTS, String(attempts)); }catch(e){}
+      if (attempts >= RC_MAX_ATTEMPTS){
+        try{ localStorage.setItem(RC_KEY_LOCKED, new Date(Date.now() + RC_LOCK_MS).toISOString()); }catch(e){}
+        err.textContent = '';
+        rcRefreshLockUi();
+      } else {
+        err.textContent = 'Incorrect recovery code. ' + (RC_MAX_ATTEMPTS - attempts) + (RC_MAX_ATTEMPTS - attempts === 1 ? ' attempt left.' : ' attempts left.');
+      }
+    }
+  }finally{
+    gateBusy(btn, false);
+  }
+}
+async function submitRecoveredPassword(){
+  const n1 = document.getElementById('rec-new1').value;
+  const n2 = document.getElementById('rec-new2').value;
+  const err = document.getElementById('rec-set-err');
+  if (n1.length < 8){ err.textContent = 'Use at least 8 characters.'; return; }
+  if (n1 !== n2){ err.textContent = 'Passwords do not match.'; return; }
+  const btn = document.querySelector('#forgot-step-set [data-action="submitRecoveredPassword"]');
+  if (btn && btn.disabled) return;
+  gateBusy(btn, true);
+  try{
+    localStorage.setItem('mmgr_admin_pass_hash', await sha256(n1));
+    try{
+      localStorage.setItem(RC_KEY_ATTEMPTS, '0');
+      localStorage.removeItem(RC_KEY_LOCKED);
+    }catch(e){}
+    sessionStorage.setItem('mmgr_admin_session', '1');
+    if (_rcRotate){
+      // Rotation (G1): a fresh code is issued and must be re-saved before use.
+      const code = await rcStoreNewCode();
+      openRecoveryModal(code, enterAdmin);
+    } else {
+      // Tier A: no rotation — the device recovery code is untouched.
+      enterAdmin();
+    }
+  }finally{
+    gateBusy(btn, false);
+  }
+}
+function resetAdminLocal(){
+  admConfirm({
+    title: 'Reset admin password on this device?',
+    message: 'The admin password and recovery code will be removed from THIS device and you will set them up again now. Your projects and cloud data are not affected. Anyone with physical access to this browser could set a new password afterward — only do this on a device you trust.',
+    danger: true,
+    confirmLabel: 'Reset',
+    onOk: function(){
+      try{
+        localStorage.removeItem('mmgr_admin_pass_hash');
+        localStorage.removeItem(RC_KEY_HASH);
+        localStorage.removeItem(RC_KEY_CREATED);
+        localStorage.removeItem(RC_KEY_ATTEMPTS);
+        localStorage.removeItem(RC_KEY_LOCKED);
+        sessionStorage.removeItem('mmgr_admin_session');
+      }catch(e){}
+      rcStopTick();
+      document.getElementById('login-pass').value = '';
+      document.getElementById('login-err').textContent = '';
+      document.getElementById('setup-err').textContent = '';
+      showScreen('setup-screen');
+      setTimeout(function(){ document.getElementById('setup-pass1').focus(); }, 50);
+    }
+  });
+}
+
+/* ---- TIER A client surface (dormant server flow, AREA G2) ---- */
+async function rcLoadTierA(){
+  const line = document.getElementById('tierA-line');
+  if (!line) return;
+  const sendEl = document.getElementById('tierA-send');
+  const otpRow = document.getElementById('tierA-otp-row');
+  sendEl.hidden = true;
+  otpRow.hidden = true;
+  document.getElementById('tierA-err').textContent = '';
+  try{
+    const res = await fetch('/api/auth/admin-recovery/status', { method: 'GET', credentials: 'same-origin' });
+    const data = await res.json().catch(function(){ return {}; });
+    if (res.status === 401 || !data.ok){
+      line.textContent = 'Sign in (Google or email) to unlock email-based recovery.';
+      return;
+    }
+    if (data.enabled){
+      line.textContent = 'Have a recovery code emailed to the signed-in address:';
+      document.getElementById('tierA-mask').textContent = data.emailMasked || 'your email';
+      sendEl.hidden = false;
+    } else {
+      line.textContent = 'Email recovery to ' + (data.emailMasked || 'the signed-in account') + ' is coming soon. Use your device recovery code above.';
+    }
+  }catch(e){
+    line.textContent = '';
+  }
+}
+async function sendAdminRecovery(){
+  const btn = document.querySelector('#tierA-zone [data-action="sendAdminRecovery"]');
+  if (btn) btn.disabled = true;
+  const line = document.getElementById('tierA-line');
+  const err = document.getElementById('tierA-err');
+  const otpRow = document.getElementById('tierA-otp-row');
+  try{
+    const res = await fetch('/api/auth/admin-recovery/send', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+    const data = await res.json().catch(function(){ return {}; });
+    if (res.ok && data.ok){
+      err.textContent = '';
+      otpRow.hidden = false;
+      line.textContent = data.sent
+        ? ('Code sent to ' + (data.emailMasked || 'your email') + '. It expires in 15 minutes.')
+        : 'The recovery email could not be sent right now — try again in a moment.';
+      setTimeout(function(){ document.getElementById('tierA-otp').focus(); }, 60);
+    } else if (res.status === 429){
+      err.textContent = 'Too many codes sent — try again in an hour.';
+    } else if (res.status === 503){
+      err.textContent = 'Email recovery is not enabled yet — use your device recovery code above.';
+    } else {
+      err.textContent = (data && data.error) || ('Recovery unavailable (HTTP ' + res.status + ').');
+    }
+  }catch(e){
+    err.textContent = 'Could not reach the recovery service.';
+  }finally{
+    if (btn) btn.disabled = false;
+  }
+}
+async function verifyAdminRecovery(){
+  const code = (document.getElementById('tierA-otp').value || '').trim().toUpperCase();
+  const err = document.getElementById('tierA-err');
+  if (!code){ err.textContent = 'Enter the code emailed to you.'; return; }
+  const btn = document.querySelector('#tierA-zone [data-action="verifyAdminRecovery"]');
+  if (btn) btn.disabled = true;
+  try{
+    const res = await fetch('/api/auth/admin-recovery/verify', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code: code }) });
+    const data = await res.json().catch(function(){ return {}; });
+    if (res.ok && data.ok){
+      err.textContent = '';
+      _rcRotate = false;
+      rcShowSetStep();
+    } else if (res.status === 429){
+      err.textContent = 'Too many attempts — that code is locked. Request a new one in a few minutes.';
+    } else {
+      err.textContent = (data && data.error) || 'Invalid code.';
+    }
+  }catch(e){
+    err.textContent = 'Could not reach the recovery service.';
+  }finally{
+    if (btn) btn.disabled = false;
+  }
 }
 function lockAdmin(){
   sessionStorage.removeItem('mmgr_admin_session');
@@ -1909,6 +2339,13 @@ document.addEventListener('keydown', e=>{
   if(e.key==='Escape'){ admCfmCancel(); closePwModal(); closeProjectModal(); closeSnippetModal(); closeAdminNav(); }
 });
 document.getElementById('pw-new2').addEventListener('keydown', e=>{ if(e.key==='Enter') submitPasswordChange(); });
+/* AREA G recovery wiring: Enter-to-submit per recovery input + the
+   show-once modal's save-checkbox gate (Done stays disabled until the
+   checkbox is checked — the code must not be dismissible unsaved). */
+document.getElementById('rec-code').addEventListener('keydown', function(e){ if(e.key==='Enter'){ e.preventDefault(); submitRecoveryCode(); } });
+document.getElementById('rec-new2').addEventListener('keydown', function(e){ if(e.key==='Enter'){ e.preventDefault(); submitRecoveredPassword(); } });
+document.getElementById('tierA-otp').addEventListener('keydown', function(e){ if(e.key==='Enter'){ e.preventDefault(); verifyAdminRecovery(); } });
+document.getElementById('rc-saved-cb').addEventListener('change', function(){ document.getElementById('rc-done').disabled = !this.checked; });
 
 /* ============================================================
    Phase B , data-action event delegation.
@@ -1979,6 +2416,15 @@ const ADMIN_ACTION_MAP = {
   'adminSetupPassword': () => handleSetupPassword(),
   'adminLogin': () => handleLogin(),
   'tglPwVis': (el) => tglPwVis(el),
+  'openForgot': () => openForgot(),
+  'forgotBack': () => forgotBack(),
+  'submitRecoveryCode': () => submitRecoveryCode(),
+  'submitRecoveredPassword': () => submitRecoveredPassword(),
+  'resetAdminLocal': () => resetAdminLocal(),
+  'confirmRecoverySaved': () => confirmRecoverySaved(),
+  'copyRecoveryCode': () => copyRecoveryCode(),
+  'sendAdminRecovery': () => sendAdminRecovery(),
+  'verifyAdminRecovery': () => verifyAdminRecovery(),
   'adminOpenProject': (el) => adminOpenProject(_admIdx(el)),
   'changePassword': () => openPasswordModal(),
   'admCfmOk': () => admCfmOk(),

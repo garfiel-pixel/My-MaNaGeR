@@ -43,6 +43,7 @@ import { handleReviewsCreate, handleReviewsList, handleReviewList,
 import { handleAiChat } from './ai-proxy.js';
 import { handleMcpServer } from './mcp/server.js';
 import { handleAuthGoogle, handleAuthMe, handleAuthLogout, handleAuthLogoutAll, mintSession } from './auth/google.js';
+import { handleAdminRecoveryStatus, handleAdminRecoverySend, handleAdminRecoveryVerify } from './auth/recovery.js';
 import { handleAuthRegister, handleAuthLogin, handleAuthPasswordChange,
   handleAuthVerifyPassword, handleAuthVerify, handleAuthForgot,
   handleAuthReset, handleAuthResendVerify, handleAuthDeleteAccount } from './auth/session.js';
@@ -404,6 +405,23 @@ export async function routeApi(request, env, url) {
       const r = await rl(request, 'authForgot', env);
       if (r) return r;
       return handleAuthResendVerify(request, env);
+    }
+    // Tier A admin recovery (AREA G2): status probe + OTP send + verify.
+    // Send rides the mail-trigger bucket, verify rides the login bucket
+    // (credential-guessing surface); both are also guarded per-account in
+    // src/auth/recovery.js (3/hr send, 5-attempt lock).
+    if (path === '/api/auth/admin-recovery/status' && request.method === 'GET') {
+      return handleAdminRecoveryStatus(request, env);
+    }
+    if (path === '/api/auth/admin-recovery/send' && request.method === 'POST') {
+      const r = await rl(request, 'authForgot', env);
+      if (r) return r;
+      return handleAdminRecoverySend(request, env);
+    }
+    if (path === '/api/auth/admin-recovery/verify' && request.method === 'POST') {
+      const r = await rl(request, 'authLogin', env);
+      if (r) return r;
+      return handleAdminRecoveryVerify(request, env);
     }
     if (path === '/api/auth/logout' && request.method === 'POST') {
       return handleAuthLogout(request, env);

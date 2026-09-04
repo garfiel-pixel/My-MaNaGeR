@@ -38,7 +38,12 @@
   // can prefer env.GOOGLE_CLIENT_ID over its constant. The Client Secret is a
   // Wrangler secret ONLY (env.GOOGLE_CLIENT_SECRET) — never a var in this file.
   "vars": {
-    "GOOGLE_CLIENT_ID": "297970704704-m05hgt93lfaq286q90br8c96ffg1aph3.apps.googleusercontent.com"
+    "GOOGLE_CLIENT_ID": "297970704704-m05hgt93lfaq286q90br8c96ffg1aph3.apps.googleusercontent.com",
+    // AREA G2 (owner D8 2026-09-03): Tier A email-OTP admin recovery ships
+    // DORMANT. Flip to true only once a verified sending domain exists
+    // (RESEND_FROM_EMAIL pointed at a verified domain); send/verify then
+    // 503 until then. QA flips it per-run via wrangler dev --var.
+    "EMAIL_RECOVERY_ENABLED": false
   },
   // Service binding: the Presence DO calls back to the Worker for code-based
   // auth validation (codes must not appear in the WebSocket URL query string).

@@ -3350,3 +3350,114 @@ body.dark-mode.db-page .db-auto-lbl{color:var(--db-text-secondary);}
   .calc-panel{transition:none!important;transform:none!important;opacity:1!important;}
   .calc-result-show{animation:none!important;}
 }
+
+/* ============================================================
+   PHASE 3 — ROSE-GOLD PALETTE + 3D VIEW DECK (owner D7/D9/E10,
+   2026-09-03). Two independent axes, both toggled from the dock:
+   PALETTE html[data-theme="rose-gold"] (gold stays default) and
+   VIEW body.view-3d (flat stays default). Any light/dark/palette/
+   view combination is valid.
+   ============================================================ */
+
+/* ---- ROSE-GOLD palette, light ---- */
+html[data-theme="rose-gold"]{
+  --canvas:#FBF1EC;
+  --sidebar:#FEF9F6;
+  --card:#FFFDFB;
+  --surface:#FFFDFB;
+  --surface-raised:#FAF1EC;
+  --border:#E9D8CF;
+  --text:#2E272C;            /* espresso (audit #9) */
+  --text-heading:#221B20;
+  --text-secondary:#4E4147;
+  --text-muted:#7A6B72;
+  --slate:#7A6B72;
+  --brand:#FF6E52;           /* coral */
+  --brand-hover:#E0563B;
+  --brand-subtle:rgba(255,110,82,0.09);
+  --brand-on:#2E272C;        /* espresso ON coral */
+  --gold:#FF6E52;
+  --gold-rgb:255,110,82;
+  --on-gold:#2E272C;
+  --tile-bg:#F7EBE5;
+  --track-bg:#EDDCD2;
+  --toggle-on-bg:#2E272C;
+  --toggle-on-fg:#FFF6F2;
+  --toggle-off-bg:rgba(46,39,44,0.08);
+  --toggle-off-fg:#4E4147;
+  --glass-fill-dark:#FFFBF8;
+  --glass-fill-dark-hover:#FBF1EB;
+  --glass-fill-dark-active:#F6E7DF;
+  --glass-border:1px solid #F0DCD2;
+  --glass-rim:inset 0 1px 0 rgba(255,255,255,0.6);
+}
+/* 3-stop ambient canvas (E10), light + dark. body{} sets the color via
+   background shorthand; this higher-specificity rule overlays the gradient. */
+html[data-theme="rose-gold"] body{
+  background-image:linear-gradient(172deg,#FEF7F3 0%,#F7E7DF 58%,#F1D9CF 100%);
+  background-attachment:fixed;
+}
+
+/* ---- ROSE-GOLD palette, dark ---- */
+html[data-theme="rose-gold"] body.dark-mode{
+  --canvas:#251611;
+  --sidebar:#2A1915;
+  --card:#2E1D18;
+  --surface:#2E1D18;
+  --surface-raised:#3A251E;
+  --border:#4A2F27;
+  --text:#F3E7E1;
+  --text-heading:#FBF2ED;
+  --text-secondary:#D0B7AC;
+  --text-muted:#B79C90;
+  --slate:#B79C90;
+  --brand:#FF8A70;
+  --brand-hover:#FF6E52;
+  --brand-subtle:rgba(255,138,112,0.10);
+  --brand-on:#241713;
+  --gold:#FF8A70;
+  --gold-rgb:255,138,112;
+  --on-gold:#241713;
+  --tile-bg:#332019;
+  --track-bg:#3F2A22;
+  --toggle-on-bg:#FF8A70;
+  --toggle-on-fg:#241713;
+  --toggle-off-bg:rgba(255,138,112,0.10);
+  --toggle-off-fg:#E6CFC4;
+  --glass-fill-dark:#35211A;
+  --glass-fill-dark-hover:#3E2920;
+  --glass-fill-dark-active:#472F25;
+  --glass-border:1px solid rgba(255,138,112,0.18);
+  --glass-rim:inset 0 1px 0 rgba(255,138,112,0.12);
+  background-image:linear-gradient(172deg,#231310 0%,#2C1A15 58%,#3A2018 100%);
+  background-attachment:fixed;
+}
+@media (prefers-reduced-transparency:reduce){
+  html[data-theme="rose-gold"] body,html[data-theme="rose-gold"] body.dark-mode{background-image:none;}
+}
+
+/* ---- 3D VIEW DECK (audits #6/#7/#8 solved structurally) ----
+   NEVER transform <body> (position:fixed overlays + z-index die inside a
+   transformed ancestor). Each page's .view-deck wrapper (launcher #grid,
+   project main#app-main, admin main) is the ONLY tilt target; modals,
+   toasts, the AI window and drawers live OUTSIDE it and stay flat. No
+   preserve-3d, no nested depth. */
+body.view-3d .view-deck{
+  transform:perspective(1500px) rotateX(9deg) rotateY(-14deg) rotateZ(2.5deg);
+  transform-origin:50% 30%;
+  transition:transform .65s cubic-bezier(.25,1,.5,1);
+  will-change:transform;
+}
+/* WebKit 3D+blur bug (audit #8): while tilted, deck surfaces drop blur —
+   live backdrop blur stays confined to non-transformed chrome (dock, header). */
+body.view-3d .view-deck{--glass-blur:0px;}
+/* Mobile auto-flat + reduced motion + print (audit #5): the repo's own
+   narrow boundary (769px desktop columns = 768px max, same as line 1110). */
+@media(max-width:768px){body.view-3d .view-deck{transform:none!important;will-change:auto;}}
+@media (prefers-reduced-motion:reduce){body.view-3d .view-deck{transform:none!important;transition:none!important;will-change:auto;}}
+@media print{body.view-3d .view-deck{transform:none!important;}}
+
+/* Dock now carries the Palette (Gold/Rose) and View (Flat/3D) rows — a
+   little wider so label + segmented control fit on one line each. */
+.dock{min-width:188px;}
+.dock .dock-item{gap:10px;}

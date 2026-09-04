@@ -147,7 +147,7 @@
 </header>
 
 <!-- MAIN -->
-<main id="app-main">
+<main id="app-main" class="view-deck">
   <div class="vl">My MaNaGeR , <span id="meth-lbl">Project View</span></div>
 
   <!-- STRUCTURAL-IA §2: grouped navigation (Option A , single row, grouped
@@ -1826,6 +1826,22 @@ if ('serviceWorker' in navigator &&
     <button type="button" class="pal-btn" data-pal="light" aria-pressed="false">Light</button>
     <button type="button" class="pal-btn" data-pal="dark" aria-pressed="false">Dark</button>
     <button type="button" class="pal-btn" data-pal="system" aria-pressed="false">System</button>
+  </span>
+  <span class="dock-item">
+    <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-palette"></use></svg>
+    <span class="dock-lbl">Palette</span>
+    <span class="pal-switch" role="group" aria-label="Palette">
+      <button type="button" class="pal-btn" data-palette="gold" aria-pressed="true">Gold</button>
+      <button type="button" class="pal-btn" data-palette="rose" aria-pressed="false">Rose</button>
+    </span>
+  </span>
+  <span class="dock-item">
+    <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cube"></use></svg>
+    <span class="dock-lbl">View</span>
+    <span class="pal-switch" role="group" aria-label="View mode">
+      <button type="button" class="pal-btn" data-view="flat" aria-pressed="true">Flat</button>
+      <button type="button" class="pal-btn" data-view="3d" aria-pressed="false">3D</button>
+    </span>
   </span>
   <span class="dock-item">
     <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-orb"></use></svg>

@@ -98,7 +98,27 @@ function check(name, val, detail) {
       if (b) b.click();
     }
   })()`);
-  await delay(2000);
+  // AREA G (Tier B, shipped after this harness's last green run): a fresh
+  // setup now parks the panel behind the show-once recovery-code modal until
+  // the save checkbox is confirmed — poll-dismiss it (PBKDF2 + code gen can
+  // take a beat) so enterAdmin() runs and rows render.
+  for (let t = 0; t < 24; t++) {
+    const done = await ev(`(function(){
+      const om = document.getElementById('rc-om');
+      const adminApp = document.getElementById('admin-app');
+      if (adminApp && !adminApp.classList.contains('hidden')) return 'unlocked';
+      if (om && om.classList.contains('show')){
+        const cb = document.getElementById('rc-saved-cb');
+        if (cb && !cb.checked){ cb.checked = true; cb.dispatchEvent(new Event('change', { bubbles: true })); }
+        const doneBtn = document.querySelector('#rc-om [data-action="confirmRecoverySaved"]');
+        if (doneBtn) doneBtn.click();
+      }
+      return 'waiting';
+    })()`);
+    if (done === 'unlocked') break;
+    await delay(500);
+  }
+  await delay(500);
   const a2 = await ev(`(function(){
     const btns = Array.from(document.querySelectorAll('#project-list [data-action="publishToCloud"]'));
     return { rows: document.querySelectorAll('#project-list .prow').length,

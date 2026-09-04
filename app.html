@@ -269,7 +269,7 @@ body.glass-premium .wrap{position:relative;z-index:1;}
     <div><h2 class="db-sec-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-folder"></use></svg> Projects</h2></div>
     <div style="display:flex;align-items:center;gap:8px;"><a href="admin.html" class="btn btn-o btn-s" style="text-decoration:none;"><svg class="ico" aria-hidden="true" style="width:14px;height:14px;"><use href="css/mmgr-icons.svg#i-plus"></use></svg> New Project</a></div>
   </div>
-  <div class="grid" id="grid"><!-- user project cards render here --></div>
+  <div class="grid view-deck" id="grid"><!-- user project cards render here --></div>
 
   <!-- DEMO PROJECTS SECTION — separate from user projects, collapsible -->
   <div id="demo-sec" class="db-sec" aria-label="Demo Projects" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-top:24px;">
@@ -1138,6 +1138,21 @@ if ('serviceWorker' in navigator &&
     <button type="button" class="pal-btn" data-pal="light" aria-pressed="false">Light</button>
     <button type="button" class="pal-btn" data-pal="dark" aria-pressed="false">Dark</button>
     <button type="button" class="pal-btn" data-pal="system" aria-pressed="false">System</button>
+  </span>  <span class="dock-item">
+    <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-palette"></use></svg>
+    <span class="dock-lbl">Palette</span>
+    <span class="pal-switch" role="group" aria-label="Palette">
+      <button type="button" class="pal-btn" data-palette="gold" aria-pressed="true">Gold</button>
+      <button type="button" class="pal-btn" data-palette="rose" aria-pressed="false">Rose</button>
+    </span>
+  </span>
+  <span class="dock-item">
+    <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cube"></use></svg>
+    <span class="dock-lbl">View</span>
+    <span class="pal-switch" role="group" aria-label="View mode">
+      <button type="button" class="pal-btn" data-view="flat" aria-pressed="true">Flat</button>
+      <button type="button" class="pal-btn" data-view="3d" aria-pressed="false">3D</button>
+    </span>
   </span>
   <span class="dock-item">
     <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-orb"></use></svg>
@@ -1146,6 +1161,5 @@ if ('serviceWorker' in navigator &&
   </span>
 </div>
 <script defer src="js/mmgr-dock.js"></script>
-
 </body>
 </html>

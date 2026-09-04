@@ -471,6 +471,46 @@ recovery markup (forgot-screen/rc-om/openForgot/submitRecoveryCode,
 production: EMAIL_RECOVERY_ENABLED=false var; flip only after a
 verified sending domain exists.
 
+PHASE 3 EXECUTION RECORD (2026-09-03, SHIPPED) - AREA E rose-gold
+palette + 3D view deck dual variant. TWO independent dock axes, both
+from the Phase-1 bottom dock: PALETTE Gold/Rose (mmgr_palette ->
+html[data-theme="rose-gold"]) and VIEW Flat/3D (mmgr_view_mode ->
+body.view-3d). Rose-gold tokens (E10): light + dark blocks on
+html[data-theme="rose-gold"] (+ body.dark-mode), espresso #2E272C text
++ coral --gold #FF6E52 (light) / #FF8A70 (dark), espresso ON coral
+(never white-on-coral, E6), 3-stop ambient body gradient + prefers-
+reduced-transparency kill. 3D deck (E11/E13): NEVER transforms body -
+modals/toasts/AI window/dock stay flat (E4); the ONLY tilt target is
+.view-deck (launcher #grid, project main#app-main, admin main) with
+perspective rotateX/rotateY/rotateZ + .65s ease; WebKit 3D+blur bug
+(E5): deck --glass-blur:0px while tilted, live blur confined to non-
+transformed chrome; auto-flat at <=768px (E3, repo boundary) +
+prefers-reduced-motion + print via media rules (CSS, no JS needed);
+resize/orientation re-eval + stored-3d re-enable on widening in
+dock.js. Gold stays default; any light/dark x palette x view combo is
+valid. Glass accent follows palette: new uRose uniform in
+js/mmgr-glass.js (coral mix, refreshTheme on palette change). E1
+Safari: glass rules keep the repo's -webkit-backdrop-filter parity +
+@supports-not fallback pattern (30 webkit forms in css/mmgr.css). E7:
+.pal-btn/.dock etc carry :focus-visible rings (line 210/246). E8:
+dock.js palette/view reads+writes all try/catch localStorage + null-
+checked, E2 fluid (no fixed heights), E9 real labels only. Dock grows
+rows (Palette + View segmented, aria-pressed, icons i-rose-gold
+added to sprite). Harness: NEW tools/qa-view-mode.cjs (V1-V9 incl.
+reload persistence, mobile auto-flat at 640px + re-enable past 769,
+reduced-motion flat, light+dark contrast >= 4.5, project+admin deck
+presence; 16 gates). sw v234 (no inline scripts touched - CSP hashes
+UNCHANGED). Files: css/mmgr.css (rose tokens + deck + ambient),
+js/mmgr-dock.js (axes), js/mmgr-glass.js (uRose), css/mmgr-icons.svg
+(i-rose-gold), app/project/admin.html (deck wrappers + dock rows),
+sw.js. Verification: npm run verify ALL GREEN (CSP 17, sw v234, hidden
+2853); qa-view-mode 16/16; qa-glass PASS; theme CDP OK; glass CDP OK;
+controls-admin 10/10 (S3 arm updated: Phase-2 recovery modal now parks
+the panel - harness poll-dismisses it); qa-p1 PASS; qa-full 173/174
+(only the parked pre-existing check-37 static-style gate); wrangler
+dry-run green; emoji scan clean. NOT DEPLOYED YET (owner go pending) -
+asset/CSS/JS-only, no migration.
+
 --------------------------------------------------------------------
 AREA F - BACKLOG / DIRECTIVE DEFERRED ITEMS (for completeness)
 --------------------------------------------------------------------

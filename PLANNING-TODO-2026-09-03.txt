@@ -75,6 +75,19 @@ D13. CI RUNS FREQUENTLY (owner, 09-03): during execution, CI is not a
     before commit/push, and pushes go out as work lands so GitHub
     Actions CI keeps validating continuously - never batch everything
     to one end-of-day push.
+D13b. CI REPAIR LOOP (owner, 09-04): whenever GitHub CI is red, fix it
+    with the loop documented in AGENTS.md #8 — read the FAILING STEP via
+    the Actions API (steps after it are skipped, so a run can hide
+    multiple latent failures), reproduce the suite locally, fix the
+    HARNESS when a wave changed the app contract under it (known stale
+    family: exact body-class regexes + admin setup flows that ignore the
+    Phase-2 show-once recovery modal #rc-om), verify locally, push, and
+    POLL the Actions API to green. Record every fix here. CI FIXES
+    2026-09-04: qa-dashboard-spec (body class 'db-page has-dock', was
+    exact-match) + verify-cloud-autosave-signin C3 (admin publish arm
+    poll-dismisses #rc-om) + verify-controls-admin S3 (same modal). CI
+    GREEN on 1339a3f. AGENTS.md #8 holds the full procedure + latest
+    state line.
 D14. SKILLS ARE THE ALWAYS-ON POV (owner, 09-03): the locked
     .agents/skills/* set is the reference point of view for every
     planning/execution/verification decision in this plan. Load the

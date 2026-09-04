@@ -192,6 +192,44 @@ tar --exclude='.git' --exclude='.wrangler' --exclude='node_modules' \
 cd /tmp/mmgr-deploy && npx wrangler deploy
 ```
 
+### 8. CI REPAIR LOOP — keep GitHub Actions green (owner standing rule, 2026-09-04)
+
+GitHub CI (`ci.yml`) is the deploy gate. A red run BLOCKS shipping. The
+loop that keeps it green — apply after EVERY wave, and whenever the user
+reports a CI failure:
+
+1. **Read the failing step, not the run.** `curl` the Actions API
+   (`/repos/{owner}/{repo}/actions/runs?branch=main&per_page=1` then
+   `/runs/{id}/jobs` → `steps[].conclusion==='failure'`). The first red
+   step is the one to fix; steps after it are SKIPPED, so a run can hide
+   MULTIPLE latent failures (fix one, push, re-run, next one surfaces).
+2. **Reproduce locally before touching code.** If the suite is
+   self-contained (starts its own wrangler/Chrome) run it directly:
+   `node tools/<suite>.cjs`. T2 suites need no server — they spawn
+   wrangler dev on their own port. T1 suites are pure-static.
+3. **Fix the HARNESS when the app changed under it, not the app.** Every
+   time a wave changes an app flow, stale harnesses fail first. Known
+   stale-check family (Phase 1/2/3 waves): exact `<body class="...">`
+   matches (use `/\bclass/` word-boundary regexes), and any harness that
+   unlocks the admin gate via `adminSetupPassword` and expects rows
+   immediately — Phase 2's show-once recovery modal (#rc-om) parks the
+   panel until `#rc-saved-cb` is checked + `confirmRecoverySaved` clicked,
+   so poll-dismiss it (see `tools/verify-controls-admin.cjs` S3).
+4. **Verify locally green → commit → push → POLL the Actions API**
+   (`status/completed`) until the run finishes, and re-enter the loop if
+   a NEW step fails. Do NOT assume a green push; the run is the truth.
+5. **`npm run verify` + T1 gates locally** catch most static breakage
+   before CI burns a cycle (qa-dashboard-spec, qa-changelog-diffs,
+   qa-ai-relay, verify-report-issue, verify-dynamic-labels,
+   verify-delegate-gate, verify-render-exports, wrangler dry-run).
+6. **Record the fix in the tracker** (PLANNING-TODO-2026-09-03.txt) —
+   commit message + which harness/app contract changed — so future waves
+   don't re-break the same gate.
+
+Latest CI state (2026-09-04): GREEN on 1339a3f after fixing
+qa-dashboard-spec (has-dock body class) + verify-cloud-autosave-signin
+C3 (recovery-modal poll). Check the API before trusting this line.
+
 ## Editing workflow
 
 1. Identify which skills apply (table above) and load them.

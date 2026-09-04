@@ -194,7 +194,26 @@ function check(name, val, detail) {
     const b=document.querySelector('[data-action="adminSetupPassword"]');
     if(b)b.click();
   })()`);
-  await delay(2000);
+  // Phase-2 (AREA G): a fresh setup now parks the panel behind the show-once
+  // recovery-code modal until the save checkbox is confirmed — poll-dismiss it
+  // so admin rows render before C3 looks for the Publish button.
+  for (let t = 0; t < 24; t++) {
+    const done = await ev(`(function(){
+      const adminApp = document.getElementById('admin-app');
+      if (adminApp && !adminApp.classList.contains('hidden')) return 'unlocked';
+      const om = document.getElementById('rc-om');
+      if (om && om.classList.contains('show')){
+        const cb = document.getElementById('rc-saved-cb');
+        if (cb && !cb.checked){ cb.checked = true; cb.dispatchEvent(new Event('change', { bubbles: true })); }
+        const doneBtn = document.querySelector('#rc-om [data-action="confirmRecoverySaved"]');
+        if (doneBtn) doneBtn.click();
+      }
+      return 'waiting';
+    })()`);
+    if (done === 'unlocked') break;
+    await delay(500);
+  }
+  await delay(500);
   const c3 = await ev(`(async function(){
     try {
       const sleep = ms => new Promise(r => setTimeout(r, ms));

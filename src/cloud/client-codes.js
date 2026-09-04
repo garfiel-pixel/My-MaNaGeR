@@ -25,8 +25,10 @@ const SECTION_LABELS = {
 /**
  * POST /api/cloud/projects/:id/client-codes
  * Create a new client code with section toggles.
- * Body: { sections: ["dash", "wbs", "bud"] }
- * Returns: { ok: true, code: "XXXXXX", codeId: 123, sections: [...] }
+ * Body: { sections: ["dash", "wbs", "bud"], expiresInDays: 30 }
+ *   or { sections: [...], expiresAt: "2026-10-01T00:00:00Z" } — an
+ *   omitted/zero expiry means the code never expires.
+ * Returns: { ok: true, code: "XXXXXX", codeId: 123, sections: [...], expiresAt }
  */
 export async function handleCloudClientCodeCreate(request, env, projectId) {
   try {
@@ -35,10 +37,11 @@ export async function handleCloudClientCodeCreate(request, env, projectId) {
 
     // Verify owner
     const project = await env.DB.prepare(
-      'SELECT project_id, google_sub FROM cloud_projects WHERE project_id = ?'
+      'SELECT project_id, google_sub, deleted_at FROM cloud_projects WHERE project_id = ?'
     ).bind(projectId).first();
     if (!project) return json({ ok: false, error: 'project not found' }, 404);
     if (project.google_sub !== session.sub) return json({ ok: false, error: 'not owner' }, 403);
+    if (project.deleted_at) return json({ ok: false, error: 'project_deleted' }, 403);
 
     const body = await request.json();
     const sections = Array.isArray(body.sections) ? body.sections : ['dash'];
@@ -46,20 +49,31 @@ export async function handleCloudClientCodeCreate(request, env, projectId) {
     const validSections = sections.filter(s => CLIENT_SECTIONS.includes(s));
     if (!validSections.length) return json({ ok: false, error: 'no valid sections' }, 400);
 
+    // Expiry: expiresInDays (positive integer) wins, else expiresAt (ISO).
+    // Anything invalid/absent means never expires.
+    let expiresAt = null;
+    const days = Math.floor(Number(body.expiresInDays));
+    if (Number.isFinite(days) && days > 0) {
+      expiresAt = new Date(Date.now() + days * 86400000).toISOString();
+    } else if (typeof body.expiresAt === 'string' && !isNaN(Date.parse(body.expiresAt))) {
+      expiresAt = new Date(body.expiresAt).toISOString();
+    }
+
     // Generate code
     const code = genCode();
     const salt = randomSaltHex();
     const codeHash = await hashOwnerCode(code, salt);
 
     const result = await env.DB.prepare(
-      'INSERT INTO cloud_client_codes (project_id, code_hash, code_salt, sections) VALUES (?, ?, ?, ?)'
-    ).bind(projectId, codeHash, salt, JSON.stringify(validSections)).run();
+      'INSERT INTO cloud_client_codes (project_id, code_hash, code_salt, sections, expires_at) VALUES (?, ?, ?, ?, ?)'
+    ).bind(projectId, codeHash, salt, JSON.stringify(validSections), expiresAt).run();
 
     return json({
       ok: true,
       code: code,
       codeId: result.meta.last_row_id,
-      sections: validSections
+      sections: validSections,
+      expiresAt: expiresAt
     });
   } catch (e) {
     return json({ ok: false, error: e.message || 'server error' }, 500);
@@ -135,18 +149,24 @@ export async function handleCloudClientCodeRevoke(request, env, projectId, codeI
 export async function verifyClientCode(code, projectId, env) {
   if (!code || !projectId) return null;
 
-  // Find all codes for this project and compare hashes
+  // C19: carry expires_at + the project's deleted_at so callers can map the
+  // friendly errors (code_expired / project_deleted) instead of a bare 403.
   const rows = await env.DB.prepare(
-    'SELECT id, code_hash, code_salt, sections FROM cloud_client_codes WHERE project_id = ?'
+    'SELECT c.id, c.code_hash, c.code_salt, c.sections, c.expires_at, p.deleted_at FROM cloud_client_codes c JOIN cloud_projects p ON p.project_id = c.project_id WHERE c.project_id = ?'
   ).bind(projectId).all();
 
   for (const row of (rows.results || [])) {
     const hash = await hashOwnerCode(code, row.code_salt);
     if (hash === row.code_hash) {
+      const expiresAt = row.expires_at || null;
+      const expired = !!(expiresAt && new Date(expiresAt).getTime() < Date.now());
       return {
         projectId: projectId,
         sections: JSON.parse(row.sections || '["dash"]'),
-        codeId: row.id
+        codeId: row.id,
+        expiresAt: expiresAt,
+        expired: expired,
+        deleted: !!row.deleted_at
       };
     }
   }

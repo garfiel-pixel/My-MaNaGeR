@@ -102,15 +102,15 @@ var MMGR = window.MMGR || {};
       if (!raw) return null;
       const p = JSON.parse(raw);
       if (!p || !Array.isArray(p.sections)) return null;
-      // CLOUD-CODES-AND-DELETE: role ('editor' | 'view') , legacy stored
-      // scopes (pre-migration) were always editor; default them here so
-      // no caller ever reads an undefined role.
-      if (p.role !== 'view') p.role = 'editor';
+      // CLOUD-CODES-AND-DELETE: role ('editor' | 'view' | 'client') , legacy
+      // stored scopes (pre-migration) were always editor; default them here
+      // so no caller ever reads an undefined role.
+      if (p.role !== 'view' && p.role !== 'client') p.role = 'editor';
       return p;
     } catch (e) { return null; }
   }
   function setEScope(label, sections, role) {
-    try { sessionStorage.setItem(escopeKey(), JSON.stringify({ label: label || '', sections: sections || [], role: role === 'view' ? 'view' : 'editor' })); } catch (e) { /* ignore */ }
+    try { sessionStorage.setItem(escopeKey(), JSON.stringify({ label: label || '', sections: sections || [], role: (role === 'view' || role === 'client') ? role : 'editor' })); } catch (e) { /* ignore */ }
   }
 
   // ---- CLOUD-FIRST SYNC (PART 3, approved 2026-08-17): offline copies ---
@@ -395,7 +395,10 @@ var MMGR = window.MMGR || {};
       const es = getEScope();
       // CLOUD-CODES-AND-DELETE: a VIEW code travels under X-View-Code , the
       // server only ever grants reads (role='view'); a view save is refused.
-      return { code: ec, header: (es && es.role === 'view') ? 'X-View-Code' : 'X-Editor-Code' };
+      // C19: a CLIENT code travels under X-Client-Code (role='client'), also
+      // read-only everywhere.
+      const r = es && es.role;
+      return { code: ec, header: r === 'view' ? 'X-View-Code' : (r === 'client' ? 'X-Client-Code' : 'X-Editor-Code') };
     }
     return null;
   }
@@ -410,6 +413,9 @@ var MMGR = window.MMGR || {};
     // server would refuse the save (X-View-Code is never accepted by /save),
     // so refuse it here with a plain explanation instead of a confusing 403.
     if (cred.header === 'X-View-Code') { setStatus('Viewer codes are read-only. You cannot save changes to the cloud. Ask the admin for an editor or owner code to edit.', 'warn'); return; }
+    // C19: client codes are read-only too — the server would refuse /save
+    // with no client path at all, so refuse it here with plain copy.
+    if (cred.header === 'X-Client-Code') { setStatus('Client codes are read-only. You can view the granted sections but cannot change anything. Ask the admin for an editor code to edit.', 'warn'); return; }
     const state = readProjectState();
     if (!state) { setStatus('No local project state to save yet.', 'warn'); return; }
     setStatus('Saving to cloud…', 'busy');
@@ -482,6 +488,7 @@ var MMGR = window.MMGR || {};
     const cred = activeCredential();
     if (!cred) return false;
     if (cred.header === 'X-View-Code') return false; // viewers never push
+    if (cred.header === 'X-Client-Code') return false; // C19: clients never push
     if (_autoBusy) return false;
     const state = readProjectState();
     if (!state) return false;
@@ -552,8 +559,10 @@ var MMGR = window.MMGR || {};
       } catch (e) { /* storage blocked , status below still reports the outcome */ }
       if (data.role === 'view') setEScope(data.viewerLabel || data.editorLabel, data.scope || [], 'view');
       else if (data.role === 'editor') setEScope(data.editorLabel, data.scope || []);
+      else if (data.role === 'client') setEScope('Client', data.sections || [], 'client');
       if (data.savedAt) setLastSeen(data.savedAt);
       setStatus('Cloud snapshot restored , reloading.', 'ok');
+      startClientRefresh();
       setTimeout(function() { window.location.reload(); }, 1200);
     } catch (e) {
       setStatus('Cloud is unavailable on this host (needs the Worker API).', 'err');
@@ -655,6 +664,9 @@ var MMGR = window.MMGR || {};
     } else if (r.role === 'editor') {
       setECode(code);
       setEScope(r.editorLabel, r.scope || []);
+    } else if (r.role === 'client') {
+      setECode(code);
+      setEScope('Client', r.sections || [], 'client');
     } else {
       setCode(code);
     }
@@ -667,7 +679,7 @@ var MMGR = window.MMGR || {};
   // { ok:true, data } on success or { ok:false, error } on failure (the last
   // structured error seen, for friendly copy). Never throws.
   async function probeLoad(code) {
-    const headersOrder = ['X-Owner-Code', 'X-Editor-Code', 'X-View-Code'];
+    const headersOrder = ['X-Owner-Code', 'X-Editor-Code', 'X-View-Code', 'X-Client-Code'];
     let lastErr = null;
     for (let i = 0; i < headersOrder.length; i++) {
       try {
@@ -954,7 +966,16 @@ var MMGR = window.MMGR || {};
   // never blocked , they read derived data and the server blocks their writes
   // by construction (B11).
   function isSectionBlocked(section) { return ns.CloudScope ? ns.CloudScope.isSectionBlocked(section) : false; }
-  function applyEditorScope() { if (ns.CloudScope) ns.CloudScope.applyEditorScope(); }
+  function isClientSectionHidden(section) { return ns.CloudScope ? !!ns.CloudScope.isClientSectionHidden(section) : false; }
+  function applyClientScope() { if (ns.CloudScope && ns.CloudScope.applyClientScope) ns.CloudScope.applyClientScope(); }
+  function applyEditorScope() {
+    // C19: client nav-hiding runs on the SAME pass — mutually exclusive with
+    // the editor grey-out (a session is either editor/view or client).
+    if (ns.CloudScope) {
+      if (ns.CloudScope.applyClientScope) ns.CloudScope.applyClientScope();
+      ns.CloudScope.applyEditorScope();
+    }
+  }
 
   // =========================================================================
   // RENDER
@@ -1164,6 +1185,10 @@ var MMGR = window.MMGR || {};
     const ecode = getECode();
     const escope = getEScope();
     const signedIn = await checkMe();
+    // C19 (C1b): a client session runs the refresh watcher (poll /meta 60s
+    // while visible + visibilitychange + rev-changed) — idempotent, so
+    // every render pass is safe.
+    startClientRefresh();
     // The Controls-tab Share & Access card must mirror the same credential
     // state , render it alongside the cloud section on every render pass.
     renderShare();
@@ -1184,16 +1209,20 @@ var MMGR = window.MMGR || {};
         '<button class="btn btn-n btn-s" data-action="cloudLoadWithCode"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Load with Code</button>' +
         '</div>';
     } else if (ecode && !code) {
-      // EDITOR / VIEWER MODE , scoped access; the server enforces the grant.
+      // EDITOR / VIEWER / CLIENT MODE , scoped access; the server enforces the
+      // grant. Clients are read-only consumers (C19) — no Save, no offline
+      // copy, no review queue; just Load + Copy + a live last-sync line.
       const isView = !!(escope && escope.role === 'view');
+      const isClient = !!(escope && escope.role === 'client');
+      const roleName = isClient ? 'Client' : (isView ? 'Viewer' : 'Editor');
       const scopeTxt = escope && escope.sections && escope.sections.length
         ? escope.sections.map(sectionLabel).join(', ')
         : 'unknown';
       body =
-        '<div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-folder"></use></svg> Cloud Backup: ' + (isView ? 'viewing as viewer' : 'editing as editor') + '</span></div>' +
-        '<div class="sr-hint">' + (isView ? 'Viewer' : 'Editor') + ' code active: <code style="font-family:ui-monospace,monospace;letter-spacing:.05em;color:var(--gold)">' + esc(escope && escope.label || (isView ? 'viewer' : 'editor')) + '</code>. You can ' + (isView ? 'see' : 'edit') + ': <strong>' + esc(scopeTxt) + '</strong>. ' + (isView ? 'Read-only: nothing here can be changed.' : 'Other panels are locked for this code (enforced by the server, not just greyed out).') + '</div>' +
+        '<div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-folder"></use></svg> Cloud Backup: ' + (isClient ? 'viewing as client' : (isView ? 'viewing as viewer' : 'editing as editor')) + '</span></div>' +
+        '<div class="sr-hint">' + roleName + ' code active: <code style="font-family:ui-monospace,monospace;letter-spacing:.05em;color:var(--gold)">' + esc(escope && escope.label || roleName.toLowerCase()) + '</code>. You can see: <strong>' + esc(scopeTxt) + '</strong>. ' + (isClient || isView ? 'Read-only: nothing here can be changed.' : 'Other panels are locked for this code (enforced by the server, not just greyed out).') + '</div>' +
         '<div class="exp-row">' +
-        (isView ? '' : '<button class="btn btn-n btn-s" data-action="cloudSave"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-upload"></use></svg> Save to Cloud</button>') +
+        (isClient || isView ? '' : '<button class="btn btn-n btn-s" data-action="cloudSave"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-upload"></use></svg> Save to Cloud</button>') +
         '<button class="btn btn-n btn-s" data-action="cloudLoad"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Load from Cloud</button>' +
         '<button class="btn btn-n btn-s" data-action="cloudCopyCode"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy Code</button>' +
         '<button class="btn btn-o btn-s" data-action="cloudDropEditor"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> Use owner code instead</button>' +
@@ -1203,12 +1232,14 @@ var MMGR = window.MMGR || {};
         // server registers the copy; this device is view-only so the pull
         // overwrite is always safe (approved reconcile: copies never fight
         // the cloud , the local auto-syncs up, the admin broadcasts down).
+        // C19: clients get neither the copy machinery nor the review line.
+        (isClient ? '' :
         '<div class="sr" style="margin-top:8px"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Offline copy</span></div>' +
         '<div id="cloud-offline-copy-box"></div>' +
         // REVIEW QUEUE: the editor's own proposal status line (pending /
         // accepted / rejected) , filled by cloudReviewMine() on render.
-        '<div id="cloud-review-mine"></div>' +
-        '<div class="sr-hint">' + (isView ? 'Nothing you do here changes the cloud copy , reload anytime to see fresh data.' : 'Changes you save wait for the owner\u2019s review before they reach the cloud project , accepted edits are logged in the changelog.') + '</div>' +
+        '<div id="cloud-review-mine"></div>') +
+        '<div class="sr-hint">' + (isClient ? 'Read-only. This view refreshes automatically when the admin saves.' : (isView ? 'Nothing you do here changes the cloud copy , reload anytime to see fresh data.' : 'Changes you save wait for the owner\u2019s review before they reach the cloud project , accepted edits are logged in the changelog.')) + '</div>' +
         '<div id="cloud-last-sync" class="sr-hint" role="status" aria-live="polite"></div>';
     } else {
       // OWNER MODE (owner code in session). The owner code + editor-code
@@ -1703,8 +1734,10 @@ var MMGR = window.MMGR || {};
   // viewers auto-pull; an editor with a registered copy pulls manually (their
   // workspace may hold in-flight scoped edits , the manual button pushes
   // local changes up first, then pulls, per the owner's auto-sync-up model).
+  // C19: a CLIENT session (no copy record) refreshes via the meta-poll below.
   let _revPullBusy = false;
   document.addEventListener('mmgr:rev-changed', function(ev) {
+    if (isClientSession()) { clientPollTick(true); return; }
     const rec = getCopyRecord();
     if (!rec) return; // no copy on this device , nothing to refresh
     if (_revPullBusy) return;
@@ -1714,6 +1747,66 @@ var MMGR = window.MMGR || {};
     _revPullBusy = true;
     cloudUpdateCopy(true).then(function() { _revPullBusy = false; });
   });
+
+  // ---- C19 CLIENT REFRESH CADENCE (C1b, 2026-09-04) ----------------------
+  // A client tab is read-only, so the app can silently re-pull when the
+  // admin publishes: poll /meta every 60s while the tab is visible + on
+  // visibilitychange, and refresh immediately when the presence heartbeat
+  // reports rev-changed. When updatedAt advances, re-load the snapshot and
+  // reload the workspace (safe: the client never holds local edits).
+  let _clientPoll = null;
+  function isClientSession() {
+    const es = getEScope();
+    return !!getECode() && !getCode() && es && es.role === 'client';
+  }
+  async function clientMetaUpdatedAt() {
+    const cred = activeCredential();
+    if (!cred) return null;
+    try {
+      const headers = {};
+      headers[cred.header] = cred.code;
+      const res = await fetch('/api/cloud/projects/' + encodeURIComponent(pid()) + '/meta', { credentials: 'same-origin', headers: headers });
+      const data = await res.json().catch(function() { return {}; });
+      return (res.ok && data && data.ok && data.updatedAt) ? data.updatedAt : null;
+    } catch (e) { return null; }
+  }
+  async function clientLoadState() {
+    const cred = activeCredential();
+    if (!cred) return null;
+    try {
+      const headers = {};
+      headers[cred.header] = cred.code;
+      const res = await fetch('/api/cloud/projects/' + encodeURIComponent(pid()) + '/load', { method: 'POST', credentials: 'same-origin', headers: headers, body: JSON.stringify({}) });
+      const data = await res.json().catch(function() { return {}; });
+      return (res.ok && data && data.ok && data.state) ? data.state : null;
+    } catch (e) { return null; }
+  }
+  async function clientPollTick(force) {
+    if (!isClientSession()) return;
+    if (!force && document.visibilityState !== 'visible') return;
+    const now = await clientMetaUpdatedAt();
+    if (!now) return;
+    const last = getLastSeen();
+    const changed = !!last && now !== last;
+    setLastSeen(now);
+    if (!changed && !force) return;
+    const state = await clientLoadState();
+    if (!state) return;
+    try { localStorage.setItem('mmgr_state_' + pid(), JSON.stringify(state)); } catch (e) { /* storage blocked — reload would lose nothing */ }
+    // Full reload is the honest refresh: read-only workspace, no local edits
+    // to lose, and every renderer picks the new state up at boot.
+    if (changed) window.location.reload();
+  }
+  function startClientRefresh() {
+    if (!isClientSession() || _clientPoll) return;
+    _clientPoll = setInterval(function() { clientPollTick(false); }, 60000);
+    document.addEventListener('visibilitychange', function() {
+      if (document.visibilityState === 'visible') clientPollTick(false);
+    });
+    // First tick soon after boot so a code created moments before opening
+    // still gets the freshest snapshot without waiting a minute.
+    setTimeout(function() { clientPollTick(false); }, 4000);
+  }
 
   // ---- public API ---------------------------------------------------------
   ns.Cloud = {
@@ -1744,6 +1837,20 @@ var MMGR = window.MMGR || {};
     editorCodeDone: editorCodeDone,
     applyEditorScope: applyEditorScope,
     isSectionBlocked: isSectionBlocked,
+    // C19 client-scope helpers: isClientSession() gates the refresh watcher +
+    // the render branch; clientFirstSection()/isClientSectionHidden() drive
+    // the nav hiding + showSection redirect in js/cloud/scope.js.
+    isClientSession: isClientSession,
+    clientFirstSection: function() {
+      const es = getEScope();
+      if (es && Array.isArray(es.sections) && es.sections.length) return es.sections[0];
+      return 'dash';
+    },
+    isClientSectionHidden: function(section) {
+      if (!isClientSession()) return false;
+      const es = getEScope();
+      return !(es && Array.isArray(es.sections) && es.sections.indexOf(section) > -1);
+    },
     getCode: getCode,
     getECode: getECode,
     getEScope: getEScope,

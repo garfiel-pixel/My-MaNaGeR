@@ -99,6 +99,9 @@
          by js/mmgr-cloud.js applyEditorScope). Pure UX , the Worker enforces
          the scope server-side on every editor save. -->
     <div id="editor-scope-banner" class="is-hide"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-user"></use></svg> Editing as a scoped editor code , some panels are locked for this code (enforced by the server).</div>
+    <!-- C19: client code in session — the granted sections are the only ones
+         visible; this banner is shown by js/cloud/scope.js applyClientScope. -->
+    <div id="client-scope-banner" class="is-hide"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-user"></use></svg> Viewing as a client , read-only. Only the sections the admin granted you are shown.</div>
 
 <!-- Undo Bar -->
 <div id="ub"><span><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-alert-triangle"></use></svg><span id="ub-msg"> Page cleared.</span></span><button class="btn btn-s btn-warn"  data-action="undoClr"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-corner-down-left"></use></svg> Undo</button><span id="ut" class="amber-b">5</span></div>

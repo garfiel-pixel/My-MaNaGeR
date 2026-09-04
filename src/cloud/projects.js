@@ -210,9 +210,10 @@ export async function handleCloudLoad(request, env, projectId) {
   const ownerCode = String(request.headers.get('X-Owner-Code') || '').trim();
   const editorCode = String(request.headers.get('X-Editor-Code') || '').trim();
   const viewCode = String(request.headers.get('X-View-Code') || '').trim();
+  const clientCode = String(request.headers.get('X-Client-Code') || '').trim();
   let sessFallback = null;
   let adoptFallback = null;
-  if (!ownerCode && !editorCode && !viewCode) {
+  if (!ownerCode && !editorCode && !viewCode && !clientCode) {
     sessFallback = await cloudAuthOwnerSession(request, env, projectId);
     if (!sessFallback) {
       adoptFallback = await cloudAuthAdoption(request, env, projectId);
@@ -223,6 +224,7 @@ export async function handleCloudLoad(request, env, projectId) {
   if (!row) { await Promise.all([cloudDummyHash(), cloudTimingSink()]); return cloudForbidden(); }
   let editorAuth = null;
   let viewerAuth = null;
+  let clientAuth = null;
   let ownerAuth = false;
   if (ownerCode) {
     const hash = await hashOwnerCode(ownerCode, row.owner_code_salt);
@@ -238,6 +240,14 @@ export async function handleCloudLoad(request, env, projectId) {
     if (!viewerAuth) return cloudForbidden();
     const sess = await readSession(request, env);
     if (sess && sess.sub) await cloudAdopt(env, projectId, sess.sub, viewerAuth.editorId, 'view');
+  } else if (clientCode) {
+    // C19: client codes are read-only; the section grant travels with the
+    // response. Expired / deleted project map to friendly errors.
+    const { verifyClientCode } = await import('./client-codes.js');
+    clientAuth = await verifyClientCode(clientCode, projectId, env);
+    if (!clientAuth) return cloudForbidden();
+    if (clientAuth.expired) return json({ ok: false, error: 'code_expired', expiresAt: clientAuth.expiresAt }, 403);
+    if (clientAuth.deleted) return cloudProjectDeleted();
   } else if (sessFallback) {
     ownerAuth = true;
   } else if (adoptFallback) {
@@ -252,6 +262,7 @@ export async function handleCloudLoad(request, env, projectId) {
     const base = { ok: true, state: null, savedAt: null };
     if (editorAuth) { base.role = 'editor'; base.editorLabel = editorAuth.label; base.scope = editorAuth.scope; }
     if (viewerAuth) { base.role = 'view'; base.viewerLabel = viewerAuth.label; base.scope = viewerAuth.scope; }
+    if (clientAuth) { base.role = 'client'; base.sections = clientAuth.sections; }
     return json(base);
   }
   const pullDevice = String(request.headers.get('X-Device-Id') || '').trim();
@@ -267,6 +278,7 @@ export async function handleCloudLoad(request, env, projectId) {
   const resp = { ok: true, state: state, savedAt: row.updated_at };
   if (editorAuth) { resp.role = 'editor'; resp.editorLabel = editorAuth.label; resp.scope = editorAuth.scope; }
   if (viewerAuth) { resp.role = 'view'; resp.viewerLabel = viewerAuth.label; resp.scope = viewerAuth.scope; }
+  if (clientAuth) { resp.role = 'client'; resp.sections = clientAuth.sections; }
   return json(resp);
 }
 
@@ -293,12 +305,14 @@ export async function handleCloudMeta(request, env, projectId) {
   const code = String(request.headers.get('X-Owner-Code') || '').trim();
   const ecode = String(request.headers.get('X-Editor-Code') || '').trim();
   const vcode = String(request.headers.get('X-View-Code') || '').trim();
+  const ccode = String(request.headers.get('X-Client-Code') || '').trim();
   const session = await readSession(request, env);
   const row = await env.DB.prepare('SELECT owner_code_salt, owner_code_hash, google_sub, google_name, owner_label, latest_r2_key, updated_at, deleted_at FROM cloud_projects WHERE project_id = ?').bind(projectId).first();
   if (!row) { await Promise.all([cloudDummyHash(), cloudTimingSink()]); return cloudForbidden(); }
   let authorized = false;
   let isEditor = false; let editorScope = null; let editorLabel = null;
   let viewer = false; let viewerScope = null;
+  let clientSections = null;
   let ownerProbe = false;
   if (code) {
     const hash = await hashOwnerCode(code, row.owner_code_salt);
@@ -310,6 +324,12 @@ export async function handleCloudMeta(request, env, projectId) {
   } else if (vcode) {
     const va = await cloudAuthViewer(request, env, projectId, vcode);
     if (va) { authorized = true; isEditor = true; viewerScope = va.scope; editorLabel = va.label; viewer = true; }
+  } else if (ccode) {
+    // C19: client meta probe — read-only status line + refresh cadence.
+    const { verifyClientCode } = await import('./client-codes.js');
+    const ca = await verifyClientCode(ccode, projectId, env);
+    if (ca && !ca.expired && !ca.deleted) { authorized = true; clientSections = ca.sections; }
+    else if (ca && ca.expired) return json({ ok: false, error: 'code_expired', expiresAt: ca.expiresAt }, 403);
   }
   if (!authorized && session && session.sub && row.google_sub && row.google_sub === session.sub) { authorized = true; ownerProbe = true; }
   if (!authorized && !ownerProbe) {
@@ -333,6 +353,7 @@ export async function handleCloudMeta(request, env, projectId) {
   };
   if (isEditor && !viewer) { resp.role = 'editor'; resp.editorLabel = editorLabel; resp.scope = editorScope; }
   if (viewer) { resp.role = 'view'; resp.editorLabel = editorLabel; resp.scope = viewerScope; }
+  if (clientSections) { resp.role = 'client'; resp.sections = clientSections; }
   return json(resp);
 }
 
@@ -368,6 +389,8 @@ export async function handleCloudCodeLookup(request, env) {
     for (const cp of (clientProjects.results || [])) {
       const clientResult = await verifyClientCode(code, cp.project_id, env);
       if (clientResult) {
+        if (clientResult.expired) return json({ ok: false, error: 'code_expired', expiresAt: clientResult.expiresAt }, 403);
+        if (clientResult.deleted) return json({ ok: false, error: 'project_deleted' }, 403);
         return json({
           ok: true,
           projectId: clientResult.projectId,

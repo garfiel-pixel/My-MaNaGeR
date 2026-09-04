@@ -74,7 +74,10 @@ var MMGR = window.MMGR || {};
     if (ns.scope === 'full') {
       try {
         const es = JSON.parse(sessionStorage.getItem('mmgr_cloud_escope_' + projectId) || 'null');
-        if (es && Array.isArray(es.sections) && es.role === 'view') ns.scope = 'readonly';
+        // C19: a CLIENT code is read-only exactly like a viewer code — the
+        // scope machinery (READONLY_SAFE_ACTIONS) treats both identically,
+        // and the section grant is enforced by applyClientScope hiding nav.
+        if (es && Array.isArray(es.sections) && (es.role === 'view' || es.role === 'client')) ns.scope = 'readonly';
       } catch (e) { /* ignore */ }
     }
     return true;
@@ -90,7 +93,9 @@ var MMGR = window.MMGR || {};
   function cloudCodeHeld() {
     try {
       const es = JSON.parse(sessionStorage.getItem('mmgr_cloud_escope_' + ns.projectId) || 'null');
-      return !!(es && (es.role === 'editor' || es.role === 'view'));
+      // C19: clients are recipients like editors/viewers — offline exports
+      // stay blocked for them too.
+      return !!(es && (es.role === 'editor' || es.role === 'view' || es.role === 'client'));
     } catch (e) { return false; }
   }
   function cloudExportBlocked(action) {

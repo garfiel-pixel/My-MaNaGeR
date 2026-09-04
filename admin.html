@@ -547,6 +547,15 @@ pre.snippet{background:#f8fafc;border:1px solid var(--border);border-radius:6px;
         <div style="font-size:.78rem;font-weight:600;margin-bottom:8px"><svg class="ico" aria-hidden="true" style="width:14px;height:14px"><use href="css/mmgr-icons.svg#i-user"></use></svg> Client Access (Read-Only)</div>
         <p style="font-size:.72rem;color:var(--slate);margin:0 0 8px;line-height:1.5">Generate a client code with section toggles. The client can only see the sections you enable.</p>
         <div id="client-sections" style="font-size:.72rem;color:var(--slate);margin-bottom:8px;line-height:1.8"></div>
+        <label style="display:flex;align-items:center;gap:6px;font-size:.72rem;color:var(--slate);margin-bottom:8px">Expires in
+          <select id="client-code-expiry" style="width:auto;font-size:.72rem">
+            <option value="0">Never</option>
+            <option value="7">7 days</option>
+            <option value="30" selected>30 days</option>
+            <option value="90">90 days</option>
+            <option value="365">1 year</option>
+          </select>
+        </label>
         <button class="btn btn-g btn-s" data-action="createClientCode"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-plus"></use></svg> Create Client Code</button>
         <div id="client-code-reveal" style="border:1px solid var(--gold);background:rgba(var(--gold-rgb),.1);border-radius:var(--radius);padding:8px 10px;margin:10px 0;font-size:.76rem" hidden role="status"></div>
         <div id="client-codes-list" style="font-size:.72rem;color:var(--slate);margin-top:8px"></div>
@@ -2221,13 +2230,19 @@ async function revokeCloudCode(id){
 }
 
 /* ── C19: Client Code Functions ── */
+/* C19 (2026-09-04): mirrors the SERVER's 19-section CLIENT_SECTIONS list
+   exactly (src/cloud/client-codes.js) — dmaic was missing here, so admins
+   could not grant a section the server accepts. digest/baselinen/wxlog are
+   intentionally NOT client-grantable: they are app-internal view-only
+   panels (baseline narrative, weather log, digest), not client navigation. */
 const CLIENT_SECTIONS = [
   {key:'dash',label:'Dashboard'},{key:'def',label:'Definitions'},{key:'charter',label:'Charter'},
   {key:'wbs',label:'WBS'},{key:'gantt',label:'Gantt'},{key:'kan',label:'Kanban'},
   {key:'res',label:'Resources'},{key:'bud',label:'Budget'},{key:'raci',label:'RACI'},
   {key:'comms',label:'Comms Log'},{key:'docs',label:'Documents'},{key:'meet',label:'Meetings'},
   {key:'stk',label:'Stakeholders'},{key:'chg',label:'Changes'},{key:'log',label:'Decision Log'},
-  {key:'risk',label:'Risk / Issues'},{key:'claim',label:'Claim Pack'},{key:'close',label:'Closure'}
+  {key:'risk',label:'Risk / Issues'},{key:'claim',label:'Claim Pack'},{key:'close',label:'Closure'},
+  {key:'dmaic',label:'DMAIC'}
 ];
 function initClientSections(){
   const box = document.getElementById('client-sections');
@@ -2250,11 +2265,13 @@ async function createClientCode(){
   const sections = [];
   document.querySelectorAll('#client-sections input[type=checkbox]:checked').forEach(function(cb){ sections.push(cb.value); });
   if (!sections.length){ toast('Tick at least one section the client can see.', 'warn'); return; }
+  const expirySel = document.getElementById('client-code-expiry');
+  const expiresInDays = expirySel ? (parseInt(expirySel.value, 10) || 0) : 0;
   try{
     const res = await fetch('/api/cloud/projects/' + encodeURIComponent(p.cloudId) + '/client-codes', {
       method: 'POST', credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json', 'X-Owner-Code': code },
-      body: JSON.stringify({ sections: sections })
+      body: JSON.stringify({ sections: sections, expiresInDays: expiresInDays > 0 ? expiresInDays : null })
     });
     const data = await res.json().catch(()=>({}));
     if (!res.ok || !data.ok){ toast((data && data.error) || 'Client code creation failed.', 'error'); return; }
@@ -2263,7 +2280,7 @@ async function createClientCode(){
     reveal.innerHTML = '<strong style="font-size:.76rem">NEW client code. Copy it now, it is shown once:</strong> ' +
       '<code style="font-family:ui-monospace,monospace;letter-spacing:.05em;color:var(--gold);font-weight:700">' + escapeHtml(data.code) + '</code> ' +
       '<button class="btn btn-g btn-s" onclick="navigator.clipboard.writeText(\'' + escapeHtml(data.code) + '\')"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy</button>' +
-      '<div style="font-size:.7rem;color:var(--slate);margin-top:4px">Sections: ' + sections.join(', ') + '</div>';
+      '<div style="font-size:.7rem;color:var(--slate);margin-top:4px">Sections: ' + sections.join(', ') + (data.expiresAt ? ' · expires ' + String(data.expiresAt).slice(0,10) : ' · never expires') + '</div>';
     toast('Client code created. Copy it from the panel.');
     listClientCodes();
   }catch(e){
@@ -2283,11 +2300,16 @@ async function listClientCodes(){
     if (!res.ok || !data.ok){ wrap.textContent = 'Could not load client codes.'; return; }
     const codes = data.codes || [];
     if (!codes.length){ wrap.textContent = 'No client codes yet.'; return; }
-    wrap.innerHTML = '<div style="font-weight:600;margin-bottom:4px">Active Client Codes:</div>' +
+    const now = Date.now();
+    wrap.innerHTML = '<div style="font-weight:600;margin-bottom:4px">Client Codes:</div>' +
       codes.map(function(c){
+        const exp = c.expires_at ? new Date(c.expires_at) : null;
+        const expired = exp ? exp.getTime() < now : false;
+        const soon = exp && !expired && (exp.getTime() - now) < 7 * 86400000;
+        const stateTxt = expired ? ' EXPIRED' : (soon ? ' expires soon (' + String(c.expires_at).slice(0,10) + ')' : (exp ? ' · expires ' + String(c.expires_at).slice(0,10) : ' · never expires'));
         return '<div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid var(--border)">' +
           '<span style="color:var(--gold)">Client</span>' +
-          '<span style="color:var(--slate)">sections: ' + (c.sections || []).join(', ') + ' · ' + (c.created_at || '').slice(0,10) + '</span>' +
+          '<span style="color:' + (expired ? 'var(--danger)' : 'var(--slate)') + '">sections: ' + (c.sections || []).join(', ') + ' · ' + (c.created_at || '').slice(0,10) + stateTxt + '</span>' +
           '<button class="btn btn-d btn-s" data-action="revokeClientCode" data-id="' + c.id + '"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> Revoke</button>' +
           '</div>';
       }).join('');

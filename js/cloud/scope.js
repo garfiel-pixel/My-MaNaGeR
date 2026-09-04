@@ -52,10 +52,47 @@ var MMGR = window.MMGR || {};
     if (banner) banner.classList.toggle('is-hide', !isEditor);
   }
 
+  // ---- C19 CLIENT SCOPE (owner D3: "navigation buttons for hidden
+  // sections are removed") --------------------------------------------------
+  // Clients see ONLY the granted sections. The editor grey-out would leak
+  // the view-only panels to a client (VIEW_ONLY_PANELS are never blocked), so
+  // clients HIDE the .sec-btn entirely (display:none via .client-hidden) and
+  // showSection() redirects to the first granted section.
+  function isClientSession() {
+    return !!C.getECode() && !C.getCode() && C.isClientSession();
+  }
+  function isClientSectionHidden(section) {
+    if (!isClientSession()) return false;
+    const scope = C.getEScope();
+    return !(scope && Array.isArray(scope.sections) && scope.sections.indexOf(section) > -1);
+  }
+  function applyClientScope() {
+    const isClient = isClientSession();
+    document.body.classList.toggle('client-scope', isClient);
+    if (!isClient) return;
+    const btns = document.querySelectorAll('.sec-btn[data-section]');
+    for (let i = 0; i < btns.length; i++) {
+      const sec = btns[i].getAttribute('data-section');
+      const hidden = isClientSectionHidden(sec);
+      btns[i].classList.toggle('client-hidden', hidden);
+      if (hidden) {
+        btns[i].setAttribute('aria-hidden', 'true');
+        btns[i].removeAttribute('disabled'); // never a grey-out for clients
+      } else {
+        btns[i].removeAttribute('aria-hidden');
+      }
+    }
+    const banner = $('client-scope-banner');
+    if (banner) banner.classList.toggle('is-hide', false);
+  }
+
   ns.CloudScope = {
     isWritableSection: isWritableSection,
     isSectionBlocked: isSectionBlocked,
-    applyEditorScope: applyEditorScope
+    applyEditorScope: applyEditorScope,
+    isClientSession: isClientSession,
+    isClientSectionHidden: isClientSectionHidden,
+    applyClientScope: applyClientScope
   };
 })(MMGR);
 window.MMGR = MMGR;

@@ -524,6 +524,56 @@ the panel - harness poll-dismisses it); qa-p1 PASS; qa-full 173/174
 dry-run green; emoji scan clean. NOT DEPLOYED YET (owner go pending) -
 asset/CSS/JS-only, no migration.
 
+PHASE 4 EXECUTION RECORD (2026-09-04, SHIPPED) - AREA C C19 client
+portal end-to-end + code expiry + deploy checks. Server:
+src/cloud/client-codes.js - verifyClientCode now honours expires_at
+(code_expired 403 + expiresAt) and deleted_at (project_deleted 403);
+create surfaces expiry back to the admin UI; src/cloud/projects.js -
+handleCloudLoad/meta carry the X-Client-Code branch (role=client +
+sections grant in the response; no-state and no-copy responses get
+clientSections too) and lookup returns the friendly expired/deleted
+errors; editor/view/save paths untouched. Launcher (app.html):
+cloudCodeOpen client branch + escope role=client stored. Project app:
+js/mmgr-cloud.js - client credential sent on load/meta, readonly
+guards (isClientSession), C1b client refresh cadence (startClientRefresh
+watcher on rev-changed, client caps at 30s), CloudScope delegation
+wrappers, client helper exports (clientFirstSection etc.);
+js/mmgr-app.js boot recognises role=client as readonly (same slot as
+view); js/cloud/scope.js applyClientScope - clients HIDE out-of-scope
+.sec-btn (display:none, never a grey-out - owner D3) + banner, runs
+on the same pass as applyEditorScope (mutually exclusive);
+js/mmgr-render.js showSection redirects a client to their first
+granted section; project.html carries #client-scope-banner + CSS
+(mmgr.css .sec-btn.client-hidden + banner rule). Admin UI (admin.html):
+expiry input + list state column + CLIENT_SECTIONS now covers all 19
+sections incl. dmaic; admin inline scripts changed -> CSP hashes
+regenerated (worker.js + serve.cjs, tool verify green at 17) + sw
+bumped v236. QA: NEW tools/qa-client-codes.cjs 19/19 (server expiry/
+deleted/lookup + launcher open + project boot readonly + banner +
+nav-hide + delete + code_expired + isolation). Field guide Door 5
+updated. Verification (2026-09-04, Windows): npm run verify ALL GREEN
+(CSP 17, sw v236, hidden 2856); qa-client-codes 19/19; qa-cloud-phase1
+29/29 (self-contained); qa-cloud-codes-delete 23/23; autosave-signin
+8/8; qa-view-mode 16/16; controls-admin 10/10; glass CDP OK; theme CDP
+OK; qa-p1 PASS; build green; emoji clean. NOTES: (1) qa-cloud-phase2
+P2.10d/f flake on Windows is a wrangler-dev libuv teardown crash
+(exit 1, zero log output, reproduced standalone; app checks pass when
+the server stays up - 84/85 once) - CI (Linux) is the authority for
+phase2 and it was green pre-Phase-4; my changes touch load/meta/
+lookup/client-codes only, which phase2 does not exercise (phase2 is
+editor-code flows). (2) Same Windows crash intermittently ends
+qa-client-codes early - clean ports before local runs.
+
+HISTORY REWRITE RECORD (2026-09-04, OWNER REQUEST): full history
+rewritten msg-only (git fast-export | node filter | fast-import) to
+strip the 9 Generated-with-Codebuff / Co-Authored-By footers from
+commit messages; tip tree byte-identical (313efb26 unchanged through
+both passes), fsck clean, 343 commits preserved. Remaining 2 codebuff
+mentions are the owner's own ban-rule commits (kept). Rewritten
+history force-pushed (c0be9f0...c28f6d5). Rule now codified as
+AGENTS.md project-critical rule 8: no AI-assistant credit in any
+commit, ever.
+
 --------------------------------------------------------------------
 AREA F - BACKLOG / DIRECTIVE DEFERRED ITEMS (for completeness)
 --------------------------------------------------------------------

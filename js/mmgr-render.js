@@ -996,6 +996,15 @@ var MMGR = window.MMGR || {};
     // guard the switch itself so every path is blocked, not just the nav.
     // View-only panels (dash/def/kan/gantt/claim/digest/baselinen/wxlog) are
     // never blocked; the server also enforces the scope on every save (B11).
+    // C19: a CLIENT section outside the grant redirects to the first granted
+    // section instead of silently no-op'ing (the nav is hidden, but in-panel
+    // jump buttons still call showSection directly).
+    if (window.MMGR && window.MMGR.Cloud && window.MMGR.Cloud.isClientSectionHidden && window.MMGR.Cloud.isClientSectionHidden(section)) {
+      const fb = window.MMGR.Cloud.clientFirstSection ? window.MMGR.Cloud.clientFirstSection() : 'dash';
+      const fbBtn = document.querySelector('.sec-btn[data-section="' + fb + '"]');
+      showSection(fb, fbBtn);
+      return;
+    }
     if (window.MMGR && window.MMGR.Cloud && window.MMGR.Cloud.isSectionBlocked && window.MMGR.Cloud.isSectionBlocked(section)) {
       if (ns.App && ns.App.showToast) ns.App.showToast('That section is outside this editor code\'s scope. Locked.', 'warn');
       return;

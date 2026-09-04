@@ -93,6 +93,14 @@ How to load: use your skill-loading mechanism on the skill **name** below
    not draw a glyph. Internal docs (md/json) may keep emojis; served pages may
    not. New/changed pages must pass the emoji scan before merging (regex over
    U+1F000–1FAFF, 2600–27BF, 2B00–2BFF, FE0F, 1F1E6–1F1FF).
+8. **NO AI-ASSISTANT CREDIT IN COMMITS — HARD GATE (owner).** The owner
+   (Garfield Fairclough <garfieldprocis@gmail.com>) is the ONLY contributor.
+   Commit messages must NEVER carry a `Generated with …` or
+   `Co-Authored-By: …` footer crediting any AI assistant, tool, or bot — no
+   such lines, ever. On 2026-09-04 the full history was rewritten
+   (message-only, via fast-export/fast-import) to strip all existing
+   Codebuff/assistant footers; the tree was verified byte-identical. New
+   commits: plain Conventional Commit subject + body, no attribution footer.
 
 ## Hard-won knowledge (do not repeat these mistakes)
 

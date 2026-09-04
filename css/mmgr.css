@@ -1116,6 +1116,11 @@ body.gantt-dragging .gb{cursor:grabbing;}
    code cannot write outside its grant. */
 #editor-scope-banner{position:sticky;top:0;z-index:1500;display:flex;align-items:center;justify-content:center;gap:8px;background:rgba(59,130,246,.12);border-bottom:1px solid rgba(59,130,246,.35);color:var(--blue);font-size:.72rem;padding:6px 14px;letter-spacing:.3px;}
 #editor-scope-banner.is-hide{display:none;}
+/* C19 client scope: hidden nav (never a grey-out — clients see ONLY the
+   granted sections, per owner D3) + the read-only banner. */
+.sec-btn.client-hidden{display:none!important;}
+#client-scope-banner{position:sticky;top:0;z-index:1500;display:flex;align-items:center;justify-content:center;gap:8px;background:rgba(147,51,234,.10);border-bottom:1px solid rgba(147,51,234,.30);color:var(--purple);font-size:.72rem;padding:6px 14px;letter-spacing:.3px;}
+#client-scope-banner.is-hide{display:none;}
 /* Rank 10 item 21 — Heat/Cold SAFETY banner (promoted 2026-08-13): full-width
    page-top alert, deliberately distinct (danger/blue tint + i-alert-triangle)
    from the amber schedule-risk flags so a safety concern never reads as a

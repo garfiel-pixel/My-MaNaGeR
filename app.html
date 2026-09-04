@@ -900,18 +900,20 @@ async function cloudCodeOpen(){
     const ld = await lr.json().catch(function(){ return {}; });
     if (!lr.ok || !ld.ok || !ld.projectId) {
       if (status) status.textContent = ld.error === 'code_revoked' ? 'This code was revoked by the project admin. Contact them for a new one.'
+        : ld.error === 'code_expired' ? 'This access code expired' + (ld.expiresAt ? ' on ' + String(ld.expiresAt).slice(0, 10) : '') + '. Ask the admin for a new one.'
         : ld.error === 'project_deleted' ? 'This project was deleted by the admin.'
         : 'No cloud project matches that code. Check it and try again.';
       return;
     }
     const headers = { 'Content-Type': 'application/json' };
-    headers[ld.role === 'owner' ? 'X-Owner-Code' : (ld.role === 'view' ? 'X-View-Code' : 'X-Editor-Code')] = code;
+    headers[ld.role === 'owner' ? 'X-Owner-Code' : (ld.role === 'view' ? 'X-View-Code' : (ld.role === 'client' ? 'X-Client-Code' : 'X-Editor-Code'))] = code;
     const rr = await fetch('/api/cloud/projects/' + encodeURIComponent(ld.projectId) + '/load', {
       method: 'POST', credentials: 'same-origin', headers: headers, body: JSON.stringify({})
     });
     const rd = await rr.json().catch(function(){ return {}; });
     if (!rr.ok || !rd.ok) {
       if (status) status.textContent = rd.error === 'code_revoked' ? 'This code was revoked by the project admin.'
+        : rd.error === 'code_expired' ? 'This access code expired' + (rd.expiresAt ? ' on ' + String(rd.expiresAt).slice(0, 10) : '') + '. Ask the admin for a new one.'
         : rd.error === 'project_deleted' ? 'This project was deleted by the admin.'
         : 'The code opened but the project could not load. Try again.';
       return;
@@ -925,9 +927,11 @@ async function cloudCodeOpen(){
       if (ld.role !== 'owner') {
         sessionStorage.setItem('mmgr_cloud_ecode_' + ld.projectId, code);
         sessionStorage.setItem('mmgr_cloud_escope_' + ld.projectId, JSON.stringify({
-          label: ld.label || (ld.role === 'view' ? 'Viewer' : 'Editor'),
-          sections: ld.scope || [],
-          role: ld.role === 'view' ? 'view' : 'editor'
+          label: ld.label || (ld.role === 'view' ? 'Viewer' : (ld.role === 'client' ? 'Client' : 'Editor')),
+          // C19: a client's grant is the lookup's `sections` list; editors /
+          // viewers carry `scope` (the writable/visible section list).
+          sections: (ld.role === 'client' ? (ld.sections || []) : (ld.scope || [])),
+          role: ld.role === 'view' ? 'view' : (ld.role === 'client' ? 'client' : 'editor')
         }));
       }
     } catch (e) { /* storage blocked , open still proceeds below */ }

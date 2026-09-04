@@ -602,10 +602,21 @@ hashes UNCHANGED; sw bumped v237. QA: NEW tools/qa-legal-links.cjs
 6/6 (all 5 footers link both docs + anchors/TOC resolve); npm run
 verify ALL GREEN (CSP 17, sw v237, hidden 2857); emoji clean.
 
-DEPLOY WAVE (2026-09-04): single staging-copy deploy brings production
-fully current - Phase 3 (rose-gold + 3D deck), Phase 4 (C19 client
-codes), the CI harness fixes, and this legal wave (last production
-deploy was Phase 2). No migrations pending.
+DEPLOY WAVE (2026-09-04, DONE): single staging-copy deploy brings
+production fully current - Phase 3 (rose-gold + 3D deck), Phase 4
+(C19 client codes), the CI harness fixes, and this legal wave (last
+production deploy was Phase 2). No migrations pending. Deployed as
+Version ID ffee8a98-22b0-405c-ab70-798b19a1f2e5. Production smoke ALL
+GREEN: /api/health ok; index + features/about/contact/reviews footers
+carry Privacy Policy (privacy.html#privacy) + Terms (privacy.html#terms);
+privacy.html serves the corrected server-side-encryption wording with
+#privacy/#terms anchors; project.html view-deck + dist/mmgr.min.css
+rose-gold tokens + app.html palette dock rows live (Phase 3); admin
+expiry UI live + client-codes POST returns 401 (not 404) - the Phase 4
+deploy check (Phase 4); sw mmgr-shell-v237. GitHub CI green on the
+legal wave commit 9bddf9d. NOTE: the local wrangler OAuth token had
+expired - re-authenticated via wrangler login (owner browser
+authorization) before deploying.
 
 --------------------------------------------------------------------
 AREA F - BACKLOG / DIRECTIVE DEFERRED ITEMS (for completeness)

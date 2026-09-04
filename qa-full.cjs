@@ -71,11 +71,14 @@ async function check(name, expr, expected, hint) {
   await check('01b boot: no boot failure banner', `(function(){var el=document.querySelector('div[style*="99999"]');return {val: !el};})()`);
 
   // ---- GAP 1: Theme + Crosshair toggles ----
-  await check('02 theme: light default + checkbox reflects', `(function(){return {val: !document.body.classList.contains('dark-mode') && document.querySelector('#thm-tgl').checked};})()`);
-  await ev(`document.querySelector('#thm-tgl').click()`); await delay(200);
-  await check('02b theme: click -> dark + state', `(function(){return {val: document.body.classList.contains('dark-mode') && MMGR.State.getState().theme === 'dark' && !document.querySelector('#thm-tgl').checked};})()`);
-  await ev(`document.querySelector('#thm-tgl').click()`); await delay(200);
-  await check('02c theme: click again -> light (no double-toggle)', `(function(){return {val: !document.body.classList.contains('dark-mode') && MMGR.State.getState().theme === 'light'};})()`);
+  // Theme picker is the shared bottom dock now (owner D11). The dock's
+  // Light/Dark buttons ride mmgr-theme.js and write the device pref
+  // (mmgr_theme), which is the master across launcher/admin/project.
+  await check('02 theme: light default + dock reflects', `(function(){var b=document.querySelector('.dock .pal-btn[data-pal="light"]');return {val: !document.body.classList.contains('dark-mode') && !!b && b.getAttribute('aria-pressed') === 'true'};})()`);
+  await ev(`document.querySelector('.dock .pal-btn[data-pal="dark"]').click()`); await delay(200);
+  await check('02b theme: dock dark -> class + device pref', `(function(){var b=document.querySelector('.dock .pal-btn[data-pal="dark"]');return {val: document.body.classList.contains('dark-mode') && localStorage.getItem('mmgr_theme') === 'dark' && !!b && b.getAttribute('aria-pressed') === 'true'};})()`);
+  await ev(`document.querySelector('.dock .pal-btn[data-pal="light"]').click()`); await delay(200);
+  await check('02c theme: click again -> light (no double-toggle)', `(function(){return {val: !document.body.classList.contains('dark-mode') && localStorage.getItem('mmgr_theme') === 'light'};})()`);
   await ev(`document.querySelector('#ch-tgl').click()`); await delay(200);
   await check('03 crosshair: toggle on -> class + state', `(function(){return {val: document.body.classList.contains('crosshair-on') && MMGR.State.getState().crosshairOn};})()`);
   await ev(`document.dispatchEvent(new MouseEvent('mousemove',{clientX:321,clientY:222}));`);
@@ -654,8 +657,10 @@ async function check(name, expr, expected, hint) {
   })()`);
   await send('Page.navigate', { url: BASE + '/project.html?id=demo-project' }); await delay(3500);
   await check('51b readonly scope: body class + banner visible after reload', `(function(){
+    // Copy fix (2026-09-03): the shipped banner says "View Only" (no hyphen);
+    // the old assertion's hyphenated "View-only" could never match.
     var banner=document.getElementById('readonly-banner');
-    return {val: document.body.classList.contains('readonly-mode') && !!banner && !banner.classList.contains('is-hide') && banner.textContent.indexOf('View-only') > -1};
+    return {val: document.body.classList.contains('readonly-mode') && !!banner && !banner.classList.contains('is-hide') && (banner.textContent.indexOf('View Only') > -1 || banner.textContent.indexOf('View-only') > -1)};
   })()`);
   await check('51c readonly scope: mutating data-action is refused with toast', `(function(){
     var before=MMGR.State.getState().tasks.length;

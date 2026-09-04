@@ -62,7 +62,13 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
   // in the rule), zero JS class needed, no premium class on boot.
   const g1 = await ev(`(function(){
     var rules = Array.prototype.slice.call(document.styleSheets).reduce(function(a, sh){ try { return a.concat(Array.prototype.slice.call(sh.cssRules)); } catch(e){ return a; } }, []);
-    var cardRule = rules.filter(function(r){ return r.selectorText && r.selectorText.indexOf('.card') === 0 && r.selectorText.indexOf('glass') === -1; })[0];
+    // Match the BASE .card rule exactly — '.card.blueprint' (launcher polish)
+    // and other compound selectors precede it in the sheet and carry no
+    // backdrop-filter, so a prefix scan picks the wrong rule (G02 drift fix,
+    // 2026-09-03).
+    var cardRule = rules.filter(function(r){
+      return r.selectorText && r.selectorText.split(',').some(function(s){ return s.trim() === '.card'; });
+    })[0];
     return { hasBackdrop: !!cardRule && /backdrop-filter/.test(cardRule.style.cssText),
       premiumClassOff: !document.body.classList.contains('glass-premium'),
       canvasAbsent: !document.getElementById('glass-canvas') };

@@ -62,6 +62,8 @@ svg.ico use{fill:inherit;stroke:inherit;}
   /* MMGR-NEW-UI-CREATION-BRIEF §4.1 — Law of Nested Radii: outer = inner + padding */
   --radius-control:8px;   /* inner controls: buttons, inputs, rail links */
   --pad-card:16px;        /* card padding */
+  --dock-h:120px;         /* bottom dock height (owner D3): toasts, the calc
+                             FAB and body padding-bottom clear it via calc */
   --radius-card:24px;     /* outer card radius = control + pad (8 + 16) */
   --tr:120ms cubic-bezier(0.25,1,0.5,1);
   --ease-ios:cubic-bezier(0.25,1,0.5,1);
@@ -205,8 +207,48 @@ body{
 .pal-switch{display:inline-flex;align-items:center;gap:2px;padding:2px;background:var(--track-bg);border:1px solid var(--border);border-radius:100px;}
 .pal-btn{appearance:none;border:none;background:transparent;color:var(--slate);font:inherit;font-size:.7rem;font-weight:600;line-height:1;padding:5px 12px;border-radius:100px;cursor:pointer;transition:color var(--tr),background var(--tr);}
 .pal-btn:hover{color:var(--text);}
-.pal-btn:focus-visible{outline:2px solid var(--gold);outline-offset:1px;}
-.pal-btn[aria-pressed="true"]{color:var(--on-gold);background:var(--gold);}
+.pal-btn:focus-visible{outline:2px solid var(--gold);outline-offset:1px;}  .pal-btn[aria-pressed="true"]{color:var(--on-gold);background:var(--gold);}
+
+/* ============================================================
+   BOTTOM DOCK (owner D3/D6/D11, 2026-09-03) — the ONE full
+   Light/Dark/System picker on each app page (launcher, project,
+   admin), promoted from the old admin gate pill (#gate-prefs).
+   Vertical theme stack (one full-width option per row — D6,
+   never a horizontal strip) + the premium-glass toggle. Theme
+   buttons ride mmgr-theme.js's delegated [data-pal] listener;
+   the glass toggle rides each page's tglGlassMode action map;
+   js/mmgr-dock.js keeps the dock in step with every other
+   theme/glass control on the page. Token-driven: dark mode +
+   every future palette adapt automatically.
+   ============================================================ */
+/* Shared vertical theme stack (D5/D6): promoted from the old
+   db-ctl-col pattern. Apply to a .pal-switch to stack options. */
+.pal-col{flex-direction:column;gap:0;border-radius:var(--radius);}
+.pal-col .pal-btn{width:100%;text-align:center;border-radius:0;}
+.pal-col .pal-btn:first-child{border-radius:var(--radius) var(--radius) 0 0;border-bottom:1px solid var(--border);}
+.pal-col .pal-btn:last-child{border-radius:0 0 var(--radius) var(--radius);}
+.dock{
+  position:fixed;left:50%;transform:translateX(-50%);bottom:16px;
+  z-index:95; /* above header/gate, below drawer (1000) + modals + toasts */
+  display:flex;flex-direction:column;gap:8px;align-items:stretch;
+  min-width:148px;padding:10px 12px;
+  border:var(--glass-border);border-radius:18px;
+  background:var(--glass-fill-dark);box-shadow:var(--glass-rim),var(--glass-shadow);
+  backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturate));
+}
+.dock .pal-switch{margin:0;}
+.dock-item{display:inline-flex;align-items:center;gap:7px;font-size:.7rem;color:var(--slate);}
+.dock-item > .ico{width:14px;height:14px;color:var(--gold);flex-shrink:0;}
+.dock-item .dock-lbl{flex:1;min-width:0;}
+.dock-item .tgl{margin:0;}
+.dock .pal-btn{font-size:.66rem;padding:4px 10px;}
+.dock:focus-visible{outline:2px solid var(--gold);outline-offset:2px;}
+/* Reserve scroll space so page content never hides behind the dock. */
+body.has-dock{padding-bottom:calc(var(--dock-h) + 24px);}
+@media(max-width:600px){
+  .dock{left:10px;right:10px;transform:none;width:auto;min-width:0;gap:6px;padding:8px 10px;border-radius:16px;}
+}
 
 /* ---- Crosshair cursor (opt-in only) ---- */
 body.crosshair-on{cursor:crosshair;}
@@ -1134,6 +1176,7 @@ body.readonly-mode .btn[data-action]:not([data-action="showSec"]):not([data-acti
    overrides it with var(--toggle-on-bg) on equal specificity. Relying on
    cascade order to suppress a red ON state is fragile; the rule is deleted. */
 .tgl input:checked+.tsl::before{transform:translateX(16px);}
+.tgl input:focus-visible + .tsl{outline:2px solid var(--gold);outline-offset:2px;}
 
 /* ---- Issue Row ---- */
 .irow td{border-left:2px solid var(--danger);background:rgba(220,53,69,.05);}
@@ -1782,7 +1825,7 @@ body.dark-mode .btn-warn:hover{background:#d97706;}
 /* §3 mandatory fallback — no backdrop-filter support: solid card colour */
 @supports not (backdrop-filter:blur(1px)){
   .glass-surface,#app-header,header,#drw,.drw-sheet,.mb,.gbox,#chartup-modal .cu-box,#wbsimport-modal .wi-box,#importdates-modal .wi-box,
-  .pcard,.btn,.toggle-chip,.tab-btn,.sec-btn,.settings-btn,.dc,.tgl .tsl,.badge.on-hold,.badge.planning{
+  .pcard,.btn,.toggle-chip,.tab-btn,.sec-btn,.settings-btn,.dc,.tgl .tsl,.badge.on-hold,.badge.planning,.dock{
     background:var(--card);
   }
   .btn-g{background:var(--green);color:#fff;}
@@ -1792,7 +1835,7 @@ body.dark-mode .btn-warn:hover{background:#d97706;}
 /* Accessibility: reduced transparency removes the blur, keeps solid surfaces */
 @media (prefers-reduced-transparency:reduce){
   .glass-surface,#app-header,header,#drw,.drw-sheet,.mb,.gbox,#chartup-modal .cu-box,#wbsimport-modal .wi-box,#importdates-modal .wi-box,
-  .pcard,.btn,.toggle-chip,.tab-btn,.sec-btn,.settings-btn,.dc,.tgl .tsl,.badge.on-hold,.badge.planning{
+  .pcard,.btn,.toggle-chip,.tab-btn,.sec-btn,.settings-btn,.dc,.tgl .tsl,.badge.on-hold,.badge.planning,.dock{
     backdrop-filter:none!important;-webkit-backdrop-filter:none!important;background:var(--card);
   }
   /* Re-assert accent/ON-state fills — without blur the group rule above would
@@ -1807,7 +1850,7 @@ body.dark-mode .btn-warn:hover{background:#d97706;}
 }
 /* Accessibility: reduced motion skips the press springs */
 @media (prefers-reduced-motion:reduce){
-  .btn,.pcard,.tab-btn,.sec-btn,.settings-btn,.dc,.toggle-chip,.tgl .tsl{
+  .btn,.pcard,.tab-btn,.sec-btn,.settings-btn,.dc,.toggle-chip,.tgl .tsl,.pal-btn{
     transition:none!important;transform:none!important;
   }
   /* The sidebar's slide is a motion affordance only — instant toggle under
@@ -2693,11 +2736,8 @@ body.db-page .db-ctl-row{display:flex;align-items:center;gap:8px;font-size:.72re
 body.db-page .db-ctl-row > .ico{width:15px;height:15px;color:var(--gold);flex-shrink:0;}
 body.db-page .db-ctl-row .tgl{margin:0 0 0 auto;}
 body.db-page .db-ctl-row .pal-switch{margin-left:auto;}
-body.db-page .db-ctl-col{flex-wrap:wrap;}
-body.db-page .db-ctl-col .pal-switch{flex-direction:column;border-radius:var(--radius);gap:0;}
-body.db-page .db-ctl-col .pal-switch .pal-btn{border-radius:0;width:100%;text-align:center;}
-body.db-page .db-ctl-col .pal-switch .pal-btn:first-child{border-radius:var(--radius) var(--radius) 0 0;border-bottom:1px solid var(--border);}
-body.db-page .db-ctl-col .pal-switch .pal-btn:last-child{border-radius:0 0 var(--radius) var(--radius);}
+/* The old db-ctl-col vertical picker block moved to the shared .pal-col
+   rules above (owner D5/D11: the dock is now the single theme picker). */
 /* ---- footer: upgrade + user ---- */
 body.db-page .db-upgrade{
   display:flex;align-items:center;justify-content:center;gap:6px;width:100%;
@@ -3121,7 +3161,7 @@ body.dark-mode.db-page .db-auto-lbl{color:var(--db-text-secondary);}
    frosted dark glass surface automatically.
    ============================================================ */
 .toast{
-  position:fixed;bottom:28px;left:50%;transform:translateX(-50%);
+  position:fixed;bottom:calc(var(--dock-h) + 18px);left:50%;transform:translateX(-50%);
   z-index:9999;display:flex;align-items:center;gap:11px;
   max-width:min(92vw,520px);padding:9px 18px 9px 10px;
   border-radius:999px; /* the circular border */

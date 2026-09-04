@@ -229,21 +229,23 @@ var MMGR = window.MMGR || {};
       if (banner) banner.classList.remove('is-hide');
     }
 
-    // Apply theme , light is the default; dark is opt-in. The device-level
-    // preference (localStorage mmgr_theme , the same slot the launcher and
-    // admin read, and the same slot tglTheme writes) is the MASTER so the
-    // choice made anywhere persists everywhere; per-project state.theme is
-    // the portable fallback for a fresh device or an imported project file.
+    // Apply theme: the device-level pref (localStorage mmgr_theme — the same
+    // slot the launcher and admin write, and the same slot tglTheme writes) is
+    // the MASTER so the choice made anywhere persists everywhere; per-project
+    // state.theme is the portable fallback for a fresh device or an imported
+    // project file. System mode follows the OS (owner D6, restored 2026-09-03):
+    // the FOUC script + mmgr-theme.js already applied the correct class
+    // pre-paint, so this block only reconciles the state-theme fallback and
+    // must never fight a stored 'system' choice (a stored System + dark OS
+    // must stay dark here).
     const thmTgl = U.$('thm-tgl');
     let theme = s.theme || 'light';
     try { theme = localStorage.getItem('mmgr_theme') || theme; } catch (e) { /* ignore */ }
-    if (theme === 'dark') {
-      document.body.classList.add('dark-mode');
-      if (thmTgl) thmTgl.checked = false;
-    } else {
-      document.body.classList.remove('dark-mode');
-      if (thmTgl) thmTgl.checked = true;
-    }
+    const dark =
+      theme === 'dark' ||
+      (theme === 'system' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    document.body.classList.toggle('dark-mode', dark);
+    if (thmTgl) thmTgl.checked = !dark;
     // Apply crosshair
     if (s.crosshairOn) {
       document.body.classList.add('crosshair-on');

@@ -157,13 +157,13 @@ body.glass-premium .wrap{position:relative;z-index:1;}
    viewport. Mobile stays drawer-closed by default. */
 (function(){ try {
   var t = localStorage.getItem('mmgr_theme');
-  var dark = t === 'dark';
+  var dark = t === 'dark' || (t === 'system' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
   if (dark) document.documentElement.classList.add('dark-mode');
   if (window.matchMedia && window.matchMedia('(min-width:769px)').matches) document.documentElement.classList.add('side-open');
 } catch (e) {} })();
 </script>
 </head>
-<body class="db-page">
+<body class="db-page has-dock">
 <script>
 /* Transfer classes from <html> to <body> (CSS selectors target body.*). */
 (function(){ try {
@@ -213,7 +213,8 @@ body.glass-premium .wrap{position:relative;z-index:1;}
     <div class="db-g">Customize</div>
     <button type="button" class="db-link" data-rail-toggle="rail-customize" aria-expanded="false" aria-controls="rail-customize"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-palette"></use></svg> Customize <svg class="ico ico-caret" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg></button>
     <div class="db-sub db-customize" id="rail-customize" hidden>
-      <span class="db-ctl-row db-ctl-col"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-palette"></use></svg> <span>Appearance</span><span class="pal-switch" role="group" aria-label="Theme mode"><button type="button" class="pal-btn" data-pal="light" aria-pressed="false">Light</button><button type="button" class="pal-btn" data-pal="dark" aria-pressed="false">Dark</button></span></span>
+      <!-- Theme picker consolidated into the bottom dock (owner D11): the
+           dock is the ONLY full Light/Dark/System picker on this page. -->
       <span class="db-ctl-row"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-orb"></use></svg> Premium Glass <label class="tgl"><input type="checkbox" id="glass-tgl" data-action="tglGlassMode" aria-label="Toggle premium liquid-glass backdrop"><span class="tsl"></span></label></span>
     </div>
   </nav>
@@ -575,12 +576,24 @@ function toast(msg, type){
 // Device-level theme toggle , writes the same localStorage slot (mmgr_theme)
 // that project.html's Settings toggle and admin.html's switches use, so the
 // choice persists across launcher, admin, and app. el-scoped so multiple
-// instances on a page (launcher row / admin gate pill / header) stay in sync.
-// Legacy dark/glass toggles removed — appearance is now handled by
-// mmgr-theme.js (Light / Dark / System). These stubs remain in the action
-// map so no-op references don't throw.
+// instances on a page (rail toggle / bottom dock) stay in sync.
+// Dark theme is handled by mmgr-theme.js (Light / Dark / System); the glass
+// toggle is implemented HERE because MMGR.App (project-page namespace) does
+// not exist on the launcher — the old delegation to it was a silent no-op
+// (fixed 2026-09-03, owner D3: the dock carries a glass toggle too).
 function tglTheme(){}
-function tglGlassMode(){ if (window.MMGR && MMGR.App && MMGR.App.tglGlassMode) MMGR.App.tglGlassMode(); }
+function tglGlassMode(el){
+  const on = el ? el.checked : (window.MMGR && MMGR.Viewport && MMGR.Viewport.getGlassMode() === 'premium');
+  if (window.MMGR && MMGR.Viewport) MMGR.Viewport.setGlassMode(on ? 'premium' : 'css');
+  if (window.MMGR && MMGR.Glass) MMGR.Glass.sync();
+  // Keep every instance of this toggle on the page in step (rail + dock).
+  document.querySelectorAll('[data-action="tglGlassMode"]').forEach(g => { g.checked = on; });
+  const eff = (window.MMGR && MMGR.Viewport && MMGR.Viewport.effectiveGlassMode) ? MMGR.Viewport.effectiveGlassMode() : 'css';
+  toast(on
+    ? (eff === 'premium' ? 'Premium liquid-glass mode on.' : 'Preference saved. This device uses CSS glass.')
+    : 'Premium visual mode off. CSS glass stays on.',
+    eff === 'premium' ? 'ok' : 'warn');
+}
 
 /* CLOUD-BACKEND-ARCHITECTURE-PLAN Phase 2 , editor-code unlock.
    A cloud EDITOR code is not in the published manifest (it lives only in the
@@ -1114,6 +1127,25 @@ if ('serviceWorker' in navigator &&
     </div>
   </div>
 </div>
+
+<!-- Bottom dock (owner D3/D6/D11): the ONE full theme picker on the page
+     (vertical Light/Dark/System stack) + the premium-glass toggle. The theme
+     buttons ride mmgr-theme.js's delegated [data-pal] listener, the glass
+     toggle rides each page's tglGlassMode action; js/mmgr-dock.js keeps the
+     dock in step with the header moon quick-toggle + rail toggles. -->
+<div class="dock" id="app-dock" role="toolbar" aria-label="Appearance controls">
+  <span class="pal-switch pal-col" role="group" aria-label="Theme mode">
+    <button type="button" class="pal-btn" data-pal="light" aria-pressed="false">Light</button>
+    <button type="button" class="pal-btn" data-pal="dark" aria-pressed="false">Dark</button>
+    <button type="button" class="pal-btn" data-pal="system" aria-pressed="false">System</button>
+  </span>
+  <span class="dock-item">
+    <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-orb"></use></svg>
+    <span class="dock-lbl">Glass</span>
+    <label class="tgl"><input type="checkbox" data-action="tglGlassMode" aria-label="Toggle premium liquid-glass backdrop"><span class="tsl"></span></label>
+  </span>
+</div>
+<script defer src="js/mmgr-dock.js"></script>
 
 </body>
 </html>

@@ -57,7 +57,7 @@
       clicks "Connect Google" in Settings > Controls. It is a device label,
       never a gate , offline/CSP-blocked loads degrade to a toast.
 -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' 'sha256-zUtIgMoGZXbdKSIgoC/fhYlGEPJluAGG4nNBJOwnNWU=' 'sha256-reza4vd5o52LWNUf9lzK6WjApdstd5sm4xVx+lcnK2M=' 'sha256-DDYVqby/7w6QiwGTikwlcwwnf1qHWgEmMUmSvXmqy7E=' 'sha256-SOdsdeUaBMC/g/FSW5vXZk+K1tRpA9U5QM/9rJa1RLs=' https://accounts.google.com https://unpkg.com; style-src 'self' 'unsafe-inline' https://accounts.google.com https://fonts.googleapis.com; img-src 'self' data: blob: https://lh3.googleusercontent.com https://*.googleusercontent.com; font-src 'self' data:; connect-src 'self' https://api.open-meteo.com https://geocoding-api.open-meteo.com https://api.openai.com https://api.anthropic.com https://generativelanguage.googleapis.com https://github.com https://release-assets.githubusercontent.com https://accounts.google.com https://huggingface.co https://*.cdn.hf.co; frame-src https://accounts.google.com; base-uri 'self'; form-action 'self';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' 'sha256-xxa9/PuVrm+Taxz+xZPm96NYiSKIHPHZLX8VCKQnrXk=' 'sha256-reza4vd5o52LWNUf9lzK6WjApdstd5sm4xVx+lcnK2M=' 'sha256-DDYVqby/7w6QiwGTikwlcwwnf1qHWgEmMUmSvXmqy7E=' 'sha256-SOdsdeUaBMC/g/FSW5vXZk+K1tRpA9U5QM/9rJa1RLs=' https://accounts.google.com https://unpkg.com; style-src 'self' 'unsafe-inline' https://accounts.google.com https://fonts.googleapis.com; img-src 'self' data: blob: https://lh3.googleusercontent.com https://*.googleusercontent.com; font-src 'self' data:; connect-src 'self' https://api.open-meteo.com https://geocoding-api.open-meteo.com https://api.openai.com https://api.anthropic.com https://generativelanguage.googleapis.com https://github.com https://release-assets.githubusercontent.com https://accounts.google.com https://huggingface.co https://*.cdn.hf.co; frame-src https://accounts.google.com; base-uri 'self'; form-action 'self';">
 <script>
 /* Device-level theme (shared across launcher, admin, and app): applied before
    first paint from the same localStorage slot every theme toggle writes, so a
@@ -65,13 +65,13 @@
    <head> so the class is set before any content renders (FOUC prevention). */
 (function(){ try {
   var t = localStorage.getItem('mmgr_theme');
-  var dark = t === 'dark';
+  var dark = t === 'dark' || (t === 'system' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
   if (dark) document.documentElement.classList.add('dark-mode');
 } catch (e) {} })();
 </script>
 <link rel="modulepreload" href="dist/bundle.js">
 </head>
-<body>
+<body class="has-dock">
 <script>
 /* Transfer dark-mode from <html> to <body> (the CSS selectors target body.dark-mode). */
 (function(){ try {
@@ -1389,9 +1389,9 @@
       <pre class="fmt-preview" id="pv-tpl-closure" aria-label="Closure sign-off email preview (live)"></pre>
     </div>
 
+    <!-- Theme pickers consolidated into the bottom dock (owner D11): the
+         dock is the ONLY full Light/Dark/System picker on this page. -->
     <div class="ctl-sec"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-palette"></use></svg> Appearance</div>
-    <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-moon"></use></svg> Light / Dark Theme</span><label class="tgl"><input type="checkbox" id="thm-tgl" aria-label="Light / Dark Theme" data-action="tglTheme"><span class="tsl"></span></label></div>
-    <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-palette"></use></svg> Theme Mode</span><span class="pal-switch" role="group" aria-label="Theme mode"><button type="button" class="pal-btn" data-pal="light" aria-pressed="false">Light</button><button type="button" class="pal-btn" data-pal="dark" aria-pressed="false">Dark</button><button type="button" class="pal-btn" data-pal="system" aria-pressed="true">System</button></span></div>
     <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-crosshair"></use></svg> Crosshair Cursor</span><label class="tgl"><input type="checkbox" id="ch-tgl" aria-label="Crosshair Cursor" data-action="tglCh"><span class="tsl"></span></label></div>
     <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-orb"></use></svg> Premium Visual Mode</span><label class="tgl"><input type="checkbox" id="glass-tgl" aria-label="Premium Visual Mode" data-action="tglGlassMode"><span class="tsl"></span></label></div>
     <div class="sr-hint">Premium visual mode , uses more graphics power (WebGL liquid-glass backdrop). Off by default; requires a capable device. CSS glass is the universal default for everyone else.</div>
@@ -1815,5 +1815,24 @@ if ('serviceWorker' in navigator &&
   });
 }
 </script>
+
+<!-- Bottom dock (owner D3/D6/D11): the ONE full theme picker on the page
+     (vertical Light/Dark/System stack) + the premium-glass toggle. The theme
+     buttons ride mmgr-theme.js's delegated [data-pal] listener, the glass
+     toggle rides each page's tglGlassMode action; js/mmgr-dock.js keeps the
+     dock in step with the header moon quick-toggle + rail toggles. -->
+<div class="dock" id="app-dock" role="toolbar" aria-label="Appearance controls">
+  <span class="pal-switch pal-col" role="group" aria-label="Theme mode">
+    <button type="button" class="pal-btn" data-pal="light" aria-pressed="false">Light</button>
+    <button type="button" class="pal-btn" data-pal="dark" aria-pressed="false">Dark</button>
+    <button type="button" class="pal-btn" data-pal="system" aria-pressed="false">System</button>
+  </span>
+  <span class="dock-item">
+    <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-orb"></use></svg>
+    <span class="dock-lbl">Glass</span>
+    <label class="tgl"><input type="checkbox" data-action="tglGlassMode" aria-label="Toggle premium liquid-glass backdrop"><span class="tsl"></span></label>
+  </span>
+</div>
+<script defer src="js/mmgr-dock.js"></script>
 </body>
 </html>

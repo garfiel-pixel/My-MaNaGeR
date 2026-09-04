@@ -4,19 +4,26 @@
           high-end + wide viewport): glass-premium class, canvas,
           content layered above it
      G2 — flipping the launcher glass toggle tears it down
-     G3 — admin gate pill drives the engine on the setup screen
+     G3 — the shared bottom dock drives the engine on the admin
+          gate (setup screen) — the dock replaced the old #gate-prefs
+          pill (owner D3/D11, 2026-09-03)
    Run: node tools/verify-glass-preview-cdp.cjs
    ============================================================ */
 const { spawn } = require('child_process');
+const path = require('path');
+const os = require('os');
 
 const { chromePath: CHROME, BASE, DEBUG_PORT: PORT } = require('./chrome-launcher.cjs');
-const ROOT = 'C:/Users/Garfield/Downloads/mymanager-fixed';
-const userDir = 'C:/tmp/chrome-glass-' + Date.now();
+const ROOT = path.join(__dirname, '..');
+const userDir = path.join(os.tmpdir(), 'chrome-glass-' + Date.now());
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
+// NOTE: no --disable-gpu here — the premium engine needs a real WebGL
+// context (SwiftShader in headless); the flag would silently fail every
+// boot scenario with no console error.
 const proc = spawn(CHROME, [
-  '--headless=new', '--disable-gpu', '--no-sandbox',
+  '--headless=new', '--no-sandbox',
   '--remote-allow-origins=*', '--remote-debugging-port=' + PORT,
   '--user-data-dir=' + userDir, '--window-size=1280,900', 'about:blank'
 ], { stdio: 'ignore' });
@@ -71,10 +78,13 @@ async function waitForPageTarget() {
 
   const out = [];
 
+  // Served over the dev server (BASE), not file:// — file:// pages block the
+  // engine's cross-origin ES-module import of three.js (CDP harness fix,
+  // 2026-09-03; the old hardcoded Downloads ROOT is retired).
   async function navigate(seed) {
     const pre = await send('Page.addScriptToEvaluateOnNewDocument', { source: seed });
     const startIdx = issues.length;
-    await send('Page.navigate', { url: 'file:///' + ROOT + '/app.html' });
+    await send('Page.navigate', { url: BASE + '/app.html' });
     await sleep(3000);
     await send('Page.removeScriptToEvaluateOnNewDocument', { identifier: pre.identifier });
     return startIdx;
@@ -105,22 +115,22 @@ async function waitForPageTarget() {
   out.push({ scenario: 'G2-launcher-toggle-off', result: g2, errors: issues.slice(g2start) });
   console.log('SCENARIO G2-launcher-toggle-off: ' + JSON.stringify(g2));
 
-  // G3 — admin gate pill drives the engine (fresh page, setup screen).
-  // Each scenario seeds its own prefs: cross-file:// localStorage sharing is
-  // unreliable, so nothing is inherited from G2.
+  // G3 — the shared bottom dock drives the engine on the admin gate (fresh
+  // page, setup screen). Each scenario seeds its own prefs: cross-file://
+  // localStorage sharing is unreliable, so nothing is inherited from G2.
   const g3start = issues.length;
   const pre3 = await send('Page.addScriptToEvaluateOnNewDocument', { source: `
     try{localStorage.setItem('mmgr_glass_mode','premium');}catch(e){}
     try{window.__mmgrForceHighEnd=true;}catch(e){}
   ` });
-  await send('Page.navigate', { url: 'file:///' + ROOT + '/admin.html' });
+  await send('Page.navigate', { url: BASE + '/admin.html' });
   await sleep(3000);
   const g3before = JSON.parse(await evaluate(`(function(){ return JSON.stringify({
-    pillVisible: (function(){ var p=document.getElementById('gate-prefs'); return p ? !p.classList.contains('hidden') : false; })(),
-    pillHasTheme: !!document.querySelector('#gate-prefs [data-action="tglTheme"]'),
-    pillHasGlass: !!document.querySelector('#gate-prefs [data-action="tglGlassMode"]'),
+    dockVisible: (function(){ var d=document.getElementById('app-dock'); return !!d && getComputedStyle(d).display !== 'none'; })(),
+    dockHasTheme: !!document.querySelector('.dock .pal-btn[data-pal]'),
+    dockHasGlass: !!document.querySelector('.dock [data-action="tglGlassMode"]'),
     setupScreen: !document.getElementById('setup-screen').classList.contains('hidden'),
-    glassChecked: (function(){ var g=document.querySelector('#gate-prefs [data-action="tglGlassMode"]'); return g ? g.checked : null; })(),
+    glassChecked: (function(){ var g=document.querySelector('.dock [data-action="tglGlassMode"]'); return g ? g.checked : null; })(),
     pref: localStorage.getItem('mmgr_glass_mode')
   }); })()`));
   await sleep(5000); // engine boot (CDN fetch + first frames)
@@ -129,7 +139,7 @@ async function waitForPageTarget() {
     canvas: !!document.getElementById('glass-canvas'),
     gateAbove: (function(){ var w=document.querySelector('.gatewrap'); if(!w) return null; var s=getComputedStyle(w); return {pos:s.position, z:s.zIndex}; })()
   }); })()`));
-  await evaluate(`(function(){ var g=document.querySelector('#gate-prefs [data-action="tglGlassMode"]'); if(g) g.click(); return true; })()`);
+  await evaluate(`(function(){ var g=document.querySelector('.dock [data-action="tglGlassMode"]'); if(g) g.click(); return true; })()`);
   await sleep(1200);
   const g3after = JSON.parse(await evaluate(`(function(){ return JSON.stringify({
     glassClass: document.body.classList.contains('glass-premium'),
@@ -137,14 +147,14 @@ async function waitForPageTarget() {
     pref: localStorage.getItem('mmgr_glass_mode')
   }); })()`));
   await send('Page.removeScriptToEvaluateOnNewDocument', { identifier: pre3.identifier });
-  out.push({ scenario: 'G3-admin-gate-pill', before: g3before, boot: g3boot, after: g3after, errors: issues.slice(g3start) });
-  console.log('SCENARIO G3-admin-gate-pill: ' + JSON.stringify({ before: g3before, boot: g3boot, after: g3after }));
+  out.push({ scenario: 'G3-admin-gate-dock', before: g3before, boot: g3boot, after: g3after, errors: issues.slice(g3start) });
+  console.log('SCENARIO G3-admin-gate-dock: ' + JSON.stringify({ before: g3before, boot: g3boot, after: g3after }));
 
   const pass =
     g1.glassClass === true && g1.canvas === true && g1.pref === 'premium' &&
     g1.wrapAbove && g1.wrapAbove.pos === 'relative' && g1.wrapAbove.z === '1' &&
     g2.glassClass === false && g2.canvas === false && g2.pref === 'css' &&
-    g3before.pillVisible === true && g3before.pillHasGlass === true && g3before.setupScreen === true &&
+    g3before.dockVisible === true && g3before.dockHasTheme === true && g3before.dockHasGlass === true && g3before.setupScreen === true &&
     g3before.glassChecked === true && g3before.pref === 'premium' &&
     g3boot.glassClass === true && g3boot.canvas === true &&
     g3boot.gateAbove && g3boot.gateAbove.pos === 'relative' && g3boot.gateAbove.z === '1' &&

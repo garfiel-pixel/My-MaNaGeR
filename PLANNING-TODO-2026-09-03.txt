@@ -1,0 +1,921 @@
+MY MANAGER - PLANNING TRACKER (2026-09-03 session)
+===================================================
+Status legend: [ ] OPEN  [~] IN PROGRESS  [x] DONE  [?] NEEDS OWNER DECISION
+This is a PLANNING file - nothing here is executed without the owner's go.
+Owner rule for this session: planning only, read code, do not edit code.
+
+--------------------------------------------------------------------
+OWNER DECISIONS CAPTURED TODAY
+--------------------------------------------------------------------
+D1. Calculator scope: BUILD ALL FOUR CATEGORIES (construction trade,
+    bid & finance, site & geometry, EVM metrics). Reason: the app may be
+    used by people NOT in construction. Users toggle which calculator
+    features they want in the calculator settings.
+D2. C23 = CLOUD SHARED POOL (account-scoped library referenced by many
+    projects; changes propagate). Not the local one-time import.
+D3. C19 = FULL FRONTEND COMPLETION + honour code expiry (expires_at).
+D4. Visual blueprint #1 (tokens + admin login + bottom dock + theme
+    segmented control) should GOVERN THE ENTIRE SYSTEM, not just admin.
+D5. Owner has MORE plans still in planning -> this file tracks them all.
+D6. SYSTEM THEME OPTION IS BACK (reverses the 08-30 removal) - BUT theme
+    pickers must stack VERTICALLY (one full-width option per row), never
+    a long horizontal strip. A horizontal strip looked unprofessional;
+    vertical stacking keeps format + alignment. (app.html already does
+    this once via db-ctl-col - apply everywhere.)
+D7. ROSE-GOLD + 3D-TILT: build BOTH variants into the codebase - a flat
+    glass mode AND a 3D-tilt perspective mode, toggled dynamically with
+    one click so the owner can test both and gather feedback. The
+    refined rose-gold blueprint + its 17-point audit fixes (Safari
+    -webkit-backdrop-filter, fluid layout - no fixed 720px, 768px
+    breakpoint drops tilt to flat, notification overlay rendered flat
+    outside the 3D context, focus-visible rings, localStorage try/catch,
+    null-checked DOM init, espresso-on-coral contrast) are the spec to
+    fold in - see AREA E.
+D8. ADMIN PASSWORD RECOVERY = TWO TIERS (owner's pasted plan adopted
+    verbatim - full spec in AREA G). Tier B local recovery code =
+    ACTIVE NOW (24-char code shown once at admin setup, hashed locally,
+    5 attempts then 15-min cooldown, rotated after use, lost code =
+    explicit local wipe + re-setup). Tier A email OTP = BUILT but
+    feature-flagged off (EMAIL_RECOVERY_ENABLED defaults false) until a
+    verified sending domain exists. OTP: 15-minute expiry (owner
+    confirmed), single-use, 3 sends/hour/account, 5-attempt lock,
+    newest-OTP-invalidates-older, new D1 table admin_recovery_otp.
+    Only for signed-in admins with a verified email; never for
+    local-only sessions (that is Tier B).
+D10. EXECUTION ORDER (owner picked, 09-03): UI BLUEPRINT FIRST (Area D
+    + G + E ordering) - bottom dock + vertical theme picker + admin
+    login polish + two-tier recovery codes app-wide. Then the feature
+    work in owner-requested order (C19, calculator, C23).
+D9. 3D/ROSE-GOLD SURFACE SCOPE = launcher (app.html) + project app
+    section (project.html) + admin (admin.html). MARKETING PAGES
+    (index/features/about/contact/reviews/privacy) ARE OUT OF SCOPE for
+    now - leave them untouched. Build the theme/view-mode so it is
+    EASY TO REFERENCE and spread across the entire codebase later if
+    needed (tokens + shared classes + single toggle, not page-copy).D11. THEME PICKER CONSOLIDATION (owner, 09-03): SHIPPED 2026-09-03 -
+     the dock is the ONLY full Light/Dark/System picker on each app
+     page. Deleted: app.html sidebar Appearance row, project.html
+     Controls Light/Dark + Theme Mode rows, admin.html gate-prefs pill
+     (replaced by the always-visible dock) + admin rail Appearance row.
+     Kept: the header moon quick-toggle (app.html #db-theme-quick) +
+     the dock's glass toggle; all duplicate tglTheme/thm-tgl references
+     null-guarded or removed. BONUS FIXES the harnesses flushed out:
+     (a) the LAUNCHER's Premium Glass toggle was a dead stub
+     (delegated to project-page MMGR.App.tglGlassMode, which never
+     exists on app.html) - implemented inline mirroring admin;
+     (b) launcher + admin NEVER auto-booted the premium glass engine
+     (their inline boot IIFEs run before the deferred bundle defines
+     MMGR) - js/mmgr-dock.js (post-bundle) now calls Glass.sync() at
+     boot, project.html already did.
+D12. NEW-VISITOR DEFAULT STAYS LIGHT (owner, 09-03): restoring System
+    does NOT restore System as the default - a fresh browser with no
+    mmgr_theme still gets light until the user picks a mode.
+D13. CI RUNS FREQUENTLY (owner, 09-03): during execution, CI is not a
+    once-at-the-end gate. Local CI replication (npm run verify + T1/T2
+    harnesses + npx wrangler deploy --dry-run) runs after EVERY phase
+    before commit/push, and pushes go out as work lands so GitHub
+    Actions CI keeps validating continuously - never batch everything
+    to one end-of-day push.
+D14. SKILLS ARE THE ALWAYS-ON POV (owner, 09-03): the locked
+    .agents/skills/* set is the reference point of view for every
+    planning/execution/verification decision in this plan. Load the
+    relevant SKILL.md(s) per task before acting (universal-ui-architect
+    for any UI, skeptical-code-audit for verification, workers-best-
+    practices + cloudflare for worker work, d1-migration for schema,
+    pwa-development for sw.js, qa-expert for harness coverage, etc.).
+    When in doubt: cloudflare + workers-best-practices +
+    skeptical-code-audit.
+
+--------------------------------------------------------------------
+AREA A - COMPREHENSIVE CALCULATOR (owner: add everything + toggles)
+--------------------------------------------------------------------
+Current state (js/mmgr-calculator.js, shipped): 6 tabs - General,
+Percent, Area (rect/tri/circle/trapezoid), Convert (length/area/weight/
+volume/concrete), Markup (markup/margin/discount/tax), Cost Est.
+(unit/labor/material/contingency). Floating FAB, drag, history,
+Ctrl+Shift+C, build.js module, .calc-* CSS, i-calculator sprite icon.
+
+A1. [ ] NEW CATEGORY: Construction trade calculators
+     - Concrete: slab, footing, column, wall, cylinder pours (+ bag
+       counts from cu yd), rebar count/weight (per bar size)
+     - Masonry: block/brick counts + mortar estimate
+     - Earthwork: cut/fill volumes, spoil/swell factor
+     - Roofing: pitch -> slope factor, roof area from footprint, squares,
+       sheet/underlayment counts
+     - Framing: lumber counts (studs, plates, rafters), waste factor
+     - Stairs: risers/treads math, stringer length, code max rise
+     - Finish: paint coverage, drywall sheets, flooring/tile (incl. cut
+       waste), carpet
+     - Paving/other: asphalt tonnage, trench volume
+A2. [ ] NEW CATEGORY: Bid & finance math
+     - Bid build-up: cost -> overhead % -> profit % -> bid price
+     - Break-even price, margin from bid, contingency stacking
+     - Loan / amortization (monthly payment, total interest)
+A3. [ ] NEW CATEGORY: Site & geometry math
+     - Slope/grade (rise/run, % grade, degrees), arc/chord, odd-volume
+       shapes (prismoid, frustum), extra conversions (temperature,
+       pressure, flow, speed)
+A4. [ ] NEW CATEGORY: Project metrics (EVM)
+     - SPI/CPI/EAC/ETC/burn rate - REUSE js/mmgr-evm.js math so the
+       calculator's answers match the app's own dashboard numbers
+A5. [ ] CALCULATOR SETTINGS (owner D1): users toggle feature groups they
+     want. Every category (except General?) is toggleable. Persist the
+     enabled set (localStorage, try/catch guarded). Tabs hidden when
+     their group is off. Non-construction users can switch off trade
+     calculators. LOCATION DECIDED (Phase 5 detail): gear button in the
+     calculator panel head ONLY - opens the data-calc='settings'
+     section with one checkbox per tab. (NOTE: the Controls drawer
+     Appearance section is deleted in Phase 1/D11, so the panel-head
+     gear is the sole home; the Controls drawer Calculator row keeps
+     just its Open button.)
+A6. [ ] Keep all existing tabs (no feature removal). New calculators
+     live in the SAME floating panel as new tabs - no second window.
+A7. [ ] QA: extend qa-*.cjs calculator coverage; node --check;
+     npm run verify; field-guide sheet update (Controls / calculator).
+A8. [ ] EXECUTION SUGGESTION: ship in one family of commits grouped by
+     category (trades first, then finance/site/EVM, then settings toggles).
+
+--------------------------------------------------------------------
+AREA B - C23 CLOUD SHARED RESOURCE POOL (owner D2: cloud pool)
+--------------------------------------------------------------------
+Current state: admin Customize toggle (localStorage mmgr_cross_project)
++ Resources-panel one-time import modal (copies resources rows from
+another LOCAL project; duplicate detection by name). Import only - no
+sharing, no sync, resources only. C23 actual = cloud shared pool.
+
+B1. [ ] DESIGN (this is planning): account-scoped shared resource
+     library in the cloud (D1 table + R2), referenced by many projects.
+     Local-first + opt-in per project must stay intact (offline-first
+     sacred - AGENTS.md). Pool = people/equipment/material entries the
+     owner maintains once; each project links entries it uses; edits to
+     a linked entry propagate to every project referencing it when
+     online; offline edits queue and merge on next sync.
+B2. [ ] Backend: new D1 migration (cloud pool table + project links),
+     routes to create/update/list pool entries + link/unlink in a
+     project. Scope: owner session + owner code (mirror existing auth).
+B3. [ ] Admin/launcher UI: manage the pool (a "Shared Resource Pool"
+     surface in admin or launcher My Cloud area).
+B4. [ ] Project Resources panel: replace/augment the one-time import
+     modal with a Library picker (link pool entries), and an "add to
+     pool" per resource row. Reuse the existing mmgr_cross_project
+     toggle to enable the surface.
+B5. [ ] Sync semantics: merge on pull, conflict rule, offline queue.
+     Reuse mmgr-state.js merge/undo machinery where possible.
+B6. [ ] QA + field guide updates; verify with wrangler dev D1 tests.
+?    DECIDED 09-03 (Phase 6 detail): pool types = people (Labor +
+     Subcontractor via kind='person' + type), equipment, material.
+     Stakeholders EXCLUDED (comms/relationship records, not capacity);
+     subcontractor rate cards ride the person kind.
+?    DECIDED 09-03: pool data does NOT count toward the 8 MB project
+     cap (CLOUD_BODY_LIMIT_BYTES applies to the /save state blob only,
+     src/lib/http.js:371; pool rows live in their own D1 tables).
+
+--------------------------------------------------------------------
+AREA C - C19 CLIENT PORTAL COMPLETION (owner D3: full + expiry)
+--------------------------------------------------------------------
+Current state: SERVER mostly done (migration 0017 cloud_client_codes;
+src/cloud/client-codes.js create/list/revoke + verifyClientCode; lookup
+returns role:'client' + sections). FRONTEND MISSING and load path
+missing: handleCloudLoad + handleCloudMeta read only X-Owner-Code /
+X-Editor-Code / X-View-Code; launcher app.html cloudCodeOpen() has no
+role:'client' branch (falls into X-Editor-Code and fails); no section
+gating for clients; expires_at never set or checked. Also: C19/C23
+session was never deployed (DEPLOY PENDING note in directive).
+
+C1. [ ] Server: accept X-Client-Code in /load and /meta; return
+     role:'client' + sections; clients can never write (/save already
+     has no client path - keep it that way). Add expires_at check in
+     verifyClientCode -> expired returns 'code_expired' (friendly copy:
+     "This access code expired on <date>. Ask the admin for a new one.")
+     Create route accepts an expiry (days or date) when the admin UI
+     sends one. Also check deleted_at for client codes.
+C1b.[ ] CLIENT REFRESH CADENCE (added 09-03): define how a client sees
+     fresh admin data while the project is open - the app only pulls on
+     load/save today. Proposal: poll /meta every ~60s while the tab is
+     visible + refresh on visibilitychange + after the presence-DO
+     heartbeat shows activity; reuse the existing presence chip infra
+     (js/mmgr-presence.js) as the trigger so no new polling machinery
+     is invented. Clients read-only, so a silent state re-pull + re-
+     render is safe.
+C2. [ ] Launcher (app.html): cloudCodeOpen() branch for role 'client':
+     send X-Client-Code; seed sessionStorage mmgr_cloud_ecode_ +
+     mmgr_cloud_escope_ with { role:'client', sections: ld.sections };
+     friendly error mapping (revoked / expired / deleted). CSP hash
+     regen in worker.js + serve.cjs (tools/regen-csp-hashes.cjs exists),
+     sw bump, rebuild bundles.
+C3. [ ] project.html / mmgr-cloud.js: activeCredential() client branch
+     (read-only, like view codes - never save, never auto-sync push).
+C4. [ ] mmgr-app.js boot: role 'client' -> readonly scope + block
+     sections not in the code's sections list (reuse applyEditorScope
+     grey-out/disable + showSection guard machinery; viewers are the
+     closest analogue - copy the read-only path).
+C5. [ ] Admin UI (Client Access section): verify it sends sections +
+     add expiry input (e.g. "Expires in N days" or never). Show expiry
+     state on the code list; list returns expires_at already.
+C6. [x] Deploy check VERIFIED LIVE 2026-09-03: unauthenticated POST
+     /api/cloud/projects/deploycheck/client-codes against the live
+     worker returned 401 {"ok":false,"error":"not signed in"} (not
+     404) - the client-codes routes ARE deployed; the C19/C23
+     'DEPLOY PENDING' note is obsolete. /api/health 200. The remaining
+     C19 work is purely the frontend gap + expiry + refresh cadence
+     mapped below.
+C7. [ ] QA: extend tools/qa-*.cjs for client codes end-to-end (create
+     with sections + expiry, launcher open, read-only enforced, revoked
+     + expired blocked); field-guide Data/Backup sheet update.
+
+--------------------------------------------------------------------
+AREA D - VISUAL BLUEPRINT #1 (owner D4: governs the ENTIRE system)
+--------------------------------------------------------------------
+Blueprint content: token pass (dark black-brown base / warm charcoal
+modals / warm-grey labels; light cream base / white surfaces / clay-grey
+borders + soft shadow; forest-green primary buttons), admin login modal
+(form wrapper + Enter submit, show/hide password eye toggle, sr-only
+label, aria-live errors, "Unlock Admin Panel" pill with loading spinner,
+"Forgot password?" link), bottom dock toolbar (Dark switch, Glass
+switch, theme segmented control), WCAG-contrast discipline.
+
+Current state: tokens mostly ALREADY match (mmgr.css token blocks).
+Admin gate exists but lacks form wrapper / eye toggle / spinner /
+forgot link. No bottom dock anywhere. Theme controls: admin gate prefs
+row (#gate-prefs, still shows a System pal-btn) + app/project sidebar
+Customize. NOTE: System was removed 08-30 - NOW BACK per D6.
+
+D1. [ ] Token parity pass: verify every surface against the blueprint
+     palette + contrast gates (universal-ui-architect). Likely only
+     small deltas. (Dock shipped token-driven; full surface pass still
+     open.)
+D2. [ ] ADMIN LOGIN polish (admin.html gate): wrap inputs in a real
+     <form> (Enter submits), add show/hide password eye toggle button
+     (i-eye SVG sprite symbol; sr-only label swap Show/Hide password),
+     Unlock button loading spinner state (label hidden, spinner shown,
+     disabled during auth), aria-live error already on .gerr. Add the
+     Forgot password? link -> AREA G recovery flow. CSP hash regen +
+     sw bump.
+D3. [x] BOTTOM DOCK app-wide (owner D4): SHIPPED 2026-09-03 - fixed bottom
+     capsule (.dock in css/mmgr.css) with the vertical Light/Dark/System
+     stack (.pal-col, one full-width option per row per D6) + premium-
+     glass toggle, on app/project/admin incl. the admin gate screens.
+     js/mmgr-dock.js (external, CSP-self) keeps dock + rail + moon quick-
+     toggle in step (aria-pressed + checked only - never re-fights the
+     body class, which FOUC/mmgr-theme/the app boot own). Collisions
+     handled: .toast bottom=calc(var(--dock-h)+18px), calc FAB
+     bottom=calc(var(--dock-h)+18px), body.has-dock padding-bottom,
+     presence chip unaffected, z-index 95 (above header/gate, below
+     drawer/modals/toasts). Flatten lists + reduced-motion + focus-
+     visible all covered. Net hash churn: 3 FOUC scripts only.
+D4. [x] SYSTEM RESTORED - SHIPPED 2026-09-03, all 5 pieces: (1)
+     js/mmgr-theme.js: KNOWN gains 'system', currentMode() keeps stored
+     'system' (missing value still defaults to light - D12), isDark() =
+     mode==='dark' || (mode==='system' && osDark()), setMode fallback
+     light, pullBackend() never overwrites a stored 'system' choice; (2)
+     FOUC scripts in app/project/admin all gained the system/OS arm
+     (var dark = t==='dark' || (t==='system' && matchMedia(dark))) +
+     hashes regenerated in worker.js + serve.cjs (tools/regen-csp-
+     hashes.cjs, 17 hashes) + project.html meta CSP hash updated; (3)
+     pickers gain the System button (the dock, per D11); (4) marketing
+     no-regression VERIFIED in the theme harness (S7 navigates index.html
+     with stored 'system' + emulated OS - mmgr-theme.js is shared); (5)
+     default stays light (D12). BONUS FIX the harness caught: mmgr-app.js
+     boot theme block was light/dark-only and REMOVED the dark class for
+     stored 'system' - now system-aware (pref||state.theme fallback +
+     OS arm).
+     js/mmgr-theme.js: add 'system' to KNOWN, currentMode() stops
+     force-mapping stored 'system' to 'light', isDark() = mode==='dark'
+     || (mode==='system' && osDark()); (2) FOUC inline scripts in
+     app.html (~159), project.html (~67), admin.html (~179) currently
+     do `var dark = t === 'dark'` - add the system/OS arm so no light
+     flash before paint (CSP hash regen each); (3) app pages pickers
+     gain the System button (dock per D11); (4) mmgr-theme.js is SHARED
+     with marketing pages - verify stored-'system' users on marketing
+     get the correct effective dark with no FOUC regression even though
+     marketing markup is untouched (D9); (5) DEFAULT STAYS LIGHT for
+     new visitors (D12) - only an explicit stored choice follows OS.
+D5. [x] Stacked picker CSS (owner D6): SHIPPED - shared .pal-col class
+     (promoted from the dead db-ctl-col block) makes any .pal-switch
+     stack vertically; the dock uses it. Header moon quick-toggle kept
+     on app.html; dock.js re-syncs aria-pressed/checked after every
+     other control fires.
+D6. [x] QA - ALL GREEN 2026-09-03: npm run verify (CSP 17/17, SW v230,
+     hidden, skills, exports), verify-controls-admin 10/10 (rail count
+     4->3), verify-theme-cdp THEME PERSISTENCE OK (incl. new S7
+     System-follows-OS + marketing no-regression), verify-glass-preview
+     GLASS PREVIEW OK, qa-glass GLASS35_GATE PASS, qa-p1 P1_GATE PASS,
+     qa-full 173/174 (only pre-existing check 37 remains - parked in
+     Phase 7). Harness fixes shipped in the same change: theme + glass
+     CDP harnesses moved off the stale hardcoded Downloads ROOT to the
+     repo (file:// -> dev-server BASE for the glass harness; real
+     WebGL needs no --disable-gpu), gate-prefs/thm-tgl selectors ->
+     dock, qa-glass G02 exact-.card match (.card.blueprint preceded
+     it), qa-full 51b copy match ("View Only" vs "View-only").
+
+--------------------------------------------------------------------
+AREA E - ROSE-GOLD + 3D-TILT DUAL VARIANT (owner D7: build both,
+        toggle dynamically; audit fixes folded in)
+--------------------------------------------------------------------
+Decision: build a flat-glass variant AND a 3D-tilt perspective variant
+into the codebase, toggled with ONE click (view mode, not just theme),
+so the owner can A/B both and gather feedback. The refined rose-gold
+spec + external 17-point audit are the reference - every listed flaw is
+a MUST-FIX in the implementation, not a suggestion:
+
+E1. [ ] SAFARI GLASS (audit #1/#2): every glass rule ships
+     -webkit-backdrop-filter alongside backdrop-filter; the @supports
+     query must test the -webkit- form too (or use the repo's existing
+     @supports pattern + fallback solid surfaces).
+E2. [ ] FLUID LAYOUT (audit #3/#4): no fixed height (no 720px), no
+     body{overflow:hidden}; min-height:100vh + overflow-y:auto; the
+     dock/3D frame never clips on short laptops or tablets.
+E3. [ ] MOBILE AUTO-FLAT (audit #5, ADAPTED to repo signals): use the
+     existing Viewport.isNarrow (portrait || <=640) + desktop >=769
+     thresholds (and prefers-reduced-motion) to drop the 3D tilt to
+     flat - do NOT invent a new magic 768 breakpoint (Phase 3 detail).
+     Below the threshold: sidebar stacks, panels go full width, tilt
+     off (GPU + legibility).
+E4. [ ] OVERLAY RENDERS FLAT (audit #6/#7): notifications / modals /
+     toasts are OUTSIDE the 3D frame or get transform-style:flat +
+     counter-transform, never inherit the tilt; no reliance on z-index
+     inside preserve-3d.
+E5. [ ] WEBKIT 3D+BLUR BUG (audit #8): blurred layers never nest inside
+     a perspective/preserve-3d ancestor (move blur to chrome that is
+     NOT transformed, or drop blur while tilted).
+E6. [ ] CONTRAST (audit #9/#10): active accent uses espresso text on
+     coral (NOT white-on-coral); every .brand/.footer-class is explicitly
+     color-scoped (repeat of the confirmed footer-invisible bug).
+E7. [ ] FOCUS-VISIBLE (audit #11): :focus-visible rings on every new
+     interactive element (.nav-item, .dock-btn, inputs, close buttons).
+E8. [ ] STORAGE + DOM ROBUSTNESS (audit #12/#13): all localStorage/
+     sessionStorage writes in try/catch (Safari private mode); every
+     querySelector/getElementById null-checked before binding.
+E9. [ ] NO AI-GARBAGE COPY (audit #15): the blueprint mockup's garbled
+     placeholder text is NOT content to reproduce; copy comes from the
+     app's real fields.
+E10.[ ] ROSE-GOLD THEME: html[data-theme="rose-gold"] token block (3-stop
+     ambient canvas, frosted white glass 40%, translucent white border,
+     espresso text #2e272c, coral accent with espresso text) + light/dark
+     blocks. Optional palette alongside gold - gold stays default.
+     PICKER HOME = DECIDED: the Phase 1 dock gains a Palette toggle
+     (Gold / Rose), an axis independent of View and Light/Dark/System
+     (Phase 3 detail).
+E11.[ ] 3D TOGGLE: one-click view-mode switch (flat-glass <-> 3D-tilt),
+     aria-pressed, persisted safely, mobile auto-flat. Surface per
+     D9/E12 (decided): launcher grid + project app + admin, marketing
+     untouched, dense data rows stay flat.
+E12.[x] 3D/ROSE-GOLD SURFACE = DECIDED (D9): launcher grid + project
+     app + admin (marketing untouched). Tilt the launcher's project
+     cards / admin surface as a glass deck; the project workspace's
+     DENSE DATA rows stay flat (surface doctrine) even when its chrome
+     may carry the rose-gold glass. Build token-first + shared so it
+     can spread codebase-wide later.
+E13.[ ] DOCK from Area D is the "system control dock" home for the
+     flat/3D toggle (bottom dock gains the view-mode button).
+E14.[ ] QA: new/extended harness for the dual variant (flat <-> 3D,
+     dark/light, rose-gold on/off, mobile auto-flat, contrast pass,
+     npm run verify). Note: qa-glass*.cjs exist for the glass system.
+
+--------------------------------------------------------------------
+AREA G - ADMIN PASSWORD RECOVERY, TWO TIER (owner D8)
+--------------------------------------------------------------------
+The admin password is device-local (hashed). Recovery spec adopted:
+
+G1. [ ] TIER B - LOCAL RECOVERY CODE (active now):
+     - At admin account creation (Setup screen), generate a crypto-
+       random recovery code (>=24 chars, base32-ish, no 0/O/1/I).
+     - Show it ONCE in a modal: "Save this now - it will not be shown
+       again" + a confirmation checkbox ("I have saved my recovery
+       code") that must be checked before the modal closes.
+     - Store locally: recovery code hashed with PBKDF2-SHA256 via Web
+       Crypto (~100k iters, random salt - DECIDED 09-03; NOT raw SHA),
+       created_at timestamp, attempt counter + locked_until for
+       cooldown.
+     - Reset flow: "Forgot password?" -> recovery-code input -> hash +
+       compare -> on match allow setting a new admin password and ROTATE
+       the recovery code (issue a new one, force re-save) so it cannot
+       be reused.
+     - 5 wrong attempts -> 15-minute cooldown lock (local-only).
+     - Lost code -> explicit UI copy: only path is local wipe + re-setup
+       (never hidden).
+G2. [ ] TIER A - EMAIL OTP (build now, flag OFF): EMAIL_RECOVERY_ENABLED
+     env/config flag, default false. Only offered to SIGNED-IN admins
+     with a verified email on file (never local-only sessions - Tier B
+     handles those).
+     - "Forgot password?" while signed in -> "Send recovery code to
+       [masked email]" alongside the Tier B code field.
+     - Server: 6-8 char OTP, hashed, new D1 table admin_recovery_otp
+       (id, user_id, otp_hash, created_at, expires_at, used, attempt_count).
+       15-minute expiry (OWNER CONFIRMED), single-use (used=true on
+       match), newest OTP invalidates older unused ones, 5 attempts then
+       lock, 3 sends/hour/account rate limit, email contains the code
+       only (no reset link / embedded token). Uses the existing Resend
+       sendAuthEmail path.
+     - Settings UI: signed-out admin sees a passive line "Sign in to
+       unlock email-based recovery." Signed-in admin sees Tier A option
+       greyed/"Coming soon" until the flag flips (surface built +
+       testable now without live email cost).
+G3. [ ] Forgot password? link (Area D2) routes into this flow: setup-
+       completion + signed-out = Tier B; signed-in = Tier B field +
+       Tier A (when flag on).
+G4. [ ] QA: local recovery code happy path + wrong-code cooldown + code
+     rotation; Tier A testable behind the flag WITHOUT live email via
+     the DECIDED mock mail server (harness sets RESEND_API_BASE to a
+     local http mock, captures the real email body, extracts the OTP
+     - no echo variable).
+
+--------------------------------------------------------------------
+AREA F - BACKLOG / DIRECTIVE DEFERRED ITEMS (for completeness)
+--------------------------------------------------------------------
+F1. [ ] C19/C23 pending deploy from the 2026-09-01 sessions (folded
+     into C6 above).
+F2. [ ] Custom domain purchase + transition checklist (owner action -
+     blocked on you buying the domain; ~1-2h once purchased). See the
+     CUSTOM DOMAIN TRANSITION PLAN in CONTINUATION-DIRECTIVE.md.
+F3. [ ] Yahoo + Microsoft sign-in providers (PAUSED by owner - needs
+     your OAuth client IDs/secrets).
+F4. [ ] O3 rate-limit tuning (later - needs production traffic).
+F5. [ ] Other UI plans the owner says are still in planning - append
+     them here as new AREAS when shared.
+
+--------------------------------------------------------------------
+EXECUTION ORDER (owner D10: UI blueprint first)
+--------------------------------------------------------------------
+Phase 1 - AREA D (blueprint #1 system-wide), shared infra first:
+  D4 SYSTEM RESTORED (5-piece change incl. FOUC + CSP hashes) + D3
+  bottom dock app-wide + D11 CONSOLIDATION (delete duplicate pickers,
+  update verify-controls-admin harness in the same change), D1 token
+  parity pass, D2 admin login polish WITHOUT the forgot link (link
+  lands in Phase 2 when recovery exists), D6 QA.
+Phase 2 - AREA G recovery codes: G1 Tier B local code (active), G2
+  Tier A email OTP flag-off, G3 link routing, G4 QA.
+Phase 3 - AREA E rose-gold + 3D: E1-E9 audit must-fixes first, E10
+  rose-gold tokens, E11/E13 flat<->3D toggle in the dock, E12 surface
+  (D9 scope), E14 QA. Architecture so it spreads later.
+Phase 4 - AREA C (C19 client codes end-to-end + expiry + deploy
+  checks) per owner's earlier request.
+Phase 5 - AREA A comprehensive calculator family (trades, finance,
+  site/EVM, settings toggles).
+Phase 6 - AREA B C23 cloud shared pool (design -> migration -> UI).
+Phase 7 - AREA F backlog/deferred items + any remaining ? open
+  questions (pool data types + cap are DECIDED in Phase 6 detail;
+  calculator trades-first sub-order is settled by the Phase 5
+  sequencing; the admin 18-vs-19 client-section check + the
+  marketing no-regression check are build-time verifies in Phase 1/4).
+
+--------------------------------------------------------------------
+PHASE 1 EXECUTION RECORD (2026-09-03, SHIPPED) - see AREA D for
+per-item status. Files touched: js/mmgr-theme.js, js/mmgr-dock.js
+(NEW), js/mmgr-app.js (boot theme system-arm), js/mmgr-calculator.js
+(FAB bottom), css/mmgr.css (dock + .pal-col + --dock-h + toast/FAB/
+body-padding collisions + flatten/focus/reduced-motion lists),
+app.html / project.html / admin.html (FOUC system arm, dock markup,
+picker deletions, body.has-dock), sw.js (SHELL + v230), worker.js +
+serve.cjs (CSP hashes), tools/verify-controls-admin.cjs,
+tools/verify-theme-cdp.cjs (repo-relative ROOT, dock selectors, new
+S7 System-follows-OS incl. marketing no-regression), tools/verify-
+glass-preview-cdp.cjs (repo-relative ROOT, dev-server BASE, real
+WebGL, dock selectors), qa-glass.cjs (G02 exact-.card match),
+qa-full.cjs (dock theme checks + 51b copy fix), qa-p1.cjs (dock
+persistence check). Verification: npm run verify ALL GREEN, controls-
+admin 10/10, theme OK, glass OK, glass35 PASS, P1 PASS, qa-full
+173/174. Deploy: wrangler deploy --dry-run green; emoji scan 0;
+actual deploy NOT done (owner go / staging recipe per AGENTS.md).
+PARKED (pre-existing, NOT Phase 1 regressions): qa-full check 37
+'zero inline styles' fails because project.html ships 2 inline styles
+(355 evm-ctc-row, 1339 ctl row) predating this session -> Phase 7
+cleanup item (move to classes or relax the gate).
+
+--------------------------------------------------------------------
+PHASE 1 DETAIL - FILE MAP (appended 09-03, from the code-grounded
+phase-1 planning pass; the dock discovery: admin.html #gate-prefs
+.pref-row is ALREADY a fixed bottom dock - fixed;bottom:22px;pill;
+glass;Dark/Glass/Theme - the app-wide dock is that pattern promoted
+into shared css/mmgr.css)
+--------------------------------------------------------------------
+1. FOUC SCRIPTS (3 inline edits -> CSP hash regen, worker.js + serve.cjs
+   via tools/regen-csp-hashes.cjs):
+   - app.html ~152-165 head (dark + side-open arm); body-transfer
+     ~167-173 (NO change)
+   - project.html ~63-72 head (dark only); body-transfer ~76-82 (NO change)
+   - admin.html ~175-187 head (dark + side-open); body-transfer ~189-195
+     (NO change)
+   CHANGE each head script:
+     var dark = t === 'dark' || (t === 'system' && window.matchMedia &&
+       window.matchMedia('(prefers-color-scheme: dark)').matches);
+   = 3 new hashes in worker.js AND serve.cjs; then node --check both +
+   tools/verify-csp-hashes.cjs.
+2. js/mmgr-theme.js (external file, NOT bundled -> no rebuild):
+   - KNOWN = {light:1, dark:1, system:1}
+   - currentMode(): DELETE the 'if (v === "system") v = "light"' line;
+     missing value still defaults to 'light' (D12)
+   - isDark(): m === 'dark' || (m === 'system' && osDark())
+   - apply(): body class from isDark(); .pal-btn aria-pressed from the
+     STORED mode (so the System button can light up)
+   - FREE: the delegated [data-pal] click listener already serves every
+     .pal-btn on the page - the dock's Light/Dark/System buttons need
+     ZERO page-JS wiring.
+3. DUPLICATE PICKERS TO DELETE (D11; all markup-only, no extra hashes):
+   - app.html 216: entire Appearance .db-ctl-row.db-ctl-col in
+     #rail-customize (KEEP Premium Glass row ~218 + #db-theme-quick
+     moon toggle 238 + tglThemeQuick/syncThemeQuick ~725)
+   - project.html 1393-1394: BOTH .sr rows (Light/Dark checkbox + Theme
+     Mode pal-switch) in Controls->Appearance (KEEP Crosshair / Premium
+     Visual / Calculator rows ~1395-1398)
+   - admin.html 321: Appearance .rail-ctl-row in #rail-admin-customize
+     (KEEP Premium / Premium Glass / Cross-Project rows)
+   - admin.html 227: Theme .pref in #gate-prefs, or DELETE #gate-prefs
+     entirely (see dock below). tglTheme ACTION_MAP entries can stay
+     (empty querySelectorAll is harmless).
+4. THE DOCK:
+   - Delete #gate-prefs + its inline .pref-row/.pref CSS (admin.html
+     inline ~58-61) and PROMOTE to shared css/mmgr.css as .dock - one
+     dock, always visible incl. the gate screens (z-index above
+     .gatewrap). Vertical stack: promote the db-ctl-col pattern
+     (mmgr.css 2696-2700) to a shared .pal-col class (one full-width
+     option per row - owner D6, never a horizontal strip).
+   - Markup: identical static block before </body> on app/project/admin
+     (small; the SHARED, spreadable parts are CSS + JS per D9).
+   - Behavior: NEW js/mmgr-dock.js (external script tag on all 3 pages -
+     CSP 'self', zero hash; mirrors the mmgr-google-auth.js pattern on
+     admin). Glass toggle reuses MMGR.Viewport.setGlassMode (admin
+     tglGlassMode 754-772); theme buttons ride the mmgr-theme delegated
+     listener; sync aria-pressed + checked.
+   - Script join points: app.html after 380 (dist/app-bundle.js),
+     project.html after 1705 (dist/bundle.js), admin.html after 512
+     (dist/admin-bundle.js). Add js/mmgr-dock.js + dock CSS to sw.js
+     SHELL array + bump.
+5. COLLISIONS (all fixed in css/mmgr.css):
+   - .toast (mmgr.css 3123): fixed bottom:28px left:50% - sits exactly
+     where the dock goes. Add --dock-h token; .toast bottom becomes
+     calc(var(--dock-h) + 20px).
+   - #calc-fab: JS-injected bottom:80px right:24px (mmgr-calculator.js
+     ~87 + clamp ~750) - clears a ~44px dock but verify narrow screens;
+     bump the constant or move to a CSS class.
+   - .presence-chip (2529): not fixed - no collision.
+   - Reserve: body padding-bottom calc(var(--dock-h) + 24px) on the 3
+     pages so nothing hides behind the dock.
+   - Dark-mode parity + :focus-visible + prefers-reduced-motion kill on
+     all dock controls (existing token pattern).
+6. QA/TESTS CHANGED IN THE SAME COMMIT:
+   - tools/verify-controls-admin.cjs: rail-ctl-row count 4 -> 3 (admin
+     rail loses the Appearance row)
+   - tools/verify-gates-themes.cjs + any gate screenshot harness: gate
+     theme controls change (gate-prefs Theme row gone / dock takes over)
+   - qa-dashboard-spec.cjs / qa-full.cjs: any .pal-btn / #gate-prefs /
+     thm-tgl selectors; ADD a System-follows-OS assertion
+   - npm run verify (CSP/SW/skills); bundles rebuilt only if the dock is
+     bundled (recommended: external script -> no rebuild)
+7. FILES TOUCHED (complete): js/mmgr-theme.js, js/mmgr-dock.js (NEW),
+   css/mmgr.css, app.html, project.html, admin.html, sw.js, worker.js,
+   serve.cjs (hashes only), tools/verify-controls-admin.cjs,
+   tools/verify-gates-themes.cjs (if it asserts pickers), field guide.
+   NET HASH CHURN: only the 3 FOUC scripts.
+
+--------------------------------------------------------------------
+PHASE 2 DETAIL - RECOVERY CODES FILE MAP (appended 09-03, code-
+grounded; verified facts: admin auth is localStorage mmgr_admin_pass_
+hash (SHA-256, admin.html sha256() ~537, handleSetupPassword ~715,
+handleLogin ~726, lockAdmin ~739, pw modal ~846); unlock = session-
+Storage mmgr_admin_session; NO login attempt limiting today; Tier A
+building blocks exist: sendAuthEmail (src/lib/http.js:169),
+readSession (mmgr_session cookie), hashOwnerCode PBKDF2,
+auth_users.email_verified (0013), auth_tokens one-time pattern +
+sweep (0013), auth_login_guard 5-fails/15-min (0012).)
+--------------------------------------------------------------------
+TIER B - LOCAL RECOVERY CODE (admin.html ONLY; inline JS -> CSP hash
+regen worker.js + serve.cjs):
+- Storage (mirror pass-hash block ~527): mmgr_admin_recovery_hash /
+  _created_at / _attempts / _locked_until.
+- Setup hook handleSetupPassword (~715): after storing pass hash,
+  gen 24-char base32 code (crypto.getRandomValues, no 0/O/1/I),
+  show-ONCE modal #rc-setup-om (reuse #om/.mb sheet pattern), Copy
+  button, "I have saved my recovery code" checkbox gate before close,
+  store hash + created_at.
+- Forgot flow: login-screen (~215) gains "Forgot password?" ->
+  recovery panel: input -> sha256 compare -> match: new-password form
+  (min 8 + confirm) -> store new pass hash -> ROTATE (new code shown
+  once + new hash stored); mismatch: attempts++, 5 -> locked_until
+  now+15min (disabled + countdown), success resets attempts.
+- Lost code: failure copy + "Reset admin password on this device" ->
+  confirm -> remove pass hash + recovery keys -> showScreen('setup-
+  screen') (reuse ~700).
+- ACTION_MAP (~1920): openForgot / submitRecoveryCode /
+  setRecoveredPassword / resetAdminLocal / confirmRecoverySaved;
+  Enter-key wiring pattern ~1842 duplicated.
+TIER A - EMAIL OTP (server + admin.html, flag off):
+- Migration 0018_admin_recovery_otp.sql (NEW): id TEXT PK, sub TEXT,
+  otp_hash TEXT, created_at, expires_at, used_at TEXT NULL,
+  attempt_count INTEGER DEFAULT 0 + sub index + daily cron sweep
+  (mirror auth_tokens 0013).
+- src/auth/recovery.js (NEW): handleAdminRecoverySend (readSession
+  gate; EMAIL_RECOVERY_ENABLED flag default false, unset -> 503 like
+  the billing-unconfigured pattern; account email from email-auth sub
+  'email:' prefix with email_verified=1 - FLAG: confirm session
+  cookie carries email for GOOGLE sessions too, else Tier A only for
+  email-auth accounts; rate 3/hr/account; 6-8 char OTP hashed via
+  hashOwnerCode; invalidate older unused rows; sendAuthEmail code
+  only, no link) + handleAdminRecoveryVerify (session + flag; match
+  used_at IS NULL + not expired; mismatch attempt_count++ lock after
+  5 -> 429 Retry-After mirroring auth_login_guard; match ->
+  conditional UPDATE used_at race-safe single-use).
+- TEST PATH (DECIDED 09-03 - mock mail server, NOT an echo flag):
+  OTP is stored hashed so QA cannot read it from D1. sendAuthEmail
+  already reads env.RESEND_API_BASE (src/lib/http.js:172) - the QA
+  harness spins a local http.createServer mock, points RESEND_API_BASE
+  at it when spawning wrangler, and CAPTURES the real email body to
+  extract the OTP. Zero prod code change, zero new prod surface, tests
+  the genuine send->verify path end-to-end. NO QA_OTP_ECHO variable.
+- src/router.js: POST /api/auth/admin-recovery/send + /verify (auth
+  section ~368).
+- wrangler.jsonc + wrangler.ci.jsonc: EMAIL_RECOVERY_ENABLED=false
+  default (CI true + RESEND_API_BASE -> the harness mock).
+- Client forgot panel: signed-in (mmgr:user-changed + GoogleAuth
+  state) -> "Send code to [masked email]" greyed "Coming soon" while
+  flag off; OTP input -> verify -> same new-password form as Tier B
+  (no rotation; Tier B code untouched by a Tier A reset).
+QA + FILES:
+- tools/qa-admin-recovery.cjs (NEW, headless-Chrome DOM tests like
+  verify-controls-admin.cjs): Tier B happy path / wrong-code cooldown
+  / rotation / lost-code wipe; Tier A behind flag + echo seam.
+- Files: migrations/0018_admin_recovery_otp.sql, src/auth/recovery.js,
+  src/router.js, wrangler.jsonc, wrangler.ci.jsonc, admin.html (-> CSP
+  hash regen), worker.js + serve.cjs (hashes), tools/qa-admin-recovery
+  .cjs, sw.js (admin.html is a SHELL asset -> bump), field guide
+  (admin/security sheet).
+- HASHING (DECIDED 09-03 - PBKDF2-SHA256 via Web Crypto): the
+  recovery code hash uses crypto.subtle PBKDF2-SHA256 ~100k iters +
+  random salt (native, ZERO new deps; matches the server's
+  hashOwnerCode approach; honors the owner's 'not raw SHA' intent).
+  The existing admin PASSWORD stays plain SHA-256 as-is (upgrading
+  would force re-setup of every device hash); only the new recovery
+  code is PBKDF2. Honest caveat documented: against a localStorage
+  thief the hash strength is not the real protection (projects are
+  already plaintext there) - PBKDF2 covers the narrower exposure
+  cases + intent. Optional extra: login attempt limiting (none exists
+  today) - NOT in scope unless owner asks.
+
+--------------------------------------------------------------------
+PHASE 3 DETAIL - ROSE-GOLD + 3D-TILT FILE MAP (appended 09-03,
+code-grounded: one color axis today (:root light + body.dark-mode,
+mmgr.css:12/:111); NO html[data-theme] anywhere (cyan removed, only a
+dead uCyan check left in the glass shader); glass is dual-engine
+(CSS --glass-* tokens, already dual-prefixed on .card/.toast etc.;
+premium Three.js mmgr-glass.js gated by Viewport.isHighEnd +
+mmgr_glass_mode + not-narrow, body.glass-premium, context-loss
+teardown); NO 3D machinery exists; repo breakpoint signals =
+Viewport.isNarrow (portrait||<=640) + desktop >=769 - do NOT invent a
+new magic 768.)
+--------------------------------------------------------------------
+ARCHITECTURE (solves audit #6/#7/#8 structurally):
+- NEVER transform <body> (breaks position:fixed anchoring -> every
+  overlay (.mb, #ai-win, .toast, #drw) would inherit the tilt and
+  z-index dies in preserve-3d).
+- ONE wrapper class .view-deck around the tilt target per page:
+  app.html #grid (launcher card deck), project.html panels area,
+  admin.html main. IDs untouched so selectors keep working.
+- Tilt only the deck: body.view-3d .view-deck{transform:
+  perspective(1500px) rotateX(10deg) rotateY(-15deg) rotateZ(3deg);
+  transition:transform .6s}. NO preserve-3d, no nested depth ->
+  overlays outside the wrapper stay flat, z-index intact.
+- Blur-free while tilted (audit #8 WebKit bug): body.view-3d
+  .view-deck{--glass-blur:0px} - deck cards keep light transparency,
+  live backdrop blur confined to NON-tilted chrome (dock, header).
+  Premium WebGL canvas is body-level + blur-free - unaffected.
+TWO INDEPENDENT AXES, both in the Phase 1 dock:
+- VIEW: localStorage mmgr_view_mode = flat|3d -> toggles body.view-3d.
+  Auto-flat via repo signals: Viewport.isNarrow() || width<769 ||
+  prefers-reduced-motion (audit #5). Applied POST-BOOT by
+  js/mmgr-dock.js with a transition - deliberately NO FOUC arm
+  (avoids 3 more CSP hash regens; the transform animates in).
+- PALETTE: localStorage mmgr_palette = gold|rose -> html[data-theme=
+  "rose-gold"]. Independent of view and light/dark (any combo works;
+  3D pairs best with rose-gold).
+ROSE-GOLD TOKENS (html[data-theme="rose-gold"] + "... body.dark-mode"
+blocks in css/mmgr.css): 3-stop ambient canvas gradient; frosted
+white 40% glass (rgba(255,255,255,.40) + blur 24px); translucent
+white border rgba(255,255,255,.20); espresso text #2e272c /
+secondary #80737a; coral accent #ff6e52 with ESPRESSO-ON-CORAL
+(--on-gold override, audit #9 - contrast VERIFIED via universal-ui-
+architect gates, never assumed); hover #e0563b. Everything else
+inherits the token graph - semantic statuses stay, gold alias swaps
+to coral so badges/focus rings/--on-gold recolor automatically.
+AUDIT 1-17 DISPOSITION: 1,2 already dual-prefixed; NEW rules ship
+both prefixes + join the flatten lists at mmgr.css:1786/1794 (add
+.dock + rose surfaces). 3,4 N/A (no 720px frame; 3D wrapper uses
+min-height never fixed; dock stays in-bounds). 5 use repo signals.
+6,7,8 solved by the deck wrapper (above). 9 espresso-on-coral.
+10 all new classes token-scoped. 11 focus ring inherits via --gold
+override. 12,13 repo-wide patterns already (Viewport.getGlassMode
+etc.), new code follows. 14,15,16 N/A (adapting principles, real
+app copy). 17 goes through build.js + sw.js SHELL + CSP, never
+standalone files.
+FILES: css/mmgr.css (rose-gold blocks + view-3d rules + dock toggle
+styles), js/mmgr-dock.js (view + palette toggles - Phase 1 file),
+js/mmgr-glass.js (generalize dead uCyan -> accent flag so premium
+glass follows rose-gold; refreshTheme reads data-theme), app.html /
+project.html / admin.html (.view-deck wrappers, IDs untouched),
+sw.js (SHELL + bump), tools/qa-view-mode.cjs (NEW: flat<->3d,
+mobile auto-flat, reduced-motion, rose contrast pairs MEASURED,
+blur-free-tilt assertion) + qa-glass.cjs extension, field guide.
+DEPENDENCY: Phase 3 sits on the Phase 1 dock (toggle home) - D10
+order stands.
+
+--------------------------------------------------------------------
+PHASE 4 DETAIL - C19 CLIENT PORTAL FILE MAP (appended 09-03,
+code-grounded: js/cloud/scope.js applyEditorScope/isSectionBlocked
+key off C.getECode() + escope.sections - a client seeded into the SAME
+mmgr_cloud_ecode_/mmgr_cloud_escope_ slots flows through unchanged;
+mmgr-app.js boot 60-78 maps escope role 'view' -> readonly + cloudCode-
+Held 85-96 blocks offline exports; mmgr-cloud.js activeCredential 390
++ save/auto-sync view guards 412/484; VIEW_ONLY_PANELS (dash, def,
+kan, gantt, claim, digest, baselinen, wxlog) are never blocked by the
+editor grey-out -> CLIENT gating must HIDE, not grey.)
+--------------------------------------------------------------------
+DESIGN DECISION (owner plan already says it): clients see ONLY the
+toggled sections - "navigation buttons for hidden sections are
+removed". The editor grey-out machinery would leak the view-only
+panels to a client, so clients get applyClientScope(sections): hide
+(display:none) every .sec-btn not in the granted list + showSection()
+redirects to the first granted section. Editors/viewers keep the
+existing grey-out. This is the ONLY new client-specific frontend
+logic.
+SERVER (small):
+- src/cloud/client-codes.js: verifyClientCode adds expires_at check
+  (expired -> code_expired) + honours project deleted_at;
+  handleCloudClientCodeCreate accepts body.expiresInDays (or
+  expiresAt) -> writes expires_at.
+- src/cloud/projects.js: handleCloudLoad (~209) + handleCloudMeta
+  (~285) gain an X-Client-Code branch mirroring the viewCode path -
+  verifyClientCode -> resp.role='client' + resp.sections. /save keeps
+  NO client path (403 stays).
+- src/router.js: no new routes.
+- Optional scale note: handleCloudCodeLookup (projects.js:365)
+  iterates every cloud_client_codes row - fine now; a
+  code_fingerprint column + index (mirror editor codes) is the later
+  fix.
+LAUNCHER (app.html cloudCodeOpen ~874-930):
+- Header branch gains role==='client' -> X-Client-Code.
+- Escope seeding (~910): clients use ld.sections (NOT ld.scope);
+  setEScope(label, sections, 'client'); expired-code error copy added
+  to the existing revoked/deleted mapping.
+PROJECT APP:
+- js/mmgr-cloud.js: setEScope (112) role validation accepts 'client';
+  activeCredential (390) returns X-Client-Code for clients; saveToCloud
+  (412) + autoSaveToCloud (484) refuse it like X-View-Code; load/meta
+  handlers (~553/654) seed role 'client' from the response;
+  drawer share copy (~1188) gains a Client (read-only) variant.
+- js/mmgr-app.js: boot readonly check (60-78) also matches role
+  'client'; cloudCodeHeld (85-96) adds 'client' (offline export stays
+  blocked for recipients).
+- js/cloud/scope.js: NEW applyClientScope(sections) - hide non-
+  granted .sec-btn + guard showSection to the first granted section;
+  banner copy "Client (read-only)".
+- CLIENT REFRESH CADENCE (C1b): client-only watcher in mmgr-cloud.js -
+  poll /meta ~60s while document.visibilityState==='visible' +
+  on visibilitychange + presence-heartbeat trigger (reuse
+  js/mmgr-presence.js); when updatedAt changes -> silent re-/load +
+  re-render (read-only, safe).
+ADMIN (admin.html):
+- createClientCode (~1765): add expiry input ("Expires in N days" /
+  never) sent as expiresInDays; listClientCodes (~1810) shows
+  expires_at + a soon-expiring hint.
+- VERIFY at build: the #client-sections checkbox builder count vs
+  CLIENT_SECTIONS (19) - directive said 18 checkboxes; digest /
+  baselinen / wxlog are absent from CLIENT_SECTIONS but exist in the
+  app's view-only set - decide whether clients can be granted them.
+- DEPLOY CHECK (C6): client-codes routes live in src/ and later
+  deploys stage the whole src/ tree - verify live BEFORE building:
+  unauthenticated POST /api/cloud/projects/<id>/client-codes -> expect
+  401, not 404.
+QA + DOCS:
+- tools/qa-client-codes.cjs (NEW, mirror tools/qa-cloud-codes-delete
+  .cjs): create w/ sections + expiry -> lookup -> load under
+  X-Client-Code -> save 403 -> revoked blocked -> expired blocked ->
+  launcher cloudCodeOpen client branch (headless Chrome) ->
+  applyClientScope hides un-granted nav.
+- Field guide Data/Backup sheet: Client Access + expiry semantics.
+
+--------------------------------------------------------------------
+PHASE 5 DETAIL - COMPREHENSIVE CALCULATOR FILE MAP (appended 09-03,
+code-grounded: js/mmgr-calculator.js is one panel + tabs; switchTab
+(calc-tab[data-tab] <-> .calc-section[data-calc]) and wireInputs
+binds every [data-calc-action] + Enter-key automatically - new
+sub-calculators are just builder HTML + handleAction cases. ns.Evm =
+{ compute: computeEVM, render: renderEVM } (js/mmgr-evm.js) is the
+single EVM source of truth; build.js loads mmgr-evm (56) BEFORE
+mmgr-calculator (107) - safe to call. Existing sprite icons cover the
+new tabs (i-tool / i-dollar / i-ruler / i-bar-chart) - ZERO sprite
+churn.)
+--------------------------------------------------------------------
+js/mmgr-calculator.js:
+- TABS += {trades 'Trades' i-tool}, {finance 'Finance' i-dollar},
+  {site 'Site' i-ruler}, {evm 'EVM' i-bar-chart} + a group flag each.
+- New builders buildTradesTab/buildFinanceTab/buildSiteTab/buildEvmTab
+  + ~20 handleAction cases:
+  * TRADES: concrete (slab/footing/column/wall/cylinder + bag counts),
+    rebar count+weight, block/brick + mortar, earthwork cut/fill +
+    spoil, roofing pitch->slope->squares, framing studs/plates +
+    waste, stairs riser/tread/stringer, paint/drywall/flooring,
+    asphalt + trench.
+  * FINANCE: bid build-up (cost->OH%->profit%), break-even price,
+    contingency stacking, loan amortization (payment + total
+    interest).
+  * SITE: slope/grade (rise/run, % grade, degrees), arc/chord,
+    prismoid/frustum volume, extra CONVERSIONS groups (temperature /
+    pressure / flow / speed).
+  * EVM: manual BAC/EV/AC/PV -> full metric set + burn rate (AC /
+    months elapsed) + months-to-completion (ETC / burn).
+- SETTINGS (owner D1 / A5): FEATURES_KEY 'mmgr_calc_features' (JSON
+  array of enabled tab ids, try/catch guarded); gear button in
+  .calc-head opens a data-calc="settings" section with one checkbox
+  per tab; persists + hides the tab from the bar; switchTab guards
+  disabled ids; DEFAULT ALL ON (existing behavior unchanged;
+  non-construction users switch off Trades).
+js/mmgr-evm.js:
+- Add pure ns.Evm.computeManual({bac, ev, ac, pv}) using the SAME
+  formulas as computeEVM (extract the formula core so dashboard and
+  calculator share code): EAC = AC + (BAC-EV)/CPI, ETC = EAC-AC, VAC,
+  TCPI, SPI/CPI, SV/CV. EVM tab mirrors renderEVM colors (>=1 green,
+  >=0.8 amber, else danger).
+css/mmgr.css: settings-section styles, gear button, .calc-body gets
+overflow-y:auto (11 tabs), :focus-visible on new controls, dark
+parity via tokens. build.js: NO change (already listed, correct
+order). project.html: Controls drawer Calculator row (~1398) unchanged
+or + hint; markup-only. sw.js bump (mmgr.css is a SHELL asset). NO new
+external files, NO CSP hash churn.
+QA: tools/qa-calculator.cjs (NEW): formula spot-checks per new
+sub-calculator, EVM tab === Evm.computeManual, settings toggle
+hides/shows + persists, reduced-motion kill, no-emoji. Field guide
+Controls sheet gains the calculator feature groups.
+SEQUENCING (D10/A8): trades tab -> finance -> site -> EVM (+evm.js
+helper) -> settings toggles LAST (they gate everything).
+
+--------------------------------------------------------------------
+PHASE 6 DETAIL - C23 CLOUD SHARED POOL FILE MAP (appended 09-03,
+code-grounded: resource row = {id, name, type Labor|Equipment|
+Material|Subcontractor, role, availability, rate, hoursAllocated,
+utilization} (js/mmgr-resources.js); 8MB cap = CLOUD_BODY_LIMIT_BYTES
+on the /save body only (src/lib/http.js:371) -> pool rows in their
+OWN D1 tables never count toward it (DECIDED); cloud_adoptions
+(0011) is the proven link-row pattern - capability keyed on the
+signed-in sub, project+sub unique index.)
+--------------------------------------------------------------------
+DATA MODEL - migration 0019_cloud_resource_pool.sql (NEW):
+- cloud_pool_items: id TEXT PK, owner_sub TEXT, kind TEXT
+  ('person'|'equipment'|'material'), name, type, role, availability
+  REAL, rate REAL, hoursAllocated REAL, notes, created_at, updated_at
+  + index on owner_sub.
+- cloud_pool_links: project_id TEXT, pool_item_id TEXT, linked_at
+  TEXT, UNIQUE(project_id, pool_item_id) - mirrors cloud_adoptions.
+- POOL TYPES (DECIDED): people (Labor + Subcontractor via
+  kind='person' + type), equipment, material. Stakeholders EXCLUDED.
+- AUTH: session sub OR owner code -> its project row's google_sub
+  (account-scoped; an owner code reaches the whole account's pool).
+SYNC SEMANTICS (honest v1):
+- Project state keeps a DENORMALIZED copy of each linked entry
+  (stamped poolItemId) so renders need no network and OFFLINE works
+  (offline-first sacred).
+- PULL-MERGE: on project load + a manual "Refresh pool" + before each
+  cloud save, fetch linked items and field-level LWW-merge into
+  state.resources - reuse mergeExternal (mmgr-state.js) + the
+  "another device changed this" heads-up pattern (mmgr-cloud.js 306).
+- PUSH: editing a linked entry's shared fields (name/rate/availability)
+  POSTs to the pool API when online; OFFLINE edits queue
+  (mmgr_pool_pending_<sub>) and flush on reconnect.
+- DELETE: pool item delete -> projects UNLINK + keep a detached local
+  copy (never delete from projects silently).
+- NO live push in v1 (refresh on load / manual / pre-save); live
+  propagation can reuse the presence heartbeat later.
+UI:
+- Pool management surface: admin.html "Shared Resource Pool" row
+  (owner-only CRUD, matches the codes manager pattern) - NOT the
+  launcher, keeps admin the control surface.
+- Project Resources panel: when the existing mmgr_cross_project toggle
+  is on, REPLACE the one-time import modal with a Library picker
+  (link/unlink pool entries) + per-row "Add to pool" + a pool badge
+  on linked rows (js/render/resources.js).
+FILES: migrations/0019_cloud_resource_pool.sql (NEW), src/cloud/pool
+.js (NEW: CRUD + links + auth), src/router.js (pool item + link
+routes), js/mmgr-pool.js (NEW: client API + offline queue + merge)
++ build.js (PROJECT bundle), js/mmgr-resources.js + js/render/
+resources.js (pool UI), js/mmgr-app.js (ACTION_MAP), admin.html
+(pool manager; CSP hash regen if inline JS touched), sw.js
+(SHELL/bump), tools/qa-cloud-pool.cjs (NEW: CRUD, link propagation,
+offline queue, LWW conflict, cap exclusion), field guide
+(Data/Backup + Resources sheets).
+DEPLOY DISCIPLINE: two migrations (0018 OTP + 0019 pool) both apply
+to remote D1 BEFORE the deploy; D13 CI-frequent per phase.
+
+--------------------------------------------------------------------
+SESSION RULES TO HONOUR WHEN EXECUTION STARTS (from AGENTS.md +
+CONTINUATION-DIRECTIVE.md)
+- Load relevant skills before editing (.agents/skills/*).
+- NO EMOJI on any served page; SVG sprite icons only.
+- Any inline-script edit -> regen CSP hashes in worker.js AND serve.cjs
+  (tools/regen-csp-hashes.cjs), then node --check + verify-csp-hashes.
+- Rebuild bundles (node build.js) after any js/ change; sw.js bump for
+  shell changes; npm run verify before ship.
+- Conventional Commits, NO Codebuff attribution footer.
+- Field-guide sheet ships with every user-visible feature change.
+- Update CONTINUATION-DIRECTIVE.md STATUS LOG + reflection.txt after
+  each session. This planning file itself is untracked session debris.
+- CI FREQUENTLY (D13): local CI replication after EVERY phase; push as
+  work lands so GitHub Actions validates continuously.
+- SKILLS AS POV (D14): load the relevant .agents/skills/* SKILL.md per
+  task - the locked skill set is the reference point of view.

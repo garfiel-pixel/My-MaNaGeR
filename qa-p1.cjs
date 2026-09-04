@@ -68,13 +68,17 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
   check('2 def: panel paints on showSec(def), cards render, idempotent', def.active && def.cards > 0 && def.hasText && def.noDupe, def);
 
   // ---- 3. Theme + crosshair persist across hard refresh -------------------
-  await ev(`MMGR.State.updateState(function(s){ s.theme='dark'; s.crosshairOn=true; });`); await delay(400);
+  // Write BOTH slots like the real toggle does (device pref mmgr_theme is the
+  // master; state.theme is the portable fallback), then assert via the shared
+  // bottom dock (owner D11: the dock is the one theme picker now).
+  await ev(`try{localStorage.setItem('mmgr_theme','dark');}catch(e){} MMGR.State.updateState(function(s){ s.theme='dark'; s.crosshairOn=true; });`); await delay(400);
   await send('Page.navigate', { url: BASE + '/project.html?id=demo-project' }); await delay(4000);
   const persist = await ev(`(function(){
+    var darkBtn = document.querySelector('.dock .pal-btn[data-pal="dark"]');
     return {
       dark: document.body.classList.contains('dark-mode'),
       cross: document.body.classList.contains('crosshair-on'),
-      thm: !!document.getElementById('thm-tgl') && document.getElementById('thm-tgl').checked === false,
+      thm: !!darkBtn && darkBtn.getAttribute('aria-pressed') === 'true',
       ch: !!document.getElementById('ch-tgl') && document.getElementById('ch-tgl').checked === true
     };
   })()`);

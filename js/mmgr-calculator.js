@@ -84,7 +84,9 @@
     _icon.setAttribute('aria-label', 'Open calculator');
     _icon.setAttribute('title', 'Calculator');
     _icon.innerHTML = '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-calculator"></use></svg>';
-    _icon.style.cssText = 'position:fixed;bottom:80px;right:24px;z-index:1500;display:none;';
+    // bottom clears the shared bottom dock (--dock-h) so the FAB never hides
+    // behind it on any screen width (owner D3, 2026-09-03).
+    _icon.style.cssText = 'position:fixed;bottom:calc(var(--dock-h, 120px) + 18px);right:24px;z-index:1500;display:none;';
     document.body.appendChild(_icon);
 
     // Calculator panel

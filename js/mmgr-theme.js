@@ -9,11 +9,15 @@
    One axis: appearance mode
      'light'  — warm gold accent on clean light interface
      'dark'   — muted gold accent on professional dark interface
-     'system' — follow OS prefers-color-scheme (default)
+     'system' — follow OS prefers-color-scheme (restored 2026-09-03, owner D6)
 
    Storage key: mmgr_theme = 'light' | 'dark' | 'system'
    (backward-compatible: existing 'dark'/'light' values work;
     old 'mmgr_palette' key is retired.)
+
+   Default: LIGHT for new visitors (owner D12, 2026-09-03) — a fresh
+   browser with no mmgr_theme stays light until the user picks a mode.
+   Restoring 'system' does NOT restore System as the default.
 
    CSS mechanics:
      - body.dark-mode is toggled when effective mode is dark
@@ -24,7 +28,7 @@
    Persistence:
      1. Backend (app pages with data-sync="1") when available
      2. localStorage cache — instant, works offline
-     3. Default — system (follows OS preference)
+     3. Default — light (D12)
 
    NO-EMOJI HARD GATE (owner 2026-08-13): zero emoji in any
    served page or JS string that renders into a page. Theme
@@ -35,7 +39,7 @@
 
   var MODE_KEY = 'mmgr_theme';       // 'light' | 'dark' | 'system'
   var BACK_KEY = 'mmgr_theme_backend'; // '1' after a successful backend round-trip
-  var KNOWN = { 'light': 1, 'dark': 1 };
+  var KNOWN = { 'light': 1, 'dark': 1, 'system': 1 };
 
   // data-sync="1" on the <script> tag enables the backend path.
   var SYNC = !!(document.currentScript && document.currentScript.getAttribute('data-sync') === '1');
@@ -43,10 +47,11 @@
   function read(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
   function write(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
 
-  /** Current stored mode (default: system). */
+  /** Current stored mode (default: light — D12). */
   function currentMode() {
     var v = read(MODE_KEY);
-    if (v === 'system') v = 'light'; // System option removed — default to light
+    // No default-to-system here: a fresh browser (or a cleared pref) stays
+    // light until the user explicitly picks Light / Dark / System (D12).
     return KNOWN[v] ? v : 'light';
   }
 
@@ -55,9 +60,10 @@
     return !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
   }
 
-  /** Effective dark state: dark when mode=dark. */
+  /** Effective dark state: dark when mode=dark, or mode=system + OS dark. */
   function isDark() {
-    return currentMode() === 'dark';
+    var m = currentMode();
+    return m === 'dark' || (m === 'system' && osDark());
   }
 
   /** Sync <meta name="theme-color"> to the browser chrome bar. */
@@ -112,6 +118,10 @@
         .then(function (d) {
           if (!d || !d.ok || !d.theme) return;
           if (_userTouched) return;
+          // A System user must keep following the OS — the backend only
+          // stores the effective dark boolean, so don't let a stale pull
+          // overwrite the explicit 'system' choice (restored 2026-09-03).
+          if (currentMode() === 'system') return;
           // Backend may still send old palette format — map to mode.
           var dark = !!d.theme.dark;
           var mode = dark ? 'dark' : 'light';
@@ -136,7 +146,7 @@
    * @param {string} mode - 'light' | 'dark' | 'system'
    */
   function setMode(mode) {
-    mode = KNOWN[mode] ? mode : 'system';
+    mode = KNOWN[mode] ? mode : 'light'; // D12: never silently follow OS
     _userTouched = true;
     write(MODE_KEY, mode);
     apply();

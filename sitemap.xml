@@ -18,4 +18,10 @@
   <url>
     <loc>https://my-manager.garfieldprocis.workers.dev/mymanager-field-guide</loc>
   </url>
+  <url>
+    <loc>https://my-manager.garfieldprocis.workers.dev/privacy</loc>
+  </url>
+  <url>
+    <loc>https://my-manager.garfieldprocis.workers.dev/terms</loc>
+  </url>
 </urlset>

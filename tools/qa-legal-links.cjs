@@ -1,6 +1,7 @@
 'use strict';
-/* QA-LEGAL-LINKS — every marketing footer must link Privacy Policy and
-   Terms of Service, and both anchors must exist on privacy.html.
+/* QA-LEGAL-LINKS — every marketing footer must link Privacy Policy
+   (privacy.html) and Terms of Service (terms.html) as separate pages,
+   and each page must expose its own document anchor + TOC.
    Runs headless Chrome against the local server (:8765, spawns if down). */
 const { spawn } = require('child_process');
 const os = require('os');
@@ -49,23 +50,29 @@ const check = (name, val, detail) => { results.push(val); log((val ? 'PASS' : 'F
   for (const page of PAGES) {
     await send('Page.navigate', { url: BASE + '/' + page });
     await delay(1800);
-    const foot = await ev(`(function(){
-      var links = Array.prototype.slice.call(document.querySelectorAll('.site-footer a[href^="privacy.html"]'))
-        .map(function(a){ return a.getAttribute('href') + '|' + a.textContent.trim(); });
-      return { legal: links, onPrivacy: location.pathname.indexOf('privacy') > -1 };
+    const foot = await ev(`(function(){    var links = Array.prototype.slice.call(document.querySelectorAll('.site-footer a[href="privacy.html"], .site-footer a[href="terms.html"]'))
+      .map(function(a){ return a.getAttribute('href') + '|' + a.textContent.trim(); });
+      return { legal: links };
     })()`);
-    const need = ['privacy.html#privacy|Privacy Policy', 'privacy.html#terms|Terms of Service'];
+    const need = ['privacy.html|Privacy Policy', 'terms.html|Terms of Service'];
     const ok = foot && foot.legal && need.every((n) => foot.legal.indexOf(n) > -1);
     check(page + ' footer links Privacy Policy + Terms of Service', ok === true, foot);
   }
 
-  // Anchors resolve on privacy.html itself
-  await send('Page.navigate', { url: BASE + '/privacy.html#terms' });
+  // Each legal page exposes its own document anchor + TOC
+  await send('Page.navigate', { url: BASE + '/privacy.html' });
   await delay(1500);
-  const anchor = await ev(`(function(){
-    return { hash: location.hash, hasPrivacy: !!document.getElementById('privacy'), hasTerms: !!document.getElementById('terms'), toc: !!document.querySelector('.privacy-toc') };
+  const priv = await ev(`(function(){
+    return { hasPrivacy: !!document.getElementById('privacy'), toc: !!document.querySelector('.privacy-toc'), termsLink: !!document.querySelector('a[href="terms.html"]') };
   })()`);
-  check('privacy.html exposes #privacy + #terms anchors and a TOC', anchor && anchor.hasPrivacy && anchor.hasTerms && anchor.toc === true, anchor);
+  check('privacy.html exposes #privacy anchor, TOC, and terms.html link', priv && priv.hasPrivacy && priv.toc === true && priv.termsLink === true, priv);
+
+  await send('Page.navigate', { url: BASE + '/terms.html' });
+  await delay(1500);
+  const tems = await ev(`(function(){
+    return { hasTerms: !!document.getElementById('terms'), toc: !!document.querySelector('.privacy-toc'), privLink: !!document.querySelector('a[href="privacy.html"]') };
+  })()`);
+  check('terms.html exposes #terms anchor, TOC, and privacy.html link', tems && tems.hasTerms && tems.toc === true && tems.privLink === true, tems);
 
   const okAll = results.every(Boolean);
   log(okAll ? 'LEGAL-LINKS GATE PASS — ' + results.length + '/' + results.length : 'LEGAL-LINKS GATE FAIL');

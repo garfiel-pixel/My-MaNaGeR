@@ -489,6 +489,16 @@ PARKED (pre-existing, NOT Phase 1 regressions): qa-full check 37
 cleanup item (move to classes or relax the gate).
 
 --------------------------------------------------------------------
+DEPLOY RECORD (2026-09-03): Phase-1 wave 1 (9934fec: dock + System +
+consolidation) AND the D2 gate polish (4ddb842) deployed TOGETHER to
+production from the /tmp/mmgr-deploy staging recipe (node build.js ->
+tar staging copy -> cd /tmp/mmgr-deploy && npx wrangler deploy):
+Current Version ID 19150d81-6ef6-4856-a030-54d031b5735d.
+Post-deploy smoke: /api/health 200; /admin.html 307 -> /admin serves
+the D2 markup (setup-form/pw-wrap x15 hits, i-eye-off uses x2,
+role=alert x2); css/mmgr-icons.svg serves i-eye-off; sw.js serves
+mmgr-shell-v231; CSP header carries the 17 regenerated hashes.
+
 D2 EXECUTION RECORD (admin gate polish, 2026-09-03, SHIPPED) - files:
 admin.html (gate forms + .pw-wrap/.pw-eye/sr-only/.is-busy spinner CSS
 + JS: submit listeners, gateBusy(), tglPwVis(), ADMIN_ACTION_MAP

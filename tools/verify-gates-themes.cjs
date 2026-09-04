@@ -19,7 +19,6 @@ const { spawn } = require('child_process');
 const fs = require('fs');
 
 const { chromePath: CHROME, BASE, DEBUG_PORT: PORT } = require('./chrome-launcher.cjs');
-const ROOT = 'C:/Users/Garfield/Downloads/mymanager-fixed';
 const userDir = 'C:/tmp/chrome-gates-' + Date.now();
 
 // Optional viewport width from argv (mobile passes suffix their artifacts).
@@ -168,7 +167,7 @@ async function waitForPageTarget() {
   async function pass(name, file, opts) {
     const pre = await send('Page.addScriptToEvaluateOnNewDocument', { source: preload(opts.glass, opts.adminLogin, opts.dark) });
     const startIdx = consoleIssues.length;
-    await send('Page.navigate', { url: 'file:///' + ROOT + '/' + file });
+    await send('Page.navigate', { url: BASE + '/' + file });
     await sleep(opts.waitMs || 3200);
     // Dark is NOT forced here: each page's own early-apply snippet must turn
     // the seeded mmgr_theme=dark pref into the body class. DARK-NOT-APPLIED

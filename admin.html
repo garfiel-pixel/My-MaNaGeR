@@ -53,6 +53,22 @@ body.dark-mode .gbox input{background:rgba(0,0,0,.3);}
   .gbox{background:var(--card);backdrop-filter:none!important;-webkit-backdrop-filter:none!important;}
 }
 .gerr{min-height:16px;font-size:.72rem;color:var(--danger);margin-bottom:6px;}
+/* D2 login polish: sr-only labels, per-field show/hide eye toggle (i-eye /
+   i-eye-off sprite swap), and the Unlock/Create busy spinner state. */
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0;}
+.pw-wrap{display:block;position:relative;}
+.pw-wrap input{padding-right:44px;}
+.pw-wrap .pw-eye{position:absolute;top:1px;right:1px;bottom:11px;width:42px;display:flex;align-items:center;justify-content:center;background:none;border:none;border-radius:0 var(--radius) var(--radius) 0;color:var(--slate);cursor:pointer;padding:0;transition:color .15s;}
+.pw-wrap .pw-eye .ico{width:18px;height:18px;}
+.pw-wrap .pw-eye:hover{color:var(--gold);}
+.pw-wrap .pw-eye:focus-visible{outline:2px solid var(--gold);outline-offset:-2px;border-radius:9px;}
+/* Busy state on the gate CTA: label hidden, spinner centered, click-proof. */
+.gbox .btn{position:relative;}
+.gbox .btn .spin-dot{display:none;width:15px;height:15px;border-radius:50%;border:2px solid rgba(255,255,255,.45);border-top-color:#fff;animation:gspin .7s linear infinite;}
+.gbox .btn.is-busy{color:transparent;pointer-events:none;}
+.gbox .btn.is-busy .spin-dot{display:block;position:absolute;left:50%;top:50%;margin:-7.5px 0 0 -7.5px;}
+@keyframes gspin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.gbox .btn .spin-dot{animation:none;}}
 
 /* ── bottom dock (owner D3/D6/D11): the old gate-prefs pill below was
      promoted into the shared .dock in css/mmgr.css — one canonical
@@ -195,27 +211,39 @@ pre.snippet{background:#f8fafc;border:1px solid var(--border);border-radius:6px;
 
 <!-- ═══ GATE: first-run password setup ═══ -->
 <div class="gatewrap" id="setup-screen">
-  <div class="gbox">
+  <form class="gbox" id="setup-form" novalidate>
     <div class="icon"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-tool"></use></svg></div>
     <h1>Set Up Admin Access</h1>
     <p>No admin password is set on this device yet. Choose one now — it will be stored (hashed) locally on this device only. You'll need to re-enter it each time you open the admin panel, but it never leaves this browser.</p>
-    <input id="setup-pass1" type="password" placeholder="New admin password (min 8 characters)" autocomplete="new-password">
-    <input id="setup-pass2" type="password" placeholder="Confirm password" autocomplete="new-password">
-    <div class="gerr" id="setup-err"></div>
-    <button class="btn btn-g full" data-action="adminSetupPassword">Create Admin Password</button>
-  </div>
+    <label class="sr-only" for="setup-pass1">New admin password</label>
+    <span class="pw-wrap">
+      <input id="setup-pass1" type="password" placeholder="New admin password (min 8 characters)" autocomplete="new-password">
+      <button type="button" class="pw-eye" data-action="tglPwVis" data-target="setup-pass1" aria-pressed="false" aria-controls="setup-pass1"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-eye"></use></svg><span class="sr-only">Show password</span></button>
+    </span>
+    <label class="sr-only" for="setup-pass2">Confirm password</label>
+    <span class="pw-wrap">
+      <input id="setup-pass2" type="password" placeholder="Confirm password" autocomplete="new-password">
+      <button type="button" class="pw-eye" data-action="tglPwVis" data-target="setup-pass2" aria-pressed="false" aria-controls="setup-pass2"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-eye"></use></svg><span class="sr-only">Show password</span></button>
+    </span>
+    <div class="gerr" id="setup-err" role="alert"></div>
+    <button class="btn btn-g full" data-action="adminSetupPassword" type="submit"><span class="btn-txt">Create Admin Password</span><span class="spin-dot" aria-hidden="true"></span></button>
+  </form>
 </div>
 
 <!-- ═══ GATE: returning login ═══ -->
 <div class="gatewrap hidden" id="login-screen">
-  <div class="gbox">
+  <form class="gbox" id="login-form" novalidate>
     <div class="icon"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-lock"></use></svg> </div>
     <h1>Admin Login</h1>
     <p>Enter your admin password to manage projects.</p>
-    <input id="login-pass" type="password" placeholder="Admin password" autocomplete="current-password">
-    <div class="gerr" id="login-err"></div>
-    <button class="btn btn-g full" data-action="adminLogin">Unlock Admin Panel</button>
-  </div>
+    <label class="sr-only" for="login-pass">Admin password</label>
+    <span class="pw-wrap">
+      <input id="login-pass" type="password" placeholder="Admin password" autocomplete="current-password">
+      <button type="button" class="pw-eye" data-action="tglPwVis" data-target="login-pass" aria-pressed="false" aria-controls="login-pass"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-eye"></use></svg><span class="sr-only">Show password</span></button>
+    </span>
+    <div class="gerr" id="login-err" role="alert"></div>
+    <button class="btn btn-g full" data-action="adminLogin" type="submit"><span class="btn-txt">Unlock Admin Panel</span><span class="spin-dot" aria-hidden="true"></span></button>
+  </form>
 </div>
 
 <!-- ═══ MAIN ADMIN UI ═══ -->
@@ -704,28 +732,59 @@ async function initGate(){
   setTimeout(()=>document.getElementById('login-pass').focus(), 50);
 }
 async function handleSetupPassword(){
-  const p1 = document.getElementById('setup-pass1').value;
-  const p2 = document.getElementById('setup-pass2').value;
-  const err = document.getElementById('setup-err');
-  if(p1.length < 8){ err.textContent = 'Use at least 8 characters.'; return; }
-  if(p1 !== p2){ err.textContent = 'Passwords do not match.'; return; }
-  localStorage.setItem('mmgr_admin_pass_hash', await sha256(p1));
-  sessionStorage.setItem('mmgr_admin_session','1');
-  err.textContent = '';
-  enterAdmin();
-}
-async function handleLogin(){
-  const pass = document.getElementById('login-pass').value;
-  const err = document.getElementById('login-err');
-  const storedHash = localStorage.getItem('mmgr_admin_pass_hash');
-  if(await sha256(pass) === storedHash){
+  const btn = document.getElementById('setup-form') && document.getElementById('setup-form').querySelector('.btn-g');
+  if (btn && btn.disabled) return; // double-fire guard (click + submit)
+  gateBusy(btn, true);
+  try{
+    const p1 = document.getElementById('setup-pass1').value;
+    const p2 = document.getElementById('setup-pass2').value;
+    const err = document.getElementById('setup-err');
+    if(p1.length < 8){ err.textContent = 'Use at least 8 characters.'; return; }
+    if(p1 !== p2){ err.textContent = 'Passwords do not match.'; return; }
+    localStorage.setItem('mmgr_admin_pass_hash', await sha256(p1));
     sessionStorage.setItem('mmgr_admin_session','1');
     err.textContent = '';
     enterAdmin();
-  }else{
-    err.textContent = 'Incorrect password.';
-    document.getElementById('login-pass').select();
+  }finally{
+    gateBusy(btn, false);
   }
+}
+async function handleLogin(){
+  const btn = document.getElementById('login-form') && document.getElementById('login-form').querySelector('.btn-g');
+  if (btn && btn.disabled) return; // double-fire guard (click + submit)
+  gateBusy(btn, true);
+  try{
+    const pass = document.getElementById('login-pass').value;
+    const err = document.getElementById('login-err');
+    const storedHash = localStorage.getItem('mmgr_admin_pass_hash');
+    if(await sha256(pass) === storedHash){
+      sessionStorage.setItem('mmgr_admin_session','1');
+      err.textContent = '';
+      enterAdmin();
+    }else{
+      err.textContent = 'Incorrect password.';
+      document.getElementById('login-pass').select();
+    }
+  }finally{
+    gateBusy(btn, false);
+  }
+}
+function gateBusy(btn, busy){
+  if (!btn) return;
+  if (busy){ btn.disabled = true; btn.setAttribute('aria-busy','true'); btn.classList.add('is-busy'); }
+  else { btn.disabled = false; btn.removeAttribute('aria-busy'); btn.classList.remove('is-busy'); }
+}
+function tglPwVis(btn){
+  const input = btn && document.getElementById(btn.getAttribute('data-target'));
+  if (!input) return;
+  const show = input.type === 'password';
+  input.type = show ? 'text' : 'password';
+  const use = btn.querySelector('use');
+  if (use) use.setAttribute('href', show ? 'css/mmgr-icons.svg#i-eye-off' : 'css/mmgr-icons.svg#i-eye');
+  const sr = btn.querySelector('.sr-only');
+  if (sr) sr.textContent = show ? 'Hide password' : 'Show password';
+  btn.setAttribute('aria-pressed', show ? 'true' : 'false');
+  input.focus();
 }
 function lockAdmin(){
   sessionStorage.removeItem('mmgr_admin_session');
@@ -1829,10 +1888,19 @@ async function revokeClientCode(id){
   });
 }
 
-/* ── wire up Enter-to-submit on the two gate screens ── */
-document.getElementById('setup-pass2').addEventListener('keydown', e=>{ if(e.key==='Enter') handleSetupPassword(); });
-document.getElementById('login-pass').addEventListener('keydown', e=>{ if(e.key==='Enter') handleLogin(); });
-document.getElementById('om').addEventListener('click', e=>{ if(e.target.id==='om') closeProjectModal(); });
+/* ── wire up Enter-to-submit via real <form>s (D2) ── */
+/* The delegated click handler below preventDefaults button clicks, so a
+   submit fires exactly once per path: click on the CTA, or Enter in a
+   field (implicit submission -> submit event). */
+['setup-form','login-form'].forEach(function(id){
+  var f = document.getElementById(id);
+  if (!f) return;
+  f.addEventListener('submit', function(e){
+    e.preventDefault();
+    if (id === 'setup-form') handleSetupPassword(); else handleLogin();
+  });
+});
+document.getElementById('om').addEventListener('click', function(e){ if(e.target.id==='om') closeProjectModal(); });
 document.getElementById('snip-om').addEventListener('click', e=>{ if(e.target.id==='snip-om') closeSnippetModal(); });
 document.getElementById('adm-cfm').addEventListener('click', e=>{ if(e.target.id==='adm-cfm') admCfmCancel(); });
 document.getElementById('pw-om').addEventListener('click', e=>{ if(e.target.id==='pw-om') closePwModal(); });
@@ -1910,6 +1978,7 @@ window.addEventListener('resize', function(){ syncAdminHdr(); });
 const ADMIN_ACTION_MAP = {
   'adminSetupPassword': () => handleSetupPassword(),
   'adminLogin': () => handleLogin(),
+  'tglPwVis': (el) => tglPwVis(el),
   'adminOpenProject': (el) => adminOpenProject(_admIdx(el)),
   'changePassword': () => openPasswordModal(),
   'admCfmOk': () => admCfmOk(),

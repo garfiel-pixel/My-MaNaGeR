@@ -243,13 +243,20 @@ D1. [ ] Token parity pass: verify every surface against the blueprint
      palette + contrast gates (universal-ui-architect). Likely only
      small deltas. (Dock shipped token-driven; full surface pass still
      open.)
-D2. [ ] ADMIN LOGIN polish (admin.html gate): wrap inputs in a real
-     <form> (Enter submits), add show/hide password eye toggle button
-     (i-eye SVG sprite symbol; sr-only label swap Show/Hide password),
-     Unlock button loading spinner state (label hidden, spinner shown,
-     disabled during auth), aria-live error already on .gerr. Add the
-     Forgot password? link -> AREA G recovery flow. CSP hash regen +
-     sw bump.
+D2. [x] ADMIN LOGIN polish - SHIPPED 2026-09-03: setup + login gates are
+     now real <form novalidate>s (Enter submits via native implicit
+     submission -> submit listener; the old per-input keydown shims
+     deleted; delegated click handler still owns CTA clicks). Each
+     password field sits in a .pw-wrap with a show/hide EYE toggle
+     (NEW i-eye-off sprite symbol, sr-only label swaps Show/Hide
+     password + aria-pressed, input type text/password + refocus).
+     Create/Unlock CTAs gain a centered .spin-dot busy state (label
+     transparent, spinner shown, disabled + aria-busy during the hash,
+     double-fire guard on the click+submit path). sr-only <label for>
+     per field; both .gerr errors are role=alert. CSP hashes regen'd
+     (17 parity) + sw v231. STILL OPEN (no overlap): the Forgot
+     password? link -> AREA G recovery flow is Phase 2's G3, wired
+     deliberately WITHOUT the link first (tracker note).
 D3. [x] BOTTOM DOCK app-wide (owner D4): SHIPPED 2026-09-03 - fixed bottom
      capsule (.dock in css/mmgr.css) with the vertical Light/Dark/System
      stack (.pal-col, one full-width option per row per D6) + premium-
@@ -480,6 +487,34 @@ PARKED (pre-existing, NOT Phase 1 regressions): qa-full check 37
 'zero inline styles' fails because project.html ships 2 inline styles
 (355 evm-ctc-row, 1339 ctl row) predating this session -> Phase 7
 cleanup item (move to classes or relax the gate).
+
+--------------------------------------------------------------------
+D2 EXECUTION RECORD (admin gate polish, 2026-09-03, SHIPPED) - files:
+admin.html (gate forms + .pw-wrap/.pw-eye/sr-only/.is-busy spinner CSS
++ JS: submit listeners, gateBusy(), tglPwVis(), ADMIN_ACTION_MAP
+tglPwVis entry; removed the two keydown Enter shims), css/mmgr-icons.svg
+(+i-eye-off), sw.js (SHELL + v231), worker.js + serve.cjs (CSP hashes
+17), tools/verify-gates-themes.cjs (ROOT was a STALE Downloads copy
+'C:/Users/Garfield/Downloads/mymanager-fixed' + file:// nav - same
+stale-path defect fixed earlier in verify-theme-cdp/verify-glass-
+preview-cdp; now BASE http against this repo; screenshots + matrix
+report NOT committed, restored to HEAD). Verification: headless gate
+probe 7/7 (form submit path = what native Enter delivers - synthetic
+CDP Enter keys do not run the browser's implicit-submission default in
+this Chrome build, probed; setup submit unlocks + stores hash, eye
+toggle text/password + icon swap + aria-pressed + sr swap, validation
+errors via form submit, busy+disabled mid-hash then cleared, wrong pw
+error in role=alert, lock round-trip, correct pw unlock); controls-
+admin 10/10; gates-themes admin arm 6/6 OK (setup + login x
+css/premium x light/dark, worst contrast 5.61); npm run verify ALL
+GREEN (CSP 17, sw v231 36 assets, hidden 2824 rules); emoji scan 0.
+PARKED (pre-existing at HEAD, app.html untouched by D2): verify-gates-
+themes APP arm fails - fresh profile auto-loads the demo project
+(readonly-mode) so no locked .pcard remains for the harness to click,
+so #om.open .mb never appears (NO-GATE-FOUND) + dev-server 404 noise
+(presence WS /assets absent on serve.cjs) counts 1 console error ->
+needs a locked-card seed + issue-filtering to be meaningful -> Phase 7
+harness item.
 
 --------------------------------------------------------------------
 PHASE 1 DETAIL - FILE MAP (appended 09-03, from the code-grounded

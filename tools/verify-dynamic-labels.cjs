@@ -82,6 +82,21 @@ async function bootChrome(port, profile, url) {
   const check = (name, val, detail) => { results.push({ name, val, detail }); log((val ? 'PASS' : 'FAIL') + ' ' + name + (val ? '' : '  <-- ' + JSON.stringify(detail === undefined ? null : detail))); };
 
   try {
+    // DIR-7a hardening (2026-09-04): CI runner flakes twice in a row on this
+    // gate (a docs-only commit flipped it — not code). The fixed 4s/1200ms
+    // delays race slow runners: the seed can fire before the bundle is ready
+    // and the audit can run mid-render. Both waits are now readiness polls.
+    const bootReady = await ev(`(async function(){
+      for (var i = 0; i < 40; i++) {
+        try {
+          if (typeof MMGR !== 'undefined' && MMGR.State && typeof MMGR.State.updateState === 'function'
+              && typeof MMGR.State.clearProject === 'function') return true;
+        } catch (e) {}
+        await new Promise(function(r){ setTimeout(r, 500); });
+      }
+      return false;
+    })()`);
+    if (bootReady !== true) { log('FAIL app never became ready after boot'); process.exit(1); }
     // Seed a project with rows in EVERY module that renders table inputs.
     await ev(`(function(){
       MMGR.State.clearProject();
@@ -118,7 +133,6 @@ async function bootChrome(port, profile, url) {
       });
       return true;
     })()`);
-    await delay(500);
 
     // Render EVERY section so each panel's inputs exist in the DOM.
     const clicked = await ev(`(function(){
@@ -127,7 +141,24 @@ async function bootChrome(port, profile, url) {
       btns.forEach(function(b){ b.click(); });
       return { count: btns.length, sections: ids };
     })()`);
-    await delay(1200);
+    // Settle poll: wait until the rendered control count is stable (> 0) for
+    // two consecutive samples, so the audit never runs mid-render on a slow
+    // runner. Ceiling ~15s; on a genuinely broken render the count stays 0 and
+    // the real assertion below fails loudly with the detail.
+    const settled = await ev(`(async function(){
+      var last = -1, stable = 0;
+      for (var i = 0; i < 30; i++) {
+        var els = document.querySelectorAll(
+          'input[data-action="updField"], select[data-action="updField"], ' +
+          'input[data-action="updSpendEntry"], select[data-action="updSpendEntry"]');
+        var c = els.length;
+        if (c === last && c > 0) { stable++; if (stable >= 2) return { settled: true, count: c }; }
+        else { stable = 0; last = c; }
+        await new Promise(function(r){ setTimeout(r, 500); });
+      }
+      return { settled: false, count: last };
+    })()`);
+    log('render settled: ' + JSON.stringify(settled));
 
     // Assert: every rendered updField/updSpendEntry control has a name.
     const audit = await ev(`(function(){

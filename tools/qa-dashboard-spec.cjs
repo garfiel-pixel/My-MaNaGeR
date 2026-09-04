@@ -53,7 +53,9 @@ check('no-backdrop-filter fallback', css.includes('@supports not (backdrop-filte
 check('reduced-motion fallback', css.includes('prefers-reduced-motion') && css.includes('body.dark-mode.db-page .db-side'));
 
 console.log('--- 2. app.html markup + wiring (no dead links) ---');
-check('body class db-page', /<body class="db-page">/.test(appHtml));
+// Phase-1 dock wave added has-dock to the same body tag; the gate is that
+// db-page is present, not that it is the ONLY class.
+check('body class db-page', /<body class="[^"]*\bdb-page\b[^"]*">/.test(appHtml));
 check('#db-sidebar rail', appHtml.includes('id="db-sidebar"') && appHtml.includes('class="db-side"'));
 check('#db-nav-btn hamburger', appHtml.includes('id="db-nav-btn"') && appHtml.includes('data-action="toggleSidebar"'));
 check('#db-scrim', appHtml.includes('id="db-scrim"'));

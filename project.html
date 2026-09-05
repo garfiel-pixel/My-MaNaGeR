@@ -355,7 +355,7 @@
         <div class="evm-tile-sm"><div class="evm-tile-label-sm" title="To-Complete Performance Index">TCPI</div><div class="evm-tile-val-sm" id="evm-tcpi">-</div><div class="evm-tile-sub-sm" id="evm-tcpi-lbl"></div></div>
       </div>
       <!-- C14 Cost-to-Complete: burn-rate projection -->
-      <div class="evm-grid3" id="evm-ctc-row" style="margin-top:10px;border-top:1px solid var(--border);padding-top:10px">
+      <div class="evm-grid3 evm-ctc-row" id="evm-ctc-row">
         <div class="evm-tile-sm"><div class="evm-tile-label-sm" title="Current burn rate per month">Burn Rate</div><div class="evm-tile-val-sm" id="evm-burn">-</div><div class="evm-tile-sub-sm">$/month</div></div>
         <div class="evm-tile-sm"><div class="evm-tile-label-sm" title="Months remaining at current burn rate">Months Left</div><div class="evm-tile-val-sm" id="evm-months">-</div><div class="evm-tile-sub-sm">at current rate</div></div>
         <div class="evm-tile-sm"><div class="evm-tile-label-sm" title="Burn rate confidence based on CPI trend">Confidence</div><div class="evm-tile-val-sm" id="evm-conf">-</div><div class="evm-tile-sub-sm" id="evm-conf-lbl"></div></div>
@@ -1339,7 +1339,7 @@
     <!-- C24 Template Library -->
     <div class="ctl-sec"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Templates</div>
     <div class="sr-hint ctl-lead">Save your current schedule and budget as a reusable template, or apply a built-in template to get started quickly.</div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+    <div class="ctl-actions">
       <button class="btn btn-g btn-s" data-action="saveAsTemplate">+ Save as Template</button>
     </div>
     <div id="template-list"></div>

@@ -167,19 +167,33 @@ async function waitForPageTarget() {
   async function pass(name, file, opts) {
     const pre = await send('Page.addScriptToEvaluateOnNewDocument', { source: preload(opts.glass, opts.adminLogin, opts.dark) });
     const startIdx = consoleIssues.length;
-    await send('Page.navigate', { url: BASE + '/' + file });
+    // The app arm uses app.html?locked=<seed> (Phase 7 harness fix): the
+    // demo cards in a fresh profile are auto-unlocked at boot and NAVIGATE
+    // away on click (project.html?id=demo-filled), so no .pcard opens the
+    // unlock modal and #om.open .mb never appears (NO-GATE-FOUND, parked
+    // from the D1/D2 sessions). ?locked= is the real editor-code path — it
+    // calls openModal() directly for a not-yet-unlocked id, no card needed —
+    // and stays on app.html, so the demo project's dev-only 404 noise (the
+    // second parked failure: 1 console error) never fires either.
+    const url = (opts.locked && file === 'app.html')
+      ? BASE + '/app.html?locked=' + opts.locked
+      : BASE + '/' + file;
+    await send('Page.navigate', { url });
     await sleep(opts.waitMs || 3200);
     // Dark is NOT forced here: each page's own early-apply snippet must turn
     // the seeded mmgr_theme=dark pref into the body class. DARK-NOT-APPLIED
     // below fails the pass if a page ever stops doing that.
     let click = null;
-    if (file === 'app.html') {
+    if (file === 'app.html' && opts.locked) {
       click = await evaluate(`(function(){
-        var cards=document.querySelectorAll('.pcard');
-        if(!cards.length){ document.getElementById('om').classList.add('open'); return 'forced-open (no cards)'; }
-        var locked=document.querySelector('.pcard:not(.unlocked)');
-        if(locked){ locked.click(); return 'clicked-locked-card'; }
-        document.getElementById('om').classList.add('open'); return 'forced-open (all unlocked)';
+        var om = document.getElementById('om');
+        if (om && om.className.indexOf('open') === -1 && window.location.search.indexOf('locked=') > -1) {
+          // Boot-time race guard: the ?locked handler runs on DOMContentLoaded;
+          // if it has not fired yet, open the same modal the handler would.
+          var rec = { id: '${opts.locked}', title: 'Gate seed project', description: 'Enter the code shared with you to open this project.', file: 'project.html?id=${opts.locked}' };
+          if (typeof openModal === 'function') openModal(rec); else om.classList.add('open');
+        }
+        return 'locked-param (app.html?locked=${opts.locked})';
       })()`);
       await sleep(500);
     }
@@ -205,10 +219,13 @@ async function waitForPageTarget() {
   const adminGate = "document.querySelector('.gbox')";
 
   // ---- app.html launcher unlock modal: 2 glass × 2 themes ----
-  await pass('app-light-css', 'app.html', { glass: 'css', dark: false, gateSel: appGate, sampleSel: sample(appGate, ['#om-title-text', '#om-desc', '#code-input', '#unlock-btn']) });
-  await pass('app-dark-css', 'app.html', { glass: 'css', dark: true, gateSel: appGate, sampleSel: sample(appGate, ['#om-title-text', '#om-desc', '#code-input', '#unlock-btn']) });
-  await pass('app-light-premium', 'app.html', { glass: 'premium', dark: false, gateSel: appGate, sampleSel: sample(appGate, ['#om-title-text', '#om-desc', '#code-input', '#unlock-btn']) });
-  await pass('app-dark-premium', 'app.html', { glass: 'premium', dark: true, gateSel: appGate, sampleSel: sample(appGate, ['#om-title-text', '#om-desc', '#code-input', '#unlock-btn']) });
+  // Phase 7: each pass seeds a locked project via ?locked= (the real
+  // editor-code unlock path) so the modal deterministically opens without
+  // relying on a demo card click that navigates away.
+  await pass('app-light-css', 'app.html', { glass: 'css', dark: false, locked: 'qa-gate-seed', gateSel: appGate, sampleSel: sample(appGate, ['#om-title-text', '#om-desc', '#code-input', '#unlock-btn']) });
+  await pass('app-dark-css', 'app.html', { glass: 'css', dark: true, locked: 'qa-gate-seed', gateSel: appGate, sampleSel: sample(appGate, ['#om-title-text', '#om-desc', '#code-input', '#unlock-btn']) });
+  await pass('app-light-premium', 'app.html', { glass: 'premium', dark: false, locked: 'qa-gate-seed', gateSel: appGate, sampleSel: sample(appGate, ['#om-title-text', '#om-desc', '#code-input', '#unlock-btn']) });
+  await pass('app-dark-premium', 'app.html', { glass: 'premium', dark: true, locked: 'qa-gate-seed', gateSel: appGate, sampleSel: sample(appGate, ['#om-title-text', '#om-desc', '#code-input', '#unlock-btn']) });
 
   // ---- admin.html password SETUP gate: 2 glass × 2 themes ----
   await pass('admin-setup-light-css', 'admin.html', { glass: 'css', dark: false, gateSel: adminGate, sampleSel: sample(adminGate, ['h1', 'p', 'input', 'button']) });

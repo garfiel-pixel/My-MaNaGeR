@@ -793,6 +793,7 @@ body.sidebar-open .nav-btn .ico,body.sidebar-open .sb-close .ico{transform:rotat
 .evm-grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:6px;font-size:.76rem;margin-top:10px;}
 .fw-b{font-weight:700;}
 .evm-grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-top:12px;}
+.evm-ctc-row{margin-top:10px;border-top:1px solid var(--border);padding-top:10px;}
 .evm-tile-sm{display:flex;flex-direction:column;align-items:center;gap:2px;text-align:center;padding:10px 6px;background:var(--tile-bg);border-radius:var(--radius);transition:border-color var(--tr);border:1px solid transparent;}
 .evm-tile-sm:hover{border-color:rgba(var(--gold-rgb),.2);}
 .evm-tile-label-sm{font-size:.6rem;color:var(--slate);text-transform:uppercase;letter-spacing:.5px;}
@@ -1226,6 +1227,7 @@ body.readonly-mode .btn[data-action]:not([data-action="showSec"]):not([data-acti
 #db-ctrl .ctl-sec:first-child{margin-top:0;padding-top:0;border-top:none;}
 .ctl-sec .ico{width:14px;height:14px;color:var(--gold);}
 /* Collapsible accordion sections in Controls drawer */
+.ctl-actions{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;}
 .ctl-sec[data-ctl-toggle]{cursor:pointer;user-select:none;position:relative;padding-right:24px;}
 .ctl-sec[data-ctl-toggle]:hover{color:var(--brand);}
 .ctl-sec[data-ctl-toggle] .ico-caret{position:absolute;right:4px;top:50%;transform:translateY(-50%) rotate(0deg);width:14px;height:14px;flex-shrink:0;transition:transform .18s ease;color:var(--gold);}
@@ -2473,7 +2475,16 @@ body.dark-mode.db-page .pcard:not(.unlocked) .pc-cta{color:var(--db-text-seconda
    ============================================================ */
 body.db-page:not(.dark-mode) #grid{position:relative;isolation:isolate;}
 body.db-page:not(.dark-mode) #grid::before{
-  content:'';position:absolute;inset:-70px -50px;z-index:-1;pointer-events:none;
+  content:'';position:absolute;z-index:-1;pointer-events:none;
+  /* Desktop right-side clamp (Phase 7 fix, 2026-09-04): the glow's
+     -50px side bleed extends past the grid's right edge, but #grid sits
+     only ~24px inside the viewport (the .wrap padding), so the wash's
+     right tail overflowed the window and created a phantom horizontal
+     scroll (scrollWidth 1296 vs clientWidth 1270 at 1280px, light theme
+     only — dark turns the layer off). The left bleed is safe (the rail +
+     padding leave ~264px of room) and the <=768px guard below already
+     clamps both sides; this right clamp mirrors it for desktop. */
+  top:-70px;bottom:-70px;left:-50px;right:-6px;
   /* Only the existing --gold-rgb token (per 8.1: no new colors) — three
      layered washes at different positions/opacities so it reads as depth,
      not a single blob. */

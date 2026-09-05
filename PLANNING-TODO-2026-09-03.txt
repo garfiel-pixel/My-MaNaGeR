@@ -688,6 +688,22 @@ view-mode ALL GATES, theme-cdp OK, autosave 8/8, legal-links 7/7.
 Commit: 5274be8 (conventional, NO attribution footer); GitHub CI
 GREEN on 5274be8 (full verify job incl. the new QA harness file is
 static-only so CI's gate battery covers the render surface).
+PHASE 5 LIVE-EYEBALL + VIEWPORT FIX (2026-09-04, DONE): headless
+Chrome pass over the LIVE site (owner request) walked all 10 calc
+tabs on project.html, saved a PNG per tab to images/pages/
+(0-panel-general .. 5-settings), and probed layout. Found + fixed a
+real bug: the panel auto-grows to max-height on tall tabs (Trades
+stacks 9 cards -> 748px) but open() anchored the top near the FAB,
+leaving the tail ~62px BELOW the viewport fold (bottom 910 > innerH
+848 at 1500x1000) - last cards' Calculate buttons unreachable
+without a scroll. Fix (commit 55197d8): open() re-measures and
+clamps, and switchTab() re-clamps via requestAnimationFrame (a
+taller tab grows the panel AFTER the open-time measurement; the
+initial fix only covered open). Verified local + deployed (Version
+15048e0d, sw v240): all 5 tall/short tabs fully in-viewport in the
+delayed-read probe (trades top 92, bottom 840 <= 848). qa-calculator
+27/27 still green after the change.
+PHASE 5 DEPLOY (2026-09-04, DONE): staging-copy deploy, Version ID
 PHASE 5 DEPLOY (2026-09-04, DONE): staging-copy deploy, Version ID
 be1c903a-f179-425d-b2b6-d4f45a5f0c66. Production smoke GREEN:
 /dist/bundle.js carries data-calc="trades"/"evm" + mat-result;

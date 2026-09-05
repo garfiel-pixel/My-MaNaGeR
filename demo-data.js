@@ -1,10 +1,6 @@
-/* ============================================================
-   My MaNaGeR — Demo Project Data
+/* ============================================================    My MaNaGeR - Demo Project Data
    ============================================================
-   Two demo projects:
-   1. demo-filled — fully populated 1.5-year construction project
-      (VIEW ONLY — cannot be edited by visitors)
-   2. demo-empty — blank template project (editable)
+   Two demo projects:    1. demo-filled - fully populated 1.5-year construction project       (VIEW ONLY - cannot be edited by visitors)    2. demo-empty - blank template project (editable)
 
    The filled project is seeded into localStorage on first open.
    ============================================================ */
@@ -26,8 +22,7 @@
       name: 'Riverside Tower Renovation',
       sponsor: 'Meridian Development Group',
       objective: 'Complete a full structural and interior renovation of the 12-story Riverside Tower at 420 River Walk Blvd, including seismic retrofit, MEP overhaul, lobby redesign, and elevator modernization, within 18 months and under $14.2M budget.',
-      scope: 'The renovation covers all 12 floors (144,000 sq ft total), including structural reinforcement of columns and beams on floors 1-6, complete demolition and rebuild of mechanical/electrical/plumbing systems, new elevator cabs and control systems (3 elevators), seismic base isolation retrofit, lobby and ground-floor retail space redesign, roof membrane replacement, and exterior facade restoration. Excludes tenant fit-out beyond shell condition, parking garage structural work, and adjacent properties.',
-      deliverables: '1. Seismic retrofit certification (PE-stamped)\n2. New MEP systems (HVAC, electrical, plumbing) — fully commissioned\n3. Three modernized elevators with destination dispatch\n4. Renovated lobby with ADA-compliant entrance\n5. Restored exterior facade with new waterproofing\n6. New roof membrane with 20-year warranty\n7. Fire alarm and suppression system upgrade\n8. As-built documentation package',
+      scope: 'The renovation covers all 12 floors (144,000 sq ft total), including structural reinforcement of columns and beams on floors 1-6, complete demolition and rebuild of mechanical/electrical/plumbing systems, new elevator cabs and control systems (3 elevators), seismic base isolation retrofit, lobby and ground-floor retail space redesign, roof membrane replacement, and exterior facade restoration. Excludes tenant fit-out beyond shell condition, parking garage structural work, and adjacent properties.',       deliverables: '1. Seismic retrofit certification (PE-stamped)\n2. New MEP systems (HVAC, electrical, plumbing) - fully commissioned\n3. Three modernized elevators with destination dispatch\n4. Renovated lobby with ADA-compliant entrance\n5. Restored exterior facade with new waterproofing\n6. New roof membrane with 20-year warranty\n7. Fire alarm and suppression system upgrade\n8. As-built documentation package',
       constraints: 'Building remains partially occupied (floors 9-12) during construction. Work hours restricted to 7AM-6PM weekdays, 8AM-4PM Saturdays. No heavy demolition during occupied hours. Noise must stay below 85 dBA at property line. Crane operations require 48-hour advance notice to city.',
       assumptions: '1. Existing structural drawings from 1987 are accurate\n2. No asbestos in floor tiles below grade (confirmed by survey)\n3. City permits approved within 60 days of submission\n4. Steel delivery lead time is 12-16 weeks\n5. Existing foundation can support additional seismic loads\n6. Tenant cooperation for floor-by-floor phasing',
       exclusions: '1. Tenant fit-out beyond shell condition\n2. Parking garage structural remediation\n3. Adjacent sidewalk and streetscape improvements\n4. Furniture, fixtures, and equipment (FF&E)\n5. Landscaping beyond building perimeter',
@@ -76,8 +71,7 @@
       { id: 'T030', name: 'Project Closeout and Handover', startDate: '2026-06-29', endDate: '2026-06-30', status: 'todo', leadDays: 0, phase: 'closeout', assignee: 'Marcus Webb', predecessors: ['T029'], progress: 0 }
     ],
     resources: [
-      /* 2026-09-05: hoursAllocated populated (availability 100%) so the demo
-         dashboard shows real utilization instead of a flat 0% — capacity at
+      /* 2026-09-05: hoursAllocated populated (availability 100%) so the demo          dashboard shows real utilization instead of a flat 0% - capacity at
          workWeek 5 = 160h/month, so util% ≈ hoursAllocated/160. The legacy
          `util` hint fields are dropped on load; hoursAllocated is the source. */
       { id: 'R001', name: 'Marcus Webb', role: 'Project Manager', availability: 100, rate: 185, hoursAllocated: 160 },
@@ -145,19 +139,12 @@
       { id: 'CH001', name: 'Lobby floor material upgrade', description: 'Changed from polished concrete to porcelain tile (client request)', date: '2025-08-15', costImpact: 45000, scheduleImpact: 0, status: 'approved' },
       { id: 'CH002', name: 'Additional seismic sensors', description: 'Added 12 accelerometers per structural PE recommendation after Phase 1 findings', date: '2025-09-03', costImpact: 28000, scheduleImpact: 5, status: 'approved' }
     ],
-    meetings: [
-      { id: 'M001', kind: 'weekly', title: 'Week 2 — Kickoff Review', startedAt: '2025-01-13T09:00:00', endedAt: '2025-01-13T10:30:00', durationMin: 90, notes: 'Project kickoff complete. Team introduced. Schedule baseline reviewed. Safety protocols established.' },
-      { id: 'M002', kind: 'weekly', title: 'Week 8 — Structural Assessment Review', startedAt: '2025-02-24T09:00:00', endedAt: '2025-02-24T10:00:00', durationMin: 60, notes: 'Phase 2 structural assessment complete. No major surprises. Steel procurement authorized.' },
-      { id: 'M003', kind: 'monthly', title: 'Month 4 — Progress Review', startedAt: '2025-04-07T14:00:00', endedAt: '2025-04-07T15:30:00', durationMin: 90, notes: 'Demolition floors 1-4 on schedule. Tenant relocation complete. Budget tracking within 2% of plan.' },
-      { id: 'M004', kind: 'weekly', title: 'Week 20 — Mid-Project Checkpoint', startedAt: '2025-05-26T09:00:00', endedAt: '2025-05-26T10:00:00', durationMin: 60, notes: 'Demolition complete. Seismic retrofit starting. Steel delivery confirmed for June 13.' },
-      { id: 'M005', kind: 'weekly', title: 'Week 32 — Seismic Progress', startedAt: '2025-08-18T09:00:00', endedAt: '2025-08-18T09:45:00', durationMin: 45, notes: 'Floors 1-4 seismic 80% complete. Elevator cab 1 installed and testing. Lobby demo started.' },
-      { id: 'M006', kind: 'monthly', title: 'Month 11 — Year-End Review', startedAt: '2025-12-01T14:00:00', endedAt: '2025-12-01T16:00:00', durationMin: 120, notes: 'Year-end budget review: $7.95M spent of $14.2M (56%). Schedule SPI 0.97. Elevator 2 installation in progress. Weather window planning for Q1 exterior work.' }
+    meetings: [       { id: 'M001', kind: 'weekly', title: 'Week 2 - Kickoff Review', startedAt: '2025-01-13T09:00:00', endedAt: '2025-01-13T10:30:00', durationMin: 90, notes: 'Project kickoff complete. Team introduced. Schedule baseline reviewed. Safety protocols established.' },       { id: 'M002', kind: 'weekly', title: 'Week 8 - Structural Assessment Review', startedAt: '2025-02-24T09:00:00', endedAt: '2025-02-24T10:00:00', durationMin: 60, notes: 'Phase 2 structural assessment complete. No major surprises. Steel procurement authorized.' },       { id: 'M003', kind: 'monthly', title: 'Month 4 - Progress Review', startedAt: '2025-04-07T14:00:00', endedAt: '2025-04-07T15:30:00', durationMin: 90, notes: 'Demolition floors 1-4 on schedule. Tenant relocation complete. Budget tracking within 2% of plan.' },       { id: 'M004', kind: 'weekly', title: 'Week 20 - Mid-Project Checkpoint', startedAt: '2025-05-26T09:00:00', endedAt: '2025-05-26T10:00:00', durationMin: 60, notes: 'Demolition complete. Seismic retrofit starting. Steel delivery confirmed for June 13.' },       { id: 'M005', kind: 'weekly', title: 'Week 32 - Seismic Progress', startedAt: '2025-08-18T09:00:00', endedAt: '2025-08-18T09:45:00', durationMin: 45, notes: 'Floors 1-4 seismic 80% complete. Elevator cab 1 installed and testing. Lobby demo started.' },       { id: 'M006', kind: 'monthly', title: 'Month 11 - Year-End Review', startedAt: '2025-12-01T14:00:00', endedAt: '2025-12-01T16:00:00', durationMin: 120, notes: 'Year-end budget review: $7.95M spent of $14.2M (56%). Schedule SPI 0.97. Elevator 2 installation in progress. Weather window planning for Q1 exterior work.' }
     ],
     logEntries: [
       { date: '2025-01-06', text: 'Project commenced. Notice to proceed issued.' },
       { date: '2025-03-14', text: 'Building permits approved. 60-day turnaround as expected.' },
-      { date: '2025-04-28', text: 'Demolition commenced floors 1-4.' },
-      { date: '2025-06-13', text: 'Steel delivery received — all members inspected and accepted.' },
+      { date: '2025-04-28', text: 'Demolition commenced floors 1-4.' },       { date: '2025-06-13', text: 'Steel delivery received - all members inspected and accepted.' },
       { date: '2025-07-25', text: 'Elevator cab 1 equipment received from manufacturer.' },
       { date: '2025-08-04', text: 'Elevator modernization cab 1 installation started.' },
       { date: '2025-09-05', text: 'Seismic retrofit floors 1-4 complete. PE inspection passed.' },
@@ -173,8 +160,7 @@
       { id: 'D001', name: 'Seismic Assessment Report (Phase 2)', date: '2025-03-28', type: 'report' },
       { id: 'D002', name: 'Construction Drawings Set A (Floors 1-4)', date: '2025-04-15', type: 'drawing' },
       { id: 'D003', name: 'Elevator Specification & Shop Drawings', date: '2025-03-10', type: 'specification' },
-      { id: 'D004', name: 'Safety Plan v2.1', date: '2025-01-20', type: 'plan' },
-      { id: 'D005', name: 'Monthly Progress Report — December 2025', date: '2025-12-31', type: 'report' }
+      { id: 'D004', name: 'Safety Plan v2.1', date: '2025-01-20', type: 'plan' },       { id: 'D005', name: 'Monthly Progress Report - December 2025', date: '2025-12-31', type: 'report' }
     ],
     closure: {
       items: [
@@ -206,8 +192,7 @@
       active: false,
       define: { problem: 'Elevator cab 1 vibration exceeds safety threshold', goal: 'Reduce lateral vibration to <0.15g during all operating conditions', scope: 'Cab 1 guide rail system and emergency brake', sponsor: 'Kevin Patel', voice: 'Safety inspection report', done: true },
       measure: { baseline: '0.30g lateral during emergency stop', defects: '3 exceedance events in 100 test cycles', unit: 'g (lateral acceleration)', opportunity: '100 test cycles', dpmo: '30000', sigmaNow: '3.4', done: true },
-      analyze: { rootCauses: 'Guide rail bracket spacing 20% wider than spec; brake engagement too abrupt', fishbone: 'Material (rail spec), Process (brake timing), Measurement (accelerometer placement)', paretoTop: 'Guide rail bracket spacing (70% of vibration)', done: true },
-      improve: { solutions: 'Install intermediate brackets every 2m (was 2.5m); reduce brake deceleration rate by 15%', pilot: 'Modified rail section tested on floor 3 shaft — vibration dropped to 0.12g', results: 'Vibration reduced 60%. All 100 test cycles pass <0.15g threshold.', done: true },
+      analyze: { rootCauses: 'Guide rail bracket spacing 20% wider than spec; brake engagement too abrupt', fishbone: 'Material (rail spec), Process (brake timing), Measurement (accelerometer placement)', paretoTop: 'Guide rail bracket spacing (70% of vibration)', done: true },       improve: { solutions: 'Install intermediate brackets every 2m (was 2.5m); reduce brake deceleration rate by 15%', pilot: 'Modified rail section tested on floor 3 shaft - vibration dropped to 0.12g', results: 'Vibration reduced 60%. All 100 test cycles pass <0.15g threshold.', done: true },
       control: { plan: 'Quarterly vibration testing; bracket inspection during annual elevator survey', metrics: 'Lateral acceleration (g), brake stopping distance (m)', handover: 'Maintenance team trained on bracket inspection protocol', done: false }
     },
     baseline: {
@@ -225,11 +210,7 @@
     siteLon: -74.0060,
     sitePlace: 'New York, NY',
     wxWindow: { startDate: '2025-11-01', endDate: '2026-03-31', bufferDays: 14 },
-    weatherLog: [
-      { date: '2025-11-15', delay: 1, reason: 'Snow storm — exterior work halted' },
-      { date: '2025-12-03', delay: 2, reason: 'Freezing rain — crane operations suspended' },
-      { date: '2025-12-18', delay: 1, reason: 'Heavy snow — site access restricted' },
-      { date: '2026-01-08', delay: 3, reason: 'Extended freeze — concrete work cannot proceed' }
+    weatherLog: [       { date: '2025-11-15', delay: 1, reason: 'Snow storm - exterior work halted' },       { date: '2025-12-03', delay: 2, reason: 'Freezing rain - crane operations suspended' },       { date: '2025-12-18', delay: 1, reason: 'Heavy snow - site access restricted' },       { date: '2026-01-08', delay: 3, reason: 'Extended freeze - concrete work cannot proceed' }
     ],
     ldRate: 8500,
     wxViewDays: 7,

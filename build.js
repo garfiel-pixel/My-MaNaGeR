@@ -1,16 +1,14 @@
 #!/usr/bin/env node
 /* ============================================================
-   My MaNaGeR — Build Script (esbuild)
+   My MaNaGeR - Build Script (esbuild)
    ------------------------------------------------------------
    Concatenates and minifies the JS modules into optimised
    bundles. The app uses a global MMGR namespace (IIFEs that
    attach to window.MMGR), not ES module imports, so the
    correct approach is sequential concatenation with esbuild's
-   minify pass — NOT module bundling.
+   minify pass - NOT module bundling.
 
-   Output:
-     dist/bundle.js      — project.html (55 modules, ~1.28 MB -> ~400-500 KB)
-     dist/marketing.js   — marketing pages (3 modules, ~111 KB -> ~40 KB)
+   Output:      dist/bundle.js      - project.html (55 modules, ~1.28 MB -> ~400-500 KB)      dist/marketing.js   - marketing pages (3 modules, ~111 KB -> ~40 KB)
 
    Usage:
      node build.js           — build both bundles
@@ -29,10 +27,9 @@ const DIST = path.join(ROOT, 'dist');
 if (!fs.existsSync(DIST)) fs.mkdirSync(DIST, { recursive: true });
 
 // ---- Project.html bundle (55 modules) ----
-// Order must match the <script> tags in project.html — each module
+// Order must match the <script> tags in project.html - each module
 // extends the global MMGR namespace created by mmgr-state.js.
-const APP_MODULES = [
-  // Core (loaded first — defines MMGR namespace + utilities)
+const APP_MODULES = [   // Core (loaded first - defines MMGR namespace + utilities)
   'js/mmgr-state.js',
   'js/mmgr-utils.js',
   'js/mmgr-net.js',
@@ -139,7 +136,7 @@ const ADMIN_MODULES = [
 ];
 
 // ---- Banner: ensures MMGR namespace exists before any module runs ----
-const BANNER = '/* My MaNaGeR — bundled by esbuild */var MMGR=window.MMGR||{};';
+const BANNER = '/* My MaNaGeR - bundled by esbuild */var MMGR=window.MMGR||{};';
 
 function buildBundle(modules, outputFile, label) {
   const start = Date.now();
@@ -153,7 +150,7 @@ function buildBundle(modules, outputFile, label) {
       process.exit(1);
     }
     let src = fs.readFileSync(abs, 'utf8');
-    // Strip standalone namespace creation lines — the banner provides it.
+    // Strip standalone namespace creation lines - the banner provides it.
     // Matches: var MMGR = window.MMGR || {};  (with any whitespace/semicolons)
     src = src.replace(/^\s*var\s+MMGR\s*=\s*window\.MMGR\s*\|\|\s*\{\}\s*;?\s*$/gm, '');
     return src;
@@ -230,7 +227,7 @@ const buildCss = args.length === 0 || args.includes('--css');
 const buildLauncher = args.length === 0 || args.includes('--launcher');
 const buildAdmin = args.length === 0 || args.includes('--admin');
 
-console.log('My MaNaGeR — build\n');
+console.log('My MaNaGeR - build\n');
 
 if (buildApp) buildBundle(APP_MODULES, 'dist/bundle.js', 'app bundle');
 if (buildLauncher) buildBundle(APP_LAUNCHER_MODULES, 'dist/app-bundle.js', 'launcher bundle');
@@ -244,7 +241,7 @@ if (buildCss) {
 console.log('\nDone.');
 
 // Touch sw.js so its mtime is always newer than dist/ files.
-// This keeps verify:sw happy — the SW cache version must be the
+// This keeps verify:sw happy - the SW cache version must be the
 // newest asset in the SHELL list after every build.
 const swPath = path.join(ROOT, 'sw.js');
 if (fs.existsSync(swPath)) {

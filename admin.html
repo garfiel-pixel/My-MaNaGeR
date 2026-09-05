@@ -92,8 +92,7 @@ body.dark-mode .gbox input{background:rgba(0,0,0,.3);}
 .rec-lost{font-size:.74rem;color:var(--slate);line-height:1.5;}
 .rec-lost p{margin:6px 0 10px;}
 
-/* ── bottom dock (owner D3/D6/D11): the old gate-prefs pill below was
-     promoted into the shared .dock in css/mmgr.css — one canonical
+/* ── bottom dock (owner D3/D6/D11): the old gate-prefs pill below was      promoted into the shared .dock in css/mmgr.css - one canonical
      Light/Dark/System picker + premium-glass toggle, visible on the gate
      screens and the admin panel alike. ── */
 /* Premium backdrop layers above the fixed z-0 canvas on this page. */
@@ -235,8 +234,7 @@ pre.snippet{background:#f8fafc;border:1px solid var(--border);border-radius:6px;
 <div class="gatewrap" id="setup-screen">
   <form class="gbox" id="setup-form" novalidate>
     <div class="icon"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-tool"></use></svg></div>
-    <h1>Set Up Admin Access</h1>
-    <p>No admin password is set on this device yet. Choose one now — it will be stored (hashed) locally on this device only. You'll need to re-enter it each time you open the admin panel, but it never leaves this browser.</p>
+    <h1>Set Up Admin Access</h1>     <p>No admin password is set on this device yet. Choose one now - it will be stored (hashed) locally on this device only. You'll need to re-enter it each time you open the admin panel, but it never leaves this browser.</p>
     <label class="sr-only" for="setup-pass1">New admin password</label>
     <span class="pw-wrap">
       <input id="setup-pass1" type="password" placeholder="New admin password (min 8 characters)" autocomplete="new-password">
@@ -269,7 +267,7 @@ pre.snippet{background:#f8fafc;border:1px solid var(--border);border-radius:6px;
   </form>
 </div>
 
-<!-- ═══ GATE: recovery (AREA G — Tier B local code + Tier A email OTP) ═══ -->
+<!-- ═══ GATE: recovery (AREA G - Tier B local code + Tier A email OTP) ═══ -->
 <div class="gatewrap hidden" id="forgot-screen">
   <div class="gbox">
     <div class="icon"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-shield"></use></svg></div>
@@ -914,12 +912,10 @@ function tglPwVis(btn){
   btn.setAttribute('aria-pressed', show ? 'true' : 'false');
   input.focus();
 }
-/* ============================================================
-   ADMIN PASSWORD RECOVERY — AREA G (owner D8, two tier)
+/* ============================================================    ADMIN PASSWORD RECOVERY - AREA G (owner D8, two tier)
    ------------------------------------------------------------
    TIER B (active): device-local 24-char recovery code generated at
-   admin setup + on every rotation, shown ONCE behind a save checkbox.
-   Stored PBKDF2-SHA256 ~100k iters + random salt (DECIDED 09-03 —
+   admin setup + on every rotation, shown ONCE behind a save checkbox.    Stored PBKDF2-SHA256 ~100k iters + random salt (DECIDED 09-03 -
    never raw SHA); 5 wrong attempts -> 15-minute lock; a successful
    code recovery rotates the code; a lost code's only path is the
    explicit local wipe + re-setup below (never hidden).
@@ -1054,8 +1050,7 @@ function rcShowSetStep(){
   document.getElementById('forgot-step-code').classList.add('hidden');
   const set = document.getElementById('forgot-step-set');
   set.classList.remove('hidden');
-  document.getElementById('rec-set-copy').textContent = _rcRotate
-    ? 'Code verified. Choose a new admin password — a fresh recovery code will be shown once before you continue.'
+  document.getElementById('rec-set-copy').textContent = _rcRotate     ? 'Code verified. Choose a new admin password - a fresh recovery code will be shown once before you continue.'
     : 'Email verified. Choose a new admin password to unlock the panel.';
   document.getElementById('rec-new1').value = '';
   document.getElementById('rec-new2').value = '';
@@ -1124,8 +1119,7 @@ async function submitRecoveredPassword(){
       // Rotation (G1): a fresh code is issued and must be re-saved before use.
       const code = await rcStoreNewCode();
       openRecoveryModal(code, enterAdmin);
-    } else {
-      // Tier A: no rotation — the device recovery code is untouched.
+    } else {       // Tier A: no rotation - the device recovery code is untouched.
       enterAdmin();
     }
   }finally{
@@ -1134,8 +1128,7 @@ async function submitRecoveredPassword(){
 }
 function resetAdminLocal(){
   admConfirm({
-    title: 'Reset admin password on this device?',
-    message: 'The admin password and recovery code will be removed from THIS device and you will set them up again now. Your projects and cloud data are not affected. Anyone with physical access to this browser could set a new password afterward — only do this on a device you trust.',
+    title: 'Reset admin password on this device?',     message: 'The admin password and recovery code will be removed from THIS device and you will set them up again now. Your projects and cloud data are not affected. Anyone with physical access to this browser could set a new password afterward - only do this on a device you trust.',
     danger: true,
     confirmLabel: 'Reset',
     onOk: function(){
@@ -1197,13 +1190,10 @@ async function sendAdminRecovery(){
       err.textContent = '';
       otpRow.hidden = false;
       line.textContent = data.sent
-        ? ('Code sent to ' + (data.emailMasked || 'your email') + '. It expires in 15 minutes.')
-        : 'The recovery email could not be sent right now — try again in a moment.';
+        ? ('Code sent to ' + (data.emailMasked || 'your email') + '. It expires in 15 minutes.')         : 'The recovery email could not be sent right now - try again in a moment.';
       setTimeout(function(){ document.getElementById('tierA-otp').focus(); }, 60);
-    } else if (res.status === 429){
-      err.textContent = 'Too many codes sent — try again in an hour.';
-    } else if (res.status === 503){
-      err.textContent = 'Email recovery is not enabled yet — use your device recovery code above.';
+    } else if (res.status === 429){       err.textContent = 'Too many codes sent - try again in an hour.';
+    } else if (res.status === 503){       err.textContent = 'Email recovery is not enabled yet - use your device recovery code above.';
     } else {
       err.textContent = (data && data.error) || ('Recovery unavailable (HTTP ' + res.status + ').');
     }
@@ -1226,8 +1216,7 @@ async function verifyAdminRecovery(){
       err.textContent = '';
       _rcRotate = false;
       rcShowSetStep();
-    } else if (res.status === 429){
-      err.textContent = 'Too many attempts — that code is locked. Request a new one in a few minutes.';
+    } else if (res.status === 429){       err.textContent = 'Too many attempts - that code is locked. Request a new one in a few minutes.';
     } else {
       err.textContent = (data && data.error) || 'Invalid code.';
     }
@@ -1416,8 +1405,7 @@ function enterAdmin(){
    PROJECT LIST rendering
    ============================================================ */
 function renderProjects(){
-  const list = document.getElementById('project-list');
-  /* Filter out code-based demo projects — they live on the app page only */
+  const list = document.getElementById('project-list');   /* Filter out code-based demo projects - they live on the app page only */
   const adminProjects = projects.filter(function(p){ return !p.isDemo && !(p.id && p.id.indexOf('demo-') === 0); });
   if(!adminProjects.length){
     list.innerHTML = '<div class="empty">No projects yet. Click "+ Add Project" to create your first one.</div>';
@@ -2196,8 +2184,7 @@ async function poolList(){
     return;
   }
   const items = r.data.items || [];
-  const linked = r.data.linked || {};
-  reveal.textContent = items.length ? (items.length + ' row(s) in the pool · ' + Object.keys(linked).length + ' linked to this project') : 'Your pool is empty — add rows below.';
+  const linked = r.data.linked || {};   reveal.textContent = items.length ? (items.length + ' row(s) in the pool · ' + Object.keys(linked).length + ' linked to this project') : 'Your pool is empty - add rows below.';
   if (!items.length){ wrap.innerHTML = ''; return; }
   const kindLabel = function(k){ return k === 'person' ? 'Person' : k === 'equipment' ? 'Equipment' : 'Material'; };
   wrap.innerHTML = items.map(function(it){
@@ -2334,8 +2321,7 @@ async function revokeCloudCode(id){
 }
 
 /* ── C19: Client Code Functions ── */
-/* C19 (2026-09-04): mirrors the SERVER's 19-section CLIENT_SECTIONS list
-   exactly (src/cloud/client-codes.js) — dmaic was missing here, so admins
+/* C19 (2026-09-04): mirrors the SERVER's 19-section CLIENT_SECTIONS list    exactly (src/cloud/client-codes.js) - dmaic was missing here, so admins
    could not grant a section the server accepts. digest/baselinen/wxlog are
    intentionally NOT client-grantable: they are app-internal view-only
    panels (baseline narrative, weather log, digest), not client navigation. */
@@ -2466,8 +2452,7 @@ document.addEventListener('keydown', e=>{
 });
 document.getElementById('pw-new2').addEventListener('keydown', e=>{ if(e.key==='Enter') submitPasswordChange(); });
 /* AREA G recovery wiring: Enter-to-submit per recovery input + the
-   show-once modal's save-checkbox gate (Done stays disabled until the
-   checkbox is checked — the code must not be dismissible unsaved). */
+   show-once modal's save-checkbox gate (Done stays disabled until the    checkbox is checked - the code must not be dismissible unsaved). */
 document.getElementById('rec-code').addEventListener('keydown', function(e){ if(e.key==='Enter'){ e.preventDefault(); submitRecoveryCode(); } });
 document.getElementById('rec-new2').addEventListener('keydown', function(e){ if(e.key==='Enter'){ e.preventDefault(); submitRecoveredPassword(); } });
 document.getElementById('tierA-otp').addEventListener('keydown', function(e){ if(e.key==='Enter'){ e.preventDefault(); verifyAdminRecovery(); } });
@@ -2508,7 +2493,7 @@ function closeAdminNav(){
 }
 // Rail navigation closes the drawer (mobile) / overlay (desktop) after use.
 // Customize controls (theme/glass toggles + palette buttons) and the close
-// button (tglNav) stay open — they handle their own state via the action map.
+// button (tglNav) stay open - they handle their own state via the action map.
 document.addEventListener('click', function(e){
   const rail = e.target.closest('#app-sidebar');
   if (!rail) return;

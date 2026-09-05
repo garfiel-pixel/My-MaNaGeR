@@ -120,7 +120,7 @@ body.glass-premium .wrap{position:relative;z-index:1;}
 .pf-title{font-size:.8rem;font-weight:800;line-height:1.35;}
 .pf-meta{font-size:.68rem;color:var(--slate);margin-top:4px;}
 .pf-reason{font-size:.66rem;color:var(--slate);margin-top:4px;font-style:italic;}
-/* Hide sign-in icon from header — keep it in sidebar only */
+/* Hide sign-in icon from header - keep it in sidebar only */
 #db-user-avatar{display:none!important;}
 /* CLS PREVENTION: reserve space for dynamic content areas so cards
    rendering after initial paint don't shift the layout. */
@@ -184,8 +184,7 @@ body.glass-premium .wrap{position:relative;z-index:1;}
   </div>
   <nav class="db-nav" id="db-nav">
     <div class="db-g">Overview</div>
-    <!-- Dashboard: the full dedicated dashboard view is not built yet
-         (owner review 2026-09-05) — the link stays honest with a Soon chip
+    <!-- Dashboard: the full dedicated dashboard view is not built yet          (owner review 2026-09-05) - the link stays honest with a Soon chip
          and returns to the project overview at #top instead of looking
          broken to a demo viewer. -->
     <a class="db-link" href="#top" title="Full dashboard view is coming soon"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-orb"></use></svg> Dashboard <span class="db-soon">Soon</span></a>
@@ -243,7 +242,7 @@ body.glass-premium .wrap{position:relative;z-index:1;}
     <button type="button" id="db-theme-quick" class="db-quick" data-action="tglThemeQuick" aria-label="Toggle appearance" title="Toggle light/dark" style="right:12px;"><svg class="ico" aria-hidden="true"><use id="db-theme-quick-ico" href="css/mmgr-icons.svg#i-moon"></use></svg></button>
     <!-- SEARCH: project search for users with many projects -->
     <button type="button" id="db-search-btn" class="db-quick" data-action="openProjectSearch" aria-label="Search projects" title="Search projects" style="right:54px;"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-search"></use></svg></button>
-    <!-- SIGNED-IN INDICATOR (hidden — sign-in lives in sidebar only) -->
+    <!-- SIGNED-IN INDICATOR (hidden - sign-in lives in sidebar only) -->
     <button type="button" id="db-user-avatar" class="db-avatar" data-action="openSignIn" aria-label="Sign in" title="Sign in" style="display:none;">
       <span class="db-avatar-box"><span class="db-avatar-ring"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-user"></use></svg></span><span class="db-avatar-dot" hidden></span></span>
       <span class="db-avatar-txt">Sign in</span>
@@ -275,7 +274,7 @@ body.glass-premium .wrap{position:relative;z-index:1;}
   </div>
   <div class="grid view-deck" id="grid"><!-- user project cards render here --></div>
 
-  <!-- DEMO PROJECTS SECTION — separate from user projects, collapsible -->
+  <!-- DEMO PROJECTS SECTION - separate from user projects, collapsible -->
   <div id="demo-sec" class="db-sec" aria-label="Demo Projects" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-top:24px;">
     <div><h2 class="db-sec-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-orb"></use></svg> Demo Projects</h2></div>
     <button type="button" id="demo-hide-btn" class="btn btn-n btn-s" style="white-space:nowrap;"><svg class="ico" aria-hidden="true" style="width:14px;height:14px;"><use id="demo-hide-icon" href="css/mmgr-icons.svg#i-x"></use></svg> <span id="demo-hide-label">Hide demos</span></button>
@@ -304,7 +303,7 @@ body.glass-premium .wrap{position:relative;z-index:1;}
        code , owner, editor, or viewer. The lookup resolves the code to its
        project on the backend and opens it here; no shared URL needed beyond
        this site. Works from any device, any country. -->
-  <!-- Secondary action: open with access code (Phase 2 — contextual, not prominent) -->
+  <!-- Secondary action: open with access code (Phase 2 - contextual, not prominent) -->
   <div class="cloud-dash" id="code-entry" aria-label="Open a project with a code" style="margin-top:8px;">
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
       <input id="code-entry-in" type="text" maxlength="32" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="XXXX-XXXX-XXXX-XXXX" aria-label="Project code" style="background:var(--tile-bg);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-size:.82rem;letter-spacing:.08em;padding:8px 12px;font-family:ui-monospace,monospace;outline:none;flex:1;min-width:180px;max-width:280px;">
@@ -313,7 +312,7 @@ body.glass-premium .wrap{position:relative;z-index:1;}
     </div>
   </div>
 
-  <!-- RECOVER DELETED PROJECTS — owner-only tab showing soft-deleted
+  <!-- RECOVER DELETED PROJECTS - owner-only tab showing soft-deleted
        cloud projects within their 5-day grace period. RESTORE is a full
        undo (server + local). -->
   <div class="cloud-dash" id="recover-dash" hidden aria-label="Recover deleted projects">
@@ -583,7 +582,7 @@ function toast(msg, type){
 // instances on a page (rail toggle / bottom dock) stay in sync.
 // Dark theme is handled by mmgr-theme.js (Light / Dark / System); the glass
 // toggle is implemented HERE because MMGR.App (project-page namespace) does
-// not exist on the launcher — the old delegation to it was a silent no-op
+// not exist on the launcher - the old delegation to it was a silent no-op
 // (fixed 2026-09-03, owner D3: the dock carries a glass toggle too).
 function tglTheme(){}
 function tglGlassMode(el){
@@ -683,7 +682,7 @@ document.addEventListener('keydown', e=>{
   }
 });
 
-// Hide demos toggle — persists to localStorage, separates demo projects
+// Hide demos toggle - persists to localStorage, separates demo projects
 // from user projects so the main grid stays clean.
 document.getElementById('demo-hide-btn').addEventListener('click', function() {
   var hidden = false;

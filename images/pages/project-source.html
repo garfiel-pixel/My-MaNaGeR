@@ -206,8 +206,7 @@
          only while a project has zero Advanced Packs enabled AND none have ever
          been toggled on AND the user hasn't dismissed it. Hidden forever after
          any pack is toggled on or "Not now" is clicked. -->
-    <div class="core-callout is-hide" id="core-callout" role="note">
-      <div class="core-callout-txt"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-orb"></use></svg> <strong>Core Mode is on.</strong> Only the essential sections are shown (Overview, Plan, Collaborate). Turn on Risk, Budget, RACI, Meetings, Claim Pack and more — one click, nothing hidden is ever lost.</div>
+    <div class="core-callout is-hide" id="core-callout" role="note">       <div class="core-callout-txt"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-orb"></use></svg> <strong>Core Mode is on.</strong> Only the essential sections are shown (Overview, Plan, Collaborate). Turn on Risk, Budget, RACI, Meetings, Claim Pack and more - one click, nothing hidden is ever lost.</div>
       <div class="core-callout-actions">
         <button class="btn btn-g btn-s" data-action="openPacks"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-settings"></use></svg> Turn on Advanced Packs</button>
         <button class="btn btn-n btn-s" data-action="dismissPacksCallout" aria-label="Dismiss this tip , never show it again">Not now</button>
@@ -1643,8 +1642,7 @@
 /* Dev fallback: when dist/bundle.js is missing (local dev without a build),
    dynamically inject the 55 individual source files in dependency order.
    In production the bundle loads, __mmgrBundleMissing stays undefined,
-   and this entire block is a no-op. The fallback scripts are appended to
-   <body> synchronously — they block briefly but only in the dev path. */
+   and this entire block is a no-op. The fallback scripts are appended to    <body> synchronously - they block briefly but only in the dev path. */
 document.addEventListener('DOMContentLoaded', function() {
   if (!window.__mmgrBundleMissing) return;
   var MMGR = window.MMGR || {};

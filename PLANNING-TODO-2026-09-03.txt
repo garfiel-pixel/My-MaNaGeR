@@ -912,6 +912,64 @@ Phase 7 - AREA F backlog/deferred items + any remaining ? open
   marketing no-regression check are build-time verifies in Phase 1/4).
 
 --------------------------------------------------------------------
+REMEDIATION WAVE RECORD (2026-09-05, SHIPPED + DEPLOYED): owner
+review pass ("here is my review ... keep the local host live so i can
+take a look before initial deployment"). Local server on 8765 refreshed
+(RESTARTED serve.cjs - the long-running dev server held a stale in-memory
+CSP list, which silently blocked the edited seed-test inline script; the
+fix is restart serve.cjs after ANY inline-script edit). Commit 082e19f,
+DEPLOYED Version bebf6499-e498-466f-b4a3-523f25f5dbe6, sw v245 live,
+CI green. Deploy checks: privacy/terms 200 with google-auth BEFORE
+marketing-bundle; index serves marketing-bundle; demo-data.js carries
+hoursAllocated; css/marketing.css live with .site-footer .brand{color:
+var(--on-navy)}; dist/marketing.min.css spy-label color:#f8fafcf0;
+cycle-guard string present in dist/bundle.js; all pages 200; scratch
+files still excluded from the live asset set.
+  R1 sign-in dead on privacy.html + terms.html - script order was
+     marketing.js BEFORE mmgr-google-auth.js (only two pages reversed);
+     swapped. VERIFIED: click Sign in opens the sheet.
+  R2 cycle-time negative day count ("-58d" green) - no guard against
+     backwards date pairs; render now excludes + surfaces date errors
+     ("N excluded for date errors"), never paints negative green.
+     seed-test fixture fixed (completed t5 had future start + no
+     completedDate). VERIFIED: 16d now (was -58d); hostile fixture
+     test shows "1 excluded".
+  R3 Dashboard rail item -> marked "Soon" (chip, keeps #top anchor so
+     qa-dashboard-spec stays green); full dashboard view = backlog.
+  R4 marketing pages shipped unminified source JS - all 7 wired to
+     dist/marketing-bundle.js (dev fallback included); CSP hash list
+     extended to the 7 marketing pages in verify + regen tools
+     (regen-csp-hashes.cjs), worker.js + serve.cjs regenerated (24).
+  R5 footer .brand 1.02:1 -> .site-footer .brand{color:var(--on-navy)}
+     (theme-independent). VERIFIED: 13.9:1.
+  R6 scroll-spy labels invisible on hero (undefined var(--text) leaked
+     from mmgr.css) - rail is now a dark glass chip + light labels
+     (fixed rail crosses dark AND light sections); second leak found:
+     var(--slate) in .signin-user-avatar -> marketing's own --ink.
+  R7 demo/seed resources showed flat 0% utilization - hoursAllocated +
+     availability now populated (demo-data.js + seed-test.html); resUtil
+     defaults availability to 100. VERIFIED: 65% avg on seed demo.
+  R8 dock glass on admin.html - VERIFIED INTENTIONAL (light theme sets
+     --glass-blur:0px + solid white per token comment; real frosted
+     effect is dark-mode only). No code change; owner to eyeball.
+  R9 index hero "2800px" + empty photo-band claims - MEASURED NOT
+     REPRODUCED: hero is 1273px (headline 394px from its top, inside the
+     first viewport), both photo bands carry real copy + CTA
+     (contentH 215/258px). No structural change; left for owner review.
+  R10 getPendingEditorCode/set/clear duplicated (mmgr-cloud.js vs
+      cloud/share.js) - collapsed to canonical trio in CloudShare;
+      mmgr-cloud.js delegates. verify-delegate-gate OK.
+REVIEW 4.2 (reviews rate-limit + Turnstile) NOT code-done: needs the
+owner's Cloudflare dashboard (edge Rate Limiting rule on POST /api/reviews
+~5-10/hr/IP) + Turnstile site/secret keys - owner-blocked, tracked above.
+VERIFICATION (all green, local battery): npm run verify ALL PASS,
+qa-dashboard-spec 76/76, qa-market-features 61/61, qa-reviews 25/25,
+qa-view-mode ALL PASS, qa-calculator 27/27, verify-dynamic-labels 3/3,
+verify-report-issue 27/27, verify-delegate-gate OK, changelog-diffs PASS,
+verify-theme/glass/gates/spy CDP all OK, emoji scan clean. sw v245.
+NEXT: owner reviews on http://127.0.0.1:8765 then deploy this wave.
+
+--------------------------------------------------------------------
 PHASE 1 EXECUTION RECORD (2026-09-03, SHIPPED) - see AREA D for
 per-item status. Files touched: js/mmgr-theme.js, js/mmgr-dock.js
 (NEW), js/mmgr-app.js (boot theme system-arm), js/mmgr-calculator.js

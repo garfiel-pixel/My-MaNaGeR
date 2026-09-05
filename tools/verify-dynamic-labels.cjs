@@ -30,6 +30,53 @@ const results = [];
 // Chrome's stderr so "app never became ready" is never the only clue again.
 const pageErrors = [];
 let chromeStderr = '';
+
+// ROOT CAUSE (run 230, 2026-09-05): the old boot path went through
+// seed-test.html, whose ONLY content is one inline <script> that seeds
+// localStorage and location.replace()s to project.html. On the ubuntu
+// runner that inline script never executed (CSP-hash-class silent block;
+// diag showed href=seed-test.html, mmgr:-1, ZERO page errors for 50s) and
+// the same commit's project.html boots green in the T2 browser gates — the
+// redirect hop was the fragile link. The seed data is all this gate really
+// needs: write it to localStorage HERE (idempotent whether or not
+// seed-test.html already ran) and navigate straight to project.html.
+const SEED_KEY = 'mmgr_state_demo-project';
+const SEED_DATA = {
+  v: 5,
+  updatedAt: Date.now(),
+  charter: {
+    name: 'Demo Tower Renovation', owner: 'Grace', startDate: '2026-06-01',
+    targetCompletion: '2026-12-31', budgetEnvelope: 1000000, status: 'Active',
+    scope: 'Full lobby + core renovation', region: 'northern-temperate',
+    assumptions: '', exclusions: '', constraints: '', successMetrics: ''
+  },
+  tasks: [
+    { id: 't1', name: 'Foundations', level: 0, indent: 0, isPhase: true, status: 'inprogress', startDate: '2026-06-01', endDate: '2026-07-10', duration: '40', assignee: 'Alice', critical: false, leadTime: false, predecessors: [], milestone: false, weatherSensitive: true, weatherExposed: false, confidence: 'high' },
+    { id: 't2', name: 'Structural Steel', level: 1, indent: 1, status: 'inprogress', startDate: '2026-07-13', endDate: '2026-08-21', duration: '30', assignee: 'Bob', critical: true, leadTime: false, predecessors: ['t1'], milestone: false, weatherSensitive: false, weatherExposed: false, confidence: 'medium' }
+  ],
+  ntaskid: 3,
+  resources: [
+    { id: 'r1', name: 'Alice', role: 'Foundations Lead', availability: 100, hoursAllocated: 160, utilization: 0 },
+    { id: 'r2', name: 'Bob', role: 'Steel Erector', availability: 100, hoursAllocated: 120, utilization: 0 }
+  ],
+  risks: [],
+  issues: [],
+  stakeholders: [{ id: 's1', name: 'Owner' }, { id: 's2', name: 'Municipality' }],
+  raci: { tasks: [], persons: [], matrix: {} },
+  meetings: [], nmeetid: 1,
+  spend: { entries: [], envelope: 1000000 },
+  nspendid: 1,
+  weather: { start: '2026-06-01', end: '2026-12-31', bufferDays: 14, region: 'northern-temperate' },
+  wxLog: [],
+  settings: { userName: 'Grace' },
+  projectName: 'Demo Tower Renovation',
+  focusMode: false, darkMode: false, crosshairOn: false, kbShowLeadtime: true, hlCritical: false,
+  leadtime: {},
+  dmaic: { active: false, define: { problem: '', goal: '', scope: '', sponsor: '', voice: '', done: false }, measure: { baseline: '', defects: '', unit: '', opportunity: '', dpmo: '', sigmaNow: '', done: false }, analyze: { rootCauses: '', fishbone: '', paretoTop: '', done: false }, improve: { solutions: '', pilot: '', results: '', done: false }, control: { plan: '', metrics: '', handover: '', done: false } },
+  schedule: {},
+  evm: {}, health: {}, close: {}, sprint: {},
+  backlog: [], nbacklogid: 1
+};
 const log = (s) => process.stdout.write('[verify-dynamic-labels] ' + s + '\n');
 const delay = (ms) => new Promise(r => setTimeout(r, ms));
 setTimeout(() => { log('WATCHDOG'); try { ws && ws.close(); } catch (e) {} process.exit(2); }, 180000);
@@ -77,8 +124,36 @@ async function bootChrome(port, profile, url) {
   };
   await new Promise((res, rej) => { ws.onopen = res; ws.onerror = () => rej(new Error('ws fail')); });
   await send('Runtime.enable'); await send('Page.enable');
-  await send('Page.navigate', { url: url || (BASE + '/seed-test.html') });
+  // Seed localStorage BEFORE the app page boots (the app reads it at load):
+  // land on the marketing page (same origin, no app boot), write the seed,
+  // then navigate to project.html. Replaces the old seed-test.html redirect
+  // hop whose inline script silently never ran on the ubuntu runner.
+  try {
+    await send('Page.navigate', { url: BASE + '/index.html' });
+    await delay(1200);
+    await send('Runtime.evaluate', { returnByValue: true, expression: `(function(){
+      try {
+        localStorage.setItem(${JSON.stringify(SEED_KEY)}, ${JSON.stringify(JSON.stringify(SEED_DATA))});
+        localStorage.setItem('mmgr_current_project', 'demo-project');
+        localStorage.setItem('mmgr_unlocked_demo-project', '1');
+        localStorage.setItem('mmgr_unlocked_my_manager', '1');
+        return 'seeded:' + localStorage.getItem('mmgr_current_project');
+      } catch (e) { return 'seed-fail:' + e.message; }
+    })()` });
+  } catch (e) { log('WARN seed bootstrap failed: ' + (e && e.message)); }
+  await send('Page.navigate', { url: url || (BASE + '/project.html?id=demo-project') });
   await delay(4000);
+  // Safety net: if the app bounced off the project page for any reason,
+  // go back once (seed is already in place now).
+  try {
+    const here = await send('Runtime.evaluate', { returnByValue: true, expression: 'location.href' });
+    const href = here.result && here.result.value;
+    if (String(href).indexOf('project.html') === -1) {
+      log('boot landed on ' + href + ' — re-navigating to project.html');
+      await send('Page.navigate', { url: BASE + '/project.html?id=demo-project' });
+      await delay(1500);
+    }
+  } catch (e) {}
   return proc;
 }
 

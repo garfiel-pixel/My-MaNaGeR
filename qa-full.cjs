@@ -82,7 +82,7 @@ async function check(name, expr, expected, hint) {
   // honours via 'system').
   await ev(`try{localStorage.setItem('mmgr_theme','light');}catch(e){}; if(document.body.classList.contains('dark-mode'))document.body.classList.remove('dark-mode');`);
   await delay(120);
-  await check('02 theme: light default + sidebar reflects', `(function(){var b=document.querySelector('#rail-customize .pal-btn[data-pal="light"]');return {val: !!b && b.getAttribute('aria-pressed') === 'true' && !document.body.classList.contains('dark-mode') };})()`);
+  await check('02 theme: light default + sidebar reflects', `(function(){var b=document.querySelector('#rail-customize .pal-btn[data-pal="light"]');var bd=document.querySelector('#rail-customize .pal-btn[data-pal="dark"]');var bs=document.querySelector('#rail-customize .pal-btn[data-pal="system"]');return {val: !!b && !!bd && !!bs && b.getAttribute('aria-pressed') === 'true' && bd.getAttribute('aria-pressed') === 'false' && bs.getAttribute('aria-pressed') === 'false' && !document.body.classList.contains('dark-mode') };})()`);
   await ev(`document.querySelector('#rail-customize .pal-btn[data-pal="dark"]').click()`); await delay(200);
   await check('02b theme: sidebar dark -> class + device pref', `(function(){var b=document.querySelector('#rail-customize .pal-btn[data-pal="dark"]');return {val: !!b && b.getAttribute('aria-pressed') === 'true' && document.body.classList.contains('dark-mode') && localStorage.getItem('mmgr_theme') === 'dark' };})()`);
   await ev(`document.querySelector('#rail-customize .pal-btn[data-pal="light"]').click()`); await delay(200);

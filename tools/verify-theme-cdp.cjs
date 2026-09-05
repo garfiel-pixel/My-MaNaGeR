@@ -1,7 +1,7 @@
 /* ============================================================
    Device-level theme persistence check across all three pages:
      S1 — mmgr_theme=dark pref wins over light project state
-     S2 — dock Light click flips pref + body class (owner D11: the
+     S2 — inline Appearance controls Light click flips pref + body class
           shared bottom dock is the one theme picker now)
      S3 — no device pref -> per-project state.theme is the fallback
      S4 — launcher (app.html) dock click flips pref + class

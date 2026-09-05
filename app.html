@@ -261,7 +261,7 @@ body.db-page.side-open .sidebar-icons{opacity:0;pointer-events:none;}
 } catch (e) {} })();
 </script>
 </head>
-<body class="db-page has-dock">
+<body class="db-page has-dock dock-inline-active">
 <script>
 /* Transfer classes from <html> to <body> (CSS selectors target body.*). */
 (function(){ try {
@@ -314,31 +314,33 @@ body.db-page.side-open .sidebar-icons{opacity:0;pointer-events:none;}
     <div class="db-g">Customize</div>
     <button type="button" class="db-link" data-rail-toggle="rail-customize" aria-expanded="false" aria-controls="rail-customize"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-palette"></use></svg> Customize <svg class="ico ico-caret" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg></button>
     <div class="db-sub db-customize" id="rail-customize" hidden>
-      <div class="db-ctl-row">
-        <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-moon"></use></svg> Theme
-        <span class="pal-switch" role="group" aria-label="Theme mode">
-          <button type="button" class="pal-btn" data-pal="light" aria-pressed="false">Light</button>
-          <button type="button" class="pal-btn" data-pal="dark" aria-pressed="false">Dark</button>
-          <button type="button" class="pal-btn" data-pal="system" aria-pressed="false">System</button>
-        </span>
-      </div>
-      <div class="db-ctl-row">
-        <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-palette"></use></svg> Palette
-        <span class="pal-switch" role="group" aria-label="Palette">
-          <button type="button" class="pal-btn" data-palette="gold" aria-pressed="true">Gold</button>
-          <button type="button" class="pal-btn" data-palette="rose" aria-pressed="false">Rose</button>
-        </span>
-      </div>
-      <div class="db-ctl-row">
-        <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cube"></use></svg> View
-        <span class="pal-switch" role="group" aria-label="View mode">
-          <button type="button" class="pal-btn" data-view="flat" aria-pressed="true">Flat</button>
-          <button type="button" class="pal-btn" data-view="3d" aria-pressed="false">3D</button>
-        </span>
-      </div>
-      <div class="db-ctl-row">
-        <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-orb"></use></svg> Premium Glass
-        <label class="tgl"><input type="checkbox" id="glass-tgl" data-action="tglGlassMode" aria-label="Toggle premium liquid-glass backdrop"><span class="tsl"></span></label>
+      <div class="dock dock-inline" role="group" aria-label="Appearance controls">
+        <div class="db-ctl-row">
+          <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-moon"></use></svg> Theme
+          <span class="pal-switch" role="group" aria-label="Theme mode">
+            <button type="button" class="pal-btn" data-pal="light" aria-pressed="false">Light</button>
+            <button type="button" class="pal-btn" data-pal="dark" aria-pressed="false">Dark</button>
+            <button type="button" class="pal-btn" data-pal="system" aria-pressed="false">System</button>
+          </span>
+        </div>
+        <div class="db-ctl-row">
+          <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-palette"></use></svg> Palette
+          <span class="pal-switch" role="group" aria-label="Palette">
+            <button type="button" class="pal-btn" data-palette="gold" aria-pressed="true">Gold</button>
+            <button type="button" class="pal-btn" data-palette="rose" aria-pressed="false">Rose</button>
+          </span>
+        </div>
+        <div class="db-ctl-row">
+          <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cube"></use></svg> View
+          <span class="pal-switch" role="group" aria-label="View mode">
+            <button type="button" class="pal-btn" data-view="flat" aria-pressed="true">Flat</button>
+            <button type="button" class="pal-btn" data-view="3d" aria-pressed="false">3D</button>
+          </span>
+        </div>
+        <div class="db-ctl-row">
+          <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-orb"></use></svg> Premium Glass
+          <label class="tgl"><input type="checkbox" id="glass-tgl" data-action="tglGlassMode" aria-label="Toggle premium liquid-glass backdrop"><span class="tsl"></span></label>
+        </div>
       </div>
     </div>
   </nav>
@@ -1418,31 +1420,7 @@ if ('serviceWorker' in navigator &&
   </div>
 </div>
 
-<!-- Bottom dock (owner D3/D6/D11): palette + view + glass controls.
-     Theme mode (Light/Dark/System) lives in the Customize sidebar section. -->
-<div class="dock" id="app-dock" role="toolbar" aria-label="Appearance controls">
-  <span class="dock-item">
-    <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-palette"></use></svg>
-    <span class="dock-lbl">Palette</span>
-    <span class="pal-switch" role="group" aria-label="Palette">
-      <button type="button" class="pal-btn" data-palette="gold" aria-pressed="true">Gold</button>
-      <button type="button" class="pal-btn" data-palette="rose" aria-pressed="false">Rose</button>
-    </span>
-  </span>
-  <span class="dock-item">
-    <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cube"></use></svg>
-    <span class="dock-lbl">View</span>
-    <span class="pal-switch" role="group" aria-label="View mode">
-      <button type="button" class="pal-btn" data-view="flat" aria-pressed="true">Flat</button>
-      <button type="button" class="pal-btn" data-view="3d" aria-pressed="false">3D</button>
-    </span>
-  </span>
-  <span class="dock-item">
-    <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-orb"></use></svg>
-    <span class="dock-lbl">Glass</span>
-    <label class="tgl"><input type="checkbox" data-action="tglGlassMode" aria-label="Toggle premium liquid-glass backdrop"><span class="tsl"></span></label>
-  </span>
-</div>
+
 <script defer src="js/mmgr-dock.js"></script>
 </body>
 </html>

@@ -71,7 +71,7 @@
 </script>
 <link rel="modulepreload" href="dist/bundle.js">
 </head>
-<body class="has-dock">
+<body class="has-dock dock-inline-active">
 <script>
 /* Transfer dark-mode from <html> to <body> (the CSS selectors target body.dark-mode). */
 (function(){ try {
@@ -1392,20 +1392,31 @@
     </div>
 
     <div class="ctl-sec"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-palette"></use></svg> Appearance</div>
-    <div class="sr">
-      <span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-moon"></use></svg> Theme</span>
-      <span class="pal-switch" role="group" aria-label="Theme mode">
-        <button type="button" class="pal-btn" data-pal="light" aria-pressed="false">Light</button>
-        <button type="button" class="pal-btn" data-pal="dark" aria-pressed="false">Dark</button>
-        <button type="button" class="pal-btn" data-pal="system" aria-pressed="false">System</button>
+    <div class="dock dock-inline" role="group" aria-label="Appearance controls">
+      <div class="sr">
+        <span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-moon"></use></svg> Theme</span>
+        <span class="pal-switch" role="group" aria-label="Theme mode">
+          <button type="button" class="pal-btn" data-pal="light" aria-pressed="false">Light</button>
+          <button type="button" class="pal-btn" data-pal="dark" aria-pressed="false">Dark</button>
+          <button type="button" class="pal-btn" data-pal="system" aria-pressed="false">System</button>
+        </span>
+      </div>
+      <div class="sr">
+        <span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-palette"></use></svg> Palette</span>
+        <span class="pal-switch" role="group" aria-label="Palette">
+          <button type="button" class="pal-btn" data-palette="gold" aria-pressed="true">Gold</button>
+          <button type="button" class="pal-btn" data-palette="rose" aria-pressed="false">Rose</button>
+        </span>
+      </div>
+      <span class="dock-item">
+        <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cube"></use></svg>
+        <span class="dock-lbl">View</span>
+        <span class="pal-switch" role="group" aria-label="View mode">
+          <button type="button" class="pal-btn" data-view="flat" aria-pressed="true">Flat</button>
+          <button type="button" class="pal-btn" data-view="3d" aria-pressed="false">3D</button>
+        </span>
       </span>
-    </div>
-    <div class="sr">
-      <span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-palette"></use></svg> Palette</span>
-      <span class="pal-switch" role="group" aria-label="Palette">
-        <button type="button" class="pal-btn" data-palette="gold" aria-pressed="true">Gold</button>
-        <button type="button" class="pal-btn" data-palette="rose" aria-pressed="false">Rose</button>
-      </span>
+      <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-orb"></use></svg> Premium Visual Mode</span><label class="tgl"><input type="checkbox" data-action="tglGlassMode" aria-label="Toggle premium liquid-glass backdrop"><span class="tsl"></span></label></div>
     </div>
     <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-crosshair"></use></svg> Crosshair Cursor</span><label class="tgl"><input type="checkbox" id="ch-tgl" aria-label="Crosshair Cursor" data-action="tglCh"><span class="tsl"></span></label></div>
     <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-orb"></use></svg> Premium Visual Mode</span><label class="tgl"><input type="checkbox" id="glass-tgl" aria-label="Premium Visual Mode" data-action="tglGlassMode"><span class="tsl"></span></label></div>
@@ -1831,31 +1842,7 @@ if ('serviceWorker' in navigator &&
 }
 </script>
 
-<!-- Bottom dock (owner D3/D6/D11): palette + view + glass controls.
-     Theme mode (Light/Dark/System) lives in the Appearance settings section. -->
-<div class="dock" id="app-dock" role="toolbar" aria-label="Appearance controls">
-  <span class="dock-item">
-    <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-palette"></use></svg>
-    <span class="dock-lbl">Palette</span>
-    <span class="pal-switch" role="group" aria-label="Palette">
-      <button type="button" class="pal-btn" data-palette="gold" aria-pressed="true">Gold</button>
-      <button type="button" class="pal-btn" data-palette="rose" aria-pressed="false">Rose</button>
-    </span>
-  </span>
-  <span class="dock-item">
-    <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cube"></use></svg>
-    <span class="dock-lbl">View</span>
-    <span class="pal-switch" role="group" aria-label="View mode">
-      <button type="button" class="pal-btn" data-view="flat" aria-pressed="true">Flat</button>
-      <button type="button" class="pal-btn" data-view="3d" aria-pressed="false">3D</button>
-    </span>
-  </span>
-  <span class="dock-item">
-    <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-orb"></use></svg>
-    <span class="dock-lbl">Glass</span>
-    <label class="tgl"><input type="checkbox" data-action="tglGlassMode" aria-label="Toggle premium liquid-glass backdrop"><span class="tsl"></span></label>
-  </span>
-</div>
+
 <script defer src="js/mmgr-dock.js"></script>
 </body>
 </html>

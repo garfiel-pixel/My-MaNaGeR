@@ -319,7 +319,7 @@ var MMGR = window.MMGR || {};
       }
     }
 
-    // C9: Cycle Time — avg planned vs actual duration for completed tasks
+    // C9: Cycle Time - avg planned vs actual duration for completed tasks
     const cycleEl = $('dw-cycle');
     const cycleSub = $('dw-cycle-sub');
     const cycleCard = $('dw-cycle-card');
@@ -332,11 +332,11 @@ var MMGR = window.MMGR || {};
         if (cycleCard) cycleCard.classList.add('tier3');
       } else {
         // C9 data-quality guard (2026-09-05): a completed task whose planned or
-        // actual span runs backwards (end before start — bad or out-of-order
+        // actual span runs backwards (end before start - bad or out-of-order
         // dates, e.g. a completedDate typed before its startDate) is bad data,
         // NOT a negative "fast" cycle. Exclude it from both averages and
         // surface it so the person who entered it can fix the dates instead of
-        // it being silently dropped — or worse, painted green for a negative
+        // it being silently dropped - or worse, painted green for a negative
         // duration.
         const validTasks = completedTasks.filter(t => {
           const planned = U.daysBetween(t.startDate, t.endDate);
@@ -348,7 +348,7 @@ var MMGR = window.MMGR || {};
         if (validTasks.length === 0) {
           cycleEl.textContent = '--';
           cycleEl.style.color = 'var(--danger)';
-          if (cycleSub) cycleSub.textContent = 'Completed task dates run backwards — fix the task start/end dates to see cycle time';
+          if (cycleSub) cycleSub.textContent = 'Completed task dates run backwards - fix the task start/end dates to see cycle time';
           if (cycleCard) cycleCard.classList.remove('tier3');
         } else {
           const plannedDurs = validTasks.map(t => U.daysBetween(t.startDate, t.endDate));
@@ -1537,7 +1537,7 @@ var MMGR = window.MMGR || {};
   function renderResourceLeveling() { if (ns.RenderResources) ns.RenderResources.renderResourceLeveling(); }
   function renderTimeTracking() { if (ns.RenderResources) ns.RenderResources.renderTimeTracking(); }
   function renderEquipment() { if (ns.RenderResources) ns.RenderResources.renderEquipment(); }
-  // C23 Shared Resource Pool (Phase 6) delegates — mirror the pattern above.
+  // C23 Shared Resource Pool (Phase 6) delegates - mirror the pattern above.
   function poolOpenLibrary() { if (ns.RenderResources) ns.RenderResources.poolOpenLibrary(); }
   function poolAddRow() { if (ns.RenderResources) ns.RenderResources.poolAddRow.apply(null, arguments); }
   function poolBootMergeIfLinked() { if (ns.RenderResources) ns.RenderResources.poolBootMergeIfLinked(); }

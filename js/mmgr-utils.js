@@ -319,7 +319,7 @@ var MMGR = window.MMGR || {};
     sanitize: sanitize,
     copyToClipboard: copyToClipboard,
 
-    /* BUG #1: safe JSON.parse — prevents app crash on corrupt localStorage */
+    /* BUG #1: safe JSON.parse - prevents app crash on corrupt localStorage */
     safeParse: function(raw, fallback) {
       if (fallback === undefined) fallback = null;
       try { return JSON.parse(raw); } catch (e) { return fallback; }
@@ -334,7 +334,7 @@ var MMGR = window.MMGR || {};
       return hidden > 0 ? result + ' (and ' + hidden + ' more)' : result;
     },
 
-    /* BUG #7: time constants — single source of truth for ms/day */
+    /* BUG #7: time constants - single source of truth for ms/day */
     MS_PER_DAY: 86400000,
 
     /* BUG #4: consistent date formatting */

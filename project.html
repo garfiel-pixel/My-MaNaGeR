@@ -57,7 +57,7 @@
       clicks "Connect Google" in Settings > Controls. It is a device label,
       never a gate , offline/CSP-blocked loads degrade to a toast.
 -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' 'sha256-xxa9/PuVrm+Taxz+xZPm96NYiSKIHPHZLX8VCKQnrXk=' 'sha256-reza4vd5o52LWNUf9lzK6WjApdstd5sm4xVx+lcnK2M=' 'sha256-DDYVqby/7w6QiwGTikwlcwwnf1qHWgEmMUmSvXmqy7E=' 'sha256-SOdsdeUaBMC/g/FSW5vXZk+K1tRpA9U5QM/9rJa1RLs=' https://accounts.google.com https://unpkg.com; style-src 'self' 'unsafe-inline' https://accounts.google.com https://fonts.googleapis.com; img-src 'self' data: blob: https://lh3.googleusercontent.com https://*.googleusercontent.com; font-src 'self' data:; connect-src 'self' https://api.open-meteo.com https://geocoding-api.open-meteo.com https://api.openai.com https://api.anthropic.com https://generativelanguage.googleapis.com https://github.com https://release-assets.githubusercontent.com https://accounts.google.com https://huggingface.co https://*.cdn.hf.co; frame-src https://accounts.google.com; base-uri 'self'; form-action 'self';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' 'sha256-xxa9/PuVrm+Taxz+xZPm96NYiSKIHPHZLX8VCKQnrXk=' 'sha256-reza4vd5o52LWNUf9lzK6WjApdstd5sm4xVx+lcnK2M=' 'sha256-fZj+K4D/n2Fz67m33j21zMWZd9D930ZNnzz/+s9xem0=' 'sha256-SOdsdeUaBMC/g/FSW5vXZk+K1tRpA9U5QM/9rJa1RLs=' https://accounts.google.com https://unpkg.com; style-src 'self' 'unsafe-inline' https://accounts.google.com https://fonts.googleapis.com; img-src 'self' data: blob: https://lh3.googleusercontent.com https://*.googleusercontent.com; font-src 'self' data:; connect-src 'self' https://api.open-meteo.com https://geocoding-api.open-meteo.com https://api.openai.com https://api.anthropic.com https://generativelanguage.googleapis.com https://github.com https://release-assets.githubusercontent.com https://accounts.google.com https://huggingface.co https://*.cdn.hf.co; frame-src https://accounts.google.com; base-uri 'self'; form-action 'self';">
 <script>
 /* Device-level theme (shared across launcher, admin, and app): applied before
    first paint from the same localStorage slot every theme toggle writes, so a
@@ -210,7 +210,7 @@
          been toggled on AND the user hasn't dismissed it. Hidden forever after
          any pack is toggled on or "Not now" is clicked. -->
     <div class="core-callout is-hide" id="core-callout" role="note">
-      <div class="core-callout-txt"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-orb"></use></svg> <strong>Core Mode is on.</strong> Only the essential sections are shown (Overview, Plan, Collaborate). Turn on Risk, Budget, RACI, Meetings, Claim Pack and more — one click, nothing hidden is ever lost.</div>
+      <div class="core-callout-txt"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-orb"></use></svg> <strong>Core Mode is on.</strong> Only the essential sections are shown (Overview, Plan, Collaborate). Turn on Risk, Budget, RACI, Meetings, Claim Pack and more - one click, nothing hidden is ever lost.</div>
       <div class="core-callout-actions">
         <button class="btn btn-g btn-s" data-action="openPacks"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-settings"></use></svg> Turn on Advanced Packs</button>
         <button class="btn btn-n btn-s" data-action="dismissPacksCallout" aria-label="Dismiss this tip , never show it again">Not now</button>
@@ -1710,7 +1710,7 @@
    dynamically inject the 55 individual source files in dependency order.
    In production the bundle loads, __mmgrBundleMissing stays undefined,
    and this entire block is a no-op. The fallback scripts are appended to
-   <body> synchronously — they block briefly but only in the dev path. */
+   <body> synchronously - they block briefly but only in the dev path. */
 document.addEventListener('DOMContentLoaded', function() {
   if (!window.__mmgrBundleMissing) return;
   var MMGR = window.MMGR || {};

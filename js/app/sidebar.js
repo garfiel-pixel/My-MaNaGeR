@@ -1,5 +1,5 @@
 /* ============================================================
-   APP SIDEBAR — sidebar chrome, open/close, device pref sync
+   APP SIDEBAR - sidebar chrome, open/close, device pref sync
    ------------------------------------------------------------
    Extracted from mmgr-app.js. Manages the desktop overlay
    sidebar: hamburger toggle, scroll-to-top on open, backend

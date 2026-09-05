@@ -1,5 +1,5 @@
 /* ============================================================
-   My MaNaGeR — Shared UI Component Templates
+   My MaNaGeR - Shared UI Component Templates
    ============================================================
    Centralized template helpers for repeated UI patterns:
    badges, status pills, and AI badges. Ensures visual
@@ -16,12 +16,12 @@ var MMGR = window.MMGR || {};
 
   /**
    * @typedef {Object} BadgeOpts
-   * @property {string} [className]  — extra CSS classes to append
-   * @property {string} [style]      — inline style string
-   * @property {string} [title]      — tooltip title attribute
-   * @property {string} [fontSize]   — shorthand for font-size override
-   * @property {string} [padding]    — shorthand for padding override
-   * @property {boolean} [nowrap]    — add white-space:nowrap
+   * @property {string} [className]  - extra CSS classes to append
+   * @property {string} [style]      - inline style string
+   * @property {string} [title]      - tooltip title attribute
+   * @property {string} [fontSize]   - shorthand for font-size override
+   * @property {string} [padding]    - shorthand for padding override
+   * @property {boolean} [nowrap]    - add white-space:nowrap
    */
 
   // Badge variant → CSS class mapping.
@@ -40,8 +40,8 @@ var MMGR = window.MMGR || {};
   /**
    * Render a status badge <span>.
    *
-   * @param {string} text      — label inside the badge (e.g. "done", "RISK")
-   * @param {string} [variant] — semantic key (done/active/overdue/etc.) OR raw CSS class (bg/ba/br)
+   * @param {string} text      - label inside the badge (e.g. "done", "RISK")
+   * @param {string} [variant] - semantic key (done/active/overdue/etc.) OR raw CSS class (bg/ba/br)
    * @param {BadgeOpts} [opts]
    * @returns {string} HTML string
    */
@@ -63,8 +63,8 @@ var MMGR = window.MMGR || {};
   /**
    * Render the MCP AI badge (sparkle icon + label).
    *
-   * @param {string} [label] — default "MCP AI"
-   * @param {string} [title] — tooltip
+   * @param {string} [label] - default "MCP AI"
+   * @param {string} [title] - tooltip
    * @returns {string} HTML string
    */
   function aiBadge(label, title) {
@@ -100,8 +100,8 @@ var MMGR = window.MMGR || {};
   /**
    * Show a pill-shaped glass toast notification.
    * @param {string} msg
-   * @param {string} [type] — 'ok'|'err'|'error'|'warn' (default 'ok')
-   * @param {Object} [action] — { label: string, fn: function } optional action button
+   * @param {string} [type] - 'ok'|'err'|'error'|'warn' (default 'ok')
+   * @param {Object} [action] - { label: string, fn: function } optional action button
    */
   function showToast(msg, type, action) {
     var existing = document.querySelector('.toast');

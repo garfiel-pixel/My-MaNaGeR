@@ -74,7 +74,7 @@ var MMGR = window.MMGR || {};
     if (ns.scope === 'full') {
       try {
         const es = JSON.parse(sessionStorage.getItem('mmgr_cloud_escope_' + projectId) || 'null');
-        // C19: a CLIENT code is read-only exactly like a viewer code — the
+        // C19: a CLIENT code is read-only exactly like a viewer code - the
         // scope machinery (READONLY_SAFE_ACTIONS) treats both identically,
         // and the section grant is enforced by applyClientScope hiding nav.
         if (es && Array.isArray(es.sections) && (es.role === 'view' || es.role === 'client')) ns.scope = 'readonly';
@@ -93,7 +93,7 @@ var MMGR = window.MMGR || {};
   function cloudCodeHeld() {
     try {
       const es = JSON.parse(sessionStorage.getItem('mmgr_cloud_escope_' + ns.projectId) || 'null');
-      // C19: clients are recipients like editors/viewers — offline exports
+      // C19: clients are recipients like editors/viewers - offline exports
       // stay blocked for them too.
       return !!(es && (es.role === 'editor' || es.role === 'view' || es.role === 'client'));
     } catch (e) { return false; }
@@ -234,7 +234,7 @@ var MMGR = window.MMGR || {};
       if (banner) banner.classList.remove('is-hide');
     }
 
-    // Apply theme: the device-level pref (localStorage mmgr_theme — the same
+    // Apply theme: the device-level pref (localStorage mmgr_theme - the same
     // slot the launcher and admin write, and the same slot tglTheme writes) is
     // the MASTER so the choice made anywhere persists everywhere; per-project
     // state.theme is the portable fallback for a fresh device or an imported

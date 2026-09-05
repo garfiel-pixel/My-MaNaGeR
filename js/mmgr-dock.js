@@ -1,5 +1,5 @@
 /* ============================================================
-   My MaNaGeR — Shared Bottom Dock (owner D3/D6/D11, 2026-09-03)
+   My MaNaGeR - Shared Bottom Dock (owner D3/D6/D11, 2026-09-03)
    ------------------------------------------------------------
    The canonical appearance controls on every app page (launcher,
    project, admin): the vertical Light/Dark/System theme stack
@@ -24,7 +24,7 @@
    *
    *  IMPORTANT: this syncs only the dock's OWN control states (aria-pressed
    *  on the theme buttons, checked on the glass switch). It deliberately
-   *  does NOT re-apply body.dark-mode — the FOUC script, mmgr-theme.js and
+   *  does NOT re-apply body.dark-mode - the FOUC script, mmgr-theme.js and
    *  the app boot already own the body class (the boot also reconciles the
    *  per-project state.theme fallback, which a blind apply() would fight;
    *  see mmgr-app.js boot).
@@ -39,7 +39,7 @@
         : 'css';
       var gs = document.querySelectorAll('[data-action="tglGlassMode"]');
       for (var i = 0; i < gs.length; i++) gs[i].checked = (G === 'premium');
-    } catch (e) { /* Viewport not ready yet — next sync will catch it */ }
+    } catch (e) { /* Viewport not ready yet - next sync will catch it */ }
     // Theme stack: set the dock's own .pal-btn aria-pressed from the stored
     // mode (MMGRTheme.getMode is the single source of truth; light default
     // per owner D12).
@@ -54,7 +54,7 @@
     } catch (e) {}
     // Palette + View rows (Phase 3, owner D7/D9): aria-pressed mirrors the
     // EFFECTIVE preference (a stored '3d' shows pressed even when narrow /
-    // reduced-motion currently forces flat — the press state says what is
+    // reduced-motion currently forces flat - the press state says what is
     // selected, not what is physically rendered).
     try {
       var pal = effectivePalette();
@@ -88,7 +88,7 @@
     try {
       var V = window.MMGR && window.MMGR.Viewport ? window.MMGR.Viewport : null;
       if (V && typeof V.isNarrow === 'function' && V.isNarrow()) return false;
-    } catch (e) { /* Viewport not ready yet — width check below covers it */ }
+    } catch (e) { /* Viewport not ready yet - width check below covers it */ }
     if (window.innerWidth < 769) return false; // repo desktop boundary (769px)
     if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return false;
     return true;
@@ -163,7 +163,7 @@
   if (window.visualViewport) window.visualViewport.addEventListener('resize', onViewportChange);
 
   // Auto-boot the premium glass engine on pages whose inline boot sync runs
-  // before their deferred bundle defines MMGR (launcher + admin — the inline
+  // before their deferred bundle defines MMGR (launcher + admin - the inline
   // IIFEs at the end of app.html/admin.html are parse-time, so this is the
   // only post-bundle hook those pages have; project.html boots it itself).
   // sync() is idempotent: it only activates when the engine is inactive.

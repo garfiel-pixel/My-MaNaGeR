@@ -3269,6 +3269,22 @@ body.dark-mode.db-page .db-auto-lbl{color:var(--db-text-secondary);}
 }
 .calc-close:hover{color:var(--danger);background:rgba(239,68,68,.1);}
 .calc-close .ico{width:16px;height:16px;}
+.calc-head-actions{display:flex;align-items:center;gap:4px;}
+.calc-gear{
+  width:28px;height:28px;border:none;border-radius:var(--radius-control);
+  background:transparent;color:var(--slate);cursor:pointer;display:flex;align-items:center;justify-content:center;
+  transition:color .15s,background .15s;
+}
+.calc-gear:hover{color:var(--text);background:color-mix(in oklch,var(--gold) 8%,transparent);}
+.calc-gear.active{color:var(--gold);background:color-mix(in oklch,var(--gold) 12%,transparent);}
+.calc-gear .ico{width:16px;height:16px;}
+/* Phase 5 settings list */
+.calc-set-row{
+  display:flex;align-items:center;gap:8px;font-size:.78rem;color:var(--text);
+  padding:5px 2px;cursor:pointer;
+}
+.calc-set-row input{accent-color:var(--gold);width:16px;height:16px;}
+.calc-set-note{font-size:.7rem;color:var(--slate);margin:0 0 4px;}
 .calc-tabs{
   display:flex;gap:2px;padding:6px 8px;border-bottom:1px solid var(--border);overflow-x:auto;
 }

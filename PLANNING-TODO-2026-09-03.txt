@@ -618,6 +618,75 @@ legal wave commit 9bddf9d. NOTE: the local wrangler OAuth token had
 expired - re-authenticated via wrangler login (owner browser
 authorization) before deploying.
 
+LEGAL SPLIT RECORD (2026-09-04, SHIPPED) - owner: "split the legal
+pages so they are properly listed". The combined Privacy & Terms page
+(privacy.html holding Part I + Part II behind #privacy/#terms anchors)
+is now TWO standalone pages: privacy.html (Global Privacy Policy,
+h2#privacy, .privacy-toc, cross-link to terms.html, footer carries
+BOTH real links) and NEW terms.html (Terms of Service, h2#terms,
+.privacy-toc, cross-link to privacy.html). Every marketing footer
+(index/features/about/contact/reviews) now links privacy.html +
+terms.html directly (no #fragments). sw.js precache gains terms.html
++ CACHE bumped v238; sitemap.xml gains /privacy + /terms URLs;
+tools/qa-legal-links.cjs updated to assert two separate pages (7/7:
+5 footers + each page's own anchor/TOC/cross-link). Zero inline
+scripts touched -> CSP hashes UNCHANGED; npm run verify ALL GREEN;
+emoji clean; anchor-integrity scan clean on both pages.
+
+LEGAL SPLIT DEPLOY (2026-09-04, DONE): staging-copy deploy, Version
+ID 7cf70c3c-2361-45ba-95a3-cab6dde64597 (10 assets). Production smoke
+GREEN: /privacy 200 "Privacy Policy | My MaNaGeR" + /terms 200 "Terms
+of Service | My MaNaGeR" (one transient stale edge read on /privacy
+resolved on re-fetch - Cache-Control:no-cache on HTML); all five
+marketing footers carry the two direct links live; /privacy footer
+links terms.html; sitemap.xml live shows /privacy + /terms. Web-
+research pass: Google does not index the Workers.dev subdomain (no
+organic results), but direct page fetch confirms both documents
+render with correct titles/descriptions/TOC. GitHub CI green on the
+legal-split commit 7ba7749.
+
+PHASE 5 EXECUTION RECORD (2026-09-04, READY TO SHIP) - AREA A
+comprehensive calculator family (owner D1/A1-A8, tracker D10 order)
+against js/mmgr-calculator.js. Four new tab families + settings:
+- Trades tab: concrete pour (cu ft/yd + 60lb bag count + waste),
+  concrete column/cylinder, masonry block/brick count + mortar,
+  earthwork cut/fill + swell, roof pitch->slope/area/squares,
+  framing studs/plates @ 16/24in, stairs riser/tread/stringer,
+  paint/drywall/tile, asphalt tonnage + trench volume.
+- Bid & Fin. tab: markup bid (direct + OH% + profit%), break-even
+  units, loan monthly/total/interest.
+- Site & Geo tab: slope % grade + degrees, arc/chord, prismoid +
+  frustum volume, engineering-unit converter (temp/pressure/flow/
+  speed via si-cv select).
+- EVM tab: Live (reuses ns.Evm.compute when project state exists -
+  same single source of truth as the dashboard; graceful message
+  with no state) + Manual SPI/CPI/EAC/ETC/VAC entry.
+- Settings gear in the panel head (i-settings): per-tab on/off
+  checkboxes persisted to localStorage mmgr_calc_tabs (General is
+  always on and has no checkbox; default = ALL tabs on; disabling
+  the active tab falls back to General; aria-expanded sync).
+ID HYGIENE FOUND DURING QA: (1) the calc's manual-EVM fields used
+ids evm-pv/evm-ev/evm-ac which COLLIDE with the app dashboard's own
+EVM readout elements in mmgr-evm.js renderEVM -> renamed evm-*-calc
+(evm-bac kept, it is calc-only); (2) pre-existing bug: the Cost tab's
+Material Cost card used id mc-result which collides with the
+schedule Monte Carlo panel's static #mc-result in project.html
+(getElementById would write one feature's answer into the other's
+panel) -> Material Cost card renamed to mat-qty/mat-rate/mat-waste/
+mat-result. (3) loadEnabledTabs defaulted to General-only for new
+visitors (no storage) -> fixed to default ALL tabs on. (4) tile
+count float artifact 100*1*1.1=110.00000000000001 -> ceil 111;
+epsilon guard added. New tools/qa-calculator.cjs harness (C1-C11,
+27 gates - boot/seeding of a locally-owned default project, tab-bar
+assertions, exact-math gates on every new action, settings
+toggle/persist/restore, General-always-on, unique-panel-ids incl. the
+mat-* rename vs monolith #mc-result) - 3/3 stable runs green.
+Local battery: npm run verify ALL PASS (CSP hashes unchanged - zero
+inline-script edits), sw bump v239, emoji scan clean (sw.js line-17
+changelog emojis are pre-existing internal-doc comments, allowed),
+view-mode ALL GATES, theme-cdp OK, autosave 8/8, legal-links 7/7.
+Commit: 60eb50d (conventional, NO attribution footer).
+
 --------------------------------------------------------------------
 AREA F - BACKLOG / DIRECTIVE DEFERRED ITEMS (for completeness)
 --------------------------------------------------------------------

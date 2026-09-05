@@ -26,8 +26,53 @@
     { id: 'area', label: 'Area', icon: 'i-ruler' },
     { id: 'convert', label: 'Convert', icon: 'i-swap' },
     { id: 'markup', label: 'Markup', icon: 'i-tag' },
-    { id: 'cost', label: 'Cost Est.', icon: 'i-dollar' }
+    { id: 'cost', label: 'Cost Est.', icon: 'i-dollar' },
+    // Phase 5 (owner D1/A1-A8): construction trades, bid & finance,
+    // site & geometry, and project EVM. General is always on; every
+    // other tab can be toggled in the panel-head gear (Settings).
+    { id: 'trades', label: 'Trades', icon: 'i-hardhat' },
+    { id: 'finance', label: 'Bid & Fin.', icon: 'i-trending-up' },
+    { id: 'site', label: 'Site & Geo', icon: 'i-crosshair' },
+    { id: 'evm', label: 'EVM', icon: 'i-bar-chart' }
   ];
+
+  /* ── Phase 5 settings: which tabs are enabled (owner D1/A5) ── */
+  // General is always on (it is the arithmetic core); every other tab is
+  // toggleable. Persisted as a JSON array of enabled tab ids. Non-construction
+  // users can switch the trade calculators off entirely.
+  var CALC_SETTINGS_KEY = 'mmgr_calc_tabs';
+  var _enabledTabs = null;
+
+  function loadEnabledTabs() {
+    if (_enabledTabs !== null) return _enabledTabs;
+    // Default: every tab on. General is the arithmetic core and is never
+    // stored (it is always on); the others persist as a JSON array.
+    var names = ['general'].concat(TABS.map(function(t) { return t.id; }).filter(function(id) { return id !== 'general'; }));
+    try {
+      var stored = localStorage.getItem(CALC_SETTINGS_KEY);
+      if (stored) {
+        var arr = JSON.parse(stored);
+        if (Array.isArray(arr)) {
+          arr = arr.filter(function(id) {
+            return id !== 'general' && TABS.some(function(t) { return t.id === id; });
+          });
+          arr.unshift('general');
+          names = arr;
+        }
+      }
+    } catch (e) { /* storage unavailable — keep defaults */ }
+    _enabledTabs = names;
+    return _enabledTabs;
+  }
+
+  function saveEnabledTabs(list) {
+    _enabledTabs = list;
+    try { localStorage.setItem(CALC_SETTINGS_KEY, JSON.stringify(list)); } catch (e) { /* quota/denied — in-memory only */ }
+  }
+
+  function isTabVisible(id) {
+    return id === 'general' || loadEnabledTabs().indexOf(id) > -1;
+  }
 
   /* ── Unit conversions (factor = multiply input to get output) ── */
   var CONVERSIONS = {
@@ -118,13 +163,17 @@
   }
 
   function buildPanelHTML() {
-    var tabsHtml = TABS.map(function(t) {
+    var visible = TABS.filter(function(t) { return isTabVisible(t.id); });
+    var tabsHtml = visible.map(function(t) {
       return '<button type="button" class="calc-tab' + (t.id === 'general' ? ' active' : '') + '" data-tab="' + t.id + '">' + t.label + '</button>';
     }).join('');
 
     return '<div class="calc-head">' +
       '<span class="calc-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-calculator"></use></svg> Calculator</span>' +
-      '<button type="button" class="calc-close" aria-label="Close calculator"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg></button>' +
+      '<span class="calc-head-actions">' +
+        '<button type="button" class="calc-gear" id="calc-gear" aria-label="Calculator settings" aria-expanded="false" aria-controls="calc-settings-section" title="Calculator settings"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-settings"></use></svg></button>' +
+        '<button type="button" class="calc-close" aria-label="Close calculator"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg></button>' +
+      '</span>' +
       '</div>' +
       '<div class="calc-tabs">' + tabsHtml + '</div>' +
       '<div class="calc-body">' +
@@ -134,6 +183,11 @@
         buildConvertTab() +
         buildMarkupTab() +
         buildCostTab() +
+        buildTradesTab() +
+        buildFinanceTab() +
+        buildSiteTab() +
+        buildEvmTab() +
+        buildSettingsTab() +
       '</div>' +
       '<div class="calc-history" id="calc-history" hidden></div>';
   }
@@ -341,12 +395,12 @@
       '<div class="calc-card">' +
         '<div class="calc-card-title">Material Cost (with waste)</div>' +
         '<div class="calc-field-row">' +
-          '<div class="calc-field"><label for="mc-qty">Quantity</label><input type="number" id="mc-qty" placeholder="0" step="any"></div>' +
-          '<div class="calc-field"><label for="mc-rate">Rate ($/unit)</label><input type="number" id="mc-rate" placeholder="0" step="any"></div>' +
+          '<div class="calc-field"><label for="mat-qty">Quantity</label><input type="number" id="mat-qty" placeholder="0" step="any"></div>' +
+          '<div class="calc-field"><label for="mat-rate">Rate ($/unit)</label><input type="number" id="mat-rate" placeholder="0" step="any"></div>' +
         '</div>' +
-        '<div class="calc-field"><label for="mc-waste">Waste %</label><input type="number" id="mc-waste" placeholder="10" step="any" value="10"></div>' +
+        '<div class="calc-field"><label for="mat-waste">Waste %</label><input type="number" id="mat-waste" placeholder="10" step="any" value="10"></div>' +
         '<button type="button" class="calc-action" data-calc-action="material-cost">Calculate</button>' +
-        '<div class="calc-result" id="mc-result" hidden></div>' +
+        '<div class="calc-result" id="mat-result" hidden></div>' +
       '</div>' +
       '<div class="calc-card">' +
         '<div class="calc-card-title">Contingency</div>' +
@@ -354,6 +408,268 @@
         '<div class="calc-field"><label for="ct-pct">Contingency %</label><input type="number" id="ct-pct" placeholder="10" step="any" value="10"></div>' +
         '<button type="button" class="calc-action" data-calc-action="contingency">Calculate</button>' +
         '<div class="calc-result" id="ct-result" hidden></div>' +
+      '</div>' +
+    '</div>';
+  }
+
+  /* ── Construction trades (Phase 5 / A1) ── */
+  function buildTradesTab() {
+    return '<div class="calc-section is-hide" data-calc="trades">' +
+      '<div class="calc-card">' +
+        '<div class="calc-card-title">Concrete — Slab / Footing / Wall volume</div>' +
+        '<div class="calc-field-row">' +
+          '<div class="calc-field"><label for="tr-l">Length</label><input type="number" id="tr-l" placeholder="ft" step="any"></div>' +
+          '<div class="calc-field"><label for="tr-w">Width</label><input type="number" id="tr-w" placeholder="ft" step="any"></div>' +
+        '</div>' +
+        '<div class="calc-field-row">' +
+          '<div class="calc-field"><label for="tr-t">Thickness</label><input type="number" id="tr-t" placeholder="in" step="any"></div>' +
+          '<div class="calc-field"><label for="tr-waste">Waste %</label><input type="number" id="tr-waste" placeholder="5" step="any" value="5"></div>' +
+        '</div>' +
+        '<button type="button" class="calc-action" data-calc-action="tr-pour">Calculate</button>' +
+        '<div class="calc-result" id="tr-pour-result" hidden></div>' +
+      '</div>' +
+      '<div class="calc-card">' +
+        '<div class="calc-card-title">Concrete — Column / Cylinder</div>' +
+        '<div class="calc-field-row">' +
+          '<div class="calc-field"><label for="tr-col-d">Diameter</label><input type="number" id="tr-col-d" placeholder="ft" step="any"></div>' +
+          '<div class="calc-field"><label for="tr-col-h">Height</label><input type="number" id="tr-col-h" placeholder="ft" step="any"></div>' +
+        '</div>' +
+        '<div class="calc-field"><label for="tr-col-n">Number of columns</label><input type="number" id="tr-col-n" placeholder="1" step="1" value="1"></div>' +
+        '<button type="button" class="calc-action" data-calc-action="tr-cylinder">Calculate</button>' +
+        '<div class="calc-result" id="tr-cylinder-result" hidden></div>' +
+      '</div>' +
+      '<div class="calc-card">' +
+        '<div class="calc-card-title">Masonry — Block / Brick count + mortar</div>' +
+        '<div class="calc-field-row">' +
+          '<div class="calc-field"><label for="tr-mw">Wall width</label><input type="number" id="tr-mw" placeholder="ft" step="any"></div>' +
+          '<div class="calc-field"><label for="tr-mh">Wall height</label><input type="number" id="tr-mh" placeholder="ft" step="any"></div>' +
+        '</div>' +
+        '<div class="calc-field-row">' +
+          '<div class="calc-field"><label for="tr-msz">Unit</label><select id="tr-msz"><option value="block16">16x8x8 block</option><option value="block8">8x8x8 block</option><option value="brick">Brick (3.6x2.3)</option></select></div>' +
+          '<div class="calc-field"><label for="tr-mwaste">Waste %</label><input type="number" id="tr-mwaste" placeholder="5" step="any" value="5"></div>' +
+        '</div>' +
+        '<button type="button" class="calc-action" data-calc-action="tr-masonry">Calculate</button>' +
+        '<div class="calc-result" id="tr-masonry-result" hidden></div>' +
+      '</div>' +
+      '<div class="calc-card">' +
+        '<div class="calc-card-title">Earthwork — Cut / Fill + swell factor</div>' +
+        '<div class="calc-field-row">' +
+          '<div class="calc-field"><label for="tr-el">Length</label><input type="number" id="tr-el" placeholder="ft" step="any"></div>' +
+          '<div class="calc-field"><label for="tr-ew">Width</label><input type="number" id="tr-ew" placeholder="ft" step="any"></div>' +
+        '</div>' +
+        '<div class="calc-field-row">' +
+          '<div class="calc-field"><label for="tr-ed">Depth</label><input type="number" id="tr-ed" placeholder="ft" step="any"></div>' +
+          '<div class="calc-field"><label for="tr-eswell">Swell %</label><input type="number" id="tr-eswell" placeholder="20" step="any" value="20"></div>' +
+        '</div>' +
+        '<button type="button" class="calc-action" data-calc-action="tr-earth">Calculate</button>' +
+        '<div class="calc-result" id="tr-earth-result" hidden></div>' +
+      '</div>' +
+      '<div class="calc-card">' +
+        '<div class="calc-card-title">Roofing — Pitch to slope, area, squares</div>' +
+        '<div class="calc-field-row">' +
+          '<div class="calc-field"><label for="tr-ff">Footprint area</label><input type="number" id="tr-ff" placeholder="sq ft" step="any"></div>' +
+          '<div class="calc-field"><label for="tr-rise">Rise (in per 12)</label><input type="number" id="tr-rise" placeholder="6" step="any" value="6"></div>' +
+        '</div>' +
+        '<button type="button" class="calc-action" data-calc-action="tr-roof">Calculate</button>' +
+        '<div class="calc-result" id="tr-roof-result" hidden></div>' +
+      '</div>' +
+      '<div class="calc-card">' +
+        '<div class="calc-card-title">Framing — Studs, plates, rafters</div>' +
+        '<div class="calc-field-row">' +
+          '<div class="calc-field"><label for="tr-fw">Wall length</label><input type="number" id="tr-fw" placeholder="ft" step="any"></div>' +
+          '<div class="calc-field"><label for="tr-fh">Wall height</label><input type="number" id="tr-fh" placeholder="ft" step="any"></div>' +
+        '</div>' +
+        '<div class="calc-field-row">' +
+          '<div class="calc-field"><label for="tr-foc">Spacing (in)</label><select id="tr-foc"><option value="16">16 in</option><option value="24">24 in</option></select></div>' +
+          '<div class="calc-field"><label for="tr-fwaste">Waste %</label><input type="number" id="tr-fwaste" placeholder="10" step="any" value="10"></div>' +
+        '</div>' +
+        '<button type="button" class="calc-action" data-calc-action="tr-framing">Calculate</button>' +
+        '<div class="calc-result" id="tr-framing-result" hidden></div>' +
+      '</div>' +
+      '<div class="calc-card">' +
+        '<div class="calc-card-title">Stairs — Risers, treads, stringer</div>' +
+        '<div class="calc-field-row">' +
+          '<div class="calc-field"><label for="tr-sr">Total rise</label><input type="number" id="tr-sr" placeholder="in" step="any"></div>' +
+          '<div class="calc-field"><label for="tr-srun">Total run</label><input type="number" id="tr-srun" placeholder="in" step="any"></div>' +
+        '</div>' +
+        '<div class="calc-field"><label for="tr-smax">Max riser</label><input type="number" id="tr-smax" placeholder="7.75" step="any" value="7.75"></div>' +
+        '<button type="button" class="calc-action" data-calc-action="tr-stairs">Calculate</button>' +
+        '<div class="calc-result" id="tr-stairs-result" hidden></div>' +
+      '</div>' +
+      '<div class="calc-card">' +
+        '<div class="calc-card-title">Finish — Paint, drywall, tile</div>' +
+        '<div class="calc-field-row">' +
+          '<div class="calc-field"><label for="tr-paint-sf">Paint area</label><input type="number" id="tr-paint-sf" placeholder="sq ft" step="any"></div>' +
+          '<div class="calc-field"><label for="tr-paint-coat">Coats</label><input type="number" id="tr-paint-coat" placeholder="2" step="1" value="2"></div>' +
+        '</div>' +
+        '<button type="button" class="calc-action" data-calc-action="tr-paint">Calculate paint</button>' +
+        '<div class="calc-result" id="tr-paint-result" hidden></div>' +
+        '<div class="calc-field-row" style="margin-top:8px">' +
+          '<div class="calc-field"><label for="tr-dry-sf">Drywall area</label><input type="number" id="tr-dry-sf" placeholder="sq ft" step="any"></div>' +
+        '</div>' +
+        '<button type="button" class="calc-action" data-calc-action="tr-drywall">Calculate drywall</button>' +
+        '<div class="calc-result" id="tr-drywall-result" hidden></div>' +
+        '<div class="calc-field-row" style="margin-top:8px">' +
+          '<div class="calc-field"><label for="tr-tile-sf">Floor area</label><input type="number" id="tr-tile-sf" placeholder="sq ft" step="any"></div>' +
+          '<div class="calc-field"><label for="tr-tile-sz">Tile (in)</label><select id="tr-tile-sz"><option value="12">12 x 12</option><option value="18">18 x 18</option><option value="24">24 x 24</option><option value="6">6 x 6</option></select></div>' +
+        '</div>' +
+        '<button type="button" class="calc-action" data-calc-action="tr-tile">Calculate tile</button>' +
+        '<div class="calc-result" id="tr-tile-result" hidden></div>' +
+      '</div>' +
+      '<div class="calc-card">' +
+        '<div class="calc-card-title">Paving — Asphalt tonnage, trench volume</div>' +
+        '<div class="calc-field-row">' +
+          '<div class="calc-field"><label for="tr-asp-sf">Pave area</label><input type="number" id="tr-asp-sf" placeholder="sq ft" step="any"></div>' +
+          '<div class="calc-field"><label for="tr-asp-t">Thickness</label><input type="number" id="tr-asp-t" placeholder="in" step="any"></div>' +
+        '</div>' +
+        '<button type="button" class="calc-action" data-calc-action="tr-asphalt">Asphalt tons</button>' +
+        '<div class="calc-result" id="tr-asphalt-result" hidden></div>' +
+        '<div class="calc-field-row" style="margin-top:8px">' +
+          '<div class="calc-field"><label for="tr-tren-l">Trench len</label><input type="number" id="tr-tren-l" placeholder="ft" step="any"></div>' +
+          '<div class="calc-field"><label for="tr-tren-w">Width</label><input type="number" id="tr-tren-w" placeholder="ft" step="any"></div>' +
+        '</div>' +
+        '<div class="calc-field"><label for="tr-tren-d">Depth</label><input type="number" id="tr-tren-d" placeholder="ft" step="any"></div>' +
+        '<button type="button" class="calc-action" data-calc-action="tr-trench">Trench cu yd</button>' +
+        '<div class="calc-result" id="tr-trench-result" hidden></div>' +
+      '</div>' +
+    '</div>';
+  }
+
+  /* ── Bid & finance math (Phase 5 / A2) ── */
+  function buildFinanceTab() {
+    return '<div class="calc-section is-hide" data-calc="finance">' +
+      '<div class="calc-card">' +
+        '<div class="calc-card-title">Bid build-up — cost + overhead + profit</div>' +
+        '<div class="calc-field"><label for="fi-cost">Direct cost</label><input type="number" id="fi-cost" placeholder="0" step="any"></div>' +
+        '<div class="calc-field-row">' +
+          '<div class="calc-field"><label for="fi-oh">Overhead %</label><input type="number" id="fi-oh" placeholder="10" step="any" value="10"></div>' +
+          '<div class="calc-field"><label for="fi-profit">Profit %</label><input type="number" id="fi-profit" placeholder="10" step="any" value="10"></div>' +
+        '</div>' +
+        '<button type="button" class="calc-action" data-calc-action="fi-bid">Build bid</button>' +
+        '<div class="calc-result" id="fi-bid-result" hidden></div>' +
+      '</div>' +
+      '<div class="calc-card">' +
+        '<div class="calc-card-title">Break-even units</div>' +
+        '<div class="calc-field-row">' +
+          '<div class="calc-field"><label for="fi-be-fix">Fixed cost</label><input type="number" id="fi-be-fix" placeholder="0" step="any"></div>' +
+          '<div class="calc-field"><label for="fi-be-unit">Cost / unit</label><input type="number" id="fi-be-unit" placeholder="0" step="any"></div>' +
+        '</div>' +
+        '<div class="calc-field"><label for="fi-be-price">Price / unit</label><input type="number" id="fi-be-price" placeholder="0" step="any"></div>' +
+        '<button type="button" class="calc-action" data-calc-action="fi-break">Break-even</button>' +
+        '<div class="calc-result" id="fi-break-result" hidden></div>' +
+      '</div>' +
+      '<div class="calc-card">' +
+        '<div class="calc-card-title">Loan / amortization — monthly payment</div>' +
+        '<div class="calc-field"><label for="fi-loan-p">Principal / amount</label><input type="number" id="fi-loan-p" placeholder="0" step="any"></div>' +
+        '<div class="calc-field-row">' +
+          '<div class="calc-field"><label for="fi-loan-r">Annual rate %</label><input type="number" id="fi-loan-r" placeholder="6" step="any" value="6"></div>' +
+          '<div class="calc-field"><label for="fi-loan-y">Years</label><input type="number" id="fi-loan-y" placeholder="30" step="1" value="30"></div>' +
+        '</div>' +
+        '<button type="button" class="calc-action" data-calc-action="fi-loan">Amortize</button>' +
+        '<div class="calc-result" id="fi-loan-result" hidden></div>' +
+      '</div>' +
+    '</div>';
+  }
+
+  /* ── Site & geometry math (Phase 5 / A3) ── */
+  function buildSiteTab() {
+    return '<div class="calc-section is-hide" data-calc="site">' +
+      '<div class="calc-card">' +
+        '<div class="calc-card-title">Slope / grade — rise, run, %, degrees</div>' +
+        '<div class="calc-field-row">' +
+          '<div class="calc-field"><label for="si-rise">Rise</label><input type="number" id="si-rise" placeholder="ft" step="any"></div>' +
+          '<div class="calc-field"><label for="si-run">Run</label><input type="number" id="si-run" placeholder="ft" step="any"></div>' +
+        '</div>' +
+        '<button type="button" class="calc-action" data-calc-action="si-slope">Calculate</button>' +
+        '<div class="calc-result" id="si-slope-result" hidden></div>' +
+      '</div>' +
+      '<div class="calc-card">' +
+        '<div class="calc-card-title">Arc / chord</div>' +
+        '<div class="calc-field-row">' +
+          '<div class="calc-field"><label for="si-rad">Radius</label><input type="number" id="si-rad" placeholder="ft" step="any"></div>' +
+          '<div class="calc-field"><label for="si-ang">Angle (deg)</label><input type="number" id="si-ang" placeholder="0" step="any"></div>' +
+        '</div>' +
+        '<button type="button" class="calc-action" data-calc-action="si-arc">Calculate</button>' +
+        '<div class="calc-result" id="si-arc-result" hidden></div>' +
+      '</div>' +
+      '<div class="calc-card">' +
+        '<div class="calc-card-title">Odd volumes — prismoid / frustum / trench</div>' +
+        '<div class="calc-field-row">' +
+          '<div class="calc-field"><label for="si-a1">End area 1</label><input type="number" id="si-a1" placeholder="sq ft" step="any"></div>' +
+          '<div class="calc-field"><label for="si-a2">End area 2</label><input type="number" id="si-a2" placeholder="sq ft" step="any"></div>' +
+        '</div>' +
+        '<div class="calc-field-row">' +
+          '<div class="calc-field"><label for="si-am">Mid area</label><input type="number" id="si-am" placeholder="sq ft" step="any"></div>' +
+          '<div class="calc-field"><label for="si-len">Length</label><input type="number" id="si-len" placeholder="ft" step="any"></div>' +
+        '</div>' +
+        '<button type="button" class="calc-action" data-calc-action="si-prismoid">Prismoid volume</button>' +
+        '<div class="calc-result" id="si-prismoid-result" hidden></div>' +
+        '<div class="calc-field-row" style="margin-top:8px">' +
+          '<div class="calc-field"><label for="si-fr-top">Top area</label><input type="number" id="si-fr-top" placeholder="sq ft" step="any"></div>' +
+          '<div class="calc-field"><label for="si-fr-bot">Bottom area</label><input type="number" id="si-fr-bot" placeholder="sq ft" step="any"></div>' +
+        '</div>' +
+        '<div class="calc-field"><label for="si-fr-h">Height</label><input type="number" id="si-fr-h" placeholder="ft" step="any"></div>' +
+        '<button type="button" class="calc-action" data-calc-action="si-frustum">Frustum volume</button>' +
+        '<div class="calc-result" id="si-frustum-result" hidden></div>' +
+      '</div>' +
+      '<div class="calc-card">' +
+        '<div class="calc-card-title">Extra conversions — temperature / pressure / flow / speed</div>' +
+        '<div class="calc-field-row">' +
+          '<div class="calc-field" style="flex:1.4"><label for="si-cv">Conversion</label>' +
+            '<select id="si-cv">' +
+              '<option value="f-c">Fahrenheit to Celsius</option>' +
+              '<option value="c-f">Celsius to Fahrenheit</option>' +
+              '<option value="psi-kpa">psi to kPa</option>' +
+              '<option value="kpa-psi">kPa to psi</option>' +
+              '<option value="gpm-lpm">GPM to L/min</option>' +
+              '<option value="lpm-gpm">L/min to GPM</option>' +
+              '<option value="mph-kph">mph to km/h</option>' +
+              '<option value="kph-mph">km/h to mph</option>' +
+            '</select></div>' +
+          '<div class="calc-field"><label for="si-cv-val">Value</label><input type="number" id="si-cv-val" placeholder="0" step="any"></div>' +
+        '</div>' +
+        '<button type="button" class="calc-action" data-calc-action="si-conv">Convert</button>' +
+        '<div class="calc-result" id="si-conv-result" hidden></div>' +
+      '</div>' +
+    '</div>';
+  }
+
+  /* ── Project metrics / EVM (Phase 5 / A4) — reuses ns.Evm when the
+       project state is available so answers match the dashboard ── */
+  function buildEvmTab() {
+    return '<div class="calc-section is-hide" data-calc="evm">' +
+      '<div class="calc-card">' +
+        '<div class="calc-card-title">EVM from current project</div>' +
+        '<button type="button" class="calc-action" data-calc-action="evm-live">Use current project</button>' +
+        '<div class="calc-result" id="evm-live-result" hidden></div>' +
+      '</div>' +
+      '<div class="calc-card">' +
+        '<div class="calc-card-title">Manual EVM — SPI / CPI / EAC / ETC</div>' +
+        '<div class="calc-field-row">' +
+          '<div class="calc-field"><label for="evm-bac">BAC</label><input type="number" id="evm-bac" placeholder="0" step="any"></div>' +
+          '<div class="calc-field"><label for="evm-pv-calc">PV</label><input type="number" id="evm-pv-calc" placeholder="0" step="any"></div>' +
+        '</div>' +
+        '<div class="calc-field-row">' +
+          '<div class="calc-field"><label for="evm-ev-calc">EV</label><input type="number" id="evm-ev-calc" placeholder="0" step="any"></div>' +
+          '<div class="calc-field"><label for="evm-ac-calc">AC</label><input type="number" id="evm-ac-calc" placeholder="0" step="any"></div>' +
+        '</div>' +
+        '<button type="button" class="calc-action" data-calc-action="evm-manual">Calculate EVM</button>' +
+        '<div class="calc-result" id="evm-manual-result" hidden></div>' +
+      '</div>' +
+    '</div>';
+  }
+
+  /* ── Settings (Phase 5 / A5) — one checkbox per toggleable tab ── */
+  function buildSettingsTab() {
+    var TITLE = { trades: 'Construction trades', finance: 'Bid & finance', site: 'Site & geometry', evm: 'Project EVM (SPI/CPI)', pct: 'Percent', area: 'Area', convert: 'Convert', markup: 'Markup', cost: 'Cost estimate' };
+    var rows = TABS.filter(function(t) { return t.id !== 'general'; }).map(function(t) {
+      return '<label class="calc-set-row"><input type="checkbox" data-calc-toggle="' + t.id + '" ' + (isTabVisible(t.id) ? 'checked' : '') + '> <span>' + (TITLE[t.id] || t.label) + '</span></label>';
+    }).join('');
+    return '<div class="calc-section is-hide" data-calc="settings">' +
+      '<div class="calc-card">' +
+        '<div class="calc-card-title">Calculator settings</div>' +
+        '<p class="calc-set-note">Turn off categories you do not need. The General tab stays always on. Changes apply instantly.</p>' +
+        rows +
       '</div>' +
     '</div>';
   }
@@ -377,6 +693,35 @@
         updateConvPairs(this.value);
       });
     }
+
+    // Settings gear (Phase 5 / A5): open the settings section
+    var gear = document.getElementById('calc-gear');
+    if (gear) {
+      gear.addEventListener('click', function() {
+        if (switchTab('settings') !== false) {
+          gear.classList.add('active');
+          gear.setAttribute('aria-expanded', 'true');
+        }
+      });
+    }
+
+    // Settings checkboxes: persist the enabled set and rebuild tabs
+    _panel.querySelectorAll('[data-calc-toggle]').forEach(function(cb) {
+      cb.addEventListener('change', function() {
+        var id = cb.getAttribute('data-calc-toggle');
+        var list = loadEnabledTabs().slice();
+        var idx = list.indexOf(id);
+        if (cb.checked && idx === -1) { list.push(id); }
+        if (!cb.checked && idx > -1) { list.splice(idx, 1); }
+        saveEnabledTabs(list);
+        renderTabButtons();
+        // If the currently visible tab just got disabled, fall back to General.
+        var tabEls = _panel.querySelectorAll('.calc-tab');
+        var hasActive = false;
+        tabEls.forEach(function(t) { if (t.classList.contains('active')) hasActive = true; });
+        if (!hasActive) switchTab('general');
+      });
+    });
 
     // Enter key on inputs triggers calculate
     _panel.querySelectorAll('input[type="number"]').forEach(function(inp) {
@@ -604,13 +949,13 @@
         break;
       }
       case 'material-cost': {
-        var mq = parseFloat(document.getElementById('mc-qty').value) || 0;
-        var mrate = parseFloat(document.getElementById('mc-rate').value) || 0;
-        var mw = parseFloat(document.getElementById('mc-waste').value) || 0;
+        var mq = parseFloat(document.getElementById('mat-qty').value) || 0;
+        var mrate = parseFloat(document.getElementById('mat-rate').value) || 0;
+        var mw = parseFloat(document.getElementById('mat-waste').value) || 0;
         var base = mq * mrate;
         var withWaste = base * (1 + mw / 100);
         r = 'Base: ' + fmtDollars(base) + ' | With ' + mw + '% waste: ' + fmtDollars(withWaste);
-        showResult('mc-result', r);
+        showResult('mat-result', r);
         addHistory(r);
         break;
       }
@@ -620,6 +965,273 @@
         var cont = cb * cp / 100;
         r = 'Contingency: ' + fmtDollars(cont) + ' | Total with contingency: ' + fmtDollars(cb + cont);
         showResult('ct-result', r);
+        addHistory(r);
+        break;
+      }
+      /* ── Construction trades (Phase 5 / A1) ── */
+      case 'tr-pour': {
+        var l = parseFloat(document.getElementById('tr-l').value) || 0;
+        var w = parseFloat(document.getElementById('tr-w').value) || 0;
+        var t = parseFloat(document.getElementById('tr-t').value) || 0;
+        var waste = parseFloat(document.getElementById('tr-waste').value) || 0;
+        var volFt = l * w * (t / 12);
+        var volYd = volFt / 27;
+        var bags = Math.ceil(volYd * 27 / 0.6); // 60 lb bag @ 0.45 cu ft
+        var withWaste = volYd * (1 + waste / 100);
+        r = volFt.toFixed(1) + ' cu ft = ' + withWaste.toFixed(2) + ' cu yd' + (waste > 0 ? ' (incl. ' + waste + '% waste)' : '') + ' ~ ' + bags + ' x 60 lb bags';
+        showResult('tr-pour-result', r);
+        addHistory(r);
+        break;
+      }
+      case 'tr-cylinder': {
+        var d = parseFloat(document.getElementById('tr-col-d').value) || 0;
+        var h = parseFloat(document.getElementById('tr-col-h').value) || 0;
+        var n = parseInt(document.getElementById('tr-col-n').value) || 1;
+        var rad = d / 2;
+        var oneYd = (Math.PI * rad * rad * h) / 27;
+        var totalYd = oneYd * n;
+        r = n + ' column(s): ' + totalYd.toFixed(2) + ' cu yd total (' + oneYd.toFixed(3) + ' each)';
+        showResult('tr-cylinder-result', r);
+        addHistory(r);
+        break;
+      }
+      case 'tr-masonry': {
+        var mw = parseFloat(document.getElementById('tr-mw').value) || 0;
+        var mh = parseFloat(document.getElementById('tr-mh').value) || 0;
+        var msz = document.getElementById('tr-msz').value;
+        var mwaste = parseFloat(document.getElementById('tr-mwaste').value) || 0;
+        var sf = mw * mh;
+        var units, mortar;
+        if (msz === 'block16') { units = sf * 0.75; mortar = sf / 100 * 0.3; }
+        else if (msz === 'block8') { units = sf * 1.5; mortar = sf / 100 * 0.3; }
+        else { units = sf * 6.5; mortar = sf / 100 * 0.3; }
+        units = units * (1 + mwaste / 100);
+        r = 'Area: ' + Math.round(sf) + ' sq ft | ' + Math.ceil(units) + ' units' + (mwaste > 0 ? ' (incl. ' + mwaste + '% waste)' : '') + ' | ~' + mortar.toFixed(1) + ' cu yd mortar';
+        showResult('tr-masonry-result', r);
+        addHistory(r);
+        break;
+      }
+      case 'tr-earth': {
+        var el = parseFloat(document.getElementById('tr-el').value) || 0;
+        var ew = parseFloat(document.getElementById('tr-ew').value) || 0;
+        var ed = parseFloat(document.getElementById('tr-ed').value) || 0;
+        var swell = parseFloat(document.getElementById('tr-eswell').value) || 0;
+        var cutYd = (el * ew * ed) / 27;
+        var swellYd = cutYd * (1 + swell / 100);
+        r = 'Cut: ' + cutYd.toFixed(2) + ' cu yd | Loose (compacted + ' + swell + '% swell): ' + swellYd.toFixed(2) + ' cu yd';
+        showResult('tr-earth-result', r);
+        addHistory(r);
+        break;
+      }
+      case 'tr-roof': {
+        var ff = parseFloat(document.getElementById('tr-ff').value) || 0;
+        var rise = parseFloat(document.getElementById('tr-rise').value) || 0;
+        var slope = Math.sqrt(144 + rise * rise) / 12;
+        var roofSf = ff * slope;
+        var squares = roofSf / 100;
+        r = 'Slope factor: ' + slope.toFixed(2) + ' | Roof area: ' + Math.round(roofSf) + ' sq ft | ' + squares.toFixed(1) + ' squares (per 100 sq ft)';
+        showResult('tr-roof-result', r);
+        addHistory(r);
+        break;
+      }
+      case 'tr-framing': {
+        var fw = parseFloat(document.getElementById('tr-fw').value) || 0;
+        var fh = parseFloat(document.getElementById('tr-fh').value) || 0;
+        var foc = parseInt(document.getElementById('tr-foc').value) || 16;
+        var fwaste = parseFloat(document.getElementById('tr-fwaste').value) || 0;
+        var studs = Math.ceil((fw * 12) / foc) + 1;
+        // plates: top + bottom + (optional) second top plate
+        var plates = 3;
+        var studs2x = studs * (1 + fwaste / 100);
+        r = 'Studs: ' + Math.ceil(studs2x) + ' (' + foc + '" oc, ' + Math.round(fw * fh) + ' sq ft wall) | Plates: ' + plates + ' x ' + Math.ceil(fw) + ' ft';
+        showResult('tr-framing-result', r);
+        addHistory(r);
+        break;
+      }
+      case 'tr-stairs': {
+        var sr = parseFloat(document.getElementById('tr-sr').value) || 0;
+        var srun = parseFloat(document.getElementById('tr-srun').value) || 0;
+        var smax = parseFloat(document.getElementById('tr-smax').value) || 7.75;
+        var risers = Math.ceil(sr / smax);
+        var riseEach = sr / risers;
+        var treads = risers - 1;
+        var treadEach = srun / treads;
+        var stringer = Math.sqrt((sr * sr) + (srun * srun)) / 12;
+        r = risers + ' risers @ ' + riseEach.toFixed(2) + '" | ' + treads + ' treads @ ' + treadEach.toFixed(2) + '" | Stringer: ' + stringer.toFixed(1) + ' ft';
+        showResult('tr-stairs-result', r);
+        addHistory(r);
+        break;
+      }
+      case 'tr-paint': {
+        var psf = parseFloat(document.getElementById('tr-paint-sf').value) || 0;
+        var coats = parseInt(document.getElementById('tr-paint-coat').value) || 2;
+        var gal = Math.ceil((psf * coats) / 350);
+        r = 'Area: ' + Math.round(psf) + ' sq ft x ' + coats + ' coat(s) ~ ' + gal + ' gallon(s) (350 sq ft/gal)';
+        showResult('tr-paint-result', r);
+        addHistory(r);
+        break;
+      }
+      case 'tr-drywall': {
+        var dsf = parseFloat(document.getElementById('tr-dry-sf').value) || 0;
+        var sheets = Math.ceil(dsf / 32); // 4x8 sheet
+        r = 'Drywall area: ' + Math.round(dsf) + ' sq ft ~ ' + sheets + ' x 4x8 sheets (+cut waste)';
+        showResult('tr-drywall-result', r);
+        addHistory(r);
+        break;
+      }
+      case 'tr-tile': {
+        var tsf = parseFloat(document.getElementById('tr-tile-sf').value) || 0;
+        var tsz = parseInt(document.getElementById('tr-tile-sz').value) || 12;
+        var perSf = 144 / (tsz * tsz);
+        var tiles = Math.ceil(tsf * perSf * 1.1 - 1e-9); // 10% cut waste (float guard)
+        r = 'Floor: ' + Math.round(tsf) + ' sq ft | ~' + tiles + ' x ' + tsz + 'x' + tsz + ' tiles (incl. 10% cut waste)';
+        showResult('tr-tile-result', r);
+        addHistory(r);
+        break;
+      }
+      case 'tr-asphalt': {
+        var asf = parseFloat(document.getElementById('tr-asp-sf').value) || 0;
+        var at = parseFloat(document.getElementById('tr-asp-t').value) || 0;
+        var tons = (asf * (at / 12)) * 0.083; // ~145 lb/cu ft / 2000
+        r = 'Asphalt: ~' + tons.toFixed(2) + ' tons (' + Math.round(asf) + ' sq ft @ ' + at + '" thick)';
+        showResult('tr-asphalt-result', r);
+        addHistory(r);
+        break;
+      }
+      case 'tr-trench': {
+        var tl = parseFloat(document.getElementById('tr-tren-l').value) || 0;
+        var tw = parseFloat(document.getElementById('tr-tren-w').value) || 0;
+        var td = parseFloat(document.getElementById('tr-tren-d').value) || 0;
+        var yd = (tl * tw * td) / 27;
+        r = 'Trench volume: ' + yd.toFixed(2) + ' cu yd (' + Math.round(tl) + ' ft x ' + tw + ' ft x ' + td + ' ft)';
+        showResult('tr-trench-result', r);
+        addHistory(r);
+        break;
+      }
+      /* ── Bid & finance (Phase 5 / A2) ── */
+      case 'fi-bid': {
+        var cost = parseFloat(document.getElementById('fi-cost').value) || 0;
+        var oh = parseFloat(document.getElementById('fi-oh').value) || 0;
+        var prof = parseFloat(document.getElementById('fi-profit').value) || 0;
+        var withOh = cost * (1 + oh / 100);
+        var bid = withOh * (1 + prof / 100);
+        r = 'Direct: ' + fmtDollars(cost) + ' + OH ' + oh + '% = ' + fmtDollars(withOh) + ' | Bid: ' + fmtDollars(bid) + ' (profit ' + fmtDollars(bid - withOh) + ')';
+        showResult('fi-bid-result', r);
+        addHistory(r);
+        break;
+      }
+      case 'fi-break': {
+        var fix = parseFloat(document.getElementById('fi-be-fix').value) || 0;
+        var cunit = parseFloat(document.getElementById('fi-be-unit').value) || 0;
+        var price = parseFloat(document.getElementById('fi-be-price').value) || 0;
+        var be = price > cunit ? fix / (price - cunit) : null;
+        r = be !== null ? 'Break-even: ' + Math.ceil(be) + ' units (' + fmtDollars(be * cunit + fix) + ' total)' : 'Price must exceed cost per unit';
+        showResult('fi-break-result', r);
+        addHistory(r);
+        break;
+      }
+      case 'fi-loan': {
+        var P = parseFloat(document.getElementById('fi-loan-p').value) || 0;
+        var annual = parseFloat(document.getElementById('fi-loan-r').value) || 0;
+        var yrs = parseInt(document.getElementById('fi-loan-y').value) || 1;
+        var rn = annual / 100 / 12;
+        var n = yrs * 12;
+        var pay = (rn > 0 && n > 0) ? P * rn * Math.pow(1 + rn, n) / (Math.pow(1 + rn, n) - 1) : P / Math.max(1, n);
+        var total = pay * n;
+        r = 'Monthly: ' + fmtDollars(pay) + ' | Total: ' + fmtDollars(total) + ' | Interest: ' + fmtDollars(total - P);
+        showResult('fi-loan-result', r);
+        addHistory(r);
+        break;
+      }
+      /* ── Site & geometry (Phase 5 / A3) ── */
+      case 'si-slope': {
+        var rise = parseFloat(document.getElementById('si-rise').value) || 0;
+        var run = parseFloat(document.getElementById('si-run').value) || 0;
+        var pct = run !== 0 ? (rise / run) * 100 : 0;
+        var deg = run !== 0 ? Math.atan2(rise, run) * 180 / Math.PI : 0;
+        r = rise + ' ft over ' + run + ' ft = ' + pct.toFixed(2) + '% grade | ' + deg.toFixed(2) + ' degrees';
+        showResult('si-slope-result', r);
+        addHistory(r);
+        break;
+      }
+      case 'si-arc': {
+        var rad = parseFloat(document.getElementById('si-rad').value) || 0;
+        var ang = parseFloat(document.getElementById('si-ang').value) || 0;
+        var arc = 2 * Math.PI * rad * (ang / 360);
+        // chord = 2r sin(theta/2)
+        var chord = 2 * rad * Math.sin((ang * Math.PI / 180) / 2);
+        r = 'Arc length: ' + arc.toFixed(2) + ' | Chord: ' + chord.toFixed(2) + ' ft (radius ' + rad + ', ' + ang + ' deg)';
+        showResult('si-arc-result', r);
+        addHistory(r);
+        break;
+      }
+      case 'si-prismoid': {
+        var a1 = parseFloat(document.getElementById('si-a1').value) || 0;
+        var a2 = parseFloat(document.getElementById('si-a2').value) || 0;
+        var am = parseFloat(document.getElementById('si-am').value) || 0;
+        var L = parseFloat(document.getElementById('si-len').value) || 0;
+        var vol = (L / 6) * (a1 + 4 * am + a2);
+        r = 'Prismoid volume: ' + vol.toFixed(2) + ' cu ft (' + (vol / 27).toFixed(2) + ' cu yd)';
+        showResult('si-prismoid-result', r);
+        addHistory(r);
+        break;
+      }
+      case 'si-frustum': {
+        var ftop = parseFloat(document.getElementById('si-fr-top').value) || 0;
+        var fbot = parseFloat(document.getElementById('si-fr-bot').value) || 0;
+        var fh = parseFloat(document.getElementById('si-fr-h').value) || 0;
+        var vol = (fh / 3) * (ftop + fbot + Math.sqrt(ftop * fbot));
+        r = 'Frustum volume: ' + vol.toFixed(2) + ' cu ft (' + (vol / 27).toFixed(2) + ' cu yd)';
+        showResult('si-frustum-result', r);
+        addHistory(r);
+        break;
+      }
+      case 'si-conv': {
+        var kind = document.getElementById('si-cv').value;
+        var v = parseFloat(document.getElementById('si-cv-val').value) || 0;
+        var out, unit;
+        if (kind === 'f-c') { out = (v - 32) * 5 / 9; unit = 'C'; }
+        else if (kind === 'c-f') { out = v * 9 / 5 + 32; unit = 'F'; }
+        else if (kind === 'psi-kpa') { out = v * 6.89476; unit = 'kPa'; }
+        else if (kind === 'kpa-psi') { out = v / 6.89476; unit = 'psi'; }
+        else if (kind === 'gpm-lpm') { out = v * 3.78541; unit = 'L/min'; }
+        else if (kind === 'lpm-gpm') { out = v / 3.78541; unit = 'GPM'; }
+        else if (kind === 'mph-kph') { out = v * 1.60934; unit = 'km/h'; }
+        else { out = v / 1.60934; unit = 'mph'; }
+        r = fmtNum(v) + ' -> ' + fmtNum(out) + ' ' + unit;
+        showResult('si-conv-result', r);
+        addHistory(r);
+        break;
+      }
+      /* ── EVM (Phase 5 / A4) — reuse ns.Evm.compute when state exists ── */
+      case 'evm-live': {
+        var evm = window.MMGR && window.MMGR.Evm && window.MMGR.Evm.compute ? window.MMGR.Evm.compute() : null;
+        if (!evm) {
+          r = 'No current project state to compute. Open a project with tasks + budget, or use the manual EVM card.';
+        } else {
+          var tcp = evm.tcpi !== null ? evm.tcpi.toFixed(2) : 'N/A';
+          r = 'SPI ' + (evm.spi !== null ? evm.spi.toFixed(2) : 'N/A') + ' | CPI ' + (evm.cpi !== null ? evm.cpi.toFixed(2) : 'N/A') +
+            ' | EV ' + fmtDollars(evm.ev) + ' | PV ' + fmtDollars(evm.pv) + ' | AC ' + fmtDollars(evm.ac) +
+            ' | EAC ' + (evm.eac !== null ? fmtDollars(evm.eac) : 'N/A') + ' | ETC ' + (evm.etc !== null ? fmtDollars(evm.etc) : 'N/A') +
+            ' | VAC ' + (evm.vac !== null ? fmtDollars(evm.vac) : 'N/A') + ' | TCPI ' + tcp;
+        }
+        showResult('evm-live-result', r);
+        addHistory(r);
+        break;
+      }
+      case 'evm-manual': {
+        var bac = parseFloat(document.getElementById('evm-bac').value) || 0;
+        var pv = parseFloat(document.getElementById('evm-pv-calc').value) || 0;
+        var ev = parseFloat(document.getElementById('evm-ev-calc').value) || 0;
+        var ac = parseFloat(document.getElementById('evm-ac-calc').value) || 0;
+        var spi = pv !== 0 ? ev / pv : null;
+        var cpi = ac !== 0 ? ev / ac : null;
+        var eac = cpi ? ac + (bac - ev) / cpi : null;
+        var etc = eac !== null ? eac - ac : null;
+        var vac = eac !== null ? bac - eac : null;
+        r = 'SPI ' + (spi !== null ? spi.toFixed(2) : 'N/A') + ' | CPI ' + (cpi !== null ? cpi.toFixed(2) : 'N/A') +
+          ' | EAC ' + (eac !== null ? fmtDollars(eac) : 'N/A') + ' | ETC ' + (etc !== null ? fmtDollars(etc) : 'N/A') + ' | VAC ' + (vac !== null ? fmtDollars(vac) : 'N/A');
+        showResult('evm-manual-result', r);
         addHistory(r);
         break;
       }
@@ -691,14 +1303,44 @@
     });
   }
 
+  /* Re-render the tab buttons from the enabled set (Phase 5 / A5) */
+  function renderTabButtons() {
+    var visible = TABS.filter(function(t) { return isTabVisible(t.id); });
+    var tabsEl = _panel.querySelector('.calc-tabs');
+    if (!tabsEl) return;
+    tabsEl.innerHTML = visible.map(function(t) {
+      return '<button type="button" class="calc-tab' + (t.id === _activeTab ? ' active' : '') + '" data-tab="' + t.id + '">' + t.label + '</button>';
+    }).join('');
+    tabsEl.querySelectorAll('.calc-tab').forEach(function(tab) {
+      tab.addEventListener('click', function() {
+        switchTab(tab.getAttribute('data-tab'));
+      });
+    });
+  }
+
   function switchTab(tabId) {
+    // Never enter a disabled tab (Phase 5 / A5). Settings is reachable via
+    // the gear only; General is always available.
+    if (tabId !== 'settings' && !isTabVisible(tabId)) {
+      tabId = 'general';
+    }
     _activeTab = tabId;
     _panel.querySelectorAll('.calc-tab').forEach(function(t) {
-      t.classList.toggle('active', t.getAttribute('data-tab') === tabId);
+      t.classList.toggle('active', t.getAttribute('data-tab') === tabId && tabId !== 'settings');
     });
+    var gear = document.getElementById('calc-gear');
+    if (gear) {
+      var inSettings = tabId === 'settings';
+      gear.classList.toggle('active', inSettings);
+      gear.setAttribute('aria-expanded', String(inSettings));
+    }
     _panel.querySelectorAll('.calc-section').forEach(function(s) {
-      s.classList.toggle('is-hide', s.getAttribute('data-calc') !== tabId);
+      var sid = s.getAttribute('data-calc');
+      var hidden = sid !== tabId;
+      if (sid !== 'settings' && sid !== 'general' && !isTabVisible(sid)) hidden = true;
+      s.classList.toggle('is-hide', hidden);
     });
+    return tabId;
   }
 
   /* ── Drag logic ── */

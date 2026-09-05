@@ -85,6 +85,24 @@
     var spySections = Object.keys(spyById)
       .map(function(id){ return document.getElementById(id); })
       .filter(Boolean);
+    /* OWNER 2026-09-05 (no-chip rail): the rail has no background anymore, so
+       label legibility is handled by flipping the WHOLE rail between light
+       and dark text depending on the active section's own scheme. Sections
+       declare data-spy-scheme="light|dark" (light = light background section,
+       needs dark labels). Default when unspecified: dark (light labels).
+       The rail starts .on-dark and the class tracks the active section. */
+    function sectionScheme(el){
+      if (!el) return 'dark';
+      var s = el.getAttribute('data-spy-scheme');
+      if (s === 'light' || s === 'dark') return s;
+      return el.classList.contains('section-alt') ? 'light' : 'dark';
+    }
+    function setSpyScheme(id){
+      var el = id ? document.getElementById(id) : null;
+      var scheme = sectionScheme(el);
+      spyNav.classList.toggle('on-light', scheme === 'light');
+      spyNav.classList.toggle('on-dark', scheme !== 'light');
+    }
     function setSpy(id){
       spyLinks.forEach(function(a){
         var on = id !== null && a === spyById[id];
@@ -92,7 +110,10 @@
         if (on) a.setAttribute('aria-current', 'true');
         else a.removeAttribute('aria-current');
       });
+      setSpyScheme(id);
     }
+    // Initial scheme before the observer fires (hero is dark -> light labels).
+    setSpyScheme(null);
     var lastId = spyLinks.length
       ? (spyLinks[spyLinks.length - 1].getAttribute('href') || '').slice(1)
       : null;

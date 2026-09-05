@@ -1134,25 +1134,42 @@ body.dark-mode .nav-dd-item:hover{color:var(--gold);background:rgba(var(--gold-r
 }
 /* the hero keeps a full-viewport first screen without any snap */
 .hero{min-height:calc(100vh - var(--header-h));display:flex;align-items:center;}
-/* slim edge index - functional layer only. The rail is FIXED and crosses
-   both dark sections (hero photo, photo bands) and light sections, so it
-   carries a dark glass chip of its own; a single label color can't stay
-   readable on both without a backing surface (2026-09-05 a11y fix: labels
-   measured near-black on the hero, invisible).    OWNER 2026-08-17: it is a MINI TRACKER - labels are always visible (a
-   tracker you cannot read is not a tracker), it follows the current section
-   accurately (most-visible wins), and sections the reader has already passed
-   LOCK IN (filled stick + dimmed label) so it reads as a progress trail. */
+/* slim edge index - functional layer only. OWNER 2026-09-05: NO CHIP - the
+   rail used to carry a dark glass chip background (added for label
+   readability over light sections), but the owner wants it visually SYNCED
+   with the page: no background, no border, no blur. Readability is kept by
+   flipping the label color per active section instead: sections carry
+   data-spy-scheme="light|dark" (dark sections keep light labels), and the
+   spy container swaps .on-light/.on-dark accordingly (see marketing.js).
+   It is a MINI TRACKER - labels always visible, active section accurate,
+   passed sections LOCK IN (filled stick + dimmed label). */
 .scroll-spy{
   position:fixed;left:8px;top:50%;
   transform:translateY(-50%);
   z-index:40;
   display:flex;flex-direction:column;gap:12px;
-  background:var(--glass-tint);
-  border:1px solid rgba(255,255,255,.1);
-  border-radius:14px;padding:14px 11px;
-  backdrop-filter:blur(10px) saturate(1.4);
-  -webkit-backdrop-filter:blur(10px) saturate(1.4);
+  background:none;border:none;box-shadow:none;
+  backdrop-filter:none;-webkit-backdrop-filter:none;
+  padding:14px 11px;
   pointer-events:none; /* container ignores clicks */
+}
+.spy-label{
+  font-size:.68rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
+  color:rgba(248,250,252,.94);
+  text-shadow:0 1px 2px rgba(15,23,42,.55);
+  opacity:1;
+  transition:opacity .2s,color .2s,text-shadow .2s;
+  white-space:nowrap;
+}
+/* Light sections: dark labels with a faint light halo for legibility. */
+.scroll-spy.on-light .spy-label{
+  color:rgba(24,20,16,.92);
+  text-shadow:0 1px 2px rgba(255,255,255,.6);
+}
+.scroll-spy.on-light a.done .spy-label{opacity:.55;}
+.scroll-spy.on-light a.active .spy-label,
+.scroll-spy.on-light a:hover .spy-label{
+  color:var(--gold-text, #B45309);
 }
 .scroll-spy a{
   pointer-events:auto;
@@ -1177,8 +1194,9 @@ body.dark-mode .nav-dd-item:hover{color:var(--gold);background:rgba(var(--gold-r
 .spy-label{
   font-size:.68rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
   color:rgba(248,250,252,.94);
+  text-shadow:0 1px 2px rgba(15,23,42,.55);
   opacity:1; /* always readable - the mini tracker */
-  transition:opacity .2s,color .2s;
+  transition:opacity .2s,color .2s,text-shadow .2s;
   white-space:nowrap;
 }
 .scroll-spy a.done .spy-label{opacity:.55;}
@@ -1192,8 +1210,7 @@ body.dark-mode .nav-dd-item:hover{color:var(--gold);background:rgba(var(--gold-r
 }
 @media (prefers-reduced-transparency:reduce){
   .site-header,
-  .mobile-menu,
-  .scroll-spy{
+  .mobile-menu{
     background:var(--glass-tint);
     -webkit-backdrop-filter:none;
     backdrop-filter:none;

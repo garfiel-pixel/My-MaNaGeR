@@ -1,5 +1,5 @@
 /* ============================================================
-   My MaNaGeR — Public Marketing Site
+   My MaNaGeR - Public Marketing Site
    Design System: "Liquid Glass v1.0"
    ------------------------------------------------------------
    Hierarchy (non-negotiable):
@@ -10,16 +10,16 @@
    -   GOLD is the primary accent on every marketing surface, matching the app's
      identity. The legacy --gold/--teal token NAMES carry the gold family.
      The product should feel like one brand across marketing + app.
-   - Dark mode re-maps BOTH surface and text tokens in one change — never
+   - Dark mode re-maps BOTH surface and text tokens in one change - never
      black-on-black (hard gate).
    - Never stack glass on glass.
    - Respect prefers-reduced-transparency & prefers-reduced-motion.
    ============================================================ */
 
-/* ---------- 1. Design tokens (exact palette — use these only) ---------- */
+/* ---------- 1. Design tokens (exact palette - use these only) ---------- */
 :root{
   /* surfaces */
-  --bg:            #F5EFE6;   /* warm off-white — matches app canvas */
+  --bg:            #F5EFE6;   /* warm off-white - matches app canvas */
   --bg-warm:       #F0EBE1;   /* alternate warm section tone */
   --header-navy:   #1C1917;   /* warm charcoal — footer/page-hero/guide band/photo overlays */
   --card:          #FFFFFF;
@@ -27,9 +27,9 @@
   /* Brand: orange/gold = identity. Cyan = secondary accent. */
   --gold:          #D96B27;   /* primary brand orange */
   --gold-hover:    #C25A1B;   /* brand hover */
-  --gold-deep:     #A84A15;   /* brand deep — text accent on white */
+  --gold-deep:     #A84A15;   /* brand deep - text accent on white */
   --gold-rgb:      217,107,39;
-  --teal:          #00BCD4;   /* secondary accent — cyan, used sparingly */
+  --teal:          #00BCD4;   /* secondary accent - cyan, used sparingly */
   --teal-deep:     #0097A7;   /* cyan deep */
   --danger:        #C62828;
   --purple:        #8B5CF6;
@@ -109,8 +109,8 @@ body.dark-mode{
 .pal-btn:hover{color:#fff;}
 .pal-btn:focus-visible{outline:2px solid var(--gold);outline-offset:1px;}
 .pal-btn[aria-pressed="true"]{background:var(--gold);color:var(--on-gold);}
-/* UI MODERNIZATION 2026-08-17 (owner: decluttered header — one conversion
-   path, no floating color tags) — the palette picker moved OUT of the
+/* UI MODERNIZATION 2026-08-17 (owner: decluttered header - one conversion
+   path, no floating color tags) - the palette picker moved OUT of the
    header into the mobile menu; the theme helper's document-level [data-pal]
    listener serves it there with zero JS change. */
 .mobile-menu .pal-switch{margin:14px 2px 2px;align-self:flex-start;}
@@ -171,8 +171,7 @@ svg.ico use{fill:inherit;stroke:inherit;}
 /* ---------- 4. Liquid Glass header (functional layer) ---------- */
 .site-header{
   position:sticky;top:0;z-index:100;
-  height:var(--header-h);
-  /* OWNER 2026-08-17: BLUE + WHITE — the header is a LIGHT frosted-white glass
+  height:var(--header-h);   /* OWNER 2026-08-17: BLUE + WHITE - the header is a LIGHT frosted-white glass
      with black text in light themes (the dark navy glass was part of the "dark
      and not lively" complaint). The glass structure itself is unchanged and the
      blur stays (mkt-06 depends on it). Dark mode flips back to dark glass with
@@ -197,20 +196,16 @@ body.dark-mode .site-header{
 }
 .header-inner{
   height:100%;
-  display:flex;align-items:center;justify-content:space-between;gap:24px;
-  /* OWNER 2026-08-17: the brand sits in the TOP-LEFT CORNER — a hair of
+  display:flex;align-items:center;justify-content:space-between;gap:24px;   /* OWNER 2026-08-17: the brand sits in the TOP-LEFT CORNER - a hair of
      breathing room only (8px), not the old 2.5vw gap. Right side keeps the
      breathing padding so the controls never crowd the edge. */
   padding:0 clamp(16px,2.5vw,2rem) 0 8px;
-}
-/* The header row also carries the .container class (centered 1120px) — that
+} /* The header row also carries the .container class (centered 1120px) - that
    centered box is what left a big gap between the corner and the brand on wide
    screens (the owner's "gap between the corner and it"). The header must span
    the FULL width so the brand truly sits in the corner; only the inner padding
    governs its position. */
-.site-header .header-inner{width:100%;max-width:none;margin-inline:0;}
-
-/* brand — black text on the light glass header (OWNER 2026-08-17) */
+.site-header .header-inner{width:100%;max-width:none;margin-inline:0;}   /* brand - black text on the light glass header (OWNER 2026-08-17) */
 .brand{display:flex;align-items:center;gap:11px;font-weight:800;font-size:1.05rem;color:var(--text-primary);letter-spacing:.01em;}
 body.dark-mode .brand{color:var(--on-navy);}
 .brand-mark{
@@ -575,8 +570,7 @@ body.dark-mode .nav-dd-item:hover{color:var(--gold);background:rgba(var(--gold-r
 .signin-sheet .signin-user-avatar img{width:100%;height:100%;object-fit:cover;display:block;}
 .signin-sheet .plan-pill{
   display:inline-flex;align-items:center;gap:4px;font-size:.62rem;font-weight:800;
-  letter-spacing:.04em;text-transform:uppercase;
-  /* light text on the dark glass — --gold-deep is a dark tone in light
+  letter-spacing:.04em;text-transform:uppercase;   /* light text on the dark glass - --gold-deep is a dark tone in light
      themes and vanishes; the gold border keeps the premium identity */
   color:rgba(248,250,252,.92);
   border:1px solid var(--gold);border-radius:100px;padding:3px 10px;
@@ -631,27 +625,22 @@ body.dark-mode .nav-dd-item:hover{color:var(--gold);background:rgba(var(--gold-r
 @media (max-width:420px){
   .header-inner{gap:14px;}
   .brand small{display:none;}
-}
-
-/* ---------- 6. Hero (solid content layer — never glass) ---------- */
+} /* ---------- 6. Hero (solid content layer - never glass) ---------- */
 .hero{
   position:relative;overflow:hidden;
   background:var(--header-navy); /* solid fallback while the photo loads */
   color:var(--on-navy);
   padding:96px 0 104px;
-}
-/* hero photo layer — full-bleed, solid content (never glass) */
+} /* hero photo layer - full-bleed, solid content (never glass) */
 .hero-photo{
   position:absolute;inset:0;width:100%;height:100%;
   object-fit:cover;object-position:center;
   z-index:0;
 }
 /* NO-DRAG BACKGROUND IMAGES (OWNER 2026-08-17): the hero photo, the
-   showcase-card images and the photo-band photos are decorative surface
-   layers, NOT draggable objects — Edge/Chromium lets a user drag a page
+   showcase-card images and the photo-band photos are decorative surface    layers, NOT draggable objects - Edge/Chromium lets a user drag a page
    <img> out of the layout and drop it into the search bar. These are made
-   inert: no native image drag (-webkit-user-drag), no selection
-   (user-select), clicks pass through (pointer-events:none — they sit
+   inert: no native image drag (-webkit-user-drag), no selection    (user-select), clicks pass through (pointer-events:none - they sit
    behind the text/overlay layers anyway), and no right-click image menu
    (contextmenu is blocked in js/marketing.js, belt + braces with the
    draggable="false" attribute on the markup). */
@@ -710,8 +699,7 @@ body.dark-mode .nav-dd-item:hover{color:var(--gold);background:rgba(var(--gold-r
   position:relative;
   display:grid;gap:14px;
 }
-.hero-card{
-  /* OWNER 2026-08-17: the home page was TOO GLASSY — the preview cards are
+.hero-card{   /* OWNER 2026-08-17: the home page was TOO GLASSY - the preview cards are
      SOLID WHITE cards now (never translucent, never backdrop-filter). The
      glass stays only on the functional layer (header/sheets). */
   background:var(--card);
@@ -724,8 +712,7 @@ body.dark-mode .nav-dd-item:hover{color:var(--gold);background:rgba(var(--gold-r
 .hero-card:hover{transform:translateY(-4px);box-shadow:0 26px 58px rgba(15,23,42,.5);}
 /* HERO IMAGES (owner 2026-08-17): the owner's three real topic images sit
    above each card's hc-top. Bleed them to the card's top corners (negative
-   margin over the 18/20px padding), round the top to match the card, and
-   keep the caption area below them. Solid content — never glass. */
+   margin over the 18/20px padding), round the top to match the card, and    keep the caption area below them. Solid content - never glass. */
 .hero-card .hc-img{margin:-18px -20px 14px;overflow:hidden;border-radius:var(--radius-md) var(--radius-md) 0 0;}
 .hero-card .hc-img img{display:block;width:100%;height:auto;aspect-ratio:900/491;object-fit:cover;}
 .hero-card .hc-top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;}
@@ -872,9 +859,7 @@ body.dark-mode .nav-dd-item:hover{color:var(--gold);background:rgba(var(--gold-r
 .guide-band p{color:rgba(248,250,252,.75);max-width:52ch;}
 .guide-band .eyebrow{color:var(--accent-on-navy);}
 .guide-band .btn-ghost-light{margin-left:10px;}
-.guide-cta{display:flex;gap:12px;flex-wrap:wrap;position:relative;}
-
-/* ---------- 10b. Photo bands (solid content layer — never glass) ---------- */
+.guide-cta{display:flex;gap:12px;flex-wrap:wrap;position:relative;} /* ---------- 10b. Photo bands (solid content layer - never glass) ---------- */
 .photo-band{
   position:relative;overflow:hidden;
   background:var(--header-navy); /* solid fallback while the photo loads */
@@ -1006,8 +991,7 @@ body.dark-mode .nav-dd-item:hover{color:var(--gold);background:rgba(var(--gold-r
 }
 
 /* ---------- 13b. Reviews window (PART F T7, 2026-08-16) ----------
-   Public review form + list on reviews.html. Solid content cards
-   (Gate 6.1 — forms and review prose are dense content, never glass).
+   Public review form + list on reviews.html. Solid content cards    (Gate 6.1 - forms and review prose are dense content, never glass).
    Token-driven, so the cyan and dark palettes swap automatically. */
 .rv-form-card{max-width:720px;margin:0 auto 74px;}
 .rv-field{margin-bottom:16px;}
@@ -1027,8 +1011,7 @@ body.dark-mode .nav-dd-item:hover{color:var(--gold);background:rgba(var(--gold-r
 .rv-field textarea::placeholder{color:var(--text-secondary);opacity:.8;}
 .rv-field input[type="text"]:focus-visible,
 .rv-field textarea:focus-visible{outline:none;border-color:var(--gold);box-shadow:0 0 0 3px rgba(var(--gold-rgb),.18);}
-.rv-field textarea{resize:vertical;min-height:110px;}
-/* Star rating picker (STABILIZATION 2026-08-16 — the PART F T7 follow-up:
+.rv-field textarea{resize:vertical;min-height:110px;} /* Star rating picker (STABILIZATION 2026-08-16 - the PART F T7 follow-up:
    the schema + list renderer were already star-READY; this is the missing
    input control). Radios stay keyboard-accessible; the fill follows the
    picker's data-val (js/reviews.js) with a hover preview, gold accent on
@@ -1155,8 +1138,7 @@ body.dark-mode .nav-dd-item:hover{color:var(--gold);background:rgba(var(--gold-r
    both dark sections (hero photo, photo bands) and light sections, so it
    carries a dark glass chip of its own; a single label color can't stay
    readable on both without a backing surface (2026-09-05 a11y fix: labels
-   measured near-black on the hero, invisible).
-   OWNER 2026-08-17: it is a MINI TRACKER — labels are always visible (a
+   measured near-black on the hero, invisible).    OWNER 2026-08-17: it is a MINI TRACKER - labels are always visible (a
    tracker you cannot read is not a tracker), it follows the current section
    accurately (most-visible wins), and sections the reader has already passed
    LOCK IN (filled stick + dimmed label) so it reads as a progress trail. */
@@ -1233,10 +1215,7 @@ body.dark-mode .nav-dd-item:hover{color:var(--gold);background:rgba(var(--gold-r
 .rv{transition-delay:calc(var(--rv-i,0)*55ms);}
 @media (prefers-reduced-motion:reduce){
   .rv{opacity:1;transform:none;transition:none;}
-}
-
-/* ---------- AUTH PAGES (verify.html / reset.html — AUTH MAINFRAME v2, 2026-08-17) ---------- */
-/* Transactional email-link pages: minimal chrome, ONE solid card (Gate 6.1 —
+} /* ---------- AUTH PAGES (verify.html / reset.html - AUTH MAINFRAME v2, 2026-08-17) ---------- */ /* Transactional email-link pages: minimal chrome, ONE solid card (Gate 6.1 -
    status/forms never sit on glass), tokens only, dark mode via the shared
    body.dark-mode set, reduced-motion spinner kill, [hidden] guards so the
    verify-hidden gate can never be defeated. Error text uses the site's
@@ -1287,8 +1266,7 @@ body.dark-mode .nav-dd-item:hover{color:var(--gold);background:rgba(var(--gold-r
    hidden on marketing pages when NOT signed in. When signed in,
    the button becomes an identity chip (initial avatar + name)
    and is visible. Get Started fills the header CTA position.
-   The sign-in sheet is controlled by the hidden attribute via JS
-   — never hide it with CSS (GIS needs a visible host to render).
+   The sign-in sheet is controlled by the hidden attribute via JS    - never hide it with CSS (GIS needs a visible host to render).
    EXCEPTION: field guide .site-signin triggers are always visible
    (the guide is a reference doc where sign-in is a simple sidebar
    action, not a marketing CTA). */

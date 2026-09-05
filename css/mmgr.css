@@ -1,5 +1,4 @@
-/* ============================================================
-   My MaNaGeR — Core Stylesheet
+/* ============================================================    My MaNaGeR - Core Stylesheet
    ============================================================ */
 
 /* ---- SVG Icon System ---- */
@@ -11,18 +10,17 @@ svg.ico use{fill:inherit;stroke:inherit;}
 /* ---- Design Tokens ---- */
 :root{
   /* My MaNaGeR brand: warm orange-gold identity, warm off-white canvas,
-     restrained high-contrast accents. Dark mode is an opt-in override
-     (body.dark-mode) — never the default presentation. */
+     restrained high-contrast accents. Dark mode is an opt-in override      (body.dark-mode) - never the default presentation. */
   /* -- Surface hierarchy -- */
-  --canvas:#F5EFE6;     /* warm off-white — Level 0 */
-  --sidebar:#FDFBF7;    /* very light warm — sidebar background */
-  --card:#ffffff;       /* crisp white — Level 1 cards */
+  --canvas:#F5EFE6;     /* warm off-white - Level 0 */
+  --sidebar:#FDFBF7;    /* very light warm - sidebar background */
+  --card:#ffffff;       /* crisp white - Level 1 cards */
   --surface:#ffffff;    /* Level 1: work surfaces / cards / panels */
   --surface-raised:#f8f5f0; /* Level 2: focused / elevated surfaces */
   --border:#e5e0d8;     /* warm neutral border */
   /* -- Text hierarchy -- */
   --text:#333333;       /* body text */
-  --text-heading:#000000; /* headings — pure black */
+  --text-heading:#000000; /* headings - pure black */
   --text-secondary:#555555; /* secondary text */
   --text-muted:#666666; /* muted/supporting text */
   --slate:#666666;
@@ -58,8 +56,7 @@ svg.ico use{fill:inherit;stroke:inherit;}
   --track-bg:#e8e2da;
   /* -- Premium gold accent -- */
   --premium-gold:#FFE082;
-  --radius:8px;
-  /* MMGR-NEW-UI-CREATION-BRIEF §4.1 — Law of Nested Radii: outer = inner + padding */
+  --radius:8px;   /* MMGR-NEW-UI-CREATION-BRIEF §4.1 - Law of Nested Radii: outer = inner + padding */
   --radius-control:8px;   /* inner controls: buttons, inputs, rail links */
   --pad-card:16px;        /* card padding */
   --dock-h:120px;         /* bottom dock height (owner D3): toasts, the calc
@@ -67,15 +64,11 @@ svg.ico use{fill:inherit;stroke:inherit;}
   --radius-card:24px;     /* outer card radius = control + pad (8 + 16) */
   --tr:120ms cubic-bezier(0.25,1,0.5,1);
   --ease-ios:cubic-bezier(0.25,1,0.5,1);
-  --spring:cubic-bezier(0.25,1,0.5,1);
-
-  /* ---- Surface tokens (light: glass is retired — solid, crisp surfaces) ---- */
+  --spring:cubic-bezier(0.25,1,0.5,1);   /* ---- Surface tokens (light: glass is retired - solid, crisp surfaces) ---- */
   --glass-blur:0px;
-  --glass-saturate:100%;
-  --glass-fill-dark:#ffffff;            /* solid white — no frosted effect on light */
+  --glass-saturate:100%;   --glass-fill-dark:#ffffff;            /* solid white - no frosted effect on light */
   --glass-fill-dark-hover:#f8fafc;
-  --glass-fill-dark-active:#eef1f6;
-  --glass-rim:inset 0 1px 0 rgba(255,255,255,0);   /* transparent on light — hairline border carries the edge */
+  --glass-fill-dark-active:#eef1f6;   --glass-rim:inset 0 1px 0 rgba(255,255,255,0);   /* transparent on light - hairline border carries the edge */
   --glass-rim-strong:inset 0 1px 0 #ffffff;
   --glass-border:1px solid #e5e7eb;
   --glass-shadow:0 1px 2px rgba(16,24,40,0.04),0 6px 18px rgba(16,24,40,0.06);
@@ -159,13 +152,11 @@ body.dark-mode{
   --toggle-off-fg:#e2e8f0;
 }
 
-/* ============================================================
-   SYSTEM THEME — follows OS prefers-color-scheme
+/* ============================================================    SYSTEM THEME - follows OS prefers-color-scheme
    ------------------------------------------------------------
    When mmgr_theme = 'system' (the default), the effective mode
    is determined by the OS preference. The mmgr-theme.js helper
-   toggles body.dark-mode on <body> at runtime. No CSS media
-   query override is needed here — body.dark-mode already carries
+   toggles body.dark-mode on <body> at runtime. No CSS media    query override is needed here - body.dark-mode already carries
    the full dark token set above. System mode is a JS-only concern.
    ============================================================ */
 
@@ -191,8 +182,7 @@ body{
 
 /* ---- Icon strokes that shipped hardcoded now follow the theme tokens ----
    (Phase D-17 of THEME-SYSTEM-AND-MOBILE-UI-ACTION-PLAN: no gold/amber hex
-   may bypass the token layer). The project.html sec-nav icons carry inline
-   stroke="#D4AF37" etc. presentation attributes — CSS attribute selectors
+   may bypass the token layer). The project.html sec-nav icons carry inline    stroke="#D4AF37" etc. presentation attributes - CSS attribute selectors
    override those (presentation attrs are the lowest-priority source), so the
    icons re-tint live when the palette/dark theme switches. */
 /* Nav icons: neutral by default (Phase 5). Color only for active, status, alerts. */
@@ -209,11 +199,9 @@ body{
 .pal-btn:hover{color:var(--text);}
 .pal-btn:focus-visible{outline:2px solid var(--gold);outline-offset:1px;}  .pal-btn[aria-pressed="true"]{color:var(--on-gold);background:var(--gold);}
 
-/* ============================================================
-   BOTTOM DOCK (owner D3/D6/D11, 2026-09-03) — the ONE full
+/* ============================================================    BOTTOM DOCK (owner D3/D6/D11, 2026-09-03) - the ONE full
    Light/Dark/System picker on each app page (launcher, project,
-   admin), promoted from the old admin gate pill (#gate-prefs).
-   Vertical theme stack (one full-width option per row — D6,
+   admin), promoted from the old admin gate pill (#gate-prefs).    Vertical theme stack (one full-width option per row - D6,
    never a horizontal strip) + the premium-glass toggle. Theme
    buttons ride mmgr-theme.js's delegated [data-pal] listener;
    the glass toggle rides each page's tglGlassMode action map;
@@ -275,8 +263,7 @@ body:not(.crosshair-on) #cx,body:not(.crosshair-on) #cy{display:none;}
 .hdr-back:hover{color:var(--gold);border-color:var(--gold);}
 .hdr-back .ico{width:14px;height:14px;}
 
-/* ---- Focus Mode ---- */
-/* Only the active panel + the exit chip remain. Everything else — header,
+/* ---- Focus Mode ---- */ /* Only the active panel + the exit chip remain. Everything else - header,
    section nav, drawer, undo bar, modals, learning card, tooltips, crosshair,
    output modal — is hidden so the working panel owns the whole viewport.
    (Monolith parity: the monolith hid the same chrome; this port goes further
@@ -300,18 +287,15 @@ body.focus-mode .focus-ind{display:flex;position:fixed;top:10px;right:10px;backg
 
 /* ---- Mobile nav drawer (THEME-SYSTEM-AND-MOBILE-UI-ACTION-PLAN §4.2) ----
    The hamburger (.nav-btn, header) + scrim (#nav-scrim) toggle body.nav-open
-   (mmgr-app.js tglNav). On ≤768px the SAME .sec-nav element becomes a fixed
-   off-canvas drawer — no duplicated nav, active states stay in sync by
+   (mmgr-app.js tglNav). On ≤768px the SAME .sec-nav element becomes a fixed    off-canvas drawer - no duplicated nav, active states stay in sync by
    construction, and Focus Mode's existing .sec-nav hide rule covers it. */
-/* BUG-9: hamburger is ALWAYS visible on desktop (overlay sidebar pattern).
-   On mobile (≤768px) it stays visible too — it opens the off-canvas .sec-nav
+/* BUG-9: hamburger is ALWAYS visible on desktop (overlay sidebar pattern).    On mobile (≤768px) it stays visible too - it opens the off-canvas .sec-nav
    drawer. The old sidebar-on gate is removed: the hamburger is now a permanent
    header element on every viewport. */
 .nav-btn{display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;border:1px solid var(--border);background:var(--card);color:var(--slate);border-radius:10px;cursor:pointer;transition:all var(--tr);flex-shrink:0;}
 .nav-btn:focus-visible{outline:2px solid var(--gold);outline-offset:2px;}
 .nav-btn:hover{color:var(--gold);border-color:var(--gold);}
-/* Owner 2026-08-15 (corrected): the thin icon was the Project Completion
-   RING, not the hamburger — the hamburger keeps its normal 2px weight but
+/* Owner 2026-08-15 (corrected): the thin icon was the Project Completion    RING, not the hamburger - the hamburger keeps its normal 2px weight but
    is a bit LARGER (20px) so it's easily visible in the header bar. */
 .nav-btn .ico{width:20px;height:20px;transition:transform var(--release-duration) var(--ease-ios);}
 #nav-scrim{position:fixed;inset:0;background:rgba(0,22,25,.45);opacity:0;pointer-events:none;transition:opacity var(--tr);z-index:94;}
@@ -321,8 +305,7 @@ body.nav-open #nav-scrim{opacity:1;pointer-events:auto;}
    .sec-nav pill bar is DEMOLISHED (it stays in the DOM only as the source
    for buildSidebar's clone + the mobile drawer). body.sidebar-on is now
    ALWAYS applied (sidebarEnabled() → true); body.sidebar-open is the
-   transient open/closed state of the pinned rail (default open at boot).
-   The hamburger (header + rail head) toggles it — click to close the rail
+   transient open/closed state of the pinned rail (default open at boot).    The hamburger (header + rail head) toggles it - click to close the rail
    and take the full screen, click again to slide it back out: the launcher's
    exact pattern (UI DOCTRINE rule 3: hamburger = toggle, never an X).
    Mobile (≤768px) is unchanged: the off-canvas .sec-nav drawer stays the
@@ -336,8 +319,7 @@ body.nav-open #nav-scrim{opacity:1;pointer-events:auto;}
   box-shadow:0 12px 40px rgba(0,0,0,.18);
   display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden;
   -webkit-overflow-scrolling:touch;}
-/* Rail head: same hamburger as the header button, bare icon (no box),
-   rotated 90deg while the rail is open — one smooth spring (doctrine 3). */
+/* Rail head: same hamburger as the header button, bare icon (no box),    rotated 90deg while the rail is open - one smooth spring (doctrine 3). */
 .sb-head{display:flex;align-items:center;justify-content:space-between;padding:14px 16px 10px;border-bottom:1px solid var(--border);margin-bottom:12px;flex-shrink:0;position:sticky;top:0;background:var(--sidebar);z-index:1;}
 .sb-title{display:inline-flex;align-items:center;gap:8px;font-size:.72rem;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--gold);}
 .sb-title .ico{font-size:.8rem;}
@@ -376,8 +358,7 @@ body.sidebar-open .nav-btn .ico,body.sidebar-open .sb-close .ico{transform:rotat
 .rail-link:focus-visible{outline:2px solid var(--gold);outline-offset:2px;border-radius:var(--radius-control);}
 .rail-link.active{color:var(--on-gold);background:var(--gold);}
 .rail-link + .rail-link{margin-top:2px;}
-/* MMGR-NEW-UI-CREATION-BRIEF §2.1 (repurposed 2026-08-15): desktop PINNED
-   rail — the sidebar IS the view. body.sidebar-on (always on, see
+/* MMGR-NEW-UI-CREATION-BRIEF §2.1 (repurposed 2026-08-15): desktop PINNED    rail - the sidebar IS the view. body.sidebar-on (always on, see
    sidebarEnabled()) hides the top pill bar + scrim on desktop; the rail is
    pinned open when body.sidebar-open is set (default at boot) and slides
    away (content full-width) when the hamburger closes it. Mobile drawer
@@ -399,8 +380,7 @@ body.sidebar-open .nav-btn .ico,body.sidebar-open .sb-close .ico{transform:rotat
      measured height (Viewport.syncHeaderStack, mmgr-viewport.js). The
      glass-premium rules further down keep position:relative here, matching
      that mode's intentionally non-sticky glass header. */
-  position:sticky;top:var(--hdr-h,0px);z-index:90;background:var(--canvas);}
-/* STRUCTURAL-IA §2: grouped nav (Option A) — eyebrow labels + divider */
+  position:sticky;top:var(--hdr-h,0px);z-index:90;background:var(--canvas);} /* STRUCTURAL-IA §2: grouped nav (Option A) - eyebrow labels + divider */
 .nav-group{display:inline-flex;align-items:center;gap:6px;}
 .nav-group + .nav-group{position:relative;padding-left:14px;margin-left:4px;}
 .nav-group + .nav-group::before{content:'';position:absolute;left:0;top:18%;height:64%;width:1px;background:var(--border);}
@@ -415,13 +395,11 @@ body.sidebar-open .nav-btn .ico,body.sidebar-open .sb-close .ico{transform:rotat
 .ic-ct{width:20px;height:20px;flex-shrink:0;margin-right:4px;vertical-align:-4px;}
 /* UI-MODERNIZATION 2026-08-14 (dashboard-alignment audit, follow-up): with
    19 pills across 6 ATOMIC .nav-group flex items the wrap-packed strip broke
-   into 3 ragged rows (112px tall, orphan pill alone on row 3) at desktop
-   widths — the "messy/misaligned" nav. Desktop now keeps ONE compact row and
+   into 3 ragged rows (112px tall, orphan pill alone on row 3) at desktop    widths - the "messy/misaligned" nav. Desktop now keeps ONE compact row and
    scrolls horizontally (thin, token-tinted scrollbar via color-mix on the
    theme-aware --slate) so the sticky tab bar stays a slim 32px bar under the
    header. Sticky + overflow-x coexist (tested): the strip is its own scroll
-   container; the element itself stays sticky below #app-header. Mobile
-   (≤768px) is the off-canvas drawer — untouched by construction. */
+   container; the element itself stays sticky below #app-header. Mobile    (≤768px) is the off-canvas drawer - untouched by construction. */
 @media(min-width:769px){
   .sec-nav{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:thin;
     scrollbar-color:color-mix(in srgb,var(--slate) 35%,transparent) transparent;}
@@ -437,16 +415,14 @@ body.sidebar-open .nav-btn .ico,body.sidebar-open .sb-close .ico{transform:rotat
   padding:0 4px;border-radius:999px;background:var(--danger);color:#fff;
   font-size:.58rem;font-weight:800;line-height:1;margin-left:2px;}
 .sec-badge.is-hide{display:none;}
-.stk-exp-bad{border-color:rgba(239,68,68,.65)!important;background:rgba(239,68,68,.08);}
-/* A1 heads-up banner on the Stakeholder Register — card language, amber
+.stk-exp-bad{border-color:rgba(239,68,68,.65)!important;background:rgba(239,68,68,.08);} /* A1 heads-up banner on the Stakeholder Register - card language, amber
    accent border + icon tile per UI doctrine 1, hidden until something is due. */
 .stk-cmp{display:flex;align-items:center;gap:10px;background:linear-gradient(180deg,rgba(245,158,11,.1),var(--card) 60%);
   border:1px solid rgba(245,158,11,.4);border-radius:var(--squircle-md);padding:10px 14px;margin-bottom:14px;font-size:.76rem;color:var(--text);}
 .stk-cmp .ico{color:var(--amber);flex-shrink:0;}
 .stk-cmp.is-hide{display:none;}
 /* MARKET-FEATURE-ROADMAP A3/A4 (T8 REBUILD 2026-08-16): Bid Leveling +
-   Go/No-Go scorecards (Stakeholders panel). Nested panels INSIDE the outer
-   glass .card — they reuse the SAME card language at a nested scale
+   Go/No-Go scorecards (Stakeholders panel). Nested panels INSIDE the outer    glass .card - they reuse the SAME card language at a nested scale
    (glass-fill surface + glass border + squircle radius + rim/shadow); the
    inputs use the app's soft-field treatment, NEVER default browser borders.
    UI doctrine 8: every creation of this sort ships WITH the app's design,
@@ -482,8 +458,7 @@ body.sidebar-open .nav-btn .ico,body.sidebar-open .sb-close .ico{transform:rotat
 .lvl-act{font-size:.6rem;padding:3px 7px;margin:0 4px 4px 0;}
 .lvl-act-cell{min-width:250px;}
 .lvl-lowest{font-size:.56rem;margin-top:2px;}
-.lvl-tools{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;}
-/* Go/No-Go weighted scorecard — categories with weights + 1-5 star rows. */
+.lvl-tools{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;} /* Go/No-Go weighted scorecard - categories with weights + 1-5 star rows. */
 .gn-card{background:var(--glass-fill-dark);border:var(--glass-border);border-radius:var(--squircle-md);padding:12px 16px;margin-bottom:14px;box-shadow:var(--glass-rim),var(--glass-shadow);transition:border-color var(--tr),background var(--tr),box-shadow var(--tr);}
 .gn-badge{font-size:.62rem;}
 .gn-scorebar{position:relative;height:12px;border-radius:999px;background:var(--tile-bg);border:1px solid var(--border);margin:4px 0 12px;overflow:hidden;}
@@ -511,8 +486,7 @@ body.sidebar-open .nav-btn .ico,body.sidebar-open .sb-close .ico{transform:rotat
 .gn-addcrit{margin-top:6px;}
 .gn-foot{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px;}
 .gn-score-txt{font-size:.72rem;color:var(--slate);font-weight:600;}
-@media (max-width:900px){.gn-cats{grid-template-columns:1fr;}}
-/* Add Bid Package modal (T8) — same surface + input recipe as the other
+@media (max-width:900px){.gn-cats{grid-template-columns:1fr;}} /* Add Bid Package modal (T8) - same surface + input recipe as the other
    content modals (.cu-box/.wi-box); dense form content is solid, never
    glass (Gate 6.1). */
 #bidpkg-modal{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:2100;display:none;align-items:center;justify-content:center;padding:20px;}
@@ -528,8 +502,7 @@ body.sidebar-open .nav-btn .ico,body.sidebar-open .sb-close .ico{transform:rotat
 .bp-item .bp-item-desc{flex:1;}
 .bp-item .bp-item-cost{width:130px;}
 @media (max-width:640px){.bp-grid{grid-template-columns:1fr;}}
-/* ---- DIR-3 (PROJECT-UX-NAV-WEATHER-EXPORT-DIRECTIVE): Core-Mode onboarding
-       callout on the Dashboard. Solid card surface (Gate 6.1 — never glass
+/* ---- DIR-3 (PROJECT-UX-NAV-WEATHER-EXPORT-DIRECTIVE): Core-Mode onboarding        callout on the Dashboard. Solid card surface (Gate 6.1 - never glass
        over content), gold-tinted border, no motion (instant show/hide via
        .is-hide). Hidden permanently after any pack is toggled on or dismiss. */
 .core-callout{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;
@@ -538,8 +511,7 @@ body.sidebar-open .nav-btn .ico,body.sidebar-open .sb-close .ico{transform:rotat
   padding:14px 18px;margin-bottom:18px;}
 .core-callout-txt{display:flex;align-items:center;gap:10px;font-size:.8rem;line-height:1.5;color:var(--text);max-width:660px;}
 .core-callout-txt .ico{color:var(--gold);flex-shrink:0;}
-.core-callout-actions{display:flex;gap:8px;align-items:center;flex-shrink:0;flex-wrap:wrap;}
-/* Attention card (UI-UX doc §7.1) — gold-tinted when items are pending */
+.core-callout-actions{display:flex;gap:8px;align-items:center;flex-shrink:0;flex-wrap:wrap;} /* Attention card (UI-UX doc §7.1) - gold-tinted when items are pending */
 #attention-card.has-items{border-color:rgba(var(--amber-rgb),.4);background:linear-gradient(180deg,rgba(var(--amber-rgb),.06),var(--card) 50%);}
 #attention-card .fb-sm .badge{min-width:24px;justify-content:center;}
 /* This Week card */
@@ -554,17 +526,13 @@ body.sidebar-open .nav-btn .ico,body.sidebar-open .sb-close .ico{transform:rotat
 
 /* ---- STRUCTURAL-IA §4 hierarchy: Tier 3 (passive) cards recede ---- */
 .tier3 .stat{font-size:.95rem;color:var(--slate);font-weight:600;}
-/* §4 Tier 1: non-zero Blocked / Overdue / Live Issues get the strongest
-   static treatment — existing --danger token, size only, no motion. */
+/* §4 Tier 1: non-zero Blocked / Overdue / Live Issues get the strongest    static treatment - existing --danger token, size only, no motion. */
 #health-card.has-danger .fb-sm .badge.br{background:rgba(239,68,68,.3);}
-#health-card.has-danger #h-od,#health-card.has-danger #h-bl,#health-card.has-danger #h-is{box-shadow:0 0 0 1px var(--danger);}
-/* §1: brand-new project — the whole health card reads quieter */
-#health-card.health-empty .fb-sm{opacity:.55;}
-/* MARKET-FEATURE-ROADMAP A1: compliance badge on the Project Health card —
+#health-card.has-danger #h-od,#health-card.has-danger #h-bl,#health-card.has-danger #h-is{box-shadow:0 0 0 1px var(--danger);} /* §1: brand-new project - the whole health card reads quieter */
+#health-card.health-empty .fb-sm{opacity:.55;} /* MARKET-FEATURE-ROADMAP A1: compliance badge on the Project Health card -
    same treatment as the Blocked/Overdue/Live-Issues danger counts. */
 #health-card.has-compliance #h-coi{box-shadow:0 0 0 1px var(--danger);background:rgba(239,68,68,.3);}
-/* Blueprint motif (TRACK B1): subtle corner-tick marks borrowed from the
-   Field Guide's drawing-set language — thin cyan border segments in the
+/* Blueprint motif (TRACK B1): subtle corner-tick marks borrowed from the    Field Guide's drawing-set language - thin cyan border segments in the
    top-left and bottom-right corners. Only on the Dashboard health card,
    the one screen every user sees most. */
 .card.blueprint{position:relative;}
@@ -579,10 +547,8 @@ body.sidebar-open .nav-btn .ico,body.sidebar-open .sb-close .ico{transform:rotat
 }
 
 /* ---- Cards ---- */
-/* PLAN-OF-ACTION-LIQUID-GLASS-UI 3.5.1: CSS glass is the universal default
-   for card/panel styling — the recipe below is the SAME glass-panel recipe,
-   driven by the design tokens (light: blur 0, crisp solid; dark: frosted).
-   Dense tables inside stay flat/opaque — readability is never traded. */
+/* PLAN-OF-ACTION-LIQUID-GLASS-UI 3.5.1: CSS glass is the universal default    for card/panel styling - the recipe below is the SAME glass-panel recipe,
+   driven by the design tokens (light: blur 0, crisp solid; dark: frosted).    Dense tables inside stay flat/opaque - readability is never traded. */
 .card{background:var(--glass-fill-dark);border:var(--glass-border);border-radius:var(--squircle-md);padding:20px;margin-bottom:18px;box-shadow:var(--glass-rim),var(--glass-shadow);backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturate));-webkit-backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturate));transition:border-color var(--tr),background var(--tr),box-shadow var(--tr);}
 .card:hover{border-color:#d1d5db;box-shadow:var(--glass-rim),0 2px 8px rgba(16,24,40,.06);}
 .card-title{font-size:.8125rem;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--slate);margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;min-width:0;}
@@ -598,8 +564,7 @@ body.sidebar-open .nav-btn .ico,body.sidebar-open .sb-close .ico{transform:rotat
    aligned. Each card is an equal-height flex column; health rows share ONE
    consistent height with labels left and counts pinned right; the completion
    ring and the Next-3 list share the SAME top rhythm as the status rows; the
-   Next-3 card fills its height like the health column so no area floats with
-   dead space. Data untouched — spacing/alignment only. */
+   Next-3 card fills its height like the health column so no area floats with    dead space. Data untouched - spacing/alignment only. */
 #panel-dash .g3{grid-template-columns:repeat(auto-fit,minmax(250px,1fr));}
 #panel-dash .g3>.card{display:flex;flex-direction:column;height:100%;}
 #panel-dash .g3>.card>.card-title{flex-shrink:0;}
@@ -612,8 +577,7 @@ body.sidebar-open .nav-btn .ico,body.sidebar-open .sb-close .ico{transform:rotat
    badge width so every number column right-aligns. */
 #health-card .col-g8{flex:1;}
 #health-card .fb-sm{min-height:33px;padding:2px;gap:12px;}
-#health-card .fb-sm>span:first-child{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-/* Owner 2026-08-15: health counts are now CIRCULAR badges — a fixed 28px
+#health-card .fb-sm>span:first-child{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;} /* Owner 2026-08-15: health counts are now CIRCULAR badges - a fixed 28px
    circle with a bolder 800-weight figure, so the number reads as a solid,
    polished count that mirrors the project's state color (the old thin pills
    were "just thin, nothing to them"). Row height stays 33px (28px badge +
@@ -635,8 +599,7 @@ body.sidebar-open .nav-btn .ico,body.sidebar-open .sb-close .ico{transform:rotat
 
 /* ---- Progress Ring ---- */
 .pring{position:relative;width:96px;height:96px;}
-.pring svg{transform:rotate(-90deg);}
-/* Owner 2026-08-15: the Project Completion ring was too thin — the stroke
+.pring svg{transform:rotate(-90deg);} /* Owner 2026-08-15: the Project Completion ring was too thin - the stroke
    is now THREE TIMES thicker (6 → 18). The circle radius is 39 (was 40) so
    the thicker ring still sits exactly inside the 96px box (outer edge at
    48px, inner hole 60px), and the dash math below uses the matching 245px
@@ -651,16 +614,14 @@ body.sidebar-open .nav-btn .ico,body.sidebar-open .sb-close .ico{transform:rotat
 .ba{background:rgba(var(--amber-rgb),.2);color:var(--amber);border:1px solid var(--amber);}
 .br{background:rgba(220,53,69,.2);color:var(--danger);border:1px solid var(--danger);}
 .bo{background:rgba(var(--gold-rgb),.2);color:var(--gold);border:1px solid var(--gold);}
-.bs{background:rgba(138,149,165,.15);color:var(--slate);border:1px solid var(--slate);}
-/* .badge-ai — cloud changelog entries imported from the MCP AI sidecar
+.bs{background:rgba(138,149,165,.15);color:var(--slate);border:1px solid var(--slate);} /* .badge-ai - cloud changelog entries imported from the MCP AI sidecar
    (backlog, 2026-08-12). Purple token badge so AI-made changes read distinctly
    from owner/editor saves; token-driven so it adapts to both palettes + dark
    mode. */
 .badge-ai{display:inline-flex;align-items:center;gap:3px;padding:1px 8px;border-radius:999px;font-size:.6rem;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--purple);border:1px solid rgba(var(--purple-rgb),.45);background:rgba(var(--purple-rgb),.12);white-space:nowrap;}
 .badge-ai .ico{width:10px;height:10px;}
 /* ---- Changelog click-to-expand diff panel (backlog, 2026-08-12) ----
-   Every changelog entry carrying field-level diffs gets a caret toggle that
-   reveals the before/after panel. Panel is a solid tile surface (Gate 6.1 —
+   Every changelog entry carrying field-level diffs gets a caret toggle that    reveals the before/after panel. Panel is a solid tile surface (Gate 6.1 -
    never glass over data), token-driven, capped rows inside. */
 .cl-toggle{appearance:none;border:1px solid var(--border);background:transparent;color:var(--slate);width:22px;height:22px;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;padding:0;transition:all var(--tr);flex-shrink:0;}
 .cl-toggle:focus-visible{outline:2px solid var(--gold);outline-offset:1px;}
@@ -780,8 +741,7 @@ body.sidebar-open .nav-btn .ico,body.sidebar-open .sb-close .ico{transform:rotat
 #health-bar{height:100%;border-radius:5px;transition:width .5s ease;}
 #health-score-label{font-size:.82rem;font-weight:700;}
 #health-breakdown{font-size:.7rem;color:var(--slate);display:flex;flex-direction:column;gap:3px;margin-top:8px;}
-.evm-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;}
-/* UI-MODERNIZATION 2026-08-14: EVM tiles get the sc-cell rhythm — flex
+.evm-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;} /* UI-MODERNIZATION 2026-08-14: EVM tiles get the sc-cell rhythm - flex
    column, centered, with a small gap between label / figure / sub-label so
    the values no longer sit flush-stacked (was 0px gap). */
 .evm-tile{display:flex;flex-direction:column;align-items:center;gap:3px;text-align:center;padding:12px;background:var(--tile-bg);border-radius:var(--radius);transition:border-color var(--tr),box-shadow var(--tr);border:1px solid transparent;}
@@ -889,8 +849,7 @@ body.hl-critical #gantt-labels .gr.hl-dim{opacity:.3;}
 .sc-cell{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:88px;padding:10px;background:var(--tile-bg);border-radius:var(--radius);text-align:center;transition:border-color var(--tr);border:1px solid transparent;}
 .sc-cell:hover{border-color:rgba(var(--gold-rgb),.2);}
 .sc-cell .big{font-size:1.7rem;font-weight:900;line-height:1.15;font-variant-numeric:tabular-nums;}
-.sc-cell .lbl{font-size:.65rem;color:var(--slate);line-height:1.4;}
-/* Crash-candidate cell: the task name is the "big" figure — class-based
+.sc-cell .lbl{font-size:.65rem;color:var(--slate);line-height:1.4;} /* Crash-candidate cell: the task name is the "big" figure - class-based
    (not inline) so it shares the cell rhythm without stretching the row. */
 .sc-cell .big.sc-crash{font-size:.85rem;font-weight:700;color:var(--gold);}
 
@@ -997,8 +956,7 @@ body.dark-mode .dmaic-chip{background:rgba(255,255,255,.06);}
 .wb-milestone{font-size:.62rem;color:var(--slate);margin-left:6px;cursor:pointer;display:inline-flex;align-items:center;gap:3px;}
 .wb-milestone svg{font-size:.7rem;}
 .wb-milestone input{vertical-align:middle;}
-.es-ok{color:var(--green);display:flex;align-items:center;gap:6px;padding:14px;font-size:.78rem;}
-/* ACTION-PLAN 3.1 action aging — quiet list, escalating badges */
+.es-ok{color:var(--green);display:flex;align-items:center;gap:6px;padding:14px;font-size:.78rem;} /* ACTION-PLAN 3.1 action aging - quiet list, escalating badges */
 .aa-row{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;padding:7px 10px;border:1px solid var(--border);border-radius:4px;margin-bottom:4px;font-size:.76rem;transition:border-color var(--tr),background var(--tr);}
 .aa-row:hover{border-color:rgba(var(--gold-rgb),.3);background:rgba(var(--gold-rgb),.03);}
 .aa-txt{flex:1;min-width:0;}
@@ -1031,8 +989,7 @@ body.dark-mode .dmaic-chip{background:rgba(255,255,255,.06);}
 /* ---- Today's Focus card (no-inline-style pass) ---- */
 .tf-group{margin-bottom:12px;}
 .tf-head{font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;display:flex;align-items:center;gap:5px;}
-/* UI-MODERNIZATION 2026-08-14: Today's Decision + Today's Focus rows share
-   the 33px status-row rhythm — labels left (shrink + ellipsis so a long
+/* UI-MODERNIZATION 2026-08-14: Today's Decision + Today's Focus rows share    the 33px status-row rhythm - labels left (shrink + ellipsis so a long
    title can't shove the detail), values/controls right-pinned. */
 .tf-row{display:flex;justify-content:space-between;align-items:center;gap:12px;min-height:33px;padding:5px 10px;border:1px solid var(--border);border-left-width:3px;border-radius:4px;margin-bottom:4px;font-size:.78rem;}
 .tf-row>div:first-child{flex:1;min-width:0;display:flex;align-items:center;gap:6px;}
@@ -1069,8 +1026,7 @@ body.gantt-dragging .gb{cursor:grabbing;}
 .cfm-list{display:flex;flex-wrap:wrap;gap:4px;max-height:120px;overflow:auto;}
 .cfm-list code{font-size:.68rem;background:#f1f5f9;border:1px solid var(--border);border-radius:4px;padding:2px 6px;color:var(--text);}
 
-/* ---- IN-PROJECT DELETE (owner 2026-08-17): Danger Zone + confirm modal ----
-   Settings > Controls > bottom. #del-zone is a .ctl-sec (display:flex — the
+/* ---- IN-PROJECT DELETE (owner 2026-08-17): Danger Zone + confirm modal ----    Settings > Controls > bottom. #del-zone is a .ctl-sec (display:flex - the
    [hidden] guard below is REQUIRED or the section shows for editors too);
    the modal mirrors the #cfm-modal sheet pattern with the shared .email-auth
    password-field styles inside (the .email-auth-pw[hidden] guard already
@@ -1107,8 +1063,7 @@ body.gantt-dragging .gb{cursor:grabbing;}
 /* ---- Boot loading skeleton (Phase F) ---- */
 #boot-splash{position:fixed;inset:0;z-index:10000;background:var(--canvas);display:flex;align-items:center;justify-content:center;transition:opacity .3s;}
 #boot-splash.off{opacity:0;pointer-events:none;}
-.bs-inner{text-align:center;color:var(--slate);font-size:.8rem;display:flex;flex-direction:column;align-items:center;gap:14px;}
-/* ACTION-PLAN 4.1: view-only scope — a static amber strip under the header */
+.bs-inner{text-align:center;color:var(--slate);font-size:.8rem;display:flex;flex-direction:column;align-items:center;gap:14px;} /* ACTION-PLAN 4.1: view-only scope - a static amber strip under the header */
 #readonly-banner{position:sticky;top:0;z-index:1500;display:flex;align-items:center;justify-content:center;gap:8px;background:rgba(245,158,11,.12);border-bottom:1px solid rgba(245,158,11,.35);color:var(--gold);font-size:.72rem;padding:6px 14px;letter-spacing:.3px;}
 #readonly-banner.is-hide{display:none;}
 /* Mobile: non-sticky so it doesn't stack with the header; compact single-line */
@@ -1120,8 +1075,7 @@ body.gantt-dragging .gb{cursor:grabbing;}
    code's section scope server-side on every save, so even a compromised
    code cannot write outside its grant. */
 #editor-scope-banner{position:sticky;top:0;z-index:1500;display:flex;align-items:center;justify-content:center;gap:8px;background:rgba(59,130,246,.12);border-bottom:1px solid rgba(59,130,246,.35);color:var(--blue);font-size:.72rem;padding:6px 14px;letter-spacing:.3px;}
-#editor-scope-banner.is-hide{display:none;}
-/* C19 client scope: hidden nav (never a grey-out — clients see ONLY the
+#editor-scope-banner.is-hide{display:none;} /* C19 client scope: hidden nav (never a grey-out - clients see ONLY the
    granted sections, per owner D3) + the read-only banner. */
 .sec-btn.client-hidden{display:none!important;}
 #client-scope-banner{position:sticky;top:0;z-index:1500;display:flex;align-items:center;justify-content:center;gap:8px;background:rgba(147,51,234,.10);border-bottom:1px solid rgba(147,51,234,.30);color:var(--purple);font-size:.72rem;padding:6px 14px;letter-spacing:.3px;}
@@ -1129,8 +1083,7 @@ body.gantt-dragging .gb{cursor:grabbing;}
 /* Rank 10 item 21 — Heat/Cold SAFETY banner (promoted 2026-08-13): full-width
    page-top alert, deliberately distinct (danger/blue tint + i-alert-triangle)
    from the amber schedule-risk flags so a safety concern never reads as a
-   schedule concern. Shares the bar language of the mode banners above but is
-   NOT sticky (transient alert — avoids stacking with the sticky scope bars).
+   schedule concern. Shares the bar language of the mode banners above but is    NOT sticky (transient alert - avoids stacking with the sticky scope bars).
    Hues reuse the in-panel wfr-heat/wfr-cold tints; tokens re-tint per theme. */
 #safety-banner{display:flex;align-items:center;justify-content:center;gap:8px;font-size:.72rem;padding:7px 14px;letter-spacing:.3px;line-height:1.5;}
 #safety-banner.is-hide{display:none;}
@@ -1181,8 +1134,7 @@ body.readonly-mode .btn[data-action]:not([data-action="showSec"]):not([data-acti
 .tgl input{opacity:0;width:0;height:0;}
 .tsl{position:absolute;cursor:pointer;inset:0;background:var(--border);border-radius:100px;transition:all .4s var(--spring);}
 .tsl::before{content:'';position:absolute;height:14px;width:14px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:var(--tr);}
-/* MERGED-AI-CONTROL/audit 1.2 (#4): the old `var(--danger)` checked-state
-   was dead code — the Android toggle contrast block later in this sheet
+/* MERGED-AI-CONTROL/audit 1.2 (#4): the old `var(--danger)` checked-state    was dead code - the Android toggle contrast block later in this sheet
    overrides it with var(--toggle-on-bg) on equal specificity. Relying on
    cascade order to suppress a red ON state is fragile; the rule is deleted. */
 .tgl input:checked+.tsl::before{transform:translateX(16px);}
@@ -1194,8 +1146,7 @@ body.readonly-mode .btn[data-action]:not([data-action="showSec"]):not([data-acti
 /* ---- Drawer ---- */
 #drw{position:fixed;top:0;right:-430px;width:410px;height:100vh;z-index:1000;transition:right .3s ease;overflow:hidden;
   /* The outer shadow lives here as a filter:drop-shadow so it follows the
-     ROUNDED silhouette of the child .drw-sheet (left corners rounded on
-     desktop — a box-shadow on the child would be clipped by its own
+     ROUNDED silhouette of the child .drw-sheet (left corners rounded on      desktop - a box-shadow on the child would be clipped by its own
      overflow:hidden). */
   filter:drop-shadow(-8px 0 24px rgba(15,23,42,.14));}
 #drw.open{right:0;}
@@ -1286,8 +1237,7 @@ body.dark-mode .fmt-card,body.dark-mode .share-card{background:var(--card);}
 ::-webkit-scrollbar{width:6px;height:6px;}
 ::-webkit-scrollbar-track{background:var(--canvas);}
 ::-webkit-scrollbar-thumb{background:linear-gradient(180deg,rgba(var(--gold-rgb),0.45),rgba(var(--gold-rgb),0.2));border-radius:3px;}
-::-webkit-scrollbar-thumb:hover{background:var(--slate);}
-/* Firefox parity: no ::-webkit-scrollbar there — thin branded scrollbar
+::-webkit-scrollbar-thumb:hover{background:var(--slate);} /* Firefox parity: no ::-webkit-scrollbar there - thin branded scrollbar
    with the same gold thumb / canvas track. */
 *{scrollbar-width:thin;scrollbar-color:rgba(var(--gold-rgb),.45) var(--canvas);}
 
@@ -1295,15 +1245,13 @@ body.dark-mode .fmt-card,body.dark-mode .share-card{background:var(--card);}
 textarea{resize:vertical;}
 select{appearance:none;-webkit-appearance:none;background-color:var(--card);color:var(--text);border:1px solid var(--border);border-radius:var(--radius);padding:4px 26px 4px 8px;font-size:.78rem;cursor:pointer;transition:border-color var(--tr),box-shadow var(--tr);background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 8px center;}
 select:hover{border-color:var(--gold);}
-select option{background:var(--card);color:var(--text);}
-/* MODERN-UI-POLISH DIR-3: ONE focus treatment app-wide — the .ai-q glow-ring
+select option{background:var(--card);color:var(--text);} /* MODERN-UI-POLISH DIR-3: ONE focus treatment app-wide - the .ai-q glow-ring
    pattern (gold border + soft ring) replaces the hand-rolled per-component
    border-color-only focus states. Grid-cell keyboard focus (.raci-cell,
    .wbs-row) keeps its outline treatment on purpose. */
 input:focus,select:focus,textarea:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 3px rgba(245,158,11,.14);}
 /* The three controls below hardcode their own border with equal-or-higher
-   specificity (and later source order), which would otherwise override the
-   gold border on focus — re-assert it so the ring never appears alone. */
+   specificity (and later source order), which would otherwise override the    gold border on focus - re-assert it so the ring never appears alone. */
 .kpi-row input:focus,.wx-field input:focus,.kpi-link-row select:focus{border-color:var(--gold);}
 input[type=date]{background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:4px;padding:4px 8px;font-size:.78rem;}
 hr.div{border:none;border-top:1px solid var(--border);margin:14px 0;}
@@ -1361,8 +1309,7 @@ hr.div{border:none;border-top:1px solid var(--border);margin:14px 0;}
 .var-neg{color:var(--danger);font-weight:700;}
 /* The backup popover anchors to this wrapper so it opens DIRECTLY under the
    indicator (the indicator itself is the position:relative context). */
-.bk-anchor{position:relative;display:inline-flex;}
-/* OWNER 2026-08-15: the header "Signed in" chip (project.html) — a green
+.bk-anchor{position:relative;display:inline-flex;} /* OWNER 2026-08-15: the header "Signed in" chip (project.html) - a green
    pill mirroring the amber "Not backed up" indicator, shown only when a
    real Google/email session exists. Hidden by default; mmgr-google-auth.js
    toggles it. Clicking opens the Settings drawer at the Controls tab. */
@@ -1371,14 +1318,12 @@ hr.div{border:none;border-top:1px solid var(--border);margin:14px 0;}
 .si-chip:focus-visible{outline:2px solid var(--green);outline-offset:2px;}
 .si-chip .ico{width:12px;height:12px;}
 .si-chip[hidden]{display:none;}
-/* STABILIZATION 2026-08-16: the project.html header chip now carries the
-   signed-in identity — small name-initial avatar (or Google photo) + name,
+/* STABILIZATION 2026-08-16: the project.html header chip now carries the    signed-in identity - small name-initial avatar (or Google photo) + name,
    mirroring the app.html rail. The Premium pill inside is a [data-plan-badge]
    mount filled by mmgr-google-auth.js refreshPlan(). */
 .si-chip .gchip-avatar{width:22px;height:22px;font-size:.6rem;background:var(--slate);color:#fff;}
 .hdr-chip-name{max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-/* Shared Premium pill (app pages): rendered into [data-plan-badge] mounts by
-   mmgr-google-auth.js refreshPlan() — project.html header chip, admin rail.
+/* Shared Premium pill (app pages): rendered into [data-plan-badge] mounts by    mmgr-google-auth.js refreshPlan() - project.html header chip, admin rail.
    Mirrors body.db-page .db-plan-badge from app.html's rail footer. */
 .plan-pill{display:inline-flex;align-items:center;gap:4px;font-size:.58rem;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--gold);border:1px solid var(--gold);border-radius:100px;padding:2px 8px;background:rgba(var(--gold-rgb),.12);white-space:nowrap;}
 .plan-pill .ico{width:11px;height:11px;}
@@ -1389,8 +1334,7 @@ hr.div{border:none;border-top:1px solid var(--border);margin:14px 0;}
 .pulse-attn{animation:pulseAttn .6s ease-out 2;}
 @media (prefers-reduced-motion: reduce){.pulse-attn{animation:none;outline:2px solid var(--gold);}}
 .dirty-ind.on{display:inline-flex;}
-/* OWNER 2026-08-15: cloud-linked projects show a GREEN "Cloud backed up"
-   chip instead of the amber "Not backed up" — the cloud snapshot auto-syncs
+/* OWNER 2026-08-15: cloud-linked projects show a GREEN "Cloud backed up"    chip instead of the amber "Not backed up" - the cloud snapshot auto-syncs
    as the user works, so there is nothing to be alarmed about. Same pill
    shape; the .ico is the i-cloud sprite symbol. */
 .dirty-ind .ico{width:12px;height:12px;flex-shrink:0;}
@@ -1399,8 +1343,7 @@ hr.div{border:none;border-top:1px solid var(--border);margin:14px 0;}
 
 /* ---- Backup popover (owner 2026-08-15) ----
    Clicking the "Not backed up" indicator opens a small glass card under it
-   with the two backup routes: Backup to cloud (automatic once the project is
-   linked — Save to Cloud keeps the snapshot current) and Backup to local
+   with the two backup routes: Backup to cloud (automatic once the project is    linked - Save to Cloud keeps the snapshot current) and Backup to local
    (a portable .json file). Anchored to the indicator inside the sticky
    header so it stays put while the page scrolls. Same card language as
    everywhere: glass surface, squircle radius, full-contrast text. */
@@ -1438,8 +1381,7 @@ body.dark-mode .bk-pop{background:var(--glass-fill-dark-hover);}
 /* ---- Empty State ---- */
 .hp{position:fixed;bottom:0;left:0;height:3px;background:var(--danger);width:0;z-index:9999;}
 .vl{font-size:.68rem;color:var(--slate);text-transform:uppercase;letter-spacing:1px;margin-bottom:14px;padding:5px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;}
-.vl span{color:var(--gold);}
-/* Sec-nav: plain pill row (reference alignment) — no card wrapper,
+.vl span{color:var(--gold);} /* Sec-nav: plain pill row (reference alignment) - no card wrapper,
    tabs sit directly under the .vl caption line with natural spacing. */
 .es{text-align:center;padding:36px 18px;color:var(--slate);font-size:.82rem;}
 .es.es-row{padding:24px;font-size:.78rem;line-height:1.7;}
@@ -1561,8 +1503,7 @@ body.dark-mode .bk-pop{background:var(--glass-fill-dark-hover);}
   .tab-btn{padding:6px 12px;font-size:.78rem;}
 }
 
-/* ============================================================
-   Phase F — project.html layout utilities.
+/* ============================================================    Phase F - project.html layout utilities.
    Static markup carries zero inline styles; every static value
    lives here as a named class. The residual inline styles that
    remain in the app are the JS-controlled ones (element.style
@@ -1660,12 +1601,10 @@ body.dark-mode .bk-pop{background:var(--glass-fill-dark-hover);}
 /* next-3 priority list */
 .n3{font-size:.78rem;padding-left:15px;display:flex;flex-direction:column;gap:8px;color:var(--text);}
 
-/* ============================================================
-   GLASS-UI-DESIGN-SPEC.md — surface treatment layer.
+/* ============================================================    GLASS-UI-DESIGN-SPEC.md - surface treatment layer.
    Applies ONLY to controls & containers: the header/toolbar,
    buttons, modals/sheets, dashboard project cards, toggles and
-   badges. Tables, WBS, Gantt, budget grids, RACI and all dense
-   data views stay flat, opaque and high-contrast — no blur.
+   badges. Tables, WBS, Gantt, budget grids, RACI and all dense    data views stay flat, opaque and high-contrast - no blur.
    ============================================================ */
 
 /* §3 recipe — exact declaration order (saturate boost is mandatory) */
@@ -1682,9 +1621,7 @@ body.dark-mode .bk-pop{background:var(--glass-fill-dark-hover);}
   backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturate));
   -webkit-backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturate));
   box-shadow:var(--glass-rim);}
-header{position:sticky;top:0;z-index:100;}
-
-/* §6.3 modals / sheets — stronger fill over the dimmed scrim, squircle-lg */
+header{position:sticky;top:0;z-index:100;} /* §6.3 modals / sheets - stronger fill over the dimmed scrim, squircle-lg */
 .mb,#chartup-modal .cu-box,#wbsimport-modal .wi-box,#importdates-modal .wi-box{
   background:var(--glass-fill-dark-hover);
   backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturate));
@@ -1692,22 +1629,17 @@ header{position:sticky;top:0;z-index:100;}
   border:var(--glass-border);
   border-radius:var(--squircle-lg);
   box-shadow:var(--glass-rim),var(--glass-shadow);
-}
-/* §2/§6.3 — modal sheets use PLAIN rounded corners (owner 2026-08-15: "only
-   square and round edges — any other edges is useless"). The old n=4.5
+} /* §2/§6.3 - modal sheets use PLAIN rounded corners (owner 2026-08-15: "only    square and round edges - any other edges is useless"). The old n=4.5
    superellipse clip-path traced corners that read as cut-in / "eating out";
    border-radius:var(--squircle-lg) above is the whole corner treatment now.
-   #ai-win .mb is a work surface (corner resize handles + own 22px radius +
-   big shadow) and the .cu-box/.wi-box content dialogs scroll — both keep
+   #ai-win .mb is a work surface (corner resize handles + own 22px radius +    big shadow) and the .cu-box/.wi-box content dialogs scroll - both keep
    border-radius only, unchanged. */
 /* Scrims blur the page behind the sheet (not just dim it) */
 #om,#cfm-modal,#conflict-modal,#chartup-modal,#wbsimport-modal,#importdates-modal,
 #adm-cfm,#pw-om,#adm-conflict,#snip-om{
   backdrop-filter:blur(4px);
   -webkit-backdrop-filter:blur(4px);
-}
-/* Settings drawer is a sheet — same material as modals. PLAIN rounded
-   corners (owner 2026-08-15: square edges + round corners only — the old
+} /* Settings drawer is a sheet - same material as modals. PLAIN rounded    corners (owner 2026-08-15: square edges + round corners only - the old
    superellipse clip-path corners read as cut-in / "eating out" and are gone).
    #drw keeps the positioning frame + a filter drop-shadow that follows the
    rounded silhouette. */
@@ -1715,14 +1647,11 @@ header{position:sticky;top:0;z-index:100;}
   backdrop-filter:blur(24px) saturate(180%);
   -webkit-backdrop-filter:blur(24px) saturate(180%);
   box-shadow:-4px 0 24px rgba(0,0,0,.35);}
-/* Desktop: round the drawer's LEFT corners (the right edge is flush with the
-   viewport, so it stays square — edge-to-edge per §6.2). Mobile is full-width
+/* Desktop: round the drawer's LEFT corners (the right edge is flush with the    viewport, so it stays square - edge-to-edge per §6.2). Mobile is full-width
    and edge-to-edge on both sides, so it keeps square corners. */
 @media(min-width:769px){
   .drw-sheet{border-top-left-radius:var(--squircle-lg);border-bottom-left-radius:var(--squircle-lg);}
-}
-
-/* §6.1 buttons — glass surface, squircle-md, gold tint on primary */
+} /* §6.1 buttons - glass surface, squircle-md, gold tint on primary */
 .btn{
   border-radius:var(--squircle-md);
   background:var(--glass-fill-dark);
@@ -1743,8 +1672,7 @@ header{position:sticky;top:0;z-index:100;}
 .btn-d{background:transparent;border:1px solid var(--danger);color:var(--danger);}
 .btn-d:hover{background:var(--danger);color:#fff;}
 .btn-n{background:var(--glass-fill-dark);color:var(--toggle-off-fg);}
-.btn-n:hover{border-color:var(--green);color:var(--green);}
-/* Keep the amber Undo button amber — it is a warning action, not a glass neutral */
+.btn-n:hover{border-color:var(--green);color:var(--green);} /* Keep the amber Undo button amber - it is a warning action, not a glass neutral */
 .btn-warn{background:var(--amber);color:#000;border:var(--glass-border);}
 .btn-warn:hover{background:#92400e;}
 /* Dark mode: frosted translucent tints return */
@@ -1774,9 +1702,7 @@ body.dark-mode .btn-warn:hover{background:#d97706;}
 .tab-btn,.sec-btn{background:var(--glass-fill-dark);
   backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturate));
   -webkit-backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturate));
-  box-shadow:var(--glass-rim);}
-
-/* §5 Android toggle-state contrast — solid ON vs frosted OFF (never opacity) */
+  box-shadow:var(--glass-rim);} /* §5 Android toggle-state contrast - solid ON vs frosted OFF (never opacity) */
 .tgl .tsl{background:var(--toggle-off-bg);
   backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturate));
   -webkit-backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturate));
@@ -1797,9 +1723,7 @@ body.dark-mode .btn-warn:hover{background:#d97706;}
   box-shadow:var(--glass-rim);}
 .toggle-chip.is-on{background:var(--toggle-on-bg);color:var(--toggle-on-fg);
   backdrop-filter:none;-webkit-backdrop-filter:none;
-  box-shadow:var(--glass-rim-strong),0 2px 8px rgba(0,0,0,.25);}
-
-/* §6.4 dashboard project cards — glass + hover lift & brighten */
+  box-shadow:var(--glass-rim-strong),0 2px 8px rgba(0,0,0,.25);} /* §6.4 dashboard project cards - glass + hover lift & brighten */
 .pcard{
   background:var(--glass-fill-dark);
   backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturate));
@@ -1810,17 +1734,12 @@ body.dark-mode .btn-warn:hover{background:#d97706;}
     background var(--tr),border-color var(--tr),box-shadow var(--tr);
 }
 .pcard:hover{transform:translateY(-3px);border-color:var(--gold);background:var(--glass-fill-dark-hover);
-  box-shadow:var(--glass-rim),0 12px 30px rgba(15,23,42,.14);}
-/* Unlocked card: §5 ON-state cue — solid gold top edge instead of full inversion */
-.pcard.unlocked{box-shadow:inset 0 3px 0 var(--gold),var(--glass-rim),var(--glass-shadow);}
-
-/* §6.3 access-code input — recessed glass well with gold focus ring */
+  box-shadow:var(--glass-rim),0 12px 30px rgba(15,23,42,.14);} /* Unlocked card: §5 ON-state cue - solid gold top edge instead of full inversion */
+.pcard.unlocked{box-shadow:inset 0 3px 0 var(--gold),var(--glass-rim),var(--glass-shadow);} /* §6.3 access-code input - recessed glass well with gold focus ring */
 #code-input{background:var(--glass-fill-dark);border:var(--glass-border);border-radius:var(--squircle-sm);
   box-shadow:inset 0 2px 4px rgba(15,23,42,.08);}
 #code-input:focus{border-color:var(--gold);outline:none;
-  box-shadow:inset 0 2px 4px rgba(15,23,42,.08),0 0 0 3px rgba(245,158,11,.25);}
-
-/* §6.7 status badges — active/completed solid, on-hold/planning frosted */
+  box-shadow:inset 0 2px 4px rgba(15,23,42,.08),0 0 0 3px rgba(245,158,11,.25);} /* §6.7 status badges - active/completed solid, on-hold/planning frosted */
 .badge.active,.badge.completed{background:rgba(16,185,129,.18);color:var(--green);border:1px solid var(--green);backdrop-filter:none;}
 .badge.on-hold{background:var(--glass-fill-dark);color:var(--amber);border:1px solid rgba(var(--amber-rgb),.35);
   backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturate));
@@ -1848,8 +1767,7 @@ body.dark-mode .btn-warn:hover{background:#d97706;}
   .glass-surface,#app-header,header,#drw,.drw-sheet,.mb,.gbox,#chartup-modal .cu-box,#wbsimport-modal .wi-box,#importdates-modal .wi-box,
   .pcard,.btn,.toggle-chip,.tab-btn,.sec-btn,.settings-btn,.dc,.tgl .tsl,.badge.on-hold,.badge.planning,.dock{
     backdrop-filter:none!important;-webkit-backdrop-filter:none!important;background:var(--card);
-  }
-  /* Re-assert accent/ON-state fills — without blur the group rule above would
+  }   /* Re-assert accent/ON-state fills - without blur the group rule above would
      flatten them to white-on-white in light mode (masked under the old dark
      default, now visible). Mirrors the @supports fallback above. */
   .btn-g{background:var(--green);}
@@ -1863,8 +1781,7 @@ body.dark-mode .btn-warn:hover{background:#d97706;}
 @media (prefers-reduced-motion:reduce){
   .btn,.pcard,.tab-btn,.sec-btn,.settings-btn,.dc,.toggle-chip,.tgl .tsl,.pal-btn{
     transition:none!important;transform:none!important;
-  }
-  /* The sidebar's slide is a motion affordance only — instant toggle under
+  }   /* The sidebar's slide is a motion affordance only - instant toggle under
      reduced motion. (transform:none is deliberately NOT applied here: the
      rail's open state is transform-driven.) */
   #app-sidebar{transition:none!important;}
@@ -1913,8 +1830,7 @@ body.dark-mode #gantt-tip{box-shadow:0 10px 30px rgba(0,0,0,.5);}
 body.dark-mode .mlc-card{box-shadow:0 8px 32px rgba(0,0,0,.5);}
 body.dark-mode #drw{filter:drop-shadow(-8px 0 24px rgba(0,0,0,.35));}
 body.dark-mode .pcard:hover{box-shadow:var(--glass-rim),0 12px 30px rgba(0,0,0,.35);}
-/* ============================================================
-   V10 additions — ACTION-PLAN 3.2/3.3 + item 23 + 7.3 + AI window
+/* ============================================================    V10 additions - ACTION-PLAN 3.2/3.3 + item 23 + 7.3 + AI window
    Streak, Team Pulse, rolling lead-time forecast, distributed
    weather float, AI assistant modal. All consume design tokens
    so dark mode stays consistent.
@@ -1972,8 +1888,7 @@ body.dark-mode .ltr-roll td{color:var(--text);}
 #ai-win{display:none;position:fixed;top:var(--hdr-h,64px);right:0;bottom:0;width:420px;z-index:2000;background:var(--canvas);border-left:1px solid var(--border);box-shadow:-8px 0 40px rgba(0,0,0,.2);overflow:hidden;}
 #ai-win.open{display:flex;animation:aiSlideIn .3s var(--ease-ios);}
 @keyframes aiSlideIn{from{transform:translateX(100%);}to{transform:translateX(0);}}
-#ai-win .mb{position:relative;width:100%;height:100%;border-radius:0;border:none;box-shadow:none;overflow:hidden;}
-/* AI-WINDOW-RESIZE: eight edge/corner drag handles — invisible hit-strips
+#ai-win .mb{position:relative;width:100%;height:100%;border-radius:0;border:none;box-shadow:none;overflow:hidden;} /* AI-WINDOW-RESIZE: eight edge/corner drag handles - invisible hit-strips
    that fade in on modal hover and show the right resize cursor (cursors
    apply even while invisible). touch-action:none so pointer drags on touch
    are not hijacked by scrolling. z-index above the thread scroll. */
@@ -1994,15 +1909,13 @@ body.dark-mode .ltr-roll td{color:var(--text);}
 .ai-head{padding:13px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:linear-gradient(180deg,rgba(245,158,11,.08),transparent);}
 .ai-head .mt{display:inline-flex;align-items:center;gap:8px;font-size:.95rem;font-weight:800;color:var(--gold);}
 .ai-head .mt .ico{font-size:1rem;}
-/* AI-WINDOW-POLISH: engine status + API badge + tier select grouped into one
-   right-aligned cluster — the header now reads [title] [controls] instead of
+/* AI-WINDOW-POLISH: engine status + API badge + tier select grouped into one    right-aligned cluster - the header now reads [title] [controls] instead of
    six loose items scattered across the bar. */
 .ai-head-right{display:flex;align-items:center;gap:7px;margin-left:auto;flex-wrap:wrap;justify-content:flex-end;}
 .ai-pill{display:inline-flex;align-items:center;gap:5px;font-size:.6rem;font-weight:600;color:var(--slate);border:1px solid var(--border);border-radius:100px;padding:2px 9px;background:var(--card);white-space:nowrap;}
 .ai-pill-dot{width:7px;height:7px;border-radius:50%;background:var(--slate);transition:background var(--tr);}
 .ai-pill[data-tier="local"] .ai-pill-dot{background:var(--green);box-shadow:0 0 6px var(--green);}
-.ai-pill[data-tier="cloud"] .ai-pill-dot{background:var(--gold);box-shadow:0 0 6px var(--gold);}
-/* INTEGRATED-STRUCTURE-API-WINDOW (plan §3): live backend-API status badge —
+.ai-pill[data-tier="cloud"] .ai-pill-dot{background:var(--gold);box-shadow:0 0 6px var(--gold);} /* INTEGRATED-STRUCTURE-API-WINDOW (plan §3): live backend-API status badge -
    checking (pulsing slate dot) → connected (green) / error (red) /
    disconnected (slate). Click-to-re-check is wired in mmgr-ai.js. */
 .ai-api-pill{cursor:pointer;user-select:none;transition:color var(--tr),border-color var(--tr);}
@@ -2024,8 +1937,7 @@ body.dark-mode .ai-api-pill[data-state="error"]{background:rgba(239,68,68,.1);}
 .ai-clear-btn{background:none;border:1px solid var(--border);color:var(--slate);border-radius:100px;padding:4px 11px;font-size:.66rem;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:5px;transition:all var(--tr);}
 .ai-clear-btn:hover{color:var(--danger);border-color:var(--danger);}
 /* DIR-1 (AI-WINDOW-LAYOUT-SCROLL-AND-INPUT-BUG): Chat/Presets segment control
-   at the top of the AI window body. The presets live in their own pane and are
-   reachable by tab regardless of conversation length — the old stacked layout
+   at the top of the AI window body. The presets live in their own pane and are    reachable by tab regardless of conversation length - the old stacked layout
    made them structurally unreachable once the thread filled the modal. */
 .ai-seg{display:flex;gap:4px;padding:8px 14px;border-bottom:1px solid var(--border);background:var(--tile-bg);flex-shrink:0;}
 .ai-seg-btn{flex:1;min-width:0;padding:9px 14px;border:none;background:none;color:var(--slate);font-size:.72rem;font-weight:700;font-family:inherit;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;border-radius:100px;transition:color var(--tr),background var(--tr),box-shadow var(--tr);}
@@ -2052,8 +1964,7 @@ body.dark-mode .ai-seg-btn.is-on{background:rgba(255,255,255,.08);}
 .ai-text{white-space:pre-wrap;word-break:break-word;}
 .ai-tip{font-size:.68rem;color:var(--slate);margin-top:8px;line-height:1.6;}
 .ai-err{color:var(--danger);font-weight:500;}
-.ai-meta{font-size:.6rem;color:var(--slate);margin-top:9px;padding-top:7px;border-top:1px dashed var(--border);display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
-/* AI-WINDOW-POLISH: per-answer Copy button — ghost chip, right-aligned in
+.ai-meta{font-size:.6rem;color:var(--slate);margin-top:9px;padding-top:7px;border-top:1px dashed var(--border);display:flex;align-items:center;gap:6px;flex-wrap:wrap;} /* AI-WINDOW-POLISH: per-answer Copy button - ghost chip, right-aligned in
    the meta row; flips to a green Copied state on success. */
 .ai-copy-btn{margin-left:auto;display:inline-flex;align-items:center;gap:4px;border:1px solid transparent;background:none;color:var(--slate);font-size:.6rem;font-weight:600;font-family:inherit;padding:2px 8px;border-radius:100px;cursor:pointer;transition:color var(--tr),border-color var(--tr),background var(--tr);}
 .ai-copy-btn .ico{width:11px;height:11px;}
@@ -2065,9 +1976,7 @@ body.dark-mode .ai-seg-btn.is-on{background:rgba(255,255,255,.08);}
 .ai-typing span{width:7px;height:7px;border-radius:50%;background:var(--slate);animation:aiTyping 1.2s ease-in-out infinite;}
 .ai-typing span:nth-child(2){animation-delay:.16s;}
 .ai-typing span:nth-child(3){animation-delay:.32s;}
-@keyframes aiTyping{0%,60%,100%{transform:translateY(0);opacity:.35;}30%{transform:translateY(-4px);opacity:1;}}
-
-/* one-click preset chips — now inside the Presets pane (DIR-1); no border-top
+@keyframes aiTyping{0%,60%,100%{transform:translateY(0);opacity:.35;}30%{transform:translateY(-4px);opacity:1;}} /* one-click preset chips - now inside the Presets pane (DIR-1); no border-top
    needed since the pane supplies the separation. */
 .ai-sug-wrap{padding:16px 18px 18px;}
 .ai-sug-label{font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--slate);margin-bottom:8px;display:flex;align-items:center;gap:5px;}

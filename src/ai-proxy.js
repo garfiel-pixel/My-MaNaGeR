@@ -141,8 +141,7 @@ async function buildMcpContext(env, projectId, code) {
       'Issues: ' + issues.length,
       'Meetings: ' + meetings.length,
       'Weather delays: ' + weatherLog.filter(w => +w.delayDays > 0).length + ' days logged',
-      '\nTo suggest changes to this project, describe what should change and the user will review it in the Cloud section.',
-      'Do NOT fabricate data — use only what is shown above. If data is missing, say so.\n'
+      '\nTo suggest changes to this project, describe what should change and the user will review it in the Cloud section.',       'Do NOT fabricate data - use only what is shown above. If data is missing, say so.\n'
     ].join('\n');
   } catch (e) {
     return '';

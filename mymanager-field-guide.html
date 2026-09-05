@@ -656,6 +656,7 @@ footer{padding:70px 64px 46px;position:relative;}
         <a class="nav-link" href="#rfi-field-metrics"><span class="idx">A-22</span>RFIs, Submittals &amp; Field Metrics</a>
         <a class="nav-link" href="#registers-compliance"><span class="idx">A-23</span>Registers, Compliance &amp; Handover</a>
         <a class="nav-link" href="#reviews-window"><span class="idx">A-24</span>Public Reviews Window</a>
+        <a class="nav-link" href="#calculator"><span class="idx">A-25</span>Floating Calculator</a>
       </div>
     </nav>
   </aside>
@@ -1631,15 +1632,46 @@ Date: ____________  Focus: ____________</pre>
       </div>
     </section>
 
+    <!-- ============ A-25 FLOATING CALCULATOR ============ -->
+    <section class="sheet reveal" id="calculator">
+      <div class="tblock">
+        <div class="tblock-left"><span class="sheet-no">A-25</span><h2>Floating Calculator &amp; Trades Math</h2></div>
+        <div class="tblock-right"><div><b>Scale</b>Tool-level detail</div></div>
+      </div>
+      <span class="kicker">Open it anywhere with Ctrl+Shift+C, and pick the math that matches what you're doing</span>
+      <p class="lede">The floating calculator opens from the <strong>Controls ▸ Calculator</strong> row, the round button in the bottom-right corner, or the <strong>Ctrl+Shift+C</strong> shortcut. It's a draggable panel that stays on top of your work, so a takeoff number or a loan payment never means leaving the panel you're in. Ten tabs cover everything from a quick percent to a full concrete pour, and the <strong>gear</strong> in its top bar switches any of them off when you don't need them.</p>
+
+      <div class="grid grid-3">
+        <div class="card bracket"><span class="cnum">TAB</span><h4>Everyday math</h4><p>The first six tabs (General, Percent, Area, Convert, Markup, Cost Est.) are the quick-reference set: arithmetic, percentage change and "what is X% of Y," area and volume shapes, unit conversions across length/area/weight/volume/concrete, cost markup, unit cost, labor cost, material cost with waste, and contingency. These were the calculator's original core.</p></div>
+        <div class="card bracket"><span class="cnum">TAB</span><h4>Trades takeoffs</h4><p>The <strong>Trades</strong> tab holds construction takeoff math: concrete slab/footing/wall pours in cubic yards with 60 lb bag counts, column cylinders, masonry block and brick counts with mortar, earthwork cut/fill with swell, roof pitch to slope factor and roof squares, framing studs at 16/24 in centers, stair riser/tread/stringer layouts, paint and drywall coverage, tile counts with cut waste, asphalt tonnage, and trench volume.</p></div>
+        <div class="card bracket"><span class="cnum">TAB</span><h4>Bid, site, and EVM</h4><p><strong>Bid &amp; Fin.</strong> builds a bid from direct cost plus overhead and profit percentages, finds break-even units, and works a loan payment. <strong>Site &amp; Geo</strong> does slope grade, arc/chord, prismoid and frustum volumes, and engineering-unit conversions. <strong>EVM</strong> reads your actual project's earned value (SPI/CPI/EAC/ETC/VAC, Sheet A-02) or takes manual numbers.</p></div>
+      </div>
+
+      <h3 class="h-sub">Turning tabs on and off</h3>
+      <p class="prose">Click the <strong>gear</strong> in the calculator's top bar to open <strong>Calculator settings</strong>. Every category except General has a checkbox , uncheck one and its tab disappears from the bar immediately; check it again and it's back. Your choices are saved on that device (localStorage), so next time you open the calculator it shows only the tabs you kept. General is always on because it's the arithmetic core. If you turn off the tab you're currently looking at, the calculator falls back to General rather than leaving a blank panel.</p>
+
+      <h3 class="h-sub">Notes on the math</h3>
+      <div class="grid grid-3">
+        <div class="card"><span class="cnum">WASTE</span><h4>Waste is additive</h4><p>Takeoff tools that accept a waste percent (concrete, masonry, framing) compute the base quantity first, then add the waste on top, and the result line says so , "incl. 5% waste" , so you always see both the clean and the purchased number.</p></div>
+        <div class="card"><span class="cnum">RULES</span><h4>Standard rules of thumb</h4><p>60 lb concrete bag = 0.45 cu ft, mortar ~0.3 cu yd per 100 sq ft of block, paint covers 350 sq ft per gallon, drywall is counted in 4x8 sheets, tile adds 10% cut waste, asphalt ~145 lb/cu ft. The numbers are estimating conventions, not quotes , a supplier always wins on price.</p></div>
+        <div class="card"><span class="cnum">EVM</span><h4>Live project data</h4><p>The EVM tab's "Use current project" button computes from the project you're in (same source of truth as the Dashboard's EVM card), so SPI/CPI match your project exactly. With no project open it says so instead of inventing numbers.</p></div>
+      </div>
+
+      <div class="divider-note">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 3.5l2.6 5.4 5.9.9-4.3 4.1 1 5.9L12 17.1l-5.2 2.7 1-5.9L3.5 9.8l5.9-.9L12 3.5z" stroke="currentColor" stroke-width="1.6"/></svg>
+        <p><strong>Take the math to the job.</strong> The calculator floats above every panel on purpose , a pour volume or a bid number computed mid-meeting is still in front of you when you tab back to the work.</p>
+      </div>
+    </section>
+
     <!-- ============ CLOSING CTA BAND ============ -->
     <!-- Local photo (completed kitchen) , the finished job. -->
     <div class="band reveal" style="min-height:420px">
       <div class="band-bg" style="background-image:url('images/completed-kitchen.webp')"></div>
       <div class="band-overlay"></div>
       <div class="band-content" style="max-width:680px">
-        <span class="kicker">Sheet A-24 and beyond</span>
+        <span class="kicker">Sheet A-25 and beyond</span>
         <h3>This index has room for what's next.</h3>
-        <p>New panels and features get their own sheet, numbered and slotted in , the guide grows the same way the app does. Twenty-five sheets so far, from Welcome (A-00) through the Public Reviews Window (A-24). For now: open My MaNaGeR in the next tab over, start with the Charter, and keep this page bookmarked.</p>
+        <p>New panels and features get their own sheet, numbered and slotted in , the guide grows the same way the app does. Twenty-six sheets so far, from Welcome (A-00) through the Floating Calculator (A-25). For now: open My MaNaGeR in the next tab over, start with the Charter, and keep this page bookmarked.</p>
         <div class="hero-cta" style="margin-top:28px">
           <a href="#top" class="btn btn-brass">Back to the top ↑</a>
           <a href="#quickstart" class="btn btn-ghost">Revisit Quick Start</a>
@@ -1652,7 +1684,7 @@ Date: ____________  Focus: ____________</pre>
       <div class="footer-grid">
         <div class="footer-brand">
           <h4>My MaNaGeR , Field Guide</h4>
-          <p>An unofficial companion guide to the My MaNaGeR workspace , twenty-four sheets, one per panel or workflow, built to sit open in a second tab while you learn the app.</p>
+          <p>An unofficial companion guide to the My MaNaGeR workspace , twenty-six sheets, one per panel or workflow, built to sit open in a second tab while you learn the app.</p>
         </div>
         <div class="footer-cols">
           <div class="footer-col">
@@ -1680,6 +1712,7 @@ Date: ____________  Focus: ____________</pre>
             <a href="#rfi-field-metrics">A-22 RFIs &amp; Field Metrics</a>
             <a href="#registers-compliance">A-23 Registers &amp; Handover</a>
             <a href="#reviews-window">A-24 Public Reviews Window</a>
+            <a href="#calculator">A-25 Floating Calculator</a>
           </div>
           <div class="footer-col">
             <b>Site</b>

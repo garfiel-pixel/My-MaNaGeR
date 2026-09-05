@@ -704,13 +704,24 @@ initial fix only covered open). Verified local + deployed (Version
 delayed-read probe (trades top 92, bottom 840 <= 848). qa-calculator
 27/27 still green after the change.
 PHASE 5 DEPLOY (2026-09-04, DONE): staging-copy deploy, Version ID
-PHASE 5 DEPLOY (2026-09-04, DONE): staging-copy deploy, Version ID
 be1c903a-f179-425d-b2b6-d4f45a5f0c66. Production smoke GREEN:
 /dist/bundle.js carries data-calc="trades"/"evm" + mat-result;
 sw.js live at mmgr-shell-v239; marketing pages (privacy/terms/index/
 features/about/contact/reviews) all 200 with the footer legal links
 on every page; client-codes unauthenticated POST still 401 (Phase 4
 deploy check unchanged). No migrations in this phase.
+FIELD GUIDE A-25 (2026-09-04, DONE): new sheet A-25 "Floating
+Calculator & Trades Math" in mymanager-field-guide.html documents the
+Phase 5 tabs (everyday set, Trades takeoffs, Bid & Fin./Site & Geo/
+EVM) + the settings-gear toggle behavior + the math conventions
+(waste additive, rules of thumb, EVM live-project source). Nav +
+footer gain the A-25 link; CTA/footer copy counts corrected to
+twenty-six sheets. Body markup only - the field guide's single inline
+script is untouched, so CSP hashes are unchanged (verify confirms).
+Sw bump v241. Headless A-25 gate PASS (section, nav link, footer
+link, sheet-no, 6 cards, tabs + gear mentioned). Commits: 55197d8
+(viewport fix) + 8bd9dec (screenshots + tracker) + 9cd75f5 (A-25
+sheet), CI green on each pushed head.
 
 --------------------------------------------------------------------
 AREA F - BACKLOG / DIRECTIVE DEFERRED ITEMS (for completeness)

@@ -31,6 +31,19 @@
   //   mkdir -p /tmp/mmgr-deploy && tar --exclude='.git' --exclude='.wrangler' \
   //     --exclude='node_modules' --exclude='.agents' --exclude='_archive' -cf - . | tar -xf - -C /tmp/mmgr-deploy
   //   cd /tmp/mmgr-deploy && npx wrangler deploy
+  // NOTE (2026-09-04): .gitignore now ALSO lists the session-scratch files at
+  // the repo root (crash logs, planning notes, stray page screenshots,
+  // favicon source). .gitignore does NOT stop wrangler — add matching tar
+  // --exclude patterns below so they never ride into the staging copy again
+  // (they were publicly served in prior deploys). Keep them file-specific:
+  // images/pages/0-5-*.png + project-source.html ARE committed project docs.
+  //   --exclude='Freebuff add a full comprehensive calculater*'
+  //   --exclude='Windows PowerShell*.txt' --exclude='crashes from last session.txt'
+  //   --exclude='LIVE-SITE-UI-AUDIT-*.md' --exclude='SECURITY-FIXES-IMPLEMENTATION-PLAN.md'
+  //   --exclude='my_manager_web favicon*' --exclude='images/pages/app-source.html'
+  //   --exclude='images/pages/dashboard.png' --exclude='images/pages/index-source.html'
+  //   --exclude='images/pages/launcher-light.png' --exclude='images/pages/launcher-mobile.png'
+  //   --exclude='images/pages/marketing.png' --exclude='images/pages/project-workspace.png'
   // NOTE: .agents/ (the locked AI skill set, AGENTS.md/CLAUDE.md) is dev
   // tooling, NOT runtime assets — exclude it from the staging copy so the
   // 320-file cloudflare skill references never bloat the asset upload.

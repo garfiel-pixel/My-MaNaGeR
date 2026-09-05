@@ -11,3 +11,24 @@ web-research/
 # Stray terminal capture from a server-failure session (not project content)
 Windows PowerShell from last session due to server failures.txt
 my-manager.garfieldprocis.workers.dev-*.html
+
+# Session scratch / reference material kept on disk but NEVER deployed or
+# committed (the staging deploy recipe in wrangler.jsonc must exclude these
+# too — wrangler static assets does NOT honor .gitignore):
+/Freebuff add a full comprehensive calculater as a project ….txt
+/Windows PowerShell bhk.txt
+/Windows PowerShell last session.txt
+/Windows PowerShell pt 2.txt
+/Windows PowerShell you keep crashing when kill the nodes.txt
+/Windows PowerShell.txt
+/crashes from last session.txt
+/LIVE-SITE-UI-AUDIT-2026-08-22.md
+/SECURITY-FIXES-IMPLEMENTATION-PLAN.md
+/my_manager_web favicon image to use.png
+/images/pages/app-source.html
+/images/pages/dashboard.png
+/images/pages/index-source.html
+/images/pages/launcher-light.png
+/images/pages/launcher-mobile.png
+/images/pages/marketing.png
+/images/pages/project-workspace.png

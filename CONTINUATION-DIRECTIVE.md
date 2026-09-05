@@ -2772,5 +2772,19 @@ on another page's inline script executing - seed directly.
 
 ---
 
+**2026-09-05 — Session: Marketing Theme Decoupling (remove user theme control from marketing pages).**
+
+**Problem:** All 7 marketing pages (index, features, about, contact, reviews, privacy, terms) had theme picker buttons (Light/Dark/System) in their mobile nav AND loaded js/mmgr-theme.js. This meant users COULD control the marketing page appearance from the app - violating the owner's directive that "the marketing page is marketing page. The user should not be able to control the marketing page."
+
+**Fix:** Removed theme picker buttons (pal-btn Light/Dark/System) AND removed <script src="js/mmgr-theme.js"> from all 7 marketing pages. App pages (app.html, project.html, admin.html) RETAIN their full theme picker (Light/Dark/System + Gold/Rose palette + Flat/3D view) because those are the app pages where user control is appropriate.
+
+**Files modified:** index.html, features.html, about.html, contact.html, privacy.html, reviews.html, terms.html, sw.js (bumped to v250).
+
+**Verification:** npm run verify ALL CHECKS PASSED (CSP 24/24, SW v250, hidden, skills 17/17, exports); qa-marketing.cjs 20/20 PASS. grep confirms zero pal-btn on marketing pages, theme buttons intact on app pages.
+
+**Result:** Marketing pages now always render with their default fixed appearance (light mode per marketing.css). User theme preferences stored in localStorage no longer affect marketing pages. The marketing site is fully decoupled from user-controlled theming.
+
+---
+
 *This file is the working source of truth for continuing this project across sessions.*
 Keep it updated. Do not let a session end without updating the STATUS LOG.*

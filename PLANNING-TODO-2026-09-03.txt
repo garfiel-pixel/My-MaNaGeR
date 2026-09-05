@@ -723,6 +723,44 @@ link, sheet-no, 6 cards, tabs + gear mentioned). Commits: 55197d8
 (viewport fix) + 8bd9dec (screenshots + tracker) + 9cd75f5 (A-25
 sheet), CI green on each pushed head.
 
+PHASE 6 EXECUTION RECORD (2026-09-04, READY TO SHIP) - AREA B C23
+CLOUD SHARED RESOURCE POOL. Server: migration 0019
+(cloud_resource_pool + cloud_pool_links tables) + new src/cloud/pool.js
+- account-scoped pool CRUD (list/create/update/delete), per-project
+idempotent links with row propagation into the linking project, and
+cap exclusion (pool rows never count toward a project's own resource
+count; pool library itself is account-scoped, not per-project). Auth:
+account namespace resolves to the linked google_sub when the device
+session is signed in, and falls back to the acting project's owner
+code for code-only offline-first workflows (no session) - so the pool
+works for both. Routes mounted under /api/cloud/pool/* in src/router.js.
+Client: js/mmgr-pool.js (new, added to the project bundle in build.js)
+- thin fetch wrapper + offline queue (mutations persist in
+localStorage mmgr_pool_q and flush on reconnect) + LWW pull-merge
+(server updatedAt wins on conflict; links are per-project idempotent).
+UI: render/resources.js gains the Shared Resource Pool Library picker
+button in the card-title action cluster (replaces the one-shot import
+modal when the cross-project toggle is on), a per-row + Add-to-pool
+button on unlinked rows and a pool badge on linked rows, plus the
+pool-modal sheet (Library list, link/create inline, graceful
+no-credential state, Escape/outside close). ACTION_MAP entries
+poolOpenLibrary/poolCloseLibrary/poolAddRow/poolRefreshAndMerge in
+mmgr-app.js + READONLY_SAFE list + boot-merge hook. admin.html gains
+the Shared Resource Pool manager inside the codes sheet (owner-only
+CRUD, mirrors the codes manager). Real bug caught + fixed during QA:
+the ACTION_MAP delegation entries initially used an out-of-scope `ns`
+alias (ReferenceError: ns is not defined - the modal never opened);
+rewritten to window.MMGR.* per the map's convention. QA: new
+tools/qa-cloud-pool.cjs - 19 gates (self-contained wrangler dev +
+migration apply + real HTTP, covers CRUD, code-only namespace auth,
+links + propagation, cap exclusion), 3/3 stable runs green; new
+tools/qa-pool-ui.cjs - 6 gates (ns.Pool surface, no-credential
+no-op boot, toggle-on button, badge/+pool per row, modal open +
+graceful state, Escape close) green. Battery green: verify ALL PASS
+(CSP hashes regenerated - admin.html inline scripts changed; sw bump
+v242), emoji clean, view-mode + calculator suites still green.
+Commit 84c72db, CI green on the pushed head.
+
 --------------------------------------------------------------------
 AREA F - BACKLOG / DIRECTIVE DEFERRED ITEMS (for completeness)
 --------------------------------------------------------------------

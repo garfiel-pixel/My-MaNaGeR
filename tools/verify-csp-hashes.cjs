@@ -58,22 +58,42 @@ function computeHashes(file) {
   return hashes;
 }
 
-// Extracts every 'sha256-...' literal from the whole source file and compares
-// count + order against the computed list. ASSUMPTION: sha256 literals appear
-// ONLY in the INLINE_SCRIPT_HASHES array (the CSP strings reference the array
-// at runtime via `+ INLINE_SCRIPT_HASHES`). If a future policy ever inlines
-// sha256 literals directly, this would double-count — keep the runtime-join
-// convention or update this extractor to scope to the array literal only.
+// Extracts every sha256 literal from the whole source file and compares
+// count + order against the computed list. The regex REQUIRES the CSP-safe
+// written form: a double-quoted JS string whose content is the single-quoted
+// CSP token ("'sha256-…='"). A bare 'sha256-…' token (quotes swallowed as JS
+// delimiters) joins into the policy UNQUOTED, which invalidates every hash
+// source and silently blocks ALL inline scripts — that exact incident shipped
+// 2026-09-05 (runs 227-231) via a scratch rewrite script, so the guard now
+// rejects the bare form at build time instead of letting it pass silently.
 function extractHardcodedHashes(file) {
   const src = fs.readFileSync(path.join(ROOT, file), 'utf8');
   const hashes = [];
-  const re = /'sha256-[A-Za-z0-9+/=]+'/g;
+  const re = /"'sha256-[A-Za-z0-9+/=]+'"/g;
   let m;
-  while ((m = re.exec(src)) !== null) hashes.push(m[0]);
+  while ((m = re.exec(src)) !== null) hashes.push(m[0].slice(1, -1));
+  // Loud failure on the bare-token form: an unquoted sha256 token that is
+  // not part of a double-quoted CSP token means the list was rewritten wrong.
+  const bare = src.match(/(?<!["'])'sha256-[A-Za-z0-9+/=]+'(?!["'])/g);
+  if (bare && bare.length) {
+    fail = true;
+    console.error('[verify-csp-hashes] FAIL: ' + file + ' carries ' + bare.length + ' BARE sha256 token(s) (no CSP quotes). Joined into script-src they are invalid and Chrome blocks every inline script silently. Regenerate with node tools/regen-csp-hashes.cjs.');
+  }
   return hashes;
 }
 
 let fail = false;
+
+// 0) Policy sanity: the JOINED policy string must contain the CSP-quoted
+// hash form ("'sha256-"). Catches a hand-edit that drops the quotes even if
+// the count happens to match. Checks the actual runtime join expression.
+for (const hf of ['worker.js', 'serve.cjs']) {
+  const src = fs.readFileSync(path.join(ROOT, hf), 'utf8');
+  if (/INLINE_SCRIPT_HASHES\s*=[\s\S]*?\.join\(/.test(src) && src.indexOf('"\'sha256-') === -1) {
+    fail = true;
+    console.error('[verify-csp-hashes] FAIL: ' + hf + ' never writes the CSP-quoted form (\'sha256-…\') — hash sources in the joined policy would be unquoted/invalid.');
+  }
+}
 
 // 1) Computed vs each hardcoded list.
 const computed = [];
@@ -82,6 +102,12 @@ for (const f of HTML_FILES) {
   computed.push({ file: f, hashes: hs });
 }
 const computedFlat = computed.reduce((acc, c) => acc.concat(c.hashes), []);
+// Every computed token must itself carry the CSP quotes (computeHashes adds
+// them; this guards a future edit that drops them at the source).
+if (computedFlat.some(h => !(h.startsWith("'") && h.endsWith("'")))) {
+  fail = true;
+  console.error('[verify-csp-hashes] FAIL: computed hash tokens are not CSP-quoted (expected \'sha256-…\' form).');
+}
 
 for (const hf of HARDCODED_FILES) {
   const hardcoded = extractHardcodedHashes(hf);

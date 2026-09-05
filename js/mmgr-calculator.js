@@ -1340,6 +1340,9 @@
       if (sid !== 'settings' && sid !== 'general' && !isTabVisible(sid)) hidden = true;
       s.classList.toggle('is-hide', hidden);
     });
+    // A taller tab changes the panel height AFTER the open-time clamp, so
+    // re-clamp on every switch (Live-eyeball fix, Phase 5).
+    requestAnimationFrame(clampPanelInViewport);
     return tabId;
   }
 
@@ -1425,6 +1428,26 @@
     _panel.style.left = px + 'px';
     _panel.style.top = py + 'px';
     _panel.style.width = pw + 'px';
+    // Live-eyeball fix (Phase 5): the panel auto-grows up to its max-height
+    // on tall tabs (Trades stacks 9 cards), and the icon-anchored py could
+    // push the panel's tail below the viewport fold. Re-measure and clamp
+    // so the whole panel (scrollable body included) stays on screen.
+    var ph = _panel.offsetHeight;
+    if (py + ph > window.innerHeight - 8) {
+      _panel.style.top = Math.max(8, window.innerHeight - ph - 8) + 'px';
+    }
+  }
+
+  // Shared clamp used after open() AND after every tab switch (a taller tab
+  // grows the panel after the open-time measurement, so a tab click must
+  // re-clamp or the new content's tail lands below the fold).
+  function clampPanelInViewport() {
+    if (!_panel || !_open) return;
+    var cur = parseFloat(_panel.style.top) || 0;
+    var ph = _panel.offsetHeight;
+    if (cur + ph > window.innerHeight - 8) {
+      _panel.style.top = Math.max(8, window.innerHeight - ph - 8) + 'px';
+    }
   }
 
   function close() {

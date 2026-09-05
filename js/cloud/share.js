@@ -12,11 +12,26 @@ var MMGR = window.MMGR || {};
   const $ = function(id) { return document.getElementById(id); };
   function esc(v) { return C._esc(v); }
 
+  // ---- pending just-created editor code (shown-once banner, gap-audit G23) --
+  // Canonical implementation (2026-09-05): mmgr-cloud.js delegates here so the
+  // trio can never drift. Validates the stored object actually carries a code
+  // (mirrors the old mmgr-cloud.js behavior).
+  function pendingCodeKey() { return 'mmgr_cloud_pending_ecode_' + C._pid(); }
   function getPendingEditorCode() {
  try {
- const raw = localStorage.getItem('mmgr_cloud_pending_ecode_' + C._pid());
- return raw ? JSON.parse(raw) : null;
+ const raw = localStorage.getItem(pendingCodeKey());
+ if (!raw) return null;
+ const p = JSON.parse(raw);
+ return (p && p.code) ? p : null;
  } catch (e) { return null; }
+  }
+  function setPendingEditorCode(code, label, scope, role) {
+ try {
+ localStorage.setItem(pendingCodeKey(), JSON.stringify({ code: code, label: label || '', scope: scope || [], role: role === 'view' ? 'view' : 'editor' }));
+ } catch (e) { /* ignore */ }
+  }
+  function clearPendingEditorCode() {
+ try { localStorage.removeItem(pendingCodeKey()); } catch (e) { /* ignore */ }
   }
 
   function sectionLabel(key) {
@@ -98,7 +113,10 @@ var MMGR = window.MMGR || {};
   ns.CloudShare = {
  renderShare: renderShare,
  pendingBannerHtml: pendingBannerHtml,
- sectionLabel: sectionLabel
+ sectionLabel: sectionLabel,
+ getPendingEditorCode: getPendingEditorCode,
+ setPendingEditorCode: setPendingEditorCode,
+ clearPendingEditorCode: clearPendingEditorCode
   };
 })(MMGR);
 window.MMGR = MMGR;

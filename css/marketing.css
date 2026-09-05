@@ -227,6 +227,12 @@ body.dark-mode .brand{color:var(--on-navy);}
   text-transform:uppercase;color:var(--text-secondary);margin-top:1px;
 }
 body.dark-mode .brand small{color:rgba(248,250,252,.66);}
+/* Footer brand (2026-09-05, a11y fix): .site-footer is solid navy in BOTH
+   themes, so the light theme's near-black .brand text (measured 1.02:1 on
+   navy — invisible) must be overridden independent of body.dark-mode. */
+.site-footer .brand{color:var(--on-navy);}
+.site-footer .brand b span{color:var(--gold);}
+.site-footer .brand small{color:rgba(248,250,252,.66);}
 
 /* nav */
 .site-nav{display:flex;align-items:center;gap:4px;}
@@ -561,7 +567,7 @@ body.dark-mode .nav-dd-item:hover{color:var(--gold);background:rgba(var(--gold-r
    mmgr-google-auth.js refreshPlan(). */
 .signin-sheet .signin-user-avatar{
   width:44px;height:44px;border-radius:50%;overflow:hidden;flex-shrink:0;
-  background:var(--slate);color:#fff;display:flex;align-items:center;
+  background:var(--ink);color:#fff;display:flex;align-items:center;
   justify-content:center;font-weight:800;font-size:1.05rem;cursor:pointer;
   transition:box-shadow var(--tr);
 }
@@ -1133,7 +1139,7 @@ body.dark-mode .nav-dd-item:hover{color:var(--gold);background:rgba(var(--gold-r
   }
 }
 
-/* ---------- 16. Continuous-scroll homepage + slim edge scroll-spy (transparent) ---------- */
+/* ---------- 16. Continuous-scroll homepage + slim edge scroll-spy (glass chip) ---------- */
 /* .slide is inert now: sections flow at natural content height and the page
    scrolls continuously. Full-height slide-deck snap was removed because it
    made a normal wheel/trackpad scroll jump section-to-section. No display
@@ -1145,7 +1151,11 @@ body.dark-mode .nav-dd-item:hover{color:var(--gold);background:rgba(var(--gold-r
 }
 /* the hero keeps a full-viewport first screen without any snap */
 .hero{min-height:calc(100vh - var(--header-h));display:flex;align-items:center;}
-/* slim edge index — transparent, functional layer only (never a panel).
+/* slim edge index — functional layer only. The rail is FIXED and crosses
+   both dark sections (hero photo, photo bands) and light sections, so it
+   carries a dark glass chip of its own; a single label color can't stay
+   readable on both without a backing surface (2026-09-05 a11y fix: labels
+   measured near-black on the hero, invisible).
    OWNER 2026-08-17: it is a MINI TRACKER — labels are always visible (a
    tracker you cannot read is not a tracker), it follows the current section
    accurately (most-visible wins), and sections the reader has already passed
@@ -1155,7 +1165,11 @@ body.dark-mode .nav-dd-item:hover{color:var(--gold);background:rgba(var(--gold-r
   transform:translateY(-50%);
   z-index:40;
   display:flex;flex-direction:column;gap:12px;
-  background:transparent;border:none;padding:0;width:auto;
+  background:var(--glass-tint);
+  border:1px solid rgba(255,255,255,.1);
+  border-radius:14px;padding:14px 11px;
+  backdrop-filter:blur(10px) saturate(1.4);
+  -webkit-backdrop-filter:blur(10px) saturate(1.4);
   pointer-events:none; /* container ignores clicks */
 }
 .scroll-spy a{
@@ -1165,7 +1179,7 @@ body.dark-mode .nav-dd-item:hover{color:var(--gold);background:rgba(var(--gold-r
 }
 .spy-stick{
   width:3px;height:18px;border-radius:2px;flex-shrink:0;
-  background:rgba(71,85,105,.45);
+  background:rgba(248,250,252,.32);
   transition:background .2s,height .2s,box-shadow .2s;
 }
 .scroll-spy a.done .spy-stick{
@@ -1180,7 +1194,7 @@ body.dark-mode .nav-dd-item:hover{color:var(--gold);background:rgba(var(--gold-r
 }
 .spy-label{
   font-size:.68rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
-  color:var(--text);
+  color:rgba(248,250,252,.94);
   opacity:1; /* always readable — the mini tracker */
   transition:opacity .2s,color .2s;
   white-space:nowrap;
@@ -1196,7 +1210,8 @@ body.dark-mode .nav-dd-item:hover{color:var(--gold);background:rgba(var(--gold-r
 }
 @media (prefers-reduced-transparency:reduce){
   .site-header,
-  .mobile-menu{
+  .mobile-menu,
+  .scroll-spy{
     background:var(--glass-tint);
     -webkit-backdrop-filter:none;
     backdrop-filter:none;

@@ -19,10 +19,17 @@ var DATA = {
     { id: 't2', name: 'Structural Steel', level: 1, indent: 1, status: 'inprogress', startDate: '2026-07-13', endDate: '2026-08-21', duration: '30', assignee: 'Bob', critical: true, leadTime: false, predecessors: ['t1'], milestone: false, weatherSensitive: false, weatherExposed: false, confidence: 'medium' },
     { id: 't3', name: 'Permit - Utility', level: 1, indent: 1, status: 'inprogress', startDate: '2026-06-15', endDate: '2026-08-15', duration: '45', assignee: 'Carol', critical: false, leadTime: true, submittedDate: '2026-06-15', expectedDate: '2026-08-15', predecessors: [], milestone: false, weatherSensitive: false, weatherExposed: false, confidence: 'low' },
     { id: 't4', name: 'Glazing Install', level: 0, indent: 0, isPhase: true, status: 'todo', startDate: '2026-09-01', endDate: '2026-10-15', duration: '33', assignee: '', critical: false, leadTime: false, predecessors: ['t2'], milestone: false, weatherSensitive: false, weatherExposed: false, confidence: 'medium' },
-    { id: 't5', name: 'Handover & Closeout', level: 0, indent: 0, isPhase: true, status: 'completed', startDate: '2026-11-01', endDate: '2026-11-20', duration: '15', assignee: 'Dave', critical: false, leadTime: false, predecessors: ['t4'], milestone: true, weatherSensitive: false, weatherExposed: false, confidence: 'high' }
+    { id: 't5', name: 'Handover & Closeout', level: 0, indent: 0, isPhase: true, status: 'completed', startDate: '2026-07-06', endDate: '2026-07-24', duration: '15', assignee: 'Dave', critical: false, leadTime: false, predecessors: [], milestone: true, weatherSensitive: false, weatherExposed: false, confidence: 'high', completedDate: '2026-07-22' }
   ],
   ntaskid: 6,
-  resources: [{ id: 'r1', name: 'Alice' }, { id: 'r2', name: 'Bob' }, { id: 'r3', name: 'Carol' }, { id: 'r4', name: 'Dave' }],
+  resources: [
+    // 2026-09-05: hoursAllocated populated so the demo dashboard shows real
+    // utilization instead of a flat 0% (capacity = 5-day wk × 4 wks × 8h = 160h).
+    { id: 'r1', name: 'Alice', role: 'Foundations Lead', availability: 100, hoursAllocated: 160, utilization: 0 },
+    { id: 'r2', name: 'Bob', role: 'Steel Erector', availability: 100, hoursAllocated: 120, utilization: 0 },
+    { id: 'r3', name: 'Carol', role: 'Permitting', availability: 100, hoursAllocated: 96, utilization: 0 },
+    { id: 'r4', name: 'Dave', role: 'Closeout', availability: 100, hoursAllocated: 40, utilization: 0 }
+  ],
   risks: [],
   issues: [],
   stakeholders: [{ id: 's1', name: 'Owner' }, { id: 's2', name: 'Municipality' }],

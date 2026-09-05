@@ -331,20 +331,43 @@ var MMGR = window.MMGR || {};
         if (cycleSub) cycleSub.textContent = 'Complete tasks to see cycle time';
         if (cycleCard) cycleCard.classList.add('tier3');
       } else {
-        const plannedDurs = completedTasks.map(t => U.daysBetween(t.startDate, t.endDate));
-        const avgPlanned = Math.round(plannedDurs.reduce((a, b) => a + b, 0) / plannedDurs.length);
-        // Actual duration: from startDate to completedDate (or today if no completedDate)
-        const actualDurs = completedTasks.map(t => {
-          const start = t.startDate;
+        // C9 data-quality guard (2026-09-05): a completed task whose planned or
+        // actual span runs backwards (end before start — bad or out-of-order
+        // dates, e.g. a completedDate typed before its startDate) is bad data,
+        // NOT a negative "fast" cycle. Exclude it from both averages and
+        // surface it so the person who entered it can fix the dates instead of
+        // it being silently dropped — or worse, painted green for a negative
+        // duration.
+        const validTasks = completedTasks.filter(t => {
+          const planned = U.daysBetween(t.startDate, t.endDate);
           const end = t.completedDate || U.todayStr();
-          return U.daysBetween(start, end);
+          const actual = U.daysBetween(t.startDate, end);
+          return planned >= 0 && actual >= 0;
         });
-        const avgActual = Math.round(actualDurs.reduce((a, b) => a + b, 0) / actualDurs.length);
-        const diff = avgActual - avgPlanned;
-        cycleEl.textContent = avgActual + 'd';
-        cycleEl.style.color = diff <= 0 ? 'var(--green)' : diff <= 3 ? 'var(--amber)' : 'var(--danger)';
-        if (cycleSub) cycleSub.textContent = 'Planned avg: ' + avgPlanned + 'd | Variance: ' + (diff >= 0 ? '+' : '') + diff + 'd (' + completedTasks.length + ' tasks)';
-        if (cycleCard) cycleCard.classList.remove('tier3');
+        const dropped = completedTasks.length - validTasks.length;
+        if (validTasks.length === 0) {
+          cycleEl.textContent = '--';
+          cycleEl.style.color = 'var(--danger)';
+          if (cycleSub) cycleSub.textContent = 'Completed task dates run backwards — fix the task start/end dates to see cycle time';
+          if (cycleCard) cycleCard.classList.remove('tier3');
+        } else {
+          const plannedDurs = validTasks.map(t => U.daysBetween(t.startDate, t.endDate));
+          const avgPlanned = Math.round(plannedDurs.reduce((a, b) => a + b, 0) / plannedDurs.length);
+          // Actual duration: from startDate to completedDate (or today if no completedDate)
+          const actualDurs = validTasks.map(t => {
+            const start = t.startDate;
+            const end = t.completedDate || U.todayStr();
+            return U.daysBetween(start, end);
+          });
+          const avgActual = Math.round(actualDurs.reduce((a, b) => a + b, 0) / actualDurs.length);
+          const diff = avgActual - avgPlanned;
+          cycleEl.textContent = avgActual + 'd';
+          cycleEl.style.color = diff <= 0 ? 'var(--green)' : diff <= 3 ? 'var(--amber)' : 'var(--danger)';
+          let subTxt = 'Planned avg: ' + avgPlanned + 'd | Variance: ' + (diff >= 0 ? '+' : '') + diff + 'd (' + validTasks.length + ' task' + (validTasks.length === 1 ? '' : 's') + ')';
+          if (dropped > 0) subTxt += ' | ' + dropped + ' excluded for date errors';
+          if (cycleSub) cycleSub.textContent = subTxt;
+          if (cycleCard) cycleCard.classList.remove('tier3');
+        }
       }
     }
 

@@ -31,7 +31,16 @@ const HTML_FILES = [
   'dashboard.html',
   'seed-test.html',
   'mymanager-field-guide.html',
-  'monolith html to reference from all features.html'
+  'monolith html to reference from all features.html',
+  // 2026-09-05: marketing pages now carry an inline dev-fallback block next
+  // to dist/marketing-bundle.js — they must be hashed like every other page.
+  'index.html',
+  'features.html',
+  'about.html',
+  'contact.html',
+  'reviews.html',
+  'privacy.html',
+  'terms.html'
 ];
 
 // The two files that hardcode the hash list (must stay in sync with each

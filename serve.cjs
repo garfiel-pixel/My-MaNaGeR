@@ -38,10 +38,17 @@ const INLINE_SCRIPT_HASHES = [
   "'sha256-O9lvE/vAuiMHUX3RQGR53K5h6w13/d2P16BoUBsYKAk='",
   "'sha256-dapxYtjtsIXomB7cX8RHksAwO/QcwFZl1z2VYQ/fbnM='",
   "'sha256-Oa7ON+9A164SSXhnxu08mFn0V9Tj2SlZ2SzFXFoqKNE='",
-  "'sha256-bNdw0+64xL2//htoz+u3InKWYZNEHO/CnuZqtcJIBgU='",
+  "'sha256-pmiUsOqQa0BPAXsieggzTCopGA0jQO863MBE2hEoBb8='",
   "'sha256-7cQZf8bzyvMY1EwebBo5YuL3PZ9T/X5CTWFRXO3Aq5E='",
   "'sha256-c2U+m5SzyupzeOrPEiOjlnaSgS1KdAxZTFnYA5dW/Rk='",
   "'sha256-Is0jD76ptemzKTfgnVGlSCSEHBJeveC1gRTl/Wv4JBw='",
+  "'sha256-O8tjgX8HAC3naABULMDuIYqJtVsk/JWqKAbIoD83O4I='",
+  "'sha256-O8tjgX8HAC3naABULMDuIYqJtVsk/JWqKAbIoD83O4I='",
+  "'sha256-O8tjgX8HAC3naABULMDuIYqJtVsk/JWqKAbIoD83O4I='",
+  "'sha256-O8tjgX8HAC3naABULMDuIYqJtVsk/JWqKAbIoD83O4I='",
+  "'sha256-nsm9D+YbB4LQUmNXHf3kbpV7BWERupRhGClSKaU+DEo='",
+  "'sha256-O8tjgX8HAC3naABULMDuIYqJtVsk/JWqKAbIoD83O4I='",
+  "'sha256-O8tjgX8HAC3naABULMDuIYqJtVsk/JWqKAbIoD83O4I='",
 ].join(' ');
 const SECURITY_HEADERS = {
   'Content-Security-Policy': [

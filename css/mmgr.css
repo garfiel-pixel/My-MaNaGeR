@@ -2554,6 +2554,18 @@ body.db-page:not(.dark-mode) .db-link{
 body.db-page:not(.dark-mode) .db-link:hover{color:var(--gold);background:color-mix(in oklch,var(--gold) 8%,transparent);}
 body.db-page:not(.dark-mode) .db-link .ico{width:16px;height:16px;flex-shrink:0;}
 body.db-page:not(.dark-mode) .db-link:focus-visible{outline:2px solid var(--gold);outline-offset:2px;border-radius:var(--radius-control);}
+/* "Coming soon" chip for rail items that are placeholders (Dashboard view,
+   2026-09-05): subtle outline pill in each theme's accent, right-aligned. */
+body.dark-mode.db-page .db-soon{
+  margin-left:auto;font-size:.54rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--db-accent);border:1px solid color-mix(in oklch,var(--db-accent) 45%,transparent);
+  border-radius:100px;padding:1px 7px;opacity:.85;white-space:nowrap;
+}
+body.db-page:not(.dark-mode) .db-soon{
+  margin-left:auto;font-size:.54rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--gold);border:1px solid color-mix(in oklch,var(--gold) 45%,transparent);
+  border-radius:100px;padding:1px 7px;opacity:.85;white-space:nowrap;
+}
 /* Desktop: content shifts right of the fixed light rail ONLY while it is
    open (body.side-open — the hamburger closes/reopens it on desktop too). */
 @media(min-width:769px){

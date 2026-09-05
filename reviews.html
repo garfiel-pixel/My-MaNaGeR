@@ -179,7 +179,20 @@
 </footer>
 
 <script src="js/mmgr-google-auth.js"></script>
-<script src="js/marketing.js"></script>
-<script src="js/reviews.js"></script>
+<script defer src="dist/marketing-bundle.js" onerror="window.__mmgrBundleMissing=1"></script>
+<script>
+/* Dev fallback: when dist/marketing-bundle.js is missing (local dev without
+   a build), inject the source scripts in dependency order. In production
+   the bundle loads, __mmgrBundleMissing stays undefined, and this whole
+   block is a no-op. */
+document.addEventListener('DOMContentLoaded', function () {
+  if (!window.__mmgrBundleMissing) return;
+  ['js/marketing.js', 'js/reviews.js'].forEach(function (s) {
+    var t = document.createElement('script');
+    t.src = s;
+    document.body.appendChild(t);
+  });
+});
+</script>
 </body>
 </html>

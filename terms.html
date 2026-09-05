@@ -2,8 +2,11 @@
 <!--
   My MaNaGeR — Global Terms of Service (User Agreement)
   Effective Date: August 30, 2026
-  Last Revised: September 4, 2026
+  Last Revised: September 5, 2026
   This document governs all use of the Application across all jurisdictions.
+  Revision 2026-09-05: fixed sign-in script order (google-auth now loads
+  before marketing.js so the sign-in button works on this page) and wired
+  the page to the minified dist/marketing-bundle.js.
   Split from the combined Privacy & Terms page on 2026-09-04; the Privacy
   Policy now lives at privacy.html.
 -->
@@ -262,7 +265,21 @@
   </div>
 </footer>
 
-<script src="js/marketing.js"></script>
 <script src="js/mmgr-google-auth.js"></script>
+<script defer src="dist/marketing-bundle.js" onerror="window.__mmgrBundleMissing=1"></script>
+<script>
+/* Dev fallback: when dist/marketing-bundle.js is missing (local dev without
+   a build), inject the source scripts in dependency order. In production
+   the bundle loads, __mmgrBundleMissing stays undefined, and this whole
+   block is a no-op. */
+document.addEventListener('DOMContentLoaded', function () {
+  if (!window.__mmgrBundleMissing) return;
+  ['js/marketing.js'].forEach(function (s) {
+    var t = document.createElement('script');
+    t.src = s;
+    document.body.appendChild(t);
+  });
+});
+</script>
 </body>
 </html>

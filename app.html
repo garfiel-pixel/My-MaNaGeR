@@ -184,7 +184,11 @@ body.glass-premium .wrap{position:relative;z-index:1;}
   </div>
   <nav class="db-nav" id="db-nav">
     <div class="db-g">Overview</div>
-    <a class="db-link" href="#top"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-orb"></use></svg> Dashboard</a>
+    <!-- Dashboard: the full dedicated dashboard view is not built yet
+         (owner review 2026-09-05) — the link stays honest with a Soon chip
+         and returns to the project overview at #top instead of looking
+         broken to a demo viewer. -->
+    <a class="db-link" href="#top" title="Full dashboard view is coming soon"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-orb"></use></svg> Dashboard <span class="db-soon">Soon</span></a>
     <div class="db-g">Projects</div>
     <a class="db-link" href="#grid" data-rail-toggle="rail-projects-list" aria-expanded="false" aria-controls="rail-projects-list"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-folder"></use></svg> All Projects <svg class="ico ico-caret" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg></a>
     <div class="db-sub" id="rail-projects-list" hidden></div>

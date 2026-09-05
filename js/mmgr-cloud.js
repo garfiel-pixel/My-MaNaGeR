@@ -160,21 +160,13 @@ var MMGR = window.MMGR || {};
   }
 
   // ---- pending just-created editor code (shown-once banner, gap-audit G23) --
-  function pendingCodeKey() { return 'mmgr_cloud_pending_ecode_' + pid(); }
-  function getPendingEditorCode() {
-    try {
-      const raw = localStorage.getItem(pendingCodeKey());
-      if (!raw) return null;
-      const p = JSON.parse(raw);
-      return (p && p.code) ? p : null;
-    } catch (e) { return null; }
-  }
-  function setPendingEditorCode(code, label, scope, role) {
-    try { localStorage.setItem(pendingCodeKey(), JSON.stringify({ code: code, label: label || '', scope: scope || [], role: role === 'view' ? 'view' : 'editor' })); } catch (e) { /* ignore */ }
-  }
-  function clearPendingEditorCode() {
-    try { localStorage.removeItem(pendingCodeKey()); } catch (e) { /* ignore */ }
-  }
+  // Delegates to the extracted CloudShare module (2026-09-05 collapse). The
+  // canonical trio lives in js/cloud/share.js; these shims exist so the two
+  // copies could never drift again. Each call is null-guarded: the module only
+  // loads on project.html, so other pages fall back to the empty behavior.
+  function getPendingEditorCode() { return ns.CloudShare ? ns.CloudShare.getPendingEditorCode() : null; }
+  function setPendingEditorCode(code, label, scope, role) { if (ns.CloudShare && ns.CloudShare.setPendingEditorCode) ns.CloudShare.setPendingEditorCode(code, label, scope, role); }
+  function clearPendingEditorCode() { if (ns.CloudShare && ns.CloudShare.clearPendingEditorCode) ns.CloudShare.clearPendingEditorCode(); }
 
   // ---- status line (reuses the drive-status classes already in mmgr.css) --
   function setStatus(msg, kind) {

@@ -76,16 +76,20 @@
       { id: 'T030', name: 'Project Closeout and Handover', startDate: '2026-06-29', endDate: '2026-06-30', status: 'todo', leadDays: 0, phase: 'closeout', assignee: 'Marcus Webb', predecessors: ['T029'], progress: 0 }
     ],
     resources: [
-      { id: 'R001', name: 'Marcus Webb', role: 'Project Manager', rate: 185, util: 100 },
-      { id: 'R002', name: 'Diana Chen', role: 'Architect / Interior Designer', rate: 165, util: 80 },
-      { id: 'R003', name: 'James Okonkwo', role: 'Structural Engineer', rate: 175, util: 90 },
-      { id: 'R004', name: 'Sarah Kim', role: 'MEP Engineer', rate: 170, util: 85 },
-      { id: 'R005', name: 'Kevin Patel', role: 'Elevator Specialist', rate: 195, util: 70 },
-      { id: 'R006', name: 'Luis Ramirez', role: 'Site Superintendent', rate: 155, util: 100 },
-      { id: 'R007', name: 'Rachel Torres', role: 'Procurement Manager', rate: 145, util: 60 },
-      { id: 'R008', name: 'Amara Osei', role: 'Safety Officer', rate: 140, util: 50 },
-      { id: 'R009', name: 'Tom Brennan', role: 'Quality Inspector', rate: 150, util: 40 },
-      { id: 'R010', name: 'Priya Sharma', role: 'Scheduler / Planner', rate: 160, util: 75 }
+      /* 2026-09-05: hoursAllocated populated (availability 100%) so the demo
+         dashboard shows real utilization instead of a flat 0% — capacity at
+         workWeek 5 = 160h/month, so util% ≈ hoursAllocated/160. The legacy
+         `util` hint fields are dropped on load; hoursAllocated is the source. */
+      { id: 'R001', name: 'Marcus Webb', role: 'Project Manager', availability: 100, rate: 185, hoursAllocated: 160 },
+      { id: 'R002', name: 'Diana Chen', role: 'Architect / Interior Designer', availability: 100, rate: 165, hoursAllocated: 128 },
+      { id: 'R003', name: 'James Okonkwo', role: 'Structural Engineer', availability: 100, rate: 175, hoursAllocated: 144 },
+      { id: 'R004', name: 'Sarah Kim', role: 'MEP Engineer', availability: 100, rate: 170, hoursAllocated: 136 },
+      { id: 'R005', name: 'Kevin Patel', role: 'Elevator Specialist', availability: 100, rate: 195, hoursAllocated: 112 },
+      { id: 'R006', name: 'Luis Ramirez', role: 'Site Superintendent', availability: 100, rate: 155, hoursAllocated: 160 },
+      { id: 'R007', name: 'Rachel Torres', role: 'Procurement Manager', availability: 100, rate: 145, hoursAllocated: 96 },
+      { id: 'R008', name: 'Amara Osei', role: 'Safety Officer', availability: 100, rate: 140, hoursAllocated: 80 },
+      { id: 'R009', name: 'Tom Brennan', role: 'Quality Inspector', availability: 100, rate: 150, hoursAllocated: 64 },
+      { id: 'R010', name: 'Priya Sharma', role: 'Scheduler / Planner', availability: 100, rate: 160, hoursAllocated: 120 }
     ],
     budgetLines: [
       { id: 'B001', category: 'Demolition', planned: 1200000, actual: 1180000 },

@@ -60,7 +60,11 @@ var MMGR = window.MMGR || {};
   }
 
   function resUtil(r) {
-    const cap = ((+r.availability || 0) / 100) * monthlyHours();
+    // Availability defaults to 100 when absent (the same default every other
+    // resource path uses — addResource/import both write availability:100).
+    // Treating a missing field as 0% availability zeroed every legacy/demo
+    // resource's utilization to 0 (2026-09-05).
+    const cap = ((+r.availability || 100) / 100) * monthlyHours();
     return cap ? Math.round(((+r.hoursAllocated || 0) / cap) * 100) : 0;
   }
 

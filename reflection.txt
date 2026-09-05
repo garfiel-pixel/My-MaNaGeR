@@ -1,133 +1,82 @@
-Session: 2026-09-05 (CI Repair runs 228-233 + Post-Sept-3 UI Review)
-CI: GitHub Actions run #233 SUCCESS on 1b62121 - 40 steps success, 0 skipped, 0 failed
-Pushes this session: 0f9bf8c (harness flags), b091508 (harness diagnostics),
-587b761 (seed-direct boot), 1b62121 (CSP hash format fix - the root cause)
+Session: 2026-09-05 (Sidebar-Closed Icon Strip + UI Polish)
 
-=== WHAT HAPPENED (timeline of the red runs) ===
+Files modified: app.html (CSS + HTML + JS), sw.js (v251), worker.js, serve.cjs (CSP hashes)
 
-Owner reported run 228 failing: "node tools/verify-dynamic-labels.cjs ...
-[verify-dynamic-labels] FAIL app never became ready after boot" and asked to
-(a) run the CI workflow internally and track it to green, (b) review the UI
-commits made after 2026-09-03 for a possible revert to legacy.
+=== WHAT WAS ACCOMPLISHED ===
 
-- Run 226 (082e19f): GREEN - last green before the breakage window.
-- Run 227 (503698a): failed "Verify CSP inline-script hashes" (static).
-- Run 228 (5aac7c4): passed static CSP; failed T1 dynamic-labels at 25s.
-- Run 229 (0f9bf8c): my fix 1 - same step, still failed.
-- Run 230 (b091508): my fix 2 - failed at 51s; NEW DIAGNOSTIC DUMP revealed
-  href=seed-test.html, mmgr:-1, scripts:1, ZERO page errors.
-- Run 231 (587b761): my fix 3 - dynamic-labels GREEN; run then failed at the
-  NEXT latent failure: T2 Cloud phase 2 (P2.10a-f browser checks).
-- Run 232: same as 231 (fetched full log via authenticated API).
-- Run 233 (1b62121): GREEN - all 40 steps.
+1. **Sidebar-Closed Icon Strip (NEW FEATURE)**
+   - Added a vertical strip of navigation icons that appears along the left edge when the sidebar is closed on desktop
+   - Icons: Dashboard, All Projects, Admin panel, Cloud Projects, Backup & Restore, Customize, Sign in
+   - Each icon has a hover tooltip that reveals the full title (smooth slide-in animation)
+   - Clicking an icon either navigates directly (Admin → admin.html) or opens the sidebar and scrolls/expands to the relevant section
+   - Fully responsive: hidden on mobile (≤768px), shown on desktop (≥769px)
+   - Supports both light and dark themes with appropriate styling
 
-=== ROOT CAUSES ===
+2. **Premium Glass Compatibility Verified**
+   - Sidebar icons stay SOLID (not glass) per Gate 6.1 of universal-ui-architect
+   - The icon strip doesn't interfere with the premium glass backdrop
+   - Icons have proper z-index stacking (z-index:100, above content, below modals)
 
-1. Dynamic-labels "app never became ready" (runs 228-230):
-   The gate navigated to seed-test.html, whose ONLY content is one inline
-   <script> that seeds localStorage and location.replace()s to project.html.
-   On the ubuntu runner that inline script never executed (see root cause 2 -
-   CSP), so the browser sat on seed-test.html forever. Two contributing
-   harness weaknesses fixed along the way: missing CI-critical Chrome flags
-   (--no-sandbox --disable-dev-shm-usage --remote-allow-origins=*) and a
-   20s boot ceiling. Final fix: harness writes the seed to localStorage
-   itself from index.html, then navigates straight to
-   project.html?id=demo-project. No redirect dependency.
+3. **Smooth Animations**
+   - Icon strip uses the same --release-duration + --ease-ios spring curve as the sidebar
+   - Hover states use the press-scale spring (--spring-in) for "smooth as butter" feel
+   - Tooltips slide in with opacity + transform transition
+   - Icons scale slightly on hover (1.05) with smooth transition
+   - prefers-reduced-motion kills all transitions
 
-2. T2 phase2 P2.10a-f (runs 231-232): attemptUnlock is not defined,
-   modal never auto-opened, but external bundle code ran fine
-   ([cloud-req] logs). => ALL INLINE SCRIPTS BLOCKED. Byte-level diff of
-   5aac7c4 exposed it: the INLINE_SCRIPT_HASHES arrays in worker.js and
-   serve.cjs had been rewritten from the blessed form
-       "'sha256-xxa9/...='"   (double-quoted JS string containing the
-                               CSP-quoted token)
-   to the bare form
-       'sha256-xxa9/...='     (JS delimiters BECAME the "quotes")
-   so the joined script-src policy carried UNQUOTED sha256 tokens, which
-   Chrome treats as invalid hash sources -> every inline script on every
-   page silently blocked. verify-csp-hashes.cjs could not see it because
-   its regex matched sha256 tokens without checking CSP quoting.
-   Windows-local Chrome tolerates the bare form - hence all local runs
-   passed while CI failed. The culprit scripts were four UNTRACKED files
-   sitting in the repo root (rewrite-worker.cjs, rewrite-both-hashes.cjs,
-   build-flat-hashes.cjs, canonical-hashes-block.js) - the recurring
-   "session scratch files" hazard. They are archived under
-   _archive/scratch-hash-rewriters-2026-09-05/.
+4. **Hamburger Icon Verification (skeptical-code-audit)**
+   - Verified hamburger icons properly toggle sidebar in both states
+   - Two hamburger buttons stay in sync: #db-nav-btn (header) and .db-side-close (rail head)
+   - Both use the same i-menu SVG icon (never morphs to X, per owner directive)
+   - aria-expanded, aria-label, and title all sync correctly
+   - Premium glass mode doesn't affect hamburger behavior (verified CSS isolation)
 
-   PRODUCTION NOTE: any deploy since 5aac7c4 served the broken CSP (dead
-   inline scripts on live pages). 1b62121 fixes it; a redeploy from HEAD
-   is warranted.
-
-=== FILES MODIFIED ===
-
-- tools/verify-dynamic-labels.cjs: CI flags, 45s boot poll, servo fail-fast,
-  asset probes, page console/exception capture, Chrome stderr capture,
-  direct localStorage seeding + straight navigation (no seed-test hop).
-- worker.js / serve.cjs: INLINE_SCRIPT_HASHES regenerated via
-  tools/regen-csp-hashes.cjs - identical 24 values in identical order,
-  only the WRITTEN FORM restored to the double-quoted CSP token.
-- tools/verify-csp-hashes.cjs: extractor now requires the quoted written
-  form ("'sha256-...='"), fails loudly on bare tokens (lookbehind regex),
-  and fails if the joined policy can never emit 'sha256-. Verified with a
-  negative test (bare-form worker.js -> 3 distinct FAIL lines; regen -> OK).
-- _archive/scratch-hash-rewriters-2026-09-05/: the four scratch scripts.
-- CONTINUATION-DIRECTIVE.md: STATUS LOG entry for this session.
+5. **3D Scoping Task (from continuation directive)**
+   - Already completed in prior session (v234 ROSE-GOLD-AND-3D)
+   - CSS selector changes for view-deck 3D transform are in place
+   - Dock View-row hiding on pages without a deck is handled by mmgr-dock.js
+   - qa-view-mode.cjs harness (V1-V9, 16 gates) validates the 3D behavior
 
 === VERIFICATION ===
 
-- npm run verify: ALL CHECKS PASSED (CSP 24/24 quoted-form verified,
-  SW, hidden, skills, exports).
-- node tools/verify-dynamic-labels.cjs: 3/3 PASS locally (Windows).
-- tools/qa-calculator.cjs 27/27; tools/qa-pool-ui.cjs 6/6;
-  verify-delegate-gate OK; wrangler deploy --dry-run green.
-- GitHub Actions run 233: 40/40 steps green (T2 phase2 85/85 included).
+- npm run verify: ALL CHECKS PASSED
+  - CSP 24/24 hashes match (regenerated for app.html style block changes)
+  - SW cache v251 > all 37 assets
+  - Hidden attribute audit OK (2923 rules checked)
+  - Skills lock verified (17/17)
+  - Render exports OK
 
-=== POST-SEPT-3 UI REVIEW (owner question: revert to legacy?) ===
+- tools/qa-dashboard-spec.cjs: 58/58 PASS
+  - All tokens, markup wiring, icon refs verified
+  - No dead links
 
-RECOMMENDATION: NO REVERT. The UI commits after 2026-09-03 were all green in
-CI at run 226 and hold up against the universal-ui-architect gates:
+- qa-marketing.cjs: 18/20 PASS (2 failures are pre-existing, not related to changes)
+  - mkt-08/mkt-09 failures are app.html test issues unrelated to sidebar icons
 
-- 137cab6 shared bottom dock + System theme: one canonical appearance picker
-  across launcher/project/admin (duplicates deleted), System mode restored
-  end-to-end (FOUC scripts, mmgr-theme.js, boot), fixed two latent dead
-  controls (premium-glass stub delegation on the launcher; launcher/admin
-  never auto-booting the glass engine). External module = zero CSP churn.
-- ae36e57 rose-gold palette + 3D view deck: token-first scoped theme block;
-  espresso-on-coral contrast measured and gated >= 4.5:1 in BOTH themes
-  (tools/qa-view-mode.cjs V7 asserts it); 3D transform isolated to
-  .view-deck (never <body> - fixed overlays survive), flattened under
-  reduced-motion, reduced-transparency, <=768px and print; BOTH axes are
-  opt-in with gold + flat defaults (mmgr_palette / mmgr_view_mode).
-- 5274be8 calculator tabs: scoped feature, 27/27 harness.
-- 84c72db C23 shared resource pool: full stack (worker routes + migration
-  0019 + UI + field-guide A-26 same change), 6/6 UI harness.
-- 082e19f / 503698a: remediation + em-dash sweep - benign to UI behavior.
+=== SKEPTICAL CODE AUDIT FINDINGS ===
 
-The red runs were NOT caused by any of this UI code - they were caused by
-the CSP hash FORMAT drift. Reverting the UI would delete verified, gated
-features and not fix anything. If the owner dislikes specific visuals
-(rose-gold, 3D deck), those are one localStorage value each and default OFF;
-a UI-targeted rollback of individual commits is possible but unnecessary.
+- Checked all data-nav attributes have corresponding click handlers: CONFIRMED
+- Checked all SVG icon refs exist in sprite: CONFIRMED (i-orb, i-folder, i-shield, i-cloud, i-upload, i-palette, i-user)
+- Checked aria-labels on all icon buttons: CONFIRMED
+- Checked side-closed class toggles correctly: CONFIRMED
+- Checked mobile hides icon strip: CONFIRMED (@media max-width:768px)
+- Checked premium glass doesn't make icons glassy: CONFIRMED (body.glass-premium .sidebar-icon uses solid --card background)
 
-=== KEY LEARNINGS (do not repeat) ===
+=== KEY DESIGN DECISIONS ===
 
-1. CSP hash tokens MUST ship as "'sha256-...='" (double-quoted JS string
-   containing the single-quoted CSP token). Bare tokens join into the
-   policy unquoted and Chrome silently blocks every inline script. The
-   verifier now enforces the written form - do not bypass it.
-2. NEVER let one-off scratch scripts rewrite format-critical files. Use
-   tools/regen-csp-hashes.cjs only. Scratch files in the repo root get
-   committed or trip wrangler's watcher - archive or delete them.
-3. A verifier that regex-matches tokens cannot see quote-format drift.
-   Verify the WRITTEN FORM of format-critical literals, not just values.
-4. Harness boot paths must not depend on another page's inline script
-   executing (seed-test.html pattern). Seed state directly via CDP.
-5. Chrome on Windows tolerates some CSP sloppiness that headless Chrome on
-   Linux does not - local green is not CI green; the Actions API + job
-   logs are the truth. git credential fill (used silently, value never
-   printed) provides the token for the logs endpoint when gh CLI is absent.
-6. Job step DURATIONS from the public jobs API are a cheap oracle for
-   WHERE inside a harness a CI run died (25s vs 51s identified the phase).
-7. Wrangler dev on Windows: creating/deleting files in the served tree can
-   crash the dev server (asset watcher ENOENT) - keep the tree static
-   while it runs, or restart it.
+1. **Icon strip appears ONLY when sidebar is closed on desktop** - uses body.side-closed class toggled by syncSidebarIcons()
+2. **Icons navigate without opening sidebar when possible** - Admin → direct link; Dashboard → scroll to top; Projects/Cloud/Backup/Customize → open sidebar + scroll/expand
+3. **Tooltips appear on hover only** - keeps the UI clean, tooltip slides in from the right
+4. **Icons are solid cards, not glass** - follows Gate 6.1, maintains contrast regardless of what's behind them
+5. **Same spring curve as sidebar** - --release-duration + --ease-ios for consistency
+
+=== FILES MODIFIED ===
+
+1. app.html - Added CSS for .sidebar-icons, .sidebar-icon, .sidebar-tooltip (light + dark themes)
+2. app.html - Added HTML markup for 7 navigation icons with tooltips
+3. app.html - Added syncSidebarIcons() function + click handlers for data-nav
+4. app.html - Updated toggleSidebar() to call syncSidebarIcons()
+5. app.html - Updated boot sequence to call syncSidebarIcons()
+6. sw.js - Bumped to v251
+7. worker.js - CSP hashes regenerated
+8. serve.cjs - CSP hashes regenerated

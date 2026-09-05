@@ -128,6 +128,104 @@ body.glass-premium .wrap{position:relative;z-index:1;}
 #db-metrics:empty{min-height:0;}
 /* Sidebar margin: smooth transition, no shift on desktop open */
 @media(min-width:769px){.wrap{will-change:margin-left;}}
+
+/* SIDEBAR-CLOSED ICON STRIP (owner 2026-09-05): when the rail is closed,
+   show a vertical strip of navigation icons along the left edge so users
+   can jump to sections without opening the hamburger. Icons are always
+   visible; hovering reveals the full title as a tooltip. Desktop only
+   (mobile keeps the hamburger drawer pattern). */
+body.db-page:not(.dark-mode) .sidebar-icons{
+  position:fixed;top:50%;left:8px;transform:translateY(-50%);
+  display:flex;flex-direction:column;gap:12px;z-index:100;
+  opacity:0;pointer-events:none;transition:opacity var(--release-duration) var(--ease-ios);
+}
+body.db-page:not(.dark-mode).side-closed .sidebar-icons{
+  opacity:1;pointer-events:auto;
+}
+body.db-page:not(.dark-mode) .sidebar-icon{
+  display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;
+  border-radius:var(--squircle-md);cursor:pointer;
+  background:var(--card);border:1px solid var(--border);
+  color:var(--slate);box-shadow:0 1px 2px rgba(16,24,40,.04),0 4px 10px rgba(16,24,40,.06);
+  transition:color var(--tr),background var(--tr),border-color var(--tr),transform var(--press-duration) var(--spring-in);
+}
+body.db-page:not(.dark-mode) .sidebar-icon:hover{
+  color:var(--gold);border-color:var(--gold);
+  background:color-mix(in oklch,var(--gold) 8%,transparent);
+  transform:scale(1.05);
+}
+body.db-page:not(.dark-mode) .sidebar-icon .ico{width:18px;height:18px;}
+body.db-page:not(.dark-mode) .sidebar-icon .sidebar-tooltip{
+  position:absolute;left:48px;top:50%;transform:translateY(-50%) translateX(4px);
+  padding:6px 10px;border-radius:var(--radius-control);
+  background:var(--card);border:1px solid var(--border);
+  box-shadow:0 4px 12px rgba(16,24,40,.1);color:var(--text);
+  font-size:.72rem;font-weight:600;white-space:nowrap;
+  opacity:0;pointer-events:none;transition:opacity var(--tr),transform var(--tr);
+  z-index:200;
+}
+body.db-page:not(.dark-mode) .sidebar-icon .sidebar-tooltip::before{
+  content:"";position:absolute;right:100%;top:50%;transform:translateY(-50%);
+  border:5px solid transparent;border-right-color:var(--border);
+}
+body.db-page:not(.dark-mode) .sidebar-icon:hover .sidebar-tooltip{
+  opacity:1;transform:translateY(-50%) translateX(0);
+}
+
+/* Premium glass: sidebar icons stay solid (Gate 6.1), not glass. */
+body.glass-premium .sidebar-icon{
+  background:var(--card);border:1px solid var(--border);
+}
+
+/* Dark mode sidebar icons */
+body.dark-mode.db-page .sidebar-icons{
+  position:fixed;top:50%;left:8px;transform:translateY(-50%);
+  display:flex;flex-direction:column;gap:12px;z-index:100;
+  opacity:0;pointer-events:none;transition:opacity var(--release-duration) var(--ease-ios);
+}
+body.dark-mode.db-page.side-closed .sidebar-icons{
+  opacity:1;pointer-events:auto;
+}
+body.dark-mode.db-page .sidebar-icon{
+  display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;
+  border-radius:var(--squircle-md);cursor:pointer;
+  background:var(--db-surface);border:1px solid var(--db-border);
+  color:var(--db-text-secondary);box-shadow:0 1px 2px rgba(0,0,0,.2),0 4px 10px rgba(0,0,0,.3);
+  transition:color var(--tr),background var(--tr),border-color var(--tr),transform var(--press-duration) var(--spring-in);
+}
+body.dark-mode.db-page .sidebar-icon:hover{
+  color:var(--db-accent);border-color:var(--db-accent);
+  background:color-mix(in oklch,var(--db-accent) 12%,transparent);
+  transform:scale(1.05);
+}
+body.dark-mode.db-page .sidebar-icon .ico{width:18px;height:18px;}
+body.dark-mode.db-page .sidebar-icon .sidebar-tooltip{
+  position:absolute;left:48px;top:50%;transform:translateY(-50%) translateX(4px);
+  padding:6px 10px;border-radius:var(--radius-control);
+  background:var(--db-surface-raised);border:1px solid var(--db-border);
+  box-shadow:0 4px 12px rgba(0,0,0,.4);color:var(--db-text-primary);
+  font-size:.72rem;font-weight:600;white-space:nowrap;
+  opacity:0;pointer-events:none;transition:opacity var(--tr),transform var(--tr);
+  z-index:200;
+}
+body.dark-mode.db-page .sidebar-icon .sidebar-tooltip::before{
+  content:"";position:absolute;right:100%;top:50%;transform:translateY(-50%);
+  border:5px solid transparent;border-right-color:var(--db-border);
+}
+body.dark-mode.db-page .sidebar-icon:hover .sidebar-tooltip{
+  opacity:1;transform:translateY(-50%) translateX(0);
+}
+
+/* Hide icon strip when sidebar is open (desktop) */
+body.db-page.side-open .sidebar-icons{opacity:0;pointer-events:none;}
+
+@media(max-width:768px){
+  body.db-page .sidebar-icons{display:none;}
+}
+@media (prefers-reduced-motion:reduce){
+  body.db-page .sidebar-icons{transition:none;}
+  body.db-page .sidebar-icon{transition:none;}
+}
 /* PROJECT SEARCH modal */
 #ps-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:2000;align-items:center;justify-content:center;}
 #ps-modal.open{display:flex;}
@@ -235,6 +333,39 @@ body.glass-premium .wrap{position:relative;z-index:1;}
   </div>
 </aside>
 <div class="db-scrim" id="db-scrim" data-action="toggleSidebar"></div>
+
+<!-- Sidebar-closed icon strip (desktop only): when the rail is closed,
+     show navigation icons along the left edge with hover tooltips. -->
+<div class="sidebar-icons" id="sidebar-icons" aria-hidden="true">
+  <button type="button" class="sidebar-icon" data-nav="dashboard" title="Dashboard" aria-label="Dashboard">
+    <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-orb"></use></svg>
+    <span class="sidebar-tooltip">Dashboard</span>
+  </button>
+  <button type="button" class="sidebar-icon" data-nav="projects" title="All Projects" aria-label="All Projects">
+    <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-folder"></use></svg>
+    <span class="sidebar-tooltip">All Projects</span>
+  </button>
+  <button type="button" class="sidebar-icon" data-nav="admin" title="Admin panel" aria-label="Admin panel">
+    <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-shield"></use></svg>
+    <span class="sidebar-tooltip">Admin panel</span>
+  </button>
+  <button type="button" class="sidebar-icon" data-nav="cloud" title="Cloud Projects" aria-label="Cloud Projects">
+    <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cloud"></use></svg>
+    <span class="sidebar-tooltip">Cloud Projects</span>
+  </button>
+  <button type="button" class="sidebar-icon" data-nav="backup" title="Backup & Restore" aria-label="Backup and Restore">
+    <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-upload"></use></svg>
+    <span class="sidebar-tooltip">Backup & Restore</span>
+  </button>
+  <button type="button" class="sidebar-icon" data-nav="customize" title="Customize" aria-label="Customize">
+    <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-palette"></use></svg>
+    <span class="sidebar-tooltip">Customize</span>
+  </button>
+  <button type="button" class="sidebar-icon" data-nav="signin" title="Sign in" aria-label="Sign in">
+    <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-user"></use></svg>
+    <span class="sidebar-tooltip">Sign in</span>
+  </button>
+</div>
 
 <div class="wrap">
   <div class="top" id="top">
@@ -725,7 +856,10 @@ document.getElementById('db-sidebar').addEventListener('click', e=>{
    open/close is always obvious and always reversible from this button. */
 function toggleSidebar(){
   document.body.classList.toggle('side-open');
+  // When sidebar closes on desktop, show the icon strip; when it opens, hide it.
+  // On mobile, the icon strip is hidden via CSS media query.
   syncSidebarAria();
+  syncSidebarIcons();
 }
 function syncSidebarAria(){
   const open = document.body.classList.contains('side-open');
@@ -740,6 +874,18 @@ function syncSidebarAria(){
     btn.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
     btn.setAttribute('title', open ? 'Close menu' : 'Open menu');
   });
+}
+function syncSidebarIcons(){
+  // On desktop (>=769px), toggle the side-closed class based on sidebar state.
+  // The CSS handles the actual visibility via opacity transition.
+  const isDesktop = window.matchMedia && window.matchMedia('(min-width:769px)').matches;
+  const sidebarOpen = document.body.classList.contains('side-open');
+  document.body.classList.toggle('side-closed', isDesktop && !sidebarOpen);
+  // Update aria-hidden for accessibility
+  const iconsStrip = document.getElementById('sidebar-icons');
+  if (iconsStrip) {
+    iconsStrip.setAttribute('aria-hidden', sidebarOpen || !isDesktop ? 'true' : 'false');
+  }
 }
 
 /* Quick moon/sun theme toggle (hero top-right): flips the same device-level
@@ -1130,7 +1276,94 @@ if (window.MMGR && window.MMGR.Portfolio) window.MMGR.Portfolio.render();
 renderRailProjects();
 syncThemeQuick();
 syncSidebarAria();
-window.addEventListener('resize', function(){ syncSidebarAria(); });
+syncSidebarIcons();
+
+// Sidebar icon strip navigation: clicking an icon opens the sidebar and
+// navigates to the corresponding section/page.
+document.addEventListener('click', function(e){
+  const icon = e.target.closest('[data-nav]');
+  if (!icon) return;
+  const nav = icon.getAttribute('data-nav');
+  // On desktop, close the sidebar first (it should be open if icons are visible,
+  // but handle the case where user has side-open class manually set).
+  if (document.body.classList.contains('side-open')) {
+    document.body.classList.remove('side-open');
+    syncSidebarAria();
+    syncSidebarIcons();
+  }
+  // Navigate based on the icon
+  switch(nav) {
+    case 'dashboard':
+      // Dashboard is a "coming soon" placeholder - scroll to top
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      break;
+    case 'projects':
+      // Scroll to the projects grid section
+      const grid = document.getElementById('grid');
+      if (grid) {
+        // First open the sidebar to show the projects section
+        document.body.classList.add('side-open');
+        syncSidebarAria();
+        syncSidebarIcons();
+        // Then scroll to grid after a brief delay for the transition
+        setTimeout(() => {
+          grid.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 300);
+      }
+      break;
+    case 'admin':
+      window.location.href = 'admin.html';
+      break;
+    case 'cloud':
+      // Open sidebar and expand the Cloud Projects section
+      document.body.classList.add('side-open');
+      syncSidebarAria();
+      syncSidebarIcons();
+      const cloudSection = document.querySelector('[data-rail-toggle="rail-cloud-list"]');
+      if (cloudSection) {
+        setTimeout(() => {
+          cloudSection.click();
+          cloudSection.focus();
+        }, 300);
+      }
+      break;
+    case 'backup':
+      // Open sidebar and expand the Backup section
+      document.body.classList.add('side-open');
+      syncSidebarAria();
+      syncSidebarIcons();
+      const backupSection = document.querySelector('[data-rail-toggle="rail-backup"]');
+      if (backupSection) {
+        setTimeout(() => {
+          backupSection.click();
+          backupSection.focus();
+        }, 300);
+      }
+      break;
+    case 'customize':
+      // Open sidebar and expand the Customize section
+      document.body.classList.add('side-open');
+      syncSidebarAria();
+      syncSidebarIcons();
+      const customizeSection = document.querySelector('[data-rail-toggle="rail-customize"]');
+      if (customizeSection) {
+        setTimeout(() => {
+          customizeSection.click();
+          customizeSection.focus();
+        }, 300);
+      }
+      break;
+    case 'signin':
+      openSignIn();
+      break;
+  }
+});
+
+// Update icon strip on resize - hide on mobile, show on desktop
+window.addEventListener('resize', function(){
+  syncSidebarAria();
+  syncSidebarIcons();
+});
 
 /* Deploy guard: every icon on this page is a <use href="css/mmgr-icons.svg#...">.
    A missing sprite on the live host makes icons vanish silently , surface it

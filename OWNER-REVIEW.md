@@ -29,5 +29,6 @@ Agents: do not execute these; leave them for the owner.
 - [x] **Color-as-state audit** — DONE: `.badge.on-hold` changed from `var(--gold)` (brand) to `var(--amber)` (status). Review badge 'pending' uses `reviewBadge()` with amber. Gold is now reserved exclusively for brand elements.
 
 ### Deploy
+- [ ] **Custom domain purchase (F2)** — Skimmable one-pager: `CUSTOM-DOMAIN-OWNER-REVIEW.md`. Buy the domain (~$9.77/yr .com, Cloudflare Registrar, same account), then the 15-step transition checklist runs automatically.
 - [ ] **Review live site** — Walk through the live site and confirm: (1) the refactored worker.js serves all pages correctly, (2) all auth flows work (Google sign-in, email+password, logout), (3) cloud sync still functions, (4) no CSP violations in the console.
 - [ ] **Commit + push + deploy** — The changes from this session need to be committed, pushed, and deployed. The verify pipeline passes locally (CSP 17/17, SW v200, exports clean).

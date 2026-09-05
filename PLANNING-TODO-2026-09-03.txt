@@ -802,14 +802,48 @@ pushed head. Remaining AREA F items are owner-blocked: F2 custom
 domain, F3 Yahoo/MS providers (PAUSED), F4 O3 tuning (needs traffic),
 F5 future plans.
 
+LIVE POOL E2E + F2 OWNER-REVIEW RECORD (2026-09-04) - post-Phase-7
+follow-ups, no code shipped to prod (harness + docs only):
+(1) TOOLS/QA-LIVE-POOL.CJS CREATED + GREEN 3/3 against PRODUCTION
+(my-manager.garfieldprocis.workers.dev): 17 gates exercising the REAL
+C23 story end to end - register a QA email session (email auth is live;
+RESEND configured), create projects A+B under one session sub
+(account-wide pool namespace) + C code-only (per-project namespace),
+A adds pool rows, B sees them shared, B links/updates across projects
+(per-project pins stay private), shared-field rate update propagates to
+A, code-only C sees an EMPTY isolated pool and CANNOT link account
+rows (404), delete cascades links. Self-verifies its QA email via
+remote D1 (wrangler d1 execute through node .../wrangler.js - the
+.confirm-email path) because the QA address can never receive mail;
+deletes its account + purges every project in cleanup (verified zero
+leftovers in remote D1 after each run). TWO BUGS FOUND + FIXED in the
+harness, not prod: (a) execFileSync of npx.cmd EINVAL on Windows ->
+invoke wrangler's JS entry via process.execPath instead; (b) cleanup
+used the ?op=purge QUERY form which is NOT a route (silently 404'd,
+leaving code-only qa-pool-c-* orphans because session-linked rows
+were cascaded away by account deletion but google_sub-null rows were
+not) - purge is the PATH-SEGMENT form /purge per admin.html:2084 and
+src/router.js:147; corrected, re-ran, remote D1 clean (pool_items 0,
+links 0, qa projects 0, qa accounts 0), then swept the 5 pre-fix
+orphans out of remote D1 by hand. (2) F2 CUSTOM DOMAIN converted to
+a skimmable owner-action one-pager: CUSTOM-DOMAIN-OWNER-REVIEW.md
+(decision, ~$9.77/yr .com at Cloudflare Registrar at-cost in the SAME
+account = zero DNS transfer, unblock table, the 8 automatic post-buy
+steps, ~1-2h timeline); cross-linked from the CUSTOM DOMAIN TRANSITION
+PLAN banner in CONTINUATION-DIRECTIVE.md, from OWNER-REVIEW.md (new
+Deploy checkbox) and from the F2 tracker row. Nothing shipped -> no
+sw bump, no CSP change, no deploy needed for this wave.
+
 --------------------------------------------------------------------
 AREA F - BACKLOG / DIRECTIVE DEFERRED ITEMS (for completeness)
 --------------------------------------------------------------------
 F1. [ ] C19/C23 pending deploy from the 2026-09-01 sessions (folded
      into C6 above).
 F2. [ ] Custom domain purchase + transition checklist (owner action -
-     blocked on you buying the domain; ~1-2h once purchased). See the
-     CUSTOM DOMAIN TRANSITION PLAN in CONTINUATION-DIRECTIVE.md.
+     blocked on you buying the domain; ~1-2h once purchased). OWNER:
+     skim CUSTOM-DOMAIN-OWNER-REVIEW.md (one-pager, decision + cost +
+     what happens next). Deep checklist: CUSTOM DOMAIN TRANSITION PLAN
+     in CONTINUATION-DIRECTIVE.md.
 F3. [ ] Yahoo + Microsoft sign-in providers (PAUSED by owner - needs
      your OAuth client IDs/secrets).
 F4. [ ] O3 rate-limit tuning (later - needs production traffic).

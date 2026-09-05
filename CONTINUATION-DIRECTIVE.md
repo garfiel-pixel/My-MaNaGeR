@@ -2574,6 +2574,11 @@ exception. Based on the diagnostic result:
 
 ## CUSTOM DOMAIN TRANSITION PLAN (BLOCKED UNTIL DOMAIN PURCHASED)
 
+> **OWNER: skim `CUSTOM-DOMAIN-OWNER-REVIEW.md` first** — one page with the
+> decision, cost (~$9.77/yr .com at Cloudflare Registrar), and what happens
+> after you buy. The detailed checklist below is executed automatically once
+> the domain exists in the Cloudflare account.
+
 The app runs on `garfieldprocis.workers.dev` — a Cloudflare-managed `.workers.dev` subdomain. This blocks features requiring domain ownership for DNS configuration.
 
 ### BLOCKED FEATURES

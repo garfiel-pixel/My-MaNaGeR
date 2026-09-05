@@ -834,6 +834,42 @@ PLAN banner in CONTINUATION-DIRECTIVE.md, from OWNER-REVIEW.md (new
 Deploy checkbox) and from the F2 tracker row. Nothing shipped -> no
 sw bump, no CSP change, no deploy needed for this wave.
 
+FULL-CODEBASE CLEAN-DEPLOY RECORD (2026-09-04, DONE): owner asked to
+bring the entire codebase (guide/policy/etc) current and deploy what
+can be deployed until the domain is bought. Audit result: ALL tracked
+content was already committed AND live (local == live sw v244; every
+page 200; legal-links 7/7; privacy + terms split live with both links
+on all five marketing footers; sitemap has all 8 URLs; field guide
+A-26 live; zero stale combined Privacy & Terms refs; emoji clean;
+verify ALL PASS). ONE REAL DEFECT FOUND + FIXED: ~2.5 MB of untracked
+session scratch at the repo root (crashes from last session.txt,
+Windows PowerShell *.txt, LIVE-SITE-UI-AUDIT-2026-08-22.md,
+SECURITY-FIXES-IMPLEMENTATION-PLAN.md, my_manager_web favicon image
+to use.png, images/pages stray screenshots app-source/index-source/
+dashboard/launcher-*/marketing/project-workspace) were being UPLOADED
+AND PUBLICLY SERVED by every staging deploy - the tar recipe only
+excluded directories, and wrangler static assets does not honor
+.gitignore. Commit 969c05b: .gitignore now lists them (kept on disk,
+never committed) and the wrangler.jsonc DEPLOY NOTE documents the
+matching file-specific tar --excludes. Then a CLEAN staging deploy
+(Version 5c0b28e6-5f39-46d1-8806-98a5aef5809e) dropped them from the
+live asset set. Verified live: cache-busted fetches prove origin is
+clean (scratch content gone - 0 matches of file-unique strings;
+served bodies are only the worker's catch-all index.html fallback;
+favicon URL serves text/html fallback, not the image). Note: the
+txt/md scratch carried max-age=3600 and pngs max-age=31536000
+immutable, so stale EDGE copies lingered briefly after the deploy but
+the origin manifest no longer contains them and the fallback now
+serves no-cache - the sensitive file contents are unreachable. CI
+green on 969c05b. No sw bump needed (no shell content changed).
+
+WHAT STAYS BLOCKED UNTIL THE DOMAIN IS BOUGHT (deployable-now split):
+F2 custom domain transition (CUSTOM-DOMAIN-OWNER-REVIEW.md one-pager
+- buy the domain, then the 15-step checklist runs); F3 Yahoo +
+Microsoft sign-in providers (owner needs to supply OAuth client
+ids/secrets); F4 O3 rate-limit tuning (needs real production
+traffic). Everything else in the codebase is current and live.
+
 --------------------------------------------------------------------
 AREA F - BACKLOG / DIRECTIVE DEFERRED ITEMS (for completeness)
 --------------------------------------------------------------------

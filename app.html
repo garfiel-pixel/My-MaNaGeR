@@ -955,7 +955,36 @@ async function cloudCodeOpen(){
 const entryInput = document.getElementById('code-entry-in');
 if (entryInput) entryInput.addEventListener('keydown', function(e){ if (e.key === 'Enter') cloudCodeOpen(); });
 
-/* PROJECT SEARCH: modal overlay to search/filter projects by name */
+/* PROJECT SEARCH: modal overlay to search/filter projects by name.
+   OWNER 2026-09-05: search must see what the grid sees - on-device projects
+   (mmgr_admin_projects) first, then the published manifest (labeled Cloud),
+   then demos. Matching is per-word AND: every typed word must hit, so
+   searching "riverside budget" can no longer surface unrelated projects. */
+function searchCandidates(){
+  var all = [];
+  var seen = {};
+  function push(p, source){
+    if (!p || !p.id || seen[p.id]) return;
+    seen[p.id] = 1;
+    all.push(Object.assign({}, p, { _src: source }));
+  }
+  // On-device projects (the admin list the grid actually renders from)
+  try {
+    JSON.parse(localStorage.getItem('mmgr_admin_projects') || '[]').forEach(function(p){ push(p, 'device'); });
+  } catch(e) {}
+  try {
+    JSON.parse(localStorage.getItem('mmgr_projects') || '[]').forEach(function(p){ push(p, 'device'); });
+  } catch(e) {}
+  // Published manifest (visitor path). Entries that are also on this device
+  // keep the device label; published-only entries are the Cloud/shared path.
+  (window.MMGR_PROJECTS || []).forEach(function(p){ push(p, isLocalProject(p.id) ? 'device' : 'cloud'); });
+  // Demo projects
+  try {
+    if (window.MMGR_DEMO_FILLED) push({id:'demo-filled',title:'Demo: Filled Project',description:'A pre-filled demo project showcasing all workspace sections.',demo:true}, 'demo');
+    if (window.MMGR_DEMO_EMPTY) push({id:'demo-empty',title:'Demo: Empty Project',description:'A blank demo project for exploring the workspace.',demo:true}, 'demo');
+  } catch(e) {}
+  return all;
+}
 function openProjectSearch(){
   var modal = document.getElementById('ps-modal');
   if (!modal) return;
@@ -971,26 +1000,14 @@ function renderProjectResults(query){
   var list = document.getElementById('ps-list');
   if (!list) return;
   var q = (query || '').toLowerCase().trim();
-  var all = [];
-  // User projects (local)
-  try {
-    var raw = localStorage.getItem('mmgr_projects');
-    if (raw) all = JSON.parse(raw);
-  } catch(e) {}
-  // Include MMGR_PROJECTS (manifest + cloud)
-  (window.MMGR_PROJECTS || []).forEach(function(p) {
-    if (p && p.id && !all.find(function(x){ return x.id === p.id; })) all.push(p);
-  });
-  // Include demo projects
-  try {
-    if (window.MMGR_DEMO_FILLED) all.push({id:'demo-filled',title:'Demo: Filled Project',description:'A pre-filled demo project showcasing all workspace sections.',demo:true});
-    if (window.MMGR_DEMO_EMPTY) all.push({id:'demo-empty',title:'Demo: Empty Project',description:'A blank demo project for exploring the workspace.',demo:true});
-  } catch(e) {}
-  var filtered = q ? all.filter(function(p) {
-    return (p.title || p.id || '').toLowerCase().indexOf(q) > -1 || (p.description || '').toLowerCase().indexOf(q) > -1;
+  var words = q.split(/\s+/).filter(Boolean);
+  var all = searchCandidates();
+  var filtered = words.length ? all.filter(function(p) {
+    var hay = ((p.title || p.id || '') + ' ' + (p.description || '')).toLowerCase();
+    return words.every(function(w){ return hay.indexOf(w) > -1; });
   }) : all;
   if (!filtered.length) {
-    list.innerHTML = '<div class="ps-empty">' + (q ? 'No projects match "' + q.replace(/</g,'&lt;') + '"' : 'No projects found') + '</div>';
+    list.innerHTML = '<div class="ps-empty">' + (q ? 'No projects match "' + escapeHtml(q) + '"' : 'No projects found') + '</div>';
     return;
   }
   list.innerHTML = filtered.map(function(p) {
@@ -998,7 +1015,10 @@ function renderProjectResults(query){
     var desc = p.description || '';
     var unlocked = false;
     try { unlocked = localStorage.getItem('mmgr_unlocked_' + p.id) === '1'; } catch(e) {}
-    var badge = p.demo ? '<span class="ps-item-badge" style="color:var(--gold)">Demo</span>' : (unlocked ? '<span class="ps-item-badge">Unlocked</span>' : '');
+    var srcLabel = p.demo ? 'Demo' : (p._src === 'device' ? 'On this device' : 'Cloud');
+    var srcCls = p.demo ? 'ps-badge-demo' : (p._src === 'device' ? 'ps-badge-device' : 'ps-badge-cloud');
+    var badge = '<span class="ps-item-badge ' + srcCls + '">' + srcLabel + '</span>' +
+      (unlocked && !p.demo ? '<span class="ps-item-badge">Unlocked</span>' : '');
     return '<button type="button" class="ps-item" data-ps-id="' + (p.id || '').replace(/"/g, '&quot;') + '">' +
       '<span class="ps-item-title">' + title.replace(/</g, '&lt;') + '</span>' +
       (desc ? '<span class="ps-item-desc">' + desc.replace(/</g, '&lt;').substring(0, 80) + '</span>' : '') +

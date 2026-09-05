@@ -2992,6 +2992,22 @@ body.dark-mode.db-page .db-new-project{background:rgba(245,158,11,.16);color:var
 body.dark-mode.db-page .db-new-project:hover{background:rgba(245,158,11,.24);}
 @media (max-width:560px){body.db-page .top .db-hero-row{flex-direction:column;align-items:flex-start;}body.db-page .db-new-project{width:100%;justify-content:center;}}
 @media (prefers-reduced-motion:reduce){.db-new-project{transition:none;transform:none;}}
+
+/* ---- PROJECT SEARCH RESULTS (owner 2026-09-05): the modal had results
+     markup but no styles of its own; now token-driven so every theme reads.
+     Source badges answer "is this mine, the cloud's, or a demo?" at a glance. ---- */
+.ps-empty{padding:22px 12px;text-align:center;font-size:.85rem;color:var(--slate);}
+.ps-item{display:flex;flex-direction:column;align-items:flex-start;gap:3px;width:100%;padding:10px 12px;margin-bottom:6px;border:1px solid var(--border);border-radius:var(--radius);background:transparent;cursor:pointer;text-align:left;transition:background var(--tr),border-color var(--tr);}
+.ps-item:hover{background:var(--tile-bg);border-color:color-mix(in oklch,var(--gold) 40%,var(--border));}
+.ps-item-title{font-weight:700;font-size:.9rem;color:var(--text);}
+.ps-item-desc{font-size:.72rem;color:var(--slate);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.ps-item-badge{display:inline-flex;align-items:center;font-size:.62rem;font-weight:800;letter-spacing:.05em;text-transform:uppercase;padding:2px 8px;border-radius:999px;}
+.ps-item-badge + .ps-item-badge{margin-left:4px;}
+.ps-badge-device{background:color-mix(in oklch,var(--green) 14%,transparent);color:var(--green);}
+.ps-badge-cloud{background:color-mix(in oklch,var(--blue) 14%,transparent);color:var(--blue);}
+.ps-badge-demo{background:color-mix(in oklch,var(--gold) 18%,transparent);color:var(--gold-dark,#7c2d12);}
+body.dark-mode .ps-item:hover{background:var(--card-elev,rgba(255,255,255,.04));}
+body.dark-mode .ps-badge-demo{color:var(--gold);}
 /* ---- cloud cards share the grid card language ---- */
 body.db-page .cd-card{
   padding:var(--pad-card);

@@ -44,7 +44,13 @@ async function ev(expr) {
 }
 
 async function bootChrome(port, profile, url) {
-  const proc = spawn(CHROME, ['--headless=new', '--disable-gpu', '--no-first-run', '--remote-debugging-port=' + port, '--user-data-dir=' + profile, '--window-size=1440,1200', 'about:blank'], { stdio: 'ignore' });
+  // CI parity (2026-09-05, run 228): this gate must boot Chrome with the same
+  // CI-critical flags as every other browser harness. Without --no-sandbox and
+  // --disable-dev-shm-usage the ubuntu runner can fail to boot the page at all
+  // (Runtime.evaluate stays unreachable -> "app never became ready"), which is
+  // exactly the flake the header below documents. --remote-allow-origins=*
+  // keeps the DevTools WebSocket connectable on newer Chrome.
+  const proc = spawn(CHROME, ['--headless=new', '--no-sandbox', '--disable-dev-shm-usage', '--disable-gpu', '--no-first-run', '--remote-allow-origins=*', '--remote-debugging-port=' + port, '--user-data-dir=' + profile, '--window-size=1440,1200', 'about:blank'], { stdio: 'ignore' });
   for (let i = 0; i < 60; i++) {
     try { const r = await fetch('http://127.0.0.1:' + port + '/json/version'); if (r.ok) break; } catch (e) {}
     await delay(300);
@@ -96,7 +102,18 @@ async function bootChrome(port, profile, url) {
       }
       return false;
     })()`);
-    if (bootReady !== true) { log('FAIL app never became ready after boot'); process.exit(1); }
+    if (bootReady !== true) {
+      // Diagnostic dump: make a CI recurrence self-describing (page URL, ready
+      // state, whether MMGR exists and how many namespaces attached, script count).
+      const diag = await ev(`(function(){
+        return { href: location.href, ready: document.readyState,
+          mmgr: (typeof MMGR !== 'undefined') ? Object.keys(MMGR).length : -1,
+          hasState: (typeof MMGR !== 'undefined' && MMGR.State) ? true : false,
+          scripts: document.scripts.length };
+      })()`);
+      log('FAIL app never became ready after boot — diag: ' + JSON.stringify(diag));
+      process.exit(1);
+    }
     // Seed a project with rows in EVERY module that renders table inputs.
     await ev(`(function(){
       MMGR.State.clearProject();

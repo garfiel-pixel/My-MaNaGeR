@@ -1514,6 +1514,10 @@ var MMGR = window.MMGR || {};
   function renderResourceLeveling() { if (ns.RenderResources) ns.RenderResources.renderResourceLeveling(); }
   function renderTimeTracking() { if (ns.RenderResources) ns.RenderResources.renderTimeTracking(); }
   function renderEquipment() { if (ns.RenderResources) ns.RenderResources.renderEquipment(); }
+  // C23 Shared Resource Pool (Phase 6) delegates — mirror the pattern above.
+  function poolOpenLibrary() { if (ns.RenderResources) ns.RenderResources.poolOpenLibrary(); }
+  function poolAddRow() { if (ns.RenderResources) ns.RenderResources.poolAddRow.apply(null, arguments); }
+  function poolBootMergeIfLinked() { if (ns.RenderResources) ns.RenderResources.poolBootMergeIfLinked(); }
 
   // ---- Financials ---- (extracted to js/render/financials.js)
   function fmt$(n) { return ns.RenderFinancials ? ns.RenderFinancials.fmt$(n) : ""; }

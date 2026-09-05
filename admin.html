@@ -560,6 +560,18 @@ pre.snippet{background:#f8fafc;border:1px solid var(--border);border-radius:6px;
         <div id="client-code-reveal" style="border:1px solid var(--gold);background:rgba(var(--gold-rgb),.1);border-radius:var(--radius);padding:8px 10px;margin:10px 0;font-size:.76rem" hidden role="status"></div>
         <div id="client-codes-list" style="font-size:.72rem;color:var(--slate);margin-top:8px"></div>
       </div>
+      <!-- C23: Shared Resource Pool (Phase 6) -->
+      <div style="border-top:1px solid var(--border);margin-top:12px;padding-top:12px">
+        <div style="font-size:.78rem;font-weight:600;margin-bottom:8px"><svg class="ico" aria-hidden="true" style="width:14px;height:14px"><use href="css/mmgr-icons.svg#i-users"></use></svg> Shared Resource Pool (this account)</div>
+        <p style="font-size:.72rem;color:var(--slate);margin:0 0 8px;line-height:1.5">Your account-wide library of reusable people, equipment and materials. Any project you link can pull these rows into its Resources panel. Deleting a row unlinks it everywhere (projects keep their local copy).</p>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
+          <input id="pool-new-name" type="text" maxlength="120" placeholder="Name, e.g. Forman, 60t crane" style="flex:1;min-width:160px" autocomplete="off" aria-label="New pool row name">
+          <select id="pool-new-kind" style="width:auto" aria-label="Pool row kind"><option value="person">Person</option><option value="equipment">Equipment</option><option value="material">Material</option></select>
+          <button class="btn btn-g btn-s" data-action="poolCreateRow"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-plus"></use></svg> Add to Pool</button>
+        </div>
+        <div id="pool-reveal" style="font-size:.76rem;color:var(--slate);margin-bottom:8px">Loading pool…</div>
+        <div id="pool-list" style="font-size:.72rem;color:var(--slate)"></div>
+      </div>
     </div>
   </div>
 </div>
@@ -2139,10 +2151,102 @@ function openCodesManager(i){
     }
   });
   listCloudCodes();
+  poolList();
 }
 function closeCodesModal(){
   document.getElementById('codes-om').classList.remove('show');
   _codesIdx = null;
+}
+
+/* ---- C23 Shared Resource Pool (Phase 6): owner-only CRUD ----
+   The account-scoped pool manager inside the Codes modal. Uses the
+   same owner-code credential as the codes manager. Write ops are
+   owner-gated server-side (cloudAuthOwnerEither); a pool row with no
+   recorded owner code just shows the empty-loading state. */
+function poolOwner(){
+  const p = (_codesIdx !== null) && projects[_codesIdx];
+  return (p && p.cloudId && p.cloudOwnerCode) ? { projectId: p.cloudId, code: p.cloudOwnerCode } : null;
+}
+async function poolFetch(suffix, method, body){
+  const own = poolOwner();
+  if (!own) return { ok: false, status: 0, data: {}, noCode: true };
+  try{
+    const res = await fetch('/api/cloud/projects/' + encodeURIComponent(own.projectId) + '/pool' + suffix, {
+      method: method, credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json', 'X-Owner-Code': own.code },
+      body: body ? JSON.stringify(body) : undefined
+    });
+    const data = await res.json().catch(()=>({}));
+    return { ok: res.ok && data.ok, status: res.status, data: data };
+  }catch(e){
+    return { ok: false, status: 0, data: {}, netErr: true };
+  }
+}
+async function poolList(){
+  const wrap = document.getElementById('pool-list');
+  const reveal = document.getElementById('pool-reveal');
+  if (!wrap || !reveal) return;
+  const own = poolOwner();
+  if (!own){ reveal.textContent = 'Open the Codes manager from a cloud-linked project row to manage the pool.'; wrap.innerHTML = ''; return; }
+  reveal.textContent = 'Loading pool…';
+  const r = await poolFetch('/items', 'GET');
+  if (!r.ok){
+    reveal.textContent = r.noCode ? 'No owner code recorded for this project on this device.' : (r.netErr ? 'Cloud API unreachable on this host.' : ('Could not load pool: ' + (r.data.error || r.status)));
+    wrap.innerHTML = '';
+    return;
+  }
+  const items = r.data.items || [];
+  const linked = r.data.linked || {};
+  reveal.textContent = items.length ? (items.length + ' row(s) in the pool · ' + Object.keys(linked).length + ' linked to this project') : 'Your pool is empty — add rows below.';
+  if (!items.length){ wrap.innerHTML = ''; return; }
+  const kindLabel = function(k){ return k === 'person' ? 'Person' : k === 'equipment' ? 'Equipment' : 'Material'; };
+  wrap.innerHTML = items.map(function(it){
+    const isL = !!linked[it.id];
+    return '<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);flex-wrap:wrap">' +
+      '<span style="font-weight:600">' + escapeHtml(it.name || '(unnamed)') + '</span>' +
+      '<span style="color:var(--slate);font-size:.68rem">' + kindLabel(it.kind) + (it.type ? ' · ' + escapeHtml(it.type) : '') + (it.role ? ' · ' + escapeHtml(it.role) : '') + (it.rate ? ' · $' + Number(it.rate).toFixed(0) + '/hr' : '') + '</span>' +
+      (isL ? '<span class="pool-badge">linked</span>' : '') +
+      '<span style="margin-left:auto;display:flex;gap:4px">' +
+        '<button class="btn btn-n btn-s" data-action="poolEditRow" data-id="' + escapeHtml(it.id) + '">Edit rate</button>' +
+        '<button class="btn btn-d btn-s" data-action="poolDeleteRow" data-id="' + escapeHtml(it.id) + '"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> Delete</button>' +
+      '</span></div>';
+  }).join('');
+}
+async function poolCreateRow(){
+  const name = document.getElementById('pool-new-name').value.trim();
+  const kind = document.getElementById('pool-new-kind').value;
+  const reveal = document.getElementById('pool-reveal');
+  if (!name){ if (reveal) reveal.textContent = 'Give the pool row a name first.'; return; }
+  const r = await poolFetch('/items', 'POST', { kind: kind, name: name, availability: 100, rate: 0 });
+  if (!r.ok){ if (reveal) reveal.textContent = r.netErr ? 'Cloud API unreachable on this host.' : ('Create failed: ' + (r.data.error || r.status)); return; }
+  document.getElementById('pool-new-name').value = '';
+  toast('Added "' + name + '" to the pool.');
+  poolList();
+}
+async function poolEditRow(id){
+  const next = prompt('New hourly rate for this pool row (0 to clear):', '0');
+  if (next === null) return;
+  const rate = Math.max(0, parseFloat(next) || 0);
+  const r = await poolFetch('/items/' + encodeURIComponent(id), 'PUT', { rate: rate });
+  const reveal = document.getElementById('pool-reveal');
+  if (!r.ok){ if (reveal) reveal.textContent = r.netErr ? 'Cloud API unreachable on this host.' : ('Update failed: ' + (r.data.error || r.status)); return; }
+  toast('Pool row updated.');
+  poolList();
+}
+async function poolDeleteRow(id){
+  admConfirm({
+    title: 'Delete this pool row?',
+    message: 'It unlinks from every project that uses it. Projects keep their local copy of the resource.',
+    danger: true,
+    confirmLabel: 'Delete',
+    onOk: async function(){
+      const r = await poolFetch('/items/' + encodeURIComponent(id), 'DELETE');
+      const reveal = document.getElementById('pool-reveal');
+      if (!r.ok){ if (reveal) reveal.textContent = r.netErr ? 'Cloud API unreachable on this host.' : ('Delete failed: ' + (r.data.error || r.status)); return; }
+      toast('Pool row deleted.');
+      poolList();
+    }
+  });
 }
 function codesOwnerCode(){
   const p = (_codesIdx !== null) && projects[_codesIdx];
@@ -2491,6 +2595,9 @@ const ADMIN_ACTION_MAP = {
   'codesRevoke': (el) => revokeCloudCode(el.getAttribute('data-id')),
   'createClientCode': () => createClientCode(),
   'revokeClientCode': (el) => revokeClientCode(el.getAttribute('data-id')),
+  'poolCreateRow': () => poolCreateRow(),
+  'poolEditRow': (el) => poolEditRow(el.getAttribute('data-id')),
+  'poolDeleteRow': (el) => poolDeleteRow(el.getAttribute('data-id')),
   'codesCopyReveal': (el) => { const c = el.getAttribute('data-code'); if (c && navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(c).then(()=>toast('Code copied.')).catch(()=>toast('Copy manually.','warn')); }
 };
 document.addEventListener('click', function(e){

@@ -979,6 +979,10 @@ body.dark-mode .dmaic-chip{background:rgba(255,255,255,.06);}
 .dmaic-hint{font-size:.72rem;color:var(--slate);margin-bottom:12px;}
 .kpi-trace{font-size:.64rem;color:var(--slate);display:inline-flex;align-items:center;gap:4px;}
 .rl-title{font-size:.66rem;color:var(--slate);text-transform:uppercase;letter-spacing:.5px;margin:14px 0 8px;display:flex;align-items:center;gap:6px;}
+/* C23 Shared Resource Pool (Phase 6): badge on linked rows + the pool
+   Library modal's list rows. Token-driven, dark-mode safe. */
+.pool-badge{display:inline-flex;align-items:center;gap:3px;font-size:.56rem;font-weight:700;letter-spacing:.3px;text-transform:uppercase;color:var(--gold);background:rgba(var(--gold-rgb),.12);border:1px solid rgba(var(--gold-rgb),.4);border-radius:var(--radius);padding:1px 5px;margin-left:5px;vertical-align:middle;}
+#pool-modal .btn{white-space:nowrap;}
 .rl-row{display:flex;align-items:center;gap:10px;margin-bottom:7px;}
 .rl-name{width:120px;flex-shrink:0;font-size:.72rem;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .rl-bar{flex:1;height:14px;background:#e8ecf2;border-radius:4px;overflow:hidden;}

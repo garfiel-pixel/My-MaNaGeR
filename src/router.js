@@ -31,6 +31,7 @@ import { handleCloudProjectList, handleCloudCreate, handleCloudSave, handleCloud
   handleCloudUnadopt, cloudPushRevChangedIfCopies } from './cloud/projects.js';
 import { handleCloudEditorCreate, handleCloudEditorList, handleCloudEditorRevoke } from './cloud/editors.js';
 import { handleCloudClientCodeCreate, handleCloudClientCodeList, handleCloudClientCodeRevoke, verifyClientCode, CLIENT_SECTIONS, SECTION_LABELS } from './cloud/client-codes.js';
+import { handlePoolItemsList, handlePoolItemCreate, handlePoolItemUpdate, handlePoolItemDelete, handlePoolLinkCreate, handlePoolLinkDelete } from './cloud/pool.js';
 import { handleCloudChangelogList, handleCloudChangelogRevert, handleCloudChangelogImport } from './cloud/changelog.js';
 import { handleCloudPrefsGet, handleCloudPrefsPut, handleCloudBroadcast, handleCloudAutoBroadcast,
   handleOfflineCopyRegister, handleOfflineCopyList, handleOfflineCopyDelete } from './cloud/sync.js';
@@ -313,6 +314,33 @@ export async function routeApi(request, env, url) {
       const r = await rl(request, 'general', env);
       if (r) return r;
       return handleCloudClientCodeRevoke(request, env, cloudClientDelMatch[1], cloudClientDelMatch[2]);
+    }
+    // C23: Cloud Shared Resource Pool (account-scoped items + project links)
+    const poolItemsMatch = path.match(/^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/pool\/items$/);
+    if (poolItemsMatch) {
+      const r = await rl(request, 'general', env);
+      if (r) return r;
+      if (request.method === 'GET') return handlePoolItemsList(request, env, poolItemsMatch[1]);
+      if (request.method === 'POST') return handlePoolItemCreate(request, env, poolItemsMatch[1]);
+    }
+    const poolItemMatch = path.match(/^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/pool\/items\/([A-Za-z0-9_-]{1,80})$/);
+    if (poolItemMatch) {
+      const r = await rl(request, 'general', env);
+      if (r) return r;
+      if (request.method === 'PUT') return handlePoolItemUpdate(request, env, poolItemMatch[1], poolItemMatch[2]);
+      if (request.method === 'DELETE') return handlePoolItemDelete(request, env, poolItemMatch[1], poolItemMatch[2]);
+    }
+    const poolLinkMatch = path.match(/^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/pool\/links$/);
+    if (poolLinkMatch && request.method === 'POST') {
+      const r = await rl(request, 'general', env);
+      if (r) return r;
+      return handlePoolLinkCreate(request, env, poolLinkMatch[1]);
+    }
+    const poolLinkDelMatch = path.match(/^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/pool\/links\/([A-Za-z0-9_-]{1,80})$/);
+    if (poolLinkDelMatch && request.method === 'DELETE') {
+      const r = await rl(request, 'general', env);
+      if (r) return r;
+      return handlePoolLinkDelete(request, env, poolLinkDelMatch[1], poolLinkDelMatch[2]);
     }
     const cloudLogMatch = path.match(/^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/changelog$/);
     if (cloudLogMatch && request.method === 'GET') {

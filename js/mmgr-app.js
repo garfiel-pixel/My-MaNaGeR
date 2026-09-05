@@ -386,6 +386,8 @@ var MMGR = window.MMGR || {};
         closeDrw();
         closeOM();
         closeModals();
+        const pm = document.getElementById('pool-modal'); if (pm) pm.remove();
+        const im = document.getElementById('import-modal'); if (im) im.remove();
         if (ns.Bids && ns.Bids.closeBidPkgModal) ns.Bids.closeBidPkgModal();
         if (ns.Charter) { ns.Charter.closeChartUp(); }
         if (ns.WbsImport) { ns.WbsImport.closeWbsImport(); }
@@ -430,6 +432,11 @@ var MMGR = window.MMGR || {};
     // #cloud-section (project.html only), and the Worker API absence degrades
     // to a quiet "unavailable here" note.
     if (ns.Cloud && ns.Cloud.render) ns.Cloud.render();
+
+    // C23 CLOUD SHARED RESOURCE POOL (Phase 6): pull-merge linked pool
+    // rows into the Resources panel on boot when a credential is held.
+    // Strictly additive and never gating (offline / unlinked = no-op).
+    if (ns.Pool && ns.Pool.bootMerge) ns.Pool.bootMerge();
 
     // Run validation
     const issues = ns.State.validate();
@@ -1513,6 +1520,10 @@ window.MMGR = MMGR;
       });
       document.body.appendChild(overlay);
     },
+    'poolOpenLibrary': () => { if (window.MMGR.RenderResources && window.MMGR.RenderResources.poolOpenLibrary) window.MMGR.RenderResources.poolOpenLibrary(); },
+    'poolCloseLibrary': () => { const m = document.getElementById('pool-modal'); if (m) m.remove(); },
+    'poolAddRow': (el) => { if (window.MMGR.RenderResources && window.MMGR.RenderResources.poolAddRow) window.MMGR.RenderResources.poolAddRow(parseInt(el.getAttribute('data-idx'), 10)); },
+    'poolRefreshAndMerge': () => { if (window.MMGR.Pool) window.MMGR.Pool.refreshAndMerge().then(function() { if (window.MMGR.Render) window.MMGR.Render.renderResources(); }); },
     'doImportResources': (el) => {
       const srcId = el.getAttribute('data-src-id');
       if (!srcId) return;
@@ -2037,6 +2048,10 @@ window.MMGR = MMGR;
     // email and dismissing the Add Bid Package modal never mutate state.
     'bidProposal': 1, 'bidClarify': 1, 'closeBidPkg': 1, 'closeBidPkgBg': 1,
     'swDtab': 1, 'openDrwToPrompts': 1, 'openDrwToSave': 1,
+    // C23 pool: opening the Library / refreshing the merge mutates NO
+    // project state until the user explicitly links a row (poolLinkRow
+    // etc. are mutating and stay read-only-blocked for viewers).
+    'poolOpenLibrary': 1, 'poolCloseLibrary': 1, 'poolRefreshAndMerge': 1,
     'jumpToDashTimeline': 1, 'closeMLC': 1, 'openMeetPrompt': 1,
     'copyMeetingMinutes': 1, 'runMonteCarlo': 1, 'undoClr': 1,
     // MONOLITH-FEATURE-PARITY-DIRECTIVES restorations: risk matrix filtering,

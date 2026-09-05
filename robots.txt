@@ -13,4 +13,4 @@ Disallow: /dashboard
 Disallow: /admin
 Disallow: /seed-test
 
-Sitemap: https://my-manager.garfieldprocis.workers.dev/sitemap.xml
+Sitemap: https://mymanagerworkspace.com/sitemap.xml

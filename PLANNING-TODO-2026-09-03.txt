@@ -593,7 +593,7 @@ disclosure (Workers/D1/R2/CDN edge logs) + GDPR lawful-basis sentence
 + #privacy/#terms id anchors + in-page TOC + contact anchor.
 Verified retention numbers already accurate (180-day orphan purge with
 14-day warning email; 7-day soft-delete tombstone CLOUD_DELETED_PURGE_MS).
-Contact admin@mymanager.app kept (consistent site-wide, owner's alias).
+Contact admin@mymanagerworkspace.com (consistent site-wide, owner's alias). Domain migrated from mymanager.app to mymanagerworkspace.com.
 Marketing footer: Privacy Policy (privacy.html#privacy) + Terms of
 Service (privacy.html#terms) added to the footer-bottom of index,
 features, about, contact, reviews (previously the legal page was

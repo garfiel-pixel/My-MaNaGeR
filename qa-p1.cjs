@@ -70,7 +70,10 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
   // ---- 3. Theme + crosshair persist across hard refresh -------------------
   // Write BOTH slots like the real toggle does (device pref mmgr_theme is the
   // master; state.theme is the portable fallback), then assert via the shared
-  // bottom dock (owner D11: the dock is the one theme picker now).
+  // Appearance controls now live inline inside the Customize/Appearance panels
+  // on app.html / admin.html / project.html (wrapped in .dock.dock-inline);
+  // the floating bottom dock was removed. The mmgr-dock.js selectors still
+  // match because the inline markup keeps the .dock class.
   await ev(`try{localStorage.setItem('mmgr_theme','dark');}catch(e){} MMGR.State.updateState(function(s){ s.theme='dark'; s.crosshairOn=true; });`); await delay(400);
   await send('Page.navigate', { url: BASE + '/project.html?id=demo-project' }); await delay(4000);
   const persist = await ev(`(function(){

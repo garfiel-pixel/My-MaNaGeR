@@ -238,6 +238,32 @@ body.has-dock{padding-bottom:calc(var(--dock-h) + 24px);}
   .dock{left:10px;right:10px;transform:none;width:auto;min-width:0;gap:6px;padding:8px 10px;border-radius:16px;}
 }
 
+/* Inline dock variant: used when the dock markup is relocated out of the
+   floating bottom bar and into an in-page panel (Customize rail /
+   Appearance settings). Neutralizes every positioning / layout property
+   the base .dock{} sets so the controls flow naturally inside their
+   panel instead of floating at the bottom of the screen. Keeps the
+   typographic + button styling so the rows still match the dock look. */
+.dock.dock-inline{
+  position:static;left:auto;right:auto;bottom:auto;top:auto;
+  transform:none;z-index:auto;
+  display:block;flex-direction:row;flex-wrap:nowrap;gap:0;
+  width:auto;min-width:0;
+  padding:0;border:var(--glass-border);border-radius:var(--squircle-md);
+  background:var(--glass-fill-dark);
+  backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  box-shadow:none;
+}
+.dock.dock-inline .dock-item{display:inline-flex;}
+.dock.dock-inline .pal-switch{margin:0;}
+/* When the dock is inline, the page no longer needs bottom scroll reserve
+   (nothing floats above the footer). */
+body.has-dock.dock-inline-active{padding-bottom:0;}
+@media(max-width:600px){
+  .dock.dock-inline{left:auto;right:auto;transform:none;width:auto;min-width:0;gap:6px;padding:8px 10px;border-radius:16px;}
+}
+
 /* ---- Crosshair cursor (opt-in only) ---- */
 body.crosshair-on{cursor:crosshair;}
 #cx,#cy{position:fixed;pointer-events:none;z-index:9999;background:rgba(var(--gold-rgb),0.15);}

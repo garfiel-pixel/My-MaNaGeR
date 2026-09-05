@@ -2975,6 +2975,23 @@ body.db-page .db-sec-title .ico{width:16px;height:16px;color:var(--gold);}
 body.db-page .db-sec-sub{font-size:.68rem;color:var(--slate);}
 body.dark-mode.db-page .db-sec-title .ico{color:var(--db-accent);}
 body.dark-mode.db-page .db-sec-sub{color:var(--db-text-secondary);}
+
+/* ---- HERO TITLE + NEW-PROJECT DOOR (owner 2026-09-05): the launcher hero
+     carries the app identity "nice and big" and the New Project action sits
+     beside it as a large visible tile (was a small pill in the section row).
+     .db-new-project keeps the .btn gold language at a hero-appropriate size. ---- */
+body.db-page .top{flex-direction:column;align-items:stretch;}
+body.db-page .top .db-hero-row{display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap;}
+body.db-page .top h1{font-size:clamp(1.9rem, 3.4vw, 2.6rem);line-height:1.12;letter-spacing:-.01em;}
+body.db-page .top h1 .ico{width:1em;height:1em;}
+.db-new-project{display:inline-flex;align-items:center;gap:10px;padding:16px 26px;border-radius:var(--squircle-md,16px);background:var(--gold);color:var(--on-gold);font-size:1.05rem;font-weight:800;text-decoration:none;letter-spacing:.01em;box-shadow:0 10px 26px -14px color-mix(in oklch,var(--gold) 75%,transparent);transition:transform var(--tr),box-shadow var(--tr),background var(--tr);white-space:nowrap;}
+.db-new-project .ico{width:22px;height:22px;}
+.db-new-project:hover{transform:translateY(-2px);box-shadow:0 16px 32px -14px color-mix(in oklch,var(--gold) 85%,transparent);background:var(--gold-dark,#7c2d12);color:var(--on-gold);}
+.db-new-project:active{transform:translateY(0);}
+body.dark-mode.db-page .db-new-project{background:rgba(245,158,11,.16);color:var(--gold);}
+body.dark-mode.db-page .db-new-project:hover{background:rgba(245,158,11,.24);}
+@media (max-width:560px){body.db-page .top .db-hero-row{flex-direction:column;align-items:flex-start;}body.db-page .db-new-project{width:100%;justify-content:center;}}
+@media (prefers-reduced-motion:reduce){.db-new-project{transition:none;transform:none;}}
 /* ---- cloud cards share the grid card language ---- */
 body.db-page .cd-card{
   padding:var(--pad-card);

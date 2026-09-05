@@ -247,7 +247,13 @@ body.glass-premium .wrap{position:relative;z-index:1;}
       <span class="db-avatar-box"><span class="db-avatar-ring"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-user"></use></svg></span><span class="db-avatar-dot" hidden></span></span>
       <span class="db-avatar-txt">Sign in</span>
     </button>
-    <h1><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg> <span class="mark">My</span> MaNaGeR Projects</h1>
+    <div class="db-hero-row">
+    <h1 class="db-hero-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-folder"></use></svg> <span class="mark">My</span> MaNaGeR Projects</h1>
+    <!-- BIG NEW-PROJECT DOOR (owner 2026-09-05): the New Project action moves
+         into the hero beside the title, large and visible (was a small pill
+         link in the section header row). admin.html remains the create flow. -->
+    <a href="admin.html" class="db-new-project" title="Create a new project"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-plus"></use></svg> New Project</a>
+    </div>
   </div>
 
   <!-- GOOGLE-OPERATOR-IDENTITY-v1: the optional operator identity surface
@@ -269,8 +275,9 @@ body.glass-premium .wrap{position:relative;z-index:1;}
        grid and the cloud section below are explicitly labeled so the two
        project lists can never be confused (Cloud vs Local). -->
   <div class="db-sec" aria-label="Projects" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
-    <div><h2 class="db-sec-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-folder"></use></svg> Projects</h2></div>
-    <div style="display:flex;align-items:center;gap:8px;"><a href="admin.html" class="btn btn-o btn-s" style="text-decoration:none;"><svg class="ico" aria-hidden="true" style="width:14px;height:14px;"><use href="css/mmgr-icons.svg#i-plus"></use></svg> New Project</a></div>
+    <!-- Section-title row removed (owner 2026-09-05): the hero title now
+         carries the identity; the redundant "Projects / New Project" pill
+         row between it and the grid is gone. -->
   </div>
   <div class="grid view-deck" id="grid"><!-- user project cards render here --></div>
 

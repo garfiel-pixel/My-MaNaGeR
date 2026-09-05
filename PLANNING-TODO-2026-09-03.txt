@@ -761,6 +761,47 @@ graceful state, Escape close) green. Battery green: verify ALL PASS
 v242), emoji clean, view-mode + calculator suites still green.
 Commit 84c72db, CI green on the pushed head.
 
+PHASE 7 EXECUTION RECORD (2026-09-04, READY TO SHIP) - AREA F cleanup
++ field-guide A-26. This phase clears the two QA items PARKED in the
+D1/D2 sessions plus the pool field-guide sheet, per the tracker's
+Phase 7 definition (AREA F deferred items + parked harness items).
+(1) FIELD GUIDE A-26 (commit 1ae9d99): new sheet "Shared Resource
+Pool" documents the Phase 6 C23 pool (Cross-Project toggle opens the
+Library button, Link to project / pool badge / Unlink, + pool per-row
+add, account-scoped library, offline queue + LWW merge, delete
+cascades links while projects keep detached copies); nav + footer gain
+the A-26 link; CTA/footer counts corrected to twenty-seven sheets;
+sw bump v243; body markup only -> CSP unchanged; headless A-26 gate
+PASS (section, sheet-no, 6 cards, nav + footer links, prose mentions
+Library/pool/offline). (2) QA-FULL CHECK 37 UN-PARKED: project.html's
+two remaining inline styles (evm-ctc-row divider row, Save-as-Template
+action row) moved to new .evm-ctc-row / .ctl-actions classes in
+css/mmgr.css -> project.html now has ZERO inline styles and check 37
+passes. (3) VERIFY-GATES-THEMES APP ARM REPAIRED (parked in D2: fresh
+profile auto-loads the demo project so the harness clicked the demo
+card, which is auto-unlocked at boot and NAVIGATED AWAY to
+project.html?id=demo-filled -> #om.open .mb never appeared
+(NO-GATE-FOUND) + the demo page's dev-only 404s counted as 1 console
+error). Fix: the arm now seeds a locked project via
+app.html?locked=qa-gate-seed - the real editor-code unlock path calls
+openModal() directly with no card needed - and stays on app.html, so
+the 404 noise never fires. The now-meaningful arm immediately caught a
+REAL pre-existing bug: the light-only #grid::before glow (v74) bled
+inset:-70px -50px past the grid's right edge (the grid sits only ~24px
+inside the viewport, behind the .wrap padding), creating a phantom
+26px horizontal scroll on desktop light mode (scrollWidth 1296 vs
+clientW 1270 at 1280px; dark turns the layer off so dark was clean;
+the <=768px mobile guard existed but desktop was never clamped).
+Fix: desktop right bleed clamped to -6px (left bleed stays -50px, safe
+behind the rail) -> matrix now NO BROKEN STATES, 10/10 combos OK
+(app + admin gates x css/premium x light/dark). Battery: verify ALL
+PASS (CSP unchanged - body markup + CSS only; sw bump v244), emoji
+clean, dashboard-spec 76/76, calculator 27/27, view-mode ALL PASS,
+gates stable 2/2 NO BROKEN STATES. Commit df46f37, CI green on the
+pushed head. Remaining AREA F items are owner-blocked: F2 custom
+domain, F3 Yahoo/MS providers (PAUSED), F4 O3 tuning (needs traffic),
+F5 future plans.
+
 --------------------------------------------------------------------
 AREA F - BACKLOG / DIRECTIVE DEFERRED ITEMS (for completeness)
 --------------------------------------------------------------------

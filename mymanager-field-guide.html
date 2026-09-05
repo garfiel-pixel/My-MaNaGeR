@@ -657,6 +657,7 @@ footer{padding:70px 64px 46px;position:relative;}
         <a class="nav-link" href="#registers-compliance"><span class="idx">A-23</span>Registers, Compliance &amp; Handover</a>
         <a class="nav-link" href="#reviews-window"><span class="idx">A-24</span>Public Reviews Window</a>
         <a class="nav-link" href="#calculator"><span class="idx">A-25</span>Floating Calculator</a>
+        <a class="nav-link" href="#shared-pool"><span class="idx">A-26</span>Shared Resource Pool</a>
       </div>
     </nav>
   </aside>
@@ -1663,15 +1664,46 @@ Date: ____________  Focus: ____________</pre>
       </div>
     </section>
 
+    <!-- ============ A-26 SHARED RESOURCE POOL ============ -->
+    <section class="sheet sheet-alt reveal" id="shared-pool">
+      <div class="tblock">
+        <div class="tblock-left"><span class="sheet-no">A-26</span><h2>Shared Resource Pool</h2></div>
+        <div class="tblock-right"><div><b>Scale</b>Feature-level detail</div></div>
+      </div>
+      <span class="kicker">One account-wide library of people and equipment , reusable across every project you run</span>
+      <p class="lede">Every job re-hires the same forman and rents the same crane. The <strong>Shared Resource Pool</strong> keeps those rows in one account-wide library instead of re-typing them into each project's Resources panel. From any project, turn on the <strong>Cross-Project Resources</strong> preference, open <strong>Resources ▸ Shared Resource Pool</strong>, and you can browse the library, pull a row into the current project, or add a row you're using here back into the library for next time.</p>
+
+      <div class="grid grid-3">
+        <div class="card bracket"><span class="cnum">1</span><h4>Open the Library</h4><p>In the <strong>Resources</strong> panel, switch on <strong>Cross-Project Resources</strong> in the toolbar (it is the same toggle that used to reveal one-time local imports). The card-title bar gains a <strong>Shared Resource Pool</strong> button. Click it to open the library sheet: it lists your account's pool rows, shows which ones this project already links, and lets you add a new row on the spot.</p></div>
+        <div class="card bracket"><span class="cnum">2</span><h4>Link a row</h4><p>Each library row has a <strong>Link to project</strong> button. Linking pulls the row's shared fields (name, kind, role, availability, rate, notes) into this project's Resources panel as a real resource you can schedule against, and marks it with a small <strong>pool</strong> badge so you know it is shared. <strong>Unlink</strong> detaches the copy , the row stays in the library and the project keeps its local copy.</p></div>
+        <div class="card bracket"><span class="cnum">3</span><h4>Keep it current</h4><p>Shared fields are edited at the source. Update a pool row's rate in one project and every project linked to it sees the new rate after a refresh , no re-typing, no drift. A row you no longer need is deleted from the library (the x button), which unlinks it everywhere at once while every project keeps its detached local copy.</p></div>
+      </div>
+
+      <h3 class="h-sub">Adding a row to the pool</h3>
+      <p class="prose">Two ways in. From the library sheet, type a name and pick a kind (<strong>Person</strong> for labor or subcontractors, <strong>Equipment</strong>, or <strong>Material</strong>) then choose <strong>Add to pool</strong>. Or, from the Resources panel itself, any resource that is not already shared carries a small <strong>+ pool</strong> button , click it to add that exact row to the library. A row added this way is a library row first; link it back if you want it badge-marked in this project too.</p>
+
+      <h3 class="h-sub">How the pool travels</h3>
+      <div class="grid grid-3">
+        <div class="card"><span class="cnum">ACCOUNT</span><h4>One library per account</h4><p>The pool is scoped to your account, not to one project. Every cloud project you own sees the same library, so a crew member or piece of equipment is defined once and linked wherever it works.</p></div>
+        <div class="card"><span class="cnum">LINK</span><h4>Projects hold copies</h4><p>Each project keeps its own copy of a linked row, stamped with the pool item's id and update time. Deleting a pool row cascades to every link, but a project never loses data it already scheduled against , the copy stays behind, detached.</p></div>
+        <div class="card"><span class="cnum">SYNC</span><h4>Offline-first</h4><p>Like everything else in My MaNaGeR, the pool works when you do. Mutations you make offline are queued on the device and pushed when a connection returns; pulls merge with the newest server data winning on conflict.</p></div>
+      </div>
+
+      <div class="divider-note">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M16 11c1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3 1.34 3 3 3zm-8 0c1.66 0 3-1.34 3-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z" stroke="currentColor" stroke-width="1.2"/></svg>
+        <p><strong>Build the crew once.</strong> When the same forman shows up on three of your projects, the pool is the difference between one row and three copies that have quietly drifted apart.</p>
+      </div>
+    </section>
+
     <!-- ============ CLOSING CTA BAND ============ -->
     <!-- Local photo (completed kitchen) , the finished job. -->
     <div class="band reveal" style="min-height:420px">
       <div class="band-bg" style="background-image:url('images/completed-kitchen.webp')"></div>
       <div class="band-overlay"></div>
       <div class="band-content" style="max-width:680px">
-        <span class="kicker">Sheet A-25 and beyond</span>
+        <span class="kicker">Sheet A-26 and beyond</span>
         <h3>This index has room for what's next.</h3>
-        <p>New panels and features get their own sheet, numbered and slotted in , the guide grows the same way the app does. Twenty-six sheets so far, from Welcome (A-00) through the Floating Calculator (A-25). For now: open My MaNaGeR in the next tab over, start with the Charter, and keep this page bookmarked.</p>
+        <p>New panels and features get their own sheet, numbered and slotted in , the guide grows the same way the app does. Twenty-seven sheets so far, from Welcome (A-00) through the Shared Resource Pool (A-26). For now: open My MaNaGeR in the next tab over, start with the Charter, and keep this page bookmarked.</p>
         <div class="hero-cta" style="margin-top:28px">
           <a href="#top" class="btn btn-brass">Back to the top ↑</a>
           <a href="#quickstart" class="btn btn-ghost">Revisit Quick Start</a>
@@ -1684,7 +1716,7 @@ Date: ____________  Focus: ____________</pre>
       <div class="footer-grid">
         <div class="footer-brand">
           <h4>My MaNaGeR , Field Guide</h4>
-          <p>An unofficial companion guide to the My MaNaGeR workspace , twenty-six sheets, one per panel or workflow, built to sit open in a second tab while you learn the app.</p>
+          <p>An unofficial companion guide to the My MaNaGeR workspace , twenty-seven sheets, one per panel or workflow, built to sit open in a second tab while you learn the app.</p>
         </div>
         <div class="footer-cols">
           <div class="footer-col">
@@ -1713,6 +1745,7 @@ Date: ____________  Focus: ____________</pre>
             <a href="#registers-compliance">A-23 Registers &amp; Handover</a>
             <a href="#reviews-window">A-24 Public Reviews Window</a>
             <a href="#calculator">A-25 Floating Calculator</a>
+            <a href="#shared-pool">A-26 Shared Resource Pool</a>
           </div>
           <div class="footer-col">
             <b>Site</b>

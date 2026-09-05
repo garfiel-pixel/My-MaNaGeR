@@ -439,7 +439,21 @@ pre.snippet{background:#f8fafc;border:1px solid var(--border);border-radius:6px;
       <button type="button" class="db-link" data-rail-toggle="rail-admin-customize" aria-expanded="false" aria-controls="rail-admin-customize"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-palette"></use></svg> Customize <svg class="ico ico-caret" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg></button>
       <div class="db-sub" id="rail-admin-customize" hidden>
         <span class="rail-ctl-row"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg> Premium</span>
-        <!-- Theme picker consolidated into the bottom dock (owner D11). -->
+        <div class="rail-ctl-row">
+          <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-moon"></use></svg> Theme
+          <span class="pal-switch" role="group" aria-label="Theme mode">
+            <button type="button" class="pal-btn" data-pal="light" aria-pressed="false">Light</button>
+            <button type="button" class="pal-btn" data-pal="dark" aria-pressed="false">Dark</button>
+            <button type="button" class="pal-btn" data-pal="system" aria-pressed="false">System</button>
+          </span>
+        </div>
+        <div class="rail-ctl-row">
+          <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-palette"></use></svg> Palette
+          <span class="pal-switch" role="group" aria-label="Palette">
+            <button type="button" class="pal-btn" data-palette="gold" aria-pressed="true">Gold</button>
+            <button type="button" class="pal-btn" data-palette="rose" aria-pressed="false">Rose</button>
+          </span>
+        </div>
         <span class="rail-ctl-row"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-orb"></use></svg> Premium Glass <label class="tgl"><input type="checkbox" id="glass-tgl" data-action="tglGlassMode" aria-label="Toggle premium liquid-glass backdrop"><span class="tsl"></span></label></span>
         <span class="rail-ctl-row"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-users"></use></svg> Cross-Project Resources <label class="tgl"><input type="checkbox" id="xproj-tgl" data-action="tglCrossProject" aria-label="Toggle shared resources across projects"><span class="tsl"></span></label></span>
       </div>
@@ -2656,18 +2670,9 @@ if (window.location.protocol === 'http:' || window.location.protocol === 'https:
 </script>
 <script defer src="js/mmgr-google-auth.js"></script>
 
-<!-- Bottom dock (owner D3/D6/D11): the ONE full theme picker on the page
-     (vertical Light/Dark/System stack) + the premium-glass toggle. Visible
-     on the gate screens too (it replaced the old #gate-prefs pill). The
-     theme buttons ride mmgr-theme.js's delegated [data-pal] listener, the
-     glass toggle rides the admin tglGlassMode action; js/mmgr-dock.js keeps
-     the dock in step with every other theme/glass control on the page. -->
+<!-- Bottom dock (owner D3/D6/D11): palette + view + glass controls.
+     Theme mode (Light/Dark/System) moved to the Customize sidebar section. -->
 <div class="dock" id="app-dock" role="toolbar" aria-label="Appearance controls">
-  <span class="pal-switch pal-col" role="group" aria-label="Theme mode">
-    <button type="button" class="pal-btn" data-pal="light" aria-pressed="false">Light</button>
-    <button type="button" class="pal-btn" data-pal="dark" aria-pressed="false">Dark</button>
-    <button type="button" class="pal-btn" data-pal="system" aria-pressed="false">System</button>
-  </span>
   <span class="dock-item">
     <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-palette"></use></svg>
     <span class="dock-lbl">Palette</span>

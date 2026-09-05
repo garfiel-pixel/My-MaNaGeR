@@ -685,7 +685,16 @@ Local battery: npm run verify ALL PASS (CSP hashes unchanged - zero
 inline-script edits), sw bump v239, emoji scan clean (sw.js line-17
 changelog emojis are pre-existing internal-doc comments, allowed),
 view-mode ALL GATES, theme-cdp OK, autosave 8/8, legal-links 7/7.
-Commit: 60eb50d (conventional, NO attribution footer).
+Commit: 5274be8 (conventional, NO attribution footer); GitHub CI
+GREEN on 5274be8 (full verify job incl. the new QA harness file is
+static-only so CI's gate battery covers the render surface).
+PHASE 5 DEPLOY (2026-09-04, DONE): staging-copy deploy, Version ID
+be1c903a-f179-425d-b2b6-d4f45a5f0c66. Production smoke GREEN:
+/dist/bundle.js carries data-calc="trades"/"evm" + mat-result;
+sw.js live at mmgr-shell-v239; marketing pages (privacy/terms/index/
+features/about/contact/reviews) all 200 with the footer legal links
+on every page; client-codes unauthenticated POST still 401 (Phase 4
+deploy check unchanged). No migrations in this phase.
 
 --------------------------------------------------------------------
 AREA F - BACKLOG / DIRECTIVE DEFERRED ITEMS (for completeness)

@@ -26,6 +26,10 @@ const PROFILE = path.join(os.tmpdir(), 'mmgr-dynlabels-' + Date.now());
 let ws, msgId = 0;
 const pending = new Map();
 const results = [];
+// CI diagnosability (run 228 follow-up): capture the page's own errors and
+// Chrome's stderr so "app never became ready" is never the only clue again.
+const pageErrors = [];
+let chromeStderr = '';
 const log = (s) => process.stdout.write('[verify-dynamic-labels] ' + s + '\n');
 const delay = (ms) => new Promise(r => setTimeout(r, ms));
 setTimeout(() => { log('WATCHDOG'); try { ws && ws.close(); } catch (e) {} process.exit(2); }, 180000);
@@ -50,7 +54,8 @@ async function bootChrome(port, profile, url) {
   // (Runtime.evaluate stays unreachable -> "app never became ready"), which is
   // exactly the flake the header below documents. --remote-allow-origins=*
   // keeps the DevTools WebSocket connectable on newer Chrome.
-  const proc = spawn(CHROME, ['--headless=new', '--no-sandbox', '--disable-dev-shm-usage', '--disable-gpu', '--no-first-run', '--remote-allow-origins=*', '--remote-debugging-port=' + port, '--user-data-dir=' + profile, '--window-size=1440,1200', 'about:blank'], { stdio: 'ignore' });
+  const proc = spawn(CHROME, ['--headless=new', '--no-sandbox', '--disable-dev-shm-usage', '--disable-gpu', '--no-first-run', '--remote-allow-origins=*', '--remote-debugging-port=' + port, '--user-data-dir=' + profile, '--window-size=1440,1200', 'about:blank'], { stdio: ['ignore', 'ignore', 'pipe'] });
+  proc.stderr && proc.stderr.on('data', (c) => { chromeStderr = (chromeStderr + c.toString()).slice(-4000); });
   for (let i = 0; i < 60; i++) {
     try { const r = await fetch('http://127.0.0.1:' + port + '/json/version'); if (r.ok) break; } catch (e) {}
     await delay(300);
@@ -60,7 +65,15 @@ async function bootChrome(port, profile, url) {
   ws = new WebSocket(pages[0].webSocketDebuggerUrl);
   ws.onmessage = (evt) => {
     const m = JSON.parse(evt.data);
-    if (m.id && pending.has(m.id)) { pending.get(m.id)(m); pending.delete(m.id); }
+    if (m.id && pending.has(m.id)) { pending.get(m.id)(m); pending.delete(m.id); return; }
+    if (m.method === 'Runtime.exceptionThrown') {
+      const d = m.params.exceptionDetails || {};
+      pageErrors.push('EXC: ' + ((d.exception && d.exception.description) || d.text || 'unknown').slice(0, 300));
+      if (pageErrors.length > 20) pageErrors.shift();
+    } else if (m.method === 'Runtime.consoleAPICalled' && (m.params.type === 'error' || m.params.type === 'warning')) {
+      pageErrors.push(m.params.type.toUpperCase() + ': ' + (m.params.args || []).map(a => (a.value !== undefined ? String(a.value) : (a.description || a.type))).join(' ').slice(0, 300));
+      if (pageErrors.length > 20) pageErrors.shift();
+    }
   };
   await new Promise((res, rej) => { ws.onopen = res; ws.onerror = () => rej(new Error('ws fail')); });
   await send('Runtime.enable'); await send('Page.enable');
@@ -78,11 +91,28 @@ async function bootChrome(port, profile, url) {
   } catch (e) {
     log('server not up — spawning serve.cjs');
     server = spawn(process.execPath, ['serve.cjs'], { stdio: 'ignore', detached: true });
+    let serverUp = false;
     for (let i = 0; i < 30; i++) {
-      try { const r = await fetch(BASE + '/index.html'); if (r.ok) break; } catch (e2) {}
+      try { const r = await fetch(BASE + '/index.html'); if (r.ok) { serverUp = true; break; } } catch (e2) {}
       await delay(300);
     }
+    if (!serverUp) {
+      // Previous behavior silently proceeded to boot Chrome against a dead
+      // port and burned the whole boot poll for nothing — fail fast instead.
+      log('FAIL serve.cjs never came up on ' + BASE + ' — aborting before Chrome boot');
+      process.exit(1);
+    }
   }
+
+  // Asset sanity (node-side, cheap): the app boots from dist/bundle.js. If it
+  // is missing or carries no MMGR namespace, Chrome can never become "ready"
+  // and the boot poll below would burn 45s to report a bare failure.
+  try {
+    const [b, p] = await Promise.all([fetch(BASE + '/dist/bundle.js'), fetch(BASE + '/project.html')]);
+    const btxt = b.ok ? await b.text() : '';
+    log('assets: project.html=' + p.status + ' bundle=' + b.status + ' bytes=' + btxt.length + ' hasMMGR=' + (btxt.indexOf('window.MMGR') !== -1));
+    if (!b.ok) log('WARN dist/bundle.js not served — the CI build step or the server is wrong');
+  } catch (e) { log('WARN asset probe failed: ' + (e && e.message)); }
 
   const proc = await bootChrome(9245, PROFILE);
   const check = (name, val, detail) => { results.push({ name, val, detail }); log((val ? 'PASS' : 'FAIL') + ' ' + name + (val ? '' : '  <-- ' + JSON.stringify(detail === undefined ? null : detail))); };
@@ -92,8 +122,10 @@ async function bootChrome(port, profile, url) {
     // gate (a docs-only commit flipped it — not code). The fixed 4s/1200ms
     // delays race slow runners: the seed can fire before the bundle is ready
     // and the audit can run mid-render. Both waits are now readiness polls.
+    // 2026-09-05 (run 228): boot ceiling raised 20s -> 45s — the ubuntu runner
+    // was still inside the old window when the poll gave up.
     const bootReady = await ev(`(async function(){
-      for (var i = 0; i < 40; i++) {
+      for (var i = 0; i < 90; i++) {
         try {
           if (typeof MMGR !== 'undefined' && MMGR.State && typeof MMGR.State.updateState === 'function'
               && typeof MMGR.State.clearProject === 'function') return true;
@@ -104,16 +136,26 @@ async function bootChrome(port, profile, url) {
     })()`);
     if (bootReady !== true) {
       // Diagnostic dump: make a CI recurrence self-describing (page URL, ready
-      // state, whether MMGR exists and how many namespaces attached, script count).
-      const diag = await ev(`(function(){
-        return { href: location.href, ready: document.readyState,
-          mmgr: (typeof MMGR !== 'undefined') ? Object.keys(MMGR).length : -1,
-          hasState: (typeof MMGR !== 'undefined' && MMGR.State) ? true : false,
-          scripts: document.scripts.length };
-      })()`);
-      log('FAIL app never became ready after boot — diag: ' + JSON.stringify(diag));
+      // state, whether MMGR exists and how many namespaces attached, script
+      // count, captured page errors, Chrome stderr tail).
+      let diag = null, href = null;
+      try {
+        diag = await ev(`(function(){
+          return { href: location.href, ready: document.readyState,
+            mmgr: (typeof MMGR !== 'undefined') ? Object.keys(MMGR).length : -1,
+            hasState: (typeof MMGR !== 'undefined' && MMGR.State) ? true : false,
+            scripts: document.scripts.length };
+        })()`);
+        href = diag && diag.href;
+      } catch (e) { href = 'unreachable: ' + (e && e.message); }
+      log('FAIL app never became ready after boot');
+      log('diag: ' + JSON.stringify(diag === undefined ? null : diag));
+      if (href && (!diag || diag.href !== href)) log('href: ' + href);
+      log('page errors (' + pageErrors.length + '): ' + (pageErrors.slice(0, 8).join(' | ') || 'none captured'));
+      if (chromeStderr) log('chrome stderr tail: ' + chromeStderr.slice(-600).replace(/\s+/g, ' '));
       process.exit(1);
     }
+    { const h = await ev('location.href'); log('booted: ' + (h && h.href ? h.href : h)); }
     // Seed a project with rows in EVERY module that renders table inputs.
     await ev(`(function(){
       MMGR.State.clearProject();

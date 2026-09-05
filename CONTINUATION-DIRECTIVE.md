@@ -2706,5 +2706,71 @@ VERIFICATION: ALL PASSED (CSP 17/17, SW, hidden, skills, exports); qa-market-fea
 
 ---
 
+---
+
+**2026-09-05 — Session: CI REPAIR (runs 228-233) + POST-SEPT-3 UI REVIEW.**
+
+**CI REPAIR LOOP (owner standing rule):** pushed 3 harness/CSP fixes and polled the
+Actions API after each push until the run went green.
+
+(1) **Run 228 failure (T1 dynamic-labels, 25s, "app never became ready")**: the gate
+was the only browser harness booting Chrome WITHOUT `--no-sandbox`/
+`--disable-dev-shm-usage`/`--remote-allow-origins=*` (0f9bf8c added them). Still red
+on the runner -> added boot diagnostics (page errors, Chrome stderr, asset probes,
+servo never-up fail-fast) (b091508). The diagnostic dump then exposed the REAL root
+cause (run 230 log, fetched via `git credential fill` + jobs/logs API): the browser
+sat on **seed-test.html** for the whole 45s window (mmgr:-1, ZERO page errors) -
+its only inline script (seed + location.replace to project.html) never executed on
+the runner. Fix (587b761): the harness now writes the seed to localStorage itself
+from a neutral same-origin page and navigates STRAIGHT to project.html - no
+client-side redirect dependency. Gate went green in CI at run 231.
+
+(2) **Run 231/232 failure (T2 phase2 P2.10a-f)**: `attemptUnlock is not defined`,
+modal never auto-opened, but external bundle ran (`[cloud-req]` logs) -> all inline
+scripts blocked on wrangler-served pages. ROOT CAUSE (found by byte-level diff of
+5aac7c4): between green run 226 and the failures, a scratch rewrite script
+(rewrite-worker.cjs / rewrite-both-hashes.cjs - untracked files that were sitting in
+the repo root) replaced the INLINE_SCRIPT_HASHES array's double-quoted CSP tokens
+(`"'sha256-...'"`) with bare JS strings (`'sha256-...'`), so the joined script-src
+policy carried UNQUOTED sha256 tokens. Chrome treats unquoted hash sources as
+invalid and silently blocks EVERY inline script on EVERY page. verify-csp-hashes
+passed because its regex couldn't distinguish a JS quote from a CSP quote.
+Windows-local Chrome tolerates the bare form, which is why everything passed
+locally. **Any deploy since 5aac7c4 was serving this broken CSP.** Fix (1b62121):
+regenerated via tools/regen-csp-hashes.cjs (identical 24 values/order, quoted form
+restored), hardened verify-csp-hashes.cjs (requires quoted written form, fails on
+bare tokens and on a policy that never emits `'sha256-`), archived the four scratch
+scripts to _archive/scratch-hash-rewriters-2026-09-05/.
+
+**Run 233: CI GREEN - 40 steps success, 0 skipped, 0 failed** (all T2 suites
+executed, including phase2 85/85). Commit 1b62121 is the CI-green HEAD.
+
+**POST-SEPT-3 UI REVIEW (owner asked whether to revert to legacy): RECOMMEND NO
+REVERT.** Reviewed the six substantive commits after 2026-09-03 against the
+universal-ui-architect gates:
+- 137cab6 (shared bottom dock + System theme restore): doctrine-clean - single
+  source of truth for appearance controls, duplicate pickers deleted, fixed two
+  latent dead controls (glass stub delegation, launcher/admin never auto-booting
+  the glass engine), CSP-safe external module (zero hash churn).
+- ae36e57 (rose-gold palette + 3D view deck): token-first scoped theme block;
+  espresso-on-coral contrast MEASURED and gated >= 4.5:1 in both themes
+  (tools/qa-view-mode.cjs V7); 3D transform isolated to .view-deck (never body -
+  protects fixed overlays), reduced-motion/reduced-transparency/mobile/print all
+  flatten it; both axes OPT-IN with gold + flat defaults.
+- 5274be8 (calculator tabs): feature-scoped, qa-calculator 27/27.
+- 84c72db (C23 shared resource pool): end-to-end (worker routes + migration 0019 +
+  UI), qa-pool-ui 6/6, field-guide A-26 shipped same-change.
+- 082e19f (remediation) + 503698a (em-dash sweep): benign to UI behavior.
+All of it was green in CI at run 226; the failures came from the CSP hash FORMAT,
+not the UI. Reverting would delete verified, gated features for nothing.
+
+LESSONS: (a) never let scratch one-off scripts rewrite hash/format-critical files -
+use the blessed regen tool (now enforced by a verifier that checks the WRITTEN
+form); (b) a verifier that regex-matches tokens without checking CSP quoting
+cannot see quote-format drift - fixed; (c) harness boot paths should never depend
+on another page's inline script executing - seed directly.
+
+---
+
 *This file is the working source of truth for continuing this project across sessions.*
 Keep it updated. Do not let a session end without updating the STATUS LOG.*

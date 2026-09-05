@@ -85,6 +85,10 @@
       document.body.classList.toggle('dark-mode', dark);
     }
     // Update all theme-mode picker buttons on the page.
+    // Light/Dark/System buttons now live in #rail-customize (app.html)
+    // and .ctl-sec Appearance (project.html). The delegated [data-pal]
+    // listener handles clicks regardless of where buttons live; for
+    // boot-time aria-pressed sync we must see every button on the page.
     var btns = document.querySelectorAll('.pal-btn[data-pal]');
     for (var i = 0; i < btns.length; i++) {
       var match = btns[i].getAttribute('data-pal') === mode;

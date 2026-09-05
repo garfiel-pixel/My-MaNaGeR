@@ -71,14 +71,22 @@ async function check(name, expr, expected, hint) {
   await check('01b boot: no boot failure banner', `(function(){var el=document.querySelector('div[style*="99999"]');return {val: !el};})()`);
 
   // ---- GAP 1: Theme + Crosshair toggles ----
-  // Theme picker is the shared bottom dock now (owner D11). The dock's
-  // Light/Dark buttons ride mmgr-theme.js and write the device pref
-  // (mmgr_theme), which is the master across launcher/admin/project.
-  await check('02 theme: light default + dock reflects', `(function(){var b=document.querySelector('.dock .pal-btn[data-pal="light"]');return {val: !document.body.classList.contains('dark-mode') && !!b && b.getAttribute('aria-pressed') === 'true'};})()`);
-  await ev(`document.querySelector('.dock .pal-btn[data-pal="dark"]').click()`); await delay(200);
-  await check('02b theme: dock dark -> class + device pref', `(function(){var b=document.querySelector('.dock .pal-btn[data-pal="dark"]');return {val: document.body.classList.contains('dark-mode') && localStorage.getItem('mmgr_theme') === 'dark' && !!b && b.getAttribute('aria-pressed') === 'true'};})()`);
-  await ev(`document.querySelector('.dock .pal-btn[data-pal="light"]').click()`); await delay(200);
-  await check('02c theme: click again -> light (no double-toggle)', `(function(){return {val: !document.body.classList.contains('dark-mode') && localStorage.getItem('mmgr_theme') === 'light'};})()`);
+  // Theme picker (Light/Dark/System) now lives in #rail-customize
+  // (app.html sidebar Customize); the bottom dock carries Palette +
+  // View + Glass. Buttons still ride the delegated [data-pal] listener
+  // in mmgr-theme.js and write mmgr_theme (master across pages).
+  // The rail section is hidden at boot but its buttons are in the DOM.
+  // 02 is state-independent: first normalize mmgr_theme to 'light' so
+  // the check is deterministic across runs/runners regardless of prior
+  // state or the runner's own OS dark preference (which the FOUC script
+  // honours via 'system').
+  await ev(`try{localStorage.setItem('mmgr_theme','light');}catch(e){}; if(document.body.classList.contains('dark-mode'))document.body.classList.remove('dark-mode');`);
+  await delay(120);
+  await check('02 theme: light default + sidebar reflects', `(function(){var b=document.querySelector('#rail-customize .pal-btn[data-pal="light"]');return {val: !!b && b.getAttribute('aria-pressed') === 'true' && !document.body.classList.contains('dark-mode') };})()`);
+  await ev(`document.querySelector('#rail-customize .pal-btn[data-pal="dark"]').click()`); await delay(200);
+  await check('02b theme: sidebar dark -> class + device pref', `(function(){var b=document.querySelector('#rail-customize .pal-btn[data-pal="dark"]');return {val: !!b && b.getAttribute('aria-pressed') === 'true' && document.body.classList.contains('dark-mode') && localStorage.getItem('mmgr_theme') === 'dark' };})()`);
+  await ev(`document.querySelector('#rail-customize .pal-btn[data-pal="light"]').click()`); await delay(200);
+  await check('02c theme: click again -> light (no double-toggle)', `(function(){return {val: !document.body.classList.contains('dark-mode') && localStorage.getItem('mmgr_theme') === 'light' };})()`);
   await ev(`document.querySelector('#ch-tgl').click()`); await delay(200);
   await check('03 crosshair: toggle on -> class + state', `(function(){return {val: document.body.classList.contains('crosshair-on') && MMGR.State.getState().crosshairOn};})()`);
   await ev(`document.dispatchEvent(new MouseEvent('mousemove',{clientX:321,clientY:222}));`);

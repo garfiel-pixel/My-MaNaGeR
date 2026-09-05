@@ -21,7 +21,7 @@
   /* surfaces */
   --bg:            #F5EFE6;   /* warm off-white - matches app canvas */
   --bg-warm:       #F0EBE1;   /* alternate warm section tone */
-  --header-navy:   #1C1917;   /* warm charcoal — footer/page-hero/guide band/photo overlays */
+  --header-navy:   #1C1917;   /* warm charcoal - footer/page-hero/guide band/photo overlays */
   --card:          #FFFFFF;
   --border:        #E5E0D8;  /* warm neutral border */
   /* Brand: orange/gold = identity. Cyan = secondary accent. */
@@ -84,15 +84,15 @@
 }
 
 /* ============================================================
-   DARK MODE — follows OS preference when mode = 'system'
+   DARK MODE - follows OS preference when mode = 'system'
    ------------------------------------------------------------
    The mmgr-theme.js helper toggles body.dark-mode based on the
    stored mode ('light' | 'dark' | 'system'). When mode is 'system',
    body.dark-mode follows OS prefers-color-scheme. One brand, two
-   appearances — no palette switching.
+   appearances - no palette switching.
    ============================================================ */
 body.dark-mode{
-  /* Warm dark — same My MaNaGeR identity, not cyan/neon */
+  /* Warm dark - same My MaNaGeR identity, not cyan/neon */
   --bg:#1a1614;--bg-warm:#1e1a17;--header-navy:#1a1614;--card:#242019;--border:#3a342c;
   --gold:#E8923A;--gold-hover:#F0A050;--gold-deep:#FFD080;--gold-rgb:232,146,58;
   --teal:#4DD0E1;--teal-deep:#26C6DA;--danger:#EF5350;--purple:#b39ddb;
@@ -188,7 +188,7 @@ body.dark-mode .site-header{
   border-bottom:var(--glass-edge);
   box-shadow:var(--glass-shadow);
 }
-/* specular top hairline — the "lit edge" of the pane */
+/* specular top hairline - the "lit edge" of the pane */
 .site-header::before{
   content:"";position:absolute;top:0;left:0;right:0;height:1px;
   background:linear-gradient(90deg,transparent,rgba(255,255,255,.55),rgba(var(--gold-rgb),.55),transparent);
@@ -224,7 +224,7 @@ body.dark-mode .brand{color:var(--on-navy);}
 body.dark-mode .brand small{color:rgba(248,250,252,.66);}
 /* Footer brand (2026-09-05, a11y fix): .site-footer is solid navy in BOTH
    themes, so the light theme's near-black .brand text (measured 1.02:1 on
-   navy — invisible) must be overridden independent of body.dark-mode. */
+   navy - invisible) must be overridden independent of body.dark-mode. */
 .site-footer .brand{color:var(--on-navy);}
 .site-footer .brand b span{color:var(--gold);}
 .site-footer .brand small{color:rgba(248,250,252,.66);}
@@ -252,7 +252,7 @@ body.dark-mode .site-nav a.nav-link[aria-current="page"]{color:#fff;}
 .site-nav a.nav-link[aria-current="page"]::after{transform:scaleX(1);}
 .site-nav a.nav-link:focus-visible{outline-color:var(--gold);}
 
-/* buttons — gold is the primary interactive accent */
+/* buttons - gold is the primary interactive accent */
 .btn{
   display:inline-flex;align-items:center;justify-content:center;gap:8px;
   padding:12px 22px;border-radius:11px;
@@ -305,7 +305,7 @@ body.dark-mode .nav-toggle{
 /* ---------- Header email sign-in (OWNER 2026-08-14: "at the side of the hamburger or where appropriate") ----------
    A compact "Sign in" button beside the hamburger on every viewport. It toggles
    a Liquid Glass sheet holding the SHARED email+password form (mounted from
-   js/mmgr-google-auth.js — never a duplicate auth implementation). The sheet is
+   js/mmgr-google-auth.js - never a duplicate auth implementation). The sheet is
    chrome (glass allowed); the form itself sits on a solid --card surface per
    Gate 6.1 (glass never carries dense interactive content). All colors are the
    existing marketing tokens, so cyan + device-dark variants swap automatically. */
@@ -326,27 +326,27 @@ body.dark-mode .signin-btn{
 }
 body.dark-mode .signin-btn:hover{background:rgba(255,255,255,.16);border-color:rgba(255,255,255,.5);}
 body.dark-mode .signin-btn[aria-expanded="true"]{background:rgba(255,255,255,.16);}
-/* OWNER 2026-08-17 — signed-in identity chip inside the header trigger: a
+/* OWNER 2026-08-17 - signed-in identity chip inside the header trigger: a
    small avatar (photo or initial) + name replace the static "Sign in" label;
    clicking still opens the account sheet. */
 .signin-btn.is-signedin .ico{width:14px;height:14px;flex-shrink:0;}
 .signin-btn.is-signedin{max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 
-/* OWNER 2026-08-17 — section-index dropdowns in the primary nav.
+/* OWNER 2026-08-17 - section-index dropdowns in the primary nav.
    FULL-WIDTH HORIZONTAL PANEL (owner: "create a horizontal fully drop down...
    it shows the full line of text going across... they are fully landed in a
    horizontal format"). The menu is a SOLID LIGHT-GRAY bar spanning the page
-   under the sticky header — no dark navy glass ("just use regular light
+   under the sticky header - no dark navy glass ("just use regular light
    gray"), no per-item boxes ("there is too much border"), just free-flowing
    text in vertical columns side by side, each column pair divided by ONE
    long vertical hairline (column-rule), and the foot row separated by one
    long horizontal hairline. Solid surface (--bg) means contrast is
-   measurable in every theme — light gray + dark navy text in light/cyan,
+   measurable in every theme - light gray + dark navy text in light/cyan,
    dark slate + light text in dark-mode, all via the shared tokens. Opens on
    hover or keyboard focus; the trigger carries aria-haspopup/aria-expanded
    (disclosure pattern). */
 .nav-dd{position:relative;display:inline-flex;}
-/* OWNER 2026-08-17: a dropdown is a SIMPLE LIGHT BOX — a compact white card
+/* OWNER 2026-08-17: a dropdown is a SIMPLE LIGHT BOX - a compact white card
    under the header (never the old full-width bar), plain text rows in
    columns, and a page BLUR behind it so the reader focuses on the menu. */
 .nav-dd-menu{
@@ -370,7 +370,7 @@ body.dark-mode .signin-btn[aria-expanded="true"]{background:rgba(255,255,255,.16
 .nav-dd-cols .nav-dd-menu{width:min(700px,calc(100vw - 32px));}
 .nav-dd:hover .nav-dd-menu,
 .nav-dd.is-open .nav-dd-menu{opacity:1;visibility:visible;transform:translateX(-50%) translateY(0);}
-/* Note: no :focus-within here — keyboard open is handled in JS (focusin ->
+/* Note: no :focus-within here - keyboard open is handled in JS (focusin ->
    .is-open), and leaving :focus-within as a CSS trigger would re-open the menu
    the moment Escape moves focus back to the trigger. */
 /* Nav dropdown scrim REMOVED (owner 2026-08-19): the full-viewport overlay
@@ -378,7 +378,7 @@ body.dark-mode .signin-btn[aria-expanded="true"]{background:rgba(255,255,255,.16
    popups without the page-wide dim. */
 /* The list is one multi-column text flow: features (15) fills 3x5, small
    menus stay a single column. column-rule draws the LONG VERTICAL LINE
-   between each column pair — the "long line in between" the owner asked for. */
+   between each column pair - the "long line in between" the owner asked for. */
 .nav-dd-list{
   max-width:1180px;margin:0 auto;
   columns:1;column-gap:44px;column-rule:1px solid var(--border);
@@ -452,7 +452,7 @@ body.dark-mode .nav-dd-item:hover{color:var(--gold);background:rgba(var(--gold-r
 .signin-sheet .gis-fallback-btn:hover{border-color:var(--gold);background:rgba(var(--gold-rgb),.08);}
 .signin-sheet .gis-fallback-btn:focus-visible{outline:2px solid var(--gold);outline-offset:1px;}
 .signin-sheet .gis-fallback-btn:disabled{opacity:.6;cursor:default;border-color:var(--border);}
-/* Solid content card inside the glass sheet (Gate 6.1 — the form is dense
+/* Solid content card inside the glass sheet (Gate 6.1 - the form is dense
    interactive content, never glass-on-content). */
 .signin-sheet .email-auth{
   display:flex;flex-direction:column;gap:8px;
@@ -487,7 +487,7 @@ body.dark-mode .nav-dd-item:hover{color:var(--gold);background:rgba(var(--gold-r
 .signin-sheet .email-auth-alt button:focus-visible{outline:2px solid var(--gold);outline-offset:1px;border-radius:var(--radius-sm);}
 .signin-sheet .email-auth-err{font-size:.76rem;color:var(--status-danger);}
 .signin-sheet .email-auth-note{font-size:.76rem;color:rgba(248,250,252,.72);line-height:1.5;}
-/* AUTH MAINFRAME v2 — forgot-password request + check-your-inbox panels.
+/* AUTH MAINFRAME v2 - forgot-password request + check-your-inbox panels.
    Same sheet language as the form above; both use display:flex, so the
    [hidden] guards below are REQUIRED (flex display outranks the UA rule). */
 .signin-sheet .email-auth-reset{display:flex;flex-direction:column;gap:8px;}
@@ -510,7 +510,7 @@ body.dark-mode .nav-dd-item:hover{color:var(--gold);background:rgba(var(--gold-r
   background:var(--card);color:var(--text-primary);font-size:.78rem;font-weight:600;cursor:pointer;
 }
 .signin-sheet .email-auth-check-close:focus-visible{outline:2px solid var(--gold);outline-offset:1px;}
-/* AUTH MAINFRAME 2026-08-17 — password change (email accounts) inside the
+/* AUTH MAINFRAME 2026-08-17 - password change (email accounts) inside the
    signed-in account row. Same sheet language as the reset/check panels;
    [hidden] guards REQUIRED (the flex rules outrank the UA hidden rule). */
 .signin-sheet .email-auth-pw{display:flex;flex-direction:column;gap:8px;align-items:stretch;}
@@ -519,7 +519,7 @@ body.dark-mode .nav-dd-item:hover{color:var(--gold);background:rgba(var(--gold-r
 .signin-sheet .email-auth-pw-title{margin:0;font-size:.84rem;color:var(--on-navy);}
 .signin-sheet .email-auth-pw-msg{margin:0;font-size:.76rem;color:rgba(248,250,252,.72);line-height:1.5;}
 .signin-sheet .email-auth-pw .email-auth-input{flex:1 1 150px;min-width:120px;}
-/* light link on the dark glass — the theme gold is a dark teal in cyan-light */
+/* light link on the dark glass - the theme gold is a dark teal in cyan-light */
 .signin-sheet .email-auth-pw-btn{
   background:none;border:none;padding:0;color:rgba(248,250,252,.92);
   text-decoration:underline;text-underline-offset:2px;cursor:pointer;font:inherit;font-size:.76rem;
@@ -546,18 +546,18 @@ body.dark-mode .nav-dd-item:hover{color:var(--gold);background:rgba(var(--gold-r
 .signin-sheet .email-auth-pw-ok{margin:0;font-size:.78rem;color:rgba(248,250,252,.92);}
 .signin-sheet .signin-user{display:flex;flex-direction:column;gap:8px;align-items:flex-start;}
 /* display:flex above defeats the `hidden` attribute (author display rules
-   outrank the UA [hidden]{display:none}) — the signed-in row was painted
+   outrank the UA [hidden]{display:none}) - the signed-in row was painted
    inside the closed sign-in sheet. Guard it so hidden really hides. */
 .signin-sheet .signin-user[hidden]{display:none;}
 /* DARK-GLASS TEXT (owner 2026-08-17): the sheet is dark navy glass in every
    theme, so the account row that sits directly on it must use light text
-   (--on-navy, light in all four theme blocks) — not --text-primary, which is
+   (--on-navy, light in all four theme blocks) - not --text-primary, which is
    dark in light themes (dark on dark). The solid .email-auth card inside is
    untouched (white card + dark text is correct there). */
 .signin-sheet .signin-user-name{font-size:.9rem;font-weight:700;color:var(--on-navy);}
 .signin-sheet .signin-user-sub{font-size:.76rem;color:rgba(248,250,252,.72);word-break:break-all;}
 /* STABILIZATION 2026-08-16: the signed-in identity leads with the profile
-   picture — Google photo or the name's first letter, the app.html avatar
+   picture - Google photo or the name's first letter, the app.html avatar
    pattern. The Premium pill is a [data-plan-badge] mount filled by
    mmgr-google-auth.js refreshPlan(). */
 .signin-sheet .signin-user-avatar{
@@ -660,7 +660,7 @@ body.dark-mode .nav-dd-item:hover{color:var(--gold);background:rgba(var(--gold-r
     radial-gradient(60% 50% at 50% 50%,rgba(var(--gold-rgb),.06),transparent 70%),
     linear-gradient(90deg,rgba(28,25,23,.92) 0%,rgba(28,25,23,.84) 35%,rgba(28,25,23,.68) 70%,rgba(28,25,23,.82) 100%);
 }
-/* faint drafting-grid texture — decorative, solid, palette-neutral */
+/* faint drafting-grid texture - decorative, solid, palette-neutral */
 .hero::before{
   content:"";position:absolute;inset:0;pointer-events:none;z-index:2;
   background-image:
@@ -678,7 +678,7 @@ body.dark-mode .nav-dd-item:hover{color:var(--gold);background:rgba(var(--gold-r
 }
 .hero h1 .gold{color:var(--gold);}
 .hero h1 .teal{color:var(--gold);}
-/* the h1 spans sit on the warm charcoal photo overlay — always bright */
+/* the h1 spans sit on the warm charcoal photo overlay - always bright */
 .hero-sub{
   font-size:clamp(1.125rem,1.5vw,1.18rem);
   line-height:1.75;
@@ -694,7 +694,7 @@ body.dark-mode .nav-dd-item:hover{color:var(--gold);background:rgba(var(--gold-r
 .hero-stats b{display:block;font-size:1.5rem;font-weight:800;color:var(--accent-on-navy);line-height:1.1;font-variant-numeric:tabular-nums;}
 .hero-stats span{font-size:.76rem;letter-spacing:.06em;text-transform:uppercase;color:rgba(248,250,252,.6);}
 
-/* hero visual — solid mock of the app's project cards */
+/* hero visual - solid mock of the app's project cards */
 .hero-visual{
   position:relative;
   display:grid;gap:14px;
@@ -1126,7 +1126,7 @@ body.dark-mode .nav-dd-item:hover{color:var(--gold);background:rgba(var(--gold-r
 /* .slide is inert now: sections flow at natural content height and the page
    scrolls continuously. Full-height slide-deck snap was removed because it
    made a normal wheel/trackpad scroll jump section-to-section. No display
-   property is set here on purpose — .photo-band needs its own display:flex,
+   property is set here on purpose - .photo-band needs its own display:flex,
    and a later single-class rule would otherwise override it. */
 .slide{
   scroll-snap-align:none;
@@ -1134,7 +1134,7 @@ body.dark-mode .nav-dd-item:hover{color:var(--gold);background:rgba(var(--gold-r
 }
 /* the hero keeps a full-viewport first screen without any snap */
 .hero{min-height:calc(100vh - var(--header-h));display:flex;align-items:center;}
-/* slim edge index — functional layer only. The rail is FIXED and crosses
+/* slim edge index - functional layer only. The rail is FIXED and crosses
    both dark sections (hero photo, photo bands) and light sections, so it
    carries a dark glass chip of its own; a single label color can't stay
    readable on both without a backing surface (2026-09-05 a11y fix: labels
@@ -1177,7 +1177,7 @@ body.dark-mode .nav-dd-item:hover{color:var(--gold);background:rgba(var(--gold-r
 .spy-label{
   font-size:.68rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
   color:rgba(248,250,252,.94);
-  opacity:1; /* always readable — the mini tracker */
+  opacity:1; /* always readable - the mini tracker */
   transition:opacity .2s,color .2s;
   white-space:nowrap;
 }
@@ -1206,7 +1206,7 @@ body.dark-mode .nav-dd-item:hover{color:var(--gold);background:rgba(var(--gold-r
 }
 
 /* ---------- 17. Reveal-on-scroll (owner 2026-08-16) ---------- */
-/* Progressive enhancement: .rv is added by js/marketing.js only — a static
+/* Progressive enhancement: .rv is added by js/marketing.js only - a static
    no-JS page (or reduced-motion / no-IntersectionObserver user) sees every
    element fully visible immediately, never hidden. Elements fade + rise into
    view as they enter the viewport; grids stagger via --rv-i set by JS. */

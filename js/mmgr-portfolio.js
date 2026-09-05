@@ -161,7 +161,7 @@ var MMGR = window.MMGR || {};
   function renderMetrics() {
     const el = document.getElementById('db-metrics');
     if (!el) return;
-    // Launcher metrics removed — light and dark share the same information
+    // Launcher metrics removed - light and dark share the same information
     // architecture (UI Implementation Plan: "Do not add project analytics
     // to the launcher"). The launcher shows one project list, not a dashboard.
     el.innerHTML = '';

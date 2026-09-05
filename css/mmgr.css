@@ -95,7 +95,7 @@ svg.ico use{fill:inherit;stroke:inherit;}
 
 /* ---- Dark Mode (opt-in only) ---- */
 body.dark-mode{
-  /* Warm dark canvas — same My MaNaGeR identity, not cyan/neon */
+  /* Warm dark canvas - same My MaNaGeR identity, not cyan/neon */
   --canvas:#1a1614;       /* warm near-black */
   --sidebar:#1e1a17;      /* warm dark sidebar */
   --card:#242019;         /* warm dark surface */
@@ -117,7 +117,7 @@ body.dark-mode{
   /* Accent cyan: secondary only */
   --accent-cyan:#4DD0E1;
   --accent-cyan-subtle:rgba(77,208,225,0.10);
-  /* Semantic: green/amber/red/blue — same roles as light */
+  /* Semantic: green/amber/red/blue - same roles as light */
   --success:#66BB6A;
   --success-subtle:rgba(102,187,106,0.12);
   --info:#64B5F6;
@@ -265,7 +265,7 @@ body:not(.crosshair-on) #cx,body:not(.crosshair-on) #cy{display:none;}
 
 /* ---- Focus Mode ---- */ /* Only the active panel + the exit chip remain. Everything else - header,
    section nav, drawer, undo bar, modals, learning card, tooltips, crosshair,
-   output modal — is hidden so the working panel owns the whole viewport.
+   output modal - is hidden so the working panel owns the whole viewport.
    (Monolith parity: the monolith hid the same chrome; this port goes further
    and also hides the drawer/modals that could linger over the panel.) */
 body.focus-mode #app-header,body.focus-mode .vl,
@@ -341,7 +341,7 @@ body.sidebar-open .nav-btn .ico,body.sidebar-open .sb-close .ico{transform:rotat
 /* MMGR-NEW-UI-CREATION-BRIEF I1: rail-link component (shared shell chrome).
    Used by admin.html's rail (and app.html's light rail) so every surface
    shares the same left-rail visual language: flat, calm, accent only on
-   hover/active (semantic color — brief §4.3). Nested radii: links use
+   hover/active (semantic color - brief §4.3). Nested radii: links use
    --radius-control inside the rail surface. */
 .rail-group{display:block;margin:0 0 14px;padding:0 12px;}
 .rail-label{display:block;font-size:.58rem;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--slate);margin:0 4px 6px;}
@@ -389,7 +389,7 @@ body.sidebar-open .nav-btn .ico,body.sidebar-open .sb-close .ico{transform:rotat
 .sec-btn:focus-visible{outline:2px solid var(--gold);outline-offset:2px;}
 .sec-btn.active{border-color:var(--green);color:var(--on-gold);background:var(--green);font-weight:700;}
 .sec-btn:hover{border-color:var(--green);color:var(--green);}
-/* The active pill is the strongest signal in the nav — filled background */
+/* The active pill is the strongest signal in the nav - filled background */
 .sec-nav .sec-btn.active{box-shadow:0 0 0 1px var(--green);}
 .ic-svg{width:18px;height:18px;flex-shrink:0;vertical-align:-3px;}
 .ic-ct{width:20px;height:20px;flex-shrink:0;margin-right:4px;vertical-align:-4px;}
@@ -434,7 +434,7 @@ body.sidebar-open .nav-btn .ico,body.sidebar-open .sb-close .ico{transform:rotat
 .bid-chips{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center;}
 .bid-chip{font-size:.62rem;font-weight:700;letter-spacing:.02em;color:var(--slate);background:var(--tile-bg);border:1px solid var(--border);border-radius:999px;padding:3px 9px;}
 .bid-chip-muted{font-weight:500;color:var(--text-secondary,var(--slate));}
-/* Leveled grid — transparent .dt inline-edit cells; totals rows bold. */
+/* Leveled grid - transparent .dt inline-edit cells; totals rows bold. */
 .lvl-grid{min-width:640px;margin-top:2px;}
 .lvl-grid th,.lvl-grid td{padding:5px 8px;font-size:.72rem;vertical-align:top;}
 .lvl-item-col{min-width:200px;}
@@ -1070,7 +1070,7 @@ body.gantt-dragging .gb{cursor:grabbing;}
 @media(max-width:768px){
   #readonly-banner{position:relative;z-index:auto;padding:5px 12px;font-size:.68rem;}
 }
-/* CLOUD-BACKEND-ARCHITECTURE-PLAN Phase 2 — scoped-editor workspace chrome.
+/* CLOUD-BACKEND-ARCHITECTURE-PLAN Phase 2 - scoped-editor workspace chrome.
    The banner + greyed nav are UX only: the Worker enforces the editor
    code's section scope server-side on every save, so even a compromised
    code cannot write outside its grant. */
@@ -1080,7 +1080,7 @@ body.gantt-dragging .gb{cursor:grabbing;}
 .sec-btn.client-hidden{display:none!important;}
 #client-scope-banner{position:sticky;top:0;z-index:1500;display:flex;align-items:center;justify-content:center;gap:8px;background:rgba(147,51,234,.10);border-bottom:1px solid rgba(147,51,234,.30);color:var(--purple);font-size:.72rem;padding:6px 14px;letter-spacing:.3px;}
 #client-scope-banner.is-hide{display:none;}
-/* Rank 10 item 21 — Heat/Cold SAFETY banner (promoted 2026-08-13): full-width
+/* Rank 10 item 21 - Heat/Cold SAFETY banner (promoted 2026-08-13): full-width
    page-top alert, deliberately distinct (danger/blue tint + i-alert-triangle)
    from the amber schedule-risk flags so a safety concern never reads as a
    schedule concern. Shares the bar language of the mode banners above but is    NOT sticky (transient alert - avoids stacking with the sticky scope bars).
@@ -1607,7 +1607,7 @@ body.dark-mode .bk-pop{background:var(--glass-fill-dark-hover);}
    badges. Tables, WBS, Gantt, budget grids, RACI and all dense    data views stay flat, opaque and high-contrast - no blur.
    ============================================================ */
 
-/* §3 recipe — exact declaration order (saturate boost is mandatory) */
+/* §3 recipe - exact declaration order (saturate boost is mandatory) */
 .glass-surface{
   background:var(--glass-fill-dark);
   backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturate));
@@ -1616,7 +1616,7 @@ body.dark-mode .bk-pop{background:var(--glass-fill-dark-hover);}
   box-shadow:var(--glass-rim),var(--glass-shadow);
 }
 
-/* §6.2 header / toolbar — sticky so content scrolls beneath the blur */
+/* §6.2 header / toolbar - sticky so content scrolls beneath the blur */
 #app-header,header{background:var(--glass-fill-dark);border-bottom:var(--glass-border);
   backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturate));
   -webkit-backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturate));
@@ -1682,7 +1682,7 @@ body.dark-mode .btn-o{background:rgba(245,158,11,.16);color:var(--gold);}
 body.dark-mode .btn-o:hover{background:#d97706;}
 body.dark-mode .btn-d{background:rgba(239,68,68,.14);color:var(--danger);border:1px solid rgba(239,68,68,.4);}
 body.dark-mode .btn-warn:hover{background:#d97706;}
-/* §4 press physics — quick press-in, spring overshoot on release */
+/* §4 press physics - quick press-in, spring overshoot on release */
 .btn:active,.pcard:active,.tab-btn:active,.sec-btn:active,.settings-btn:active,.dc:active,.toggle-chip:active{
   transform:scale(var(--press-scale));
   background:var(--glass-fill-dark-active);
@@ -1752,7 +1752,7 @@ body.dark-mode .btn-warn:hover{background:#d97706;}
 .dt .btn,.kc .btn,.raci-cell,.gb,.gr,.gh,.gd,.kcol,.kcc,.dt td input,.dt td select{backdrop-filter:none!important;-webkit-backdrop-filter:none!important;}
 .dt .btn,.kc .btn{background:transparent;box-shadow:none;border:1px solid var(--border);border-radius:var(--radius);}
 
-/* §3 mandatory fallback — no backdrop-filter support: solid card colour */
+/* §3 mandatory fallback - no backdrop-filter support: solid card colour */
 @supports not (backdrop-filter:blur(1px)){
   .glass-surface,#app-header,header,#drw,.drw-sheet,.mb,.gbox,#chartup-modal .cu-box,#wbsimport-modal .wi-box,#importdates-modal .wi-box,
   .pcard,.btn,.toggle-chip,.tab-btn,.sec-btn,.settings-btn,.dc,.tgl .tsl,.badge.on-hold,.badge.planning,.dock{
@@ -1791,7 +1791,7 @@ body.dark-mode .btn-warn:hover{background:#d97706;}
 }
 
 /* ============================================================
-   DARK MODE (opt-in) — hardcoded-value overrides.
+   DARK MODE (opt-in) - hardcoded-value overrides.
    The base palette is light-first (see :root). These rules restore
    the dark canvas defaults for the few components that hardcode a
    light-appropriate colour (subtle fills, input wells, row borders,
@@ -1876,7 +1876,7 @@ body.dark-mode .ltr-roll td{color:var(--text);}
 .wx-dist-unit{font-size:.68rem;color:var(--slate);}
 
 /* ---- AI Assistant window (chat-style) ---- */
-/* TRACK B3: distinct visual presence — the AI is the strongest
+/* TRACK B3: distinct visual presence - the AI is the strongest
    differentiator and its entry point should feel like one.  A persistent
    breathing glow + hover label sets it apart from every other chrome. */
 .ai-fab{position:fixed;right:22px;bottom:22px;z-index:1500;width:54px;height:54px;border-radius:50%;border:none;background:linear-gradient(135deg,#f59e0b,#d97706);color:#0b0c10;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 8px 24px rgba(217,119,6,.4),inset 0 1px 0 rgba(255,255,255,.35);transition:transform var(--tr),box-shadow var(--tr),filter var(--tr);animation:ai-glow 3s ease-in-out infinite;}
@@ -1998,12 +1998,12 @@ body.dark-mode .ai-seg-btn.is-on{background:rgba(255,255,255,.08);}
 .ai-adv .ai-adv-body{padding:14px 20px 18px;background:var(--tile-bg);max-height:min(46vh,420px);overflow-y:auto;}
 .ai-ctx,.ai-out{width:100%;background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:.74rem;padding:9px 11px;font-family:inherit;resize:vertical;box-sizing:border-box;}
 .ai-ctx{min-height:130px;}
-.ai-out{display:none;}  /* functional store only — runs render as chat bubbles */
+.ai-out{display:none;}  /* functional store only - runs render as chat bubbles */
 .ai-trace{display:none;} /* trace is rendered inside the bot bubble */
 .ai-actions{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;}
 /* AI-CLOUD-CONNECT-UI (DIR-1): the Cloud connection row is promoted OUT of
    the collapsed details into an always-visible row directly under the tier
-   select — visible the moment tier=Cloud, zero extra clicks. Hidden only by
+   select - visible the moment tier=Cloud, zero extra clicks. Hidden only by
    the same is-hide toggle syncSettingsUI drives (tier != cloud). */
 .ai-conn-row{display:flex;flex-wrap:wrap;align-items:center;gap:7px;padding:8px 14px;border-bottom:1px solid var(--border);background:var(--tile-bg);}
 .ai-byo-gear{flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:100px;border:1px solid var(--border);background:var(--card);color:var(--slate);cursor:pointer;transition:color var(--tr),border-color var(--tr),transform var(--tr);}
@@ -2013,13 +2013,13 @@ body.dark-mode .ai-seg-btn.is-on{background:rgba(255,255,255,.08);}
 .ai-byo-pop .ai-byo-key{flex:1;min-width:190px;}
 body.dark-mode .ai-conn-row{background:rgba(0,0,0,.12);}
 body.dark-mode .ai-byo-pop{background:rgba(0,0,0,.18);}
-/* BYO-AI-KEY-SESSION-ONLY-v1 — Connect flow (STEP-2): status chip,
+/* BYO-AI-KEY-SESSION-ONLY-v1 - Connect flow (STEP-2): status chip,
    session-only key input, security copy, and the send gate. */
 .ai-byo-status{display:inline-flex;align-items:center;gap:6px;font-size:.66rem;font-weight:700;border-radius:100px;padding:3px 10px;border:1px solid var(--border);background:var(--tile-bg);color:var(--slate);white-space:nowrap;transition:color var(--tr),border-color var(--tr),background var(--tr);}
 .ai-byo-dot{width:7px;height:7px;border-radius:50%;background:var(--slate);transition:background var(--tr),box-shadow var(--tr);}
 .ai-byo-status[data-state="on"]{color:var(--green);border-color:var(--green);}
 .ai-byo-status[data-state="on"] .ai-byo-dot{background:var(--green);box-shadow:0 0 6px var(--green);}
-/* AI-CLOUD-CONNECT-UI (DIR-1): 'saved_untested' — a key is present in the
+/* AI-CLOUD-CONNECT-UI (DIR-1): 'saved_untested' - a key is present in the
    session vault but Connect & Test has not yet confirmed it against the
    provider (or the last probe failed). Distinct from both Disconnected and
    Connected: a key string present is NOT 'connected' until verified. */
@@ -2068,7 +2068,7 @@ body.dark-mode .ai-adv .ai-adv-body{background:rgba(0,0,0,.18);}
 body.dark-mode .ai-head-tier{background-color:rgba(0,0,0,.25);border-color:rgba(255,255,255,.14);}
 body.dark-mode .ai-byo-status{background:rgba(255,255,255,.05);}
 body.dark-mode .ai-byo-key{background:rgba(0,0,0,.25);}
-/* Rank 3.4 — viewport-aware layout detection: the one-time dismissible
+/* Rank 3.4 - viewport-aware layout detection: the one-time dismissible
    prompt bar + the simplified stacked presentation (never hides function,
    restructures presentation; .vp-full restores the wide layout). */
 .vp-prompt{display:flex;flex-wrap:wrap;align-items:center;gap:10px;justify-content:space-between;padding:10px 14px;border:1px solid var(--gold);border-radius:8px;background:rgba(var(--gold-rgb),.08);margin-bottom:14px;font-size:.74rem;}
@@ -2106,13 +2106,13 @@ body.dark-mode .sent-bar{border:1px solid rgba(0,0,0,.2);}
 .wx-view-tgl .btn{border-radius:6px;padding:3px 9px;font-size:.66rem;}
 .wx-view-tgl .btn.is-on{border-color:var(--gold);color:var(--gold);}
 
-/* OWNER 2026-08-15: guidance line under the weather card's location row —
+/* OWNER 2026-08-15: guidance line under the weather card's location row -
    tells users the site is looked up online for exact coordinates and that
    "Use my current location" tailors the forecast to exactly where they are. */
 .wx-hint{font-size:.64rem;color:var(--slate);line-height:1.45;margin:7px 2px 0;max-width:760px;}
 .wx-hint strong{color:var(--gold);font-weight:700;}
 
-/* Interaction audit: the WBS task name is click-to-edit — signal editability. */
+/* Interaction audit: the WBS task name is click-to-edit - signal editability. */
 .wbs-name{cursor:text;}
 .wbs-name:hover{color:var(--gold);}
 
@@ -2128,11 +2128,11 @@ body.dark-mode .cause-sel{background-color:rgba(0,0,0,.25);}
 .digest-sec .bn-item{border-bottom:none;padding:2.5px 0;}
 
 /* ============================================================
-   PLAN-OF-ACTION-LIQUID-GLASS-UI Rank 3.5 — Dual-Engine Glass
+   PLAN-OF-ACTION-LIQUID-GLASS-UI Rank 3.5 - Dual-Engine Glass
    3.5.1: .glass-panel is the DEFAULT card/panel treatment
    (CSS backdrop-filter + gradient rim). Zero JS, zero opt-in.
    Dense tables/WBS/Gantt stay flat & opaque (per the design
-   spec: readability first) — only panel chrome gets the glass.
+   spec: readability first) - only panel chrome gets the glass.
    The CSS variables already ship in the design tokens above;
    on light theme blur is 0 (crisp), on dark it frosts.
    ============================================================ */
@@ -2146,7 +2146,7 @@ body.dark-mode .cause-sel{background-color:rgba(0,0,0,.25);}
 }
 .card.glass-panel{padding:18px;margin-bottom:18px;}
 
-/* 3.5.4 premium backdrop canvas — fixed, behind the app, inert until the
+/* 3.5.4 premium backdrop canvas - fixed, behind the app, inert until the
    engine renders into it (zero cost while off). */
 #glass-canvas{
   position:fixed;inset:0;width:100vw;height:100vh;
@@ -2163,7 +2163,7 @@ body.glass-premium .db-side{z-index:200!important;}
 }
 body.glass-premium .mouse-glow{width:260px;height:260px;margin:-130px 0 0 -130px;transition:opacity .5s ease;}
 body.glass-premium.dark-mode .mouse-glow{background:radial-gradient(circle,rgba(99,102,241,.14) 0%,rgba(99,102,241,.06) 34%,rgba(99,102,241,0) 70%);}
-/* INTEGRATED-STRUCTURE-API-WINDOW plan §2: mouse-tracking glossy glow — a
+/* INTEGRATED-STRUCTURE-API-WINDOW plan §2: mouse-tracking glossy glow - a
    radial highlight that follows the cursor across the premium backdrop.
    Positioned via --mouse-x/--mouse-y custom properties that mmgr-glass.js
    writes on <html> (rAF-throttled mousemove). z-index 0 + later DOM order
@@ -2194,7 +2194,7 @@ body.glass-premium.dark-mode .mouse-glow{background:radial-gradient(circle,rgba(
 .gchip-out:hover{border-color:var(--danger);color:var(--danger);}
 /* ---- GOOGLE-DRIVE-BACKUP: cloud sync controls beside the identity chip ---- */
 /* The auth-bar buttons must override app.html's dashboard .btn{width:100%}
-   (that rule targets modal footers) — this scoped rule (0,2,0) wins. */
+   (that rule targets modal footers) - this scoped rule (0,2,0) wins. */
 .cloud-sync-controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
 .cloud-sync-controls .btn{white-space:nowrap;width:auto;padding:6px 12px;}
 .drive-auto{display:inline-flex;align-items:center;gap:5px;font-size:.68rem;color:var(--slate);white-space:nowrap;}
@@ -2221,25 +2221,25 @@ body.glass-premium.dark-mode .mouse-glow{background:radial-gradient(circle,rgba(
 body.dark-mode .sync-suggest{background:rgba(245,158,11,.10);border-color:rgba(245,158,11,.4);}
 
 /* ============================================================
-   DASHBOARD-UI-REFRESH-SPEC — dark dashboard treatment (app.html ONLY)
+   DASHBOARD-UI-REFRESH-SPEC - dark dashboard treatment (app.html ONLY)
    ------------------------------------------------------------------
    Normative per DASHBOARD-UI-REFRESH-SPEC.md: the project-picker /
-   portfolio dashboard (app.html) gets its own dark treatment — jet-black
+   portfolio dashboard (app.html) gets its own dark treatment - jet-black
    canvas, SOLID --db-surface content cards (Gate 6.1: dense content never
    glass), fluorescent-blue accent, thin-air secondary text. Everything is
    scoped to body.dark-mode.db-page, so the LIGHT launcher and every other
    page stay byte-for-byte unchanged (spec §5). All ratios MEASURED
-   (WCAG 2.2, Gate 4.3) — see per-token comments. --db-gold on a
+   (WCAG 2.2, Gate 4.3) - see per-token comments. --db-gold on a
    light surface is 1.48:1 and must never be used there.
    ============================================================ */
 .db-side,.db-hamb,.db-scrim,.db-metrics{display:none;}
 body.dark-mode.db-page{
-  /* TIER 1 — primitives (raw values) */
-  --db-gold:#E8923A;            /* muted gold-orange — warm dark identity */
+  /* TIER 1 - primitives (raw values) */
+  --db-gold:#E8923A;            /* muted gold-orange - warm dark identity */
   --db-gold-soft:#F0A050;       /* lighter gold for secondary use */
   --db-jet-black:#1a1614;       /* warm dark canvas */
   --db-muted-slate:#9a8e80;     /* warm muted secondary text */
-  /* TIER 2 — semantic (dashboard-scoped; --db- prefix so nothing can leak) */
+  /* TIER 2 - semantic (dashboard-scoped; --db- prefix so nothing can leak) */
   --db-canvas:var(--db-jet-black);
   --db-surface:#242019;
   --db-surface-raised:#2e2922;
@@ -2248,7 +2248,7 @@ body.dark-mode.db-page{
   --db-border:#3a342c;
   --db-text-secondary:var(--db-muted-slate);
   background:var(--db-canvas);
-  color:var(--text);            /* #e2e8f0 — 16.06:1 on canvas, 15.20:1 on surface (AAA) */
+  color:var(--text);            /* #e2e8f0 - 16.06:1 on canvas, 15.20:1 on surface (AAA) */
 }
 /* ---- Header chrome (.top) + sidebar (chrome is glass per spec §3; the
         content below is solid per Gate 6.1) ---- */
@@ -2306,7 +2306,7 @@ body.dark-mode.db-page .db-metric .dm-value{
   font-variant-numeric:tabular-nums;
 }
 body.dark-mode.db-page .db-metric .dm-unit{font-size:.8rem;font-weight:600;color:var(--db-text-secondary);margin-left:4px;}
-/* ---- Content surfaces: SOLID (Gate 6.1 — dense content never glass) ---- */
+/* ---- Content surfaces: SOLID (Gate 6.1 - dense content never glass) ---- */
 body.dark-mode.db-page .pcard,
 body.dark-mode.db-page .pf-card,
 body.dark-mode.db-page .cd-card{
@@ -2328,7 +2328,7 @@ body.dark-mode.db-page .cd-sub,
 body.dark-mode.db-page .cd-empty,
 body.dark-mode.db-page .foot a{color:var(--db-text-secondary);}
 /* BILLING-UPGRADE-UI (app.html plan strip): solid surface + muted secondary
-   text on the dark dashboard canvas (Gate 6.1 — dense content never glass). */
+   text on the dark dashboard canvas (Gate 6.1 - dense content never glass). */
 body.dark-mode.db-page .cd-plan{background:var(--db-surface);border-color:var(--db-border);}
 body.dark-mode.db-page .cd-plan .cd-plan-txt{color:var(--db-text-secondary);}
 body.dark-mode.db-page .cd-plan .cd-plan-txt strong{color:var(--text);}
@@ -2337,7 +2337,7 @@ body.dark-mode.db-page .cd-plan.at-limit .cd-plan-txt,
 body.dark-mode.db-page .cd-plan.at-limit .cd-plan-txt strong{color:var(--db-accent);}
 body.dark-mode.db-page .pcard:not(.unlocked) .pc-cta{color:var(--db-text-secondary);}
 /* ---- Desktop: content shifts right of the fixed rail ONLY while it is
-        open (body.side-open — NEW-UI-CREATION-BRIEF I1 follow-up: the
+        open (body.side-open - NEW-UI-CREATION-BRIEF I1 follow-up: the
         hamburger closes/reopens the rail on desktop too, so the wrap margin
         follows the open state). ---- */
 @media(min-width:769px){
@@ -2368,18 +2368,18 @@ body.dark-mode.db-page .pcard:not(.unlocked) .pc-cta{color:var(--db-text-seconda
   body.dark-mode.db-page .db-metrics{grid-template-columns:1fr;}
 }
 /* ============================================================
-   MASTER-ACTION-PLAN RANK 8 (8.1) — projects-list visual weight
+   MASTER-ACTION-PLAN RANK 8 (8.1) - projects-list visual weight
    in LIGHT mode. The DARK dashboard treatment already gives
    app.html weight (db-side rail + metrics + solid surfaces); the
    LIGHT page stayed a flat white grid (the spec's confirmed gap).
    Per 8.1 "pick one, don't stack": a subtle radial GLOW behind
-   the grid using EXISTING accent tokens at low opacity — gold
-   top-left, green center-right, blue bottom — no new colors, no
+   the grid using EXISTING accent tokens at low opacity - gold
+   top-left, green center-right, blue bottom - no new colors, no
    motion (8.2: glass cards keep their own surface + border so
    readability is untouched; the glow sits behind them). Scoped to
    light db-page only so the dark treatment and every other page
    stay byte-for-byte unchanged. All ratios measured: the glow is a
-   <8% alpha wash — text on cards is unaffected (cards carry their
+   <8% alpha wash - text on cards is unaffected (cards carry their
    own --glass-fill-dark surface at full contrast).
    ============================================================ */
 body.db-page:not(.dark-mode) #grid{position:relative;isolation:isolate;}
@@ -2390,11 +2390,11 @@ body.db-page:not(.dark-mode) #grid::before{
      only ~24px inside the viewport (the .wrap padding), so the wash's
      right tail overflowed the window and created a phantom horizontal
      scroll (scrollWidth 1296 vs clientWidth 1270 at 1280px, light theme
-     only — dark turns the layer off). The left bleed is safe (the rail +
+     only - dark turns the layer off). The left bleed is safe (the rail +
      padding leave ~264px of room) and the <=768px guard below already
      clamps both sides; this right clamp mirrors it for desktop. */
   top:-70px;bottom:-70px;left:-50px;right:-6px;
-  /* Only the existing --gold-rgb token (per 8.1: no new colors) — three
+  /* Only the existing --gold-rgb token (per 8.1: no new colors) - three
      layered washes at different positions/opacities so it reads as depth,
      not a single blob. */
   background:
@@ -2408,11 +2408,11 @@ body.db-page.dark-mode #grid::before{display:none;}
 /* Mobile overflow guard (NEW-UI-CREATION-BRIEF I1 follow-up, 2026-08-14):
    the glow's -50px side bleed pushed scrollWidth past the viewport on small
    screens (phantom 26px horizontal scroll). Keep a subtle wash on mobile by
-   clamping the bleed to the grid's own box — no overflow, same tokens. */
+   clamping the bleed to the grid's own box - no overflow, same tokens. */
 @media(max-width:768px){
   body.db-page:not(.dark-mode) #grid::before{inset:-40px -6px;}
 }
-/* 8.2 consistency: cards keep full contrast — their own surface is opaque
+/* 8.2 consistency: cards keep full contrast - their own surface is opaque
    enough that the wash never sits between text and background. */
 @media (prefers-reduced-motion:reduce){
   body.db-page:not(.dark-mode) #grid::before{transition:none;}
@@ -2434,11 +2434,11 @@ body.db-page.dark-mode #grid::before{display:none;}
   body.dark-mode.db-page .db-side{transition:none!important;}
 }
 /* ============================================================
-   MMGR-NEW-UI-CREATION-BRIEF I1 — app.html LIGHT-mode rail.
+   MMGR-NEW-UI-CREATION-BRIEF I1 - app.html LIGHT-mode rail.
    The dark dashboard rail (--db-*) stays exactly as-is above; this
    block gives the LIGHT launcher the same shared-shell treatment
    (pinned 240px rail on desktop, off-canvas drawer + scrim on
-   mobile) using the standard tokens — so the shell is one product
+   mobile) using the standard tokens - so the shell is one product
    in both themes. Same markup (#db-sidebar / #db-nav-btn /
    #db-scrim / body.side-open) is already in app.html; light mode
    was display:none before this block. No pure #000 text: light
@@ -2476,7 +2476,7 @@ body.db-page:not(.dark-mode) .db-soon{
   border-radius:100px;padding:1px 7px;opacity:.85;white-space:nowrap;
 }
 /* Desktop: content shifts right of the fixed light rail ONLY while it is
-   open (body.side-open — the hamburger closes/reopens it on desktop too). */
+   open (body.side-open - the hamburger closes/reopens it on desktop too). */
 @media(min-width:769px){
   body.db-page:not(.dark-mode).side-open .wrap{margin-left:264px;margin-right:auto;}
 }
@@ -2506,7 +2506,7 @@ body.db-page:not(.dark-mode) .db-soon{
 }
 
 /* ============================================================
-   REAL-TIME PRESENCE (2026-08-12) — "N online" header chip on
+   REAL-TIME PRESENCE (2026-08-12) - "N online" header chip on
    project.html. Token-driven so it adapts to every palette + dark
    mode; hidden by default ([hidden]) until viewers are present.
    ============================================================ */
@@ -2528,10 +2528,10 @@ body.db-page:not(.dark-mode) .db-soon{
 
 /* ============================================================
    EMAIL+PASSWORD SIGN-IN (deferred cloud item #14, completed
-   2026-08-12) — compact alternative-provider form mounted beside
+   2026-08-12) - compact alternative-provider form mounted beside
    the Google button in the auth bar (app.html + admin.html).
    Token-driven: solid --tile-bg surface (Gate 6.1), app-wide gold
-   focus ring on the inputs (rule at ~line 866 — nothing new),
+   focus ring on the inputs (rule at ~line 866 - nothing new),
    error line is a role=status live region in --danger. No motion.
    ============================================================ */
 .email-auth{display:flex;flex-direction:column;align-items:flex-end;gap:6px;}
@@ -2540,14 +2540,14 @@ body.db-page:not(.dark-mode) .db-soon{
 .email-auth-toggle:focus-visible,.email-auth-alt button:focus-visible{outline:2px solid var(--gold);outline-offset:1px;border-radius:var(--radius);}
 .email-auth-form{display:flex;flex-direction:column;gap:6px;padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--tile-bg);align-items:stretch;}
 .email-auth-row{display:flex;flex-wrap:wrap;gap:6px;align-items:center;}
-.email-auth .btn{width:auto;white-space:nowrap;} /* app.html's dashboard .btn{width:100%} is modal-footer-scoped — keep the submit pill sized to its label */
+.email-auth .btn{width:auto;white-space:nowrap;} /* app.html's dashboard .btn{width:100%} is modal-footer-scoped - keep the submit pill sized to its label */
 .email-auth-input{flex:0 1 150px;min-width:110px;font-size:.72rem;padding:6px 8px;border:1px solid var(--border);border-radius:var(--radius);background:var(--card);color:var(--text);}
 .email-auth-name{flex-basis:140px;}
 .email-auth-alt{font-size:.66rem;color:var(--text-secondary);}
 .email-auth-alt button{background:none;border:none;padding:0;font-size:.66rem;font-weight:600;color:var(--blue);cursor:pointer;text-decoration:underline;text-underline-offset:2px;}
 .email-auth-err{font-size:.66rem;color:var(--danger);min-height:.9em;}
 @media(max-width:640px){.email-auth{align-items:stretch;}.email-auth-row{flex-direction:column;}.email-auth-input{flex:1 1 100%;width:100%;}}
-/* AUTH MAINFRAME 2026-08-17 — password-change control (shared trigger +
+/* AUTH MAINFRAME 2026-08-17 - password-change control (shared trigger +
    panel mounted by mmgr-google-auth.js mountPasswordControl into the
    signed-in chip, the marketing account row, and Settings > Controls >
    Profile). Same soft-field language as the email-auth form; [hidden]
@@ -2576,7 +2576,7 @@ body.db-page:not(.dark-mode) .db-soon{
 .pw-host{margin-top:8px;display:flex;flex-direction:column;align-items:flex-start;gap:6px;}
 
 /* ============================================================
-   MMGR-NEW-UI-CREATION-BRIEF I1 follow-up — app.html launcher
+   MMGR-NEW-UI-CREATION-BRIEF I1 follow-up - app.html launcher
    rail v2 (owner directive 2026-08-14, projects area only).
    ------------------------------------------------------------
    - Hamburger (#db-nav-btn) is now visible on ALL viewports and
@@ -2597,7 +2597,7 @@ body.db-page:not(.dark-mode) .db-soon{
    - Moon/sun quick theme toggle at the hero top-right.
    Token-driven (light uses --card/--border/--slate/--gold/--tile-bg;
    body.dark-mode.db-page overrides map to the --db-* dashboard
-   tokens, matching the existing rail convention — no pure #000
+   tokens, matching the existing rail convention - no pure #000
    text, Gate 4.1 pairs measured in the dark block). No emoji, SVG
    sprite icons only. Reduced-motion kills the transforms.
    ============================================================ */
@@ -2613,7 +2613,7 @@ body.db-page .db-hamb .ico{width:18px;height:18px;transition:transform .18s ease
 body.db-page .db-hamb.is-open .ico{transform:rotate(180deg);}
 body.db-page .db-hamb:focus-visible{outline:2px solid var(--gold);outline-offset:2px;}
 /* Moon/sun quick toggle (owner 2026-08-15): the square box around the icon
-   is gone — it is just the icon now, keeping a generous 38px tap target
+   is gone - it is just the icon now, keeping a generous 38px tap target
    (Fitts) with a transparent hit area, hover/focus color + ring only. */
 body.db-page .db-quick{
   display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;
@@ -2686,7 +2686,7 @@ body.db-page .db-upgrade{
   background:var(--gold);color:var(--on-gold);font-size:.74rem;font-weight:700;
 }
 /* The display:flex above would defeat the hidden attribute (a `[hidden]`
-   element with an author display rule is still rendered) — which is exactly
+   element with an author display rule is still rendered) - which is exactly
    the Premium-pill-vs-Upgrade-button contradiction: loadPlan() hid the
    button for paid accounts but the browser kept painting it. Guard it like
    .db-sub[hidden] so the JS decision takes effect. */
@@ -2754,10 +2754,10 @@ body.dark-mode.db-page [data-rail-toggle] .ico-caret{color:var(--db-text-seconda
      mobile so the same button always closes what it opened.
    - Rail footer is pinned to the bottom (margin-top:auto) with the
      plan status (Premium badge / Upgrade to Premium) directly above
-     the signed-in identity — nothing scrolls away.
+     the signed-in identity - nothing scrolls away.
    - Accordion panels are borderless (no boxiness); interactive rows
      (links, project rows, backup/restore buttons) get an INSET RING
-     on hover instead of a persistent border — zero layout shift.
+     on hover instead of a persistent border - zero layout shift.
    - Backup/Restore buttons redesigned: icon in an accent tile, no
      border, hover ring + tint.
    - Sign-in modal (#siom) text raised to full-contrast tokens.
@@ -2777,7 +2777,7 @@ body.db-page:not(.dark-mode) .top{
   border:1px solid color-mix(in oklch,var(--border) 65%,var(--gold) 35%);
   box-shadow:inset 0 1px 0 rgba(255,255,255,.7),0 14px 34px -22px rgba(16,24,40,.3);
   border-radius:var(--squircle-md);
-  padding:56px 22px 18px; /* top row = corner controls (hamburger / avatar / theme) — h1 sits below */
+  padding:56px 22px 18px; /* top row = corner controls (hamburger / avatar / theme) - h1 sits below */
   margin-bottom:18px;
 }
 body.db-page:not(.dark-mode) .top h1 .ico{filter:drop-shadow(0 0 7px color-mix(in oklch,var(--gold) 45%,transparent));}
@@ -2802,7 +2802,7 @@ body.db-page.side-open .db-hamb{z-index:130;}
 body.db-page .db-hamb .ico{transition:transform .3s cubic-bezier(.34,1.56,.64,1);}
 body.db-page .db-hamb.is-open .ico{transform:rotate(90deg);}
 /* Rail-head close control (owner 2026-08-15): it is a HAMBURGER now (was a
-   back arrow) — same icon, same rotation language as the hero button, and
+   back arrow) - same icon, same rotation language as the hero button, and
    syncSidebarAria() keeps both in step, so clicking it closes the rail with
    the icon returning to the plain hamburger and clicking again slides the
    rail back out. */
@@ -2929,7 +2929,7 @@ body.dark-mode.db-page #siom .email-auth-alt{color:var(--db-text-secondary);}
 /* ============================================================
    NEW-UI-CONTRAST-AND-RHYTHM (owner's visual-analysis fixes,
    2026-08-14): light secondary text darkened (.top p, card meta,
-   section subs, empty states) — the analysis flagged gray-on-gray;
+   section subs, empty states) - the analysis flagged gray-on-gray;
    notice banner text darkened to high-contrast brick; explicit
    section headers separate local Projects from Cloud; cloud cards
    share the grid card language (same padding/radius/hover); steady
@@ -2949,12 +2949,12 @@ body.db-page:not(.dark-mode) .pc-desc,
 body.db-page:not(.dark-mode) .pf-meta,
 body.db-page:not(.dark-mode) .pf-reason,
 body.db-page:not(.dark-mode) .db-sub-empty{color:color-mix(in oklch,var(--text) 70%,var(--slate) 30%);}
-/* ---- notice banner (owner 2026-08-15): on the same scale as the page —
+/* ---- notice banner (owner 2026-08-15): on the same scale as the page -
         the same glass card surface/radius/padding as the project cards, with
         an amber accent border + icon tile and full-contrast text. The old
         flat amber strip read as a plain little box; it now reads as a real
         card. Dark db-page gets the solid --db-surface treatment the other
-        cards use (Gate 6.1 — dense content never glass). ---- */
+        cards use (Gate 6.1 - dense content never glass). ---- */
 body.db-page:not(.dark-mode) .notice{
   border-color:color-mix(in oklch,var(--amber) 32%,var(--border));
   margin:0 auto 26px;
@@ -3063,7 +3063,7 @@ body.dark-mode.db-page .cd-menu-item:hover{background:rgba(255,255,255,.06);}
 body.dark-mode.db-page .cd-menu-danger{color:var(--danger);}
 body.dark-mode.db-page .cd-menu-danger .ico{color:var(--danger);}
 body.dark-mode.db-page .cd-menu-danger:hover{background:rgba(239,68,68,.12);}
-/* ---- LAUNCHER DELETE confirm sheet (#cdm) — mirror of the #siom pattern ---- */
+/* ---- LAUNCHER DELETE confirm sheet (#cdm) - mirror of the #siom pattern ---- */
 #cdm{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:2000;align-items:center;justify-content:center;}
 #cdm.open{display:flex;}
 #cdm .mb{width:440px;max-width:100%;max-height:82vh;}
@@ -3089,13 +3089,13 @@ body.dark-mode.db-page .db-user-name .ico{background:color-mix(in oklch,var(--db
 body.dark-mode.db-page .db-auto-lbl{color:var(--db-text-secondary);}
 
 /* ============================================================
-   TOAST / NOTIFICATION (owner 2026-08-15) — confirmations, errors,
+   TOAST / NOTIFICATION (owner 2026-08-15) - confirmations, errors,
    and warnings are no longer plain rectangles popping up at the
    bottom of the screen: they are pill-shaped glass chips (circular
    border) with a tinted circular icon tile (check-circle / x /
    alert-triangle), a one-word label (Done / Error / Note), the
    message in full-contrast text, and a smooth slide-up + hold +
-   fade-out. ONE shared implementation — the launcher (app.html),
+   fade-out. ONE shared implementation - the launcher (app.html),
    admin (admin.html), and the project viewer (mmgr-app.js
    showToast) all build this same DOM and consume this same CSS, so
    no page can drift. Theme-adaptive via tokens; dark mode gets the
@@ -3115,7 +3115,7 @@ body.dark-mode.db-page .db-auto-lbl{color:var(--db-text-secondary);}
   animation:toast-in var(--release-duration) var(--ease-ios) both;
 }
 .toast.is-out{animation:toast-out .42s var(--ease-ios) both;}
-/* circular icon tile — tinted per type */
+/* circular icon tile - tinted per type */
 .toast-ico{
   width:30px;height:30px;flex-shrink:0;border-radius:50%;
   display:inline-flex;align-items:center;justify-content:center;
@@ -3309,7 +3309,7 @@ body.dark-mode.db-page .db-auto-lbl{color:var(--db-text-secondary);}
 }
 
 /* ============================================================
-   PHASE 3 — ROSE-GOLD PALETTE + 3D VIEW DECK (owner D7/D9/E10,
+   PHASE 3 - ROSE-GOLD PALETTE + 3D VIEW DECK (owner D7/D9/E10,
    2026-09-03). Two independent axes, both toggled from the dock:
    PALETTE html[data-theme="rose-gold"] (gold stays default) and
    VIEW body.view-3d (flat stays default). Any light/dark/palette/
@@ -3405,7 +3405,7 @@ body.view-3d .view-deck{
   transition:transform .65s cubic-bezier(.25,1,.5,1);
   will-change:transform;
 }
-/* WebKit 3D+blur bug (audit #8): while tilted, deck surfaces drop blur —
+/* WebKit 3D+blur bug (audit #8): while tilted, deck surfaces drop blur -
    live backdrop blur stays confined to non-transformed chrome (dock, header). */
 body.view-3d .view-deck{--glass-blur:0px;}
 /* Mobile auto-flat + reduced motion + print (audit #5): the repo's own
@@ -3414,7 +3414,7 @@ body.view-3d .view-deck{--glass-blur:0px;}
 @media (prefers-reduced-motion:reduce){body.view-3d .view-deck{transform:none!important;transition:none!important;will-change:auto;}}
 @media print{body.view-3d .view-deck{transform:none!important;}}
 
-/* Dock now carries the Palette (Gold/Rose) and View (Flat/3D) rows — a
+/* Dock now carries the Palette (Gold/Rose) and View (Flat/3D) rows - a
    little wider so label + segmented control fit on one line each. */
 .dock{min-width:188px;}
 .dock .dock-item{gap:10px;}

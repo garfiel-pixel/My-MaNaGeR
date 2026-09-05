@@ -125,7 +125,7 @@ var MMGR = window.MMGR || {};
     // at very low weight (0.22 max), so the field never shows the old iridescent
     // purple/green/orange wash. Theme-compatible in both light and dark. The
     // cyan palette swaps the accent to a fluorescent-cyan vector (uCyan uniform)
-    // and the rose-gold palette swaps it to coral (uRose uniform) — both driven
+    // and the rose-gold palette swaps it to coral (uRose uniform) - both driven
     // by <html data-theme> so premium glass respects the active palette.
     'vec3 palette(float t){',
     '  vec3 slate = vec3(0.32, 0.36, 0.46);',

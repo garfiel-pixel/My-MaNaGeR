@@ -169,7 +169,7 @@ var MMGR = window.MMGR || {};
   /* ---- C23 Shared Resource Pool Library (Phase 6) ----
      The in-project picker: list the account pool, link/unlink rows,
      quick-add a row to the pool, and delete pool rows the account no
-     longer needs (deleting unlinks everywhere — the server cascades;
+     longer needs (deleting unlinks everywhere - the server cascades;
      this project keeps its detached local copy). Server-gated to the
      owner credential; editors/viewers get a friendly note. */
   function poolKindLabel(k) {
@@ -226,7 +226,7 @@ var MMGR = window.MMGR || {};
     }
     const items = r.items || [];
     const linked = r.linked || {};
-    statusEl.textContent = items.length ? (items.length + ' row(s) in your pool' + (Object.keys(linked).length ? ' · ' + Object.keys(linked).length + ' linked to this project' : '')) : 'Your pool is empty — add rows below.';
+    statusEl.textContent = items.length ? (items.length + ' row(s) in your pool' + (Object.keys(linked).length ? ' · ' + Object.keys(linked).length + ' linked to this project' : '')) : 'Your pool is empty - add rows below.';
     if (!items.length) { listEl.innerHTML = ''; return; }
     listEl.innerHTML = items.map(function(it) {
       const isL = !!linked[it.id];
@@ -248,12 +248,12 @@ var MMGR = window.MMGR || {};
     const r = await P.linkItem(id);
     if (!r.ok) {
       const statusEl = overlay.querySelector('#pool-status');
-      if (statusEl) statusEl.textContent = (r.queued ? 'Offline — link queued and will sync when back online.' : ('Link failed: ' + (r.error || 'unknown')));
+      if (statusEl) statusEl.textContent = (r.queued ? 'Offline - link queued and will sync when back online.' : ('Link failed: ' + (r.error || 'unknown')));
     } else {
       const out = await P.refreshAndMerge();
       R.renderResources();
       const toast = ns.App && ns.App.showToast ? ns.App.showToast : null;
-      if (toast && out.ok) toast('Linked from pool' + (out.created ? ' — ' + out.created + ' resource(s) added.' : '.'), 'ok');
+      if (toast && out.ok) toast('Linked from pool' + (out.created ? ' - ' + out.created + ' resource(s) added.' : '.'), 'ok');
     }
     poolLoadList(overlay);
   }
@@ -262,7 +262,7 @@ var MMGR = window.MMGR || {};
     const P = ns.Pool;
     const r = await P.unlinkItem(id);
     const statusEl = overlay.querySelector('#pool-status');
-    if (!r.ok && statusEl) statusEl.textContent = (r.queued ? 'Offline — unlink queued.' : ('Unlink failed: ' + (r.error || 'unknown')));
+    if (!r.ok && statusEl) statusEl.textContent = (r.queued ? 'Offline - unlink queued.' : ('Unlink failed: ' + (r.error || 'unknown')));
     else R.renderResources();
     poolLoadList(overlay);
   }
@@ -272,7 +272,7 @@ var MMGR = window.MMGR || {};
     const nameEl = overlay.querySelector('#pool-status');
     if (nameEl) nameEl.textContent = 'Deleting…';
     const r = await P.deleteItem(id);
-    if (nameEl) nameEl.textContent = r.ok ? 'Deleted from pool. Projects keep their local copy.' : (r.queued ? 'Offline — delete queued.' : ('Delete failed: ' + (r.error || 'unknown')));
+    if (nameEl) nameEl.textContent = r.ok ? 'Deleted from pool. Projects keep their local copy.' : (r.queued ? 'Offline - delete queued.' : ('Delete failed: ' + (r.error || 'unknown')));
     R.renderResources();
     poolLoadList(overlay);
   }
@@ -285,7 +285,7 @@ var MMGR = window.MMGR || {};
     if (!name) { if (statusEl) statusEl.textContent = 'Give the pool row a name first.'; return; }
     const P = ns.Pool;
     const r = await P.createItem({ kind: kindEl ? kindEl.value : 'person', name: name, availability: 100, rate: 0 });
-    if (!r.ok) { if (statusEl) statusEl.textContent = r.queued ? 'Offline — pool row queued.' : ('Create failed: ' + (r.error || 'unknown')); return; }
+    if (!r.ok) { if (statusEl) statusEl.textContent = r.queued ? 'Offline - pool row queued.' : ('Create failed: ' + (r.error || 'unknown')); return; }
     if (nameEl) nameEl.value = '';
     const linked = await P.linkItem(r.item.id);
     if (linked.ok) {
@@ -305,7 +305,7 @@ var MMGR = window.MMGR || {};
     const P = ns.Pool;
     P.addRowToPool(res).then(function(r) {
       if (r && r.ok) { if (toast) toast('Added "' + (r.item.name || '') + '" to the Shared Resource Pool.', 'ok'); }
-      else if (toast) toast((r && r.error) ? ('Add to pool failed: ' + r.error) : 'Add to pool failed (offline — row queued).', 'err');
+      else if (toast) toast((r && r.error) ? ('Add to pool failed: ' + r.error) : 'Add to pool failed (offline - row queued).', 'err');
       R.renderResources();
     });
   }

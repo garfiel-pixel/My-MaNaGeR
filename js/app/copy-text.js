@@ -1,5 +1,5 @@
 /* ============================================================
-   My MaNaGeR — Copy / Export Text Builders
+   My MaNaGeR - Copy / Export Text Builders
    Section-specific copy, multi-format digests, email templates,
    and live previews for the Controls tab.
    Extracted from mmgr-app.js.

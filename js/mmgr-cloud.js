@@ -405,7 +405,7 @@ var MMGR = window.MMGR || {};
     // server would refuse the save (X-View-Code is never accepted by /save),
     // so refuse it here with a plain explanation instead of a confusing 403.
     if (cred.header === 'X-View-Code') { setStatus('Viewer codes are read-only. You cannot save changes to the cloud. Ask the admin for an editor or owner code to edit.', 'warn'); return; }
-    // C19: client codes are read-only too — the server would refuse /save
+    // C19: client codes are read-only too - the server would refuse /save
     // with no client path at all, so refuse it here with plain copy.
     if (cred.header === 'X-Client-Code') { setStatus('Client codes are read-only. You can view the granted sections but cannot change anything. Ask the admin for an editor code to edit.', 'warn'); return; }
     const state = readProjectState();
@@ -961,7 +961,7 @@ var MMGR = window.MMGR || {};
   function isClientSectionHidden(section) { return ns.CloudScope ? !!ns.CloudScope.isClientSectionHidden(section) : false; }
   function applyClientScope() { if (ns.CloudScope && ns.CloudScope.applyClientScope) ns.CloudScope.applyClientScope(); }
   function applyEditorScope() {
-    // C19: client nav-hiding runs on the SAME pass — mutually exclusive with
+    // C19: client nav-hiding runs on the SAME pass - mutually exclusive with
     // the editor grey-out (a session is either editor/view or client).
     if (ns.CloudScope) {
       if (ns.CloudScope.applyClientScope) ns.CloudScope.applyClientScope();
@@ -1178,7 +1178,7 @@ var MMGR = window.MMGR || {};
     const escope = getEScope();
     const signedIn = await checkMe();
     // C19 (C1b): a client session runs the refresh watcher (poll /meta 60s
-    // while visible + visibilitychange + rev-changed) — idempotent, so
+    // while visible + visibilitychange + rev-changed) - idempotent, so
     // every render pass is safe.
     startClientRefresh();
     // The Controls-tab Share & Access card must mirror the same credential
@@ -1202,7 +1202,7 @@ var MMGR = window.MMGR || {};
         '</div>';
     } else if (ecode && !code) {
       // EDITOR / VIEWER / CLIENT MODE , scoped access; the server enforces the
-      // grant. Clients are read-only consumers (C19) — no Save, no offline
+      // grant. Clients are read-only consumers (C19) - no Save, no offline
       // copy, no review queue; just Load + Copy + a live last-sync line.
       const isView = !!(escope && escope.role === 'view');
       const isClient = !!(escope && escope.role === 'client');
@@ -1784,7 +1784,7 @@ var MMGR = window.MMGR || {};
     if (!changed && !force) return;
     const state = await clientLoadState();
     if (!state) return;
-    try { localStorage.setItem('mmgr_state_' + pid(), JSON.stringify(state)); } catch (e) { /* storage blocked — reload would lose nothing */ }
+    try { localStorage.setItem('mmgr_state_' + pid(), JSON.stringify(state)); } catch (e) { /* storage blocked - reload would lose nothing */ }
     // Full reload is the honest refresh: read-only workspace, no local edits
     // to lose, and every renderer picks the new state up at boot.
     if (changed) window.location.reload();

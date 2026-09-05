@@ -1,5 +1,5 @@
 /* ============================================================
-   My MaNaGeR — Floating Draggable Calculator
+   My MaNaGeR - Floating Draggable Calculator
    ============================================================
    A floating calculator that can be dragged anywhere on screen.
    Toggle from Controls drawer or section calculator icons.
@@ -60,14 +60,14 @@
           names = arr;
         }
       }
-    } catch (e) { /* storage unavailable — keep defaults */ }
+    } catch (e) { /* storage unavailable - keep defaults */ }
     _enabledTabs = names;
     return _enabledTabs;
   }
 
   function saveEnabledTabs(list) {
     _enabledTabs = list;
-    try { localStorage.setItem(CALC_SETTINGS_KEY, JSON.stringify(list)); } catch (e) { /* quota/denied — in-memory only */ }
+    try { localStorage.setItem(CALC_SETTINGS_KEY, JSON.stringify(list)); } catch (e) { /* quota/denied - in-memory only */ }
   }
 
   function isTabVisible(id) {
@@ -416,7 +416,7 @@
   function buildTradesTab() {
     return '<div class="calc-section is-hide" data-calc="trades">' +
       '<div class="calc-card">' +
-        '<div class="calc-card-title">Concrete — Slab / Footing / Wall volume</div>' +
+        '<div class="calc-card-title">Concrete - Slab / Footing / Wall volume</div>' +
         '<div class="calc-field-row">' +
           '<div class="calc-field"><label for="tr-l">Length</label><input type="number" id="tr-l" placeholder="ft" step="any"></div>' +
           '<div class="calc-field"><label for="tr-w">Width</label><input type="number" id="tr-w" placeholder="ft" step="any"></div>' +
@@ -429,7 +429,7 @@
         '<div class="calc-result" id="tr-pour-result" hidden></div>' +
       '</div>' +
       '<div class="calc-card">' +
-        '<div class="calc-card-title">Concrete — Column / Cylinder</div>' +
+        '<div class="calc-card-title">Concrete - Column / Cylinder</div>' +
         '<div class="calc-field-row">' +
           '<div class="calc-field"><label for="tr-col-d">Diameter</label><input type="number" id="tr-col-d" placeholder="ft" step="any"></div>' +
           '<div class="calc-field"><label for="tr-col-h">Height</label><input type="number" id="tr-col-h" placeholder="ft" step="any"></div>' +
@@ -439,7 +439,7 @@
         '<div class="calc-result" id="tr-cylinder-result" hidden></div>' +
       '</div>' +
       '<div class="calc-card">' +
-        '<div class="calc-card-title">Masonry — Block / Brick count + mortar</div>' +
+        '<div class="calc-card-title">Masonry - Block / Brick count + mortar</div>' +
         '<div class="calc-field-row">' +
           '<div class="calc-field"><label for="tr-mw">Wall width</label><input type="number" id="tr-mw" placeholder="ft" step="any"></div>' +
           '<div class="calc-field"><label for="tr-mh">Wall height</label><input type="number" id="tr-mh" placeholder="ft" step="any"></div>' +
@@ -452,7 +452,7 @@
         '<div class="calc-result" id="tr-masonry-result" hidden></div>' +
       '</div>' +
       '<div class="calc-card">' +
-        '<div class="calc-card-title">Earthwork — Cut / Fill + swell factor</div>' +
+        '<div class="calc-card-title">Earthwork - Cut / Fill + swell factor</div>' +
         '<div class="calc-field-row">' +
           '<div class="calc-field"><label for="tr-el">Length</label><input type="number" id="tr-el" placeholder="ft" step="any"></div>' +
           '<div class="calc-field"><label for="tr-ew">Width</label><input type="number" id="tr-ew" placeholder="ft" step="any"></div>' +
@@ -465,7 +465,7 @@
         '<div class="calc-result" id="tr-earth-result" hidden></div>' +
       '</div>' +
       '<div class="calc-card">' +
-        '<div class="calc-card-title">Roofing — Pitch to slope, area, squares</div>' +
+        '<div class="calc-card-title">Roofing - Pitch to slope, area, squares</div>' +
         '<div class="calc-field-row">' +
           '<div class="calc-field"><label for="tr-ff">Footprint area</label><input type="number" id="tr-ff" placeholder="sq ft" step="any"></div>' +
           '<div class="calc-field"><label for="tr-rise">Rise (in per 12)</label><input type="number" id="tr-rise" placeholder="6" step="any" value="6"></div>' +
@@ -474,7 +474,7 @@
         '<div class="calc-result" id="tr-roof-result" hidden></div>' +
       '</div>' +
       '<div class="calc-card">' +
-        '<div class="calc-card-title">Framing — Studs, plates, rafters</div>' +
+        '<div class="calc-card-title">Framing - Studs, plates, rafters</div>' +
         '<div class="calc-field-row">' +
           '<div class="calc-field"><label for="tr-fw">Wall length</label><input type="number" id="tr-fw" placeholder="ft" step="any"></div>' +
           '<div class="calc-field"><label for="tr-fh">Wall height</label><input type="number" id="tr-fh" placeholder="ft" step="any"></div>' +
@@ -487,7 +487,7 @@
         '<div class="calc-result" id="tr-framing-result" hidden></div>' +
       '</div>' +
       '<div class="calc-card">' +
-        '<div class="calc-card-title">Stairs — Risers, treads, stringer</div>' +
+        '<div class="calc-card-title">Stairs - Risers, treads, stringer</div>' +
         '<div class="calc-field-row">' +
           '<div class="calc-field"><label for="tr-sr">Total rise</label><input type="number" id="tr-sr" placeholder="in" step="any"></div>' +
           '<div class="calc-field"><label for="tr-srun">Total run</label><input type="number" id="tr-srun" placeholder="in" step="any"></div>' +
@@ -497,7 +497,7 @@
         '<div class="calc-result" id="tr-stairs-result" hidden></div>' +
       '</div>' +
       '<div class="calc-card">' +
-        '<div class="calc-card-title">Finish — Paint, drywall, tile</div>' +
+        '<div class="calc-card-title">Finish - Paint, drywall, tile</div>' +
         '<div class="calc-field-row">' +
           '<div class="calc-field"><label for="tr-paint-sf">Paint area</label><input type="number" id="tr-paint-sf" placeholder="sq ft" step="any"></div>' +
           '<div class="calc-field"><label for="tr-paint-coat">Coats</label><input type="number" id="tr-paint-coat" placeholder="2" step="1" value="2"></div>' +
@@ -517,7 +517,7 @@
         '<div class="calc-result" id="tr-tile-result" hidden></div>' +
       '</div>' +
       '<div class="calc-card">' +
-        '<div class="calc-card-title">Paving — Asphalt tonnage, trench volume</div>' +
+        '<div class="calc-card-title">Paving - Asphalt tonnage, trench volume</div>' +
         '<div class="calc-field-row">' +
           '<div class="calc-field"><label for="tr-asp-sf">Pave area</label><input type="number" id="tr-asp-sf" placeholder="sq ft" step="any"></div>' +
           '<div class="calc-field"><label for="tr-asp-t">Thickness</label><input type="number" id="tr-asp-t" placeholder="in" step="any"></div>' +
@@ -539,7 +539,7 @@
   function buildFinanceTab() {
     return '<div class="calc-section is-hide" data-calc="finance">' +
       '<div class="calc-card">' +
-        '<div class="calc-card-title">Bid build-up — cost + overhead + profit</div>' +
+        '<div class="calc-card-title">Bid build-up - cost + overhead + profit</div>' +
         '<div class="calc-field"><label for="fi-cost">Direct cost</label><input type="number" id="fi-cost" placeholder="0" step="any"></div>' +
         '<div class="calc-field-row">' +
           '<div class="calc-field"><label for="fi-oh">Overhead %</label><input type="number" id="fi-oh" placeholder="10" step="any" value="10"></div>' +
@@ -559,7 +559,7 @@
         '<div class="calc-result" id="fi-break-result" hidden></div>' +
       '</div>' +
       '<div class="calc-card">' +
-        '<div class="calc-card-title">Loan / amortization — monthly payment</div>' +
+        '<div class="calc-card-title">Loan / amortization - monthly payment</div>' +
         '<div class="calc-field"><label for="fi-loan-p">Principal / amount</label><input type="number" id="fi-loan-p" placeholder="0" step="any"></div>' +
         '<div class="calc-field-row">' +
           '<div class="calc-field"><label for="fi-loan-r">Annual rate %</label><input type="number" id="fi-loan-r" placeholder="6" step="any" value="6"></div>' +
@@ -575,7 +575,7 @@
   function buildSiteTab() {
     return '<div class="calc-section is-hide" data-calc="site">' +
       '<div class="calc-card">' +
-        '<div class="calc-card-title">Slope / grade — rise, run, %, degrees</div>' +
+        '<div class="calc-card-title">Slope / grade - rise, run, %, degrees</div>' +
         '<div class="calc-field-row">' +
           '<div class="calc-field"><label for="si-rise">Rise</label><input type="number" id="si-rise" placeholder="ft" step="any"></div>' +
           '<div class="calc-field"><label for="si-run">Run</label><input type="number" id="si-run" placeholder="ft" step="any"></div>' +
@@ -593,7 +593,7 @@
         '<div class="calc-result" id="si-arc-result" hidden></div>' +
       '</div>' +
       '<div class="calc-card">' +
-        '<div class="calc-card-title">Odd volumes — prismoid / frustum / trench</div>' +
+        '<div class="calc-card-title">Odd volumes - prismoid / frustum / trench</div>' +
         '<div class="calc-field-row">' +
           '<div class="calc-field"><label for="si-a1">End area 1</label><input type="number" id="si-a1" placeholder="sq ft" step="any"></div>' +
           '<div class="calc-field"><label for="si-a2">End area 2</label><input type="number" id="si-a2" placeholder="sq ft" step="any"></div>' +
@@ -613,7 +613,7 @@
         '<div class="calc-result" id="si-frustum-result" hidden></div>' +
       '</div>' +
       '<div class="calc-card">' +
-        '<div class="calc-card-title">Extra conversions — temperature / pressure / flow / speed</div>' +
+        '<div class="calc-card-title">Extra conversions - temperature / pressure / flow / speed</div>' +
         '<div class="calc-field-row">' +
           '<div class="calc-field" style="flex:1.4"><label for="si-cv">Conversion</label>' +
             '<select id="si-cv">' +
@@ -634,7 +634,7 @@
     '</div>';
   }
 
-  /* ── Project metrics / EVM (Phase 5 / A4) — reuses ns.Evm when the
+  /* ── Project metrics / EVM (Phase 5 / A4) - reuses ns.Evm when the
        project state is available so answers match the dashboard ── */
   function buildEvmTab() {
     return '<div class="calc-section is-hide" data-calc="evm">' +
@@ -644,7 +644,7 @@
         '<div class="calc-result" id="evm-live-result" hidden></div>' +
       '</div>' +
       '<div class="calc-card">' +
-        '<div class="calc-card-title">Manual EVM — SPI / CPI / EAC / ETC</div>' +
+        '<div class="calc-card-title">Manual EVM - SPI / CPI / EAC / ETC</div>' +
         '<div class="calc-field-row">' +
           '<div class="calc-field"><label for="evm-bac">BAC</label><input type="number" id="evm-bac" placeholder="0" step="any"></div>' +
           '<div class="calc-field"><label for="evm-pv-calc">PV</label><input type="number" id="evm-pv-calc" placeholder="0" step="any"></div>' +
@@ -659,7 +659,7 @@
     '</div>';
   }
 
-  /* ── Settings (Phase 5 / A5) — one checkbox per toggleable tab ── */
+  /* ── Settings (Phase 5 / A5) - one checkbox per toggleable tab ── */
   function buildSettingsTab() {
     var TITLE = { trades: 'Construction trades', finance: 'Bid & finance', site: 'Site & geometry', evm: 'Project EVM (SPI/CPI)', pct: 'Percent', area: 'Area', convert: 'Convert', markup: 'Markup', cost: 'Cost estimate' };
     var rows = TABS.filter(function(t) { return t.id !== 'general'; }).map(function(t) {
@@ -1203,7 +1203,7 @@
         addHistory(r);
         break;
       }
-      /* ── EVM (Phase 5 / A4) — reuse ns.Evm.compute when state exists ── */
+      /* ── EVM (Phase 5 / A4) - reuse ns.Evm.compute when state exists ── */
       case 'evm-live': {
         var evm = window.MMGR && window.MMGR.Evm && window.MMGR.Evm.compute ? window.MMGR.Evm.compute() : null;
         if (!evm) {

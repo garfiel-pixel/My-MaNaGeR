@@ -61,7 +61,7 @@ var MMGR = window.MMGR || {};
 
   function resUtil(r) {
     // Availability defaults to 100 when absent (the same default every other
-    // resource path uses — addResource/import both write availability:100).
+    // resource path uses - addResource/import both write availability:100).
     // Treating a missing field as 0% availability zeroed every legacy/demo
     // resource's utilization to 0 (2026-09-05).
     const cap = ((+r.availability || 100) / 100) * monthlyHours();

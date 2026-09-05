@@ -1,5 +1,5 @@
 /* ============================================================
-   My MaNaGeR — Confirmation Dialog System
+   My MaNaGeR - Confirmation Dialog System
    Shared confirm/cancel modal with callback management.
    Extracted from mmgr-app.js.
    ============================================================ */
@@ -79,7 +79,7 @@ var MMGR = window.MMGR || {};
   }
 
   // Close every custom modal we own (Escape key path). An Escape on the
-  // confirmation dialog behaves exactly like Cancel — the onCancel callback
+  // confirmation dialog behaves exactly like Cancel - the onCancel callback
   // (e.g. a Gantt-drag rollback) must still run.
   function closeModals() {
     ['cfm-modal', 'conflict-modal', 'del-modal'].forEach(function(id) {

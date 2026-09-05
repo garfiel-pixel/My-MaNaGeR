@@ -5,12 +5,12 @@
 var MMGR = window.MMGR || {};
 
 /* ============================================================
-   JSDoc Type Definitions — shared state shapes
+   JSDoc Type Definitions - shared state shapes
    ============================================================
    These types document the canonical shapes used across all modules.
    Editors/AI tooling can catch wrong-field-name bugs at edit time.
    Every render module, CRUD module, and cloud-sync module references
-   these shapes — keep this block current when fields are added.
+   these shapes - keep this block current when fields are added.
    ============================================================ */
 
 /**
@@ -23,8 +23,8 @@ var MMGR = window.MMGR || {};
  * @property {string} constraints
  * @property {string} assumptions
  * @property {string} exclusions
- * @property {string} targetStart   — YYYY-MM-DD
- * @property {string} targetCompletion — YYYY-MM-DD
+ * @property {string} targetStart   - YYYY-MM-DD
+ * @property {string} targetCompletion - YYYY-MM-DD
  * @property {number} budgetEnvelope
  * @property {Array<{name:string, target:string}>} kpis
  * @property {{financial:boolean, schedule:boolean, quality:boolean, safety:boolean, environmental:boolean}} categories
@@ -34,24 +34,24 @@ var MMGR = window.MMGR || {};
  * @typedef {Object} Task
  * @property {string|number} id
  * @property {string} text
- * @property {string} startDate     — YYYY-MM-DD
- * @property {string} endDate       — YYYY-MM-DD
- * @property {string} status        — 'not-started'|'in-progress'|'completed'
- * @property {string} [confidence]  — 'low'|'medium'|'high'
- * @property {number} [indent]      — WBS indent level (0 = top)
- * @property {number} [level]       — alias for indent
- * @property {boolean} [isPhase]    — true if this is a phase row
- * @property {Array<string|number>} [predecessors] — predecessor task ids
- * @property {string} [assignedTo]  — resource name
+ * @property {string} startDate     - YYYY-MM-DD
+ * @property {string} endDate       - YYYY-MM-DD
+ * @property {string} status        - 'not-started'|'in-progress'|'completed'
+ * @property {string} [confidence]  - 'low'|'medium'|'high'
+ * @property {number} [indent]      - WBS indent level (0 = top)
+ * @property {number} [level]       - alias for indent
+ * @property {boolean} [isPhase]    - true if this is a phase row
+ * @property {Array<string|number>} [predecessors] - predecessor task ids
+ * @property {string} [assignedTo]  - resource name
  */
 
 /**
  * @typedef {Object} Risk
  * @property {string|number} id
  * @property {string} description
- * @property {string} impact        — 'low'|'medium'|'high'
- * @property {string} probability   — 'low'|'medium'|'high'
- * @property {string} [status]      — 'open'|'mitigated'|'closed'
+ * @property {string} impact        - 'low'|'medium'|'high'
+ * @property {string} probability   - 'low'|'medium'|'high'
+ * @property {string} [status]      - 'open'|'mitigated'|'closed'
  * @property {string} [owner]
  * @property {string} [mitigation]
  */
@@ -72,9 +72,9 @@ var MMGR = window.MMGR || {};
  * @property {string|number} id
  * @property {string} name
  * @property {string} role
- * @property {number} [rate]        — hourly rate
- * @property {number} [allocation]  — percentage 0-100
- * @property {number} [utilization] — computed percentage
+ * @property {number} [rate]        - hourly rate
+ * @property {number} [allocation]  - percentage 0-100
+ * @property {number} [utilization] - computed percentage
  */
 
 /**
@@ -82,10 +82,10 @@ var MMGR = window.MMGR || {};
  * @property {string|number} id
  * @property {string} name
  * @property {string} role
- * @property {string} [interest]    — 'low'|'medium'|'high'
- * @property {string} [influence]   — 'low'|'medium'|'high'
- * @property {string} [coiExpiry]   — YYYY-MM-DD
- * @property {string} [licenseExpiry] — YYYY-MM-DD
+ * @property {string} [interest]    - 'low'|'medium'|'high'
+ * @property {string} [influence]   - 'low'|'medium'|'high'
+ * @property {string} [coiExpiry]   - YYYY-MM-DD
+ * @property {string} [licenseExpiry] - YYYY-MM-DD
  * @property {string} [emr]
  * @property {string} [emrVerified]
  */
@@ -94,7 +94,7 @@ var MMGR = window.MMGR || {};
  * @typedef {Object} Issue
  * @property {string|number} id
  * @property {string} description
- * @property {string} [status]      — 'open'|'resolved'
+ * @property {string} [status]      - 'open'|'resolved'
  * @property {string} [raisedDate]
  * @property {string} [owner]
  */
@@ -104,7 +104,7 @@ var MMGR = window.MMGR || {};
  * @property {string|number} id
  * @property {string} title
  * @property {string} description
- * @property {string} [status]      — 'submitted'|'review'|'approved'|'rejected'
+ * @property {string} [status]      - 'submitted'|'review'|'approved'|'rejected'
  * @property {string} [raisedDate]
  * @property {string} [owner]
  */
@@ -113,7 +113,7 @@ var MMGR = window.MMGR || {};
  * @typedef {Object} Meeting
  * @property {string|number} id
  * @property {string} title
- * @property {string} kind          — 'daily'|'weekly'|'sprint'|'stakeholder'|'review'
+ * @property {string} kind          - 'daily'|'weekly'|'sprint'|'stakeholder'|'review'
  * @property {string} [date]
  * @property {Array<{text:string, assignedTo?:string}>} [items]
  * @property {boolean} [closed]
@@ -124,14 +124,14 @@ var MMGR = window.MMGR || {};
  * @property {string|number} id
  * @property {string} budgetLineId
  * @property {number} amount
- * @property {string} date          — YYYY-MM-DD
+ * @property {string} date          - YYYY-MM-DD
  * @property {string} [description]
  */
 
 /**
  * @typedef {Object} WeatherLogEntry
  * @property {string|number} id
- * @property {string} date          — YYYY-MM-DD
+ * @property {string} date          - YYYY-MM-DD
  * @property {string} [condition]
  * @property {number} [tempHigh]
  * @property {number} [tempLow]
@@ -142,8 +142,8 @@ var MMGR = window.MMGR || {};
  * @typedef {Object} ScheduleSlip
  * @property {string|number} taskId
  * @property {number} daysSlipped
- * @property {string} cause         — 'weather'|'predecessor'|'change'|'unknown'
- * @property {string} [detectedAt]  — ISO timestamp
+ * @property {string} cause         - 'weather'|'predecessor'|'change'|'unknown'
+ * @property {string} [detectedAt]  - ISO timestamp
  */
 
 /**
@@ -151,9 +151,9 @@ var MMGR = window.MMGR || {};
  * @property {number} schemaVersion
  * @property {string} projectId
  * @property {string} projectName
- * @property {string} methodology    — 'waterfall'|'agile'|'hybrid'
- * @property {number} workWeek       — hours per work week
- * @property {string} theme          — 'light'|'dark'
+ * @property {string} methodology    - 'waterfall'|'agile'|'hybrid'
+ * @property {number} workWeek       - hours per work week
+ * @property {string} theme          - 'light'|'dark'
  * @property {string} userName
  * @property {Charter} charter
  * @property {Task[]} tasks
@@ -167,10 +167,10 @@ var MMGR = window.MMGR || {};
  * @property {Issue[]} issues
  * @property {Change[]} changes
  * @property {ScheduleSlip[]} scheduleSlips
- * @property {Object} raci           — { tasks: string[], persons: string[], matrix: Object }
- * @property {Object} closure        — { items: Object[], well: string, imp: string, rec: string }
- * @property {Object} config         — per-project config overrides
- * @property {Object} fieldTs        — { fieldName: string } per-field write timestamps
+ * @property {Object} raci           - { tasks: string[], persons: string[], matrix: Object }
+ * @property {Object} closure        - { items: Object[], well: string, imp: string, rec: string }
+ * @property {Object} config         - per-project config overrides
+ * @property {Object} fieldTs        - { fieldName: string } per-field write timestamps
  */
 
 (function(ns) {
@@ -810,7 +810,7 @@ var MMGR = window.MMGR || {};
     'equipment',
     // C24 Template Library
     'projectTemplates'];
-  let _fieldJsonCache = null; // { fieldName: jsonString } — cached per-field serialization.
+  let _fieldJsonCache = null; // { fieldName: jsonString } - cached per-field serialization.
   // Dirty-field tracking: updateState() marks fields whose top-level reference
   // changed; stampFieldTs() only re-serializes dirty fields instead of all 60+.
   let _dirtyFields = null; // null = all fields dirty (first save / full replace)

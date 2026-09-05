@@ -40,7 +40,7 @@ var MMGR = window.MMGR || {};
     try {
       const cred = C && C._activeCredential ? C._activeCredential() : null;
       if (cred && cred.header && cred.code) h[cred.header] = cred.code;
-    } catch (e) { /* no cloud credential — server will 401 */ }
+    } catch (e) { /* no cloud credential - server will 401 */ }
     return h;
   }
   function esc(v) { return C && C._esc ? C._esc(v) : String(v == null ? '' : v); }
@@ -52,7 +52,7 @@ var MMGR = window.MMGR || {};
   function loadQ() {
     try { const raw = localStorage.getItem(qKey()); return raw ? JSON.parse(raw) : []; } catch (e) { return []; }
   }
-  function saveQ(q) { try { localStorage.setItem(qKey(), JSON.stringify(q)); } catch (e) { /* quota — drop */ } }
+  function saveQ(q) { try { localStorage.setItem(qKey(), JSON.stringify(q)); } catch (e) { /* quota - drop */ } }
   function enqueue(op) {
     const q = loadQ();
     q.push(Object.assign({ at: new Date().toISOString() }, op));
@@ -120,7 +120,7 @@ var MMGR = window.MMGR || {};
         else if (op.op === 'delete') await deleteItem(op.poolItemId);
         // a success (or a definitive 4xx handled inside) drops the op
         if (op.op === 'link' || op.op === 'unlink' || op.op === 'delete') q[i]._done = true;
-      } catch (e) { /* offline — stop and retry later */ break; }
+      } catch (e) { /* offline - stop and retry later */ break; }
     }
     const remaining = q.filter(function(x) { return !x._done; }).map(function(x) { delete x._done; return x; });
     saveQ(remaining);
@@ -211,7 +211,7 @@ var MMGR = window.MMGR || {};
       if (r.ok && (r.merged > 0 || r.created > 0) && C && C._render && typeof C._render === 'function') {
         R.renderResources();
       }
-    } catch (e) { /* offline at boot — pool merges next refresh */ }
+    } catch (e) { /* offline at boot - pool merges next refresh */ }
   }
 
   window.addEventListener('online', function() { flushPending(); });

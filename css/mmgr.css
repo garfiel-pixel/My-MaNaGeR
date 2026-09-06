@@ -1208,7 +1208,17 @@ body.readonly-mode .btn[data-action]:not([data-action="showSec"]):not([data-acti
 .qa.open{max-height:200px;padding:0 12px 12px;}
 
 /* ---- Settings Row ---- */
-.sr{display:flex;align-items:center;justify-content:space-between;padding:11px;border:1px solid var(--border);border-radius:6px;margin-bottom:7px;}
+.sr{display:flex;}
+.sr[hidden]{display:none!important;}
+
+/* ---- rail group / link ---- */
+.rail-group{display:block;margin:0 0 14px;padding:0 12px}
+.rail-link{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:var(--radius-control);color:var(--slate);font-weight:600;font-size:.84rem;width:100%;justify-content:flex-start;background:none;border:none;cursor:pointer;font-family:inherit;text-align:left;text-decoration:none;transition:background var(--tr),color var(--tr)}
+.rail-link .ico{width:18px;height:18px;flex-shrink:0;color:currentColor}
+.rail-link:hover{color:var(--text);background:color-mix(in oklch,var(--gold) 8%,transparent)}
+.rail-ctl-row:focus-visible{outline:2px solid var(--gold);outline-offset:2px;border-radius:var(--radius-control)}
+.rail-link.active{color:var(--on-gold);background:var(--gold)}
+.rail-link+.rail-link{margin-top:2px}
 .sl{font-size:.78rem;color:var(--text);}
 
 /* ---- Controls tab sections (owner 2026-08-15: decluttered, room to breathe) ---- */
@@ -3381,14 +3391,18 @@ body.dark-mode.db-page .db-auto-lbl{color:var(--db-text-secondary);}
 
 /* ============================================================
    PHASE 3 - ROSE-GOLD PALETTE + 3D VIEW DECK (owner D7/D9/E10,
-   2026-09-03). Two independent axes, both toggled from the dock:
+   2026-09-03). PRESERVED-CODE-OFF 2026-09-05: these two axes (palette +
+   3D view) are no longer surfaced in the UI. The CSS is kept so the old
+   code paths still parse and the saved browser prefs stay valid, but the
+   app is now a single white theme with no visible palette/3D controls.
+   
    PALETTE html[data-theme="rose-gold"] (gold stays default) and
    VIEW body.view-3d (flat stays default). Any light/dark/palette/
    view combination is valid.
    ============================================================ */
 
 /* ---- ROSE-GOLD palette, light ---- */
-html[data-theme="rose-gold"]{
+html[data-theme="rose-gold"]{ /* PRESERVED-CODE-OFF 2026-09-05: palette axis kept but not surfaced */
   --canvas:#FBF1EC;
   --sidebar:#FEF9F6;
   --card:#FFFDFB;
@@ -3421,13 +3435,13 @@ html[data-theme="rose-gold"]{
 }
 /* 3-stop ambient canvas (E10), light + dark. body{} sets the color via
    background shorthand; this higher-specificity rule overlays the gradient. */
-html[data-theme="rose-gold"] body{
+html[data-theme="rose-gold"] body{ /* PRESERVED-CODE-OFF */
   background-image:linear-gradient(172deg,#FEF7F3 0%,#F7E7DF 58%,#F1D9CF 100%);
   background-attachment:fixed;
 }
 
 /* ---- ROSE-GOLD palette, dark ---- */
-html[data-theme="rose-gold"] body.dark-mode{
+html[data-theme="rose-gold"] body.dark-mode{ /* PRESERVED-CODE-OFF */
   --canvas:#251611;
   --sidebar:#2A1915;
   --card:#2E1D18;
@@ -3462,15 +3476,15 @@ html[data-theme="rose-gold"] body.dark-mode{
 }
 @media (prefers-reduced-transparency:reduce){
   html[data-theme="rose-gold"] body,html[data-theme="rose-gold"] body.dark-mode{background-image:none;}
+  /* PRESERVED-CODE-OFF: rose palette block end */
 }
 
 /* ---- 3D VIEW DECK (audits #6/#7/#8 solved structurally) ----
-   NEVER transform <body> (position:fixed overlays + z-index die inside a
-   transformed ancestor). Each page's .view-deck wrapper (launcher #grid,
-   project main#app-main, admin main) is the ONLY tilt target; modals,
-   toasts, the AI window and drawers live OUTSIDE it and stay flat. No
-   preserve-3d, no nested depth. */
-body.view-3d .view-deck{
+   PRESERVED-CODE-OFF 2026-09-05: 3D view is no longer surfaced in the UI.
+   The 3D deck rules are kept so saved browser prefs stay valid, but the app
+   no longer provides any visible 3D / dynamic-view control.
+   ============================================================ */
+body.view-3d .view-deck{ /* PRESERVED-CODE-OFF */
   transform:perspective(1500px) rotateX(9deg) rotateY(-14deg) rotateZ(2.5deg);
   transform-origin:50% 30%;
   transition:transform .65s cubic-bezier(.25,1,.5,1);
@@ -3484,6 +3498,7 @@ body.view-3d .view-deck{--glass-blur:0px;}
 @media(max-width:768px){body.view-3d .view-deck{transform:none!important;will-change:auto;}}
 @media (prefers-reduced-motion:reduce){body.view-3d .view-deck{transform:none!important;transition:none!important;will-change:auto;}}
 @media print{body.view-3d .view-deck{transform:none!important;}}
+/* PRESERVED-CODE-OFF: 3D view block end */
 
 /* Dock now carries the Palette (Gold/Rose) and View (Flat/3D) rows - a
    little wider so label + segmented control fit on one line each. */

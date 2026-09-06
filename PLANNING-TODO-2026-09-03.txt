@@ -433,7 +433,7 @@ G2. [x] TIER A - EMAIL OTP (SHIPPED 2026-09-03, flag OFF): EMAIL_RECOVERY_ENABLE
 G3. [x] Forgot password? link (SHIPPED 2026-09-03, rides G1): setup-
        completion + signed-out = Tier B; signed-in = Tier B field +
        Tier A (when flag on).
-G4. [x] QA (SHIPPED 2026-09-03): tools/qa-admin-recovery.cjs 24/24 -
+G4. [x] QA (SHIPPED 2026-09-03, annotated 2026-09-05): tools/qa-admin-recovery.cjs 24/24 -
      Tier B browser flows (setup show-once modal + checkbox gate,
      lock + cooldown persisted across reload, rotation, lost-code
      wipe, legacy no-code guidance, signed-out passive Tier A line)
@@ -441,6 +441,10 @@ G4. [x] QA (SHIPPED 2026-09-03): tools/qa-admin-recovery.cjs 24/24 -
      RESEND_API_BASE capture of the REAL email body -> OTP extracted,
      wrong/right/replay, newest-invalidates, 5-attempt 429 lock even
      for the correct code, 3/hr cap, unauthenticated 401).
+     NOTE 2026-09-05: premium-glass is app-only (owner). The glass
+     preview harness (tools/verify-glass-preview-cdp.cjs) is the gate
+     that now records the G3 admin-gate dock as informational rather
+     than a pass/fail canary; qa-admin-recovery.cjs is unaffected here.
 
 --------------------------------------------------------------------
 --------------------------------------------------------------------

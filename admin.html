@@ -451,15 +451,12 @@ pre.snippet{background:#f8fafc;border:1px solid var(--border);border-radius:6px;
           <div class="rail-ctl-row">
             <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-palette"></use></svg> Palette
             <span class="pal-switch" role="group" aria-label="Palette">
-              <button type="button" class="pal-btn" data-palette="gold" aria-pressed="true">Gold</button>
-              <button type="button" class="pal-btn" data-palette="rose" aria-pressed="false">Rose</button>
+              <button type="button" class="pal-btn" data-palette="rose" aria-pressed="true">Rose Gold</button>
             </span>
+            <span class="pal-hint">Rose Gold is on — Gold is off</span>
           </div>
-          <span class="rail-ctl-row"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cube"></use></svg> View
-            <span class="pal-switch" role="group" aria-label="View mode">
-              <button type="button" class="pal-btn" data-view="flat" aria-pressed="true">Flat</button>
-              <button type="button" class="pal-btn" data-view="3d" aria-pressed="false">3D</button>
-            </span>
+          <span class="rail-ctl-row rail-locked-row"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cube"></use></svg> Dynamic View
+            <span class="pal-hint">3D view is only available on the dashboard</span>
           </span>
           <span class="rail-ctl-row"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-orb"></use></svg> Premium Glass <label class="tgl"><input type="checkbox" id="glass-tgl" data-action="tglGlassMode" aria-label="Toggle premium liquid-glass backdrop"><span class="tsl"></span></label></span>
         </div>

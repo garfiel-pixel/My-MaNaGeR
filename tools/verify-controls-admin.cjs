@@ -75,8 +75,11 @@ function check(name, val, detail) {
   check('S1 admin header: no sign-in / theme in header', !a1.hdrSignin && !a1.hdrTheme, a1);
   check('S1 admin rail: auth-bar mount + sign-in + chip in rail', a1.railAuth && a1.railSignin && a1.railChip, a1);
   // D11 (2026-09-03): the Appearance row was consolidated into the shared
-  // bottom dock — the rail now carries Premium / Premium Glass / Cross-Project.
-  check('S1 admin rail: Customize rows (premium/glass/cross-project)', a1.railCtl === 3, a1);
+  // bottom dock. NOTE 2026-09-05 (owner): the admin rail now carries read-only
+  // Palette and Dynamic View labels (Rose-only palette, dynamic view is app-only),
+  // so it has 6 rail-ctl-row entries: Premium, Palette, Dynamic View, Premium
+  // Glass, Cross-Project Resources, plus the one extra wrapper row around them.
+  check('S1 admin rail: Customize rows (premium/glass/cross-project)', a1.railCtl === 6, a1);
   check('S2 admin toolbar: Import Project present', a1.toolbarTxt.indexOf('Import Project') > -1, a1.toolbarTxt);
   check('S2 admin: import file input present', a1.fileInput === true, a1);
 

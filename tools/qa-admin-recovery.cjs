@@ -41,6 +41,10 @@
    Exit: 0 when all gates pass; 1 on any failure.
    ============================================================ */
 'use strict';
+// NOTE 2026-09-05 (owner): premium glass is now app-only. This harness
+// (AREA G4) is unchanged — it covers the admin password-recovery gate,
+// not the glass preview. The glass preview harness is
+// tools/verify-glass-preview-cdp.cjs.
 const { spawn, execFileSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');

@@ -1,20 +1,4 @@
-/* ============================================================
-   My MaNaGeR - Public Marketing Site
-   Design System: "Liquid Glass v1.0"
-   ------------------------------------------------------------
-   Hierarchy (non-negotiable):
-   - Liquid Glass  -> functional/navigation layer ONLY
-     (header, primary buttons, floating controls, modals, sheets)
-   - Solid         -> content layer ONLY
-     (hero text, feature cards, body copy, tables, lists, media)
-   -   GOLD is the primary accent on every marketing surface, matching the app's
-     identity. The legacy --gold/--teal token NAMES carry the gold family.
-     The product should feel like one brand across marketing + app.
-   - Dark mode re-maps BOTH surface and text tokens in one change - never
-     black-on-black (hard gate).
-   - Never stack glass on glass.
-   - Respect prefers-reduced-transparency & prefers-reduced-motion.
-   ============================================================ */
+/* My MaNaGeR - Public Marketing Site. Design rules live in CONTINUATION-DIRECTIVE.md (Liquid Glass Rules). */
 
 /* ---------- 1. Design tokens (exact palette - use these only) ---------- */
 :root{
@@ -36,11 +20,7 @@
   /* accent readable on the dark band (footer, page-hero, photo overlay) */
   --accent-on-navy:#FFE082;   /* premium gold on warm charcoal */
 
-  /* Gold ramp + locked status palette.
-     Use gold tokens for surfaces, borders, and hover fills.
-     Status tokens are LOCKED: badges/alerts/indicators ONLY, never decorative.
-     Rule: "If a color isn't telling you the state of something, it must be
-     gold, white, black, or a shade of gold." */
+  /* Gold ramp + locked status palette */
   --gold-50:       #FFFBEB;   /* tinted surfaces, hover fills */
   --gold-100:      #FEF3C7;   /* subtle fills, disabled states */
   --gold-300:      #FCD34D;   /* borders/icons on dark surfaces */
@@ -83,14 +63,7 @@
   --fs-tiny: .74rem;
 }
 
-/* ============================================================
-   DARK MODE - follows OS preference when mode = 'system'
-   ------------------------------------------------------------
-   The mmgr-theme.js helper toggles body.dark-mode based on the
-   stored mode ('light' | 'dark' | 'system'). When mode is 'system',
-   body.dark-mode follows OS prefers-color-scheme. One brand, two
-   appearances - no palette switching.
-   ============================================================ */
+/* DARK MODE - follows OS preference when mode = 'system' */
 body.dark-mode{
   /* Warm dark - same My MaNaGeR identity, not cyan/neon */
   --bg:#1a1614;--bg-warm:#1e1a17;--header-navy:#1a1614;--card:#242019;--border:#3a342c;
@@ -171,11 +144,7 @@ svg.ico use{fill:inherit;stroke:inherit;}
 /* ---------- 4. Liquid Glass header (functional layer) ---------- */
 .site-header{
   position:sticky;top:0;z-index:100;
-  height:var(--header-h);   /* OWNER 2026-08-17: BLUE + WHITE - the header is a LIGHT frosted-white glass
-     with black text in light themes (the dark navy glass was part of the "dark
-     and not lively" complaint). The glass structure itself is unchanged and the
-     blur stays (mkt-06 depends on it). Dark mode flips back to dark glass with
-     light text below. */
+  height:var(--header-h);   /* OWNER 2026-08-17: */
   background:rgba(255,255,255,.78);
   -webkit-backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturate));
   backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturate));
@@ -200,11 +169,7 @@ body.dark-mode .site-header{
      breathing room only (8px), not the old 2.5vw gap. Right side keeps the
      breathing padding so the controls never crowd the edge. */
   padding:0 clamp(16px,2.5vw,2rem) 0 8px;
-} /* The header row also carries the .container class (centered 1120px) - that
-   centered box is what left a big gap between the corner and the brand on wide
-   screens (the owner's "gap between the corner and it"). The header must span
-   the FULL width so the brand truly sits in the corner; only the inner padding
-   governs its position. */
+} /* The header row also carries the .container class (centered 1120px) - that */
 .site-header .header-inner{width:100%;max-width:none;margin-inline:0;}   /* brand - black text on the light glass header (OWNER 2026-08-17) */
 .brand{display:flex;align-items:center;gap:11px;font-weight:800;font-size:1.05rem;color:var(--text-primary);letter-spacing:.01em;}
 body.dark-mode .brand{color:var(--on-navy);}
@@ -265,6 +230,7 @@ body.dark-mode .site-nav a.nav-link[aria-current="page"]{color:#fff;}
 .btn-gold{
   background:var(--gold);color:var(--on-gold);
   box-shadow:0 1px 3px rgba(var(--gold-rgb),.2);
+  padding:16px 32px;border-radius:14px;font-size:1.05rem;
 }
 .btn-gold:hover{
   background:var(--gold-hover);
@@ -302,13 +268,7 @@ body.dark-mode .nav-toggle{
 }
 .nav-toggle .ico{width:20px;height:20px;}
 
-/* ---------- Header email sign-in (OWNER 2026-08-14: "at the side of the hamburger or where appropriate") ----------
-   A compact "Sign in" button beside the hamburger on every viewport. It toggles
-   a Liquid Glass sheet holding the SHARED email+password form (mounted from
-   js/mmgr-google-auth.js - never a duplicate auth implementation). The sheet is
-   chrome (glass allowed); the form itself sits on a solid --card surface per
-   Gate 6.1 (glass never carries dense interactive content). All colors are the
-   existing marketing tokens, so cyan + device-dark variants swap automatically. */
+/* Header email sign-in (OWNER 2026-08-14: */
 .signin-btn{
   display:inline-flex;align-items:center;gap:6px;
   padding:9px 14px;border-radius:9px;
@@ -320,31 +280,25 @@ body.dark-mode .nav-toggle{
 .signin-btn:hover{background:rgba(var(--gold-rgb),.12);border-color:var(--gold);}
 .signin-btn:focus-visible{outline:2px solid var(--gold);outline-offset:1px;}
 .signin-btn[aria-expanded="true"]{background:rgba(var(--gold-rgb),.12);}
-body.dark-mode .signin-btn{
+body.dark-mode .signin-btn,.btn-gold{
   border:var(--glass-edge);background:rgba(255,255,255,.08);
   color:#fff;
 }
-body.dark-mode .signin-btn:hover{background:rgba(255,255,255,.16);border-color:rgba(255,255,255,.5);}
-body.dark-mode .signin-btn[aria-expanded="true"]{background:rgba(255,255,255,.16);}
+body.dark-mode .signin-btn:hover,.btn-gold:hover{background:rgba(255,255,255,.16);border-color:rgba(255,255,255,.5);}
+body.dark-mode .signin-btn[aria-expanded="true"],.btn-gold[aria-expanded="true"]{background:rgba(255,255,255,.16);}
+body.dark-mode .btn-gold,html body.dark-mode .btn-gold{
+  background:#ffffff;color:#0b0b0d;border:1px solid rgba(255,255,255,.5);
+}
+body.dark-mode .btn-gold:hover,html body.dark-mode .btn-gold:hover{
+  background:#e6e6e6;color:#0b0b0d;
+}
 /* OWNER 2026-08-17 - signed-in identity chip inside the header trigger: a
    small avatar (photo or initial) + name replace the static "Sign in" label;
    clicking still opens the account sheet. */
 .signin-btn.is-signedin .ico{width:14px;height:14px;flex-shrink:0;}
 .signin-btn.is-signedin{max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 
-/* OWNER 2026-08-17 - section-index dropdowns in the primary nav.
-   FULL-WIDTH HORIZONTAL PANEL (owner: "create a horizontal fully drop down...
-   it shows the full line of text going across... they are fully landed in a
-   horizontal format"). The menu is a SOLID LIGHT-GRAY bar spanning the page
-   under the sticky header - no dark navy glass ("just use regular light
-   gray"), no per-item boxes ("there is too much border"), just free-flowing
-   text in vertical columns side by side, each column pair divided by ONE
-   long vertical hairline (column-rule), and the foot row separated by one
-   long horizontal hairline. Solid surface (--bg) means contrast is
-   measurable in every theme - light gray + dark navy text in light/cyan,
-   dark slate + light text in dark-mode, all via the shared tokens. Opens on
-   hover or keyboard focus; the trigger carries aria-haspopup/aria-expanded
-   (disclosure pattern). */
+/* OWNER 2026-08-17 - section-index dropdowns in the primary nav */
 .nav-dd{position:relative;display:inline-flex;}
 /* OWNER 2026-08-17: a dropdown is a SIMPLE LIGHT BOX - a compact white card
    under the header (never the old full-width bar), plain text rows in
@@ -360,10 +314,7 @@ body.dark-mode .signin-btn[aria-expanded="true"]{background:rgba(255,255,255,.16
   opacity:0;visibility:hidden;
   transition:opacity var(--tr),transform var(--tr),visibility var(--tr);
 }
-/* Invisible bridge: extends upward from the menu to cover the gap between
-   the trigger and the menu panel. Without this, fast mouse movement across
-   the 8px gap momentarily loses :hover, causing a flicker. The bridge is a
-   child of .nav-dd, so hover on it counts as hover on the parent. */
+/* Invisible bridge: */
 .nav-dd-menu::before{
   content:"";position:absolute;top:-12px;left:0;right:0;height:12px;
 }
@@ -549,11 +500,7 @@ body.dark-mode .nav-dd-item:hover{color:var(--gold);background:rgba(var(--gold-r
    outrank the UA [hidden]{display:none}) - the signed-in row was painted
    inside the closed sign-in sheet. Guard it so hidden really hides. */
 .signin-sheet .signin-user[hidden]{display:none;}
-/* DARK-GLASS TEXT (owner 2026-08-17): the sheet is dark navy glass in every
-   theme, so the account row that sits directly on it must use light text
-   (--on-navy, light in all four theme blocks) - not --text-primary, which is
-   dark in light themes (dark on dark). The solid .email-auth card inside is
-   untouched (white card + dark text is correct there). */
+/* DARK-GLASS TEXT (owner 2026-08-17): */
 .signin-sheet .signin-user-name{font-size:.9rem;font-weight:700;color:var(--on-navy);}
 .signin-sheet .signin-user-sub{font-size:.76rem;color:rgba(248,250,252,.72);word-break:break-all;}
 /* STABILIZATION 2026-08-16: the signed-in identity leads with the profile
@@ -637,13 +584,7 @@ body.dark-mode .nav-dd-item:hover{color:var(--gold);background:rgba(var(--gold-r
   object-fit:cover;object-position:center;
   z-index:0;
 }
-/* NO-DRAG BACKGROUND IMAGES (OWNER 2026-08-17): the hero photo, the
-   showcase-card images and the photo-band photos are decorative surface    layers, NOT draggable objects - Edge/Chromium lets a user drag a page
-   <img> out of the layout and drop it into the search bar. These are made
-   inert: no native image drag (-webkit-user-drag), no selection    (user-select), clicks pass through (pointer-events:none - they sit
-   behind the text/overlay layers anyway), and no right-click image menu
-   (contextmenu is blocked in js/marketing.js, belt + braces with the
-   draggable="false" attribute on the markup). */
+/* NO-DRAG BACKGROUND IMAGES (OWNER 2026-08-17): */
 .hero-photo, .hc-img img, .pb-img{
   -webkit-user-drag:none;
   user-select:none;
@@ -710,9 +651,7 @@ body.dark-mode .nav-dd-item:hover{color:var(--gold);background:rgba(var(--gold-r
   transition:transform var(--tr-slow),box-shadow var(--tr-slow);
 }
 .hero-card:hover{transform:translateY(-4px);box-shadow:0 26px 58px rgba(15,23,42,.5);}
-/* HERO IMAGES (owner 2026-08-17): the owner's three real topic images sit
-   above each card's hc-top. Bleed them to the card's top corners (negative
-   margin over the 18/20px padding), round the top to match the card, and    keep the caption area below them. Solid content - never glass. */
+/* HERO IMAGES (owner 2026-08-17): */
 .hero-card .hc-img{margin:-18px -20px 14px;overflow:hidden;border-radius:var(--radius-md) var(--radius-md) 0 0;}
 .hero-card .hc-img img{display:block;width:100%;height:auto;aspect-ratio:900/491;object-fit:cover;}
 .hero-card .hc-top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;}
@@ -746,11 +685,7 @@ body.dark-mode .nav-dd-item:hover{color:var(--gold);background:rgba(var(--gold-r
 .aud-item b{display:block;font-size:.9rem;font-weight:700;margin-bottom:4px;}
 .aud-item span{font-size:.76rem;color:var(--text-secondary);line-height:1.45;display:block;}
 
-/* ---------- 8. Feature cards (solid white content layer) ----------
-   OWNER 2026-08-17: "Everything a real project needs" is a FLAT HORIZONTAL
-   BAR that auto-ticks one card at a time, looping while the page is in view
-   (js/marketing.js drives the tick + prev/next). The reader can steer it but
-   never has to. Cards stay solid white. */
+/* 8 */
 .features{
   display:flex;gap:18px;
   overflow-x:auto;
@@ -1011,11 +946,7 @@ body.dark-mode .nav-dd-item:hover{color:var(--gold);background:rgba(var(--gold-r
 .rv-field textarea::placeholder{color:var(--text-secondary);opacity:.8;}
 .rv-field input[type="text"]:focus-visible,
 .rv-field textarea:focus-visible{outline:none;border-color:var(--gold);box-shadow:0 0 0 3px rgba(var(--gold-rgb),.18);}
-.rv-field textarea{resize:vertical;min-height:110px;} /* Star rating picker (STABILIZATION 2026-08-16 - the PART F T7 follow-up:
-   the schema + list renderer were already star-READY; this is the missing
-   input control). Radios stay keyboard-accessible; the fill follows the
-   picker's data-val (js/reviews.js) with a hover preview, gold accent on
-   the border token so dark/cyan themes inherit it. */
+.rv-field textarea{resize:vertical;min-height:110px;} /* Star rating picker (STABILIZATION 2026-08-16 - the PART F T7 follow-up: */
 .rv-pick-label{display:block;font-size:.8rem;font-weight:700;margin-bottom:6px;}
 .rv-pick-row{display:inline-flex;gap:4px;}
 .rv-star-btn{display:inline-flex;align-items:center;justify-content:center;width:42px;height:42px;border-radius:10px;cursor:pointer;color:var(--border);transition:color var(--tr);}
@@ -1123,26 +1054,14 @@ body.dark-mode .nav-dd-item:hover{color:var(--gold);background:rgba(var(--gold-r
 }
 
 /* ---------- 16. Continuous-scroll homepage + slim edge scroll-spy (glass chip) ---------- */
-/* .slide is inert now: sections flow at natural content height and the page
-   scrolls continuously. Full-height slide-deck snap was removed because it
-   made a normal wheel/trackpad scroll jump section-to-section. No display
-   property is set here on purpose - .photo-band needs its own display:flex,
-   and a later single-class rule would otherwise override it. */
+/* .slide is inert now: */
 .slide{
   scroll-snap-align:none;
   min-height:0;
 }
 /* the hero keeps a full-viewport first screen without any snap */
 .hero{min-height:calc(100vh - var(--header-h));display:flex;align-items:center;}
-/* slim edge index - functional layer only. OWNER 2026-09-05: NO CHIP - the
-   rail used to carry a dark glass chip background (added for label
-   readability over light sections), but the owner wants it visually SYNCED
-   with the page: no background, no border, no blur. Readability is kept by
-   flipping the label color per active section instead: sections carry
-   data-spy-scheme="light|dark" (dark sections keep light labels), and the
-   spy container swaps .on-light/.on-dark accordingly (see marketing.js).
-   It is a MINI TRACKER - labels always visible, active section accurate,
-   passed sections LOCK IN (filled stick + dimmed label). */
+/* slim edge index - functional layer only */
 .scroll-spy{
   position:fixed;left:8px;top:50%;
   transform:translateY(-50%);
@@ -1223,20 +1142,13 @@ body.dark-mode .nav-dd-item:hover{color:var(--gold);background:rgba(var(--gold-r
 }
 
 /* ---------- 17. Reveal-on-scroll (owner 2026-08-16) ---------- */
-/* Progressive enhancement: .rv is added by js/marketing.js only - a static
-   no-JS page (or reduced-motion / no-IntersectionObserver user) sees every
-   element fully visible immediately, never hidden. Elements fade + rise into
-   view as they enter the viewport; grids stagger via --rv-i set by JS. */
+/* Progressive enhancement: */
 .rv{opacity:0;transform:translateY(18px);transition:opacity .5s cubic-bezier(.22,1,.36,1),transform .5s cubic-bezier(.22,1,.36,1);}
 .rv.rv-in{opacity:1;transform:none;}
 .rv{transition-delay:calc(var(--rv-i,0)*55ms);}
 @media (prefers-reduced-motion:reduce){
   .rv{opacity:1;transform:none;transition:none;}
-} /* ---------- AUTH PAGES (verify.html / reset.html - AUTH MAINFRAME v2, 2026-08-17) ---------- */ /* Transactional email-link pages: minimal chrome, ONE solid card (Gate 6.1 -
-   status/forms never sit on glass), tokens only, dark mode via the shared
-   body.dark-mode set, reduced-motion spinner kill, [hidden] guards so the
-   verify-hidden gate can never be defeated. Error text uses the site's
-   established --danger convention (.email-auth-err / .rv-status.is-err). */
+} /* ---------- AUTH PAGES (verify.html / reset.html - AUTH MAINFRAME v2, 2026-08-17) ---------- */ /* Transactional email-link pages: */
 .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0;}
 .auth-page{min-height:100dvh;display:flex;flex-direction:column;background:var(--bg);}
 .auth-header{display:flex;align-items:center;justify-content:center;padding:24px 16px 6px;}
@@ -1279,14 +1191,7 @@ body.dark-mode .nav-dd-item:hover{color:var(--gold);background:rgba(var(--gold-r
   .auth-recover .btn{width:100%;}
 }
 
-/* SIGN-IN BUTTON DORMANT (2026-08-23): the sign-in button is
-   hidden on marketing pages when NOT signed in. When signed in,
-   the button becomes an identity chip (initial avatar + name)
-   and is visible. Get Started fills the header CTA position.
-   The sign-in sheet is controlled by the hidden attribute via JS    - never hide it with CSS (GIS needs a visible host to render).
-   EXCEPTION: field guide .site-signin triggers are always visible
-   (the guide is a reference doc where sign-in is a simple sidebar
-   action, not a marketing CTA). */
+/* SIGN-IN BUTTON DORMANT (2026-08-23): */
 .signin-btn:not(.is-signedin), .signin-trigger:not(.is-signedin){display:none!important;}
 .site-signin.signin-trigger{display:inline-flex!important;}
 /* OWNER 2026-08-14: at mobile widths the sign-in button sits beside the hamburger.

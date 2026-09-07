@@ -196,9 +196,23 @@ var MMGR = window.MMGR || {};
     if (forgotBtn) forgotBtn.hidden = false;
     if (resetPanel) resetPanel.hidden = true;
     if (checkPanel) checkPanel.hidden = true;
-    // NOTE: form.hidden is intentionally NOT touched here , app.html/admin.html
-    // keep the form behind the "Sign in with email instead" toggle; marketing
-    // pages restore it explicitly via renderSigninSignedOut().
+    // OWNER 2026-09-06: the email form is now always visible (primary path),
+    // so reset also guarantees it is shown. Legacy marketing mounts that
+    // still carry the toggle keep working (wireEmailAuth guards it).
+    if (block && block.classList.contains('email-auth')) {
+      // Ensure the form itself is not hidden and panels are reset.
+      const f = emailAuthQ(block, '.email-auth-form');
+      if (f) f.hidden = false;
+      const eye = emailAuthQ(block, '.email-auth-eye');
+      if (eye) {
+        // Reset the eye to the masked state.
+        if (pass) pass.type = 'password';
+        eye.setAttribute('aria-pressed', 'false');
+        eye.setAttribute('aria-label', 'Show password');
+        const use = eye.querySelector('use');
+        if (use) use.setAttribute('href', 'css/mmgr-icons.svg#i-eye');
+      }
+    }
   }
 
   // Render the signed-in chip. Google-supplied fields are always written via
@@ -224,14 +238,14 @@ var MMGR = window.MMGR || {};
     // sign-in sheet) can render its own signed-in state. App pages listen
     // to mmgr:google-signed-in and ignore this event.
     _user = user;
-    // STABILIZATION 2026-08-16: project.html header chip , the signed-in
-    // identity, mirroring the app.html rail: a name-initial avatar (or the
-    // Google photo when provided) + the operator name + a Premium pill. The
-    // pill is a [data-plan-badge] mount that refreshPlan() fills. Clicking
-    // the chip opens the Settings drawer at the Controls tab (where
-    // sign-in/sign-out live).
+    // OWNER 2026-09-07: the signed-in identity already lives beside the
+    // hamburger in the project header. Don't render a SECOND signed-in chip
+    // in the sections tab — that's the redundant surface the owner flagged.
+    // Only render #hdr-signin on app.html/admin.html/marketing (pages without
+    // the #sec-nav sections drawer).
     const hc = $('hdr-signin');
-    if (hc) {
+    const onSectionsPage = !!(document.body && document.querySelector('#sec-nav'));
+    if (hc && !onSectionsPage) {
       hc.hidden = false;
       hc.title = 'Signed in as ' + (user.email || user.name || user.sub || 'Operator');
       hc.innerHTML = '';
@@ -392,7 +406,7 @@ var MMGR = window.MMGR || {};
   // path was attempted, false when GIS is genuinely unavailable. If already
   // signed in, it's a no-op success.
   function openSignInPrompt() {
-    if (isSignedIn()) return true;
+    if (!!_user) return true; // (FIX 2026-09-06: was bare isSignedIn() - ReferenceError; only the API property existed)
     if (!gisReady() && !initGIS()) return false;
     try {
       const id = window.google && window.google.accounts && window.google.accounts.id;
@@ -436,14 +450,21 @@ var MMGR = window.MMGR || {};
   let _checkUser = null;
 
   function emailAuthMarkup() {
+    // OWNER 2026-09-06 (sign-in modal redesign): the email form is the
+    // primary path - shown directly, no "sign in with email instead"
+    // toggle. A show-password eye sits inside the password field. Spacing
+    // is deliberately uneven: the form breathes, then a wider gap leads
+    // to the divider and the Google button below (secondary path).
     return '<div class="email-auth" id="email-auth-block">' +
-      '<button type="button" class="email-auth-toggle">Sign in with email instead</button>' +
-      '<form class="email-auth-form" novalidate hidden>' +
+      '<form class="email-auth-form" novalidate>' +
       '<div class="email-auth-row">' +
       '<input type="email" class="email-auth-input" placeholder="Email" autocomplete="email" aria-label="Email" inputmode="email" enterkeyhint="next" autocapitalize="none" required>' +
+      '<span class="email-auth-pwwrap">' +
       '<input type="password" class="email-auth-input email-auth-pass" placeholder="Password (8+ chars)" autocomplete="current-password" aria-label="Password" inputmode="text" enterkeyhint="done" autocapitalize="none" minlength="8" required>' +
+      '<button type="button" class="email-auth-eye" aria-label="Show password" aria-pressed="false" title="Show password"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-eye"></use></svg></button>' +
+      '</span>' +
       '<input type="text" class="email-auth-input email-auth-name" placeholder="Name (optional)" autocomplete="name" aria-label="Name" inputmode="text" enterkeyhint="next" autocapitalize="words" hidden>' +
-      '<button type="submit" class="btn btn-n btn-s email-auth-submit">Sign in</button>' +
+      '<button type="submit" class="btn btn-g email-auth-submit">Sign in</button>' +
       '</div>' +
       '<div class="email-auth-alt">' +
       '<button type="button" class="email-auth-mode">Create an account instead</button>' +
@@ -542,7 +563,23 @@ var MMGR = window.MMGR || {};
       host.appendChild(block);
     } else {
       if (host.nextElementSibling && host.nextElementSibling.id === 'email-auth-block') return;
-      host.insertAdjacentElement('afterend', block);
+      // OWNER 2026-09-06: in the centered #siom sheet the Google button is
+      // the secondary path, so a labelled divider goes between the email
+      // form (above) and the Google button (below). The email block is
+      // inserted BEFORE the host; other hosts keep the after-layout.
+      const sheet = host.closest ? host.closest('#siom') : null;
+      if (sheet) {
+        const divider = document.createElement('div');
+        divider.className = 'email-auth-divider';
+        divider.setAttribute('aria-hidden', 'true');
+        divider.textContent = 'or continue with Google';
+        // insert block first, then divider - both beforebegin of the host,
+        // so final order is: email form, divider, Google button.
+        host.insertAdjacentElement('beforebegin', block);
+        host.insertAdjacentElement('beforebegin', divider);
+      } else {
+        host.insertAdjacentElement('afterend', block);
+      }
     }
     if (opts && opts.showToggle === false) {
       const tg = block.querySelector('.email-auth-toggle');
@@ -590,16 +627,37 @@ var MMGR = window.MMGR || {};
     const checkMsg = emailAuthQ(block, '.email-auth-check-msg');
     const resendBtn = emailAuthQ(block, '.email-auth-resend');
     const checkClose = emailAuthQ(block, '.email-auth-check-close');
-    if (!form || !toggle || !modeBtn) return;
+    if (!form || !modeBtn) return;
 
-    toggle.addEventListener('click', function() {
-      form.hidden = !form.hidden;
-      if (errEl) errEl.textContent = '';
-      if (!form.hidden) {
-        const em = emailAuthQ(form, 'input[type=email]');
-        if (em) { try { em.focus(); } catch (e) { /* focus is a hint, never fatal */ } }
-      }
-    });
+    // Show-password eye (owner 2026-09-06): flips the field type + icon.
+    const eye = emailAuthQ(block, '.email-auth-eye');
+    if (eye) {
+      eye.addEventListener('click', function() {
+        const pass = emailAuthQ(block, '.email-auth-pass');
+        if (!pass) return;
+        const show = pass.type === 'password';
+        pass.type = show ? 'text' : 'password';
+        eye.setAttribute('aria-pressed', show ? 'true' : 'false');
+        eye.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+        eye.setAttribute('title', show ? 'Hide password' : 'Show password');
+        const use = eye.querySelector('use');
+        if (use) use.setAttribute('href', 'css/mmgr-icons.svg#' + (show ? 'i-eye-off' : 'i-eye'));
+        try { pass.focus(); } catch (e) { /* focus is a hint */ }
+      });
+    }
+
+    // Legacy toggle (marketing pages mount with showToggle:true before this
+    // change): only wired when the button actually exists.
+    if (toggle) {
+      toggle.addEventListener('click', function() {
+        form.hidden = !form.hidden;
+        if (errEl) errEl.textContent = '';
+        if (!form.hidden) {
+          const em = emailAuthQ(form, 'input[type=email]');
+          if (em) { try { em.focus(); } catch (e) { /* focus is a hint, never fatal */ } }
+        }
+      });
+    }
 
     modeBtn.addEventListener('click', function() {
       _emailMode = (_emailMode === 'login') ? 'register' : 'login';

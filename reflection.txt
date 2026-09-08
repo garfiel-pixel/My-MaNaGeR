@@ -101,3 +101,14 @@ NEXT SESSION STARTING POINT
 - If the owner wants the marketing CTA larger, the CSS selectors are
   .hero-cta a (marketing.css) and .header-cta-desktop a.btn — both readable
   now, no more dead-end grep.
+
+2026-09-07 (continued) — marketing icon / CTA sizing pass:
+- Enlarged marketing CTAs + comparable icons, token-driven, CSS only.
+- .btn-gold (marketing primary CTA): 16px 32px → 20px 40px, border-radius
+  14 → 16px, font-size 1.05 → 1.12rem (~1.25x, under 2x cap).
+- Comparable icons bumped ~1.3x–1.5x: .feat-btn .ico 18→22px, .fcard .fc-icon
+  .ico 22→26px, .step .st-icon .ico 19→23px, guide-band eyebrow + cta icons
+  1.4→1.5em / 1.3→1.4em, .photo-band .pb-cta .ico +1.3em, .aud-item .ico
+  24→28px, .contact-tile .ct-icon .ico 21→25px, .faq summary .plus svg
+  14→17px, .rv-star-btn .ico 26→30px, .footer-legal .ico +1.3em.
+- npm run verify GREEN; browser QA not re-run here.

@@ -864,7 +864,7 @@ Harnesses are uniformly disciplined: they compute booleans/counts/strings INSIDE
 
 Wrangler bump COMPLETED 2026-09-08 (same session): package.json devDependencies → ^4.129.1, lockfile refreshed via npm install (wrangler 4.129.0→4.129.1 + its bundled workerd 1.20260903.1→1.20260907.1 — the only lock changes). npx wrangler deploy --dry-run GREEN on the new version; committed b6d6367 chore(deps): bump wrangler to 4.129.1 patch; pushed; CI on b6d6367 went SUCCESS.
 
-NEXT: deploy decision stands (the b6d6367 + harness changes need no deploy — no served asset changed since the last deploy; deploy only if the owner wants the ritual).
+DEPLOYED 2026-09-08 (owner go): from the clean staging copy per the wrangler.jsonc recipe (tar with the documented exclusions + this session's untracked debris: Freebuff Also...txt, mymanagerworkspace.com favicon.png, screenshots/). This deploy SHIPS the v260/v263 feature wave (31 assets new/changed; 158 unchanged content-addressed). Version ID 11ae91ef-4ad9-40d7-bda2-9d3ea29c4511 on my-manager.garfieldprocis.workers.dev. Post-deploy smoke: / 200 (32 KB), /admin.html 200 with CSP header, /api/health ok, /dist/bundle.js 200 (743 KB), sw.js mmgr-shell-v264. wrangler 4.129.1 used for the deploy (post-bump).
 9 cards, mkt-10 page chrome, mkt-16/17 sign-in). CSP: NO inline-script edits →
 hashes unchanged.
 

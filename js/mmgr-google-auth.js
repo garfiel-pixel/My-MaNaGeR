@@ -240,37 +240,44 @@ var MMGR = window.MMGR || {};
     _user = user;
     // OWNER 2026-09-07: the signed-in identity already lives beside the
     // hamburger in the project header. Don't render a SECOND signed-in chip
-    // in the sections tab — that's the redundant surface the owner flagged.
+    // anywhere on the project page (the redundant surface the owner flagged
+    // is the sections-tab identity). The project page always has the #sec-nav
+    // sections drawer, so #hdr-signin is the ONLY chip and it stays hidden
+    // here — the section view never gets its own copy.
     // Only render #hdr-signin on app.html/admin.html/marketing (pages without
     // the #sec-nav sections drawer).
     const hc = $('hdr-signin');
     const onSectionsPage = !!(document.body && document.querySelector('#sec-nav'));
-    if (hc && !onSectionsPage) {
-      hc.hidden = false;
-      hc.title = 'Signed in as ' + (user.email || user.name || user.sub || 'Operator');
-      hc.innerHTML = '';
-      const avatar = document.createElement('span');
-      avatar.className = 'gchip-avatar';
-      if (user.picture) {
-        const img = document.createElement('img');
-        img.className = 'gchip-avatar-img';
-        img.src = user.picture;
-        img.alt = '';
-        img.referrerPolicy = 'no-referrer';
-        avatar.appendChild(img);
+    if (hc) {
+      if (onSectionsPage) {
+        hc.hidden = true;
       } else {
-        avatar.textContent = (user.name || user.email || '?').charAt(0).toUpperCase();
+        hc.hidden = false;
+        hc.title = 'Signed in as ' + (user.email || user.name || user.sub || 'Operator');
+        hc.innerHTML = '';
+        const avatar = document.createElement('span');
+        avatar.className = 'gchip-avatar';
+        if (user.picture) {
+          const img = document.createElement('img');
+          img.className = 'gchip-avatar-img';
+          img.src = user.picture;
+          img.alt = '';
+          img.referrerPolicy = 'no-referrer';
+          avatar.appendChild(img);
+        } else {
+          avatar.textContent = (user.name || user.email || '?').charAt(0).toUpperCase();
+        }
+        const nm = document.createElement('span');
+        nm.className = 'hdr-chip-name';
+        nm.textContent = user.name || user.email || 'Operator';
+        const pill = document.createElement('span');
+        pill.className = 'plan-pill';
+        pill.setAttribute('data-plan-badge', '');
+        pill.hidden = true;
+        hc.appendChild(avatar);
+        hc.appendChild(nm);
+        hc.appendChild(pill);
       }
-      const nm = document.createElement('span');
-      nm.className = 'hdr-chip-name';
-      nm.textContent = user.name || user.email || 'Operator';
-      const pill = document.createElement('span');
-      pill.className = 'plan-pill';
-      pill.setAttribute('data-plan-badge', '');
-      pill.hidden = true;
-      hc.appendChild(avatar);
-      hc.appendChild(nm);
-      hc.appendChild(pill);
     }
     document.dispatchEvent(new CustomEvent('mmgr:user-changed', { detail: user }));
     // Plan badge follows the identity (see refreshPlan below).

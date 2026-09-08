@@ -66,9 +66,11 @@ function check(name, val, detail) {
     return {
       hdrSignin: !!(hdr && hdr.querySelector('#google-signin-button')),
       hdrTheme: !!(hdr && hdr.querySelector('[data-action="tglTheme"]')),
-      // OWNER 2026-09-06: the rail carries a plain Sign in button that opens
-      // the centered #siom sheet; the GIS mount lives INSIDE the modal.
+      // OWNER 2026-09-06/07: DOM nodes cannot cross returnByValue, so every
+      // rail probe is a serializable boolean computed INSIDE the page.
       railSignin: !!(rail && rail.querySelector('.db-signin')),
+      railAuth: !!(rail && rail.querySelector('.auth-bar')),
+      railOpenSignIn: !!(rail && rail.querySelector('[data-action="openSignIn"]')),
       siomPresent: !!siom,
       siomGoogle: !!(siom && siom.querySelector('#google-signin-button')),
       railCtl: (rail && rail.querySelectorAll('.rail-ctl-row').length) || 0,
@@ -83,10 +85,10 @@ function check(name, val, detail) {
   // OWNER 2026-09-07: sign-in entry lives ONLY on the app page. The admin
   // rail is read-only (auth-bar mount + renderRailUser()), and the shared
   // #siom sheet still mounts the GIS button.
-  check('S1 admin rail: account bar present and #siom sheet mounts the GIS button', !!(a1.rail && a1.rail.querySelector('.auth-bar') && a1.siomPresent && a1.siomGoogle), a1);
+  check('S1 admin rail: account bar present and #siom sheet mounts the GIS button', !!(a1.railAuth && a1.siomPresent && a1.siomGoogle), a1);
   // OWNER 2026-09-07: the rail Sign-in trigger lives on the app page
   // (.db-signin[data-action="openSignIn"]), not in the admin rail.
-  check('S1 admin rail: rail has no sign-in trigger (app page owns sign-in)', !(a1.rail && a1.rail.querySelector('[data-action="openSignIn"]')), a1);
+  check('S1 admin rail: rail has no sign-in trigger (app page owns sign-in)', !a1.railOpenSignIn, a1);
   // OWNER 2026-09-07: the Customize block nests the Theme row inside a
   // .dock.dock-inline wrapper, so the count is 5 top-level .rail-ctl-row.
   check('S1 admin rail: Customize rows (premium/theme/perf/cross-project)', a1.railCtl === 5, a1);

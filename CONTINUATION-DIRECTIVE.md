@@ -205,6 +205,35 @@ directive documents.
 ---
 
 
+## LIQUID GLASS RULES — THE ONLY HOME FOR THE DESIGN-SYSTEM BANNERS (owner, 2026-09-06)
+
+> Owner: "these design-rule banner comments make my code file bigger than what it is,
+> all this yapping, put it aside in reflection and continuation directive." The
+> multi-line "Liquid Glass v1.0" banners were REMOVED from the served files
+> (index/features/about/contact.html, css/marketing.css, and the inline style blocks)
+> on 2026-09-06. THIS SECTION is their permanent home. Do not re-inline them.
+> Tool: `python tools/condense-css-banners.py` condenses future banner creep
+> (CSS only, NEVER js — it corrupted js/mmgr-cloud.js once via `/*` inside a `//`
+> comment; js banners must be edited by hand).
+
+1. **Glass hierarchy (non-negotiable):** Liquid Glass = functional/navigation layer
+   ONLY (header, primary buttons, floating controls, modals, sheets). Solid = content
+   layer ONLY (hero text, feature cards, body copy, tables, lists, media). Never stack
+   glass on glass.
+2. **One brand:** GOLD is the primary accent on every marketing surface, matching the
+   app's identity; the legacy `--gold`/`--teal` token NAMES carry the gold family.
+   Marketing and app must feel like one product.
+3. **Dark mode:** re-maps BOTH surface and text tokens in one change. Never
+   black-on-black (hard gate).
+4. **Respect `prefers-reduced-transparency` and `prefers-reduced-motion`** on every
+   glass or animated surface.
+5. **File headers stay one line.** A served file may open with at most a single-line
+   comment naming the page. Design rationale, phase markers, and doctrine prose belong
+   HERE or in reflection.txt, not in served HTML/CSS/JS.
+
+---
+
+
 ## UI DOCTRINE — THE TYPE OF UI THE OWNER WANTS (owner, 2026-08-15)
 
 > This section is the owner's standing answer to "what type of UI are we looking for
@@ -766,6 +795,24 @@ copy + JS strings that render into those pages. Comments, internal docs and
 non-rendered strings keep their dashes. COMPLEXITY: S. EXPECTED: zero visible
 em-dashes in headings/eyebrows on the six pages; prose flows without
 sentence-splitting dashes; qa-marketing still green (mkt-02 hero CTAs, mkt-03
+
+2026-09-07 — Session: marketing icon/CTA sizing pass (owner: enlarge marketing CTA + comparable icons ~1.3x–1.5x, CTA no more than 2x).
+
+Enlarged marketing CTAs + comparable icons, token-driven, CSS only:
+- .btn-gold (marketing primary CTA, hero + header-cta-desktop + all .btn-gold): 16px 32px → 20px 40px, border-radius 14px → 16px, font-size 1.05rem → 1.12rem (~1.25x). Kept under the 2x cap.
+- .feat-btn .ico (feature carousel prev/next): 18px → 22px.
+- .fcard .fc-icon .ico (feature card icon): 22px → 26px.
+- .step .st-icon .ico (how-it-works step icon): 19px → 23px.
+- .guide-band eyebrow/cta icons: eyebrow + guide-band .ico 1.4em → 1.5em; guide-cta .ico 1.3em → 1.4em.
+- .photo-band .pb-cta .ico: added 1.3em font-size.
+- .aud-item .ico (trusted-by audience icons): 24px → 28px.
+- .contact-tile .ct-icon .ico (contact tiles): 21px → 25px.
+- .faq summary .plus svg (FAQ toggle): 14px → 17px.
+- .rv-star-btn .ico (review star picker): 26px → 30px.
+- .footer-legal .ico (footer legal chip): 1.3em font-size added.
+
+QA: npm run verify GREEN (CSP 11/11, SW v263, hidden, skills 17/17).
+NEXT: owner eyeball the marketing pages live; ship on the owner's go.
 9 cards, mkt-10 page chrome, mkt-16/17 sign-in). CSP: NO inline-script edits →
 hashes unchanged.
 
@@ -1000,6 +1047,15 @@ Format: date/session marker, what was completed (with file/line specifics), what
 in-progress and exactly where it stopped, what's next.
 
 ### Log entries (most recent at top)
+
+**2026-09-07 — Session 12: MCP CLOUD BUG FIXES — all 4 cloud-per-project MCP bugs diagnosed in CLOUD-PERP-BUGS.md fixed and verified (qa-mcp 49/49).**
+**SCOPE:** The MCP server's cloud mode had 4 tracked bugs from the 2026-08-24 expansion session that were never fixed — they live in mcp/CLOUD-PERP-BUGS.md. This session fixed all 4.
+**BUG 1 (listProjectsTool was async but called sync):** `listProjectsTool()` called `cloudListProjects()` without `await`, so the cloud discovery Promise was never resolved — the tool always returned empty cloud results. Fixed: made the function `async` and added `await`.
+**BUG 2 (proposal tokens lost cloud project identity):** `proposeChangeTool` stored `project: p._cloud ? null : p.file` in the pending token — for cloud mode it stored `null`, so `approveChangeTool` had no way to know which cloud project to apply the change to. It fell back to `CLOUD_PROJECT_ID` blindly. Fixed: token now stores `_cloudProjectId` + `_cloudProjectLabel` from the resolved project at propose time, and `approveChangeTool` uses those first.
+**BUG 3 (sidecar changelog path inconsistent):** The changelog sidecar file path was built from `CLOUD_PROJECT_ID` in some branches of `approveChangeTool` and `revertChangeTool` instead of the actually-resolved project id — so edits to different cloud projects could land in the same sidecar file. Fixed: all sidecar paths now derive from `projectForSave.projectId` (approve) or `p.project.projectId` (revert), falling back to the stored `_cloudProjectId` or `CLOUD_PROJECT_ID`.
+**BUG 4 (duplicate dispatch cases):** The `handleCall` switch had `mmgr_list_cloud_projects` + `mmgr_choose_cloud_project` listed twice (lines 1485-1486 duplicated 1477-1478). Fixed: deduplicated.
+**VERIFICATION:** node --check clean on mcp/server.mjs; `node mcp/qa-mcp.cjs` → 49/49 PASS (H2 updated to 33 tools reflecting the 2 cloud-discovery tools — mmgr_list_cloud_projects + mmgr_choose_cloud_project); npm run verify GREEN (CSP/SW/skills).
+**FILES MODIFIED:** mcp/server.mjs (4 bugs fixed), mcp/qa-mcp.cjs (H2 count 31→33 + added cloud tool name checks), CONTINUATION-DIRECTIVE.md (STATUS LOG), reflection.txt.
 
 **2026-09-02 — Session 11b: SINGLE AI ENTRY — removed the duplicate sticky AI bar; polished the Ask command card (owner: "2 AI boxes at the top = a loop, we only need one").**
 **SCOPE:** project.html had two ask-AI surfaces stacked at the top (the sticky #ai-bar under the header on every section, answering from canned local keyword matches, and the Dashboard .ai-cmd-card that opens the real assistant). Owner chose: keep the Dashboard card, turn the sticky bar off, polish the rest.
@@ -2783,6 +2839,101 @@ on another page's inline script executing - seed directly.
 **Verification:** npm run verify ALL CHECKS PASSED (CSP 24/24, SW v250, hidden, skills 17/17, exports); qa-marketing.cjs 20/20 PASS. grep confirms zero pal-btn on marketing pages, theme buttons intact on app pages.
 
 **Result:** Marketing pages now always render with their default fixed appearance (light mode per marketing.css). User theme preferences stored in localStorage no longer affect marketing pages. The marketing site is fully decoupled from user-controlled theming.
+
+---
+
+---
+
+**2026-09-06 — Session: LIVE-DOMAIN UI AUDIT + BANNER-CONDENSE + FCARD COPY TIGHTEN.**
+
+**Domain live:** https://mymanagerworkspace.com serves the repo tree byte-for-byte
+(sw.js identical; index differs only by Cloudflare's edge-injected analytics beacon).
+
+(1) **LIVE AUDIT (tools in web-research/):** live-ui-audit.py (screenshots + console/
+network/overflow for 11 pages), live-structure-probe.py (vertical-stack/collapsed-grid/
+misalignment probe at 1440/820/390), live-workspace-capture.py (seeded the demo unlock
+mmgr_unlocked_demo-filled to screenshot the REAL launcher + workspace + 10 sections +
+mobile on the live domain). Workspace structure: CLEAN at all widths. Captures in
+screenshots/live-audit/.
+
+(2) **OWNER DECISIONS NEEDED (blocking, on the paid domain):**
+- CSP blocks Cloudflare Web Analytics on every live page (injected inline bootstrap +
+  static.cloudflareinsights.com both violate script-src; local serve.cjs never shows
+  this). Either disable Web Analytics injection for the zone, or approve the one-line
+  script-src addition in worker.js + serve.cjs.
+- Google Sign-In fails on the domain: GSI_LOGGER "origin not allowed for client ID".
+  Owner must add https://mymanagerworkspace.com to the OAuth client's Authorized
+  JavaScript origins in Google Cloud Console.
+
+(3) **FIXED: f-ai card copy** stretched all 15 .fcard carousel cards to 454px (452-char
+paragraph vs 176 next-longest). Shortened to 223 chars; detail already lives on
+features.html. Cards now uniform 326px (-128px). THIS was the real "too vertical /
+broken alignment" symptom on the front page: one long card sets the flex-row height
+for the whole bar.
+
+(4) **BANNER-CONDENSE (owner directive):** multi-line design-rule banners removed from
+index/features/about/contact.html + css/marketing.css; long banners in css/mmgr.css +
+admin/app.html style blocks condensed to one-liners via tools/condense-css-banners.py
+(~40 KB). Rules now live ONLY in the "LIQUID GLASS RULES" section above. New rule:
+served-file headers = one line max; doctrine prose lives here, not in served files.
+**GOTCHA:** NEVER run the condenser with --js: a regex matched "/*" inside a // comment
+in js/mmgr-cloud.js and deleted the cloudSave signature (node --check caught it; js/
+was reverted via git checkout). CSS-only use is proven safe (comment-strip parity vs
+HEAD + zero comment markers inside quoted strings + brace balance).
+
+(5) **Files:** index.html (header comment + f-ai copy), features/about/contact.html
+(headers), css/marketing.css + css/mmgr.css (banners), admin.html + app.html (style
+blocks only), sw.js v256->v258, CONTINUATION-DIRECTIVE.md (this entry + LIQUID GLASS
+RULES), reflection.txt (full post-mortem). Bundles rebuilt.
+
+(6) **Verification:** npm run verify ALL CHECKS PASSED (CSP, SW v258, hidden, skills,
+exports); tools/qa-dashboard-spec.cjs 86/86; verify-render-exports PASS;
+verify-dynamic-labels 3/3; qa-marketing 18/20 (mkt-08/mkt-09 pre-existing app.html
+harness issues per the 2026-09-05 reflection, untouched). NOT deployed (owner
+decisions pending); deploy from clean staging per AGENTS.md when 1-2 land.
+
+(7) **2026-09-06 part 2 - CSP beacon fix + sign-in wave + starry glass default + perf mode + favicon:**
+(1) CSP script-src adds https://static.cloudflareinsights.com (worker.js + serve.cjs) -
+Cloudflare's edge-injected Web Analytics beacon was blocked on every live page; analytics
+now counts. Owner fixed the Google origin authorization on their side.
+(2) Sign-in: #siom sheet on app + admin + project (email form primary, show-password eye,
+natural gap, divider, Google after); project sidebar bottom gains #sb-user Sign in row
+(sign-out no longer blanks); FIXED ReferenceError (bare isSignedIn() in openSignInPrompt)
+that killed admin's inline script; FIXED divider-above-form mount order.
+(3) Starry premium glass DEFAULT-ON on capable devices (shader: drifting stars + deep-space
+fade + wide smoothstep ramps); Performance Mode does NOT gate the shader; FIXED activate()
+re-entrancy double-canvas leak; glass toasts removed (silent by design).
+(4) Performance Mode ON by default: trims heaviest CSS blurs/shadows + 3D tilt via
+[data-perf=on]; segmented Light/Dark/System (no "Theme" word) on all 3 pages; Palette/View
+UI rows retired (engines pref-driven, silent); tglThemeQuick delegates to MMGRTheme.setMode.
+(5) Favicon images/site-icon.png on all 13 pages + apple-touch + manifest.
+(6) Harnesses updated to the new contracts: qa-glass G02/G03b, verify-glass-preview-cdp
+(G2 stored-css opt-out, G3 dock-inline, g2.result shape fix), qa-view-mode (V1-V4
+pref-driven), verify-controls-admin S1 (rail Sign in + 4 rows). GOTCHA: suites that spawn
+wrangler on :8765 collide with a manual serve.cjs - stop it by PID first.
+(7) Verification: npm run verify PASS | qa-glass 13/13 | glass-preview OK | view-mode ALL |
+controls-admin 10/10 | gates-themes clean | dashboard-spec 84/84 | email-auth 69/69 |
+cloud-phase1 29/29 | cloud-phase2 85/85 | pool + pool-ui + client-codes ALL |
+signin-ui 17/17 | marketing 18/20 (pre-existing) | sw v260 | bundles rebuilt.
+
+(8) **2026-09-06 part 3 - DEPLOYED to https://mymanagerworkspace.com from clean staging:**
+Staging recipe extended beyond wrangler.jsonc's base excludes: also --exclude='.dev.vars'
+(secrets), --exclude='web-research', --exclude='mymanagerworkspace.com favicon.png'
+(untracked source art), --exclude='_not-deployed'. Verified staging had no .dev.vars
+before deploying. Deploy 1: version 8212aa71 (wave: sw v260). Live verification then
+caught project.html's static <meta> CSP missing static.cloudflareinsights.com (the
+worker header CSP was fixed but the meta CSP is a page-local literal) - fixed in-page,
+sw v261, rebuild, verify PASS, deploy 2: version b0d99aa1. LIVE VERIFIED: beacon 200 on
+all 7 pages (analytics counting, zero CSP script errors from app code); sw v261 served;
+site-icon favicon live; /dist/bundle.js carries mmgr_perf_mode; staging exclusions hold
+(404 paths render SPA fallback - confirmed no scratch/secrets served). Residual known
+noise (not regressions): CF's edge-injected __CF$cv$params inline script violates CSP by
+design (rotating hash, cannot be allowlisted; challenge-platform injected server-side);
+app/project still log GSI origin-not-allowed + gsi/button 403 until Google's OAuth prop
+fully propagates the owner-added origin (homepage + admin unaffected); unsigned
+/api/cloud/* 403s are correct auth enforcement. NEXT: re-check GSI on app.html after a
+few hours; if still failing, verify Authorized JavaScript origins list in Google Cloud
+Console includes both https://mymanagerworkspace.com and https://www.mymanagerworkspace.com.
 
 ---
 

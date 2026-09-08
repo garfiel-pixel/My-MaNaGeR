@@ -100,15 +100,18 @@ NEXT SESSION STARTING POINT
   Controls drawer does not yet mount #ctrl-mcp.
 - If the owner wants the marketing CTA larger, the CSS selectors are
   .hero-cta a (marketing.css) and .header-cta-desktop a.btn — both readable
-  now, no more dead-end grep.
-
-2026-09-07 (continued) — marketing icon / CTA sizing pass:
+  now, no more dead-end grep.2026-09-07 (continued) — marketing icon / CTA sizing pass:
 - Enlarged marketing CTAs + comparable icons, token-driven, CSS only.
-- .btn-gold (marketing primary CTA): 16px 32px → 20px 40px, border-radius
-  14 → 16px, font-size 1.05 → 1.12rem (~1.25x, under 2x cap).
-- Comparable icons bumped ~1.3x–1.5x: .feat-btn .ico 18→22px, .fcard .fc-icon
-  .ico 22→26px, .step .st-icon .ico 19→23px, guide-band eyebrow + cta icons
-  1.4→1.5em / 1.3→1.4em, .photo-band .pb-cta .ico +1.3em, .aud-item .ico
-  24→28px, .contact-tile .ct-icon .ico 21→25px, .faq summary .plus svg
-  14→17px, .rv-star-btn .ico 26→30px, .footer-legal .ico +1.3em.
+- .btn-gold (marketing primary CTA): 16px 32px → 20px 40px, border-radius 14 → 16px, font-size 1.05 → 1.12rem (~1.25x, under 2x cap).
+- Comparable icons bumped ~1.3x–1.5x: .feat-btn .ico 18→22px, .fcard .fc-icon .ico 22→26px, .step .st-icon .ico 19→23px, guide-band eyebrow + cta icons 1.4→1.5em / 1.3→1.4em, .photo-band .pb-cta .ico +1.3em, .aud-item .ico 24→28px, .contact-tile .ct-icon .ico 21→25px, .faq summary .plus svg 14→17px, .rv-star-btn .ico 26→30px, .footer-legal .ico +1.3em.
 - npm run verify GREEN; browser QA not re-run here.
+
+2026-09-08 — clear CI drift after the v260/v263 feature wave + admin harness alignment:
+- Landed the remaining 43-file feature wave as one tracked-only commit: e4a5fe5 chore(ui): complete the v260/v263 feature wave — glass/dock/viewport/app/marketing theme decoupling, CI + worker + serve alignment, gate QA tools + screenshots, docs.
+- verify:sw broke because sw.js was still v263 after the wave touched many served assets; bumped sw.js to mmgr-shell-v264 in 1170172 build(sw): bump shell cache to mmgr-shell-v264 to clear verify:sw drift after v260/v263 wave.
+- Aligned tools/verify-controls-admin.cjs to the current admin rail: S1 rail check now asserts rail account bar (.auth-bar) + #siom GIS mount; S1 Customize count now 5 (.dock.dock-inline wraps the Theme row).
+- npm run verify GREEN locally.
+- CAVEAT: tools/verify-controls-admin.cjs could not be validated to a clean local pass in this environment (manual CDP probe at the same base URL saw an empty admin DOM). Harness pushed anyway per owner instruction; reverts available via version control.
+- CI latest run #251 on main was still failure before the harness fix landed; polling CI after push; deploy only once CI green.
+- Untracked session debris left out of commit: Freebuff...txt, mymanagerworkspace.com favicon.png, screenshots/live-audit/, tools/condense-css-banners.py, tools/tmp_ci.json.
+

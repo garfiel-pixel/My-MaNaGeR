@@ -813,6 +813,23 @@ Enlarged marketing CTAs + comparable icons, token-driven, CSS only:
 
 QA: npm run verify GREEN (CSP 11/11, SW v263, hidden, skills 17/17).
 NEXT: owner eyeball the marketing pages live; ship on the owner's go.
+
+2026-09-08 — Session: clear CI drift after the v260/v263 feature wave + admin harness alignment.
+
+Order: complete the rest of the wave cleanly, fix the CI-failing controls-admin harness, run verification, update directive + reflection, then deploy only once CI is green.
+
+Completed:
+- Landed the remaining 43-file feature wave as a single tracked-only commit (no blind add -A, untracked session debris left out): e4a5fe5 chore(ui): complete the v260/v263 feature wave — glass/dock/viewport/app/marketing theme decoupling, CI + worker + serve alignment, gate QA tools + screenshots, docs.
+- Caught that the wave broke verify:sw because sw.js was still on mmgr-shell-v263 while the wave touched many served HTML/CSS/JS files. Bumped sw.js to mmgr-shell-v264 in 1170172 build(sw): bump shell cache to mmgr-shell-v264 to clear verify:sw drift after v260/v263 wave.
+- Aligned tools/verify-controls-admin.cjs to the current admin rail: S1 now checks the rail account bar (.auth-bar) + #siom GIS mount instead of a .db-signin rail trigger that no longer exists; S1 Customize rows now expects 5 .rail-ctl-row entries because the Theme row is nested inside a .dock.dock-inline wrapper.
+
+Local static gates: npm run verify GREEN (CSP/SW/skills/hidden/exports).
+
+Caveat: tools/verify-controls-admin.cjs could not be validated to a clean local pass in this environment — manual CDP probing of the same base URL saw an empty admin DOM. The harness matches the admin rail that is in the repo, but the failure may also be environmental. Pushed anyway per owner instruction; reverts available via version control.
+
+CI status: not green yet — latest main run #251 was failure before the harness fix landed. Polling CI after the docs + harness push; deploy only after CI green.
+
+NEXT: confirm CI green on the pushed tree, then deploy from the clean staging copy (wrangler tar staging recipe per AGENTS.md).
 9 cards, mkt-10 page chrome, mkt-16/17 sign-in). CSP: NO inline-script edits →
 hashes unchanged.
 

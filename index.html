@@ -1,17 +1,5 @@
 <!DOCTYPE html>
-<!--
-  My MaNaGeR , public marketing homepage (Liquid Glass v1.0).
-  The app itself lives at app.html (project list + access-code unlock),
-  unchanged. This page is the public front door: glass ONLY on the
-  functional/navigation layer (header + buttons + mobile menu); every
-  content surface (hero copy, feature cards, steps, FAQ, footer text)
-  is solid per the design system.
-
-  PHASE MARKERS:
-    Phase 2 copy has landed site-wide (index, about, features).
-    Remaining [PHASE 2] markers: none. Contact form lands in Phase 4.
-    [PHASE 3] = visual polish (specular, spacing, hover states).
--->
+<!-- My MaNaGeR, public marketing homepage. Design rules live in CONTINUATION-DIRECTIVE.md. -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -31,7 +19,7 @@
 <script type="application/ld+json">
 {"@context":"https://schema.org","@type":"SoftwareApplication","name":"My MaNaGeR","operatingSystem":"Web Browser","applicationCategory":"BusinessApplication","description":"Offline-first construction project management. Charter, WBS, Gantt, Kanban, budget, EVM, risks, claims, meetings. No account required.","url":"https://mymanagerworkspace.com/","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"}}
 </script>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='2.5' y='2.5' width='19' height='19' rx='5' fill='%23E8B84A'/%3E%3Cpath d='M12 5.5c.5 3 1.2 4.8 2.7 6.2 1.5 1.5 3.3 2.2 6.3 2.7-3 .5-4.8 1.2-6.3 2.7-1.5 1.5-2.2 3.3-2.7 6.3-.5-3-1.2-4.8-2.7-6.3C7.8 15.6 6 14.9 3 14.4c3-.5 4.8-1.2 6.3-2.7C10.8 10.2 11.5 8.4 12 5.5z' fill='%230F172A'/%3E%3C/svg%3E">
+<link rel="icon" type="image/png" href="images/site-icon.png">
 <link rel="stylesheet" href="dist/marketing.min.css">
 <link rel="preload" href="images/hero-crane-sky.webp" as="image" type="image/webp">
 <link rel="preload" href="dist/marketing.min.css" as="style">
@@ -266,7 +254,7 @@
         <article class="fcard" id="f-ai">
           <div class="fc-icon"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg></div>
           <h3>Built-In AI, Not a Middleman</h3>
-          <p>A real AI engine that runs in your browser with zero keys, zero cloud, fully offline. Every answer traces to your actual project numbers, and one-click presets write digests, reports, and claim arguments straight back into the project. Bring your own OpenAI, Google Gemini, or Anthropic Claude key for the Cloud tier, and if a provider rate-limits you, the app automatically falls back to a smaller model and shows a badge naming the one that answered.</p>
+          <p>A real AI engine that runs in your browser with zero keys and zero cloud. Every answer traces to your actual project numbers, and one-click presets write digests, reports, and claim arguments straight back into the project.</p>
           <span class="fc-tag">Intelligence</span>
         </article>
         <article class="fcard" id="f-voice">

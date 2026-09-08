@@ -13,8 +13,8 @@
 <meta name="theme-color" content="#D4AF37">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<link rel="icon" type="image/png" href="primary-icon.png">
-<link rel="apple-touch-icon" href="primary-icon.png">
+<link rel="icon" type="image/png" href="images/site-icon.png">
+  <link rel="apple-touch-icon" href="images/site-icon.png">
 <link rel="stylesheet" href="dist/mmgr.min.css">
 <!-- GOOGLE-OPERATOR-IDENTITY-v1: optional operator identity. async+defer so
      it never blocks first paint; if it never loads the page is unaffected. -->
@@ -64,11 +64,7 @@ body.glass-premium .wrap{position:relative;z-index:1;}
 .pc-local{color:var(--green);border:1px solid rgba(16,185,129,.35);background:rgba(16,185,129,.1);}
 .pc-note{color:var(--amber);border:1px solid rgba(245,158,11,.3);background:rgba(245,158,11,.07);}
 .empty{grid-column:1/-1;text-align:center;padding:60px 20px;color:var(--slate);font-size:.82rem;}
-/* PROJECTS CAROUSEL (owner 2026-08-16): the project grid is paged , up to 4
-   cards per page with prev/next + a counter, so a long wall reads
-   1-2-3-4 → next → 5-6-7-8 → next → 9 instead of a grid you count. Cards STAY
-   in the DOM (harnesses query .pcard) , hidden pages get .pg-off. The pager
-   mirrors the launcher's glass card language (tokens only). */
+/* PROJECTS CAROUSEL (owner 2026-08-16): */
 .pg-off{display:none;}
 .pg-nav{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:12px;margin-top:18px;}
 .pg-btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:var(--radius-control);border:var(--glass-border);background:var(--glass-fill-dark);color:var(--text);font:inherit;font-size:.74rem;font-weight:600;cursor:pointer;box-shadow:var(--glass-rim);transition:border-color var(--tr),background var(--tr),color var(--tr),transform var(--press-duration) var(--spring-in);}
@@ -129,11 +125,7 @@ body.glass-premium .wrap{position:relative;z-index:1;}
 /* Sidebar margin: smooth transition, no shift on desktop open */
 @media(min-width:769px){.wrap{will-change:margin-left;}}
 
-/* SIDEBAR-CLOSED ICON STRIP (owner 2026-09-05): when the rail is closed,
-   show a vertical strip of navigation icons along the left edge so users
-   can jump to sections without opening the hamburger. Icons are always
-   visible; hovering reveals the full title as a tooltip. Desktop only
-   (mobile keeps the hamburger drawer pattern). */
+/* SIDEBAR-CLOSED ICON STRIP (owner 2026-09-05): */
 body.db-page:not(.dark-mode) .sidebar-icons{
   position:fixed;top:50%;left:8px;transform:translateY(-50%);
   display:flex;flex-direction:column;gap:12px;z-index:100;
@@ -173,6 +165,9 @@ body.db-page:not(.dark-mode) .sidebar-icon:hover .sidebar-tooltip{
 }
 
 /* Premium glass: sidebar icons stay solid (Gate 6.1), not glass. */
+/* OWNER 2026-09-07: hidden strip buttons (state-mirrored account/sign-in) */
+body.db-page:not(.dark-mode) .sidebar-icon[hidden],body.dark-mode.db-page .sidebar-icon[hidden]{display:none;}
+.sidebar-icon[hidden]{display:none!important;}
 body.glass-premium .sidebar-icon{
   background:var(--card);border:1px solid var(--border);
 }
@@ -314,29 +309,21 @@ body.db-page.side-open .sidebar-icons{opacity:0;pointer-events:none;}
     <div class="db-g">Customize</div>
     <button type="button" class="db-link" data-rail-toggle="rail-customize" aria-expanded="false" aria-controls="rail-customize"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-palette"></use></svg> Customize <svg class="ico ico-caret" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg></button>
     <div class="db-sub db-customize" id="rail-customize" hidden>
-      <div class="dock dock-inline" role="group" aria-label="Appearance controls">
+      <!-- OWNER 2026-09-07: no boxes/isolation - rows are bare, the theme
+           choice is a plain text dropdown (Light / Dark / System). -->
+      <div class="dock dock-inline dock-bare" role="group" aria-label="Appearance controls">
         <div class="db-ctl-row">
-          <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-moon"></use></svg> Theme
-          <span class="pal-switch" role="group" aria-label="Theme mode">
-            <button type="button" class="pal-btn" data-pal="light" aria-pressed="false">Light</button>
-            <button type="button" class="pal-btn" data-pal="dark" aria-pressed="false">Dark</button>
-            <button type="button" class="pal-btn" data-pal="system" aria-pressed="false">System</button>
-          </span>
+          <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-moon"></use></svg>
+          <label class="sr-only" for="theme-select">Theme</label>
+          <select id="theme-select" class="theme-select" aria-label="Theme mode">
+            <option value="light">Light</option>
+            <option value="dark">Dark</option>
+            <option value="system">System</option>
+          </select>
         </div>
         <div class="db-ctl-row">
-          <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-palette"></use></svg> Palette
-          <span class="pal-switch" role="group" aria-label="Palette">
-            <button type="button" class="pal-btn" data-palette="rose" aria-pressed="true">Rose Gold</button>
-          </span>
-          <span class="pal-hint">Rose Gold is on — Gold is off</span>
-        </div>
-        <div class="db-ctl-row db-locked-row">
-          <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cube"></use></svg> Dynamic View
-          <span class="pal-hint">3D view is only available on the dashboard</span>
-        </div>
-        <div class="db-ctl-row">
-          <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-orb"></use></svg> Premium Glass
-          <label class="tgl"><input type="checkbox" id="glass-tgl" data-action="tglGlassMode" aria-label="Toggle premium liquid-glass backdrop"><span class="tsl"></span></label>
+          <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-zap"></use></svg> Performance Mode
+          <label class="tgl"><input type="checkbox" id="perf-tgl" data-action="tglPerfMode" aria-label="Performance Mode: lighter UI effects" checked><span class="tsl"></span></label>
         </div>
       </div>
     </div>
@@ -383,7 +370,11 @@ body.db-page.side-open .sidebar-icons{opacity:0;pointer-events:none;}
     <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-moon"></use></svg>
     <span class="sidebar-tooltip">Appearance</span>
   </button>
-  <button type="button" class="sidebar-icon" data-nav="signin" title="Sign in" aria-label="Sign in">
+  <button type="button" id="strip-account" class="sidebar-icon sidebar-icon-account" data-nav="account" title="Account" aria-label="Account" hidden>
+    <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-user"></use></svg>
+    <span class="sidebar-tooltip">Account</span>
+  </button>
+  <button type="button" id="strip-signin" class="sidebar-icon" data-nav="signin" title="Sign in" aria-label="Sign in">
     <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-user"></use></svg>
     <span class="sidebar-tooltip">Sign in</span>
   </button>
@@ -496,7 +487,7 @@ body.db-page.side-open .sidebar-icons{opacity:0;pointer-events:none;}
   <div class="mb">
     <div class="mh"><span class="mt"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-user"></use></svg> Sign in</span><button type="button" class="dc" data-action="closeSignIn"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg></button></div>
     <div class="mbody">
-      <p class="si-hint">Sign in with Google or use your email. Optional, for cloud sync, backups, and your cloud projects.</p>
+      <p class="si-hint">Welcome back. Sign in to reach your cloud projects, backups, and sync. It is optional, the app works without an account.</p>
       <div id="google-signin-button"></div>
       <div id="google-user-chip" hidden></div>
     </div>
@@ -744,19 +735,11 @@ function toast(msg, type){
 // toggle is implemented HERE because MMGR.App (project-page namespace) does
 // not exist on the launcher - the old delegation to it was a silent no-op
 // (fixed 2026-09-03, owner D3: the dock carries a glass toggle too).
+// OWNER 2026-09-06: the Premium Glass toggle UI is retired - Performance
+// Mode (mmgr-perf.js) is the single user-facing lever for heavy layers.
+// The action stays mapped as a no-op so stale dispatches cannot error.
 function tglTheme(){}
-function tglGlassMode(el){
-  const on = el ? el.checked : (window.MMGR && MMGR.Viewport && MMGR.Viewport.getGlassMode() === 'premium');
-  if (window.MMGR && MMGR.Viewport) MMGR.Viewport.setGlassMode(on ? 'premium' : 'css');
-  if (window.MMGR && MMGR.Glass) MMGR.Glass.sync();
-  // Keep every instance of this toggle on the page in step (rail + dock).
-  document.querySelectorAll('[data-action="tglGlassMode"]').forEach(g => { g.checked = on; });
-  const eff = (window.MMGR && MMGR.Viewport && MMGR.Viewport.effectiveGlassMode) ? MMGR.Viewport.effectiveGlassMode() : 'css';
-  toast(on
-    ? (eff === 'premium' ? 'Premium liquid-glass mode on.' : 'Preference saved. This device uses CSS glass.')
-    : 'Premium visual mode off. CSS glass stays on.',
-    eff === 'premium' ? 'ok' : 'warn');
-}
+function tglGlassMode(el){}
 
 /* CLOUD-BACKEND-ARCHITECTURE-PLAN Phase 2 , editor-code unlock.
    A cloud EDITOR code is not in the published manifest (it lives only in the
@@ -914,12 +897,15 @@ function syncSidebarIcons(){
    mmgr_theme slot the dark checkboxes write, keeps every toggle instance in
    step, and swaps its own icon (moon in light → sun in dark). */
 function tglThemeQuick(){
-  const cur = window.MMGRTheme && MMGRTheme.isDark ? MMGRTheme.isDark() : (localStorage.getItem('mmgr_theme') === 'dark');
-  const dark = !cur;
-  document.body.classList.toggle('dark-mode', dark);
-  try { localStorage.setItem('mmgr_theme', dark ? 'dark' : 'light'); } catch(e){}
-  document.querySelectorAll('[data-action="tglTheme"]').forEach(t => { t.checked = !dark; });
-  if (window.MMGR && MMGR.Glass && MMGR.Glass.refreshTheme) MMGR.Glass.refreshTheme();
+  const dark = !(window.MMGRTheme && MMGRTheme.isDark ? MMGRTheme.isDark() : false);
+  if (window.MMGRTheme && MMGRTheme.setMode) {
+    // Single source of truth: keeps the segmented Light/Dark/System buttons
+    // (aria-pressed), the backend pref, and the glass shader in step.
+    MMGRTheme.setMode(dark ? 'dark' : 'light');
+  } else {
+    document.body.classList.toggle('dark-mode', dark);
+    try { localStorage.setItem('mmgr_theme', dark ? 'dark' : 'light'); } catch(e){}
+  }
   syncThemeQuick();
 }
 function syncThemeQuick(){
@@ -985,19 +971,32 @@ function renderRailProjects(){
   }).join('');
 }
 
-/* Rail footer , user area: signed out = Sign in (opens #siom); signed in =
-   name + Sign out. Rendered from the same events the auth module dispatches. */
+/* Rail footer , user area: signed out = "Not signed in" + Sign in (opens
+   #siom); signed in = name + Sign out. Rendered from the same events the
+   auth module dispatches. Sign-in lives ONLY on the app page (owner
+   2026-09-07) - other pages show the synced state without an entry point. */
 function renderRailUser(user){
   const area = document.getElementById('rail-user');
   if (!area) return;
   if (!user){
-    area.innerHTML = '<button type="button" class="db-signin" data-action="openSignIn"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-user"></use></svg> Sign in</button>';
+    area.innerHTML = '<span class="db-user-name is-out"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-user"></use></svg> Not signed in</span>' +
+      '<button type="button" class="db-signin" data-action="openSignIn">Sign in</button>';
+    syncRailAccountStrip(false);
     return;
   }
   const name = user.name || user.email || 'Operator';
   const title = escapeHtml(user.email || name);
   area.innerHTML = '<span class="db-user-name" title="' + title + '"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-user"></use></svg> ' + escapeHtml(name) + '</span>' +
     '<button type="button" class="db-signout" data-action="signOutRail">Sign out</button>';
+  syncRailAccountStrip(true);
+}
+/* Owner 2026-09-07: the collapsed-rail icon strip mirrors the footer state
+   - the account icon shows when signed in, the sign-in icon when out. */
+function syncRailAccountStrip(signedIn){
+  const acc = document.getElementById('strip-account');
+  const sin = document.getElementById('strip-signin');
+  if (acc) acc.hidden = !signedIn;
+  if (sin) sin.hidden = !!signedIn;
 }
 
 /* Hero top-right signed-in indicator (NEW-UI-POLISH 2026-08-14): a circular
@@ -1377,6 +1376,17 @@ document.addEventListener('click', function(e){
       break;
     case 'signin':
       openSignIn();
+      break;
+    case 'account':
+      // Owner 2026-09-07: collapsed-rail account icon -> open the sidebar
+      // (the footer below the divider holds Premium/Upgrade + account state).
+      document.body.classList.add('side-open');
+      syncSidebarAria();
+      syncSidebarIcons();
+      const accountArea = document.getElementById('rail-user');
+      if (accountArea) {
+        setTimeout(() => { accountArea.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }, 300);
+      }
       break;
   }
 });

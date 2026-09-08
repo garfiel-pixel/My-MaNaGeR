@@ -10,18 +10,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>My MaNaGeR | Admin</title>
 <meta name="robots" content="noindex, nofollow">
-<link rel="icon" type="image/png" href="primary-icon.png">
+<link rel="icon" type="image/png" href="images/site-icon.png">
+  <link rel="apple-touch-icon" href="images/site-icon.png">
 <link rel="stylesheet" href="dist/mmgr.min.css">
 <!-- GOOGLE-OPERATOR-IDENTITY-v1: optional operator identity (admin chip).
      async+defer; the admin gate and password flow are completely untouched. -->
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
-/* ============================================================
-   Admin-specific styles. Shared component classes (.btn, .card,
-   .badge, .mb/.mh/.mt/.dc/.mbody/.mf, .toolbar, …) come from
-   css/mmgr.css , nothing here re-declares them. Only layout that
-   is unique to the admin panel lives below.
-   ============================================================ */
+/* Admin-specific styles */
 .hidden{display:none !important;}
 
 /* ── gate screens (password setup / login) ── */
@@ -111,29 +107,14 @@ header h1{font-size:1rem;display:flex;align-items:center;gap:8px;font-weight:800
 /* Admin uses the same db-side class system as app.html for the sidebar.
    Override the top offset to match admin's sticky header height. */
 body.admin-page .db-side{top:var(--hdr-h,64px);}
-/* Admin sidebar: override ALL shared .db-side rules (display, transform,
-   position, visibility). The shared CSS sets display:flex + position:fixed
-   + transform:translateX(-100%) on body.db-page .db-side. Every admin rule
-   needs !important to guarantee the override wins regardless of cascade.
-   SIDEBAR FIX (2026-09-02, owner): the old desktop override pinned the rail
-   open at every width while the base scrim rule still fired whenever
-   side-open was set (and the FOUC script sets   side-open at boot on
-   desktop), so the page loaded dimmed and clicking the hamburger only
-   toggled the scrim - the rail never slid. Desktop now mirrors app.html:
-   rail pinned open at boot, the hamburger slides it away/back with the
-   wrap margin and NO scrim; mobile keeps the off-canvas drawer + scrim,
-   now with the shared slide curve (transform-based, not display:none). */
+/* Admin sidebar: */
 body.admin-page .db-side{display:flex!important;transform:translateX(-105%)!important;visibility:hidden!important;
   transition:transform var(--release-duration) var(--ease-ios),visibility var(--release-duration);}
 body.admin-page.side-open .db-side{display:flex!important;transform:translateX(0)!important;visibility:visible!important;}
 body.admin-page .db-scrim{display:none!important;}
 body.admin-page.side-open .db-scrim{display:block!important;opacity:1!important;pointer-events:auto!important;}
 @media(min-width:769px){
-  /* Desktop: the rail is pinned open at boot (FOUC adds side-open at
-     >=769px); the hamburger closes/reopens it exactly like app.html, so
-     the closed state is off-canvas with the shared slide curve. The scrim
-     is mobile-only here - it must never dim the page behind the pinned
-     rail (that dim-only toggle WAS the reported bug). */
+  /* Desktop: */
   body.admin-page .db-scrim,body.admin-page.side-open .db-scrim{display:none!important;}
   body.admin-page.side-open main{margin-left:264px;}
   body.admin-page main{transition:margin-left var(--release-duration) var(--ease-ios);}
@@ -441,41 +422,40 @@ pre.snippet{background:#f8fafc;border:1px solid var(--border);border-radius:6px;
         <span class="rail-ctl-row"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg> Premium</span>
         <div class="dock dock-inline" role="group" aria-label="Appearance controls">
           <div class="rail-ctl-row">
-            <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-moon"></use></svg> Theme
-            <span class="pal-switch" role="group" aria-label="Theme mode">
-              <button type="button" class="pal-btn" data-pal="light" aria-pressed="false">Light</button>
-              <button type="button" class="pal-btn" data-pal="dark" aria-pressed="false">Dark</button>
-              <button type="button" class="pal-btn" data-pal="system" aria-pressed="false">System</button>
-            </span>
+            <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-moon"></use></svg>
+            <span class="rail-ctl-row"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-moon"></use></svg><label class="sr-only" for="theme-select">Theme</label><select id="theme-select" class="theme-select" aria-label="Theme mode"><option value="light">Light</option><option value="dark">Dark</option><option value="system">System</option></select></span>
           </div>
-          <div class="rail-ctl-row">
-            <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-palette"></use></svg> Palette
-            <span class="pal-switch" role="group" aria-label="Palette">
-              <button type="button" class="pal-btn" data-palette="rose" aria-pressed="true">Rose Gold</button>
-            </span>
-            <span class="pal-hint">Rose Gold is on — Gold is off</span>
-          </div>
-          <span class="rail-ctl-row rail-locked-row"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cube"></use></svg> Dynamic View
-            <span class="pal-hint">3D view is only available on the dashboard</span>
-          </span>
-          <span class="rail-ctl-row"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-orb"></use></svg> Premium Glass <label class="tgl"><input type="checkbox" id="glass-tgl" data-action="tglGlassMode" aria-label="Toggle premium liquid-glass backdrop"><span class="tsl"></span></label></span>
+          <span class="rail-ctl-row"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-zap"></use></svg> Performance Mode <label class="tgl"><input type="checkbox" id="perf-tgl" data-action="tglPerfMode" aria-label="Performance Mode: lighter UI effects" checked><span class="tsl"></span></label></span>
         </div>
         <span class="rail-ctl-row"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-users"></use></svg> Cross-Project Resources <label class="tgl"><input type="checkbox" id="xproj-tgl" data-action="tglCrossProject" aria-label="Toggle shared resources across projects"><span class="tsl"></span></label></span>
       </div>
     </nav>
     <div class="db-foot">
       <div class="db-plan" id="rail-plan" hidden></div>
-      <div class="db-user auth-bar" id="rail-user">
-        <div id="google-signin-button"></div>
-        <div id="google-user-chip" hidden></div>
-        <button type="button" class="db-signin" data-action="openSignIn"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-user"></use></svg> Sign in</button>
-      </div>
+      <!-- OWNER 2026-09-07: sign-in lives ONLY on the app page. Admin
+           shows the synced state read-only (no entry point here). -->
+      <div class="db-user auth-bar" id="rail-user"></div>
     </div>
   </aside>
   <div class="db-scrim" id="nav-scrim" data-action="tglNav"></div>
 </div>
 
 <!-- ═══ Add / Edit project modal ═══ -->
+<!-- Sign-in modal (owner 2026-09-06): mirrors app.html's #siom sheet. The
+     rail's Sign in button opens it; the email form is the primary path
+     (mounted by js/mmgr-google-auth.js next to the GIS button), Google
+     sits after the divider. Backdrop click + Escape close it. -->
+<div id="siom" role="dialog" aria-modal="true" aria-label="Sign in">
+  <div class="mb">
+    <div class="mh"><span class="mt"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-user"></use></svg> Sign in</span><button type="button" class="dc" data-action="closeSignIn"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg></button></div>
+    <div class="mbody">
+      <p class="si-hint">Welcome back. Sign in to reach your cloud projects, backups, and sync. It is optional, the app works without an account.</p>
+      <div id="google-signin-button"></div>
+      <div id="google-user-chip" hidden></div>
+    </div>
+  </div>
+</div>
+
 <div id="om">
   <div class="mb">
     <div class="mh"><span class="mt" id="pm-title">Add Project</span><button class="dc" data-action="closeProjectModal"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> </button></div>
@@ -1269,29 +1249,20 @@ function tglTheme(el){
   if (window.MMGR && MMGR.Glass && MMGR.Glass.refreshTheme) MMGR.Glass.refreshTheme();
 }
 
-// Premium liquid-glass toggle , same device-level slot (mmgr_glass_mode) and
-// capability floor as the project viewer's Settings toggle. On a narrow or
-// low-end device the preference is still saved; CSS glass simply stays on.
-function tglGlassMode(el){
-  const on = el ? el.checked : (window.MMGR && MMGR.Viewport && MMGR.Viewport.getGlassMode() === 'premium');
-  if (window.MMGR && MMGR.Viewport) MMGR.Viewport.setGlassMode(on ? 'premium' : 'css');
-  if (window.MMGR && MMGR.Glass) MMGR.Glass.sync();
-  // Keep every instance of this toggle on the page in step (see tglTheme).
-  document.querySelectorAll('[data-action="tglGlassMode"]').forEach(g => { g.checked = on; });
-  const eff = (window.MMGR && MMGR.Viewport && MMGR.Viewport.effectiveGlassMode) ? MMGR.Viewport.effectiveGlassMode() : 'css';
-  toast(on
-    ? (eff === 'premium' ? 'Premium liquid-glass mode on.' : 'Preference saved. This device uses CSS glass.')
-    : 'Premium visual mode off. CSS glass stays on.',
-    eff === 'premium' ? 'ok' : 'warn');
-}
+// Premium liquid-glass toggle: OWNER 2026-09-06 retired the toggle UI -
+// Performance Mode (mmgr-perf.js) is the single user-facing lever for heavy
+// layers. The action stays mapped as a no-op so stale dispatches cannot error.
+function tglGlassMode(el){}
 
 /* Rail footer user area: matches app.html's renderRailUser pattern.
-   Signed out = Sign in button; signed in = name + Sign out. */
+   OWNER 2026-09-07: sign-in entry lives ONLY on the app page - admin is
+   read-only ("Not signed in" + name/Sign out once the session is synced
+   from the app page). */
 function renderRailUser(user){
   var area = document.getElementById('rail-user');
   if (!area) return;
   if (!user){
-    area.innerHTML = '<button type="button" class="db-signin" data-action="openSignIn"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-user"></use></svg> Sign in</button>';
+    area.innerHTML = '<span class="db-user-name is-out"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-user"></use></svg> Not signed in</span>';
     return;
   }
   var name = user.name || user.email || 'Operator';
@@ -1312,6 +1283,7 @@ document.addEventListener('mmgr:user-changed', function(e){
 });
 document.addEventListener('mmgr:google-signed-out', function(){
   renderRailUser(null);
+  closeSignInModal();
 });
 /* Replace the native prompt()/confirm() calls with the same custom-modal
    standard the project viewer uses. */
@@ -2588,7 +2560,8 @@ const ADMIN_ACTION_MAP = {
   'tglTheme': (el) => tglTheme(el),
   'tglGlassMode': (el) => tglGlassMode(el),
   'tglCrossProject': () => tglCrossProject(),
-  'openSignIn': () => { var GA = window.MMGR && MMGR.GoogleAuth ? MMGR.GoogleAuth : null; if (GA && GA.openSignInPrompt) GA.openSignInPrompt(); },
+  'openSignIn': () => { var GA = window.MMGR && MMGR.GoogleAuth ? MMGR.GoogleAuth : null; if (GA && GA.openSignInPrompt) GA.openSignInPrompt(); openSignInModal(); },
+  'closeSignIn': () => closeSignInModal(),
   'cloudAdminList': () => cloudAdminList(),
   'cloudAdminReissue': (el) => cloudAdminReissue(el.getAttribute('data-id')),
   'cloudAdminRestore': (el) => cloudAdminRestore(el.getAttribute('data-id')),
@@ -2616,6 +2589,33 @@ document.addEventListener('click', function(e){
   e.preventDefault();
   fn(el, e);
 });
+/* Centered sign-in modal (#siom, owner 2026-09-06): open/close helpers.
+   GIS re-renders on open (a button drawn while hidden comes out 0x0). */
+function openSignInModal(){
+  var m = document.getElementById('siom');
+  if (!m) return;
+  m.classList.add('open');
+  try {
+    var GA2 = window.MMGR && MMGR.GoogleAuth ? MMGR.GoogleAuth : null;
+    if (GA2 && GA2.ensureGisButton) GA2.ensureGisButton();
+  } catch (e) { /* GIS quirk - the fallback button still shows */ }
+  var f = m.querySelector('.email-auth-input');
+  if (f && f.focus) { try { f.focus(); } catch (e) {} }
+}
+function closeSignInModal(){
+  var m = document.getElementById('siom');
+  if (m) m.classList.remove('open');
+}
+(function(){
+  var siom = document.getElementById('siom');
+  if (siom && !siom._bdBound) {
+    siom._bdBound = true;
+    siom.addEventListener('click', function(e){ if (e.target && e.target.id === 'siom') closeSignInModal(); });
+  }
+  document.addEventListener('keydown', function(e){
+    if (e.key === 'Escape' && siom && siom.classList.contains('open')) closeSignInModal();
+  });
+})();
 document.addEventListener('input', function(e){
   const el = e.target.closest('[data-action]');
   if (!el) return;
@@ -2650,8 +2650,13 @@ document.addEventListener('mmgr:user-changed', function(e){
   var gb = document.getElementById('google-signin-button');
   var uc = document.getElementById('google-user-chip');
   if (eb) eb.hidden = signedIn;
-  if (gb) gb.hidden = signedIn;
+  if (gb) gb.hidden = signedIn;   // GIS button lives inside #siom
   if (uc) uc.hidden = !signedIn;
+  if (signedIn){
+    var m = document.getElementById('siom');
+    if (m && m.classList.contains('open')) closeSignInModal();
+    renderRailUser(e.detail);
+  }
 });
 
 // Reflect the device-level theme + glass preferences on every admin switch

@@ -683,7 +683,7 @@ var MMGR = window.MMGR || {};
       <div>Current Planned Finish: <strong>${t.projected}</strong> <span style="color:var(--slate)">(latest scheduled task end date)</span></div>
       <div style="color:var(--slate)">${t.daysToTarget >= 0 ? t.daysToTarget + ' day(s) remaining to target' : Math.abs(t.daysToTarget) + ' day(s) past target date'}</div>
     </div>
-    <span class="badge ${t.cls}" style="font-size:.75rem;padding:6px 14px;white-space:nowrap">${t.status}</span>
+    <span class="st-txt${t.cls === 'bs' ? ' s' : ''}"><span class="sdot ${t.cls === 'bg' ? 'g' : t.cls === 'ba' ? 'a' : t.cls === 'br' ? 'r' : 'b'}"></span>${t.status}</span>
   </div>`;
     if (hdrBadge) {
       if (t.overrunDays > 0) {

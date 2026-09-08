@@ -121,12 +121,13 @@ var MMGR = window.MMGR || {};
     'float field(vec2 p){',
     '  return fbm(p);',
     '}',
-    // Constrained palette , cool slate is the only hue, with a warm-gold accent
-    // at very low weight (0.22 max), so the field never shows the old iridescent
-    // purple/green/orange wash. Theme-compatible in both light and dark. The
-    // cyan palette swaps the accent to a fluorescent-cyan vector (uCyan uniform)
-    // and the rose-gold palette swaps it to coral (uRose uniform) - both driven
-    // by <html data-theme> so premium glass respects the active palette.
+    // Constrained palette , cool slate is the base hue, with a warm-gold accent
+    // at low weight, so the glow never washes the screen. Theme-compatible in
+    // both light and dark. The cyan palette swaps the accent to a muted-cyan
+    // vector (uCyan uniform) and the rose-gold palette swaps it to coral
+    // (uRose uniform) - both driven by <html data-theme>.
+    // STARRY SKY (owner 2026-09-06): every blend below is a WIDE smooth ramp -
+    // colors fade into each other, no hard breaks or banding.
     'vec3 palette(float t){',
     '  vec3 slate = vec3(0.32, 0.36, 0.46);',
     '  vec3 gold  = vec3(0.72, 0.56, 0.30);',
@@ -134,14 +135,31 @@ var MMGR = window.MMGR || {};
     '  vec3 coral = vec3(1.00, 0.43, 0.32);',
     '  vec3 accent = mix(gold, cyan, uCyan);',
     '  accent = mix(accent, coral, uRose);',
-    '  float w = 0.5 + 0.5 * sin(6.2831 * t * 0.4 + 1.7);',
-    '  return mix(slate, accent, 0.22 * w);',
-    '}', 
+    '  float w = 0.5 + 0.5 * sin(6.2831 * t - 1.2);',
+    '  return mix(slate, accent, 0.35 * w);',
+    '}',
+    // Star field: hash-placed points on a slowly drifting grid, each with its
+    // own twinkle phase. smoothstep softens every point into a tiny glow dot
+    // (never a hard pixel). Only ~18% of cells carry a star.
+    'float starLayer(vec2 uv, float t, float density){',
+    '  vec2 g = uv * density;',
+    '  vec2 id = floor(g);',
+    '  vec2 f = fract(g) - 0.5;',
+    '  float h = hash(id);',
+    '  vec2 offs = vec2(hash(id + 7.1), hash(id + 3.7)) - 0.5;',
+    '  float d = length(f - offs * 0.8);',
+    '  float tw = 0.5 + 0.5 * sin(t * (1.5 + h * 2.0) + h * 6.2831);',
+    '  float star = (1.0 - smoothstep(0.0, 0.05, d)) * tw;',
+    '  return star * step(0.82, h);',
+    '}',
     'void main(){',
     '  vec2 uv = gl_FragCoord.xy / uRes;',
     '  vec2 p = uv - 0.5;',
     '  p.x *= uRes.x / max(uRes.y, 1.0);',
-    '  float t = uTime * 0.22;',
+    '  float t = uTime * 0.20;',
+    '  // Drifting star field: two parallax layers at different speeds/scales.',
+    '  float stars = starLayer(uv + vec2(t * 0.010, -t * 0.004), t, 26.0);',
+    '  stars += 0.6 * starLayer(uv + vec2(-t * 0.016, t * 0.006) + 13.7, t * 1.3, 40.0);',
     '  // Domain warp: the surface flows like a slow liquid.',
     '  vec2 w = 0.06 * vec2(',
     '    field(uv * 3.0 + vec2(t * 0.18, -t * 0.10)),',
@@ -154,11 +172,16 @@ var MMGR = window.MMGR || {};
     '  float g = field((uv + w) * 3.0);',
     '  float b = field((uv - ca + w) * 3.0);',
     '  vec3 irid = palette(mix(r, b, 0.5) * 0.6 + g * 0.4 + 0.12);',
-    '  // Constrained accent weight: <= 0.15 in dark, ~0.06 in light , the glass',
-    '  // stays near the theme base (deep slate / off-white) instead of washing',
-    '  // the whole screen in color.',
-    '  vec3 base = uDark > 0.5 ? vec3(0.020, 0.026, 0.050) : vec3(0.970, 0.972, 0.978);',
-    '  vec3 col = mix(base, irid, uDark > 0.5 ? 0.15 : 0.06);', 
+    '  // Dark: a deep-space navy canvas that fades brighter toward the top.',
+    '  // Light: warm off-white. Every blend is a wide ramp - colors fade,',
+    '  // they never break off into a different color.',
+    '  vec3 baseDark = mix(vec3(0.012, 0.018, 0.048), vec3(0.035, 0.045, 0.090), smoothstep(0.0, 1.0, uv.y));',
+    '  vec3 baseLight = vec3(0.968, 0.970, 0.976);',
+    '  vec3 base = uDark > 0.5 ? baseDark : baseLight;',
+    '  float glowW = uDark > 0.5 ? 0.16 : 0.05;',
+    '  vec3 col = mix(base, irid, glowW);',
+    '  // Stars ride on top: full effect on the dark sky, a whisper in daylight.',
+    '  col += vec3(0.90, 0.93, 1.0) * stars * (uDark > 0.5 ? 0.85 : 0.10);',
     '  // Specular sheen: light glides across the surface like glass.',
     '  float sheen = 0.09 * pow(1.0 - abs(p.y + 0.30 * sin(uv.x * 4.0 + t * 0.5)), 3.0);',
     '  sheen += 0.045 * pow(1.0 - abs(p.x - 0.30 * cos(t * 0.4)), 6.0);',
@@ -255,17 +278,35 @@ var MMGR = window.MMGR || {};
   // Activate the premium engine. Returns a Promise<boolean> so callers (and
   // the QA gate) can await the outcome. Every failure path resolves false
   // and leaves the app on CSS glass.
+  // FIX 2026-09-06: re-entrancy guard. sync() can fire from boot, resize,
+  // visibilitychange and section-show - two activations in flight mounted
+  // TWO canvases and leaked one (QA G08/G09). While an import is awaited,
+  // further activate() calls are no-ops returning true.
+  let _activating = false;
   async function activate() {
     if (_state.active) return true;
+    if (_activating) return true;
+    // OWNER 2026-09-07: premium glass is the APP SECTION's identity - it
+    // must never render inside a project (project.html) or on admin. The
+    // served path is the authoritative signal (production strips .html).
+    const _p = (location.pathname || '').toLowerCase();
+    if (_p.indexOf('project') !== -1 || _p.indexOf('admin') !== -1) return false;
     if (!ns.Viewport || ns.Viewport.effectiveGlassMode() !== 'premium') return false;
+    _activating = true;
     let THREE = null;
     try {
       THREE = await _importThree();
     } catch (err) {
+      _activating = false;
       _fallback('three-load', err);
       return false;
     }
+    _activating = false;
     try {
+      // Defensive: never mount a duplicate id (a stale canvas from an
+      // interrupted earlier activation would break getElementById callers).
+      const orphan = document.getElementById('glass-canvas');
+      if (orphan && orphan.parentNode) orphan.parentNode.removeChild(orphan);
       const canvas = document.createElement('canvas');
       canvas.id = 'glass-canvas';
       canvas.setAttribute('aria-hidden', 'true');
@@ -303,7 +344,8 @@ var MMGR = window.MMGR || {};
       document.addEventListener('visibilitychange', _onVisibility);
       document.body.classList.add('glass-premium');
       _frame();
-      if (ns.App && ns.App.showToast) ns.App.showToast('Premium liquid-glass mode on , toggle off in Settings to return to CSS glass.', 'ok');
+      // OWNER 2026-09-06: no toast - premium glass is mandatory app identity,
+      // never announced (same silence rule as the retired palette toggles).
       return true;
     } catch (err) {
       _fallback('webgl', err);
@@ -318,7 +360,7 @@ var MMGR = window.MMGR || {};
     } catch (e) { /* ignore */ }
     document.body.classList.remove('glass-premium');
     if (ns.Errors && ns.Errors.log) ns.Errors.log('glass: premium unavailable (' + why + ') , CSS glass stays on', 'glass');
-    if (ns.App && ns.App.showToast) ns.App.showToast('Premium glass unavailable on this device , CSS glass stays on.', 'err');
+    // OWNER 2026-09-06: silent fallback - no toast announcing the glass mode.
     _state = freshState();
   }
 

@@ -59,27 +59,27 @@ function check(name, val, detail) {
   const a1 = await ev(`(function(){
     const hdr = document.querySelector('#admin-app header');
     const rail = document.getElementById('app-sidebar');
-    const railAuth = rail && rail.querySelector('.auth-bar');
+    const siom = document.getElementById('siom');
     const toolbar = document.querySelector('.toolbar');
     return {
       hdrSignin: !!(hdr && hdr.querySelector('#google-signin-button')),
       hdrTheme: !!(hdr && hdr.querySelector('[data-action="tglTheme"]')),
-      railAuth: !!railAuth,
-      railSignin: !!(railAuth && railAuth.querySelector('#google-signin-button')),
-      railChip: !!(railAuth && railAuth.querySelector('#google-user-chip')),
+      // OWNER 2026-09-06: the rail carries a plain Sign in button that opens
+      // the centered #siom sheet; the GIS mount lives INSIDE the modal.
+      railSignin: !!(rail && rail.querySelector('.db-signin')),
+      siomPresent: !!siom,
+      siomGoogle: !!(siom && siom.querySelector('#google-signin-button')),
       railCtl: (rail && rail.querySelectorAll('.rail-ctl-row').length) || 0,
       toolbarTxt: toolbar ? (toolbar.textContent || '') : '',
       fileInput: !!document.getElementById('import-project-file')
     };
   })()`);
   check('S1 admin header: no sign-in / theme in header', !a1.hdrSignin && !a1.hdrTheme, a1);
-  check('S1 admin rail: auth-bar mount + sign-in + chip in rail', a1.railAuth && a1.railSignin && a1.railChip, a1);
-  // D11 (2026-09-03): the Appearance row was consolidated into the shared
-  // bottom dock. NOTE 2026-09-05 (owner): the admin rail now carries read-only
-  // Palette and Dynamic View labels (Rose-only palette, dynamic view is app-only),
-  // so it has 6 rail-ctl-row entries: Premium, Palette, Dynamic View, Premium
-  // Glass, Cross-Project Resources, plus the one extra wrapper row around them.
-  check('S1 admin rail: Customize rows (premium/glass/cross-project)', a1.railCtl === 6, a1);
+  check('S1 admin rail: Sign in button opens #siom with the GIS mount inside (owner 2026-09-06)', a1.railSignin && a1.siomPresent && a1.siomGoogle, a1);
+  // OWNER 2026-09-06: Customize rows are now Theme (Light/Dark/System) +
+  // Performance Mode, flanked by the Premium and Cross-Project Resources
+  // rows - 4 rail-ctl-row entries. Palette/Glass rows are silent by design.
+  check('S1 admin rail: Customize rows (premium/theme/perf/cross-project)', a1.railCtl === 4, a1);
   check('S2 admin toolbar: Import Project present', a1.toolbarTxt.indexOf('Import Project') > -1, a1.toolbarTxt);
   check('S2 admin: import file input present', a1.fileInput === true, a1);
 

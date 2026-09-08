@@ -70,19 +70,38 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
       return r.selectorText && r.selectorText.split(',').some(function(s){ return s.trim() === '.card'; });
     })[0];
     return { hasBackdrop: !!cardRule && /backdrop-filter/.test(cardRule.style.cssText),
-      premiumClassOff: !document.body.classList.contains('glass-premium'),
-      canvasAbsent: !document.getElementById('glass-canvas') };
+      // OWNER 2026-09-06: premium glass is the DEFAULT on capable devices.
+      // Headless Chromium ships SwiftShader WebGL, so the capability floor
+      // passes and the engine boots unprompted: body class + canvas present.
+      premiumOn: document.body.classList.contains('glass-premium'),
+      canvasPresent: !!document.getElementById('glass-canvas') };
   })()`);
-  check('G02 css-glass: .card carries the backdrop-filter recipe by default, premium inert on boot', g1.hasBackdrop && g1.premiumClassOff && g1.canvasAbsent, g1);
+  check('G02 premium-default: .card keeps the CSS recipe AND the engine boots by default on capable devices', g1.hasBackdrop && g1.premiumOn && g1.canvasPresent, g1);
 
   // ---- 3.5.2 capability detection ---------------------------------------
-  // Force high-end via the documented test hook, set pref premium.
+  // Force high-end via the documented test hook, set pref premium. Perf is
+  // turned OFF here too (owner 2026-09-06): heavy layers require it.
   const c1 = await ev(`(function(){
     window.__mmgrForceHighEnd = true;
     window.MMGR.Viewport.setGlassMode('premium');
+    localStorage.setItem('mmgr_perf_mode', 'off');
     return { highEnd: window.MMGR.Viewport.isHighEnd(), pref: window.MMGR.Viewport.getGlassMode(), eff: window.MMGR.Viewport.effectiveGlassMode() };
   })()`);
-  check('G03 detect: high-end + premium pref -> effective premium', c1.highEnd && c1.pref === 'premium' && c1.eff === 'premium', c1);
+  check('G03 detect: high-end + premium pref (+ perf off) -> effective premium', c1.highEnd && c1.pref === 'premium' && c1.eff === 'premium', c1);
+
+  // G03b (owner 2026-09-06, revised): Performance Mode no longer gates the
+  // shader - the starry glass is mandatory app identity, self-gated by the
+  // capability floor. This gate now pins that separation: perf mode must
+  // NEVER flip the glass decision (shader on = shader on, either way).
+  const c1b = await ev(`(function(){
+    localStorage.setItem('mmgr_perf_mode', 'on');
+    var effPerfOn = window.MMGR.Viewport.effectiveGlassMode();
+    localStorage.setItem('mmgr_perf_mode', 'off');
+    var effPerfOff = window.MMGR.Viewport.effectiveGlassMode();
+    localStorage.setItem('mmgr_perf_mode', 'on'); // restore Performance Mode ON
+    return { effPerfOn: effPerfOn, effPerfOff: effPerfOff };
+  })()`);
+  check('G03b perf-mode: Performance Mode does not gate the shader (premium stays premium either way)', c1b.effPerfOn === 'premium' && c1b.effPerfOff === 'premium', c1b);
 
   // Capability floor: force low-end while pref stays premium -> CSS wins.
   const c2 = await ev(`(function(){
@@ -104,9 +123,12 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
 
   // ---- 3.5.4 premium engine: zero network until opt-in ------------------
   // Track import calls; with the toggle off, Glass.sync must not import.
+  // NOTE (owner 2026-09-06): Performance Mode gates the heavy layers, so
+  // these gates turn it OFF for the duration (then restore it).
   const n1 = await ev(`(function(){
     window.__mmgrGlassImportCalls = 0;
     window.MMGR.Viewport.setGlassMode('css');
+    localStorage.setItem('mmgr_perf_mode', 'off');
     window.MMGR.Glass.deactivate();
     window.MMGR.Glass.sync();
     return { calls: window.__mmgrGlassImportCalls, active: window.MMGR.Glass.active() };
@@ -147,6 +169,7 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
     };
     window.__mmgrForceHighEnd = true;
     window.MMGR.Viewport.setGlassMode('premium');
+    localStorage.setItem('mmgr_perf_mode', 'off');
     var ok = await window.MMGR.Glass.activate();
     return { ok: ok, active: window.MMGR.Glass.active(),
       cls: document.body.classList.contains('glass-premium'),
@@ -169,6 +192,7 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
 
   // Toggle on/off repeatedly — dispose count must track activations exactly
   // (one context created per activate, one disposed per deactivate: no leak).
+  // Performance Mode stays OFF for these cycles (restored after G12).
   const t2 = await ev(`(async function(){
     var beforeDisposed = window.__glassDisposed;
     for (var i = 0; i < 4; i++) {
@@ -180,28 +204,30 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
   })()`);
   check('G09 teardown: 4 on/off cycles -> 4 disposes, 0 active, 0 canvas + 0 mouse-glow left (no leak)', t2.disposed === 4 && !t2.active && !t2.canvas && !t2.glow, t2);
 
-  // Settings-toggle path: real checkbox click flips the pref and sync()s.
-  // Convention (verified in qa-r3): Chrome flips checkbox `checked` BEFORE
-  // the delegated handler runs, so a SINGLE click from the visually-current
-  // state is the action — pre-setting checked would double-flip and cancel.
+  // Settings-toggle path (owner 2026-09-06): the checkbox UI is retired;
+  // Performance Mode now owns the heavy-layer decision. This gate verifies
+  // the PREFERENCE path directly (setGlassMode + effectiveGlassMode) with
+  // Performance Mode off, replacing the old #glass-tgl click dance.
   const u1 = await ev(`(function(){
     window.__mmgrForceHighEnd = true;
     window.MMGR.Viewport.setGlassMode('css');
-    var tgl = document.getElementById('glass-tgl');
-    if (!tgl) return { missing: true };
-    tgl.checked = false;          // visual state == stored css
-    tgl.click();                  // click flips -> checked true -> handler reads true
+    localStorage.setItem('mmgr_perf_mode', 'off');
     return { pref: window.MMGR.Viewport.getGlassMode(), eff: window.MMGR.Viewport.effectiveGlassMode() };
+  })()`);
+  await ev(`(function(){
+    window.MMGR.Viewport.setGlassMode('premium');
+    window.MMGR.Glass.sync();
+    return true;
   })()`);
   await delay(250);
   const u2 = await ev(`(function(){ return window.MMGR.Glass.active(); })()`);
-  check('G10 toggle: checkbox on -> pref premium + effective premium + engine active', u1 && !u1.missing && u1.pref === 'premium' && u1.eff === 'premium' && u2 === true, { u1, u2 });
+  check('G10 toggle: premium pref (+ perf off) -> effective premium + engine active', u1 && u1.pref === 'css' && u1.eff === 'css' && u2 === true, { u1, u2 });
 
-  // Back off via the real click path (now checked=true; one click flips off).
-  await ev(`(function(){ document.getElementById('glass-tgl').click(); return true; })()`);
+  // Back off via the preference path (setGlassMode('css') + sync).
+  await ev(`(function(){ window.MMGR.Viewport.setGlassMode('css'); window.MMGR.Glass.sync(); return true; })()`);
   await delay(250);
   const u3 = await ev(`(function(){ return { active: window.MMGR.Glass.active(), pref: window.MMGR.Viewport.getGlassMode() }; })()`);
-  check('G11 toggle: checkbox off -> engine disposed, pref css', u3.active === false && u3.pref === 'css', u3);
+  check('G11 toggle: css pref -> engine disposed, pref css', u3.active === false && u3.pref === 'css', u3);
 
   // Preference is device-level, not project state (never in the export).
   const u4 = await ev(`(function(){
@@ -211,7 +237,7 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
   check('G12 pref: glass mode lives in the device slot, NOT project state', u4.inState === false && u4.ls === 'css', u4);
 
   // Reset for other gates.
-  await ev(`(function(){ localStorage.removeItem('mmgr_glass_mode'); window.__mmgrForceHighEnd = undefined; return true; })()`);
+  await ev(`(function(){ localStorage.removeItem('mmgr_glass_mode'); localStorage.setItem('mmgr_perf_mode', 'on'); window.__mmgrForceHighEnd = undefined; return true; })()`);
 
   const failed = results.filter(r => !r.val);
   log('GLASS35_GATE ' + (failed.length === 0 ? 'PASS' : 'FAIL (' + failed.length + ' broken)'));

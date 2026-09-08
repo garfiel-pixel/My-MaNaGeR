@@ -834,6 +834,20 @@ Final fix in this session: tightened that harness assertion from \".auth-bar pre
 CI status: pushed; CI is the only remaining gate before deploy; deploy only after CI green on the pushed tree.
 
 NEXT: confirm CI green on the pushed tree, then deploy from the clean staging copy (wrangler tar staging recipe per AGENTS.md).
+
+2026-09-08 (continued) — CI red at "T2: Controls admin" (11 checks, 1 failed): ROOT CAUSE WAS THE HARNESS, NOT THE APP.
+
+CI kept failing the S1 rail check ("account bar present and #siom sheet mounts the GIS button") on every push through 52723e3. Diagnosis via the Actions API + the failure detail object: the probe detail showed railCtl===5, siomPresent:true, siomGoogle:true, toolbarTxt matching the current admin.html — i.e. the served admin DOM is CORRECT. The check `!!(a1.rail && a1.rail.querySelector('.auth-bar') && ...)` can NEVER pass: the probe return object crosses the CDP boundary with returnByValue:true, so DOM nodes are dropped — `a1.rail` is undefined on every run, making the check unconditionally false. The sibling check "rail has no sign-in trigger" was equally broken in the opposite direction (`!(a1.rail && ...)` is unconditionally true, so it passed vacuously). Introduced in the 5031345 alignment (the "10/10 PASS" claimed there cannot have come from the committed probe).
+
+Fix (committed as <SHA>): the probe now computes serializable booleans INSIDE the page — `railAuth` (rail has .auth-bar), `railOpenSignIn` (rail carries [data-action="openSignIn"]) — and the checks assert on those. The app DOM needed no change: admin.html:437 `#rail-user` carries `db-user auth-bar` inside `#app-sidebar`'s `.db-foot`, `renderRailUser()` writes into it, and mmgr-google-auth.js mounts the GIS button into `#siom #google-signin-button` (shared sheet with app.html).
+
+Verification: node tools/verify-controls-admin.cjs → 11/11 PASS against serve.cjs (fresh headless Chrome, gate unlock + recovery-modal poll + Controls-tab flow all exercised); node --check clean; npm run verify ALL CHECKS PASSED. Harness-only change — no served file touched, no CSP/SW impact.
+
+Wrangler note (owner 2026-09-08): pinned ^4.129.0 / installed 4.129.0 vs latest 4.129.1 — one patch behind; the caret range lets CI's npm install pull the patch already, so no action needed beyond a routine `npm install` refresh locally.
+
+Outstanding (separate from this fix): the scheduled Nightly Full Suite on 52723e3 failed at "T2: Cloud phase 2" (tools/qa-cloud-phase2.cjs). Job logs need admin rights to read (403), so it could not be diagnosed from this session — re-run nightly after this commit and check qa-cloud-phase2 output if it repeats.
+
+NEXT: push this harness fix, POLL the Actions API until CI finishes green, then deploy from the clean staging copy (wrangler tar staging recipe per AGENTS.md) once green.
 9 cards, mkt-10 page chrome, mkt-16/17 sign-in). CSP: NO inline-script edits →
 hashes unchanged.
 

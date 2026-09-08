@@ -93,8 +93,8 @@ async function main() {
 
   const list = await c.rpc('tools/list', {});
   const names = list.tools.map(t => t.name);
-  check('H2 tools/list returns the full catalog (31 tools)',
-    names.length === 31 && ['mmgr_list_projects', 'mmgr_get_project_overview', 'mmgr_get_context', 'mmgr_answer_question', 'mmgr_propose_change', 'mmgr_approve_change', 'mmgr_reject_change', 'mmgr_revert_change', 'mmgr_list_writable_fields', 'mmgr_get_resources', 'mmgr_get_stakeholders', 'mmgr_get_meetings', 'mmgr_get_decisions', 'mmgr_get_documents', 'mmgr_get_bids', 'mmgr_get_closure', 'mmgr_get_sprint', 'mmgr_get_dmaic', 'mmgr_get_spend_log', 'mmgr_get_weather_log'].every(n => names.includes(n)), names.length);
+  check('H2 tools/list returns the full catalog (33 tools)',
+    names.length === 33 && ['mmgr_list_projects', 'mmgr_get_project_overview', 'mmgr_get_context', 'mmgr_answer_question', 'mmgr_propose_change', 'mmgr_approve_change', 'mmgr_reject_change', 'mmgr_revert_change', 'mmgr_list_writable_fields', 'mmgr_get_resources', 'mmgr_get_stakeholders', 'mmgr_get_meetings', 'mmgr_get_decisions', 'mmgr_get_documents', 'mmgr_get_bids', 'mmgr_get_closure', 'mmgr_get_sprint', 'mmgr_get_dmaic', 'mmgr_get_spend_log', 'mmgr_get_weather_log', 'mmgr_list_cloud_projects', 'mmgr_choose_cloud_project'].every(n => names.includes(n)), names.length);
 
   const projs = await c.rpc('tools/call', { name: 'mmgr_list_projects', arguments: {} });
   check('R1 list_projects finds the fixture', projs.structuredContent.projects.includes(projName), projs.structuredContent.projects);

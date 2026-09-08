@@ -102,12 +102,13 @@ compares state hashes instead of file fingerprints.
 
 ---
 
-## Tool catalog (31 tools)
+## Tool catalog (33 tools)
 
 ### Read / analytics (no approval needed)
 | Tool | Returns |
 |---|---|
 | `mmgr_list_projects` | Available exported + cloud project files |
+| `mmgr_list_cloud_projects` | Every cloud project the configured code/session can reach (owner/editor/linked) |
 | `mmgr_get_project_overview` | Health, EVM SPI/CPI, counts, target completion |
 | `mmgr_get_context` | Full sectioned Markdown context dump (same grounding the app uses) |
 | `mmgr_get_tasks` / `mmgr_get_task` | Task list (status filter + limit) / single task |
@@ -132,6 +133,11 @@ compares state hashes instead of file fingerprints.
 | `mmgr_get_spend_log` | Recent spend entries with amounts and totals |
 | `mmgr_get_weather_log` | Weather delay log with delay days and reasons |
 | `mmgr_list_writable_fields` | Introspect the write catalog + enums |
+
+### Cloud discovery
+| Tool | What it does |
+|---|---|
+| `mmgr_choose_cloud_project` | From the list returned by mmgr_list_cloud_projects, pick one cloud project by id or by a short partial name/label and return its live summary plus the exact cloud project id to pass to the other tools. Use this when a human refers to "the Riverwalk project" or "demo-riverwalk" instead of pasting a full project id. |
 
 ### Write (two-phase owner approval; gated behind `MMGR_MCP_ALLOW_WRITES=1`)
 | Tool | What it does |

@@ -101,11 +101,86 @@ function pickProject(argName) {
   return { ok: true, file, state: loaded.state };
 }
 
-// Cloud mode: load project state from the Worker API
+// Cloud mode: load project state from the Worker API for the configured
+// default cloud project. This is the single-project cloud mode kept from
+// the prior server for backward compatibility.
 async function cloudLoadState() {
   const r = await CloudApi.cloudLoadProject(CLOUD_URL, CLOUD_PROJECT_ID, CLOUD_OWNER_CODE, CLOUD_EDITOR_CODE);
   if (!r.ok) return { ok: false, error: 'cloud load failed: ' + r.error };
   return { ok: true, _cloud: true, state: r.state };
+}
+
+// Cloud mode: discover every cloud project the supplied auth can reach.
+// Uses the SAME auth surface the rest of the server uses (owner code,
+// editor code, or linked session) — never a second credential shape.
+async function cloudListProjects() {
+  const r = await CloudApi.cloudListProjects(CLOUD_URL, CLOUD_OWNER_CODE, CLOUD_EDITOR_CODE);
+  if (!r.ok) return { ok: false, error: 'cloud discovery failed: ' + r.error };
+  const list = r.projects || [];
+  if (!list.length) return { ok: true, projects: [] };
+  return { ok: true, projects: list };
+}
+
+// Cloud mode: resolve ONE cloud project by project id or by a short fuzzy
+// label/name match. Returns the same shape as cloudLoadState() for the
+// resolved project, so the rest of the toolchain can stay unchanged.
+async function cloudResolveProject(argName) {
+  if (!CLOUD_MODE) return { ok: false, error: 'cloud mode is not configured' };
+  const wanted = (argName && String(argName).trim()) || null;
+  const list = await cloudListProjects();
+  if (!list.ok) return list;
+  const projects = list.projects || [];
+  if (!projects.length) return { ok: false, error: 'no cloud projects reachable for this account' };
+
+  if (!wanted) {
+    // No argument: fall back to the configured default, same as before.
+    if (!CLOUD_PROJECT_ID) return { ok: false, error: 'no default cloud project configured and no project specified' };
+    const byId = projects.find(p => p.projectId === CLOUD_PROJECT_ID);
+    if (!byId) return { ok: false, error: 'default cloud project "' + CLOUD_PROJECT_ID + '" not in the reachable list' };
+    return await cloudLoadOne(byId);
+  }
+
+  // Exact id match first.
+  const byId = projects.find(p => String(p.projectId) === String(wanted));
+  if (byId) return await cloudLoadOne(byId);
+
+  // Fuzzy match on projectId, name, or label (case-insensitive, word-start).
+  const token = String(wanted).toLowerCase();
+  const fuzzy = projects.filter(p => {
+    const id = String(p.projectId || '').toLowerCase();
+    const name = String(p.name || p.label || '').toLowerCase();
+    return id.indexOf(token) >= 0 || name.indexOf(token) >= 0;
+  });
+  if (fuzzy.length === 1) return await cloudLoadOne(fuzzy[0]);
+  if (fuzzy.length > 1) {
+    return toolError('ambiguous project "' + wanted + '" — ' + fuzzy.length + ' matches: ' +
+      fuzzy.map(p => p.projectId + (p.name || p.label ? ' (' + (p.name || p.label) + ')' : '')).join(', ') +
+      '. Be more specific.');
+  }
+  // No match.
+  return { ok: false, error: 'cloud project "' + wanted + '" not found — ' + projects.length + ' reachable: ' +
+    projects.map(p => p.projectId + (p.name || p.label ? ' (' + (p.name || p.label) + ')' : '')).join(', ') };
+}
+
+async function cloudLoadOne(project) {
+  const code = project.accessRole === 'owner' ? CLOUD_OWNER_CODE : CLOUD_EDITOR_CODE;
+  const r = await CloudApi.cloudLoadProject(CLOUD_URL, project.projectId, code, null);
+  if (!r.ok) return { ok: false, error: 'cloud load failed for ' + project.projectId + ': ' + r.error };
+  return { ok: true, _cloud: true, project, state: r.state };
+}
+
+// Unified project resolver: local file, configured single cloud project, or
+// cloud project chosen by id/name via cloudResolveProject().
+async function resolveProject(argName) {
+  if (CLOUD_MODE && (!argName || argName === CLOUD_PROJECT_ID)) {
+    return await cloudLoadState();
+  }
+  if (CLOUD_MODE && argName) {
+    // Anything that is not the bare default id is treated as a lookup.
+    if (String(argName) === String(CLOUD_PROJECT_ID)) return await cloudLoadState();
+    return await cloudResolveProject(argName);
+  }
+  return pickProject(argName);
 }
 
 // Hash a state object for stale detection (cloud mode has no local file to fingerprint)
@@ -114,34 +189,54 @@ function stateHash(state) {
   catch (e) { return null; }
 }
 
-// Unified project resolver: works for both local files and cloud API.
-// Returns { ok, state, _cloud?, file? } for both sync (local) and async (cloud) paths.
-async function resolveProject(argName) {
-  if (CLOUD_MODE && (!argName || argName === CLOUD_PROJECT_ID)) {
-    return await cloudLoadState();
-  }
-  return pickProject(argName);
-}
-
 // ---- Read tools ----
 
-function listProjectsTool() {
+async function listProjectsTool() {
   const projects = Store.listProjects(PROJECT_DIR);
   const lines = [];
   if (projects.length) {
     lines.push('Local projects in ' + PROJECT_DIR + ':');
     projects.forEach(p => lines.push('  - ' + p));
   }
+  let cloud = null;
   if (CLOUD_MODE) {
-    lines.push('\nCloud project (via ' + CLOUD_URL + '):');
-    lines.push('  - [cloud] ' + CLOUD_PROJECT_ID + (CLOUD_OWNER_CODE ? ' (owner)' : ' (editor)'));
+    const discovered = await cloudListProjects();
+    cloud = discovered;
+  }
+  if (CLOUD_MODE) {
+    if (cloud.ok && cloud.projects && cloud.projects.length) {
+      lines.push('\nCloud projects (via ' + CLOUD_URL + '):');
+      cloud.projects.forEach(p => {
+        const role = p.accessRole || 'unknown';
+        const label = p.name || p.label || '';
+        const extra = [role];
+        if (p.adoptedAt) extra.push('adopted ' + p.adoptedAt.slice(0, 10));
+        if (p.discontinued) extra.push('discontinued ' + (p.deletedAt ? p.deletedAt.slice(0, 10) : ''));
+        lines.push('  - ' + p.projectId + (label ? ' (' + label + ')' : '') + ' — ' + extra.join(', '));
+      });
+    } else if (cloud.ok && !cloud.projects.length) {
+      lines.push('\nCloud mode (via ' + CLOUD_URL + '): no cloud projects reachable for this account.');
+    } else if (cloud.ok === false) {
+      lines.push('\nCloud mode (via ' + CLOUD_URL + '): discovery failed — ' + cloud.error);
+    } else if (CLOUD_PROJECT_ID) {
+      lines.push('\nCloud project (via ' + CLOUD_URL + '):');
+      lines.push('  - [cloud] ' + CLOUD_PROJECT_ID + (CLOUD_OWNER_CODE ? ' (owner)' : ' (editor)'));
+    }
   }
   if (!projects.length && !CLOUD_MODE) {
     lines.push('No exported project .json files found in ' + PROJECT_DIR + '.');
     lines.push('Export one from the app (Settings → Export) and drop it here.');
     lines.push('Or set MMGR_MCP_CLOUD_URL + MMGR_MCP_OWNER_CODE + MMGR_MCP_CLOUD_PROJECT for cloud mode.');
   }
-  return toolResult(lines.join('\n'), { dir: PROJECT_DIR, projects, cloudMode: CLOUD_MODE, cloudProject: CLOUD_PROJECT_ID });
+  const cloudError = (cloud && cloud.ok === false) ? cloud.error : null;
+  return toolResult(lines.join('\n'), {
+    dir: PROJECT_DIR,
+    projects,
+    cloudMode: CLOUD_MODE,
+    cloudProject: CLOUD_PROJECT_ID,
+    cloudProjects: (cloud && cloud.ok) ? cloud.projects : null,
+    cloudError
+  });
 }
 
 async function getProjectOverviewTool(project) {
@@ -326,19 +421,20 @@ async function getChangelogTool(project) {
   if (!p.ok) return toolError(p.error);
   let entries = [];
   if (p._cloud) {
-    // Cloud mode: read from the MCP sidecar changelog
-    const sidecarFile = path.join(__dirname, 'projects', 'cloud-' + CLOUD_PROJECT_ID + '.mcp-changelog.json');
+    const sidecarProjectId = p.project ? p.project.projectId : CLOUD_PROJECT_ID;
+    const sidecarFile = path.join(__dirname, 'projects', 'cloud-' + sidecarProjectId + '.mcp-changelog.json');
     try { entries = JSON.parse(fs.readFileSync(sidecarFile, 'utf8')); } catch (e) { /* no entries yet */ }
   } else {
     const log = Changelog.loadChangelog(p.file);
     entries = log.entries || [];
   }
+  const sidecarProjectId = p.project ? p.project.projectId : CLOUD_PROJECT_ID;
   const text = entries.length
     ? 'MCP changelog (' + entries.length + ' entries):\n' + entries.slice().reverse().map(e =>
-        '- #' + e.id + ' [' + e.entry_type + '] ' + (e.section || '') + ' by ' + e.actor_label + ' @ ' + (e.created_at || e.created_at) +
+        '- #' + e.id + ' [' + e.entry_type + ']' + (e.projectId ? ' ' + e.projectId : '') + ' ' + (e.section || '') + ' by ' + e.actor_label + ' @ ' + (e.created_at || '') +
         (e.diffs_json && e.diffs_json.length ? ' — ' + e.diffs_json.length + ' field(s)' : '')).join('\n')
     : 'No MCP changes yet.';
-  return toolResult(text, { entries });
+  return toolResult(text, { entries, projectId: sidecarProjectId });
 }
 
 // ---- answer_question: local-first, cloud fallback ----
@@ -361,21 +457,25 @@ async function answerQuestionTool(project, question) {
   } catch (e) {
     return toolError('Cloud tier failed: ' + ((e && e.message) || 'unknown error') + ' — check MMGR_MCP_AI_KEY / MMGR_MCP_PROVIDER.');
   }
-}
-
-// ---- Cloud mode project resolver ----
-async function cloudPickProject() {
-  if (!CLOUD_MODE) return null;
-  const r = await CloudApi.cloudLoadProject(CLOUD_URL, CLOUD_PROJECT_ID, CLOUD_OWNER_CODE, CLOUD_EDITOR_CODE);
-  if (!r.ok) return { ok: false, error: 'cloud load failed: ' + r.error };
-  return { ok: true, state: r.state, _cloud: true };
-}
+}  // ---- Cloud mode project resolver ----
+  // cloudPickProject() is kept as a backward-compat helper for the single-project
+  // cloud mode, but most cloud tools now route through resolveProject() which can
+  // also pick a named cloud project from the discovered list.
+  async function cloudPickProject() {
+    if (!CLOUD_MODE) return null;
+    const r = await CloudApi.cloudLoadProject(CLOUD_URL, CLOUD_PROJECT_ID, CLOUD_OWNER_CODE, CLOUD_EDITOR_CODE);
+    if (!r.ok) return { ok: false, error: 'cloud load failed: ' + r.error };
+    return { ok: true, state: r.state, _cloud: true };
+  }
 
 // ---- New read tools for all project sections ----
 
 async function getResourcesTool(project) {
   const p = await resolveProject(project);
   if (!p.ok) return toolError(p.error);
+  if (p._cloud && p.project && p.project.accessRole === 'view') {
+    return toolResult('Read-only cloud access for ' + (p.project.name || p.project.projectId) + ' — this account can view, not write.', { viewOnly: true, projectId: p.project.projectId });
+  }
   const resources = p.state.resources || [];
   const text = resources.length
     ? resources.map(r => '- [' + (r.type || 'Labor') + '] ' + (r.name || '(unnamed)') + (r.role ? ' — ' + r.role : '') + ' (' + (r.availability || 100) + '% avail, $' + (r.rate || 0) + '/hr)').join('\n')
@@ -386,6 +486,9 @@ async function getResourcesTool(project) {
 async function getStakeholdersTool(project) {
   const p = await resolveProject(project);
   if (!p.ok) return toolError(p.error);
+  if (p._cloud && p.project && p.project.accessRole === 'view') {
+    return toolResult('Read-only cloud access for ' + (p.project.name || p.project.projectId) + ' — this account can view, not write.', { viewOnly: true, projectId: p.project.projectId });
+  }
   const stakeholders = p.state.stakeholders || [];
   const text = stakeholders.length
     ? stakeholders.map(s => '- ' + (s.name || '(unnamed)') + (s.role ? ' — ' + s.role : '') + ' [' + (s.influence || 'Medium') + ' influence, ' + (s.interest || 'Medium') + ' interest]' + (s.strategy ? ' (' + s.strategy + ')' : '')).join('\n')
@@ -902,11 +1005,13 @@ function humanPreview(ops, diffs) {
 
 async function proposeChangeTool(project, operations) {
   const gate = writeGate();
-  if (!gate.ok) return toolError(gate.error);
-  // Resolve project: local file or cloud API
+  if (!gate.ok) return toolError(gate.error);    // Resolve project: local file, configured single cloud project, or
+  // a cloud project chosen by id/name (cloudResolveProject).
   let p;
   if (CLOUD_MODE && (!project || project === CLOUD_PROJECT_ID)) {
     p = await cloudLoadState();
+  } else if (CLOUD_MODE && project) {
+    p = await cloudResolveProject(project);
   } else {
     p = pickProject(project);
   }
@@ -926,6 +1031,8 @@ async function proposeChangeTool(project, operations) {
   pending.set(token, {
     project: p._cloud ? null : p.file,
     _cloud: !!p._cloud,
+    _cloudProjectId: (p._cloud && p.project && p.project.projectId) ? p.project.projectId : null,
+    _cloudProjectLabel: (p._cloud && p.project && p.project.label) ? p.project.label : null,
     projectName: p.state.projectName || (p.state.charter && p.state.charter.name) || 'project',
     ops: v.ops,
     diffs,
@@ -962,20 +1069,24 @@ async function approveChangeTool(token) {
   if (!gate.ok) return toolError(gate.error);
   const t = takeToken(token);
   if (!t.ok) return toolError(t.error);
-  const proposal = t.proposal;
-
-  // ---- Load current state (local or cloud) ----
-  let before, currentState;
+  const proposal = t.proposal;    // ---- Load current state (local or cloud) ----
+  let before, currentState, projectForSave;
   if (proposal._cloud) {
-    // Cloud mode: re-fetch from the API and compare state hash
-    const fresh = await cloudLoadState();
-    if (!fresh.ok) return toolError('cloud reload failed: ' + fresh.error);
-    const freshHash = stateHash(fresh.state);
+    // Cloud mode: resolve the SAME project the proposal was staged against.
+    // If the proposal was staged against a specific cloud project id/name,
+    // honor that; otherwise fall back to the configured default cloud project.
+    // Use the project id stored when the proposal was staged
+    const target = proposal._cloudProjectId || proposal.projectId || CLOUD_PROJECT_ID;
+    if (!target) return toolError('no cloud project to apply this change to');
+    const resolved = await cloudResolveProject(target);
+    if (!resolved.ok) return toolError(resolved.error);
+    const freshHash = stateHash(resolved.state);
     if (proposal.beforeFingerprint && freshHash !== proposal.beforeFingerprint) {
       return toolError('cloud project changed since this change was proposed — propose it again against the current data');
     }
-    before = fresh.state;
-    currentState = fresh.state;
+    before = resolved.state;
+    currentState = resolved.state;
+    projectForSave = resolved.project;
   } else {
     // Local mode: stale-file guard via file fingerprint
     const nowFp = Store.fingerprint(proposal.project);
@@ -1000,7 +1111,9 @@ async function approveChangeTool(token) {
   // ---- Save (cloud or local) ----
   let saved;
   if (proposal._cloud) {
-    saved = await CloudApi.cloudSaveProject(CLOUD_URL, CLOUD_PROJECT_ID, after, CLOUD_OWNER_CODE, CLOUD_EDITOR_CODE);
+    const saveTarget = projectForSave || CLOUD_PROJECT_ID;
+    if (!saveTarget) return toolError('no cloud project to save this change to');
+    saved = await CloudApi.cloudSaveProject(CLOUD_URL, saveTarget, after, CLOUD_OWNER_CODE, CLOUD_EDITOR_CODE);
     if (!saved.ok) return toolError('cloud save failed: ' + saved.error);
   } else {
     // Pre-compute the changelog id so the pre-change backup carries the same id.
@@ -1021,9 +1134,12 @@ async function approveChangeTool(token) {
   let entry;
   if (proposal._cloud) {
     // Cloud mode: write changelog to a sidecar file next to the MCP server
-    // (the cloud project's changelog lives in D1, synced separately)
+    // (the cloud project's changelog lives in D1, synced separately).
+    // Use the project the change was actually applied to.
     const sidecarDir = path.join(__dirname, 'projects');
-    const sidecarFile = path.join(sidecarDir, 'cloud-' + CLOUD_PROJECT_ID + '.mcp-changelog.json');
+    const sidecarProjectId = projectForSave ? projectForSave.projectId : (proposal._cloudProjectId || proposal.projectId || CLOUD_PROJECT_ID);
+    const sidecarFile = path.join(sidecarDir, 'cloud-' + sidecarProjectId + '.mcp-changelog.json');
+    const sidecarProjectIdFinal = sidecarProjectId;
     let sidecarEntries = [];
     try { sidecarEntries = JSON.parse(fs.readFileSync(sidecarFile, 'utf8')); } catch (e) { /* new file */ }
     const entryId = sidecarEntries.length ? Math.max.apply(null, sidecarEntries.map(e => e.id)) + 1 : 1;
@@ -1032,6 +1148,7 @@ async function approveChangeTool(token) {
       entry_type: applied.diffs.length > 5 ? 'bulk' : 'edit',
       actor_type: 'owner',
       actor_label: 'mcp-ai',
+      projectId: sidecarProjectIdFinal,
       section,
       diffs_json: applied.diffs,
       created_at: new Date().toISOString()
@@ -1053,7 +1170,9 @@ async function approveChangeTool(token) {
   }
 
   // ---- Build response ----
-  const mode = proposal._cloud ? 'cloud (' + CLOUD_URL + '/' + CLOUD_PROJECT_ID + ')' : 'local (' + path.basename(proposal.project) + ')';
+  const mode = proposal._cloud
+    ? 'cloud (' + CLOUD_URL + '/' + (projectForSave ? projectForSave.projectId : CLOUD_PROJECT_ID) + ')'
+    : 'local (' + path.basename(proposal.project) + ')';
   const lines = [
     'CHANGE APPLIED (' + mode + ') — project "' + proposal.projectName + '" updated.',
     'Changelog entry #' + entry.id + ' (' + entry.entry_type + ', ' + applied.diffs.length + ' field(s)).',
@@ -1086,6 +1205,8 @@ async function revertChangeTool(project, entryId) {
   let p;
   if (CLOUD_MODE && (!project || project === CLOUD_PROJECT_ID)) {
     p = await cloudLoadState();
+  } else if (CLOUD_MODE && project) {
+    p = await cloudResolveProject(project);
   } else {
     p = pickProject(project);
   }
@@ -1094,8 +1215,11 @@ async function revertChangeTool(project, entryId) {
   // ---- Find the entry to revert ----
   let entry;
   if (p._cloud) {
-    // Cloud mode: read from the MCP sidecar changelog
-    const sidecarFile = path.join(__dirname, 'projects', 'cloud-' + CLOUD_PROJECT_ID + '.mcp-changelog.json');
+    // Cloud mode: read from the MCP sidecar changelog for the resolved
+    // project. If no explicit project was requested, fall back to the
+    // configured default.
+    const sidecarProjectId = p.project ? p.project.projectId : CLOUD_PROJECT_ID;
+    const sidecarFile = path.join(__dirname, 'projects', 'cloud-' + sidecarProjectId + '.mcp-changelog.json');
     let entries = [];
     try { entries = JSON.parse(fs.readFileSync(sidecarFile, 'utf8')); } catch (e) { return toolError('no MCP changelog found for this cloud project'); }
     entry = entries.find(e => e.id === Number(entryId));
@@ -1104,8 +1228,10 @@ async function revertChangeTool(project, entryId) {
     // Apply inverse diffs
     const reverted = Changelog.applyInverseDiffs(p.state, entry.diffs_json || []);
     const after = Store.stampLikeApp(reverted, p.state);
-    // Save to cloud
-    const saved = await CloudApi.cloudSaveProject(CLOUD_URL, CLOUD_PROJECT_ID, after, CLOUD_OWNER_CODE, CLOUD_EDITOR_CODE);
+    // Save to cloud using the project the revert is targeting.
+    const saveTarget = p.project ? p.project.projectId : CLOUD_PROJECT_ID;
+    if (!saveTarget) return toolError('no cloud project to revert on');
+    const saved = await CloudApi.cloudSaveProject(CLOUD_URL, saveTarget, after, CLOUD_OWNER_CODE, CLOUD_EDITOR_CODE);
     if (!saved.ok) return toolError('cloud save failed: ' + saved.error);
     // Log the revert in the sidecar
     const logId = entries.length ? Math.max.apply(null, entries.map(e => e.id)) + 1 : 1;
@@ -1151,87 +1277,87 @@ const TOOLS = [
   {
     name: 'mmgr_get_project_overview',
     description: 'One-line summary of a project: name, methodology, health score, EVM SPI/CPI, task counts, open risks/issues/changes, target completion.',
-    inputSchema: { type: 'object', properties: { project: { type: 'string', description: 'Exported .json file name (from mmgr_list_projects)' } }, additionalProperties: false }
+    inputSchema: { type: 'object', properties: { project: { type: 'string', description: 'Exported .json file name; or a cloud project id / partial name/label when MMGR_MCP_CLOUD_URL + a code is configured' } }, additionalProperties: false }
   },
   {
     name: 'mmgr_get_context',
     description: 'The full automatic project-context dump (Markdown, section-grouped, every line a real state field) — the same grounding payload the app\'s AI uses. Best single call before answering questions.',
-    inputSchema: { type: 'object', properties: { project: { type: 'string', description: 'Exported .json file name' } }, additionalProperties: false }
+    inputSchema: { type: 'object', properties: { project: { type: 'string', description: 'Exported .json file name; or a cloud project id / partial name/label when MMGR_MCP_CLOUD_URL + a code is configured' } }, additionalProperties: false }
   },
   {
     name: 'mmgr_get_tasks',
     description: 'List tasks, optionally filtered by status (todo|inprogress|blocked|completed) and limited in length.',
-    inputSchema: { type: 'object', properties: { project: { type: 'string' }, status: { type: 'string', enum: Validate.STATUS_ENUM.concat(['all']), description: 'Filter by status; "all" or omitted for every task' }, limit: { type: 'number', description: 'Max rows to return' } }, additionalProperties: false }
+    inputSchema: { type: 'object', properties: { project: { type: 'string', description: 'Exported .json file name; or a cloud project id / partial name/label when MMGR_MCP_CLOUD_URL + a code is configured' }, status: { type: 'string', enum: Validate.STATUS_ENUM.concat(['all']), description: 'Filter by status; "all" or omitted for every task' }, limit: { type: 'number', description: 'Max rows to return' } }, additionalProperties: false }
   },
   {
     name: 'mmgr_get_task',
     description: 'Get one task by id, with all its fields.',
-    inputSchema: { type: 'object', properties: { project: { type: 'string' }, id: { type: 'string' } }, required: ['id'], additionalProperties: false }
+    inputSchema: { type: 'object', properties: { project: { type: 'string', description: 'Exported .json file name; or a cloud project id / partial name/label when MMGR_MCP_CLOUD_URL + a code is configured' }, id: { type: 'string' } }, required: ['id'], additionalProperties: false }
   },
   {
     name: 'mmgr_get_risks',
     description: 'List open risks with probability/impact and mitigation.',
-    inputSchema: { type: 'object', properties: { project: { type: 'string' } }, additionalProperties: false }
+    inputSchema: { type: 'object', properties: { project: { type: 'string', description: 'Exported .json file name; or a cloud project id / partial name/label when MMGR_MCP_CLOUD_URL + a code is configured' } }, additionalProperties: false }
   },
   {
     name: 'mmgr_get_issues',
     description: 'List live (unresolved/unclosed) issues.',
-    inputSchema: { type: 'object', properties: { project: { type: 'string' } }, additionalProperties: false }
+    inputSchema: { type: 'object', properties: { project: { type: 'string', description: 'Exported .json file name; or a cloud project id / partial name/label when MMGR_MCP_CLOUD_URL + a code is configured' } }, additionalProperties: false }
   },
   {
     name: 'mmgr_get_budget',
     description: 'Budget lines with planned vs actual, plus the envelope.',
-    inputSchema: { type: 'object', properties: { project: { type: 'string' } }, additionalProperties: false }
+    inputSchema: { type: 'object', properties: { project: { type: 'string', description: 'Exported .json file name; or a cloud project id / partial name/label when MMGR_MCP_CLOUD_URL + a code is configured' } }, additionalProperties: false }
   },
   {
     name: 'mmgr_get_evm',
     description: 'Earned-value metrics: SPI, CPI, EV/PV/AC, BAC, EAC, VAC.',
-    inputSchema: { type: 'object', properties: { project: { type: 'string' } }, additionalProperties: false }
+    inputSchema: { type: 'object', properties: { project: { type: 'string', description: 'Exported .json file name; or a cloud project id / partial name/label when MMGR_MCP_CLOUD_URL + a code is configured' } }, additionalProperties: false }
   },
   {
     name: 'mmgr_get_health',
     description: 'The 5-factor health score with per-factor breakdown (completion/schedule/budget/risk/change).',
-    inputSchema: { type: 'object', properties: { project: { type: 'string' } }, additionalProperties: false }
+    inputSchema: { type: 'object', properties: { project: { type: 'string', description: 'Exported .json file name; or a cloud project id / partial name/label when MMGR_MCP_CLOUD_URL + a code is configured' } }, additionalProperties: false }
   },
   {
     name: 'mmgr_get_schedule_audit',
     description: 'Non-destructive schedule logic audit: end-before-start, parent-range violations, predecessor ordering.',
-    inputSchema: { type: 'object', properties: { project: { type: 'string' } }, additionalProperties: false }
+    inputSchema: { type: 'object', properties: { project: { type: 'string', description: 'Exported .json file name; or a cloud project id / partial name/label when MMGR_MCP_CLOUD_URL + a code is configured' } }, additionalProperties: false }
   },
   {
     name: 'mmgr_get_weather',
     description: 'Site, weather risk days in the forecast, and weather delay days logged.',
-    inputSchema: { type: 'object', properties: { project: { type: 'string' } }, additionalProperties: false }
+    inputSchema: { type: 'object', properties: { project: { type: 'string', description: 'Exported .json file name; or a cloud project id / partial name/label when MMGR_MCP_CLOUD_URL + a code is configured' } }, additionalProperties: false }
   },
   {
     name: 'mmgr_get_claim_slips',
     description: 'Schedule slips vs baseline with auto-assigned causes (weather/predecessor/other) — claim evidence.',
-    inputSchema: { type: 'object', properties: { project: { type: 'string' } }, additionalProperties: false }
+    inputSchema: { type: 'object', properties: { project: { type: 'string', description: 'Exported .json file name; or a cloud project id / partial name/label when MMGR_MCP_CLOUD_URL + a code is configured' } }, additionalProperties: false }
   },
   {
     name: 'mmgr_get_changelog',
     description: 'Read the MCP changelog for a project (every AI-made edit/revert, cloud-shaped entries).',
-    inputSchema: { type: 'object', properties: { project: { type: 'string' } }, additionalProperties: false }
+    inputSchema: { type: 'object', properties: { project: { type: 'string', description: 'Exported .json file name; or a cloud project id / partial name/label when MMGR_MCP_CLOUD_URL + a code is configured' } }, additionalProperties: false }
   },
   {
     name: 'mmgr_answer_question',
     description: 'Answer a question about the project. Uses the deterministic LOCAL engine first (completion, overdue, budget, risks, issues, critical path, EVM, weather, health) with zero-fabrication trace; questions the local engine cannot ground fall through to the CLOUD provider when MMGR_MCP_AI_KEY is configured.',
-    inputSchema: { type: 'object', properties: { project: { type: 'string' }, question: { type: 'string' } }, required: ['question'], additionalProperties: false }
+    inputSchema: { type: 'object', properties: { project: { type: 'string', description: 'Exported .json file name; or a cloud project id / partial name/label when MMGR_MCP_CLOUD_URL + a code is configured' }, question: { type: 'string' } }, required: ['question'], additionalProperties: false }
   },
   {
     name: 'mmgr_get_resources',
     description: 'List resources (labor, equipment, materials, subcontractors) with type, role, availability, and rate.',
-    inputSchema: { type: 'object', properties: { project: { type: 'string' } }, additionalProperties: false }
+    inputSchema: { type: 'object', properties: { project: { type: 'string', description: 'Exported .json file name; or a cloud project id / partial name/label when MMGR_MCP_CLOUD_URL + a code is configured' } }, additionalProperties: false }
   },
   {
     name: 'mmgr_get_stakeholders',
     description: 'List stakeholders with influence, interest, strategy, and contact info.',
-    inputSchema: { type: 'object', properties: { project: { type: 'string' } }, additionalProperties: false }
+    inputSchema: { type: 'object', properties: { project: { type: 'string', description: 'Exported .json file name; or a cloud project id / partial name/label when MMGR_MCP_CLOUD_URL + a code is configured' } }, additionalProperties: false }
   },
   {
     name: 'mmgr_get_meetings',
     description: 'List recent meetings (last 10) with kind, date, attendees, and minutes summary.',
-    inputSchema: { type: 'object', properties: { project: { type: 'string' } }, additionalProperties: false }
+    inputSchema: { type: 'object', properties: { project: { type: 'string', description: 'Exported .json file name; or a cloud project id / partial name/label when MMGR_MCP_CLOUD_URL + a code is configured' } }, additionalProperties: false }
   },
   {
     name: 'mmgr_get_decisions',
@@ -1241,41 +1367,46 @@ const TOOLS = [
   {
     name: 'mmgr_get_documents',
     description: 'List registered documents with type, name, and location.',
-    inputSchema: { type: 'object', properties: { project: { type: 'string' } }, additionalProperties: false }
+    inputSchema: { type: 'object', properties: { project: { type: 'string', description: 'Exported .json file name; or a cloud project id / partial name/label when MMGR_MCP_CLOUD_URL + a code is configured' } }, additionalProperties: false }
   },
   {
     name: 'mmgr_get_bids',
     description: 'List bid packages with budget, deadline, and line item count.',
-    inputSchema: { type: 'object', properties: { project: { type: 'string' } }, additionalProperties: false }
+    inputSchema: { type: 'object', properties: { project: { type: 'string', description: 'Exported .json file name; or a cloud project id / partial name/label when MMGR_MCP_CLOUD_URL + a code is configured' } }, additionalProperties: false }
   },
   {
     name: 'mmgr_get_closure',
     description: 'Project closure checklist status and lessons learned.',
-    inputSchema: { type: 'object', properties: { project: { type: 'string' } }, additionalProperties: false }
+    inputSchema: { type: 'object', properties: { project: { type: 'string', description: 'Exported .json file name; or a cloud project id / partial name/label when MMGR_MCP_CLOUD_URL + a code is configured' } }, additionalProperties: false }
   },
   {
     name: 'mmgr_get_sprint',
     description: 'Current sprint name, start, and end dates.',
-    inputSchema: { type: 'object', properties: { project: { type: 'string' } }, additionalProperties: false }
+    inputSchema: { type: 'object', properties: { project: { type: 'string', description: 'Exported .json file name; or a cloud project id / partial name/label when MMGR_MCP_CLOUD_URL + a code is configured' } }, additionalProperties: false }
   },
   {
     name: 'mmgr_get_dmaic',
     description: 'DMAIC quality methodology phase status with field completion counts.',
-    inputSchema: { type: 'object', properties: { project: { type: 'string' } }, additionalProperties: false }
+    inputSchema: { type: 'object', properties: { project: { type: 'string', description: 'Exported .json file name; or a cloud project id / partial name/label when MMGR_MCP_CLOUD_URL + a code is configured' } }, additionalProperties: false }
   },
   {
     name: 'mmgr_get_spend_log',
     description: 'Recent spend log entries with amounts, descriptions, and total.',
-    inputSchema: { type: 'object', properties: { project: { type: 'string' } }, additionalProperties: false }
+    inputSchema: { type: 'object', properties: { project: { type: 'string', description: 'Exported .json file name; or a cloud project id / partial name/label when MMGR_MCP_CLOUD_URL + a code is configured' } }, additionalProperties: false }
   },
   {
     name: 'mmgr_get_weather_log',
     description: 'Weather delay log with dates, delay days, reasons, and total.',
-    inputSchema: { type: 'object', properties: { project: { type: 'string' } }, additionalProperties: false }
+    inputSchema: { type: 'object', properties: { project: { type: 'string', description: 'Exported .json file name; or a cloud project id / partial name/label when MMGR_MCP_CLOUD_URL + a code is configured' } }, additionalProperties: false }
   },
   {
     name: 'mmgr_list_writable_fields',
     description: 'Introspect the write-operation catalog: every verb, its required fields, the whitelisted writable fields per record type, and the allowed enums. Read this before proposing any change.',
+    inputSchema: { type: 'object', properties: {}, additionalProperties: false }
+  },
+  {
+    name: 'mmgr_list_cloud_projects',
+    description: 'List the cloud projects reachable for the configured MCP account (owner code, editor code, or linked session). Call this first when an MCP client wants to discover which cloud projects exist before picking one to work with.',
     inputSchema: { type: 'object', properties: {}, additionalProperties: false }
   },
   {
@@ -1285,12 +1416,17 @@ const TOOLS = [
     inputSchema: {
       type: 'object',
       properties: {
-        project: { type: 'string', description: 'Exported .json file name' },
+        project: { type: 'string', description: 'Exported .json file name; or a cloud project id / partial name/label when MMGR_MCP_CLOUD_URL + a code is configured' },
         operations: { type: 'array', items: { type: 'object' }, description: 'Batch of validated write operations' }
       },
       required: ['operations'],
       additionalProperties: false
     }
+  },
+  {
+    name: 'mmgr_choose_cloud_project',
+    description: 'From the list returned by mmgr_list_cloud_projects, pick one cloud project by id or by a short partial name/label and return its live summary plus the exact cloud project id to pass to the other tools. Use this when a human refers to "the Riverwalk project" or "demo-riverwalk" instead of pasting a full project id.',
+    inputSchema: { type: 'object', properties: { query: { type: 'string', description: 'Cloud project id or a short partial name/label' } }, additionalProperties: false }
   },
   {
     name: 'mmgr_approve_change',
@@ -1305,7 +1441,7 @@ const TOOLS = [
   {
     name: 'mmgr_revert_change',
     description: 'Revert an MCP-AI change by changelog entry id. Restores the pre-change field values and logs a NEW revert changelog entry (history preserved). Only MCP-AI edits can be reverted this way.',
-    inputSchema: { type: 'object', properties: { project: { type: 'string' }, entryId: { type: 'number' } }, required: ['entryId'], additionalProperties: false }
+    inputSchema: { type: 'object', properties: { project: { type: 'string', description: 'Exported .json file name; or a cloud project id / partial name/label when MMGR_MCP_CLOUD_URL + a code is configured' }, entryId: { type: 'number' } }, required: ['entryId'], additionalProperties: false }
   }
 ];
 
@@ -1338,6 +1474,8 @@ async function handleCall(name, args) {
     case 'mmgr_get_dmaic': return getDmaicTool(args && args.project);
     case 'mmgr_get_spend_log': return getSpendLogTool(args && args.project);
     case 'mmgr_get_weather_log': return getWeatherLogTool(args && args.project);
+    case 'mmgr_list_cloud_projects': return listCloudProjectsTool();
+    case 'mmgr_choose_cloud_project': return chooseCloudProjectTool(args && args.query);
     case 'mmgr_list_writable_fields': return listWritableFieldsTool();
     case 'mmgr_propose_change': return proposeChangeTool(args && args.project, args && args.operations);
     case 'mmgr_approve_change': return approveChangeTool(args && args.token);
@@ -1408,7 +1546,7 @@ function main() {
       '',
       'Cloud mode (live project via Worker API):',
       '  MMGR_MCP_CLOUD_URL      Worker URL (e.g. https://my-manager.workers.dev)',
-      '  MMGR_MCP_CLOUD_PROJECT  cloud project ID to edit',
+      '  MMGR_MCP_CLOUD_PROJECT  default cloud project id (optional when a project arg is passed)',
       '  MMGR_MCP_OWNER_CODE     owner code for full access',
       '  MMGR_MCP_EDITOR_CODE    editor code for scoped access (alternative to owner)',
       '',
@@ -1416,7 +1554,13 @@ function main() {
       '  MMGR_MCP_AI_KEY         BYO cloud key for answer_question fallback (optional)',
       '  MMGR_MCP_PROVIDER       google-gemini | openai | anthropic (default ' + AI_PROVIDER + ')',
       '  MMGR_MCP_ALLOW_WRITES=1 enables the owner-approved write tools',
-      '  MMGR_MCP_TOKEN_TTL_MS   approval token TTL (default 600000)'
+      '  MMGR_MCP_TOKEN_TTL_MS   approval token TTL (default 600000)',
+      '',
+      'Cloud mode project selection:',
+      '  - mmgr_list_projects now lists every cloud project the configured code/session can reach, not just one.',
+      '  - Pass project="<id>" or project="partial name" to most tools to pick one of those projects.',
+      '  - When a project is ambiguous, the tool names the matches and asks for more specificity.',
+      '  - Write tools still stage against a specific cloud project id and refuse to clobber a changed cloud state.'
     ].join('\n') + '\n');
     process.exit(0);
   }

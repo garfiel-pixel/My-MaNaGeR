@@ -1002,6 +1002,37 @@ var MMGR = window.MMGR || {};
   // keep working against them wherever they live.
   function renderShare() { if (ns.CloudShare) ns.CloudShare.renderShare(); }
 
+  // OWNER 2026-09-07: MCP Server settings card in the Controls tab (#ctrl-mcp).
+  // Only rendered for cloud-linked projects (owner OR editor code held in the
+  // session). The MCP server is per-project and lets an AI client read/edit
+  // this project via structured tools (owner-code auth). The AI-side toggle
+  // (#ai-cfg-mcp) stays in the AI window; this card is the Controls-side
+  // settings surface with the server URL + Copy + status.
+  function renderMcp() {
+    const host = $('ctrl-mcp');
+    if (!host) return;
+    const code = getCode();
+    const ecode = getECode();
+    const linked = !!(code || ecode);
+    host.innerHTML = linked
+      ? (function() {
+          var mcpUrl = window.location.origin + '/api/mcp/' + encodeURIComponent(pid());
+          return '<div class="sr" style="margin-top:8px"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg> MCP Server</span></div>' +
+            '<div class="sr-hint">Connect external AI tools (Claude Desktop, Cursor, Windsurf) to this project via the Model Context Protocol. The AI can read your project data and suggest changes (which go through your review queue).</div>' +
+            '<div class="exp-row" style="flex-wrap:wrap;align-items:center;gap:8px">' +
+            '<input type="text" id="mcp-url" class="ctl-in" readonly style="flex:1;min-width:200px;font-family:ui-monospace,monospace;font-size:.72rem;letter-spacing:.02em;background:var(--tile-bg)" value="' + esc(mcpUrl) + '" aria-label="MCP Server URL">' +
+            '<button class="btn btn-n btn-s" data-action="mcpCopyUrl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy</button>' +
+            '</div>' +
+            '<div class="sr-hint" style="margin-top:4px">In your MCP client, add this server with: Authorization: Bearer &lt;your-owner-code&gt;</div>' +
+            '<div id="mcp-status" class="sr-hint" role="status" aria-live="polite"></div>';
+        })()
+      : '<div class="sr-hint">This project is not linked to the cloud , the MCP server is not available until a cloud link exists (Controls ▸ Share &amp; Access).</div>';
+    if (linked) {
+      var mcpUrlInput = $('mcp-url');
+      if (mcpUrlInput) mcpUrlInput.value = window.location.origin + '/api/mcp/' + encodeURIComponent(pid());
+    }
+  }
+
   // ---- IN-PROJECT DELETE (owner 2026-08-17) ------------------------------
   let _delBusy = false;
   // Settings > Controls > bottom (Danger Zone): the owner deletes THIS
@@ -1184,6 +1215,9 @@ var MMGR = window.MMGR || {};
     // The Controls-tab Share & Access card must mirror the same credential
     // state , render it alongside the cloud section on every render pass.
     renderShare();
+    // OWNER 2026-09-07: MCP Server settings card (Controls ▸ MCP Server),
+    // only for cloud-linked projects (owner or editor code held).
+    renderMcp();
     // IN-PROJECT DELETE: reveal the Danger Zone only while an owner code is
     // held (same render pass , one credential read, both surfaces).
     renderDangerZone();

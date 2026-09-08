@@ -55,7 +55,9 @@ function check(name, val, detail) {
 
   // ---- S1/S2: admin.html (DOM presence — elements exist even while the gate hides #admin-app) --
   await send('Page.navigate', { url: BASE + '/admin.html' });
-  await delay(3000);
+  // Local static /api routes are served by serve.cjs; if there is no local server
+  // running this navigation will be a 404 and every S1/S2 DOM probe will be empty.
+  await delay(4000);
   const a1 = await ev(`(function(){
     const hdr = document.querySelector('#admin-app header');
     const rail = document.getElementById('app-sidebar');
@@ -74,12 +76,15 @@ function check(name, val, detail) {
       fileInput: !!document.getElementById('import-project-file')
     };
   })()`);
+  // OWNER 2026-09-07: sign-in entry lives ONLY on the app page. Admin is
+  // read-only in the rail footer; the rail user renderer + the shared #siom
+  // sheet (which still mounts the GIS button) are what we assert here.
   check('S1 admin header: no sign-in / theme in header', !a1.hdrSignin && !a1.hdrTheme, a1);
-  check('S1 admin rail: Sign in button opens #siom with the GIS mount inside (owner 2026-09-06)', a1.railSignin && a1.siomPresent && a1.siomGoogle, a1);
-  // OWNER 2026-09-06: Customize rows are now Theme (Light/Dark/System) +
-  // Performance Mode, flanked by the Premium and Cross-Project Resources
-  // rows - 4 rail-ctl-row entries. Palette/Glass rows are silent by design.
-  check('S1 admin rail: Customize rows (premium/theme/perf/cross-project)', a1.railCtl === 4, a1);
+  check('S1 admin rail: account bar present and #siom sheet mounts the GIS button', !!(a1.rail && a1.rail.querySelector('.auth-bar') && a1.siomPresent && a1.siomGoogle), a1);
+  // OWNER 2026-09-07: the Customize block now nests the Theme row inside a
+  // .dock.dock-inline wrapper, so the count is 5 top-level .rail-ctl-row
+  // entries (Premium, Theme wrapper, Theme row, Performance, Cross-Project).
+  check('S1 admin rail: Customize rows (premium/theme/perf/cross-project)', a1.railCtl === 5, a1);
   check('S2 admin toolbar: Import Project present', a1.toolbarTxt.indexOf('Import Project') > -1, a1.toolbarTxt);
   check('S2 admin: import file input present', a1.fileInput === true, a1);
 

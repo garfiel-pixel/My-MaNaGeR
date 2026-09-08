@@ -65,7 +65,7 @@ var MMGR = window.MMGR || {};
     el.innerHTML = DMAIC_DEFS.map(ph => {
       const data = s.dmaic[ph.key] || {};
       const done = !!data.done;
-      return `<div class="card dmaic-card"><div class="card-title">${ph.title}<div class="dmaic-actions"><span class="badge ${done ? 'bg' : 'bs'}">${done ? 'Complete' : 'In Progress'}</span><button class="btn ${done ? 'btn-n' : 'btn-g'} btn-s" data-action="tglDMAICPhase" data-phase="${ph.key}">${done ? 'Reopen' : 'Mark Complete'}</button></div></div><div class="dmaic-hint">${ph.hint}</div><div class="charter-grid">${ph.fields.map(([f, lbl, sub]) => `<div class="cf-field full"><label class="cf-label">${lbl}</label><div class="cf-sub">${sub}</div><textarea class="cf-ta" data-action="updDMAIC" data-phase="${ph.key}" data-field="${f}">${(data[f] || '').replace(/</g, '&lt;')}</textarea></div>`).join('')}</div></div>`;
+      return `<div class="card dmaic-card"><div class="card-title">${ph.title}<div class="dmaic-actions"><span class="st-txt"><span class="sdot ${done ? 'g' : 'b'}"></span>${done ? 'Complete' : 'In Progress'}</span><button class="btn ${done ? 'btn-n' : 'btn-g'} btn-s" data-action="tglDMAICPhase" data-phase="${ph.key}">${done ? 'Reopen' : 'Mark Complete'}</button></div></div><div class="dmaic-hint">${ph.hint}</div><div class="charter-grid">${ph.fields.map(([f, lbl, sub]) => `<div class="cf-field full"><label class="cf-label">${lbl}</label><div class="cf-sub">${sub}</div><textarea class="cf-ta" data-action="updDMAIC" data-phase="${ph.key}" data-field="${f}">${(data[f] || '').replace(/</g, '&lt;')}</textarea></div>`).join('')}</div></div>`;
     }).join('');
   }
 

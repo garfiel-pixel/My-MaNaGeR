@@ -33,6 +33,9 @@ const APP_MODULES = [   // Core (loaded first - defines MMGR namespace + utiliti
   'js/mmgr-state.js',
   'js/mmgr-utils.js',
   'js/mmgr-net.js',
+  // Performance Mode (owner 2026-09-06): gates heavy layers; must load
+  // before mmgr-viewport.js / mmgr-dock.js read it.
+  'js/mmgr-perf.js',
   // Render sub-modules (loaded before mmgr-render.js which wraps them)
   'js/render/financials.js',
   'js/render/people.js',
@@ -120,6 +123,7 @@ const APP_LAUNCHER_MODULES = [
   'projects-data.js',
   'demo-data.js',
   'js/mmgr-utils.js',
+  'js/mmgr-perf.js',
   'js/app/components.js',
   'js/mmgr-portfolio.js',
   'js/mmgr-google-auth.js',
@@ -131,6 +135,7 @@ const APP_LAUNCHER_MODULES = [
 // ---- admin.html bundle ----
 const ADMIN_MODULES = [
   'js/mmgr-utils.js',
+  'js/mmgr-perf.js',
   'js/mmgr-viewport.js',
   'js/mmgr-glass.js',
 ];

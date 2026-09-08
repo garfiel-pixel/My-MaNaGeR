@@ -77,37 +77,38 @@ function contrast(a, b) {
     };
     await send('Page.enable');
 
-    // ---- V1/V2/V3/V7/V8 on app.html (launcher) ----
+    // ---- V1/V2/V3/V7/V8 on app.html ----
+    // OWNER 2026-09-06: the Palette/View dock rows are retired (silent by
+    // design). The engines remain pref-driven: gates seed the stored prefs
+    // and re-apply via the page's own boot/resize paths.
     await send('Page.navigate', { url: BASE + '/app.html' });
     await delay(3000);
     const v1 = await ev(`(function(){
       const dt = document.documentElement.getAttribute('data-theme');
-      const flat = document.querySelector('.dock [data-view="flat"]');
-      const three = document.querySelector('.dock [data-view="3d"]');
-      const gold = document.querySelector('.dock [data-palette="gold"]');
-      return { dataTheme: dt, flatPressed: flat && flat.getAttribute('aria-pressed'),
-        threePressed: three && three.getAttribute('aria-pressed'),
-        goldPressed: gold && gold.getAttribute('aria-pressed'),
+      return { dataTheme: dt,
+        dockHasTheme: !!document.querySelector('.dock [data-pal="light"]'),
+        dockHasPerf: !!document.querySelector('.dock #perf-tgl'),
+        dockHasPalette: !!document.querySelector('.dock [data-palette]'),
+        dockHasView: !!document.querySelector('.dock [data-view]'),
         view3d: document.body.classList.contains('view-3d'),
         deckExists: !!document.querySelector('.view-deck') };
     })()`);
-    check('V1 default: gold palette, Flat pressed, no data-theme, no view-3d',
-      v1.dataTheme === null && v1.flatPressed === 'true' && v1.goldPressed === 'true' && v1.threePressed === 'false' && !v1.view3d && v1.deckExists, v1);
+    check('V1 default: gold palette, flat, no data-theme, dock has Theme+Perf only (palette/view UI retired)',
+      v1.dataTheme === null && v1.dockHasTheme === true && v1.dockHasPerf === true && v1.dockHasPalette === false && v1.dockHasView === false && !v1.view3d && v1.deckExists, v1);
 
-    await ev(`(function(){ const b = document.querySelector('.dock [data-palette="rose"]'); if (b) b.click(); })()`);
-    await delay(350);
+    // V2 (pref-driven): stored rose palette applies silently at boot.
+    await send('Page.addScriptToEvaluateOnNewDocument', { source: `try{localStorage.setItem('mmgr_palette','rose');}catch(e){}` });
+    await send('Page.navigate', { url: BASE + '/app.html' });
+    await delay(3000);
     const v2 = await ev(`(function(){
       return { dataTheme: document.documentElement.getAttribute('data-theme'),
         stored: localStorage.getItem('mmgr_palette'),
-        rosePressed: document.querySelector('.dock [data-palette="rose"]').getAttribute('aria-pressed'),
         gold: getComputedStyle(document.documentElement).getPropertyValue('--gold').trim(),
         text: getComputedStyle(document.documentElement).getPropertyValue('--text').trim() };
     })()`);
-    // --gold is authored as hex (#FF6E52) in the rose block but some legacy
-    // surfaces use the rgb-triplet form; accept both representations.
     const coralOk = (s) => /#FF6E52/i.test(s) || /255\s*,\s*110\s*,\s*82/.test(s);
-    check('V2 Rose click: data-theme=rose-gold + persisted + pressed + coral/espresso tokens',
-      v2.dataTheme === 'rose-gold' && v2.stored === 'rose' && v2.rosePressed === 'true' && coralOk(v2.gold) && /#2E272C/i.test(v2.text), v2);
+    check('V2 stored rose pref: data-theme=rose-gold applied at boot (silent) + coral/espresso tokens',
+      v2.dataTheme === 'rose-gold' && v2.stored === 'rose' && coralOk(v2.gold) && /#2E272C/i.test(v2.text), v2);
 
     // Dark overrides are scoped to body.dark-mode, so dark token reads must
     // target body (custom-property values inherit downward, never up to root).
@@ -125,9 +126,16 @@ function contrast(a, b) {
     const v2b = await ev(`document.documentElement.getAttribute('data-theme')`);
     check('V2b reload keeps rose-gold', v2b === 'rose-gold', v2b);
 
-    // V3: switch to 3D (already rose) — tilt + blur-free deck + body flat.
-    await ev(`(function(){ const b = document.querySelector('.dock [data-view="3d"]'); if (b) b.click(); })()`);
-    await delay(600);
+    // V3 (pref-driven): stored 3d view tilts the deck. Both prefs are set
+    // on the LIVE page (a new-document script only affects future loads);
+    // perf goes 'off' so the tilt layer is allowed, then a resize tick
+    // re-applies through the page's own debounced applyView path.
+    await ev(`(function(){
+      try{localStorage.setItem('mmgr_perf_mode','off');}catch(e){}
+      try{localStorage.setItem('mmgr_view_mode','3d');}catch(e){}
+      window.dispatchEvent(new Event('resize'));
+    })()`);
+    await delay(900);
     const v3 = await ev(`(function(){
       const deck = document.querySelector('.view-deck');
       const cs = deck ? getComputedStyle(deck) : null;
@@ -138,11 +146,10 @@ function contrast(a, b) {
         stored: localStorage.getItem('mmgr_view_mode'),
         deckTr: cs ? cs.transform : null,
         deckBlur: cs ? cs.getPropertyValue('--glass-blur').trim() : null,
-        bodyTr: bodyTr, modalTr: modalTr,
-        pressed3d: document.querySelector('.dock [data-view="3d"]').getAttribute('aria-pressed') };
+        bodyTr: bodyTr, modalTr: modalTr };
     })()`);
-    const tilting = v3.view3d && v3.stored === '3d' && v3.deckTr && v3.deckTr !== 'none' && /matrix3d|perspective|rotate/.test(v3.deckTr) && v3.pressed3d === 'true';
-    check('V3 3D click: body.view-3d + deck tilted (matrix3d) + 3d stored + pressed', tilting, v3);
+    const tilting = v3.view3d && v3.stored === '3d' && v3.deckTr && v3.deckTr !== 'none' && /matrix3d|perspective|rotate/.test(v3.deckTr);
+    check('V3 stored 3d pref: body.view-3d + deck tilted (matrix3d)', tilting, v3);
     check('V3 WebKit blur-free tilt: deck --glass-blur is 0px while tilted', v3.view3d && v3.deckBlur === '0px', v3);
     check('V3 overlays stay flat: body + unlock modal have NO transform', v3.bodyTr === 'none' && (!v3.modalTr || v3.modalTr === 'none'), v3);
 
@@ -151,9 +158,9 @@ function contrast(a, b) {
     await delay(3000);
     const v4 = await ev(`(function(){
       return { view3d: document.body.classList.contains('view-3d'),
-        pressed3d: document.querySelector('.dock [data-view="3d"]').getAttribute('aria-pressed') };
+        stored: localStorage.getItem('mmgr_view_mode') };
     })()`);
-    check('V4 reload keeps 3D (class + pressed)', v4.view3d && v4.pressed3d === 'true', v4);
+    check('V4 reload keeps 3D (class + stored pref)', v4.view3d && v4.stored === '3d', v4);
 
     // V5: mobile auto-flat — stored 3d but 640px viewport.
     await send('Emulation.setDeviceMetricsOverride', { width: 640, height: 900, deviceScaleFactor: 1, mobile: false });

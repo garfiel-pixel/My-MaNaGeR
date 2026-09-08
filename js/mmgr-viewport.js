@@ -40,8 +40,11 @@ var MMGR = window.MMGR || {};
   // WebGL layer it was already spared by the layout logic. The glass mode
   // preference lives in the same device-level slot family as the viewport
   // prefs (localStorage, never project state).
-  //   'css'     -> CSS backdrop-filter glass (the universal default)
-  //   'premium' -> opt-in Three.js liquid-glass engine (capable devices only)
+  //   OWNER 2026-09-06: 'premium' is the DEFAULT on capable devices (the
+  //   starry liquid-glass background is part of the app's identity). There
+  //   is no UI toggle for it; Performance Mode (mmgr-perf.js) is the only
+  //   user-facing lever, and it trims CSS effects - the shader still runs.
+  //   A stored 'css' (legacy opt-out) is still respected.
   const GLASS_KEY = 'mmgr_glass_mode';
 
   // Hardware-capability floor (3.5.2): enough parallel cores AND a sane
@@ -64,15 +67,17 @@ var MMGR = window.MMGR || {};
   }
 
   function getGlassMode() {
-    try { return localStorage.getItem(GLASS_KEY) === 'premium' ? 'premium' : 'css'; }
-    catch (e) { return 'css'; }
+    // Default premium (owner 2026-09-06); legacy stored 'css' opts out.
+    try { return localStorage.getItem(GLASS_KEY) === 'css' ? 'css' : 'premium'; }
+    catch (e) { return 'premium'; }
   }
   function setGlassMode(mode) {
     try { localStorage.setItem(GLASS_KEY, mode === 'premium' ? 'premium' : 'css'); } catch (e) { /* ignore */ }
   }
-  // The single decision both consumers read. Premium requires: stored
-  // preference 'premium' AND capability floor AND a wide viewport (a narrow
-  // screen gets CSS glass + the simplified layout, never a heavy engine).
+  // The single decision both consumers read. Premium requires: capability
+  // floor AND a wide viewport AND no legacy opt-out. Performance Mode does
+  // NOT gate the shader (owner 2026-09-06: the starry glass is mandatory
+  // app-section identity; perf mode trims heavy CSS effects + 3D tilt).
   function effectiveGlassMode() {
     if (getGlassMode() !== 'premium') return 'css';
     if (!isHighEnd()) return 'css'; // capability floor overrides preference

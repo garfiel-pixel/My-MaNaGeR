@@ -50,6 +50,9 @@
         for (var i = 0; i < btns.length; i++) {
           btns[i].setAttribute('aria-pressed', btns[i].getAttribute('data-pal') === mode ? 'true' : 'false');
         }
+        // Text-dropdown pickers (owner 2026-09-07) mirror the same source.
+        var sels = document.querySelectorAll('select#theme-select');
+        for (var si = 0; si < sels.length; si++) { sels[si].value = mode; }
       }
     } catch (e) {}
     // Palette + View rows (Phase 3, owner D7/D9): aria-pressed mirrors the
@@ -85,6 +88,12 @@
     return readPref(PAL_KEY, 'gold') === 'rose' ? 'rose' : 'gold';
   }
   function viewAllowed() {
+    // Performance Mode on = heavy layers off (owner 2026-09-06): the 3D tilt
+    // is a GPU layer, so it yields to Performance Mode like the WebGL engine.
+    try {
+      var P = window.MMGR && window.MMGR.Perf ? window.MMGR.Perf : null;
+      if (P && P.blocksHeavyLayers && P.blocksHeavyLayers()) return false;
+    } catch (e) { /* Perf absent - fall through to the classic gates */ }
     try {
       var V = window.MMGR && window.MMGR.Viewport ? window.MMGR.Viewport : null;
       if (V && typeof V.isNarrow === 'function' && V.isNarrow()) return false;
@@ -122,7 +131,37 @@
     _rzT = setTimeout(function () { applyView(); }, 150); // debounce resize/orientation
   }
 
+  // ---- Performance Mode (owner 2026-09-06) ----
+  // One delegated listener serves every page's #perf-tgl (app rail, admin
+  // rail, project controls). The preference lives in js/mmgr-perf.js and
+  // gates the heavy layers inside Viewport.effectiveGlassMode() and
+  // viewAllowed() - no per-page action-map entry is needed, which keeps
+  // every page's inline scripts (and their CSP hashes) untouched.
+  document.addEventListener('change', function (e) {
+    // Theme text-dropdown (owner 2026-09-07): one listener serves every
+    // page's select#theme-select; MMGRTheme.setMode persists + pushes.
+    var t = e.target && e.target.id === 'theme-select' ? e.target : null;
+    if (t) {
+      try { if (window.MMGRTheme && window.MMGRTheme.setMode) window.MMGRTheme.setMode(t.value); } catch (err) {}
+      return;
+    }
+    t = e.target && e.target.id === 'perf-tgl' ? e.target : null;
+    if (!t) return;
+    try {
+      var P = window.MMGR && window.MMGR.Perf ? window.MMGR.Perf : null;
+      if (P && P.set) P.set(!!t.checked);
+    } catch (err) { /* preference write must never break the page */ }
+  });
+
   function boot() {
+    // Boot-state sync: every perf toggle reflects the stored preference.
+    try {
+      var P2 = window.MMGR && window.MMGR.Perf ? window.MMGR.Perf : null;
+      if (P2 && P2.isOn) {
+        var ts = document.querySelectorAll('#perf-tgl');
+        for (var pi = 0; pi < ts.length; pi++) ts[pi].checked = P2.isOn();
+      }
+    } catch (e) { /* Perf absent - toggles keep their markup default (on) */ }
     applyPalette(effectivePalette());
     applyView();
     sync();

@@ -476,17 +476,10 @@ var MMGR = window.MMGR || {};
   // it can never travel in the .json export). Never a popup or forced
   // prompt. The capability floor (Viewport.effectiveGlassMode) overrides the
   // stored preference: a low-end device stays on CSS glass no matter what.
-  function tglGlassMode() {
-    const tgl = U.$('glass-tgl');
-    const on = tgl ? tgl.checked : false;
-    if (ns.Viewport) ns.Viewport.setGlassMode(on ? 'premium' : 'css');
-    if (ns.Glass) ns.Glass.sync();
-    const effective = (ns.Viewport && ns.Viewport.effectiveGlassMode) ? ns.Viewport.effectiveGlassMode() : 'css';
-    showToast(on
-      ? (effective === 'premium' ? 'Premium visual mode on , liquid-glass backdrop active.' : 'Preference saved , this device uses CSS glass (capability floor).')
-      : 'Premium visual mode off , CSS glass stays on.',
-      effective === 'premium' ? 'ok' : 'warn');
-  }
+  // OWNER 2026-09-06: the Premium Glass toggle UI is retired - Performance
+  // Mode (mmgr-perf.js) is the single user-facing lever for heavy layers.
+  // The action stays mapped as a no-op so stale dispatches cannot error.
+  function tglGlassMode() {}
 
   // ---- THEME-SYSTEM-AND-MOBILE-UI-ACTION-PLAN §4.2: mobile nav drawer ----
   // Hamburger + scrim toggle body.nav-open, which slides the .sec-nav off-canvas
@@ -589,6 +582,25 @@ var MMGR = window.MMGR || {};
   }
   function syncDismissSuggest() {
     if (ns.Sync && ns.Sync.dismissSuggestion) ns.Sync.dismissSuggestion();
+  }
+
+  // OWNER 2026-09-06: #siom sign-in sheet helpers (sidebar-bottom Sign in
+  // row). Mirrors app.html's openSignIn/closeSignIn; GIS re-renders on open
+  // because a button drawn while the sheet is hidden comes out 0x0.
+  function openSignInModal() {
+    const m = U.$('siom');
+    if (!m) return;
+    m.classList.add('open');
+    try {
+      const G = ns.GoogleAuth;
+      if (G && G.ensureGisButton) G.ensureGisButton();
+    } catch (e) { /* GIS quirk - the fallback button still shows */ }
+    const f = m.querySelector('.email-auth-input');
+    if (f && f.focus) { try { f.focus(); } catch (e) {} }
+  }
+  function closeSignInModal() {
+    const m = U.$('siom');
+    if (m) m.classList.remove('open');
   }
 
   function tglCh() {
@@ -1347,6 +1359,8 @@ var MMGR = window.MMGR || {};
     syncSignOut: syncSignOut,
     syncClientId: syncClientId,
     syncDismissSuggest: syncDismissSuggest,
+    openSignInModal: openSignInModal,
+    closeSignInModal: closeSignInModal,
     swMeth: swMeth,
     showSec: showSec,
     tglFocusMode: tglFocusMode,
@@ -1756,6 +1770,10 @@ window.MMGR = MMGR;
     'syncSignOut': () => window.MMGR.App.syncSignOut(),
     'syncClientId': (el) => window.MMGR.App.syncClientId(el),
     'syncDismissSuggest': () => window.MMGR.App.syncDismissSuggest(),
+    // OWNER 2026-09-06: sidebar-bottom sign-in. Opens the #siom sheet
+    // (the GIS prompt stays a fallback); closeSignIn closes it.
+    'openSignIn': () => window.MMGR.App.openSignInModal(),
+    'closeSignIn': () => window.MMGR.App.closeSignInModal(),
     // GOOGLE-DRIVE-BACKUP: optional Drive backup/restore controls in the
     // Controls drawer (project.html). Backup is export-equivalent (reads the
     // workspace, writes Drive + a device pref), restore is import-equivalent
@@ -1871,6 +1889,10 @@ window.MMGR = MMGR;
     // Settings panel
     'setUserName': (el) => window.MMGR.App.setUserName(el.value),
     'tglTheme': (el) => { window.MMGR.App.tglTheme(); },
+    // Performance Mode toggle (owner 2026-09-06): trims heavy CSS blur/shadow
+    // layers + 3D tilt. Mirrors mmgr-perf.js which owns the localStorage slot
+    // and the [data-perf] attribute on <html>. Safe in view-only (device pref).
+    'tglPerfMode': (el) => { const P = window.MMGR.Perf; if (P && P.set) P.set(el.checked); },
     'tglCh': (el) => { window.MMGR.App.tglCh(); },
     'tglFlag': (el) => window.MMGR.App.tglFlag(el),
     'clearErrorLog': () => window.MMGR.App.clearErrorLog(),
@@ -2044,6 +2066,9 @@ window.MMGR = MMGR;
   // views, report generation). Everything else is refused with a toast.
   const READONLY_SAFE_ACTIONS = {
     'showSec': 1, 'cpAllPage': 1, 'print': 1, 'openDrw': 1, 'closeDrw': 1,
+    // OWNER 2026-09-06: the sign-in sheet is identity UI, never project
+    // state - safe in view-only mode (same reasoning as syncConnect).
+    'openSignIn': 1, 'closeSignIn': 1,
     // T8 bids rebuild: opening a proposal link / composing a clarification
     // email and dismissing the Add Bid Package modal never mutate state.
     'bidProposal': 1, 'bidClarify': 1, 'closeBidPkg': 1, 'closeBidPkgBg': 1,
@@ -2089,6 +2114,9 @@ window.MMGR = MMGR;
     // Rank 3.5: glass preference is a device-level screen choice, not
     // project state , allowed in view-only like the viewport prefs.
     'tglGlassMode': 1,
+    // OWNER 2026-09-06: Performance Mode is a device-level screen choice, not
+    // project state , allowed in view-only like glass mode + theme.
+    'tglPerfMode': 1,
     // Theme-persistence: the theme preference is a device-level choice too
     // (localStorage mmgr_theme, the same slot the launcher + admin read) , 
     // allowed in view-only like glass mode. tglTheme writes only the device
@@ -2109,6 +2137,7 @@ window.MMGR = MMGR;
     // Rank 4.5: Google identity is a device-level label, never a gate to
     // project data , signing in/out/dismissing never mutates project state.
     'syncConnect': 1, 'syncSignOut': 1, 'syncClientId': 1, 'syncDismissSuggest': 1,
+    'openSignIn': 1, 'closeSignIn': 1,
     // GOOGLE-DRIVE-BACKUP: backup is export-equivalent (reads the workspace,
     // writes Drive + a device pref) and the auto-interval + backup passphrase
     // are device-level preferences (localStorage / sessionStorage, never

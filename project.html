@@ -13,8 +13,8 @@
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#D4AF37">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="mobile-web-app-capable" content="yes"><link rel="icon" type="image/png" href="primary-icon.png">
-  <link rel="apple-touch-icon" href="primary-icon.png">
+<meta name="mobile-web-app-capable" content="yes"><link rel="icon" type="image/png" href="images/site-icon.png">
+  <link rel="apple-touch-icon" href="images/site-icon.png">
 <link rel="stylesheet" href="dist/mmgr.min.css">
 <!--
   Content Security Policy:
@@ -57,7 +57,7 @@
       clicks "Connect Google" in Settings > Controls. It is a device label,
       never a gate , offline/CSP-blocked loads degrade to a toast.
 -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' 'sha256-xxa9/PuVrm+Taxz+xZPm96NYiSKIHPHZLX8VCKQnrXk=' 'sha256-reza4vd5o52LWNUf9lzK6WjApdstd5sm4xVx+lcnK2M=' 'sha256-fZj+K4D/n2Fz67m33j21zMWZd9D930ZNnzz/+s9xem0=' 'sha256-SOdsdeUaBMC/g/FSW5vXZk+K1tRpA9U5QM/9rJa1RLs=' https://accounts.google.com https://unpkg.com; style-src 'self' 'unsafe-inline' https://accounts.google.com https://fonts.googleapis.com; img-src 'self' data: blob: https://lh3.googleusercontent.com https://*.googleusercontent.com; font-src 'self' data:; connect-src 'self' https://api.open-meteo.com https://geocoding-api.open-meteo.com https://api.openai.com https://api.anthropic.com https://generativelanguage.googleapis.com https://github.com https://release-assets.githubusercontent.com https://accounts.google.com https://huggingface.co https://*.cdn.hf.co; frame-src https://accounts.google.com; base-uri 'self'; form-action 'self';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self';script-src 'self' 'wasm-unsafe-eval' https://static.cloudflareinsights.com https://accounts.google.com https://unpkg.com 'sha256-xxa9/PuVrm+Taxz+xZPm96NYiSKIHPHZLX8VCKQnrXk=' 'sha256-reza4vd5o52LWNUf9lzK6WjApdstd5sm4xVx+lcnK2M=' 'sha256-fZj+K4D/n2Fz67m33j21zMWZd9D930ZNnzz/+s9xem0=' 'sha256-0o7BYw2SxyFtT+b7IJxUzlNQqsxJErFObzcGMPKxSp0='; style-src 'self' 'unsafe-inline' https://accounts.google.com https://fonts.googleapis.com; img-src 'self' data: blob: https://lh3.googleusercontent.com https://*.googleusercontent.com; font-src 'self' data:; connect-src 'self' https://api.open-meteo.com https://geocoding-api.open-meteo.com https://api.openai.com https://api.anthropic.com https://generativelanguage.googleapis.com https://github.com https://release-assets.githubusercontent.com https://accounts.google.com https://huggingface.co https://*.cdn.hf.co; frame-src https://accounts.google.com; base-uri 'self'; form-action 'self';">
 <script>
 /* Device-level theme (shared across launcher, admin, and app): applied before
    first paint from the same localStorage slot every theme toggle writes, so a
@@ -1112,7 +1112,15 @@
          content takes the full screen, and the header hamburger reopens it. -->
     <button type="button" class="sb-close" data-action="tglSidebarOpen" aria-label="Close menu" title="Close menu"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-menu"></use></svg></button>
   </div>
+  <!-- OWNER 2026-09-07: sign-in lives ONLY on the app page. Inside a
+       project the sidebar shows the synced read-only account state
+       ("Not signed in" or the account name) with no entry point. -->
+  <div class="db-user sb-user" id="sb-user"></div>
 </aside>
+
+<!-- OWNER 2026-09-07: the #siom sign-in sheet was removed from this page.
+     Sign-in lives ONLY on the app page (/app); the project sidebar shows
+     the synced read-only account state (see #sb-user above). -->
 
 <!-- AI Assistant (parallel track) , floating entry point + modal.
      Preset prompts, free-form question, automatic project-context dump.
@@ -1392,31 +1400,20 @@
     </div>
 
     <div class="ctl-sec"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-palette"></use></svg> Appearance</div>
-    <div class="dock dock-inline" role="group" aria-label="Appearance controls">
+    <div class="dock dock-inline dock-bare" role="group" aria-label="Appearance controls">
       <div class="sr">
-        <span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-moon"></use></svg> Theme</span>
-        <span class="pal-switch" role="group" aria-label="Theme mode">
-          <button type="button" class="pal-btn" data-pal="light" aria-pressed="false">Light</button>
-          <button type="button" class="pal-btn" data-pal="dark" aria-pressed="false">Dark</button>
-          <button type="button" class="pal-btn" data-pal="system" aria-pressed="false">System</button>
-        </span>
+        <span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-moon"></use></svg><label class="sr-only" for="theme-select">Theme</label><select id="theme-select" class="theme-select" aria-label="Theme mode"><option value="light">Light</option><option value="dark">Dark</option><option value="system">System</option></select></span>
       </div>
       <div class="sr">
-        <span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-palette"></use></svg> Palette</span>
-        <span class="pal-switch" role="group" aria-label="Palette">
-          <button type="button" class="pal-btn" data-palette="rose" aria-pressed="true">Rose Gold</button>
-        </span>
-        <span class="pal-hint">Rose Gold is on — Gold is off</span>
+        <span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-zap"></use></svg> Performance Mode</span>
+        <label class="tgl"><input type="checkbox" id="perf-tgl" aria-label="Performance Mode: lighter UI effects" data-action="tglPerfMode" checked><span class="tsl"></span></label>
       </div>
       <div class="sr" hidden>
         <span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cube"></use></svg> Dynamic View</span>
         <span class="pal-hint">This project stays flat. Dynamic view is only on the dashboard.</span>
       </div>
-      <div class="sr" hidden><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-orb"></use></svg> Premium Visual Mode</span><label class="tgl"><input type="checkbox" data-action="tglGlassMode" aria-label="Toggle premium liquid-glass backdrop"><span class="tsl"></span></label></div>
     </div>
     <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-crosshair"></use></svg> Crosshair Cursor</span><label class="tgl"><input type="checkbox" id="ch-tgl" aria-label="Crosshair Cursor" data-action="tglCh"><span class="tsl"></span></label></div>
-    <div class="sr" hidden><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-orb"></use></svg> Premium Visual Mode</span><label class="tgl"><input type="checkbox" id="glass-tgl" aria-label="Premium Visual Mode" data-action="tglGlassMode"><span class="tsl"></span></label></div>
-    <div class="sr-hint" hidden>Premium visual mode , uses more graphics power (WebGL liquid-glass backdrop). Off by default; requires a capable device. CSS glass is the universal default for everyone else.</div>
     <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-calculator"></use></svg> Calculator</span><button class="btn btn-n btn-s" data-action="toggleCalc" title="Open calculator (Ctrl+Shift+C)"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-calculator"></use></svg> Open</button></div>
     <div class="sr-hint">Floating calculator for quick math. Toggle with Ctrl+Shift+C or this button.</div>
 
@@ -1430,6 +1427,13 @@
     <!-- PLAN-OF-ACTION-AI-VOICE-SYNC-v1 4.5: optional Google identity for
          sync , never gating. Rendered by js/mmgr-sync.js into this slot. -->
     <div id="sync-section"></div>
+
+    <!-- MCP SERVER (owner 2026-09-07): settings for the per-project MCP server.
+         Only shown for cloud-linked projects (projects with an Internet connection).
+         The MCP server lets an AI client read/edit this project via structured tools.
+         Toggle connects/disconnects the AI from this project's live data. -->
+    <div class="ctl-sec" id="ctrl-mcp-sec"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg> MCP Server</div>
+    <div id="ctrl-mcp"></div>
     <div class="sr-hint">Sync identity is 100% optional , the app works forever without an account. JSON export/import is the guaranteed sync path on every device, signed in or not.</div>
     <!-- GOOGLE-DRIVE-BACKUP: optional Drive backup/restore controls , never
          gating. Rendered by js/mmgr-google-auth.js into this slot. -->
@@ -1836,6 +1840,63 @@ if ('serviceWorker' in navigator &&
     });
   });
 }
+
+// OWNER 2026-09-06: sidebar-bottom account area (#sb-user) + #siom sheet.
+// Signed out = plain Sign in button (markup default); signed in = name +
+// Sign out. The sheet closes on sign-in (user-changed) and sign-out.
+(function(){
+  function escapeAccountText(s){
+    return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+  function renderSbUser(user){
+    var area = document.getElementById('sb-user');
+    if (!area) return;
+    if (!user){
+      // OWNER 2026-09-07: read-only synced state - no sign-in entry here.
+      area.innerHTML = '<span class="db-user-name is-out"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-user"></use></svg> Not signed in</span>';
+      return;
+    }
+    var name = user.name || user.email || 'Operator';
+    var title = user.email ? escapeAccountText(user.email) : escapeAccountText(name);
+    area.innerHTML = '<span class="db-user-name" title="' + title + '"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-user"></use></svg> ' + escapeAccountText(name) + '</span>' +
+      '<button type="button" class="db-signout" data-action="accountSignOut">Sign out</button>';
+  }
+  document.addEventListener('click', function(e){
+    var t = e.target && e.target.closest ? e.target.closest('[data-action="accountSignOut"]') : null;
+    if (!t) return;
+    e.preventDefault();
+    var G = window.MMGR && MMGR.GoogleAuth;
+    if (G && G.signOut) G.signOut();
+  });
+  document.addEventListener('mmgr:user-changed', function(e){
+    renderSbUser(e && e.detail);
+    var m = document.getElementById('siom');
+    if (m && e && e.detail && m.classList.contains('open')) {
+      if (window.MMGR && MMGR.App && MMGR.App.closeSignInModal) MMGR.App.closeSignInModal();
+    }
+  });
+  document.addEventListener('mmgr:google-signed-out', function(){ renderSbUser(null); });
+  // Restore the session state once GoogleAuth is up (deferred script).
+  var tries = 0;
+  var t = setInterval(function(){
+    var G = window.MMGR && MMGR.GoogleAuth;
+    if (G){
+      clearInterval(t);
+      try { renderSbUser(G.isSignedIn() ? G.getUser() : null); } catch(e){}
+    } else if (++tries > 40) clearInterval(t);
+  }, 250);
+  // Backdrop click + Escape close the sheet.
+  var siom = document.getElementById('siom');
+  if (siom && !siom._bdBound){
+    siom._bdBound = true;
+    siom.addEventListener('click', function(e){
+      if (e.target && e.target.id === 'siom' && window.MMGR && MMGR.App && MMGR.App.closeSignInModal) MMGR.App.closeSignInModal();
+    });
+  }
+  document.addEventListener('keydown', function(e){
+    if (e.key === 'Escape' && siom && siom.classList.contains('open') && window.MMGR && MMGR.App && MMGR.App.closeSignInModal) MMGR.App.closeSignInModal();
+  });
+})();
 </script>
 
 

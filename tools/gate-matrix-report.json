@@ -6,122 +6,122 @@
       "combo": "app-light-css",
       "glass": "css",
       "theme": "light",
-      "screen": "clicked-locked-card",
-      "worstContrast": 4.6,
+      "screen": "locked-param (app.html?locked=qa-gate-seed)",
+      "worstContrast": null,
       "errors": 0,
       "warnings": 0,
-      "gate": "mb",
-      "broken": false,
-      "verdict": "OK"
+      "gate": null,
+      "broken": true,
+      "verdict": "NO-GATE-FOUND"
     },
     {
       "combo": "app-dark-css",
       "glass": "css",
       "theme": "dark",
-      "screen": "clicked-locked-card",
-      "worstContrast": 9.22,
+      "screen": "locked-param (app.html?locked=qa-gate-seed)",
+      "worstContrast": null,
       "errors": 0,
       "warnings": 0,
-      "gate": "mb",
-      "broken": false,
-      "verdict": "OK"
+      "gate": null,
+      "broken": true,
+      "verdict": "NO-GATE-FOUND | DARK-NOT-APPLIED"
     },
     {
       "combo": "app-light-premium",
       "glass": "premium",
       "theme": "light",
-      "screen": "clicked-locked-card",
-      "worstContrast": 9.22,
+      "screen": "locked-param (app.html?locked=qa-gate-seed)",
+      "worstContrast": null,
       "errors": 0,
       "warnings": 0,
-      "gate": "mb",
-      "broken": false,
-      "verdict": "OK"
+      "gate": null,
+      "broken": true,
+      "verdict": "NO-GATE-FOUND"
     },
     {
       "combo": "app-dark-premium",
       "glass": "premium",
       "theme": "dark",
-      "screen": "clicked-locked-card",
-      "worstContrast": 9.22,
+      "screen": "locked-param (app.html?locked=qa-gate-seed)",
+      "worstContrast": null,
       "errors": 0,
       "warnings": 0,
-      "gate": "mb",
-      "broken": false,
-      "verdict": "OK"
+      "gate": null,
+      "broken": true,
+      "verdict": "NO-GATE-FOUND | DARK-NOT-APPLIED"
     },
     {
       "combo": "admin-setup-light-css",
       "glass": "css",
       "theme": "light",
       "screen": "n/a",
-      "worstContrast": 4.16,
+      "worstContrast": null,
       "errors": 0,
       "warnings": 0,
-      "gate": "gbox",
-      "broken": false,
-      "verdict": "OK"
+      "gate": null,
+      "broken": true,
+      "verdict": "NO-GATE-FOUND"
     },
     {
       "combo": "admin-setup-dark-css",
       "glass": "css",
       "theme": "dark",
       "screen": "n/a",
-      "worstContrast": 4.16,
+      "worstContrast": null,
       "errors": 0,
       "warnings": 0,
-      "gate": "gbox",
-      "broken": false,
-      "verdict": "OK"
+      "gate": null,
+      "broken": true,
+      "verdict": "NO-GATE-FOUND | DARK-NOT-APPLIED"
     },
     {
       "combo": "admin-setup-light-premium",
       "glass": "premium",
       "theme": "light",
       "screen": "n/a",
-      "worstContrast": 4.16,
+      "worstContrast": null,
       "errors": 0,
       "warnings": 0,
-      "gate": "gbox",
-      "broken": false,
-      "verdict": "OK"
+      "gate": null,
+      "broken": true,
+      "verdict": "NO-GATE-FOUND"
     },
     {
       "combo": "admin-setup-dark-premium",
       "glass": "premium",
       "theme": "dark",
       "screen": "n/a",
-      "worstContrast": 4.16,
+      "worstContrast": null,
       "errors": 0,
       "warnings": 0,
-      "gate": "gbox",
-      "broken": false,
-      "verdict": "OK"
+      "gate": null,
+      "broken": true,
+      "verdict": "NO-GATE-FOUND | DARK-NOT-APPLIED"
     },
     {
       "combo": "admin-login-light-css",
       "glass": "css",
       "theme": "light",
       "screen": "n/a",
-      "worstContrast": 4.16,
+      "worstContrast": null,
       "errors": 0,
       "warnings": 0,
-      "gate": "gbox",
-      "broken": false,
-      "verdict": "OK"
+      "gate": null,
+      "broken": true,
+      "verdict": "NO-GATE-FOUND"
     },
     {
       "combo": "admin-login-dark-premium",
       "glass": "premium",
       "theme": "dark",
       "screen": "n/a",
-      "worstContrast": 4.16,
+      "worstContrast": null,
       "errors": 0,
       "warnings": 0,
-      "gate": "gbox",
-      "broken": false,
-      "verdict": "OK"
+      "gate": null,
+      "broken": true,
+      "verdict": "NO-GATE-FOUND | DARK-NOT-APPLIED"
     }
   ],
-  "anyBroken": false
+  "anyBroken": true
 }

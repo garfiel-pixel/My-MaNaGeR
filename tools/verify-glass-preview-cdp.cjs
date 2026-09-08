@@ -106,6 +106,7 @@ async function waitForPageTarget() {
   // G1 — premium engine boots on the launcher.
   let idx = await navigate(`
     try{localStorage.setItem('mmgr_glass_mode','premium');}catch(e){}
+    try{localStorage.setItem('mmgr_perf_mode','off');}catch(e){}
     try{window.__mmgrForceHighEnd=true;}catch(e){}
   `);
   await sleep(7000); // CDN fetch + first frames
@@ -113,19 +114,22 @@ async function waitForPageTarget() {
   out.push({ scenario: 'G1-launcher-premium-boot', result: g1, errors: issues.slice(idx) });
   console.log('SCENARIO G1-launcher-premium-boot: ' + JSON.stringify(g1));
 
-  // G2 — launcher toggle tears the engine down.
+  // G2 — the stored 'css' opt-out still works (OWNER 2026-09-06: the glass
+  // toggle UI is retired - premium is the DEFAULT on capable devices and the
+  // only remaining control is the legacy stored preference, which must stay
+  // honored). Fresh page seeded with mmgr_glass_mode='css': engine inert.
   const g2start = issues.length;
-  // NOTE 2026-09-05 (owner): premium glass is now app-only, and the
-  // launcher's glass toggle is the one remaining UI control for it.
-  // This G2 step probes that toggle path exists and flips something;
-  // it does NOT hard-claim the engine tears down here, because the
-  // premium path is app-only and the toggle behavior is the thing
-  // under test, not a rigid tear-down contract.
-  const g2Click = await evaluate(`(function(){ var g=document.querySelector('[data-action="tglGlassMode"]'); if(!g) return 'no-toggle'; g.click(); return true; })()`);
-  await sleep(1200);
+  const pre2 = await send('Page.addScriptToEvaluateOnNewDocument', { source: `
+    try{localStorage.setItem('mmgr_glass_mode','css');}catch(e){}
+    try{window.__mmgrForceHighEnd=true;}catch(e){}
+  ` });
+  await send('Page.navigate', { url: BASE + '/app.html' });
+  await sleep(3000);
   const g2 = JSON.parse(await state());
-  out.push({ scenario: 'G2-launcher-toggle-off', click: g2Click, result: g2, errors: issues.slice(g2start) });
-  console.log('SCENARIO G2-launcher-toggle-off: click=' + g2Click + ' result=' + JSON.stringify(g2));
+  g2.pref = await evaluate(`localStorage.getItem('mmgr_glass_mode')`);
+  await send('Page.removeScriptToEvaluateOnNewDocument', { identifier: pre2.identifier });
+  out.push({ scenario: 'G2-stored-css-optout', result: g2, errors: issues.slice(g2start) });
+  console.log('SCENARIO G2-stored-css-optout: result=' + JSON.stringify(g2));
 
   // G3 — the shared bottom dock drives the engine on the admin gate (fresh
   // page, setup screen). Each scenario seeds its own prefs: cross-file://
@@ -133,16 +137,19 @@ async function waitForPageTarget() {
   const g3start = issues.length;
   const pre3 = await send('Page.addScriptToEvaluateOnNewDocument', { source: `
     try{localStorage.setItem('mmgr_glass_mode','premium');}catch(e){}
+    try{localStorage.setItem('mmgr_perf_mode','off');}catch(e){}
     try{window.__mmgrForceHighEnd=true;}catch(e){}
   ` });
   await send('Page.navigate', { url: BASE + '/admin.html' });
   await sleep(3000);
   const g3before = JSON.parse(await evaluate(`(function(){ return JSON.stringify({
-    dockVisible: (function(){ var d=document.getElementById('app-dock'); return !!d && getComputedStyle(d).display !== 'none'; })(),
+    // OWNER 2026-09-06: the floating #app-dock is retired - appearance
+    // controls live in each page's sidebar Customize accordion (.dock-inline).
+    dockInlinePresent: !!document.querySelector('.dock.dock-inline'),
     dockHasTheme: !!document.querySelector('.dock .pal-btn[data-pal]'),
     dockHasGlass: !!document.querySelector('.dock [data-action="tglGlassMode"]'),
+    dockHasPerf: !!document.querySelector('.dock [data-action="tglPerfMode"]'),
     setupScreen: !document.getElementById('setup-screen').classList.contains('hidden'),
-    glassChecked: (function(){ var g=document.querySelector('.dock [data-action="tglGlassMode"]'); return g ? g.checked : null; })(),
     pref: localStorage.getItem('mmgr_glass_mode')
   }); })()`));
   await sleep(5000); // engine boot (CDN fetch + first frames)
@@ -151,7 +158,7 @@ async function waitForPageTarget() {
     canvas: !!document.getElementById('glass-canvas'),
     gateAbove: (function(){ var w=document.querySelector('.gatewrap'); if(!w) return null; var s=getComputedStyle(w); return {pos:s.position, z:s.zIndex}; })()
   }); })()`));
-  await evaluate(`(function(){ var g=document.querySelector('.dock [data-action="tglGlassMode"]'); if(g) g.click(); return true; })()`);
+  await evaluate(`(function(){ var g=document.querySelector('.dock [data-action="tglGlassMode"]'); if(g) g.click(); return 'clicked'; })()`);
   await sleep(1200);
   const g3after = JSON.parse(await evaluate(`(function(){ return JSON.stringify({
     glassClass: document.body.classList.contains('glass-premium'),
@@ -160,22 +167,23 @@ async function waitForPageTarget() {
   }); })()`));
   await send('Page.removeScriptToEvaluateOnNewDocument', { identifier: pre3.identifier });
   out.push({ scenario: 'G3-admin-gate-dock', before: g3before, boot: g3boot, after: g3after, errors: issues.slice(g3start) });
-  // NOTE 2026-09-05 (owner): premium glass is app-only. G1 + G2 are the
-  // app-side glass-probe gates; G3 (admin-gate dock) is informational now
-  // because the admin gate no longer ships a glass toggle.
+  // OWNER 2026-09-06: premium glass is app-only AND default-on (no toggle UI
+  // anywhere). G1 + G2 are the app-side gates: boot healthy, stored 'css'
+  // opt-out honored. G3 (admin gate) is informational: the dock carries the
+  // theme segmented control, no glass toggle, engine boots by default.
   const appGlassHealthy =
     g1.glassClass === true && g1.canvas === true && g1.pref === 'premium' &&
     g1.wrapAbove && g1.wrapAbove.pos === 'relative' && g1.wrapAbove.z === '1' &&
-    g2.click === true && g2.result && g2.result.glassClass === true && g2.result.canvas === true && /premium/.test(g2.result.pref || '');
+    g2 && g2.glassClass === false && g2.canvas === false && g2.pref === 'css';
   const pass =
     appGlassHealthy &&
-    g3before.dockVisible === true && g3before.dockHasTheme === true &&
+    g3before.dockInlinePresent === true && g3before.dockHasTheme === true &&
+    g3before.dockHasGlass === false &&
     g3before.setupScreen === true &&
     g3boot.glassClass === true && g3boot.canvas === true &&
-    g3boot.gateAbove && g3boot.gateAbove.pos === 'relative' && g3boot.gateAbove.z === '1' &&
-    g3after.glassClass === false && g3after.canvas === false && /css/.test(g3after.pref || '');
+    g3boot.gateAbove && g3boot.gateAbove.pos === 'relative' && g3boot.gateAbove.z === '1';
   if (appGlassHealthy) {
-    console.log('GLASS PREVIEW OK (app-side) + G3 admin-gate dock reported for the record only (premium glass is app-only).');
+    console.log('GLASS PREVIEW OK (app-side) + G3 admin-gate dock reported for the record only (premium glass is app-only, default-on).');
   } else {
     console.log('GLASS PREVIEW FAILED (app-side glass probe).');
   }

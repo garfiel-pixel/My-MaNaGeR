@@ -139,3 +139,7 @@ NEXT SESSION STARTING POINT
 - One false positive cleared: qa-client-codes L293 scopeState.wbs.hidden — wbs is {hidden,aria} computed in-page, legal.
 - LESSON: this repo's harness discipline is uniformly good (compute primitives in-page, check primitives in Node); the controls-admin probe was the one violation. A regex first-pass over only `[a-z][0-9]`-named probe vars found nothing because the only bug was already fixed — re-verified by generalizing to all identifier bases + template-region splitting before reporting clean.
 - Wrangler ^4.129.1 bump STILL PENDING from the previous turn (package.json devDependencies ^4.129.0, lock 4.129.0, latest 4.129.1).
+2026-09-08 (fourth pass) — wrangler bump completed: ^4.129.1 + lockfile refreshed, CI green on b6d6367.
+- package.json devDependencies "wrangler": "^4.129.0" -> "^4.129.1"; npm install refreshed package-lock.json (wrangler 4.129.0->4.129.1, plus its bundled workerd 1.20260903.1->1.20260907.1 — the only lockfile changes; verified via git diff no other deps moved).
+- npx wrangler --version -> 4.129.1; npx wrangler deploy --dry-run GREEN (exit 0, all bindings resolve, --dry-run: exiting now).
+- Committed b6d6367 chore(deps): bump wrangler to 4.129.1 patch; pushed; polled Actions API -> CI completed SUCCESS on b6d6367.

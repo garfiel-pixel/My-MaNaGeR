@@ -848,6 +848,23 @@ Wrangler note (owner 2026-09-08): pinned ^4.129.0 / installed 4.129.0 vs latest 
 Outstanding (separate from this fix): the scheduled Nightly Full Suite on 52723e3 failed at "T2: Cloud phase 2" (tools/qa-cloud-phase2.cjs). Job logs need admin rights to read (403), so it could not be diagnosed from this session — re-run nightly after this commit and check qa-cloud-phase2 output if it repeats.
 
 NEXT: push this harness fix, POLL the Actions API until CI finishes green, then deploy from the clean staging copy (wrangler tar staging recipe per AGENTS.md) once green.
+
+2026-09-08 (continued, third pass) — CI GREEN confirmed + class-of-bug sweep of all CDP harnesses: NO other instances.
+
+Push landed: CI on 5419d44 (d4ccd08 fix + 5419d44 docs) went SUCCESS including the previously red "T2: Controls admin" step (Controls admin, CSP, Cloud phase 1+2, wrangler dry-run all green).
+
+Sweep for the a1.rail bug class across all 82 CDP harnesses (root qa-*.cjs + tools/*.cjs using Runtime.evaluate returnByValue):
+- check()-call DOM-API-on-probe-var chains: only the already-fixed controls-admin instance; one false positive cleared (qa-client-codes scopeState.wbs.hidden is a serialized {hidden,aria} object computed in-page — legal).
+- t()/pass()/other assertion helpers: zero hits.
+- ev() whole-expression raw-element returns: zero (all .textContent-suffixed → strings).
+- ev() return-object raw node values: zero (every hit has an in-match primitive conversion: .classList.contains/.length/.checked/.textContent).
+- querySelectorAll node arrays leaked raw into probes: zero (all .length/.map(primitive) computed in-page).
+- qa-calculator.cjs evd() checked: returnByValue:true with error-subtype guard only, no objectId node path.
+Harnesses are uniformly disciplined: they compute booleans/counts/strings INSIDE the page expression; checks consume primitives only. The controls-admin probe was the sole violation.
+
+Wrangler bump (^4.129.1) requested by owner 2026-09-08 is STILL PENDING (package.json devDependencies ^4.129.0 + package-lock 4.129.0; latest 4.129.1) — next session should finish it + refresh the lockfile.
+
+NEXT: finish the wrangler patch bump (^4.129.1 + npm install) when convenient; deploy decision stands (harness-only change needs no deploy).
 9 cards, mkt-10 page chrome, mkt-16/17 sign-in). CSP: NO inline-script edits →
 hashes unchanged.
 

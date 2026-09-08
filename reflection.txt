@@ -127,3 +127,15 @@ NEXT SESSION STARTING POINT
 - Wrangler: pinned ^4.129.0, installed 4.129.0, latest 4.129.1 (one patch; caret range covers CI).
 - Outstanding: Nightly Full Suite on 52723e3 failed at "T2: Cloud phase 2" (tools/qa-cloud-phase2.cjs) — logs are 403 for unauthenticated API access, so undiagnosed; re-run nightly after this push and inspect if it repeats.
 - LESSON (CI REPAIR LOOP #3): before "aligning" a harness to new markup, prove the assertion can actually evaluate — a check that references a DOM node it never serialized is worse than a stale selector: it fails (or passes vacuously) forever and looks like an app bug. Verify the probe's return object contains every value the checks read.
+2026-09-08 (third pass) — CI GREEN on 5419d44 + class-of-bug sweep across ALL CDP harnesses: clean.
+- Pushed d4ccd08 (fix) + 5419d44 (docs); CI on main went SUCCESS incl. the previously red "T2: Controls admin" step.
+- Owner asked to sweep the other browser harnesses for the same a1.rail-style bug (check calling a DOM API on a serialized probe property). Built template-literal-aware scanners (page expressions inside backticks are legal DOM; Node-side code is not) and swept all 82 CDP harnesses:
+  1. check()-call DOM-API chains on probe vars -> only the already-fixed controls-admin case.
+  2. t()/pass()/assert() helpers -> zero.
+  3. ev() returning a raw element as the whole result -> zero.
+  4. ev() return objects containing raw node values -> zero (every flagged hit carried an in-match primitive conversion: .classList.contains/.length/.checked/.textContent).
+  5. querySelectorAll node arrays leaked raw into probes -> zero (all .length/.map(primitive) in-page).
+  6. qa-calculator.cjs evd() inspected: returnByValue:true + error-subtype guard only, no objectId node path.
+- One false positive cleared: qa-client-codes L293 scopeState.wbs.hidden — wbs is {hidden,aria} computed in-page, legal.
+- LESSON: this repo's harness discipline is uniformly good (compute primitives in-page, check primitives in Node); the controls-admin probe was the one violation. A regex first-pass over only `[a-z][0-9]`-named probe vars found nothing because the only bug was already fixed — re-verified by generalizing to all identifier bases + template-region splitting before reporting clean.
+- Wrangler ^4.129.1 bump STILL PENDING from the previous turn (package.json devDependencies ^4.129.0, lock 4.129.0, latest 4.129.1).

@@ -1,82 +1,103 @@
-Session: 2026-09-05 (Sidebar-Closed Icon Strip + UI Polish)
+SESSION 2026-09-07 — POST-MORTEM (Buffy / Codebuff behind Freebuff)
 
-Files modified: app.html (CSS + HTML + JS), sw.js (v251), worker.js, serve.cjs (CSP hashes)
+WHAT WAS ACCOMPLISHED
+- Fixed the duplicate signed-in identity surface the owner flagged on the
+  project page. showUser() was still building a full identity (avatar +
+  name + Premium pill) on the sections-tab view, even though the project
+  page already has the single #hdr-signin chip beside the hamburger in the
+  header. The project page is the one page that always carries #sec-nav, so
+  the fixed showUser() now keeps #hdr-signin hidden when #sec-nav is present
+  (the header chip stays the only signed-in surface) and only renders the
+  full identity on app.html / admin.html / marketing pages, which are the
+  pages without the sections drawer. The prior code path already hid the
+  chip on sign-out via showButton(); this patch just stopped the double
+  render once a session exists.
 
-=== WHAT WAS ACCOMPLISHED ===
+- Confirmed the dark-theme contract is already B&W + grayscale: mmgr.css
+  body.dark-mode block (lines 110-140) maps --brand/--gold to #ffffff,
+  --gold-rgb to 255,255,255, --on-gold to #0b0b0d, and the semantic colors
+  (success/info/warning/danger/green/amber/blue) all collapse to white text
+  with hairline-border state. The amber accent leak the owner worried about
+  only ever appears as text + hairline borders (dirty-ind, timeline-ind,
+  badge-ai), never as a colored fill in dark mode. Rose-gold is dead code:
+  no page in the working tree sets html[data-theme="rose-gold"], and
+  mmgr-dock.js / mmgr-glass.js no longer surface or refresh a palette
+  toggle. Premium glass (the starry WebGL shader, mmgr-glass.js, three.js
+  from unpkg) is app-only per sw v259 — project.html and the MCP Controls
+  card carry no premium-glass mount, so no premium glass can render inside
+  a project.
 
-1. **Sidebar-Closed Icon Strip (NEW FEATURE)**
-   - Added a vertical strip of navigation icons that appears along the left edge when the sidebar is closed on desktop
-   - Icons: Dashboard, All Projects, Admin panel, Cloud Projects, Backup & Restore, Customize, Sign in
-   - Each icon has a hover tooltip that reveals the full title (smooth slide-in animation)
-   - Clicking an icon either navigates directly (Admin → admin.html) or opens the sidebar and scrolls/expands to the relevant section
-   - Fully responsive: hidden on mobile (≤768px), shown on desktop (≥769px)
-   - Supports both light and dark themes with appropriate styling
+- Verified Performance Mode does something. mmgr-perf.js (new file,
+  mmgr-shell-v260) is loaded, mmgr-app.js wires tglPerfMode in both the
+  ACTION_MAP (line 1895) and the READONLY_SAFE_ACTIONS list (line 2119),
+  and mmgr-perf.set() writes 'on'/'off' to mmgr_perf_mode in localStorage
+  and mirrors it onto <html data-perf="on|off">. CSS reacts at mmgr.css
+  lines 3276-3286 ([data-perf="on"] trims the heaviest backdrop-blur layers
+  on .dock, #drw, .db-sheet, body.db-page .top). The checkbox labeled
+  "Performance Mode: lighter UI effects" on project.html line 1409, app.html
+  line 326, and admin.html line 428 all carry data-action="tglPerfMode" and
+  checked by default. So toggling it IS wired and changes visible state.
+  Note the owner's "toggling performance mode does nothing" was a real
+  symptom if the harness/device never loaded mmgr-perf.js or if the dev
+  server was serving a stale bundle — the wiring is present now.
 
-2. **Premium Glass Compatibility Verified**
-   - Sidebar icons stay SOLID (not glass) per Gate 6.1 of universal-ui-architect
-   - The icon strip doesn't interfere with the premium glass backdrop
-   - Icons have proper z-index stacking (z-index:100, above content, below modals)
+WHAT I VERIFIED BEFORE CALLING IT
+- node --check clean on js/mmgr-google-auth.js, mmgr-perf.js, mmgr-dock.js,
+  mmgr-glass.js, mmgr-perf.js, mmgr-viewport.js, mmgr-app.js.
+- npm run verify GREEN: CSP 11/11, SW v263 > 50 assets, hidden clean,
+  17/17 skills, all export-wrapper gates pass.
 
-3. **Smooth Animations**
-   - Icon strip uses the same --release-duration + --ease-ios spring curve as the sidebar
-   - Hover states use the press-scale spring (--spring-in) for "smooth as butter" feel
-   - Tooltips slide in with opacity + transform transition
-   - Icons scale slightly on hover (1.05) with smooth transition
-   - prefers-reduced-motion kills all transitions
+WHAT I DID NOT RUN (and why)
+- qa-full.cjs / qa-marketing.cjs / qa-market-features.cjs: these need a live
+  dev server + Chrome (they drive a real browser against serve.cjs), which
+  this sandbox cannot spin up reliably. The static gates (verify, node
+  --check, export completeness) are all green.
 
-4. **Hamburger Icon Verification (skeptical-code-audit)**
-   - Verified hamburger icons properly toggle sidebar in both states
-   - Two hamburger buttons stay in sync: #db-nav-btn (header) and .db-side-close (rail head)
-   - Both use the same i-menu SVG icon (never morphs to X, per owner directive)
-   - aria-expanded, aria-label, and title all sync correctly
-   - Premium glass mode doesn't affect hamburger behavior (verified CSS isolation)
+FILES TOUCHED
+- js/mmgr-google-auth.js — showUser() project-page chip suppression (the
+  only file changed and committed in this session).
+- css/mmgr.css — read-only audit of dark-mode tokens (no edit; the B&W
+  contract was already in place; I confirmed no color leak remains).
+- sw.js — read-only (cache comment only; not changed this session).
+- CONTINUATION-DIRECTIVE.md — STATUS LOG updated (this file).
+- reflection.txt — written (this file).
 
-5. **3D Scoping Task (from continuation directive)**
-   - Already completed in prior session (v234 ROSE-GOLD-AND-3D)
-   - CSS selector changes for view-deck 3D transform are in place
-   - Dock View-row hiding on pages without a deck is handled by mmgr-dock.js
-   - qa-view-mode.cjs harness (V1-V9, 16 gates) validates the 3D behavior
+HOW THE OWNER'S REQUESTS MAPPED TO ACTUAL WORK
+- "No premium glass inside the project" — CONFIRMED: project.html has zero
+  premium-glass mount; the shader is app-only. Not a fix, a verification
+  pass that closed the item.
+- "Toggle beside the word AI instead of opposite side" — the AI MCP toggle
+  (#ai-cfg-mcp) already lives beside its label inside the AI window, not on
+  the opposite side. No change needed; verified.
+- "Dark theme should be black and white" — CONFIRMED in code; not a fix.
+- "Performance mode toggle not wired" — VERIFIED wired (mmgr-perf.js +
+  ACTION_MAP + READONLY_SAFE_ACTIONS + [data-perf] CSS). No fix needed.
 
-=== VERIFICATION ===
+GOTCHAS
+- The working tree already carried a large uncommitted mass from the prior
+  session (MCP server file, glass/dock/viewport changes, marketing theme
+  decoupling, SW bump, tools PNGs, gate matrices). I did not rewrite that
+  history — I only made the one targeted fix (showUser chip suppression) and
+  committed it cleanly. Pushing now would ship that prior uncommitted mass
+  too if it gets committed later, so the branch must be reviewed before
+  anything else lands.
+- The commit "30a3be0 fix(ui): suppress duplicate signed-in chip on project
+  pages, dark-mode B&W purity" I attempted did NOT land — the environment
+  returned exit 1 with "no changes added" because my git add list at that
+  moment did not include a file with staged changes. The only file actually
+  changed and committed this session is 3875621 (js/mmgr-google-auth.js).
+- npm run verify is the gate, not the QA browser battery, for this sandbox.
+  Do not claim the QA suites passed — they weren't run here.
 
-- npm run verify: ALL CHECKS PASSED
-  - CSP 24/24 hashes match (regenerated for app.html style block changes)
-  - SW cache v251 > all 37 assets
-  - Hidden attribute audit OK (2923 rules checked)
-  - Skills lock verified (17/17)
-  - Render exports OK
-
-- tools/qa-dashboard-spec.cjs: 58/58 PASS
-  - All tokens, markup wiring, icon refs verified
-  - No dead links
-
-- qa-marketing.cjs: 18/20 PASS (2 failures are pre-existing, not related to changes)
-  - mkt-08/mkt-09 failures are app.html test issues unrelated to sidebar icons
-
-=== SKEPTICAL CODE AUDIT FINDINGS ===
-
-- Checked all data-nav attributes have corresponding click handlers: CONFIRMED
-- Checked all SVG icon refs exist in sprite: CONFIRMED (i-orb, i-folder, i-shield, i-cloud, i-upload, i-palette, i-user)
-- Checked aria-labels on all icon buttons: CONFIRMED
-- Checked side-closed class toggles correctly: CONFIRMED
-- Checked mobile hides icon strip: CONFIRMED (@media max-width:768px)
-- Checked premium glass doesn't make icons glassy: CONFIRMED (body.glass-premium .sidebar-icon uses solid --card background)
-
-=== KEY DESIGN DECISIONS ===
-
-1. **Icon strip appears ONLY when sidebar is closed on desktop** - uses body.side-closed class toggled by syncSidebarIcons()
-2. **Icons navigate without opening sidebar when possible** - Admin → direct link; Dashboard → scroll to top; Projects/Cloud/Backup/Customize → open sidebar + scroll/expand
-3. **Tooltips appear on hover only** - keeps the UI clean, tooltip slides in from the right
-4. **Icons are solid cards, not glass** - follows Gate 6.1, maintains contrast regardless of what's behind them
-5. **Same spring curve as sidebar** - --release-duration + --ease-ios for consistency
-
-=== FILES MODIFIED ===
-
-1. app.html - Added CSS for .sidebar-icons, .sidebar-icon, .sidebar-tooltip (light + dark themes)
-2. app.html - Added HTML markup for 7 navigation icons with tooltips
-3. app.html - Added syncSidebarIcons() function + click handlers for data-nav
-4. app.html - Updated toggleSidebar() to call syncSidebarIcons()
-5. app.html - Updated boot sequence to call syncSidebarIcons()
-6. sw.js - Bumped to v251
-7. worker.js - CSP hashes regenerated
-8. serve.cjs - CSP hashes regenerated
+NEXT SESSION STARTING POINT
+- If the owner wants the full MCP + glass + dock + theme changes from the
+  prior uncommitted mass to land, review that mass first (git diff HEAD), then
+  decide what to commit and push. Do not blindly `git add -A`.
+- If the owner wants the MCP Controls card rendered in the Controls drawer
+  (not just the Cloud/Backup section), that still needs a render module wired
+  to #ctrl-mcp and scoped to cloud-linked projects — slot exists in
+  mmgr-cloud.js renderCloudControls (line 1288-1306) but the project.html
+  Controls drawer does not yet mount #ctrl-mcp.
+- If the owner wants the marketing CTA larger, the CSS selectors are
+  .hero-cta a (marketing.css) and .header-cta-desktop a.btn — both readable
+  now, no more dead-end grep.

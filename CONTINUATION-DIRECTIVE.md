@@ -862,9 +862,9 @@ Sweep for the a1.rail bug class across all 82 CDP harnesses (root qa-*.cjs + too
 - qa-calculator.cjs evd() checked: returnByValue:true with error-subtype guard only, no objectId node path.
 Harnesses are uniformly disciplined: they compute booleans/counts/strings INSIDE the page expression; checks consume primitives only. The controls-admin probe was the sole violation.
 
-Wrangler bump (^4.129.1) requested by owner 2026-09-08 is STILL PENDING (package.json devDependencies ^4.129.0 + package-lock 4.129.0; latest 4.129.1) — next session should finish it + refresh the lockfile.
+Wrangler bump COMPLETED 2026-09-08 (same session): package.json devDependencies → ^4.129.1, lockfile refreshed via npm install (wrangler 4.129.0→4.129.1 + its bundled workerd 1.20260903.1→1.20260907.1 — the only lock changes). npx wrangler deploy --dry-run GREEN on the new version; committed b6d6367 chore(deps): bump wrangler to 4.129.1 patch; pushed; CI on b6d6367 went SUCCESS.
 
-NEXT: finish the wrangler patch bump (^4.129.1 + npm install) when convenient; deploy decision stands (harness-only change needs no deploy).
+NEXT: deploy decision stands (the b6d6367 + harness changes need no deploy — no served asset changed since the last deploy; deploy only if the owner wants the ritual).
 9 cards, mkt-10 page chrome, mkt-16/17 sign-in). CSP: NO inline-script edits →
 hashes unchanged.
 

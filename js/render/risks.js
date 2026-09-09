@@ -97,7 +97,13 @@ var MMGR = window.MMGR || {};
  const key = p + '|' + im;
  const cell = matrix[key] || [];
  const active = _riskFilter === key;
- const cls = active ? 'rm-cell rm-active' : 'rm-cell';
+ // Severity heat: the Low/Medium/High axes rank the cell, so the tint is a
+ // pure function of (prob, imp) position - CSS-only heat via a per-cell
+ // severity class, keeping the render data-driven and the palette in tokens.
+ const rank = (v) => v === 'High' ? 3 : v === 'Medium' ? 2 : 1;
+ const sev = rank(p) * rank(im);
+ const sevCls = sev >= 6 ? ' rm-hi' : sev >= 3 ? ' rm-med' : '';
+ const cls = (active ? 'rm-cell rm-active' : 'rm-cell') + sevCls;
  html += '<td class="' + cls + '" data-action="riskMatrixCell" data-prob="' + p + '" data-imp="' + im + '">';
  if (cell.length) {
  html += '<span class="rm-count">' + cell.length + '</span>';

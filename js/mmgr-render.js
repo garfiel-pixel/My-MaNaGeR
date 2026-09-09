@@ -1218,24 +1218,41 @@ var MMGR = window.MMGR || {};
   // has dependencies), and tasks with identical IDs.  Non-blocking,
   // read-only, the banner is informational and can be toggled off.
   let _wbsIssuesVisible = true;
+  // Shared read-only count of banner-worthy schedule issues (used by both the
+  // visible banner and the hidden-state restore pill).
+  function wbsIssueCounts(s) {
+    const cycles = (ns.Schedule && ns.Schedule.findCycles) ? ns.Schedule.findCycles(s.tasks) : [];
+    const ids = {};
+    let dupCount = 0;
+    s.tasks.forEach(function (t) { if (ids[t.id]) dupCount++; ids[t.id] = true; });
+    return { cycles: cycles.length, dups: dupCount };
+  }
   function renderWbsAlerts() {
     const el = $('wbs-alerts');
     if (!el) return;
     const s = S();
     if (!s || !s.tasks || s.tasks.length === 0) { el.innerHTML = ''; return; }
-    if (!_wbsIssuesVisible) { el.innerHTML = ''; return; }
+    const counts = wbsIssueCounts(s);
+    const total = counts.cycles + counts.dups;
+    // Hidden state: a quiet one-click pill restores the warnings (a dismiss
+    // that can never be undone is a trap), and stays silent while healthy.
+    if (!_wbsIssuesVisible) {
+      if (total === 0) { el.innerHTML = ''; return; }
+      el.innerHTML = '<button class="btn btn-n btn-s wbs-alert-show" data-action="tglWbsIssues" aria-label="Show schedule warnings"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-eye"></use></svg> Show ' + total + ' schedule warning' + (total === 1 ? '' : 's') + '</button>';
+      return;
+    }
     const alerts = [];
+    if (total > 0) {
+      alerts.push('<div class="wbs-alert-head"><span class="wbs-alert-count">' + total + ' schedule warning' + (total === 1 ? '' : 's') + '</span><button class="btn btn-n btn-s" data-action="tglWbsIssues" aria-label="Hide schedule warnings"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-eye-off"></use></svg> Hide</button></div>');
+    }
     // Circular predecessors
     const cycles = (ns.Schedule && ns.Schedule.findCycles) ? ns.Schedule.findCycles(s.tasks) : [];
     if (cycles.length) {
       alerts.push('<div class="wbs-alert-item"><svg class="ico" aria-hidden="true" style="color:var(--danger)"><use href="css/mmgr-icons.svg#i-alert-triangle"></use></svg> ' + cycles.length + ' circular predecessor chain' + (cycles.length > 1 ? 's' : '') + ' detected. Break a dependency to restore a valid schedule.</div>');
     }
     // Duplicate IDs
-    const ids = {};
-    let dupCount = 0;
-    s.tasks.forEach(function (t) { if (ids[t.id]) dupCount++; ids[t.id] = true; });
-    if (dupCount) {
-      alerts.push('<div class="wbs-alert-item"><svg class="ico" aria-hidden="true" style="color:var(--amber)"><use href="css/mmgr-icons.svg#i-alert-triangle"></use></svg> ' + dupCount + ' duplicate task ID' + (dupCount > 1 ? 's' : '') + '. Check WBS for naming conflicts.</div>');
+    if (counts.dups) {
+      alerts.push('<div class="wbs-alert-item"><svg class="ico" aria-hidden="true" style="color:var(--amber)"><use href="css/mmgr-icons.svg#i-alert-triangle"></use></svg> ' + counts.dups + ' duplicate task ID' + (counts.dups > 1 ? 's' : '') + '. Check WBS for naming conflicts.</div>');
     }
     el.innerHTML = alerts.join('');
   }

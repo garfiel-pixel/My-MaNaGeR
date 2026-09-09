@@ -60,7 +60,7 @@ async function check(name, expr, hint) {
   await ev(`MMGR.State.updateState(function(s){var t=s.tasks&&s.tasks.find(function(x){return x.id&&!x.isPhase;});if(t){t.startDate='2026-03-10';t.endDate='2026-03-01';}});`);
   await ev(`MMGR.Render.renderRisks(); MMGR.Render.renderWbs();`);
   await delay(300);
-  await check('R1a matrix container populated', `(function(){var m=document.getElementById('risk-matrix');return {val: !!m && m.innerHTML.indexOf('Very High')>-1 && m.innerHTML.indexOf('data-action="riskMatrixCell"')>-1};})()`);
+  await check('R1a matrix container populated', `(function(){var m=document.getElementById('risk-matrix');var hi=m.querySelector('.rm-cell[data-prob="High"][data-imp="High"]');return {val: !!m && m.innerHTML.indexOf('rm-cell')>-1 && m.innerHTML.indexOf('data-action="riskMatrixCell"')>-1 && !!m.querySelector('.rm-count') && !!hi && hi.classList.contains('rm-hi')};})()`);
   await check('R1b cell click filters risk list', `(function(){
     var cell=document.querySelector('#risk-matrix [data-action="riskMatrixCell"]');
     if(!cell)return {val:false,why:'no cell'};
@@ -122,22 +122,36 @@ async function check(name, expr, hint) {
   // RESTORE-7: WBS alerts banner
   await check('R7a banner container exists', `(function(){return {val: !!document.getElementById('wbs-alerts')};})()`);
   await check('R7b banner renders when schedule has issues', `(function(){
+    // The banner surfaces circular predecessors + duplicate task IDs; seed a
+    // real two-task predecessor cycle (the old backwards-date alert was retired).
+    var s=MMGR.State.getState();
+    var ts=(s.tasks||[]).filter(function(t){return t.id&&!t.isPhase;}).slice(0,2);
+    if(ts.length<2)return {val:false,why:'need 2 tasks'};
+    MMGR.State.updateState(function(st){
+      var a=(st.tasks||[]).find(function(t){return t.id===ts[0].id;});
+      var b=(st.tasks||[]).find(function(t){return t.id===ts[1].id;});
+      if(a)a.predecessors=[ts[1].id];
+      if(b)b.predecessors=[ts[0].id];
+    });
+    MMGR.Render.renderWbs();
     var el=document.getElementById('wbs-alerts');
-    return {val: !!el && el.innerHTML.indexOf('schedule logic issue')>-1 && el.innerHTML.indexOf('tglWbsIssues')>-1};
+    return {val: !!el && el.innerHTML.indexOf('circular predecessor')>-1 && !!el.querySelector('.wbs-alert-item')};
   })()`);
-  await check('R7c banner toggle expands/collapses detail', `(function(){
-    var tgl=document.querySelector('[data-action="tglWbsIssues"]');
-    if(!tgl)return {val:false,why:'no tgl'};
-    tgl.click();
-    // Re-query after the re-render — renderWbsAlerts replaces the nodes.
-    var d1=document.getElementById('wbs-issues-detail');
-    var open1=!!d1 && d1.style.display!=='none';
-    var tgl2=document.querySelector('[data-action="tglWbsIssues"]');
-    if(!tgl2)return {val:false,why:'no tgl after open'};
-    tgl2.click();
-    var d2=document.getElementById('wbs-issues-detail');
-    var open2=!!d2 && d2.style.display==='none';
-    return {val: open1 && open2, open1:open1, open2:open2};
+  await check('R7c Hide button collapses banner, Show pill restores it', `(function(){
+    // WBS-ALERT-TOGGLE: the banner carries a Hide button; the hidden state shows
+    // a quiet 'Show N schedule warnings' pill (WBS-ALERTS-MISSING in v264 showed
+    // nothing). Both go through the live tglWbsIssues action.
+    var hide=document.querySelector('#wbs-alerts [data-action="tglWbsIssues"]');
+    if(!hide)return {val:false,why:'no hide btn'};
+    hide.click();
+    var el=document.getElementById('wbs-alerts');
+    var pill=el.querySelector('.wbs-alert-show[data-action="tglWbsIssues"]');
+    var hiddenOk=!!pill && pill.textContent.indexOf('Show')>-1;
+    if(!pill)return {val:false,why:'no show pill'};
+    pill.click();
+    var el2=document.getElementById('wbs-alerts');
+    var restored=!!el2.querySelector('.wbs-alert-item') && !!el2.querySelector('.wbs-alert-head');
+    return {val: hiddenOk && restored, hiddenOk:hiddenOk, restored:restored};
   })()`);
 
   const pass = results.filter(r => r.status === 'PASS').length;

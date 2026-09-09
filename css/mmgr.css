@@ -508,6 +508,8 @@ body.sidebar-open .nav-btn .ico,body.sidebar-open .sb-close .ico{transform:rotat
 .bp-item{display:flex;gap:8px;align-items:center;margin-bottom:8px;}
 .bp-item .bp-item-desc{flex:1;}
 .bp-item .bp-item-cost{width:130px;}
+/* Add Bid Package modal footer (same right-aligned row language as #chartup-modal .cu-actions) */
+.bp-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px;justify-content:flex-end;}
 @media (max-width:640px){.bp-grid{grid-template-columns:1fr;}}
 /* DIR-3 (PROJECT-UX-NAV-WEATHER-EXPORT-DIRECTIVE): */
 .core-callout{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;
@@ -653,6 +655,29 @@ body.sidebar-open .nav-btn .ico,body.sidebar-open .sb-close .ico{transform:rotat
 .dt tbody tr.overdue td{border-left:3px solid var(--danger);background:rgba(239,68,68,.05);}
 .dt tbody tr.overdue td:not(:first-child){border-left:none;}
 
+/* ---- Risk Probability x Impact Matrix (js/render/risks.js renderRiskMatrix) ----
+   The table is emitted WITHOUT the .dt class, so it needs its own compact
+   grid: heat-tinted cells by severity, click-to-filter with an .rm-active
+   ring, and a count badge in each cell. Token-driven, dark-aware, and the
+   focus ring matches the ONE app-wide treatment (DIR-3). */
+.risk-matrix{border-collapse:separate;border-spacing:4px;width:100%;max-width:520px;font-size:.72rem;font-variant-numeric:tabular-nums;}
+.risk-matrix th{font-size:.64rem;text-transform:uppercase;letter-spacing:.4px;color:var(--slate);font-weight:700;padding:4px 6px;text-align:center;}
+.risk-matrix td{padding:0;}
+.rm-cell{width:64px;height:44px;border-radius:var(--radius);cursor:pointer;font:inherit;font-size:.78rem;font-weight:700;text-align:center;vertical-align:middle;color:var(--text);background:var(--tile-bg);border:1px solid var(--border);transition:transform var(--tr),box-shadow var(--tr),border-color var(--tr);}
+/* Severity heat (sev = probRank x impRank, set in renderRiskMatrix): */
+.rm-med{background:rgba(245,158,11,.12);border-color:rgba(245,158,11,.35);}
+.rm-hi{background:rgba(220,53,69,.12);border-color:rgba(220,53,69,.4);}
+body.dark-mode .rm-med{background:rgba(245,158,11,.08);}
+body.dark-mode .rm-hi{background:rgba(220,53,69,.09);}
+.rm-cell:hover{transform:scale(1.06);border-color:var(--gold);}
+.rm-cell:focus-visible{outline:2px solid var(--gold);outline-offset:2px;}
+.rm-active{box-shadow:0 0 0 2px var(--gold);border-color:var(--gold);}
+.rm-count{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;padding:0 6px;border-radius:100px;background:var(--gold);color:var(--on-primary);font-size:.68rem;font-weight:800;}
+.rm-empty{color:var(--slate);opacity:.55;font-weight:400;}
+body.dark-mode .rm-cell{background:rgba(255,255,255,.05);}
+body.dark-mode .rm-active{box-shadow:0 0 0 2px var(--gold),0 0 12px rgba(var(--gold-rgb),.35);}
+@media (prefers-reduced-motion:reduce){.rm-cell{transition:none;}.rm-cell:hover{transform:none;}}
+
 /* ---- Buttons ---- */
 .btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:var(--radius);border:none;font-size:.8rem;font-weight:600;cursor:pointer;transition:all var(--tr);line-height:1.4;}
 .btn:focus-visible{outline:2px solid var(--gold);outline-offset:2px;}
@@ -724,6 +749,11 @@ body.sidebar-open .nav-btn .ico,body.sidebar-open .sb-close .ico{transform:rotat
    show/hide toggles use the .is-hide class (swapped via classList, never
    style.display), so the CSP comment stays truthful. */
 .is-hide{display:none!important;}
+/* CSS-ALIGNMENT-FIX (2026-09-09): .m0a moved ABOVE the margin-utility family.
+   Its 'margin:0' shorthand was resetting margin-top/bottom set by .mt8/.mt16/.mb14
+   whenever combined (card m0a mt16 etc.) purely on source order - every
+   m0a+utility combo silently lost its spacing. Being first makes the utilities win. */
+.m0a{margin:0;text-align:center;}
 .mt16{margin-top:16px;}
 .g6.align-end{align-items:flex-end;}
 .health-section{margin-top:14px;border-top:1px solid var(--border);padding-top:12px;}
@@ -773,6 +803,16 @@ body.sidebar-open .nav-btn .ico,body.sidebar-open .sb-close .ico{transform:rotat
 .meet-kickoff-list{font-size:.78rem;line-height:1.7;margin-top:10px;padding-left:4px;list-style:none;}
 .meet-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;margin-top:10px;}
 .cu-row{display:flex;gap:8px;align-items:center;margin-bottom:6px;flex-wrap:wrap;}
+/* Charter Upload modal tab switcher (Upload File / Paste Text) - pill segmented
+   control, same language as .tab-ctrl/.tab-btn; .active carries the gold state
+   that .cuSwitchTab toggles. */
+.cu-tabs{display:flex;gap:2px;background:var(--track-bg);border-radius:100px;padding:3px;margin-bottom:10px;width:max-content;max-width:100%;}
+.cu-tab{border:none;background:transparent;color:var(--slate);font:inherit;font-size:.74rem;font-weight:600;border-radius:100px;padding:6px 14px;cursor:pointer;transition:color var(--tr),background var(--tr);display:inline-flex;align-items:center;gap:6px;}
+.cu-tab:focus-visible{outline:2px solid var(--gold);outline-offset:2px;}
+.cu-tab:hover{color:var(--text);}
+.cu-tab.active{color:var(--on-gold);background:var(--gold);}
+body.dark-mode .cu-tab.active{color:#0b0b0d;background:var(--gold);}
+@media (prefers-reduced-motion:reduce){.cu-tab{transition:none;}}
 .cu-file-name{font-size:.72rem;color:var(--slate);}
 .cu-hint-mt{margin-bottom:6px;font-size:.72rem;color:var(--slate);}
 .cu-hint2{font-size:.68rem;color:var(--slate);margin-top:4px;}
@@ -1081,7 +1121,7 @@ body.dark-mode #safety-banner.safety-heat,body.dark-mode #safety-banner.safety-c
 body.editor-scope .sec-btn.scope-blocked{opacity:.35;pointer-events:none;filter:saturate(.4);}
 body.editor-scope .sec-btn.scope-blocked svg{opacity:.5;}
 body.readonly-mode input:not([readonly]),body.readonly-mode textarea:not([readonly]),body.readonly-mode select:not([disabled]){pointer-events:none;opacity:.6;}
-body.readonly-mode .btn[data-action]:not([data-action="showSec"]):not([data-action="cpAllPage"]):not([data-action="print"]):not([data-action="openDrw"]):not([data-action="openDrwToPrompts"]):not([data-action="openDrwToSave"]):not([data-action="runMonteCarlo"]):not([data-action="printCharter"]):not([data-action="emailTpl"]):not([data-action="copyIdTemplate"]):not([data-action="riskMatrixClear"]):not([data-action="copyErrorLog"]):not([data-action="downloadErrorLog"]){opacity:.55;}
+body.readonly-mode .btn[data-action]:not([data-action="showSec"]):not([data-action="cpAllPage"]):not([data-action="print"]):not([data-action="openDrw"]):not([data-action="openDrwToPrompts"]):not([data-action="openDrwToSave"]):not([data-action="runMonteCarlo"]):not([data-action="printCharter"]):not([data-action="emailTpl"]):not([data-action="copyIdTemplate"]):not([data-action="riskMatrixClear"]):not([data-action="tglWbsIssues"]):not([data-action="copyErrorLog"]):not([data-action="downloadErrorLog"]){opacity:.55;}
 .bs-spin{width:34px;height:34px;border-radius:50%;border:3px solid var(--border);border-top-color:var(--gold);animation:bs-spin .8s linear infinite;}
 @keyframes bs-spin{to{transform:rotate(360deg)}}
 @media (prefers-reduced-motion:reduce){.bs-spin{animation:none;}}
@@ -1393,6 +1433,18 @@ body.dark-mode .bk-pop{background:var(--glass-fill-dark-hover);}
 #wbsimport-modal .wi-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:6px;}
 #importdates-modal .wi-actions-left{display:flex;justify-content:flex-start;gap:8px;margin-top:6px;}
 #wbs-alerts{margin-bottom:10px;}
+/* WBS-ALERT-TOGGLE (2026-09-09): the banner's Hide/Show toggle is back. Hide
+   collapses the warning list; a quiet pill re-shows it so a dismiss is always
+   recoverable. Both are view-only, hence the readonly-mode whitelist below. */
+.wbs-alert-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;}
+.wbs-alert-count{font-size:.72rem;font-weight:600;color:var(--amber);}
+.wbs-alert-show{border-style:dashed;}
+body.dark-mode .wbs-alert-show{border-color:rgba(255,255,255,.18);}
+/* Alert rows rendered by renderWbsAlerts (circular deps, duplicate ids, date
+   issues); icon+text rows tinted per the alert color set inline on the icon. */
+.wbs-alert-item{display:flex;align-items:flex-start;gap:8px;font-size:.74rem;line-height:1.5;color:var(--text);padding:7px 10px;border-radius:var(--radius);background:var(--tile-bg);border:1px solid var(--border);margin-bottom:6px;}
+.wbs-alert-item .ico{flex-shrink:0;margin-top:1px;}
+body.dark-mode .wbs-alert-item{background:rgba(255,255,255,.04);}
 #wi-preview{max-height:300px;overflow:auto;background:var(--canvas);border:1px solid var(--border);border-radius:8px;padding:10px;font-size:.78rem;}
 
 /* ---- Import Dates Modal ---- */
@@ -1511,13 +1563,15 @@ body.dark-mode .bk-pop{background:var(--glass-fill-dark-hover);}
 .mt-lg{margin-top:18px;}
 .mt-md{margin-top:8px;}
 .mt7{margin-top:7px;}
+.mt8{margin-top:8px;}
 .mt10{margin-top:10px;}
 .mb0{margin-bottom:0;}
 .mb7{margin-bottom:7px;}
 .mb10{margin-bottom:10px;}
 .mb12{margin-bottom:12px;}
 .mb14{margin-bottom:14px;}
-.m0a{margin:0;text-align:center;}
+/* .m0a moved above .mt16 (CSS-ALIGNMENT-FIX): the margin:0 shorthand was
+   cancelling the mt*/mb* utilities in m0a+utility combos on source order. */
 /* muted text tiers (size + slate) */
 .t-sm{font-size:.78rem;color:var(--slate);}
 .t-xs{font-size:.72rem;color:var(--slate);}
@@ -2462,7 +2516,19 @@ body.db-page:not(.dark-mode) .db-soon{
 .email-auth-pw-cancel:hover{color:var(--gold);}
 .email-auth-pw-cancel:focus-visible{outline:2px solid var(--gold);outline-offset:1px;border-radius:var(--radius);}
 .email-auth-pw-ok{margin:0;font-size:.7rem;color:var(--green);}
+/* Grid row variant used by the password-change fields (and the delete-account
+   confirm sheet): three password inputs side by side, stacking on phones. */
+.email-auth-pw-fields{flex:1 1 100%;gap:6px;}
+.email-auth-pw-fields .email-auth-input{flex:1 1 120px;}
+@media(max-width:640px){.email-auth-pw-fields{flex-direction:column;align-items:stretch;}}
 .pw-host{margin-top:8px;display:flex;flex-direction:column;align-items:flex-start;gap:6px;}
+/* GIS-unavailable fallback button (js/mmgr-google-auth.js creates it with only
+   this class when the Google Identity script never readies): matches the
+   email-auth control language so it does not render as a raw default button. */
+.gis-fallback-btn{display:inline-flex;align-items:center;justify-content:center;gap:2px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font:inherit;font-size:.78rem;font-weight:600;padding:9px 16px;cursor:pointer;transition:border-color var(--tr),color var(--tr);}
+.gis-fallback-btn:hover{border-color:var(--gold);color:var(--gold);}
+.gis-fallback-btn:focus-visible{outline:2px solid var(--gold);outline-offset:2px;}
+.gis-fallback-btn:disabled{opacity:.6;cursor:default;}
 
 /* MMGR-NEW-UI-CREATION-BRIEF I1 follow-up - app.html launcher */
 /* ---- hero corner chrome: hamburger + moon/sun (Fitts edges) ---- */

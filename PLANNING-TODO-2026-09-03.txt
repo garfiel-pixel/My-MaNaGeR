@@ -1472,3 +1472,61 @@ CONTINUATION-DIRECTIVE.md)
   work lands so GitHub Actions validates continuously.
 - SKILLS AS POV (D14): load the relevant .agents/skills/* SKILL.md per
   task - the locked skill set is the reference point of view.
+
+--------------------------------------------------------------------
+CI DIAGNOSTIC RECORD (2026-09-08, owner repair-loop rule 6)
+RUN 34228596314 (a259f4d, docs-only commit) FAILED at step
+"T2: AI badge E2E" (tools/qa-ai-badge-e2e.cjs). Diagnosis:
+TRANSIENT/FLAKY, not an app or harness regression:
+- Commit touched only CONTINUATION-DIRECTIVE.md + reflection.txt
+  (no code, no harness).
+- Harness reproduced locally on the SAME commit with the EXACT CI
+  invocation (MMGR_QA_NO_BROWSER=1, WRANGLER_DEV_URL=external on
+  8787): 5/5 API-phase gates PASS.
+- Prior two runs on code commits (b6d6367, 424bc29) were GREEN.
+Note: run WITHOUT MMGR_QA_NO_BROWSER the harness intentionally
+stays alive 15min awaiting the browser phase - that hang is
+expected behavior, not a failure.
+ACTION: rerun-failed-jobs issued via API (HTTP 201). If the rerun
+is red again, treat as flaky-timing in the T2 step and add retry
+or resilience to qa-ai-badge-e2e.cjs (wrangler-dev startup race).
+
+--------------------------------------------------------------------------------
+2026-09-09 - CSS-ALIGNMENT-FIX wave (audit follow-up: "fix them all")
+  Audit finding: classes emitted by JS/HTML with no CSS rule. Fixed:
+  (1) Risk matrix .risk-matrix/.rm-cell/.rm-active/.rm-count/.rm-empty styled
+      (token-driven + dark mode); NEW severity heat classes .rm-med/.rm-hi driven
+      by renderRiskMatrix (js/render/risks.js, severity class only, no logic
+      change). Verified in headless Chrome: cell heat, count badge, empty dash,
+      active-filter ring (High/High), clear filter.
+  (2) Charter Upload modal tabs .cu-tabs/.cu-tab/.active (pill tabs, gold active,
+      pane swap verified). (3) .bp-actions bid-modal footer (flex, gap, flex-end).
+  (4) .mt8 added. (5) BONUS root-cause fix: .m0a{margin:0} source order was
+      cancelling .mt16/.mt8/.mb14 in m0a+utility combos (all project.html section
+      cards) - moved .m0a above the utility family; utilities now win.
+  (6) Cosmetic: .gis-fallback-btn, .wbs-alert-item, .email-auth-pw-fields.
+  Harness repair (app changed under it, per CI repair loop): qa-restore-verify.cjs
+  R1a asserted retired 'Very High' label -> now asserts current matrix + rm-hi
+  heat; R7b asserted retired 'schedule logic issue' alert -> seeds a real
+  predecessor cycle and asserts 'circular predecessor' + .wbs-alert-item;
+  R7c asserted retired in-banner toggle -> guards the live toggleWbsIssues API
+  path. 14/14 PASS. NOTE: tglWbsIssues ACTION_MAP entry is currently a dead
+  action (no emitter in markup) - kept wired, candidate for future UI re-add.
+  npm run verify GREEN (CSP 24, SW v265 > 39 assets, skills, exports). Bundles
+  rebuilt; no inline scripts touched -> CSP hashes unchanged.
+
+--------------------------------------------------------------------------------
+2026-09-09 - WBS-ALERT-TOGGLE wave (audit follow-up: dead action re-empowered)
+  tglWbsIssues was a dead ACTION_MAP entry (wired, no emitter) since the
+  RESTORE-7 banner rework. Re-added as a two-state toggle in renderWbsAlerts:
+  visible state = .wbs-alert-head (count chip + Hide button, i-eye-off);
+  hidden state = quiet one-click "Show N schedule warnings" pill
+  (.wbs-alert-show, i-eye, dashed border) so a dismiss is always recoverable
+  (the pre-extraction badge toggle buried the restore with no way back).
+  Banner stays silent when healthy + hidden. Both states view-only: added
+  tglWbsIssues to the readonly-mode dim whitelist. Shared wbsIssueCounts()
+  helper drives both states. css/mmgr.css + js/mmgr-render.js + bundles;
+  no inline scripts -> CSP hashes unchanged. sw mmgr-shell-v265 -> v266.
+  qa-restore-verify.cjs R7c rewritten to click the REAL Hide button and Show
+  pill (14/14 PASS). Browser probe: head/hide/pill/silent-healthy all green.
+  npm run verify GREEN (CSP 24, SW v266 > 39 assets, hidden, skills, exports).

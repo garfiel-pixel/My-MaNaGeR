@@ -1530,3 +1530,9 @@ or resilience to qa-ai-badge-e2e.cjs (wrangler-dev startup race).
   qa-restore-verify.cjs R7c rewritten to click the REAL Hide button and Show
   pill (14/14 PASS). Browser probe: head/hide/pill/silent-healthy all green.
   npm run verify GREEN (CSP 24, SW v266 > 39 assets, hidden, skills, exports).
+  DEPLOYED: 2026-09-09 production from clean staging (tar recipe incl. the
+  scratch-file excludes from wrangler.jsonc + screenshots/). Wrangler version
+  119f2d51-8ce2-4a76-9a27-b00d782e38e0, wave commit 38ebbc8. CI: success on
+  38ebbc8 (poll-verified) BEFORE deploy. Post-deploy smoke: workers.dev +
+  mymanagerworkspace.com 200; live /css/mmgr.css carries rm-cell/cu-tabs/
+  bp-actions/.mt8/wbs-alert-show; live dist/bundle.js carries wbsIssueCounts.

@@ -1536,3 +1536,19 @@ or resilience to qa-ai-badge-e2e.cjs (wrangler-dev startup race).
   38ebbc8 (poll-verified) BEFORE deploy. Post-deploy smoke: workers.dev +
   mymanagerworkspace.com 200; live /css/mmgr.css carries rm-cell/cu-tabs/
   bp-actions/.mt8/wbs-alert-show; live dist/bundle.js carries wbsIssueCounts.
+
+--------------------------------------------------------------------------------
+2026-09-09 - FULL-BATTERY-SWEEP wave (final regression after CSS-ALIGNMENT +
+  WBS-ALERT-TOGGLE waves). qa-full.cjs: 174/174 PASS (0 console errors, 0 page
+  exceptions) after retargeting checks 02/02b/02c - they still queried the
+  #rail-customize .pal-btn stack removed in the v228 dock rework (02c passed
+  by accident: pref pre-seeded); now exercise project.html's real theme
+  contract: Appearance drawer select#theme-select -> dock change listener ->
+  MMGRTheme.setMode -> body.dark-mode + mmgr_theme persistence. T1 gates all
+  green: qa-dashboard-spec 85/85, qa-changelog-diffs, qa-ai-relay RELAY_GATE,
+  verify-report-issue 27/27, verify-dynamic-labels 3/3, verify-delegate-gate,
+  verify-render-exports, npm run verify (CSP 24 / SW v266 / hidden / skills /
+  exports). Commit 9e60a05 (test(harness)), CI success poll-verified BEFORE
+  deploy. DEPLOYED: version f657ac5b-f131-498c-833f-577ee4f3fdd4 from clean
+  staging; both hosts 200 post-deploy. No app-code changes this wave -
+  harness-only.

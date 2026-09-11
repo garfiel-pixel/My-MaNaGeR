@@ -248,3 +248,122 @@ OUTSTANDING / OWNER'S CALL
   a push happens, so the tree is verified locally only.
 - Domain email (P7) needs owner actions in OWNER-REVIEW.md: Resend signup,
   DNS records, wrangler secrets, EMAIL_RECOVERY_ENABLED flip.
+
+--------------------------------------------------------------------
+SESSION 2026-09-11 (continuation) - LIVE-AUDIT GAP CLOSED, CONSOLE NOISE CLASSIFIED
+--------------------------------------------------------------------
+
+CONTEXT
+Picked up from a session that died mid-probe ("Starting..." in the log).
+The mission: close the mobile-overflow audit's last gap (the /app page,
+where networkidle never fires) and finish the wave's bookkeeping.
+
+ACCOMPLISHMENTS
+1. Re-ran the /app mobile probe with wait_until='load' + 3s settle at
+   390x844 against the live site: hscroll false, overflowCount 0, zero
+   offenders, zero page errors. Merged into
+   screenshots/live-audit/mobile-overflow-report.json (gitignored).
+   Last session's partial write was verified by re-running, not trusted.
+2. Root-caused the live audit's one-console-error-per-page: Cloudflare's
+   edge-injected __CF$cv$params challenge script (live pages carry a
+   third inline script the repo does not have; per-request values make
+   hash allowlisting impossible). Our own scripts run clean; JSON-LD
+   ld+json never executes; the app/dashboard 403 is the anonymous
+   /api/cloud/projects gate working as designed. VERDICT: no app change.
+3. P0.2 in PLANNING-TODO-2026-09-09.txt flipped to DONE - the standing
+   rules were already in CONTINUATION-DIRECTIVE.md's OWNER STANDING
+   RULES section; only the checkbox had lagged. Tracker now has zero
+   open items.
+4. STATUS LOG entry + this post-mortem written.
+
+LESSONS
+1. networkidle is the wrong wait on app-like pages with recurring
+   polling; wait_until='load' plus a settle delay is the durable probe.
+2. A console-error count is not a defect count. Classify each line
+   (our script vs edge injection vs expected 4xx) before touching code.
+3. Cloudflare injects __CF$cv$params into served HTML on Workers sites;
+   any live-vs-repo HTML byte comparison must expect it, and CSP hash
+   allowlisting can never cover it (rotates per request).
+4. Git Bash's /tmp is invisible to Windows Python; stage scratch files
+   in the project root when piping between curl and python.
+5. An ambiguous session ending ("Starting...") means re-run the probe
+   and verify, never trust a half-written artifact.
+
+OUTSTANDING / OWNER'S CALL
+- Nothing open in the tracker. Domain email activation stays owner-side
+  (OWNER-REVIEW.md: Resend signup, DNS records, wrangler secrets,
+  EMAIL_RECOVERY_ENABLED flip).
+
+--------------------------------------------------------------------
+SESSION 2026-09-11 (session 2) - OUTSIDE-THE-BOX COMPLETENESS SWEEP
+--------------------------------------------------------------------
+
+CONTEXT
+Owner: read the think-outside-the-box skill and "begin these fixes";
+also re-read the directive + reflection. No new directive file existed,
+so the work was the skill's completeness pass over the existing app
+(existing-app-audit route), with the skeptical-code-audit checklist as
+the systematic sweep and the directive's standing rules as guardrails.
+
+ACCOMPLISHMENTS
+1. Action-map audit (tools/audit-action-map.cjs): 153 markup actions vs
+   341 map keys. The one MISSING flag (accountSignOut) was a tool
+   false positive - project.html's inline script handles it via a local
+   delegated listener. NOT a bug; no fix.
+2. Icon sprite: 74 symbols defined / 74 used / zero missing.
+3. JS-referenced DOM ids (275 refs): 9 first-pass flags, each verified
+   against raw source + git history. Two were deliberate-removal debris
+   (#no-projects-hint, #portfolio-strip on app.html - 8776d5f "launcher
+   is not a dashboard"; both have live JS fallbacks so nothing breaks).
+   ONE real drift fixed: admin.html showScreen() still did
+   getElementById('gate-prefs') - an element deleted in the v228 dock
+   consolidation. Dead lookup removed with a comment naming where the
+   theme controls live now. CSP hashes regenerated (worker.js +
+   serve.cjs, 24), bundles rebuilt, SW v277 -> v278.
+4. JS-toggled CSS classes (64): 9 first-pass flags all classified clean
+   after re-verification - inline <style> false positives, string-concat
+   classes (safety-heat/cold DO have rules), symmetric default-class
+   toggles (on-dark), and body.client-scope which is test-observable
+   (qa-client-codes.cjs:286 asserts it) so it stays.
+5. textContent receiving markup strings: zero hits.
+6. FIELD_KEYS: the 8 state.<key> assignments outside it are documented
+   per-device meta (mergeExternal NOTE: do not "fix" that) - respected.
+7. The reflection's #ctrl-mcp lead verified DONE: renderMcp ->
+   ns.Cloud.render() -> boot; project.html:1446 mounts #ctrl-mcp.
+
+GOTCHAS (the session's real lesson)
+- After the admin.html inline-script edit, verify-controls-admin failed
+  S3 with 0 project rows. Root cause was NOT the edit: a pre-existing
+  serve.cjs (PID 8412, started before this session) still served the
+  OLD CSP hash list. Two `node serve.cjs &` background starts died
+  silently on EADDRINUSE (output redirected), so curl 200s came from
+  the stale process - the trap ran ONE level deeper than the
+  reflection's lesson 3. Fix: Get-CimInstance to identify node PIDs by
+  command line (Freebuff client PIDs left untouched), taskkill //F
+  //PID the stale serve.cjs ONLY, restart, verify the served CSP header
+  carries the NEW hash, then re-run.
+- New durable probe: `curl -sI .../admin.html | grep -o '<new-hash>'`
+  proves the answering server is fresh before trusting any CDP run.
+- A/B test (HEAD file vs edited file) is what exposed the stale-server
+  variable; without it the edit would have been wrongly reverted.
+
+VERIFICATION (all commands run, output seen)
+- node --check: worker.js, serve.cjs, all 4 admin inline scripts.
+- npm run verify: ALL CHECKS PASSED (CSP 24/24, SW v278 > SHELL assets,
+  hidden, skills, export wrappers).
+- qa-dashboard-spec 85/85; qa-marketing 20/20; verify-delegate-gate OK.
+- verify-controls-admin 11/11 PASS (after the server restart).
+- qa-full 174/174, 0 console errors, 0 page exceptions.
+
+FILES TOUCHED
+- admin.html: showScreen() dead gate-prefs lookup removed (one hunk).
+- worker.js + serve.cjs: INLINE_SCRIPT_HASHES regenerated (24).
+- sw.js: mmgr-shell-v277 -> v278.
+- dist/* rebuilt (bundle, app-bundle, admin-bundle, min CSS).
+- CONTINUATION-DIRECTIVE.md STATUS LOG + this reflection.
+
+OUTSTANDING / OWNER'S CALL
+- No commit made (awaiting owner go, per standing practice).
+- #portfolio-strip tail in mmgr-portfolio.js kept DELIBERATELY: qa-full
+  check 65 seeds that host to test the wx-risk badge path. Recorded so
+  a future sweep does not flag it again.

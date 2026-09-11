@@ -40,6 +40,6 @@
     "qa:ai-relay": "node tools/qa-ai-relay.cjs",
     "import:mcp": "node tools/import-mcp-changelog.cjs",
     "predeploy": "npm run verify",
-    "deploy": "npm run build && npm run predeploy && rm -rf /tmp/mmgr-deploy && mkdir -p /tmp/mmgr-deploy && tar --exclude='.git' --exclude='.wrangler' --exclude='node_modules' --exclude='.agents' --exclude='_archive' --exclude='mcp' --exclude='.dev.vars*' --exclude='.gitattributes' --exclude='.gitignore' --exclude='*.md' --exclude='*.json' -cf - . | tar -xf - -C /tmp/mmgr-deploy && cp package.json wrangler.jsonc /tmp/mmgr-deploy/ && cd /tmp/mmgr-deploy && npm install --ignore-scripts --no-audit --no-fund && npx wrangler deploy"
+    "deploy": "npm run build && npm run predeploy && rm -rf /tmp/mmgr-deploy && mkdir -p /tmp/mmgr-deploy && tar --exclude='.git' --exclude='.wrangler' --exclude='node_modules' --exclude='.agents' --exclude='_archive' --exclude='.dev.vars*' --exclude='.gitattributes' --exclude='.gitignore' --exclude='Freebuff*' --exclude='Windows PowerShell*' --exclude='crashes from last session.txt' --exclude='my_manager_web favicon*' --exclude='mymanagerworkspace.com favicon.png' --exclude='screenshots' --exclude='web-research' --exclude='*.md' --exclude='*.json' -cf - . | tar -xf - -C /tmp/mmgr-deploy && cp package.json wrangler.jsonc /tmp/mmgr-deploy/ && cd /tmp/mmgr-deploy && npm install --ignore-scripts --no-audit --no-fund && npx wrangler deploy"
   }
 }

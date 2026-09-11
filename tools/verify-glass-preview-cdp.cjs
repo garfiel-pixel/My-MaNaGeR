@@ -146,7 +146,9 @@ async function waitForPageTarget() {
     // OWNER 2026-09-06: the floating #app-dock is retired - appearance
     // controls live in each page's sidebar Customize accordion (.dock-inline).
     dockInlinePresent: !!document.querySelector('.dock.dock-inline'),
-    dockHasTheme: !!document.querySelector('.dock .pal-btn[data-pal]'),
+    // 2026-09-09: the inline dock's theme control is a <select class="theme-select">
+    // (drawer-select contract, commit 9e60a05), not the old .pal-btn buttons.
+    dockHasTheme: !!document.querySelector('.dock #theme-select') || !!document.querySelector('.dock .pal-btn[data-pal]'),
     dockHasGlass: !!document.querySelector('.dock [data-action="tglGlassMode"]'),
     dockHasPerf: !!document.querySelector('.dock [data-action="tglPerfMode"]'),
     setupScreen: !document.getElementById('setup-screen').classList.contains('hidden'),

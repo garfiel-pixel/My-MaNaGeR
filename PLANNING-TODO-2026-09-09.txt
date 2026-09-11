@@ -1,0 +1,329 @@
+MY MANAGER - PLANNING TRACKER (2026-09-09 session)
+===================================================
+Source: the owner's live UI audit (pasted directive, 2026-09-09).
+Legend: [ ] OPEN  [~] IN PROGRESS  [x] DONE  [?] NEEDS OWNER DECISION
+Owner rule: tasks run ONE BY ONE (no parallel work). After every phase,
+update this file + CONTINUATION-DIRECTIVE.md STATUS LOG + reflection.txt.
+
+--------------------------------------------------------------------
+STANDING RULES RECORDED THIS SESSION (owner, verbatim intent)
+--------------------------------------------------------------------
+R1. NO EMDASHES anywhere on a served page, ever. Rule goes into the
+    continuation directive + reflection + creator skill. The "finish
+    line" section on index.html: remove the giant dash + drop the
+    "the finish line" micro-label; keep plain flow rough -> final.
+R2. PLAIN LANGUAGE ONLY in product copy. No jargon ("hashed", "stored
+    locally" walls of text). Short sentences. Explanations live in a
+    short note line, not paragraphs. Skill: plain-language-copy.
+    Admin setup screen: fields are New admin password + Confirm. One
+    short note is allowed (e.g. password stays on this device).
+R3. CONSISTENCY BY REFERENCE: when building any UI element, first find
+    a similar element ALREADY in the app (tooltips, chips, modals) and
+    match its structure/behavior. Never invent in isolation. Goes into
+    a skill + directive.
+R4. NO SLACKING: never give up on a task, never ship a partial fix
+    silently, never claim done without verification. Skill required
+    (owner: "Don't slack off" / anti-lazy skill). Owner reports the AI
+    previously gave up mid-task (e.g. tooltip backgrounds).
+R5. HUMAN AUDIT SKILL: distill this audit's review method (how the
+    owner walks every page, sidebar, tooltip, toggle, theme) into a
+    reusable skill for future audits.
+R6. SIGN-IN IS APP-ONLY: sign-in entry points live on app.html (and
+    admin). Signed-in state may SHOW on other pages but the ACT of
+    signing in starts from the app section. Project sidebar shows
+    project navigation ONLY (no "Not signed in" - remove; the backup
+    section is the right home for a "not backed up -> sign in" hint).
+R7. DARK THEME = BLACK AND WHITE (already the contract) + the starry
+    background + advanced UI must also cover the ADMIN page (admin
+    gets the same app-level premium treatment).
+R8. Domain is LIVE: https://mymanagerworkspace.com (bought, paid).
+    Update directive + reflection + planning + skills with the domain
+    and the new capabilities a paid domain unlocks (proper email via
+    a subdomain, forgot-password email flows, professional URL).
+    Owner wants a FREE email servicing path researched (Resend free
+    tier) for password/admin-code recovery emails.
+R9. Offline admin codes are the USER's responsibility, not ours.
+    Signed-in users on a new device get an "Enter my admin code"
+    path so a cloud-linked admin can restore access after sign-in.
+R10. Buttons on marketing: Get Started returns to GOLD; secondary
+     buttons stay glass but turn gold on hover; sizes follow standard
+     landing-page button dimensions (research-backed), roughly 1.2x
+     smaller than current oversized state.
+R11. Code must read cleanly for a mid-to-senior engineer. No clever
+     one-liners that hide intent.
+R12. Push every increment; CI must be green (and RUNNING - owner says
+     CI was not running; investigate) before deploy. Deploy to BOTH
+     domains (workers.dev + custom domain).
+R13. Wrangler must be updated (owner noticed staleness).
+
+--------------------------------------------------------------------
+EXECUTION PLAN (one by one, in this order)
+--------------------------------------------------------------------
+
+PHASE 0 - PLAN + RULES (this file)
+P0.1 [x] Write this tracker.
+P0.2 [ ] Add standing rules to CONTINUATION-DIRECTIVE.md (em-dash ban,
+       plain language, consistency-by-reference, domain live, sign-in
+       app-only, sidebar purity, admin premium parity).
+P0.3 [x] Check CI is running on GitHub (owner: it was not visible);
+       check wrangler latest; update wrangler if behind.
+       DONE 2026-09-09: CI run 264 IS green on main (owner's worry
+       cleared; Nightly vs CI are separate workflows). Wrangler bumped
+       4.129.1 -> 4.130.0 (package.json + lock). FOUND + FIXED the
+       nightly red streak (6 runs): qa-cloud-phase2.cjs never applied
+       WRANGLER_DEV_URL to its API BASE (fell back to chrome-launcher's
+       :8765 where nothing listens in CI) and nightly.yml never passed
+       ADMIN_CODE=QA-ADMIN-CI (phase2 P4.1a 403 + cascade). Fixed both
+       (BASE fallthrough line + external-mode boot canary via
+       /api/cloud/sections + nightly env parity with ci.yml).
+       VERIFIED: 85/85 external-mode local run (nightly contract).
+
+PHASE 1 - SKILLS (owner-ordered creations)
+P1.1 [x] Skill: human-audit (the walk-the-whole-site review method
+       distilled from this audit).
+P1.2 [x] Skill: no-slacking (anti-lazy: finish what you start, verify,
+       never abandon mid-fix; include the tooltip/consistency example).
+P1.3 [x] Skill: plain-language-copy (banned jargon list, note-line
+       pattern, examples from this audit).
+P1.4 [x] Register all three in skills-lock.json via the hash tool;
+       npm run verify green (20/20 skills, ALL CHECKS PASSED).
+
+PHASE 2 - ADMIN PANEL (owner's admin audit)
+P2.1 [x] Admin setup/login copy: strip the jargon wall. Fields: New
+       admin password + Confirm. One short note line max.
+       DONE 2026-09-09: setup heading kept, paragraph now "Choose an
+       admin password. It stays on this device." (was a 4-line
+       hashing/storage wall). Lost-code + reset-confirm copy
+       shortened. CSP hashes regenerated (24, worker+serve), sw
+       v267, bundles rebuilt. verify ALL PASS; verify-controls-admin
+       11/11 (with serve.cjs up); qa-admin-recovery 24/24.
+P2.2 [x] Premium starry glass + story background + advanced UI on
+       admin.html (parity with app section, owner explicit request).
+       DONE 2026-09-09: js/mmgr-glass.js activate() admin exclusion
+       removed (project.html stays excluded). Admin already carried
+       the glass-premium z-index layering (gate+header+main) from the
+       dock wave. Rebuilt bundles; live-probed admin: glassClass true
+       + canvas mounted + effective premium. Harnesses aligned to the
+       drawer-select theme contract: verify-glass-preview-cdp (G3
+       dockHasTheme) OK, qa-view-mode V1/V2 retargeted + V3 now
+       mirrors Perf.apply() (localStorage write alone left data-perf=on
+       which blocked the tilt) - ALL VIEW-MODE GATES PASSED.
+P2.3 [x] Signed-in admin on a NEW DEVICE: after Google sign-in, offer
+       "Enter my admin code" (cloud-linked restore) instead of only
+       "create a new admin code".
+       DONE 2026-09-09: admin.html setup screen gains a hidden-until-
+       signed-in restore block (divider "or restore access" + password
+       field + Restore access button + one note line). Visibility =
+       event detail OR GA.isSignedIn(); deterministic SHA-256 means the
+       same admin code re-creates access on the fresh device, then the
+       one-time recovery modal issues as usual. Unsigned visitors see
+       only the create form. Live browser-verified end to end (setup ->
+       wipe -> signed-in event -> restore field appears -> same code ->
+       recovery modal -> panel unlocked). CSP hashes regen (worker+
+       serve, 24), sw v270, bundles rebuilt. verify ALL PASS;
+       verify-controls-admin 11/11; qa-admin-recovery 24/24;
+       qa-view-mode ALL. GOTCHA hit + fixed: .rc-divider[hidden] needed
+       a display:none guard (verify:hidden gate caught it); a stale
+       serve.cjs process served old CSP hashes and blocked every inline
+       script (killed by exact PID, restarted).
+
+PHASE 3 - PROJECT PAGE (owner's project audit)
+P3.1 [x] DONE 2026-09-09: signed-out visitors get no account row (#sb-user
+       hidden+empty, sidebar navigation-only); signed-in keeps name + Sign
+       out. Live probe verified; no dead references remain.
+P3.2 [x] DONE 2026-09-09: #bk-signin row in the backup popover, shown while
+       not cloud-linked + signed out, links to app.html (sign-in lives only
+       there per the 2026-09-07 rule). Re-render wired to mmgr:user-changed
+       + mmgr:google-signed-out. CSP hashes regenerated (24) + meta CSP 4th
+       hash restored; .bk-opt[hidden] + .db-user[hidden] guards added
+       (verify-hidden green). qa-view-mode ALL after polling fix for V3.
+P3.3 [x] DONE 2026-09-09: .bk-pop switched to solid var(--card) fill (the
+       .mlc-card methodology pattern); the dark-mode override that forced
+       7%-white glass back on was removed. Readable in both themes.
+P3.4 [x] DONE 2026-09-09: dark mode remaps --gold to white -> white-on-white
+       FAB. body.dark-mode .calc-fab now pins the light-theme brand orange
+       (#D96B27), mirroring the AI FAB's fixed-color precedent the owner
+       endorsed. Live probe: bg rgb(217,107,39) + white glyph in dark.
+P3.5 [x] DONE 2026-09-09: .sr rows reworked (align-items:center; gap:14px;
+       min-height:34px; label flex:1; control margin-left:auto) - labels
+       breathe, toggles/inputs/buttons pin to the RIGHT edge (same pattern
+       as the dock's .pal-switch). Live probe: Your Name gap 14px, input
+       flush right; all Controls rows measured. Applies to the cloud-drawer
+       .sr rows identically (consistency). qa-cloud-phase1 29/29 after
+       freeing port 8765 (serve.cjs was squatting on the harness port -
+       known gotcha, note for future sessions).
+       Aug 31 git version for the workspace structure that was right.
+P3.6 [x] DONE 2026-09-09: root cause = commit 8e4b8df gutted the .sr row
+       rule to bare display:flex. Aug 31 structure restored (bordered rows,
+       11px padding, 7px rhythm, space-between) merged with right-edge
+       control alignment. Probes + gates green.
+
+PHASE 4 - APP LAUNCHER (owner's app audit)
+P4.1 [x] DONE 2026-09-10: root cause was TWO stacked bugs. (1)
+       css/mmgr.css had body.db-page .db-signin{display:none} (the
+       2026-09-07 decision that hid the footer button), leaving the
+       51px dark footer strip EMPTY (the owner's black box). (2)
+       restoreSession()'s signed-out path never fired mmgr:user-changed
+       (fires only when a session is found), so renderRailUser() never
+       ran and the static footer (button only) was what rendered.
+       FIX: removed the display:none (button visible again; hover/focus
+       rules intact), deleted the dead .db-user-name.is-out rule, and
+       renderRailUser(null) now emits the SAME plain Sign in button as
+       the static markup (no "Not signed in" status text - owner rule).
+       VERIFIED live via CDP: button display:flex 84x28, no empty box,
+       click opens #siom (email field visible + "or continue with
+       Google" divider). GOTCHA re-hit: serve.cjs bakes CSP hashes at
+       STARTUP - it was started before the edits, so Chrome blocked all
+       inline scripts silently (siomBound:false); restarting serve.cjs
+       after edits fixed it. sw v272, bundles + CSP hashes (24) regen,
+       npm run verify ALL PASS.
+P4.2 [x] DONE 2026-09-10: root cause = the --db-* dark token block
+       still carried the warm-brown family (--db-surface:#242019,
+       raised #2e2922, border #3a342c) from the pre-B&W palette; the
+       2026-09-07 pass whitened the accent but never the surfaces.
+       FIX (semantic tier, so every card inherits): --db-surface
+       #141416, raised #1d1d20, border #2b2b30 (neutral jet-black
+       family). All launcher cards (demo + user-created) share .pcard,
+       so newly created projects get the same treatment automatically.
+       ALSO: stray fluorescent cyan rgba(80,232,244) on .cd-plan.at-limit
+       swapped to white (universal-ui-architect hard gate: never
+       fluorescent cyan). Demo Projects heading 13.12px -> 26.24px
+       (exactly 2x, owner-approved). White hover border kept (owner).
+       VERIFIED live via CDP: cardBg rgb(20,20,22), border rgb(43,43,48),
+       title rgb(245,245,245), heading 26.24px. Light mode untouched
+       (scoped to body.dark-mode.db-page). sw v273.
+P4.3 [x] DONE 2026-09-10: renderProjectResults() in app.html had a
+       per-word AND filter but NO ordering. Added prefix-first ranking
+       on the first typed word: tier 0 = title starts with it, tier 1
+       = a title word starts with it (non-alphanumeric boundary),
+       tier 2 = inside a title word, tier 3 = description-only;
+       alphabetical (localeCompare) inside each tier. Filter semantics
+       unchanged (all words must match somewhere). VERIFIED live via
+       CDP: query "pro" -> [Blank Template Project, QA Demo Project]
+       (word-start tier) above Riverside (description-only tier);
+       query "qa" -> QA Demo Project (title-prefix, tier 0);
+       query "e" -> alphabetical within tier. Live typing re-sorts
+       per keystroke via the existing input listener. CSP hashes
+       regen (inline script), sw v274, bundles rebuilt.
+
+PHASE 5 - MARKETING / SIGN-IN (owner's marketing audit)
+P5.1 [x] DONE 2026-09-10: root cause = css/marketing.css line 283 had
+       a SELECTOR LEAK: "body.dark-mode .signin-btn,.btn-gold{...}" -
+       the unscoped .btn-gold applied the dark sign-in GLASS skin to
+       every gold button in EVERY theme (later in file = beat the real
+       gold rule). Get Started had no gold anywhere. FIX: unscoped
+       selectors removed (glass stays on dark .signin-btn only);
+       .btn-gold resized 60px->49px (padding 20x40->15x28, font
+       1.12->1.05rem, radius 16->14px) per landing-page research
+       (44-48px tap target, 51.76px high-converting average, radius
+       ~30% of height, ~1.2x down as owner specified); .btn-ghost-light
+       hover now turns GOLD (tint bg + gold border + gold text). VERIFIED
+       live via CDP: hero bg rgb(217,107,39), h=49, radius 14px; ghost
+       hover rgba(217,107,39,.16)/gold border/gold text. Light mode only
+       scope - marketing pages are theme-decoupled.
+P5.2 [x] DONE 2026-09-10: em/en dash scan across all 15 served pages
+       + js/*.js = ZERO hits (the v246 sweep held; nothing regressed).
+       The owner-flagged "The finish line" eyebrow (and its decorative
+       dash) removed from the interior photo band on index.html; the
+       section flows straight into "From rough-in to the final
+       walkthrough."
+P5.3 [x] DONE 2026-09-10: root cause = the "LOCK-IN (OWNER 2026-08-17)"
+       logic in js/marketing.js added .done to every section scrolled past
+       and NEVER removed it, so labels/stays lit on the way back up. FIX:
+       one-way lock-in replaced by a symmetric recompute in setSpy():
+       active index drives the trail (above = done, active = lit, below =
+       un-lit); the stale add-done branch removed from the observer.
+       Smooth tracking unchanged (CSS .2s transitions + html smooth
+       scroll). VERIFIED live via CDP: at #faq -> builtfor..guide done +
+       faq active; scroll back to #builtfor -> builtfor active, all
+       others none (fully un-lit).
+P5.4 [x] DONE 2026-09-10: marketing signin-sheet reordered to the
+       owner's layout: email form FIRST (Email + Password + Sign in),
+       divider, Continue with Google, then the links (Forgot
+       password? / Create account) moved BELOW the Google button and
+       free-flowing. The email form's solid card box REMOVED (owner:
+       "let them free flow", no borders) - transparent bg, no border,
+       no padding; inputs keep their field styling. Markup: index.html
+       #signin-sheet order swapped; js/marketing.js moves .email-auth-alt
+       after #google-signin-button at mount (reset-panel alt stays put);
+       css/marketing.css de-boxes .signin-sheet .email-auth. VERIFIED
+       live via CDP: sheetOrder [marketing-email-auth, divider, google,
+       alt, note, user], formBox bg transparent/border none/padding 0,
+       forgot link visible. sw v276, bundles rebuilt.
+
+PHASE 6 - LOCAL AI ASSISTANT (owner: rate limit too extreme)
+P6.1 [x] DONE 2026-09-10: root cause = localLookup()'s intent list in
+       js/mmgr-ai.js had NO forecast intent ("forecast" only matched via
+       /weather|delay/, which needs weather/delay words), so "what is
+       the project forecast?" fell to the honest-refusal branch. AUDIT
+       of the rest of the path: the local tier has NO other limiter
+       (_aiBusy serialization only); the /api/ai relay (src/ai-proxy.js)
+       adds none either (256KB body cap + upstream 429/503 passthrough
+       only) - the "extreme rate limit" the owner felt WAS the intent
+       matcher refusing. FIX: new forecast intent (forecast|projected
+       finish|finish date|completion date|eta|when-will-we-finish)
+       reuses the grounded LOCAL_BUILDERS.forecast (projected finish vs
+       charter target + CPI trend + weather delays, trace preserved);
+       EVM matcher widened with "burn rate". Chit-chat STILL refused
+       (owner wants that). VERIFIED live via CDP on demo-filled:
+       forecast question -> FORECAST block (2026-06-30 on target, CPI
+       0.87, 4 wx delays); "is our EVM good?" + "how is our CPI
+       looking?" -> EVM numbers; "hello" + "tell me a joke" -> refused.
+       sw v277 (bundle.js is a SHELL asset), bundles rebuilt.
+
+PHASE 7 - DOMAIN + EMAIL (owner: subdomain email + free email service)
+P7.1 [x] DONE 2026-09-10: researched + audited. Resend free tier =
+       3,000 emails/mo, 100/day, 1 verified sending domain - ample for
+       recovery email. KEY FINDING: the integration is ALREADY BUILT and
+       dormant in the codebase (sendAuthEmail() in src/lib/http.js calls
+       Resend's API; RESEND_API_KEY/RESEND_FROM_EMAIL documented in
+       .dev.vars.example; EMAIL_RECOVERY_ENABLED:false in wrangler.jsonc
+       from the v233 Tier A work; subdomain approach already hinted in
+       wrangler.jsonc comments). No new code needed - only owner DNS +
+       secret setup. Recorded in OWNER-REVIEW.md (P7.2).
+P7.2 [x] DONE 2026-09-10: OWNER-REVIEW.md Domains & Email section now
+       carries the full step-by-step walkthrough: (A) outbound via a
+       mail.mymanagerworkspace.com SUBDOMAIN on Resend's free tier
+       (add domain, add Resend's DKIM/SPF/DMARC records in Cloudflare
+       DNS as DNS-only/grey-cloud, verify, wrangler secret put
+       RESEND_API_KEY + RESEND_FROM_EMAIL, flip EMAIL_RECOVERY_ENABLED,
+       deploy, test); (B) inbound contact address via Cloudflare Email
+       Routing (free, forwards to Gmail, auto MX); (C) OAuth origins for
+       both apex + www. Note: offline admin codes remain the guaranteed
+       recovery path (owner rule R9) - email is the convenience layer. No bloat features - improve reach/access.
+P7.3 [x] DONE 2026-09-10: CONTINUATION-DIRECTIVE.md owner standing rule
+       6 (DOMAIN IS LIVE) now carries the domain-capabilities summary:
+       email stack built-but-dormant (sendAuthEmail +
+       EMAIL_RECOVERY_ENABLED), activation is owner-side via the
+       OWNER-REVIEW.md walkthrough, free-tier numbers, offline codes
+       stay the guaranteed path. Planning tracker updated per phase
+       throughout this session. Skills audited: the three 2026-09-09
+       skills (human-audit / no-slacking / plain-language-copy) are
+       method skills with no stale domain references; no skill edits
+       needed. Historical session logs in the directive keep their
+       workers.dev URLs as history (rule 6 already mandates BOTH
+       origins on every future deploy). reflection.txt written at
+       session end (P9.3).
+
+PHASE 8 - VERIFICATION + SHIP
+P8.1 [ ] node build.js (bundles), npm run verify, emoji scan, em-dash
+       scan, targeted qa-*.cjs suites.
+P8.2 [ ] Commit (Conventional Commits, NO AI footer), push, POLL the
+       Actions API until green (fix via AGENTS.md #8 loop if red).
+P8.3 [ ] Deploy from clean staging (wrangler.jsonc recipe) to BOTH
+       domains; smoke-test live.
+
+PHASE 9 - BOOKKEEPING (after EVERY phase, not just the end)
+P9.1 [ ] Update this file per phase.
+P9.2 [ ] Update CONTINUATION-DIRECTIVE.md STATUS LOG per phase.
+P9.3 [ ] Write reflection.txt at session end (post-mortem).
+
+--------------------------------------------------------------------
+NOTES
+--------------------------------------------------------------------
+- Existing sessions' lessons apply: NEVER taskkill node by image name;
+  rebuild bundles after js/ edits; RAF-wrapped renderers need a flush
+  before DOM checks; D1 WAL lag needs retry; staging-copy deploy only.
+- The skeptical-code-audit skill is MANDATORY for verification.
+- Web research (Serper + read_url) and Playwright/BeautifulSoup (via
+  web-research/*.py patterns) are available for any doubt.

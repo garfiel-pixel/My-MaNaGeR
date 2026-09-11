@@ -31,7 +31,32 @@ Agents: do not execute these; leave them for the owner.
 ### Domains & Email (added 2026-09-07, from the subdomain/DNS audit)
 - [ ] **www.mymanagerworkspace.com does not resolve** — DNS has no `www` record, so anyone typing `www.` gets a browser error. Decision: add a proxied `www` CNAME to the apex in Cloudflare DNS (recommended), or declare apex-only. If you add it, also add `https://www.mymanagerworkspace.com` to the Google OAuth Authorized JavaScript origins so sign-in works from both.
 - [ ] **The domain cannot receive email (no MX records)** — if you want addresses `@mymanagerworkspace.com`, enable Cloudflare Email Routing (free, forwards to your Gmail) in the dashboard. This is what future "emails from them" would flow through.
-- [ ] **No SPF/DKIM/DMARC TXT records** — the dormant Tier A email-OTP admin recovery (`EMAIL_RECOVERY_ENABLED` in wrangler.jsonc) stays 503 until a verified sending domain exists. To activate: add Resend's DKIM/SPF DNS records for `mymanagerworkspace.com` (or use Cloudflare Email Workers), set `RESEND_FROM_EMAIL` to an address on the domain, then flip the flag. Google Workspace/verification TXTs also belong here when needed.
+- [ ] **No SPF/DKIM/DMARC TXT records** — the dormant Tier A email-OTP admin recovery (`EMAIL_RECOVERY_ENABLED` in wrangler.jsonc) stays 503 until a verified sending domain exists. FULL STEP-BY-STEP below (added 2026-09-10, P7.2).
+
+#### Email activation walkthrough (owner steps, 2026-09-10)
+
+The code side is ALREADY BUILT and dormant: `sendAuthEmail()` in `src/lib/http.js` calls Resend's API when `RESEND_API_KEY` exists; `EMAIL_RECOVERY_ENABLED:false` in `wrangler.jsonc` keeps it off. Only owner actions are needed.
+
+**A. Outbound sending (app sends recovery/reset emails), free tier**
+1. Create a free account at resend.com (3,000 emails/month, 100/day — far above what recovery emails need).
+2. In Resend: Domains > Add Domain. Enter `mail.mymanagerworkspace.com` (a SUBDOMAIN, as the owner requested — keeps the apex DNS clean and Resend's records separate from the website).
+3. Resend shows DNS records to add. In Cloudflare dashboard > mymanagerworkspace.com > DNS, add them for `mail`: the DKIM TXT records, an SPF TXT (`v=spf1 include:... -all`), and a DMARC TXT. Set every record to **DNS only (grey cloud)** — email records must never be proxied. Delete nothing that exists.
+4. Back in Resend, click Verify. Green status = domain verified.
+5. Resend: API Keys > Create. Copy it once.
+6. Add the secret (run in the project root): `npx wrangler secret put RESEND_API_KEY` and paste the key.
+7. Add the sender: `npx wrangler secret put RESEND_FROM_EMAIL` and enter `My MaNaGeR <no-reply@mail.mymanagerworkspace.com>`.
+8. Flip the flag: in `wrangler.jsonc` change `"EMAIL_RECOVERY_ENABLED": false` to `true` (this one is a var, not a secret).
+9. Deploy (clean staging recipe). Test: sign in on admin, request email recovery, confirm the message arrives from the subdomain address.
+
+**B. Inbound (people email YOU via the domain), free**
+1. Cloudflare dashboard > Email > Email Routing > enable for the domain.
+2. Create address `contact@mymanagerworkspace.com` (or any you prefer) > destination: your Gmail > confirm the verification email Gmail receives.
+3. Email Routing adds its own MX/SPF records automatically — accept them.
+
+**C. OAuth origins (do this before/with any www change)**
+- Google Cloud Console > APIs & Services > Credentials > the Web client > Authorized JavaScript origins must include BOTH `https://mymanagerworkspace.com` and (if the www CNAME is added) `https://www.mymanagerworkspace.com`. Same for Authorized redirect URIs if any are listed.
+
+**What stays safe if limits are hit:** the free tier caps at 100 emails/day; recovery email is a convenience layer — offline admin codes remain the guaranteed path and are unaffected (owner rule R9: offline codes are the user's responsibility to store).
 - [ ] **workers.dev subdomain still serves the full app** (`my-manager.garfieldprocis.workers.dev`) — decision: keep it as a dev/preview alias, or disable/redirect it now that the paid domain is live (duplicate public content; also check which origins are listed in the Google OAuth client before removing anything).
 
 ### Deploy

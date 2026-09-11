@@ -230,7 +230,10 @@ body.dark-mode .site-nav a.nav-link[aria-current="page"]{color:#fff;}
 .btn-gold{
   background:var(--gold);color:var(--on-gold);
   box-shadow:0 1px 3px rgba(var(--gold-rgb),.2);
-  padding:20px 40px;border-radius:16px;font-size:1.12rem;
+  /* OWNER 2026-09-09 (P5.1): standard landing-page CTA size, ~1.2x down
+     from the old 60px (research: 44-48px tap target, 51.76px high-converting
+     average, radius ~30% of height). */
+  padding:15px 28px;border-radius:14px;font-size:1.05rem;
 }
 .btn-gold:hover{
   background:var(--gold-hover);
@@ -244,7 +247,9 @@ body.dark-mode .site-nav a.nav-link[aria-current="page"]{color:#fff;}
   -webkit-backdrop-filter:blur(6px);
   backdrop-filter:blur(6px);
 }
-.btn-ghost-light:hover{background:rgba(255,255,255,.16);border-color:rgba(255,255,255,.5);transform:translateY(-1px);}
+/* OWNER 2026-09-09 (P5.1): secondary glass buttons turn GOLD on hover
+   (the CTA color family), matching the owner's directive. */
+.btn-ghost-light:hover{background:rgba(var(--gold-rgb),.16);border-color:var(--gold);color:var(--gold);transform:translateY(-1px);}
 .btn-ghost{
   background:var(--card);
   border-color:var(--border);
@@ -280,12 +285,12 @@ body.dark-mode .nav-toggle{
 .signin-btn:hover{background:rgba(var(--gold-rgb),.12);border-color:var(--gold);}
 .signin-btn:focus-visible{outline:2px solid var(--gold);outline-offset:1px;}
 .signin-btn[aria-expanded="true"]{background:rgba(var(--gold-rgb),.12);}
-body.dark-mode .signin-btn,.btn-gold{
+body.dark-mode .signin-btn{
   border:var(--glass-edge);background:rgba(255,255,255,.08);
   color:#fff;
 }
-body.dark-mode .signin-btn:hover,.btn-gold:hover{background:rgba(255,255,255,.16);border-color:rgba(255,255,255,.5);}
-body.dark-mode .signin-btn[aria-expanded="true"],.btn-gold[aria-expanded="true"]{background:rgba(255,255,255,.16);}
+body.dark-mode .signin-btn:hover{background:rgba(255,255,255,.16);border-color:rgba(255,255,255,.5);}
+body.dark-mode .signin-btn[aria-expanded="true"]{background:rgba(255,255,255,.16);}
 body.dark-mode .btn-gold,html body.dark-mode .btn-gold{
   background:#ffffff;color:#0b0b0d;border:1px solid rgba(255,255,255,.5);
 }
@@ -403,12 +408,12 @@ body.dark-mode .nav-dd-item:hover{color:var(--gold);background:rgba(var(--gold-r
 .signin-sheet .gis-fallback-btn:hover{border-color:var(--gold);background:rgba(var(--gold-rgb),.08);}
 .signin-sheet .gis-fallback-btn:focus-visible{outline:2px solid var(--gold);outline-offset:1px;}
 .signin-sheet .gis-fallback-btn:disabled{opacity:.6;cursor:default;border-color:var(--border);}
-/* Solid content card inside the glass sheet (Gate 6.1 - the form is dense
-   interactive content, never glass-on-content). */
+/* OWNER 2026-09-09 (P5.4): the email form floats free in the sheet - no
+   card box around it (owner: "let them free flow", no borders locking the
+   links or the form in). Inputs keep their own field styling. */
 .signin-sheet .email-auth{
   display:flex;flex-direction:column;gap:8px;
-  padding:12px;border-radius:12px;
-  background:var(--card);border:1px solid var(--border);
+  padding:0;background:transparent;border:none;
 }
 .signin-sheet .email-auth-form{display:flex;flex-direction:column;gap:8px;}
 .signin-sheet .email-auth-form[hidden]{display:none;}

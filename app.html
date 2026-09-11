@@ -971,16 +971,16 @@ function renderRailProjects(){
   }).join('');
 }
 
-/* Rail footer , user area: signed out = "Not signed in" + Sign in (opens
-   #siom); signed in = name + Sign out. Rendered from the same events the
-   auth module dispatches. Sign-in lives ONLY on the app page (owner
-   2026-09-07) - other pages show the synced state without an entry point. */
+/* Rail footer , user area: signed out = a plain Sign in button (opens
+   #siom; owner 2026-09-09 P4.1 - no status text, the button IS the row);
+   signed in = name + Sign out. Rendered from the same events the auth
+   module dispatches. Sign-in lives ONLY on the app page (owner 2026-09-07)
+   - other pages show the synced state without an entry point. */
 function renderRailUser(user){
   const area = document.getElementById('rail-user');
   if (!area) return;
   if (!user){
-    area.innerHTML = '<span class="db-user-name is-out"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-user"></use></svg> Not signed in</span>' +
-      '<button type="button" class="db-signin" data-action="openSignIn">Sign in</button>';
+    area.innerHTML = '<button type="button" class="db-signin" data-action="openSignIn"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-user"></use></svg> Sign in</button>';
     syncRailAccountStrip(false);
     return;
   }
@@ -1173,6 +1173,29 @@ function renderProjectResults(query){
     var hay = ((p.title || p.id || '') + ' ' + (p.description || '')).toLowerCase();
     return words.every(function(w){ return hay.indexOf(w) > -1; });
   }) : all;
+  // OWNER 2026-09-09 (P4.3): prefix-first ordering. Whatever the query
+  // starts with floats matching projects to the TOP: title starts with it,
+  // then titles where a word starts with it, then substring hits, then
+  // description-only matches; alphabetical inside each tier.
+  if (words.length) {
+    var w0 = words[0];
+    var rankFor = function(p) {
+      var title = (p.title || p.id || '').toLowerCase();
+      var idx = title.indexOf(w0);
+      if (idx === 0) return 0;                                   /* title starts with it */
+      if (idx > -1) {
+        var prev = idx > 0 ? title.charAt(idx - 1) : '';
+        if (!/[a-z0-9]/.test(prev)) return 1;                    /* a title word starts with it */
+        return 2;                                                /* inside a title word */
+      }
+      return 3;                                                  /* description-only match */
+    };
+    filtered.sort(function(a, b) {
+      var d = rankFor(a) - rankFor(b);
+      if (d) return d;
+      return (a.title || '').localeCompare(b.title || '');
+    });
+  }
   if (!filtered.length) {
     list.innerHTML = '<div class="ps-empty">' + (q ? 'No projects match "' + escapeHtml(q) + '"' : 'No projects found') + '</div>';
     return;

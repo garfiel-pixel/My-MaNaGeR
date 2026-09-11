@@ -73,6 +73,7 @@ body.dark-mode .gbox input{background:rgba(0,0,0,.3);}
 .rc-cb{display:flex;align-items:flex-start;gap:8px;font-size:.78rem;color:var(--slate);line-height:1.45;cursor:pointer;text-align:left;}
 .rc-cb input{margin-top:2px;}
 .rc-divider{display:flex;align-items:center;gap:12px;color:var(--slate);font-size:.7rem;margin:16px 0;}
+.rc-divider[hidden]{display:none;}
 .rc-divider::before,.rc-divider::after{content:'';flex:1;height:1px;background:var(--border);}
 .forgot-link{background:none;border:none;padding:0;margin-top:14px;font-size:.78rem;color:var(--gold);cursor:pointer;text-decoration:underline;text-underline-offset:3px;font-family:inherit;}
 .forgot-link:hover{color:var(--text);}
@@ -215,7 +216,8 @@ pre.snippet{background:#f8fafc;border:1px solid var(--border);border-radius:6px;
 <div class="gatewrap" id="setup-screen">
   <form class="gbox" id="setup-form" novalidate>
     <div class="icon"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-tool"></use></svg></div>
-    <h1>Set Up Admin Access</h1>     <p>No admin password is set on this device yet. Choose one now - it will be stored (hashed) locally on this device only. You'll need to re-enter it each time you open the admin panel, but it never leaves this browser.</p>
+    <h1>Set Up Admin Access</h1>
+    <p>Choose an admin password. It stays on this device.</p>
     <label class="sr-only" for="setup-pass1">New admin password</label>
     <span class="pw-wrap">
       <input id="setup-pass1" type="password" placeholder="New admin password (min 8 characters)" autocomplete="new-password">
@@ -228,6 +230,20 @@ pre.snippet{background:#f8fafc;border:1px solid var(--border);border-radius:6px;
     </span>
     <div class="gerr" id="setup-err" role="alert"></div>
     <button class="btn btn-g full" data-action="adminSetupPassword" type="submit"><span class="btn-txt">Create Admin Password</span><span class="spin-dot" aria-hidden="true"></span></button>
+    <!-- OWNER 2026-09-09: a signed-in admin on a NEW device gets a restore
+         path here instead of only "create a new admin code". Hidden until
+         the session restore reports signed-in (initGate + mmgr:user-changed). -->
+    <div class="rc-divider" id="setup-restore-divider" hidden>or restore access</div>
+    <div id="setup-restore" hidden>
+      <label class="sr-only" for="setup-restore-code">Admin code</label>
+      <span class="pw-wrap">
+        <input id="setup-restore-code" type="password" placeholder="Enter my admin code" autocomplete="off">
+        <button type="button" class="pw-eye" data-action="tglPwVis" data-target="setup-restore-code" aria-pressed="false" aria-controls="setup-restore-code"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-eye"></use></svg><span class="sr-only">Show password</span></button>
+      </span>
+      <div class="gerr" id="setup-restore-err" role="alert"></div>
+      <button class="btn btn-n full" data-action="restoreAdminCode" type="button"><span class="btn-txt">Restore access</span></button>
+      <p class="gbox-sub" style="margin:8px 0 0">Use the admin code you set on your other device. It stays on this one.</p>
+    </div>
   </form>
 </div>
 
@@ -266,7 +282,7 @@ pre.snippet{background:#f8fafc;border:1px solid var(--border);border-radius:6px;
       <button class="btn btn-g full" data-action="submitRecoveryCode"><span class="btn-txt">Use Recovery Code</span><span class="spin-dot" aria-hidden="true"></span></button>
       <details class="rec-lost">
         <summary>I lost my recovery code</summary>
-        <p>The recovery code is stored only on this device and cannot be recovered or reset remotely. The only path is to wipe the admin password on this device and set it up again (projects are not affected).</p>
+        <p>The code lives only on this device. Without it, reset the admin password on this device and set it up again. Your projects are not affected.</p>
         <button class="btn btn-d" data-action="resetAdminLocal">Reset admin password on this device</button>
       </details>
       <div class="rc-divider">or use email recovery</div>
@@ -848,10 +864,51 @@ function showScreen(id){
 }
 async function initGate(){
   const storedHash = localStorage.getItem('mmgr_admin_pass_hash');
-  if(!storedHash){ showScreen('setup-screen'); return; }
+  if(!storedHash){ showScreen('setup-screen'); setupRestoreVisibility(); return; }
   if(sessionStorage.getItem('mmgr_admin_session') === '1'){ enterAdmin(); return; }
   showScreen('login-screen');
   setTimeout(()=>document.getElementById('login-pass').focus(), 50);
+}
+/* ---- OWNER 2026-09-09: NEW-DEVICE ADMIN RESTORE ("Enter my admin code") ----
+   The admin password is a device-local SHA-256 of the code itself, so the
+   SAME admin code produces the SAME hash on any device. A signed-in admin
+   opening admin.html on a fresh device sees a restore field on the setup
+   screen: entering their existing admin code re-creates local access (and
+   the recovery-code modal then issues as usual). Unsigned visitors never
+   see it, and a wrong code just errors. Never gates anything else. */
+function setupRestoreVisibility(e){
+  // Signed-in evidence: the event's own detail (authoritative - the auth
+  // module dispatches it right after showUser sets its state) or, for the
+  // boot-time call, the module's isSignedIn(). Either counts.
+  const fromEvent = !!(e && e.detail);
+  const GA = window.MMGR && window.MMGR.GoogleAuth;
+  const signedIn = fromEvent || !!(GA && GA.isSignedIn && GA.isSignedIn());
+  ['setup-restore-divider','setup-restore'].forEach(function(id){
+    const el = document.getElementById(id);
+    if (el) el.hidden = !signedIn;
+  });
+}
+async function restoreAdminCode(){
+  const input = document.getElementById('setup-restore-code');
+  const err = document.getElementById('setup-restore-err');
+  const btn = document.querySelector('#setup-restore [data-action="restoreAdminCode"]');
+  const code = String(input && input.value || '').trim();
+  if (!code){ if (err) err.textContent = 'Enter your admin code first.'; return; }
+  if (btn){ btn.disabled = true; }
+  try{
+    // Deterministic hash: the same admin code always yields the same
+    // stored hash, so this recreates access on the new device.
+    localStorage.setItem('mmgr_admin_pass_hash', await sha256(code));
+    sessionStorage.setItem('mmgr_admin_session','1');
+    if (err) err.textContent = '';
+    // AREA G: a restored admin gets the one-time recovery code flow too.
+    const rcode = await rcStoreNewCode();
+    openRecoveryModal(rcode, enterAdmin);
+  }catch(e){
+    if (err) err.textContent = 'Could not restore access. Try again.';
+  }finally{
+    if (btn){ btn.disabled = false; }
+  }
 }
 async function handleSetupPassword(){
   const btn = document.getElementById('setup-form') && document.getElementById('setup-form').querySelector('.btn-g');
@@ -1127,7 +1184,7 @@ async function submitRecoveredPassword(){
 }
 function resetAdminLocal(){
   admConfirm({
-    title: 'Reset admin password on this device?',     message: 'The admin password and recovery code will be removed from THIS device and you will set them up again now. Your projects and cloud data are not affected. Anyone with physical access to this browser could set a new password afterward - only do this on a device you trust.',
+    title: 'Reset admin password on this device?',     message: 'The admin password and recovery code will be removed from this device and you will set them up again. Your projects are not affected. Only do this on a device you trust.',
     danger: true,
     confirmLabel: 'Reset',
     onOk: function(){
@@ -1280,6 +1337,9 @@ document.addEventListener('mmgr:user-changed', function(e){
   renderRailUser(e.detail);
   var eb = document.getElementById('email-auth-block');
   if (eb) eb.hidden = true;
+  // New-device restore path appears once the session restore reports
+  // signed-in (setup screen only; other screens ignore it).
+  setupRestoreVisibility(e);
 });
 document.addEventListener('mmgr:google-signed-out', function(){
   renderRailUser(null);
@@ -2517,6 +2577,7 @@ window.addEventListener('resize', function(){ syncAdminHdr(); });
 const ADMIN_ACTION_MAP = {
   'adminSetupPassword': () => handleSetupPassword(),
   'adminLogin': () => handleLogin(),
+  'restoreAdminCode': () => restoreAdminCode(),
   'tglPwVis': (el) => tglPwVis(el),
   'openForgot': () => openForgot(),
   'forgotBack': () => forgotBack(),

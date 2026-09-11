@@ -188,15 +188,13 @@ async function check(name, expr, hint) {
     btn.click();
     var sheet = document.getElementById('signin-sheet');
     var form = document.querySelector('#marketing-email-auth .email-auth-form');
-    var toggle = document.querySelector('#marketing-email-auth .email-auth-toggle');
     var inViewport = sheet.getBoundingClientRect().right <= window.innerWidth + 1;
-    // On sheet open: the form is hidden by default, the toggle ("Sign in with
-    // email instead") is visible. Click the toggle to expand the form.
-    if (sheet.hidden || !form || !toggle || toggle.hidden || !inViewport) {
-      return {val: false, why: 'sheet did not open correctly', hidden: sheet.hidden, form: !!form, formHidden: form && form.hidden, toggleHidden: toggle && toggle.hidden, inViewport: inViewport};
+    // FORM-PRIMARY contract (owner 2026-09-06, P5.4 2026-09-10): the email
+    // form is visible immediately on sheet open - no "sign in with email
+    // instead" toggle exists (showToggle:false). Escape closes.
+    if (sheet.hidden || !form || form.hidden || !inViewport) {
+      return {val: false, why: 'sheet did not open correctly', hidden: sheet.hidden, form: !!form, formHidden: form && form.hidden, inViewport: inViewport};
     }
-    toggle.click();
-    if (form.hidden) return {val: false, why: 'form did not expand after toggle click', formHidden: form.hidden};
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
     var closed = sheet.hidden && btn.getAttribute('aria-expanded') === 'false';
     return {val: closed, closed: closed, aria: btn.getAttribute('aria-expanded')};
@@ -212,12 +210,12 @@ async function check(name, expr, hint) {
     signin.click();
     var sheet = document.getElementById('signin-sheet');
     var form = document.querySelector('#marketing-email-auth .email-auth-form');
-    var toggle = document.querySelector('#marketing-email-auth .email-auth-toggle');
     var inViewport = sheet.getBoundingClientRect().right <= window.innerWidth + 1;
-    if (sheet.hidden || !form || !toggle || toggle.hidden || !inViewport) {
-      return {val: false, why: 'sheet did not open correctly', hidden: sheet.hidden, form: !!form, toggleHidden: toggle && toggle.hidden, inViewport: inViewport};
+    // FORM-PRIMARY contract (owner 2026-09-06, P5.4 2026-09-10): form visible
+    // immediately, no toggle step.
+    if (sheet.hidden || !form || form.hidden || !inViewport) {
+      return {val: false, why: 'sheet did not open correctly', hidden: sheet.hidden, form: !!form, formHidden: form && form.hidden, inViewport: inViewport};
     }
-    toggle.click();
     return {val: !form.hidden, hidden: sheet.hidden, formHidden: form.hidden, inViewport: inViewport};
   })()`);
   await send('Emulation.clearDeviceMetricsOverride');

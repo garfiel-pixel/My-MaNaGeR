@@ -86,7 +86,9 @@ function contrast(a, b) {
     const v1 = await ev(`(function(){
       const dt = document.documentElement.getAttribute('data-theme');
       return { dataTheme: dt,
-        dockHasTheme: !!document.querySelector('.dock [data-pal="light"]'),
+        // 2026-09-09: the dock's theme control is the drawer-select contract
+        // (<select id="theme-select">, commit 9e60a05), not .pal-btn buttons.
+        dockHasTheme: !!document.querySelector('.dock #theme-select') || !!document.querySelector('.dock [data-pal="light"]'),
         dockHasPerf: !!document.querySelector('.dock #perf-tgl'),
         dockHasPalette: !!document.querySelector('.dock [data-palette]'),
         dockHasView: !!document.querySelector('.dock [data-view]'),
@@ -103,8 +105,11 @@ function contrast(a, b) {
     const v2 = await ev(`(function(){
       return { dataTheme: document.documentElement.getAttribute('data-theme'),
         stored: localStorage.getItem('mmgr_palette'),
-        gold: getComputedStyle(document.documentElement).getPropertyValue('--gold').trim(),
-        text: getComputedStyle(document.documentElement).getPropertyValue('--text').trim() };
+        // Rose tokens are BODY-scoped (html[data-theme="rose-gold"] body...
+        // PRESERVED-CODE-OFF restructure), and custom properties inherit
+        // downward only, so read them on body like V8 does.
+        gold: getComputedStyle(document.body).getPropertyValue('--gold').trim(),
+        text: getComputedStyle(document.body).getPropertyValue('--text').trim() };
     })()`);
     const coralOk = (s) => /#FF6E52/i.test(s) || /255\s*,\s*110\s*,\s*82/.test(s);
     check('V2 stored rose pref: data-theme=rose-gold applied at boot (silent) + coral/espresso tokens',
@@ -133,10 +138,23 @@ function contrast(a, b) {
     await ev(`(function(){
       try{localStorage.setItem('mmgr_perf_mode','off');}catch(e){}
       try{localStorage.setItem('mmgr_view_mode','3d');}catch(e){}
+      // OWNER 2026-09-09 fix: writing localStorage directly skips mmgr-perf's
+      // apply(), so <html data-perf> stays 'on' and viewAllowed() keeps
+      // blocking the tilt. Mirror the attribute through the module's own
+      // apply() (the exact path a real perf-toggle click takes), then let
+      // the debounced resize re-apply the view.
+      try{ if(window.MMGR&&MMGR.Perf&&MMGR.Perf.apply) MMGR.Perf.apply(); }catch(e){}
       window.dispatchEvent(new Event('resize'));
     })()`);
-    await delay(900);
-    const v3 = await ev(`(function(){
+    // OWNER 2026-09-09 hardening: the deck's transform has a .65s transition
+    // and applyView() itself waits on a 150ms resize debounce, so a single
+    // fixed read races both. Poll for the settled matrix3d (up to 3s),
+    // nudging the debounced path once mid-poll.
+    let v3 = null;
+    for (let i = 0; i < 10; i++) {
+      await delay(300);
+      if (i === 4) await ev(`window.dispatchEvent(new Event('resize')); try{ if(window.MMGR&&MMGR.Perf&&MMGR.Perf.apply) MMGR.Perf.apply(); }catch(e){}`);
+      v3 = await ev(`(function(){
       const deck = document.querySelector('.view-deck');
       const cs = deck ? getComputedStyle(deck) : null;
       const bodyTr = getComputedStyle(document.body).transform;
@@ -148,6 +166,8 @@ function contrast(a, b) {
         deckBlur: cs ? cs.getPropertyValue('--glass-blur').trim() : null,
         bodyTr: bodyTr, modalTr: modalTr };
     })()`);
+      if (v3 && /matrix3d|perspective|rotate/.test(String(v3.deckTr))) break;
+    }
     const tilting = v3.view3d && v3.stored === '3d' && v3.deckTr && v3.deckTr !== 'none' && /matrix3d|perspective|rotate/.test(v3.deckTr);
     check('V3 stored 3d pref: body.view-3d + deck tilted (matrix3d)', tilting, v3);
     check('V3 WebKit blur-free tilt: deck --glass-blur is 0px while tilted', v3.view3d && v3.deckBlur === '0px', v3);

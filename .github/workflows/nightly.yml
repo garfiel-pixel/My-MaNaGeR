@@ -82,11 +82,13 @@ jobs:
         run: node tools/qa-cloud-phase1.cjs
         env:
           WRANGLER_DEV_URL: http://127.0.0.1:8787
+          ADMIN_CODE: QA-ADMIN-CI
 
       - name: "T2: Cloud phase 2"
         run: node tools/qa-cloud-phase2.cjs
         env:
           WRANGLER_DEV_URL: http://127.0.0.1:8787
+          ADMIN_CODE: QA-ADMIN-CI
 
       - name: "T2: Cloud codes + delete"
         run: node tools/qa-cloud-codes-delete.cjs

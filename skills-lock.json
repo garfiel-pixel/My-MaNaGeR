@@ -1,6 +1,24 @@
 {
   "version": 1,
   "skills": {
+    "human-audit": {
+      "source": "local",
+      "sourceType": "local",
+      "skillPath": ".agents/skills/human-audit/SKILL.md",
+      "computedHash": "d5ee53a7a2495fd32453c862c306b0396efcac36050e88e63f160881482a9a5b"
+    },
+    "no-slacking": {
+      "source": "local",
+      "sourceType": "local",
+      "skillPath": ".agents/skills/no-slacking/SKILL.md",
+      "computedHash": "4e7cde54956480e111baf4db42244f2a1a448adba1591199462bdfbad9fe5d41"
+    },
+    "plain-language-copy": {
+      "source": "local",
+      "sourceType": "local",
+      "skillPath": ".agents/skills/plain-language-copy/SKILL.md",
+      "computedHash": "e19f1408ad6f3bfb4fedc2dff4891225a296395817cb6dfdedf1ac21052fd45d"
+    },
     "accessibility-rules": {
       "source": "community-access/accessibility-agents",
       "sourceType": "github",

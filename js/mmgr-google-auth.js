@@ -243,7 +243,7 @@ var MMGR = window.MMGR || {};
     // anywhere on the project page (the redundant surface the owner flagged
     // is the sections-tab identity). The project page always has the #sec-nav
     // sections drawer, so #hdr-signin is the ONLY chip and it stays hidden
-    // here — the section view never gets its own copy.
+    // here, so the section view never gets its own copy.
     // Only render #hdr-signin on app.html/admin.html/marketing (pages without
     // the #sec-nav sections drawer).
     const hc = $('hdr-signin');

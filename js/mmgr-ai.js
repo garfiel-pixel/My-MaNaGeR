@@ -672,10 +672,20 @@ var MMGR = window.MMGR || {};
       _t('tasks[].totalFloat'); _t('tasks[].status');
       out.push('Critical path: ' + (crit.length ? crit.map(t => t.name).join(' → ') : 'none identified (run Cascade Dates).'));
     }
-    if (/evm|earned|spi|cpi|variance/.test(lower) && ns.Evm && ns.Evm.compute) {
+    if (/evm|earned|spi|cpi|variance|burn rate/.test(lower) && ns.Evm && ns.Evm.compute) {
       const e = ns.Evm.compute(s);
       _t('EVM.compute(s)');
       out.push(e ? 'EVM: SPI ' + e.spi.toFixed(2) + ', CPI ' + e.cpi.toFixed(2) + ', EV ' + fmt$(e.ev) + ' / PV ' + fmt$(e.pv) + ' / AC ' + fmt$(e.ac) + '.' : 'EVM: insufficient schedule/budget data.');
+    }
+    // OWNER 2026-09-09 (P6.1): forecast questions must ALWAYS answer on the
+    // local tier ("what is the project forecast" was refused - nothing matched).
+    // Reuses the grounded forecast builder (projected finish vs target + CPI
+    // trend + weather delays); its trace markers are preserved.
+    if (/forecast|projected? finish|finish date|completion date|\beta\b|when (will|is|do(es)?) (we|this|the project).*(done|finish|complete)/.test(lower) && LOCAL_BUILDERS.forecast) {
+      const priorTrace = TRACE.fields.slice();
+      const f = LOCAL_BUILDERS.forecast(s);
+      TRACE.fields = priorTrace.concat(TRACE.fields);
+      out.push(f.text.trim());
     }
     if (/weather|delay/.test(lower) && ns.Forecast && ns.Forecast.riskDays) {
       const rd = ns.Forecast.riskDays(s) || [];

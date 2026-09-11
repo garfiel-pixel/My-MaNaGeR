@@ -857,10 +857,9 @@ function showScreen(id){
   ['setup-screen','login-screen','forgot-screen','admin-app'].forEach(s=>{
     document.getElementById(s).classList.toggle('hidden', s!==id);
   });
-  // The gate preference pill (theme + premium glass) belongs to the gate
-  // screens; it hides once the admin panel is unlocked (header has its own).
-  const gp = document.getElementById('gate-prefs');
-  if (gp) gp.classList.toggle('hidden', id === 'admin-app');
+  // Theme/appearance controls live in the unlocked rail's Customize section
+  // (v228 moved the old gate preference pill into the shared bottom dock);
+  // nothing to toggle on the gate screens themselves anymore.
 }
 async function initGate(){
   const storedHash = localStorage.getItem('mmgr_admin_pass_hash');

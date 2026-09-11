@@ -36,9 +36,9 @@
   // favicon source). .gitignore does NOT stop wrangler — add matching tar
   // --exclude patterns below so they never ride into the staging copy again
   // (they were publicly served in prior deploys). Keep them file-specific:
-  // images/pages/0-5-*.png + project-source.html ARE committed project docs.
-  //   --exclude='Freebuff add a full comprehensive calculater*'
-  //   --exclude='Windows PowerShell*.txt' --exclude='crashes from last session.txt'
+  // images/pages/0-5-*.png + project-source.html ARE committed project docs.    //   --exclude='Freebuff add a full comprehensive calculater*'
+    //   --exclude='Freebuff OK this starts I*'
+    //   --exclude='Windows PowerShell*.txt' --exclude='crashes from last session.txt'
   //   --exclude='LIVE-SITE-UI-AUDIT-*.md' --exclude='SECURITY-FIXES-IMPLEMENTATION-PLAN.md'
   //   --exclude='my_manager_web favicon*' --exclude='images/pages/app-source.html'
   //   --exclude='images/pages/dashboard.png' --exclude='images/pages/index-source.html'

@@ -306,17 +306,38 @@ P7.3 [x] DONE 2026-09-10: CONTINUATION-DIRECTIVE.md owner standing rule
        session end (P9.3).
 
 PHASE 8 - VERIFICATION + SHIP
-P8.1 [ ] node build.js (bundles), npm run verify, emoji scan, em-dash
-       scan, targeted qa-*.cjs suites.
-P8.2 [ ] Commit (Conventional Commits, NO AI footer), push, POLL the
-       Actions API until green (fix via AGENTS.md #8 loop if red).
-P8.3 [ ] Deploy from clean staging (wrangler.jsonc recipe) to BOTH
-       domains; smoke-test live.
+P8.1 [x] node build.js (bundles), npm run verify, emoji scan, em-dash
+       scan, targeted qa-*.cjs suites. DONE 2026-09-10/11: verify ALL
+       CHECKS PASSED; emoji + em-dash scans CLEAN; full local CI
+       replication green (T1 7/7 suites; T2 phase1 29/29, phase2 85/85,
+       email-auth 69/69, import 35/35, reviews 25/25, rank9 31/31, t9
+       27/27, presence 11/11, prefs 15/15, ai-badge 5/5, market-features
+       61/61, offline-copies 23/23, controls-admin 11/11, dashboard-spec
+       85/85, marketing 20/20, AI23_GATE PASS; wrangler --dry-run exit 0).
+P8.2 [x] Commit (Conventional Commits, NO AI footer), push, POLL the
+       Actions API until green. DONE: 7068502 feat(ui) wave + 5e6fdc2
+       docs(session) bookkeeping pushed to main; CI run 34563359120
+       completed SUCCESS on 5e6fdc2 (owner was notified the commit was
+       coming per their ship order 2026-09-10).
+P8.3 [x] Deploy from clean staging (wrangler.jsonc recipe) to BOTH
+       domains; smoke-test live. DONE 2026-09-11: version 57b6463d
+       deployed from /tmp/mmgr-deploy (debris-free staging, 78 top-level
+       entries, no .dev.vars/scratch/screenshots). Live smoke: home 200,
+       sw mmgr-shell-v277 served, /api/health ok, rail sign-in CSS fix
+       live, B&W #141416 tokens live, gold-leak selector gone, visible
+       "finish line" text 0, forecast intent in bundle.js, admin/app 307
+       (production .html rewrite, expected). Both domains serve the same
+       Worker (workers.dev + mymanagerworkspace.com).
 
 PHASE 9 - BOOKKEEPING (after EVERY phase, not just the end)
-P9.1 [ ] Update this file per phase.
-P9.2 [ ] Update CONTINUATION-DIRECTIVE.md STATUS LOG per phase.
-P9.3 [ ] Write reflection.txt at session end (post-mortem).
+P9.1 [x] Update this file per phase. DONE (updated after P4.1, P4.2,
+       P4.3, P5.x, P6.1, P7.x, P8.1; ship record added 2026-09-11).
+P9.2 [x] Update CONTINUATION-DIRECTIVE.md STATUS LOG per phase. DONE:
+       2026-09-10 session entry written (was stuck at 2026-09-06); ship
+       record appended to the same entry via docs commit 5e6fdc2.
+P9.3 [x] Write reflection.txt at session end (post-mortem). DONE:
+       2026-09-10 session post-mortem appended (context, accomplishments,
+       6 lessons, outstanding items).
 
 --------------------------------------------------------------------
 NOTES

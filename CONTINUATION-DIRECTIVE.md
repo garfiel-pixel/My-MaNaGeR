@@ -3095,11 +3095,7 @@ qa-dashboard-spec 84/84; qa-marketing 20/20; qa-controls-admin 11/11; qa-ai AI23
 commit a5497ea, which re-designed the AI window from the doubled-size overlay to the 420px
 right dock; harness fixed per AGENTS.md CI rule 3, app untouched).
 
-NOT DONE (deferred, owner's call): commit + deploy. The whole wave (P0-P3 prior session +
-P4-P9 this session) is uncommitted in the working tree per the owner's explicit "no need to
-commit" instruction. sw.js at v277. Deploys stay gated on the owner saying go.
-
-Files touched this session: app.html, index.html, css/mmgr.css, css/marketing.css,
+SHIPPED (owner ship order 2026-09-10, executed 2026-09-11): full local CI replication green (verify PASS; T1 7/7 suites; T2 cloud-phase1 29/29, cloud-phase2 85/85, email-auth 69/69, cloud-import 35/35, reviews 25/25, rank9 31/31, t9-adoption 27/27, presence 11/11, prefs-roundtrip 15/15, ai-badge 5/5, market-features 61/61, offline-copies 23/23, controls-admin 11/11, dashboard-spec 85/85, marketing 20/20, AI23_GATE PASS; wrangler deploy --dry-run exit 0). Committed 7068502 feat(ui) wave + 5e6fdc2 docs(session) bookkeeping (scratch txt/screenshots gitignored per repo convention); pushed to main; Actions run 34563359120 completed SUCCESS on 5e6fdc2. Deployed from clean staging (/tmp/mmgr-deploy, 78 debris-free entries) as version 57b6463d; live smoke on https://mymanagerworkspace.com: home 200, sw mmgr-shell-v277, /api/health ok, db-signin display:none gone, --db-surface #141416 live, gold-leak selector gone, visible finish-line text 0, forecast intent shipped, admin/app 307 rewrite expected. PREVIOUS STATE (historical): not committed and not deployed - owner had said no commit was needed at that time; superseded by the ship order the next day. Files touched this session: app.html, index.html, css/mmgr.css, css/marketing.css,
 js/mmgr-ai.js, js/mmgr-google-auth.js, js/marketing.js, qa-ai.cjs, qa-marketing.cjs,
 OWNER-REVIEW.md, CONTINUATION-DIRECTIVE.md, PLANNING-TODO-2026-09-09.txt, sw.js (v271 ->
 v277), dist/* rebuilt.

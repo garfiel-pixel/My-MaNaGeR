@@ -1195,8 +1195,18 @@ body.readonly-mode .btn[data-action]:not([data-action="showSec"]):not([data-acti
 .qa{padding:0 12px;max-height:0;overflow:hidden;transition:max-height .3s ease,padding .3s ease;font-size:.74rem;color:var(--slate);}
 .qa.open{max-height:200px;padding:0 12px 12px;}
 
-/* ---- Settings Row ---- */
-.sr{display:flex;}
+/* ---- Settings Row ----
+   OWNER 2026-09-09 RESTORE: commit 8e4b8df gutted this rule to bare
+   display:flex, which collapsed the row structure (no padding, no border,
+   no margins) and let labels "kiss" their controls - the regression the
+   owner flagged in the Controls tab. The Aug 31 structure (bordered row,
+   11px padding, 7px rhythm, space-between) is restored and merged with the
+   right-edge alignment law (label flexes, control pins right via auto
+   margin - the .rail-ctl-row .pal-switch pattern). */
+.sr{display:flex;align-items:center;justify-content:space-between;gap:14px;
+  padding:11px;border:1px solid var(--border);border-radius:6px;margin-bottom:7px;min-height:34px;}
+.sr > .sl{flex:1 1 auto;min-width:0;}
+.sr > .btn,.sr > .tgl,.sr > select,.sr > input,.sr > .g6{margin-left:auto;flex-shrink:0;}
 .sr[hidden]{display:none!important;}
 
 /* ---- rail group / link ---- */
@@ -1348,6 +1358,7 @@ hr.div{border:none;border-top:1px solid var(--border);margin:14px 0;}
 .si-chip:focus-visible{outline:2px solid var(--on-gold);outline-offset:2px;}
 .si-chip .ico{width:12px;height:12px;}
 .si-chip[hidden]{display:none;}
+.db-user[hidden],body.db-page .db-user[hidden]{display:none;}
 /* STABILIZATION 2026-08-16: */
 .si-chip .gchip-avatar{width:22px;height:22px;font-size:.6rem;background:#fff;color:#0b0b0d;}
 .hdr-chip-name{max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
@@ -1369,14 +1380,19 @@ hr.div{border:none;border-top:1px solid var(--border);margin:14px 0;}
 .dirty-ind.ci-cloud{color:var(--green);border-color:var(--green);background:rgba(16,185,129,.12);}
 .dirty-ind.ci-cloud:hover{background:rgba(16,185,129,.24);}
 
-/* Backup popover (owner 2026-08-15) */
+/* Backup popover (owner 2026-08-15). OWNER 2026-09-09: solid card fill.
+   The old translucent glass fill (rgba 7% white in dark) rendered the
+   popover unreadable over busy content; the methodology learning card
+   (.mlc-card) already proves the readable pattern - solid var(--card) -
+   so this popover matches it (consistency-by-reference). */
 .bk-pop{position:absolute;top:calc(100% + 8px);right:0;z-index:300;width:292px;max-width:calc(100vw - 24px);
-  background:var(--glass-fill-dark-hover);backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  background:var(--card);backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturate));
   -webkit-backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturate));
   border:var(--glass-border);border-radius:var(--squircle-md);
   box-shadow:var(--glass-rim),0 12px 32px rgba(0,0,0,.22);
   padding:12px;display:flex;flex-direction:column;gap:8px;}
 .bk-pop[hidden]{display:none;}
+.bk-opt[hidden]{display:none;}
 .bk-pop-title{display:flex;align-items:center;gap:7px;font-size:.68rem;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--gold);padding:0 4px;}
 .bk-pop-title .ico{width:14px;height:14px;}
 .bk-opt{display:flex;align-items:center;gap:10px;width:100%;text-align:left;
@@ -1391,8 +1407,12 @@ hr.div{border:none;border-top:1px solid var(--border);margin:14px 0;}
 .bk-opt-txt b{font-size:.78rem;font-weight:700;color:var(--text);line-height:1.3;}
 .bk-opt-txt small{font-size:.66rem;color:var(--slate);line-height:1.35;}
 .bk-caret{width:14px;height:14px;color:var(--slate);flex-shrink:0;}
+/* OWNER 2026-09-09: the sign-in row reuses .bk-opt layout on an <a>; reset
+   anchor defaults so it renders identically to the button rows. */
+a.bk-signin{text-decoration:none;color:inherit;}
 .bk-pop-foot{font-size:.64rem;color:var(--slate);border-top:1px solid var(--border);padding:7px 4px 2px;line-height:1.4;}
-body.dark-mode .bk-pop{background:var(--glass-fill-dark-hover);}
+/* Dark mode readability comes from the --card token (#151518 solid); the
+   old dark override forced the 7%-white glass fill back on. */
 @media (prefers-reduced-motion: reduce){.bk-pop{animation:none;}}
 
 .timeline-ind{display:none;align-items:center;gap:5px;font-size:.7rem;padding:3px 9px;border-radius:100px;cursor:pointer;transition:all var(--tr);}
@@ -2203,11 +2223,14 @@ body.dark-mode.db-page{
   --db-muted-slate:#8f8f97;     /* neutral muted secondary text */
   /* TIER 2 - semantic (dashboard-scoped; --db- prefix so nothing can leak) */
   --db-canvas:var(--db-jet-black);
-  --db-surface:#242019;
-  --db-surface-raised:#2e2922;
+  /* OWNER 2026-09-09 (P4.2): pure B&W surfaces - the old warm-brown family
+     (#242019/#2e2922/#3a342c) read as brown card interiors. Now neutral
+     dark greys consistent with the B&W contract (--db-jet-black family). */
+  --db-surface:#141416;
+  --db-surface-raised:#1d1d20;
   --db-accent:var(--db-gold);
   --db-accent-soft:var(--db-gold-soft);
-  --db-border:#3a342c;
+  --db-border:#2b2b30;
   --db-text-secondary:var(--db-muted-slate);
   background:var(--db-canvas);
   color:var(--text);            /* #e2e8f0 - 16.06:1 on canvas, 15.20:1 on surface (AAA) */
@@ -2296,7 +2319,7 @@ body.dark-mode.db-page .foot a{color:var(--db-text-secondary);}
 body.dark-mode.db-page .cd-plan{background:var(--db-surface);border-color:var(--db-border);}
 body.dark-mode.db-page .cd-plan .cd-plan-txt{color:var(--db-text-secondary);}
 body.dark-mode.db-page .cd-plan .cd-plan-txt strong{color:var(--text);}
-body.dark-mode.db-page .cd-plan.at-limit{border-color:rgba(80,232,244,.4);background:rgba(80,232,244,.08);}
+body.dark-mode.db-page .cd-plan.at-limit{border-color:rgba(255,255,255,.4);background:rgba(255,255,255,.08);}
 body.dark-mode.db-page .cd-plan.at-limit .cd-plan-txt,
 body.dark-mode.db-page .cd-plan.at-limit .cd-plan-txt strong{color:var(--db-accent);}
 body.dark-mode.db-page .pcard:not(.unlocked) .pc-cta{color:var(--db-text-secondary);}
@@ -2604,9 +2627,9 @@ body.db-page .db-ctl-row > .ico{width:15px;height:15px;color:var(--gold);flex-sh
 body.db-page .db-ctl-row .tgl{margin:0 0 0 auto;}
 body.db-page .db-ctl-row .pal-switch{margin-left:auto;}
 /* OWNER 2026-09-07: shared rail-footer account classes (app + admin + project).
-   Signed-out state: muted "Not signed in" label + a calm Sign in affordance
-   (app page only - other pages render the state without the button). */
-.db-user-name.is-out{color:var(--text-muted);font-weight:600;}
+   Signed-out state: a calm Sign in button (app page only - other pages render
+   the state without the button). OWNER 2026-09-09 (P4.1): no "Not signed in"
+   status text anywhere; the button IS the row. */
 .db-signin{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:var(--radius-control);border:1px solid var(--border);background:transparent;color:var(--text);font-size:.72rem;font-weight:700;cursor:pointer;transition:color var(--tr),border-color var(--tr),background var(--tr);}
 .db-signin:hover{border-color:var(--gold);color:var(--text-heading);background:var(--brand-subtle);}
 body.dark-mode .db-signin:hover{border-color:rgba(255,255,255,.55);background:rgba(255,255,255,.07);color:#ffffff;}
@@ -2651,9 +2674,8 @@ body.db-page .db-user{display:flex;align-items:center;gap:8px;min-height:32px;}
 body.dark-mode #app-sidebar .sb-user{border-top-color:var(--db-border);}
 body.db-page .db-user-name{flex:1;min-width:0;display:inline-flex;align-items:center;gap:6px;font-size:.72rem;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 body.db-page .db-user-name .ico{width:14px;height:14px;color:var(--gold);flex-shrink:0;}
-body.db-page .db-signin{
-  display:none; /* Hidden: sidebar shows sign-in status at bottom-left */
-}
+/* OWNER 2026-09-09 (P4.1): the rail footer's Sign in button is VISIBLE when
+   signed out. The old display:none left the footer an empty black box. */
 body.db-page .db-signin:hover{color:var(--gold);border-color:var(--gold);}
 body.db-page .db-signin:focus-visible{outline:2px solid var(--gold);outline-offset:2px;}
 body.db-page .db-signin .ico{width:14px;height:14px;}
@@ -2886,7 +2908,9 @@ body.dark-mode.db-page .notice .nt-ico{
 }
 /* ---- section header (Projects) ---- */
 body.db-page .db-sec{display:flex;flex-direction:column;gap:3px;margin:18px 0 14px;}
-body.db-page .db-sec-title{display:inline-flex;align-items:center;gap:8px;font-size:.82rem;font-weight:800;color:var(--text);letter-spacing:.01em;}
+/* OWNER 2026-09-09 (P4.2): Demo Projects heading twice the size (used only
+   on the launcher's demo section heading). */
+body.db-page .db-sec-title{display:inline-flex;align-items:center;gap:8px;font-size:1.64rem;font-weight:800;color:var(--text);letter-spacing:.01em;}
 body.db-page .db-sec-title .ico{width:16px;height:16px;color:var(--gold);}
 body.db-page .db-sec-sub{font-size:.68rem;color:var(--slate);}
 body.dark-mode.db-page .db-sec-title .ico{color:var(--db-accent);}
@@ -3110,6 +3134,12 @@ body.dark-mode.db-page .db-auto-lbl{color:var(--db-text-secondary);}
   user-select:none;-webkit-user-select:none;
 }
 .calc-fab:active{cursor:grabbing;transform:scale(0.92);}
+/* OWNER 2026-09-09: dark mode remaps --gold to white, which rendered this
+   FAB as a white circle with a white icon (the "pure white blob"). The AI
+   FAB keeps its fixed brand color across themes (same pattern); the
+   calculator keeps its light-theme brand orange in dark so the glyph stays
+   visible. Light mode (incl. rose palette) still follows --gold. */
+body.dark-mode .calc-fab{background:#D96B27;}
 .calc-fab .ico{width:22px;height:22px;}
 .calc-fab-active{box-shadow:0 6px 24px rgba(0,0,0,.35),0 0 0 4px rgba(var(--gold-rgb),.35);}
 .calc-panel{

@@ -953,6 +953,17 @@ var MMGR = window.MMGR || {};
     if (!s || !ns.State) return;
     const C = window.MMGR.Cloud;
     const linked = !!(C && C.getCode && C.getCode());
+    // OWNER 2026-09-09: the backup popover carries the sign-in nudge when
+    // the project is not cloud-linked. Hidden once linked (the green chip
+    // state) or when the visitor is already signed in. The GAuth session
+    // may not be restored yet on first paint, so the user-changed listener
+    // below re-renders on arrival.
+    const bkSi = $('bk-signin');
+    if (bkSi) {
+      const G = window.MMGR && window.MMGR.GoogleAuth;
+      const signedIn = !!(G && G.isSignedIn && G.isSignedIn());
+      bkSi.hidden = linked || signedIn;
+    }
     let backedUp = false;
     if (linked) {
       ind.classList.add('on', 'ci-cloud');
@@ -981,6 +992,15 @@ var MMGR = window.MMGR || {};
           : 'No file backup yet, autosave keeps your changes on this device.');
     }
   }
+
+  // Re-render the indicator when the sign-in state changes (arriving or
+  // leaving) so #bk-signin matches the session immediately.
+  document.addEventListener('mmgr:user-changed', function(){
+    if (ns.Render && ns.Render.renderDirtyIndicator) ns.Render.renderDirtyIndicator();
+  });
+  document.addEventListener('mmgr:google-signed-out', function(){
+    if (ns.Render && ns.Render.renderDirtyIndicator) ns.Render.renderDirtyIndicator();
+  });
 
   // ---- Sections ----
   // Single lookup used by both showSection and renderAll so the active

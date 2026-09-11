@@ -104,10 +104,17 @@
       spyNav.classList.toggle('on-dark', scheme !== 'light');
     }
     function setSpy(id){
-      spyLinks.forEach(function(a){
-        var on = id !== null && a === spyById[id];
-        a.classList.toggle('active', on);
-        if (on) a.setAttribute('aria-current', 'true');
+      /* OWNER 2026-09-09 (P5.3): the trail recomputes in BOTH directions.
+         Sections above the active one are "done" (progress trail), the active
+         one is lit, and everything below is UN-LIT - so scrolling back up
+         un-lights the sections you scroll back past (the old one-way lock-in
+         never removed .done and stayed lit on the way up). */
+      var activeIdx = -1;
+      spyLinks.forEach(function(a, i){ if (id !== null && a === spyById[id]) activeIdx = i; });
+      spyLinks.forEach(function(a, i){
+        a.classList.toggle('active', i === activeIdx);
+        a.classList.toggle('done', activeIdx > -1 && i < activeIdx);
+        if (i === activeIdx) a.setAttribute('aria-current', 'true');
         else a.removeAttribute('aria-current');
       });
       setSpyScheme(id);
@@ -126,12 +133,6 @@
     var spy = new IntersectionObserver(function(entries){
       var best = null, bestRatio = -1;
       entries.forEach(function(entry){
-        /* LOCK-IN (OWNER 2026-08-17): a section the reader has already scrolled
-           past stays marked (.done) , the tracker reads as a progress trail. */
-        if (!entry.isIntersecting && entry.boundingClientRect.top < 0) {
-          var past = spyById[entry.target.id];
-          if (past) past.classList.add('done');
-        }
         if (entry.isIntersecting && entry.intersectionRatio > bestRatio) {
           bestRatio = entry.intersectionRatio;
           best = entry.target.id;
@@ -286,6 +287,14 @@
        (added to all marketing signin-sheets 2026-08-22). Then restore the
        session so an already-signed-in visitor sees their state. */
     if (!document.getElementById('email-auth-block')) GA.mountEmailAuth('marketing-email-auth', { showToggle: false });
+    /* OWNER 2026-09-09 (P5.4): the links (Forgot password? / Create account)
+       move BELOW the Google button and float free - no boxes. Sheet order:
+       email form, divider, Google, links, note. */
+    (function(){
+      var alt = document.querySelector('#signin-sheet .email-auth-alt');
+      var gbtn = document.getElementById('google-signin-button');
+      if (alt && gbtn) gbtn.insertAdjacentElement('afterend', alt);
+    })();
     /* Re-render the GIS button when the sheet opens , GIS measures the host
        at render time, so a button drawn into a hidden host comes out 0x0.
        ensureGisButton() wipes a broken render and re-draws when measurable. */

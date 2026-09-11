@@ -286,11 +286,15 @@ var MMGR = window.MMGR || {};
   async function activate() {
     if (_state.active) return true;
     if (_activating) return true;
-    // OWNER 2026-09-07: premium glass is the APP SECTION's identity - it
-    // must never render inside a project (project.html) or on admin. The
-    // served path is the authoritative signal (production strips .html).
+    // OWNER 2026-09-07 -> REVISED 2026-09-09: premium glass started as the
+    // APP SECTION's identity, never inside a project. The owner then asked
+    // for the SAME premium starry treatment on the admin page so app and
+    // admin read as one product ("that type of UI should be implemented to
+    // the admin section as well so they are hand in hand"). project.html
+    // stays excluded (dense data workspace). The served path is the
+    // authoritative signal (production strips .html).
     const _p = (location.pathname || '').toLowerCase();
-    if (_p.indexOf('project') !== -1 || _p.indexOf('admin') !== -1) return false;
+    if (_p.indexOf('project') !== -1) return false;
     if (!ns.Viewport || ns.Viewport.effectiveGlassMode() !== 'premium') return false;
     _activating = true;
     let THREE = null;

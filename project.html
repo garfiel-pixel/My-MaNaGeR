@@ -57,7 +57,7 @@
       clicks "Connect Google" in Settings > Controls. It is a device label,
       never a gate , offline/CSP-blocked loads degrade to a toast.
 -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self';script-src 'self' 'wasm-unsafe-eval' https://static.cloudflareinsights.com https://accounts.google.com https://unpkg.com 'sha256-xxa9/PuVrm+Taxz+xZPm96NYiSKIHPHZLX8VCKQnrXk=' 'sha256-reza4vd5o52LWNUf9lzK6WjApdstd5sm4xVx+lcnK2M=' 'sha256-fZj+K4D/n2Fz67m33j21zMWZd9D930ZNnzz/+s9xem0=' 'sha256-0o7BYw2SxyFtT+b7IJxUzlNQqsxJErFObzcGMPKxSp0='; style-src 'self' 'unsafe-inline' https://accounts.google.com https://fonts.googleapis.com; img-src 'self' data: blob: https://lh3.googleusercontent.com https://*.googleusercontent.com; font-src 'self' data:; connect-src 'self' https://api.open-meteo.com https://geocoding-api.open-meteo.com https://api.openai.com https://api.anthropic.com https://generativelanguage.googleapis.com https://github.com https://release-assets.githubusercontent.com https://accounts.google.com https://huggingface.co https://*.cdn.hf.co; frame-src https://accounts.google.com; base-uri 'self'; form-action 'self';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self';script-src 'self' 'wasm-unsafe-eval' https://static.cloudflareinsights.com https://accounts.google.com https://unpkg.com 'sha256-xxa9/PuVrm+Taxz+xZPm96NYiSKIHPHZLX8VCKQnrXk=' 'sha256-reza4vd5o52LWNUf9lzK6WjApdstd5sm4xVx+lcnK2M=' 'sha256-fZj+K4D/n2Fz67m33j21zMWZd9D930ZNnzz/+s9xem0=' 'sha256-0o7BYw2SxyFtT+b7IJxUzlNQqsxJErFObzcGMPKxSp0=' 'sha256-1lQZ8ZnhADNPMPnTqfYPbBDeCin0qp40ehxDc065Fmc='; style-src 'self' 'unsafe-inline' https://accounts.google.com https://fonts.googleapis.com; img-src 'self' data: blob: https://lh3.googleusercontent.com https://*.googleusercontent.com; font-src 'self' data:; connect-src 'self' https://api.open-meteo.com https://geocoding-api.open-meteo.com https://api.openai.com https://api.anthropic.com https://generativelanguage.googleapis.com https://github.com https://release-assets.githubusercontent.com https://accounts.google.com https://huggingface.co https://*.cdn.hf.co; frame-src https://accounts.google.com; base-uri 'self'; form-action 'self';">
 <script>
 /* Device-level theme (shared across launcher, admin, and app): applied before
    first paint from the same localStorage slot every theme toggle writes, so a
@@ -139,6 +139,14 @@
         <span class="bk-opt-txt"><b>Backup to local (.json)</b><small>Download a portable backup file to this device (e.g. to keep in your file manager).</small></span>
         <svg class="ico bk-caret" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg>
       </button>
+      <!-- OWNER 2026-09-09: sign-in affordance in the backup popover (not
+           backed up = the moment to offer the cloud). Sign-in itself lives
+           only on the app page; this row navigates there. -->
+      <a class="bk-opt bk-signin" id="bk-signin" href="app.html" hidden title="Signing in unlocks cloud backup for your projects.">
+        <span class="bk-opt-ico"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-user"></use></svg></span>
+        <span class="bk-opt-txt"><b>Sign in to back up to the cloud</b><small>Sign in once, then your projects save to the cloud automatically.</small></span>
+        <svg class="ico bk-caret" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg>
+      </a>
       <div class="bk-pop-foot" id="bk-foot"></div>
     </div></span>
     <div class="timeline-ind" id="timeline-ind" data-action="jumpToDashTimeline" title="Current planned finish vs the Target Completion Date set in Charter. Click to view on the Dashboard."></div>
@@ -1112,10 +1120,12 @@
          content takes the full screen, and the header hamburger reopens it. -->
     <button type="button" class="sb-close" data-action="tglSidebarOpen" aria-label="Close menu" title="Close menu"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-menu"></use></svg></button>
   </div>
-  <!-- OWNER 2026-09-07: sign-in lives ONLY on the app page. Inside a
-       project the sidebar shows the synced read-only account state
-       ("Not signed in" or the account name) with no entry point. -->
-  <div class="db-user sb-user" id="sb-user"></div>
+  <!-- OWNER 2026-09-09 (revises 2026-09-07): the sidebar is PROJECT
+       NAVIGATION ONLY - no account row when signed out. The "Not signed
+       in" status the owner flagged lived here and is REMOVED; the signed-in
+       name still shows (state, not an entry point), and the sign-in nudge
+       for an unbacked-up project lives in the Backup section instead. -->
+  <div class="db-user sb-user" id="sb-user" hidden></div>
 </aside>
 
 <!-- OWNER 2026-09-07: the #siom sign-in sheet was removed from this page.
@@ -1852,12 +1862,16 @@ if ('serviceWorker' in navigator &&
     var area = document.getElementById('sb-user');
     if (!area) return;
     if (!user){
-      // OWNER 2026-09-07: read-only synced state - no sign-in entry here.
-      area.innerHTML = '<span class="db-user-name is-out"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-user"></use></svg> Not signed in</span>';
+      // OWNER 2026-09-09: the sidebar holds navigation only. A signed-out
+      // visitor gets NO account row at all (the old "Not signed in" status
+      // line is gone); the backup section carries the sign-in nudge.
+      area.hidden = true;
+      area.innerHTML = '';
       return;
     }
     var name = user.name || user.email || 'Operator';
     var title = user.email ? escapeAccountText(user.email) : escapeAccountText(name);
+    area.hidden = false;
     area.innerHTML = '<span class="db-user-name" title="' + title + '"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-user"></use></svg> ' + escapeAccountText(name) + '</span>' +
       '<button type="button" class="db-signout" data-action="accountSignOut">Sign out</button>';
   }

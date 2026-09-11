@@ -88,12 +88,33 @@ function startWrangler() {
     if (USE_EXTERNAL) {
       log('using external wrangler at ' + process.env.WRANGLER_DEV_URL + ' (persist ' + PERSIST_DIR + ')');
       (async () => {
-        try {
-          const r = await fetch(process.env.WRANGLER_DEV_URL + '/api/health');
-          const body = await r.json().catch(() => null);
-          if (r.ok && body && body.ok === true) return resolve();
-          return reject(new Error('external wrangler health check failed: ' + r.status));
-        } catch (e) { return reject(new Error('external wrangler not reachable: ' + e.message)); }
+        // READINESS CANARY (nightly fix 2026-09-09):
+        // /api/health alone is NOT enough. A wrangler dev that hot-restarts
+        // (workerd reload between suites) can answer /api/health from its old
+        // process while the NEW worker is still booting - the nightly then
+        // 404s every cloud route (nightly runs 10-15 all failed this way at
+        // the phase1->phase2 handoff). GET /api/cloud/sections is a public,
+        // auth-free route served ONLY by the fully-booted router, so we poll
+        // it until it answers 200 {ok:true, sections:[...]}, then settle 1s.
+        const canary = async () => {
+          const ctrl = new AbortController();
+          const timer = setTimeout(() => ctrl.abort(), 3000);
+          try {
+            const r = await fetch(process.env.WRANGLER_DEV_URL + '/api/cloud/sections', { signal: ctrl.signal });
+            if (!r.ok) return false;
+            const body = await r.json().catch(() => null);
+            return !!(body && body.ok === true && Array.isArray(body.sections) && body.sections.length > 0);
+          } catch (e) { return false; } finally { clearTimeout(timer); }
+        };
+        const t0 = Date.now();
+        while (Date.now() - t0 < 90000) {
+          if (await canary()) {
+            await delay(1000); // let the freshly-ready server settle
+            return resolve();
+          }
+          await delay(1500);
+        }
+        return reject(new Error('external wrangler cloud canary (/api/cloud/sections) never answered 200 ok within 90s'));
       })();
       return;
     }
@@ -218,7 +239,13 @@ async function api(pathname, opts) {
 }
 
 // ---- real-browser plumbing (same CDP pattern as qa-cloud-phase1 phase B) ---
-const { chromePath: CHROME, BASE, PORT } = require('./chrome-launcher.cjs');
+const { chromePath: CHROME, BASE: _BASE, PORT } = require('./chrome-launcher.cjs');
+// API base: the nightly passes WRANGLER_DEV_URL (shared external wrangler on
+// :8787) but NOT QA_BASE, so fall back to it exactly like qa-cloud-phase1
+// does. Without this the harness fetched chrome-launcher's serve.cjs default
+// (127.0.0.1:8765) where nothing listens in CI/nightly - nightly runs 10-15
+// all failed at 'T2: Cloud phase 2' with 404s for this single missing line.
+const BASE = process.env.WRANGLER_DEV_URL || _BASE;
 let ws = null; let msgId = 0; const pending = new Map();
 function launchChrome(profileDir, port) {
   return new Promise((resolve, reject) => {

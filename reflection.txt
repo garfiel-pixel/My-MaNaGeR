@@ -149,3 +149,102 @@ NEXT SESSION STARTING POINT
 - This deploy ships the v260/v263 feature wave (glass/dock/viewport/app/marketing theme decoupling + CI/worker/serve alignment) — the previous session never deployed it (waiting on CI, which is now green since d4ccd08).
 - Post-deploy smoke (workers.dev): / 200 32267B, /admin.html 200 with CSP header, /api/health {"ok":true}, /dist/bundle.js 200 743417B, sw.js mmgr-shell-v264. All good.
 - LESSON: the wrangler.jsonc header comment IS the authoritative exclusion list for staging (verified this session — the first naive tar with only AGENTS.md's 5 excludes left gitignored session txts + favicon sources in staging; the documented file-specific excludes + a debris grep caught them before upload).
+
+
+SESSION 2026-09-10 — OWNER-AUDIT WAVE 2026-09-09 COMPLETED (continuation; prior
+session died mid-P4.1 probing the launcher rail)
+
+CONTEXT
+- The 09-09 session completed Phases 0-3 (tracker + 3 new owner skills; admin
+  plain-language copy + premium glass + admin-code restore; project sidebar
+  nav-only + backup sign-in hint + dark FAB fix + .sr row layout) and died
+  mid-P4.1 with a CDP probe half-written. The owner's pasted audit text was
+  re-verified line-by-line against PLANNING-TODO-2026-09-09.txt (faithful
+  distillation, nothing dropped) before resuming. No commits, per the owner's
+  explicit instruction; every fix live-verified in headless Chrome before
+  moving to the next task.
+
+WHAT WAS ACCOMPLISHED (P4-P9)
+- P4.1 launcher rail sign-in: the "empty black box" at the sidebar bottom was
+  css/mmgr.css body.db-page .db-signin{display:none} (a 2026-09-07 hiding
+  decision) collapsing the footer to an empty 51px strip. Rule removed +
+  renderRailUser signed-out branch simplified to match the static default
+  (button only). Verified: button 84x28, click opens the sign-in sheet.
+- P4.2 project cards: warm-brown dark surfaces (--db-surface #242019 family)
+  neutralized to the B&W palette at the token tier (interior now rgb(20,20,22));
+  stray fluorescent cyan on .cd-plan.at-limit removed; Demo Projects heading
+  doubled (13.12px -> 26.24px). Shared .pcard means newly created projects
+  inherit automatically.
+- P4.3 app search: prefix-first ranking (title-prefix -> word-start ->
+  substring -> description, alphabetical within tiers, per-word AND filter
+  intact). Verified "pro" floats word-start titles above description-only
+  matches; "qa" surfaces the prefix match.
+- P5.1 marketing CTAs: root cause was an unscoped comma leak -
+  "body.dark-mode .signin-btn,.btn-gold{...}" in marketing.css painted ALL
+  gold buttons glass in EVERY theme (later-in-file = won). Leak fixed;
+  .btn-gold resized to research-backed landing-page standards (60px -> 49px
+  height, radius 14px ~30% of height); ghost buttons verified gold on hover.
+- P5.2 em-dash sweep: all served pages + css + js now CLEAN (one straggler
+  comment dash removed from js/mmgr-google-auth.js); "The finish line" eyebrow
+  deleted from index.html per explicit owner order.
+- P5.3 scroll-spy: the one-way .done lock-in (OWNER 2026-08-17 progress trail)
+  replaced with a symmetric recompute (above active = done, below = un-lit);
+  verified lights down AND un-lights scrolling back up.
+- P5.4 sign-in sheet: email form first, divider, Continue with Google second,
+  forgot/reset links free-floating below, form de-boxed (transparent, no
+  border). qa-marketing mkt-16/17 updated to the current contract: 20/20.
+- P6.1 local AI retune: forecast intent added to localLookup (reuses the
+  grounded FORECAST builder), EVM matcher widened. "What is the project
+  forecast?", "is our EVM good", CPI/EAC questions all answer from project
+  state; chit-chat ("hello", "tell me a joke") still gets the honest refusal.
+- P7 email/domain: discovery - the Resend sender ALREADY exists (src/lib/http.js,
+  env vars documented, dormant EMAIL_RECOVERY_ENABLED flag from v233 Tier A), so
+  P7 is owner actions, not code. OWNER-REVIEW.md gained the step-by-step
+  walkthrough (Resend account, DKIM/SPF DNS records, env vars, OAuth origins,
+  flag flip). Directive rule 8 now points at it.
+- P8 verification: build + regen-csp-hashes + npm run verify ALL CHECKS PASSED;
+  emoji scan clean (the sw.js flag was a scan-harness false positive, confirmed
+  zero by python); em-dash scan CLEAN; qa-dashboard-spec 84/84; qa-marketing
+  20/20 (up from the 18/20 baseline); qa-controls-admin 11/11; qa-ai
+  AI23_GATE PASS.
+- P9 bookkeeping: tracker updated after every phase; directive STATUS LOG
+  written (was stuck at 2026-09-06); this reflection appended.
+
+LESSONS (this session)
+1. The P5.1 bug class: a dark-mode-scoped selector written as
+   "body.dark-mode .a,.b{...}" scopes only .a - the comma leaks .b to every
+   theme. When a shared class appears after a comma in a scoped rule, split
+   the rule or fully qualify both. This one silently re-skinned every gold
+   button on the marketing pages for weeks.
+2. The P4.1 bug class: hiding a control with display:none inside a container
+   that has no other content produces an "empty box" that reads as a broken
+   feature. If a footer strip's only child is hidden, hide the strip too (or
+   keep the child visible).
+3. serve.cjs bakes CSP hashes at startup. After ANY inline-script edit the
+   running dev server serves stale hashes and Chrome silently blocks every
+   inline script (page renders, zero handlers). Symptom signature:
+   document-level flags set by inline boot scripts are false. Restart the
+   server by PID (wmic/Get-CimInstance to identify, taskkill //F //PID - never
+   by image name).
+4. The SW cache poisons itself from the HTTP cache: precache's cache.addAll
+   does not bypass the HTTP cache, so a re-registered SW re-caches the stale
+   asset it just fetched. When a fix "doesn't apply", check BOTH layers:
+   unregister SW + delete caches, then reload, then verify the SW cache holds
+   the new bytes.
+5. A19 harness drift: qa-ai asserted the AI-WINDOW-DOUBLED-SIZE contract
+   (>=1200px wide) but commit a5497ea had re-designed the window to a 420px
+   right-docked sidebar without updating the gate. Height passed, width failed
+   - a half-updated assertion pair, which is how drift hides. Fixed the
+   harness to the docked contract per AGENTS.md CI rule 3 (app untouched;
+   A/B verified via git history before touching anything).
+6. Git-history -S searches are the fastest way to classify harness-failure vs
+   app-regression: the CSS rule was byte-identical at HEAD, so the failure
+   could not be this session's contamination.
+
+OUTSTANDING / OWNER'S CALL
+- Commit + deploy deferred per the owner's explicit instruction. The entire
+  wave (P0-P3 prior session + P4-P9 this session) sits uncommitted in the
+  working tree; last commit 44f73de. sw.js at v277. CI is not exercised until
+  a push happens, so the tree is verified locally only.
+- Domain email (P7) needs owner actions in OWNER-REVIEW.md: Resend signup,
+  DNS records, wrangler secrets, EMAIL_RECOVERY_ENABLED flip.

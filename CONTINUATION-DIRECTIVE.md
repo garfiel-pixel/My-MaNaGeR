@@ -205,6 +205,71 @@ directive documents.
 ---
 
 
+## OWNER STANDING RULES — LIVE AUDIT 2026-09-09 (read before ANY UI or copy work)
+
+> Recorded from the owner's walk-the-site audit of 2026-09-09. These are standing
+> rules, not one-off fixes. The skills `human-audit`, `no-slacking` and
+> `plain-language-copy` (all locked in skills-lock.json, 2026-09-09) enforce them.
+
+1. **NO EM DASHES ON ANY SERVED PAGE — HARD RULE.** Zero em dash characters
+   (U+2014, and the en dash U+2013 in copy) in any served HTML/JS string.
+   Rewrite with commas, periods, colons or the word "to". The index.html
+   "finish line" band's giant dash + micro-label were removed under this rule
+   (see STATUS LOG 2026-09-09). Scan served pages before every merge.
+2. **PLAIN LANGUAGE ONLY (skill: plain-language-copy).** No jargon in user
+   faces: no "hashed", "salt", "stored locally in localStorage",
+   "authenticate", "credentials". One short note line max where context
+   genuinely helps ("Your password stays on this device."). Fields are
+   labels ("New admin password" / "Confirm password"), not paragraphs.
+   Depth lives in the field guide, never in the form.
+3. **CONSISTENCY BY REFERENCE (part of no-slacking).** Before adding or
+   fixing ANY element, find its sibling already in the app and match it.
+   Example the owner flagged: methodology tooltips (Agile/Waterfall/Hybrid)
+   have a solid dark readable background; the "not backed up" tooltip must
+   match, never render transparent over busy content. A mature codebase
+   always has a reference. Find it, use it, never invent in isolation.
+4. **SIGN-IN LIVES IN THE APP SECTION.** The act of signing in starts at
+   app.html (and admin.html where the gate needs it). Signed-in STATE may
+   display on any page once signed in. Project sidebar carries PROJECT
+   NAVIGATION ONLY: no sign-in status, no "Not signed in" row. The right
+   home for a sign-in nudge inside a project is the Backup/Cloud section,
+   as a choice the user may ignore.
+5. **DARK THEME IS BLACK AND WHITE + PREMIUM PARITY.** Dark mode stays B&W
+   (white text, dark surfaces, hairline borders) and the premium starry
+   background + advanced UI treatment covers the ADMIN page too (admin gets
+   the same app-level premium look, hand in hand with the app section).
+6. **DOMAIN IS LIVE: https://mymanagerworkspace.com.** The paid domain
+   replaces the workers.dev identity. Deploys must serve correctly on BOTH
+   the custom domain and the workers.dev origin. Capabilities the domain
+   unlocks (proper email via a subdomain, email-based password/admin-code
+   recovery, professional OAuth origins) are tracked in OWNER-REVIEW.md.
+   OAuth authorized origins must include both domain forms.
+   **Domain capabilities (P7, 2026-09-10):** the email stack is BUILT but
+   dormant - sendAuthEmail() in src/lib/http.js (Resend API) +
+   EMAIL_RECOVERY_ENABLED flag in wrangler.jsonc. Activation is OWNER-SIDE
+   only: the step-by-step (Resend free tier on a mail.mymanagerworkspace.com
+   subdomain, Cloudflare DNS records, wrangler secrets, Email Routing for
+   inbound, OAuth origins for both domain forms) lives in OWNER-REVIEW.md
+   "Email activation walkthrough". Free tier: 3,000/mo, 100/day. Offline
+   admin codes stay the guaranteed recovery path (rule 7).
+7. **OFFLINE ADMIN CODES ARE THE USER'S RESPONSIBILITY.** We never recover a
+   local-only admin code. A signed-in user on a new device gets an "Enter my
+   admin code" restore path (cloud-linked) instead of only "create a new
+   admin code".
+8. **NO SLACKING (skill: no-slacking).** Every directive item gets DONE,
+   DEFERRED (with authority) or ANSWERED (verified already-correct, with
+   evidence). No silent drops, no unverified claims, no "too hard, skipped
+   it". Hard tasks are the job. Breakage caused by a change is fixed in the
+   same session.
+9. **HUMAN AUDIT BEFORE "DONE" (skill: human-audit).** Any UI wave ends with
+   the human walk: both themes, every hover, every tooltip, every flow, copy
+   read aloud. Automated green is necessary but not sufficient.
+10. **CODE READS FOR ENGINEERS.** Clean, readable, mid-to-senior engineer
+    standard. No clever one-liners that hide intent.
+
+---
+
+
 ## LIQUID GLASS RULES — THE ONLY HOME FOR THE DESIGN-SYSTEM BANNERS (owner, 2026-09-06)
 
 > Owner: "these design-rule banner comments make my code file bigger than what it is,
@@ -2986,6 +3051,58 @@ fully propagates the owner-added origin (homepage + admin unaffected); unsigned
 /api/cloud/* 403s are correct auth enforcement. NEXT: re-check GSI on app.html after a
 few hours; if still failing, verify Authorized JavaScript origins list in Google Cloud
 Console includes both https://mymanagerworkspace.com and https://www.mymanagerworkspace.com.
+
+**2026-09-10 - Session: OWNER-AUDIT WAVE 2026-09-09 COMPLETED (Phases 4-9; continuation session after the prior session died mid-P4.1 probe).**
+
+The owner's pasted audit was re-verified line-by-line against PLANNING-TODO-2026-09-09.txt
+(faithful distillation). Remaining queue executed one task at a time, every fix live-verified
+in headless Chrome before moving on:
+
+(1) P4.1 launcher rail sign-in: ROOT CAUSE css/mmgr.css body.db-page .db-signin{display:none}
+(a 2026-09-07 hiding decision) turned the rail footer into the owner's "empty black box".
+Rule removed; renderRailUser signed-out branch simplified (button only, no "Not signed in"
+label); button verified 84x28 and click opens the sign-in sheet end-to-end.
+(2) P4.2 project cards: warm-brown dark surfaces (--db-surface #242019 family) neutralized to
+the B&W palette at the token tier (interior rgb(20,20,22) verified), stray fluorescent cyan
+(.cd-plan.at-limit) removed, Demo Projects heading doubled (13.12px -> 26.24px). Newly created
+projects inherit automatically (shared .pcard).
+(3) P4.3 app search: prefix-first ranking (title-prefix -> word-start -> substring ->
+description, alphabetical inside tiers; per-word AND filter intact). Verified "pro" floats
+word-start titles above description-only matches and "qa" surfaces the prefix match.
+(4) P5.1 marketing CTAs: ROOT CAUSE marketing.css "body.dark-mode .signin-btn,.btn-gold{...}"
+unscoped comma leak painted ALL gold buttons glass in EVERY theme; leak fixed; .btn-gold
+resized to research-backed standards (60px -> 49px height, 14px radius); ghost buttons
+verified gold on hover.
+(5) P5.2 em-dash sweep: zero em/en dashes across all served pages + css + js (one straggler
+comment removed from js/mmgr-google-auth.js); "The finish line" eyebrow deleted from
+index.html per explicit owner order.
+(6) P5.3 scroll-spy: one-way .done lock-in (OWNER 2026-08-17) replaced with symmetric
+recompute; verified lights progressively down AND un-lights scrolling back up.
+(7) P5.4 sign-in sheet: email form first, divider, Google second, forgot/reset links
+free-floating below, form de-boxed (transparent, no border). qa-marketing mkt-16/17 updated
+to the current contract (email form primary since 2026-09-06): 20/20 (up from 18/20).
+(8) P6.1 local AI retune: forecast intent added to localLookup (reuses the grounded FORECAST
+builder), EVM matcher widened ("forecast", "is our EVM good", CPI/EAC keywords all answer
+from project state); chit-chat ("hello", "tell me a joke") still refuses. Verified live.
+(9) P7 email/domain: Resend sender already in the codebase (src/lib/http.js + dormant
+EMAIL_RECOVERY_ENABLED flag; Tier A shipped v233) - no new code; OWNER-REVIEW.md gained the
+step-by-step domain-email walkthrough (Resend account, DKIM/SPF DNS, env vars, OAuth origins,
+flag flip); directive rule 8 now points at it.
+(10) P8 verification: build + regen-csp-hashes + npm run verify ALL CHECKS PASSED; emoji scan
+clean (sw.js flag was a false positive, confirmed with python); em-dash scan CLEAN;
+qa-dashboard-spec 84/84; qa-marketing 20/20; qa-controls-admin 11/11; qa-ai AI23_GATE PASS
+(A19 rewritten to the current docked-sidebar contract - the old >=1200px assertion predated
+commit a5497ea, which re-designed the AI window from the doubled-size overlay to the 420px
+right dock; harness fixed per AGENTS.md CI rule 3, app untouched).
+
+NOT DONE (deferred, owner's call): commit + deploy. The whole wave (P0-P3 prior session +
+P4-P9 this session) is uncommitted in the working tree per the owner's explicit "no need to
+commit" instruction. sw.js at v277. Deploys stay gated on the owner saying go.
+
+Files touched this session: app.html, index.html, css/mmgr.css, css/marketing.css,
+js/mmgr-ai.js, js/mmgr-google-auth.js, js/marketing.js, qa-ai.cjs, qa-marketing.cjs,
+OWNER-REVIEW.md, CONTINUATION-DIRECTIVE.md, PLANNING-TODO-2026-09-09.txt, sw.js (v271 ->
+v277), dist/* rebuilt.
 
 ---
 

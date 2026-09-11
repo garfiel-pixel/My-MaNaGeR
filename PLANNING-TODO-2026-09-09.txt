@@ -62,9 +62,12 @@ EXECUTION PLAN (one by one, in this order)
 
 PHASE 0 - PLAN + RULES (this file)
 P0.1 [x] Write this tracker.
-P0.2 [ ] Add standing rules to CONTINUATION-DIRECTIVE.md (em-dash ban,
+P0.2 [x] Add standing rules to CONTINUATION-DIRECTIVE.md (em-dash ban,
        plain language, consistency-by-reference, domain live, sign-in
        app-only, sidebar purity, admin premium parity).
+       DONE (verified 2026-09-11): all rules present in the directive's
+       OWNER STANDING RULES section (rules 1-6 at lines ~214-252; sidebar
+       purity folded into rule 4). Only the checkbox had lagged.
 P0.3 [x] Check CI is running on GitHub (owner: it was not visible);
        check wrangler latest; update wrangler if behind.
        DONE 2026-09-09: CI run 264 IS green on main (owner's worry

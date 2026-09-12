@@ -444,3 +444,14 @@ LESSON
 OUTSTANDING / OWNER'S CALL
 - No commit made (awaiting owner go). Deploy would follow the staging
   recipe to BOTH domains.
+
+SHIP RECORD 2026-09-12 (same session): commits f9ac558 fix(perf) +
+924015f docs(session) pushed; CI 34682294551 SUCCESS; deployed v279
+(wrangler version 72c0f4d1) from clean staging to BOTH domains. Live
+smoke: CSP new-hash sets on /app + /admin (old hash gone), sw v279,
+health ok, and the headless-Chrome production click test passes on both
+origins (toggle persists + reload honest). GOTCHA re-confirmed: npm run
+deploy's tar pipeline dies under Windows cmd.exe ("The syntax of the
+command is incorrect") after predeploy - run the documented recipe
+manually from bash; staging verified essentials 11/11 + zero debris
+before wrangler deploy.

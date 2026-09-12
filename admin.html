@@ -2635,6 +2635,9 @@ const ADMIN_ACTION_MAP = {
   'poolCreateRow': () => poolCreateRow(),
   'poolEditRow': (el) => poolEditRow(el.getAttribute('data-id')),
   'poolDeleteRow': (el) => poolDeleteRow(el.getAttribute('data-id')),
+  // Performance Mode (owner 2026-09-06): same contract as project.html's
+  // ACTION_MAP entry - checkbox toggles own their click, read checked as-is.
+  'tglPerfMode': (el) => { const P = window.MMGR.Perf; if (P && P.set) P.set(el.checked); },
   'codesCopyReveal': (el) => { const c = el.getAttribute('data-code'); if (c && navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(c).then(()=>toast('Code copied.')).catch(()=>toast('Copy manually.','warn')); }
 };
 document.addEventListener('click', function(e){

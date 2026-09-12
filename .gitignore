@@ -8,6 +8,14 @@ dist/
 # Local research toolkit (Playwright binaries are huge)
 web-research/
 
+# Project-local scratch convention (see AGENTS.md lesson 9): cross-tool
+# session scratch (probe outputs, fetched pages, temp scripts) goes here,
+# NOT in /tmp — Git Bash's /tmp maps to the Windows temp dir, so a file
+# written by bash is invisible to Windows Python/node paths (real
+# FileNotFoundError incidents 2026-09-11). Never committed, never staged
+# (tar --exclude='tmp' in the deploy recipe + tmp in .assetsignore).
+/tmp/
+
 # Stray terminal capture from a server-failure session (not project content)
 Windows PowerShell from last session due to server failures.txt
 my-manager.garfieldprocis.workers.dev-*.html

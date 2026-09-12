@@ -100,6 +100,14 @@
 
    Usage:  node tools/qa-email-auth.cjs
    Exit:   0 when all gates pass + clean stop; 1 on any failure.
+
+   CI / automated runs never wait on the interactive browser phase:
+   MMGR_QA_NO_BROWSER=1 skips it explicitly, and the harness ALSO
+   auto-skips the wait when no TTY is attached (CI runners, piped or
+   redirected output) or when CI=true. Local interactive runs still
+   park for the manual browser phase until the stop file is touched.
+   Ctrl+C / SIGTERM print a partial RESULT line and stop wrangler dev
+   instead of orphaning the process on :8796.
    ============================================================ */
 'use strict';
 const { spawn, execFileSync } = require('child_process');
@@ -115,6 +123,12 @@ const ROOT = path.resolve(__dirname, '..');
 const TMP = os.tmpdir();
 const STATE_FILE = path.join(TMP, 'mmgr-email-auth-state.json');
 const STOP_FILE = path.join(TMP, 'mmgr-email-auth-stop');
+
+// CI safety net: the interactive browser phase must never park an automated
+// run. MMGR_QA_NO_BROWSER=1 is the explicit opt-out; when it is not set,
+// auto-skip when stdout is not a TTY (CI runners, piped/redirected output)
+// or when CI=true — an interactive local run always has a TTY.
+const AUTO_NO_BROWSER = !!process.env.CI || !process.stdout.isTTY;
 
 // Known secret passed to wrangler dev — the session-signing path is
 // byte-identical to a real deployment's Wrangler secret.
@@ -891,6 +905,21 @@ async function phase5() {
   check('G0 UI phase completed without harness error', pageOk, why);
 }
 
+// Interrupt safety: Ctrl+C (or a CI step timeout) otherwise kills the run
+// without a RESULT line and without stopping wrangler dev, leaving a stale
+// process holding :8796 for the next run to trip over (the stale-serve trap
+// from reflection lesson 3). Print the summary and tear down, then exit
+// non-zero so the interrupt is still reported as a failure.
+function interruptSummary(signal) {
+  const fails = results.filter(function (r) { return !r.val; });
+  log(signal + ' received — printing partial results and tearing down');
+  log('RESULT (interrupted): ' + (results.length - fails.length) + '/' + results.length + ' gates passed' + (fails.length ? ' — FAILED: ' + fails.map(function (f) { return f.name; }).join(', ') : ''));
+  stopWrangler();
+  process.exit(fails.length ? 1 : 2);
+}
+process.on('SIGINT', function () { interruptSummary('SIGINT'); });
+process.on('SIGTERM', function () { interruptSummary('SIGTERM'); });
+
 (async () => {
   if (!WRANGLER_JS) { log('FATAL: global wrangler not found (npm root -g)'); process.exit(1); }
   try {
@@ -910,14 +939,19 @@ async function phase5() {
     } catch (e) { /* non-fatal */ }
     log('READY port=' + PORT + ' — browser phase: http://127.0.0.1:' + PORT + '/app.html (register/login via the email form)');
     // MMGR_QA_NO_BROWSER=1 skips the interactive browser-phase wait (CI /
-    // automated runs) — the API gates above are the actual test.
-    if (!process.env.MMGR_QA_NO_BROWSER) {
+    // automated runs) — the API gates above are the actual test. When the
+    // env var is absent, auto-skip too in non-interactive contexts (no TTY
+    // attached, or CI=true) so an automated run can never park here.
+    if (!process.env.MMGR_QA_NO_BROWSER && !AUTO_NO_BROWSER) {
       log('waiting for browser phase (stop file: ' + STOP_FILE + ')…');
+      log('Ctrl+C ends the run early: prints a partial RESULT and stops wrangler');
       const t0 = Date.now();
       while (Date.now() - t0 < 1200000) {
         if (fs.existsSync(STOP_FILE)) break;
         await delay(1000);
       }
+    } else if (!process.env.MMGR_QA_NO_BROWSER) {
+      log('browser phase auto-skipped (non-interactive context: no TTY / CI=true)');
     }
   } catch (e) {
     log('FATAL harness exception: ' + ((e && e.stack) || e));

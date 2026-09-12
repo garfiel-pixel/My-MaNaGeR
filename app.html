@@ -1238,6 +1238,9 @@ const DASH_ACTION_MAP = {
   'closeModal': () => closeModal(),
   'attemptUnlock': () => attemptUnlock(),
   'tglTheme': (el) => tglTheme(el),
+  // Performance Mode (owner 2026-09-06): same contract as project.html's
+  // ACTION_MAP entry - checkbox toggles own their click, read checked as-is.
+  'tglPerfMode': (el) => { const P = window.MMGR.Perf; if (P && P.set) P.set(el.checked); },
   'tglGlassMode': (el) => tglGlassMode(el),
   'toggleSidebar': () => toggleSidebar(),
   'tglThemeQuick': () => tglThemeQuick(),

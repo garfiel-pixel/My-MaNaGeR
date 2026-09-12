@@ -33,6 +33,19 @@
   }
 
   /**
+   * Mirror the stored preference onto every Performance Mode checkbox on the
+   * page. The static markup ships `checked` as its default; without this a
+   * device whose stored preference is 'off' re-renders the toggle as ON and
+   * the control misreports the real state until it is clicked.
+   * Runs at boot (all bundles include this module) and callable after the
+   * page renders late-mounted controls.
+   */
+  function syncInputs() {
+    var inputs = document.querySelectorAll('input[type="checkbox"][data-action="tglPerfMode"]');
+    for (var i = 0; i < inputs.length; i++) inputs[i].checked = isOn();
+  }
+
+  /**
    * True while Performance Mode is on: 3D tilt and the heaviest CSS blur/
    * shadow layers stand down. The WebGL shader does NOT consult this -
    * it is capability-gated in mmgr-viewport.effectiveGlassMode().
@@ -40,6 +53,11 @@
   function blocksHeavyLayers() { return isOn(); }
 
   apply();
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', syncInputs);
+  } else {
+    syncInputs();
+  }
 
-  ns.Perf = { isOn: isOn, set: set, apply: apply, blocksHeavyLayers: blocksHeavyLayers };
+  ns.Perf = { isOn: isOn, set: set, apply: apply, syncInputs: syncInputs, blocksHeavyLayers: blocksHeavyLayers };
 })(window.MMGR = window.MMGR || {});

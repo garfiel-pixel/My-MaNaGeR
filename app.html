@@ -277,10 +277,11 @@ body.db-page.side-open .sidebar-icons{opacity:0;pointer-events:none;}
   </div>
   <nav class="db-nav" id="db-nav">
     <div class="db-g">Overview</div>
-    <!-- Dashboard: the full dedicated dashboard view is not built yet          (owner review 2026-09-05) - the link stays honest with a Soon chip
-         and returns to the project overview at #top instead of looking
-         broken to a demo viewer. -->
-    <a class="db-link" href="#top" title="Full dashboard view is coming soon"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-orb"></use></svg> Dashboard <span class="db-soon">Soon</span></a>
+    <!-- Dashboard: the full dedicated dashboard view is not built yet          (owner review 2026-09-05) - the link returns to the project overview
+         at #top instead of looking broken to a demo viewer. OWNER 2026-09-12
+         (P2-10): the Soon chip is gone - "this one is there never ... it
+         should just be turned off as it's not needed." -->
+    <a class="db-link" href="#top" title="Back to the top of your projects"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-orb"></use></svg> Dashboard</a>
     <div class="db-g">Projects</div>
     <a class="db-link" href="#grid" data-rail-toggle="rail-projects-list" aria-expanded="false" aria-controls="rail-projects-list"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-folder"></use></svg> All Projects <svg class="ico ico-caret" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg></a>
     <div class="db-sub" id="rail-projects-list" hidden></div>
@@ -454,11 +455,19 @@ body.db-page.side-open .sidebar-icons{opacity:0;pointer-events:none;}
        code , owner, editor, or viewer. The lookup resolves the code to its
        project on the backend and opens it here; no shared URL needed beyond
        this site. Works from any device, any country. -->
-  <!-- Secondary action: open with access code (Phase 2 - contextual, not prominent) -->
+  <!-- OWNER 2026-09-12 (P2-14): the code entry is its OWN SECTION with the
+       same head treatment as My Cloud Projects - codes are shared all the
+       time and whoever receives one looks for a labeled door, not a bare
+       input floating under the grid. The bottom button reads "Use code
+       instead" per the owner's flow description. -->
   <div class="cloud-dash" id="code-entry" aria-label="Open a project with a code" style="margin-top:8px;">
+    <div class="cd-head">
+      <h2><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-unlock"></use></svg> Open with code</h2>
+      <span class="cd-sub">Got a project or editor code? Enter it and open the project</span>
+    </div>
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
       <input id="code-entry-in" type="text" maxlength="32" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="XXXX-XXXX-XXXX-XXXX" aria-label="Project code" style="background:var(--tile-bg);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-size:.82rem;letter-spacing:.08em;padding:8px 12px;font-family:ui-monospace,monospace;outline:none;flex:1;min-width:180px;max-width:280px;">
-      <button type="button" class="btn btn-n btn-s" id="code-entry-btn" data-action="cloudCodeOpen"><svg class="ico" aria-hidden="true" style="width:14px;height:14px;"><use href="css/mmgr-icons.svg#i-download"></use></svg> Open with code</button>
+      <button type="button" class="btn btn-n btn-s" id="code-entry-btn" data-action="cloudCodeOpen"><svg class="ico" aria-hidden="true" style="width:14px;height:14px;"><use href="css/mmgr-icons.svg#i-download"></use></svg> Use code instead</button>
       <span class="cd-status" id="code-entry-status" role="status" aria-live="polite"></span>
     </div>
   </div>
@@ -473,6 +482,19 @@ body.db-page.side-open .sidebar-icons{opacity:0;pointer-events:none;}
     </div>
     <div class="cd-list" id="recover-list" role="list"></div>
     <div class="cd-status" id="recover-status" role="status" aria-live="polite"></div>
+  </div>
+
+  <!-- RECENTLY OPENED CODES - codes this device has opened, stored locally.
+       The first time a code opens a project it is remembered here so the next
+       visit is one click, not a re-type. The code stays on this device only,
+       never leaves it, and is never synced to the cloud. -->
+  <div class="cloud-dash" id="recent-dash" hidden aria-label="Recently opened codes">
+    <div class="cd-head">
+      <h2><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clock"></use></svg> Recently opened</h2>
+      <span class="cd-sub">Codes you open stay on this device for quick re-open</span>
+    </div>
+    <div class="cd-list" id="recent-list" role="list"></div>
+    <div class="cd-status" id="recent-status" role="status" aria-live="polite"></div>
   </div>
 </div>
 
@@ -616,6 +638,11 @@ function renderCards(){
       const published = isPublishedProject(p.id);
       const status = (p.status || 'active').toLowerCase();
       const statusLabel = status.replace('-', ' ');
+      // OWNER 2026-09-12 (P2-11): status language without pills - a colored
+      // dot (.sdot, the repo's existing primitive) + a plain label. Green =
+      // active/completed, blue = planning, amber = on-hold; unknown statuses
+      // get the neutral dot. No pill chrome anywhere on the card.
+      const statusDot = ({ active: 'g', completed: 'g', planning: 'b', 'on-hold': 'a' })[status] || '';
       const chips = local
         ? (published
             ? '<span class="pc-chip pc-local">On this device</span>'
@@ -629,7 +656,7 @@ function renderCards(){
         '<div class="pc-lock">' + (local || unlocked ? '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-unlock"></use></svg>' : '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-lock"></use></svg>') + '</div></div>' +
         (chips ? '<div class="pc-chips">' + chips + '</div>' : '') +
         '<div class="pc-desc">' + escapeHtml(p.description || '') + '</div>' +
-        '<div class="pc-foot"><span class="badge ' + status + '">' + escapeHtml(statusLabel) + '</span>' +
+        '<div class="pc-foot"><span class="pc-status"><span class="sdot ' + statusDot + '"></span>' + escapeHtml(statusLabel) + '</span>' +
         '<span class="pc-cta">' + cta + '</span></div>' +
         '</button>';
     }).join('');
@@ -648,12 +675,13 @@ function renderCards(){
   demoGrid.innerHTML = demoProjects.map(function(p) {
     var status = (p.status || 'active').toLowerCase();
     var statusLabel = status.replace('-', ' ');
+    var statusDot = ({ active: 'g', completed: 'g', planning: 'b', 'on-hold': 'a' })[status] || '';
     var cta = '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg> Explore';
     return '<button class="pcard" data-id="' + p.id + '" aria-label="Explore ' + escapeHtml(p.title) + '">' +
       '<div class="pc-head"><div class="pc-title">' + escapeHtml(p.title) + '</div>' +
       '<div class="pc-lock"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-orb"></use></svg></div></div>' +
       '<div class="pc-desc">' + escapeHtml(p.description || '') + '</div>' +
-      '<div class="pc-foot"><span class="badge ' + status + '">' + escapeHtml(statusLabel) + '</span>' +
+      '<div class="pc-foot"><span class="pc-status"><span class="sdot ' + statusDot + '"></span>' + escapeHtml(statusLabel) + '</span>' +
       '<span class="pc-cta">' + cta + '</span></div>' +
       '</button>';
   }).join('');
@@ -763,7 +791,7 @@ async function tryCloudEditorUnlock(id, code){
     localStorage.setItem('mmgr_state_' + id, JSON.stringify(data.state));
     try{
       sessionStorage.setItem('mmgr_cloud_ecode_' + id, String(code || '').trim());
-      sessionStorage.setItem('mmgr_cloud_escope_' + id, JSON.stringify({label: data.editorLabel || '', sections: data.scope || []}));
+      sessionStorage.setItem('mmgr_cloud_escope_' + id, JSON.stringify({label: data.editorLabel || '', sections: data.scope || [], role: 'editor'}));
     }catch(e){ /* session storage blocked , editing still works this session */ }
     return true;
   }catch(e){ return false; }
@@ -1103,15 +1131,27 @@ async function cloudCodeOpen(){
       localStorage.setItem('mmgr_current_project', ld.projectId);
       if (ld.role !== 'owner') {
         sessionStorage.setItem('mmgr_cloud_ecode_' + ld.projectId, code);
+        // OWNER BUG 2026-09-12: the lookup can omit `scope` (older deploys),
+        // and writing an empty sections array made project.html show "editor
+        // for unknown" and lock every panel. Recover the real grant from the
+        // /load response (rd, fetched below, carries role+scope for editors
+        // and viewers). NB: an empty array is truthy, so test its length.
+        const lookupSections = (ld.role === 'client' ? (ld.sections || []) : (ld.scope || []));
+        const loadSections = (rd && (rd.role === 'view' || rd.role === 'editor')) ? (rd.scope || []) : [];
+        const grantSections = lookupSections.length ? lookupSections : loadSections;
         sessionStorage.setItem('mmgr_cloud_escope_' + ld.projectId, JSON.stringify({
           label: ld.label || (ld.role === 'view' ? 'Viewer' : (ld.role === 'client' ? 'Client' : 'Editor')),
           // C19: a client's grant is the lookup's `sections` list; editors /
           // viewers carry `scope` (the writable/visible section list).
-          sections: (ld.role === 'client' ? (ld.sections || []) : (ld.scope || [])),
+          sections: grantSections,
           role: ld.role === 'view' ? 'view' : (ld.role === 'client' ? 'client' : 'editor')
         }));
       }
     } catch (e) { /* storage blocked , open still proceeds below */ }
+    // remember this code on this device for one-click re-open next time
+    if (typeof MMGRRecentCodes !== 'undefined' && MMGRRecentCodes.store) {
+      try { MMGRRecentCodes.store(ld.projectId, ld.projectName || ld.projectId, code, ld.role); } catch(e) {}
+    }
     window.location.href = 'project.html?id=' + encodeURIComponent(ld.projectId);
   } catch (e) {
     if (status) status.textContent = 'Could not reach the cloud service. Check your connection and try again.';
@@ -1119,6 +1159,136 @@ async function cloudCodeOpen(){
     if (btn) { btn.disabled = false; btn.textContent = 'Open from Cloud'; }
   }
 }
+/* RECENTLY OPENED CODES (owner 2026-09-12): the first time a code opens a
+   project it is remembered on this device only, so the next visit is one click
+   instead of a re-type. The code never leaves the device and is never synced.
+   Capped at 12 entries (LRU eviction). Revoked/expired codes are cleaned out
+   on click and when the list renders. */
+var MMGRRecentCodes = MMGRRecentCodes || {};
+(function(rc) {
+  var LS_KEY = 'mmgr_recent_codes';
+  var CAP = 12;
+  function read() {
+    try { var raw = localStorage.getItem(LS_KEY); if (!raw) return []; var arr = JSON.parse(raw); return Array.isArray(arr) ? arr : []; } catch(e) { return []; }
+  }
+  function write(arr) {
+    try { localStorage.setItem(LS_KEY, JSON.stringify(arr)); } catch(e) {}
+  }
+  function now() { return Date.now(); }
+  function ageLabel(ts) {
+    var s = (now() - ts) / 1000;
+    if (s < 60) return 'just now';
+    if (s < 3600) return Math.floor(s / 60) + ' min ago';
+    if (s < 86400) return Math.floor(s / 3600) + ' h ago';
+    return Math.floor(s / 86400) + ' days ago';
+  }
+  function isDead(entry) {
+    return !entry || !entry.projectId || !entry.code;
+  }
+  function trim(arr) {
+    // drop empty / unusable entries
+    arr = arr.filter(isDead.bind(null, /*no*/ 0) ? function(e){ return !isDead(e); } : function(e){ return !isDead(e); });
+    // keep CAP most-recent; sort desc by openedAt, slice
+    arr.sort(function(a, b){ return (b.openedAt||0) - (a.openedAt||0); });
+    if (arr.length > CAP) arr = arr.slice(0, CAP);
+    write(arr);
+    return arr;
+  }
+  rc.store = function(projectId, projectName, code, role) {
+    if (!projectId || !code) return;
+    var list = read();
+    // same projectId + same code = update timestamp + name, move to front
+    var existing = list.findIndex(function(e){ return e.projectId === projectId && e.code === code; });
+    if (existing >= 0) {
+      list[existing].projectName = projectName || list[existing].projectName;
+      list[existing].role = role || list[existing].role;
+      list[existing].openedAt = now();
+    } else {
+      list.push({ projectId: projectId, projectName: projectName || projectId, code: code, role: role || 'owner', openedAt: now() });
+      trim(list);
+    }
+    write(list);
+  };
+  rc.render = function() {
+    var listEl = document.getElementById('recent-list');
+    var dashEl = document.getElementById('recent-dash');
+    if (!listEl || !dashEl) return;
+    var list = trim(read());
+    if (list.length === 0) {
+      dashEl.hidden = true;
+      return;
+    }
+    dashEl.hidden = false;
+    listEl.innerHTML = list.map(function(e) {
+      return '<button type="button" class="cd-card recent-card" data-recent="' + escapeHtml(String(e.projectId)) + '">' +
+        '<span class="cd-title">' + escapeHtml(e.projectName || e.projectId) + '</span>' +
+        '<span class="cd-meta">' + (e.role ? escapeHtml(e.role) + ' code &middot; ' : '') + ageLabel(e.openedAt) + '</span>' +
+        '</button>';
+    }).join('');
+  };
+  rc.open = function(projectId) {
+    var list = read();
+    var entry = list.find(function(e){ return e.projectId === projectId; });
+    if (!entry) return;
+    // re-punch the stored code: same lookup + load flow as cloudCodeOpen
+    var status = document.getElementById('code-entry-status');
+    var btn = document.getElementById('code-entry-btn');
+    if (btn) { btn.disabled = true; btn.textContent = 'Opening…'; }
+    if (status) status.textContent = '';
+    (function(){
+      var code = entry.code;
+      var normalize = function(raw){ var s = String(raw || '').trim().toUpperCase(); return s.length === 16 ? s.slice(0,4)+'-'+s.slice(4,8)+'-'+s.slice(8,12)+'-'+s.slice(12,16) : s; };
+      var ncode = normalize(code);
+      fetch('/api/cloud/codes/lookup', { method:'POST', credentials:'same-origin', headers:{'Content-Type':'application/json'}, body: JSON.stringify({code:ncode}) })
+        .then(function(lr){ return lr.json().catch(function(){ return {}; }); })
+        .then(function(ld){
+          if (!ld.ok || !ld.projectId) {
+            if (ld.error === 'code_revoked' || ld.error === 'code_expired') {
+              // remove stale entry, re-render
+              var i = list.findIndex(function(e){ return e.projectId === projectId && e.code === code; });
+              if (i >= 0) { list.splice(i,1); write(list); }
+              rc.render();
+              showToast('This code was revoked or expired. Removed from recent list.', 'warn');
+            } else {
+              if (status) status.textContent = 'No cloud project matches that code. Check it and try again.';
+            }
+            return;
+          }
+          var hdrs = { 'Content-Type':'application/json' };
+          hdrs[ld.role === 'owner' ? 'X-Owner-Code' : (ld.role === 'view' ? 'X-View-Code' : (ld.role === 'client' ? 'X-Client-Code' : 'X-Editor-Code'))] = ncode;
+          return fetch('/api/cloud/projects/' + encodeURIComponent(ld.projectId) + '/load', { method:'POST', credentials:'same-origin', headers:hdrs, body: JSON.stringify({}) }).then(function(rr){ return rr.json().catch(function(){ return {}; }); });
+        })
+        .then(function(rd){
+          if (!rd || !rd.ok || !rd.state) {
+            if (rd && rd.error === 'code_revoked' || rd.error === 'code_expired') {
+              var i = list.findIndex(function(e){ return e.projectId === projectId && e.code === code; });
+              if (i >= 0) { list.splice(i,1); write(list); }
+              rc.render();
+              showToast('This code was revoked or expired. Removed from recent list.', 'warn');
+            } else {
+              if (status) status.textContent = 'The project could not load. Try again.';
+            }
+            return;
+          }
+          // refresh the timestamp on success
+          var e = list.find(function(x){ return x.projectId === projectId && x.code === code; });
+          if (e) { e.openedAt = now(); write(list); }
+          if (status) status.textContent = '';
+          window.location.href = 'project.html?id=' + encodeURIComponent(rd.projectId || projectId);
+        })
+        .catch(function(){ if (status) status.textContent = 'Could not reach the cloud service. Check your connection and try again.'; })
+        .finally(function(){ if (btn) { btn.disabled = false; btn.textContent = 'Open from Cloud'; } });
+    })();
+  };
+  rc.init = function() {
+    rc.render();
+    document.getElementById('recent-list').addEventListener('click', function(e){
+      var card = e.target.closest('[data-recent]');
+      if (card) rc.open(card.getAttribute('data-recent'));
+    });
+  };
+})(MMGRRecentCodes || (window.MMGRRecentCodes = {}));
+
 const entryInput = document.getElementById('code-entry-in');
 if (entryInput) entryInput.addEventListener('keydown', function(e){ if (e.key === 'Enter') cloudCodeOpen(); });
 
@@ -1283,6 +1453,11 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   } catch(e) { /* seeding must never block boot */ }
   renderCards();
+  // recently opened codes list (owner 2026-09-12): one-click re-open of codes
+  // this device has already used; renders into #recent-dash if any exist.
+  if (typeof MMGRRecentCodes !== 'undefined' && MMGRRecentCodes.init) {
+    try { MMGRRecentCodes.init(); } catch(e) {}
+  }
 });
 
 /* CLOUD-BACKEND-ARCHITECTURE-PLAN Phase 2 , direct-link unlock for cloud
@@ -1422,6 +1597,13 @@ window.addEventListener('resize', function(){
   syncSidebarAria();
   syncSidebarIcons();
 });
+
+.recent-card{cursor:pointer;text-align:left;background:var(--glass-fill-dark);border:var(--glass-border);border-radius:var(--squircle-md);padding:12px 14px;box-shadow:var(--glass-rim);transition:border-color var(--tr),background var(--tr);}
+.recent-card:hover{border-color:var(--gold);background:var(--glass-fill-dark-hover);}
+.recent-card:active{transform:scale(var(--press-scale));}
+.recent-card .cd-title{display:block;font-size:.82rem;font-weight:800;line-height:1.35;word-break:break-word;margin-bottom:4px;}
+.recent-card .cd-meta{display:block;font-size:.66rem;color:var(--slate);}
+.recent-card:focus-visible{outline:2px solid var(--gold);outline-offset:2px;}
 
 /* Deploy guard: every icon on this page is a <use href="css/mmgr-icons.svg#...">.
    A missing sprite on the live host makes icons vanish silently , surface it

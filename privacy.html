@@ -128,6 +128,7 @@
       <p>The Application places no advertising, marketing, or third-party tracking cookies. The only cookies and browser storage used are:</p>
       <ul>
         <li><strong>Session cookie (mmgr_session):</strong> A single HttpOnly, Secure, SameSite=Lax cookie issued when you sign in, used for authentication on cloud features. Expires after 7 days. Contains no project data.</li>
+        <li><strong>Email-based account recovery:</strong> If you sign in with an email account and forget your password, the Application can send a one-time recovery link to the email address on your account so you can set a new password. These recovery emails are sent through the Resend transactional email service. The recovery link expires after 15 minutes and can be used only once. Google-signed-in accounts do not have a password and do not use this flow; use your Google account to sign in instead.</li>
         <li><strong>Local site storage (localStorage/IndexedDB):</strong> Stores your project data and preferences (theme, palette, view mode, dock settings, project files). This data never leaves your device except through features you explicitly enable (cloud sync, export, sharing codes). You can clear it at any time through your browser's site-data controls.</li>
         <li><strong>No fingerprinting or cross-site identifiers:</strong> No device fingerprinting, tracking pixels, or identifiers shared across sites.</li>
       </ul>

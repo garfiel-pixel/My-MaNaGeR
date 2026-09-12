@@ -58,7 +58,7 @@
     // DORMANT. Flip to true only once a verified sending domain exists
     // (RESEND_FROM_EMAIL pointed at a verified domain); send/verify then
     // 503 until then. QA flips it per-run via wrangler dev --var.
-    "EMAIL_RECOVERY_ENABLED": false
+    "EMAIL_RECOVERY_ENABLED": true
   },
   // Service binding: the Presence DO calls back to the Worker for code-based
   // auth validation (codes must not appear in the WebSocket URL query string).

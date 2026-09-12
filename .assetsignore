@@ -13,6 +13,7 @@
 .wrangler
 node_modules
 .dev.vars
+tmp
 serve.cjs
 qa-*.cjs
 tools

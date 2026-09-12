@@ -47,6 +47,8 @@
   // NOTE: .agents/ (the locked AI skill set, AGENTS.md/CLAUDE.md) is dev
   // tooling, NOT runtime assets — exclude it from the staging copy so the
   // 320-file cloudflare skill references never bloat the asset upload.
+  //   --exclude='tmp'   (project-local scratch per AGENTS.md lesson 9;
+  //                      also listed in .assetsignore)
   // GOOGLE-OPERATOR-IDENTITY-v1: public (non-secret) Client ID so the Worker
   // can prefer env.GOOGLE_CLIENT_ID over its constant. The Client Secret is a
   // Wrangler secret ONLY (env.GOOGLE_CLIENT_SECRET) — never a var in this file.

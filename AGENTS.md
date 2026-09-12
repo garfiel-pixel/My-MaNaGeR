@@ -231,6 +231,30 @@ Latest CI state (2026-09-04): GREEN on 1339a3f after fixing
 qa-dashboard-spec (has-dock body class) + verify-cloud-autosave-signin
 C3 (recovery-modal poll). Check the API before trusting this line.
 
+### 9. NEVER write scratch files to `/tmp` - use `tmp/` in the repo
+
+On Windows, Git Bash's `/tmp` maps to the Windows temp directory
+(`C:\Users\<user>\AppData\Local\Temp`), but Windows Python and node.exe
+do not see `/tmp` as that directory - a file bash just wrote via
+`curl -o /tmp/live.html` produces `FileNotFoundError` when the next
+step reads it from Python, and the reverse direction silently splits
+one workflow across two locations. This bit real sessions (2026-09-11
+live-audit probes) more than once per session.
+
+**Convention:** all cross-tool session scratch (fetched pages, probe
+output, temp scripts, JSON captures) goes to `tmp/` in the repo root,
+with **paths relative to the project root** so bash, Python, and node
+all resolve the same file:
+
+```bash
+curl -s https://example.com -o tmp/scratch.html   # bash writes it
+python -c "open('tmp/scratch.html').read()"        # python reads it
+```
+
+`tmp/` is gitignored, listed in `.assetsignore`, and excluded by the
+deploy tar recipe - it can never be committed or served. Clean it
+whenever it grows; do not put anything long-lived there.
+
 ## Editing workflow
 
 1. Identify which skills apply (table above) and load them.

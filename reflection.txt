@@ -367,3 +367,80 @@ OUTSTANDING / OWNER'S CALL
 - #portfolio-strip tail in mmgr-portfolio.js kept DELIBERATELY: qa-full
   check 65 seeds that host to test the wx-risk badge path. Recorded so
   a future sweep does not flag it again.
+
+--------------------------------------------------------------------
+SESSION 2026-09-12 - think-outside-the-box COMPLETENESS REVIEW + PERF
+TOGGLE WIRING FIX (v279)
+--------------------------------------------------------------------
+
+CONTEXT
+Owner: review what is done vs not completed, search for bugs, use the
+think-outside-the-box skill. Loaded the skill (existing-app-audit route)
++ skeptical-code-audit as the systematic sweep.
+
+STATUS REVIEW (verified against code, not tracker claims)
+- C21 @mentions/comments/follow-up: SHIPPED (mmgr-tasks.js CRUD +
+  mmgr-render.js badges).
+- C24 Template Library: SHIPPED (mmgr-templates.js, FIELD_KEYS ok).
+- U3 empty states: SHIPPED (emptyStateRow in every render/ module;
+  Charter/DMAIC are form-based by design per the v224 note).
+- C19 Client Portal: SHIPPED (migration 0017, client-codes.js, admin UI,
+  launcher branch, qa-client-codes.cjs).
+- C23 Shared Pool: SHIPPED (migration 0019, mmgr-pool.js).
+- U1 AI bar: the sticky bar was REMOVED by design (v227, owner called the
+  double entry a loop); the Dashboard command card is the one entry.
+- U2 Core/Advanced toggle: deliberately not built (owner 2026-08-15).
+=> Nothing from the remaining-features plan is actually outstanding.
+
+THE REAL BUG FOUND (and fixed)
+- Performance Mode checkbox (data-action="tglPerfMode") was a SILENT
+  NO-OP on app.html and admin.html since the 2026-09-06 wave. Those
+  pages' action maps had no entry; both delegation handlers return early
+  when fn is missing; mmgr-app.js (owning the real handler, line 1895)
+  is bundled ONLY into project.html's bundle.js. The toggle flipped
+  visually and wrote nothing. The 2026-09-07 reflection claimed it was
+  wired on all three pages - wrong for app/admin (it verified the
+  handler exists, not that each page's dispatch reaches it).
+- Second half: all three pages ship the checkbox `checked` statically,
+  so a device with mmgr_perf_mode='off' re-rendered the toggle as ON
+  after reload.
+- FIX: 'tglPerfMode' entries in DASH_ACTION_MAP + ADMIN_ACTION_MAP (same
+  contract as project.html); js/mmgr-perf.js gains Perf.syncInputs()
+  (boot-time sync of every perf checkbox from the STORED pref).
+- PROOF (CDP, real Chrome, tmp/probe-perf-fix.cjs): app.html + admin.html
+  click -> localStorage 'off' + html[data-perf=off]; reload -> checkbox
+  unchecked (was checked before the fix); toggle-on restores; project.html
+  regression clean.
+
+CLEAN SWEEPS (re-verified, first-pass flags classified)
+- Action maps per page: project 153/153 (accountSignOut = inline handler,
+  FP), admin 62/62 after fix, app 13/13 after fix.
+- Icons: 74 symbols / 641 refs / 0 missing.
+- DOM ids: 3 flags all FPs (#siom project removal documented, #no-projects-
+  hint documented, #email-auth-block is mounted dynamically by
+  mountEmailAuth; showUser() guards the hiding).
+- Class toggles: 80 distinct, 3 flags benign (on-dark base styles,
+  email-auth-pw-cur hook class, pref inline-styled label).
+- MODULE_UPDATERS complete + warns loud on unmapped modules.
+- textContent-markup: 0. Auto-sync failures announce (drawer status err);
+  offline silence is the documented offline-first contract.
+- Empty catch blocks in ai/voice/sync = localStorage guards or error paths
+  that toast + log. No swallow-and-plausible-default found.
+
+VERIFICATION
+- node --check clean; build.js; regen-csp-hashes (24, worker+serve);
+  sw.js v278 -> v279; npm run verify ALL CHECKS PASSED.
+- qa-view-mode ALL; verify-controls-admin 11/11; qa-dashboard-spec 85/85;
+  qa-marketing 20/20; qa-full 174/174 (first run had one RAF flake on
+  check 07 float-watch - re-run green, gotcha #3 again).
+
+LESSON
+- The audit tool's "coverage" heuristic (map key OR anywhere-in-file) can
+  pass a page whose DISPATCH never reaches the file that has the handler.
+  Per-page action-map checks must verify the page's OWN map, not the
+  codebase at large. (This is how a wrong reflection claim survived two
+  audits: everyone grepped for the handler, nobody traced the dispatch.)
+
+OUTSTANDING / OWNER'S CALL
+- No commit made (awaiting owner go). Deploy would follow the staging
+  recipe to BOTH domains.

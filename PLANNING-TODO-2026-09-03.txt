@@ -1622,3 +1622,37 @@ DEPLOYED (same day): version 98248708-e520-435f-9417-5217d8296f81 from the
   CSS-in-script junk, live bundle carries the recover-race fix (sourcemap
   check - minify mangles module-local names), codes/lookup 403 probe ok.
   Cron 0 6 * * * intact.
+
+--------------------------------------------------------------------------------
+2026-09-13 - CLOUD-OWNERSHIP WAVE + CI LOOP (commits 9918ad7..4ba177e, run 34777699147 GREEN)
+Wave (owner directive: sign-in de-box + cloud sharing/restore on any device):
+  9918ad7 feat(cloud): (1) rail Sign in de-boxed (.db-signin pill border/fill +
+    .db-foot #141414 background dropped; border-top line kept - the dark-mode
+    footer fill was a different shade than the rail surface = the "box in
+    sidebar" the owner saw). (2) editor-code create/list/revoke de-gated from
+    the locally-held owner code - session owner works (server either-auth);
+    share.js session-owner branch renders the full Shared Codes panel.
+    (3) CLAIM FLOW: POST /api/cloud/projects/:id/claim stamps google_sub onto
+    a project created UNSIGNED (google_sub NULL made every session path 403:
+    list/meta/save/recover - the owner's "cloud project not recognized on
+    another device"). (4) Client Codes UI built (backend had ZERO callers) +
+    client-code endpoints moved to either-auth. (5) launcher owner cards
+    regained the 3-dot menu: Save offline copy (FULL editable local restore:
+    mmgr_admin_projects + mmgr_state_*) + Delete project confirm/undo.
+  CI loop on this wave (self-reporting pattern paid off):
+    7dd517c: qa-client-codes failures emit ::error annotations + full gate
+      table into $GITHUB_STEP_SUMMARY (public-readable; logs are not).
+    Run 34775840929 named P8c: my P0f either-auth gate created a second
+      'dash'-sections no-expiry code and P8 revoked by that ambiguous list
+      signature (same-second created_at tie masked it locally).
+    3810c18: revoke P6's explicit create-response codeId instead.
+    Run 34776429879 crashed between checks with no annotation (harness
+      plumbing throw, likely a wrangler-hiccup fetch rejection).
+    4ba177e: crash-proof suite - outer catch emits HARNESS CRASHED annotation,
+      failure payloads safe-stringified, P9 phase wrapped with a named gate.
+    4ba177e run: SUCCESS. Local: 32/32 qa-client-codes (x4 runs), t9 27/27,
+      offline-copies 23/23, cas 8/8, dashboard-spec 85/85, npm run verify green.
+  LESSONS: (1) a harness selector that matches by data signature silently
+    breaks when a new gate creates similar data - use create-response ids.
+    (2) a suite can crash BETWEEN checks with zero reporting; wrap phases.
+    (3) $GITHUB_STEP_SUMMARY is the readable channel when job logs are gated.

@@ -369,6 +369,12 @@ var MMGR = window.MMGR || {};
         const inInput = e.target.closest && e.target.closest('input,textarea,select');
         if (!inInput) {
           e.preventDefault();
+          // VIEW-ONLY HARDENING: undo/redo rewrite project state - refused
+          // in read-only sessions like every other mutation.
+          if (isReadonly()) {
+            showToast('View-only access: history is disabled.', 'err');
+            return;
+          }
           if (e.shiftKey) { redo(); } else { undo(); }
           return;
         }
@@ -930,14 +936,14 @@ var MMGR = window.MMGR || {};
         for (let hx = x0; hx < x0 + bw; hx += 7) { ctx.beginPath(); ctx.moveTo(hx, y); ctx.lineTo(hx + 7, y + rowH); ctx.stroke(); }
       }
       // Bar color by status
-      const col = t.critical ? '#d4af37' : t.status === 'completed' ? '#009b3a' : U.isOverdue(t.endDate) && t.status !== 'completed' ? '#dc3545' : U.isDueSoon(t.endDate, 3) && t.status !== 'completed' ? '#f59e0b' : '#3b82f6';
+      const col = t.critical ? '#d4af37' : t.status === 'completed' ? '#009b3a' : U.isOverdue(t.endDate) && t.status !== 'completed' ? '#D63A3A' : U.isDueSoon(t.endDate, 3) && t.status !== 'completed' ? '#f59e0b' : '#3b82f6';
       ctx.fillStyle = col;
       ctx.fillRect(x0, y + (t.critical ? 0 : 4), bw, rowH - (t.critical ? 0 : 8));
       if (t.critical) { ctx.strokeStyle = 'rgba(255,255,255,.6)'; ctx.lineWidth = 1; ctx.strokeRect(x0 + .5, y + .5, bw - 1, rowH - 1); }
     });
     // Legend
     ctx.font = '9px sans-serif';
-    const legend = [['#d4af37', 'Critical'], ['#3b82f6', 'Task'], ['#009b3a', 'Done'], ['#f59e0b', 'Due soon'], ['#dc3545', 'Overdue'], ['rgba(56,189,248,.6)', 'Weather-exposed'], ['rgba(148,163,184,.5)', 'Baseline']];
+    const legend = [['#d4af37', 'Critical'], ['#3b82f6', 'Task'], ['#009b3a', 'Done'], ['#f59e0b', 'Due soon'], ['#D63A3A', 'Overdue'], ['rgba(56,189,248,.6)', 'Weather-exposed'], ['rgba(148,163,184,.5)', 'Baseline']];
     let lx = padL;
     legend.forEach(l => {
       ctx.fillStyle = l[0]; ctx.fillRect(lx, H - 18, 12, 10);
@@ -1098,12 +1104,30 @@ var MMGR = window.MMGR || {};
   let dragTaskId = null;
 
   function dragCard(ev, taskId) {
+    // VIEW-ONLY HARDENING (owner 2026-09-12): a read-only session must never
+    // move a card. The DnD listeners below are plain document-level events,
+    // NOT the data-action delegation, so guardReadonly() never sees them.
+    // Stop the drag at the source instead of letting dropCard silently no-op.
+    if (isReadonly()) {
+      if (ev && ev.dataTransfer) { try { ev.dataTransfer.effectAllowed = 'none'; } catch (e) {} }
+      if (ev && ev.preventDefault) ev.preventDefault();
+      showToast('View-only access: the board can be read but not changed.', 'err');
+      dragTaskId = null;
+      return;
+    }
     dragTaskId = taskId;
     ev.dataTransfer.effectAllowed = 'move';
   }
 
   function dropCard(ev, status) {
     ev.preventDefault();
+    // Second guard (defense in depth): the drop is the state mutation.
+    if (isReadonly()) {
+      showToast('View-only access: the board can be read but not changed.', 'err');
+      dragTaskId = null;
+      document.querySelectorAll('.kcol').forEach(c => c.classList.remove('dov'));
+      return;
+    }
     if (dragTaskId) {
       const task = (S().tasks || []).find(t => t.id === dragTaskId);
       // Monolith drop guard: lead-time cards belong in the Lead-Time lane , 
@@ -1129,6 +1153,13 @@ var MMGR = window.MMGR || {};
 
   function dropCardLeadtime(ev) {
     ev.preventDefault();
+    // VIEW-ONLY HARDENING: same guard as dropCard.
+    if (isReadonly()) {
+      showToast('View-only access: the board can be read but not changed.', 'err');
+      dragTaskId = null;
+      document.querySelectorAll('.kcol').forEach(c => c.classList.remove('dov'));
+      return;
+    }
     if (dragTaskId) {
       ns.State.updateState(function(s) {
         const task = (s.tasks || []).find(t => t.id === dragTaskId);
@@ -2372,9 +2403,18 @@ window.MMGR = MMGR;
   // Hold-to-clear: start the hold on pointer down; cancel on release,
   // pointer cancel, leaving the button, or window blur. cancelHold is a
   // no-op when no hold is active, so these may be global listeners.
+  // VIEW-ONLY HARDENING (owner 2026-09-12): startHold runs on pointerdown,
+  // NOT the guarded click delegation, and after a 10s hold it DELETES the
+  // whole section (clearSection) - a viewer could wipe the WBS. Refuse it.
   document.addEventListener('pointerdown', function(e) {
     const el = e.target.closest('[data-action="startHold"]');
-    if (el) window.MMGR.App.startHold(el.getAttribute('data-section'));
+    if (!el) return;
+    if (window.MMGR.App && window.MMGR.App.isReadonly && window.MMGR.App.isReadonly()) {
+      e.preventDefault();
+      window.MMGR.App.showToast('View-only access: nothing can be cleared.', 'err');
+      return;
+    }
+    window.MMGR.App.startHold(el.getAttribute('data-section'));
   });
 
   // Release anywhere cancels , cancelHold is a no-op when nothing is held,

@@ -1552,3 +1552,38 @@ or resilience to qa-ai-badge-e2e.cjs (wrangler-dev startup race).
   deploy. DEPLOYED: version f657ac5b-f131-498c-833f-577ee4f3fdd4 from clean
   staging; both hosts 200 post-deploy. No app-code changes this wave -
   harness-only.
+
+--------------------------------------------------------------------------------
+2026-09-13 - P10 LOOP BROKEN + LAUNCHER OUTAGE FIXED (plan:
+  PLAN-P10-AND-REPO-AUDIT.md). Root cause was NOT the harness or CSP: commit
+  b5ae4bb ("recently opened codes list") mis-pasted 6 .recent-card CSS rules
+  INTO app.html's inline <script> -> SyntaxError "Unexpected token '.'" at
+  served-line 1600 -> the ENTIRE ~54KB inline script was discarded at parse
+  time (cloudCodeOpen, DASH_ACTION_MAP, the delegated click handler, SW
+  registration all dead) with ZERO console errors - the documented
+  silent-undefined signature. Diagnosed with a CDP probe capturing
+  Runtime.exceptionThrown (tmp/p10-wire-probe*.cjs pattern). Fix: rules moved
+  verbatim to css/mmgr.css (beside body.db-page .cd-card), script reparses
+  clean; bundles + CSS rebuilt; CSP hashes regenerated (worker.js + serve.cjs,
+  24); sw mmgr-shell-v281 -> v282. VERIFIED: node tools/qa-client-codes.cjs
+  ALL 22 GATES PASS (P0a-P9b + P10a/b/c; the client-code launcher flow
+  navigates, seeds escope {role client, sections [wbs,bud]}, project boots
+  client-scope readonly + banner, granted/non-granted sections correct).
+  HARNESS HARDENING (plan Findings 2+3): single idempotent console.error
+  capture installed before any navigation; click restored in the
+  prepAndClick eval; broken single-quoted multiline evals -> template
+  literals; P10b/c no longer run after chrome/ws close (closed exactly once
+  at the end); fixed post-click sleep replaced by a 30s navigation POLL
+  (wrangler dev cold fetches run 1.5s+ each - probe2 measured 1.7s first
+  fetch; the old 4s sleep was a race even on a healthy page) + 20s boot poll
+  for P10b/c; stale tools/qa-client-codes.cjs.lf scratch deleted. NEW GATES:
+  tools/verify-inline-js.cjs (parses every inline <script> on every served
+  page - would have caught b5ae4bb; proven exit-1 on the pre-fix bytes) wired
+  into npm run verify + ci.yml (T1, with the plan's CRLF grep gate and CI
+  summary rows); EOL sweep confirms zero CR files remain on disk (plan
+  Finding 1 fully closed). Also green: npm run verify ALL, qa-dashboard-spec
+  85/85, qa-changelog-diffs, verify-delegate-gate, qa-ai-relay RELAY_GATE.
+  NOTE for next session: qa-client-codes now runs in CI as the T3 tier
+  (own-wrangler :8798 after the shared wrangler stops, Chrome preinstalled on
+  ubuntu-latest, CHROME_DEBUG_PORT=9231); audit Finding 5 still asks for a
+  named-file review of the staged pile before the next commit.

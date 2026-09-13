@@ -272,7 +272,7 @@ var MMGR = window.MMGR || {};
 
   async function createProject() {
     if (_createInFlight) return; // BUG-1: debounce rapid clicks
-    if (getCode()) { setStatus('This project is already linked to the cloud , use Save / Load below.', 'warn'); return; }
+    if (getCode() || _sessOwner) { setStatus('This project is already linked to the cloud , use Save / Load below.', 'warn'); return; }
     _createInFlight = true;
     setStatus('Creating cloud project…', 'busy');
     try {
@@ -299,9 +299,20 @@ var MMGR = window.MMGR || {};
           setStatus((data && data.error) || 'Verify your email to enable cloud projects , check your inbox for the confirmation link.', 'err');
         } else if (res.status === 409) {
           // BUG-1: project already linked , reload the drawer to show the
-          // existing code instead of a confusing error.
-          setStatus('This project is already linked to the cloud.', 'warn');
-          await render();
+          // existing code instead of a confusing error. P1-6 refinement
+          // (owner 2026-09-12): for the signed-in account owner this is not
+          // an error at all - re-probe (the session IS the credential) and
+          // re-render so the linked owner UI appears; codes without a
+          // session keep the plain message.
+          if (await probeOwnerSession(true)) {
+            _upgradePending = false;
+            _verifyPending = false;
+            await render();
+            setStatus('This project is already linked to the cloud - you are signed in as its owner, Save / Load are ready below.', 'ok');
+          } else {
+            setStatus('This project is already linked to the cloud.', 'warn');
+            await render();
+          }
         } else {
           setStatus((data && data.error) || 'Cloud create failed (HTTP ' + res.status + ').', 'err');
         }
@@ -379,6 +390,34 @@ var MMGR = window.MMGR || {};
   }
 
   // ---- which credential is in session, and the right header name ----------
+  // OWNER-SESSION RECOGNITION (2026-09-12 owner review): the launcher's My
+  // Cloud Projects load path authenticates with the signed-in session and
+  // never writes an owner CODE to this device, but render()/activeCredential()
+  // branched only on locally-held codes - so a cloud-linked project opened by
+  // its own signed-in owner showed the 'Create Cloud Project' card (P1-6:
+  // 'not recognizing that it's a cloud project') and could not Save (P1-7's
+  // sibling: save/load must follow the sign-in, like /load already does).
+  // One GET /meta probe per render pass settles it: linked + this session =
+  // owner. The session cookie IS the credential then; requests send no code
+  // header at all (the server's session fallback authenticates them).
+  let _sessOwner = false;
+  let _sessOwnerProbed = false;
+  function clearSessOwner() { _sessOwner = false; _sessOwnerProbed = false; }
+  async function probeOwnerSession(force) {
+    if (_sessOwnerProbed && !force) return _sessOwner;
+    _sessOwnerProbed = true;
+    _sessOwner = false;
+    if (getCode() || getECode()) return _sessOwner; // a held code already answers
+    if (!(await checkMe())) return _sessOwner;      // not signed in - no session credential
+    try {
+      const res = await fetch('/api/cloud/projects/' + encodeURIComponent(pid()) + '/meta', { method: 'GET', credentials: 'same-origin' });
+      if (res.ok) {
+        const data = await res.json().catch(function() { return {}; });
+        _sessOwner = !!(data && data.ok && data.linked);
+      }
+    } catch (e) { /* offline / static host - stays false */ }
+    return _sessOwner;
+  }
   function activeCredential() {
     const oc = getCode();
     const ec = getECode();
@@ -392,6 +431,7 @@ var MMGR = window.MMGR || {};
       const r = es && es.role;
       return { code: ec, header: r === 'view' ? 'X-View-Code' : (r === 'client' ? 'X-Client-Code' : 'X-Editor-Code') };
     }
+    if (_sessOwner) return { code: '', header: null }; // signed-in account owner: no code header, the cookie authenticates
     return null;
   }
 
@@ -413,7 +453,7 @@ var MMGR = window.MMGR || {};
     setStatus('Saving to cloud…', 'busy');
     try {
       const headers = { 'Content-Type': 'application/json' };
-      headers[cred.header] = cred.code;
+      if (cred.header) headers[cred.header] = cred.code;
       const res = await fetch('/api/cloud/projects/' + encodeURIComponent(pid()) + '/save', {
         method: 'POST',
         credentials: 'same-origin',
@@ -425,7 +465,7 @@ var MMGR = window.MMGR || {};
         let msg = (data && data.error) || 'Cloud save failed (HTTP ' + res.status + ').';
         // gap-audit H29: the 8 MB cap deserves a friendly message, not a bare 413.
         if (res.status === 413) msg = 'Project too large for cloud (8 MB cap) , trim voice/claim data or use export/import instead.';
-        if (res.status === 403) { if (cred.header === 'X-Owner-Code') clearCode(); else clearECode(); }
+        if (res.status === 403) { if (cred.header === 'X-Owner-Code') clearCode(); else if (cred.header) clearECode(); else clearSessOwner(); }
         await render();
         setStatus(msg, 'err');
         return;
@@ -487,7 +527,7 @@ var MMGR = window.MMGR || {};
     _autoBusy = true;
     try {
       const headers = { 'Content-Type': 'application/json' };
-      headers[cred.header] = cred.code;
+      if (cred.header) headers[cred.header] = cred.code;
       const body = JSON.stringify({ state: state });
       // keepalive:true lets a pagehide flush survive tab close, but keepalive
       // requests are size-capped (~64 KiB), so only use it for small states;
@@ -502,7 +542,7 @@ var MMGR = window.MMGR || {};
       });
       const data = await res.json().catch(function() { return {}; });
       if (!res.ok || !data.ok) {
-        if (res.status === 403) clearCode(); // stale owner code , drop the link
+        if (res.status === 403) { if (cred.header === 'X-Owner-Code') clearCode(); else if (cred.header) clearECode(); else clearSessOwner(); } // stale credential - drop the link
         setStatus('Auto cloud backup failed , open Cloud Backup and Save manually.', 'err');
         return false;
       }
@@ -524,7 +564,7 @@ var MMGR = window.MMGR || {};
     setStatus('Loading from cloud…', 'busy');
     try {
       const headers = { 'Content-Type': 'application/json' };
-      headers[cred.header] = cred.code;
+      if (cred.header) headers[cred.header] = cred.code;
       const res = await fetch('/api/cloud/projects/' + encodeURIComponent(pid()) + '/load', {
         method: 'POST',
         credentials: 'same-origin',
@@ -537,7 +577,7 @@ var MMGR = window.MMGR || {};
         const msg = raw === 'code_revoked' ? 'This code was revoked by the project admin. Contact them for a new one.'
           : raw === 'project_deleted' ? 'This project was deleted by the admin. It is no longer available from the cloud.'
           : raw || 'Cloud load failed (HTTP ' + res.status + ').';
-        if (res.status === 403) { if (cred.header === 'X-Owner-Code') clearCode(); else clearECode(); }
+        if (res.status === 403) { if (cred.header === 'X-Owner-Code') clearCode(); else if (cred.header) clearECode(); else clearSessOwner(); }
         await render();
         setStatus(msg, 'err');
         return;
@@ -691,7 +731,8 @@ var MMGR = window.MMGR || {};
   // ---- copy code ----------------------------------------------------------
   async function copyCode() {
     const cred = activeCredential();
-    if (!cred) { setStatus('No code stored for this session.', 'warn'); return; }
+    if (!cred || (cred.header && !cred.code) || (!cred.header && !_sessOwner)) { setStatus('No code stored for this session.', 'warn'); return; }
+    if (!cred.header) { setStatus('No owner code on this device - you are signed in as the owner. Use Recover Owner Code to put a code in hand, then copy it.', 'warn'); return; }
     try {
       await navigator.clipboard.writeText(cred.code);
       setStatus('Code copied to the clipboard.', 'ok');
@@ -982,7 +1023,7 @@ var MMGR = window.MMGR || {};
     if (!cred) return '';
     try {
       const headers = {};
-      headers[cred.header] = cred.code;
+      if (cred.header) headers[cred.header] = cred.code;
       const res = await fetch('/api/cloud/projects/' + encodeURIComponent(pid()) + '/meta', { credentials: 'same-origin', headers: headers });
       const data = await res.json().catch(function() { return {}; });
       if (!res.ok || !data.ok) return '';
@@ -1008,12 +1049,12 @@ var MMGR = window.MMGR || {};
   // this project via structured tools (owner-code auth). The AI-side toggle
   // (#ai-cfg-mcp) stays in the AI window; this card is the Controls-side
   // settings surface with the server URL + Copy + status.
-  function renderMcp() {
+  function renderMcp(sessOwner) {
     const host = $('ctrl-mcp');
     if (!host) return;
     const code = getCode();
     const ecode = getECode();
-    const linked = !!(code || ecode);
+    const linked = !!(code || ecode || sessOwner);
     host.innerHTML = linked
       ? (function() {
           var mcpUrl = window.location.origin + '/api/mcp/' + encodeURIComponent(pid());
@@ -1024,6 +1065,9 @@ var MMGR = window.MMGR || {};
             '<button class="btn btn-n btn-s" data-action="mcpCopyUrl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy</button>' +
             '</div>' +
             '<div class="sr-hint" style="margin-top:4px">In your MCP client, add this server with: Authorization: Bearer &lt;your-owner-code&gt;</div>' +
+            (!code
+              ? '<div class="sr-hint" style="margin-top:4px">MCP clients authenticate with your owner code. You are signed in as the owner on this device - use <strong>Recover Owner Code</strong> in Cloud Backup to put a code in hand for external tools.</div>'
+              : '') +
             '<div id="mcp-status" class="sr-hint" role="status" aria-live="polite"></div>';
         })()
       : '<div class="sr-hint">This project is not linked to the cloud , the MCP server is not available until a cloud link exists (Controls ▸ Share &amp; Access).</div>';
@@ -1050,7 +1094,7 @@ var MMGR = window.MMGR || {};
     const zone = $('del-zone');
     const body = $('del-zone-body');
     if (!zone && !body) return;
-    const show = !!getCode(); // owner code held -> this IS the admin's project
+    const show = !!getCode() || !!_sessOwner; // owner code held OR signed-in account owner -> this IS the admin's project
     if (zone) zone.hidden = !show;
     if (body) body.hidden = !show;
   }
@@ -1207,6 +1251,11 @@ var MMGR = window.MMGR || {};
     const code = getCode();
     const ecode = getECode();
     const escope = getEScope();
+    // P1-6/P1-7 (owner 2026-09-12): settle the session-owner question once
+    // per render pass (probe is memoized; force is unnecessary here because
+    // every mutating action re-renders after clearing its credential).
+    await probeOwnerSession(false);
+    const sessOwner = _sessOwner;
     const signedIn = await checkMe();
     // C19 (C1b): a client session runs the refresh watcher (poll /meta 60s
     // while visible + visibilitychange + rev-changed) - idempotent, so
@@ -1217,13 +1266,15 @@ var MMGR = window.MMGR || {};
     renderShare();
     // OWNER 2026-09-07: MCP Server settings card (Controls ▸ MCP Server),
     // only for cloud-linked projects (owner or editor code held).
-    renderMcp();
+    // P1-7 (owner 2026-09-12): the card now also answers for a signed-in
+    // session owner with no local code (probe already ran above).
+    renderMcp(sessOwner);
     // IN-PROJECT DELETE: reveal the Danger Zone only while an owner code is
     // held (same render pass , one credential read, both surfaces).
     renderDangerZone();
 
     let body = '';
-    if (!code && !ecode) {
+    if (!code && !ecode && !sessOwner) {
       body =
         '<div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-folder"></use></svg> Cloud Backup (Owner or Editor Code)</span></div>' +
         '<div class="sr-hint">Optional , link this project to the cloud so its state JSON lives in your backend (D1 + R2) and can be pulled back on any device. Never required; JSON export/import stays the guaranteed path.</div>' +
@@ -1267,10 +1318,32 @@ var MMGR = window.MMGR || {};
         '<div id="cloud-review-mine"></div>') +
         '<div class="sr-hint">' + (isClient ? 'Read-only. This view refreshes automatically when the admin saves.' : (isView ? 'Nothing you do here changes the cloud copy , reload anytime to see fresh data.' : 'Changes you save wait for the owner\u2019s review before they reach the cloud project , accepted edits are logged in the changelog.')) + '</div>' +
         '<div id="cloud-last-sync" class="sr-hint" role="status" aria-live="polite"></div>';
+    } else if (!code && !ecode && sessOwner) {
+      // SESSION-OWNER MODE (P1-6, owner 2026-09-12): a cloud-linked project
+      // opened by its own signed-in owner with no code on this device. The
+      // session cookie authenticates Save/Load (headerless requests - the
+      // server's session fallback matches /load's existing behavior). Code
+      // management stays explicit: Recover Owner Code mints a code for this
+      // device without inventing one silently.
+      body =
+        '<div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-folder"></use></svg> Cloud Backup , linked to your account</span></div>' +
+        '<div class="sr-hint">You are signed in as this project\u2019s owner on this device - backup runs against your cloud copy. Save now pushes immediately; background auto-sync keeps it current as you work. Want the portable owner code on this device too? Use Recover Owner Code below (the previous code stops working, by design).</div>' +
+        '<div class="exp-row">' +
+        '<button class="btn btn-n btn-s" data-action="cloudSave"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-upload"></use></svg> Save to Cloud</button>' +
+        '<button class="btn btn-n btn-s" data-action="cloudLoad"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Load from Cloud</button>' +
+        '<button class="btn btn-n btn-s" data-action="cloudRecover"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> Recover Owner Code</button>' +
+        '</div>' +
+        '<div class="exp-row"><button class="btn btn-o btn-s" data-action="cloudUnlink"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> Unlink from Cloud (delete cloud copy)</button></div>' +
+        // P3-17 (owner 2026-09-12): the offline-copy machinery works for the
+        // session owner too - the register route accepts the session
+        // (cloudAuthAnyAccess) and pulls are headerless-safe. Without this
+        // box a signed-in owner on a NEW device could never keep an offline
+        // version of their own project.
+        '<div class="sr" style="margin-top:8px"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Offline copy</span></div>' +
+        '<div id="cloud-offline-copy-box"></div>' +
+        '<div id="cloud-last-sync" class="sr-hint" role="status" aria-live="polite"></div>' +
+        '<div class="sr-hint">Your owner code and editor-code manager live in <strong>Controls ▸ Share &amp; Access</strong> once a code is held on this device.</div>';
     } else {
-      // OWNER MODE (owner code in session). The owner code + editor-code
-      // manager live in the Controls tab's Share & Access section
-      // (renderShare) , the cloud section keeps backup + changelog + webhooks.
       body =
         '<div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-folder"></use></svg> Cloud Backup , linked (owner)</span></div>' +
         '<div class="sr-hint">Your owner code and editor codes are in <strong>Controls ▸ Share &amp; Access</strong> above. This section is the backup + history side: snapshots auto-sync to the cloud in the background as you work , Save now just pushes immediately; view the changelog, and wire webhooks.</div>' +
@@ -1372,8 +1445,9 @@ var MMGR = window.MMGR || {};
       }
     }
 
-    // gap-audit B8: fill the last-synced line from /meta (owner + editor modes).
-    if (code || ecode) {
+    // gap-audit B8: fill the last-synced line from /meta (owner + editor +
+    // session-owner modes).
+    if (code || ecode || sessOwner) {
       const ls = $('cloud-last-sync');
       if (ls) {
         ls.textContent = 'Checking cloud sync status…';
@@ -1390,21 +1464,23 @@ var MMGR = window.MMGR || {};
     // CLOUD-FIRST SYNC: fill the viewer/editor "Offline copy" box (Make /
     // Update / Remove) and, in owner mode, the broadcast list + auto-toggle.
     const copyBox = $('cloud-offline-copy-box');
-    if (copyBox) {
+    if (copyBox && (code || sessOwner)) {
       const rec = getCopyRecord();
       if (!rec) {
         copyBox.innerHTML = '<div class="exp-row">' +
-          '<button class="btn btn-n btn-s" data-action="cloudMakeCopy"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Make offline copy</button>' +
+          '<button class="btn btn-n btn-s" data-action="cloudMakeCopy"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Create offline version</button>' +
           '</div>' +
-          '<div class="sr-hint">Keep a view-only snapshot of this project on this device. It updates automatically when the project changes or the admin broadcasts.</div>';
+          '<div class="sr-hint">Keep a view-only snapshot of this project on this device - it opens even with no internet, and updates automatically when the project changes or the admin broadcasts.</div>';
       } else {
         copyBox.innerHTML = '<div class="sr" style="font-size:.72rem;display:flex;align-items:center;gap:8px;flex-wrap:wrap">' +
-          '<span class="sr-hint" style="margin:0">View-only offline copy registered on this device.</span>' +
-          '<button class="btn btn-n btn-s" data-action="cloudUpdateCopy"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> Update offline copy</button>' +
-          '<button class="btn btn-o btn-s" data-action="cloudRemoveCopy"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> Remove copy</button>' +
+          '<span class="sr-hint" style="margin:0">Offline version on this device - it opens with no internet.</span>' +
+          '<button class="btn btn-n btn-s" data-action="cloudUpdateCopy"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> Update offline version</button>' +
+          '<button class="btn btn-o btn-s" data-action="cloudRemoveCopy"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> Remove</button>' +
           '</div>' +
           '<div class="sr-hint">Updates arrive automatically when the admin saves or broadcasts. The copy is view-only , nothing here can edit the project.</div>';
       }
+    } else if (copyBox) {
+      copyBox.innerHTML = '';
     }
     if (code) {
       cloudOfflineList();
@@ -1489,16 +1565,16 @@ var MMGR = window.MMGR || {};
   async function unlinkProject() {
     const cred = activeCredential();
     if (!cred) { setStatus('No cloud credential in this session.', 'warn'); return; }
-    if (cred.header !== 'X-Owner-Code') { setStatus('Only the owner can unlink the project from cloud.', 'warn'); return; }
+    if (cred.header !== 'X-Owner-Code' && !(!cred.header && _sessOwner)) { setStatus('Only the owner can unlink the project from cloud.', 'warn'); return; }
     if (!window.confirm('Delete the CLOUD copy of this project? Your local data on this device stays , only the cloud snapshot, editor codes, and changelog are removed. This cannot be undone.')) return;
     setStatus('Unlinking from cloud…', 'busy');
     try {
       const res = await fetch('/api/cloud/projects/' + encodeURIComponent(pid()), {
-        method: 'DELETE', credentials: 'same-origin', headers: { 'X-Owner-Code': cred.code }
+        method: 'DELETE', credentials: 'same-origin', headers: cred.header ? { 'X-Owner-Code': cred.code } : { 'Content-Type': 'application/json' }
       });
       const data = await res.json().catch(function() { return {}; });
       if (!res.ok || !data.ok) { setStatus((data && data.error) || 'Unlink failed (HTTP ' + res.status + ').', 'err'); return; }
-      clearCode(); clearECode(); setLastSeen(''); clearPendingEditorCode();
+      clearCode(); clearECode(); clearSessOwner(); setLastSeen(''); clearPendingEditorCode();
       await render();
       setStatus('Unlinked , the cloud copy is deleted. This device keeps its local data.', 'ok');
     } catch (e) {
@@ -1523,7 +1599,7 @@ var MMGR = window.MMGR || {};
     setStatus('Registering offline copy…', 'busy');
     try {
       const headers = { 'Content-Type': 'application/json' };
-      headers[cred.header] = cred.code;
+      if (cred.header) headers[cred.header] = cred.code;
       const res = await fetch('/api/cloud/projects/' + encodeURIComponent(pid()) + '/offline-copies', {
         method: 'POST', credentials: 'same-origin', headers: headers,
         body: JSON.stringify({ deviceId: deviceId() })
@@ -1554,7 +1630,7 @@ var MMGR = window.MMGR || {};
     if (!silent) setStatus('Updating offline copy…', 'busy');
     try {
       const headers = { 'Content-Type': 'application/json', 'X-Device-Id': rec.deviceId };
-      headers[cred.header] = cred.code;
+      if (cred.header) headers[cred.header] = cred.code;
       const res = await fetch('/api/cloud/projects/' + encodeURIComponent(pid()) + '/load', {
         method: 'POST', credentials: 'same-origin', headers: headers, body: JSON.stringify({})
       });
@@ -1598,7 +1674,7 @@ var MMGR = window.MMGR || {};
     try {
       if (cred) {
         const headers = { 'Content-Type': 'application/json', 'X-Device-Id': rec.deviceId };
-        headers[cred.header] = cred.code;
+        if (cred.header) headers[cred.header] = cred.code;
         const res = await fetch('/api/cloud/projects/' + encodeURIComponent(pid()) + '/offline-copies/' + encodeURIComponent(rec.copyId), {
           method: 'DELETE', credentials: 'same-origin', headers: headers,
           body: JSON.stringify({ deviceId: rec.deviceId })
@@ -1749,8 +1825,10 @@ var MMGR = window.MMGR || {};
   function webhookDel(id) { if (ns.CloudWebhooks) ns.CloudWebhooks.webhookDel(id); }
 
   // ---- keep the sign-in state fresh after sign-in/sign-out ----------------
-  document.addEventListener('mmgr:google-signed-in', function() { _signedIn = true; render(); });
-  document.addEventListener('mmgr:google-signed-out', function() { _signedIn = false; render(); });
+  // P1-6 (2026-09-12): sign-in/out changes the session credential, so the
+  // memoized owner-session probe must re-run on the next render.
+  document.addEventListener('mmgr:google-signed-in', function() { _signedIn = true; clearSessOwner(); render(); });
+  document.addEventListener('mmgr:google-signed-out', function() { _signedIn = false; clearSessOwner(); render(); });
 
   // ---- CLOUD-FIRST SYNC: live refresh on save (approved scope) -----------
   // The Presence WebSocket delivers `{type:'rev-changed', revision}` when the
@@ -1790,7 +1868,7 @@ var MMGR = window.MMGR || {};
     if (!cred) return null;
     try {
       const headers = {};
-      headers[cred.header] = cred.code;
+      if (cred.header) headers[cred.header] = cred.code;
       const res = await fetch('/api/cloud/projects/' + encodeURIComponent(pid()) + '/meta', { credentials: 'same-origin', headers: headers });
       const data = await res.json().catch(function() { return {}; });
       return (res.ok && data && data.ok && data.updatedAt) ? data.updatedAt : null;
@@ -1801,7 +1879,7 @@ var MMGR = window.MMGR || {};
     if (!cred) return null;
     try {
       const headers = {};
-      headers[cred.header] = cred.code;
+      if (cred.header) headers[cred.header] = cred.code;
       const res = await fetch('/api/cloud/projects/' + encodeURIComponent(pid()) + '/load', { method: 'POST', credentials: 'same-origin', headers: headers, body: JSON.stringify({}) });
       const data = await res.json().catch(function() { return {}; });
       return (res.ok && data && data.ok && data.state) ? data.state : null;
@@ -1838,6 +1916,8 @@ var MMGR = window.MMGR || {};
   ns.Cloud = {
     render: render,
     createProject: createProject,
+    _isSessionOwner: function() { return _sessOwner; }, // P1-6 (2026-09-12): share.js mirrors the linked gate
+    _probeOwnerSession: probeOwnerSession,
     cloudUpgrade: cloudUpgrade,
     cloudResendVerify: cloudResendVerify,
     saveToCloud: saveToCloud,

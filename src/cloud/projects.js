@@ -148,18 +148,37 @@ export async function handleCloudSave(request, env, projectId, cloudPushRevChang
   const editorCode = String(request.headers.get('X-Editor-Code') || '').trim()
     || (typeof read.body.editorCode === 'string' ? read.body.editorCode.trim() : '');
   let adoptAuth = null;
+  let sessOwner = null;
   if (!ownerCode && !editorCode) {
     adoptAuth = await cloudAuthAdoption(request, env, projectId);
     if (adoptAuth && adoptAuth.revoked) return json({ ok: false, error: 'code_revoked' }, 403);
     if (adoptAuth && adoptAuth.deleted) return cloudProjectDeleted();
-    if (!adoptAuth) { await Promise.all([cloudDummyHash(), cloudTimingSink()]); return cloudForbidden(); }
-    if (adoptAuth.role !== 'editor') { await cloudTimingSink(); return cloudForbidden(); }
+    if (!adoptAuth) {
+      // OWNER SESSION SAVE (2026-09-12 owner review): /load accepts the
+      // signed-in account owner when no code is held, but /save refused the
+      // same session - so a cloud project loaded on a fresh device (My Cloud
+      // Projects) could not push at all: Save now answered 'Create a cloud
+      // project first' and the silent background auto-sync died on every
+      // edit cycle. Accept the session owner here, mirroring /load's
+      // sessFallback so save + auto-sync work wherever /load worked.
+      sessOwner = await cloudAuthOwnerSession(request, env, projectId);
+      if (!sessOwner) { await Promise.all([cloudDummyHash(), cloudTimingSink()]); return cloudForbidden(); }
+    }
   }
   const now = new Date().toISOString();
   const key = 'projects/' + projectId + '/latest.json';
   let next; let actor; let authRow = null;
-  if (ownerCode) {
-    const a = await cloudAuthOwnerByCode(request, env, projectId, ownerCode);
+  if (ownerCode || sessOwner) {
+    let a;
+    if (ownerCode) {
+      a = await cloudAuthOwnerByCode(request, env, projectId, ownerCode);
+    } else {
+      // Session-owner save: the owner-code credentials stay server-side; the
+      // session only proves WHO is saving. Fetch the full row so the same
+      // encryption + staleness path as a code-authenticated save runs.
+      const rowFull = await env.DB.prepare('SELECT owner_code_salt, owner_code_hash, google_sub, google_name, deleted_at FROM cloud_projects WHERE project_id = ?').bind(projectId).first();
+      a = rowFull ? { label: sessOwner.label || rowFull.google_name || 'Owner', row: rowFull } : null;
+    }
     if (!a) return cloudForbidden();
     authRow = a.row;
     actor = { type: 'owner', label: a.label };
@@ -282,11 +301,13 @@ export async function handleCloudLoad(request, env, projectId) {
   return json(resp);
 }
 
-export async function handleCloudRecover(request, env, projectId) {
-  const session = await readSession(request, env);
-  if (!session || !session.sub) { await cloudTimingSink(); return cloudForbidden(); }
-  const row = await env.DB.prepare('SELECT owner_code_salt, owner_code_hash, google_sub, google_name FROM cloud_projects WHERE project_id = ?').bind(projectId).first();
-  if (!row || !row.google_sub || row.google_sub !== session.sub) { await cloudTimingSink(); return cloudForbidden(); }
+// Shared owner-code rotation (the crypto half of /recover): new salt + code
+// + fingerprint persisted atomically, one changelog line. Returns the
+// plaintext code once - the caller owns surfacing it. Used by handleCloudRecover
+// and the create-on-existing reconnect path.
+async function rotateOwnerCode(env, projectId) {
+  const row = await env.DB.prepare('SELECT google_name FROM cloud_projects WHERE project_id = ?').bind(projectId).first();
+  if (!row) return null;
   const salt = randomSaltHex();
   const ownerCode = randomOwnerCode();
   const hash = await hashOwnerCode(ownerCode, salt);
@@ -298,7 +319,17 @@ export async function handleCloudRecover(request, env, projectId) {
     'INSERT INTO cloud_changelog (project_id, entry_type, actor_type, actor_label, section, diffs_json, snapshot_key, created_at) VALUES (?,?,?,?,?,?,?,?)'
   ).bind(projectId, 'recovery', 'owner', row.google_name || 'Owner', null, null, null, now).run();
   await cloudTouchOwner(env, projectId);
-  return json({ ok: true, ownerCode: ownerCode, recoveredAt: now });
+  return { ownerCode: ownerCode };
+}
+
+export async function handleCloudRecover(request, env, projectId) {
+  const session = await readSession(request, env);
+  if (!session || !session.sub) { await cloudTimingSink(); return cloudForbidden(); }
+  const row = await env.DB.prepare('SELECT owner_code_salt, owner_code_hash, google_sub, google_name FROM cloud_projects WHERE project_id = ?').bind(projectId).first();
+  if (!row || !row.google_sub || row.google_sub !== session.sub) { await cloudTimingSink(); return cloudForbidden(); }
+  const rec = await rotateOwnerCode(env, projectId);
+  if (!rec) return cloudForbidden();
+  return json({ ok: true, ownerCode: rec.ownerCode, recoveredAt: new Date().toISOString() });
 }
 
 export async function handleCloudMeta(request, env, projectId) {
@@ -404,8 +435,14 @@ export async function handleCloudCodeLookup(request, env) {
     await Promise.all([cloudDummyHash(), cloudTimingSink()]);
     return cloudForbidden();
   }
-  if (!row.active) return json({ ok: true, projectId: row.project_id, role: row.role, label: row.label || (row.role === 'view' ? 'Viewer' : 'Editor'), revoked: true, deleted: !!row.deleted_at });
-  return json({ ok: true, projectId: row.project_id, role: row.role, label: row.label || (row.role === 'view' ? 'Viewer' : 'Editor'), deleted: !!row.deleted_at });
+  // OWNER BUG REPORT 2026-09-12 (editor code 'for unknown' + missing granted
+  // sections on a fresh device): the launcher's code-entry flow reads the
+  // grant from THIS lookup response before calling /load, so the lookup must
+  // carry the code's scope. D1 stores scope as a JSON string column.
+  let lookupScope = [];
+  try { lookupScope = JSON.parse(row.scope || '[]') || []; } catch (e) { lookupScope = []; }
+  if (!row.active) return json({ ok: true, projectId: row.project_id, role: row.role, label: row.label || (row.role === 'view' ? 'Viewer' : 'Editor'), scope: lookupScope, revoked: true, deleted: !!row.deleted_at });
+  return json({ ok: true, projectId: row.project_id, role: row.role, label: row.label || (row.role === 'view' ? 'Viewer' : 'Editor'), scope: lookupScope, deleted: !!row.deleted_at });
 }
 
 export async function handleCloudProjectDelete(request, env, projectId) {

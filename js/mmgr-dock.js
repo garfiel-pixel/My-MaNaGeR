@@ -55,16 +55,12 @@
         for (var si = 0; si < sels.length; si++) { sels[si].value = mode; }
       }
     } catch (e) {}
-    // Palette + View rows (Phase 3, owner D7/D9): aria-pressed mirrors the
-    // EFFECTIVE preference (a stored '3d' shows pressed even when narrow /
+    // View row (Phase 3, owner D9): aria-pressed mirrors the EFFECTIVE
+    // preference (a stored '3d' shows pressed even when narrow /
     // reduced-motion currently forces flat - the press state says what is
-    // selected, not what is physically rendered).
+    // selected, not what is physically rendered). The palette row loop is
+    // gone with the retired axis (2026-09-05; stale-rose scrub 2026-09-12).
     try {
-      var pal = effectivePalette();
-      var pbtns = document.querySelectorAll('.dock .pal-btn[data-palette]');
-      for (var j = 0; j < pbtns.length; j++) {
-        pbtns[j].setAttribute('aria-pressed', pbtns[j].getAttribute('data-palette') === pal ? 'true' : 'false');
-      }
       var view = readPref(VIEW_KEY, 'flat');
       var vbtns = document.querySelectorAll('.dock .pal-btn[data-view]');
       for (var k = 0; k < vbtns.length; k++) {
@@ -79,13 +75,10 @@
   //   mmgr_view_mode  'flat' | '3d'    -> body.view-3d (effective only when
   //                                       wide + motion allowed; mobile and
   //                                       reduced-motion auto-flat per E3/E5).
-  var PAL_KEY = 'mmgr_palette';
+  var PAL_KEY = 'mmgr_palette'; // retired key - kept only so boot can scrub it (2026-09-12)
   var VIEW_KEY = 'mmgr_view_mode';
   function readPref(k, fb) {
     try { return localStorage.getItem(k) || fb; } catch (e) { return fb; }
-  }
-  function effectivePalette() {
-    return readPref(PAL_KEY, 'gold') === 'rose' ? 'rose' : 'gold';
   }
   function viewAllowed() {
     // Performance Mode on = heavy layers off (owner 2026-09-06): the 3D tilt
@@ -102,12 +95,21 @@
     if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return false;
     return true;
   }
-  function applyPalette(p) {
-    var rose = (p === 'rose');
-    try { localStorage.setItem(PAL_KEY, rose ? 'rose' : 'gold'); } catch (e) {}
-    var docEl = document.documentElement;
-    if (rose) { docEl.setAttribute('data-theme', 'rose-gold'); }
-    else { docEl.removeAttribute('data-theme'); }
+  // OWNER 2026-09-12 (review): the palette axis is retired (2026-09-05
+  // PRESERVED-CODE-OFF) and a stale mmgr_palette='rose' left in localStorage
+  // kept re-applying html[data-theme="rose-gold"] AFTER first paint - the
+  // "new theme flashes briefly, then flips back to rose-gold in dark"
+  // regression the owner hit after clearing site data (Ctrl+Shift+R never
+  // clears localStorage). The boot path now scrubs the retired key so it
+  // can never resurrect, and applyPalette itself is neutralized into the
+  // same scrub so even a rogue [data-palette] dispatch cannot re-apply it.
+  // Theme = Light/Dark/System only (mmgr-theme.js, device pref).
+  function scrubRetiredPalette() {
+    try { localStorage.removeItem(PAL_KEY); } catch (e) { /* storage blocked */ }
+    document.documentElement.removeAttribute('data-theme');
+  }
+  function applyPalette() {
+    scrubRetiredPalette();
     // Premium glass colorway follows the palette (uRose reads data-theme).
     try {
       var G = window.MMGR && window.MMGR.Glass ? window.MMGR.Glass : null;
@@ -162,7 +164,7 @@
         for (var pi = 0; pi < ts.length; pi++) ts[pi].checked = P2.isOn();
       }
     } catch (e) { /* Perf absent - toggles keep their markup default (on) */ }
-    applyPalette(effectivePalette());
+    scrubRetiredPalette();
     applyView();
     sync();
     // Re-sync after any other theme/glass control fires (rail toggles,
@@ -192,7 +194,7 @@
     var n = e.target && e.target.closest ? e.target.closest('[data-palette],[data-view]') : null;
     if (!n) return;
     e.preventDefault();
-    if (n.hasAttribute('data-palette')) applyPalette(n.getAttribute('data-palette'));
+    if (n.hasAttribute('data-palette')) applyPalette(); // neutralized scrub (palette retired 2026-09-05; stale-rose fix 2026-09-12)
     if (n.hasAttribute('data-view')) chooseView(n.getAttribute('data-view'));
   });
   // Mobile auto-flat + rotate: re-evaluate the effective view on resize /

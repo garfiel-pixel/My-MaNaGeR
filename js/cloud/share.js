@@ -63,7 +63,17 @@ var MMGR = window.MMGR || {};
  const escope = C.getEScope();
  const pendingCode = getPendingEditorCode();
  let body = '';
- if (!code && !ecode) {
+ if (!code && !ecode && C._isSessionOwner && C._isSessionOwner()) {
+ // P1-6 (owner 2026-09-12): the project is cloud-linked and this session IS
+ // the owner (My Cloud Projects load path holds no local code). Show the
+ // linked state honestly instead of the 'link this project' pitch, and
+ // point at Recover Owner Code for code management on this device.
+ body =
+ '<div class="share-card">' +
+ '<div class="sr" style="border:none;padding:0 0 6px"><span class="sl" style="font-size:.8rem;font-weight:800"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-lock"></use></svg> Linked to your account</span></div>' +
+ '<div class="sr-hint" style="margin:0 0 8px">You are signed in as this project\u2019s owner - backup and sharing run against your cloud copy. To create or manage <strong>editor codes</strong> on this device, put the owner code in hand first: <strong>Cloud &amp; Sync \u2518 Cloud Backup \u2518 Recover Owner Code</strong> (the previous code stops working, by design).</div>' +
+ '</div>';
+ } else if (!code && !ecode) {
  body =
  '<div class="share-card">' +
  '<div class="sr" style="border:none;padding:0 0 6px"><span class="sl" style="font-size:.8rem;font-weight:800">Link this project to the cloud to share it</span></div>' +

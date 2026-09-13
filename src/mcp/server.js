@@ -354,8 +354,20 @@ export async function handleMcpServer(request, env, projectId) {
     return json({ ok: false, error: 'Missing Authorization: Bearer <owner-code>' }, 401);
   }
 
-  // Verify owner code
-  const auth = await cloudAuthOwnerEither(request, env, projectId, code);
+  // Verify owner code.
+  // MCP-BEARER-FIX (2026-09-12 owner review): cloudAuthOwnerEither takes
+  // (request, env, projectId) - the Bearer code was passed as a 4th arg and
+  // SILENTLY DROPPED, so code-auth could never succeed and MCP only worked
+  // from a browser that happened to hold a signed-in session cookie (and
+  // only then because cloudAuthOwnerByCode(null-code) falls through to the
+  // session probe inside cloudAuthOwnerEither). Route the Bearer token
+  // through the X-Owner-Code header the auth helper actually reads so an
+  // external MCP client (Claude Desktop, Cursor) authenticates with its
+  // stored owner code as documented in the Controls card.
+  const authHeaders = new Headers(request.headers);
+  if (code) authHeaders.set('X-Owner-Code', code);
+  const authReq = new Request(request.url, { method: 'POST', headers: authHeaders, body: request.body });
+  const auth = await cloudAuthOwnerEither(authReq, env, projectId);
   if (!auth) return cloudForbidden();
 
   // Parse request body

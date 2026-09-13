@@ -41,6 +41,27 @@ jobs:
         id: csp
         run: npm run verify:csp
 
+      # Parse gate: every inline <script> must parse as JS. Catches CSS-in-
+      # script mis-pastes (the 2026-09-13 launcher outage, commit b5ae4bb)
+      # and any syntax breakage that silently kills a page's logic.
+      - name: Verify inline scripts parse (JS syntax gate)
+        id: inline
+        run: npm run verify:inline
+
+      - name: Verify no CRLF in tracked text files
+        id: eol
+        # --cached: check the COMMITTED bytes (eol=lf filters normalize at add),
+        # immune to working-tree/text-mode differences between OSes. Note: plain
+        # grep in Git Bash is blind to \r (MSYS text-mode translation) - git grep
+        # reads raw bytes and is the only reliable detector here.
+        run: |
+          BAD=$(git grep --cached -Il $'\r' -- '*.js' '*.cjs' '*.mjs' '*.md' '*.json' '*.jsonc' '*.sql' '*.yml' '*.css' '*.txt' '*.html' '*.svg' || true)
+          if [ -n "$BAD" ]; then
+            echo "CRLF line endings found in:"
+            echo "$BAD"
+            exit 1
+          fi
+
       - name: Verify service-worker cache version
         id: sw
         run: npm run verify:sw
@@ -236,6 +257,19 @@ jobs:
           pkill -9 -f "wrangler" || true
           rm -rf /tmp/mmgr-ci-staging 2>/dev/null || true
 
+      # ── TIER 3: Headless-Chrome E2E (suite spawns its OWN wrangler on :8798,
+      # so it must run AFTER the shared :8787 wrangler is stopped; Chrome stable
+      # is preinstalled on ubuntu-latest runners) ─────────────────────────
+      - name: Chrome available
+        id: chrome
+        run: google-chrome --version || sudo apt-get update && sudo apt-get install -y google-chrome-stable
+
+      - name: "T3: Client codes E2E (launcher code-entry -> project client scope)"
+        id: qa-client-codes
+        run: node tools/qa-client-codes.cjs
+        env:
+          CHROME_DEBUG_PORT: 9231
+
       # ── CI Summary ──────────────────────────────────────────────────
       - name: CI Summary
         if: always()
@@ -246,6 +280,9 @@ jobs:
           echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
           echo "| Gitleaks scan | ${{ steps.gitleaks.outcome }} |" >> $GITHUB_STEP_SUMMARY
           echo "| CSP hashes | ${{ steps.csp.outcome }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Inline JS parse | ${{ steps.inline.outcome }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Line endings | ${{ steps.eol.outcome }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Client codes E2E | ${{ steps.qa-client-codes.outcome }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Service Worker | ${{ steps.sw.outcome }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Hidden attributes | ${{ steps.hidden.outcome }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Skills lock | ${{ steps.skills.outcome }} |" >> $GITHUB_STEP_SUMMARY

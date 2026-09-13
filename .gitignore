@@ -18,6 +18,11 @@ web-research/
 
 # Stray terminal capture from a server-failure session (not project content)
 Windows PowerShell from last session due to server failures.txt
+
+# Conversation-continuation scratch notes at the repo root (audit 2026-09-13
+# Finding 5): never source, never committed. Deploy tar already excludes them
+# (--exclude='Freebuff*').
+Freebuff*.txt
 my-manager.garfieldprocis.workers.dev-*.html
 
 # Session scratch / reference material kept on disk but NEVER deployed or

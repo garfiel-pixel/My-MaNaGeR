@@ -45,7 +45,9 @@ const log = (s) => { process.stdout.write('[cc] ' + s + '\n'); };
 // annotation naming the gate + its detail payload - readable via the
 // check-runs API without any token.
 function annotateFailure(name, detail) {
-  process.stdout.write('::error title=QA gate failed: ' + name.replace(/[:"\\]/g, ' ') + '::' + String(JSON.stringify(detail || {})).slice(0, 600) + '\n');
+  let payload;
+  try { payload = String(JSON.stringify(detail || {})); } catch (e) { payload = '"(unserializable detail: ' + String(e && e.message || e) + ')"'; }
+  process.stdout.write('::error title=QA gate failed: ' + name.replace(/[:"\\]/g, ' ') + '::' + payload.slice(0, 600) + '\n');
 }
 const delay = ms => new Promise(r => setTimeout(r, ms));
 
@@ -529,6 +531,9 @@ const j = async (res) => { try { return await res.json(); } catch (e) { return {
 
 
     // P9: deleted project -> client lookup answers project_deleted.
+    // Phase guard: a crash here (post-Chrome) would hit the outer catch
+    // without a named phase; wrap so the annotation says where it died.
+    try {
     r = await fetch(BASE + '/api/cloud/projects/' + pid + '/delete', {
       method: 'POST', credentials: 'same-origin',
       headers: ownerHeaders,
@@ -543,6 +548,9 @@ const j = async (res) => { try { return await res.json(); } catch (e) { return {
     });
     const dll = await j(r);
     check('P9b client lookup after project delete -> project_deleted', r.status === 403 && dll.error === 'project_deleted', { status: r.status, dll });
+    } catch (p9err) {
+      check('P9 phase (delete + lookup)', false, { threw: String(p9err && p9err.message || p9err) });
+    }
 
     const failed = results.filter(x => !x.val).length;
     log('----------------------------------------');
@@ -562,6 +570,12 @@ const j = async (res) => { try { return await res.json(); } catch (e) { return {
     process.exit(failed === 0 ? 0 : 1);
   } catch (e) {
     log('HARNESS ERROR: ' + (e && e.stack || e));
+    // Crash self-reporting: a throw between checks (fetch rejection, ws
+    // error, anything) previously exited 1 with ZERO annotation - the CI
+    // run showed only "exit code 1". Name the crash on the run page.
+    try {
+      annotateFailure('HARNESS CRASHED (outer catch)', { error: String(e && e.message || e), stack: String(e && e.stack || '').slice(0, 400) });
+    } catch (x) { /* annotation is best-effort */ }
     try { proc && proc.kill(); } catch (x) {}
     process.exit(1);
   }

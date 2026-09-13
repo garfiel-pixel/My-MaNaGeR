@@ -1587,3 +1587,29 @@ or resilience to qa-ai-badge-e2e.cjs (wrangler-dev startup race).
   (own-wrangler :8798 after the shared wrangler stops, Chrome preinstalled on
   ubuntu-latest, CHROME_DEBUG_PORT=9231); audit Finding 5 still asks for a
   named-file review of the staged pile before the next commit.
+
+--------------------------------------------------------------------------------
+2026-09-13 - CI REPAIR LOOP TO GREEN (commits bd4cfc4 -> e51b4d7, run
+  34771036976 SUCCESS). Baseline note: b5ae4bb was ALREADY red (CSP step -
+  hashes computed over CRLF-contaminated bytes; Finding 1 in production), so
+  the whole T2 tier ran for the first time since 2026-09-12 morning and each
+  push surfaced one latent failure per the documented loop. (1) T9 A5d: REAL
+  BUG - /save adoption branch never checked the adoption row's role, a
+  session-only VIEWER save answered 200 actor 'editor'; guard added
+  (qa-t9-adoption 27/27). (2) offline-copies: REAL INFRA BUG - every
+  self-hosting suite hardcodes its port and qa-presence exited via
+  process.exit() inside try, SKIPPING the finally that kills its wrangler;
+  the orphan kept serving :8796 (same port) with an empty D1 and the next
+  suite's health poll happily talked to it. Reproduced with a port squatter
+  (exit 1, 20 FAILs, identical signature). Fix: presence tears down BEFORE
+  exiting on every path; ALL self-hosting suites honor QA_PORT; ci.yml gives
+  each suite a unique port 8800-8808; offline-copies probes server identity
+  post-start (health body must name this worker) and exits 3 with a
+  ::error:: annotation + wrangler log tail on collision. (3) cas C2: REAL
+  BUG found VIA the new annotation diagnostics (job logs are auth-gated) -
+  the sign-in listener's render() raced resumePendingSignIn's recoverCode()
+  and its async /meta probe blanked the "New owner code issued" status line
+  the user needs; _resumingAfterSignIn suppresses the duplicate render while
+  a queued action replays (cas 8/8). Also: cas C1/C3 now poll for readiness
+  (20s/60s) instead of fixed sleeps. GITLEAKS: all commits clean. Next
+  session: deploy from e51b4d7 and smoke both hosts (sw = mmgr-shell-v283).

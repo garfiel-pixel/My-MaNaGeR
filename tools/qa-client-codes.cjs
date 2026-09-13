@@ -315,6 +315,12 @@ const j = async (res) => { try { return await res.json(); } catch (e) { return {
     });
     const cn = await j(r);
     check('P6 create with expiresInDays 0 -> never expires (no expiresAt)', r.ok && cn.ok && !cn.expiresAt, cn);
+    // P8 revokes THIS row (the create response carries codeId) - the old
+    // list-selector ("sections dash, no expiry") became ambiguous when the
+    // P0f either-auth gate created a second identical-signature code: local
+    // runs hit a same-second created_at tie that masked it, CI's timing made
+    // the order deterministic -> revoked one row while probing the other.
+    const p6CodeId = cn.codeId;
 
     // P7: expired code — expiresAt in the past -> lookup + load answer code_expired.
     r = await fetch(BASE + '/api/cloud/projects/' + pid + '/client-codes', {
@@ -344,7 +350,7 @@ const j = async (res) => { try { return await res.json(); } catch (e) { return {
       method: 'GET', credentials: 'same-origin', headers: ownerHeaders
     });
     const list = await j(listRes);
-    const revokedId = (list.codes || []).find(c => (c.sections || []).join(',') === 'dash' && !c.expires_at);
+    const revokedId = { id: p6CodeId };
     check('P8a list returns codes incl. expires_at field', listRes.ok && list.ok && (list.codes || []).length >= 3 && (list.codes || []).every(c => 'expires_at' in c), list);
     r = await fetch(BASE + '/api/cloud/projects/' + pid + '/client-codes/' + (revokedId && revokedId.id), {
       method: 'DELETE', credentials: 'same-origin', headers: ownerHeaders

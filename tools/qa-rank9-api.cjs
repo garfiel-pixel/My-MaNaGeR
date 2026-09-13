@@ -58,7 +58,8 @@ const os = require('os');
 const http = require('http');
 const crypto = require('crypto');
 
-const PORT = 8798;
+// QA_PORT: CI assigns each self-hosting suite a UNIQUE port (see qa-presence).
+const PORT = parseInt(process.env.QA_PORT || '8798', 10);
 const RECV_PORT = 8797;
 let BASE = 'http://127.0.0.1:' + PORT;
 const ROOT = path.resolve(__dirname, '..');

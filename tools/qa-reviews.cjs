@@ -36,7 +36,8 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
-const PORT = 8795;
+// QA_PORT: CI assigns each self-hosting suite a UNIQUE port (see qa-presence).
+const PORT = parseInt(process.env.QA_PORT || '8795', 10);
 let BASE = 'http://127.0.0.1:' + PORT;
 const ROOT = path.resolve(__dirname, '..');
 

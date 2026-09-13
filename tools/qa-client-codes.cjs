@@ -30,7 +30,9 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
-const PORT = 8798;
+// QA_PORT: CI assigns this suite a UNIQUE port so it cannot collide with
+// another self-hosting suite's (possibly leaked) wrangler.
+const PORT = parseInt(process.env.QA_PORT || '8798', 10);
 const BASE = 'http://127.0.0.1:' + PORT;
 const ROOT = path.resolve(__dirname, '..');
 

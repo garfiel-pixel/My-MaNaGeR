@@ -38,8 +38,24 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
-const PORT = 8796;
+// QA_PORT: CI assigns each self-hosting suite a UNIQUE port so a leaked
+// wrangler from an earlier step can never answer for this one.
+const PORT = parseInt(process.env.QA_PORT || '8796', 10);
 let BASE = 'http://127.0.0.1:' + PORT;
+
+// Squatter probe: /api/health answering 200 proves A server is on the port,
+// not that OUR wrangler won the bind. A stale server from an earlier step
+// makes every later check fail with no visible cause. Diagnose loudly.
+async function probeServerIdentity() {
+  try {
+    const r = await fetch(BASE + '/api/health');
+    if (!r.ok) return 'health ' + r.status;
+    const body = await r.text();
+    // Our worker answers {"ok":true,"status":"ok","app":"my-manager",...}.
+    if (body.indexOf('my-manager') === -1) return 'health body is not this worker: ' + body.slice(0, 120);
+    return null;
+  } catch (e) { return null; } // not up yet - the readiness poll handles it
+}
 const ROOT = path.resolve(__dirname, '..');
 
 const SECRET = 'qa-offline-copies-secret-4c8b2f1d';
@@ -118,6 +134,15 @@ const jsonHeaders = { 'Content-Type': 'application/json' };
 (async function main() {
   try {
     await startWrangler();
+    const squatter = await probeServerIdentity();
+    if (squatter) {
+      log('FATAL: something other than this suite wrangler owns :' + PORT + ' (' + squatter + ').');
+      log('--- wrangler dev log tail ---');
+      log(devLog.slice(-2000));
+      console.error('::error::port ' + PORT + ' is squatted: ' + squatter);
+      stopWrangler();
+      process.exit(3); // 3 = port collision, not a check failure
+    }
     const pid = 'oc-copy-' + Date.now().toString(36);
 
     // C0 create a cloud project (code-only create) + seed a snapshot.
@@ -339,6 +364,9 @@ const jsonHeaders = { 'Content-Type': 'application/json' };
     process.exit(0);
   } catch (e) {
     log('HARNESS ERROR: ' + (e && e.stack || e));
+    log('--- wrangler dev log tail ---');
+    log(devLog.slice(-2000));
+    console.error('::error::qa-offline-copies harness error: ' + String(e && e.message || e));
     stopWrangler();
     process.exit(1);
   }

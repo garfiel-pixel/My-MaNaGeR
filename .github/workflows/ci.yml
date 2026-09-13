@@ -169,33 +169,46 @@ jobs:
       # NOTE: email-auth, reviews, rank9, t9, presence, prefs, offline-copies each
       # start their own wrangler with custom vars (GOOGLE_CLIENT_SECRET, etc.)
 
+      # Each self-hosting suite gets a UNIQUE QA_PORT: a leaked wrangler from
+      # an earlier step must never answer for a later one (qa-presence used to
+      # leak onto :8796 and break qa-offline-copies — 2026-09-13).
       - name: "T2: Email auth"
         if: success() && steps.wrangler-start.outcome == 'success'
         run: node tools/qa-email-auth.cjs
         env:
           MMGR_QA_NO_BROWSER: 1
+          QA_PORT: 8801
 
       - name: "T2: Reviews"
         if: success() && steps.wrangler-start.outcome == 'success'
         run: node tools/qa-reviews.cjs
+        env:
+          QA_PORT: 8802
 
       - name: "T2: Rank 9 API"
         if: success() && steps.wrangler-start.outcome == 'success'
         run: node tools/qa-rank9-api.cjs
+        env:
+          QA_PORT: 8803
 
       - name: "T2: T9 adoption"
         if: success() && steps.wrangler-start.outcome == 'success'
         run: node tools/qa-t9-adoption.cjs
+        env:
+          QA_PORT: 8804
 
       - name: "T2: Presence"
         if: success() && steps.wrangler-start.outcome == 'success'
         run: node tools/qa-presence.cjs
+        env:
+          QA_PORT: 8805
 
       - name: "T2: Prefs roundtrip"
         if: success() && steps.wrangler-start.outcome == 'success'
         run: node tools/qa-prefs-roundtrip.cjs
         env:
           MMGR_QA_NO_BROWSER: 1
+          QA_PORT: 8806
 
       - name: "T2: AI badge E2E"
         if: success() && steps.wrangler-start.outcome == 'success'
@@ -214,10 +227,14 @@ jobs:
       - name: "T2: Offline copies"
         if: success() && steps.wrangler-start.outcome == 'success'
         run: node tools/qa-offline-copies.cjs
+        env:
+          QA_PORT: 8807
 
       - name: "T2: Cloud autosave + signin"
         if: success() && steps.wrangler-start.outcome == 'success'
         run: node tools/verify-cloud-autosave-signin.cjs
+        env:
+          QA_PORT: 8800
 
       - name: "T2: Wrangler restart for controls admin"
         if: success() && steps.wrangler-start.outcome == 'success'
@@ -269,6 +286,7 @@ jobs:
         run: node tools/qa-client-codes.cjs
         env:
           CHROME_DEBUG_PORT: 9231
+          QA_PORT: 8808
 
       # ── CI Summary ──────────────────────────────────────────────────
       - name: CI Summary

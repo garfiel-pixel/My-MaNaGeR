@@ -52,7 +52,10 @@ if (!WRANGLER_JS) {
   process.exit(0); // environment gap, not a code regression
 }
 
-const PORT = 8796;
+// QA_PORT: CI assigns each self-hosting suite a UNIQUE port so a leaked
+// wrangler from an earlier step can never answer for this one (2026-09-13:
+// this suite leaked its wrangler on :8796 and broke qa-offline-copies).
+const PORT = parseInt(process.env.QA_PORT || '8796', 10);
 const PERSIST = path.join(os.tmpdir(), 'mmgr-presence-e2e-' + Date.now());
 const SECRET = 'presence-test-secret-1234567890';
 const ADMIN = 'PRESENCE-ADMIN';
@@ -111,6 +114,7 @@ async function main() {
   dev.stdout.on('data', d => process.stdout.write('[dev] ' + d));
   dev.stderr.on('data', d => process.stdout.write('[dev!] ' + d));
 
+  let exitCode = 0;
   try {
     await waitFor(async () => { try { return (await fetch(BASE + '/api/health')).ok; } catch (e) { return false; } }, 120000, 'wrangler dev');
     console.log('qa-presence: wrangler dev up on :' + PORT);
@@ -159,14 +163,18 @@ async function main() {
 
     console.log('---');
     console.log((fails ? 'FAIL ' : 'PASS ') + passes + ' passed, ' + fails + ' failed');
-    process.exit(fails ? 1 : 0);
+    exitCode = fails ? 1 : 0;
   } catch (e) {
     console.error('qa-presence ERROR:', e && e.message);
-    process.exit(2);
+    exitCode = 2;
   } finally {
+    // Tear down BEFORE exiting. process.exit() inside try/catch SKIPS this
+    // finally on some paths, which is exactly how this suite leaked its
+    // wrangler onto :8796 and broke the next same-port suite in CI.
     if (dev) try { dev.kill('SIGTERM'); } catch (e) { /* ignore */ }
     await sleep(1200);
     try { process.kill(dev.pid); } catch (e) { /* already gone */ }
+    process.exit(exitCode);
   }
 }
 

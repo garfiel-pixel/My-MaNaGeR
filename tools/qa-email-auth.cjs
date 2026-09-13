@@ -117,7 +117,9 @@ const os = require('os');
 const crypto = require('crypto');
 const http = require('http');
 
-const PORT = 8796;
+// QA_PORT: CI assigns each self-hosting suite a UNIQUE port so a leaked
+// wrangler from an earlier step can never answer for this one.
+const PORT = parseInt(process.env.QA_PORT || '8796', 10);
 const BASE = 'http://127.0.0.1:' + PORT;
 const ROOT = path.resolve(__dirname, '..');
 const TMP = os.tmpdir();

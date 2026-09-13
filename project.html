@@ -57,7 +57,7 @@
       clicks "Connect Google" in Settings > Controls. It is a device label,
       never a gate , offline/CSP-blocked loads degrade to a toast.
 -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self';script-src 'self' 'wasm-unsafe-eval' https://static.cloudflareinsights.com https://accounts.google.com https://unpkg.com 'sha256-xxa9/PuVrm+Taxz+xZPm96NYiSKIHPHZLX8VCKQnrXk=' 'sha256-reza4vd5o52LWNUf9lzK6WjApdstd5sm4xVx+lcnK2M=' 'sha256-fZj+K4D/n2Fz67m33j21zMWZd9D930ZNnzz/+s9xem0=' 'sha256-0o7BYw2SxyFtT+b7IJxUzlNQqsxJErFObzcGMPKxSp0=' 'sha256-1lQZ8ZnhADNPMPnTqfYPbBDeCin0qp40ehxDc065Fmc='; style-src 'self' 'unsafe-inline' https://accounts.google.com https://fonts.googleapis.com; img-src 'self' data: blob: https://lh3.googleusercontent.com https://*.googleusercontent.com; font-src 'self' data:; connect-src 'self' https://api.open-meteo.com https://geocoding-api.open-meteo.com https://api.openai.com https://api.anthropic.com https://generativelanguage.googleapis.com https://github.com https://release-assets.githubusercontent.com https://accounts.google.com https://huggingface.co https://*.cdn.hf.co; frame-src https://accounts.google.com; base-uri 'self'; form-action 'self';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self';script-src 'self' 'wasm-unsafe-eval' https://static.cloudflareinsights.com https://accounts.google.com https://unpkg.com 'sha256-xxa9/PuVrm+Taxz+xZPm96NYiSKIHPHZLX8VCKQnrXk=' 'sha256-reza4vd5o52LWNUf9lzK6WjApdstd5sm4xVx+lcnK2M=' 'sha256-fZj+K4D/n2Fz67m33j21zMWZd9D930ZNnzz/+s9xem0=' 'sha256-32OrKvBTd4t3c/ByJMRp2EAI4phrVdX+LEPphWfgSz4=' 'sha256-1lQZ8ZnhADNPMPnTqfYPbBDeCin0qp40ehxDc065Fmc='; style-src 'self' 'unsafe-inline' https://accounts.google.com https://fonts.googleapis.com; img-src 'self' data: blob: https://lh3.googleusercontent.com https://*.googleusercontent.com; font-src 'self' data:; connect-src 'self' https://api.open-meteo.com https://geocoding-api.open-meteo.com https://api.openai.com https://api.anthropic.com https://generativelanguage.googleapis.com https://github.com https://release-assets.githubusercontent.com https://accounts.google.com https://huggingface.co https://*.cdn.hf.co; frame-src https://accounts.google.com; base-uri 'self'; form-action 'self';">
 <script>
 /* Device-level theme (shared across launcher, admin, and app): applied before
    first paint from the same localStorage slot every theme toggle writes, so a
@@ -249,7 +249,7 @@
         <div class="g18">
           <div class="pring">
             <svg width="96" height="96" viewBox="0 0 96 96"><circle class="ring-bg" cx="48" cy="48" r="39"/><circle class="ring-fill" id="rf" cx="48" cy="48" r="39" stroke-dasharray="245" stroke-dashoffset="245"/></svg>
-            <div class="ring-txt" id="rt">0% Completed</div>
+            <div class="ring-txt" id="rt">0%</div>
           </div>
           <div><div class="t-sm">Completed</div><div class="stat-xl" id="dc">0</div><div class="t-xs">of <span id="tc">0</span> tasks</div></div>
         </div>
@@ -1120,17 +1120,16 @@
          content takes the full screen, and the header hamburger reopens it. -->
     <button type="button" class="sb-close" data-action="tglSidebarOpen" aria-label="Close menu" title="Close menu"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-menu"></use></svg></button>
   </div>
-  <!-- OWNER 2026-09-09 (revises 2026-09-07): the sidebar is PROJECT
-       NAVIGATION ONLY - no account row when signed out. The "Not signed
-       in" status the owner flagged lived here and is REMOVED; the signed-in
-       name still shows (state, not an entry point), and the sign-in nudge
-       for an unbacked-up project lives in the Backup section instead. -->
-  <div class="db-user sb-user" id="sb-user" hidden></div>
+  <!-- OWNER 2026-09-12 (P2-9, revises 2026-09-09): the sidebar holds
+       NOTHING but project navigation - no account row in any state. The
+       2026-09-09 revision kept a signed-in name row here; the owner's
+       review removed it: "I should not be seeing anything over there that
+       is saying signed in or sign in. Nothing at all." Identity lives in
+       the top hero avatar, sign-out in the account sheet it opens. -->
 </aside>
 
 <!-- OWNER 2026-09-07: the #siom sign-in sheet was removed from this page.
-     Sign-in lives ONLY on the app page (/app); the project sidebar shows
-     the synced read-only account state (see #sb-user above). -->
+     Sign-in lives ONLY on the app page (/app). -->
 
 <!-- AI Assistant (parallel track) , floating entry point + modal.
      Preset prompts, free-form question, automatic project-context dump.
@@ -1851,55 +1850,11 @@ if ('serviceWorker' in navigator &&
   });
 }
 
-// OWNER 2026-09-06: sidebar-bottom account area (#sb-user) + #siom sheet.
-// Signed out = plain Sign in button (markup default); signed in = name +
-// Sign out. The sheet closes on sign-in (user-changed) and sign-out.
+// OWNER 2026-09-12 (P2-9): the project sidebar carries NO account surface
+// in any state (the #sb-user row is gone from the markup). Sign-in lives on
+// the app page; the hero avatar is the identity surface here.
 (function(){
-  function escapeAccountText(s){
-    return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-  }
-  function renderSbUser(user){
-    var area = document.getElementById('sb-user');
-    if (!area) return;
-    if (!user){
-      // OWNER 2026-09-09: the sidebar holds navigation only. A signed-out
-      // visitor gets NO account row at all (the old "Not signed in" status
-      // line is gone); the backup section carries the sign-in nudge.
-      area.hidden = true;
-      area.innerHTML = '';
-      return;
-    }
-    var name = user.name || user.email || 'Operator';
-    var title = user.email ? escapeAccountText(user.email) : escapeAccountText(name);
-    area.hidden = false;
-    area.innerHTML = '<span class="db-user-name" title="' + title + '"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-user"></use></svg> ' + escapeAccountText(name) + '</span>' +
-      '<button type="button" class="db-signout" data-action="accountSignOut">Sign out</button>';
-  }
-  document.addEventListener('click', function(e){
-    var t = e.target && e.target.closest ? e.target.closest('[data-action="accountSignOut"]') : null;
-    if (!t) return;
-    e.preventDefault();
-    var G = window.MMGR && MMGR.GoogleAuth;
-    if (G && G.signOut) G.signOut();
-  });
-  document.addEventListener('mmgr:user-changed', function(e){
-    renderSbUser(e && e.detail);
-    var m = document.getElementById('siom');
-    if (m && e && e.detail && m.classList.contains('open')) {
-      if (window.MMGR && MMGR.App && MMGR.App.closeSignInModal) MMGR.App.closeSignInModal();
-    }
-  });
-  document.addEventListener('mmgr:google-signed-out', function(){ renderSbUser(null); });
-  // Restore the session state once GoogleAuth is up (deferred script).
-  var tries = 0;
-  var t = setInterval(function(){
-    var G = window.MMGR && MMGR.GoogleAuth;
-    if (G){
-      clearInterval(t);
-      try { renderSbUser(G.isSignedIn() ? G.getUser() : null); } catch(e){}
-    } else if (++tries > 40) clearInterval(t);
-  }, 250);
-  // Backdrop click + Escape close the sheet.
+  // Backdrop click + Escape close the account sheet if any sheet opens.
   var siom = document.getElementById('siom');
   if (siom && !siom._bdBound){
     siom._bdBound = true;

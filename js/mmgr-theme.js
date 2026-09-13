@@ -25,10 +25,11 @@
      - body.dark-mode in mmgr.css overrides with dark tokens
      - No palette switching - one brand, two appearances
 
-   Persistence:
-     1. Backend (app pages with data-sync="1") when available
-     2. localStorage cache - instant, works offline
-     3. Default - light (D12)
+   Persistence (owner 2026-09-12): DEVICE ONLY.
+     1. localStorage - instant, works offline, never syncs to the account
+     2. Default - light (D12)
+     (The old /api/cloud/prefs/theme push/pull is retired - a theme must
+      never ride the Google account or resurrect after a data clear.)
 
    NO-EMOJI HARD GATE (owner 2026-08-13): zero emoji in any
    served page or JS string that renders into a page. Theme
@@ -38,10 +39,11 @@
   'use strict';
 
   var MODE_KEY = 'mmgr_theme';       // 'light' | 'dark' | 'system'
-  var BACK_KEY = 'mmgr_theme_backend'; // '1' after a successful backend round-trip
+  // 'mmgr_theme_backend' flag: retired 2026-09-12 with the account-sync.
   var KNOWN = { 'light': 1, 'dark': 1, 'system': 1 };
 
-  // data-sync="1" on the <script> tag enables the backend path.
+  // SYNC (data-sync="1" script tag) is vestigial since the 2026-09-12
+  // device-only change; retained only so nothing else keys off the tag.
   var SYNC = !!(document.currentScript && document.currentScript.getAttribute('data-sync') === '1');
 
   function read(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
@@ -98,43 +100,22 @@
     return mode;
   }
 
-  /** Push current mode to the cloud backend (app pages only). */
+  /**
+   * OWNER 2026-09-12 (review): the cloud theme round-trip is retired.
+   * Theme is a DEVICE preference only (localStorage mmgr_theme); it must
+   * never ride the Google account. The old backend push/pull let a stale
+   * account-stored dark flag re-apply an old theme after the owner cleared
+   * site data and signed in - the "fresh page flips back to the old look"
+   * report. Both paths are now no-ops (kept as stubs so existing call
+   * sites stay valid); the old BACK_KEY flag is inert.
+   */
   function pushBackend() {
-    if (!SYNC) return;
-    try {
-      fetch('/api/cloud/prefs/theme', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ palette: 'default', dark: isDark() })
-      }).then(function (r) {
-        if (r.ok) write(BACK_KEY, '1');
-      }).catch(function () {});
-    } catch (e) {}
+    /* retired: no account-scoped theme writes */
   }
 
-  /** Pull saved mode from the cloud backend (app pages only). */
+  /** Retired with the account-sync (owner 2026-09-12): device pref wins. */
   function pullBackend() {
-    if (!SYNC) return;
-    if (_userTouched) return;
-    try {
-      fetch('/api/cloud/prefs/theme', { headers: { 'Accept': 'application/json' } })
-        .then(function (r) { return r.ok ? r.json() : null; })
-        .then(function (d) {
-          if (!d || !d.ok || !d.theme) return;
-          if (_userTouched) return;
-          // A System user must keep following the OS - the backend only
-          // stores the effective dark boolean, so don't let a stale pull
-          // overwrite the explicit 'system' choice (restored 2026-09-03).
-          if (currentMode() === 'system') return;
-          // Backend may still send old palette format - map to mode.
-          var dark = !!d.theme.dark;
-          var mode = dark ? 'dark' : 'light';
-          write(MODE_KEY, mode);
-          write(BACK_KEY, '1');
-          apply();
-          syncGlass();
-        }).catch(function () {});
-    } catch (e) {}
+    /* retired: no account-scoped theme restores */
   }
 
   var _userTouched = false;
@@ -189,14 +170,8 @@
   } else {
     watchSystemPreference();
   }
-  // Pull from backend once per load (if previously synced).
-  if (read(BACK_KEY) === '1') {
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', pullBackend);
-    } else {
-      pullBackend();
-    }
-  }
+  // Pull from backend once per load: RETIRED (owner 2026-09-12). Theme is
+  // device-only now; the fetch that used to run here is gone.
 
   // --- Public API ---
   window.MMGRTheme = {

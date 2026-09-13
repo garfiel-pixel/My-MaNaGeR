@@ -57,14 +57,14 @@ var MMGR = window.MMGR || {};
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sidebar: on ? 'on' : 'off' })
       }).then(function (r) {
-        if (r.ok) writeDevicePref('mmgr_palette_backend', '1');
+        if (r.ok) writeDevicePref('mmgr_sidebar_backend', '1');
       }).catch(function () { /* offline / no worker, localStorage is the cache */ });
     } catch (e) { /* ignore */ }
   }
 
   function pullSidebarBackend() {
     if (_sidebarUserTouched) return;
-    if (readDevicePref('mmgr_palette_backend') !== '1') return;
+    if (readDevicePref('mmgr_sidebar_backend') !== '1') return;
     if (readDevicePref(SIDEBAR_KEY) != null) return;
     try {
       fetch('/api/cloud/prefs/theme', { headers: { 'Accept': 'application/json' } })

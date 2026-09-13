@@ -1598,13 +1598,6 @@ window.addEventListener('resize', function(){
   syncSidebarIcons();
 });
 
-.recent-card{cursor:pointer;text-align:left;background:var(--glass-fill-dark);border:var(--glass-border);border-radius:var(--squircle-md);padding:12px 14px;box-shadow:var(--glass-rim);transition:border-color var(--tr),background var(--tr);}
-.recent-card:hover{border-color:var(--gold);background:var(--glass-fill-dark-hover);}
-.recent-card:active{transform:scale(var(--press-scale));}
-.recent-card .cd-title{display:block;font-size:.82rem;font-weight:800;line-height:1.35;word-break:break-word;margin-bottom:4px;}
-.recent-card .cd-meta{display:block;font-size:.66rem;color:var(--slate);}
-.recent-card:focus-visible{outline:2px solid var(--gold);outline-offset:2px;}
-
 /* Deploy guard: every icon on this page is a <use href="css/mmgr-icons.svg#...">.
    A missing sprite on the live host makes icons vanish silently , surface it
    loudly. HTTP(S) only, so local file:// testing stays quiet. */

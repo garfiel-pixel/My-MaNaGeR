@@ -5,7 +5,7 @@
   "description": "My MaNaGeR — offline-first construction PM workspace (Cloudflare Workers static assets).",
   "devDependencies": {
     "esbuild": "^0.25.0",
-    "wrangler": "^4.130.0"
+    "wrangler": "^4.131.1"
   },
   "scripts": {
     "build": "node build.js",
@@ -15,11 +15,12 @@
     "mcp": "node mcp/server.mjs",
     "qa:mcp": "node mcp/qa-mcp.cjs",
     "verify:csp": "node tools/verify-csp-hashes.cjs",
+    "verify:inline": "node tools/verify-inline-js.cjs",
     "verify:sw": "node tools/verify-sw-cache.cjs",
     "verify:skills": "node tools/verify-skills-lock.cjs",
     "verify:hidden": "node tools/verify-hidden-attr.cjs",
     "verify:exports": "node tools/verify-render-exports.cjs",
-    "verify": "npm run verify:csp && npm run verify:sw && npm run verify:hidden && npm run verify:skills && npm run verify:exports",
+    "verify": "npm run verify:csp && npm run verify:inline && npm run verify:sw && npm run verify:hidden && npm run verify:skills && npm run verify:exports",
     "qa:cloud": "node tools/qa-cloud-phase1.cjs",
     "qa:cloud-import": "node tools/qa-cloud-import.cjs",
     "qa:changelog-diffs": "node tools/qa-changelog-diffs.cjs",

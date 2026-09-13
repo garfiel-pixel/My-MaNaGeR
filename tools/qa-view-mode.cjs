@@ -1,13 +1,17 @@
 /* ============================================================
-   qa-view-mode.cjs — ROSE-GOLD PALETTE + 3D VIEW DECK (E14)
+   qa-view-mode.cjs — 3D VIEW DECK + RETIRED-PALETTE GUARD (E14)
    ------------------------------------------------------------
-   Phase 3 (owner D7/D9/E10-E14). Two independent dock axes:
-     PALETTE mmgr_palette gold|rose -> html[data-theme=rose-gold]
+   Phase 3 (owner D9/E11-E14) + OWNER REVIEW 2026-09-12. Axes:
+     PALETTE (RETIRED 2026-09-05): mmgr_palette is scrubbed at boot
+             and html[data-theme] can NEVER be applied again - the
+             stale-rose regression fix. Gates V2/V2b/V7/V8 now assert
+             the scrub contract instead of the old apply contract.
      VIEW    mmgr_view_mode flat|3d -> body.view-3d (effective)
    Verifies in headless Chrome against the dev server (BASE):
-     V1  default: no data-theme, Flat pressed, no .view-3d
-     V2  Rose click -> html[data-theme=rose-gold] + persisted;
-         reload keeps rose; Gold click removes the attribute
+     V1  default: no data-theme, Flat, no .view-3d
+     V2  stored stale rose pref is SCRUBBED: mmgr_palette removed,
+         html[data-theme] stays gone after boot (no resurrection)
+     V2b reload keeps data-theme gone + stored key still absent
      V3  3D click -> body.view-3d + #grid/view-deck computed
          transform non-none (tilt on) + --glass-blur zeroed on
          the deck (WebKit audit #8); body itself never transforms
@@ -16,9 +20,8 @@
      V5  mobile auto-flat: stored 3d + 640px wide -> no .view-3d
      V6  reduced motion: stored 3d + prefers-reduced-motion ->
          deck computed transform none (CSS media flat)
-     V7  espresso-on-coral contrast (light + dark rose) >= 4.5
-     V8  rose-gold surfaces resolve (--gold is coral, --text is
-         espresso in light; light text in dark)
+     V7  (retired with the palette axis)
+     V8  (retired with the palette axis)
      V9  project.html deck exists (main#app-main.view-deck) and
          admin.html deck exists (main.view-deck)
    Usage: node tools/qa-view-mode.cjs   (serve.cjs on BASE required)
@@ -98,38 +101,36 @@ function contrast(a, b) {
     check('V1 default: gold palette, flat, no data-theme, dock has Theme+Perf only (palette/view UI retired)',
       v1.dataTheme === null && v1.dockHasTheme === true && v1.dockHasPerf === true && v1.dockHasPalette === false && v1.dockHasView === false && !v1.view3d && v1.deckExists, v1);
 
-    // V2 (pref-driven): stored rose palette applies silently at boot.
+    // V2 (stale-rose scrub, OWNER 2026-09-12): a stored rose pref from the
+    // retired picker is REMOVED at boot and data-theme can never re-appear.
     await send('Page.addScriptToEvaluateOnNewDocument', { source: `try{localStorage.setItem('mmgr_palette','rose');}catch(e){}` });
     await send('Page.navigate', { url: BASE + '/app.html' });
     await delay(3000);
     const v2 = await ev(`(function(){
       return { dataTheme: document.documentElement.getAttribute('data-theme'),
         stored: localStorage.getItem('mmgr_palette'),
-        // Rose tokens are BODY-scoped (html[data-theme="rose-gold"] body...
-        // PRESERVED-CODE-OFF restructure), and custom properties inherit
-        // downward only, so read them on body like V8 does.
         gold: getComputedStyle(document.body).getPropertyValue('--gold').trim(),
         text: getComputedStyle(document.body).getPropertyValue('--text').trim() };
     })()`);
-    const coralOk = (s) => /#FF6E52/i.test(s) || /255\s*,\s*110\s*,\s*82/.test(s);
-    check('V2 stored rose pref: data-theme=rose-gold applied at boot (silent) + coral/espresso tokens',
-      v2.dataTheme === 'rose-gold' && v2.stored === 'rose' && coralOk(v2.gold) && /#2E272C/i.test(v2.text), v2);
+    check('V2 stale rose pref scrubbed: mmgr_palette removed + data-theme never applied (no resurrection)',
+      v2.dataTheme === null && v2.stored === null && !!v2.gold && !!v2.text, v2);
 
-    // Dark overrides are scoped to body.dark-mode, so dark token reads must
-    // target body (custom-property values inherit downward, never up to root).
+    // V7/V8 (retired with the palette axis): keep a live token read so the
+    // surface still resolves defaults in both scopes without rose.
     const v8l = await ev(`(function(){
       const cs = getComputedStyle(document.body);
       return { g: cs.getPropertyValue('--gold').trim(), on: cs.getPropertyValue('--on-gold').trim() };
     })()`);
-    // V7 contrast: light espresso-on-coral computed from the resolved hexes.
-    const cLight = contrast('#FF6E52', '#2E272C');
-    check('V7 light rose espresso-on-coral contrast >= 4.5', cLight >= 4.5, { ratio: +cLight.toFixed(2), g: v8l.g, on: v8l.on });
+    check('V7 default tokens resolve (palette retired)', !!v8l.g && !!v8l.on, v8l);
 
-    // Persistence across reload (V2b).
+    // Persistence across reload (V2b): scrub is stable, not transient.
     await send('Page.navigate', { url: BASE + '/app.html' });
     await delay(3000);
-    const v2b = await ev(`document.documentElement.getAttribute('data-theme')`);
-    check('V2b reload keeps rose-gold', v2b === 'rose-gold', v2b);
+    const v2b = await ev(`(function(){
+      return { dt: document.documentElement.getAttribute('data-theme'),
+        stored: localStorage.getItem('mmgr_palette') };
+    })()`);
+    check('V2b reload keeps data-theme gone + scrubbed key absent', v2b.dt === null && v2b.stored === null, v2b);
 
     // V3 (pref-driven): stored 3d view tilts the deck. Both prefs are set
     // on the LIVE page (a new-document script only affects future loads);
@@ -208,7 +209,8 @@ function contrast(a, b) {
     check('V6 reduced motion: deck transform none despite stored 3D', v6.rm === true && v6.view3d === true && v6.deckTr === 'none', v6);
     await send('Emulation.setEmulatedMedia', { features: [] });
 
-    // V7 dark rose contrast + V8 dark tokens: seed dark via the page picker.
+    // V7/V8 (retired with the palette axis): dark-scope token read via the
+    // device pref (mmgr_theme), matching the theme system's own contract.
     await ev(`(function(){
       localStorage.setItem('mmgr_theme', 'dark');
       document.body.classList.add('dark-mode');
@@ -219,11 +221,7 @@ function contrast(a, b) {
       return { gold: cs.getPropertyValue('--gold').trim(), on: cs.getPropertyValue('--on-gold').trim(),
         text: cs.getPropertyValue('--text').trim() };
     })()`);
-    const darkOn = /#FF8A70/i.test(v7d.gold);
-    const darkText = /#F3E7E1/i.test(v7d.text);
-    const cDark = contrast('#FF8A70', '#241713');
-    check('V8 dark rose tokens resolve (coral gold + light text)', darkOn && darkText && v7d.on.toLowerCase() === '#241713', v7d);
-    check('V7 dark rose espresso-on-coral contrast >= 4.5', cDark >= 4.5, { ratio: +cDark.toFixed(2) });
+    check('V8 dark tokens resolve (palette retired, device-pref dark)', !!v7d.gold && !!v7d.text, v7d);
 
     // V9: project + admin carry .view-deck wrappers. The workspace page only
     // boots for an unlocked project; seed demo-project like the other harnesses.

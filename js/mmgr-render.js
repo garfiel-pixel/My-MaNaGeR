@@ -124,7 +124,11 @@ var MMGR = window.MMGR || {};
     const rf = $('rf');
     if (rf) rf.style.strokeDashoffset = offset;
     const rt = $('rt');
-    if (rt) rt.textContent = total === 0 ? 'No tasks yet' : pct + '% Completed';
+    // OWNER 2026-09-12 (P2-12): ONLY the percentage lives inside the ring -
+    // the word 'Completed' beside it (repeated three times around the title,
+    // the ring, and the stat block) crowded the circle. The figure reads as
+    // a percent naturally; the beside stat keeps its 'Completed' label.
+    if (rt) rt.textContent = total === 0 ? '0%' : pct + '%';
     const dc = $('dc');
     if (dc) { dc.textContent = done; dc.style.color = total === 0 ? 'var(--slate)' : ''; }
     const tc = $('tc');

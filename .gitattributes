@@ -7,3 +7,19 @@
 # copies to CRLF on checkout — force eol=lf so no checkout can reintroduce
 # the break.
 *.html text eol=lf
+
+# Same reasoning as the HTML rule, applied to every text source type that
+# has been hand-edited from a Windows shell in this project.
+# Root-caused 2026-09-12: CRLF in *.js/*.cjs/*.md/*.json/*.jsonc/*.sql/*.yml
+# made git diff stats meaningless (764-line rewrites that were byte-identical).
+*.js    text eol=lf
+*.cjs   text eol=lf
+*.mjs   text eol=lf
+*.md    text eol=lf
+*.json  text eol=lf
+*.jsonc text eol=lf
+*.sql   text eol=lf
+*.yml   text eol=lf
+*.css   text eol=lf
+*.svg   text eol=lf
+*.txt   text eol=lf

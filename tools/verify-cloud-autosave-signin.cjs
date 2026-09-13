@@ -75,6 +75,15 @@ function check(name, val, detail) {
   log((val ? '[PASS] ' : '[FAIL] ') + name + (val ? '' : '  <-- ' + JSON.stringify(detail)));
 }
 
+// Failure diagnostics go to the annotations channel: job logs are not
+// anonymously readable on this repo, so the run page must carry the story.
+function annotateFailure() {
+  const failed = results.filter(r => !r.val);
+  for (const f of failed) {
+    console.error('::error::' + f.name + ' :: ' + JSON.stringify(f.detail).slice(0, 300));
+  }
+}
+
 (async () => {
   // Start our own wrangler
   await startWrangler();
@@ -112,7 +121,15 @@ function check(name, val, detail) {
     localStorage.setItem('mmgr_state_qa-edit', JSON.stringify({ projectName: 'QA Edit', schemaVersion: 18, tasks: [{ id: 't1', title: 'Pour slab' }] }));
   })()`);
   await send('Page.navigate', { url: BASE + '/project.html?id=qa-edit' });
-  await delay(3500);
+  // Poll for the cloud module instead of a fixed sleep - a cold CI runner can
+  // take longer than 3.5s to evaluate the 732KB bundle.
+  let cloudReady = null;
+  for (let i = 0; i < 40; i++) {
+    cloudReady = await ev(`(function(){ try { return { cloud: !!(window.MMGR && window.MMGR.Cloud) }; } catch(e) { return { cloud: false }; } })()`);
+    if (cloudReady && cloudReady.cloud) break;
+    await delay(500);
+  }
+  if (!cloudReady || !cloudReady.cloud) log('[cas] C1 WARNING: MMGR.Cloud still absent after 20s (stale CSP hash is the classic cause)');
   const c1 = await ev(`(async function(){
     try {
       if (!(window.MMGR && window.MMGR.Cloud)) return { cloudMissing: true };
@@ -135,6 +152,7 @@ function check(name, val, detail) {
   })()`);
   check('C1 editor auto-save fires with X-Editor-Code header', c1 && c1.ok && c1.saveUrl && c1.editorHeader && c1.noOwnerHeader, c1);
   check('C1 keepalive flag passed through', c1 && c1.keepalive === true, c1);
+  if (!(c1 && c1.ok)) annotateFailure();
 
   // ---- C2: recoverCode while unsigned -> sign-in prompt -> auto-resume -----
   const c2 = await ev(`(async function(){
@@ -184,6 +202,7 @@ function check(name, val, detail) {
   check('C2 unsigned recover pops the sign-in prompt', c2 && c2.prompted === true, c2);
   check('C2 status says sign in to continue', c2 && c2.statusMentionsSignIn === true, c2);
   check('C2 recovery auto-resumes and succeeds after sign-in', c2 && c2.recoverFiredAfter === true && c2.recoverSucceeded === true, c2);
+  if (!(c2 && c2.prompted && c2.statusMentionsSignIn && c2.recoverFiredAfter && c2.recoverSucceeded)) annotateFailure();
 
   // ---- C3: admin Publish to Cloud while unsigned ---------------------------
   await send('Page.navigate', { url: BASE + '/admin.html' });
@@ -197,7 +216,10 @@ function check(name, val, detail) {
   // Phase-2 (AREA G): a fresh setup now parks the panel behind the show-once
   // recovery-code modal until the save checkbox is confirmed — poll-dismiss it
   // so admin rows render before C3 looks for the Publish button.
-  for (let t = 0; t < 24; t++) {
+  // Poll up to 60s: PBKDF2 admin setup + the 732KB bundle can outrun the old
+  // 12s budget on a cold CI runner.
+  let unlocked = false;
+  for (let t = 0; t < 120; t++) {
     const done = await ev(`(function(){
       const adminApp = document.getElementById('admin-app');
       if (adminApp && !adminApp.classList.contains('hidden')) return 'unlocked';
@@ -210,9 +232,10 @@ function check(name, val, detail) {
       }
       return 'waiting';
     })()`);
-    if (done === 'unlocked') break;
+    if (done === 'unlocked') { unlocked = true; break; }
     await delay(500);
   }
+  if (!unlocked) log('[cas] C3 WARNING: admin never unlocked in 60s (rc-om poll exhausted)');
   await delay(500);
   const c3 = await ev(`(async function(){
     try {
@@ -257,6 +280,7 @@ function check(name, val, detail) {
   check('C3 admin publish blocked while unsigned', c3 && c3.publishBlocked === true, c3);
   check('C3 admin publish pops the sign-in prompt + toast', c3 && c3.prompted === true && c3.toastMentionsSignIn === true, c3);
   check('C3 admin publish auto-resumes after sign-in', c3 && c3.publishedAfter === true, c3);
+  if (!(c3 && c3.publishBlocked && c3.prompted && c3.toastMentionsSignIn && c3.publishedAfter)) annotateFailure();
 
   try { await send('Page.close'); } catch (e) {}
   try { proc.kill(); } catch (e) {}

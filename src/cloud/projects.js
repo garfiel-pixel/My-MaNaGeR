@@ -204,6 +204,12 @@ export async function handleCloudSave(request, env, projectId, cloudPushRevChang
     return json(resp);
   } else if (adoptAuth) {
     const a = adoptAuth;
+    // ADOPTED-VIEWER WRITE GUARD (2026-09-13, CI T9 A5d): the adoption row
+    // carries the recipient's real role (editor | view). A viewer adoption
+    // must never reach the proposal queue - without this check the save
+    // handler treated every adopted session as an editor and a session-only
+    // viewer save answered 200 (actor 'editor') instead of 403.
+    if (a.role !== 'editor') return cloudForbidden();
     authRow = a.row;
     actor = { type: 'editor', label: a.label };
     // Editor path: read previous state (may be encrypted, use owner credentials from D1)

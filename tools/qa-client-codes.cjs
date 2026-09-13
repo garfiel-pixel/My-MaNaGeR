@@ -40,12 +40,20 @@ const BASE = 'http://127.0.0.1:' + PORT;
 const ROOT = path.resolve(__dirname, '..');
 
 const log = (s) => { process.stdout.write('[cc] ' + s + '\n'); };
+// Self-reporting (owner 2026-09-13, CI repair loop): CI job logs are
+// auth-gated for this repo, so every failed check emits a ::error
+// annotation naming the gate + its detail payload - readable via the
+// check-runs API without any token.
+function annotateFailure(name, detail) {
+  process.stdout.write('::error title=QA gate failed: ' + name.replace(/[:"\\]/g, ' ') + '::' + String(JSON.stringify(detail || {})).slice(0, 600) + '\n');
+}
 const delay = ms => new Promise(r => setTimeout(r, ms));
 
 const results = [];
 const check = (name, val, detail) => {
   results.push({ name, val });
   log((val ? 'PASS' : 'FAIL') + '  ' + name + (val ? '' : '   <-- ' + JSON.stringify(detail === undefined ? null : detail).slice(0, 400)));
+  if (!val) annotateFailure(name, detail);
 };
 
 let proc = null;
@@ -533,6 +541,17 @@ const j = async (res) => { try { return await res.json(); } catch (e) { return {
     const failed = results.filter(x => !x.val).length;
     log('----------------------------------------');
     log(failed === 0 ? 'ALL CLIENT-CODE GATES PASSED' : failed + ' CHECK(S) FAILED');
+    // CI self-reporting: write the FULL gate table into the step summary
+    // (public-readable for this repo even though job logs are not).
+    try {
+      const fs2 = require('fs');
+      const summary = process.env.GITHUB_STEP_SUMMARY;
+      if (summary) {
+        const lines = ['## qa-client-codes gates', '', '| Gate | Result |', '|---|---|'];
+        results.forEach(function(x) { lines.push('| ' + x.name.replace(/\|/g, '\\|') + ' | ' + (x.val ? 'PASS' : 'FAIL') + ' |'); });
+        fs2.appendFileSync(summary, lines.join('\n') + '\n');
+      }
+    } catch (e) { /* summary is best-effort */ }
     try { proc && proc.kill(); } catch (e) {}
     process.exit(failed === 0 ? 0 : 1);
   } catch (e) {

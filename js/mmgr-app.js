@@ -1822,6 +1822,7 @@ window.MMGR = MMGR;
     // (owner-code create/save/load/recover + Google sign-in for recovery).
     // Same zero-throw pattern as the Drive entries above.
     'cloudCreate': () => { const C = window.MMGR.Cloud; if (C && C.createProject) C.createProject(); },
+    'cloudClaim': () => { const C = window.MMGR.Cloud; if (C && C.claimProject) C.claimProject(); },
     'cloudUpgrade': () => { const C = window.MMGR.Cloud; if (C && C.cloudUpgrade) C.cloudUpgrade(); },
     'cloudResendVerify': () => { const C = window.MMGR.Cloud; if (C && C.cloudResendVerify) C.cloudResendVerify(); },
     'cloudSave': () => { const C = window.MMGR.Cloud; if (C && C.saveToCloud) C.saveToCloud(); },
@@ -1844,6 +1845,9 @@ window.MMGR = MMGR;
     // changelog view/revert (owner-only). Same zero-throw pattern as the
     // Phase 1 entries above.
     'cloudEditorCreate': () => { const C = window.MMGR.Cloud; if (C && C.createEditor) C.createEditor(); },
+    'cloudClientCreate': () => { const C = window.MMGR.Cloud; if (C && C.createClientCode) C.createClientCode(); },
+    'cloudClientList': () => { const C = window.MMGR.Cloud; if (C && C.listClientCodes) C.listClientCodes(); },
+    'cloudClientRevoke': (el) => { const C = window.MMGR.Cloud; if (C && C.revokeClientCode) C.revokeClientCode(el && el.getAttribute('data-id')); },
     'cloudEditorList': () => { const C = window.MMGR.Cloud; if (C && C.listEditors) C.listEditors(); },
     'cloudEditorRevoke': (el) => { const C = window.MMGR.Cloud; if (C && C.revokeEditor) C.revokeEditor(el && el.getAttribute('data-id')); },
     'cloudLogList': () => { const C = window.MMGR.Cloud; if (C && C.listLog) C.listLog(); },
@@ -2182,12 +2186,13 @@ window.MMGR = MMGR;
     // driveBackup above. Load is DELIBERATELY excluded: it overwrites the
     // local workspace like driveRestore/import, so it stays blocked in
     // view-only.
-    'cloudCreate': 1, 'cloudUpgrade': 1, 'cloudResendVerify': 1, 'cloudSave': 1, 'cloudRecover': 1, 'cloudCopyCode': 1, 'cloudSignIn': 1,
+    'cloudCreate': 1, 'cloudClaim': 1, 'cloudUpgrade': 1, 'cloudResendVerify': 1, 'cloudSave': 1, 'cloudRecover': 1, 'cloudCopyCode': 1, 'cloudSignIn': 1,
     // CLOUD-BACKEND-ARCHITECTURE-PLAN Phase 2/3: editor-code management and
     // changelog view/revert never mutate the local workspace (owner-only
     // server calls; a revert changes the CLOUD snapshot, not this device) , 
     // safe in view-only, like the Phase 1 cloud entries above.
     'cloudEditorCreate': 1, 'cloudEditorList': 1, 'cloudEditorRevoke': 1,
+    'cloudClientCreate': 1, 'cloudClientList': 1, 'cloudClientRevoke': 1,
     'cloudLogList': 1, 'cloudLogRevert': 1, 'cloudLogToggleDiffs': 1, 'cloudDropEditor': 1,
     // GAP-AUDIT-CLOUD-31: unlink only mutates the CLOUD copy (like the other
     // cloud actions above), and the banner Copy/Done are clipboard/session

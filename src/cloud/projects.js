@@ -338,6 +338,39 @@ export async function handleCloudRecover(request, env, projectId) {
   return json({ ok: true, ownerCode: rec.ownerCode, recoveredAt: new Date().toISOString() });
 }
 
+// CLAIM FLOW (owner 2026-09-13): a project created WITHOUT a signed-in
+// session has google_sub = NULL - the session-owner paths (list, meta,
+// save, recover) all require row.google_sub === session.sub, so the owner
+// could never open, share, or list it on another device. This endpoint
+// stamps the signed-in account onto an UNLINKED project after the caller
+// proves real ownership (owner code). A linked project is never touched,
+// so there is no way to steal someone else's project with their leaked
+// code unless the code also matches - which IS ownership by design.
+export async function handleCloudProjectClaim(request, env, projectId) {
+  const session = await readSession(request, env);
+  if (!session || !session.sub) return json({ ok: false, error: 'sign in to claim this project' }, 401);
+  const read = await readCloudBody(request);
+  if (read.tooLarge) return json({ ok: false, error: 'body too large' }, 413);
+  if (read.bad || !read.body || typeof read.body !== 'object') return json({ ok: false, error: 'bad request' }, 400);
+  const code = String(read.body.ownerCode || '').trim();
+  if (!code) return json({ ok: false, error: 'owner code required' }, 400);
+  const row = await env.DB.prepare('SELECT google_sub, owner_code_salt, owner_code_hash, deleted_at FROM cloud_projects WHERE project_id = ?').bind(projectId).first();
+  if (!row) { await Promise.all([cloudDummyHash(), cloudTimingSink()]); return cloudForbidden(); }
+  if (row.deleted_at) return cloudProjectDeleted();
+  const hash = await hashOwnerCode(code, row.owner_code_salt);
+  if (!codesEqual(hash, row.owner_code_hash)) { await cloudTimingSink(); return json({ ok: false, error: 'owner code does not match this project' }, 403); }
+  if (row.google_sub) {
+    if (row.google_sub === session.sub) return json({ ok: true, alreadyLinked: true, projectId: projectId });
+    await cloudTimingSink();
+    return json({ ok: false, error: 'already linked to another account' }, 409);
+  }
+  const now = new Date().toISOString();
+  await env.DB.prepare('UPDATE cloud_projects SET google_sub = ?, google_name = ?, last_owner_seen_at = ? WHERE project_id = ? AND google_sub IS NULL')
+    .bind(session.sub, session.name || null, now, projectId).run();
+  await cloudTouchOwner(env, projectId);
+  return json({ ok: true, projectId: projectId, linked: true, claimedAt: now });
+}
+
 export async function handleCloudMeta(request, env, projectId) {
   const code = String(request.headers.get('X-Owner-Code') || '').trim();
   const ecode = String(request.headers.get('X-Editor-Code') || '').trim();

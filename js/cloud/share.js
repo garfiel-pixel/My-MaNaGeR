@@ -46,8 +46,10 @@ var MMGR = window.MMGR || {};
   function pendingBannerHtml(pendingCode) {
  if (!pendingCode) return '';
  const isView = pendingCode.role === 'view';
+ const isClient = pendingCode.role === 'client';
+ const kind = isClient ? 'client' : (isView ? 'viewer' : 'editor');
  return '<div class="sr cloud-new-code" style="border:1px solid var(--gold);background:rgba(var(--gold-rgb),.1);border-radius:var(--radius);padding:8px 10px;margin:10px 0 4px" role="status">' +
- '<div class="sr-hint" style="margin:0 0 4px"><strong>NEW ' + (isView ? 'viewer' : 'editor') + ' code for \u201C' + esc(pendingCode.label || (isView ? 'viewer' : 'editor')) + '\u201D - copy it and share. Stays until revoked:</strong></div>' +
+ '<div class="sr-hint" style="margin:0 0 4px"><strong>NEW ' + kind + ' code for \u201C' + esc(pendingCode.label || kind) + '\u201D - copy it and share. Stays until revoked:</strong></div>' +
  '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">' +
  '<code style="font-family:ui-monospace,monospace;letter-spacing:.05em;color:var(--gold);font-size:1rem;font-weight:700">' + esc(pendingCode.code) + '</code>' +
  '<button class="btn btn-g btn-s" data-action="cloudCopyEditorCode" data-code="' + esc(pendingCode.code) + '"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy code</button>' +
@@ -66,12 +68,33 @@ var MMGR = window.MMGR || {};
  if (!code && !ecode && C._isSessionOwner && C._isSessionOwner()) {
  // P1-6 (owner 2026-09-12): the project is cloud-linked and this session IS
  // the owner (My Cloud Projects load path holds no local code). Show the
- // linked state honestly instead of the 'link this project' pitch, and
- // point at Recover Owner Code for code management on this device.
+ // linked state honestly instead of the 'link this project' pitch.
+ // OWNER 2026-09-13: this branch now carries the FULL sharing panel - the
+ // server authenticates code management via session or code, so a signed-in
+ // owner on a new device creates and revokes codes right here (the old
+ // copy only pointed at Recover Owner Code, which made sharing impossible
+ // on any fresh device until a code was recovered).
  body =
  '<div class="share-card">' +
  '<div class="sr" style="border:none;padding:0 0 6px"><span class="sl" style="font-size:.8rem;font-weight:800"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-lock"></use></svg> Linked to your account</span></div>' +
- '<div class="sr-hint" style="margin:0 0 8px">You are signed in as this project\u2019s owner - backup and sharing run against your cloud copy. To create or manage <strong>editor codes</strong> on this device, put the owner code in hand first: <strong>Cloud &amp; Sync \u2518 Cloud Backup \u2518 Recover Owner Code</strong> (the previous code stops working, by design).</div>' +
+ '<div class="sr-hint" style="margin:0 0 8px">You are signed in as this project\u2019s owner - backup and sharing run against your cloud copy. Want the portable owner code on this device? Use <strong>Recover Owner Code</strong> in Cloud &amp; Sync (the previous code stops working, by design).</div>' +
+ pendingBannerHtml(pendingCode) +
+ '<div class="sr" style="margin-top:12px;padding:0 0 4px"><span class="sl" style="font-size:.72rem;font-weight:700"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-users"></use></svg> Shared Codes</span><button class="btn btn-n btn-s" data-action="cloudEditorList" style="margin-left:auto"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> Refresh</button></div>' +
+ '<div class="sr-hint" style="margin:0 0 6px">Create a code for a colleague. They enter it on any device to access this project. Scope is enforced server-side.</div>' +
+ '<div class="exp-row" style="flex-wrap:wrap">' +
+ '<input type="text" id="cloud-editor-label-in" class="ctl-in" placeholder="Label, e.g. Site Super - Riverside" style="min-width:200px" autocomplete="off">' +
+ '<select id="cloud-editor-role" class="ctl-in" style="width:auto" aria-label="Code type">' +
+ '<option value="editor">Editor - can edit the sections below</option>' +
+ '<option value="view">Viewer - can see them, read-only</option>' +
+ '</select>' +
+ '<button class="btn btn-g btn-s" data-action="cloudEditorCreate"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-plus"></use></svg> Create Code</button>' +
+ '</div>' +
+ '<div id="cloud-editor-scope-box" class="share-scope">' +
+ '<span class="sr-hint" style="margin:0">Sections this code may edit (or see, for a viewer):</span>' +
+ '<span id="cloud-editor-scope-load" class="sr-hint" style="margin:0">loading\u2026</span>' +
+ '</div>' +
+ '<div id="cloud-editor-list"></div>' +
+ clientCodesHtml() +
  '</div>';
  } else if (!code && !ecode) {
  body =
@@ -115,9 +138,35 @@ var MMGR = window.MMGR || {};
  '<span id="cloud-editor-scope-load" class="sr-hint" style="margin:0">loading\u2026</span>' +
  '</div>' +
  '<div id="cloud-editor-list"></div>' +
+ clientCodesHtml() +
  '</div>';
  }
  wrap.innerHTML = body;
+  }
+
+  // C19 OWNER UI (owner 2026-09-13): the client-code backend (create, list,
+  // revoke, verify, read-only section grant) shipped complete with NO door -
+  // zero callers anywhere in js/. This block is the door, mirroring the
+  // editor-codes panel. A client code opens the project read-only on any
+  // device, showing only the ticked sections.
+  function clientCodesHtml() {
+ return '<div class="sr" style="margin-top:12px;padding:0 0 4px"><span class="sl" style="font-size:.72rem;font-weight:700"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-user"></use></svg> Client Codes</span><button class="btn btn-n btn-s" data-action="cloudClientList" style="margin-left:auto"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> Refresh</button></div>' +
+ '<div class="sr-hint" style="margin:0 0 6px">A client code opens this project read-only on any device and shows only the sections you tick. Good for clients who just need to look.</div>' +
+ '<div class="exp-row" style="flex-wrap:wrap">' +
+ '<input type="text" id="cloud-client-label-in" class="ctl-in" placeholder="Label, e.g. Client - Riverside" style="min-width:180px" autocomplete="off">' +
+ '<select id="cloud-client-expiry" class="ctl-in" style="width:auto" aria-label="Code expiry">' +
+ '<option value="">Never expires</option>' +
+ '<option value="7">Expires in 7 days</option>' +
+ '<option value="30">Expires in 30 days</option>' +
+ '<option value="90">Expires in 90 days</option>' +
+ '</select>' +
+ '<button class="btn btn-g btn-s" data-action="cloudClientCreate"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-plus"></use></svg> Create Client Code</button>' +
+ '</div>' +
+ '<div id="cloud-client-scope-box" class="share-scope">' +
+ '<span class="sr-hint" style="margin:0">Sections the client can see:</span>' +
+ '<span id="cloud-client-scope-load" class="sr-hint" style="margin:0">loading\u2026</span>' +
+ '</div>' +
+ '<div id="cloud-client-list"></div>';
   }
 
   ns.CloudShare = {

@@ -768,14 +768,23 @@ var MMGR = window.MMGR || {};
     const boxes = document.querySelectorAll('#cloud-editor-scope-box input[type=checkbox]:checked');
     for (let i = 0; i < boxes.length; i++) scope.push(boxes[i].value);
     if (scope.length === 0) { setStatus(role === 'view' ? 'Tick at least one section this code may see.' : 'Tick at least one section this code may edit.', 'warn'); return; }
-    const code = getCode();
-    if (!code) { setStatus('Owner code required to manage codes.', 'warn'); return; }
+    // P1-6 FOLLOW-UP (owner 2026-09-13): the server authenticates code
+    // creation with cloudAuthOwnerEither - owner code OR the signed-in
+    // session. The old local-code gate ('Owner code required to manage
+    // codes.') made the Create button dead on any device where the project
+    // was loaded through My Cloud Projects (session owner, no code in
+    // hand). Send no header for a session owner; the cookie authenticates.
+    const cred = activeCredential();
+    if (!cred || (!cred.header && !_sessOwner)) { setStatus('Open this project as its owner first (load it from My Cloud Projects, or hold the owner code).', 'warn'); return; }
+    if (cred.header === 'X-View-Code' || cred.header === 'X-Client-Code') { setStatus('Viewer and client codes are read-only , they cannot manage codes.', 'warn'); return; }
     setStatus('Creating code…', 'busy');
     try {
+      const headers = { 'Content-Type': 'application/json' };
+      if (cred.header) headers[cred.header] = cred.code;
       const res = await fetch('/api/cloud/projects/' + encodeURIComponent(pid()) + '/editors', {
         method: 'POST',
         credentials: 'same-origin',
-        headers: { 'Content-Type': 'application/json', 'X-Owner-Code': code },
+        headers: headers,
         body: JSON.stringify({ label: label, scope: scope, role: role })
       });
       const data = await res.json().catch(function() { return {}; });
@@ -796,14 +805,19 @@ var MMGR = window.MMGR || {};
   }
 
   // List existing editor codes (owner-only) into #cloud-editor-list.
+  // OWNER 2026-09-13: same de-gating as createEditor - the session owner
+  // lists without a local code (server authenticates via either-auth).
   async function listEditors() {
     const wrap = $('cloud-editor-list');
     if (!wrap) return;
-    const code = getCode();
-    if (!code) { wrap.innerHTML = '<div class="sr-hint">Owner code required.</div>'; return; }
+    const cred = activeCredential();
+    if (!cred || (!cred.header && !_sessOwner)) { wrap.innerHTML = '<div class="sr-hint">Owner access required.</div>'; return; }
+    if (cred.header === 'X-View-Code' || cred.header === 'X-Client-Code') { wrap.innerHTML = '<div class="sr-hint">Viewer and client codes are read-only.</div>'; return; }
     try {
+      const headers = {};
+      if (cred.header) headers[cred.header] = cred.code;
       const res = await fetch('/api/cloud/projects/' + encodeURIComponent(pid()) + '/editors', {
-        method: 'GET', credentials: 'same-origin', headers: { 'X-Owner-Code': code }
+        method: 'GET', credentials: 'same-origin', headers: headers
       });
       const data = await res.json().catch(function() { return {}; });
       if (!res.ok || !data.ok) { wrap.innerHTML = '<div class="sr-hint">Could not load editor codes.</div>'; return; }
@@ -829,12 +843,15 @@ var MMGR = window.MMGR || {};
   async function revokeEditor(id) {
     if (!id) return;
     if (!window.confirm('Revoke this code? It stops working immediately and cannot be restored.')) return;
-    const code = getCode();
-    if (!code) { setStatus('Owner code required to revoke codes.', 'warn'); return; }
+    const cred = activeCredential();
+    if (!cred || (!cred.header && !_sessOwner)) { setStatus('Owner access required to revoke codes.', 'warn'); return; }
+    if (cred.header === 'X-View-Code' || cred.header === 'X-Client-Code') { setStatus('Viewer and client codes are read-only , they cannot manage codes.', 'warn'); return; }
     setStatus('Revoking code…', 'busy');
     try {
+      const headers = {};
+      if (cred.header) headers[cred.header] = cred.code;
       const res = await fetch('/api/cloud/projects/' + encodeURIComponent(pid()) + '/editors/' + encodeURIComponent(id), {
-        method: 'DELETE', credentials: 'same-origin', headers: { 'X-Owner-Code': code }
+        method: 'DELETE', credentials: 'same-origin', headers: headers
       });
       const data = await res.json().catch(function() { return {}; });
       if (!res.ok || !data.ok) { setStatus((data && data.error) || 'Revoke failed (HTTP ' + res.status + ').', 'err'); return; }
@@ -842,6 +859,93 @@ var MMGR = window.MMGR || {};
       await render();
       setStatus('Editor code revoked.', 'ok');
       listEditors();
+    } catch (e) {
+      setStatus('Cloud is unavailable on this host (needs the Worker API).', 'err');
+    }
+  }
+
+  // =========================================================================
+  // C19 OWNER UI (owner 2026-09-13) - client codes: read-only, section-
+  // granted codes for clients. Backend shipped earlier with no door; these
+  // three are the door, mirroring the editor-code trio above.
+  // =========================================================================
+  async function createClientCode() {
+    const scope = [];
+    const boxes = document.querySelectorAll('#cloud-client-scope-box input[type=checkbox]:checked');
+    for (let i = 0; i < boxes.length; i++) scope.push(boxes[i].value);
+    if (scope.length === 0) { setStatus('Tick at least one section the client may see.', 'warn'); return; }
+    const expiryIn = $('cloud-client-expiry');
+    const days = expiryIn ? parseInt(expiryIn.value, 10) : 0;
+    const cred = activeCredential();
+    if (!cred || (!cred.header && !_sessOwner)) { setStatus('Open this project as its owner first (load it from My Cloud Projects, or hold the owner code).', 'warn'); return; }
+    if (cred.header === 'X-View-Code' || cred.header === 'X-Client-Code') { setStatus('Viewer and client codes are read-only , they cannot manage codes.', 'warn'); return; }
+    setStatus('Creating client code…', 'busy');
+    try {
+      const headers = { 'Content-Type': 'application/json' };
+      if (cred.header) headers[cred.header] = cred.code;
+      const body = { sections: scope };
+      if (Number.isFinite(days) && days > 0) body.expiresInDays = days;
+      const res = await fetch('/api/cloud/projects/' + encodeURIComponent(pid()) + '/client-codes', {
+        method: 'POST', credentials: 'same-origin', headers: headers, body: JSON.stringify(body)
+      });
+      const data = await res.json().catch(function() { return {}; });
+      if (!res.ok || !data.ok || !data.code) { setStatus((data && data.error) || 'Client code creation failed (HTTP ' + res.status + ').', 'err'); return; }
+      setPendingEditorCode(data.code, 'client', data.sections || scope, 'client');
+      await render();
+      setStatus('Client code created (sections: ' + (data.sections || scope).map(sectionLabel).join(', ') + '). Copy it from the banner, it is shown once.', 'ok');
+      listClientCodes();
+    } catch (e) {
+      setStatus('Cloud is unavailable on this host (needs the Worker API).', 'err');
+    }
+  }
+
+  async function listClientCodes() {
+    const wrap = $('cloud-client-list');
+    if (!wrap) return;
+    const cred = activeCredential();
+    if (!cred || (!cred.header && !_sessOwner)) { wrap.innerHTML = '<div class="sr-hint">Owner access required.</div>'; return; }
+    if (cred.header === 'X-View-Code' || cred.header === 'X-Client-Code') { wrap.innerHTML = '<div class="sr-hint">Read-only access.</div>'; return; }
+    try {
+      const headers = {};
+      if (cred.header) headers[cred.header] = cred.code;
+      const res = await fetch('/api/cloud/projects/' + encodeURIComponent(pid()) + '/client-codes', {
+        method: 'GET', credentials: 'same-origin', headers: headers
+      });
+      const data = await res.json().catch(function() { return {}; });
+      if (!res.ok || !data.ok) { wrap.innerHTML = '<div class="sr-hint">Could not load client codes.</div>'; return; }
+      const codes = data.codes || [];
+      if (!codes.length) { wrap.innerHTML = '<div class="sr-hint">No client codes yet , create one above.</div>'; return; }
+      wrap.innerHTML = codes.map(function(c) {
+        const expired = !!(c.expires_at && new Date(c.expires_at).getTime() < Date.now());
+        const expiryTxt = c.expires_at ? (expired ? 'EXPIRED' : 'expires ' + String(c.expires_at).slice(0, 10)) : 'never expires';
+        return '<div class="sr" style="font-size:.72rem;display:flex;align-items:center;gap:8px;flex-wrap:wrap">' +
+          '<span class="sr-hint" style="margin:0">' + esc((c.sections || []).map(sectionLabel).join(', ')) + ' \u00b7 created ' + esc(String(c.created_at || '').slice(0, 10)) + ' \u00b7 ' + expiryTxt + '</span>' +
+          '<button class="btn btn-d btn-s" data-action="cloudClientRevoke" data-id="' + esc(String(c.id)) + '">Revoke</button>' +
+          '</div>';
+      }).join('');
+    } catch (e) {
+      wrap.innerHTML = '<div class="sr-hint">Cloud unavailable here.</div>';
+    }
+  }
+
+  async function revokeClientCode(id) {
+    if (!id) return;
+    if (!window.confirm('Revoke this client code? It stops working immediately and cannot be restored.')) return;
+    const cred = activeCredential();
+    if (!cred || (!cred.header && !_sessOwner)) { setStatus('Owner access required to revoke codes.', 'warn'); return; }
+    if (cred.header === 'X-View-Code' || cred.header === 'X-Client-Code') { setStatus('Viewer and client codes are read-only , they cannot manage codes.', 'warn'); return; }
+    setStatus('Revoking client code…', 'busy');
+    try {
+      const headers = {};
+      if (cred.header) headers[cred.header] = cred.code;
+      const res = await fetch('/api/cloud/projects/' + encodeURIComponent(pid()) + '/client-codes/' + encodeURIComponent(id), {
+        method: 'DELETE', credentials: 'same-origin', headers: headers
+      });
+      const data = await res.json().catch(function() { return {}; });
+      if (!res.ok || !data.ok) { setStatus((data && data.error) || 'Revoke failed (HTTP ' + res.status + ').', 'err'); return; }
+      clearPendingEditorCode();
+      setStatus('Client code revoked.', 'ok');
+      listClientCodes();
     } catch (e) {
       setStatus('Cloud is unavailable on this host (needs the Worker API).', 'err');
     }
@@ -1340,6 +1444,7 @@ var MMGR = window.MMGR || {};
         '<button class="btn btn-n btn-s" data-action="cloudSave"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-upload"></use></svg> Save to Cloud</button>' +
         '<button class="btn btn-n btn-s" data-action="cloudLoad"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Load from Cloud</button>' +
         '<button class="btn btn-n btn-s" data-action="cloudRecover"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> Recover Owner Code</button>' +
+        '<button class="btn btn-n btn-s" data-action="cloudClaim"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cloud"></use></svg> Link to my account</button>' +
         '</div>' +
         '<div class="exp-row"><button class="btn btn-o btn-s" data-action="cloudUnlink"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> Unlink from Cloud (delete cloud copy)</button></div>' +
         // P3-17 (owner 2026-09-12): the offline-copy machinery works for the
@@ -1359,7 +1464,8 @@ var MMGR = window.MMGR || {};
         '<button class="btn btn-n btn-s" data-action="cloudSave"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-upload"></use></svg> Save to Cloud</button>' +
         '<button class="btn btn-n btn-s" data-action="cloudLoad"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Load from Cloud</button>' +
         '<button class="btn btn-n btn-s" data-action="cloudCopyCode"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy Code</button>' +
-        '<button class="btn btn-o btn-s" data-action="cloudRecover"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> Recover Owner Code</button>' +
+        '<button class="btn btn-n btn-s" data-action="cloudRecover"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> Recover Owner Code</button>' +
+        '<button class="btn btn-n btn-s" data-action="cloudClaim"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cloud"></use></svg> Link to my account</button>' +
         '</div>' +
         // gap-audit B10: deliberate unlink (keep local copy, stop syncing).
         '<div class="exp-row"><button class="btn btn-o btn-s" data-action="cloudUnlink"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> Unlink from Cloud (delete cloud copy)</button></div>' +
@@ -1502,10 +1608,12 @@ var MMGR = window.MMGR || {};
     }
 
     // Load the section checkboxes + existing editor codes into owner mode.
-    if (code) {
+    // OWNER 2026-09-13: the session-owner branch runs it too (same server
+    // either-auth as the code branch) so sharing works without a held code.
+    if (code || sessOwner) {
+      const secs = await fetchSections();
       const scopeBox = $('cloud-editor-scope-box');
       if (scopeBox) {
-        const secs = await fetchSections();
         const loadEl = $('cloud-editor-scope-load');
         if (loadEl) loadEl.remove();
         if (secs && secs.length) {
@@ -1531,6 +1639,35 @@ var MMGR = window.MMGR || {};
         }
       }
       listEditors();
+      // C19 OWNER UI: the client-codes panel shares the same section
+      // vocabulary (one fetchSections, two boxes).
+      const cBox = $('cloud-client-scope-box');
+      if (cBox) {
+        const cLoad = $('cloud-client-scope-load');
+        if (cLoad) cLoad.remove();
+        if (secs && secs.length) {
+          secs.forEach(function(sec) {
+            const clabel = document.createElement('label');
+            clabel.className = 'pref';
+            clabel.style.margin = '0';
+            clabel.style.fontSize = '.72rem';
+            const ccb = document.createElement('input');
+            ccb.type = 'checkbox';
+            ccb.value = sec.key;
+            ccb.style.margin = '0 3px 0 0';
+            clabel.appendChild(ccb);
+            clabel.appendChild(document.createTextNode(sec.label));
+            cBox.appendChild(clabel);
+          });
+        } else {
+          const chint = document.createElement('span');
+          chint.className = 'sr-hint';
+          chint.style.margin = '0';
+          chint.textContent = 'Cloud API unavailable here , client codes need the Worker.';
+          cBox.appendChild(chint);
+        }
+        listClientCodes();
+      }
     } else if (ecode) {
       // gap-audit B11: an EDITOR session must also load the canonical section
       // vocabulary so the scope grey-out uses the SERVER list (never drifts).
@@ -1564,6 +1701,41 @@ var MMGR = window.MMGR || {};
     clearECode();
     await render();
     setStatus('Editor credential cleared , use the owner code (or Create) to link as owner.', 'warn');
+  }
+
+  // ---- CLAIM FLOW (owner 2026-09-13) ------------------------------------
+  // A cloud project created while signed OUT carries google_sub = NULL: the
+  // session-owner paths (My Cloud Projects list, /meta owner probe, /save
+  // session fallback, /recover) all require the row's google_sub to match
+  // the session, so the project was invisible to the owner on any OTHER
+  // device - it only ever lived on the device holding the owner code, and
+  // code management (createEditor) died there too. Claim = the signed-in
+  // account + the owner code TOGETHER stamp the account onto the unlinked
+  // project. Linked projects are never touched (server refuses 409).
+  async function claimProject() {
+    const code = getCode();
+    if (!code) { setStatus('Enter the owner code in Cloud & Sync first, then claim.', 'warn'); return; }
+    setStatus('Linking project to your account…', 'busy');
+    try {
+      const res = await fetch('/api/cloud/projects/' + encodeURIComponent(pid()) + '/claim', {
+        method: 'POST', credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ownerCode: code })
+      });
+      const data = await res.json().catch(function() { return {}; });
+      if (!res.ok || !data.ok) {
+        let msg = (data && data.error) || 'Claim failed (HTTP ' + res.status + ').';
+        if (res.status === 401) msg = 'Sign in with Google (or email) first, then claim again.';
+        if (res.status === 409) msg = msg === 'already linked to another account' ? msg : msg;
+        setStatus(msg, 'err');
+        return;
+      }
+      clearSessOwner(); // force the /meta probe to re-run: the project is linked now
+      await render();
+      setStatus(data.alreadyLinked ? 'This project is already linked to your account.' : 'Project linked to your account - it now appears under My Cloud Projects on every device you sign in on.', 'ok');
+    } catch (e) {
+      setStatus('Cloud is unavailable on this host (needs the Worker API).', 'err');
+    }
   }
 
   // ---- unlink from cloud (gap-audit B10) ---------------------------------
@@ -1946,6 +2118,10 @@ var MMGR = window.MMGR || {};
     toggleDiffs: toggleDiffs,
     _renderDiffPanel: _renderDiffPanelImpl, // test hook (pure string builder, no DOM)
     dropEditor: dropEditor,
+    claimProject: claimProject,
+    createClientCode: createClientCode,
+    listClientCodes: listClientCodes,
+    revokeClientCode: revokeClientCode,
     unlinkProject: unlinkProject,
     copyEditorCode: copyEditorCode,
     editorCodeDone: editorCodeDone,

@@ -25,7 +25,7 @@
 import { json, sameOriginOnly, cloudRateCheck, cloudRateLimited, readSession, cloudForbidden } from './lib/http.js';
 import { trackError, structuredLog } from './lib/observe.js';
 import { handleBillingWebhook, handleBillingStatus, handleBillingCheckout } from './billing.js';
-import { handleCloudProjectList, handleCloudCreate, handleCloudSave, handleCloudLoad,
+import { handleCloudProjectList, handleCloudCreate, handleCloudSave, handleCloudLoad, handleCloudProjectClaim,
   handleCloudRecover, handleCloudMeta, handleCloudUnlink, handleCloudCodeLookup,
   handleCloudProjectDelete, handleCloudProjectRestore, handleCloudProjectPurge,
   handleCloudUnadopt, cloudPushRevChangedIfCopies } from './cloud/projects.js';
@@ -132,7 +132,7 @@ export async function routeApi(request, env, url) {
       if (request.method === 'GET') return handleCloudProjectList(request, env);
     }
 
-    const cloudMatch = path.match(/^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/(save|load|recover|meta|delete|restore|purge)$/);
+    const cloudMatch = path.match(/^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/(save|load|recover|meta|delete|restore|purge|claim)$/);
     if (cloudMatch) {
       const pid = cloudMatch[1];
       const op = cloudMatch[2];
@@ -144,6 +144,7 @@ export async function routeApi(request, env, url) {
       if (op === 'recover' && request.method === 'POST') return handleCloudRecover(request, env, pid);
       if (op === 'delete' && request.method === 'POST') return handleCloudProjectDelete(request, env, pid);
       if (op === 'restore' && request.method === 'POST') return handleCloudProjectRestore(request, env, pid);
+      if (op === 'claim' && request.method === 'POST') { trackEvent(env, 'api', 'cloud-claim', pid); return handleCloudProjectClaim(request, env, pid); }
       if (op === 'purge' && request.method === 'POST') return handleCloudProjectPurge(request, env, pid);
     }
 

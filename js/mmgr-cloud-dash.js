@@ -110,11 +110,24 @@
       const shared = p.accessRole && p.accessRole !== 'owner';
       const disc = !!p.discontinued;
       const chip = shared ? '<span class="cd-role">Shared ' + escapeHtml(p.accessRole === 'view' ? 'Viewer (read-only)' : 'Editor') + '</span>' : '';
+      // OWNER 2026-09-13: owner cards get a 3-dot menu again with TWO items:
+      // (1) Save offline copy - pulls the cloud snapshot into this device as
+      // a real, editable local project (appears in the launcher grid + admin
+      // panel; the old offline-copy feature was view-only and buried in the
+      // project drawer). (2) Delete project - the documented confirm+undo
+      // flow (openDeleteConfirm machinery existed but was never rendered).
+      // Shared cards keep unpin-only.
+      const ownerMenu = (!shared && !disc)
+        ? '<button type="button" class="cd-menu-item" role="menuitem" data-cd-copy="' + escapeHtml(p.projectId) + '">' +
+          '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Save offline copy</button>' +
+          '<button type="button" class="cd-menu-item" role="menuitem" data-cd-del="' + escapeHtml(p.projectId) + '" data-cd-del-name="' + escapeHtml(title) + '">' +
+          '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> Delete project</button>'
+        : '';
       const menuItem = shared
         ? '<button type="button" class="cd-menu-item" role="menuitem" data-cd-unpin="' + escapeHtml(p.projectId) + '"' + (disc ? ' data-cd-disc="1"' : '') + '>' +
           '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> ' + (disc ? 'Remove discontinued project' : 'Remove from my list') +
           '</button>'
-        : '';
+        : ownerMenu;
       const discBanner = disc
         ? '<div class="cd-disc" role="note"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-alert-triangle"></use></svg> Discontinued , the admin deleted this project. It can no longer be opened or updated. Remove it from your list.</div>'
         : '';
@@ -266,6 +279,67 @@
     }
   }
 
+  // ---- RESTORE TO OFFLINE VIEW (owner 2026-09-13) -----------------------
+  // A cloud project only existed in the cloud on a new device: the launcher
+  // grid had no door to turn it into a local project, and the project-page
+  // offline-copy feature is view-only by design. This pulls the cloud
+  // snapshot (session-gated /load - the owner is signed in) and writes the
+  // exact shape admin-created local projects use: an mmgr_admin_projects
+  // entry + mmgr_state_<id> + unlock/scope keys. The project then opens
+  // from the grid like any local one, editable, and re-syncs to the cloud.
+  // Owner-only path (shared cards never render this action); duplicate ids
+  // are refused locally with a plain message.
+  async function saveOfflineCopy(projectId) {
+    setStatus('Saving offline copy…');
+    try {
+      const res = await fetch('/api/cloud/projects/' + encodeURIComponent(projectId) + '/load', {
+        method: 'POST', credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({})
+      });
+      const data = await res.json().catch(function() { return {}; });
+      if (!res.ok || !data.ok) { setStatus((data && data.error) || 'Could not fetch the cloud snapshot.', true); return; }
+      if (!data.state) { setStatus('No cloud snapshot yet. Open the project and save it once first.', true); return; }
+      // Never overwrite an existing local record of the same id.
+      let list = [];
+      try {
+        const raw = localStorage.getItem('mmgr_admin_projects');
+        list = raw ? JSON.parse(raw) : [];
+        if (!Array.isArray(list)) list = [];
+      } catch (e) { list = []; }
+      if (list.some(function(p) { return p && p.id === projectId; })) {
+        setStatus('This project already exists on this device - opening it from the grid uses your local copy.', true);
+        return;
+      }
+      const title = data.label || (data.state && data.state.charter && data.state.charter.projectName) || projectId;
+      list.push({
+        id: projectId,
+        title: title,
+        description: 'Restored from your cloud copy.',
+        status: 'active',
+        file: 'project.html?id=' + encodeURIComponent(projectId),
+        code: '',
+        codeHash: null
+      });
+      try {
+        localStorage.setItem('mmgr_admin_projects', JSON.stringify(list));
+        localStorage.setItem('mmgr_state_' + projectId, JSON.stringify(data.state));
+        localStorage.setItem('mmgr_unlocked_' + projectId, '1');
+        localStorage.setItem('mmgr_scope_' + projectId, 'full');
+      } catch (e) { setStatus('Storage unavailable - could not save the offline copy.', true); return; }
+      notify('"' + title + '" saved to this device. It opens from your project grid.', 'ok');
+      setStatus('');
+      renderCardsIfPresent();
+    } catch (e) {
+      setStatus('Could not reach the cloud service.', true);
+    }
+  }
+  // The launcher grid lives in app.html's inline script; refresh it when we
+  // are on that page (the cloud dash and the grid share the page).
+  function renderCardsIfPresent() {
+    try { if (typeof window.renderCards === 'function') window.renderCards(); } catch (e) { /* grid not on this page */ }
+  }
+
   // ---- PART F T9: unpin an adopted (shared) project ----
   // Recipient-only action: DELETE /api/cloud/projects/:id/adopt drops the
   // adoption row. The owner's project is never touched , the row is keyed on
@@ -409,6 +483,19 @@
       closeMenus();
       const id = del.getAttribute('data-cd-del');
       if (id) openDeleteConfirm(id, del.getAttribute('data-cd-del-name') || id);
+      return;
+    }
+    // OWNER 2026-09-13: Save offline copy - restore the cloud project to
+    // this device as an editable local project (mmgr_admin_projects entry +
+    // full state), exactly the shape admin-created projects use, so it
+    // opens without a code from the launcher grid and can be edited and
+    // re-synced. Owner cards only; shared cards never reach this path.
+    const cpy = e.target && e.target.closest ? e.target.closest('[data-cd-copy]') : null;
+    if (cpy) {
+      e.preventDefault();
+      closeMenus();
+      const id = cpy.getAttribute('data-cd-copy');
+      if (id) saveOfflineCopy(id);
       return;
     }
     const un = e.target && e.target.closest ? e.target.closest('[data-cd-unpin]') : null;

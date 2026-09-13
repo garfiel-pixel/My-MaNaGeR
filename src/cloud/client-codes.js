@@ -4,7 +4,7 @@
    Client codes grant read-only access to specific panels only.
    ============================================================ */
 
-import { json, hashOwnerCode, randomSaltHex } from '../lib/http.js';
+import { json, hashOwnerCode, randomSaltHex, cloudAuthOwnerEither } from '../lib/http.js';
 
 // All possible section IDs that can be toggled
 const CLIENT_SECTIONS = [
@@ -32,15 +32,17 @@ const SECTION_LABELS = {
  */
 export async function handleCloudClientCodeCreate(request, env, projectId) {
   try {
-    const session = await readSession(request, env);
-    if (!session || !session.sub) return json({ ok: false, error: 'not signed in' }, 401);
+    // OWNER 2026-09-13: either-auth, mirroring the editor-code endpoints -
+    // owner code OR signed-in session. The old session-only check made the
+    // client-code UI dead on a device holding the owner code but no session.
+    const auth = await cloudAuthOwnerEither(request, env, projectId);
+    if (!auth) return json({ ok: false, error: 'not owner' }, 403);
 
-    // Verify owner
+    // Verify the project exists + is live
     const project = await env.DB.prepare(
-      'SELECT project_id, google_sub, deleted_at FROM cloud_projects WHERE project_id = ?'
+      'SELECT project_id, deleted_at FROM cloud_projects WHERE project_id = ?'
     ).bind(projectId).first();
     if (!project) return json({ ok: false, error: 'project not found' }, 404);
-    if (project.google_sub !== session.sub) return json({ ok: false, error: 'not owner' }, 403);
     if (project.deleted_at) return json({ ok: false, error: 'project_deleted' }, 403);
 
     const body = await request.json();
@@ -87,14 +89,9 @@ export async function handleCloudClientCodeCreate(request, env, projectId) {
  */
 export async function handleCloudClientCodeList(request, env, projectId) {
   try {
-    const session = await readSession(request, env);
-    if (!session || !session.sub) return json({ ok: false, error: 'not signed in' }, 401);
-
-    const project = await env.DB.prepare(
-      'SELECT project_id, google_sub FROM cloud_projects WHERE project_id = ?'
-    ).bind(projectId).first();
-    if (!project) return json({ ok: false, error: 'project not found' }, 404);
-    if (project.google_sub !== session.sub) return json({ ok: false, error: 'not owner' }, 403);
+    // OWNER 2026-09-13: either-auth (see create).
+    const auth = await cloudAuthOwnerEither(request, env, projectId);
+    if (!auth) return json({ ok: false, error: 'not owner' }, 403);
 
     const rows = await env.DB.prepare(
       'SELECT id, sections, created_at, expires_at FROM cloud_client_codes WHERE project_id = ? ORDER BY created_at DESC'
@@ -119,14 +116,9 @@ export async function handleCloudClientCodeList(request, env, projectId) {
  */
 export async function handleCloudClientCodeRevoke(request, env, projectId, codeId) {
   try {
-    const session = await readSession(request, env);
-    if (!session || !session.sub) return json({ ok: false, error: 'not signed in' }, 401);
-
-    const project = await env.DB.prepare(
-      'SELECT project_id, google_sub FROM cloud_projects WHERE project_id = ?'
-    ).bind(projectId).first();
-    if (!project) return json({ ok: false, error: 'project not found' }, 404);
-    if (project.google_sub !== session.sub) return json({ ok: false, error: 'not owner' }, 403);
+    // OWNER 2026-09-13: either-auth (see create).
+    const auth = await cloudAuthOwnerEither(request, env, projectId);
+    if (!auth) return json({ ok: false, error: 'not owner' }, 403);
 
     await env.DB.prepare(
       'DELETE FROM cloud_client_codes WHERE id = ? AND project_id = ?'

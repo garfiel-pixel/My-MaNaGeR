@@ -21,6 +21,9 @@
        branch seeds escope role 'client' + sections and navigates;
        project.html boots with body.client-scope, grants visible,
        non-granted .sec-btn hidden (applyClientScope)
+   P0f-P0n (2026-09-13): either-auth client/editor code endpoints,
+       claim flow (unsigned project -> session+code -> linked),
+       editor-code session management (createEditor de-gate)
 
    Exit 0 only when all checks pass.
    Usage: node tools/qa-client-codes.cjs
@@ -171,6 +174,84 @@ const j = async (res) => { try { return await res.json(); } catch (e) { return {
     });
     const eld = await j(r);
     check('P0e load with X-Editor-Code -> role editor + scope (grant parity)', r.ok && eld.ok && eld.role === 'editor' && (eld.scope || []).join(',') === 'res,wbs' && !!eld.state, eld);
+
+    // ---- OWNER 2026-09-13 wave: either-auth client-code endpoints, claim
+    // flow, editor-code session management ------------------------------
+    // P0f: client-code create with NO session but the OWNER CODE (the
+    // either-auth fix - the endpoints used to demand a session, which made
+    // the owner-code-only UI path impossible).
+    r = await fetch(BASE + '/api/cloud/projects/' + pid + '/client-codes', {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json', 'X-Owner-Code': ownerCode },
+      body: JSON.stringify({ sections: ['dash'] })
+    });
+    const ccNoSess = await j(r);
+    check('P0f client-code create with owner code, no session (either-auth fix)', r.ok && ccNoSess.ok && !!ccNoSess.code, ccNoSess);
+    // P0g: editor-code create with NO session but the OWNER CODE.
+    r = await fetch(BASE + '/api/cloud/projects/' + pid + '/editors', {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json', 'X-Owner-Code': ownerCode },
+      body: JSON.stringify({ label: 'No-sess Editor', scope: ['res', 'wbs'], role: 'editor' })
+    });
+    const ecNoSess = await j(r);
+    check('P0g editor-code create with owner code, no session (either-auth)', r.ok && ecNoSess.ok && !!ecNoSess.editorCode, ecNoSess);
+
+    // P0h-j: CLAIM FLOW - a project created UNSIGNED has google_sub NULL;
+    // the owner claims it with session + owner code together.
+    const pid2 = 'cc-unlinked-' + Date.now().toString(36);
+    r = await fetch(BASE + '/api/cloud/projects', {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ projectId: pid2, name: 'Unlinked QA' })
+    });
+    const created2 = await j(r);
+    check('P0h create cloud project UNSIGNED (google_sub NULL)', r.ok && created2.ok && created2.linked === false && !!created2.ownerCode, created2);
+    const uc = created2.ownerCode;
+    // P0i: before claiming, the session is NOT the owner (meta probes 403).
+    r = await fetch(BASE + '/api/cloud/projects/' + pid2 + '/meta', {
+      method: 'GET', credentials: 'same-origin', headers: authHeaders
+    });
+    const metaPre = await j(r);
+    check('P0i unlinked project: session meta before claim -> 403 (owner not recognized)', r.status === 403 && !metaPre.ok, { status: r.status, metaPre });
+    // P0j: claim with session + owner code links the project.
+    r = await fetch(BASE + '/api/cloud/projects/' + pid2 + '/claim', {
+      method: 'POST', credentials: 'same-origin',
+      headers: authHeaders,
+      body: JSON.stringify({ ownerCode: uc })
+    });
+    const claimed = await j(r);
+    check('P0j claim (session + owner code) -> linked', r.ok && claimed.ok && claimed.linked === true, claimed);
+    // P0k: after claiming, the session IS the owner (meta 200, linked).
+    r = await fetch(BASE + '/api/cloud/projects/' + pid2 + '/meta', {
+      method: 'GET', credentials: 'same-origin', headers: authHeaders
+    });
+    const metaPost = await j(r);
+    check('P0k claimed project: session meta -> owner (My Cloud Projects works)', r.ok && metaPost.ok && metaPost.linked === true, metaPost);
+    // P0l: claiming an ALREADY-LINKED project under another account is refused.
+    r = await fetch(BASE + '/api/cloud/projects/' + pid + '/claim', {
+      method: 'POST', credentials: 'same-origin',
+      headers: authHeaders,
+      body: JSON.stringify({ ownerCode: ownerCode })
+    });
+    const reClaim = await j(r);
+    check('P0l re-claim of a linked project -> alreadyLinked (idempotent)', r.ok && reClaim.ok && reClaim.alreadyLinked === true, reClaim);
+    // P0m: claim with a WRONG owner code is refused.
+    r = await fetch(BASE + '/api/cloud/projects/' + pid2 + '/claim', {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json', Cookie: 'nomatch=1' },
+      body: JSON.stringify({ ownerCode: 'AAAA-BBBB-CCCC-DDDD' })
+    });
+    const badClaim = await j(r);
+    check('P0m claim without session -> refused (401)', r.status === 401 && !badClaim.ok, { status: r.status, badClaim });
+    // P0n: editor-code create under SESSION (no code header) - the
+    // createEditor de-gate fix.
+    r = await fetch(BASE + '/api/cloud/projects/' + pid + '/editors', {
+      method: 'POST', credentials: 'same-origin',
+      headers: authHeaders,
+      body: JSON.stringify({ label: 'Session Editor', scope: ['res', 'wbs'], role: 'editor' })
+    });
+    const ecSess = await j(r);
+    check('P0n editor-code create under session (createEditor de-gate fix)', r.ok && ecSess.ok && !!ecSess.editorCode, ecSess);
 
     // P1: create client code with sections + 30-day expiry.
     r = await fetch(BASE + '/api/cloud/projects/' + pid + '/client-codes', {

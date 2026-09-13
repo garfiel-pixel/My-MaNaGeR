@@ -1613,3 +1613,12 @@ or resilience to qa-ai-badge-e2e.cjs (wrangler-dev startup race).
   a queued action replays (cas 8/8). Also: cas C1/C3 now poll for readiness
   (20s/60s) instead of fixed sleeps. GITLEAKS: all commits clean. Next
   session: deploy from e51b4d7 and smoke both hosts (sw = mmgr-shell-v283).
+DEPLOYED (same day): version 98248708-e520-435f-9417-5217d8296f81 from the
+  clean tar staging copy (full exclude set) at commit e5ed922 (app bytes =
+  CI-green e51b4d7; the tracker commit is docs-only). Live smoke 13/13:
+  both hosts 200, /api/health ok, sw.js = mmgr-shell-v283 on both, live
+  /app 4 inline scripts ALL parse + ALL hashes present in the LIVE CSP
+  header (the outage is dead in production), cloudCodeOpen present, no
+  CSS-in-script junk, live bundle carries the recover-race fix (sourcemap
+  check - minify mangles module-local names), codes/lookup 403 probe ok.
+  Cron 0 6 * * * intact.

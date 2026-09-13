@@ -608,6 +608,12 @@ var MMGR = window.MMGR || {};
   // runs inside the click gesture (openSignInPrompt); the in-drawer GIS host
   // is the fallback when GoogleAuth's helper is unavailable.
   let _pendingSignInAction = null;
+  // While resumePendingSignIn() replays a queued action, the generic
+  // sign-in listener below must NOT fire its own render: the resumed
+  // action (e.g. recoverCode) re-renders and writes its final status
+  // AFTER its own render, and the extra immediate render's async /meta
+  // probe resolves later and wipes the status line (CI C2, 2026-09-13).
+  let _resumingAfterSignIn = false;
   function queueAfterSignIn(label, action) {
     _pendingSignInAction = { label: label, action: action };
     setStatus('Sign in to continue , ' + label + ' runs automatically once you are signed in.', 'warn');
@@ -622,7 +628,9 @@ var MMGR = window.MMGR || {};
     const p = _pendingSignInAction;
     _pendingSignInAction = null;
     _meChecked = false; // checkMe cached "not signed in" , re-query the session
+    _resumingAfterSignIn = true;
     try { p.action(); } catch (e) { /* the action guards itself */ }
+    Promise.resolve().then(function() { _resumingAfterSignIn = false; });
   }
   document.addEventListener('mmgr:google-signed-in', resumePendingSignIn);
   document.addEventListener('mmgr:user-changed', resumePendingSignIn);
@@ -1827,7 +1835,7 @@ var MMGR = window.MMGR || {};
   // ---- keep the sign-in state fresh after sign-in/sign-out ----------------
   // P1-6 (2026-09-12): sign-in/out changes the session credential, so the
   // memoized owner-session probe must re-run on the next render.
-  document.addEventListener('mmgr:google-signed-in', function() { _signedIn = true; clearSessOwner(); render(); });
+  document.addEventListener('mmgr:google-signed-in', function() { _signedIn = true; clearSessOwner(); if (!_resumingAfterSignIn) render(); });
   document.addEventListener('mmgr:google-signed-out', function() { _signedIn = false; clearSessOwner(); render(); });
 
   // ---- CLOUD-FIRST SYNC: live refresh on save (approved scope) -----------

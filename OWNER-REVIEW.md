@@ -32,6 +32,7 @@ Agents: do not execute these; leave them for the owner.
 - [ ] **www.mymanagerworkspace.com does not resolve** — DNS has no `www` record, so anyone typing `www.` gets a browser error. Decision: add a proxied `www` CNAME to the apex in Cloudflare DNS (recommended), or declare apex-only. If you add it, also add `https://www.mymanagerworkspace.com` to the Google OAuth Authorized JavaScript origins so sign-in works from both.
 - [ ] **The domain cannot receive email (no MX records)** — if you want addresses `@mymanagerworkspace.com`, enable Cloudflare Email Routing (free, forwards to your Gmail) in the dashboard. This is what future "emails from them" would flow through.
 - [ ] **No SPF/DKIM/DMARC TXT records** — the dormant Tier A email-OTP admin recovery (`EMAIL_RECOVERY_ENABLED` in wrangler.jsonc) stays 503 until a verified sending domain exists. FULL STEP-BY-STEP below (added 2026-09-10, P7.2).
+- [ ] **RESEND_FROM_EMAIL secret MISSING (owner action needed, 2026-09-14)** — `RESEND_API_KEY` is set, but without `RESEND_FROM_EMAIL` every auth email (forgot-password link, admin recovery code, contact-form delivery) sends from Resend's test sender `onboarding@resend.dev`, which **only delivers to your own Resend account's inbox** — this is why forgot-password and admin-code recovery "don't work" for real users. Fix: `npx wrangler secret put RESEND_FROM_EMAIL` with `My MaNaGeR <no-reply@mail.mymanagerworkspace.com>` AFTER the domain verification steps below. The code needs NO changes.
 
 #### Email activation walkthrough (owner steps, 2026-09-10)
 

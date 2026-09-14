@@ -721,3 +721,12 @@ LESSONS
 OUTSTANDING / OWNER'S CALL
 - Deploy of this wave (v286) per the standing ship order (staging recipe,
    CI poll, live verify).
+SESSION 2026-09-14 (wave 2): UI polish + contact backend + auth hardening shipped per owner order.
+1. Eyebrow dash "One site - every phase" traced to css/marketing.css .eyebrow::before decoration; removed globally.
+2. Contact form made real: POST /api/contact (src/contact.js) validates email+message, rate-limits 5/30min/IP, delivers to admin@mymanagerworkspace.com via Resend; mailto kept as fallback; serve.cjs mirrors for QA. Fixed the ct-email duplicate-id bug (Email tile vs input) and the odd-tile grid misalignment.
+3. Hero: all 3 cards now custom SVGs (roadmap + EVM chart + schedule gantt) in the navy/gold language; webp photos retired; card borders removed per owner.
+4. Forgot-password: IP cap 5/30min via new cloudRatePeek/Record (record only on real sends; over-limit answers the same generic 200, never 429 - anti-enumeration, qa-email-auth E11 contract). Admin-recovery send capped 5/30min. Password strength (8+, 3 of 4 classes, no repeats) on register/reset/change.
+5. Sign-in surfaces black & white only: glowing white border sheet, white fields/submit, circular Google buttons (all three renderButton sites).
+6. Deploy recipe rewritten (wrangler.jsonc + AGENTS.md): stage to $HOME/mmgr-deploy, NEVER /tmp on Windows.
+INCIDENT RECORD (deploy downgrade): root cause of the site reverting to Aug-era content was a stale staging copy at C:\tmp\mmgr-deploy (bash /tmp vs Windows-path divergence) silently uploaded by earlier deploys; the poisonous copy was deleted, the recipe now uses an unambiguous home path, and deploys verify staged bytes before upload. LESSON: on Windows, never trust /tmp in deploy pipelines - verify the exact directory wrangler resolves.
+OWNER ACTION NEEDED: set RESEND_FROM_EMAIL secret (after verifying mail.mymanagerworkspace.com in Resend) so forgot-password/admin-recovery/contact emails deliver outside your own inbox; see OWNER-REVIEW.md.

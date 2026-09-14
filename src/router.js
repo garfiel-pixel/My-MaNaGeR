@@ -41,6 +41,7 @@ import { handleWebhookCreate, handleWebhookList, handleWebhookDelete } from './w
 import { handleAdminCloudList } from './admin.js';
 import { handleReviewsCreate, handleReviewsList, handleReviewList,
   handleReviewAccept, handleReviewReject } from './reviews.js';
+import { handleContactCreate } from './contact.js';
 import { handleAiChat } from './ai-proxy.js';
 import { handleMcpServer } from './mcp/server.js';
 import { handleAuthGoogle, handleAuthMe, handleAuthLogout, handleAuthLogoutAll, mintSession } from './auth/google.js';
@@ -374,12 +375,18 @@ export async function routeApi(request, env, url) {
         if (r) return r;
         return handleReviewsList(env);
       }
-    if (request.method === 'POST') {
-      const r = await rl(request, 'reviews', env);
-      if (r) return r;
-      structuredLog(env, 'info', 'review-create-start');
-      return handleReviewsCreate(request, env);
+      if (request.method === 'POST') {
+        const r = await rl(request, 'reviews', env);
+        if (r) return r;
+        structuredLog(env, 'info', 'review-create-start');
+        return handleReviewsCreate(request, env);
+      }
     }
+
+    // 11b. PUBLIC CONTACT (no session; rate-limited in the handler)
+    if (path === '/api/contact' && request.method === 'POST') {
+      structuredLog(env, 'info', 'contact-create-start');
+      return handleContactCreate(request, env);
     }
 
     // 12. AUTH ROUTES

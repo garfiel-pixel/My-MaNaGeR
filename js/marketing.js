@@ -618,6 +618,7 @@
     if (!form) return;
     var status = document.getElementById('ct-status');
     var copyBtn = document.getElementById('ct-copy');
+    var submitBtn = form.querySelector('button[type=submit]');
     var TO = 'admin@mymanagerworkspace.com';
     function field(id){ var el = document.getElementById(id); return el ? el.value.trim() : ''; }
     function setStatus(msg, isErr){
@@ -629,7 +630,7 @@
     function compose(){
       var name = field('ct-name');
       var email = field('ct-email');
-      var topic = field('ct-topic') || 'General';
+      var topic = field('ct-topic') || 'Other';
       var msg = field('ct-msg');
       var lines = ['Topic: ' + topic];
       if (name) lines.push('Name: ' + name);
@@ -638,16 +639,57 @@
       lines.push(msg);
       return { subject: 'My MaNaGeR contact: ' + topic, body: lines.join('\n') };
     }
+    function validate(){
+      var email = field('ct-email');
+      var msg = field('ct-msg');
+      if (!email) { setStatus('Please add your email so we can reply.', true); return false; }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setStatus('That email address does not look right.', true); return false; }
+      if (!msg) { setStatus('Please write a message first.', true); return false; }
+      return true;
+    }
+    function mailtoFallback(){
+      var c = compose();
+      window.location.href = 'mailto:' + TO + '?subject=' + encodeURIComponent(c.subject) + '&body=' + encodeURIComponent(c.body);
+    }
     form.addEventListener('submit', function(e){
       e.preventDefault();
-      if (!field('ct-msg')) { setStatus('Please write a message first.', true); return; }
-      var c = compose();
-      var href = 'mailto:' + TO + '?subject=' + encodeURIComponent(c.subject) + '&body=' + encodeURIComponent(c.body);
-      setStatus('Opening your email app with the message ready to send.');
-      window.location.href = href;
+      if (!validate()) return;
+      if (submitBtn) submitBtn.disabled = true;
+      setStatus('Sending your message...');
+      fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: field('ct-name'),
+          email: field('ct-email'),
+          topic: field('ct-topic'),
+          message: field('ct-msg')
+        })
+      }).then(function(res){
+        return res.json().catch(function(){ return { ok: false }; }).then(function(data){
+          return { res: res, data: data };
+        });
+      }).then(function(r){
+        if (r.res.ok && r.data && r.data.ok) {
+          form.reset();
+          setStatus('Message sent. We will reply to your email.');
+        } else if (r.res.status === 429) {
+          setStatus('That is a lot of messages in a short window. Please try again in about 30 minutes, or email ' + TO + ' directly.', true);
+        } else if (r.data && r.data.error) {
+          setStatus(r.data.error, true);
+        } else {
+          setStatus('Could not send just now. Opening your email app instead.', true);
+          mailtoFallback();
+        }
+      }).catch(function(){
+        setStatus('No connection right now. Opening your email app with the message ready.', true);
+        mailtoFallback();
+      }).then(function(){
+        if (submitBtn) submitBtn.disabled = false;
+      });
     });
     if (copyBtn) copyBtn.addEventListener('click', function(){
-      if (!field('ct-msg')) { setStatus('Please write a message first.', true); return; }
+      if (!validate()) return;
       var c = compose();
       var text = c.subject + '\n\n' + c.body + '\n\nSent from the My MaNaGeR contact page.';
       var done = function(){ setStatus('Message copied. Paste it into an email to ' + TO + '.'); };

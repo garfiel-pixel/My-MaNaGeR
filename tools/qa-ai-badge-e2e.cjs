@@ -99,7 +99,23 @@ function stopWrangler() {
 }
 
 async function api(pathname, opts) {
-  const res = await fetch(BASE + pathname, Object.assign({}, opts || {}));
+  // CI-REPAIR (2026-09-14): one transient ECONNRESET / 5xx from the shared,
+  // just-restarted wrangler used to fail the whole step (any throw lands in
+  // the FATAL catch -> exit 1). Retry transport errors and 5xx only; real
+  // gate failures (4xx / ok:false) are final and still fail the gate.
+  let res = null, lastErr = null;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      res = await fetch(BASE + pathname, Object.assign({}, opts || {}));
+      lastErr = null;
+      if (res.status < 500) break;
+      lastErr = new Error('HTTP ' + res.status);
+    } catch (e) {
+      lastErr = e;
+    }
+    await delay(300 * (attempt + 1));
+  }
+  if (!res) throw lastErr;
   let body = null;
   try { body = await res.json(); } catch (e) { body = null; }
   return { status: res.status, body, text: res.status + '|' + JSON.stringify(body) };

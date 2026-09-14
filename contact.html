@@ -101,7 +101,7 @@
   <section class="section">
     <div class="container">
       <div class="contact-grid">
-        <div class="contact-tile" id="ct-email">
+        <div class="contact-tile" id="ct-email-tile">
           <div class="ct-icon"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-mail"></use></svg></div>
           <div>
             <h3>Email</h3>
@@ -136,14 +136,15 @@
             <p>Ideas for the next version? Email us. We read everything.</p>
           </div>
         </div>
-      </div>
-      <!-- Solid content card (Gate 6.1 , forms never sit on glass). The form
-           composes a ready-to-send email to the admin: no account, no
-           backend, works offline. -->
+      </div>          <!-- Solid content card (Gate 6.1 , forms never sit on glass). The
+           form posts to the Worker contact endpoint which delivers the
+           message to the admin inbox printed above; if the backend or the
+           mail send is unavailable it falls back to the visitor's mail
+           app pre-filled with the same message. -->
       <div class="prose-card ct-form-card">
         <div class="ct-form-head">
           <h2>Send a message</h2>
-          <p>Fill this in and your email app opens with the message ready to send. No account, no tracking.</p>
+          <p>Write your message, leave your email, and it lands in the admin inbox. You will hear back at the address you leave.</p>
         </div>
         <form id="contact-form" novalidate>
           <div class="rv-field">
@@ -151,8 +152,8 @@
             <input type="text" id="ct-name" name="name" maxlength="60" autocomplete="name" placeholder="How should we address you?">
           </div>
           <div class="rv-field">
-            <label for="ct-email">Your email <span class="rv-opt">(optional, if you want a reply)</span></label>
-            <input type="email" id="ct-email" name="email" maxlength="120" autocomplete="email" placeholder="you@example.com">
+            <label for="ct-email">Your email</label>
+            <input type="email" id="ct-email" name="email" maxlength="120" autocomplete="email" required placeholder="you@example.com - required, so we can reply">
           </div>
           <div class="rv-field">
             <label for="ct-topic">Topic</label>

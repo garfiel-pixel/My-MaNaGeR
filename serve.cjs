@@ -15,6 +15,8 @@ const PORT = 8765;
 // PART F T7 (2026-08-16): in-memory reviews store for the dev-server
 // mirror below (production uses the Worker's D1 `reviews` table + R2).
 const REVIEWS = [];
+const CONTACT = [];          // dev mirror of POST /api/contact (2026-09-14)
+const CONTACT_BUCKETS = {};  // per-IP rate buckets for the contact mirror
 
 // OBSERVABILITY-SECURITY-DOMAIN-EXECUTION-DIRECTIVES DIR-2:   mirror of the
 // production Worker headers (see worker.js) so the headless Chrome QA gates
@@ -129,6 +131,49 @@ const server = http.createServer((req, res) => {
     if (p === '/') p = '/index.html';
 
     // INTEGRATED-STRUCTURE-API-WINDOW plan §1: mirror of the Worker's
+    // OWNER 2026-09-14: dev mirror of the Worker's POST /api/contact -
+    // same validation contract as src/contact.js (email required, plain
+    // text, rate limit 5/30min per IP) minus the real Resend send. The
+    // local QA battery exercises the contact form against this exactly
+    // like production.
+    if (p === '/api/contact' && req.method === 'POST') {
+      let raw = '';
+      req.on('data', function(c) {
+        raw += c;
+        if (raw.length > 8192) req.destroy();
+      });
+      req.on('end', function() {
+        let body = null;
+        try { body = JSON.parse(raw); } catch (e) { body = null; }
+        if (!body || typeof body !== 'object') {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ ok: false, error: 'bad request' }));
+          return;
+        }
+        const email = typeof body.email === 'string' ? body.email.trim().slice(0, 120) : '';
+        const message = typeof body.message === 'string' ? body.message.trim() : '';
+        const name = typeof body.name === 'string' ? body.name.trim().slice(0, 60) : '';
+        if (!email) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ ok: false, error: 'your email is required so we can reply' })); return; }
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ ok: false, error: 'that email address does not look right' })); return; }
+        if (!message) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ ok: false, error: 'a message is required' })); return; }
+        if (message.length > 2000) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ ok: false, error: 'message too long (max 2000 characters)' })); return; }
+        if (/[<>]/.test(message + name)) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ ok: false, error: 'plain text only - no HTML or markup' })); return; }
+        const ip = req.socket.remoteAddress || 'anon';
+        const now = Date.now();
+        CONTACT_BUCKETS[ip] = (CONTACT_BUCKETS[ip] || []).filter(function(t){ return t > now - 30 * 60000; });
+        if (CONTACT_BUCKETS[ip].length >= 5) {
+          res.writeHead(429, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ ok: false, error: 'too many messages - try again in a bit' }));
+          return;
+        }
+        CONTACT_BUCKETS[ip].push(now);
+        CONTACT.push({ name: name, email: email, topic: String(body.topic || 'Other').slice(0, 40), message: message, createdAt: new Date().toISOString() });
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
+        res.end(JSON.stringify({ ok: true, sent: true }));
+      });
+      return;
+    }
+
     // GET /api/health liveness probe so the local QA battery exercises the
     // same API-status pill path against the dev server (worker.js serves
     // this route in production).

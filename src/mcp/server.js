@@ -63,7 +63,7 @@ const TOOLS = [
   },
   {
     name: 'apply_changes',
-    description: 'Submit field-level changes to the project. Goes through owner review queue — never auto-applied. Provide diffs as an array of {path, recordId, field, before, after} objects.',
+    description: 'Submit field-level changes to the project. Goes through owner review queue - never auto-applied. Provide diffs as an array of {path, recordId, field, before, after} objects.',
     inputSchema: {
       type: 'object',
       properties: {

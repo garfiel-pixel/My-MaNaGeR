@@ -6,6 +6,9 @@
    transactional email.
    ============================================================ */
 import { json, cloudTimingSink, randomSaltHex, hashOwnerCode, codesEqual,
+  cloudRateCheck,
+  cloudRatePeek,
+  cloudRateRecord,
   readSession, authEmailConfigured, sendAuthEmail, mintAuthToken,
   consumeAuthToken, authVerifyEmailBody, authSessionResponse,
   SESSION_COOKIE, CLOUD_DUMMY_SALT } from '../lib/http.js';
@@ -13,6 +16,25 @@ import { cloudDeleteProjectFully } from '../cloud/projects.js';
 import { cloudPrefsKey } from '../cloud/sync.js';
 
 const AUTH_MIN_PASSWORD = 8;
+
+// OWNER 2026-09-14: strength check for account creation and password
+// reset. Length floor stays 8; the password must ALSO carry at least three
+// of the four character classes (lower, upper, digit, symbol) and must not
+// be a single repeated character. Pure length+class rule - no common-list
+// dependency, cheap to evaluate inside the Worker.
+function authPasswordProblem(pw) {
+  if (typeof pw !== 'string' || pw.length < AUTH_MIN_PASSWORD) {
+    return 'password must be at least ' + AUTH_MIN_PASSWORD + ' characters';
+  }
+  if (/^(.)\\1+$/.test(pw)) return 'password is too weak - mix letters, numbers and symbols';
+  let classes = 0;
+  if (/[a-z]/.test(pw)) classes++;
+  if (/[A-Z]/.test(pw)) classes++;
+  if (/[0-9]/.test(pw)) classes++;
+  if (/[^A-Za-z0-9]/.test(pw)) classes++;
+  if (classes < 3) return 'password is too weak - use a mix of upper and lower case, numbers or symbols';
+  return null;
+}
 const AUTH_VERIFY_TTL_MS = 24 * 60 * 60 * 1000;
 const AUTH_RESET_TTL_MS = 30 * 60 * 1000;
 const AUTH_RESET_MAX_PER_EMAIL_H = 5;
@@ -39,7 +61,8 @@ export async function handleAuthRegister(request, env) {
   const email = authNormalizeEmail(body && body.email);
   if (!authEmailValid(email)) return json({ ok: false, error: 'invalid email address' }, 400);
   const password = String((body && body.password) || '');
-  if (password.length < AUTH_MIN_PASSWORD) return json({ ok: false, error: 'password must be at least ' + AUTH_MIN_PASSWORD + ' characters' }, 400);
+  const pwProblem = authPasswordProblem(password);
+  if (pwProblem) return json({ ok: false, error: pwProblem }, 400);
   const name = String((body && body.name) || '').slice(0, 80);
   const existing = await env.DB.prepare('SELECT email FROM auth_users WHERE email = ?').bind(email).first();
   if (existing) return json({ ok: false, error: 'account already exists - sign in instead' }, 409);
@@ -109,7 +132,8 @@ export async function handleAuthPasswordChange(request, env) {
   const email = session.sub.slice('email:'.length);
   const current = String((body && body.currentPassword) || '');
   const next = String((body && body.newPassword) || '');
-  if (next.length < AUTH_MIN_PASSWORD) return json({ ok: false, error: 'password must be at least ' + AUTH_MIN_PASSWORD + ' characters' }, 400);
+  const resetPwProblem = authPasswordProblem(next);
+  if (resetPwProblem) return json({ ok: false, error: resetPwProblem }, 400);
   const row = await env.DB.prepare('SELECT password_hash FROM auth_users WHERE email = ?').bind(email).first();
   if (!row) return json({ ok: false, error: 'account not found' }, 404);
   const sep = row.password_hash.indexOf(':');
@@ -165,11 +189,20 @@ export async function handleAuthVerify(request, env) {
 }
 
 export async function handleAuthForgot(request, env) {
+  const generic = { ok: true, message: 'If an account exists for that email, a reset link is on its way.' };
+  // OWNER 2026-09-14: IP-scoped cap on reset emails (5/30min) so forgot-
+  // password cannot be mail-bombed. Peek without consuming; record only
+  // when an email actually mints. On limit we answer the SAME generic
+  // message and mint nothing - never a 429, so the endpoint still cannot
+  // reveal whether an account exists (E11 contract). The per-email 5/hour
+  // cap below stays as the second layer.
+  const rl = await cloudRatePeek(request, 'authmail', env);
+  if (rl.limited) return json(generic);
+  const recordSend = function() { return cloudRateRecord(request, 'authmail', env); };
   let body;
   try { body = await request.json(); } catch (e) { return json({ ok: false, error: 'bad request' }, 400); }
   const email = authNormalizeEmail(body && body.email);
   if (!authEmailValid(email)) return json({ ok: false, error: 'invalid email address' }, 400);
-  const generic = { ok: true, message: 'If an account exists for that email, a reset link is on its way.' };
   const row = await env.DB.prepare('SELECT email FROM auth_users WHERE email = ?').bind(email).first();
   if (!row) {
     await cloudTimingSink();
@@ -188,6 +221,7 @@ export async function handleAuthForgot(request, env) {
           'Reset your My MaNaGeR password',
           'We received a request to reset your My MaNaGeR password.\n\nReset it here (the link expires in 30 minutes):\n\n' +
           origin + '/reset.html?token=' + encodeURIComponent(rtoken) + '\n\nIf you did not request this, you can ignore this email.');
+        await recordSend();
       }
     } catch (e) { /* mail failure must never break the generic response */ }
   }
@@ -198,7 +232,8 @@ export async function handleAuthReset(request, env) {
   let body;
   try { body = await request.json(); } catch (e) { return json({ ok: false, error: 'bad request' }, 400); }
   const next = String((body && body.newPassword) || '');
-  if (next.length < AUTH_MIN_PASSWORD) return json({ ok: false, error: 'password must be at least ' + AUTH_MIN_PASSWORD + ' characters' }, 400);
+  const resetPwProblem = authPasswordProblem(next);
+  if (resetPwProblem) return json({ ok: false, error: resetPwProblem }, 400);
   const email = await consumeAuthToken(env, String((body && body.token) || ''), 'reset');
   if (!email) return json({ ok: false, error: 'invalid or expired reset link' }, 400);
   const row = await env.DB.prepare('SELECT email FROM auth_users WHERE email = ?').bind(email).first();

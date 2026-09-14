@@ -303,7 +303,12 @@ export async function cloudDummyHash() {
 
 const CLOUD_RATE = {
   general: { max: 30, windowMs: 60000 },
-  recover: { max: 10, windowMs: 300000 }
+  recover: { max: 10, windowMs: 300000 },
+  // OWNER 2026-09-14: 5 per 30 min - contact-form spam guard and the
+  // forgot-password / admin-recovery send cap (per IP in prod via the
+  // RATE_LIMITER binding; per-isolate in-memory fallback in dev).
+  contact: { max: 5, windowMs: 30 * 60000 },
+  authmail: { max: 5, windowMs: 30 * 60000 }
 };
 const _cloudBuckets = new Map();
 
@@ -353,6 +358,37 @@ export async function cloudRateCheck(request, bucket, env) {
     }
   }
   return { limited: false };
+}
+
+// OWNER 2026-09-14: peek/record pair for flows that must answer UNKNOWN
+// requests with a generic response while still capping the expensive path
+// (auth emails). Peek without consuming a slot; record only on real sends.
+export async function cloudRatePeek(request, bucket, env) {
+  const headers = bucket === 'recover' ? ['X-Owner-Code'] : ['X-Owner-Code', 'X-Editor-Code'];
+  const key = await cloudRateKey(request, headers);
+  const ns = bucket + ':' + key;
+  const cfg = CLOUD_RATE[bucket] || CLOUD_RATE.general;
+  const now = Date.now();
+  const list = _cloudBuckets.get(ns) || [];
+  while (list.length && list[0] <= now - cfg.windowMs) list.shift();
+  return { limited: list.length >= cfg.max, used: list.length };
+}
+
+export async function cloudRateRecord(request, bucket, env) {
+  const headers = bucket === 'recover' ? ['X-Owner-Code'] : ['X-Owner-Code', 'X-Editor-Code'];
+  const key = await cloudRateKey(request, headers);
+  const ns = bucket + ':' + key;
+  const cfg = CLOUD_RATE[bucket] || CLOUD_RATE.general;
+  const now = Date.now();
+  let list = _cloudBuckets.get(ns);
+  if (!list) { list = []; _cloudBuckets.set(ns, list); }
+  while (list.length && list[0] <= now - cfg.windowMs) list.shift();
+  list.push(now);
+  if (_cloudBuckets.size > 10000) {
+    for (const [k, v] of _cloudBuckets) {
+      if (!v.length || v[v.length - 1] <= now - cfg.windowMs * 2) _cloudBuckets.delete(k);
+    }
+  }
 }
 
 export function cloudRateLimited(retryAfter) {

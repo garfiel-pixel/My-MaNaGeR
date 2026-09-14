@@ -15,7 +15,7 @@ export async function handleCloudEditorCreate(request, env, projectId) {
   if (!auth) return cloudForbidden();
   const activeRows = await env.DB.prepare('SELECT COUNT(*) AS n FROM cloud_editor_codes WHERE project_id = ? AND active = 1').bind(projectId).first();
   if (activeRows && Number(activeRows.n) >= CLOUD_MAX_EDITOR_CODES) {
-    return json({ ok: false, error: 'too many active editor codes (max ' + CLOUD_MAX_EDITOR_CODES + ') — revoke unused codes first' }, 400);
+    return json({ ok: false, error: 'too many active editor codes (max ' + CLOUD_MAX_EDITOR_CODES + ') - revoke unused codes first' }, 400);
   }
   const read = await readCloudBody(request);
   if (read.tooLarge) return json({ ok: false, error: 'body too large' }, 413);

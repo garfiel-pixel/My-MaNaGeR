@@ -168,7 +168,7 @@ const server = http.createServer((req, res) => {
             if (rawText.length > 2000) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ ok: false, error: 'review too long' })); return; }
             if (/[<>]/.test(rawText + rawName) || /https?:\/\/|www\./i.test(rawText + rawName)) {
               res.writeHead(400, { 'Content-Type': 'application/json' });
-              res.end(JSON.stringify({ ok: false, error: 'plain text only — no HTML or links in reviews' }));
+              res.end(JSON.stringify({ ok: false, error: 'plain text only - no HTML or links in reviews' }));
               return;
             }
             let stars = null;

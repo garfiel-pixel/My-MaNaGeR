@@ -93,7 +93,7 @@ export async function handleCloudCreate(request, env) {
   if (session && session.sub && session.sub.indexOf('email:') === 0 && authEmailConfigured(env)) {
     const userRow = await env.DB.prepare('SELECT email_verified FROM auth_users WHERE email = ?').bind(session.sub.slice('email:'.length)).first();
     if (!userRow || !userRow.email_verified) {
-      return json({ ok: false, error: 'verify your email to enable cloud projects — check your inbox for the confirmation link', verifyRequired: true }, 403);
+      return json({ ok: false, error: 'verify your email to enable cloud projects - check your inbox for the confirmation link', verifyRequired: true }, 403);
     }
   }
   if (session && session.sub && billingConfigured(env)) {
@@ -102,7 +102,7 @@ export async function handleCloudCreate(request, env) {
     if (owned >= billingFreeCap(env)) {
       const sub = await env.DB.prepare('SELECT status FROM cloud_subscriptions WHERE owner_sub = ?').bind(session.sub).first();
       if (!(sub && billingStatusActive(sub.status))) {
-        return json({ ok: false, error: 'free plan limit reached — upgrade to create more linked projects', upgrade: true }, 402);
+        return json({ ok: false, error: 'free plan limit reached - upgrade to create more linked projects', upgrade: true }, 402);
       }
     }
   }

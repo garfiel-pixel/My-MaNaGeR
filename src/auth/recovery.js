@@ -102,7 +102,7 @@ export async function handleAdminRecoverySend(request, env) {
     sentCount = (cnt && cnt.c) || 0;
   } catch (e) { /* count failure must never break send */ }
   if (sentCount >= REC_MAX_PER_HOUR) {
-    return new Response(JSON.stringify({ ok: false, error: 'too many recovery codes sent — try again in an hour' }), {
+    return new Response(JSON.stringify({ ok: false, error: 'too many recovery codes sent - try again in an hour' }), {
       status: 429,
       headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'Retry-After': '3600' }
     });
@@ -123,7 +123,7 @@ export async function handleAdminRecoverySend(request, env) {
       'INSERT INTO admin_recovery_otp (id, sub, email, otp_hash, created_at, expires_at) VALUES (?,?,?,?,?,?)')
       .bind(id, session.sub, email, salt + ':' + otpHash, nowIso, expiresIso).run();
   } catch (e) {
-    return json({ ok: false, error: 'could not start recovery — try again in a moment' }, 500);
+    return json({ ok: false, error: 'could not start recovery - try again in a moment' }, 500);
   }
   let sent = false;
   if (authEmailConfigured(env)) {
@@ -161,7 +161,7 @@ export async function handleAdminRecoveryVerify(request, env) {
   const locked = Number(row.attempt_count) >= REC_MAX_ATTEMPTS;
   if (locked) {
     const retryAfter = Math.max(1, Math.ceil((new Date(row.expires_at).getTime() - Date.now()) / 1000));
-    return new Response(JSON.stringify({ ok: false, error: 'too many attempts — the code is now locked' }), {
+    return new Response(JSON.stringify({ ok: false, error: 'too many attempts - the code is now locked' }), {
       status: 429,
       headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'Retry-After': String(retryAfter) }
     });
@@ -177,7 +177,7 @@ export async function handleAdminRecoveryVerify(request, env) {
     } catch (e) { /* best-effort */ }
     if (Number(row.attempt_count) + 1 >= REC_MAX_ATTEMPTS) {
       const retryAfter = Math.max(1, Math.ceil((new Date(row.expires_at).getTime() - Date.now()) / 1000));
-      return new Response(JSON.stringify({ ok: false, error: 'too many attempts — the code is now locked' }), {
+      return new Response(JSON.stringify({ ok: false, error: 'too many attempts - the code is now locked' }), {
         status: 429,
         headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'Retry-After': String(retryAfter) }
       });

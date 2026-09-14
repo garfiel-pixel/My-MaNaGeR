@@ -2727,6 +2727,73 @@ body.db-page .db-signout:focus-visible{outline:2px solid var(--danger);outline-o
 @media (prefers-reduced-motion: reduce){#siom.open,#siom .mb{animation:none;}}
 @supports not (backdrop-filter: blur(1px)){#siom{background:rgba(0,0,0,.78);}}
 @media print{#siom{display:none!important;}}
+/* OWNER 2026-09-14: sign-in sheet is BLACK & WHITE only - black panel,
+   glowing white border, white text, circular Google button. No green, no
+   gold inside this sheet (it reflects the app's B&W dark identity). The
+   dark db-page variant keeps its raised surface but gains the same glow. */
+#siom .mb,
+body.dark-mode.db-page #siom .mb{
+  background:#0B0B0D;
+  border:1px solid rgba(255,255,255,.85);
+  box-shadow:0 0 0 1px rgba(255,255,255,.22), 0 0 26px rgba(255,255,255,.30), 0 26px 64px -24px rgba(0,0,0,.85);
+  color:#F8FAFC;
+}
+#siom .mh{border-bottom-color:rgba(255,255,255,.14);}
+#siom .mt,
+#siom .mt .ico,
+#siom .dc{color:#F8FAFC;}
+#siom .dc:hover{color:#FFFFFF;background:rgba(255,255,255,.10);}
+#siom .si-hint{color:rgba(248,250,252,.72);}
+#siom .mbody{gap:16px;}
+#siom .email-auth-form{gap:10px;}
+#siom .email-auth-divider{margin:20px 0 16px;color:rgba(248,250,252,.55);}
+#siom .email-auth-divider::before,
+#siom .email-auth-divider::after{background:rgba(255,255,255,.16);}
+#siom .email-auth-input{
+  background:#111114;border:1px solid rgba(255,255,255,.22);color:#F8FAFC;
+}
+#siom .email-auth-input::placeholder{color:rgba(248,250,252,.42);}
+#siom .email-auth-input:focus{
+  outline:none;border-color:#F8FAFC;box-shadow:0 0 0 3px rgba(255,255,255,.16);
+}
+#siom .email-auth-eye{color:rgba(248,250,252,.62);}
+#siom .email-auth-eye:hover{color:#FFFFFF;background:rgba(255,255,255,.10);}
+#siom .email-auth-submit{
+  background:#F8FAFC;color:#0B0B0D;border:none;
+  box-shadow:0 0 16px rgba(255,255,255,.18);
+}
+#siom .email-auth-submit:hover{background:#FFFFFF;box-shadow:0 0 22px rgba(255,255,255,.38);}
+#siom .email-auth-toggle,
+#siom .email-auth-alt button,
+#siom .email-auth-pw-btn,
+#siom .email-auth-pw-cancel,
+#siom .email-auth-resend,
+#siom .email-auth-check-close{color:#F8FAFC;}
+#siom .email-auth-toggle:hover,
+#siom .email-auth-alt button:hover,
+#siom .email-auth-pw-btn:hover,
+#siom .email-auth-pw-cancel:hover,
+#siom .email-auth-resend:hover,
+#siom .email-auth-check-close:hover{color:#FFFFFF;text-shadow:0 0 10px rgba(255,255,255,.45);}
+#siom .email-auth-toggle:focus-visible,
+#siom .email-auth-alt button:focus-visible,
+#siom .email-auth-pw-btn:focus-visible,
+#siom .email-auth-pw-cancel:focus-visible,
+#siom .email-auth-eye:focus-visible{
+  outline:2px solid #F8FAFC;outline-offset:1px;
+}
+#siom .email-auth-err{color:#FCA5A5;} /* semantic error red only - theme stays B&W */
+#siom .email-auth-reset-title,
+#siom .email-auth-check-title{color:#F8FAFC;}
+#siom .email-auth-reset-msg,
+#siom .email-auth-check-msg{color:rgba(248,250,252,.70);}
+#siom .email-auth-check-ico{color:#F8FAFC;}
+#siom .gis-fallback-btn{
+  background:#111114;border:1px solid rgba(255,255,255,.8);color:#F8FAFC;
+  border-radius:50%;
+}
+#siom .gis-fallback-btn:hover{border-color:#FFFFFF;color:#FFFFFF;box-shadow:0 0 18px rgba(255,255,255,.35);}
+#siom .db-signout{color:#F8FAFC;}
 /* ---- dark dashboard overrides (existing --db-* rail convention) ---- */
 body.dark-mode.db-page .db-hamb{background:var(--db-surface);border-color:var(--db-border);color:var(--db-accent);}
 body.dark-mode.db-page .db-quick{background:transparent;border-color:transparent;color:var(--db-text-secondary);}

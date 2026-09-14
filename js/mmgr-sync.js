@@ -169,7 +169,7 @@ var MMGR = window.MMGR || {};
     try {
       window.google.accounts.id.initialize({ client_id: clientId, callback: onConnectCredential });
       const btn = U.$('sync-gis-btn');
-      if (btn) window.google.accounts.id.renderButton(btn, { theme: 'outline', size: 'medium', text: 'continue_with' });
+      if (btn) window.google.accounts.id.renderButton(btn, { theme: 'outline', size: 'medium', shape: 'circle', text: 'continue_with' });
       // OWNER 2026-08-15: pop the Google prompt immediately (one motion , 
       // the rendered button is the fallback when the prompt API is blocked).
       if (window.google.accounts.id && typeof window.google.accounts.id.prompt === 'function') {

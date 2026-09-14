@@ -669,3 +669,55 @@ OUTSTANDING / OWNER'S CALL
   OWNER-REVIEW subdomain note, contact-form sleeping phase, skills staleness
   read) are documented as REMAINING in the directive STATUS LOG and are
   separate follow-up tasks, not part of this review wave.
+
+SESSION 2026-09-14 — POST-MORTEM (health check + hero roadmap + Google review fixes + contact form)
+
+WHAT WAS ACCOMPLISHED
+- Codebase health check: verify suite + T1 gates + ACTION_MAP + emoji gate
+  all green; CI green on HEAD; bundles fresh; only untracked files were the
+  owner's three new hero PNGs.
+- Hero image refresh: owner's new PNGs converted to webp 900px wide q78,
+  overwrote hero-evm.webp + hero-riverside.webp in place (filenames already
+  matched the page, zero markup change). The AI image was PORTRAIT (532x790)
+  and could not fit the 900x491 landscape card; per the owner's follow-up it
+  was removed and replaced by a purpose-built images/hero-ai-roadmap.svg
+  (navy board, gold winding road, 5 stops: Ask, Digest, Audit, Your key,
+  Fallback; marketing palette tokens, zero emoji, ASCII copy).
+- Google review fix: launcher 3-dot menus were PERMANENTLY VISIBLE because
+  css/mmgr.css .cd-menu-pop{display:flex} overrides the hidden attribute
+  (any author display rule beats the UA stylesheet's [hidden]{display:none}).
+  The JS was already correct (hidden attr + toggle + outside-click). Fixed by
+  scoping display to :not([hidden]) + explicit [hidden]{display:none}.
+- Em-dash sweep: the 2026-09-12 verdict ("stale cache, no code change") was
+  WRONG for server error strings - 17 user-facing em-dashes found and fixed
+  in serve.cjs + 7 src files (recovery, session, editors, projects, http,
+  validate, router). The owner kept reporting dashes because those strings
+  DO render into toasts. Lesson: the em-dash gate must scan error: strings
+  in src/ and serve.cjs, not just HTML and js/ strings.
+- Contact form implemented: mailto-compose + Copy fallback (zero backend,
+  offline-first), Phase 4 placeholder note + stale comment removed.
+- sw.js v285 -> v286 (HTML changes -> SHELL refresh), marketing bundle + CSS
+  rebuilt, all gates re-verified, browser probes green (hero SVG 900x491,
+  contact submit status, menu hidden=none/visible=flex).
+
+LESSONS
+1. A CSS display rule on a class beats the hidden attribute silently -
+   grep for `display:` on any element that also carries [hidden] in markup.
+   The menu looked "always open" and the JS looked correct; the bug was
+   purely the author display rule overriding the UA [hidden] rule.
+2. The em-dash gate must cover user-facing strings in SERVER code
+   (src/**/*.js + serve.cjs error: literals), not just HTML + js/ front-end
+   strings. The 2026-09-12 "zero dash characters anywhere rendered" verdict
+   only scanned HTML text nodes + prod HTML fetches - it never hit the API
+   error paths that render into toasts.
+3. In-place image replacement (same filename, new bytes) needs the sw.js
+   cache bump so the SW cache-first fetch handler serves the new content;
+   an entirely new filename (hero-ai-roadmap.svg) needs no bump by itself,
+   but the HTML edit that references it does.
+4. A portrait image cannot fill a fixed-aspect landscape card - object-fit
+   cover center-crops to ~37% of the image. Check image dimensions BEFORE
+   wiring, not after the owner sees the crop.
+
+OUTSTANDING / OWNER'S CALL
+- Deploy of this wave (v286) per the standing ship order (staging recipe,
+   CI poll, live verify).

@@ -1,0 +1,77 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="491" viewBox="0 0 900 491" role="img" aria-label="Project schedule: four trades run as bars across a weekly timeline with a progress rail">
+  <defs>
+    <radialGradient id="schBoard" cx="50%" cy="42%" r="75%">
+      <stop offset="0%" stop-color="#25211D"/>
+      <stop offset="100%" stop-color="#1C1917"/>
+    </radialGradient>
+  </defs>
+
+  <!-- navy board -->
+  <rect width="900" height="491" fill="url(#schBoard)"/>
+
+  <!-- faint blueprint grid -->
+  <g stroke="#FFFFFF" stroke-opacity="0.04" stroke-width="1">
+    <line x1="45" y1="0"  x2="45" y2="491"/><line x1="130" y1="0" x2="130" y2="491"/>
+    <line x1="215" y1="0" x2="215" y2="491"/><line x1="300" y1="0" x2="300" y2="491"/>
+    <line x1="385" y1="0" x2="385" y2="491"/><line x1="470" y1="0" x2="470" y2="491"/>
+    <line x1="555" y1="0" x2="555" y2="491"/><line x1="640" y1="0" x2="640" y2="491"/>
+    <line x1="725" y1="0" x2="725" y2="491"/><line x1="810" y1="0" x2="810" y2="491"/>
+    <line x1="0" y1="45" x2="900" y2="45"/><line x1="0" y1="130" x2="900" y2="130"/>
+    <line x1="0" y1="215" x2="900" y2="215"/><line x1="0" y1="300" x2="900" y2="300"/>
+    <line x1="0" y1="385" x2="900" y2="385"/><line x1="0" y1="450" x2="900" y2="450"/>
+  </g>
+
+  <!-- week ticks -->
+  <g font-family="Inter,system-ui,sans-serif" font-size="12" fill="#A8A29E" text-anchor="middle">
+    <text x="90" y="52">W1</text><text x="270" y="52">W4</text><text x="450" y="52">W8</text>
+    <text x="630" y="52">W12</text><text x="810" y="52">W16</text>
+  </g>
+  <g stroke="#FFFFFF" stroke-opacity="0.06" stroke-width="1">
+    <line x1="90" y1="64" x2="90" y2="360"/><line x1="270" y1="64" x2="270" y2="360"/>
+    <line x1="450" y1="64" x2="450" y2="360"/><line x1="630" y1="64" x2="630" y2="360"/>
+    <line x1="810" y1="64" x2="810" y2="360"/>
+  </g>
+
+  <!-- bars: shadow layer under each -->
+  <g>
+    <!-- Site prep: done -->
+    <rect x="90" y="96" width="252" height="38" rx="19" fill="#0B0B0D" opacity="0.45" transform="translate(0,4)"/>
+    <rect x="90" y="96" width="252" height="38" rx="19" fill="#D96B27"/>
+    <rect x="90" y="96" width="252" height="38" rx="19" fill="#FFFFFF" opacity="0.18"/>
+    <text x="108" y="121" font-family="Inter,system-ui,sans-serif" font-size="15" font-weight="700" fill="#FFFFFF">Site prep</text>
+    <text x="360" y="121" font-family="Inter,system-ui,sans-serif" font-size="13" fill="#D8CFC2">done</text>
+
+    <!-- Structure: done -->
+    <rect x="162" y="158" width="342" height="38" rx="19" fill="#0B0B0D" opacity="0.45" transform="translate(0,4)"/>
+    <rect x="162" y="158" width="342" height="38" rx="19" fill="#D96B27"/>
+    <rect x="162" y="158" width="342" height="38" rx="19" fill="#FFFFFF" opacity="0.18"/>
+    <text x="180" y="183" font-family="Inter,system-ui,sans-serif" font-size="15" font-weight="700" fill="#FFFFFF">Structure</text>
+    <text x="522" y="183" font-family="Inter,system-ui,sans-serif" font-size="13" fill="#D8CFC2">done</text>
+
+    <!-- MEP rough-in: in progress -->
+    <rect x="306" y="220" width="378" height="38" rx="19" fill="#0B0B0D" opacity="0.45" transform="translate(0,4)"/>
+    <rect x="306" y="220" width="378" height="38" rx="19" fill="#E8923A"/>
+    <rect x="306" y="220" width="196" height="38" rx="19" fill="#FFFFFF" opacity="0.22"/>
+    <text x="324" y="245" font-family="Inter,system-ui,sans-serif" font-size="15" font-weight="700" fill="#FFFFFF">MEP rough-in</text>
+    <text x="530" y="245" font-family="Inter,system-ui,sans-serif" font-size="13" fill="#FFFFFF" opacity="0.85">52%</text>
+
+    <!-- Finishes: planned -->
+    <rect x="522" y="282" width="288" height="38" rx="19" fill="#0B0B0D" opacity="0.45" transform="translate(0,4)"/>
+    <rect x="522" y="282" width="288" height="38" rx="19" fill="none" stroke="#F5EFE6" stroke-width="2.5" stroke-dasharray="8 6"/>
+    <text x="540" y="307" font-family="Inter,system-ui,sans-serif" font-size="15" font-weight="700" fill="#F5EFE6">Finishes</text>
+    <text x="828" y="307" text-anchor="end" font-family="Inter,system-ui,sans-serif" font-size="13" fill="#D8CFC2">planned</text>
+  </g>
+
+  <!-- today rail -->
+  <line x1="502" y1="64" x2="502" y2="360" stroke="#8B5CF6" stroke-width="2" stroke-dasharray="5 7" opacity="0.85"/>
+  <circle cx="502" cy="360" r="8" fill="#FFFFFF" stroke="#8B5CF6" stroke-width="3"/>
+  <text x="502" y="384" text-anchor="middle" font-family="Inter,system-ui,sans-serif" font-size="12" fill="#B7A8E8">today</text>
+
+  <!-- schedule health row -->
+  <rect x="90" y="410" width="720" height="42" rx="12" fill="#FFFFFF" opacity="0.06"/>
+  <circle cx="114" cy="431" r="5" fill="#3FA65B"/>
+  <text x="130" y="436" font-family="Inter,system-ui,sans-serif" font-size="14" fill="#F8FAFC">On track - 68% complete, no critical slips this week</text>
+
+  <!-- caption -->
+  <text x="450" y="472" text-anchor="middle" font-family="Inter,system-ui,sans-serif" font-size="15" fill="#E0DAD2">Every trade on one timeline, from groundbreaking to handover.</text>
+</svg>

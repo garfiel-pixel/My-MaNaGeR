@@ -3030,7 +3030,8 @@ body.db-page .cd-menu:focus-visible{
 body.db-page .cd-menu .ico{width:16px;height:16px;}
 body.db-page .cd-menu:hover{border-color:var(--border);background:color-mix(in oklch,var(--text) 6%,transparent);color:var(--text);}
 body.db-page .cd-menu:focus-visible{outline:none;border-color:var(--gold);box-shadow:0 0 0 3px rgba(var(--gold-rgb),.18);}
-body.db-page .cd-menu-pop{
+body.db-page .cd-menu-pop[hidden]{display:none;}
+body.db-page .cd-menu-pop:not([hidden]){
   position:absolute;top:44px;right:10px;z-index:5;min-width:210px;
   background:var(--card);border:1px solid var(--border);border-radius:12px;
   box-shadow:0 14px 34px rgba(16,24,40,.18);padding:6px;

@@ -132,7 +132,7 @@ svg.ico use{fill:inherit;stroke:inherit;}
   font-size:.72rem;font-weight:700;letter-spacing:.16em;text-transform:uppercase;
   color:var(--gold-deep);
 }
-.eyebrow::before{content:"";width:30px;height:2px;background:var(--gold);border-radius:2px;}
+/* OWNER 2026-09-14: eyebrow dash removed - read as a stray em-dash on the page */
 .section-head{max-width:640px;margin-bottom:46px;}
 .section-head h2{
   font-size:clamp(1.25rem,2.8vw,1.625rem);
@@ -375,14 +375,16 @@ body.dark-mode .nav-dd-item:hover{color:var(--gold);background:rgba(var(--gold-r
   .dd-flash{animation-duration:1.4s;}
 }
 
+/* OWNER 2026-09-14: marketing sign-in sheet is BLACK & WHITE like the app
+   identity - black panel, glowing white border, white fields, white primary
+   button, circular Google button host. Replaces the old glass/gold sheet. */
 .signin-sheet{
   position:fixed;top:calc(var(--header-h) + 10px);right:16px;
   width:min(340px,calc(100vw - 24px));z-index:99;
-  padding:14px;border-radius:16px;
-  background:var(--glass-specular),var(--glass-tint-soft);
-  -webkit-backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturate));
-  backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturate));
-  border:var(--glass-edge);box-shadow:var(--glass-shadow);
+  padding:16px;border-radius:16px;
+  background:#0B0B0D;
+  border:1px solid rgba(255,255,255,.85);
+  box-shadow:0 0 0 1px rgba(255,255,255,.22), 0 0 26px rgba(255,255,255,.30), 0 26px 64px -24px rgba(0,0,0,.85);
 }
 /* iOS Safari: backdrop-filter on fixed-position containers can prevent the
    virtual keyboard from appearing on input focus. Disable it on touch
@@ -390,9 +392,6 @@ body.dark-mode .nav-dd-item:hover{color:var(--gold);background:rgba(var(--gold-r
 @media (hover:none) and (pointer:coarse){
   .signin-sheet{-webkit-backdrop-filter:none;backdrop-filter:none;}
 }
-/* iOS Safari: ensure inputs inside fixed-position sheets can trigger the
-   keyboard. The touch-action rule prevents iOS from interpreting taps as
-   scroll gestures before focus reaches the input. */
 .signin-sheet .email-auth-input,
 .signin-sheet .email-auth-submit{
   touch-action:manipulation;-webkit-touch-callout:none;
@@ -402,12 +401,15 @@ body.dark-mode .nav-dd-item:hover{color:var(--gold);background:rgba(var(--gold-r
 .signin-sheet #google-signin-button{display:flex;justify-content:center;min-height:44px;}
 .signin-sheet #google-signin-button[hidden]{display:none;}
 /* Thin divider between Google button and email section. */
-.signin-sheet .email-auth-divider{height:1px;background:var(--border);margin:4px 0;opacity:.5;}
-/* Fallback Google button shown when GIS fails to load (offline/blocked). */
-.signin-sheet .gis-fallback-btn{display:flex;align-items:center;justify-content:center;width:100%;padding:10px 16px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text-primary);font:inherit;font-size:.86rem;font-weight:600;cursor:pointer;transition:background var(--tr),border-color var(--tr);}
-.signin-sheet .gis-fallback-btn:hover{border-color:var(--gold);background:rgba(var(--gold-rgb),.08);}
-.signin-sheet .gis-fallback-btn:focus-visible{outline:2px solid var(--gold);outline-offset:1px;}
-.signin-sheet .gis-fallback-btn:disabled{opacity:.6;cursor:default;border-color:var(--border);}
+.signin-sheet .email-auth-divider{height:1px;background:rgba(255,255,255,.16);margin:4px 0;opacity:1;}
+/* Fallback Google button shown when GIS fails to load (offline/blocked).
+   OWNER 2026-09-14: circular B&W to match the sheet (host rounds the GIS
+   iframe too; the fallback rounds itself via the same class). */
+.signin-sheet #google-signin-button iframe{border-radius:50%;}
+.signin-sheet .gis-fallback-btn{display:inline-flex;align-items:center;justify-content:center;width:48px;height:48px;padding:0;border-radius:50%;border:1px solid rgba(255,255,255,.8);background:#111114;color:#F8FAFC;font:inherit;cursor:pointer;transition:border-color var(--tr),box-shadow var(--tr);}
+.signin-sheet .gis-fallback-btn:hover{border-color:#FFFFFF;box-shadow:0 0 18px rgba(255,255,255,.35);}
+.signin-sheet .gis-fallback-btn:focus-visible{outline:2px solid #F8FAFC;outline-offset:1px;}
+.signin-sheet .gis-fallback-btn:disabled{opacity:.6;cursor:default;border-color:rgba(255,255,255,.3);}
 /* OWNER 2026-09-09 (P5.4): the email form floats free in the sheet - no
    card box around it (owner: "let them free flow", no borders locking the
    links or the form in). Inputs keep their own field styling. */
@@ -420,52 +422,56 @@ body.dark-mode .nav-dd-item:hover{color:var(--gold);background:rgba(var(--gold-r
 .signin-sheet .email-auth-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
 .signin-sheet .email-auth-input{
   flex:1 1 150px;min-width:120px;padding:9px 10px;border-radius:9px;
-  border:1px solid var(--border);background:var(--card);color:var(--text-primary);
+  border:1px solid rgba(255,255,255,.22);background:#111114;color:#F8FAFC;
   font:inherit;font-size:.86rem;
 }
-.signin-sheet .email-auth-input:focus-visible{outline:2px solid var(--gold);outline-offset:1px;}
+.signin-sheet .email-auth-input::placeholder{color:rgba(248,250,252,.42);}
+.signin-sheet .email-auth-input:focus-visible{outline:2px solid #F8FAFC;outline-offset:1px;}
 .signin-sheet .email-auth-submit{
   display:inline-flex;align-items:center;justify-content:center;
   padding:9px 16px;border-radius:9px;border:1px solid transparent;
-  background:var(--gold);color:var(--on-gold);
+  background:#F8FAFC;color:#0B0B0D;
   font-size:.84rem;font-weight:700;line-height:1;cursor:pointer;
-  transition:background var(--tr);
+  transition:background var(--tr),box-shadow var(--tr);
+  box-shadow:0 0 16px rgba(255,255,255,.18);
 }
-.signin-sheet .email-auth-submit:hover{background:var(--gold-hover);}
-.signin-sheet .email-auth-submit:focus-visible{outline:2px solid var(--gold);outline-offset:1px;}
-.signin-sheet .email-auth-alt{display:flex;flex-direction:column;gap:4px;font-size:.74rem;color:var(--text-secondary);}
+.signin-sheet .email-auth-submit:hover{background:#FFFFFF;box-shadow:0 0 22px rgba(255,255,255,.38);}
+.signin-sheet .email-auth-submit:focus-visible{outline:2px solid #F8FAFC;outline-offset:1px;}
+.signin-sheet .email-auth-alt{display:flex;flex-direction:column;gap:4px;font-size:.74rem;color:rgba(248,250,252,.66);}
 .signin-sheet .email-auth-alt[hidden]{display:none;}
 .signin-sheet .email-auth-alt button{
-  background:none;border:none;padding:2px 0;color:var(--text-secondary);
+  background:none;border:none;padding:2px 0;color:rgba(248,250,252,.72);
   text-decoration:underline;text-underline-offset:2px;cursor:pointer;font:inherit;
   text-align:left;
 }
-.signin-sheet .email-auth-alt button:focus-visible{outline:2px solid var(--gold);outline-offset:1px;border-radius:var(--radius-sm);}
-.signin-sheet .email-auth-err{font-size:.76rem;color:var(--status-danger);}
-.signin-sheet .email-auth-note{font-size:.76rem;color:rgba(248,250,252,.72);line-height:1.5;}
+.signin-sheet .email-auth-alt button:hover{color:#FFFFFF;}
+.signin-sheet .email-auth-alt button:focus-visible{outline:2px solid #F8FAFC;outline-offset:1px;border-radius:var(--radius-sm);}
+.signin-sheet .email-auth-err{font-size:.76rem;color:#FCA5A5;}
+.signin-sheet .email-auth-note{font-size:.76rem;color:rgba(248,250,252,.62);line-height:1.5;}
 /* AUTH MAINFRAME v2 - forgot-password request + check-your-inbox panels.
    Same sheet language as the form above; both use display:flex, so the
    [hidden] guards below are REQUIRED (flex display outranks the UA rule). */
 .signin-sheet .email-auth-reset{display:flex;flex-direction:column;gap:8px;}
 .signin-sheet .email-auth-reset[hidden]{display:none;}
-.signin-sheet .email-auth-reset-title{margin:0;font-size:.84rem;color:var(--text-primary);}
-.signin-sheet .email-auth-reset-msg{margin:0;font-size:.76rem;color:var(--text-secondary);line-height:1.5;}
+.signin-sheet .email-auth-reset-title{margin:0;font-size:.84rem;color:#F8FAFC;}
+.signin-sheet .email-auth-reset-msg{margin:0;font-size:.76rem;color:rgba(248,250,252,.66);line-height:1.5;}
 .signin-sheet .email-auth-check{display:flex;flex-direction:column;gap:8px;align-items:flex-start;}
 .signin-sheet .email-auth-check[hidden]{display:none;}
-.signin-sheet .email-auth-check-ico{width:22px;height:22px;color:var(--gold);}
-.signin-sheet .email-auth-check-title{margin:0;font-size:.84rem;color:var(--text-primary);}
-.signin-sheet .email-auth-check-msg{margin:0;font-size:.76rem;color:var(--text-secondary);line-height:1.5;}
+.signin-sheet .email-auth-check-ico{width:22px;height:22px;color:#F8FAFC;}
+.signin-sheet .email-auth-check-title{margin:0;font-size:.84rem;color:#F8FAFC;}
+.signin-sheet .email-auth-check-msg{margin:0;font-size:.76rem;color:rgba(248,250,252,.66);line-height:1.5;}
 .signin-sheet .email-auth-resend{
-  background:none;border:none;padding:0;color:var(--gold);
+  background:none;border:none;padding:0;color:#F8FAFC;
   text-decoration:underline;text-underline-offset:2px;cursor:pointer;font:inherit;font-size:.76rem;
 }
-.signin-sheet .email-auth-resend:focus-visible{outline:2px solid var(--gold);outline-offset:1px;border-radius:var(--radius-sm);}
+.signin-sheet .email-auth-resend:focus-visible{outline:2px solid #F8FAFC;outline-offset:1px;border-radius:var(--radius-sm);}
 .signin-sheet .email-auth-resend:disabled{opacity:.6;cursor:default;}
 .signin-sheet .email-auth-check-close{
-  margin-top:2px;padding:7px 14px;border-radius:8px;border:1px solid var(--border);
-  background:var(--card);color:var(--text-primary);font-size:.78rem;font-weight:600;cursor:pointer;
+  margin-top:2px;padding:7px 14px;border-radius:8px;border:1px solid rgba(255,255,255,.3);
+  background:#111114;color:#F8FAFC;font-size:.78rem;font-weight:600;cursor:pointer;
 }
-.signin-sheet .email-auth-check-close:focus-visible{outline:2px solid var(--gold);outline-offset:1px;}
+.signin-sheet .email-auth-check-close:hover{border-color:#FFFFFF;}
+.signin-sheet .email-auth-check-close:focus-visible{outline:2px solid #F8FAFC;outline-offset:1px;}
 /* AUTH MAINFRAME 2026-08-17 - password change (email accounts) inside the
    signed-in account row. Same sheet language as the reset/check panels;
    [hidden] guards REQUIRED (the flex rules outrank the UA hidden rule). */
@@ -650,7 +656,9 @@ body.dark-mode .nav-dd-item:hover{color:var(--gold);background:rgba(var(--gold-r
      glass stays only on the functional layer (header/sheets). */
   background:var(--card);
   color:var(--text-primary);
-  border:1px solid var(--border);border-radius:var(--radius-md);
+  /* OWNER 2026-09-14: border removed - the light hairline read as a box
+     around the imagery; shadow alone separates the cards now. */
+  border:none;border-radius:var(--radius-md);
   padding:18px 20px;
   box-shadow:0 20px 44px -12px rgba(15,23,42,.35);
   transition:transform var(--tr-slow),box-shadow var(--tr-slow);
@@ -916,6 +924,9 @@ body.dark-mode .nav-dd-item:hover{color:var(--gold);background:rgba(var(--gold-r
   width:8px;height:8px;border-radius:3px;background:var(--gold);
 }
 .contact-grid{display:grid;grid-template-columns:1fr 1fr;gap:22px;}
+/* OWNER 2026-09-14: a dangling last tile in the 2-col grid read as
+   misalignment - an odd trailing tile spans the full row instead. */
+.contact-tile:last-child:nth-child(odd){grid-column:1/-1;}
 .contact-tile{
   background:var(--card);border:1px solid var(--border);border-radius:var(--radius-md);
   padding:28px;display:flex;gap:18px;align-items:flex-start;

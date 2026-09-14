@@ -272,7 +272,7 @@ export function sanitizePlainText(text, maxLen = 2000) {
   const cleaned = text.trim();
   if (cleaned.length === 0) return { error: 'text is required' };
   if (cleaned.length > maxLen) return { error: 'text too long (max ' + maxLen + ' chars)' };
-  if (/[<>]/.test(cleaned)) return { error: 'plain text only — no HTML' };
-  if (/https?:\/\/|www\./i.test(cleaned)) return { error: 'plain text only — no URLs' };
+  if (/[<>]/.test(cleaned)) return { error: 'plain text only - no HTML' };
+  if (/https?:\/\/|www\./i.test(cleaned)) return { error: 'plain text only - no URLs' };
   return { ok: true, text: cleaned };
 }

@@ -197,7 +197,7 @@ export async function routeApi(request, env, url) {
       const r = await rl(request, 'general', env);
       if (r) return r;
       const shape = apiShapeMatch[2];
-      if (!API_SHAPES[shape]) return json({ ok: false, error: 'unknown shape — use tasks, baseline, risks, weather, evm or portfolio' }, 404);
+      if (!API_SHAPES[shape]) return json({ ok: false, error: 'unknown shape - use tasks, baseline, risks, weather, evm or portfolio' }, 404);
       return handleApiShape(request, env, apiShapeMatch[1], shape);
     }
 

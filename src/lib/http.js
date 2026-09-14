@@ -356,7 +356,7 @@ export async function cloudRateCheck(request, bucket, env) {
 }
 
 export function cloudRateLimited(retryAfter) {
-  return new Response(JSON.stringify({ ok: false, error: 'too many requests — slow down and try again in a minute' }), {
+  return new Response(JSON.stringify({ ok: false, error: 'too many requests - slow down and try again in a minute' }), {
     status: 429,
     headers: {
       'Content-Type': 'application/json; charset=utf-8',

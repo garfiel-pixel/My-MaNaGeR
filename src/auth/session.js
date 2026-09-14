@@ -42,7 +42,7 @@ export async function handleAuthRegister(request, env) {
   if (password.length < AUTH_MIN_PASSWORD) return json({ ok: false, error: 'password must be at least ' + AUTH_MIN_PASSWORD + ' characters' }, 400);
   const name = String((body && body.name) || '').slice(0, 80);
   const existing = await env.DB.prepare('SELECT email FROM auth_users WHERE email = ?').bind(email).first();
-  if (existing) return json({ ok: false, error: 'account already exists — sign in instead' }, 409);
+  if (existing) return json({ ok: false, error: 'account already exists - sign in instead' }, 409);
   const salt = randomSaltHex();
   const hash = await authHashPassword(password, salt);
   const now = new Date().toISOString();
@@ -51,7 +51,7 @@ export async function handleAuthRegister(request, env) {
       .bind(email, salt + ':' + hash, name, now).run();
   } catch (e) {
     const raced = await env.DB.prepare('SELECT email FROM auth_users WHERE email = ?').bind(email).first();
-    if (raced) return json({ ok: false, error: 'account already exists — sign in instead' }, 409);
+    if (raced) return json({ ok: false, error: 'account already exists - sign in instead' }, 409);
     throw e;
   }
   let emailSent = false;
@@ -73,7 +73,7 @@ export async function handleAuthLogin(request, env) {
   const guard = await env.DB.prepare('SELECT failed_attempts, locked_until FROM auth_login_guard WHERE email = ?').bind(email).first();
   if (guard && guard.locked_until && new Date(guard.locked_until).getTime() > Date.now()) {
     const retryAfter = Math.max(1, Math.ceil((new Date(guard.locked_until).getTime() - Date.now()) / 1000));
-    return new Response(JSON.stringify({ ok: false, error: 'Too many failed attempts — try again later or contact support.' }), {
+    return new Response(JSON.stringify({ ok: false, error: 'Too many failed attempts - try again later or contact support.' }), {
       status: 429, headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'Retry-After': String(retryAfter) }
     });
   }

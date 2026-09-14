@@ -20,7 +20,7 @@
        (no reset link / embedded token), stored as PBKDF2.
    ============================================================ */
 import { json, cloudTimingSink, randomSaltHex, hashOwnerCode, codesEqual,
-  readSession, authEmailConfigured, sendAuthEmail } from '../lib/http.js';
+  readSession, authEmailConfigured, sendAuthEmail, cloudRateCheck } from '../lib/http.js';
 
 const REC_ENABLED_KEY = 'EMAIL_RECOVERY_ENABLED';
 const REC_OTP_LEN = 8;
@@ -86,6 +86,11 @@ export async function handleAdminRecoveryStatus(request, env) {
 
 // POST /api/auth/admin-recovery/send — email the admin a single-use OTP.
 export async function handleAdminRecoverySend(request, env) {
+  // OWNER 2026-09-14: IP-scoped cap on recovery-code emails (5/30min) as a
+  // first layer; the handler's own 3/hr + 5-attempt-lock layers stay. The
+  // slot is consumed only when an email actually goes out.
+  const rl = await cloudRateCheck(request, 'authmail', env);
+  if (rl.limited) return json({ ok: false, error: 'too many recovery requests - try again in 30 minutes' }, 429);
   const session = await readSession(request, env);
   if (!session || !session.sub) return json({ ok: false, error: 'not signed in' }, 401);
   if (!recFlagOn(env)) return recEnabledOffResponse();

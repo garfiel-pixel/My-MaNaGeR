@@ -81,7 +81,6 @@
     <div class="container">
       <span class="crumbs"><a href="index.html">Home</a> · Contact</span>
       <h1>Contact &amp; Support</h1>
-      <!-- Phase 2 copy landed; the contact form itself lands in Phase 4. -->
       <p>Need an access code, help with a project, or a feature idea? Here's how to reach us.</p>
     </div>
   </section>
@@ -138,8 +137,42 @@
           </div>
         </div>
       </div>
-      <div class="placeholder-note">
-        <strong>Phase 4:</strong> a real contact form lands here (no dead form today; this page only shows working contact channels).
+      <!-- Solid content card (Gate 6.1 , forms never sit on glass). The form
+           composes a ready-to-send email to the admin: no account, no
+           backend, works offline. -->
+      <div class="prose-card ct-form-card">
+        <div class="ct-form-head">
+          <h2>Send a message</h2>
+          <p>Fill this in and your email app opens with the message ready to send. No account, no tracking.</p>
+        </div>
+        <form id="contact-form" novalidate>
+          <div class="rv-field">
+            <label for="ct-name">Your name <span class="rv-opt">(optional)</span></label>
+            <input type="text" id="ct-name" name="name" maxlength="60" autocomplete="name" placeholder="How should we address you?">
+          </div>
+          <div class="rv-field">
+            <label for="ct-email">Your email <span class="rv-opt">(optional, if you want a reply)</span></label>
+            <input type="email" id="ct-email" name="email" maxlength="120" autocomplete="email" placeholder="you@example.com">
+          </div>
+          <div class="rv-field">
+            <label for="ct-topic">Topic</label>
+            <select id="ct-topic" name="topic">
+              <option value="Access code">Access code</option>
+              <option value="Support">Support</option>
+              <option value="Feature idea">Feature idea</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+          <div class="rv-field">
+            <label for="ct-msg">Your message</label>
+            <textarea id="ct-msg" name="message" rows="5" maxlength="2000" required placeholder="What do you need? Access codes, a feature you want next, or a problem you hit."></textarea>
+          </div>
+          <div class="rv-form-foot">
+            <button type="submit" class="btn btn-gold">Send message</button>
+            <button type="button" class="btn btn-ghost btn-sm" id="ct-copy">Copy message</button>
+            <p class="rv-status" id="ct-status" role="status" aria-live="polite" hidden></p>
+          </div>
+        </form>
       </div>
     </div>
   </section>

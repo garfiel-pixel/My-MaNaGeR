@@ -608,4 +608,55 @@
       if (!paused) play();
     })();
   }
+
+  /* ---- contact form (CONTACT 2026-09-14) ----
+     contact.html form composes a ready-to-send email to the admin and
+     opens the visitor's email app (mailto). A Copy message fallback covers
+     devices without a mail client. Null-guarded, never throws, ASCII only. */
+  function mountContactForm(){
+    var form = document.getElementById('contact-form');
+    if (!form) return;
+    var status = document.getElementById('ct-status');
+    var copyBtn = document.getElementById('ct-copy');
+    var TO = 'admin@mymanagerworkspace.com';
+    function field(id){ var el = document.getElementById(id); return el ? el.value.trim() : ''; }
+    function setStatus(msg, isErr){
+      if (!status) return;
+      status.textContent = msg;
+      status.classList.toggle('is-err', !!isErr);
+      status.hidden = false;
+    }
+    function compose(){
+      var name = field('ct-name');
+      var email = field('ct-email');
+      var topic = field('ct-topic') || 'General';
+      var msg = field('ct-msg');
+      var lines = ['Topic: ' + topic];
+      if (name) lines.push('Name: ' + name);
+      if (email) lines.push('Email: ' + email);
+      lines.push('');
+      lines.push(msg);
+      return { subject: 'My MaNaGeR contact: ' + topic, body: lines.join('\n') };
+    }
+    form.addEventListener('submit', function(e){
+      e.preventDefault();
+      if (!field('ct-msg')) { setStatus('Please write a message first.', true); return; }
+      var c = compose();
+      var href = 'mailto:' + TO + '?subject=' + encodeURIComponent(c.subject) + '&body=' + encodeURIComponent(c.body);
+      setStatus('Opening your email app with the message ready to send.');
+      window.location.href = href;
+    });
+    if (copyBtn) copyBtn.addEventListener('click', function(){
+      if (!field('ct-msg')) { setStatus('Please write a message first.', true); return; }
+      var c = compose();
+      var text = c.subject + '\n\n' + c.body + '\n\nSent from the My MaNaGeR contact page.';
+      var done = function(){ setStatus('Message copied. Paste it into an email to ' + TO + '.'); };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(done, function(){ setStatus('Could not copy. Your email app will open instead.', true); });
+      } else {
+        setStatus('Copy is not available here. Use Send message instead.', true);
+      }
+    });
+  }
+  mountContactForm();
 })();

@@ -234,7 +234,7 @@ var MMGR = window.MMGR || {};
           }
         } });
       }
-      window.google.accounts.id.renderButton(host, { theme: 'outline', size: 'medium', shape: 'rectangular', text: 'signin_with' });
+      window.google.accounts.id.renderButton(host, { theme: 'outline', size: 'medium', shape: 'circle', text: 'signin_with' });
       return true;
     } catch (e) {
       if (window.console && window.console.warn) window.console.warn('mmgr-cloud: GIS render failed (optional)', e);

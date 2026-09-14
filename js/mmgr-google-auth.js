@@ -96,7 +96,7 @@ var MMGR = window.MMGR || {};
         window.google.accounts.id.renderButton(host, {
           theme: 'outline',
           size: 'medium',
-          shape: 'rectangular',
+          shape: 'circle',
           text: 'signin_with'
         });
         installPopupBlockDetector();
@@ -136,7 +136,7 @@ var MMGR = window.MMGR || {};
       window.google.accounts.id.renderButton(host, {
         theme: 'outline',
         size: 'medium',
-        shape: 'rectangular',
+        shape: 'circle',
         text: 'signin_with'
       });
       installPopupBlockDetector();
@@ -1680,6 +1680,15 @@ var MMGR = window.MMGR || {};
     btn.type = 'button';
     btn.className = 'gis-fallback-btn';
     btn.innerHTML = '<svg class="ico" aria-hidden="true" style="width:18px;height:18px;margin-right:8px;vertical-align:middle"><use href="css/mmgr-icons.svg#i-user"></use></svg>Sign in with Google';
+    btn.style.borderRadius = '50%';
+    btn.style.width = '48px';
+    btn.style.height = '48px';
+    btn.style.padding = '0';
+    btn.setAttribute('aria-label', 'Sign in with Google');
+    btn.title = 'Sign in with Google';
+    // Keep only the icon inside the circular fallback (the text label does
+    // not fit a circle); screen readers get the aria-label instead.
+    btn.innerHTML = '<svg class="ico" aria-hidden="true" style="width:20px;height:20px"><use href="css/mmgr-icons.svg#i-user"></use></svg>';
     btn.addEventListener('click', function() {
       if (gisReady()) {
         initGIS();

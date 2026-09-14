@@ -980,6 +980,23 @@ body.dark-mode .nav-dd-item:hover{color:var(--gold);background:rgba(var(--gold-r
 }
 .rv-status.is-err{color:var(--status-danger);}
 .rv-status[hidden]{display:none;}
+/* ---------- 13c. Contact form (CONTACT 2026-09-14) ----------
+   contact.html message form. Solid content card (Gate 6.1), reuses the
+   .rv-field input/textarea treatment; the select needs its own style here
+   because marketing pages do not load the app's base select. */
+.ct-form-card{max-width:720px;margin:0 auto 74px;}
+.ct-form-head{margin-bottom:20px;}
+.ct-form-head h2{font-size:1.35rem;font-weight:800;letter-spacing:-.01em;margin-bottom:6px;}
+.ct-form-head p{color:var(--text-secondary);font-size:.92rem;line-height:1.55;}
+.rv-field select{
+  width:100%;padding:11px 13px;border-radius:var(--radius-sm);
+  border:1px solid var(--border);background:var(--card);color:var(--text-primary);
+  font:inherit;font-size:.92rem;line-height:1.5;appearance:none;padding-right:36px;
+  background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0 L5 6 L10 0' fill='currentColor'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 13px center;background-size:10px 6px;
+  transition:border-color var(--tr),box-shadow var(--tr);
+}
+.rv-field select:focus-visible{outline:none;border-color:var(--gold);box-shadow:0 0 0 3px rgba(var(--gold-rgb),.18);}
 .rv-list-head{margin-top:0;}
 .rv-empty{
   text-align:center;padding:38px 22px;border:1px dashed var(--border);

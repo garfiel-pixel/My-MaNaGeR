@@ -28,9 +28,17 @@
   // directory and does NOT exclude .git here (no gitignore pattern matched
   // it, and a 28 MiB git object exceeded the 25 MiB asset limit). Deploy
   // from a clean staging copy instead:
-  //   mkdir -p /tmp/mmgr-deploy && tar --exclude='.git' --exclude='.wrangler' \
-  //     --exclude='node_modules' --exclude='.agents' --exclude='_archive' -cf - . | tar -xf - -C /tmp/mmgr-deploy
-  //   cd /tmp/mmgr-deploy && npx wrangler deploy
+  // INCIDENT 2026-09-14 (stale-deploy trap): on Windows, bash's /tmp is
+  // C:\Users\<user>\AppData\Local\Temp but wrangler (a Windows process)
+  // resolves /tmp/mmgr-deploy as the literal C:\tmp\mmgr-deploy. A stale
+  // copy at that literal path silently shipped months-old code on every
+  // deploy. ALWAYS stage outside /tmp and verify before deploying:
+  //   STAGE="$HOME/mmgr-deploy"   (unambiguous for bash AND Windows tools)
+  //   rm -rf "$STAGE" && mkdir -p "$STAGE"
+  //   tar --exclude='.git' --exclude='.wrangler' --exclude='node_modules' \
+  //     --exclude='.agents' --exclude='_archive' --exclude='tmp' -cf - . | tar -xf - -C "$STAGE"
+  //   node -e "require('fs').readFileSync('$STAGE'.replace(/\\/g,'/')+'/src/router.js')"  # or grep the staged files
+  //   cd "$STAGE" && npx wrangler deploy
   // NOTE (2026-09-04): .gitignore now ALSO lists the session-scratch files at
   // the repo root (crash logs, planning notes, stray page screenshots,
   // favicon source). .gitignore does NOT stop wrangler — add matching tar

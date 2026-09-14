@@ -186,14 +186,24 @@ in `tools/qa-cloud-phase2.cjs`.
 ### 7. Deploy staging recipe - never deploy from the repo root
 
 `wrangler.jsonc` assets directory is `.` and wrangler uploads EVERYTHING
-(not honoring `.gitignore`). Always create a clean staging copy first:
+(not honoring `.gitignore`). Always create a clean staging copy first.
+
+**NEVER stage under `/tmp` (INCIDENT 2026-09-14):** on Windows, bash's
+`/tmp` is `C:\Users\<user>\AppData\Local\Temp`, but wrangler (a Windows
+process) resolves `/tmp/mmgr-deploy` as the literal `C:\tmp\mmgr-deploy`.
+A stale copy at that literal path silently shipped months-old code on
+every deploy. Stage under `$HOME` and VERIFY the staged files before
+deploying:
 
 ```bash
 node build.js  # rebuild bundles first
-rm -rf /tmp/mmgr-deploy && mkdir -p /tmp/mmgr-deploy
+STAGE="$HOME/mmgr-deploy"   # unambiguous for bash AND Windows tools
+rm -rf "$STAGE" && mkdir -p "$STAGE"
 tar --exclude='.git' --exclude='.wrangler' --exclude='node_modules' \
-  --exclude='.agents' --exclude='_archive' -cf - . | tar -xf - -C /tmp/mmgr-deploy
-cd /tmp/mmgr-deploy && npx wrangler deploy
+  --exclude='.agents' --exclude='_archive' --exclude='tmp' -cf - . | tar -xf - -C "$STAGE"
+# VERIFY the staged copy carries the new code BEFORE deploying, e.g.:
+grep -c "known-new-string" "$STAGE/src/router.js"   # must be >= 1
+cd "$STAGE" && npx wrangler deploy
 ```
 
 ### 8. CI REPAIR LOOP - keep GitHub Actions green (owner standing rule, 2026-09-04)

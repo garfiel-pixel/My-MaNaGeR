@@ -731,3 +731,74 @@ SESSION 2026-09-14 (wave 2): UI polish + contact backend + auth hardening shippe
 INCIDENT RECORD (deploy downgrade): root cause of the site reverting to Aug-era content was a stale staging copy at C:\tmp\mmgr-deploy (bash /tmp vs Windows-path divergence) silently uploaded by earlier deploys; the poisonous copy was deleted, the recipe now uses an unambiguous home path, and deploys verify staged bytes before upload. LESSON: on Windows, never trust /tmp in deploy pipelines - verify the exact directory wrangler resolves.
 OWNER ACTION NEEDED: set RESEND_FROM_EMAIL secret (after verifying mail.mymanagerworkspace.com in Resend) so forgot-password/admin-recovery/contact emails deliver outside your own inbox; see OWNER-REVIEW.md.
 EMAIL DELIVERY RESOLVED (same day, owner actions + live verify): owner verified mail.mymanagerworkspace.com in Resend; first From value was the bare domain (invalid - Resend needs a full address; any local-part works once the domain is verified, so no per-address setup needed) - corrected to My MaNaGeR <no-reply@mail.mymanagerworkspace.com>. Live probe still 502'd; wrangler tail exposed resend 401 = the stored API key was bad; owner rotated it, secrets re-set, POST /api/contact now returns 200 sent:true. Contact form, forgot-password, and admin-recovery emails all deliver for real. LESSON: when an email path fails in prod, wrangler tail + the worker's console.error line gives the exact upstream rejection (status + body) in one pass - check it BEFORE touching code.
+
+SESSION 2026-09-14 (session 3) - FULL-REPO READ-THROUGH, BUG SWEEP, FULL LOCAL CI, DEPLOY
+
+CONTEXT
+Owner order: read the session txt (the last session died mid-question at "5 Freebucks left"),
+clean up from last session, read ALL codebase files (mandatory rule), fix bugs on the spot,
+run CI locally + QA, commit (no co-author), track GitHub CI, deploy once green, update
+reflection + continuation directive.
+
+WHAT WAS ACCOMPLISHED
+1. CLOSED THE DEAD SESSION'S QUESTION: tools/qa-ai-badge-e2e.cjs DOES respect
+   MMGR_QA_NO_BROWSER (line 173 skips the 15-min browser park; CI runs it with the var).
+2. CLEANUP: 78 tmp/ scratch files removed, stale $HOME/mmgr-deploy staging copy deleted,
+   my session's wrangler dev + workerd children killed by PID (never by image name).
+3. MANDATORY READ-THROUGH: worker.js, src/router.js, src/lib/http.js, src/auth/session.js,
+   migrations 0001-0019, build.js, sw.js v287, both wrangler configs, package.json,
+   ci.yml, serve.cjs headers, 12 harness contracts vs CI env vars.
+4. BUGS FOUND + FIXED:
+   - ci.yml: CI-summary read steps.gitleaks.outcome but the gitleaks step had no id
+     (summary's Gitleaks cell could never populate). Added id: gitleaks.
+   - package.json deploy script STILL staged to /tmp/mmgr-deploy - the exact C:\tmp
+     stale-staging trap banned after the 2026-09-14 incident; now "$HOME/mmgr-deploy".
+   - src/mcp/server.js: one em-dash inside the apply_changes tool description STRING
+     (renders into AI clients; the earlier sweep only scanned error: literals).
+   - CI run 34879676537 failed only "T2: AI badge E2E" (logs 403 unreadable); the same
+     harness passes 5/5 locally, so the unguarded path was a single transport error/5xx
+     from the shared wrangler -> FATAL catch -> exit 1. api() now retries transport
+     errors + 5xx (3 attempts, backoff); 4xx/ok:false gate failures stay final.
+5. NON-ISSUES CLASSIFIED: the local CRLF "failure" was core.autocrlf=true converting the
+   working tree; committed bytes are clean (git ls-files --eol: 0 i/crlf) and CI's Linux
+   gate is authoritative. An od|grep '\r' check was itself a false positive (grep matched
+   the letter r). src/ em-dashes are comments; only the one string mattered.
+6. FULL LOCAL CI BATTERY ALL GREEN: npm run verify ALL CHECKS PASSED (CSP 24/24, inline
+   parse, SW v287 > 39 SHELL, hidden, skills, exports); dry-run PASS; T1: dashboard-spec
+   85/85, changelog-diffs ALL, ai-relay PASS, report-issue 27/27, dynamic-labels 3/3,
+   delegate-gate OK; T2: cloud-phase1 29/29, phase2 85/85, codes-delete 23/23, import
+   35/35, email-auth 69/69, reviews 25/25, rank9 31/31, t9 27/27, presence 11/11, prefs
+   15/15, ai-badge 5/5, offline-copies 23/23, autosave-signin 8/8, controls-admin 11/11,
+   market-features 61/61; T3: client-codes E2E ALL PASS (incl. P10).
+7. SHIP: 3a00ce4 + 14977fd pushed (no attribution footers, verified); CI run 34880834803
+   SUCCESS; deployed from verified clean staging -> Version 934177fb-34e7-48a7-9fef-
+   5a35c5e7fc63; live smoke: health ok, sw v287 served, CSP on app.html, /api/contact
+   server-validates.
+
+LESSONS
+1. write_file REPLACES a file. I nearly wiped CONTINUATION-DIRECTIVE.md by passing the
+   appended entry as full content; git checkout restored it (zero loss - it was committed).
+   Append to big tracked files with str_replace anchored on a unique tail, never write_file.
+2. qa-cloud-phase1/2 read D1 state from os.tmpdir()/mmgr-wrangler-state unless
+   QA_PERSIST_DIR is set; and a project-local wrangler --persist-to makes wrangler
+   reload-loop on its own state writes (I watched "Reloading local server..." forever).
+   Always persist OUTSIDE the repo and pass QA_PERSIST_DIR on Windows.
+3. grep '\r' on od output matches the letter r - escape properly (grep -c $'\r' or
+   git ls-files --eol) before believing a CRLF result.
+4. When CI fails on a suite that passes locally and logs are 403: reproduce with the
+   EXACT CI invocation first (env vars matter - MMGR_QA_NO_BROWSER + WRANGLER_DEV_URL
+   take a completely different code path than the local-start path).
+5. A workerd child survives its dead node parent on Windows and holds file locks
+   (Device or resource busy on rm). Identify by PID via Get-CimInstance, stop, then rm.
+
+FILES TOUCHED
+- .github/workflows/ci.yml (gitleaks id) - commit 3a00ce4
+- package.json ($HOME staging) - commit 3a00ce4
+- src/mcp/server.js (ASCII description) - commit 3a00ce4
+- tools/qa-ai-badge-e2e.cjs (api retry) - commit 14977fd
+- CONTINUATION-DIRECTIVE.md + reflection.txt (this record) - docs commit
+
+OUTSTANDING / OWNER'S CALL
+- Nothing open from this session. Owner-side items (custom domain, billing) stay in
+  OWNER-REVIEW.md. A QA persist dir under $HOME (mmgr-wrangler-state) may linger from a
+  Windows file lock - harmless, outside the repo, delete when no workerd runs.

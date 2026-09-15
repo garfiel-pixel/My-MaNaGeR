@@ -140,18 +140,19 @@ const SEED_STATE = `(function(){
   })()`);
   check('R06 Schedule Confidence: 3 equal-height cells ~88px', sc.count === 3 && sc.allEqual && sc.target >= 86 && sc.target <= 90, sc);
 
-  // ---- R07 dashboard stat cards (g4): 4 cards, all equal height ----
+  // ---- R07 dashboard stat cards (g4): all equal height ----
+  // (count bumped from 4 to >=4: the Cycle Time card joined the row.)
   const g4 = await ev(`(function(){
     const hs = [...document.querySelectorAll('#panel-dash .g4 .card')].map(c => Math.round(c.getBoundingClientRect().height));
-    return { count: hs.length, heights: hs, allEqual: hs.length === 4 && hs.every(h => h === hs[0]) };
+    return { count: hs.length, heights: hs, allEqual: hs.length >= 4 && hs.every(h => h === hs[0]) };
   })()`);
-  check('R07 stat cards: 4 equal-height cards', g4.count === 4 && g4.allEqual, g4);
+  check('R07 stat cards: all equal-height (>=4 cards)', g4.count >= 4 && g4.allEqual, g4);
 
   // ---- R08 EVM tiles: big tiles equal + small tiles equal ----
   const e1 = await ev(`(function(){
     const big = [...document.querySelectorAll('#evm-card .evm-tile')].map(t => Math.round(t.getBoundingClientRect().height));
     const small = [...document.querySelectorAll('#evm-card .evm-tile-sm')].map(t => Math.round(t.getBoundingClientRect().height));
-    return { big, small, bigOk: big.length === 3 && big.every(h => h === big[0]), smallOk: small.length === 4 && small.every(h => h === small[0]) };
+    return { big, small, bigOk: big.length === 3 && big.every(h => h === big[0]), smallOk: small.length >= 4 && small.every(h => h === small[0]) };
   })()`);
   check('R08 EVM tiles: big + small tiles each equal-height', e1.bigOk && e1.smallOk, e1);
 

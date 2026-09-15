@@ -802,3 +802,62 @@ OUTSTANDING / OWNER'S CALL
 - Nothing open from this session. Owner-side items (custom domain, billing) stay in
   OWNER-REVIEW.md. A QA persist dir under $HOME (mmgr-wrangler-state) may linger from a
   Windows file lock - harmless, outside the repo, delete when no workerd runs.
+
+--------------------------------------------------------------------
+2026-09-15 SESSION 2 - PROJECT API KEYS SHIPPED (P1-P9) + FINAL GATE
+--------------------------------------------------------------------
+WHAT I DID (one sub-task at a time, per the owner's breakdown rule)
+- P1 migration 0020_cloud_api_keys.sql: keys live INSIDE a project
+  (project_id NOT NULL), PBKDF2 hash + per-key salt, sha256
+  fingerprint for O(1) X-API-Key lookup, display-only 8-char prefix,
+  owner-chosen expires_at, active flag, last_used_at.
+- P2 src/cloud/api-keys.js: create/list/revoke, owner-either-auth,
+  max 10 active keys, plaintext shown ONCE at create, scope filtered
+  against CLOUD_SECTIONS (at least one section required).
+- P3 router routes on the general rate-limit bucket.
+- P4 cloudAuthApiKey: generic 403 on unknown/expired/revoked/deleted
+  (no existence leak), timing-safe dummy-hash burn, last_used stamp.
+- P5 scoped enforcement: X-API-Key save NEVER writes - it merges
+  under the section grant and lands in the review queue with
+  field-level diffs; X-API-Key load returns a PROJECTION of only the
+  granted sections. Owner approves inside the project.
+- P6 Controls UI: API Keys card in Share & Access (label, expiry,
+  section checkboxes, list with last-used, revoke, shown-once
+  banner). Viewer/client codes refuse key management.
+- P7 field guide API KEY card.
+- P8 tools/qa-api-keys.cjs: 26 gates, ALL GREEN. Wired into ci.yml
+  (T2, port 8809) + summary row.
+- P9 bookkeeping: directive + PLANNING W14 [x] + this file.
+
+WHAT BIT ME
+- First harness run: 3 assertion bugs in MY harness (the merge
+  reports SECTION keys wbs/bud in applied/blocked, and the review
+  list is camelCase proposals[].sourceType). Fixed the harness, not
+  the app - the app contract was correct and matches editor codes.
+- qa-rhythm failed 4 gates. Before touching anything I reproduced
+  the SAME 4 failures on a clean git worktree at HEAD b95ca12:
+  pre-existing harness/app drift, NOT this wave. Recorded for the
+  next CI repair loop (fix the harness per AGENTS.md rule 8).
+- qa-ai-badge-e2e hung in its browser phase locally; CI runs it
+  with MMGR_QA_NO_BROWSER=1 - ran it that way: 5/5 PASS. Torn the
+  scratch wrangler down by exact PID (never by image name).
+- CSP hash drift after inline edits caught by npm run verify and
+  fixed with tools/regen-csp-hashes.cjs (the documented one-liner).
+
+VERIFICATION EVIDENCE
+- node build.js; bundle grep createApiKey >= 1.
+- npm run verify exit 0 (CSP 24/24, SW, hidden, skills, exports).
+- Emoji scan 0 across 17 pages + sprite; em-dash scan 0 on served
+  pages and render-path JS.
+- T1: dashboard-spec 87/87, market-features 61/61, ai-polish 11/11,
+  ai-relay PASS, ai-badge-e2e 5/5 (CI mode), changelog-diffs PASS,
+  report-issue 27/27, dynamic-labels 3/3, delegate-gate OK,
+  render-exports ALL, hidden-attr OK, autosave-signin 8/8,
+  controls-admin 11/11.
+- T2: qa-api-keys 26/26.
+- wrangler deploy --dry-run PASS; node --check clean on all touched.
+
+NOT SHIPPED YET
+- No commit/push/deploy this session (awaiting owner go per the
+  standing order). qa-rhythm's 4 pre-existing failures should be
+  triaged BEFORE the next push so CI stays green.

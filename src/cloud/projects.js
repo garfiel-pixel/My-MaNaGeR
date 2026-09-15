@@ -13,7 +13,7 @@ import { json, cloudForbidden, cloudProjectDeleted, cloudTimingSink, cloudDummyH
   cloudAuthEditor, cloudAuthViewer, cloudAdopt, cloudAuthAdoption,
   readCloudBody, readSession,
   CLOUD_SECTIONS, authEmailConfigured,
-  CLOUD_ORPHAN_WARN_MS, sendOrphanWarningEmail } from '../lib/http.js';
+  CLOUD_ORPHAN_WARN_MS, sendOrphanWarningEmail, cloudAuthApiKey, cloudScopeState } from '../lib/http.js';
 import { billingConfigured, billingFreeCap } from '../billing.js';
 
 const CLOUD_STATE_SECRET_PATHS = [
@@ -143,6 +143,32 @@ export async function handleCloudSave(request, env, projectId, cloudPushRevChang
   if (read.tooLarge) return json({ ok: false, error: 'body too large' }, 413);
   if (read.bad || !read.body || typeof read.body !== 'object') return json({ ok: false, error: 'bad request' }, 400);
   if (read.body.state === undefined || read.body.state === null) return json({ ok: false, error: 'missing state' }, 400);
+  // PROJECT API KEY SAVE (owner directive 2026-09-15): an X-API-Key save
+  // NEVER writes directly. It is merged against the stored state under the
+  // key's section scope and queued as a pending proposal the owner reviews
+  // and accepts from inside the project (same queue as editor codes), so
+  // every machine edit lands only after a human approves it.
+  const apiKeyHeader = String(request.headers.get('X-API-Key') || '').trim();
+  if (apiKeyHeader) {
+    const ka = await cloudAuthApiKey(request, env, projectId, apiKeyHeader);
+    if (!ka) return cloudForbidden();
+    const now = new Date().toISOString();
+    const key = 'projects/' + projectId + '/latest.json';
+    const projRow = await env.DB.prepare('SELECT owner_code_hash, owner_code_salt, deleted_at FROM cloud_projects WHERE project_id = ?').bind(projectId).first();
+    if (!projRow) return cloudForbidden();
+    if (projRow.deleted_at) return cloudProjectDeleted();
+    const prev = await cloudReadState(env, key, projRow.owner_code_hash, projRow.owner_code_salt);
+    const merged = cloudScopeMerge(prev, JSON.parse(JSON.stringify(read.body.state)), ka.scope);
+    if (!merged.applied.length) return json({ ok: false, error: 'no changes within this key\'s section scope' }, 403);
+    const diffs = (cloudDiffState(prev, merged.next) || []).filter(function(d) { return String(d.path).indexOf('fieldTs') !== 0; });
+    const res = await env.DB.prepare(
+      'INSERT INTO cloud_reviews (project_id, proposal_type, source_type, source_label, editor_code_id, scope, submitted_json, diffs_json, status, proposed_at) VALUES (?,?,?,?,?,?,?,?,?,?)'
+    ).bind(projectId, 'save', 'api', ka.label || 'API key', null, JSON.stringify(ka.scope),
+      JSON.stringify(stripStateSecrets(JSON.parse(JSON.stringify(read.body.state)))), JSON.stringify(diffs), 'pending', now).run();
+    return json({ ok: true, review: 'pending', reviewId: res.meta.last_row_id, actor: 'api', scope: ka.scope,
+      applied: merged.applied, blocked: merged.blocked, diffs: diffs,
+      note: 'Changes are waiting for the owner to review and accept inside the project.' });
+  }
   const ownerCode = String(request.headers.get('X-Owner-Code') || '').trim()
     || (typeof read.body.ownerCode === 'string' ? read.body.ownerCode.trim() : '');
   const editorCode = String(request.headers.get('X-Editor-Code') || '').trim()
@@ -236,6 +262,20 @@ export async function handleCloudLoad(request, env, projectId) {
   const editorCode = String(request.headers.get('X-Editor-Code') || '').trim();
   const viewCode = String(request.headers.get('X-View-Code') || '').trim();
   const clientCode = String(request.headers.get('X-Client-Code') || '').trim();
+  // PROJECT API KEY READ (owner directive 2026-09-15): an API key may read
+  // ONLY the sections in its grant - the response is a projection of the
+  // stored state, never the raw blob, and secrets-bearing config never ships.
+  const apiKeyHeader = String(request.headers.get('X-API-Key') || '').trim();
+  if (apiKeyHeader && !ownerCode && !editorCode && !viewCode && !clientCode) {
+    const ka = await cloudAuthApiKey(request, env, projectId, apiKeyHeader);
+    if (!ka) return cloudForbidden();
+    const row = await env.DB.prepare('SELECT latest_r2_key, owner_code_hash, owner_code_salt, updated_at, deleted_at FROM cloud_projects WHERE project_id = ?').bind(projectId).first();
+    if (!row) return cloudForbidden();
+    if (row.deleted_at) return cloudProjectDeleted();
+    if (!row.latest_r2_key) return json({ ok: true, state: null, savedAt: null, role: 'api', scope: ka.scope });
+    const state = await cloudReadState(env, row.latest_r2_key, row.owner_code_hash, row.owner_code_salt);
+    return json({ ok: true, state: cloudScopeState(state, ka.scope), savedAt: row.updated_at, role: 'api', scope: ka.scope, keyLabel: ka.label });
+  }
   let sessFallback = null;
   let adoptFallback = null;
   if (!ownerCode && !editorCode && !viewCode && !clientCode) {

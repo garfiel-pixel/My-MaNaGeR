@@ -289,6 +289,12 @@ jobs:
           CHROME_DEBUG_PORT: 9231
           QA_PORT: 8808
 
+      - name: "T2: Project API keys E2E (scoped X-API-Key read + review-queue writes)"
+        id: qa-api-keys
+        run: node tools/qa-api-keys.cjs
+        env:
+          QA_PORT: 8809
+
       # ── CI Summary ──────────────────────────────────────────────────
       - name: CI Summary
         if: always()
@@ -302,6 +308,7 @@ jobs:
           echo "| Inline JS parse | ${{ steps.inline.outcome }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Line endings | ${{ steps.eol.outcome }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Client codes E2E | ${{ steps.qa-client-codes.outcome }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| API keys E2E | ${{ steps.qa-api-keys.outcome }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Service Worker | ${{ steps.sw.outcome }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Hidden attributes | ${{ steps.hidden.outcome }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Skills lock | ${{ steps.skills.outcome }} |" >> $GITHUB_STEP_SUMMARY

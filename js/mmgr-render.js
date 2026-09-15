@@ -123,6 +123,10 @@ var MMGR = window.MMGR || {};
     const offset = circ - (circ * pct / 100);
     const rf = $('rf');
     if (rf) rf.style.strokeDashoffset = offset;
+    // OWNER 2026-09-15 (ring polish): one quarter-turn entry sweep per page
+    // load - guarded so re-renders never replay the animation.
+    const pringEl = rf && rf.closest ? rf.closest('.pring') : null;
+    if (pringEl && !pringEl.classList.contains('ring-in')) pringEl.classList.add('ring-in');
     const rt = $('rt');
     // OWNER 2026-09-12 (P2-12): ONLY the percentage lives inside the ring -
     // the word 'Completed' beside it (repeated three times around the title,
@@ -423,10 +427,15 @@ var MMGR = window.MMGR || {};
       const attnCard = $('attention-card');
       if (attnCard) attnCard.classList.toggle('has-items', attnItems.length > 0);
       if (attnItems.length === 0) {
-        attnEl.innerHTML = '<div class="fb-sm"><span style="color:var(--green)">Everything looks clear.</span><span class="badge bg">OK</span></div>';
+        attnEl.innerHTML = '<div class="fb-sm"><span>Everything looks clear.</span><span class="dotstat zero"><span class="sdot"></span><span class="ds-num">0</span></span></div>';
       } else {
+        // OWNER 2026-09-15 (dot mechanism): the old circular "!" badge
+        // spheres jumbled together when several alerts were live. A red dot
+        // + the count + the label reads cleanly at any density. cls maps
+        // br->red dot, ba->amber dot (the two attention severities).
+        const dot = it => it.cls === 'ba' ? 'a' : 'r';
         attnEl.innerHTML = attnItems.map(function(it) {
-          return '<div class="fb-sm"><span>' + it.label + '</span><span class="badge ' + it.cls + '">!</span></div>';
+          return '<div class="fb-sm"><span>' + it.label + '</span><span class="dotstat"><span class="sdot ' + dot(it) + '"></span><span class="ds-num">!</span></span></div>';
         }).join('');
       }
     }
@@ -456,9 +465,13 @@ var MMGR = window.MMGR || {};
         const carryover = tasks.filter(function(t) {
           return t.status !== 'completed' && t.endDate && new Date(t.endDate) < weekStart;
         }).length;
-        twEl.innerHTML = '<div class="fb-sm"><span>Planned this week</span><span class="badge bo">' + thisWeekPlanned + '</span></div>' +
-          '<div class="fb-sm"><span>Completed this week</span><span class="badge bg">' + thisWeekDone + '</span></div>' +
-          '<div class="fb-sm"><span>Carryover (past due)</span><span class="badge ' + (carryover > 0 ? 'br' : 'bs') + '">' + carryover + '</span></div>';
+        // OWNER 2026-09-15 (dot mechanism): dot + number instead of badge
+        // pills. Colors: amber (planned), green (done), red only when
+        // carryover is non-zero (slate-neutral at zero). Three status
+        // colors total - no extra palette on the dashboard.
+        twEl.innerHTML = '<div class="fb-sm"><span>Planned this week</span><span class="dotstat"><span class="sdot a"></span><span class="ds-num">' + thisWeekPlanned + '</span></span></div>' +
+          '<div class="fb-sm"><span>Completed this week</span><span class="dotstat"><span class="sdot g"></span><span class="ds-num">' + thisWeekDone + '</span></span></div>' +
+          '<div class="fb-sm"><span>Carryover (past due)</span><span class="dotstat' + (carryover > 0 ? '"><span class="sdot r"></span>' : ' zero"><span class="sdot"></span>') + '<span class="ds-num">' + carryover + '</span></span></div>';
       }
     }
 

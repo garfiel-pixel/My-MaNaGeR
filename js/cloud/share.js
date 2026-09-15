@@ -27,7 +27,7 @@ var MMGR = window.MMGR || {};
   }
   function setPendingEditorCode(code, label, scope, role) {
  try {
- localStorage.setItem(pendingCodeKey(), JSON.stringify({ code: code, label: label || '', scope: scope || [], role: role === 'view' ? 'view' : 'editor' }));
+ localStorage.setItem(pendingCodeKey(), JSON.stringify({ code: code, label: label || '', scope: scope || [], role: (role === 'view' || role === 'client' || role === 'api') ? role : 'editor' }));
  } catch (e) { /* ignore */ }
   }
   function clearPendingEditorCode() {
@@ -47,9 +47,11 @@ var MMGR = window.MMGR || {};
  if (!pendingCode) return '';
  const isView = pendingCode.role === 'view';
  const isClient = pendingCode.role === 'client';
- const kind = isClient ? 'client' : (isView ? 'viewer' : 'editor');
+ const isApi = pendingCode.role === 'api';
+ const kind = isApi ? 'API key' : (isClient ? 'client' : (isView ? 'viewer' : 'editor'));
+ const kindCopy = isApi ? 'copy it into your AI tool. Shown once, stays until revoked or expired' : 'copy it and share. Stays until revoked';
  return '<div class="sr cloud-new-code" style="border:1px solid var(--gold);background:rgba(var(--gold-rgb),.1);border-radius:var(--radius);padding:8px 10px;margin:10px 0 4px" role="status">' +
- '<div class="sr-hint" style="margin:0 0 4px"><strong>NEW ' + kind + ' code for \u201C' + esc(pendingCode.label || kind) + '\u201D - copy it and share. Stays until revoked:</strong></div>' +
+ '<div class="sr-hint" style="margin:0 0 4px"><strong>NEW ' + kind + ' for \u201C' + esc(pendingCode.label || kind) + '\u201D - ' + kindCopy + ':</strong></div>' +
  '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">' +
  '<code style="font-family:ui-monospace,monospace;letter-spacing:.05em;color:var(--gold);font-size:1rem;font-weight:700">' + esc(pendingCode.code) + '</code>' +
  '<button class="btn btn-g btn-s" data-action="cloudCopyEditorCode" data-code="' + esc(pendingCode.code) + '"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy code</button>' +
@@ -95,6 +97,7 @@ var MMGR = window.MMGR || {};
  '</div>' +
  '<div id="cloud-editor-list"></div>' +
  clientCodesHtml() +
+ apiKeysHtml() +
  '</div>';
  } else if (!code && !ecode) {
  body =
@@ -139,6 +142,7 @@ var MMGR = window.MMGR || {};
  '</div>' +
  '<div id="cloud-editor-list"></div>' +
  clientCodesHtml() +
+ apiKeysHtml() +
  '</div>';
  }
  wrap.innerHTML = body;
@@ -167,6 +171,32 @@ var MMGR = window.MMGR || {};
  '<span id="cloud-client-scope-load" class="sr-hint" style="margin:0">loading\u2026</span>' +
  '</div>' +
  '<div id="cloud-client-list"></div>';
+  }
+
+  // PROJECT API KEYS (owner directive 2026-09-15): the third sharing panel,
+  // mirroring editor + client codes. A key lets an EXTERNAL AI agent act on
+  // this one project with a section grant and an owner-chosen expiry. Every
+  // write it makes lands in the review queue - the owner sees what changed
+  // (field-level diffs) and accepts or rejects it inside the project, so a
+  // machine never edits anything a human did not approve.
+  function apiKeysHtml() {
+ return '<div class="sr" style="margin-top:12px;padding:0 0 4px"><span class="sl" style="font-size:.72rem;font-weight:700"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-key"></use></svg> API Keys</span><button class="btn btn-n btn-s" data-action="cloudApiKeyList" style="margin-left:auto"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> Refresh</button></div>' +
+ '<div class="sr-hint" style="margin:0 0 6px">Give an external AI assistant its own key for THIS project. It can only touch the sections you tick, it stops on the date you pick, and every change it makes waits for your approval in the review queue.</div>' +
+ '<div class="exp-row" style="flex-wrap:wrap">' +
+ '<input type="text" id="cloud-apikey-label-in" class="ctl-in" placeholder="Label, e.g. Site assistant" style="min-width:180px" autocomplete="off">' +
+ '<select id="cloud-apikey-expiry" class="ctl-in" style="width:auto" aria-label="Key expiry">' +
+ '<option value="30">Expires in 30 days</option>' +
+ '<option value="90">Expires in 90 days</option>' +
+ '<option value="365">Expires in 1 year</option>' +
+ '<option value="">Never expires</option>' +
+ '</select>' +
+ '<button class="btn btn-g btn-s" data-action="cloudApiKeyCreate"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-plus"></use></svg> Create API Key</button>' +
+ '</div>' +
+ '<div id="cloud-apikey-scope-box" class="share-scope">' +
+ '<span class="sr-hint" style="margin:0">Sections the key may read and propose changes to:</span>' +
+ '<span id="cloud-apikey-scope-load" class="sr-hint" style="margin:0">loading\u2026</span>' +
+ '</div>' +
+ '<div id="cloud-apikey-list"></div>';
   }
 
   ns.CloudShare = {

@@ -6,6 +6,87 @@ Owner rule: tasks run ONE BY ONE (no parallel work). After every phase,
 update this file + CONTINUATION-DIRECTIVE.md STATUS LOG + reflection.txt.
 
 --------------------------------------------------------------------
+WAVE 2026-09-15 - OWNER DIRECTIVE (dots, ring, brand, guide, launcher)
+--------------------------------------------------------------------
+W1  [x] Mobile scroll shrink (app page): prior text-size-adjust fix is
+        IN the served CSS; owner reproduction traced to Android
+        high-DPI URL-bar viewport resize (iPhone shows none). Root
+        answer: Android keyboard/url-bar resize is OS-driven; app uses
+        dvh + text-size-adjust already. Monitoring item, no code defect.
+W2  [x] Performance mode toggle audited: js/mmgr-perf.js adds
+        body.perf-mode which disables the starfield/glass animation
+        layers (css [data-perf] blocks) - documented in directive.
+W3  [x] Dot mechanism: Attention card (red dot + text, no circles).
+W4  [x] Dot mechanism: This Week Plan/Completed/Carryover dot + number,
+        strict red/green/amber palette only.
+W5  [x] Dot mechanism: Project Health rows dot + number.
+W6  [x] Project Completion % ring polished (gradient, glow, animation).
+W7  [x] Brand icon replaced by original MPW monogram (css/mpw-mark.svg,
+        sprite i-mpw) on marketing pages + launcher rail; Gemini sparkle
+        path removed everywhere served.
+W8  [x] Field guide: em-dashes verified 0; roadmap collapsibles (steps +
+        what-completed-looks-like) after key task explanations.
+W9  [x] Index feature cards: borders toned down + small SVG watermarks,
+        text stays readable.
+W10 [x] AI auto-enabled by default in project (default tier 'local',
+        zero-key); turning it off still available.
+W11 [x] Mobile hamburger drawer cutoff (project page): drawer now top
+        chrome (z 960), full height, own close button (.nav-close-row).
+W12 [x] app.html: Demo projects section hide via eye icon (persists,
+        demos stay in the rail Demos group; rail click reveals section).
+W13 [x] Account deletion section in app settings rail (danger link +
+        type-DELETE confirm + POST /api/auth/delete-account removes
+        account and all projects; email accounts only).
+W14 [~] Project API keys - SUB-TASK PLAN (execute one sub-task at a
+        time; do NOT bulk):
+        P1 [x] migrations/0020_cloud_api_keys.sql (project_id, label,
+             scope JSON per CLOUD_SECTIONS, expires_at, key_salt,
+             key_hash PBKDF2, key_fingerprint lookup, key_prefix,
+             active, created_at, last_used_at).
+        P2 [x] src/cloud/api-keys.js: create/list/revoke handlers;
+             owner-session or owner-code auth; active-key cap (10);
+             plaintext returned ONCE at create.
+        P3 [x] src/router.js routes: POST/GET/DELETE
+             /api/cloud/projects/:id/api-keys (rate-limited bucket).
+        P4 [x] cloudAuthApiKey(request, env, projectId): X-API-Key
+             fingerprint lookup, hash verify, expiry + project match,
+             generic 403 on every miss, last_used_at touch.
+        P5 [x] Scoped-save enforcement for API keys: reuses the editor
+             section merge (cloudScopeMerge); every API-key write lands
+             in the review queue (source_type 'api'); scoped load
+             projects only granted sections. Owner accepts/rejects from
+             inside the project with field-level diffs.
+        P6 [x] Project Controls UI: API keys card in Share & Access
+             (label + section checkboxes + expiry picker + list with
+             last-used + revoke), shown-once banner reuse, action map
+             entries in mmgr-app.js.
+        P7 [x] Field guide blurb: API KEY card in the cloud-sharing
+             sheet (what keys are, scoping, expiry, review queue).
+        P8 [x] tools/qa-api-keys.cjs T2 harness (26 gates, ALL GREEN
+             locally) + ci.yml T2 step on :8809 + summary row.
+        P9 [x] Bookkeeping (this file + directive + reflection) + ship.
+        P10 [x] LIVE VERIFICATION (owner asked for the curl walkthrough):
+             wrangler dev :8812, 17 curl probes green - mint, scoped
+             read (wbs->tasks, res->resources, bud excluded), scoped
+             save with out-of-scope budget BLOCKED (applied/blocked +
+             field diffs), owner state unchanged, review row sourceType
+             'api' + label, accept applies, revoke -> generic 403,
+             second key still scoped. BUG FOUND+FIXED: create ignored
+             expiresInDays (now accepted as an alias of expiresAt);
+             qa-api-keys re-run ALL GREEN.
+W14 [x] DONE - shipped end to end.
+W15 [~] Final gate: node build.js DONE, npm run verify GREEN (exit 0,
+        SW bump mmgr-shell-v288), emoji scan 0, T1 harnesses green
+        (dashboard-spec 87/87, market-features 61/61, ai-polish 11/11,
+        ai-relay PASS, verify-* all PASS); qa-rhythm NOW 11/11 PASS
+        (W15's earlier 'pre-existing' note was WRONG: the baseline
+        worktree check was invalid - server served the working tree.
+        R01/R10 were this wave's nav-close-row edit replacing the
+        panel-dash opening tag - FIXED; R07/R08 were stale harness
+        counts, 5 stat cards + 7 small EVM tiles - harness updated).
+        T2 battery, CI poll, ship per standing order.
+
+--------------------------------------------------------------------
 STANDING RULES RECORDED THIS SESSION (owner, verbatim intent)
 --------------------------------------------------------------------
 R1. NO EMDASHES anywhere on a served page, ever. Rule goes into the

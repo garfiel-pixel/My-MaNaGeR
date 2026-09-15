@@ -952,6 +952,102 @@ var MMGR = window.MMGR || {};
   }
 
   // =========================================================================
+  // PROJECT API KEYS (owner directive 2026-09-15) - the door for the scoped,
+  // expiring keys an owner mints for an EXTERNAL AI agent. Same owner-only
+  // either-auth as the editor/client trio; the plaintext key is shown once
+  // via the same shown-once banner, and every write the key makes lands in
+  // the owner's review queue (never applied directly).
+  // =========================================================================
+  async function createApiKey() {
+    const labelIn = $('cloud-apikey-label-in');
+    const label = (labelIn && labelIn.value || '').trim().slice(0, 60);
+    if (!label) { setStatus('Give this key a label first (e.g. \u201CSite assistant\u201D).', 'warn'); return; }
+    const scope = [];
+    const boxes = document.querySelectorAll('#cloud-apikey-scope-box input[type=checkbox]:checked');
+    for (let i = 0; i < boxes.length; i++) scope.push(boxes[i].value);
+    if (scope.length === 0) { setStatus('Tick at least one section this key may touch.', 'warn'); return; }
+    const expiryIn = $('cloud-apikey-expiry');
+    const days = expiryIn && expiryIn.value ? parseInt(expiryIn.value, 10) : 0;
+    const cred = activeCredential();
+    if (!cred || (!cred.header && !_sessOwner)) { setStatus('Open this project as its owner first (load it from My Cloud Projects, or hold the owner code).', 'warn'); return; }
+    if (cred.header === 'X-View-Code' || cred.header === 'X-Client-Code') { setStatus('Viewer and client codes are read-only , they cannot manage keys.', 'warn'); return; }
+    setStatus('Creating API key\u2026', 'busy');
+    try {
+      const headers = { 'Content-Type': 'application/json' };
+      if (cred.header) headers[cred.header] = cred.code;
+      const body = { label: label, scope: scope };
+      if (Number.isFinite(days) && days > 0) body.expiresAt = new Date(Date.now() + days * 86400000).toISOString();
+      const res = await fetch('/api/cloud/projects/' + encodeURIComponent(pid()) + '/api-keys', {
+        method: 'POST', credentials: 'same-origin', headers: headers, body: JSON.stringify(body)
+      });
+      const data = await res.json().catch(function() { return {}; });
+      if (!res.ok || !data.ok || !data.apiKey) { setStatus((data && data.error) || 'API key creation failed (HTTP ' + res.status + ').', 'err'); return; }
+      setPendingEditorCode(data.apiKey, data.label || 'API key', data.scope || [], 'api');
+      await render();
+      setStatus('API key created for \u201C' + data.label + '\u201D (scope: ' + (data.scope || []).map(sectionLabel).join(', ') + '). Copy it from the banner, it is shown once.', 'ok');
+      listApiKeys();
+    } catch (e) {
+      setStatus('Cloud is unavailable on this host (needs the Worker API).', 'err');
+    }
+  }
+
+  async function listApiKeys() {
+    const wrap = $('cloud-apikey-list');
+    if (!wrap) return;
+    const cred = activeCredential();
+    if (!cred || (!cred.header && !_sessOwner)) { wrap.innerHTML = '<div class="sr-hint">Owner access required.</div>'; return; }
+    if (cred.header === 'X-View-Code' || cred.header === 'X-Client-Code') { wrap.innerHTML = '<div class="sr-hint">Viewer and client codes are read-only.</div>'; return; }
+    try {
+      const headers = {};
+      if (cred.header) headers[cred.header] = cred.code;
+      const res = await fetch('/api/cloud/projects/' + encodeURIComponent(pid()) + '/api-keys', {
+        method: 'GET', credentials: 'same-origin', headers: headers
+      });
+      const data = await res.json().catch(function() { return {}; });
+      if (!res.ok || !data.ok) { wrap.innerHTML = '<div class="sr-hint">Could not load API keys.</div>'; return; }
+      const keys = data.keys || [];
+      if (!keys.length) { wrap.innerHTML = '<div class="sr-hint">No API keys yet , create one above.</div>'; return; }
+      wrap.innerHTML = keys.map(function(k) {
+        const expiryTxt = k.expiresAt ? (k.active ? 'expires ' + String(k.expiresAt).slice(0, 10) : 'EXPIRED') : 'never expires';
+        const storedCode = getPendingEditorCode();
+        const codeVal = (storedCode && storedCode.code && storedCode.label === (k.label || 'API key')) ? storedCode.code : null;
+        return '<div class="sr" style="font-size:.72rem;display:flex;align-items:center;gap:8px;flex-wrap:wrap">' +
+          '<span style="color:var(--gold)">' + esc(k.label || 'API key') + '</span>' +
+          '<span class="sr-hint" style="margin:0">' + esc((k.scope || []).map(sectionLabel).join(', ')) + ' \u00b7 ' + esc(expiryTxt) +
+          (k.last_used_at ? ' \u00b7 last used ' + esc(String(k.last_used_at).slice(0, 10)) : '') + '</span>' +
+          (codeVal ? '<code style="font-family:ui-monospace,monospace;letter-spacing:.05em;color:var(--gold);font-size:.82rem;font-weight:700">' + esc(codeVal) + '</code><button class="btn btn-g btn-s" data-action="cloudCopyEditorCode" data-code="' + esc(codeVal) + '"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy</button>' : '') +
+          (k.active ? '<button class="btn btn-d btn-s" data-action="cloudApiKeyRevoke" data-id="' + esc(String(k.id)) + '">Revoke</button>' : '<span class="sr-hint" style="margin:0">revoked</span>') +
+          '</div>';
+      }).join('');
+    } catch (e) {
+      wrap.innerHTML = '<div class="sr-hint">Cloud unavailable here.</div>';
+    }
+  }
+
+  async function revokeApiKey(id) {
+    if (!id) return;
+    if (!window.confirm('Revoke this API key? Anything using it stops working immediately and cannot be restored.')) return;
+    const cred = activeCredential();
+    if (!cred || (!cred.header && !_sessOwner)) { setStatus('Owner access required to revoke keys.', 'warn'); return; }
+    if (cred.header === 'X-View-Code' || cred.header === 'X-Client-Code') { setStatus('Viewer and client codes are read-only , they cannot manage keys.', 'warn'); return; }
+    setStatus('Revoking API key\u2026', 'busy');
+    try {
+      const headers = {};
+      if (cred.header) headers[cred.header] = cred.code;
+      const res = await fetch('/api/cloud/projects/' + encodeURIComponent(pid()) + '/api-keys/' + encodeURIComponent(id), {
+        method: 'DELETE', credentials: 'same-origin', headers: headers
+      });
+      const data = await res.json().catch(function() { return {}; });
+      if (!res.ok || !data.ok) { setStatus((data && data.error) || 'Revoke failed (HTTP ' + res.status + ').', 'err'); return; }
+      clearPendingEditorCode();
+      setStatus('API key revoked.', 'ok');
+      listApiKeys();
+    } catch (e) {
+      setStatus('Cloud is unavailable on this host (needs the Worker API).', 'err');
+    }
+  }
+
+  // =========================================================================
   // PHASE 3 , changelog (owner-only view + revert)
   // =========================================================================
 
@@ -1668,6 +1764,35 @@ var MMGR = window.MMGR || {};
         }
         listClientCodes();
       }
+      // PROJECT API KEYS (owner 2026-09-15): third scope box, same one-fetch,
+      // three-boxes pattern. Keys get the section grant + expiry UI.
+      const kBox = $('cloud-apikey-scope-box');
+      if (kBox) {
+        const kLoad = $('cloud-apikey-scope-load');
+        if (kLoad) kLoad.remove();
+        if (secs && secs.length) {
+          secs.forEach(function(sec) {
+            const klabel = document.createElement('label');
+            klabel.className = 'pref';
+            klabel.style.margin = '0';
+            klabel.style.fontSize = '.72rem';
+            const kcb = document.createElement('input');
+            kcb.type = 'checkbox';
+            kcb.value = sec.key;
+            kcb.style.margin = '0 3px 0 0';
+            klabel.appendChild(kcb);
+            klabel.appendChild(document.createTextNode(sec.label));
+            kBox.appendChild(klabel);
+          });
+        } else {
+          const khint = document.createElement('span');
+          khint.className = 'sr-hint';
+          khint.style.margin = '0';
+          khint.textContent = 'Cloud API unavailable here , API keys need the Worker.';
+          kBox.appendChild(khint);
+        }
+        listApiKeys();
+      }
     } else if (ecode) {
       // gap-audit B11: an EDITOR session must also load the canonical section
       // vocabulary so the scope grey-out uses the SERVER list (never drifts).
@@ -2122,6 +2247,9 @@ var MMGR = window.MMGR || {};
     createClientCode: createClientCode,
     listClientCodes: listClientCodes,
     revokeClientCode: revokeClientCode,
+    createApiKey: createApiKey,
+    listApiKeys: listApiKeys,
+    revokeApiKey: revokeApiKey,
     unlinkProject: unlinkProject,
     copyEditorCode: copyEditorCode,
     editorCodeDone: editorCodeDone,

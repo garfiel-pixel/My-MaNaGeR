@@ -77,8 +77,10 @@ var MMGR = window.MMGR || {};
   }
 
   function syncStakeComplianceBadges(count) {
+    // OWNER 2026-09-15 (dot mechanism): the health row is a .dotstat now -
+    // only the number inside .ds-num changes, the dot is static markup.
     const h = $('h-coi');
-    if (h) h.textContent = count;
+    if (h) { const n = h.querySelector('.ds-num'); if (n) n.textContent = count; else h.textContent = count; }
     const card = $('health-card');
     if (card) card.classList.toggle('has-compliance', count > 0);
     document.querySelectorAll('[data-section="stk"] .sec-badge').forEach(function(b) {

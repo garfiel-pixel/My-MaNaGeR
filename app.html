@@ -86,6 +86,13 @@ body.glass-premium .wrap{position:relative;z-index:1;}
 .mbody input{width:100%;background:#f8fafc;border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:1rem;letter-spacing:.2em;text-align:center;text-transform:uppercase;padding:12px;font-family:inherit;outline:none;transition:border-color .15s,box-shadow .15s;}
 .mbody input:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(245,158,11,.1);}
 .gerr{min-height:18px;font-size:.72rem;color:var(--danger);margin-top:8px;}
+/* OWNER 2026-09-15 (account deletion): the danger rail link + panel. Same
+   db-link language, red text; the panel rows reuse .db-pass/.db-btn. */
+.db-danger-link{color:var(--danger)!important;}
+.db-danger-link:hover{color:var(--danger)!important;background:color-mix(in oklch,var(--danger) 8%,transparent)!important;box-shadow:inset 0 0 0 1px color-mix(in oklch,var(--danger) 32%,transparent)!important;}
+.db-danger-link .ico-caret{color:var(--danger);}
+#rail-del-account .db-btn[style*="--danger"]{font-weight:700;}
+#rail-del-account .db-btn:hover{background:color-mix(in oklch,var(--danger) 10%,transparent);}
 .mf{padding:14px 20px 20px;display:flex;flex-direction:column;gap:8px;}
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:5px;padding:10px 14px;border-radius:var(--radius);border:none;font-size:.82rem;font-weight:600;cursor:pointer;transition:all var(--tr);width:100%;}
 .btn:focus-visible{outline:2px solid var(--gold);outline-offset:2px;}
@@ -272,7 +279,7 @@ body.db-page.side-open .sidebar-icons{opacity:0;pointer-events:none;}
      the hamburger in the header). Solid-content cards stay solid (Gate 6.1). -->
 <aside class="db-side" id="db-sidebar" aria-label="Dashboard navigation">
   <div class="db-side-head">
-    <span class="db-brand"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg> My MaNaGeR</span>
+    <span class="db-brand"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-mpw"></use></svg> My MaNaGeR</span>
     <button type="button" class="db-side-close" data-action="toggleSidebar" aria-label="Close menu" title="Close menu"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-menu"></use></svg></button>
   </div>
   <nav class="db-nav" id="db-nav">
@@ -325,6 +332,28 @@ body.db-page.side-open .sidebar-icons{opacity:0;pointer-events:none;}
         <div class="db-ctl-row">
           <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-zap"></use></svg> Performance Mode
           <label class="tgl"><input type="checkbox" id="perf-tgl" data-action="tglPerfMode" aria-label="Performance Mode: lighter UI effects" checked><span class="tsl"></span></label>
+        </div>
+        <!-- OWNER 2026-09-15 (account deletion): deleting a digital account
+             must be simple, so the door lives here in Customize. Deleting
+             removes the account AND every project saved under it. Google
+             accounts confirm by typing DELETE; email accounts re-enter
+             their password. Server-side: POST /api/auth/delete-account. -->
+        <button type="button" class="db-link db-danger-link" id="del-account-open" data-rail-toggle="rail-del-account" aria-expanded="false" aria-controls="rail-del-account">
+          <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-trash"></use></svg> Delete my account
+          <svg class="ico ico-caret" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg>
+        </button>
+        <div class="db-sub" id="rail-del-account" hidden>
+          <div class="db-sub-empty">Deleting your account removes it and every project saved under it. This cannot be undone.</div>
+          <div id="del-account-google" hidden>
+            <input type="text" id="del-account-confirm" class="db-pass" placeholder="Type DELETE to confirm" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="Type DELETE to confirm">
+            <button type="button" class="db-btn" id="del-account-go" style="margin-top:6px;color:var(--danger);border-color:var(--danger);justify-content:center;">Delete my account for good</button>
+          </div>
+          <div id="del-account-email" hidden>
+            <input type="password" id="del-account-pass" class="db-pass" placeholder="Your password" autocomplete="current-password" aria-label="Your password">
+            <button type="button" class="db-btn" id="del-account-go-email" style="margin-top:6px;color:var(--danger);border-color:var(--danger);justify-content:center;">Delete my account for good</button>
+          </div>
+          <div id="del-account-signedout" class="db-sub-empty" hidden>Sign in first, then come back here to delete the account.</div>
+          <div class="gerr" id="del-account-err" aria-live="polite"></div>
         </div>
       </div>
     </div>
@@ -426,10 +455,24 @@ body.db-page.side-open .sidebar-icons{opacity:0;pointer-events:none;}
   </div>
   <div class="grid view-deck" id="grid"><!-- user project cards render here --></div>
 
-  <!-- DEMO PROJECTS SECTION - separate from user projects, collapsible -->
+  <!-- OWNER 2026-09-15: quiet way back to the demos after hiding them. -->
+  <div id="demo-show-pill" hidden style="display:flex;justify-content:center;margin-top:18px;">
+    <button type="button" class="btn btn-n btn-s" style="white-space:nowrap;">
+      <svg class="ico" aria-hidden="true" style="width:15px;height:15px;"><use href="css/mmgr-icons.svg#i-eye"></use></svg>
+      Show demo projects
+    </button>
+  </div>
+
+  <!-- DEMO PROJECTS SECTION - separate from user projects. OWNER 2026-09-15:
+       the eye icon HIDES the whole section (heading + cards), persisted in
+       localStorage; demos stay reachable in the rail's All Projects list.
+       Plain-language labels per the copy law: "Show demos" / "Hide demos". -->
   <div id="demo-sec" class="db-sec" aria-label="Demo Projects" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-top:24px;">
     <div><h2 class="db-sec-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-orb"></use></svg> Demo Projects</h2></div>
-    <button type="button" id="demo-hide-btn" class="btn btn-n btn-s" style="white-space:nowrap;"><svg class="ico" aria-hidden="true" style="width:14px;height:14px;"><use id="demo-hide-icon" href="css/mmgr-icons.svg#i-x"></use></svg> <span id="demo-hide-label">Hide demos</span></button>
+    <button type="button" id="demo-hide-btn" class="btn btn-n btn-s" style="white-space:nowrap;" aria-pressed="false" title="Hide the demo projects section">
+      <svg class="ico" aria-hidden="true" style="width:15px;height:15px;"><use id="demo-hide-icon" href="css/mmgr-icons.svg#i-eye-off"></use></svg>
+      <span id="demo-hide-label">Hide demos</span>
+    </button>
   </div>
   <div class="grid" id="demo-grid"><!-- demo project cards render here --></div>
 
@@ -853,17 +896,43 @@ document.addEventListener('keydown', e=>{
   }
 });
 
-// Hide demos toggle - persists to localStorage, separates demo projects
-// from user projects so the main grid stays clean.
+// Hide demos toggle - persists to localStorage. OWNER 2026-09-15: the eye
+// icon hides the WHOLE Demo Projects section (heading + cards); the demos
+// remain openable from the rail's All Projects list. When hidden, the
+// button itself moves into the hero row area? No - simpler and calmer: the
+// button stays where it is only while the section is visible; once hidden
+// the section (including the button) disappears, and "Show demos" returns
+// via the eye affordance pinned beside the user-projects grid (below).
 document.getElementById('demo-hide-btn').addEventListener('click', function() {
   var hidden = false;
   try { hidden = localStorage.getItem('mmgr_demos_hidden') === '1'; } catch(e) {}
   var next = !hidden;
   try { localStorage.setItem('mmgr_demos_hidden', next ? '1' : '0'); } catch(e) {}
+  syncDemoToggle();
+  renderCards();
+});
+
+// Keep the eye button + section in sync with the stored preference. Runs at
+// boot and after every toggle. The "show" affordance (#demo-show-pill) sits
+// after the user grid so a visitor who hid demos can always find them again.
+function syncDemoToggle(){
+  var hidden = false;
+  try { hidden = localStorage.getItem('mmgr_demos_hidden') === '1'; } catch(e) {}
   var lbl = document.getElementById('demo-hide-label');
   var ico = document.getElementById('demo-hide-icon');
-  if (lbl) lbl.textContent = next ? 'Show demos' : 'Hide demos';
-  if (ico) ico.setAttribute('href', next ? 'css/mmgr-icons.svg#i-plus' : 'css/mmgr-icons.svg#i-x');
+  var btn = document.getElementById('demo-hide-btn');
+  var pill = document.getElementById('demo-show-pill');
+  if (lbl) lbl.textContent = hidden ? 'Show demos' : 'Hide demos';
+  if (ico) ico.setAttribute('href', hidden ? 'css/mmgr-icons.svg#i-eye' : 'css/mmgr-icons.svg#i-eye-off');
+  if (btn) btn.setAttribute('aria-pressed', hidden ? 'true' : 'false');
+  if (pill) pill.hidden = !hidden;
+}
+
+// Eye pill below the user grid: the way back when the demo section is hidden.
+document.addEventListener('click', function(e){
+  if (!e.target.closest || !e.target.closest('#demo-show-pill')) return;
+  try { localStorage.setItem('mmgr_demos_hidden', '0'); } catch(err) {}
+  syncDemoToggle();
   renderCards();
 });
 
@@ -1418,8 +1487,91 @@ const DASH_ACTION_MAP = {
   'closeSignIn': () => closeSignIn(),
   'openProjectSearch': () => openProjectSearch(),
   'closeProjectSearch': () => closeProjectSearch(),
-  'signOutRail': () => { if (window.MMGR && MMGR.GoogleAuth && MMGR.GoogleAuth.signOut) MMGR.GoogleAuth.signOut(); }
+  'signOutRail': () => { if (window.MMGR && MMGR.GoogleAuth && MMGR.GoogleAuth.signOut) MMGR.GoogleAuth.signOut(); },
+  'deleteMyAccount': () => deleteMyAccount('google'),
+  'deleteMyAccountEmail': () => deleteMyAccount('email')
 };
+
+/* ============================================================
+   ACCOUNT DELETION (owner 2026-09-15) - the simple, honest door.
+   Calls POST /api/auth/delete-account (already in the Worker): Google
+   accounts type DELETE, email accounts re-enter their password. Deletes
+   the account AND every project saved under it, server-side, then signs
+   this device out and reloads. Signed-out visitors see the sign-in hint.
+   ============================================================ */
+function setDelAccountErr(msg){
+  var el = document.getElementById('del-account-err');
+  if (el) el.textContent = msg || '';
+}
+function syncDelAccountPanel(user){
+  var g = document.getElementById('del-account-google');
+  var e = document.getElementById('del-account-email');
+  var s = document.getElementById('del-account-signedout');
+  if (!g || !e || !s) return;
+  // The session sub carries the provider kind: 'email:...' for email
+  // accounts, anything else is a Google sub. Signed-out is unambiguous.
+  var isEmail = !!(user && user.sub && String(user.sub).indexOf('email:') === 0);
+  if (!user) {
+    g.hidden = true; e.hidden = true; s.hidden = false;
+  } else if (isEmail) {
+    g.hidden = true; e.hidden = false; s.hidden = true;
+  } else {
+    g.hidden = false; e.hidden = true; s.hidden = true;
+  }
+}
+async function deleteMyAccount(kind){
+  setDelAccountErr('');
+  var btn = document.getElementById(kind === 'email' ? 'del-account-go-email' : 'del-account-go');
+  var body;
+  if (kind === 'email') {
+    var pass = document.getElementById('del-account-pass');
+    if (!pass || !pass.value) { setDelAccountErr('Enter your password first.'); return; }
+    body = { password: pass.value };
+  } else {
+    var conf = document.getElementById('del-account-confirm');
+    if (!conf || String(conf.value || '').trim().toUpperCase() !== 'DELETE') { setDelAccountErr('Type DELETE in the box first.'); return; }
+    body = { confirm: String(conf.value).trim() };
+  }
+  if (btn) { btn.disabled = true; }
+  try {
+    var res = await fetch('/api/auth/delete-account', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    var data = null;
+    try { data = await res.json(); } catch(e) {}
+    if (res.ok && data && data.ok) {
+      // Server deleted the account + all owned projects and cleared the
+      // session cookie. Reset this device's UI to signed-out, then reload.
+      try { localStorage.removeItem('mmgr_admin_setup'); } catch(e) {}
+      if (window.MMGR && MMGR.GoogleAuth && MMGR.GoogleAuth.showButton) MMGR.GoogleAuth.showButton();
+      window.location.reload();
+      return;
+    }
+    var msg = (data && data.error) ? data.error.replace(/-/g, ' ') : 'Could not delete the account. Try again.';
+    setDelAccountErr(msg.charAt(0).toUpperCase() + msg.slice(1));
+  } catch(e) {
+    setDelAccountErr('No connection. Deleting needs a connection, try again when online.');
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+// Direct button wiring (the data-action map handles the click too, this
+// covers the delete buttons which are NOT checkboxes).
+document.addEventListener('click', function(e){
+  var t = e.target && e.target.closest ? e.target.closest('#del-account-go, #del-account-go-email') : null;
+  if (!t) return;
+  e.preventDefault();
+  deleteMyAccount(t.id === 'del-account-go-email' ? 'email' : 'google');
+});
+// Track provider kind for the panel switch (Google vs email sign-in).
+window.addEventListener('mmgr:user-changed', function(ev){
+  var u = ev && ev.detail && ev.detail.user;
+  syncDelAccountPanel(u || null);
+}, false);
+window.addEventListener('mmgr:google-signed-out', function(){ syncDelAccountPanel(null); }, false);
 document.addEventListener('click', function(e){
   const el = e.target.closest('[data-action]');
   if (!el) return;
@@ -1452,6 +1604,7 @@ document.addEventListener('DOMContentLoaded', function() {
       localStorage.setItem('mmgr_unlocked_demo-empty', '1');
     }
   } catch(e) { /* seeding must never block boot */ }
+  syncDemoToggle();
   renderCards();
   // recently opened codes list (owner 2026-09-12): one-click re-open of codes
   // this device has already used; renders into #recent-dash if any exist.

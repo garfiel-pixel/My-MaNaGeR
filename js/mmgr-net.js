@@ -92,7 +92,11 @@ var MMGR = window.MMGR || {};
 
   const Config = {
     ai: {
-      tier: 'off',
+      // OWNER 2026-09-15: AI is ON by default (local, zero-key engine).
+      // The user can still turn it off per project (Settings drawer), but a
+      // new project no longer starts with the assistant disabled - the AI
+      // command card + fab are alive from first boot.
+      tier: 'local',
       provider: 'openai',
       endpoint: '', // empty -> provider default above
       apiKey: '', // BYO key; never sent for local/off tiers

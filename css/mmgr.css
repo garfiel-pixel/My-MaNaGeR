@@ -536,9 +536,9 @@ body.sidebar-open .nav-btn .ico,body.sidebar-open .sb-close .ico{transform:rotat
 .core-callout-txt .ico{color:var(--gold);flex-shrink:0;}
 .core-callout-actions{display:flex;gap:8px;align-items:center;flex-shrink:0;flex-wrap:wrap;} /* Attention card (UI-UX doc §7.1) - gold-tinted when items are pending */
 #attention-card.has-items{border-color:rgba(var(--amber-rgb),.4);background:linear-gradient(180deg,rgba(var(--amber-rgb),.06),var(--card) 50%);}
-#attention-card .fb-sm .badge{min-width:24px;justify-content:center;}
+#attention-card .fb-sm .dotstat .ds-num{min-width:24px;text-align:right;}
 /* This Week card */
-#this-week-card .fb-sm .badge{min-width:24px;justify-content:center;}
+#this-week-card .fb-sm .dotstat .ds-num{min-width:24px;text-align:right;}
 /* Health Score Why? toggle */
 #health-breakdown-wrap summary{list-style:none;display:inline-flex;align-items:center;gap:4px;}
 #health-breakdown-wrap summary::before{content:'\25B8';font-size:.6rem;transition:transform var(--tr);}
@@ -549,12 +549,15 @@ body.sidebar-open .nav-btn .ico,body.sidebar-open .sb-close .ico{transform:rotat
 
 /* ---- STRUCTURAL-IA §4 hierarchy: Tier 3 (passive) cards recede ---- */
 .tier3 .stat{font-size:.95rem;color:var(--slate);font-weight:600;}
-/* §4 Tier 1: non-zero Blocked / Overdue / Live Issues get the strongest    static treatment - existing --danger token, size only, no motion. */
-#health-card.has-danger .fb-sm .badge.br{background:rgba(239,68,68,.3);}
-#health-card.has-danger #h-od,#health-card.has-danger #h-bl,#health-card.has-danger #h-is{box-shadow:0 0 0 1px var(--danger);} /* §1: brand-new project - the whole health card reads quieter */
-#health-card.health-empty .fb-sm{opacity:.55;} /* MARKET-FEATURE-ROADMAP A1: compliance badge on the Project Health card -
+/* §4 Tier 1: non-zero Blocked / Overdue / Live Issues keep the strongest
+   static treatment - existing --danger token, size only, no motion. The
+   dot-mechanism wave (2026-09-15) retargeted this from the old circular
+   .badge.br spheres to the .dotstat dot+number rows. */
+#health-card.has-danger .fb-sm .dotstat .sdot.r{transform:scale(1.29);}
+#health-card.has-danger #h-od.dotstat,#health-card.has-danger #h-bl.dotstat,#health-card.has-danger #h-is.dotstat{color:var(--danger);} /* §1: brand-new project - the whole health card reads quieter */
+#health-card.health-empty .fb-sm{opacity:.55;} /* MARKET-FEATURE-ROADMAP A1: compliance count on the Project Health card -
    same treatment as the Blocked/Overdue/Live-Issues danger counts. */
-#health-card.has-compliance #h-coi{box-shadow:0 0 0 1px var(--danger);background:rgba(239,68,68,.3);}
+#health-card.has-compliance #h-coi.dotstat{color:var(--danger);}
 /* Blueprint motif (TRACK B1): subtle corner-tick marks borrowed from the    Field Guide's drawing-set language - thin cyan border segments in the
    top-left and bottom-right corners. Only on the Dashboard health card,
    the one screen every user sees most. */
@@ -594,8 +597,7 @@ body.sidebar-open .nav-btn .ico,body.sidebar-open .sb-close .ico{transform:rotat
 #health-card .col-g8{flex:1;}
 #health-card .fb-sm{min-height:33px;padding:2px;gap:12px;}
 #health-card .fb-sm>span:first-child{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;} /* Owner 2026-08-15: */
-#health-card .fb-sm .badge{width:28px;height:28px;min-width:0;padding:0;border-radius:50%;
-  justify-content:center;font-size:.8rem;font-weight:800;line-height:1;}
+#health-card .fb-sm .dotstat{width:64px;justify-content:flex-start;font-size:.8rem;font-weight:800;line-height:1;}
 /* Next-3: fills the card height (like the health column) and its rows use
    the status-row rhythm (30px min-height, 4px vertical padding) so all three
    areas share one vertical grid. */
@@ -611,7 +613,21 @@ body.sidebar-open .nav-btn .ico,body.sidebar-open .sb-close .ico{transform:rotat
 .pring svg{transform:rotate(-90deg);} /* Owner 2026-08-15: */
 .ring-bg{fill:none;stroke:var(--border);stroke-width:18;}
 .ring-fill{fill:none;stroke:var(--green);stroke-width:18;stroke-linecap:round;transition:stroke-dashoffset .5s ease;}
+/* OWNER 2026-09-15 (ring polish): gradient fill (set in markup via
+   url(#ring-grad), green->lighter green in oklch so both themes hold), a
+   soft same-hue glow, and a quarter-turn entry animation that respects
+   reduced motion. Radius + geometry untouched (r=39 / dasharray 245). */
+.pring svg .ring-fill{filter:drop-shadow(0 0 5px color-mix(in oklch,var(--green) 45%,transparent));}
+.pring svg{transform-origin:50% 50%;}
+.pring.ring-in svg{animation:ringSweep .7s var(--ease-ios, ease-out) both;}
+.pring .ring-txt{font-variant-numeric:tabular-nums;}
+@keyframes ringSweep{from{transform:rotate(-90deg) scale(.92);opacity:.4;}to{transform:rotate(-90deg) scale(1);opacity:1;}}
+@media (prefers-reduced-motion:reduce){.pring.ring-in svg{animation:none;}.pring svg .ring-fill{filter:none;}}
 .ring-txt{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:.82rem;font-weight:700;color:var(--text);text-align:center;line-height:1.15;padding:4px;}
+/* OWNER 2026-09-15: the percentage figure grows one step and the card gets
+   a quiet caption row ("X of Y tasks" already sits beside it - this keeps
+   the ring self-describing on narrow cards where the side block wraps). */
+.pring .ring-txt{font-size:.95rem;letter-spacing:-.01em;}
 
 /* ---- Badges ---- */
 .badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:100px;font-size:.72rem;font-weight:600;font-variant-numeric:tabular-nums;}
@@ -623,6 +639,17 @@ body.sidebar-open .nav-btn .ico,body.sidebar-open .sb-close .ico{transform:rotat
 .sdot.a{background:var(--amber);box-shadow:0 0 6px color-mix(in oklch,var(--amber) 55%,transparent);}
 .sdot.b{background:var(--blue);box-shadow:0 0 6px color-mix(in oklch,var(--blue) 55%,transparent);}
 .sdot.r{background:var(--danger);box-shadow:0 0 6px color-mix(in oklch,var(--danger) 55%,transparent);}
+/* OWNER 2026-09-15 (dot-mechanism wave): dashboard status rows become
+   dot + bold count + label, replacing the circular badge spheres that
+   jumbled together when several counts were non-zero (Attention, This
+   Week, Project Health). Same .sdot primitive the task table already
+   uses; the count is tabular-nums bold so number columns right-align
+   across rows. Palette stays the three status colors + neutral slate. */
+.dotstat{display:inline-flex;align-items:center;justify-content:flex-end;gap:0;font-weight:800;font-size:.8rem;color:var(--text);font-variant-numeric:tabular-nums;}
+.dotstat .sdot{margin-right:7px;width:8px;height:8px;}
+.dotstat.zero{color:var(--slate);font-weight:600;}
+.dotstat.zero .sdot{background:var(--slate);box-shadow:none;opacity:.55;}
+.dotstat .ds-num{min-width:14px;text-align:right;}
 .st-txt{font-weight:800;font-size:.72rem;letter-spacing:.02em;color:var(--text);}
 .st-txt.s{color:var(--text-secondary);}
 .bg{background:rgba(0,155,58,.2);color:var(--green);border:1px solid var(--green);}
@@ -1550,12 +1577,32 @@ body.dark-mode .wbs-alert-item{background:rgba(255,255,255,.04);}
   #panel-dash .g3{grid-template-columns:1fr 1fr;}
   /* UI-MODERNIZATION 2026-08-14: */
   #panel-dash .g3>.card:last-child{grid-column:1/-1;}
-  .sec-nav{position:fixed;top:0;left:0;bottom:0;width:min(84vw,320px);margin:0;padding:70px 12px 20px;
+  /* OWNER 2026-09-15 (mobile hamburger cutoff): the drawer used to sit at
+     z-index 95 UNDER the sticky header (z 100) with a fixed 70px top pad,
+     so the header's "Not backed up / Projects" row overlapped the first
+     nav items on phones. The drawer is now the top-most chrome (z 960,
+     above header 100 + scrim 94), spans the full height, and carries a
+     safe-area-aware top padding with its own close row instead of a
+     guessed pixel offset. */
+  .sec-nav{position:fixed;top:0;left:0;bottom:0;width:min(84vw,320px);margin:0;
+    padding:calc(12px + env(safe-area-inset-top,0px)) 12px 20px;
     flex-direction:column;align-items:stretch;gap:12px;overflow-y:auto;overflow-x:hidden;
     -webkit-overflow-scrolling:touch;background:var(--card);
-    border-right:1px solid var(--border);z-index:95;transform:translateX(-105%);
+    border-right:1px solid var(--border);z-index:960;transform:translateX(-105%);
     transition:transform .24s var(--ease-ios);box-shadow:0 12px 40px rgba(0,0,0,.18);}
   body.nav-open .sec-nav{transform:translateX(0);}
+  /* Drawer close row: lives outside .sec-nav so the drawer's own scroll and
+     transforms never shift it; it is a fixed chrome layer over the drawer,
+     shown only while body.nav-open is set (no JS toggling needed). */
+  .nav-close-row{display:none;position:fixed;top:calc(10px + env(safe-area-inset-top,0px));
+    right:12px;z-index:965;}
+  body.nav-open .nav-close-row{display:flex;}
+  .nav-close-btn{display:inline-flex;align-items:center;justify-content:center;
+    width:38px;height:38px;border:1px solid var(--border);background:var(--card);
+    color:var(--slate);border-radius:10px;cursor:pointer;
+    box-shadow:0 4px 16px rgba(0,0,0,.16);}
+  .sec-nav .nav-close-btn:hover{color:var(--gold);border-color:var(--gold);}
+  .sec-nav .nav-close-btn .ico{width:18px;height:18px;}
   .nav-group{display:flex;flex-direction:column;align-items:stretch;gap:3px;}
   .nav-group + .nav-group{padding-left:0;margin-left:0;}
   .nav-group + .nav-group::before{display:none;}

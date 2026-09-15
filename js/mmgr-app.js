@@ -1850,6 +1850,10 @@ window.MMGR = MMGR;
     'cloudClientRevoke': (el) => { const C = window.MMGR.Cloud; if (C && C.revokeClientCode) C.revokeClientCode(el && el.getAttribute('data-id')); },
     'cloudEditorList': () => { const C = window.MMGR.Cloud; if (C && C.listEditors) C.listEditors(); },
     'cloudEditorRevoke': (el) => { const C = window.MMGR.Cloud; if (C && C.revokeEditor) C.revokeEditor(el && el.getAttribute('data-id')); },
+    // PROJECT API KEYS (owner 2026-09-15): same owner-only, cloud-only family.
+    'cloudApiKeyCreate': () => { const C = window.MMGR.Cloud; if (C && C.createApiKey) C.createApiKey(); },
+    'cloudApiKeyList': () => { const C = window.MMGR.Cloud; if (C && C.listApiKeys) C.listApiKeys(); },
+    'cloudApiKeyRevoke': (el) => { const C = window.MMGR.Cloud; if (C && C.revokeApiKey) C.revokeApiKey(el && el.getAttribute('data-id')); },
     'cloudLogList': () => { const C = window.MMGR.Cloud; if (C && C.listLog) C.listLog(); },
     'cloudLogRevert': (el) => { const C = window.MMGR.Cloud; if (C && C.revertLog) C.revertLog(el && el.getAttribute('data-id')); },
     'cloudLogToggleDiffs': (el) => { const C = window.MMGR.Cloud; if (C && C.toggleDiffs) C.toggleDiffs(el && el.getAttribute('data-id')); },
@@ -2193,6 +2197,7 @@ window.MMGR = MMGR;
     // safe in view-only, like the Phase 1 cloud entries above.
     'cloudEditorCreate': 1, 'cloudEditorList': 1, 'cloudEditorRevoke': 1,
     'cloudClientCreate': 1, 'cloudClientList': 1, 'cloudClientRevoke': 1,
+    'cloudApiKeyCreate': 1, 'cloudApiKeyList': 1, 'cloudApiKeyRevoke': 1,
     'cloudLogList': 1, 'cloudLogRevert': 1, 'cloudLogToggleDiffs': 1, 'cloudDropEditor': 1,
     // GAP-AUDIT-CLOUD-31: unlink only mutates the CLOUD copy (like the other
     // cloud actions above), and the banner Copy/Done are clipboard/session

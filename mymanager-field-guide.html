@@ -484,6 +484,43 @@ h4.h-mini{font-size:.98rem;font-weight:700;color:var(--text);margin:22px 0 10px;
 }
 .copy-btn:hover{background:var(--brass);}
 .copy-btn.copied{background:var(--brass);}
+
+/* ===== TASK ROADMAPS (owner 2026-09-15) =====
+   After a task is explained in the guide, a collapsed "How to do it"
+   roadmap opens in place: numbered steps from start to finish, then what
+   it looks like when done. Stays in the guide, no wiring into the app.
+   Reuses the FAQ accordion's structure (consistency by reference). */
+.roadmap{
+  margin:18px 0 4px;border:1px solid var(--line);border-radius:10px;
+  background:rgba(255,255,255,.02);overflow:hidden;
+}
+.roadmap summary{
+  list-style:none;display:flex;align-items:center;gap:10px;cursor:pointer;
+  padding:13px 16px;font-family:var(--serif);font-size:.92rem;font-weight:600;color:var(--text);
+}
+.roadmap summary::-webkit-details-marker{display:none;}
+.roadmap summary:hover{color:var(--cyan);}
+.roadmap summary .rm-caret{font-family:var(--mono);font-size:.7rem;color:var(--brass);transition:transform .2s var(--ease);}
+.roadmap[open] summary .rm-caret{transform:rotate(90deg);}
+.roadmap summary .rm-lbl{
+  font-family:var(--mono);font-size:.64rem;letter-spacing:.08em;color:var(--brass);
+  border:1px solid var(--line);border-radius:4px;padding:2px 7px;
+}
+.roadmap-body{padding:2px 16px 16px;border-top:1px solid var(--line);}
+.roadmap-step{display:flex;gap:12px;padding:10px 0;border-bottom:1px dashed var(--line);}
+.roadmap-step:last-of-type{border-bottom:none;}
+.roadmap-num{
+  flex-shrink:0;width:22px;height:22px;border-radius:50%;
+  border:1px solid var(--brass);color:var(--brass);
+  font-family:var(--mono);font-size:.68rem;display:grid;place-items:center;margin-top:1px;
+}
+.roadmap-step p{margin:0;font-size:.86rem;color:var(--text-dim);line-height:1.6;max-width:70ch;}
+.roadmap-step p strong{color:var(--text);font-weight:600;}
+.roadmap-done{display:flex;gap:10px;align-items:flex-start;padding:12px 0 2px;}
+.roadmap-done .rm-check{flex-shrink:0;width:20px;height:20px;border-radius:50%;background:rgba(46,204,113,.12);border:1px solid rgba(46,204,113,.5);display:grid;place-items:center;}
+.roadmap-done .rm-check svg{width:11px;height:11px;stroke:#2ecc71;stroke-width:2.4;fill:none;}
+.roadmap-done p{margin:0;font-size:.86rem;color:var(--text);line-height:1.6;max-width:70ch;}
+@media (prefers-reduced-motion:reduce){.roadmap summary .rm-caret{transition:none;}}
 .copy-demo pre{
   padding:20px 22px;font-family:var(--mono);font-size:.78rem;color:var(--text-dim);
   white-space:pre-wrap;line-height:1.75;max-height:340px;overflow-y:auto;
@@ -796,8 +833,7 @@ footer{padding:70px 64px 46px;position:relative;}
         <div class="flow-item"><div class="flow-num"></div><div class="flow-body">
           <h4>Save a Baseline</h4>
           <p><strong>Settings ▸ Controls ▸ Save Baseline</strong> snapshots your current schedule and budget before real work starts , the Dashboard's Baseline Variance card has nothing to compare against until you do this once.</p>
-        </div></div>
-        <div class="flow-item"><div class="flow-num"></div><div class="flow-body">
+        </div></div>        <div class="flow-item"><div class="flow-num"></div><div class="flow-body">
           <h4>Open the Dashboard</h4>
           <p>Health Score, EVM, Timeline Target Tracker, and Today's Focus are now populated. Sheet A-02 breaks down every number you'll see there.</p>
         </div></div>
@@ -806,6 +842,16 @@ footer{padding:70px 64px 46px;position:relative;}
           <p>LocalStorage protects you against a closed tab, not a wiped browser. <strong>Settings ▸ Controls ▸ Save Project to File</strong> exports a portable .json , do this before switching devices or closing up for the day.</p>
         </div></div>
       </div>
+
+      <details class="roadmap">
+        <summary><span class="rm-caret">▶</span><span class="rm-lbl">ROADMAP</span>Save a baseline, start to finish</summary>
+        <div class="roadmap-body">
+          <div class="roadmap-step"><span class="roadmap-num">1</span><p>Open <strong>Settings</strong> (the gear in the header) and stay on the <strong>Controls</strong> tab.</p></div>
+          <div class="roadmap-step"><span class="roadmap-num">2</span><p>Scroll to the <strong>Baseline</strong> row, then press <strong>Save Baseline</strong>.</p></div>
+          <div class="roadmap-step"><span class="roadmap-num">3</span><p>Confirm the prompt. The current schedule dates and budget figures are frozen as your comparison point.</p></div>
+          <div class="roadmap-done"><span class="rm-check"><svg viewBox="0 0 24 24"><path d="M4 12l5 5L20 7"/></svg></span><p><strong>When it's done:</strong> the Dashboard's <strong>Baseline Variance</strong> card stops reading "n/a" and shows schedule-day and cost differences as your project moves.</p></div>
+        </div>
+      </details>
     </section>
     <!-- ============ A-02 DASHBOARD & HEALTH SCORE ============ -->
     <section class="sheet reveal" id="dashboard">
@@ -937,6 +983,18 @@ footer{padding:70px 64px 46px;position:relative;}
       <h3 class="h-sub">How dates cascade</h3>
       <p class="prose">Enter a Task ID in the Pred. column. When that predecessor's end date changes, every downstream task recalculates automatically , with a cycle guard, so a circular dependency (A depends on B depends on A) can't lock up the math.</p>
 
+      <details class="roadmap">
+        <summary><span class="rm-caret">▶</span><span class="rm-lbl">ROADMAP</span>Build the WBS with a text import, start to finish</summary>
+        <div class="roadmap-body">
+          <div class="roadmap-step"><span class="roadmap-num">1</span><p>Open the <strong>WBS</strong> section from the sidebar.</p></div>
+          <div class="roadmap-step"><span class="roadmap-num">2</span><p>Press <strong>Import WBS Text</strong> at the top of the task table.</p></div>
+          <div class="roadmap-step"><span class="roadmap-num">3</span><p>Paste your outline: a blank line starts a new main task, indented lines become subtasks under the one above.</p></div>
+          <div class="roadmap-step"><span class="roadmap-num">4</span><p>Confirm the import. Tasks land in the table in order, ready for dates and predecessors.</p></div>
+          <div class="roadmap-step"><span class="roadmap-num">5</span><p>Type predecessor IDs in the <strong>Pred.</strong> column so dates cascade when anything shifts.</p></div>
+          <div class="roadmap-done"><span class="rm-check"><svg viewBox="0 0 24 24"><path d="M4 12l5 5L20 7"/></svg></span><p><strong>When it's done:</strong> every task shows in the WBS with dates flowing down the chain, and the same rows light up on the Gantt, Kanban, and RACI without re-entry.</p></div>
+        </div>
+      </details>
+
       <div class="divider-note">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 8V12M12 16H12.01M21 12C21 16.97 16.97 21 12 21C7.03 21 3 16.97 3 12C3 7.03 7.03 3 12 3C16.97 3 21 7.03 21 12Z" stroke="currentColor" stroke-width="1.6"/></svg>
         <p><strong>conf:high / conf:low tags.</strong> When AI-generated dates come back from the "Generate Dates" prompt, each line carries a confidence badge , high for low-variance work like pouring concrete, low for anything depending on outside parties. These tags feed directly into the Monte Carlo simulator, giving high-confidence tasks a tighter risk spread and low-confidence ones a wider one.</p>
@@ -1012,6 +1070,17 @@ footer{padding:70px 64px 46px;position:relative;}
       <h3 class="h-sub">Budget lines &amp; spend entries</h3>
       <p class="prose">Budget lines set the plan; spend entries record what actually went out the door against each line. The gap between the two is exactly what the Dashboard's Budget Variance card and the EVM engine (Sheet A-02) are reading.</p>
 
+      <details class="roadmap">
+        <summary><span class="rm-caret">▶</span><span class="rm-lbl">ROADMAP</span>Add a budget line and log spend against it, start to finish</summary>
+        <div class="roadmap-body">
+          <div class="roadmap-step"><span class="roadmap-num">1</span><p>Open the <strong>Budget</strong> section (Money pack) from the sidebar.</p></div>
+          <div class="roadmap-step"><span class="roadmap-num">2</span><p>Press <strong>+ Add Budget Line</strong> and fill in the category, description, and the planned amount.</p></div>
+          <div class="roadmap-step"><span class="roadmap-num">3</span><p>As money goes out, add a <strong>spend entry</strong> against that line with the date and the actual amount.</p></div>
+          <div class="roadmap-step"><span class="roadmap-num">4</span><p>Keep logging spends as they happen , the S-curve's Actual line follows them.</p></div>
+          <div class="roadmap-done"><span class="rm-check"><svg viewBox="0 0 24 24"><path d="M4 12l5 5L20 7"/></svg></span><p><strong>When it's done:</strong> the line shows planned vs. actual side by side, the Budget Variance card on the Dashboard updates, and the Cash-Flow S-curve draws both cumulative curves.</p></div>
+        </div>
+      </details>
+
       <h3 class="h-sub">Cash-Flow S-Curve &amp; Spend Log</h3>
       <div class="grid grid-2">
         <div class="card bracket"><span class="cnum">CHART</span><h4>Cash-Flow Forecast</h4><p>An S-curve under the Budget panel plotting planned vs. actual cumulative spend across the schedule , shaped slow-fast-slow by default, or front/back-loaded per line. The Actual line is honest: it stays estimated until you log real spend entries.</p></div>
@@ -1037,6 +1106,17 @@ footer{padding:70px 64px 46px;position:relative;}
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.6"/><path d="M9 12L11 14L15 9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
         <p><strong>Where the spread comes from.</strong> Tasks tagged <span class="pill cyan">conf:high</span> during AI-assisted dating (Sheet A-04) get a tighter risk spread in the simulation; <span class="pill cyan">conf:low</span> tasks get a wider one , instead of every task sharing one blanket Risk Factor.</p>
       </div>
+
+      <details class="roadmap">
+        <summary><span class="rm-caret">▶</span><span class="rm-lbl">ROADMAP</span>Run a Monte Carlo simulation, start to finish</summary>
+        <div class="roadmap-body">
+          <div class="roadmap-step"><span class="roadmap-num">1</span><p>Make sure at least <strong>two tasks</strong> in the WBS have dates, and at least one chain of predecessors exists.</p></div>
+          <div class="roadmap-step"><span class="roadmap-num">2</span><p>Open the <strong>Risk</strong> section and find the <strong>Monte Carlo Simulator</strong> card.</p></div>
+          <div class="roadmap-step"><span class="roadmap-num">3</span><p>For a hit-probability figure, set a <strong>Target Completion Date</strong> in the Charter first.</p></div>
+          <div class="roadmap-step"><span class="roadmap-num">4</span><p>Press <strong>Run Simulation</strong> and read the P10 / P50 / P90 spread plus your probability of hitting the target.</p></div>
+          <div class="roadmap-done"><span class="rm-check"><svg viewBox="0 0 24 24"><path d="M4 12l5 5L20 7"/></svg></span><p><strong>When it's done:</strong> you have a defensible finish-date range instead of a single guess , quote the P50 to the client and keep the P90 as your internal safety line.</p></div>
+        </div>
+      </details>
     </section>
 
     <!-- ============ A-08 STAKEHOLDERS, CHANGES & CLOSURE ============ -->
@@ -1332,6 +1412,7 @@ Date: ____________  Focus: ____________</pre>
         <div class="card bracket"><span class="cnum">EDITOR</span><h4>Editor codes (scoped)</h4><p>The owner can generate editor codes with a label and tick which sections each code may WRITE (WBS, Budget, Risks, Meetings…). Scope is enforced SERVER-SIDE on every save , an editor (or a leaked code) physically cannot touch anything outside its grant, and out-of-scope panels grey out as a visual hint. Revoke a code anytime; it stops working immediately.</p></div>
         <div class="card bracket"><span class="cnum">VIEWER</span><h4>View-only access codes</h4><p>Access codes on app.html unlock projects read-only (view-only code = read-only project), independent of cloud , the app gate that protects every project. Cloud editor codes are about who may WRITE which sections; view codes are about who may OPEN the project at all.</p></div>
         <div class="card bracket"><span class="cnum">CLIENT</span><h4>Client codes (read-only portal)</h4><p>Under <strong>Client Access</strong> in the same manager, the owner can generate a client code with an expiry (7 / 30 / 90 / 365 days, or never) and tick the exact sections the client may SEE (Dashboard, WBS, Budget, … up to 19 sections). The client opens the project from the launcher's <strong>Open with code</strong> exactly like a view code, but the workspace is trimmed to the granted panels only , navigation buttons for everything else are removed, not just greyed out, a read-only banner sits at the top, and every write action is refused (the server never accepts a client code on save). While the project is open, a client's view refreshes automatically: it re-checks every ~60 seconds (and immediately when the tab regains focus or the admin saves), so the client always sees the newest published snapshot. An expired code answers with a friendly message ("This access code expired on &lt;date&gt;. Ask the admin for a new one.") and a revoked code stops working immediately; the manager's client-code list shows each code's expiry state.</p></div>
+        <div class="card bracket"><span class="cnum">API KEY</span><h4>Project API keys (for an external AI assistant)</h4><p>Under <strong>API Keys</strong> in the same manager, the owner mints a key for THIS project only , a key cannot be created outside a project and cannot be moved to another one. Give it a label, tick the sections it may read and propose changes to, and pick an expiry (30 / 90 / 365 days, or never). The key is shown once; paste it into your AI tool's settings with the matching project id. An agent holding the key can READ the granted sections and PROPOSE changes to them, and that is all: every proposal waits in <strong>Review incoming changes</strong> with a field-level diff, and nothing changes until you accept it inside the project. Out-of-scope reads come back trimmed, out-of-scope writes are refused, an expired key answers with a clear message, and a revoked key stops working the moment you revoke it. The key list shows each key's label, scope, expiry, and last-used date.</p></div>
       </div>
 
       <h3 class="h-sub">Save, load, recover, and unlink</h3>

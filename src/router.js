@@ -30,6 +30,7 @@ import { handleCloudProjectList, handleCloudCreate, handleCloudSave, handleCloud
   handleCloudProjectDelete, handleCloudProjectRestore, handleCloudProjectPurge,
   handleCloudUnadopt, cloudPushRevChangedIfCopies } from './cloud/projects.js';
 import { handleCloudEditorCreate, handleCloudEditorList, handleCloudEditorRevoke } from './cloud/editors.js';
+import { handleCloudApiKeyCreate, handleCloudApiKeyList, handleCloudApiKeyRevoke } from './cloud/api-keys.js';
 import { handleCloudClientCodeCreate, handleCloudClientCodeList, handleCloudClientCodeRevoke, verifyClientCode, CLIENT_SECTIONS, SECTION_LABELS } from './cloud/client-codes.js';
 import { handlePoolItemsList, handlePoolItemCreate, handlePoolItemUpdate, handlePoolItemDelete, handlePoolLinkCreate, handlePoolLinkDelete } from './cloud/pool.js';
 import { handleCloudChangelogList, handleCloudChangelogRevert, handleCloudChangelogImport } from './cloud/changelog.js';
@@ -302,6 +303,22 @@ export async function routeApi(request, env, url) {
       const r = await rl(request, 'general', env);
       if (r) return r;
       return handleCloudEditorRevoke(request, env, cloudEditorDelMatch[1], cloudEditorDelMatch[2]);
+    }
+    // PROJECT API KEYS (owner directive 2026-09-15): scoped, expiring keys
+    // minted INSIDE a project. Owner-only management; key USE authenticates
+    // via X-API-Key in cloudAuthApiKey (wired at P4).
+    const cloudApiKeysMatch = path.match(/^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/api-keys$/);
+    if (cloudApiKeysMatch) {
+      const r = await rl(request, 'general', env);
+      if (r) return r;
+      if (request.method === 'POST') return handleCloudApiKeyCreate(request, env, cloudApiKeysMatch[1]);
+      if (request.method === 'GET') return handleCloudApiKeyList(request, env, cloudApiKeysMatch[1]);
+    }
+    const cloudApiKeyDelMatch = path.match(/^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/api-keys\/(\d+)$/);
+    if (cloudApiKeyDelMatch && request.method === 'DELETE') {
+      const r = await rl(request, 'general', env);
+      if (r) return r;
+      return handleCloudApiKeyRevoke(request, env, cloudApiKeyDelMatch[1], cloudApiKeyDelMatch[2]);
     }
     // C19: Client Codes (read-only, section-filtered access)
     const cloudClientMatch = path.match(/^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/client-codes$/);

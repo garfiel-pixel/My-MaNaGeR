@@ -541,6 +541,22 @@ export async function cloudReadState(env, key, ownerCodeHash, ownerCodeSalt) {
   return parsed;
 }
 
+// Scoped projection of the stored state for LIMITED readers (client codes,
+// project API keys): only the top-level keys granted by the section scope
+// survive; device/meta keys (fieldTs, updatedAt, config) are never exposed.
+// Keys granted via CLOUD_SECTIONS but ABSENT from the stored blob come back
+// as null so the reader can tell 'empty' from 'hidden'.
+export function cloudScopeState(state, scope) {
+  if (!state || typeof state !== 'object' || Array.isArray(state)) return null;
+  const out = {};
+  scope.forEach(function(sec) {
+    (CLOUD_SECTIONS[sec] || { keys: [] }).keys.forEach(function(k) {
+      out[k] = state[k] !== undefined ? state[k] : null;
+    });
+  });
+  return out;
+}
+
 // ---- Deep equal (for cloud state comparison) -------------------------------
 
 export function cloudDeepEqual(a, b) {
@@ -877,6 +893,41 @@ export async function cloudAuthEditor(request, env, projectId, code) {
 
 export async function cloudAuthViewer(request, env, projectId, code) {
   return cloudAuthSharedCode(request, env, projectId, code, 'view');
+}
+
+// ---- PROJECT API KEYS (owner directive 2026-09-15) ------------------------
+// Authenticate the X-API-Key header against cloud_api_keys for ONE project.
+// Lookup by sha256 fingerprint (O(1)); verification via PBKDF2 hash compare;
+// expiry + revocation + deleted-project all collapse into the SAME generic
+// 403 as an unknown key (no existence leak). On success, stamps
+// last_used_at (best-effort, never blocks auth) and returns the key's
+// scope so callers can enforce the section grant exactly like editor codes.
+export async function cloudAuthApiKey(request, env, projectId, apiKey) {
+  const key = String(apiKey || '').trim();
+  if (!key) { await Promise.all([cloudDummyHash(), cloudTimingSink()]); return null; }
+  const fp = await fingerprintOf(key);
+  const row = await env.DB.prepare(
+    'SELECT k.id, k.key_salt, k.key_hash, k.label, k.scope, k.expires_at, p.deleted_at ' +
+    'FROM cloud_api_keys k JOIN cloud_projects p ON p.project_id = k.project_id ' +
+    'WHERE k.key_fingerprint = ? AND k.project_id = ? AND k.active = 1'
+  ).bind(fp, projectId).first();
+  if (!row) {
+    // Unknown fingerprint: burn the same PBKDF2 work so timing cannot
+    // distinguish a wrong key from a right one.
+    await hashOwnerCode(key, CLOUD_DUMMY_SALT);
+    await cloudTimingSink();
+    return null;
+  }
+  const hash = await hashOwnerCode(key, row.key_salt);
+  if (!codesEqual(hash, row.key_hash)) { await cloudTimingSink(); return null; }
+  if (row.expires_at) { const t = Date.parse(row.expires_at); if (!isNaN(t) && t <= Date.now()) return null; }
+  if (row.deleted_at) return null;
+  let scope = [];
+  try { const p = JSON.parse(row.scope); if (Array.isArray(p)) scope = p.filter(function(x) { return !!CLOUD_SECTIONS[x]; }); } catch (e) { scope = []; }
+  try {
+    await env.DB.prepare('UPDATE cloud_api_keys SET last_used_at = ? WHERE id = ?').bind(new Date().toISOString(), row.id).run();
+  } catch (e) { /* stamping usage is best-effort */ }
+  return { role: 'api', apiKeyId: row.id, label: row.label || 'API key', scope: scope };
 }
 
 export async function cloudAdopt(env, projectId, sub, editorCodeId, role) {

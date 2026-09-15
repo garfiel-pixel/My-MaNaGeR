@@ -1,0 +1,20 @@
+<!-- ============================================================
+     My MaNaGeR brand monogram (OWNER 2026-09-15)
+     ------------------------------------------------------------
+     Replaces the sparkle glyph (too close to a third-party logo).
+     The mark combines M + P + W as one geometric construction:
+       M  - two peaks (the leftmost form, drawn as one path)
+       P  - a circle-loop stem nested in the middle
+       W  - the same two peaks mirrored underneath (shared strokes)
+     Read it as a roofline over a foundation line - a building
+     section, not a letter row. Stroke-based so it follows
+     currentColor on the gold tile. 24x24 grid, 2px strokes.
+     ============================================================ -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <!-- M/W roofline: peaks up (M) and valleys down (W) share one zigzag -->
+  <path d="M3.5 17.5v-11l4.25 6L12 6.5l4.25 6 4.25-6v11"/>
+  <!-- P stem + bowl nested at the center, seated on the baseline -->
+  <path d="M12 17.5v-5.2a2.4 2.4 0 1 1 2.4 2.4H12"/>
+  <!-- foundation line: the base every project stands on -->
+  <path d="M3.5 21h17"/>
+</svg>

@@ -504,6 +504,11 @@ export async function routeApi(request, env, url) {
     // 15. MCP SERVER — per-project Model Context Protocol endpoint
     const mcpMatch = path.match(/^\/api\/mcp\/([A-Za-z0-9_-]{1,64})$/);
     if (mcpMatch) {
+      // API-KEY-AUDIT F1 (2026-09-16): this was the one route with no rl()
+      // guard while carrying the single most powerful credential check. Same
+      // general bucket as every sibling route.
+      const r = await rl(request, 'general', env);
+      if (r) return r;
       return handleMcpServer(request, env, mcpMatch[1]);
     }
 

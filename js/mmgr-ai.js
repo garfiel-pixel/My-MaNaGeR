@@ -633,7 +633,7 @@ var MMGR = window.MMGR || {};
     return '$' + Number(n || 0).toLocaleString();
   }
 
-  function localLookup(q, s) {
+  async function localLookup(q, s) {
     TRACE.fields = [];
     const text = String(q || '');
     const lower = text.toLowerCase();
@@ -693,6 +693,47 @@ var MMGR = window.MMGR || {};
       out.push('Weather: ' + (s.weatherLog || []).length + ' delay day(s) logged' + (rd.length ? '; risk days: ' + rd.slice(0, 3).map(d => d.date).join(', ') : '') + '.');
     }
 
+    // OWNER 2026-09-16 (free-text answers + topic gate): questions the local
+    // engine cannot derive ("should I be worried about the plumbing delay?")
+    // used to refuse outright. Now the question rides the relay with the
+    // live project context attached, so the connected model answers FROM the
+    // project. Zero-key deployments get Workers AI behind the same relay.
+    // Topic gate (owner decision: project-only, friendly refuse). Handled
+    // centrally in submit(); the check here only guards direct runLocal
+    // callers. Off-topic NEVER reaches the relay-assist block below.
+    if (isOffTopicQuestion(lower)) {
+      return { ok: true, tier: 'local', model: 'local-state-engine', text: OFF_TOPIC_REPLY, trace: ['topic gate: non-project question refused locally'] };
+    }
+    if (!out.length) {
+      // Relay-assisted free-text: same construction as runCloud (context is
+      // embedded in the user content - the relay only reads body.messages).
+      // An EMPTY session key is allowed here on purpose: with the same-origin
+      // relay active the server runs Workers AI at the edge (zero-key path);
+      // if the relay is absent, providerAttempt degrades to a direct call,
+      // which fails on the empty key and lands in the catch below.
+      const key = BYO.getKey() || '';
+      const provider = BYO.getProvider() || 'openai';
+      const ctx = typeof buildContext === 'function' ? buildContext() : '';
+      // NOTE: localLookup's parameter is `q` (not `prompt` - that name would
+      // resolve to window.prompt here and stringify the function into the
+      // message body).
+      const userContent = (q || '') + (ctx ? '\n\n==== PROJECT CONTEXT (grounding only) ====\n' + String(ctx).split(key).join('[key removed]') : '');
+      const messages = [
+        { role: 'system', content: CLOUD_SYSTEM_PROMPT },
+        { role: 'user', content: userContent }
+      ];
+      try {
+        const r = await callProviderWithFallback(provider, key, messages, ctx || '');
+        _t('relay: project question answered by ' + (r.model || 'cloud model'));
+        if (r.fellBackFrom) out.push('Fell back to ' + r.model + ' - ' + r.fellBackFrom + ' hit its rate limit.');
+        out.push(String(r.text));
+      } catch (e) {
+        if (e && (e.status === 429 || e.status === 503)) {
+          return { ok: false, error: 'The free built-in AI is at capacity right now - try again in a few minutes, or connect your own key in Settings \u25B8 AI Engine for unlimited questions.', tier: 'local' };
+        }
+        if (ns.Errors && ns.Errors.log) ns.Errors.log('local relay assist failed: ' + (e && e.message), 'localLookup');
+      }
+    }
     if (!out.length) {
       return {
         ok: false,
@@ -918,6 +959,15 @@ var MMGR = window.MMGR || {};
       return { text: L.join('\n'), trace: TRACE.fields.slice() };
     }
   };
+
+  // OWNER 2026-09-16 topic gate (project-only, friendly refuse): greetings
+  // and chit-chat never reach a model on EITHER tier - one polite local line,
+  // never a provider call. Applied once in submit() before tier dispatch.
+  function isOffTopicQuestion(lower) {
+    return /^(hi|hii+|hey+|hello+|yo|sup|good (morning|afternoon|evening)|how (are|r) (you|u)|how('| i)?s it going|what'?s up|whats up|thanks|thank you|thx|tell me a joke|who are you|what are you|are you (human|real|an ai|a robot)|your name|goodbye|bye)\b/.test(lower)
+      || (lower.length <= 42 && /\b(how was your day|how are things|nice weather|good job|well done|lol|haha)\b/.test(lower));
+  }
+  const OFF_TOPIC_REPLY = "I'm the built-in project assistant - I only answer questions about THIS project. Ask about the forecast, budget, risks, tasks, meetings, or weather delays.";
 
   // Local fallback: honest "can't do this locally" answer.
   function localUnavailable() {
@@ -1202,6 +1252,12 @@ var MMGR = window.MMGR || {};
     const cfg = getAiCfg();
     const tier = (opts && opts.tier) || cfg.tier || 'off';
     const type = (opts && opts.type) || null;
+    // Topic gate FIRST (owner 2026-09-16): chit-chat is answered locally on
+    // every tier - never spends a provider call, never gets a generic chat
+    // answer. Preset prompts are long and can never match.
+    if (prompt && isOffTopicQuestion(String(prompt).toLowerCase())) {
+      return { ok: true, tier: 'local', model: 'local-state-engine', text: OFF_TOPIC_REPLY, trace: ['topic gate: non-project question refused locally'] };
+    }
     try {
       if (tier === 'off') {
         return { ok: false, error: 'AI engine is Off , enable Local or Cloud in the AI window settings row (or Settings ▸ Controls ▸ AI Engine).', tier: 'off' };

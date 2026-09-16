@@ -50,15 +50,17 @@ const check = (name, val, detail) => { results.push({ name, val }); log((val ? '
       fetch: async function(req) {
         return new Response('<html>shell</html>', { status: 200, headers: { 'Content-Type': 'text/html' } });
       }
-    }
+    },
+    DB: { prepare: async function() { throw new Error('no db in R01 env'); } }
   };
 
   const run = (pathname, init) => mod.default.fetch(new Request('https://app.example' + pathname, init), env);
 
-  // 1. Missing key -> 401
+  // 1. Missing key -> 503 (OWNER 2026-09-16: honest no-key contract; the old
+  // 'missing api key' 401 mislabeled Workers-AI capacity exhaustion)
   const r1 = await run('/api/ai/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ provider: 'openai', messages: [{ role: 'user', content: 'hi' }] }) });
   const d1 = await r1.json();
-  check('R01 missing key -> 401 JSON', r1.status === 401 && d1.ok === false, { status: r1.status, d1 });
+  check('R01 missing key -> 503 capacity JSON, no key demanded', r1.status === 503 && d1.ok === false && String(d1.error).indexOf('capacity') !== -1, { status: r1.status, d1 });
 
   // 2. Bad JSON body -> 400
   const r2 = await run('/api/ai/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: 'not json' });

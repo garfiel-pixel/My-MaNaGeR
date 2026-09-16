@@ -364,6 +364,14 @@ h4.h-mini{font-size:.98rem;font-weight:700;color:var(--text);margin:22px 0 10px;
 .grid-2{grid-template-columns:repeat(2,1fr);}
 .grid-3{grid-template-columns:repeat(3,1fr);}
 .grid-4{grid-template-columns:repeat(4,1fr);}
+/* OWNER 2026-09-16: grid children must be allowed to shrink below their
+   content's min-content width - unbreakable <code> tokens (sk-mmgr- key
+   samples, API URLs) otherwise inflate the track and overflow 390px phones
+   (mkt-17 horizontal-overflow gate). */
+.grid > *{min-width:0;}
+/* Inline code samples carry full URLs and sk-mmgr- keys - long unbreakable
+   words must wrap inside cards, never push the page wider than the phone. */
+code{overflow-wrap:anywhere;}
 
 .card{
   background:var(--ink-2);
@@ -696,6 +704,7 @@ footer{padding:70px 64px 46px;position:relative;}
         <a class="nav-link" href="#reviews-window"><span class="idx">A-24</span>Public Reviews Window</a>
         <a class="nav-link" href="#calculator"><span class="idx">A-25</span>Floating Calculator</a>
         <a class="nav-link" href="#shared-pool"><span class="idx">A-26</span>Shared Resource Pool</a>
+        <a class="nav-link" href="#connect-ai"><span class="idx">A-27</span>Connect an Outside AI</a>
       </div>
     </nav>
   </aside>
@@ -1778,6 +1787,31 @@ Date: ____________  Focus: ____________</pre>
       </div>
     </section>
 
+    <!-- ============ A-27 CONNECT AN OUTSIDE AI ============ -->
+    <section class="sheet sheet-alt reveal" id="connect-ai">
+      <div class="tblock">
+        <div class="tblock-left"><span class="sheet-no">A-27</span><h2>Connect an Outside AI</h2></div>
+        <div class="tblock-right"><div><b>Scale</b>1 : 1 detail</div></div>
+      </div>
+      <span class="kicker">Let an AI tool you already use read , and propose changes to , this one project</span>
+      <p class="lede">Inside the project, open Settings and find <strong>API Keys</strong> in the Cloud &amp; Sync manager. Create a key, tick the sections it may see (tasks, budget, risks...), and pick when it expires. The key is shown once , copy it straight away. It looks like <code>sk-mmgr-XXXXXX-XXXXXX-XXXXXX</code> and works only for THIS project; it cannot be moved to another one, and you can revoke it any time from the same list.</p>
+      <h3 class="h-sub">Two ways an AI connects</h3>
+      <div class="grid grid-2">
+        <div class="card bracket"><span class="cnum">MCP</span><h4>AI tools with an MCP connector</h4><p>Claude Desktop, Cursor, Windsurf and similar tools accept an MCP server. In the tool's connector settings, add a custom connector and give it:</p><p><code>Address: https://mymanagerworkspace.com/api/mcp/YOUR-PROJECT-ID</code><br>Access token: <code>sk-mmgr-...</code> (your key)</p><p>The tool then lists this project's tools , project summary, tasks, budget, risks, meetings , and the AI can call them itself. The project's own API Keys panel shows you this exact address when a key is created, so you never have to type it from memory.</p></div>
+        <div class="card bracket"><span class="cnum">REST</span><h4>Scripts and automation</h4><p>Anything that can send an HTTP header can use the key. Read the granted sections with <code>POST https://mymanagerworkspace.com/api/cloud/projects/YOUR-PROJECT-ID/load</code> and the header <code>X-API-Key: sk-mmgr-...</code>. A script can also <code>POST .../save</code> with changes , those never apply directly, they land in the owner's Review queue with a field-by-field diff. The project's read-only data views (tasks, baseline, risks, weather, EVM, portfolio health) accept the key the same way at <code>.../api/&lt;view&gt;</code>.</p></div>
+      </div>
+      <h3 class="h-sub">What the AI can and cannot do</h3>
+      <div class="grid grid-3">
+        <div class="card"><span class="cnum">READ</span><h4>Only what you ticked</h4><p>A key granted only Budget cannot see tasks or stakeholders , the server trims the answer, not just the UI. The same rule applies through MCP: a budget-only key calling the tasks tool gets a clear refusal, not the data.</p></div>
+        <div class="card"><span class="cnum">WRITE</span><h4>Never without you</h4><p>Every change an outside AI proposes , through MCP or REST , waits in <strong>Review incoming changes</strong> inside the project with a field-level diff. Nothing touches your project until you press Accept. Reject, and it is discarded with a changelog record.</p></div>
+        <div class="card"><span class="cnum">SAFETY</span><h4>Expiry, revoke, containment</h4><p>Expired and revoked keys answer with the same generic refusal as a wrong key, and a key stops working the moment its project is deleted. Rate limits apply to the AI endpoint like every other route, and a leaked key is contained: revoke it, mint a new one, and nothing else about the project changes.</p></div>
+      </div>
+      <div class="divider-note">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 2a5 5 0 015 5v3h1a2 2 0 012 2v7a2 2 0 01-2 2H6a2 2 0 01-2-2v-7a2 2 0 012-2h1V7a5 5 0 015-5zm0 2a3 3 0 00-3 3v3h6V7a3 3 0 00-3-3z" stroke="currentColor" stroke-width="1.2"/></svg>
+        <p><strong>One key, one project, one purpose.</strong> Treat a key like the key to the site office: anyone holding it can do exactly what you ticked, no more. If it ever lands somewhere it should not , a chat window, a screenshot , revoke it and mint a fresh one; it takes ten seconds.</p>
+      </div>
+    </section>
+
     <!-- ============ CLOSING CTA BAND ============ -->
     <!-- Local photo (completed kitchen) , the finished job. -->
     <div class="band reveal" style="min-height:420px">
@@ -1799,7 +1833,7 @@ Date: ____________  Focus: ____________</pre>
       <div class="footer-grid">
         <div class="footer-brand">
           <h4>My MaNaGeR , Field Guide</h4>
-          <p>An unofficial companion guide to the My MaNaGeR workspace , twenty-seven sheets, one per panel or workflow, built to sit open in a second tab while you learn the app.</p>
+          <p>An unofficial companion guide to the My MaNaGeR workspace , twenty-eight sheets, one per panel or workflow, built to sit open in a second tab while you learn the app.</p>
         </div>
         <div class="footer-cols">
           <div class="footer-col">
@@ -1829,6 +1863,7 @@ Date: ____________  Focus: ____________</pre>
             <a href="#reviews-window">A-24 Public Reviews Window</a>
             <a href="#calculator">A-25 Floating Calculator</a>
             <a href="#shared-pool">A-26 Shared Resource Pool</a>
+            <a href="#connect-ai">A-27 Connect an Outside AI</a>
           </div>
           <div class="footer-col">
             <b>Site</b>

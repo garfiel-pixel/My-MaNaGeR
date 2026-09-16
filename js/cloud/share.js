@@ -50,13 +50,25 @@ var MMGR = window.MMGR || {};
  const isApi = pendingCode.role === 'api';
  const kind = isApi ? 'API key' : (isClient ? 'client' : (isView ? 'viewer' : 'editor'));
  const kindCopy = isApi ? 'copy it into your AI tool. Shown once, stays until revoked or expired. Your AI uses it as a bearer header: X-API-Key: <the key> against this project\u2019s cloud load/save endpoints' : 'copy it and share. Stays until revoked';
+ // OWNER 2026-09-16: the API-key banner now shows BOTH ways to connect (MCP
+ // client or plain REST header) in plain language, with the field-guide
+ // link - the owner's live test showed a key alone is not self-explanatory.
+ const apiFine = isApi
+  ? '<div class="sr-hint" style="margin:8px 0 0">Two ways to use it: (1) In an AI tool that supports MCP connectors (Claude Desktop, Cursor), set the server address to <code style="font-family:ui-monospace,monospace">' + esc(mcpServerUrl()) + '</code> and give it this key as the access token. (2) In your own scripts, send it as the header <code style="font-family:ui-monospace,monospace">X-API-Key: ' + esc(pendingCode.code) + '</code>. The AI can only read and propose changes to the sections you ticked - every change waits in Review until you accept it. Revoke it any time from the API Keys list. <a href="mymanager-field-guide.html#connect-ai" target="_blank" rel="noopener">Full walkthrough in the field guide</a>.</div>'
+  : '';
  return '<div class="sr cloud-new-code" style="border:1px solid var(--gold);background:rgba(var(--gold-rgb),.1);border-radius:var(--radius);padding:8px 10px;margin:10px 0 4px" role="status">' +
  '<div class="sr-hint" style="margin:0 0 4px"><strong>NEW ' + kind + ' for \u201C' + esc(pendingCode.label || kind) + '\u201D - ' + kindCopy + ':</strong></div>' +
  '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">' +
  '<code style="font-family:ui-monospace,monospace;letter-spacing:.05em;color:var(--gold);font-size:1rem;font-weight:700">' + esc(pendingCode.code) + '</code>' +
  '<button class="btn btn-g btn-s" data-action="cloudCopyEditorCode" data-code="' + esc(pendingCode.code) + '"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy code</button>' +
  '<button class="btn btn-g btn-s" data-action="cloudEditorCodeDone" title="Copy it one last time, dismiss this banner, and close settings"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-check"></use></svg> Confirm</button>' +
- '</div></div>';
+ '</div>' + apiFine + '</div>';
+  }
+
+  // OWNER 2026-09-16: the per-project MCP server address, shown in the API
+  // key banner and panel so a minted key comes with its connection point.
+  function mcpServerUrl() {
+   try { return location.origin + '/api/mcp/' + encodeURIComponent(C._pid()); } catch (e) { return '/api/mcp/' + encodeURIComponent(C._pid()); }
   }
 
  // OWNER 2026-09-15: sub-tabs instead of three stacked panels - Share &
@@ -209,6 +221,7 @@ var MMGR = window.MMGR || {};
   function apiKeysHtml() {
  return '<div class="sr" style="margin-top:12px;padding:0 0 4px"><span class="sl" style="font-size:.72rem;font-weight:700"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-key"></use></svg> API Keys</span><button class="btn btn-n btn-s" data-action="cloudApiKeyList" style="margin-left:auto"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> Refresh</button></div>' +
  '<div class="sr-hint" style="margin:0 0 6px">Give an external AI assistant its own key for THIS project. It can only touch the sections you tick, it stops on the date you pick, and every change it makes waits for your approval in the review queue.</div>' +
+ '<div class="sr-hint" style="margin:4px 0 6px">Fine print, in plain words: the AI connects to <code style="font-family:ui-monospace,monospace">' + esc(mcpServerUrl()) + '</code> using the key as its access token (MCP connectors), or calls the cloud API with <code style="font-family:ui-monospace,monospace">X-API-Key</code>. It reads only what you tick, and nothing it proposes changes the project until you accept it in Review. Treat a key like a key to the site office - anyone holding it can do what you ticked. <a href="mymanager-field-guide.html#connect-ai" target="_blank" rel="noopener">Step-by-step in the field guide</a>.</div>' +
  '<div class="exp-row" style="flex-wrap:wrap">' +
  '<input type="text" id="cloud-apikey-label-in" class="ctl-in" placeholder="Label, e.g. Site assistant" style="min-width:180px" autocomplete="off">' +
  '<select id="cloud-apikey-expiry" class="ctl-in" style="width:auto" aria-label="Key expiry">' +

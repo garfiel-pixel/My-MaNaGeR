@@ -925,8 +925,13 @@ export async function cloudAuthApiKey(request, env, projectId, apiKey) {
   }
   const hash = await hashOwnerCode(key, row.key_salt);
   if (!codesEqual(hash, row.key_hash)) { await cloudTimingSink(); return null; }
-  if (row.expires_at) { const t = Date.parse(row.expires_at); if (!isNaN(t) && t <= Date.now()) return null; }
-  if (row.deleted_at) return null;
+  // API-KEY-AUDIT F5 (2026-09-16): expired and deleted-project rejections
+  // used to return immediately, measurably faster than the wrong-hash branch
+  // above - a timing leak against this function's own documented invariant
+  // ("all rejections collapse into the SAME generic 403"). Burn the same
+  // timing sink so every rejection path costs the same.
+  if (row.expires_at) { const t = Date.parse(row.expires_at); if (!isNaN(t) && t <= Date.now()) { await cloudTimingSink(); return null; } }
+  if (row.deleted_at) { await cloudTimingSink(); return null; }
   let scope = [];
   try { const p = JSON.parse(row.scope); if (Array.isArray(p)) scope = p.filter(function(x) { return !!CLOUD_SECTIONS[x]; }); } catch (e) { scope = []; }
   try {

@@ -7,121 +7,121 @@
       "glass": "css",
       "theme": "light",
       "screen": "locked-param (app.html?locked=qa-gate-seed)",
-      "worstContrast": null,
+      "worstContrast": 3.02,
       "errors": 0,
       "warnings": 0,
-      "gate": null,
-      "broken": true,
-      "verdict": "NO-GATE-FOUND"
+      "gate": "mb",
+      "broken": false,
+      "verdict": "OK"
     },
     {
       "combo": "app-dark-css",
       "glass": "css",
       "theme": "dark",
       "screen": "locked-param (app.html?locked=qa-gate-seed)",
-      "worstContrast": null,
+      "worstContrast": 15.86,
       "errors": 0,
       "warnings": 0,
-      "gate": null,
-      "broken": true,
-      "verdict": "NO-GATE-FOUND | DARK-NOT-APPLIED"
+      "gate": "mb",
+      "broken": false,
+      "verdict": "OK"
     },
     {
       "combo": "app-light-premium",
       "glass": "premium",
       "theme": "light",
       "screen": "locked-param (app.html?locked=qa-gate-seed)",
-      "worstContrast": null,
+      "worstContrast": 15.86,
       "errors": 0,
       "warnings": 0,
-      "gate": null,
-      "broken": true,
-      "verdict": "NO-GATE-FOUND"
+      "gate": "mb",
+      "broken": false,
+      "verdict": "OK (premium-engine-not-on-page)"
     },
     {
       "combo": "app-dark-premium",
       "glass": "premium",
       "theme": "dark",
       "screen": "locked-param (app.html?locked=qa-gate-seed)",
-      "worstContrast": null,
+      "worstContrast": 15.86,
       "errors": 0,
       "warnings": 0,
-      "gate": null,
-      "broken": true,
-      "verdict": "NO-GATE-FOUND | DARK-NOT-APPLIED"
+      "gate": "mb",
+      "broken": false,
+      "verdict": "OK (premium-engine-not-on-page)"
     },
     {
       "combo": "admin-setup-light-css",
       "glass": "css",
       "theme": "light",
       "screen": "n/a",
-      "worstContrast": null,
+      "worstContrast": 6.13,
       "errors": 0,
       "warnings": 0,
-      "gate": null,
-      "broken": true,
-      "verdict": "NO-GATE-FOUND"
+      "gate": "gbox",
+      "broken": false,
+      "verdict": "OK"
     },
     {
       "combo": "admin-setup-dark-css",
       "glass": "css",
       "theme": "dark",
       "screen": "n/a",
-      "worstContrast": null,
+      "worstContrast": 6.13,
       "errors": 0,
       "warnings": 0,
-      "gate": null,
-      "broken": true,
-      "verdict": "NO-GATE-FOUND | DARK-NOT-APPLIED"
+      "gate": "gbox",
+      "broken": false,
+      "verdict": "OK"
     },
     {
       "combo": "admin-setup-light-premium",
       "glass": "premium",
       "theme": "light",
       "screen": "n/a",
-      "worstContrast": null,
+      "worstContrast": 6.13,
       "errors": 0,
       "warnings": 0,
-      "gate": null,
-      "broken": true,
-      "verdict": "NO-GATE-FOUND"
+      "gate": "gbox",
+      "broken": false,
+      "verdict": "OK (premium-engine-not-on-page)"
     },
     {
       "combo": "admin-setup-dark-premium",
       "glass": "premium",
       "theme": "dark",
       "screen": "n/a",
-      "worstContrast": null,
+      "worstContrast": 6.13,
       "errors": 0,
       "warnings": 0,
-      "gate": null,
-      "broken": true,
-      "verdict": "NO-GATE-FOUND | DARK-NOT-APPLIED"
+      "gate": "gbox",
+      "broken": false,
+      "verdict": "OK (premium-engine-not-on-page)"
     },
     {
       "combo": "admin-login-light-css",
       "glass": "css",
       "theme": "light",
       "screen": "n/a",
-      "worstContrast": null,
+      "worstContrast": 6.13,
       "errors": 0,
       "warnings": 0,
-      "gate": null,
-      "broken": true,
-      "verdict": "NO-GATE-FOUND"
+      "gate": "gbox",
+      "broken": false,
+      "verdict": "OK"
     },
     {
       "combo": "admin-login-dark-premium",
       "glass": "premium",
       "theme": "dark",
       "screen": "n/a",
-      "worstContrast": null,
+      "worstContrast": 6.13,
       "errors": 0,
       "warnings": 0,
-      "gate": null,
-      "broken": true,
-      "verdict": "NO-GATE-FOUND | DARK-NOT-APPLIED"
+      "gate": "gbox",
+      "broken": false,
+      "verdict": "OK (premium-engine-not-on-page)"
     }
   ],
-  "anyBroken": true
+  "anyBroken": false
 }

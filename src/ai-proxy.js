@@ -195,7 +195,13 @@ export async function handleAiChat(request, env) {
     }
   }
 
-  if (!key) return json({ ok: false, error: 'missing api key' }, 401);
+  if (!key) {
+    // OWNER 2026-09-16: the Workers-AI no-key path used to fall through to
+    // 'missing api key' when the free binding was exhausted or errored - a
+    // flat-out wrong message that sent owners hunting for a key they never
+    // needed. Say what actually happened.
+    return json({ ok: false, error: 'The built-in free AI is at capacity right now - try again in a few minutes, or connect your own AI key in the AI window (Settings, AI Engine).', tier: 'workers-ai' }, 503);
+  }
   const ctrl = new AbortController();
   const timer = setTimeout(function() { ctrl.abort(); }, AI_TIMEOUT_MS);
   let upstream;

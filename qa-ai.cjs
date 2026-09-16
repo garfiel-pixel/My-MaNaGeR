@@ -63,10 +63,11 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
 
   const b2 = await ev(`(function(){
     var cfg = MMGR.Config.ai;
-    return { tierOff: cfg.tier === 'off', provider: cfg.provider === 'openai',
+    return { tierLocal: cfg.tier === 'local', provider: cfg.provider === 'openai',
       defaults: !!MMGR.Net.PROVIDER_DEFAULTS.openai && !!MMGR.Net.PROVIDER_DEFAULTS.anthropic };
   })()`);
-  check('A02 config: default tier=off, provider=openai, provider defaults exist', b2.tierOff && b2.provider && b2.defaults, b2);
+  // v288 OWNER RULE: AI defaults ON (local tier) in new and legacy projects.
+  check('A02 config: default tier=local (AI on by default), provider=openai, provider defaults exist', b2.tierLocal && b2.provider && b2.defaults, b2);
 
   // ---- 2. settings toggle: switching tiers is config-only, no schema change ----
   const t1 = await ev(`(function(){
@@ -189,7 +190,7 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
       MMGR.AiKey.setKey('google-gemini', 'AIza-test-456');
       // State provider is deliberately set to openai — the VAULT provider must win.
       MMGR.AiWin.setAiCfg({ tier: 'cloud', provider: 'openai', endpoint: '', model: '' });
-      var res = await MMGR.AiWin.submit('hello', '', { tier: 'cloud' });
+      var res = await MMGR.AiWin.submit('What is the current task status?', '', { tier: 'cloud' });
       var direct = calls.filter(function(c){ return String(c.url).indexOf('generativelanguage') > -1; })[0];
       var body = direct && direct.opts ? JSON.parse(direct.opts.body) : null;
       return { ok: res.ok, text: res.text,
@@ -211,7 +212,7 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
     try {
       MMGR.AiKey.setKey('openai', 'sk-relay-200');
       MMGR.AiWin.setAiCfg({ tier: 'cloud', provider: 'openai', endpoint: '', model: '' });
-      var res = await MMGR.AiWin.submit('hello', '', { tier: 'cloud' });
+      var res = await MMGR.AiWin.submit('What is the current task status?', '', { tier: 'cloud' });
       var noDirect = calls.every(function(c){ return String(c.url).indexOf('openai.com') === -1 && String(c.url).indexOf('generativelanguage') === -1; });
       return { ok: res.ok, text: res.text, relayUsed: calls.length === 1 && String(calls[0].url).indexOf('/api/ai/chat') === 0, noDirect: noDirect };
     } finally { window.fetch = orig; }
@@ -234,7 +235,7 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
     try {
       MMGR.AiKey.setKey('google-gemini', 'AIza-ladder-1');
       MMGR.AiWin.setAiCfg({ tier: 'cloud', provider: 'openai', endpoint: '', model: '' });
-      var res = await MMGR.AiWin.submit('hello', '', { tier: 'cloud' });
+      var res = await MMGR.AiWin.submit('What is the current task status?', '', { tier: 'cloud' });
       var liteCalled = calls.some(function(c){ return String(c.url).indexOf('gemini-flash-lite-latest:generateContent') > -1; });
       return { ok: res.ok, text: res.text, model: res.model,
         liteCalled: liteCalled,
@@ -256,7 +257,7 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
     try {
       MMGR.AiKey.setKey('google-gemini', 'AIza-bad-ladder');
       MMGR.AiWin.setAiCfg({ tier: 'cloud', provider: 'openai', endpoint: '', model: '' });
-      var res = await MMGR.AiWin.submit('hello', '', { tier: 'cloud' });
+      var res = await MMGR.AiWin.submit('What is the current task status?', '', { tier: 'cloud' });
       var geminiCalls = calls.filter(function(c){ return String(c.url).indexOf('generateContent') > -1; });
       var onlyPrimary = geminiCalls.length === 1 && String(geminiCalls[0].url).indexOf('gemini-flash-latest:generateContent') > -1 && String(geminiCalls[0].url).indexOf('gemini-flash-lite-latest') === -1;
       return { ok: res.ok, keyCleared: MMGR.AiKey.isConnected() === false,
@@ -286,7 +287,7 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
     try {
       MMGR.AiKey.setKey('google-gemini', 'AIza-relay-ladder');
       MMGR.AiWin.setAiCfg({ tier: 'cloud', provider: 'openai', endpoint: '', model: '' });
-      var res = await MMGR.AiWin.submit('hello', '', { tier: 'cloud' });
+      var res = await MMGR.AiWin.submit('What is the current task status?', '', { tier: 'cloud' });
       var relayCalls = calls.filter(function(c){ return String(c.url).indexOf('/api/ai/chat') === 0; });
       var liteRelay = relayCalls.some(function(c){ var b = c.opts && c.opts.body ? JSON.parse(c.opts.body) : null; return b && b.model === 'gemini-flash-lite-latest'; });
       var noDirect = !calls.some(function(c){ return String(c.url).indexOf('generativelanguage') > -1; });
@@ -311,7 +312,7 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
     try {
       MMGR.AiKey.setKey('openai', 'sk-ladder-1');
       MMGR.AiWin.setAiCfg({ tier: 'cloud', provider: 'openai', endpoint: '', model: '' });
-      var res = await MMGR.AiWin.submit('hello', '', { tier: 'cloud' });
+      var res = await MMGR.AiWin.submit('What is the current task status?', '', { tier: 'cloud' });
       var triedGpt5Mini = calls.some(function(c){ var b = c.opts && c.opts.body ? JSON.parse(c.opts.body) : null; return b && b.model === 'gpt-5-mini'; });
       return { ok: res.ok, text: res.text, model: res.model, triedGpt5Mini: triedGpt5Mini,
         traceFallback: !!(res.trace && res.trace.join(' ').indexOf('fell back from gpt-4o-mini on 429') > -1) };
@@ -333,7 +334,7 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
     try {
       MMGR.AiKey.setKey('anthropic', 'sk-ant-1');
       MMGR.AiWin.setAiCfg({ tier: 'cloud', provider: 'openai', endpoint: '', model: '' });
-      var res = await MMGR.AiWin.submit('hello', '', { tier: 'cloud' });
+      var res = await MMGR.AiWin.submit('What is the current task status?', '', { tier: 'cloud' });
       var direct = calls.filter(function(c){ return String(c.url).indexOf('anthropic.com') > -1; })[0];
       var body = direct && direct.opts ? JSON.parse(direct.opts.body) : null;
       return { ok: res.ok, text: res.text,
@@ -361,7 +362,7 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
     try {
       MMGR.AiKey.setKey('anthropic', 'sk-ant-2');
       MMGR.AiWin.setAiCfg({ tier: 'cloud', provider: 'openai', endpoint: '', model: '' });
-      var res = await MMGR.AiWin.submit('hello', '', { tier: 'cloud' });
+      var res = await MMGR.AiWin.submit('What is the current task status?', '', { tier: 'cloud' });
       var triedHaiku = calls.some(function(c){ var b = c.opts && c.opts.body ? JSON.parse(c.opts.body) : null; return b && b.model === 'claude-3-5-haiku-latest'; });
       return { ok: res.ok, text: res.text, model: res.model, triedHaiku: triedHaiku,
         traceFallback: !!(res.trace && res.trace.join(' ').indexOf('fell back from claude-3-5-sonnet-latest on 429') > -1) };
@@ -420,6 +421,62 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
     } finally { window.fetch = orig; }
   })()`);
   check('A08j UI: fallback bubble renders a visible .ai-fallback badge naming both models', c2j.ok && c2j.model === 'claude-3-5-haiku-latest' && c2j.fellBackFrom === 'claude-3-5-sonnet-latest' && c2j.badgeShown, c2j);
+
+  // A08t TOPIC GATE (owner 2026-09-16, project-only + friendly refuse):
+  // chit-chat never reaches a model on EITHER tier - answered locally with
+  // one polite line pointing back at the project. Preset prompts (long,
+  // structured) can never match.
+  const c2t = await ev(`(async function(){
+    var calls = [];
+    var orig = window.fetch;
+    window.fetch = function(url, opts){ calls.push({ url: url, opts: opts }); return Promise.resolve(new Response('', { status: 404 })); };
+    try {
+      var r1 = await MMGR.AiWin.submit('hello', '', { tier: 'cloud' });
+      var r2 = await MMGR.AiWin.submit('how was your day', '', { tier: 'cloud' });
+      var r3 = await MMGR.AiWin.submit('hi', '', { tier: 'local' });
+      return {
+        ok1: r1.ok && r1.text.indexOf('project assistant') !== -1 && r1.tier === 'local',
+        ok2: r2.ok && r2.text.indexOf('project assistant') !== -1,
+        ok3: r3.ok && r3.text.indexOf('project assistant') !== -1,
+        noCalls: calls.length === 0,
+        trace1: r1.trace && r1.trace.join(' ').indexOf('topic gate') !== -1
+      };
+    } finally { window.fetch = orig; }
+  })()`);
+  check('A08t topic gate: chit-chat answered locally on both tiers, zero model calls, polite refusal',
+    c2t.ok1 && c2t.ok2 && c2t.ok3 && c2t.noCalls && c2t.trace1, c2t);
+
+  // A08u FREE-TEXT RELAY ASSIST (owner 2026-09-16): a local-tier question the
+  // rule engine cannot derive rides the relay with project context and the
+  // connected model answers FROM the project (zero-key -> Workers AI edge).
+  const c2u = await ev(`(async function(){
+    var relayBodies = [];
+    var orig = window.fetch;
+    window.fetch = function(url, opts){
+      if (String(url).indexOf('/api/ai/chat') === 0) {
+        relayBodies.push(opts && opts.body ? JSON.parse(opts.body) : null);
+        return Promise.resolve(new Response(JSON.stringify({ ok: true, text: 'RELAY-FORECAST-OK', model: 'edge-model' }), { status: 200, headers: { 'Content-Type': 'application/json' } }));
+      }
+      return Promise.resolve(new Response('', { status: 404 }));
+    };
+    try {
+      MMGR.AiWin.setAiCfg({ tier: 'local' });
+      // Rule-free question: deliberately avoids every local keyword family
+      // (forecast/due/risk/issue/critical/evm/weather/delay/budget...) so the
+      // relay assist is the only path that can answer it.
+      var res = await MMGR.AiWin.submit('Should I be worried about the plumbing subcontractor next week?', '', { tier: 'local' });
+      var b = relayBodies[0] || {};
+      var msgs = b.messages || [];
+      return { ok: res.ok, text: res.text,
+        relayHit: relayBodies.length === 1,
+        bodyPreview: JSON.stringify(b).slice(0, 500),
+        hasSystem: msgs.length > 0 && msgs[0].role === 'system' && msgs[0].content.indexOf('grounded ONLY') !== -1,
+        hasCtx: msgs.some(function(m){ return (m.content || '').indexOf('PROJECT CONTEXT') !== -1; }),
+        questionCarried: msgs.some(function(m){ return (m.content || '').indexOf('plumbing subcontractor') !== -1; }) };
+    } finally { window.fetch = orig; }
+  })()`);
+  check('A08u free-text assist: local tier rides the relay with system prompt + project context',
+    c2u.ok && c2u.text === 'RELAY-FORECAST-OK' && c2u.relayHit && c2u.hasSystem && c2u.hasCtx && c2u.questionCarried, c2u);
 
   // A08k: STATIC regression guard — the Gemini ladder must never point at a
   // dead model family. Verified live on 2026-08-10 with a real user key:

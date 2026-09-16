@@ -5,7 +5,16 @@
    (Claude Desktop, Cursor, Windsurf, etc.).
 
    Transport: Streamable HTTP (POST /api/mcp/:projectId)
-   Auth: Owner code via Authorization: Bearer <code>
+   Auth: (1) a project API key (sk-mmgr-...) via Authorization: Bearer <key>
+   or X-API-Key - scoped, expiring, revocable, recommended for external AI
+   clients; (2) the owner code via Authorization: Bearer <owner-code> -
+   full access, kept for owners driving MCP with their master credential.
+   API-KEY-AUDIT (2026-09-16 directive): MCP is now a second transport on
+   the cloud_api_keys system. Reads are projected through the key's section
+   scope (cloudScopeState); apply_changes queues a cloud_reviews row
+   (proposal_type 'mcp') merged under the key's scope - it NEVER imports to
+   the changelog directly, so nothing touches live project state until the
+   owner accepts the proposal inside the project.
 
    Tools:
      get_project_summary  — project name, description, health
@@ -17,7 +26,8 @@
      apply_changes        — write diffs (goes through review queue)
    ============================================================ */
 
-import { json, cloudForbidden, cloudAuthOwnerEither, cloudReadState, readCloudBody } from '../lib/http.js';
+import { json, cloudForbidden, cloudAuthOwnerEither, cloudAuthApiKey, cloudReadState, readCloudBody,
+  cloudScopeState, cloudScopeMerge, cloudDiffState, CLOUD_SECTIONS, CLOUD_KEY_TO_SECTION } from '../lib/http.js';
 import { API_SHAPES } from '../api/shapes.js';
 
 // ---- MCP protocol constants ----
@@ -91,8 +101,20 @@ const TOOLS = [
 
 // ---- Tool execution ----
 
-function executeTool(name, state, projectId, label) {
+// API-KEY-AUDIT F4 (2026-09-16): a scoped key only ever sees its granted
+// sections. `scope` is null for an owner-code caller (full access) or the
+// key's granted section keys (see CLOUD_SECTIONS) - each tool then either
+// projects its output through cloudScopeState or refuses with a clear
+// message when its whole section is not granted. Weather is not a grantable
+// section at all, so scoped keys are refused there outright.
+function sectionAllowed(scope, sec) { return !Array.isArray(scope) || scope.indexOf(sec) !== -1; }
+function sectionRefusal(scope) {
+  return 'This API key does not include that section. The owner granted it: ' + (Array.isArray(scope) && scope.length ? scope.join(', ') : '(no sections)') + '. Ask the project owner to tick more sections for this key.';
+}
+
+function executeTool(name, state, projectId, label, scope) {
   if (!state) return { content: [{ type: 'text', text: 'No project data available. Save a snapshot first.' }], isError: true };
+  if (Array.isArray(scope)) state = cloudScopeState(state, scope);
 
   switch (name) {
     case 'get_project_summary': {
@@ -118,6 +140,7 @@ function executeTool(name, state, projectId, label) {
       };
     }
     case 'get_tasks': {
+      if (!sectionAllowed(scope, 'wbs')) return { content: [{ type: 'text', text: sectionRefusal(scope) }], isError: true };
       const tasks = Array.isArray(state.tasks) ? state.tasks : [];
       return {
         content: [{
@@ -135,6 +158,7 @@ function executeTool(name, state, projectId, label) {
       };
     }
     case 'get_budget': {
+      if (!sectionAllowed(scope, 'bud')) return { content: [{ type: 'text', text: sectionRefusal(scope) }], isError: true };
       const lines = Array.isArray(state.budgetLines) ? state.budgetLines : [];
       const spendLog = Array.isArray(state.spendLog) ? state.spendLog : [];
       const enriched = lines.map(line => {
@@ -160,6 +184,7 @@ function executeTool(name, state, projectId, label) {
       };
     }
     case 'get_risks': {
+      if (!sectionAllowed(scope, 'risk')) return { content: [{ type: 'text', text: sectionRefusal(scope) }], isError: true };
       const risks = Array.isArray(state.risks) ? state.risks : [];
       const issues = Array.isArray(state.issues) ? state.issues : [];
       return {
@@ -182,6 +207,7 @@ function executeTool(name, state, projectId, label) {
       };
     }
     case 'get_weather': {
+      if (Array.isArray(scope)) return { content: [{ type: 'text', text: 'Weather data is not a grantable section, so API keys cannot read it. The project owner can read it inside the app.' }], isError: true };
       const cache = state.wxCache || null;
       const days = (cache && Array.isArray(cache.days)) ? cache.days : [];
       const log = Array.isArray(state.weatherLog) ? state.weatherLog : [];
@@ -205,6 +231,7 @@ function executeTool(name, state, projectId, label) {
       };
     }
     case 'get_meetings': {
+      if (!sectionAllowed(scope, 'meet')) return { content: [{ type: 'text', text: sectionRefusal(scope) }], isError: true };
       const meetings = Array.isArray(state.meetings) ? state.meetings : [];
       return {
         content: [{
@@ -221,8 +248,12 @@ function executeTool(name, state, projectId, label) {
       };
     }
     case 'apply_changes': {
-      // This returns a special result that the caller handles
-      // by submitting to the changelog import endpoint
+      // API-KEY-AUDIT F3 (2026-09-16): this used to return a special result
+      // and the route handler fetched /changelog/import - an AUDIT-LOG
+      // importer that only records diffs already true in the stored state,
+      // so a genuinely new change always came back 'diverged' and the tool
+      // could never do what its description promised. The queueing now lives
+      // in handleMcpRequest (below) and creates a pending cloud_reviews row.
       return { pendingApply: true };
     }
     default:
@@ -279,10 +310,16 @@ async function handleMcpRequest(body, projectId, env, auth) {
       ? await cloudReadState(env, key, row.owner_code_hash, row.owner_code_salt)
       : null;
 
-    // Execute the tool
-    const result = executeTool(toolName, state, projectId, auth.label || 'MCP AI');
+    // Execute the tool. API-KEY-AUDIT F4: a scoped key's reads are filtered
+    // to its granted sections; an owner-code caller gets scope=null (full).
+    const result = executeTool(toolName, state, projectId, auth.label || 'MCP AI', auth.role === 'api' ? auth.scope : null);
 
-    // Handle apply_changes specially — submit to changelog import
+    // Handle apply_changes - queue a pending review proposal (API-KEY-AUDIT
+    // F3, 2026-09-16). Field-level diffs are materialized onto a copy of the
+    // stored state, merged under the caller's section scope exactly like the
+    // REST save path, and inserted as a pending cloud_reviews row. NOTHING
+    // is written to live project state here - the owner accepts or rejects
+    // inside the project, and only the accept applies the change.
     if (result.pendingApply) {
       const diffs = toolArgs.diffs;
       if (!Array.isArray(diffs) || diffs.length === 0) {
@@ -292,42 +329,75 @@ async function handleMcpRequest(body, projectId, env, auth) {
         };
       }
 
-      // Submit via changelog import
-      const importBody = {
-        entries: [{
-          localId: 'mcp-' + Date.now(),
-          type: 'edit',
-          actorType: 'mcp',
-          label: toolArgs.label || 'MCP AI change',
-          diffs: diffs
-        }]
-      };
-
-      try {
-        const r = await fetch('http://internal/api/cloud/projects/' + encodeURIComponent(projectId) + '/changelog/import', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'X-Owner-Code': auth.code || '' },
-          body: JSON.stringify(importBody)
-        });
-        const data = await r.json();
+      const granted = Array.isArray(auth.scope) ? auth.scope : Object.keys(CLOUD_SECTIONS);
+      const prev = state; // the full stored state fetched above (pre-scope)
+      if (!prev) {
         return {
           jsonrpc: '2.0', id,
-          result: {
-            content: [{
-              type: 'text',
-              text: data.ok
-                ? 'Changes submitted for owner review. ' + (data.imported || 0) + ' entry(ies) queued, ' + (data.skipped || 0) + ' skipped. Owner must accept in the Review section.'
-                : 'Failed: ' + (data.error || 'unknown error')
-            }],
-            isError: !data.ok
-          }
+          result: { content: [{ type: 'text', text: 'No project data available. Save a snapshot first.' }], isError: true }
         };
+      }
+      const base = JSON.parse(JSON.stringify(prev));
+      const submitted = {};
+      const refused = [];
+      for (let i = 0; i < diffs.length; i++) {
+        const d = diffs[i];
+        if (!d || typeof d !== 'object') { refused.push('diff ' + i + ': invalid'); continue; }
+        const path = String(d.path || '');
+        const rec = String(d.recordId || '');
+        const field = String(d.field || '');
+        const sec = CLOUD_KEY_TO_SECTION[path];
+        if (!sec) { refused.push((path || '(empty)') + ': not a project section'); continue; }
+        if (granted.indexOf(sec) === -1) { refused.push(path + ': outside the granted sections'); continue; }
+        const arr = base[path];
+        if (!Array.isArray(arr)) { refused.push(path + ': not an editable list'); continue; }
+        let item = null;
+        for (let j = 0; j < arr.length; j++) {
+          if (arr[j] && String(arr[j].id) === rec) { item = arr[j]; break; }
+        }
+        if (!item) { refused.push((rec || '(no record id)') + ': not found in ' + path); continue; }
+        if (!field) { refused.push('diff ' + i + ': missing field'); continue; }
+        item[field] = d.after !== undefined ? d.after : null;
+        submitted[path] = arr;
+      }
+      if (!Object.keys(submitted).length) {
+        return {
+          jsonrpc: '2.0', id,
+          result: { content: [{ type: 'text', text: 'Nothing to propose. ' + (refused.length ? 'Refused: ' + refused.join('; ') + '.' : '') }], isError: true }
+        };
+      }
+      const merged = cloudScopeMerge(prev, submitted, granted);
+      if (!merged.applied.length) {
+        return {
+          jsonrpc: '2.0', id,
+          result: { content: [{ type: 'text', text: 'No changes were within the granted sections.' + (refused.length ? ' Refused: ' + refused.join('; ') + '.' : '') }], isError: true }
+        };
+      }
+      const now = new Date().toISOString();
+      const diffsJson = (cloudDiffState(prev, merged.next) || []).filter(function(d) { return String(d.path).indexOf('fieldTs') !== 0; });
+      let res;
+      try {
+        res = await env.DB.prepare(
+          'INSERT INTO cloud_reviews (project_id, proposal_type, source_type, source_label, editor_code_id, scope, submitted_json, diffs_json, status, proposed_at) VALUES (?,?,?,?,?,?,?,?,?,?)'
+        ).bind(projectId, 'mcp', 'api', auth.label || 'MCP AI', null, JSON.stringify(granted),
+          JSON.stringify(submitted), JSON.stringify(diffsJson), 'pending', now).run();
       } catch (e) {
         return {
           jsonrpc: '2.0', id,
-          result: { content: [{ type: 'text', text: 'Failed to submit changes: ' + (e.message || 'network error') }], isError: true }
+          result: { content: [{ type: 'text', text: 'Could not queue the proposal: ' + (e.message || 'database error') }], isError: true }
         };
       }
+      return {
+        jsonrpc: '2.0', id,
+        result: {
+          content: [{
+            type: 'text',
+            text: 'Queued ' + diffsJson.length + ' field change(s) for owner review (proposal #' + res.meta.last_row_id + ').'
+              + (refused.length ? ' Refused: ' + refused.join('; ') + '.' : '')
+              + ' Nothing changes until the owner accepts it inside the project.'
+          }]
+        }
+      };
     }
 
     return { jsonrpc: '2.0', id, result };
@@ -347,27 +417,36 @@ export async function handleMcpServer(request, env, projectId) {
     return json({ ok: false, error: 'MCP server requires POST' }, 405);
   }
 
-  // Authenticate via Bearer token
-  const authHeader = request.headers.get('Authorization') || '';
-  const code = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
-  if (!code) {
-    return json({ ok: false, error: 'Missing Authorization: Bearer <owner-code>' }, 401);
+  // Authenticate. API-KEY-AUDIT F2 (2026-09-16): a project API key
+  // (Authorization: Bearer sk-mmgr-... or X-API-Key) is the RECOMMENDED
+  // credential - scoped to its granted sections, expiring, revocable from
+  // the project's API Keys panel. The owner-code Bearer still works with
+  // full access. Owner-code auth: MCP-BEARER-FIX (2026-09-12 owner review)
+  // - cloudAuthOwnerEither takes (request, env, projectId), so the Bearer
+  // token is routed through the X-Owner-Code header the helper reads.
+  let auth = null;
+  const apiKey = String(request.headers.get('X-API-Key') || '').trim();
+  if (!apiKey) {
+    const authHeader = request.headers.get('Authorization') || '';
+    const bearer = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
+    if (bearer && bearer.lastIndexOf('sk-mmgr-', 0) === 0) {
+      auth = await cloudAuthApiKey(request, env, projectId, bearer);
+    }
   }
-
-  // Verify owner code.
-  // MCP-BEARER-FIX (2026-09-12 owner review): cloudAuthOwnerEither takes
-  // (request, env, projectId) - the Bearer code was passed as a 4th arg and
-  // SILENTLY DROPPED, so code-auth could never succeed and MCP only worked
-  // from a browser that happened to hold a signed-in session cookie (and
-  // only then because cloudAuthOwnerByCode(null-code) falls through to the
-  // session probe inside cloudAuthOwnerEither). Route the Bearer token
-  // through the X-Owner-Code header the auth helper actually reads so an
-  // external MCP client (Claude Desktop, Cursor) authenticates with its
-  // stored owner code as documented in the Controls card.
-  const authHeaders = new Headers(request.headers);
-  if (code) authHeaders.set('X-Owner-Code', code);
-  const authReq = new Request(request.url, { method: 'POST', headers: authHeaders, body: request.body });
-  const auth = await cloudAuthOwnerEither(authReq, env, projectId);
+  if (!auth && apiKey) {
+    auth = await cloudAuthApiKey(request, env, projectId, apiKey);
+  }
+  if (!auth) {
+    const authHeader = request.headers.get('Authorization') || '';
+    const code = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
+    if (!code) {
+      return json({ ok: false, error: 'Missing Authorization: Bearer <api-key or owner-code>' }, 401);
+    }
+    const authHeaders = new Headers(request.headers);
+    authHeaders.set('X-Owner-Code', code);
+    const authReq = new Request(request.url, { method: 'POST', headers: authHeaders, body: request.body });
+    auth = await cloudAuthOwnerEither(authReq, env, projectId);
+  }
   if (!auth) return cloudForbidden();
 
   // Parse request body
@@ -379,7 +458,7 @@ export async function handleMcpServer(request, env, projectId) {
   const projectIdFromUrl = projectId;
 
   try {
-    const response = await handleMcpRequest(body, projectIdFromUrl, env, { ...auth, code });
+    const response = await handleMcpRequest(body, projectIdFromUrl, env, auth);
     if (!response) return new Response(null, { status: 202 });
     return json(response, 200);
   } catch (e) {

@@ -1,14 +1,12 @@
-/* My MaNaGeR - Performance Mode (owner 2026-09-06)
-   One device-level preference that trims the expensive CSS effects (heavy
-   backdrop blur, long shadows, large blurs) and the 3D deck tilt. The starry
-   liquid-glass shader is NOT gated by this module - it is mandatory app
-   identity (owner directive) and already self-gates via the capability floor
-   (mmgr-viewport.isHighEnd) and reduced-motion preferences.
-     - Performance Mode ON  (default): every animation/transition stays, but
-       the heaviest blur/shadow layers are lightened via [data-perf=on] CSS.
-     - Performance Mode OFF: full visual weight.
-   Nothing announces itself: no toasts, no labels. The theme picker
-   (Light/Dark/System) and this toggle are the whole appearance panel. */
+/* My MaNaGeR - Performance Mode (owner 2026-09-06, REVISED owner 2026-09-15)
+   One device-level preference for weak hardware. ON (default) = the full
+   pretty experience the machine can handle; OFF = everything expensive
+   stands down, so a peanut computer never lags:
+     - the starry WebGL background does not boot (and tears down if running)
+     - 3D deck tilt is off
+     - the heaviest CSS blur/shadow layers are lightened via [data-perf=on]
+   The revision reverses the earlier "shader is mandatory identity" rule:
+   the owner now explicitly wants perf mode to kill the star background too. */
 (function (ns) {
   'use strict';
 
@@ -46,9 +44,9 @@
   }
 
   /**
-   * True while Performance Mode is on: 3D tilt and the heaviest CSS blur/
-   * shadow layers stand down. The WebGL shader does NOT consult this -
-   * it is capability-gated in mmgr-viewport.effectiveGlassMode().
+   * True while Performance Mode is on: 3D tilt, the starry WebGL background
+   * and the heaviest CSS blur/shadow layers ALL stand down (owner 2026-09-15:
+   * perf mode must guarantee a lag-free page on weak hardware).
    */
   function blocksHeavyLayers() { return isOn(); }
 

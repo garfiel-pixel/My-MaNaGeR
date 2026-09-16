@@ -730,8 +730,8 @@ body.dark-mode .nav-dd-item:hover{color:var(--gold);background:rgba(var(--gold-r
    the glyphs. Solid fallback: .fc-art is decoration only, display:none
    under reduced transparency keeps the card fully readable. */
 .fcard .fc-art{
-  position:absolute;right:-14px;bottom:-14px;width:112px;height:112px;
-  color:var(--gold-deep);opacity:.09;pointer-events:none;z-index:0;
+  position:absolute;right:-10px;bottom:-10px;width:56px;height:56px;
+  color:var(--gold-deep);opacity:.10;pointer-events:none;z-index:0;
 }
 .fcard .fc-art svg{width:100%;height:100%;}
 .fcard>*:not(.fc-art){position:relative;z-index:1;}
@@ -741,10 +741,7 @@ body.dark-mode .nav-dd-item:hover{color:var(--gold);background:rgba(var(--gold-r
   .fcard{border-color:var(--border);}
 }
 /* carousel controls (auto-tick pauses on hover/focus of the bar) */
-.feat-ctl{display:flex;align-items:center;gap:10px;margin-top:24px;}
-.feat-ctl .feat-hint{
-  margin-right:auto;font-size:.78rem;color:var(--text-secondary);
-}
+.feat-ctl{display:flex;align-items:center;gap:10px;margin-top:24px;justify-content:flex-end;}
 .feat-btn{
   display:inline-flex;align-items:center;justify-content:center;
   width:40px;height:40px;border-radius:100px;
@@ -1101,7 +1098,6 @@ body.dark-mode .nav-dd-item:hover{color:var(--gold);background:rgba(var(--gold-r
   .photo-band{padding:76px 0;}
   .footer-grid{grid-template-columns:1fr;}
   .hero-stats{gap:22px;}
-  .feat-ctl .feat-hint{display:none;}
 }
 
 /* ---------- 15. Reduced motion + reduced transparency ---------- */

@@ -13,8 +13,8 @@
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#D4AF37">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="mobile-web-app-capable" content="yes"><link rel="icon" type="image/png" href="images/site-icon.png">
-  <link rel="apple-touch-icon" href="images/site-icon.png">
+<meta name="mobile-web-app-capable" content="yes"><link rel="icon" type="image/png" href="images/mpw-icon.png">
+  <link rel="apple-touch-icon" href="images/mpw-icon.png">
 <link rel="stylesheet" href="dist/mmgr.min.css">
 <!--
   Content Security Policy:
@@ -90,23 +90,28 @@
      Deliberately distinct (danger/blue tint, i-alert-triangle) from the amber
      schedule-risk flags so a safety concern never reads as a schedule concern.
      Rendered by renderSafetyBanner() in js/mmgr-render.js; hidden (.is-hide)
-     when clear. Static markup, zero inline styles. -->
-<div id="safety-banner" class="is-hide" role="status" aria-live="polite"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-alert-triangle"></use></svg><span id="safety-banner-text"></span></div>
-<!-- View-only banner (ACTION-PLAN 4.1) , shown when the project was opened
-     with a read-only scope code. Static markup, zero inline styles. -->
-<div id="readonly-banner" class="is-hide"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-eye"></use></svg> View Only</div>
+     when clear. Static markup, zero inline styles. (The element itself sits
+     inside #app-header below - see the banner-stack note there.) -->
     <!-- CLOUD-BACKEND-ARCHITECTURE-PLAN Phase 2: editor-scope banner (toggled
          by js/mmgr-cloud.js applyEditorScope). Pure UX , the Worker enforces
          the scope server-side on every editor save. -->
-    <div id="editor-scope-banner" class="is-hide"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-user"></use></svg> Editing as a scoped editor code , some panels are locked for this code (enforced by the server).</div>     <!-- C19: client code in session - the granted sections are the only ones
-         visible; this banner is shown by js/cloud/scope.js applyClientScope. -->
-    <div id="client-scope-banner" class="is-hide"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-user"></use></svg> Viewing as a client , read-only. Only the sections the admin granted you are shown.</div>
-
 <!-- Undo Bar -->
 <div id="ub"><span><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-alert-triangle"></use></svg><span id="ub-msg"> Page cleared.</span></span><button class="btn btn-s btn-warn"  data-action="undoClr"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-corner-down-left"></use></svg> Undo</button><span id="ut" class="amber-b">5</span></div>
 
 <!-- HEADER -->
 <header id="app-header">
+  <!-- All chrome banners (safety / view-only / editor-scope / client-scope)
+       live INSIDE the sticky header as full-width rows: one sticky stack
+       means --hdr-h (measured from #app-header) is always the true chrome
+       height, so the fixed sidebar, sticky section nav and #ai-win align
+       exactly below it at scroll-top too (body-level sticky banners pushed
+       the header down and clipped the sidebar's SECTIONS title). Toggled by
+       renderSafetyBanner() / mmgr-app.js readonly / applyEditorScope /
+       applyClientScope - all only flip .is-hide, position-independent. -->
+  <div id="safety-banner" class="is-hide" role="status" aria-live="polite"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-alert-triangle"></use></svg><span id="safety-banner-text"></span></div>
+  <div id="readonly-banner" class="is-hide"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-eye"></use></svg> View Only</div>
+  <div id="editor-scope-banner" class="is-hide"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-user"></use></svg> Editing as a scoped editor code , some panels are locked for this code (enforced by the server).</div>
+  <div id="client-scope-banner" class="is-hide"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-user"></use></svg> Viewing as a client , read-only. Only the sections the admin granted you are shown.</div>
   <div class="greeting" id="greeting"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg> <span id="greeting-text">Welcome</span></div>
   <div class="tab-ctrl">
     <button class="tab-btn active" data-action="swMeth" data-meth="waterfall" data-mlc="waterfall">Waterfall</button>

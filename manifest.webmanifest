@@ -10,8 +10,8 @@
   "theme_color": "#D4AF37",
   "icons": [
     {
-      "src": "images/site-icon.png",
-      "sizes": "677x369",
+      "src": "images/mpw-icon.png",
+      "sizes": "180x180",
       "type": "image/png",
       "purpose": "any"
     },

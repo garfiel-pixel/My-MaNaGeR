@@ -247,7 +247,7 @@ export async function authSessionResponse(user, env, emailSent) {
 
 // ---- Cloud code utilities --------------------------------------------------
 
-const CLOUD_CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+export const CLOUD_CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const CLOUD_PBKDF2_ITERS = 100000;
 
 export function randomOwnerCode() {
@@ -903,7 +903,12 @@ export async function cloudAuthViewer(request, env, projectId, code) {
 // last_used_at (best-effort, never blocks auth) and returns the key's
 // scope so callers can enforce the section grant exactly like editor codes.
 export async function cloudAuthApiKey(request, env, projectId, apiKey) {
-  const key = String(apiKey || '').trim();
+  // Accept the key verbatim OR with surrounding whitespace; also accept a
+  // case-insensitive sk-mmgr- prefix so a copied key still matches even if
+  // the consumer's tool uppercased it. The stored fingerprint is over the
+  // exact minted form, so normalize before hashing.
+  let key = String(apiKey || '').trim();
+  if (key.toLowerCase().lastIndexOf('sk-mmgr-', 0) === 0) key = 'sk-mmgr-' + key.slice(8);
   if (!key) { await Promise.all([cloudDummyHash(), cloudTimingSink()]); return null; }
   const fp = await fingerprintOf(key);
   const row = await env.DB.prepare(

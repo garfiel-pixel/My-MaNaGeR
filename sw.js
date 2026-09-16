@@ -41,7 +41,7 @@ const SHELL = [
   'icon.svg',
   'primary-icon.png',
   'high-contrast-icon.png',
-  'images/site-icon.png',
+  'images/mpw-icon.png',
   // Data
   'projects-data.js',
   'demo-data.js',

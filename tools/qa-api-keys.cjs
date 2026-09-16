@@ -165,8 +165,8 @@ const j = async (res) => { try { return await res.json(); } catch (e) { return {
     const createdKey = await j(r);
     const apiKey = createdKey.apiKey;
     const futureOk = !!createdKey.expiresAt && new Date(createdKey.expiresAt).getTime() > Date.now();
-    check('P1a create key -> plaintext shown once + scope echo + future expiry',
-      r.ok && createdKey.ok && typeof apiKey === 'string' && apiKey.length >= 24 && (createdKey.scope || []).join(',') === 'wbs,bud' && futureOk, createdKey);
+    check('P1a create key -> plaintext shown once + sk-mmgr- format + scope echo + future expiry',
+      r.ok && createdKey.ok && typeof apiKey === 'string' && apiKey.length >= 24 && apiKey.lastIndexOf('sk-mmgr-', 0) === 0 && (createdKey.scope || []).join(',') === 'wbs,bud' && futureOk, createdKey);
     check('P1b create requires a section (empty scope refused)', (await (async () => {
       const rr = await fetch(BASE + '/api/cloud/projects/' + pid + '/api-keys', {
         method: 'POST', credentials: 'same-origin', headers: ownerHeaders,

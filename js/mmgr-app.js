@@ -1854,6 +1854,21 @@ window.MMGR = MMGR;
     'cloudApiKeyCreate': () => { const C = window.MMGR.Cloud; if (C && C.createApiKey) C.createApiKey(); },
     'cloudApiKeyList': () => { const C = window.MMGR.Cloud; if (C && C.listApiKeys) C.listApiKeys(); },
     'cloudApiKeyRevoke': (el) => { const C = window.MMGR.Cloud; if (C && C.revokeApiKey) C.revokeApiKey(el && el.getAttribute('data-id')); },
+    // Share & Access sub-tabs (owner 2026-09-15): switch without a re-render.
+    'cloudShareTab': (el) => {
+      const tab = el && el.getAttribute('data-tab');
+      if (!tab) return;
+      const wrap = document.getElementById('ctrl-share');
+      if (!wrap) return;
+      wrap.querySelectorAll('.share-subtab').forEach(function(b) {
+        const on = b.getAttribute('data-tab') === tab;
+        b.classList.toggle('on', on);
+        b.setAttribute('aria-selected', on ? 'true' : 'false');
+      });
+      wrap.querySelectorAll('.share-subpane').forEach(function(p) {
+        p.hidden = p.getAttribute('data-pane') !== tab;
+      });
+    },
     'cloudLogList': () => { const C = window.MMGR.Cloud; if (C && C.listLog) C.listLog(); },
     'cloudLogRevert': (el) => { const C = window.MMGR.Cloud; if (C && C.revertLog) C.revertLog(el && el.getAttribute('data-id')); },
     'cloudLogToggleDiffs': (el) => { const C = window.MMGR.Cloud; if (C && C.toggleDiffs) C.toggleDiffs(el && el.getAttribute('data-id')); },
@@ -1931,7 +1946,14 @@ window.MMGR = MMGR;
     // Performance Mode toggle (owner 2026-09-06): trims heavy CSS blur/shadow
     // layers + 3D tilt. Mirrors mmgr-perf.js which owns the localStorage slot
     // and the [data-perf] attribute on <html>. Safe in view-only (device pref).
-    'tglPerfMode': (el) => { const P = window.MMGR.Perf; if (P && P.set) P.set(el.checked); },
+    'tglPerfMode': (el) => {
+      const P = window.MMGR.Perf;
+      if (P && P.set) P.set(el.checked);
+      // OWNER 2026-09-15: perf mode now also gates the starry WebGL shader.
+      // Re-sync immediately so turning it OFF tears the running canvas down
+      // (and turning it ON brings the background back on capable machines).
+      if (window.MMGR && MMGR.Glass && MMGR.Glass.sync) MMGR.Glass.sync();
+    },
     'tglCh': (el) => { window.MMGR.App.tglCh(); },
     'tglFlag': (el) => window.MMGR.App.tglFlag(el),
     'clearErrorLog': () => window.MMGR.App.clearErrorLog(),
@@ -2197,7 +2219,7 @@ window.MMGR = MMGR;
     // safe in view-only, like the Phase 1 cloud entries above.
     'cloudEditorCreate': 1, 'cloudEditorList': 1, 'cloudEditorRevoke': 1,
     'cloudClientCreate': 1, 'cloudClientList': 1, 'cloudClientRevoke': 1,
-    'cloudApiKeyCreate': 1, 'cloudApiKeyList': 1, 'cloudApiKeyRevoke': 1,
+    'cloudApiKeyCreate': 1, 'cloudApiKeyList': 1, 'cloudApiKeyRevoke': 1, 'cloudShareTab': 1,
     'cloudLogList': 1, 'cloudLogRevert': 1, 'cloudLogToggleDiffs': 1, 'cloudDropEditor': 1,
     // GAP-AUDIT-CLOUD-31: unlink only mutates the CLOUD copy (like the other
     // cloud actions above), and the banner Copy/Done are clipboard/session

@@ -265,6 +265,31 @@ python -c "open('tmp/scratch.html').read()"        # python reads it
 deploy tar recipe - it can never be committed or served. Clean it
 whenever it grows; do not put anything long-lived there.
 
+### 10. A running serve.cjs serves a STALE CSP after inline-script edits
+
+`serve.cjs` computes `INLINE_SCRIPT_HASHES` at startup. If you edit an inline
+`<script>` block in a served page while the QA server is running, it serves
+the NEW html from disk with the OLD in-memory CSP: Chrome silently blocks the
+edited block (no console error reaches the harness) and the page's JS appears
+dead - while every on-disk check (`npm run verify:csp`, qa-dashboard-spec's
+hash section) still passes, because they compare disk to disk. This cost the
+2026-09-15 session a crash-loop chasing "app.html inline block never
+evaluates" (root-caused 2026-09-16: stale server on :8765).
+
+**After ANY inline-script edit, restart serve.cjs** (verify the PID's command
+line first - lesson 1), or probe the live header directly:
+
+```bash
+# sha256 of each inline block ON DISK (app.html here; adjust per page)
+node -e "const fs=require('fs'),c=require('crypto');const h=fs.readFileSync('app.html','utf8');[...h.matchAll(/<script>([\s\S]*?)<\/script>/g)].forEach((m,i)=>console.log(i+1,c.createHash('sha256').update(m[1]).digest('base64')))"
+
+# hashes the RUNNING server is actually enforcing
+curl -sI http://127.0.0.1:8765/app.html | grep -io "sha256-[^']*"
+```
+
+The two sets must match 1:1. A hash missing from the live header means the
+server process predates the edit - restart it, do not trust disk-only checks.
+
 ## Editing workflow
 
 1. Identify which skills apply (table above) and load them.

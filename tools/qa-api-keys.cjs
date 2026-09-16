@@ -435,12 +435,26 @@ const j = async (res) => { try { return await res.json(); } catch (e) { return {
     const ownerText = (((mcpOwner.result || {}).content || [])[0] || {}).text || '';
     check('P17a MCP owner-code Bearer -> full access (risks readable)',
       r.ok && mcpOwner.result && !mcpOwner.result.isError && ownerText.indexOf('Rain delay') !== -1, mcpOwner);
+    // PATH-A (2026-09-16): a bad credential no longer 403s the transport -
+    // the handshake answers (that is what MCP clients expect) and the tool
+    // layer refuses with a normal isError result.
     r = await fetch(mcpUrl, {
       method: 'POST', credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer not-a-real-code' },
-      body: JSON.stringify({ jsonrpc: '2.0', id: 6, method: 'initialize', params: {} })
+      body: JSON.stringify({ jsonrpc: '2.0', id: 6, method: 'tools/call', params: { name: 'get_tasks', arguments: {} } })
     });
-    check('P17b MCP bad Bearer -> generic 403', r.status === 403, { status: r.status });
+    const mcpBad = await j(r);
+    const badText = (((mcpBad.result || {}).content || [])[0] || {}).text || '';
+    check('P17b MCP bad Bearer -> 200 isError credential refusal (PATH-A), no data',
+      r.status === 200 && mcpBad.result && mcpBad.result.isError === true && badText.indexOf('needs its own credential') !== -1 && badText.indexOf('Pour foundation') === -1, { status: r.status, mcpBad });
+    r = await fetch(mcpUrl, {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ jsonrpc: '2.0', id: 7, method: 'initialize', params: {} })
+    });
+    const mcpAnon = await j(r);
+    check('P17c MCP unauthenticated initialize -> 200 serverInfo (PATH-A handshake)',
+      r.status === 200 && mcpAnon.result && mcpAnon.result.serverInfo && mcpAnon.result.serverInfo.name === 'my-manager-mcp', { status: r.status, mcpAnon });
 
     const failed = results.filter(x => !x.val).length;
     log('----------------------------------------');

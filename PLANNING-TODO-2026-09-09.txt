@@ -36,14 +36,55 @@ X3  [x] Feature verification of the 2026-09-15 second-pass wave
 X4  [x] Gates re-run after fix: npm run verify 23 PASS/exit 0;
         qa-dashboard-spec 87/87 (incl. per-hash worker+serve
         checks); qa-market-features 61/61.
-X5  [~] LESSON (candidate for AGENTS.md hard-won knowledge): after
-        editing an inline <script> in any served page, a RUNNING
-        serve.cjs keeps serving the stale CSP until restarted -
-        restart it or expect "page looks intact but its JS is dead".
-        Diagnostic shortcut: diff the sha256 of each inline block on
-        disk against the hashes in the LIVE response header, not
-        just against worker.js/serve.cjs on disk. NOT yet written
-        into AGENTS.md - needs owner sign-off on wording.
+X5  [x] LESSON written into AGENTS.md hard-won knowledge #10 (owner
+        directive 2026-09-16): after editing an inline <script> in any
+        served page, a RUNNING serve.cjs keeps serving the stale CSP
+        until restarted - restart it or expect "page looks intact but
+        its JS is dead". Diagnostic shortcut: diff the sha256 of each
+        inline block on disk against the hashes in the LIVE response
+        header, not just against worker.js/serve.cjs on disk.
+
+--------------------------------------------------------------------
+SHIP 2026-09-16 - commit 17af8a2, CI run 35108594436 GREEN, deploy 2a5f770e
+--------------------------------------------------------------------
+S1  [x] Full local CI before push: npm run verify 23 PASS; T1 6/6
+        (qa-dashboard-spec 87, qa-changelog-diffs, qa-ai-relay,
+        verify-report-issue 27, verify-dynamic-labels,
+        verify-delegate-gate); wrangler dry-run; T2 verify suites
+        (verify-cloud-autosave-signin 8/0, verify-controls-admin 11/0,
+        qa-api-keys all gates).
+S2  [x] Human-audit walk (skeptical-code-audit + agent-browser):
+        app.html both themes, demo toggle + #dam modal exercised,
+        marketing pages + admin + dashboard console sweep - 11 pages
+        zero page errors.
+S3  [x] Two audit fixes shipped in 17af8a2:
+        (a) .nav-close-row desktop guard - its styling was mobile-only
+        (inside @media max-width:768px) while the markup was
+        unconditional, so an unstyled stray X rendered at the top of
+        #app-main on desktop; fix = base .nav-close-row{display:none}
+        in the desktop Section Navigation section (mobile
+        body.nav-open rule outranks it).
+        (b) Banner stack - the four chrome banners (safety, readonly,
+        editor-scope, client-scope) were sticky elements in body flow
+        ABOVE the sticky header; on read-only/demo projects the
+        header sat 28px down while the fixed sidebar top was computed
+        from --hdr-h (header height only), clipping the SECTIONS
+        title. Fix = banners moved INSIDE #app-header as full-width
+        rows (header flex-wrap:wrap, banners position:static via
+        #app-header > [id$="-banner"]), so --hdr-h is always the true
+        chrome height. Verified live: sidebar top == header bottom ==
+        var value on a fresh profile; mobile drawer close still works
+        at 390px.
+S4  [x] Push -> poll Actions (CI repaired-loop rules followed: poll
+        status/completed, run is the truth) -> GREEN -> tar staging
+        recipe under $HOME/mmgr-deploy with staged-copy verification
+        (guard CSS, banner-in-header, new hashes all confirmed in the
+        staged tree BEFORE deploy) -> wrangler deploy 2a5f770e ->
+        prod smoke: 307 /app.html->/app, CSP carries AuMH9SHj
+        (current block 4), prod project HTML has banner inside
+        header, minified CSS carries the nav-close guard, emoji scan
+        clean, /app inline block evaluates (damKind live), demo
+        toggle flips 1<->0 in prod, zero page errors.
 
 --------------------------------------------------------------------
 WAVE 2026-09-15 - OWNER DIRECTIVE (dots, ring, brand, guide, launcher)

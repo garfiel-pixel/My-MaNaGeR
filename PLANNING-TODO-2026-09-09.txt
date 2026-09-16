@@ -90,6 +90,36 @@ A5  [x] Deploys: 4a24a2e3 (v289 fonts fix), ece23a7f (v290 RO fix);
         needed (no served-file delta).
 
 --------------------------------------------------------------------
+SHIP 2026-09-16 (2) - commit 30c92e9, CI run 35135676302 GREEN, deploy
+d40a8f43 - MCP-ON-API-KEYS + FREE-TEXT-AI wave (owner directive doc
+PROJECT-API-KEY-AUDIT-AND-DIRECTIVE-2026-09-16.md, owner-approved in chat):
+M1  [x] MCP unified onto cloud_api_keys: Bearer sk-mmgr-/X-API-Key auth,
+        scope-projected get_* tools, apply_changes QUEUES a pending mcp
+        review (the old path called changelog/import, which never wrote
+        state), mcp accept branch now applies to R2 (was log-only), MCP
+        route rate-limited (audit F1), timing-sink gap closed (audit F5).
+M2  [x] AI: honest 503 for Workers-AI capacity (was misleading 401
+        'missing api key'); local tier free-text rides the relay with
+        project context instead of refusing; project-only topic gate on
+        both tiers (chit-chat answered locally, zero model calls).
+M3  [x] Docs: guide A-27 'Connect an Outside AI' + nav/footer +
+        features/contact counts 25->28; share.js key banner + API Keys
+        panel fine print with the MCP address + guide link. Guide grid
+        min-width:0 + code overflow-wrap fix (mkt-17 390px overflow,
+        pre-existing from v288 key samples).
+M4  [x] QA: qa-api-keys +P12-P17 (MCP E2E: init, scoped refusal, granted
+        read, queue->accept->applied, owner parity) 30/30; qa-ai +A08t
+        (topic gate) +A08u (relay assist, caught a real window.prompt
+        scope bug pre-ship); qa-ai-relay R01 -> 503 contract; verify +
+        T1 6/6 + rank9 31/31 + cloud-phase2 85/85 (after killing a
+        serve.cjs port collision - NOT an app failure) + marketing 20/20.
+M5  [x] Prod smoke: MCP GET 405 JSON, bad bearer generic 403, ai/chat
+        503 capacity message, guide A-27 live via /mymanager-field-guide,
+        SW v291, dist/bundle.js carries the MCP address. NOTE: the test
+        key sk-mmgr-TKN65Y-...RKH8GR was pasted into a Claude chat 3x
+        during the owner's live test - owner must revoke it (API Keys
+        panel) and mint a fresh one.
+--------------------------------------------------------------------
 SHIP 2026-09-16 - commit 17af8a2, CI run 35108594436 GREEN, deploy 2a5f770e
 --------------------------------------------------------------------
 S1  [x] Full local CI before push: npm run verify 23 PASS; T1 6/6

@@ -45,6 +45,51 @@ X5  [x] LESSON written into AGENTS.md hard-won knowledge #10 (owner
         header, not just against worker.js/serve.cjs on disk.
 
 --------------------------------------------------------------------
+AUDIT 2026-09-16 (POST-DEPLOY) - banner stack + nav drawer, real viewports
+--------------------------------------------------------------------
+A1  [x] Deployed-bytes check: prod /project HTML has banners inside
+        <header>, /dist/mmgr.min.css byte-identical to staging (guard
+        + banner rules present). First probe used the WRONG URL
+        (/css/... -> 404 fallback page) - re-verified against /dist
+        before believing anything (skeptical-audit rule).
+A2  [x] Live walk (agent-browser, prod): desktop 1262px light+dark -
+        banner 28px static in header, header 0-112, --hdr-h 112,
+        sidebar top 112, SECTIONS title on screen, nav-close-row
+        display:none even with body.nav-open forced. Boundary:
+        769px none / 768px flex-with-nav-open (exact media flip).
+        Mobile 390px: burger opens drawer, X visible+clickable
+        (hit-tested), closes drawer, banner stack intact, light+dark.
+        app.html both viewports clean. Zero page errors throughout.
+A3  [x] DEFECT FOUND + FIXED (two passes): --hdr-h early-measurement
+        race. Boot measured #app-header before the webfont swap
+        settled; mobile light held 216px vs real 201px and the fixed
+        sidebar/#ai-win sat 15px low until a coincidental resize.
+        Pass 1 (895444c, SW v289): re-measure on load + fonts.ready -
+        STILL LOST in prod (fonts can resolve before the LATE render
+        that first requests the webfont; event-order guessing).
+        Pass 2 (e8a0756, SW v290): ResizeObserver on #app-header -
+        by-construction tracking of ANY height change; no feedback
+        loop (consumers never resize the header). Verified: header
+        perturbed 159->239->159 with --hdr-h tracking exactly; 15
+        stability samples = 1 unique value (no oscillation); final
+        prod check mobile light 201==201, demo 30 tasks, zero errors.
+        NOTE: v289 shipped the fonts-only bundle -> v290 bump was
+        REQUIRED or those clients would cache the interim bundle.
+A4  [x] FALSE ALARMS caught by re-verification (not shipped as bugs):
+        mobile drawer "booting open" was a desktop->mobile viewport
+        resize artifact (real phones load at their width; fresh
+        390px load clean); "empty demo dashboard" was my test
+        clearing localStorage AFTER the launcher boot that seeds
+        mmgr_state_demo-filled (real flow: launcher boot seeds, then
+        Explore opens 30-task project); offsetParent-null for
+        position:fixed elements is spec, not invisibility (hit-test
+        proved clickable).
+A5  [x] Deploys: 4a24a2e3 (v289 fonts fix), ece23a7f (v290 RO fix);
+        CI green on 895444c (run 35114583196) and e8a0756 (run
+        35118481948). Bookkeeping commit docs-only, no redeploy
+        needed (no served-file delta).
+
+--------------------------------------------------------------------
 SHIP 2026-09-16 - commit 17af8a2, CI run 35108594436 GREEN, deploy 2a5f770e
 --------------------------------------------------------------------
 S1  [x] Full local CI before push: npm run verify 23 PASS; T1 6/6

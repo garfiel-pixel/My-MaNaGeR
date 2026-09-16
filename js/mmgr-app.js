@@ -307,9 +307,18 @@ var MMGR = window.MMGR || {};
     // DIR-2 (PROJECT-UX-NAV-WEATHER-EXPORT-DIRECTIVE): measure the header so
     // the sticky section nav sits exactly below it; re-measure on resize (the
     // header wraps on narrow screens).
+    // PROD AUDIT 2026-09-16: the boot-time measurement can land before the
+    // webfont swap settles (mobile saw --hdr-h 216px vs real 201px), and the
+    // fixed sidebar/#ai-win then sit below their true slot until a resize
+    // happens to re-measure. Re-measure when fonts finish loading and once
+    // more after full load; both are cheap no-ops when the height is stable.
     if (ns.Viewport && ns.Viewport.syncHeaderStack) {
       ns.Viewport.syncHeaderStack();
       window.addEventListener('resize', function() { ns.Viewport.syncHeaderStack(); });
+      window.addEventListener('load', function() { ns.Viewport.syncHeaderStack(); });
+      if (document.fonts && document.fonts.ready && document.fonts.ready.then) {
+        document.fonts.ready.then(function() { ns.Viewport.syncHeaderStack(); });
+      }
     }
 
     // Phase 2: hook the client error surface (window error + unhandledrejection)

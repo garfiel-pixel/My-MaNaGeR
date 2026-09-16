@@ -312,12 +312,25 @@ var MMGR = window.MMGR || {};
     // fixed sidebar/#ai-win then sit below their true slot until a resize
     // happens to re-measure. Re-measure when fonts finish loading and once
     // more after full load; both are cheap no-ops when the height is stable.
+    // SECOND PASS (same audit): fonts.ready can resolve BEFORE the late
+    // render that first requests the webfont, so event-order guessing still
+    // loses. A ResizeObserver on the header is by-construction: ANY height
+    // change, whenever it happens, re-publishes --hdr-h. The consumers
+    // (sidebar/sec-nav/#ai-win offsets) never affect the header's own size,
+    // so there is no feedback loop.
     if (ns.Viewport && ns.Viewport.syncHeaderStack) {
       ns.Viewport.syncHeaderStack();
       window.addEventListener('resize', function() { ns.Viewport.syncHeaderStack(); });
       window.addEventListener('load', function() { ns.Viewport.syncHeaderStack(); });
       if (document.fonts && document.fonts.ready && document.fonts.ready.then) {
         document.fonts.ready.then(function() { ns.Viewport.syncHeaderStack(); });
+      }
+      if (window.ResizeObserver) {
+        var hdrStackEl = document.getElementById('app-header');
+        if (hdrStackEl) {
+          var hdrRO = new ResizeObserver(function() { ns.Viewport.syncHeaderStack(); });
+          hdrRO.observe(hdrStackEl);
+        }
       }
     }
 

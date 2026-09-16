@@ -8,6 +8,7 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 
 const ROOT = __dirname;
 const PORT = 8765;
@@ -17,6 +18,41 @@ const PORT = 8765;
 const REVIEWS = [];
 const CONTACT = [];          // dev mirror of POST /api/contact (2026-09-14)
 const CONTACT_BUCKETS = {};  // per-IP rate buckets for the contact mirror
+
+// MCP DEV MIRROR (owner 2026-09-16): qa-full carries standing MCP gates,
+// so the dev server mirrors the Worker's /api/mcp/:id transport contract
+// (405 POST-only, generic 403s, initialize/tools, section-scope refusals)
+// against an in-memory key store. PBKDF2 parameters MUST stay in sync with
+// src/lib/http.js (CLOUD_PBKDF2_ITERS). The deep auth/D1 gates remain in
+// tools/qa-api-keys.cjs against real wrangler + D1.
+const MCP_PBKDF2_ITERS = 100000; // keep in sync with src/lib/http.js
+const MCP_KEYS = new Map();      // sha256(key) fingerprint -> key row
+const MCP_TASKS = [];
+const MCP_RISKS = [];
+const MCP_TOOLS_LIST = ['get_project_summary', 'get_tasks', 'get_budget', 'get_risks', 'get_weather', 'get_meetings', 'apply_changes'];
+function mcpSha256Hex(s) { return crypto.createHash('sha256').update(String(s), 'utf8').digest('hex'); }
+async function mcpHashKey(key, saltHex) {
+  const bits = await crypto.subtle.deriveBits(
+    { name: 'PBKDF2', salt: new TextEncoder().encode(saltHex), iterations: MCP_PBKDF2_ITERS, hash: 'SHA-256' },
+    await crypto.subtle.importKey('raw', new TextEncoder().encode(key), 'PBKDF2', false, ['deriveBits']),
+    256
+  );
+  return Array.from(new Uint8Array(bits)).map(function(b) { return b.toString(16).padStart(2, '0'); }).join('');
+}
+function mcpJson(res, status, obj) {
+  res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
+  res.end(JSON.stringify(obj));
+}
+function mcpReadBody(req, cb) {
+  let raw = '';
+  req.on('data', function(c) { raw += c; if (raw.length > 262144) req.destroy(); });
+  req.on('end', function() { let b = null; try { b = JSON.parse(raw); } catch (e) {} cb(b); });
+}
+// Same refusal text as src/mcp/server.js so gates assert identical bytes.
+function mcpScopeGate(scope, sec) { return Array.isArray(scope) && scope.indexOf(sec) === -1; }
+function mcpRefusal(scope) {
+  return 'This API key does not include that section. The owner granted it: ' + (Array.isArray(scope) && scope.length ? scope.join(', ') : '(no sections)') + '. Ask the project owner to tick more sections for this key.';
+}
 
 // OBSERVABILITY-SECURITY-DOMAIN-EXECUTION-DIRECTIVES DIR-2:   mirror of the
 // production Worker headers (see worker.js) so the headless Chrome QA gates
@@ -234,6 +270,76 @@ const server = http.createServer((req, res) => {
         });
         return;
       }
+    }
+
+    // ---- MCP DEV MIRROR routes (qa-full standing gates) ----
+    if (p === '/__qa/mcp-reset' && req.method === 'POST') {
+      MCP_KEYS.clear(); MCP_TASKS.length = 0; MCP_RISKS.length = 0;
+      mcpJson(res, 200, { ok: true });
+      return;
+    }
+    if (p === '/__qa/mcp-seed' && req.method === 'POST') {
+      MCP_TASKS.length = 0; MCP_RISKS.length = 0;
+      MCP_TASKS.push({ id: 't1', name: 'Pour foundation', status: 'todo', startDate: '2026-09-20', endDate: '2026-10-01', critical: true, dependencies: [] });
+      MCP_RISKS.push({ id: 'r1', description: 'Rain delay', probability: 'high', impact: 'high', status: 'open', promoted: false });
+      mcpJson(res, 200, { ok: true, tasks: MCP_TASKS.length, risks: MCP_RISKS.length });
+      return;
+    }
+    var mkm = p.match(/^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/api-keys$/);
+    if (mkm && req.method === 'POST') {
+      mcpReadBody(req, async function(b) {
+        if (!b || typeof b !== 'object') { mcpJson(res, 400, { ok: false, error: 'bad request' }); return; }
+        const label = typeof b.label === 'string' ? b.label.slice(0, 60) : 'API key';
+        const scope = Array.isArray(b.scope) ? b.scope.filter(function(s) { return typeof s === 'string'; }).slice(0, 20) : [];
+        if (!scope.length) { mcpJson(res, 400, { ok: false, error: 'select at least one section' }); return; }
+        const abc = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+        const grp = function() { return Array.from(crypto.randomBytes(6)).map(function(x) { return abc[x % 36]; }).join(''); };
+        const key = 'sk-mmgr-' + grp() + '-' + grp() + '-' + grp();
+        const saltHex = crypto.randomBytes(16).toString('hex');
+        const keyHash = await mcpHashKey(key, saltHex);
+        MCP_KEYS.set(mcpSha256Hex(key), { saltHex: saltHex, keyHash: keyHash, label: label, scope: scope, active: true });
+        mcpJson(res, 200, { ok: true, apiKey: key, keyId: MCP_KEYS.size, scope: scope, expiresAt: null });
+      });
+      return;
+    }
+    var mmm = p.match(/^\/api\/mcp\/([A-Za-z0-9_-]{1,64})$/);
+    if (mmm) {
+      if (req.method !== 'POST') { mcpJson(res, 405, { ok: false, error: 'MCP server requires POST' }); return; }
+      const ah = String(req.headers['authorization'] || '');
+      const bearer = ah.lastIndexOf('Bearer ', 0) === 0 ? ah.slice(7).trim() : '';
+      const xkey = String(req.headers['x-api-key'] || '').trim();
+      const cand = xkey || (bearer.lastIndexOf('sk-mmgr-', 0) === 0 ? bearer : '');
+      const krow = cand ? MCP_KEYS.get(mcpSha256Hex(cand)) : null;
+      if (!krow || !krow.active) { mcpJson(res, 403, { ok: false, error: 'invalid project or owner code' }); return; }
+      mcpReadBody(req, function(body) {
+        if (!body || typeof body !== 'object') { mcpJson(res, 400, { ok: false, error: 'Invalid JSON' }); return; }
+        const id = body.id;
+        const method = body.method;
+        if (method === 'initialize') {
+          mcpJson(res, 200, { jsonrpc: '2.0', id: id, result: { protocolVersion: '2024-11-05', capabilities: { tools: { listChanged: false } }, serverInfo: { name: 'my-manager-mcp', version: '1.0.0' } } });
+          return;
+        }
+        if (method === 'notifications/initialized') { res.writeHead(202); res.end(); return; }
+        if (method === 'tools/list') {
+          mcpJson(res, 200, { jsonrpc: '2.0', id: id, result: { tools: MCP_TOOLS_LIST.map(function(n) { return { name: n }; }) } });
+          return;
+        }
+        if (method === 'tools/call') {
+          const t = (body.params || {}).name;
+          const out = function(text, isErr) { mcpJson(res, 200, { jsonrpc: '2.0', id: id, result: { content: [{ type: 'text', text: text }], isError: !!isErr } }); };
+          if (t === 'get_tasks') {
+            if (mcpScopeGate(krow.scope, 'wbs')) return out(mcpRefusal(krow.scope), true);
+            return out(JSON.stringify({ count: MCP_TASKS.length, tasks: MCP_TASKS }, null, 2));
+          }
+          if (t === 'get_risks') {
+            if (mcpScopeGate(krow.scope, 'risk')) return out(mcpRefusal(krow.scope), true);
+            return out(JSON.stringify({ riskCount: MCP_RISKS.length, issueCount: 0, risks: MCP_RISKS }, null, 2));
+          }
+          return out('Unknown tool: ' + t, true);
+        }
+        mcpJson(res, 200, { jsonrpc: '2.0', id: id, error: { code: -32601, message: 'Method not found: ' + method } });
+      });
+      return;
     }
 
     let file = path.join(ROOT, p);

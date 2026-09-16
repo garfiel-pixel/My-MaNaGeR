@@ -156,6 +156,34 @@ const check = (name, val, detail) => { results.push({ name, val }); log((val ? '
   const r10 = await run('/api/nope', { method: 'GET' });
   check('R10 unknown /api/* -> 404 JSON', r10.status === 404, { status: r10.status });
 
+  // ---- MCP ROUTE (standing gates, owner 2026-09-16) - against the REAL
+  // router + src/mcp/server.js. Deep auth/D1 coverage lives in
+  // tools/qa-api-keys.cjs; transport-contract browser gates live in qa-full.
+  // M1: route exists and speaks JSON-RPC (POST; the DB mock supports it).
+  const rm1 = await run('/api/mcp/qa-proj', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'initialize', params: {} }) });
+  const dm1 = await rm1.json();
+  check('M1 MCP route: initialize reaches the handler (401 without any credential, JSON errors - never HTML)',
+    rm1.status === 401 && dm1.ok === false && typeof dm1.error === 'string' && String(dm1.error).indexOf('Bearer') !== -1, { status: rm1.status, dm1 });
+  // M2: GET is refused POST-only (audit F1 family: the route is guarded
+  // before auth like every sibling route).
+  const rm2 = await run('/api/mcp/qa-proj', { method: 'GET' });
+  const dm2Text = await rm2.text();
+  check('M2 MCP route: GET -> 405 JSON (POST-only transport)',
+    rm2.status === 405 && dm2Text.indexOf('requires POST') !== -1 && dm2Text.indexOf('<html') === -1, { status: rm2.status, dm2Text: dm2Text.slice(0, 120) });
+  // M3: THE AUDIT F1 GATE - the MCP route is now rate-limited like every
+  // sibling route. The mock env provides env.RATE_LIMITER.limit({key}); a
+  // caller hammering the route must trip it with a 429 once over 30 calls.
+  globalThis.rlHits = 0;
+  const envM3 = Object.assign({}, env, { RATE_LIMITER: { limit: async function(kv) { globalThis.rlHits++; if (globalThis.rlHits > 30) return { success: false }; return { success: true }; } } });
+  const runM3 = (init) => mod.default.fetch(new Request('https://app.example/api/mcp/qa-proj', init), envM3);
+  let m3last = null, m3saw429 = false;
+  for (let i = 0; i < 40; i++) {
+    m3last = await runM3({ method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: i, method: 'initialize', params: {} }) });
+    if (m3last.status === 429) { m3saw429 = true; break; }
+  }
+  check('M3 MCP route rate-limited (audit F1): hits trip the limiter -> 429, never an unthrottled handler',
+    m3saw429 && globalThis.rlHits === 31, { saw429: m3saw429, hits: globalThis.rlHits, last: m3last && m3last.status });
+
   const failed = results.filter(r => !r.val);
   log('RELAY_GATE ' + (failed.length === 0 ? 'PASS' : 'FAIL (' + failed.length + ' broken)'));
   process.exit(failed.length === 0 ? 0 : 1);

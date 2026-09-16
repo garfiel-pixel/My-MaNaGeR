@@ -143,8 +143,11 @@ const j = async (res) => { try { return await res.json(); } catch (e) { return {
       name: 'API Keys QA',
       updatedAt: new Date().toISOString(),
       tasks: [{ id: 't1', title: 'Pour foundation', status: 'ip' }],
-      budgetLines: [{ id: 'b1', item: 'Concrete', cost: 1200 }],
-      risks: [{ id: 'r1', title: 'Rain delay' }],
+      // Real app field vocabulary (mmgr-state): budgetLines carry
+      // name/planned/actual, risks carry description - the MCP tools and
+      // scope projections read these exact keys.
+      budgetLines: [{ id: 'b1', name: 'Concrete', planned: 1200, actual: 500 }],
+      risks: [{ id: 'r1', description: 'Rain delay' }],
       resources: [{ id: 'res1', name: 'Nadine' }],
       wbs: [{ id: 'w1' }]
     };
@@ -209,8 +212,8 @@ const j = async (res) => { try { return await res.json(); } catch (e) { return {
     // P4: scoped save under X-API-Key -> NEVER applied; lands in review queue.
     const mutated = JSON.parse(JSON.stringify(snapshot));
     mutated.tasks = [{ id: 't1', title: 'Pour foundation (revised)', status: 'ip' }];
-    mutated.budgetLines = [{ id: 'b1', item: 'Concrete', cost: 1500 }];
-    mutated.risks = [{ id: 'r1', title: 'OUT-OF-SCOPE WRITE' }];
+    mutated.budgetLines = [{ id: 'b1', name: 'Concrete', planned: 1500, actual: 500 }];
+    mutated.risks = [{ id: 'r1', description: 'OUT-OF-SCOPE WRITE' }];
     r = await fetch(BASE + '/api/cloud/projects/' + pid + '/save', {
       method: 'POST', credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json', 'X-API-Key': apiKey },
@@ -340,6 +343,104 @@ const j = async (res) => { try { return await res.json(); } catch (e) { return {
       body: JSON.stringify({})
     });
     check('P11 unknown key -> generic 403', r.status === 403, { status: r.status });
+
+    // ============================================================
+    // P12-P17: MCP TRANSPORT ON THE API-KEY SYSTEM (API-KEY-AUDIT
+    // directive, owner 2026-09-16) - one key, two transports.
+    // ============================================================
+    const mcpUrl = BASE + '/api/mcp/' + pid;
+
+    // P12: MCP accepts the sk-mmgr- key as a Bearer token (initialize).
+    r = await fetch(mcpUrl, {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
+      body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'initialize', params: {} })
+    });
+    const mcpInit = await j(r);
+    check('P12 MCP initialize with Bearer sk-mmgr- key -> serverInfo', r.ok && mcpInit.result && mcpInit.result.serverInfo && mcpInit.result.serverInfo.name === 'my-manager-mcp', mcpInit);
+
+    // P13: scoped key refused on a section it was not granted (wbs+bud key
+    // asking for risks) - scope enforced on the tool surface, not just REST.
+    r = await fetch(mcpUrl, {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json', 'X-API-Key': apiKey },
+      body: JSON.stringify({ jsonrpc: '2.0', id: 2, method: 'tools/call', params: { name: 'get_risks', arguments: {} } })
+    });
+    const mcpRisks = await j(r);
+    const riskText = (((mcpRisks.result || {}).content || [])[0] || {}).text || '';
+    check('P13 MCP get_risks with wbs+bud key -> scoped refusal (no data leak)',
+      r.ok && mcpRisks.result && mcpRisks.result.isError === true && riskText.indexOf('does not include that section') !== -1 && riskText.indexOf('Rain delay') === -1, mcpRisks);
+
+    // P14: granted section reads through MCP - budget works for a wbs+bud key.
+    r = await fetch(mcpUrl, {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json', 'X-API-Key': apiKey },
+      body: JSON.stringify({ jsonrpc: '2.0', id: 3, method: 'tools/call', params: { name: 'get_budget', arguments: {} } })
+    });
+    const mcpBudget = await j(r);
+    const budText = (((mcpBudget.result || {}).content || [])[0] || {}).text || '';
+    check('P14 MCP get_budget with granted bud section -> real data',
+      r.ok && mcpBudget.result && !mcpBudget.result.isError && budText.indexOf('Concrete') !== -1, mcpBudget);
+
+    // P15: apply_changes via MCP -> queued as a pending review proposal
+    // (proposal_type 'mcp'), never applied, with out-of-scope diffs refused.
+    r = await fetch(mcpUrl, {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json', 'X-API-Key': apiKey },
+      body: JSON.stringify({ jsonrpc: '2.0', id: 4, method: 'tools/call', params: { name: 'apply_changes', arguments: { label: 'MCP QA change', diffs: [
+        { path: 'tasks', recordId: 't1', field: 'status', after: 'done' },
+        { path: 'risks', recordId: 'r1', field: 'status', after: 'OUT-OF-SCOPE MCP WRITE' }
+      ] } } })
+    });
+    const mcpApply = await j(r);
+    const applyText = (((mcpApply.result || {}).content || [])[0] || {}).text || '';
+    check('P15 MCP apply_changes -> queued for owner review, out-of-scope refused',
+      r.ok && mcpApply.result && !mcpApply.result.isError && applyText.indexOf('Queued') === 0 && applyText.indexOf('owner review') !== -1 && applyText.indexOf('outside the granted sections') !== -1, mcpApply);
+
+    // P16: the queued MCP proposal exists, sourceType 'api'/mcp type, and
+    // the owner accepting it APPLIES the change to cloud state (the accept
+    // branch now merges + writes R2 instead of only logging).
+    r = await fetch(BASE + '/api/cloud/projects/' + pid + '/reviews', {
+      method: 'GET', credentials: 'same-origin', headers: ownerHeaders
+    });
+    const revListM = await j(r);
+    const revsM = revListM.reviews || revListM.proposals || [];
+    const pendM = revsM.find(x => x.status === 'pending' && x.proposalType === 'mcp') || revsM.find(x => x.status === 'pending');
+    check('P16a MCP proposal listed as pending', r.ok && revListM.ok && !!pendM && pendM.proposalType === 'mcp', revListM);
+    r = await fetch(BASE + '/api/cloud/projects/' + pid + '/load', {
+      method: 'POST', credentials: 'same-origin', headers: ownerHeaders, body: JSON.stringify({})
+    });
+    const preAcceptM = await j(r);
+    check('P16b cloud state unchanged before MCP accept', r.ok && preAcceptM.ok && JSON.stringify((preAcceptM.state || {}).tasks || []).indexOf('"done"') === -1, preAcceptM.state);
+    r = await fetch(BASE + '/api/cloud/projects/' + pid + '/reviews/' + pendM.id + '/accept', {
+      method: 'POST', credentials: 'same-origin', headers: ownerHeaders, body: JSON.stringify({})
+    });
+    const accM = await j(r);
+    check('P16c owner accepts MCP proposal -> applied', r.ok && accM.ok && (accM.applied || []).length > 0, accM);
+    r = await fetch(BASE + '/api/cloud/projects/' + pid + '/load', {
+      method: 'POST', credentials: 'same-origin', headers: ownerHeaders, body: JSON.stringify({})
+    });
+    const postAcceptM = await j(r);
+    check('P16d after MCP accept the cloud state carries the approved change',
+      r.ok && postAcceptM.ok && JSON.stringify((postAcceptM.state || {}).tasks || []).indexOf('"done"') !== -1, postAcceptM.state);
+
+    // P17: owner-code Bearer still works on MCP with FULL access (parity),
+    // and a bad Bearer still gets the generic 403.
+    r = await fetch(mcpUrl, {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + ownerCode },
+      body: JSON.stringify({ jsonrpc: '2.0', id: 5, method: 'tools/call', params: { name: 'get_risks', arguments: {} } })
+    });
+    const mcpOwner = await j(r);
+    const ownerText = (((mcpOwner.result || {}).content || [])[0] || {}).text || '';
+    check('P17a MCP owner-code Bearer -> full access (risks readable)',
+      r.ok && mcpOwner.result && !mcpOwner.result.isError && ownerText.indexOf('Rain delay') !== -1, mcpOwner);
+    r = await fetch(mcpUrl, {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer not-a-real-code' },
+      body: JSON.stringify({ jsonrpc: '2.0', id: 6, method: 'initialize', params: {} })
+    });
+    check('P17b MCP bad Bearer -> generic 403', r.status === 403, { status: r.status });
 
     const failed = results.filter(x => !x.val).length;
     log('----------------------------------------');

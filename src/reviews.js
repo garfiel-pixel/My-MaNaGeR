@@ -161,10 +161,33 @@ export async function handleReviewAccept(request, env, projectId, reviewId, push
       resp.savedAt = now;
     }
   } else if (row.proposal_type === 'mcp') {
-    const ins = await env.DB.prepare(
-      "INSERT INTO cloud_changelog (project_id, entry_type, actor_type, actor_label, section, diffs_json, snapshot_key, created_at, import_key) VALUES (?,?,?,?,?,?,?,?,?) ON CONFLICT(import_key) DO NOTHING"
-    ).bind(projectId, 'accepted', row.actor_type || 'mcp', row.source_label || 'MCP AI', row.section || null, row.diffs_json || null, null, now, row.import_key).run();
-    resp.entryId = ins.meta.last_row_id;
+    // API-KEY-AUDIT F3 accept-side (2026-09-16): the old branch only wrote a
+    // changelog line - accepting an MCP proposal changed NOTHING. Mirror the
+    // 'save' branch: merge the stored submission under the proposal's scope,
+    // write the new state to R2, flip latest_r2_key, log the changelog.
+    const key = 'projects/' + projectId + '/latest.json';
+    const projRowM = await env.DB.prepare('SELECT owner_code_hash, owner_code_salt FROM cloud_projects WHERE project_id = ?').bind(projectId).first();
+    const prev = await cloudReadState(env, key, projRowM && projRowM.owner_code_hash, projRowM && projRowM.owner_code_salt);
+    let scope = [];
+    try { const p = JSON.parse(row.scope); if (Array.isArray(p)) scope = p; } catch (e) { scope = []; }
+    let submitted = {};
+    try { submitted = JSON.parse(row.submitted_json); } catch (e) { submitted = {}; }
+    const merged = cloudScopeMerge(prev, submitted, scope);
+    resp.applied = merged.applied;
+    resp.blocked = merged.blocked;
+    if (merged.applied.length > 0) {
+      merged.next.updatedAt = now;
+      let r2Payload = JSON.stringify(merged.next);
+      if (projRowM && projRowM.owner_code_hash && projRowM.owner_code_salt) {
+        try { r2Payload = await cloudEncryptState(merged.next, projRowM.owner_code_hash, projRowM.owner_code_salt); } catch (e) { /* fall back to plaintext */ }
+      }
+      await env.R2.put(key, r2Payload, { httpMetadata: { contentType: 'application/json' } });
+      await env.DB.prepare('UPDATE cloud_projects SET latest_r2_key = ?, updated_at = ? WHERE project_id = ?').bind(key, now, projectId).run();
+      const entry = await cloudLogSave(env, projectId, prev, merged.next, { type: 'owner', label: auth.label || 'Owner' }, 'accepted');
+      if (entry) resp.changelog = entry;
+      if (pushRevChanged) await pushRevChanged(env, projectId, now, { type: 'owner', label: auth.label || 'Owner' });
+      resp.savedAt = now;
+    }
   } else {
     return json({ ok: false, error: 'unsupported proposal type' }, 400);
   }

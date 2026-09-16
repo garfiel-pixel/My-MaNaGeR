@@ -160,10 +160,20 @@ const check = (name, val, detail) => { results.push({ name, val }); log((val ? '
   // router + src/mcp/server.js. Deep auth/D1 coverage lives in
   // tools/qa-api-keys.cjs; transport-contract browser gates live in qa-full.
   // M1: route exists and speaks JSON-RPC (POST; the DB mock supports it).
+  // PATH-A (2026-09-16): the handshake answers UNAUTHENTICATED by design -
+  // spec clients read a bare 401 as an OAuth requirement. M1b proves the
+  // real gate: tools/call without a credential -> MCP isError refusal, and
+  // because the gate sits BEFORE the project-state fetch the no-DB mock
+  // never throws.
   const rm1 = await run('/api/mcp/qa-proj', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'initialize', params: {} }) });
   const dm1 = await rm1.json();
-  check('M1 MCP route: initialize reaches the handler (401 without any credential, JSON errors - never HTML)',
-    rm1.status === 401 && dm1.ok === false && typeof dm1.error === 'string' && String(dm1.error).indexOf('Bearer') !== -1, { status: rm1.status, dm1 });
+  check('M1 MCP route: PATH-A handshake - unauthenticated initialize -> 200 JSON-RPC serverInfo (never a transport 401/403, never HTML)',
+    rm1.status === 200 && dm1.result && dm1.result.serverInfo && dm1.result.serverInfo.name === 'my-manager-mcp', { status: rm1.status, dm1 });
+  const rm1b = await run('/api/mcp/qa-proj', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 2, method: 'tools/call', params: { name: 'get_tasks', arguments: {} } }) });
+  const dm1b = await rm1b.json();
+  const m1bText = (((dm1b.result || {}).content || [])[0] || {}).text || '';
+  check('M1b PATH-A tool gate: unauthenticated tools/call -> 200 isError with the credential refusal, no project data',
+    rm1b.status === 200 && dm1b.result && dm1b.result.isError === true && m1bText.indexOf('needs its own credential') !== -1, { status: rm1b.status, dm1b });
   // M2: GET is refused POST-only (audit F1 family: the route is guarded
   // before auth like every sibling route).
   const rm2 = await run('/api/mcp/qa-proj', { method: 'GET' });
@@ -178,7 +188,7 @@ const check = (name, val, detail) => { results.push({ name, val }); log((val ? '
   const runM3 = (init) => mod.default.fetch(new Request('https://app.example/api/mcp/qa-proj', init), envM3);
   let m3last = null, m3saw429 = false;
   for (let i = 0; i < 40; i++) {
-    m3last = await runM3({ method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: i, method: 'initialize', params: {} }) });
+    m3last = await runM3({ method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: i, method: 'initialize', params: {} }) }); // PATH-A: still rate-limited unauthenticated
     if (m3last.status === 429) { m3saw429 = true; break; }
   }
   check('M3 MCP route rate-limited (audit F1): hits trip the limiter -> 429, never an unthrottled handler',

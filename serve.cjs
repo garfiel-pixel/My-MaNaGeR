@@ -21,8 +21,8 @@ const CONTACT_BUCKETS = {};  // per-IP rate buckets for the contact mirror
 
 // MCP DEV MIRROR (owner 2026-09-16): qa-full carries standing MCP gates,
 // so the dev server mirrors the Worker's /api/mcp/:id transport contract
-// (405 POST-only, generic 403s, initialize/tools, section-scope refusals)
-// against an in-memory key store. PBKDF2 parameters MUST stay in sync with
+// (405 POST-only, PATH-A per-tool auth, section-scope refusals) against an
+// in-memory key store. PBKDF2 parameters MUST stay in sync with
 // src/lib/http.js (CLOUD_PBKDF2_ITERS). The deep auth/D1 gates remain in
 // tools/qa-api-keys.cjs against real wrangler + D1.
 const MCP_PBKDF2_ITERS = 100000; // keep in sync with src/lib/http.js
@@ -53,6 +53,9 @@ function mcpScopeGate(scope, sec) { return Array.isArray(scope) && scope.indexOf
 function mcpRefusal(scope) {
   return 'This API key does not include that section. The owner granted it: ' + (Array.isArray(scope) && scope.length ? scope.join(', ') : '(no sections)') + '. Ask the project owner to tick more sections for this key.';
 }
+// PATH-A (2026-09-16): byte-identical copy of MCP_AUTH_REFUSAL from
+// src/mcp/server.js - this CommonJS file cannot import the ESM module.
+const MCP_AUTH_REFUSAL = 'This endpoint needs its own credential before it will share project data or accept changes. Supply the project API key as Authorization: Bearer <key> or X-API-Key, or the owner code as Authorization: Bearer <owner-code>.';
 
 // OBSERVABILITY-SECURITY-DOMAIN-EXECUTION-DIRECTIVES DIR-2:   mirror of the
 // production Worker headers (see worker.js) so the headless Chrome QA gates
@@ -310,7 +313,10 @@ const server = http.createServer((req, res) => {
       const xkey = String(req.headers['x-api-key'] || '').trim();
       const cand = xkey || (bearer.lastIndexOf('sk-mmgr-', 0) === 0 ? bearer : '');
       const krow = cand ? MCP_KEYS.get(mcpSha256Hex(cand)) : null;
-      if (!krow || !krow.active) { mcpJson(res, 403, { ok: false, error: 'invalid project or owner code' }); return; }
+      // PATH-A: no transport-level 401/403 - bad credentials just mean the
+      // tool layer refuses; only owner-code full access maps to scope null.
+      const kscope = (krow && krow.active) ? krow.scope : null;
+      const kauthed = !!(krow && krow.active);
       mcpReadBody(req, function(body) {
         if (!body || typeof body !== 'object') { mcpJson(res, 400, { ok: false, error: 'Invalid JSON' }); return; }
         const id = body.id;
@@ -327,12 +333,15 @@ const server = http.createServer((req, res) => {
         if (method === 'tools/call') {
           const t = (body.params || {}).name;
           const out = function(text, isErr) { mcpJson(res, 200, { jsonrpc: '2.0', id: id, result: { content: [{ type: 'text', text: text }], isError: !!isErr } }); };
+          // PATH-A per-tool auth gate: without a valid credential every
+          // tool call gets the refusal as a normal MCP isError result.
+          if (!kauthed) return out(MCP_AUTH_REFUSAL, true);
           if (t === 'get_tasks') {
-            if (mcpScopeGate(krow.scope, 'wbs')) return out(mcpRefusal(krow.scope), true);
+            if (mcpScopeGate(kscope, 'wbs')) return out(mcpRefusal(kscope), true);
             return out(JSON.stringify({ count: MCP_TASKS.length, tasks: MCP_TASKS }, null, 2));
           }
           if (t === 'get_risks') {
-            if (mcpScopeGate(krow.scope, 'risk')) return out(mcpRefusal(krow.scope), true);
+            if (mcpScopeGate(kscope, 'risk')) return out(mcpRefusal(kscope), true);
             return out(JSON.stringify({ riskCount: MCP_RISKS.length, issueCount: 0, risks: MCP_RISKS }, null, 2));
           }
           return out('Unknown tool: ' + t, true);

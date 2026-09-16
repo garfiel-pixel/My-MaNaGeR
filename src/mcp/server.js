@@ -5,10 +5,18 @@
    (Claude Desktop, Cursor, Windsurf, etc.).
 
    Transport: Streamable HTTP (POST /api/mcp/:projectId)
-   Auth: (1) a project API key (sk-mmgr-...) via Authorization: Bearer <key>
-   or X-API-Key - scoped, expiring, revocable, recommended for external AI
-   clients; (2) the owner code via Authorization: Bearer <owner-code> -
-   full access, kept for owners driving MCP with their master credential.
+   Auth (PATH-A, 2026-09-16 owner decision): the MCP handshake and the tool
+   listing answer UNAUTHENTICATED by design - spec-driven clients (Claude
+   Desktop's "No sign-in" mode) read a bare HTTP 401 on an MCP endpoint as
+   an OAuth requirement and then fail discovery against routes that do not
+   exist, so there is deliberately no transport-level 401/403 here.
+   Authentication happens per tool call instead: every tools/call needs a
+   valid credential - (1) a project API key (sk-mmgr-...) via
+   Authorization: Bearer <key> or X-API-Key - scoped, expiring, revocable,
+   recommended for external AI clients; (2) the owner code via
+   Authorization: Bearer <owner-code> - full access. Without one, the call
+   returns a normal MCP isError result (MCP_AUTH_REFUSAL) and no project
+   data ever leaves.
    API-KEY-AUDIT (2026-09-16 directive): MCP is now a second transport on
    the cloud_api_keys system. Reads are projected through the key's section
    scope (cloudScopeState); apply_changes queues a cloud_reviews row
@@ -26,7 +34,7 @@
      apply_changes        — write diffs (goes through review queue)
    ============================================================ */
 
-import { json, cloudForbidden, cloudAuthOwnerEither, cloudAuthApiKey, cloudReadState, readCloudBody,
+import { json, cloudAuthOwnerEither, cloudAuthApiKey, cloudReadState, readCloudBody,
   cloudScopeState, cloudScopeMerge, cloudDiffState, CLOUD_SECTIONS, CLOUD_KEY_TO_SECTION } from '../lib/http.js';
 import { API_SHAPES } from '../api/shapes.js';
 
@@ -37,6 +45,11 @@ const SERVER_INFO = {
   name: 'my-manager-mcp',
   version: '1.0.0'
 };
+
+// PATH-A (2026-09-16): the single tool-layer auth refusal. serve.cjs's dev
+// mirror carries a byte-identical copy (it cannot import this ESM module)
+// and the QA harnesses assert this exact text.
+export const MCP_AUTH_REFUSAL = 'This endpoint needs its own credential before it will share project data or accept changes. Supply the project API key as Authorization: Bearer <key> or X-API-Key, or the owner code as Authorization: Bearer <owner-code>.';
 
 // ---- Tool definitions (MCP schema format) ----
 
@@ -301,6 +314,16 @@ async function handleMcpRequest(body, projectId, env, auth) {
       return { jsonrpc: '2.0', id, error: { code: -32602, message: 'Missing tool name' } };
     }
 
+    // PATH-A auth gate (2026-09-16): the transport connected this caller
+    // without credentials, so the tool layer refuses here - a normal MCP
+    // isError result, never an HTTP 401. No credential, no data, no writes.
+    if (!auth) {
+      return {
+        jsonrpc: '2.0', id,
+        result: { content: [{ type: 'text', text: MCP_AUTH_REFUSAL }], isError: true }
+      };
+    }
+
     // Read project state
     const key = 'projects/' + projectId + '/latest.json';
     const row = await env.DB.prepare(
@@ -417,37 +440,32 @@ export async function handleMcpServer(request, env, projectId) {
     return json({ ok: false, error: 'MCP server requires POST' }, 405);
   }
 
-  // Authenticate. API-KEY-AUDIT F2 (2026-09-16): a project API key
-  // (Authorization: Bearer sk-mmgr-... or X-API-Key) is the RECOMMENDED
-  // credential - scoped to its granted sections, expiring, revocable from
-  // the project's API Keys panel. The owner-code Bearer still works with
-  // full access. Owner-code auth: MCP-BEARER-FIX (2026-09-12 owner review)
-  // - cloudAuthOwnerEither takes (request, env, projectId), so the Bearer
-  // token is routed through the X-Owner-Code header the helper reads.
+  // Resolve credentials BEST-EFFORT. PATH-A (2026-09-16): there is no
+  // transport-level 401/403 - the handshake and tools/list answer
+  // unauthenticated so MCP clients can connect without the server being
+  // mistaken for an OAuth resource, and every tools/call is gated inside
+  // handleMcpRequest instead. A project API key (Authorization: Bearer
+  // sk-mmgr-... or X-API-Key) is the RECOMMENDED credential - scoped,
+  // expiring, revocable (API-KEY-AUDIT F2). The owner-code Bearer still
+  // works with full access; cloudAuthOwnerEither takes (request, env,
+  // projectId), so the Bearer token is routed through the X-Owner-Code
+  // header the helper reads (MCP-BEARER-FIX, 2026-09-12 owner review).
   let auth = null;
   const apiKey = String(request.headers.get('X-API-Key') || '').trim();
-  if (!apiKey) {
-    const authHeader = request.headers.get('Authorization') || '';
-    const bearer = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
-    if (bearer && bearer.lastIndexOf('sk-mmgr-', 0) === 0) {
-      auth = await cloudAuthApiKey(request, env, projectId, bearer);
-    }
+  const authHeader = request.headers.get('Authorization') || '';
+  const bearer = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
+  if (!apiKey && bearer && bearer.lastIndexOf('sk-mmgr-', 0) === 0) {
+    auth = await cloudAuthApiKey(request, env, projectId, bearer);
   }
   if (!auth && apiKey) {
     auth = await cloudAuthApiKey(request, env, projectId, apiKey);
   }
-  if (!auth) {
-    const authHeader = request.headers.get('Authorization') || '';
-    const code = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
-    if (!code) {
-      return json({ ok: false, error: 'Missing Authorization: Bearer <api-key or owner-code>' }, 401);
-    }
+  if (!auth && bearer && bearer.lastIndexOf('sk-mmgr-', 0) !== 0) {
     const authHeaders = new Headers(request.headers);
-    authHeaders.set('X-Owner-Code', code);
+    authHeaders.set('X-Owner-Code', bearer);
     const authReq = new Request(request.url, { method: 'POST', headers: authHeaders, body: request.body });
     auth = await cloudAuthOwnerEither(authReq, env, projectId);
   }
-  if (!auth) return cloudForbidden();
 
   // Parse request body
   const read = await readCloudBody(request);

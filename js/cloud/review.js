@@ -157,8 +157,28 @@ var MMGR = window.MMGR || {};
  setStatus(copied ? 'Editor code copied to the clipboard.' : 'Editor code shown - copy it from the prompt.', 'ok');
   }
 
-  function editorCodeDone() {
- C._render();
+  // OWNER 2026-09-15: the old Done button only re-rendered (the banner came
+  // straight back - it did nothing). Confirm now: copies the code one last
+  // time, clears the shown-once banner, refreshes the key/code lists, closes
+  // the settings drawer, and says so. The code is saved in localStorage by
+  // setPendingEditorCode until this point, so confirming is always safe.
+  async function editorCodeDone() {
+    var code = '';
+    try {
+      var pending = ns.CloudShare && ns.CloudShare.getPendingEditorCode ? ns.CloudShare.getPendingEditorCode() : null;
+      if (pending && pending.code) code = pending.code;
+    } catch (e) { /* banner already gone */ }
+    var copied = false;
+    if (code && navigator.clipboard && navigator.clipboard.writeText) {
+      try { await navigator.clipboard.writeText(code); copied = true; } catch (e) { copied = false; }
+    }
+    C.clearPendingEditorCode();
+    C._render();
+    try { if (ns.Cloud.listEditors) ns.Cloud.listEditors(); } catch (e) {}
+    try { if (ns.Cloud.listClientCodes) ns.Cloud.listClientCodes(); } catch (e) {}
+    try { if (ns.Cloud.listApiKeys) ns.Cloud.listApiKeys(); } catch (e) {}
+    try { if (ns.App && ns.App.closeDrw) ns.App.closeDrw(); } catch (e) {}
+    if (ns.App && ns.App.showToast) ns.App.showToast(copied ? 'Code copied and saved. The banner is dismissed - the code stays valid until revoked or it expires.' : 'Saved. The banner is dismissed - the code stays valid until revoked or it expires.', 'ok');
   }
 
   ns.CloudReview = {

@@ -6,6 +6,46 @@ Owner rule: tasks run ONE BY ONE (no parallel work). After every phase,
 update this file + CONTINUATION-DIRECTIVE.md STATUS LOG + reflection.txt.
 
 --------------------------------------------------------------------
+WAVE 2026-09-16 - SESSION RESUME: app.html inline-block mystery SOLVED
+--------------------------------------------------------------------
+X1  [x] Root cause of "inline script block 4 never evaluates on
+        app.html" (mystery carried over from the 2026-09-15 session
+        that crashed mid-diagnosis): the QA server on :8765 was a
+        STALE serve.cjs PROCESS started BEFORE the inline script was
+        edited. It served fresh HTML (new inline code) with the OLD
+        in-memory CSP hash list, so Chrome silently blocked block 4
+        (the 59,915-char dashboard block: DASH_ACTION_MAP,
+        activeProject, damKind, demo rail toggle, #dam modal).
+        No console error surfaced via the harness (CSP block). Proof:
+        live header carried hul1mRK5/u1Ky6uEU9 (pre-edit hashes);
+        AuMH9SHj2lGD (new block 4) was ABSENT from the live header
+        while present on disk in worker.js + serve.cjs.
+X2  [x] Fix: verified PID by command line (wmic/Get-CimInstance:
+        node.exe serve.cjs, PID 16668), taskkill //PID only (never by
+        image name), restarted serve.cjs. Live CSP now carries the
+        new hash; page verified in agent-browser: activeProject/
+        damKind defined, grid + 3 demo cards render, zero page
+        errors.
+X3  [x] Feature verification of the 2026-09-15 second-pass wave
+        (previously blocked by the dead inline block): demo rail row
+        toggles mmgr_demos_hidden 1<->0, section hides/shows, row
+        relabels Show/Hide demo projects, aria-pressed syncs; #dam
+        modal opens with Delete disabled, typing "confirm"
+        auto-normalizes to CONFIRM and enables the button, cancel
+        closes. All clean.
+X4  [x] Gates re-run after fix: npm run verify 23 PASS/exit 0;
+        qa-dashboard-spec 87/87 (incl. per-hash worker+serve
+        checks); qa-market-features 61/61.
+X5  [~] LESSON (candidate for AGENTS.md hard-won knowledge): after
+        editing an inline <script> in any served page, a RUNNING
+        serve.cjs keeps serving the stale CSP until restarted -
+        restart it or expect "page looks intact but its JS is dead".
+        Diagnostic shortcut: diff the sha256 of each inline block on
+        disk against the hashes in the LIVE response header, not
+        just against worker.js/serve.cjs on disk. NOT yet written
+        into AGENTS.md - needs owner sign-off on wording.
+
+--------------------------------------------------------------------
 WAVE 2026-09-15 - OWNER DIRECTIVE (dots, ring, brand, guide, launcher)
 --------------------------------------------------------------------
 W1  [x] Mobile scroll shrink (app page): prior text-size-adjust fix is

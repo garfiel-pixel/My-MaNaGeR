@@ -13,8 +13,8 @@
 <meta name="theme-color" content="#D4AF37">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<link rel="icon" type="image/png" href="images/site-icon.png">
-  <link rel="apple-touch-icon" href="images/site-icon.png">
+<link rel="icon" type="image/png" href="images/mpw-icon.png">
+  <link rel="apple-touch-icon" href="images/mpw-icon.png">
 <link rel="stylesheet" href="dist/mmgr.min.css">
 <!-- GOOGLE-OPERATOR-IDENTITY-v1: optional operator identity. async+defer so
      it never blocks first paint; if it never loads the page is unaffected. -->
@@ -83,7 +83,7 @@ body.glass-premium .wrap{position:relative;z-index:1;}
 .foot{text-align:center;margin-top:60px;}
 .foot a{color:var(--slate);font-size:.7rem;text-decoration:none;border-bottom:1px dotted transparent;}
 .foot a:hover{color:var(--slate);border-color:var(--slate);}
-.mbody input{width:100%;background:#f8fafc;border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:1rem;letter-spacing:.2em;text-align:center;text-transform:uppercase;padding:12px;font-family:inherit;outline:none;transition:border-color .15s,box-shadow .15s;}
+.mbody input{width:100%;background:var(--card);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:1rem;letter-spacing:.2em;text-align:center;text-transform:uppercase;padding:12px;font-family:inherit;outline:none;transition:border-color .15s,box-shadow .15s;}
 .mbody input:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(245,158,11,.1);}
 .gerr{min-height:18px;font-size:.72rem;color:var(--danger);margin-top:8px;}
 /* OWNER 2026-09-15 (account deletion): the danger rail link + panel. Same
@@ -292,6 +292,14 @@ body.db-page.side-open .sidebar-icons{opacity:0;pointer-events:none;}
     <div class="db-g">Projects</div>
     <a class="db-link" href="#grid" data-rail-toggle="rail-projects-list" aria-expanded="false" aria-controls="rail-projects-list"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-folder"></use></svg> All Projects <svg class="ico ico-caret" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg></a>
     <div class="db-sub" id="rail-projects-list" hidden></div>
+    <!-- OWNER 2026-09-15: ONE place controls demo visibility - this row in
+         the All Projects dropdown. Eye = demos visible, eye-off = hidden.
+         Clicking the row itself toggles; the label states the action, not
+         the state. Replaces the old page-level Hide/Show buttons. -->
+    <button type="button" class="db-project db-demo-row" id="demo-rail-row" aria-pressed="false" title="Show or hide the demo projects on this page">
+      <span class="db-project-ico"><svg class="ico" aria-hidden="true"><use id="demo-rail-icon" href="css/mmgr-icons.svg#i-eye"></use></svg></span>
+      <span class="db-project-name">Show demo projects</span>
+    </button>
     <a class="db-link" href="admin.html"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-shield"></use></svg> Admin panel</a>
     <!-- CREATE-YOUR-OWN (owner directive 2026-08-15): the launcher's second
          door into admin , an open-lock entry beside the Admin panel link that
@@ -455,26 +463,16 @@ body.db-page.side-open .sidebar-icons{opacity:0;pointer-events:none;}
   </div>
   <div class="grid view-deck" id="grid"><!-- user project cards render here --></div>
 
-  <!-- OWNER 2026-09-15: quiet way back to the demos after hiding them. -->
-  <div id="demo-show-pill" hidden style="display:flex;justify-content:center;margin-top:18px;">
-    <button type="button" class="btn btn-n btn-s" style="white-space:nowrap;">
-      <svg class="ico" aria-hidden="true" style="width:15px;height:15px;"><use href="css/mmgr-icons.svg#i-eye"></use></svg>
-      Show demo projects
-    </button>
+  <!-- DEMO PROJECTS SECTION - REVISED (owner 2026-09-15, second pass): the
+       page-level eye button + show-pill were clutter. The demo section now
+       has NO header bar at all - just the cards - and visibility is owned by
+       ONE eye toggle in the rail's All Projects dropdown (see demo-rail-row).
+       The heading icon is gone per the owner. Demos hidden = only regular
+       offline projects and cloud projects on screen. -->
+  <div id="demo-sec" class="db-sec" aria-label="Demo Projects" hidden>
+    <h2 class="db-sec-title">Demo Projects</h2>
   </div>
-
-  <!-- DEMO PROJECTS SECTION - separate from user projects. OWNER 2026-09-15:
-       the eye icon HIDES the whole section (heading + cards), persisted in
-       localStorage; demos stay reachable in the rail's All Projects list.
-       Plain-language labels per the copy law: "Show demos" / "Hide demos". -->
-  <div id="demo-sec" class="db-sec" aria-label="Demo Projects" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-top:24px;">
-    <div><h2 class="db-sec-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-orb"></use></svg> Demo Projects</h2></div>
-    <button type="button" id="demo-hide-btn" class="btn btn-n btn-s" style="white-space:nowrap;" aria-pressed="false" title="Hide the demo projects section">
-      <svg class="ico" aria-hidden="true" style="width:15px;height:15px;"><use id="demo-hide-icon" href="css/mmgr-icons.svg#i-eye-off"></use></svg>
-      <span id="demo-hide-label">Hide demos</span>
-    </button>
-  </div>
-  <div class="grid" id="demo-grid"><!-- demo project cards render here --></div>
+  <div class="grid" id="demo-grid" hidden><!-- demo project cards render here --></div>
 
 
 
@@ -595,6 +593,32 @@ body.db-page.side-open .sidebar-icons{opacity:0;pointer-events:none;}
   </div>
 </div>
 
+<!-- ACCOUNT DELETION CONFIRM (owner 2026-09-15): a real popup before the
+     point of no return. Says exactly what disappears with the account, and
+     requires typing CONFIRM - the rail panel alone was too quiet for an
+     action that cannot be undone. Same sheet pattern as #cdm. -->
+<div id="dam" role="dialog" aria-modal="true" aria-label="Delete my account">
+  <div class="mb" id="dam-mb">
+    <div class="mh"><span class="mt"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-trash"></use></svg> Delete my account?</span><button type="button" class="dc" id="dam-close"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg></button></div>
+    <div class="mbody">
+      <p id="dam-desc">This deletes your account for good. Everything saved under it goes with it:</p>
+      <ul id="dam-list">
+        <li>Your sign-in (you can't get the account back)</li>
+        <li>Every cloud project you own, with its saved state</li>
+        <li>All API keys and sharing codes you created</li>
+        <li>Your backup settings and preferences</li>
+      </ul>
+      <p class="sr-hint" style="margin:8px 0">Offline projects on this device are not touched - only the cloud copy is deleted.</p>
+      <input type="text" id="dam-confirm-in" class="ctl-in" placeholder="Type CONFIRM to delete" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="Type CONFIRM to delete your account">
+      <div class="gerr" id="dam-err" aria-live="polite"></div>
+    </div>
+    <div class="mf">
+      <button type="button" class="btn btn-n" id="dam-cancel">Cancel</button>
+      <button type="button" class="btn btn-d" id="dam-go" disabled title="Type CONFIRM first">Delete my account</button>
+    </div>
+  </div>
+</div>
+
 <!-- Scripts: single minified bundle (7 modules). Falls back to individual
      source files for local dev when dist/app-bundle.js does not exist. -->
 <script defer src="dist/app-bundle.js" onerror="window.__mmgrAppBundleMissing=1"></script>
@@ -711,10 +735,14 @@ function renderCards(){
   if (!demoGrid) return;
   if (demosHidden || !demoProjects.length) {
     if (demoSec) demoSec.hidden = true;
+    if (demoGrid) demoGrid.hidden = true;
     demoGrid.innerHTML = '';
+    syncDemoToggle();
     return;
   }
   if (demoSec) demoSec.hidden = false;
+  if (demoGrid) demoGrid.hidden = false;
+  syncDemoToggle();
   demoGrid.innerHTML = demoProjects.map(function(p) {
     var status = (p.status || 'active').toLowerCase();
     var statusLabel = status.replace('-', ' ');
@@ -896,45 +924,34 @@ document.addEventListener('keydown', e=>{
   }
 });
 
-// Hide demos toggle - persists to localStorage. OWNER 2026-09-15: the eye
-// icon hides the WHOLE Demo Projects section (heading + cards); the demos
-// remain openable from the rail's All Projects list. When hidden, the
-// button itself moves into the hero row area? No - simpler and calmer: the
-// button stays where it is only while the section is visible; once hidden
-// the section (including the button) disappears, and "Show demos" returns
-// via the eye affordance pinned beside the user-projects grid (below).
-document.getElementById('demo-hide-btn').addEventListener('click', function() {
-  var hidden = false;
-  try { hidden = localStorage.getItem('mmgr_demos_hidden') === '1'; } catch(e) {}
-  var next = !hidden;
-  try { localStorage.setItem('mmgr_demos_hidden', next ? '1' : '0'); } catch(e) {}
-  syncDemoToggle();
-  renderCards();
-});
-
-// Keep the eye button + section in sync with the stored preference. Runs at
-// boot and after every toggle. The "show" affordance (#demo-show-pill) sits
-// after the user grid so a visitor who hid demos can always find them again.
-function syncDemoToggle(){
-  var hidden = false;
-  try { hidden = localStorage.getItem('mmgr_demos_hidden') === '1'; } catch(e) {}
-  var lbl = document.getElementById('demo-hide-label');
-  var ico = document.getElementById('demo-hide-icon');
-  var btn = document.getElementById('demo-hide-btn');
-  var pill = document.getElementById('demo-show-pill');
-  if (lbl) lbl.textContent = hidden ? 'Show demos' : 'Hide demos';
-  if (ico) ico.setAttribute('href', hidden ? 'css/mmgr-icons.svg#i-eye' : 'css/mmgr-icons.svg#i-eye-off');
-  if (btn) btn.setAttribute('aria-pressed', hidden ? 'true' : 'false');
-  if (pill) pill.hidden = !hidden;
+// OWNER 2026-09-15 (second pass): demo visibility is controlled from ONE
+// place - the eye row inside the rail's All Projects dropdown. Clicking it
+// toggles the stored preference, re-renders the cards, and re-labels itself
+// ("Show demo projects" when hidden, "Hide demo projects" when visible).
+// The demo section on the page keeps NO header bar of its own.
+function demosHiddenPref(){
+  try { return localStorage.getItem('mmgr_demos_hidden') === '1'; } catch(e) { return false; }
 }
-
-// Eye pill below the user grid: the way back when the demo section is hidden.
-document.addEventListener('click', function(e){
-  if (!e.target.closest || !e.target.closest('#demo-show-pill')) return;
-  try { localStorage.setItem('mmgr_demos_hidden', '0'); } catch(err) {}
-  syncDemoToggle();
-  renderCards();
-});
+function setDemosHiddenPref(hidden){
+  try { localStorage.setItem('mmgr_demos_hidden', hidden ? '1' : '0'); } catch(e) {}
+}
+function syncDemoToggle(){
+  var hidden = demosHiddenPref();
+  var row = document.getElementById('demo-rail-row');
+  var lbl = row ? row.querySelector('.db-project-name') : null;
+  var ico = document.getElementById('demo-rail-icon');
+  if (lbl) lbl.textContent = hidden ? 'Show demo projects' : 'Hide demo projects';
+  if (ico) ico.setAttribute('href', hidden ? 'css/mmgr-icons.svg#i-eye' : 'css/mmgr-icons.svg#i-eye-off');
+  if (row) row.setAttribute('aria-pressed', hidden ? 'true' : 'false');
+}
+var demoRailRow = document.getElementById('demo-rail-row');
+if (demoRailRow) {
+  demoRailRow.addEventListener('click', function() {
+    setDemosHiddenPref(!demosHiddenPref());
+    syncDemoToggle();
+    renderCards();
+  });
+}
 
 /* ============================================================
    Phase B , data-action event delegation.
@@ -1564,8 +1581,55 @@ document.addEventListener('click', function(e){
   var t = e.target && e.target.closest ? e.target.closest('#del-account-go, #del-account-go-email') : null;
   if (!t) return;
   e.preventDefault();
-  deleteMyAccount(t.id === 'del-account-go-email' ? 'email' : 'google');
+  // OWNER 2026-09-15: the delete buttons now open the #dam confirm popup
+  // instead of firing the API call directly - an irreversible action gets a
+  // real warning screen with what will be lost, and a typed CONFIRM.
+  openDeleteAccountModal(t.id === 'del-account-go-email' ? 'email' : 'google');
 });
+/* ---- #dam: account deletion confirm popup ----
+   Password accounts re-enter their password inside the popup (the rail
+   field stays for discovery); Google accounts type CONFIRM here. The
+   actual API call is still deleteMyAccount() - the popup is a gate. */
+var damKind = 'google';
+function openDeleteAccountModal(kind){
+  damKind = kind || 'google';
+  var m = document.getElementById('dam');
+  if (!m) { deleteMyAccount(damKind); return; }
+  var inp = document.getElementById('dam-confirm-in');
+  var go = document.getElementById('dam-go');
+  var err = document.getElementById('dam-err');
+  if (inp) inp.value = '';
+  if (err) err.textContent = '';
+  if (go) go.disabled = true;
+  m.classList.add('open');
+  if (inp) setTimeout(function(){ try { inp.focus(); } catch(e){} }, 50);
+}
+function closeDeleteAccountModal(){
+  var m = document.getElementById('dam');
+  if (m) m.classList.remove('open');
+}
+(function bindDeleteAccountModal(){
+  var inp = document.getElementById('dam-confirm-in');
+  var go = document.getElementById('dam-go');
+  var cancel = document.getElementById('dam-cancel');
+  var x = document.getElementById('dam-close');
+  var m = document.getElementById('dam');
+  function gate(){
+    if (!inp || !go) return;
+    var ok = String(inp.value || '').trim().toUpperCase() === 'CONFIRM';
+    go.disabled = !ok;
+    if (ok && inp.value !== 'CONFIRM') inp.value = 'CONFIRM';
+  }
+  if (inp) inp.addEventListener('input', gate);
+  if (go) go.addEventListener('click', function(){
+    if (!inp || String(inp.value || '').trim().toUpperCase() !== 'CONFIRM') return;
+    closeDeleteAccountModal();
+    deleteMyAccount(damKind);
+  });
+  if (cancel) cancel.addEventListener('click', closeDeleteAccountModal);
+  if (x) x.addEventListener('click', closeDeleteAccountModal);
+  if (m) m.addEventListener('click', function(e){ if (e.target === m) closeDeleteAccountModal(); });
+})();
 // Track provider kind for the panel switch (Google vs email sign-in).
 window.addEventListener('mmgr:user-changed', function(ev){
   var u = ev && ev.detail && ev.detail.user;

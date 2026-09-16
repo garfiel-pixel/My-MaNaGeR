@@ -10,11 +10,18 @@
    PBKDF2(salt, key) plus a sha256 fingerprint for O(1) lookup.
    ============================================================ */
 import { json, cloudForbidden, readCloudBody,
-  cloudAuthOwnerEither, randomSaltHex, randomOwnerCode,
-  hashOwnerCode, fingerprintOf, CLOUD_SECTIONS } from '../lib/http.js';
+  cloudAuthOwnerEither, randomSaltHex,
+  hashOwnerCode, fingerprintOf, CLOUD_SECTIONS, CLOUD_CODE_ALPHABET as CLOUD_KEY_ALPHABET } from '../lib/http.js';
 
 const CLOUD_MAX_API_KEYS = 10;
 const API_KEY_PREFIX_LEN = 8;
+// OWNER 2026-09-15: keys now read as standard API keys, not license codes.
+// An external AI that sees 'sk-mmgr-' + 4 groups of 6 base32 chars instantly
+// knows it is a bearer key and where to send it (the header is documented in
+// the shown-once banner + field guide). Format: sk-mmgr-XXXXXX-XXXXXX-XXXXXX.
+const API_KEY_PREFIX_TOKEN = 'sk-mmgr-';
+const API_KEY_BODY_GROUPS = 3;
+const API_KEY_BODY_GROUP_LEN = 6;
 
 export async function handleCloudApiKeyCreate(request, env, projectId) {
   const auth = await cloudAuthOwnerEither(request, env, projectId);
@@ -48,7 +55,16 @@ export async function handleCloudApiKeyCreate(request, env, projectId) {
     expiresAt = new Date(t).toISOString();
   }
   const salt = randomSaltHex();
-  const apiKey = randomOwnerCode() + '-' + randomOwnerCode(); // 36 chars, longer than owner codes
+  // Build the key body from the same 32-char base32 alphabet (no I, L, O, 0,
+  // 1 confusion) as owner codes, then wrap it in the standard sk- prefix.
+  const bytes = crypto.getRandomValues(new Uint8Array(API_KEY_BODY_GROUPS * API_KEY_BODY_GROUP_LEN));
+  const groups = [];
+  for (let g = 0; g < API_KEY_BODY_GROUPS; g++) {
+    let grp = '';
+    for (let i = 0; i < API_KEY_BODY_GROUP_LEN; i++) grp += CLOUD_KEY_ALPHABET[bytes[g * API_KEY_BODY_GROUP_LEN + i] % 32];
+    groups.push(grp);
+  }
+  const apiKey = API_KEY_PREFIX_TOKEN + groups.join('-');
   const hash = await hashOwnerCode(apiKey, salt);
   const fp = await fingerprintOf(apiKey);
   const now = new Date().toISOString();

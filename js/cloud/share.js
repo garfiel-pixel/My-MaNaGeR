@@ -49,15 +49,42 @@ var MMGR = window.MMGR || {};
  const isClient = pendingCode.role === 'client';
  const isApi = pendingCode.role === 'api';
  const kind = isApi ? 'API key' : (isClient ? 'client' : (isView ? 'viewer' : 'editor'));
- const kindCopy = isApi ? 'copy it into your AI tool. Shown once, stays until revoked or expired' : 'copy it and share. Stays until revoked';
+ const kindCopy = isApi ? 'copy it into your AI tool. Shown once, stays until revoked or expired. Your AI uses it as a bearer header: X-API-Key: <the key> against this project\u2019s cloud load/save endpoints' : 'copy it and share. Stays until revoked';
  return '<div class="sr cloud-new-code" style="border:1px solid var(--gold);background:rgba(var(--gold-rgb),.1);border-radius:var(--radius);padding:8px 10px;margin:10px 0 4px" role="status">' +
  '<div class="sr-hint" style="margin:0 0 4px"><strong>NEW ' + kind + ' for \u201C' + esc(pendingCode.label || kind) + '\u201D - ' + kindCopy + ':</strong></div>' +
  '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">' +
  '<code style="font-family:ui-monospace,monospace;letter-spacing:.05em;color:var(--gold);font-size:1rem;font-weight:700">' + esc(pendingCode.code) + '</code>' +
  '<button class="btn btn-g btn-s" data-action="cloudCopyEditorCode" data-code="' + esc(pendingCode.code) + '"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy code</button>' +
- '<button class="btn btn-n btn-s" data-action="cloudEditorCodeDone">Done</button>' +
+ '<button class="btn btn-g btn-s" data-action="cloudEditorCodeDone" title="Copy it one last time, dismiss this banner, and close settings"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-check"></use></svg> Confirm</button>' +
  '</div></div>';
   }
+
+ // OWNER 2026-09-15: sub-tabs instead of three stacked panels - Share &
+ // Access was too crowded. Editor Codes shows first (the default everyone
+ // uses); Client Codes and API Keys collapse into a click-to-reveal tab bar.
+ // A pending shown-once banner always stays visible on top, whichever tab is
+ // open, so a freshly created key/code is never hidden behind a tab switch.
+ let shareSubTab = 'editor';
+ function shareSubTabsHtml() {
+  const tabs = [
+   ['editor', 'Editor codes'],
+   ['client', 'Client codes'],
+   ['api', 'API keys']
+  ];
+  let bar = '<div class="share-subtabs" role="tablist" aria-label="Sharing panels">';
+  for (let i = 0; i < tabs.length; i++) {
+   const on = shareSubTab === tabs[i][0];
+   bar += '<button type="button" class="share-subtab' + (on ? ' on' : '') + '" role="tab" aria-selected="' + on + '" data-action="cloudShareTab" data-tab="' + tabs[i][0] + '">' + tabs[i][1] + '</button>';
+  }
+  return bar + '</div>';
+ }
+ function sharePane() {
+  const show = function(t) { return shareSubTab === t; };
+  return shareSubTabsHtml() +
+   '<div class="share-subpane" data-pane="editor"' + (show('editor') ? '' : ' hidden') + '></div>' +
+   '<div class="share-subpane" data-pane="client"' + (show('client') ? '' : ' hidden') + '></div>' +
+   '<div class="share-subpane" data-pane="api"' + (show('api') ? '' : ' hidden') + '></div>';
+ }
 
   function renderShare() {
  const wrap = $('ctrl-share');
@@ -81,23 +108,7 @@ var MMGR = window.MMGR || {};
  '<div class="sr" style="border:none;padding:0 0 6px"><span class="sl" style="font-size:.8rem;font-weight:800"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-lock"></use></svg> Linked to your account</span></div>' +
  '<div class="sr-hint" style="margin:0 0 8px">You are signed in as this project\u2019s owner - backup and sharing run against your cloud copy. Want the portable owner code on this device? Use <strong>Recover Owner Code</strong> in Cloud &amp; Sync (the previous code stops working, by design).</div>' +
  pendingBannerHtml(pendingCode) +
- '<div class="sr" style="margin-top:12px;padding:0 0 4px"><span class="sl" style="font-size:.72rem;font-weight:700"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-users"></use></svg> Shared Codes</span><button class="btn btn-n btn-s" data-action="cloudEditorList" style="margin-left:auto"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> Refresh</button></div>' +
- '<div class="sr-hint" style="margin:0 0 6px">Create a code for a colleague. They enter it on any device to access this project. Scope is enforced server-side.</div>' +
- '<div class="exp-row" style="flex-wrap:wrap">' +
- '<input type="text" id="cloud-editor-label-in" class="ctl-in" placeholder="Label, e.g. Site Super - Riverside" style="min-width:200px" autocomplete="off">' +
- '<select id="cloud-editor-role" class="ctl-in" style="width:auto" aria-label="Code type">' +
- '<option value="editor">Editor - can edit the sections below</option>' +
- '<option value="view">Viewer - can see them, read-only</option>' +
- '</select>' +
- '<button class="btn btn-g btn-s" data-action="cloudEditorCreate"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-plus"></use></svg> Create Code</button>' +
- '</div>' +
- '<div id="cloud-editor-scope-box" class="share-scope">' +
- '<span class="sr-hint" style="margin:0">Sections this code may edit (or see, for a viewer):</span>' +
- '<span id="cloud-editor-scope-load" class="sr-hint" style="margin:0">loading\u2026</span>' +
- '</div>' +
- '<div id="cloud-editor-list"></div>' +
- clientCodesHtml() +
- apiKeysHtml() +
+ sharePane() +
  '</div>';
  } else if (!code && !ecode) {
  body =
@@ -126,27 +137,43 @@ var MMGR = window.MMGR || {};
  '<div class="sr-hint" style="margin:0 0 8px">Anyone with this code opens the project as <strong>owner</strong> on any device. Keep it safe - if lost, only the linked Google account can recover it.</div>' +
  '<code class="share-code">' + esc(code) + '</code>' +
  pendingBannerHtml(pendingCode) +
- '<div class="sr" style="margin-top:12px;padding:0 0 4px"><span class="sl" style="font-size:.72rem;font-weight:700"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-users"></use></svg> Shared Codes</span><button class="btn btn-n btn-s" data-action="cloudEditorList" style="margin-left:auto"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> Refresh</button></div>' +
- '<div class="sr-hint" style="margin:0 0 6px">Create a code for a colleague. They enter it on any device to access this project. Scope is enforced server-side.</div>' +
- '<div class="exp-row" style="flex-wrap:wrap">' +
- '<input type="text" id="cloud-editor-label-in" class="ctl-in" placeholder="Label, e.g. Site Super - Riverside" style="min-width:200px" autocomplete="off">' +
- '<select id="cloud-editor-role" class="ctl-in" style="width:auto" aria-label="Code type">' +
- '<option value="editor">Editor - can edit the sections below</option>' +
- '<option value="view">Viewer - can see them, read-only</option>' +
- '</select>' +
- '<button class="btn btn-g btn-s" data-action="cloudEditorCreate"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-plus"></use></svg> Create Code</button>' +
- '</div>' +
- '<div id="cloud-editor-scope-box" class="share-scope">' +
- '<span class="sr-hint" style="margin:0">Sections this code may edit (or see, for a viewer):</span>' +
- '<span id="cloud-editor-scope-load" class="sr-hint" style="margin:0">loading\u2026</span>' +
- '</div>' +
- '<div id="cloud-editor-list"></div>' +
- clientCodesHtml() +
- apiKeysHtml() +
+ sharePane() +
  '</div>';
  }
  wrap.innerHTML = body;
+ // Panes carry the SAME ids as the old stacked panels did (each pane renders
+ // once and hidden panes keep their markup), so every existing id-based
+ // handler - scope boxes, list refreshes, create flows - works unchanged.
+ const paneEd = wrap.querySelector('.share-subpane[data-pane="editor"]');
+ const paneCl = wrap.querySelector('.share-subpane[data-pane="client"]');
+ const paneAk = wrap.querySelector('.share-subpane[data-pane="api"]');
+ if (paneEd) paneEd.innerHTML = editorPaneInner();
+ if (paneCl) paneCl.innerHTML = clientCodesHtml();
+ if (paneAk) paneAk.innerHTML = apiKeysHtml();
   }
+ // Editor pane body: the editor-codes section (header row, create row, scope
+ // box, list) extracted from the branch bodies above so sharePane() can slot
+ // it into its pane wrapper - ids stay identical to the pre-tabs UI.
+ function editorPaneInner() {
+  return '<div class="sr" style="margin-top:12px;padding:0 0 4px"><span class="sl" style="font-size:.72rem;font-weight:700"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-users"></use></svg> Editor Codes</span><button class="btn btn-n btn-s" data-action="cloudEditorList" style="margin-left:auto"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> Refresh</button></div>' +
+   '<div class="sr-hint" style="margin:0 0 6px">Create a code for a colleague. They enter it on any device to access this project. Scope is enforced server-side.</div>' +
+   '<div class="exp-row" style="flex-wrap:wrap">' +
+   '<input type="text" id="cloud-editor-label-in" class="ctl-in" placeholder="Label, e.g. Site Super - Riverside" style="min-width:200px" autocomplete="off">' +
+   '<select id="cloud-editor-role" class="ctl-in" style="width:auto" aria-label="Code type">' +
+   '<option value="editor">Editor - can edit the sections below</option>' +
+   '<option value="view">Viewer - can see them, read-only</option>' +
+   '</select>' +
+   '<button class="btn btn-g btn-s" data-action="cloudEditorCreate"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-plus"></use></svg> Create Code</button>' +
+   '</div>' +
+   '<div id="cloud-editor-scope-box" class="share-scope">' +
+   '<span class="sr-hint" style="margin:0">Sections this code may edit (or see, for a viewer):</span>' +
+   '<span id="cloud-editor-scope-load" class="sr-hint" style="margin:0">loading\u2026</span>' +
+   '</div>' +
+   '<div id="cloud-editor-list"></div>';
+ }
+
+
+
 
   // C19 OWNER UI (owner 2026-09-13): the client-code backend (create, list,
   // revoke, verify, read-only section grant) shipped complete with NO door -

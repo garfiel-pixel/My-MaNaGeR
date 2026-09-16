@@ -79,6 +79,10 @@ var MMGR = window.MMGR || {};
   // NOT gate the shader (owner 2026-09-06: the starry glass is mandatory
   // app-section identity; perf mode trims heavy CSS effects + 3D tilt).
   function effectiveGlassMode() {
+    // OWNER 2026-09-15: Performance Mode now gates the starry WebGL shader.
+    // It was capability-only before; the owner wants perf mode to guarantee a
+    // lag-free page on weak hardware, and the shader is the heaviest layer.
+    if (ns.Perf && ns.Perf.blocksHeavyLayers && ns.Perf.blocksHeavyLayers()) return 'css';
     if (getGlassMode() !== 'premium') return 'css';
     if (!isHighEnd()) return 'css'; // capability floor overrides preference
     if (isNarrow()) return 'css';   // shared detection: narrow => CSS only

@@ -10,8 +10,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>My MaNaGeR | Admin</title>
 <meta name="robots" content="noindex, nofollow">
-<link rel="icon" type="image/png" href="images/site-icon.png">
-  <link rel="apple-touch-icon" href="images/site-icon.png">
+<link rel="icon" type="image/png" href="images/mpw-icon.png">
+  <link rel="apple-touch-icon" href="images/mpw-icon.png">
 <link rel="stylesheet" href="dist/mmgr.min.css">
 <!-- GOOGLE-OPERATOR-IDENTITY-v1: optional operator identity (admin chip).
      async+defer; the admin gate and password flow are completely untouched. -->
@@ -2637,7 +2637,12 @@ const ADMIN_ACTION_MAP = {
   'poolDeleteRow': (el) => poolDeleteRow(el.getAttribute('data-id')),
   // Performance Mode (owner 2026-09-06): same contract as project.html's
   // ACTION_MAP entry - checkbox toggles own their click, read checked as-is.
-  'tglPerfMode': (el) => { const P = window.MMGR.Perf; if (P && P.set) P.set(el.checked); },
+  'tglPerfMode': (el) => {
+    const P = window.MMGR.Perf;
+    if (P && P.set) P.set(el.checked);
+    // OWNER 2026-09-15: perf mode now also gates the starry WebGL shader.
+    if (window.MMGR && MMGR.Glass && MMGR.Glass.sync) MMGR.Glass.sync();
+  },
   'codesCopyReveal': (el) => { const c = el.getAttribute('data-code'); if (c && navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(c).then(()=>toast('Code copied.')).catch(()=>toast('Copy manually.','warn')); }
 };
 document.addEventListener('click', function(e){

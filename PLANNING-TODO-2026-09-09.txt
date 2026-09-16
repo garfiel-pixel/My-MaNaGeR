@@ -120,6 +120,34 @@ M5  [x] Prod smoke: MCP GET 405 JSON, bad bearer generic 403, ai/chat
         during the owner's live test - owner must revoke it (API Keys
         panel) and mint a fresh one.
 --------------------------------------------------------------------
+SHIP 2026-09-16 (3) - commit 2f8acba, CI run 35139037123-era GREEN,
+deploy ec4ad424 - MCP PATH-A (owner decision in chat, fix plan reviewed):
+P1  [x] Root cause: Claude Desktop's connector probes MCP endpoints
+        WITHOUT credentials; a bare HTTP 401 makes spec clients treat the
+        server as an OAuth-protected resource and discovery fails against
+        routes that do not exist. Path A chosen over minimal OAuth:
+        transport answers open, auth lives at the tool layer.
+P2  [x] src/mcp/server.js: initialize/notifications/tools/list answer
+        unauthenticated; every tools/call gated by auth-null check ->
+        normal MCP isError refusal (MCP_AUTH_REFUSAL export), no data.
+        Transport-level 401/403 removed entirely; cloudForbidden import
+        dropped. Bad/unknown Bearer = same per-tool refusal (no oracle).
+P3  [x] serve.cjs mirror carries the same contract (byte-identical
+        refusal text, CommonJS copy since it cannot import the ESM module).
+P4  [x] Gates reworded + added: qa-ai-relay M1 (open handshake) + M1b
+        (tool-gate refusal, no-DB proof), qa-api-keys P17b (bad Bearer ->
+        200 isError) + P17c (anon init -> serverInfo), qa-full mcp3
+        reworded + mcp7 added (181/181). Battery: verify, T1 6/6,
+        ai-relay, api-keys E2E ALL GREEN.
+P5  [x] Docs: share.js fine print + guide A-27 gain the 'No sign-in'
+        instruction (leave connector sign-in off; key checked only when a
+        tool asks). SW v291 -> v292 (share.js bundle bytes changed).
+P6  [x] Prod smoke: GET 405 unchanged; unauth initialize -> 200
+        serverInfo; unauth tools/call -> 200 isError refusal; guide
+        'No sign-in' live; SW v292 live. LESSON: on an MCP endpoint the
+        HTTP status IS API - return auth errors as MCP isError results,
+        never as transport-level 401/403.
+--------------------------------------------------------------------
 SHIP 2026-09-16 - commit 17af8a2, CI run 35108594436 GREEN, deploy 2a5f770e
 --------------------------------------------------------------------
 S1  [x] Full local CI before push: npm run verify 23 PASS; T1 6/6

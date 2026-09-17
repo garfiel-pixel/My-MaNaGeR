@@ -1758,3 +1758,12 @@ SESSION 2026-09-17 CONT. (owner directive wave 3 - big multi-part):
       Resend recovery TRUE, authmail 5/30min bucket TRUE).
   MCP re-test: DEFERRED to a later session per owner (new key will be
   minted then). Logged, not dropped.
+SESS 2026-09-17 (wave 3 cont.) - Switcher badges: the project-search
+switcher (.ps-item-badge) still carried colored pill chrome + "On this
+device" label. Dropped pill bg/radius/hue to plain dim text, relabeled
+to "Local". Probe: real switcher opened via #db-search-btn, badges
+transparent/0-radius, label Local, no page errors. Gates: controls-admin
+11/11, pool-ui 6/6, marketing 20/20, AI23, emoji/em-dash clean, CSP
+regen (24 hashes) + serve restart per lesson 10. CI green 685af65.
+Deployed 0fa9057a (live verified w/ cache-buster; edge cache lags
+~1min for un-busted URLs).

@@ -1444,8 +1444,14 @@ hr.div{border:none;border-top:1px solid var(--border);margin:14px 0;}
 .plan-pill{display:inline-flex;align-items:center;gap:4px;font-size:.58rem;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--gold);border:1px solid var(--gold);border-radius:100px;padding:2px 8px;background:rgba(var(--gold-rgb),.12);white-space:nowrap;}
 .plan-pill .ico{width:11px;height:11px;}
 .plan-pill[hidden]{display:none;}
-.dirty-ind{display:none;align-items:center;gap:5px;font-size:.7rem;color:var(--amber);padding:3px 9px;border:1px solid var(--amber);border-radius:100px;background:rgba(var(--amber-rgb),0.08);cursor:pointer;transition:all var(--tr);}
-.dirty-ind:hover{background:rgba(var(--amber-rgb),0.2);}
+/* OWNER 2026-09-17 (B3): notification pills -> dot + word. The backup
+   indicator loses its bordered pill chrome and renders as a colored dot
+   beside the words (the .sdot convention from the v288 dashboard wave):
+   amber = needs attention, green = cloud backed up. Hover keeps a soft
+   highlight so the click affordance stays discoverable. */
+.dirty-ind{display:none;align-items:center;gap:5px;font-size:.7rem;font-weight:600;color:var(--amber);padding:3px 8px;border:none;border-radius:100px;background:transparent;cursor:pointer;transition:background var(--tr);}
+.dirty-ind::before{content:'';width:7px;height:7px;border-radius:50%;flex-shrink:0;background:var(--amber);box-shadow:0 0 6px color-mix(in oklch,var(--amber) 55%,transparent);}
+.dirty-ind:hover{background:color-mix(in oklch,var(--amber) 12%,transparent);}
 @keyframes pulseAttn{0%,100%{box-shadow:0 0 0 0 rgba(var(--gold-rgb),.55);}50%{box-shadow:0 0 0 7px rgba(var(--gold-rgb),0);}}
 .pulse-attn{animation:pulseAttn .6s ease-out 2;}
 @media (prefers-reduced-motion: reduce){.pulse-attn{animation:none;outline:2px solid var(--gold);}}
@@ -1453,9 +1459,10 @@ hr.div{border:none;border-top:1px solid var(--border);margin:14px 0;}
 /* OWNER 2026-08-15: cloud-linked projects show a GREEN "Cloud backed up"    chip instead of the amber "Not backed up" - the cloud snapshot auto-syncs
    as the user works, so there is nothing to be alarmed about. Same pill
    shape; the .ico is the i-cloud sprite symbol. */
-.dirty-ind .ico{width:12px;height:12px;flex-shrink:0;}
-.dirty-ind.ci-cloud{color:var(--green);border-color:var(--green);background:rgba(16,185,129,.12);}
-.dirty-ind.ci-cloud:hover{background:rgba(16,185,129,.24);}
+.dirty-ind .ico{display:none;}
+.dirty-ind.ci-cloud{color:var(--green);}
+.dirty-ind.ci-cloud::before{background:var(--green);box-shadow:0 0 6px color-mix(in oklch,var(--green) 55%,transparent);}
+.dirty-ind.ci-cloud:hover{background:color-mix(in oklch,var(--green) 12%,transparent);}
 
 /* Backup popover (owner 2026-08-15). OWNER 2026-09-09: solid card fill.
    The old translucent glass fill (rgba 7% white in dark) rendered the
@@ -2010,6 +2017,22 @@ body.dark-mode .ltr-roll td{color:var(--text);}
 #ai-win{display:none;position:fixed;top:var(--hdr-h,64px);right:0;bottom:0;width:420px;z-index:2000;background:var(--canvas);border-left:1px solid var(--border);box-shadow:-8px 0 40px rgba(0,0,0,.2);overflow:hidden;}
 #ai-win.open{display:flex;animation:aiSlideIn .3s var(--ease-ios);}
 @keyframes aiSlideIn{from{transform:translateX(100%);}to{transform:translateX(0);}}
+/* WAVE C (owner 2026-09-17): FLOAT mode - the AI window and the settings
+   drawer pop out of their docks into a centered, header-draggable window so
+   content can settle bigger. Geometry is set inline by the engine (mmgr-ai.js
+   toggleFloat); these rules only change the layout regime + affordances.
+   Reduced-motion users get the flat variant below. */
+.float-mode{transition:none;bottom:auto !important;}
+#ai-win.float-mode{border:1px solid var(--border);border-radius:var(--radius);box-shadow:0 18px 60px rgba(0,0,0,.35);animation:none;display:flex;}
+#ai-win.float-mode .ai-rz-w{display:none;} /* width-only dock handle is meaningless while floating */
+#drw.float-mode{left:auto !important;filter:none;animation:none;}
+#drw.float-mode .drw-sheet{border:1px solid var(--border);border-radius:var(--radius);box-shadow:0 18px 60px rgba(0,0,0,.35);}
+.float-mode .mh,.float-mode .dh{cursor:move;touch-action:none;user-select:none;}
+.float-tgl{opacity:.75;}
+.float-tgl:hover{opacity:1;}
+@media (prefers-reduced-motion:reduce){
+  .float-mode,.float-mode *{transition:none !important;animation:none !important;}
+}
 /* AI-WINDOW-DOCKED-RESIZE (owner 2026-09-17): the window is a right-docked
    full-height drawer, so it resizes width-only from its LEFT edge - the
    enterprise side-panel convention (VS Code / Slack / Edge). One vertical

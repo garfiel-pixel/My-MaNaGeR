@@ -2379,6 +2379,14 @@ var MMGR = window.MMGR || {};
     _esc: esc,
     _setStatus: setStatus,
     _render: render,
+    // B1 FIX (owner 2026-09-17): review.js's editorCodeDone() calls
+    // C.clearPendingEditorCode() - these three wrappers were never exported,
+    // so Confirm threw a TypeError and the shown-once banner stayed up with
+    // the drawer open (the owner's "I click confirm and the key is still
+    // there" bug). Exported so the extracted module can reach them.
+    getPendingEditorCode: getPendingEditorCode,
+    setPendingEditorCode: setPendingEditorCode,
+    clearPendingEditorCode: clearPendingEditorCode,
     _listLog: listLog,
     _activeCredential: activeCredential,
     _getSections: function() { return _sections; }

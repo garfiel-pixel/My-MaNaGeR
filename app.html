@@ -1513,7 +1513,7 @@ function renderProjectResults(query){
     var desc = p.description || '';
     var unlocked = false;
     try { unlocked = localStorage.getItem('mmgr_unlocked_' + p.id) === '1'; } catch(e) {}
-    var srcLabel = p.demo ? 'Demo' : (p._src === 'device' ? 'On this device' : 'Cloud');
+    var srcLabel = p.demo ? 'Demo' : (p._src === 'device' ? 'Local' : 'Cloud');
     var srcCls = p.demo ? 'ps-badge-demo' : (p._src === 'device' ? 'ps-badge-device' : 'ps-badge-cloud');
     var badge = '<span class="ps-item-badge ' + srcCls + '">' + srcLabel + '</span>' +
       (unlocked && !p.demo ? '<span class="ps-item-badge">Unlocked</span>' : '');

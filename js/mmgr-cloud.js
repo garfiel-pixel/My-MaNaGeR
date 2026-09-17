@@ -1257,6 +1257,27 @@ var MMGR = window.MMGR || {};
   // this project via structured tools (owner-code auth). The AI-side toggle
   // (#ai-cfg-mcp) stays in the AI window; this card is the Controls-side
   // settings surface with the server URL + Copy + status.
+  // OWNER 2026-09-17: plain-language copy for the connector's sign-in choice.
+  function _mcpSignInHint() {
+    return 'Set the connector\u2019s sign-in option to <strong>No sign-in</strong>. The server checks your key when a tool asks for data, not during connection.';
+  }
+  // Two verified connection paths (owner 2026-09-17 research pass):
+  // - Claude Code and header-capable MCP clients: send the key as an
+  //   Authorization Bearer header (official claude mcp add --header syntax).
+  // - claude.ai's web custom-connector panel has NO header field today, so
+  //   it cannot connect a header-authenticated server - stated honestly, not
+  //   guessed. The field guide carries the full walkthrough.
+  function _mcpConnectHtml(mcpUrl) {
+    return '<details class="fmt-more mcp-how"><summary>How to connect an AI tool</summary>' +
+      '<div class="mcp-how-body">' +
+      '<p><strong>Terminal tools (Claude Code)</strong> - run:</p>' +
+      '<pre class="fmt-preview">claude mcp add --transport http my-manager \\\n  ' + esc(mcpUrl) + ' \\\n  --header "Authorization: Bearer YOUR-KEY"</pre>' +
+      '<p><strong>Editor clients (VS Code, Cursor)</strong> - add to mcp.json:</p>' +
+      '<pre class="fmt-preview">{ "servers": { "my-manager": { "type": "http", "url": "' + esc(mcpUrl) + '", "headers": { "Authorization": "Bearer YOUR-KEY" } } } }</pre>' +
+      '<p>' + _mcpSignInHint() + '</p>' +
+      '<p>The claude.ai web panel (Add custom connector) has no place to paste a key today - use Claude Code or an editor client. Full walkthrough: <a href="mymanager-field-guide.html#connect-ai" target="_blank" rel="noopener">field guide, Connect an Outside AI</a>.</p>' +
+      '</div></details>';
+  }
   function renderMcp(sessOwner) {
     const host = $('ctrl-mcp');
     if (!host) return;
@@ -1267,15 +1288,15 @@ var MMGR = window.MMGR || {};
       ? (function() {
           var mcpUrl = window.location.origin + '/api/mcp/' + encodeURIComponent(pid());
           return '<div class="sr" style="margin-top:8px"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg> MCP Server</span></div>' +
-            '<div class="sr-hint">Connect external AI tools (Claude Desktop, Cursor, Windsurf) to this project via the Model Context Protocol. The AI can read your project data and suggest changes (which go through your review queue).</div>' +
+            '<div class="sr-hint">Connect an outside AI to this project. It can read your data and suggest changes - every change waits for you in Review.</div>' +
             '<div class="exp-row" style="flex-wrap:wrap;align-items:center;gap:8px">' +
             '<input type="text" id="mcp-url" class="ctl-in" readonly style="flex:1;min-width:200px;font-family:ui-monospace,monospace;font-size:.72rem;letter-spacing:.02em;background:var(--tile-bg)" value="' + esc(mcpUrl) + '" aria-label="MCP Server URL">' +
             '<button class="btn btn-n btn-s" data-action="mcpCopyUrl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy</button>' +
             '</div>' +
-            '<div class="sr-hint" style="margin-top:4px">In your MCP client, add this server with: Authorization: Bearer &lt;your-owner-code&gt;</div>' +
-            (!code
-              ? '<div class="sr-hint" style="margin-top:4px">MCP clients authenticate with your owner code. You are signed in as the owner on this device - use <strong>Recover Owner Code</strong> in Cloud Backup to put a code in hand for external tools.</div>'
-              : '') +
+            '<div class="sr-hint" style="margin-top:4px">Use a project API key (Settings ▸ API Keys) as the key - it is scoped and revocable. Your owner code works too but grants full access; treat it as a last resort.</div>' +
+            (!code && !sessOwner
+              ? ''
+              : _mcpConnectHtml(mcpUrl)) +
             '<div id="mcp-status" class="sr-hint" role="status" aria-live="polite"></div>';
         })()
       : '<div class="sr-hint">This project is not linked to the cloud , the MCP server is not available until a cloud link exists (Controls ▸ Share &amp; Access).</div>';
@@ -1348,6 +1369,11 @@ var MMGR = window.MMGR || {};
     } catch (e) { /* static host / offline , no field */ }
     if (wrap) wrap.hidden = !emailAccount;
     modal.classList.add('on');
+    // Reopen must show the resting label (an Escape mid-hold can leave a
+    // countdown label behind; cancel() only restores it while the modal is
+    // still on, by design, so the reopen reset lives here).
+    const okBtn = $('del-ok');
+    if (okBtn) { okBtn.textContent = 'Delete project'; okBtn.disabled = false; }
     if (emailAccount) {
       const pw = _ensureDelPwField();
       if (pw) { pw.value = ''; setTimeout(function () { pw.focus(); }, 60); }
@@ -1357,10 +1383,64 @@ var MMGR = window.MMGR || {};
     const modal = $('del-modal');
     if (modal) modal.classList.remove('on');
     _delBusy = false;
+    _holdDelete.cancel();
     const ok = $('del-ok'); if (ok) { ok.disabled = false; ok.textContent = 'Delete project'; }
     const err = $('del-err'); if (err) err.textContent = '';
     _removeDelPwField();
   }
+  // HOLD-TO-DELETE (owner 2026-09-17): the danger-zone confirm becomes a
+  // 10-second press-and-hold on #del-ok - mirroring the hold-to-clear mechanic
+  // (js/app/history.js startHold/cancelHold): pointerdown starts the countdown,
+  // release / leaving the button / window blur cancels, keyboard users hold
+  // via keydown-space. Password verification + the owner-only server route
+  // stay exactly as they were; the hold is an additional intent gate, not a
+  // replacement for either. The click action map entry becomes a no-op (the
+  // hold listener dispatches the real cloudDeleteConfirm) so a synthetic
+  // click after a held pointerup can never double-fire the delete.
+  const _holdDelete = (function () {
+    let timer = null;
+    let left = 0;
+    const TOTAL = 10;
+    const LABEL = 'Delete project';
+    function label(t) {
+      const ok = $('del-ok');
+      if (ok) ok.textContent = t;
+    }
+    function modalOn() {
+      const modal = $('del-modal');
+      return !!(modal && modal.classList.contains('on'));
+    }
+    function begin() {
+      if (timer || _delBusy) return;
+      if (!modalOn()) return;
+      left = TOTAL;
+      label('Hold to delete - ' + left);
+      timer = setInterval(function () {
+        // HARD SAFETY: if the modal was closed while holding (Escape, Cancel,
+        // any programmatic close) the hold is dead - never confirm from a
+        // ghost timer, whatever the browser did with the pointer events.
+        if (!modalOn()) { cancel(); return; }
+        left -= 1;
+        if (left > 0) { label('Hold to delete - ' + left); return; }
+        finish();
+      }, 1000);
+    }
+    function finish() {
+      cancel();
+      if (!modalOn()) return;
+      if (typeof cloudDeleteConfirm === 'function') cloudDeleteConfirm();
+    }
+    function cancel() {
+      if (!timer) return;
+      clearInterval(timer);
+      timer = null;
+      const modal = $('del-modal');
+      if (modal && modal.classList.contains('on')) label(LABEL);
+    }
+    return { begin: begin, cancel: cancel };
+  })();
+  function cloudDeleteHoldBegin() { _holdDelete.begin(); }
+  function cloudDeleteHoldCancel() { _holdDelete.cancel(); }
   async function cloudDeleteConfirm() {
     if (_delBusy) return;
     const err = $('del-err');
@@ -1421,6 +1501,7 @@ var MMGR = window.MMGR || {};
           }
         }
       } catch (e) { /* best-effort , cloud delete is the source of truth */ }
+      _holdDelete.cancel(); // safety no-op after success
       cloudDeleteClose();
       const App = window.MMGR.App;
       if (App && App.showToast) App.showToast('Project deleted. Every shared copy now shows as discontinued.', 'ok');
@@ -1602,14 +1683,10 @@ var MMGR = window.MMGR || {};
         '<button class="btn btn-g btn-s" data-action="cloudWebhookAdd"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-plus"></use></svg> Add Webhook</button>' +
         '</div>' +
         '<div id="cloud-webhook-list"></div>' +
-        // MCP SERVER: per-project Model Context Protocol endpoint
-        '<div class="sr" style="margin-top:8px"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg> MCP Server</span></div>' +
-        '<div class="sr-hint">Connect external AI tools (Claude Desktop, Cursor, Windsurf) to this project via the Model Context Protocol. The AI can read your project data and suggest changes (which go through your review queue).</div>' +
-        '<div class="exp-row" style="flex-wrap:wrap;align-items:center;gap:8px">' +
-        '<input type="text" id="mcp-url" class="ctl-in" readonly style="flex:1;min-width:200px;font-family:ui-monospace,monospace;font-size:.72rem;letter-spacing:.02em;background:var(--tile-bg)" value="" aria-label="MCP Server URL">' +
-        '<button class="btn btn-n btn-s" data-action="mcpCopyUrl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy</button>' +
-        '</div>' +
-        '<div class="sr-hint" style="margin-top:4px">In your MCP client, add this server with: Authorization: Bearer &lt;your-owner-code&gt;</div>' +
+        // OWNER 2026-09-17 (declutter): the MCP card lives ONCE, in the
+        // Controls tab's dedicated #ctrl-mcp host (renderMcp). The old inline
+        // copy here duplicated the same #mcp-url id in the DOM - invalid HTML
+        // and the exact clutter the owner flagged.
         '<div id="mcp-status" class="sr-hint" role="status" aria-live="polite"></div>';
     }
 
@@ -2296,6 +2373,8 @@ var MMGR = window.MMGR || {};
     // Zone , confirm modal + password verify + the owner-only soft delete.
     cloudDeleteOpen: cloudDeleteOpen,
     cloudDeleteClose: cloudDeleteClose,
+    cloudDeleteHoldBegin: cloudDeleteHoldBegin,
+    cloudDeleteHoldCancel: cloudDeleteHoldCancel,
     cloudDeleteConfirm: cloudDeleteConfirm,
     _deviceId: deviceId,
     _getCopyRecord: getCopyRecord,

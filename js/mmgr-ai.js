@@ -1693,101 +1693,110 @@ var MMGR = window.MMGR || {};
     } catch (e) { return null; }
   }
 
-  function clampAiSize(w, h) {
-    const maxW = Math.max(AI_SIZE_MIN_W, window.innerWidth - 40);
-    const maxH = Math.max(AI_SIZE_MIN_H, window.innerHeight - 40);
-    return {
-      w: Math.min(Math.max(Math.round(w), AI_SIZE_MIN_W), maxW),
-      h: Math.min(Math.max(Math.round(h), AI_SIZE_MIN_H), maxH)
-    };
+  // AI-WINDOW-DOCKED-RESIZE (owner 2026-09-17): the window is a right-docked,
+  // full-height drawer (a5497ea), so it resizes like an enterprise side panel
+  // (VS Code / Slack / Edge): width-only via a left-edge handle. The old
+  // 8-handle floating-modal engine (9396464) anchored the panel at VIEWPORT
+  // coordinates inside the drawer's overflow:hidden box - the first drag sent
+  // the UI out of the clip and the window went blank. One handle, one axis,
+  // zero repositioning: the panel can never leave the clip or break.
+  const AI_SIZE_DEFAULT_W = 420;
+  const AI_W_MIN = 320;
+  const AI_W_MAX = 720;
+
+  function clampAiWidth(w) {
+    const maxW = Math.max(AI_W_MIN, Math.min(AI_W_MAX, window.innerWidth - 40));
+    return Math.min(Math.max(Math.round(w), AI_W_MIN), maxW);
   }
 
-  function saveAiSize(w, h) {
-    try { localStorage.setItem(AI_SIZE_KEY, JSON.stringify({ w: w, h: h })); } catch (e) { /* ignore */ }
+  function saveAiWidth(w) {
+    try { localStorage.setItem(AI_SIZE_KEY, JSON.stringify({ w: clampAiWidth(w) })); } catch (e) { /* ignore */ }
   }
 
-  // Restore the saved size on open: clear any session absolute position so the
-  // modal re-centers, then apply the saved (clamped) size. No saved size ->
-  // the CSS default (min(1500px,100%) x min(92vh,950px)) applies.
+  // Restore the saved width on open (clamped). No saved width -> the 420px
+  // dock default. Legacy prefs from the floating-modal era ({w,h}) read their
+  // width and ignore the height.
   function applyAiSizePref() {
-    const modal = U.$('ai-win-mb');
-    if (!modal) return;
-    modal.style.position = '';
-    modal.style.left = '';
-    modal.style.top = '';
-    const p = readAiSizePref();
-    if (p) {
-      const c = clampAiSize(p.w, p.h);
-      modal.style.width = c.w + 'px';
-      modal.style.height = c.h + 'px';
-    } else {
-      modal.style.width = '';
-      modal.style.height = '';
-    }
+    const win = U.$('ai-win');
+    if (!win) return;
+    let w = AI_SIZE_DEFAULT_W;
+    try {
+      const raw = localStorage.getItem(AI_SIZE_KEY);
+      if (raw) {
+        const d = JSON.parse(raw);
+        if (d && +d.w > 0) w = clampAiWidth(+d.w);
+      }
+    } catch (e) { /* keep default */ }
+    win.style.width = w + 'px';
   }
 
   (function() {
-    const modal = U.$('ai-win-mb');
-    if (!modal) return;
-    const handles = Array.prototype.slice.call(modal.querySelectorAll('.ai-rz'));
-    if (!handles.length) return;
+    const win = U.$('ai-win');
+    if (!win) return;
+    // The resize affordance lives on the DRAWER itself (left-edge strip),
+    // self-healed if the static markup is missing.
+    let h = win.querySelector('.ai-rz-w');
+    if (!h) {
+      h = document.createElement('span');
+      h.className = 'ai-rz ai-rz-w';
+      h.setAttribute('data-edge', 'w');
+      h.setAttribute('title', 'Drag to resize (double-click resets)');
+      h.setAttribute('aria-hidden', 'true');
+      win.appendChild(h);
+    }
     let drag = null;
+    let raf = 0;
+    let pendingW = 0;
     function onDown(e) {
-      const edge = e.currentTarget.getAttribute('data-edge') || 'se';
-      const r = modal.getBoundingClientRect();
-      // Anchor absolutely at the current rect so edge drags track the cursor
-      // 1:1 (flex centering would re-center and halve the delta).
-      modal.style.position = 'absolute';
-      modal.style.left = r.left + 'px';
-      modal.style.top = r.top + 'px';
-      modal.style.width = r.width + 'px';
-      modal.style.height = r.height + 'px';
-      drag = { edge: edge, startX: e.clientX, startY: e.clientY, left: r.left, top: r.top, width: r.width, height: r.height, w: null, h: null };
+      if (e.button !== undefined && e.button !== 0) return;
+      const r = win.getBoundingClientRect();
+      drag = { startX: e.clientX, startW: r.width };
+      win.classList.add('resizing');
+      h.classList.add('dragging');
       e.preventDefault();
-      try { if (e.currentTarget.setPointerCapture) e.currentTarget.setPointerCapture(e.pointerId); } catch (err) { /* synthetic events */ }
+      try { if (h.setPointerCapture) h.setPointerCapture(e.pointerId); } catch (err) { /* synthetic events */ }
     }
     function onMove(e) {
       if (!drag) return;
-      const dx = e.clientX - drag.startX;
-      const dy = e.clientY - drag.startY;
-      const edge = drag.edge;
-      let width = drag.width;
-      let height = drag.height;
-      if (edge.indexOf('e') > -1) width = drag.width + dx;
-      if (edge.indexOf('s') > -1) height = drag.height + dy;
-      if (edge.indexOf('w') > -1) width = drag.width - dx;
-      if (edge.indexOf('n') > -1) height = drag.height - dy;
-      const c = clampAiSize(width, height);
-      drag.w = c.w;
-      drag.h = c.h;
-      let left = drag.left;
-      let top = drag.top;
-      // Keep the fixed edge pinned when the opposite drag is clamped.
-      if (edge.indexOf('w') > -1) left = drag.left + (drag.width - c.w);
-      if (edge.indexOf('n') > -1) top = drag.top + (drag.height - c.h);
-      modal.style.left = left + 'px';
-      modal.style.top = top + 'px';
-      modal.style.width = c.w + 'px';
-      modal.style.height = c.h + 'px';
+      // West-edge drag: the panel grows as the cursor moves left. Width
+      // writes are rAF-throttled so a fast drag never floods layout.
+      pendingW = clampAiWidth(drag.startW + (drag.startX - e.clientX));
+      if (!raf) {
+        raf = requestAnimationFrame(function () {
+          raf = 0;
+          if (drag) win.style.width = pendingW + 'px';
+        });
+      }
     }
     function onUp() {
       if (!drag) return;
-      // Persist the size tracked on the drag object (set by onMove); a press
-      // without a move leaves w/h null and saves nothing.
-      const w = drag.w;
-      const h = drag.h;
       drag = null;
-      if (w && h && w >= AI_SIZE_MIN_W && h >= AI_SIZE_MIN_H) saveAiSize(w, h);
+      win.classList.remove('resizing');
+      h.classList.remove('dragging');
+      if (raf) { cancelAnimationFrame(raf); raf = 0; if (pendingW) win.style.width = pendingW + 'px'; }
+      const w = parseInt(win.style.width, 10);
+      if (w >= AI_W_MIN) saveAiWidth(w);
     }
-    handles.forEach(function(h) {
-      h.addEventListener('pointerdown', onDown);
-      h.addEventListener('pointermove', onMove);
-      h.addEventListener('pointerup', onUp);
-      h.addEventListener('pointercancel', onUp);
-    });
+    h.addEventListener('pointerdown', onDown);
+    h.addEventListener('pointermove', onMove);
+    h.addEventListener('pointerup', onUp);
+    h.addEventListener('pointercancel', onUp);
     // A release anywhere (not just on the handle) ends the drag.
     document.addEventListener('pointerup', onUp);
     document.addEventListener('pointercancel', onUp);
+    // Keep a dragged/persisted width legal across viewport changes (rotate,
+    // window resize): re-clamp the inline width in place, never reposition.
+    window.addEventListener('resize', function () {
+      const cur = parseInt(win.style.width, 10);
+      if (cur > 0) win.style.width = clampAiWidth(cur) + 'px';
+    });
+    // Double-click the edge: snap back to the docked default (the same
+    // convention as editor side panels).
+    h.addEventListener('dblclick', function () {
+      win.style.width = AI_SIZE_DEFAULT_W + 'px';
+      try { localStorage.removeItem(AI_SIZE_KEY); } catch (e) { /* ignore */ }
+      _toast('Panel width reset to default.', 'ok');
+    });
   })();
 
   // ---- Dashboard command card ----
@@ -1853,10 +1862,10 @@ var MMGR = window.MMGR || {};
     // INTEGRATED-STRUCTURE-API-WINDOW (plan §1/§3)
     checkApiHealth: checkApiHealth,
     setApiStatus: setApiStatus,
-    // AI-WINDOW-RESIZE
+    // AI-WINDOW-DOCKED-RESIZE
     readAiSizePref: readAiSizePref,
-    saveAiSize: saveAiSize,
-    clampAiSize: clampAiSize,
+    saveAiSize: saveAiWidth,
+    clampAiSize: clampAiWidth,
     applyAiSizePref: applyAiSizePref
   };
 })(MMGR);

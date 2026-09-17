@@ -2733,6 +2733,13 @@ document.addEventListener('mmgr:user-changed', function(e){
 (function(){
   const dark = window.MMGRTheme && MMGRTheme.isDark ? MMGRTheme.isDark() : (localStorage.getItem('mmgr_theme') === 'dark');
   document.querySelectorAll('[data-action="tglTheme"]').forEach(t => { t.checked = !dark; });
+  // Cross-Project Resources: the rail toggle reads the stored preference at
+  // boot so it tells the truth (markup ships unchecked; same desync class as
+  // the v279 perf-toggle fix that Perf.syncInputs handles for that toggle).
+  try {
+    var xproj = document.getElementById('xproj-tgl');
+    if (xproj) xproj.checked = (localStorage.getItem('mmgr_cross_project') || '0') === '1';
+  } catch(e){}
   const glass = !!(window.MMGR && MMGR.Viewport && MMGR.Viewport.getGlassMode() === 'premium');
   document.querySelectorAll('[data-action="tglGlassMode"]').forEach(g => { g.checked = glass; });
   if (window.MMGR && MMGR.Glass && MMGR.Glass.sync) MMGR.Glass.sync();

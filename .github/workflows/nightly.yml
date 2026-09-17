@@ -101,9 +101,16 @@ jobs:
           WRANGLER_DEV_URL: http://127.0.0.1:8787
 
       - name: "T2: Email auth"
+        # CI-repair loop 2026-09-17: this suite self-spawns wrangler on its own
+        # port and parks 20 min waiting for a browser stop-file when
+        # MMGR_QA_NO_BROWSER is unset (Session 3 gotcha) - nightly red 8
+        # nights straight (#16-#23) while push-CI (which sets it) stayed green.
+        # WRANGLER_DEV_URL removed: the harness never reads it (only
+        # cloud-phase1/2 + ai-badge do).
         run: node tools/qa-email-auth.cjs
         env:
-          WRANGLER_DEV_URL: http://127.0.0.1:8787
+          MMGR_QA_NO_BROWSER: "1"
+          QA_PORT: "8801"
 
       - name: "T2: Reviews"
         run: node tools/qa-reviews.cjs

@@ -125,7 +125,8 @@ body.admin-page.side-open .db-scrim{display:block!important;opacity:1!important;
 /* STABILIZATION (2026-08-16): the Cloud Projects list's "Deleted" state , 
    a tombstoned project renders with a danger badge + note + Undo / Delete
    permanently actions instead of looking live. */
-.badge.del{background:rgba(220,53,69,.14);color:var(--danger);border:1px solid rgba(220,53,69,.4);backdrop-filter:none;}
+.badge.del{color:var(--dot-red);background:transparent;border:none;backdrop-filter:none;}
+.badge.del .sdot{background:var(--dot-red);box-shadow:0 0 6px color-mix(in srgb,var(--dot-red) 55%,transparent);}
 .del-note{color:var(--danger);font-weight:700;}
 header h1 .mark{color:var(--gold);}
 .hdr-actions{display:flex;gap:6px;align-items:center;flex-wrap:wrap;}
@@ -142,10 +143,18 @@ main{max-width:1000px;margin:0 auto;padding:26px 24px 70px;}
 .prow:hover .prow-title{color:var(--gold);}
 .prow-desc{font-size:.74rem;color:var(--slate);margin-top:3px;max-width:520px;line-height:1.5;}
 /* §6.7 , active/completed solid-tinted; on-hold/planning frosted glass */
-.badge.active{background:rgba(16,185,129,.18);color:var(--green);border:1px solid var(--green);backdrop-filter:none;}
-.badge.completed{background:rgba(100,116,139,.35);color:var(--slate);border:1px solid rgba(100,116,139,.5);backdrop-filter:none;}
-.badge.on-hold{background:var(--glass-fill-dark);color:var(--gold);border:1px solid rgba(245,158,11,.35);backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturate));-webkit-backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturate));}
-.badge.planning{background:var(--glass-fill-dark);color:var(--blue);border:1px solid rgba(59,130,246,.35);backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturate));-webkit-backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturate));}
+/* OWNER 2026-09-17 (wave 3 W3): status badges are NOTIFICATION DOTS now -
+   dot + word, no pill chrome, using the dark-safe --dot-* tokens. Specificity
+   note: the shared mmgr.css styles .badge.active with a colored pill, so
+   these overrides carry the same .badge.X selectors to win the cascade.
+   Open and Delete lose their color (plain black/white); Lock keeps a red
+   accent on the text only. */
+.badge,.badge.active,.badge.completed,.badge.planning,.badge.on-hold{display:inline-flex;align-items:center;gap:6px;font-size:.68rem;font-weight:700;letter-spacing:.03em;color:var(--text);background:transparent;border:none;padding:2px 4px;text-transform:capitalize;backdrop-filter:none;-webkit-backdrop-filter:none;box-shadow:none;}
+.badge .sdot{margin-right:0;width:7px;height:7px;}
+.badge.active .sdot{background:var(--dot-green);box-shadow:0 0 6px color-mix(in srgb,var(--dot-green) 55%,transparent);}
+.badge.completed .sdot{background:var(--slate);}
+.badge.planning .sdot{background:var(--dot-blue);box-shadow:0 0 6px color-mix(in srgb,var(--dot-blue) 55%,transparent);}
+.badge.on-hold .sdot{background:var(--dot-yellow);box-shadow:0 0 6px color-mix(in srgb,var(--dot-yellow) 55%,transparent);}
 .prow-meta{display:flex;gap:16px;align-items:center;margin-top:12px;flex-wrap:wrap;font-size:.74rem;color:var(--slate);}
 .code-box{font-family:ui-monospace,monospace;background:var(--tile-bg);border:1px solid var(--border);border-radius:4px;
   padding:4px 9px;letter-spacing:.08em;color:var(--text);font-variant-numeric:tabular-nums;}
@@ -370,7 +379,7 @@ pre.snippet{background:var(--tile-bg);border:1px solid var(--border);border-radi
     <div class="hdr-actions">
       <a class="btn btn-n btn-s" href="app.html" target="_blank"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg> Dashboard</a>
       <button class="btn btn-n btn-s" data-action="changePassword"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-lock"></use></svg> Password</button>
-      <button class="btn btn-d btn-s" data-action="lockAdmin"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> Lock</button>
+      <button class="btn btn-n btn-s" data-action="lockAdmin" style="color:var(--dot-red);" title="Lock the admin panel"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-lock"></use></svg> Lock</button>
     </div>
   </header>
 
@@ -1534,7 +1543,7 @@ function renderProjects(){
             <div class="prow-desc">${escapeHtml(p.description||'')}</div>
             ${stateHtml}
           </div>
-          <span class="badge ${status}">${escapeHtml(status.replace('-',' '))}</span>
+          <span class="badge ${status}"><span class="sdot"></span>${escapeHtml(status.replace('-',' '))}</span>
         </div>
         <div class="prow-meta">
           <span>ID: <code>${escapeHtml(p.id)}</code></span>
@@ -1544,13 +1553,13 @@ function renderProjects(){
           ${p.cloudId ? `<span>Cloud: <code>${escapeHtml(p.cloudId)}</code> <button class="btn btn-n btn-s" data-action="copyCloudCode" data-idx="${i}" title="Copy the cloud owner code to share access"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy code</button></span>` : ''}
         </div>
         <div class="prow-actions">
-          <button class="btn btn-g btn-s" data-action="adminOpenProject" data-idx="${i}"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-folder-open"></use></svg> Open</button>
+          <button class="btn btn-n btn-s" data-action="adminOpenProject" data-idx="${i}"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-folder-open"></use></svg> Open</button>
           <button class="btn btn-n btn-s" data-action="openProjectModal" data-idx="${i}"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-edit"></use></svg> Edit</button>
           <button class="btn btn-n btn-s" data-action="regenerateCode" data-idx="${i}"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> New Code</button>
           <button class="btn btn-n btn-s" data-action="openSnippetModal" data-idx="${i}"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-link"></use></svg> URL</button>
           ${p.cloudId ? `<button class="btn btn-g btn-s" data-action="updateCloudSnapshot" data-idx="${i}"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cloud"></use></svg> Update Cloud Snapshot</button><button class="btn btn-n btn-s" data-action="codesManager" data-idx="${i}"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-lock"></use></svg> Codes</button>` : `<button class="btn btn-o btn-s" data-action="publishToCloud" data-idx="${i}"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-upload"></use></svg> Publish to Cloud</button>`}
           <button class="btn btn-n btn-s" data-action="downloadPublicData" title="Download the self-hosting data file. Does not publish anything."><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Download manifest</button>
-          <button class="btn btn-d btn-s" data-action="deleteProject" data-idx="${i}"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-trash"></use></svg> Delete</button>
+          <button class="btn btn-n btn-s" data-action="deleteProject" data-idx="${i}" style="color:var(--text);"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-trash"></use></svg> Delete</button>
         </div>
       </div>`;
   }).join('');
@@ -2120,7 +2129,7 @@ async function cloudAdminList(){
         : '<div class="prow-actions"><button class="btn btn-o btn-s" data-action="cloudAdminReissue" data-id="' + escapeAttr(p.projectId) + '"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> Reissue owner code</button></div>';
       return '<div class="prow"><div class="prow-top"><div><div class="prow-title">' + escapeHtml(p.label || p.projectId) + '</div>' +
         '<div class="prow-desc">ID: <code>' + escapeHtml(p.projectId) + '</code> · linked account: ' + (p.linkedName ? escapeHtml(p.linkedName) : '<em>none</em>') + ' · snapshot: ' + (p.hasSnapshot ? 'yes' : 'no') + (deleted ? ' · <span class="del-note">deleted ' + escapeHtml(String(p.deletedAt).slice(0,19).replace('T',' ')) + '</span>' : '') + '</div></div>' +
-        '<span class="badge ' + (deleted ? 'del' : (p.hasSnapshot ? 'active' : 'planning')) + '">' + (deleted ? 'deleted' : (p.hasSnapshot ? 'snapshot' : 'no snapshot')) + '</span></div>' +
+        '<span class="badge ' + (deleted ? 'del' : (p.hasSnapshot ? 'active' : 'planning')) + '"><span class="sdot"></span>' + (deleted ? 'deleted' : (p.hasSnapshot ? 'snapshot' : 'no snapshot')) + '</span></div>' +
         '<div class="prow-meta">' + meta + actions + '</div></div>';
     }).join('');
     cloudAdminStatus(projects.length + ' cloud project(s) loaded.', 'ok');

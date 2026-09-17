@@ -189,6 +189,9 @@ var MMGR = window.MMGR || {};
   function close() {
     const modal = U.$('ai-win');
     if (modal) modal.classList.remove('open');
+    // OWNER 2026-09-17 (wave 3 W8): closing the AI window always stops the
+    // mic - voice input never outlives the window it belongs to.
+    if (ns.Voice && ns.Voice.stopAiDictation) ns.Voice.stopAiDictation();
   }
 
   function preset(type) {

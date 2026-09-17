@@ -1699,3 +1699,62 @@ SESSION 2026-09-17 (plan v2 - admin row status language):
   a private-port probe. ALWAYS diff "shared-server harness vs private-
   port probe" results BEFORE hunting app bugs: if the probe passes,
   check the server's start time first (lesson 10).
+
+SESSION 2026-09-17 CONT. (owner directive wave 3 - big multi-part):
+  PART 1 shipped earlier this session (plan v2): commit 976dc5a + f91d3b4,
+  CI 35277680660 + 35278334741 green, deploy 91ea7543. Dot tokens,
+  admin row status language, .note-line hover-pill, declutter, rename.
+  THIS WAVE (owner voice notes, transcribed):
+  W1  launcher: kill pc-chip pills (On this device / Not published...);
+      title gets a plain "/local" suffix; NO visitor copy anywhere (an
+      account's projects are private by design - "not published, visitors
+      can't see this" is meaningless to the owner); sync state instead:
+      Synced (green) / Not synced (plain) beside the status badge with
+      last-synced time from cloud truth; restored-from-cloud = synced.
+      Local edits DO auto-push to the cloud variant (autoSaveToCloud) -
+      the launcher chip must reflect that truth from /api/cloud/projects.
+  W2  launcher search: 'newtown' fails to rank 'New Town Hotel Renovation'
+      top (rankFor gives rank 3 - unspaced query never matches multiword
+      titles). Fix: compact-match (strip non-alphanumerics both sides).
+  W3  admin: status badges Active(green dot)/Planning(blue dot) not pills;
+      Open + Delete buttons plain black/white (no green/red); Lock button
+      = lock icon + red lock text, no red box.
+  W4  gantt tooltip leak: #gantt-tip stays .vis after section switch
+      (mouseout never fires when the section DOM swaps). Fix in showSection.
+  W5  delete account: rail accordion is the 'dropdown' the owner dislikes;
+      the #dam popup exists (typed CONFIRM) - wire rail button straight to
+      #dam, drop the inline accordion; typed CONFIRM is the gate.
+  W6  access-code modal: too-strong glass (unconditional .mb glass rule +
+      4px scrim blur), .dc X has a glass circle (line 1856 rule wins), no
+      divider wanted between footer buttons, button 'Unlock Project'->
+      'Unlock', spacing fixes.
+  W7  AI window floating close broken: #ai-win.float-mode{display:flex}
+      (css 2051) overrides closed state - display:flex persists after
+      .open removed. FIX REQUIRED. X circle = same .dc fix as W6.
+  W8  AI mic button is a SILENT NO-OP: data-action aiVoiceToggle -> MMGR.
+      Voice.toggleAiRecording() which does not exist (confirmed grep 0
+      matches). Wire Web Speech API dictation into #ai-q: green rec state
+      (.ai-voice-btn.recording exists), honest fallback toasts, off when
+      AI window closes.
+  W9  Upgrade strip: drop the i-zap lightning bolt, text only.
+  W10 phantom cloud projects on a fresh account + filler demo projects:
+      live manifest projects-data.js carries a leftover 'demo-project'
+      (QA Demo Project) entry - renders in the demo section. The cloud
+      list query is session-sub-scoped and correct; phantoms likely the
+      adopted-row join (recipient rows persist after unshare) or a stale
+      session cookie - the adopted query has no deleted/limit guard for
+      discontinued rows beyond a flag. Investigate + cleanup route exists
+      (unpin). Remove the QA manifest row at the source.
+  W11 perf mode: semantics are ON=pretty/OFF=trimmed (inverted names!).
+      Owner wants: best UI first, auto-recommend trim when lag detected.
+      Keep default ON=pretty; add a lag probe (long frames) that nudges
+      once with a toast pointing at the toggle.
+  W12 ToS/Privacy: pages exist (Sep 5 rev) and are largely accurate.
+      Gaps found: no disclosure of project API keys (sk-mmgr), MCP
+      endpoint, AI review-queue proposals, Durable Object presence
+      roster, webhooks. Add sections; verify remaining claims against
+      code (180-day purge TRUE http.js:994, 7-day tombstone TRUE,
+      PBKDF2 100k TRUE, AES-256-GCM envelope TRUE projects.js:218,
+      Resend recovery TRUE, authmail 5/30min bucket TRUE).
+  MCP re-test: DEFERRED to a later session per owner (new key will be
+  minted then). Logged, not dropped.

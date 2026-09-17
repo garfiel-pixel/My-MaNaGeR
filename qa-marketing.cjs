@@ -125,9 +125,12 @@ async function check(name, expr, hint) {
     var cnt = await ev('(function(){return document.querySelectorAll(".pcard").length;})()');
     if (cnt > 0) break;
   }
-  // demo-filled and demo-empty are auto-unlocked on boot; click the LAST
-  // card (demo-project) which is NOT auto-unlocked and will show the modal.
-  await ev(`(function(){var cards=document.querySelectorAll('.pcard');var last=cards[cards.length-1];if(last)last.click();return true;})()`); await delay(600);
+  // demo-filled and demo-empty are auto-unlocked on boot; demo-project (the
+  // old not-unlocked third card) left the public manifest 2026-09-17, so the
+  // modal path now needs a card whose unlock is cleared RIGHT BEFORE the
+  // click (DOM re-render is not required - handleCardClick reads the flag
+  // live). Clear demo-empty's flag, click its card: modal opens.
+  await ev(`(function(){localStorage.removeItem('mmgr_unlocked_demo-empty');var card=document.querySelector('.pcard[data-id="demo-empty"]');if(card)card.click();return true;})()`); await delay(600);
   await check('mkt-09 app: click project card opens access-code modal', `(function(){
     var om = document.getElementById('om');
     var cards = document.querySelectorAll('.pcard');

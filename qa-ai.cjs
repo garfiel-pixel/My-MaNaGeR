@@ -765,45 +765,58 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
   })()`);
   check('A15 readonly: aiCopyOut stays allowed (read-only)', r2.btn && r2.notBlocked, r2);
 
-  // ---- AI-WINDOW-RESIZE: drag handles + per-device size persistence ----
-  // A18a: save/apply round-trip — the size persists to localStorage
-  // (mmgr_ai_size), is applied as inline style, and clearing the pref restores
-  // the CSS default. A18b: a synthetic pointer drag on the SE corner handle
-  // grows the modal AND persists the new size (the drag wiring runs on real
-  // pointer events, so this exercises the actual handlers).
+  // ---- AI-WINDOW-DOCKED-RESIZE: left-edge strip + per-device width persistence
+  // A18a: save/apply round-trip — the WIDTH persists to localStorage
+  // (mmgr_ai_size), is applied as inline style on #ai-win, and clearing the
+  // pref restores the 420px dock default. A18b: a synthetic pointer drag on
+  // the left-edge handle widens the drawer AND persists the new width (the
+  // drag wiring runs on real pointer events, so this exercises the actual
+  // handlers). A18c: the drag never repositions the drawer (the retired
+  // floating-modal engine blanked the window by moving it out of the clip) -
+  // position is invariant and the panel stays inside the viewport.
   const rz1 = await ev(`(async function(){
-    var modal = document.getElementById('ai-win-mb');
+    var win = document.getElementById('ai-win');
     try { localStorage.removeItem('mmgr_ai_size'); } catch(e){}
     MMGR.AiWin.applyAiSizePref();
     await new Promise(function(r){ setTimeout(r, 120); });
-    MMGR.AiWin.saveAiSize(640, 480);
+    MMGR.AiWin.saveAiSize(640, 0);
     MMGR.AiWin.applyAiSizePref();
-    var appliedW = Math.round(parseFloat(modal.style.width));
-    var appliedH = Math.round(parseFloat(modal.style.height));
+    var appliedW = Math.round(parseFloat(win.style.width));
     var pref = JSON.parse(localStorage.getItem('mmgr_ai_size') || '{}');
     try { localStorage.removeItem('mmgr_ai_size'); } catch(e){}
     MMGR.AiWin.applyAiSizePref();
-    return { appliedW: appliedW, appliedH: appliedH, prefW: pref.w, prefH: pref.h, clearedW: modal.style.width };
+    var clearedW = parseFloat(win.style.width) === 420;
+    return { appliedW: appliedW, prefW: pref.w, clearedW: clearedW };
   })()`);
-  check('A18a resize: save/apply round-trip (persisted, applied, default-restorable)', rz1.appliedW === 640 && rz1.appliedH === 480 && rz1.prefW === 640 && rz1.prefH === 480 && rz1.clearedW === '', rz1);
+  check('A18a resize: width save/apply round-trip (persisted, applied, default-restorable)', rz1.appliedW === 640 && rz1.prefW === 640 && rz1.clearedW, rz1);
 
   const rz2 = await ev(`(async function(){
+    var win = document.getElementById('ai-win');
     var modal = document.getElementById('ai-win-mb');
-    MMGR.AiWin.saveAiSize(800, 600);
+    // Seed INSIDE the 320-720 clamp range so a +120px west drag grows (800
+    // would clamp down to 720 and read as no-growth).
+    MMGR.AiWin.saveAiSize(560, 0);
     MMGR.AiWin.applyAiSizePref();
     await new Promise(function(r){ setTimeout(r, 120); });
-    var before = modal.getBoundingClientRect();
-    var se = modal.querySelector('.ai-rz-se');
-    var cx = Math.round(before.right) - 6, cy = Math.round(before.bottom) - 6;
+    function flushRaf(){ return new Promise(function(r){ requestAnimationFrame(function(){ requestAnimationFrame(function(){ r(); }); }); }); }
+    var before = win.getBoundingClientRect();
+    var se = win.querySelector('.ai-rz-w');
+    var cx = Math.round(before.left) + 3, cy = Math.round(before.top + before.height / 2);
     se.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true, pointerId: 7, clientX: cx, clientY: cy }));
-    se.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, cancelable: true, pointerId: 7, clientX: cx + 120, clientY: cy + 80 }));
-    var mid = modal.getBoundingClientRect();
-    se.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, cancelable: true, pointerId: 7, clientX: cx + 120, clientY: cy + 80 }));
-    var after = modal.getBoundingClientRect();
+    se.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, cancelable: true, pointerId: 7, clientX: cx - 120, clientY: cy }));
+    await flushRaf(); // width writes are rAF-throttled - flush before reading (lesson 3)
+    var mid = win.getBoundingClientRect();
+    se.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, cancelable: true, pointerId: 7, clientX: cx - 120, clientY: cy }));
+    var after = win.getBoundingClientRect();
     var pref = JSON.parse(localStorage.getItem('mmgr_ai_size') || '{}');
-    return { grewW: Math.round(after.width) > Math.round(before.width), grewH: Math.round(after.height) > Math.round(before.height), midW: Math.round(mid.width) > Math.round(before.width), persistedW: Math.round(pref.w) === Math.round(after.width), persistedH: Math.round(pref.h) === Math.round(after.height) };
+    var stillInside = after.left >= 0 && after.right <= window.innerWidth + 1;
+    return { grewW: Math.round(after.width) > Math.round(before.width), midW: Math.round(mid.width) > Math.round(before.width),
+      posInvariant: Math.round(before.right) === Math.round(after.right) && Math.round(before.top) === Math.round(after.top),
+      stillInside: stillInside, persistedW: Math.round(pref.w) === Math.round(after.width),
+      modalFills: Math.abs(modal.getBoundingClientRect().width - after.width) < 2,
+      handles: win.querySelectorAll('.ai-rz').length };
   })()`);
-  check('A18b resize: dragging the SE corner grows the modal (mid-drag + final) and persists the new size', rz2.grewW && rz2.grewH && rz2.midW && rz2.persistedW && rz2.persistedH, rz2);
+  check('A18b resize: dragging the left edge widens the drawer (mid-drag + final), persists, never repositions, panel stays in the viewport, .mb fills it', rz2.grewW && rz2.midW && rz2.posInvariant && rz2.stillInside && rz2.persistedW && rz2.modalFills && rz2.handles === 1, rz2);
   await ev(`(function(){ try { localStorage.removeItem('mmgr_ai_size'); } catch(e){} MMGR.AiWin.applyAiSizePref(); return true; })()`);
 
   // ---- A19: docked-sidebar default size regression gate ----
@@ -827,9 +840,9 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
     return { w: Math.round(r.width), h: Math.round(r.height),
       winW: Math.round(win.width), winRight: Math.round(win.right),
       vw: window.innerWidth, vh: window.innerHeight,
-      hasHandles: modal.querySelectorAll('.ai-rz').length === 8 };
+      hasHandles: modal.querySelectorAll('.ai-rz').length === 1 };
   })()`);
-  check('A19 size: AI window renders as the right-docked sidebar (modal ~420px wide, full height, docked right within the rail border, 8 resize handles, no saved pref)', rz3.w >= 380 && rz3.w <= 460 && rz3.h >= 700 && rz3.winRight >= rz3.vw - 12 && rz3.hasHandles, rz3);
+  check('A19 size: AI window renders as the right-docked sidebar (modal ~420px wide, full height, docked right within the rail border, left-edge resize strip, no saved pref)', rz3.w >= 380 && rz3.w <= 460 && rz3.h >= 700 && rz3.winRight >= rz3.vw - 12 && rz3.hasHandles, rz3);
 
   await ev(`(function(){ localStorage.setItem('mmgr_scope_demo-project','full'); return true; })()`);
   await send('Page.navigate', { url: BASE + '/project.html?id=demo-project' }); await delay(3500);

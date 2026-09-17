@@ -1156,14 +1156,11 @@
        js/mmgr-ai.js; the size is persisted per device in localStorage
        (mmgr_ai_size, same device-pref slot pattern as mmgr_theme). -->
   <div class="mb ai-box" id="ai-win-mb">
-    <span class="ai-rz ai-rz-n" data-edge="n" title="Drag to resize"></span>
-    <span class="ai-rz ai-rz-s" data-edge="s" title="Drag to resize"></span>
-    <span class="ai-rz ai-rz-e" data-edge="e" title="Drag to resize"></span>
-    <span class="ai-rz ai-rz-w" data-edge="w" title="Drag to resize"></span>
-    <span class="ai-rz ai-rz-ne" data-edge="ne" title="Drag to resize"></span>
-    <span class="ai-rz ai-rz-nw" data-edge="nw" title="Drag to resize"></span>
-    <span class="ai-rz ai-rz-se" data-edge="se" title="Drag to resize"></span>
-    <span class="ai-rz ai-rz-sw" data-edge="sw" title="Drag to resize"></span>
+    <!-- AI-WINDOW-DOCKED-RESIZE (owner 2026-09-17): one left-edge strip on the
+         drawer (wired in js/mmgr-ai.js). Double-click resets to the 420px
+         dock default. The old 8-handle floating-modal set went blank on drag
+         after the sidebar-drawer conversion and is retired. -->
+    <span class="ai-rz ai-rz-w" data-edge="w" title="Drag to resize (double-click resets)"></span>
     <div class="mh ai-head">
       <span class="mt"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg> AI Assistant</span>
       <!-- AI-WINDOW-POLISH: engine pills + tier select grouped into one
@@ -1192,6 +1189,9 @@
         <button class="ai-clear-btn" data-action="aiClear" title="Start a new conversation"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> New</button>
         <button class="dc" data-action="closeAiWin" aria-label="Close AI Assistant" title="Close"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> </button>
       </div>
+      <!-- AI-WINDOW-DOCKED-RESIZE: the resize affordance moves to the drawer's
+           left edge (standard for docked side panels) - appended by JS with a
+           self-heal if missing, so the static markup keeps no per-handle code. -->
     </div>
     <!-- AI-CLOUD-CONNECT-UI (DIR-1): the Cloud connection fields live in an
          ALWAYS-VISIBLE row directly under the tier select , the moment the
@@ -1715,7 +1715,8 @@
     </div>
     <div class="mf">
       <button class="btn btn-n btn-s" data-action="cloudDeleteClose">Cancel</button>
-      <button class="btn btn-d btn-s" id="del-ok" data-action="cloudDeleteConfirm">Delete project</button>
+      <button class="btn btn-d btn-s" id="del-ok" data-action="cloudDeleteConfirm" aria-describedby="del-hold-hint">Delete project</button>
+      <div class="hold-hint" id="del-hold-hint">Hold the button for 10 seconds - releasing early cancels the delete.</div>
     </div>
   </div>
 </div>

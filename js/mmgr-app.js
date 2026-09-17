@@ -1918,7 +1918,10 @@ window.MMGR = MMGR;
     // Zone , confirm modal + password verify + the owner-only soft delete.
     'cloudDeleteOpen': () => { const C = window.MMGR.Cloud; if (C && C.cloudDeleteOpen) C.cloudDeleteOpen(); },
     'cloudDeleteClose': () => { const C = window.MMGR.Cloud; if (C && C.cloudDeleteClose) C.cloudDeleteClose(); },
-    'cloudDeleteConfirm': () => { const C = window.MMGR.Cloud; if (C && C.cloudDeleteConfirm) C.cloudDeleteConfirm(); },
+    // HOLD-TO-DELETE (owner 2026-09-17): the danger-zone confirm fires from
+    // the 10s hold listeners below, never from a click (a synthetic click
+    // after a held pointerup must not double-fire the delete).
+    'cloudDeleteConfirm': () => {},
     'cascadeGantt': () => window.MMGR.App.cascadeGantt(),
     'toggleCritical': (el) => window.MMGR.App.toggleCritical(el),
     'tglLeadtimeLane': (el) => window.MMGR.App.tglLeadtimeLane(el),
@@ -2475,6 +2478,57 @@ window.MMGR = MMGR;
   // so no closest() gating is needed (and it covers releases over other
   // elements, re-rendered buttons, and pointer-capture edge cases).
   document.addEventListener('pointerup', () => window.MMGR.App.cancelHold());
+
+  // HOLD-TO-DELETE (owner 2026-09-17): the danger-zone Delete project button
+  // needs a 10-second press-and-hold before cloudDeleteConfirm runs. Same
+  // contract as hold-to-clear: start on pointerdown, cancel on release /
+  // pointercancel / leaving the button / blur. View-only scopes refuse with
+  // a toast (the danger zone is owner-only UI, but the gate is the proof).
+  document.addEventListener('pointerdown', function (e) {
+    const el = e.target.closest && e.target.closest('[data-action="cloudDeleteConfirm"]');
+    if (!el) return;
+    e.preventDefault();
+    if (window.MMGR.App && window.MMGR.App.isReadonly && window.MMGR.App.isReadonly()) {
+      window.MMGR.App.showToast('View-only access: nothing can be deleted.', 'err');
+      return;
+    }
+    const C = window.MMGR.Cloud;
+    if (C && C.cloudDeleteHoldBegin) C.cloudDeleteHoldBegin();
+  });
+  document.addEventListener('pointerup', function () {
+    const C = window.MMGR.Cloud;
+    if (C && C.cloudDeleteHoldCancel) C.cloudDeleteHoldCancel();
+  });
+  document.addEventListener('pointercancel', function () {
+    const C = window.MMGR.Cloud;
+    if (C && C.cloudDeleteHoldCancel) C.cloudDeleteHoldCancel();
+  });
+  document.addEventListener('mouseleave', function (e) {
+    if (e.target.closest && e.target.closest('[data-action="cloudDeleteConfirm"]')) {
+      const C = window.MMGR.Cloud;
+      if (C && C.cloudDeleteHoldCancel) C.cloudDeleteHoldCancel();
+    }
+  }, true);
+  window.addEventListener('blur', function () {
+    const C = window.MMGR.Cloud;
+    if (C && C.cloudDeleteHoldCancel) C.cloudDeleteHoldCancel();
+  });
+  // Keyboard parity: hold Space (or Enter) on the focused button, exactly
+  // like a pointer hold; releasing the key cancels.
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== ' ' && e.key !== 'Enter') return;
+    const el = document.activeElement && document.activeElement.closest
+      ? document.activeElement.closest('[data-action="cloudDeleteConfirm"]') : null;
+    if (!el || e.repeat) return;
+    if (window.MMGR.App && window.MMGR.App.isReadonly && window.MMGR.App.isReadonly()) return;
+    const C = window.MMGR.Cloud;
+    if (C && C.cloudDeleteHoldBegin) { e.preventDefault(); C.cloudDeleteHoldBegin(); }
+  });
+  document.addEventListener('keyup', function (e) {
+    if (e.key !== ' ' && e.key !== 'Enter') return;
+    const C = window.MMGR.Cloud;
+    if (C && C.cloudDeleteHoldCancel) C.cloudDeleteHoldCancel();
+  });
 
   document.addEventListener('pointercancel', () => window.MMGR.App.cancelHold());
 

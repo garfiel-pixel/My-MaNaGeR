@@ -3187,13 +3187,10 @@ body.dark-mode.db-page .db-new-project:hover{background:#1a1a1a;color:#ffffff;bo
 .ps-item:hover{background:var(--tile-bg);border-color:color-mix(in oklch,var(--gold) 40%,var(--border));}
 .ps-item-title{font-weight:700;font-size:.9rem;color:var(--text);}
 .ps-item-desc{font-size:.72rem;color:var(--slate);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.ps-item-badge{display:inline-flex;align-items:center;font-size:.62rem;font-weight:800;letter-spacing:.05em;text-transform:uppercase;padding:2px 8px;border-radius:999px;}
-.ps-item-badge + .ps-item-badge{margin-left:4px;}
-.ps-badge-device{background:color-mix(in oklch,var(--green) 14%,transparent);color:var(--green);}
-.ps-badge-cloud{background:color-mix(in oklch,var(--blue) 14%,transparent);color:var(--blue);}
-.ps-badge-demo{background:color-mix(in oklch,var(--gold) 18%,transparent);color:var(--gold-dark,#7c2d12);}
+.ps-item-badge{display:inline-flex;align-items:center;font-size:.62rem;font-weight:600;letter-spacing:.04em;color:var(--tx-dim,var(--muted,#8a8a8a));}
+.ps-item-badge + .ps-item-badge{margin-left:6px;}
+.ps-badge-device,.ps-badge-cloud,.ps-badge-demo{color:var(--tx-dim,var(--muted,#8a8a8a));}
 body.dark-mode .ps-item:hover{background:var(--card-elev,rgba(255,255,255,.04));}
-body.dark-mode .ps-badge-demo{color:var(--gold);}
 /* ---- cloud cards share the grid card language ---- */
 body.db-page .cd-card{
   padding:var(--pad-card);

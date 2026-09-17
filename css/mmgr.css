@@ -1797,8 +1797,20 @@ header{position:sticky;top:0;z-index:100;} /* §6.3 modals / sheets - stronger f
   border-radius:var(--squircle-lg);
   box-shadow:var(--glass-rim),var(--glass-shadow);
 } /* §2/§6.3 - modal sheets use PLAIN rounded corners (owner 2026-08-15: */
-/* Scrims blur the page behind the sheet (not just dim it) */
-#om,#cfm-modal,#conflict-modal,#chartup-modal,#wbsimport-modal,#importdates-modal,
+/* OWNER 2026-09-17 (wave 3 W6): the access-code modal's scrim no longer
+   blurs the page behind it - the strong glass-on-glass read was too heavy
+   on the one modal every new visitor meets. A plain dim keeps focus and
+   lightens the surface. (Other confirm sheets keep their blur.) */
+#om{
+  backdrop-filter:none;
+  -webkit-backdrop-filter:none;
+}
+#om .mb{box-shadow:0 10px 34px rgba(0,0,0,.22);}
+/* W6: no divider line between the access-code modal's buttons - they flow. */
+#om .mf{border-top:none;padding-top:2px;}
+#om .mbody{padding-bottom:6px;}
+/* Other confirm sheets keep their blur */
+#cfm-modal,#conflict-modal,#chartup-modal,#wbsimport-modal,#importdates-modal,
 #adm-cfm,#pw-om,#adm-conflict,#snip-om{
   backdrop-filter:blur(4px);
   -webkit-backdrop-filter:blur(4px);
@@ -1853,11 +1865,11 @@ body.dark-mode .btn-warn:hover{background:#d97706;}
   backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturate));
   -webkit-backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturate));
   box-shadow:var(--glass-rim),var(--glass-shadow);}
-.dc{background:var(--glass-fill-dark);border:var(--glass-border);border-radius:var(--squircle-sm);
-  backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturate));
-  -webkit-backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturate));
-  box-shadow:var(--glass-rim);}
-.dc:hover{background:var(--glass-fill-dark-hover);}
+/* OWNER 2026-09-17 (wave 3 W6/W7): the close X is BARE everywhere - no
+   glass circle, no border, no box. It was a plain icon before the glass
+   layer wrapped it; the owner asked twice. Hover still lights it up. */
+.dc{background:none;border:none;border-radius:6px;box-shadow:none;backdrop-filter:none;-webkit-backdrop-filter:none;}
+.dc:hover{background:var(--surface-raised);}
 /* Tab + section chips: frosted when inactive, solid when active */
 .tab-btn,.sec-btn{background:var(--glass-fill-dark);
   backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturate));
@@ -2048,7 +2060,10 @@ body.dark-mode .ltr-roll td{color:var(--text);}
    toggleFloat); these rules only change the layout regime + affordances.
    Reduced-motion users get the flat variant below. */
 .float-mode{transition:none;bottom:auto !important;}
-#ai-win.float-mode{border:1px solid var(--border);border-radius:var(--radius);box-shadow:0 18px 60px rgba(0,0,0,.35);animation:none;display:flex;}
+/* OWNER 2026-09-17 (wave 3 W7): floating close was broken - this rule's
+   display:flex out-ranked the closed state (no .open = display:none), so a
+   floating AI window could never be closed. Only flex when actually open. */
+#ai-win.float-mode.open{border:1px solid var(--border);border-radius:var(--radius);box-shadow:0 18px 60px rgba(0,0,0,.35);animation:none;display:flex;}
 #ai-win.float-mode .ai-rz-w{display:none;} /* width-only dock handle is meaningless while floating */
 #drw.float-mode{left:auto !important;filter:none;animation:none;}
 #drw.float-mode .drw-sheet{border:1px solid var(--border);border-radius:var(--radius);box-shadow:0 18px 60px rgba(0,0,0,.35);}

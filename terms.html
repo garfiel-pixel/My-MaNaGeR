@@ -2,7 +2,7 @@
 <!--
   My MaNaGeR - Global Terms of Service (User Agreement)
   Effective Date: August 30, 2026
-  Last Revised: September 5, 2026
+  Last Revised: September 17, 2026
   This document governs all use of the Application across all jurisdictions.
   Revision 2026-09-05: fixed sign-in script order (google-auth now loads
   before marketing.js so the sign-in button works on this page) and wired
@@ -84,7 +84,7 @@
       <span class="crumbs"><a href="index.html">Home</a> &middot; Terms of Service</span>
       <h1>Terms of Service</h1>
       <p>Binding user agreement for My MaNaGeR.</p>
-      <p class="privacy-updated">Effective Date: August 30, 2026 · Last Revised: September 4, 2026</p>
+      <p class="privacy-updated">Effective Date: August 30, 2026 · Last Revised: September 17, 2026</p>
       <p class="privacy-toc">
         <a href="privacy.html">Privacy Policy</a> &middot;
         <a href="#contact-terms">Contact</a>
@@ -156,6 +156,14 @@
         <li>Strongly recommends that you review each third-party provider's terms and privacy policy before connecting.</li>
       </ul>
       <p><strong>Email-based password recovery.</strong> If you sign in with an email account and forget your password, the Application can send a one-time recovery link to the email address on your account so you can set a new password. These recovery emails are sent through the Resend transactional email service. The recovery link expires after 15 minutes and can be used only once. Google-signed-in accounts do not have a password and do not use this flow; use your Google account to sign in instead.</p>
+
+      <h3>8.1 Project API Keys &amp; Machine Access (MCP)</h3>
+      <ul>
+        <li><strong>Scoped API keys:</strong> You may generate project-scoped API keys (format sk-mmgr-...) to let outside tools, including MCP-capable AI clients, read project data or propose changes. Keys are hash-stored, scope-limited to the sections you grant, revocable at any time, and optionally set to expire.</li>
+        <li><strong>Human review of AI changes:</strong> Changes proposed through the API or the MCP endpoint are never applied automatically. They enter a review queue inside the project and take effect only after you explicitly accept them. Reads return only the sections the key's scope grants.</li>
+        <li><strong>Your responsibility:</strong> Treat issued keys like passwords. Any action taken by a tool using your key is your responsibility; revoke a key immediately if it is exposed.</li>
+        <li><strong>Fair use:</strong> Machine endpoints are rate-limited. Sustained abusive traffic may be throttled or blocked without notice.</li>
+      </ul>
 
       <h3>9. Optional Paid Features</h3>
       <p>If you subscribe to a paid plan through LemonSqueezy:</p>
@@ -238,7 +246,7 @@
       <h3>21. Contact</h3>
       <p id="contact-terms">For questions about these Terms, contact us at <a href="mailto:admin@mymanagerworkspace.com">admin@mymanagerworkspace.com</a>.</p>
 
-      <p style="text-align:center;font-size:.82rem;color:var(--text-secondary);">This document was last revised on September 4, 2026. By using My MaNaGeR, you acknowledge that you have read, understood, and agree to be bound by these Terms of Service and the <a href="privacy.html">Privacy Policy</a>.</p>
+      <p style="text-align:center;font-size:.82rem;color:var(--text-secondary);">This document was last revised on September 17, 2026. By using My MaNaGeR, you acknowledge that you have read, understood, and agree to be bound by these Terms of Service and the <a href="privacy.html">Privacy Policy</a>.</p>
 
     </div>
   </section>

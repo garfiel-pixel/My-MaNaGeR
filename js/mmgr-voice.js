@@ -1058,8 +1058,92 @@ var MMGR = window.MMGR || {};
     };
   }
 
+  // ---- AI-window dictation (OWNER 2026-09-17, wave 3 W8) ----------------
+  // The AI composer's mic button was a silent no-op: ACTION_MAP called
+  // MMGR.Voice.toggleAiRecording() which never existed. This wires it via
+  // the Web Speech API (same Tier-0 engine the meeting capture uses):
+  // instant, permission-gated by the browser, appends the transcript into
+  // the AI question box. Green pulse state while live (.ai-voice-btn.
+  // recording already ships in CSS). Turns itself off when the AI window
+  // closes or the tier is switched (stopped from mmgr-ai.js close()).
+  let _aiRec = null;
+  function aiBtn() { return document.getElementById('ai-voice-btn'); }
+  function aiRecActive() { return !!_aiRec; }
+  function stopAiDictation() {
+    if (!_aiRec) return;
+    try { _aiRec.stop(); } catch (e) { /* ignore */ }
+    _aiRec = null;
+    const b = aiBtn();
+    if (b) b.classList.remove('recording');
+  }
+  function toggleAiRecording() {
+    const btn = aiBtn();
+    if (_aiRec) { stopAiDictation(); return; }
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) {
+      if (ns.App && ns.App.showToast) ns.App.showToast('Voice input is not available in this browser. Chrome or Edge support it.', 'warn');
+      return;
+    }
+    let rec;
+    try { rec = new SR(); } catch (e) {
+      if (ns.App && ns.App.showToast) ns.App.showToast('Voice input could not start in this browser.', 'warn');
+      return;
+    }
+    rec.continuous = true;
+    rec.interimResults = true;
+    rec.lang = document.documentElement.lang || 'en-US';
+    rec.onstart = function() {
+      _aiRec = rec;
+      if (btn) btn.classList.add('recording');
+      if (ns.App && ns.App.showToast) ns.App.showToast('Listening. Click the mic again to stop.', 'ok');
+    };
+    rec.onresult = function(e) {
+      const q = document.getElementById('ai-q');
+      if (!q) return;
+      let finalText = '';
+      let interim = '';
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        if (e.results[i].isFinal) finalText += e.results[i][0].transcript;
+        else interim += e.results[i][0].transcript;
+      }
+      if (finalText) {
+        _aiBase = (q.value + (q.value && !/\s$/.test(q.value) ? ' ' : '') + finalText.trim());
+        q.value = _aiBase;
+      }
+      q.value = _aiBase + (interim ? (q.value && !/\s$/.test(q.value) ? ' ' : '') + interim : '');
+      q.dispatchEvent(new Event('input', { bubbles: true }));
+      try { q.focus({ preventScroll: true }); } catch (e2) { /* ignore */ }
+    };
+    rec.onerror = function(ev) {
+      const code = (ev && ev.error) || 'error';
+      if (code === 'not-allowed' || code === 'service-not-allowed') {
+        if (ns.App && ns.App.showToast) ns.App.showToast('Microphone permission was blocked. Allow the mic in your browser settings and try again.', 'warn');
+      } else if (code === 'no-speech') {
+        if (ns.App && ns.App.showToast) ns.App.showToast('Heard nothing. Try again a little closer to the mic.', 'warn');
+      } else if (code === 'network') {
+        if (ns.App && ns.App.showToast) ns.App.showToast('Voice input needs a connection in this browser. Type your question instead.', 'warn');
+      }
+      stopAiDictation();
+    };
+    rec.onend = function() {
+      // Chrome ends the session on silence; restart while the user still
+      // wants dictation (green state) so a pause does not kill the mic.
+      if (_aiRec === rec) {
+        try { rec.start(); } catch (e) { stopAiDictation(); }
+      }
+    };
+    _aiBase = null;
+    try { rec.start(); } catch (e) {
+      if (ns.App && ns.App.showToast) ns.App.showToast('Voice input could not start. Is the microphone in use?', 'warn');
+    }
+  }
+  let _aiBase = null;
+
   // ---- API ----
   ns.Voice = {
+    toggleAiRecording: toggleAiRecording,
+    stopAiDictation: stopAiDictation,
+    aiRecActive: aiRecActive,
     TIERS: TIERS,
     tierStatus: tierStatus,
     isCapturing: isCapturing,

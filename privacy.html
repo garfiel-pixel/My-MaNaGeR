@@ -2,7 +2,7 @@
 <!--
   My MaNaGeR - Global Privacy Policy
   Effective Date: August 30, 2026
-  Last Revised: September 5, 2026
+  Last Revised: September 17, 2026
   This document governs all use of the Application across all jurisdictions.
   Revision 2026-09-05: fixed sign-in script order (google-auth now loads
   before marketing.js so the sign-in button works on this page) and wired
@@ -83,7 +83,7 @@
       <span class="crumbs"><a href="index.html">Home</a> &middot; Privacy Policy</span>
       <h1>Privacy Policy</h1>
       <p>Global data privacy policy for My MaNaGeR.</p>
-      <p class="privacy-updated">Effective Date: August 30, 2026 · Last Revised: September 4, 2026</p>
+      <p class="privacy-updated">Effective Date: August 30, 2026 · Last Revised: September 17, 2026</p>
       <p class="privacy-toc">
         <a href="terms.html">Terms of Service</a> &middot;
         <a href="#contact-legal">Contact</a>
@@ -122,6 +122,10 @@
         <li><strong>Account identifiers:</strong> Google account sub (opaque ID), email address, display name, or for email accounts: email + PBKDF2-SHA256 hashed password (100,000 iterations; plaintext never stored).</li>
         <li><strong>Project metadata:</strong> Project ID, project name/label, owner code hash (PBKDF2; plaintext never stored), editor/viewer code hashes, timestamps (created_at, last_owner_seen_at, deleted_at), and latest R2 storage key reference.</li>
         <li><strong>Encrypted state blobs (at rest):</strong> If you enable cloud backup, your project state is encrypted at rest before storage in Cloudflare R2 using an AES-256-GCM envelope applied server-side in the Worker. The encryption key is derived from your owner code's PBKDF2-SHA256 hash and a per-project salt held in the database; the raw owner code is never stored and cannot be recovered from the hash. A copy of the R2 bucket without database access would expose only ciphertext. Where encryption cannot be applied, a plaintext fallback is used (legacy blobs are also read as plaintext for compatibility). Decryption capability necessarily resides with the server infrastructure that operates cloud sync; if you require data that cannot be read by any server, do not enable cloud sync and keep the project fully local.</li>
+        <li><strong>Project API keys (optional, you create them):</strong> If you use the API Keys panel on a project, a scoped key (sk-mmgr-...) is generated so outside tools (such as MCP-capable AI clients) can read or propose changes to that one project. We store only a PBKDF2 hash of the key, never the key itself; keys can expire or be revoked at any time from the same panel. Requests made with a key are rate-limited and logged only as short-lived request logs on Cloudflare's edge.</li>
+        <li><strong>MCP endpoint:</strong> Each project exposes an optional machine endpoint (api/mcp/&lt;project-id&gt;) for AI tools you connect. Connection metadata is not stored; every tool call is checked against the key or owner code you supplied. Changes proposed by a connected AI are never applied directly: they wait in the project's review queue until you accept or reject them.</li>
+        <li><strong>Presence (optional):</strong> When a project is open, a presence indicator shares the display names of people currently viewing that same project with each other. Only the name and "viewing since" time are shared, nothing else, and the roster exists only while the connection is live.</li>
+        <li><strong>Webhooks (optional, off by default):</strong> If you register a webhook URL for a project, the Application delivers a signed notification to that URL when events you subscribed to occur (for example a health drop). The URL you register and the secret are stored with the project; delivery attempts are logged only as short-lived request logs.</li>
         <li><strong>Local data is not encrypted:</strong> Project data stored on your device (in localStorage/IndexedDB) is stored in plaintext by the browser. If you share a device or are concerned about local access, use your operating system's or browser's own encryption and lock features. This is an architectural trade-off of the offline-first design.</li>
       </ul>
       <h3>3.1 Cookies &amp; Local Storage</h3>
@@ -174,7 +178,7 @@
       <h3>10. Contact &amp; Data Protection Officer</h3>
       <p id="contact-legal">For questions about this privacy policy, your data, or to exercise any data-subject right, contact us at <a href="mailto:admin@mymanagerworkspace.com">admin@mymanagerworkspace.com</a>. For GDPR-related inquiries, you may also contact the relevant supervisory authority in your EU member state.</p>
 
-      <p style="text-align:center;font-size:.82rem;color:var(--text-secondary);">This document was last revised on September 4, 2026. Use of My MaNaGeR is also governed by the <a href="terms.html">Terms of Service</a>.</p>
+      <p style="text-align:center;font-size:.82rem;color:var(--text-secondary);">This document was last revised on September 17, 2026. Use of My MaNaGeR is also governed by the <a href="terms.html">Terms of Service</a>.</p>
 
     </div>
   </section>

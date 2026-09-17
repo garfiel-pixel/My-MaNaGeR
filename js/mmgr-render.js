@@ -1075,6 +1075,14 @@ var MMGR = window.MMGR || {};
     // starts from a consistent top position, a carried-over scroll offset
     // from a long section reads as a "jump" into unrelated content.
     window.scrollTo(0, 0);
+    // OWNER 2026-09-17 (wave 3 W4): kill the gantt hover tooltip on every
+    // section switch. When the gantt section's DOM swaps while the pointer
+    // is over a bar, no mouseout ever fires, so #gantt-tip kept its .vis
+    // class and followed the mouse across the WHOLE page (owner bug: the
+    // task description stuck to the cursor after swiping from gantt to
+    // dashboard). Also unhook any capture that only lives while hovering.
+    const _tip = $('gantt-tip');
+    if (_tip) _tip.classList.remove('vis');
     // Update nav buttons
     document.querySelectorAll('.sec-btn').forEach(b => b.classList.remove('active'));
     if (btn) btn.classList.add('active');

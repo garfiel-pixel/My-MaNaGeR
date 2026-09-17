@@ -188,7 +188,7 @@
       if (plan) plan.hidden = true;
       if (railUp) {
         railUp.hidden = false;
-        railUp.innerHTML = '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-zap"></use></svg> Upgrade to Premium' +
+        railUp.innerHTML = 'Upgrade to Premium' +
           (atLimit ? '<span class="db-upgrade-note">' + count + ' of ' + cap + ' used</span>' : '');
       }
     }

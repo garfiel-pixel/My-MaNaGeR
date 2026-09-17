@@ -1723,15 +1723,6 @@ var MMGR = window.MMGR || {};
 
     wrap.innerHTML = body;
 
-    // MCP SERVER URL: fill the read-only input with the project's MCP endpoint.
-    if (code) {
-      var mcpUrlInput = $('mcp-url');
-      if (mcpUrlInput) {
-        var projectId = pid();
-        mcpUrlInput.value = window.location.origin + '/api/mcp/' + encodeURIComponent(projectId);
-      }
-    }
-
     // gap-audit B8: fill the last-synced line from /meta (owner + editor +
     // session-owner modes).
     if (code || ecode || sessOwner) {

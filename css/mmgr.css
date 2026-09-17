@@ -46,6 +46,17 @@ svg.ico use{fill:inherit;stroke:inherit;}
                            still holds WCAG AA (4.64:1) on the light canvas. */
   --danger-subtle:rgba(214,58,58,0.08);
   --purple:#8b5cf6;     /* DMAIC/quality accents */
+  /* -- Status DOTS (owner 2026-09-17): true hue in BOTH themes - light
+     matches the legacy aliases; the dark block re-points these at brighter
+     variants. Dot consumers use these, never --green/--amber/--blue. -- */
+  --dot-red:#D63A3A;
+  --dot-yellow:#E65100;
+  --dot-green:#2E7D32;
+  --dot-blue:#1565C0;
+  --dot-red-rgb:214,58,58;
+  --dot-yellow-rgb:230,81,0;
+  --dot-green-rgb:46,125,50;
+  --dot-blue-rgb:21,101,192;
   /* -- Legacy aliases (kept for backward compat, migrate to semantic) -- */
   --green:#2E7D32;
   --amber:#E65100;
@@ -136,6 +147,20 @@ body.dark-mode{
   --green:#ffffff;
   --amber:#ffffff;
   --blue:#ffffff;
+  /* OWNER 2026-09-17 (NOTIFIER-DARK-RULE): status DOTS keep their true hue
+     in dark mode - a red 'not published' dot collapsing to white/grey fails
+     the message. Text and badges stay black-and-white (the starfield theme);
+     only dots read color. Dark variants are slightly brighter for contrast
+     against #0b0b0d surfaces. Every dot consumer references these, never
+     --green/--amber/--blue/--danger directly. */
+  --dot-red:#ff5f56;
+  --dot-yellow:#ffc53d;
+  --dot-green:#3ddc84;
+  --dot-blue:#6db3ff;
+  --dot-red-rgb:255,95,86;
+  --dot-yellow-rgb:255,197,61;
+  --dot-green-rgb:61,220,132;
+  --dot-blue-rgb:109,179,255;
   --purple:#c9c9cf;
   --purple-rgb:201,201,207;
   --amber-rgb:255,255,255;
@@ -641,10 +666,10 @@ body.sidebar-open .nav-btn .ico,body.sidebar-open .sb-close .ico{transform:rotat
    dot (.sdot) beside it; no pill chrome. Used by the task table today,
    available everywhere a .badge status was rendered. */
 .sdot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:6px;vertical-align:1px;background:currentColor;}
-.sdot.g{background:var(--green);box-shadow:0 0 6px color-mix(in oklch,var(--green) 55%,transparent);}
-.sdot.a{background:var(--amber);box-shadow:0 0 6px color-mix(in oklch,var(--amber) 55%,transparent);}
-.sdot.b{background:var(--blue);box-shadow:0 0 6px color-mix(in oklch,var(--blue) 55%,transparent);}
-.sdot.r{background:var(--danger);box-shadow:0 0 6px color-mix(in oklch,var(--danger) 55%,transparent);}
+.sdot.g{background:var(--dot-green);box-shadow:0 0 6px color-mix(in srgb,var(--dot-green) 55%,transparent);}
+.sdot.a{background:var(--dot-yellow);box-shadow:0 0 6px color-mix(in srgb,var(--dot-yellow) 55%,transparent);}
+.sdot.b{background:var(--dot-blue);box-shadow:0 0 6px color-mix(in srgb,var(--dot-blue) 55%,transparent);}
+.sdot.r{background:var(--dot-red);box-shadow:0 0 6px color-mix(in srgb,var(--dot-red) 55%,transparent);}
 /* OWNER 2026-09-15 (dot-mechanism wave): dashboard status rows become
    dot + bold count + label, replacing the circular badge spheres that
    jumbled together when several counts were non-zero (Attention, This
@@ -1450,8 +1475,8 @@ hr.div{border:none;border-top:1px solid var(--border);margin:14px 0;}
    amber = needs attention, green = cloud backed up. Hover keeps a soft
    highlight so the click affordance stays discoverable. */
 .dirty-ind{display:none;align-items:center;gap:5px;font-size:.7rem;font-weight:600;color:var(--amber);padding:3px 8px;border:none;border-radius:100px;background:transparent;cursor:pointer;transition:background var(--tr);}
-.dirty-ind::before{content:'';width:7px;height:7px;border-radius:50%;flex-shrink:0;background:var(--amber);box-shadow:0 0 6px color-mix(in oklch,var(--amber) 55%,transparent);}
-.dirty-ind:hover{background:color-mix(in oklch,var(--amber) 12%,transparent);}
+.dirty-ind::before{content:'';width:7px;height:7px;border-radius:50%;flex-shrink:0;background:var(--dot-yellow);box-shadow:0 0 6px color-mix(in srgb,var(--dot-yellow) 55%,transparent);}
+.dirty-ind:hover{background:color-mix(in srgb,var(--dot-yellow) 12%,transparent);}
 @keyframes pulseAttn{0%,100%{box-shadow:0 0 0 0 rgba(var(--gold-rgb),.55);}50%{box-shadow:0 0 0 7px rgba(var(--gold-rgb),0);}}
 .pulse-attn{animation:pulseAttn .6s ease-out 2;}
 @media (prefers-reduced-motion: reduce){.pulse-attn{animation:none;outline:2px solid var(--gold);}}
@@ -1461,8 +1486,8 @@ hr.div{border:none;border-top:1px solid var(--border);margin:14px 0;}
    shape; the .ico is the i-cloud sprite symbol. */
 .dirty-ind .ico{display:none;}
 .dirty-ind.ci-cloud{color:var(--green);}
-.dirty-ind.ci-cloud::before{background:var(--green);box-shadow:0 0 6px color-mix(in oklch,var(--green) 55%,transparent);}
-.dirty-ind.ci-cloud:hover{background:color-mix(in oklch,var(--green) 12%,transparent);}
+.dirty-ind.ci-cloud::before{background:var(--dot-green);box-shadow:0 0 6px color-mix(in srgb,var(--dot-green) 55%,transparent);}
+.dirty-ind.ci-cloud:hover{background:color-mix(in srgb,var(--dot-green) 12%,transparent);}
 
 /* Backup popover (owner 2026-08-15). OWNER 2026-09-09: solid card fill.
    The old translucent glass fill (rgba 7% white in dark) rendered the
@@ -2601,9 +2626,9 @@ body.db-page:not(.dark-mode) .db-link:focus-visible{outline:2px solid var(--gold
   text-overflow:ellipsis;
 }
 .presence-chip[hidden]{display:none;}
-.presence-chip .pdot{width:7px;height:7px;border-radius:50%;background:var(--green);flex-shrink:0;
+.presence-chip .pdot{width:7px;height:7px;border-radius:50%;background:var(--dot-green);flex-shrink:0;
   box-shadow:0 0 0 2px rgba(16,185,129,.22);}
-.presence-chip .ico{width:12px;height:12px;flex-shrink:0;color:var(--green);}
+.presence-chip .ico{width:12px;height:12px;flex-shrink:0;color:var(--dot-green);}
 @media(max-width:768px){
   .presence-chip{max-width:110px;font-size:.58rem;padding:3px 8px;}
 }

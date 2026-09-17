@@ -152,10 +152,22 @@ main{max-width:1000px;margin:0 auto;padding:26px 24px 70px;}
 .prow-actions{display:flex;gap:6px;margin-top:12px;flex-wrap:wrap;}
 .demo-tag{font-size:.66rem;color:var(--gold);border:1px solid rgba(245,158,11,.3);border-radius:100px;padding:2px 8px;}
 /* DIR-1 (ADMIN-PUBLISH-SYNC-AND-PROJECT-SELECT-POLISH): per-row publish-state note , 
-   a quiet amber marker (downgraded from the draft's urgent banner; creator access is
-   local-first now, so this only informs the admin that VISITORS can't see it yet). */
-.pub-note{display:inline-flex;align-items:center;gap:8px;margin-top:8px;font-size:.68rem;color:var(--amber);border:1px solid rgba(245,158,11,.3);background:rgba(245,158,11,.07);border-radius:100px;padding:4px 10px;}
-.pub-note .btn{padding:2px 10px;font-size:.66rem;}
+   OWNER 2026-09-17 (row status language, plan v2 Part 1): status lines are
+   BARE - dot/icon + words, no box, no border, ever. On hover only, a soft
+   rounded highlight fades in (the "pill look" exists only on hover, per
+   owner). Colors come from the --dot-* token family so the hue survives
+   dark mode (Part 2). States: red = not published (actionable), yellow =
+   live in cloud but snapshot stale (maintenance), green = live and current.
+   Healthy rows show NO line at all - silent means healthy.
+   .note-line replaced .pub-note everywhere (see the row status block below). */
+.note-line{display:inline-flex;align-items:center;gap:7px;margin-top:8px;font-size:.7rem;font-weight:600;color:var(--text);padding:4px 10px;margin-left:-10px;border-radius:100px;transition:background var(--tr),color var(--tr);}
+.note-line:hover{background:var(--surface-raised);}
+.note-line .sdot{flex:none;}
+.note-line .ico{color:inherit;flex:none;}
+.note-line.warn{color:var(--dot-red);}
+.note-line.stale{color:var(--dot-yellow);}
+.note-line.live{color:var(--dot-green);}
+.note-line .btn{margin-left:4px;padding:2px 10px;font-size:.66rem;}
 .empty{text-align:center;padding:40px 20px;color:var(--slate);font-size:.8rem;}
 
 /* ── modal chrome (overlay only; .mb skeleton is shared) ── */
@@ -364,29 +376,15 @@ pre.snippet{background:var(--tile-bg);border:1px solid var(--border);border-radi
 
   <main class="view-deck">
     <div class="toolbar">
+      <!-- OWNER 2026-09-17 (declutter): the toolbar keeps only creation
+           actions. The two download buttons live in the rail's Export group;
+           the Deployment Guide accordion (self-hosting relic) is removed -
+           its one live lesson (cloud rows push with Update Cloud Snapshot)
+           now lives in the row states themselves, and the full story is in
+           the field guide where deep copy belongs. -->
       <button class="btn btn-g" data-action="openProjectModal"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-plus"></use></svg> New Project</button>
       <button class="btn btn-n" data-action="importProject"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-upload"></use></svg> Import Project</button>
       <input type="file" id="import-project-file" accept=".json,.js,application/json,application/javascript,text/plain" style="display:none" aria-hidden="true">
-      <button class="btn btn-n" data-action="downloadPublicData"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Download Static Manifest</button>
-      <button class="btn btn-n" data-action="downloadAdminBackup"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Export Backup (CSV)</button>
-    </div>
-
-    <div class="accordion" id="deploy-guide">
-      <div class="accordion-head" role="button" tabindex="0" aria-expanded="false" onclick="this.parentElement.classList.toggle('open');this.setAttribute('aria-expanded',this.parentElement.classList.contains('open'))">
-        <span><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-info"></use></svg> Deployment Guide</span>
-      </div>
-      <div class="accordion-body">
-        <p><strong style="color:var(--text)">Publishing changes:</strong> edits here save to <em>this browser only</em>.
-        To make them visible to your visitors, click <strong>Download Static Manifest</strong>, then commit the resulting
-        <code style="color:var(--gold)">projects-data.js</code> to your repository and deploy via
-        <code>npx wrangler deploy</code> (Cloudflare Workers static assets). For cloud-linked projects, the per-row
-        <strong>Update Cloud Snapshot</strong> button pushes the project's latest state straight to the cloud backend
-        instead, no file involved.</p>
-        <p style="margin-top:10px"><strong style="color:var(--text)">Security model (local-first):</strong>
-        Everything stays on this device: admin password hash, session flag, and plaintext access codes live in
-        <code>localStorage</code>/<code>sessionStorage</code> only. The published <code>projects-data.js</code> contains
-        SHA-256 hashes only. Google sign-in is optional. Drive backup/restore are explicit opt-in actions.</p>
-      </div>
     </div>
 
     <!-- CLOUD-BACKEND-ARCHITECTURE-PLAN Phase 2/3 , cloud projects visibility.
@@ -395,14 +393,14 @@ pre.snippet{background:var(--tile-bg);border:1px solid var(--border);border-radi
          /recover, which enforces plan §9: the signed-in Google account must
          match the record on file , no code is ever issued to a stranger. -->
     <div class="card" id="cloud-admin-section" style="margin-top:16px">
-      <div class="card-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cloud"></use></svg> Cloud Projects (D1 + R2)</div>
+      <div class="card-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cloud"></use></svg> Cloud Projects</div>
       <div class="field">
-        <label>Admin API code</label>
+        <label>Site admin code</label>
         <div class="code-row">
-          <input id="cloud-admin-code" type="password" autocomplete="off" placeholder="ADMIN_CODE" style="flex:1">
+          <input id="cloud-admin-code" type="password" autocomplete="off" placeholder="Site admin code" style="flex:1">
           <button class="btn btn-g" data-action="cloudAdminList"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> Load</button>
         </div>
-        <div class="hint">The ADMIN_CODE secret set on the Worker. Stored in this session only.</div>
+        <div class="hint">The site admin code set when the site was deployed. Project codes do not work here. It stays in this tab only.</div>
       </div>
       <div id="cloud-admin-status" style="font-size:.72rem;color:var(--slate);margin-bottom:8px"></div>
       <div id="cloud-admin-list"></div>
@@ -795,6 +793,37 @@ function saveProjects(){
    local-only (file://) admin session never nags about un-comparable state. */
 let liveProjects = [];
 let liveFetched = false;
+
+/* OWNER 2026-09-17 (plan v2 Part 1 - server truth-check): once per page
+   load, fetch the signed-in session's cloud project list. The ROW decides
+   its state from this truth, not from the local record, so a project that
+   lives in the cloud can never show "Publish to Cloud" as if it didn't
+   (the mismatch the owner reported). Also enables stale detection: the
+   cloud's updatedAt vs the workspace copy's updatedAt on this device. */
+let _cloudTruth = null;   /* projectId -> updatedAt (ISO string) */
+async function fetchCloudTruth(){
+  try{
+    const res = await fetch('/api/cloud/projects', { credentials: 'same-origin' });
+    if (!res.ok){ _cloudTruth = null; }
+    else {
+      const data = await res.json().catch(()=>({}));
+      const map = {};
+      ((data && data.projects) || []).forEach(function(x){
+        if (x && x.projectId) map[x.projectId] = x.updatedAt || '';
+      });
+      _cloudTruth = map;
+    }
+  }catch(e){ _cloudTruth = null; }
+  renderProjects();   /* re-render with truth applied (mirrors mergeLiveData) */
+}
+function localWorkspaceUpdatedAt(id){
+  try{
+    const raw = localStorage.getItem('mmgr_state_' + id);
+    if (!raw) return '';
+    const s = JSON.parse(raw);
+    return (s && s.updatedAt) || '';
+  }catch(e){ return ''; }
+}
 
 async function mergeLiveData(){
   try{
@@ -1434,6 +1463,7 @@ function enterAdmin(){
   _admLastWritten = JSON.stringify(projects);
   renderProjects();
   mergeLiveData();
+  fetchCloudTruth();
   // Storage events fire in OTHER tabs only , this tab is notified whenever a
   // peer overwrites the shared projects key while we are editing. Registered
   // once: re-login after lockAdmin() must not stack duplicate listeners.
@@ -1463,7 +1493,7 @@ function renderProjects(){
   }
   const staleLive = deletedButLiveProjects();
   const staleLine = staleLive.length
-    ? '<div class="pub-note" style="margin:0 0 12px"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-alert-triangle"></use></svg> ' +
+    ? '<div class="note-line warn" style="margin:0 0 12px"><span class="sdot r"></span><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-alert-triangle"></use></svg> ' +
       staleLive.length + ' published project(s) are not in this list (' +
       staleLive.map(function(s){ return escapeHtml(s.title); }).join(', ') +
       '), still visible to visitors until you publish.</div>'
@@ -1471,6 +1501,25 @@ function renderProjects(){
   list.innerHTML = staleLine + adminProjects.map((p, i) => {
     const status = (p.status||'active').toLowerCase();
     const published = isPublishedRecord(p);
+    /* OWNER 2026-09-17 (plan v2 Part 1 - row status language): exactly one
+       true statement per row, in dot language. Cloud-linked rows read the
+       server truth (cloud IS what visitors load), manifest decides only for
+       non-linked rows. Healthy = silent. States:
+         red    dot + warning icon = not published, visitors can't see it
+         yellow dot                  = live in cloud, snapshot is stale
+         green  dot                  = live in the cloud (current)
+       Bare line at rest; the pill highlight appears on hover only. */
+    let stateHtml = '';
+    if (p.cloudId){
+      const cloudUpdatedAt = _cloudTruth ? _cloudTruth[p.cloudId] : undefined;
+      const localUpdatedAt = localWorkspaceUpdatedAt(p.id);
+      const stale = !!(cloudUpdatedAt && localUpdatedAt && String(localUpdatedAt) > String(cloudUpdatedAt));
+      stateHtml = stale
+        ? `<div class="note-line stale" data-state="stale"><span class="sdot a"></span> Live in the cloud. Push the latest state so visitors see your changes. <button class="btn btn-n btn-s" data-action="updateCloudSnapshot" data-idx="${i}">Update Cloud Snapshot</button></div>`
+        : `<div class="note-line live" data-state="live"><span class="sdot g"></span> Live in the cloud.</div>`;
+    } else if (!published){
+      stateHtml = `<div class="note-line warn" data-state="not-published"><span class="sdot r"></span><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-alert-triangle"></use></svg> Not published. Visitors can't see this yet.</div>`;
+    } /* published without a cloud link (self-hosted manifest) = healthy, silent */
     const codeDisplay = p.code
       ? `<span class="code-box" id="code-${i}" data-code="${escapeAttr(p.code)}" data-masked="1">••••••••</span>
          <button class="btn btn-n btn-s" data-action="toggleCode" data-idx="${i}"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-eye"></use></svg> Show</button>
@@ -1483,9 +1532,7 @@ function renderProjects(){
           <div>
             <div class="prow-title">${escapeHtml(p.title)} ${p.isDemo ? '<span class="demo-tag">DEMO</span>' : ''}</div>
             <div class="prow-desc">${escapeHtml(p.description||'')}</div>
-            ${published ? '' : (p.cloudId
-              ? `<div class="pub-note"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cloud"></use></svg> Live in the cloud. Push the latest state with <strong>Update Cloud Snapshot</strong> below. <button class="btn btn-n btn-s" data-action="updateCloudSnapshot" data-idx="${i}">Update Cloud Snapshot</button></div>`
-              : `<div class="pub-note"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-alert-triangle"></use></svg> Not published. Visitors can't see this yet. <button class="btn btn-n btn-s" data-action="downloadPublicData">Download Static Manifest</button></div>`)}
+            ${stateHtml}
           </div>
           <span class="badge ${status}">${escapeHtml(status.replace('-',' '))}</span>
         </div>
@@ -1502,6 +1549,7 @@ function renderProjects(){
           <button class="btn btn-n btn-s" data-action="regenerateCode" data-idx="${i}"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> New Code</button>
           <button class="btn btn-n btn-s" data-action="openSnippetModal" data-idx="${i}"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-link"></use></svg> URL</button>
           ${p.cloudId ? `<button class="btn btn-g btn-s" data-action="updateCloudSnapshot" data-idx="${i}"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cloud"></use></svg> Update Cloud Snapshot</button><button class="btn btn-n btn-s" data-action="codesManager" data-idx="${i}"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-lock"></use></svg> Codes</button>` : `<button class="btn btn-o btn-s" data-action="publishToCloud" data-idx="${i}"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-upload"></use></svg> Publish to Cloud</button>`}
+          <button class="btn btn-n btn-s" data-action="downloadPublicData" title="Download the self-hosting data file. Does not publish anything."><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Download manifest</button>
           <button class="btn btn-d btn-s" data-action="deleteProject" data-idx="${i}"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-trash"></use></svg> Delete</button>
         </div>
       </div>`;
@@ -1934,7 +1982,7 @@ async function updateCloudSnapshot(i){
       return;
     }
     toast('Cloud snapshot updated at ' + String(data.savedAt || '').slice(0,19).replace('T',' ') + '. Visitors loading from My Cloud Projects see the latest state.');
-    renderProjects();
+    fetchCloudTruth();   /* refresh server truth so the row flips to green */
   }catch(e){
     toast('Cloud snapshot update failed. Is the cloud backend reachable?', 'error');
   }finally{
@@ -2046,15 +2094,14 @@ function cloudAdminStatus(msg, kind){
 }
 async function cloudAdminList(){
   const inp = document.getElementById('cloud-admin-code');
-  const code = (inp && inp.value.trim()) || cloudAdminCode();
-  if(!code){ cloudAdminStatus('Enter the ADMIN_CODE first.', 'err'); return; }
+  const code = (inp && inp.value.trim()) || cloudAdminCode();    if(!code){ cloudAdminStatus('Enter the site admin code first.', 'err'); return; }
   cloudAdminSetCode(code);
   cloudAdminStatus('Loading cloud projects…', '');
   try{
     const res = await fetch('/api/cloud/admin/projects', { headers:{ 'X-Admin-Code': code } });
     const data = await res.json().catch(()=>({}));
     if(!res.ok || !data.ok){
-      cloudAdminStatus((data && data.error) || 'Failed (HTTP ' + res.status + '). ' + (res.status === 503 ? 'The Worker has no ADMIN_CODE configured.' : res.status === 403 ? 'That is not the site ADMIN code. Project codes (owner/editor/viewer) do NOT unlock this section. Enter those on the launcher (app.html). The site admin code is the ADMIN_CODE secret set on the Worker.' : ''), 'err');
+      cloudAdminStatus((data && data.error) || 'Failed (HTTP ' + res.status + '). ' + (res.status === 503 ? 'The site has no admin code configured.' : res.status === 403 ? 'That is not the site admin code. Project codes (owner/editor/viewer) do NOT unlock this section. Enter those on the launcher (app.html). The site admin code is set when the site is deployed.' : ''), 'err');
       return;
     }
     const list = document.getElementById('cloud-admin-list');

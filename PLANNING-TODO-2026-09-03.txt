@@ -1656,3 +1656,26 @@ Wave (owner directive: sign-in de-box + cloud sharing/restore on any device):
     breaks when a new gate creates similar data - use create-response ids.
     (2) a suite can crash BETWEEN checks with zero reporting; wrap phases.
     (3) $GITHUB_STEP_SUMMARY is the readable channel when job logs are gated.
+
+SESSION 2026-09-17 (wave 5, commit ba38f04) - NIGHTLY-CI-FIX + MCP-CARD:
+  Nightly Full Suite red 8 straight nights (#16-#23, Sep 10-17) while
+  push-CI stayed green: the "T2: Email auth" step ran
+  tools/qa-email-auth.cjs WITHOUT MMGR_QA_NO_BROWSER=1, so it parked
+  ~20 min for a browser stop-file that never came (Session 3 gotcha),
+  and passed WRANGLER_DEV_URL which that harness never reads (only
+  cloud-phase1/2 + ai-badge do). nightly.yml T2 now sets
+  MMGR_QA_NO_BROWSER=1 + QA_PORT=8801 (matching ci.yml's proven
+  invocation) and drops the dead env var. Local repro of the exact CI
+  invocation was 69/69 - environment-flavored, not app code.
+  Same wave: Controls MCP card decluttered to a single source
+  (renderMcp; the stale inline copy in Share & Access duplicated the
+  #mcp-url id - invalid HTML) with verified connect paths (Claude Code
+  --header, mcp.json headers, honest claude.ai web-panel caveat) +
+  field-guide A-27 link; guide A-27 rewritten. Full wave shipped in
+  ba38f04 (admin rail bare links, 10s hold-to-delete, AI drawer
+  left-edge resize); push-CI run 35248116653 GREEN on ba38f04.
+  LESSONS: (1) a step red only on nightly usually means invocation
+  drift, not code - diff the env/flags against the green push-CI step
+  before touching the app. (2) duplicated DOM ids from stale inline
+  copies are invisible until a probe counts them - assert "exactly one"
+  for id-bearing cards in UI probes.

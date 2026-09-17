@@ -86,13 +86,13 @@ const TOOLS = [
   },
   {
     name: 'apply_changes',
-    description: 'Submit field-level changes to the project. Goes through owner review queue - never auto-applied. Provide diffs as an array of {path, recordId, field, before, after} objects.',
+    description: 'Submit changes to the project: edit existing records with diffs, or create new records with creates. Everything goes through the owner review queue - never auto-applied. diffs: array of {path, recordId, field, before, after}. creates: array of {path, record} where record needs at least {name} (tasks also accept startDate/endDate/assignee/status; resources accept name/role/rate/type).',
     inputSchema: {
       type: 'object',
       properties: {
         diffs: {
           type: 'array',
-          description: 'Array of field-level changes',
+          description: 'Array of field-level changes to EXISTING records',
           items: {
             type: 'object',
             properties: {
@@ -105,12 +105,59 @@ const TOOLS = [
             required: ['path', 'recordId', 'field', 'after']
           }
         },
+        creates: {
+          type: 'array',
+          description: 'Array of NEW records to propose (e.g. add a task or a resource). Queued for owner review like diffs.',
+          items: {
+            type: 'object',
+            properties: {
+              path: { type: 'string', description: 'List to append to (e.g. "tasks", "resources", "risks", "logEntries")' },
+              record: { type: 'object', description: 'The new record. Must carry at least a "name" field. Unknown fields are kept; missing fields get list-appropriate defaults so the record renders correctly in the app.' }
+            },
+            required: ['path', 'record']
+          }
+        },
         label: { type: 'string', description: 'Human-readable label for this change set' }
       },
-      required: ['diffs']
+      required: []
     }
   }
 ];
+
+// OWNER 2026-09-17 (CREATE support): the owner's lazy-PM scenario - talk to
+// the AI in a terminal, it ADDS the new people/tasks, the owner verifies.
+// Defaults mirror the app's own creators (js/mmgr-tasks.js addTask,
+// js/mmgr-resources.js addResource) so an MCP-created record renders and
+// behaves exactly like one created in the UI. A create on a path that is not
+// an editable list is refused, same as diffs. Scope enforcement is identical:
+// the create lands only if the section is granted, and the whole proposal
+// waits in the review queue regardless.
+const CREATE_DEFAULTS = {
+  tasks: { id: null, name: 'New Task', level: 0, indent: 0, isPhase: false, status: 'todo', startDate: '', endDate: '', duration: '', assignee: '', critical: false, leadTime: false, recurring: false, weatherExposed: false, confidence: 'high', predecessors: [], notes: '', weatherSensitive: false },
+  resources: { id: null, name: '', type: 'Labor', role: '', availability: 100, rate: 0, hoursAllocated: 0, utilization: 0 },
+  risks: { id: null, name: '', probability: 'Low', impact: 'Medium', status: 'Open', notes: '' },
+  issues: { id: null, name: '', status: 'Open', notes: '' },
+  logEntries: { id: null, title: '', decision: '', date: '' },
+  meetings: { id: null, title: '', date: '', notes: '' },
+  stakeholders: { id: null, name: '', role: '', notes: '' },
+  budgetLines: { id: null, name: '', amount: 0 },
+  spendLog: { id: null, name: '', amount: 0, date: '' },
+  commsEntries: { id: null, title: '', notes: '', date: '' },
+  documents: { id: null, name: '', notes: '' },
+  changes: { id: null, name: '', notes: '' }
+};
+function buildCreatedRecord(path, record, nowMs, counterRef) {
+  const base = CREATE_DEFAULTS[path] || { id: null, name: '' };
+  const rec = JSON.parse(JSON.stringify(base));
+  rec.id = (path === 'tasks' ? 't_' : (path === 'resources' ? 'R' : 'mcp_')) + nowMs.toString(36) + '_' + (++counterRef.n);
+  if (record && typeof record === 'object') {
+    for (const k of Object.keys(record)) {
+      if (k === 'id') continue; // ids are server-assigned, never client-supplied
+      rec[k] = record[k];
+    }
+  }
+  return rec;
+}
 
 // ---- Tool execution ----
 
@@ -344,20 +391,28 @@ async function handleMcpRequest(body, projectId, env, auth) {
     // is written to live project state here - the owner accepts or rejects
     // inside the project, and only the accept applies the change.
     if (result.pendingApply) {
-      const diffs = toolArgs.diffs;
-      if (!Array.isArray(diffs) || diffs.length === 0) {
+      const diffs = Array.isArray(toolArgs.diffs) ? toolArgs.diffs : [];
+      const creates = Array.isArray(toolArgs.creates) ? toolArgs.creates : [];
+      if (diffs.length === 0 && creates.length === 0) {
         return {
           jsonrpc: '2.0', id,
-          result: { content: [{ type: 'text', text: 'No diffs provided. Supply an array of {path, recordId, field, after} objects.' }], isError: true }
+          result: { content: [{ type: 'text', text: 'Nothing provided. Supply diffs as {path, recordId, field, after} and/or creates as {path, record} objects.' }], isError: true }
         };
       }
 
       const granted = Array.isArray(auth.scope) ? auth.scope : Object.keys(CLOUD_SECTIONS);
-      const prev = state; // the full stored state fetched above (pre-scope)
+      let prev = state; // the full stored state fetched above (pre-scope)
+      // CREATE into an empty project (owner 2026-09-17): a brand-new cloud
+      // project has no snapshot yet - the owner's lazy-PM scenario starts
+      // exactly there. With creates only, seed a minimal prev instead of
+      // refusing; the review-accept path writes the merged state either way.
+      if (!prev && diffs.length === 0 && creates.length > 0) {
+        prev = { schemaVersion: 19, projectId: projectId, updatedAt: new Date().toISOString() };
+      }
       if (!prev) {
         return {
           jsonrpc: '2.0', id,
-          result: { content: [{ type: 'text', text: 'No project data available. Save a snapshot first.' }], isError: true }
+          result: { content: [{ type: 'text', text: 'No project data available. Save a snapshot first, or use creates to add new records to the empty project.' }], isError: true }
         };
       }
       const base = JSON.parse(JSON.stringify(prev));
@@ -383,10 +438,33 @@ async function handleMcpRequest(body, projectId, env, auth) {
         item[field] = d.after !== undefined ? d.after : null;
         submitted[path] = arr;
       }
+      // CREATE support (owner 2026-09-17): append new records to editable
+      // list paths, defaults per list, ids server-assigned. Same scope and
+      // review-queue rules as diffs.
+      const refusedCreates = [];
+      const counterRef = { n: 0 };
+      const nowMs = Date.now();
+      for (let i = 0; i < creates.length; i++) {
+        const c = creates[i];
+        if (!c || typeof c !== 'object') { refusedCreates.push('create ' + i + ': invalid'); continue; }
+        const cpath = String(c.path || '');
+        const recInput = c.record;
+        const csec = CLOUD_KEY_TO_SECTION[cpath];
+        if (!csec) { refusedCreates.push((cpath || '(empty)') + ': not a project section'); continue; }
+        if (granted.indexOf(csec) === -1) { refusedCreates.push(cpath + ': outside the granted sections'); continue; }
+        if (!recInput || typeof recInput !== 'object') { refusedCreates.push('create ' + i + ': missing record'); continue; }
+        const hasName = recInput.name !== undefined && recInput.name !== null && String(recInput.name).trim() !== '';
+        if (!hasName) { refusedCreates.push('create ' + i + ' (' + cpath + '): record needs at least a name'); continue; }
+        if (!CREATE_DEFAULTS[cpath]) { refusedCreates.push(cpath + ': not a list that accepts new records'); continue; }
+        const arr2 = Array.isArray(base[cpath]) ? base[cpath] : (base[cpath] = []);
+        arr2.push(buildCreatedRecord(cpath, recInput, nowMs, counterRef));
+        submitted[cpath] = arr2;
+      }
+      const allRefused = refused.concat(refusedCreates);
       if (!Object.keys(submitted).length) {
         return {
           jsonrpc: '2.0', id,
-          result: { content: [{ type: 'text', text: 'Nothing to propose. ' + (refused.length ? 'Refused: ' + refused.join('; ') + '.' : '') }], isError: true }
+          result: { content: [{ type: 'text', text: 'Nothing to propose. ' + (allRefused.length ? 'Refused: ' + allRefused.join('; ') + '.' : '') }], isError: true }
         };
       }
       const merged = cloudScopeMerge(prev, submitted, granted);

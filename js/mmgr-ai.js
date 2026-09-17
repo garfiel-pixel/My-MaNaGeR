@@ -1799,6 +1799,145 @@ var MMGR = window.MMGR || {};
     });
   })();
 
+  // ---- WAVE C (owner 2026-09-17): FLOAT / DOCK for the AI window and the
+  // settings drawer. The owner wants to pop a surface OUT of its dock so the
+  // content can settle bigger and be dragged anywhere. Floating = centered
+  // fixed panel (66vw x 80vh, clamped) draggable by its header; docking
+  // returns the exact previous geometry. Per-surface, per-device prefs.
+  const FLOAT_W_MIN = 420;
+  const FLOAT_H_MIN = 380;
+  function floatPrefKey(id) { return 'mmgr_float_' + id; }
+  function readFloatPos(id) {
+    try {
+      const d = JSON.parse(localStorage.getItem(floatPrefKey(id)) || 'null');
+      if (d && Number(d.x) === d.x && Number(d.y) === d.y) return d;
+    } catch (e) { /* ignore */ }
+    return null;
+  }
+  function saveFloatPos(id, x, y) {
+    try { localStorage.setItem(floatPrefKey(id), JSON.stringify({ x: Math.round(x), y: Math.round(y) })); } catch (e) { /* ignore */ }
+  }
+  function clearFloatPos(id) {
+    try { localStorage.removeItem(floatPrefKey(id)); } catch (e) { /* ignore */ }
+  }
+  // Enter/exit float mode for a docked surface (#ai-win, #drw). Self-healing:
+  // the toggle button is injected next to the surface's close button.
+  function setupFloatSurface(id) {
+    const el = U.$(id);
+    if (!el || el.__floatWired) return;
+    el.__floatWired = true;
+    const headSel = id === 'ai-win' ? '.ai-head' : '.dh';
+    const head = el.querySelector(headSel);
+    if (!head) return;
+    // Inject the toggle (SVG-only rule: the i-popout sprite symbol).
+    let btn = head.querySelector('[data-float-toggle]');
+    if (!btn) {
+      btn = document.createElement('button');
+      btn.className = id === 'ai-win' ? 'ai-clear-btn float-tgl' : 'dc float-tgl';
+      btn.setAttribute('data-float-toggle', id);
+      btn.setAttribute('aria-label', 'Pop out into a floating window');
+      btn.setAttribute('title', 'Pop out / dock (drag the header while floating)');
+      btn.innerHTML = '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-popout"></use></svg>';
+      // BROWSER-CAUGHT (wave-2 probe): on #drw the .dc close button is NOT a
+      // direct child of .dh (nested deeper), so head.insertBefore(btn, dc)
+      // threw NotFoundError and killed the whole module load (AiWin gone).
+      // A broken injection must never break the surface: fall back to append.
+      const dc = head.querySelector('.dc');
+      if (dc && dc.parentNode === head) head.insertBefore(btn, dc); else head.appendChild(btn);
+    }
+    let drag = null;
+    let raf = 0; let pending = null;
+    function applyPos() {
+      if (!pending) return;
+      el.style.left = pending.x + 'px';
+      el.style.top = pending.y + 'px';
+      pending = null;
+    }
+    function onHeadDown(e) {
+      if (!el.classList.contains('float-mode')) return;
+      if (e.target.closest('button,select,input,textarea,[data-float-toggle]')) return;
+      const r = el.getBoundingClientRect();
+      drag = { dx: e.clientX - r.left, dy: e.clientY - r.top };
+      e.preventDefault();
+    }
+    function onHeadMove(e) {
+      if (!drag) return;
+      const w = el.getBoundingClientRect().width;
+      const h = el.getBoundingClientRect().height;
+      pending = {
+        x: Math.min(Math.max(e.clientX - drag.dx, 8), Math.max(8, window.innerWidth - w - 8)),
+        y: Math.min(Math.max(e.clientY - drag.dy, 8), Math.max(8, window.innerHeight - 48))
+      };
+      if (!raf) raf = requestAnimationFrame(function() { raf = 0; applyPos(); });
+    }
+    function onHeadUp() {
+      if (!drag) return;
+      drag = null;
+      if (raf) { cancelAnimationFrame(raf); raf = 0; applyPos(); }
+      const r = el.getBoundingClientRect();
+      saveFloatPos(id, r.left, r.top);
+    }
+    head.addEventListener('pointerdown', onHeadDown);
+    document.addEventListener('pointermove', onHeadMove);
+    document.addEventListener('pointerup', onHeadUp);
+    btn.addEventListener('click', function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      toggleFloat(id);
+    });
+  }
+  function toggleFloat(id) {
+    const el = U.$(id);
+    if (!el) return;
+    if (el.classList.contains('float-mode')) {
+      // DOCK: restore the pre-float inline geometry (saved on float-on).
+      const saved = el.__dockGeom || {};
+      el.classList.remove('float-mode');
+      el.style.left = saved.left || '';
+      el.style.top = saved.top || '';
+      el.style.width = saved.width || '';
+      el.style.height = saved.height || '';
+      el.style.right = saved.right || '';
+      el.style.transform = '';
+      clearFloatPos(id);
+      toast('Docked back.', 'ok');
+    } else {
+      // FLOAT: remember the docked geometry, then pop out centered (or at
+      // the last saved float position). Sized 66vw x 80vh, clamped.
+      const r = el.getBoundingClientRect();
+      el.__dockGeom = {
+        left: el.style.left, top: el.style.top, width: el.style.width,
+        height: el.style.height, right: el.style.right
+      };
+      el.classList.add('float-mode');
+      const fw = Math.max(FLOAT_W_MIN, Math.min(Math.round(window.innerWidth * 0.66), window.innerWidth - 32));
+      const fh = Math.max(FLOAT_H_MIN, Math.min(Math.round(window.innerHeight * 0.8), window.innerHeight - 32));
+      el.style.width = fw + 'px';
+      el.style.height = fh + 'px';
+      el.style.right = 'auto';
+      const saved = readFloatPos(id);
+      const x = saved ? saved.x : Math.max(8, Math.round((window.innerWidth - fw) / 2));
+      const y = saved ? saved.y : Math.max(8, Math.round((window.innerHeight - fh) / 2));
+      el.style.left = x + 'px';
+      el.style.top = y + 'px';
+      saveFloatPos(id, x, y);
+      toast('Floating. Drag the header to move it; the pop-out button docks it back.', 'ok');
+    }
+  }
+  [setupFloatSurface('ai-win'), setupFloatSurface('drw')];
+  // Keep a floating surface inside the viewport on resize.
+  window.addEventListener('resize', function() {
+    ['ai-win', 'drw'].forEach(function(id) {
+      const el = U.$(id);
+      if (!el || !el.classList.contains('float-mode')) return;
+      const r = el.getBoundingClientRect();
+      const x = Math.min(Math.max(r.left, 8), Math.max(8, window.innerWidth - r.width - 8));
+      const y = Math.min(Math.max(r.top, 8), Math.max(8, window.innerHeight - 48));
+      el.style.left = x + 'px'; el.style.top = y + 'px';
+      saveFloatPos(id, x, y);
+    });
+  });
+
   // ---- Dashboard command card ----
   // The single Ask-your-project entry point: opens the AI assistant with the
   // question pre-filled and runs it right away (one action, no second Send).
@@ -1833,6 +1972,8 @@ var MMGR = window.MMGR || {};
   ns.AiWin = {
     open: open,
     close: close,
+    // WAVE C: float/dock engine (probes + settings interplay)
+    toggleFloat: toggleFloat,
     preset: preset,
     clear: clear,
     attachContext: attachContext,

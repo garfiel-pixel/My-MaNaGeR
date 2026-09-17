@@ -983,8 +983,10 @@ var MMGR = window.MMGR || {};
     }
     let backedUp = false;
     if (linked) {
+      // B3 (owner 2026-09-17): dot + word, no icon - the CSS ::before draws
+      // the green dot (same .sdot convention as the dashboard stats).
       ind.classList.add('on', 'ci-cloud');
-      ind.innerHTML = '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cloud"></use></svg> Cloud backed up';
+      ind.innerHTML = 'Cloud backed up';
       ind.setAttribute('title', 'This project is backed up to the cloud, snapshots auto-sync as you work. Click for backup options (cloud or a portable .json file).');
     } else {
       ind.classList.remove('ci-cloud');

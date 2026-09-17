@@ -147,7 +147,7 @@ main{max-width:1000px;margin:0 auto;padding:26px 24px 70px;}
 .badge.on-hold{background:var(--glass-fill-dark);color:var(--gold);border:1px solid rgba(245,158,11,.35);backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturate));-webkit-backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturate));}
 .badge.planning{background:var(--glass-fill-dark);color:var(--blue);border:1px solid rgba(59,130,246,.35);backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturate));-webkit-backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturate));}
 .prow-meta{display:flex;gap:16px;align-items:center;margin-top:12px;flex-wrap:wrap;font-size:.74rem;color:var(--slate);}
-.code-box{font-family:ui-monospace,monospace;background:#f1f5f9;border:1px solid var(--border);border-radius:4px;
+.code-box{font-family:ui-monospace,monospace;background:var(--tile-bg);border:1px solid var(--border);border-radius:4px;
   padding:4px 9px;letter-spacing:.08em;color:var(--text);font-variant-numeric:tabular-nums;}
 .prow-actions{display:flex;gap:6px;margin-top:12px;flex-wrap:wrap;}
 .demo-tag{font-size:.66rem;color:var(--gold);border:1px solid rgba(245,158,11,.3);border-radius:100px;padding:2px 8px;}
@@ -172,14 +172,14 @@ main{max-width:1000px;margin:0 auto;padding:26px 24px 70px;}
 /* ── form fields (admin-only component set) ── */
 .field{margin-bottom:14px;}
 .field label{display:block;font-size:.72rem;color:var(--slate);margin-bottom:5px;font-weight:600;}
-.field input,.field select,.field textarea{width:100%;background:#f8fafc;border:1px solid var(--border);
+.field input,.field select,.field textarea{width:100%;background:var(--tile-bg);border:1px solid var(--border);
   border-radius:6px;color:var(--text);font-size:.82rem;padding:9px 10px;font-family:inherit;outline:none;transition:border-color .15s;}
 .field input:focus,.field select:focus,.field textarea:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(245,158,11,.1);}
 .field textarea{resize:vertical;min-height:60px;}
 .field .hint{font-size:.68rem;color:var(--slate);margin-top:4px;}
 .code-row{display:flex;gap:8px;}
 .code-row input{font-family:ui-monospace,monospace;letter-spacing:.1em;}
-pre.snippet{background:#f8fafc;border:1px solid var(--border);border-radius:6px;padding:14px;font-size:.72rem;
+pre.snippet{background:var(--tile-bg);border:1px solid var(--border);border-radius:6px;padding:14px;font-size:.72rem;
   line-height:1.6;white-space:pre-wrap;word-break:break-all;color:var(--text);font-family:ui-monospace,monospace;}
 
 /* ── toast: lives in the shared css/mmgr.css now (owner 2026-08-15:
@@ -1888,6 +1888,11 @@ async function updateCloudSnapshot(i){
     toast('This project is not cloud-linked with a recorded owner code on this device. Use Publish to Cloud to link it (or Copy Cloud Code if it was linked elsewhere).', 'warn');
     return;
   }
+  const isSessionAuth = p.cloudOwnerCode === 'session';
+  if (isSessionAuth){
+    const GA = window.MMGR && window.MMGR.GoogleAuth;
+    if (!(GA && GA.isSignedIn && GA.isSignedIn())){ toast('This project is linked through your account. Sign in (hamburger menu) to push updates.', 'warn'); return; }
+  }
   const btn = document.querySelector('#project-list [data-action="updateCloudSnapshot"][data-idx="' + i + '"]');
   if (btn){ btn.disabled = true; btn.textContent = 'Updating…'; }
   try{
@@ -1902,7 +1907,7 @@ async function updateCloudSnapshot(i){
     if (!state){
       const lr = await fetch('/api/cloud/projects/' + encodeURIComponent(p.cloudId) + '/load', {
         method: 'POST', credentials: 'same-origin',
-        headers: { 'Content-Type': 'application/json', 'X-Owner-Code': p.cloudOwnerCode },
+        headers: (function(){ const h = { 'Content-Type': 'application/json' }; if (!isSessionAuth) h['X-Owner-Code'] = p.cloudOwnerCode; return h; })(),
         body: JSON.stringify({})
       });
       const ld = await lr.json().catch(function(){ return {}; });
@@ -1920,7 +1925,7 @@ async function updateCloudSnapshot(i){
     state.updatedAt = new Date().toISOString();
     const res = await fetch('/api/cloud/projects/' + encodeURIComponent(p.cloudId) + '/save', {
       method: 'POST', credentials: 'same-origin',
-      headers: { 'Content-Type': 'application/json', 'X-Owner-Code': p.cloudOwnerCode },
+      headers: (function(){ const h = { 'Content-Type': 'application/json' }; if (!isSessionAuth) h['X-Owner-Code'] = p.cloudOwnerCode; return h; })(),
       body: JSON.stringify({ state: state })
     });
     const data = await res.json().catch(function(){ return {}; });
@@ -1957,6 +1962,34 @@ async function publishToCloud(i){
     });
     const data = await res.json().catch(()=>({}));
     if (!res.ok || !data.ok){
+      // OWNER 2026-09-17 (status-mismatch fix): 409 'project already linked'
+      // means this project ALREADY exists in the signed-in account's cloud -
+      // the exact case the owner hit (created the project, saved it to the
+      // cloud from inside the workspace, then the admin row still showed
+      // 'Publish to Cloud'). Match it against the session's cloud list and
+      // adopt the link instead of failing. The session auth covers every
+      // later call (save/load/codes/api-keys are all either-auth), so the
+      // recorded code is a marker, not a credential.
+      if (res.status === 409 && /already linked/.test((data && data.error) || '')){
+        try{
+          const lr = await fetch('/api/cloud/projects', { credentials: 'same-origin' });
+          const ld = await lr.json().catch(()=>({}));
+          const mine = (ld && ld.projects || []).find(function(x){ return x && x.projectId === p.id && x.accessRole === 'owner'; });
+          if (mine){
+            p.cloudId = p.id;
+            p.cloudOwnerCode = 'session';
+            saveProjects();
+            renderProjects();
+            toast('Already in your cloud. Linked to the existing copy, updates now push there.', 'ok');
+            return;
+          }
+          toast('A cloud project with this ID already exists under a different account. Use a different project ID.', 'warn');
+          return;
+        }catch(e2){
+          toast('Already linked in the cloud, but the account check failed. Try again.', 'warn');
+          return;
+        }
+      }
       toast(((data && data.error) || 'Publish failed (HTTP ' + res.status + ').') + (res.status === 402 ? '. Upgrade needed.' : ''), 'error');
       return;
     }

@@ -1679,3 +1679,23 @@ SESSION 2026-09-17 (wave 5, commit ba38f04) - NIGHTLY-CI-FIX + MCP-CARD:
   before touching the app. (2) duplicated DOM ids from stale inline
   copies are invisible until a probe counts them - assert "exactly one"
   for id-bearing cards in UI probes.
+
+SESSION 2026-09-17 (plan v2 - admin row status language):
+  Commit 976dc5a, CI run 35277680660 GREEN, deployed version 91ea7543.
+  (1) --dot-* token family: dark theme had collapsed danger/green/amber/
+  blue ALL to white (mmgr.css:134-138) - any status dot would render grey.
+  Dots now own their hue in both themes (brighter dark variants).
+  (2) admin rows: one truth per row in dot language (red not-published /
+  yellow stale / green live / healthy silent) + server truth-check via
+  session cloud list (409-adopt wave-2 fix extended to render time).
+  (3) .note-line: bare at rest, pill highlight on HOVER only; manifest
+  download demoted to secondary per-row action with honest tooltip.
+  (4) Deployment Guide accordion removed; toolbar = New + Import only.
+  (5) "Cloud Projects (D1 + R2)" -> "Cloud Projects" (plain language).
+  VERIFIED: probe-plan-v2 11/11 real-browser; verify-controls-admin 11/11;
+  pool-ui 6/6; marketing 20/20; qa-ai AI23; ai-relay; npm run verify.
+  LESSON (hit AGAIN, 3rd time): stale serve.cjs serves NEW html with OLD
+  CSP - fresh-unlock harness showed rows=0 while the same flow passed in
+  a private-port probe. ALWAYS diff "shared-server harness vs private-
+  port probe" results BEFORE hunting app bugs: if the probe passes,
+  check the server's start time first (lesson 10).

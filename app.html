@@ -699,10 +699,26 @@ function fmtSyncWhen(iso){
     return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
   } catch (e) { return ''; }
 }
+function slugLikeCloud(text){
+  // Mirrors admin.html slugify + the server's id rules exactly, so a local
+  // id and its cloud twin compare equal after the same transform.
+  return (text||'').toLowerCase().trim().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'') || 'project';
+}
 function syncChipFor(p){
   if (!_cloudSync) return '';   // signed out or fetch pending: silent
   var cloudUpdatedAt = _cloudSync[p.id];
-  if (cloudUpdatedAt === undefined) return '';   // not cloud-linked: nothing to say
+  if (cloudUpdatedAt === undefined){
+    // OWNER 2026-09-17 (id-mismatch fix): a local project whose SLUG matches
+    // a cloud project under the account is almost certainly its twin, split
+    // by the old space-vs-hyphen id bug. Say so plainly instead of leaving
+    // two look-alike cards that never sync to each other.
+    var slug = slugLikeCloud(p.id);
+    if (slug !== p.id && _cloudSync[slug] !== undefined){
+      return '<span class="pc-sync n" title="This copy and the cloud copy use different ids (spaces vs dashes), so they do not sync together. Open the cloud one, save it to this device, then work from that copy.">' +
+        '<span class="sdot"></span>Twin in the cloud</span>';
+    }
+    return '';   // not cloud-linked: nothing to say
+  }
   var localRaw = null;
   try { localRaw = localStorage.getItem('mmgr_state_' + p.id); } catch (e) {}
   var localUpdatedAt = '';

@@ -64,7 +64,17 @@ var MMGR = window.MMGR || {};
   let _sections = null;     // cached GET /api/cloud/sections payload
 
   function $(id) { return document.getElementById(id); }
-  function pid() { return ns.projectId || 'default'; }
+  // Cloud id resolution (OWNER 2026-09-17 id-mismatch fix): every cloud
+  // route and key is namespaced by this value. A project whose id had to be
+  // renamed locally (the spaced-id boot migration) records its original
+  // cloud-facing id in mmgr_cloud_id_<pid>, so its existing cloud twin
+  // stays reachable without moving anything server-side.
+  function cloudPid() {
+    const id = ns.projectId || 'default';
+    try { return localStorage.getItem('mmgr_cloud_id_' + id) || id; }
+    catch (e) { return id; }
+  }
+  function pid() { return cloudPid(); }
   // Local escape , the module cannot depend on mmgr-utils.js being loaded
   // first, and the owner code / name interpolations into innerHTML must be
   // escaped regardless (XSS hygiene, same rule as mmgr-render.js).
@@ -75,9 +85,9 @@ var MMGR = window.MMGR || {};
   }
 
   // ---- session-only code stores (never localStorage) ----------------
-  function codeKey() { return 'mmgr_cloud_code_' + pid(); }
-  function ecodeKey() { return 'mmgr_cloud_ecode_' + pid(); }
-  function escopeKey() { return 'mmgr_cloud_escope_' + pid(); }
+  function codeKey() { return 'mmgr_cloud_code_' + cloudPid(); }
+  function ecodeKey() { return 'mmgr_cloud_ecode_' + cloudPid(); }
+  function escopeKey() { return 'mmgr_cloud_escope_' + cloudPid(); }
   function getCode() {
     try { return sessionStorage.getItem(codeKey()) || ''; } catch (e) { return ''; }
   }
@@ -273,6 +283,16 @@ var MMGR = window.MMGR || {};
   async function createProject() {
     if (_createInFlight) return; // BUG-1: debounce rapid clicks
     if (getCode() || _sessOwner) { setStatus('This project is already linked to the cloud , use Save / Load below.', 'warn'); return; }
+    // OWNER 2026-09-17 (id-mismatch fix): the cloud only accepts ids made of
+    // letters, numbers, dashes and underscores. An id with spaces used to
+    // fail here with a bare 400 the user could not connect to the cause.
+    // Refuse it early, in plain words, with the exact fix. (Existing synced
+    // ids are always conformed - the same slugify rules created them.)
+    const rawId = cloudPid();
+    if (/[^A-Za-z0-9_-]/.test(rawId)) {
+      setStatus('This project\u2019s id "' + rawId + '" cannot be linked to the cloud , ids can only use letters, numbers, dashes and underscores. Re-import the project (the new import fixes ids automatically) or create it fresh in Admin.', 'err');
+      return;
+    }
     _createInFlight = true;
     setStatus('Creating cloud project…', 'busy');
     try {

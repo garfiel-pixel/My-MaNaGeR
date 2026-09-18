@@ -47,6 +47,7 @@ import { handleAiChat } from './ai-proxy.js';
 import { handleMcpServer } from './mcp/server.js';
 import { handleAuthGoogle, handleAuthMe, handleAuthLogout, handleAuthLogoutAll, mintSession } from './auth/google.js';
 import { handleAdminRecoveryStatus, handleAdminRecoverySend, handleAdminRecoveryVerify } from './auth/recovery.js';
+import { handleAdminCodePut, handleAdminCodeGet } from './auth/admin-code.js';
 import { handleAuthRegister, handleAuthLogin, handleAuthPasswordChange,
   handleAuthVerifyPassword, handleAuthVerify, handleAuthForgot,
   handleAuthReset, handleAuthResendVerify, handleAuthDeleteAccount } from './auth/session.js';
@@ -463,6 +464,17 @@ export async function routeApi(request, env, url) {
     // Send rides the mail-trigger bucket, verify rides the login bucket
     // (credential-guessing surface); both are also guarded per-account in
     // src/auth/recovery.js (3/hr send, 5-attempt lock).
+    // ADMIN-CODE CLOUD BACKUP (owner 2026-09-17): escrow + verified recovery
+    // for the admin.html gate code. Put rides the login bucket (it accepts a
+    // credential); get rides general (status probe + one-click restore).
+    if (path === '/api/auth/admin-code' && request.method === 'PUT') {
+      const r = await rl(request, 'authLogin', env);
+      if (r) return r;
+      return handleAdminCodePut(request, env);
+    }
+    if (path === '/api/auth/admin-code' && request.method === 'GET') {
+      return handleAdminCodeGet(request, env);
+    }
     if (path === '/api/auth/admin-recovery/status' && request.method === 'GET') {
       return handleAdminRecoveryStatus(request, env);
     }

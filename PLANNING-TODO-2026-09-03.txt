@@ -1791,4 +1791,4 @@ market-features 61/61, offline-copies 23/23, dashboard-spec 84/84,
 ai-relay PASS, report-issue 27/27, dynamic-labels 3/3, delegate-gate OK,
 wrangler dry-run OK, emoji scan clean, npm run verify green. Incident:
 stale serve.cjs (PID 8564) squatted :8765 -> phase1 404s (lesson 10);
-killed by PID, port freed, 29/29. CI: <pending>
+killed by PID, port freed, 29/29. CI green 8ec14e2 (run 35299640769). Deployed 44081388-7f72: remote D1 migration 0021 applied, staged copy verified (bundle+router+migration greps) before deploy, live smoke: health 200, app.html 307 strip, PUT /api/auth/admin-code live (400 on bad body).

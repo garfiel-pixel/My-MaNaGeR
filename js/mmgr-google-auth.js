@@ -161,7 +161,7 @@ var MMGR = window.MMGR || {};
       const titleEl = siom.querySelector('.mt');
       if (titleEl) titleEl.textContent = 'Sign in';
       const hintEl = siom.querySelector('.si-hint');
-      if (hintEl) hintEl.textContent = 'Sign in with Google or use your email. Optional, for cloud sync, backups, and your cloud projects.';
+      if (hintEl) hintEl.textContent = 'Sign in with Google or use your email. Optional, for cloud sync, backups, and your cloud projects. Your admin code backs up here automatically.';
     }
     // OWNER 2026-08-15: project.html header chip hides when signed out.
     const hc = $('hdr-signin');
@@ -231,7 +231,11 @@ var MMGR = window.MMGR || {};
       const titleEl = siom.querySelector('.mt');
       if (titleEl) titleEl.textContent = 'Account';
       const hintEl = siom.querySelector('.si-hint');
-      if (hintEl) hintEl.textContent = 'Signed in as ' + (user.email || user.name || user.sub || 'your account') + '.';
+      // OWNER 2026-09-17: say where backups land now that the admin code
+      // escrows to the account on sign-in (admin.html) - one honest line,
+      // plain words (plain-language law: no mechanism talk).
+      const who = user.email || user.name || user.sub || 'your account';
+      if (hintEl) hintEl.textContent = 'Signed in as ' + who + '. Your admin code and cloud backups are tied to this account.';
     }
     // Page-level notification covering EVERY signed-in path (session
     // restore, Google, email) so a page without a chip (the marketing

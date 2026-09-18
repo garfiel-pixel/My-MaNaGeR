@@ -16,6 +16,45 @@ var MMGR = window.MMGR || {};
   const urlParams = new URLSearchParams(window.location.search);
   ns.projectId = urlParams.get('id') || localStorage.getItem('mmgr_current_project') || 'default';
 
+  // OWNER 2026-09-17 (id-mismatch fix, boot migration): before the old
+  // import fix, ids with spaces could enter the admin list and every
+  // id-scoped key (mmgr_state_<id>, mmgr_unlocked_<id>, cloud routes) was
+  // then namespaced under the spaced id, while the cloud twin lived under
+  // the slug. On boot, rename any such id once, atomically, everywhere it
+  // lives. URL-facing ids can't be migrated here (the address bar names
+  // them), so those keep their spaced id - they still sync through the
+  // mmgr_cloud_id override below.
+  (function migrateSpacedProjectIds() {
+    try {
+      const id = ns.projectId;
+      if (!id || !/\s/.test(id)) return;                      // nothing to fix
+      const slug = id.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || 'project';
+      if (localStorage.getItem('mmgr_state_' + slug)) return; // target exists: never clobber
+      ['mmgr_state_', 'mmgr_unlocked_', 'mmgr_scope_'].forEach(function(prefix) {
+        const v = localStorage.getItem(prefix + id);
+        if (v !== null) { localStorage.setItem(prefix + slug, v); localStorage.removeItem(prefix + id); }
+      });
+      try {
+        const raw = localStorage.getItem('mmgr_admin_projects');
+        if (raw) {
+          const list = JSON.parse(raw);
+          if (Array.isArray(list)) {
+            let changed = false;
+            list.forEach(function(p) {
+              if (p && p.id === id) { p.id = slug; if (p.file) p.file = 'project.html?id=' + encodeURIComponent(slug); changed = true; }
+            });
+            if (changed) localStorage.setItem('mmgr_admin_projects', JSON.stringify(list));
+          }
+        }
+      } catch (e) { /* admin list is optional */ }
+      localStorage.setItem('mmgr_current_project', slug);
+      localStorage.setItem('mmgr_cloud_id_' + slug, id); // keep the cloud twin reachable
+      if (!urlParams.get('id')) {
+        window.location.replace('project.html?id=' + encodeURIComponent(slug) + window.location.hash);
+      }
+    } catch (e) { /* migration must never block boot */ }
+  })();
+
   // DEMO VIEW-ONLY: the filled demo project is always read-only.
   if (ns.projectId === 'demo-filled') {
     ns.scope = 'readonly';

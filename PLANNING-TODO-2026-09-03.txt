@@ -1767,3 +1767,28 @@ transparent/0-radius, label Local, no page errors. Gates: controls-admin
 regen (24 hashes) + serve restart per lesson 10. CI green 685af65.
 Deployed 0fa9057a (live verified w/ cache-buster; edge cache lags
 ~1min for un-busted URLs).
+SESS 2026-09-17/18 (wave 4) - Project-ID split fix + admin-code cloud
+backup + sign-in icon contrast. (1) ID split: admin.html importProjectParse
+now slugifies imported IDs; mmgr-app.js boot migrates legacy spaced IDs
+(preserves credentials via mmgr_cloud_id_<pid> override, honored throughout
+mmgr-cloud.js); createProject pre-flight blocks non-conformant IDs with
+plain-language guidance; launcher syncChipFor flags local cards whose ID
+slug-matches an existing cloud project. (2) Escrow: migration
+0021_admin_code_escrow (per-account, latest-only), src/auth/admin-code.js
+(PUT stores SHA-256 hash server-side, GET returns hash ONLY to
+verified accounts - plaintext never leaves the gate), router wiring,
+admin.html auto-escrow on sign-in/setup/rotation + "Get my admin code
+from my account" restore button in the setup screen, contact.html
+Project-access tile explains backup+recovery in plain language.
+(3) Icon fix: stale light-mode overrides on #siom removed so the
+owner's B&W sheet (dark sheet + light icons) applies in both themes.
+Harnesses: NEW tools/qa-admin-code-escrow.cjs 15/15 (incl. verify-flow
++ hash-only recovery). qa-email-auth 69/69 (G-gates were broken by a
+hintEl ReferenceError in showUser - fixed; NOTE: bundle-staleness
+invalidated my first stash-comparison, lesson 2 again). cloud1 29/29,
+cloud2 85/85, codes-delete 23/23, cloud-import 35/35, email-auth 69/69,
+market-features 61/61, offline-copies 23/23, dashboard-spec 84/84,
+ai-relay PASS, report-issue 27/27, dynamic-labels 3/3, delegate-gate OK,
+wrangler dry-run OK, emoji scan clean, npm run verify green. Incident:
+stale serve.cjs (PID 8564) squatted :8765 -> phase1 404s (lesson 10);
+killed by PID, port freed, 29/29. CI: <pending>

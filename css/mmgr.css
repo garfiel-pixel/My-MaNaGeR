@@ -3083,13 +3083,15 @@ body.db-page .db-plan-badge{
 }
 body.db-page .db-plan-badge .ico{width:14px;height:14px;}
 body.db-page .db-upgrade-note{font-size:.58rem;font-weight:600;opacity:.85;margin-left:2px;}
-/* ---- sign-in modal (#siom): full-contrast text ---- */
-#siom .mb{background:var(--card);border:1px solid var(--border);}
-#siom .si-hint{color:var(--text);font-weight:600;}
+/* ---- sign-in modal (#siom): light theme ----
+   OWNER 2026-09-17 (contrast fix): this block used to re-paint the panel
+   white (var(--card)) while the sheet's icons/text stayed white (the
+   2026-09-14 B&W design) - white icons on a white panel, invisible in
+   light mode. The old overrides are REMOVED: the black-sheet B&W design
+   above now applies in BOTH themes (white icon on black panel everywhere).
+   Only the dark-dashboard surface override below is kept (it re-themes the
+   raised surface AND its text together). */
 #siom .email-auth-form{background:transparent;}
-#siom .email-auth-input{color:var(--text);border-color:color-mix(in oklch,var(--border) 55%,var(--slate) 45%);background:var(--card);}
-#siom .email-auth-input::placeholder{color:var(--slate);opacity:1;}
-#siom .email-auth-alt{color:var(--slate);}
 /* ---- entrance + ambient motion (reduced-motion safe below) ---- */
 body.db-page .pcard{animation:dbCardIn .42s ease backwards;}
 body.db-page .pcard:nth-child(2){animation-delay:.05s;}
@@ -3113,11 +3115,12 @@ body.dark-mode.db-page .db-link:hover,body.dark-mode.db-page .db-project:hover{b
 body.dark-mode.db-page .db-backup{background:transparent;border-color:transparent;}
 body.dark-mode.db-page .db-plan-badge{color:var(--db-accent);background:color-mix(in oklch,var(--db-accent) 10%,transparent);border-color:color-mix(in oklch,var(--db-accent) 35%,transparent);}
 body.dark-mode.db-page .db-backup-auto select{background:var(--db-surface-raised);border-color:var(--db-border);color:var(--text);}
-body.dark-mode.db-page #siom .mb{background:var(--db-surface-raised);border-color:var(--db-border);}
-body.dark-mode.db-page #siom .si-hint{color:var(--text);}
-body.dark-mode.db-page #siom .email-auth-form{background:var(--db-surface);border-color:var(--db-border);}
-body.dark-mode.db-page #siom .email-auth-input{background:var(--db-surface-raised);border-color:var(--db-border);color:var(--text);}
-body.dark-mode.db-page #siom .email-auth-alt{color:var(--db-text-secondary);}
+/* OWNER 2026-09-17: the four dark-mode #siom overrides that used to live
+   here (raised surface + themed text) are removed - they half-themed the
+   sheet against the B&W design (light text was kept, the surface was not,
+   and together with the old light-mode white-panel block that produced the
+   invisible white-on-white icons the owner reported). One design now rules
+   the sheet in every theme: black panel, white text/icons, glow border. */
 /* ---- reliability fallbacks for the new surfaces (Gates 6.2 / 8.1) ---- */
 @supports not (backdrop-filter:blur(1px)){
   body.db-page:not(.dark-mode) .top{background:var(--card);}

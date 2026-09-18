@@ -263,7 +263,11 @@ pre.snippet{background:var(--tile-bg);border:1px solid var(--border);border-radi
       </span>
       <div class="gerr" id="setup-restore-err" role="alert"></div>
       <button class="btn btn-n full" data-action="restoreAdminCode" type="button"><span class="btn-txt">Restore access</span></button>
-      <p class="gbox-sub" style="margin:8px 0 0">Use the admin code you set on your other device. It stays on this one.</p>
+      <!-- OWNER 2026-09-17: the code is backed up to the account once you
+           sign in - pull it back with one click, no retyping. -->
+      <button class="btn btn-g full" data-action="restoreAdminCodeFromAccount" type="button" style="margin-top:8px"><span class="btn-txt">Get my admin code from my account</span><span class="spin-dot" aria-hidden="true"></span></button>
+      <p class="gbox-sub" id="setup-restore-hint" hidden>A backed-up copy is waiting with your account.</p>
+      <p class="gbox-sub" style="margin:8px 0 0">Use the admin code you set on your other device, or pull the backed-up copy from your account.</p>
     </div>
   </form>
 </div>
@@ -938,6 +942,8 @@ async function restoreAdminCode(){
     localStorage.setItem('mmgr_admin_pass_hash', await sha256(code));
     sessionStorage.setItem('mmgr_admin_session','1');
     if (err) err.textContent = '';
+    // The re-entered code is also the freshest proof of ownership: escrow it.
+    syncAdminCodeToAccount(code);
     // AREA G: a restored admin gets the one-time recovery code flow too.
     const rcode = await rcStoreNewCode();
     openRecoveryModal(rcode, enterAdmin);
@@ -960,6 +966,9 @@ async function handleSetupPassword(){
     localStorage.setItem('mmgr_admin_pass_hash', await sha256(p1));
     sessionStorage.setItem('mmgr_admin_session','1');
     err.textContent = '';
+    // OWNER 2026-09-17: signed-in? the code is escrowed with the account
+    // automatically - it can no longer be lost with the device.
+    syncAdminCodeToAccount(p1);
     // AREA G (Tier B): a brand-new admin always receives a one-time
     // recovery code BEFORE the panel unlocks (G1 show-once + save gate).
     const rcode = await rcStoreNewCode();
@@ -979,6 +988,9 @@ async function handleLogin(){
     if(await sha256(pass) === storedHash){
       sessionStorage.setItem('mmgr_admin_session','1');
       err.textContent = '';
+      // OWNER 2026-09-17: the entered code re-escrows silently on every
+      // successful login (covers a device that was set up while unsigned).
+      syncAdminCodeToAccount(pass);
       enterAdmin();
     }else{
       err.textContent = 'Incorrect password.';
@@ -1377,6 +1389,7 @@ document.addEventListener('mmgr:user-changed', function(e){
   // New-device restore path appears once the session restore reports
   // signed-in (setup screen only; other screens ignore it).
   setupRestoreVisibility(e);
+  fetchEscrowStatusAndMaybeSync(); // backed-up copy? surface it on the gate
 });
 document.addEventListener('mmgr:google-signed-out', function(){
   renderRailUser(null);
@@ -1430,6 +1443,102 @@ async function submitPasswordChange(){
   localStorage.setItem('mmgr_admin_pass_hash', await sha256(next));
   closePwModal();
   toast('Admin password updated on this device.');
+  await syncAdminCodeToAccount(next); // rotation re-escrows silently
+}
+
+/* ============================================================
+   ADMIN-CODE CLOUD BACKUP (owner 2026-09-17)
+   ------------------------------------------------------------
+   The admin code used to live only on the device that created it
+   (mmgr_admin_pass_hash). Losing that device meant losing admin
+   access everywhere. Now, whenever you are signed in, the code is
+   backed up to your account automatically:
+   - setup, login, restore and password-change all call
+     syncAdminCodeToAccount(); the server keeps only the latest
+     version, stored with keys it holds (never readable from the
+     outside, and never the plaintext code).
+   - On a fresh device (no local admin password yet), the signed-in
+     owner clicks "Get my admin code" on the setup screen: the
+     server checks the account is real (verified email or Google),
+     returns the code's hash (never the plaintext), and access is
+     rebuilt right there.
+   - Unsigned visitors never see the restore field, and nothing
+     ever goes out except through the signed-in owner's session. */
+let _admCodeSyncBusy = false;
+async function syncAdminCodeToAccount(code){
+  const GA = window.MMGR && window.MMGR.GoogleAuth;
+  if (!(GA && GA.isSignedIn && GA.isSignedIn())) return false; // unsigned: nothing to do
+  if (!code) return false;
+  if (_admCodeSyncBusy) return false;
+  _admCodeSyncBusy = true;
+  try{
+    const res = await fetch('/api/auth/admin-code', {
+      method: 'PUT', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code: code })
+    });
+    const data = await res.json().catch(function(){ return {}; });
+    if (res.ok && data && data.ok){
+      toast('Admin code backed up to your account.', 'ok');
+      return true;
+    }
+    if (data && data.verifyRequired) toast('Verify your email to back up your admin code.', 'warn');
+    return false;
+  }catch(e){
+    return false; // offline - the next sign-in/setup retries
+  }finally{
+    _admCodeSyncBusy = false;
+  }
+}
+async function restoreAdminCodeFromAccount(){
+  const err = document.getElementById('setup-restore-err');
+  const btn = document.querySelector('#setup-restore [data-action="restoreAdminCodeFromAccount"]');
+  if (btn){ btn.disabled = true; }
+  try{
+    const res = await fetch('/api/auth/admin-code', { credentials: 'same-origin' });
+    const data = await res.json().catch(function(){ return {}; });
+    if (!res.ok || !data || !data.ok){
+      if (err) err.textContent = (data && data.error) || 'Could not reach your account. Try again.';
+      return;
+    }
+    if (!data.hasCode){ if (err) err.textContent = 'No admin code is backed up for this account yet. Enter it once on the device where you set it up, signed in, and it will back up.'; return; }
+    if (data.verified === false){ if (err) err.textContent = 'Confirm your email first (check your inbox for the link), then try again.'; return; }
+    if (!data.readable || !data.hash){ if (err) err.textContent = 'The backed-up copy could not be opened. Set the code again on your main device.'; return; }
+    // The server returns the code's hash (the exact value the local gate
+    // stores), never the plaintext. Writing it straight into the local slot
+    // rebuilds access - the same trick the by-hand restore below uses.
+    localStorage.setItem('mmgr_admin_pass_hash', data.hash);
+    sessionStorage.setItem('mmgr_admin_session','1');
+    if (err) err.textContent = '';
+    toast('Admin code restored from your account.', 'ok');
+    const rcode = await rcStoreNewCode();
+    openRecoveryModal(rcode, enterAdmin);
+  }catch(e){
+    if (err) err.textContent = 'Could not reach your account. Check the connection and try again.';
+  }finally{
+    if (btn){ btn.disabled = false; }
+  }
+}
+async function fetchEscrowStatusAndMaybeSync(){
+  // After sign-in on this screen: if a code is already backed up for the
+  // account, surface it ('A backed-up copy is waiting.') so the owner knows
+  // the restore button will work before clicking it. The escrow itself is
+  // written by the four flows that hold the plaintext code (setup, login,
+  // restore-by-code, password change) - sign-in alone never has the code,
+  // so there is nothing else to sync here.
+  const GA = window.MMGR && window.MMGR.GoogleAuth;
+  if (!(GA && GA.isSignedIn && GA.isSignedIn())) return;
+  const restoreWrap = document.getElementById('setup-restore');
+  if (restoreWrap && !restoreWrap.hidden){
+    try{
+      const res = await fetch('/api/auth/admin-code', { credentials: 'same-origin' });
+      const data = await res.json().catch(function(){ return {}; });
+      if (res.ok && data && data.ok && data.hasCode){
+        const hint = document.getElementById('setup-restore-hint');
+        if (hint) hint.hidden = false;
+      }
+    }catch(e){ /* status probe is best-effort */ }
+  }
 }
 /* ============================================================
    MULTI-TAB CONFLICT , same storage-event pattern as the project
@@ -1859,7 +1968,14 @@ function importProjectParse(text, fileName){
   data.forEach(function(raw){
     if (!raw || typeof raw !== 'object') return;
     const isStateExport = raw.projectId && !raw.id;
-    const id = isStateExport ? String(raw.projectId) : String(raw.id || '');
+    // OWNER 2026-09-17 (id-mismatch fix): imported ids are slugified here ,
+    // the exact same transform the cloud applies to project ids. A raw id
+    // with spaces ('new town hotel renovation') used to sail into the admin
+    // list as one id while the cloud copy lived under the slug
+    // ('new-town-hotel-renovation'): two records, as far as every id-scoped
+    // key and cloud route was concerned. One id shape, everywhere.
+    const rawId = isStateExport ? String(raw.projectId) : String(raw.id || '');
+    const id = slugify(rawId);
     const title = (isStateExport ? raw.projectName : raw.title) || '';
     if (!id || !title){ return; }
     // Never duplicate an existing id , skip silently (keeps re-imports safe).
@@ -2664,6 +2780,7 @@ window.addEventListener('resize', function(){ syncAdminHdr(); });
 
 const ADMIN_ACTION_MAP = {
   'adminSetupPassword': () => handleSetupPassword(),
+  'restoreAdminCodeFromAccount': () => restoreAdminCodeFromAccount(),
   'adminLogin': () => handleLogin(),
   'restoreAdminCode': () => restoreAdminCode(),
   'tglPwVis': (el) => tglPwVis(el),

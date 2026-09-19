@@ -629,7 +629,6 @@ footer{padding:70px 64px 46px;position:relative;}
     <button id="menuBtn" aria-label="Open sheet index"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 7H20M4 12H20M4 17H20" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
   </div>
 </div>
-<div class="sidebar-scrim" id="scrim"></div>
 
 <!-- Email sign-in sheet (dormant -- hidden via CSS, kept for future use) -->
 <div class="signin-sheet" id="signin-sheet" hidden>
@@ -647,6 +646,12 @@ footer{padding:70px 64px 46px;position:relative;}
 </div>
 
 <div class="shell">
+  <!-- Scrim lives INSIDE .shell (mobile) so it shares the sidebar's stacking
+       context: sidebar z-800 must sit ABOVE scrim z-750. As a body child the
+       scrim sat above the whole shell (clipped to z-1 by .shell's z-index:1)
+       and every tap on the open drawer hit the scrim -> looked like a dead
+       sidebar on real phones (touch hit-testing; synthetic clicks pass). -->
+  <div class="sidebar-scrim" id="scrim"></div>
   <!-- ============ SIDEBAR / SHEET INDEX ============ -->
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-brand">

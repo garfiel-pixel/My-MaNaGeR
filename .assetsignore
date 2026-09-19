@@ -14,6 +14,7 @@
 node_modules
 .dev.vars
 tmp
+dogfood-output
 serve.cjs
 qa-*.cjs
 tools

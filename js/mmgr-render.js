@@ -2040,6 +2040,13 @@ var MMGR = window.MMGR || {};
         t.startDate = newStart;
         // Duration counts WORKING days (respects the work-week control).
         t.endDate = U.fmtDate(U.addWorkingDays(U.parseDL(newStart), dur - 1));
+        // Drag moves the span: dates drive duration, same invariant as the
+        // WBS Days cell (owner 2026-09-19). For a move-drag this recomputes
+        // to the same value (duration is preserved); it keeps start+end
+        // authoritative if the two ever drift.
+        const dd = ns.Tasks && ns.Tasks.durationFromDates
+          ? ns.Tasks.durationFromDates(t.startDate, t.endDate) : null;
+        if (dd !== null) t.duration = String(dd);
       }
     });
     // Refresh float / critical annotations READ-ONLY (dates untouched) so the

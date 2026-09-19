@@ -1860,6 +1860,13 @@ async function saveProjectForm(){
     record.isDemo = projects[editingIndex].isDemo; // preserve the demo tag if editing the seed
     projects[editingIndex] = record;
   }else{
+    // LOCAL-CAP (owner 2026-09-19): a device holds up to 8 projects. The
+    // honest counterweight to "delete to dodge" is the guidance below (and
+    // the field guide), not a hidden ban-list - local data is the user's.
+    if(projects.length >= 8){
+      toast('This device holds 8 projects - the local limit. Free a slot by deleting one you no longer need, or sign in and keep projects in your cloud: available on any device, safe from a lost or wiped device.','error',9000);
+      return;
+    }
     projects.push(record);
   }
   saveProjects();

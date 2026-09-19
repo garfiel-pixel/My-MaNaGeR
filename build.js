@@ -75,6 +75,9 @@ const APP_MODULES = [   // Core (loaded first - defines MMGR namespace + utiliti
   // Entitlements seam (owner 2026-09-19): the one future door for gating AI
   // features on sign-in; premium rules land inside later, callers never change.
   'js/app/entitlements.js',
+  // Background assistant (Task 6, owner 2026-09-19): deterministic watchers
+  // + header mailbox. Needs State/Utils at call time only.
+  'js/mmgr-watch.js',
   'js/app/export.js',
   'js/app/history.js',
   'js/app/definitions.js',

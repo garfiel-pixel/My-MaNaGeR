@@ -157,6 +157,7 @@
     <div class="timeline-ind" id="timeline-ind" data-action="jumpToDashTimeline" title="Current planned finish vs the Target Completion Date set in Charter. Click to view on the Dashboard."></div>
     <div class="presence-chip" id="presence-chip" hidden role="status" aria-live="polite"><span class="pdot" aria-hidden="true"></span><span data-presence-label>0 online</span></div>
     <div class="lock-ind" id="lk-ind"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-lock"></use></svg> <span id="lk-lbl">Methodology</span> Locked</div>
+    <button class="settings-btn" id="ai-bell" data-action="openAiMailbox" aria-label="Assistant notices"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-bell"></use></svg><span class="nudge-dot" data-bell-dot hidden></span></button>
     <button class="settings-btn" data-action="openDrw" aria-label="Open settings"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-settings"></use></svg> </button>
   </div>
 </header>
@@ -1151,6 +1152,21 @@
      Copy-to-clipboard first; a generative API-key path can be dropped in
      later without redesign (see js/mmgr-ai.js). -->
 <button id="ai-fab" class="ai-fab" data-action="openAiWin" aria-label="Open AI Assistant" title="AI Assistant , preset prompts, free-form question, project context"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg></button>
+<!-- Task 6 (owner 2026-09-19): background assistant mailbox. Notices are
+     deterministic findings from local watchers, kept in s.aiInbox on this
+     machine until the user dismisses them. -->
+<div id="ai-mailbox" data-action="closeAiMailboxBg">
+  <div class="ai-mailbox-box">
+    <div class="ai-mailbox-head">
+      <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-bell"></use></svg>
+      <strong>Assistant notices</strong>
+      <span style="flex:1"></span>
+      <button class="btn btn-s btn-n" data-action="clearAiMailbox">Clear all</button>
+      <button class="btn btn-s btn-n" data-action="closeAiMailbox">Close</button>
+    </div>
+    <div data-mailbox-list class="ai-mailbox-list"></div>
+  </div>
+</div>
 <div id="ai-win">
   <!-- AI-WINDOW-RESIZE: eight edge/corner drag handles (data-edge) wired in
        js/mmgr-ai.js; the size is persisted per device in localStorage

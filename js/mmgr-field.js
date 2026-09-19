@@ -139,6 +139,48 @@ ${(s.issues || []).filter(i => i.status !== 'resolved' && i.status !== 'closed')
 Generate a structured field report suitable for email or print. Include a header with project name, date, and report number. Use clear sections.`;
   }
 
+  // ---- Task 5 (2026-09-19): voice capture destination + quick action ----
+  // The report text itself lives in the prompt modal (the daily prompt is
+  // the report), so a field voice capture appends into state.fieldNotes for
+  // the day and the prompt renderer includes it - plain text, hand-editable,
+  // exactly the module's own convention.
+  function insertTranscript(text) {
+    if (!text) return;
+    const s = S();
+    if (!s) return;
+    const today = U.todayStr();
+    if (!Array.isArray(s.fieldReportNotes)) s.fieldReportNotes = [];
+    let entry = s.fieldReportNotes.find(n => n.date === today);
+    if (!entry) { entry = { date: today, text: '' }; s.fieldReportNotes.push(entry); }
+    entry.text = (entry.text ? entry.text + '\n\n' : '') + '[Voice capture ' + new Date().toLocaleTimeString() + ']\n' + text;
+    if (s.fieldReportNotes.length > 60) s.fieldReportNotes = s.fieldReportNotes.slice(-60);
+    ns.State.save(true);
+    if (ns.App && ns.App.showToast) ns.App.showToast('Transcript captured - it lands in the Daily Field Report prompt. Review before you trust it.', 'ok');
+  }
+
+  function getFieldNotes(date) {
+    const s = S();
+    if (!s || !Array.isArray(s.fieldReportNotes)) return '';
+    const entry = s.fieldReportNotes.find(n => n.date === (date || U.todayStr()));
+    return entry ? entry.text : '';
+  }
+
+  // Quick action item: the owner's "someone on site spots work that needs
+  // doing" path. Lands in the Closure comms list (where the Decision Engine
+  // already counts open actions) pre-filled with the report reference.
+  function addFieldAction() {
+    const s = S();
+    if (!s) return;
+    const ref = 'Field report ' + U.todayStr();
+    ns.State.updateState(function(st) {
+      if (!st.closure) st.closure = { items: [], well: '', imp: '', rec: '' };
+      if (!st.closure.items) st.closure.items = [];
+      st.closure.items.push({ text: '[' + ref + '] ', done: false });
+    });
+    if (ns.Render && ns.Render.renderClosure) ns.Render.renderClosure();
+    if (ns.App && ns.App.showToast) ns.App.showToast('Action item added in Closure - it counts in the Decision Engine until done.', 'ok');
+  }
+
   // ---- API ----
   ns.FieldReport = {
     takeSnapshot: takeSnapshot,
@@ -148,7 +190,10 @@ Generate a structured field report suitable for email or print. Include a header
     diffSnapshots: diffSnapshots,
     generateFieldReportPrompt: generateFieldReportPrompt,
     snapshotDaily: snapshotDaily,
-    getDailySnapshot: getDailySnapshot
+    getDailySnapshot: getDailySnapshot,
+    insertTranscript: insertTranscript,
+    getFieldNotes: getFieldNotes,
+    addFieldAction: addFieldAction
   };
 })(MMGR);
 window.MMGR = MMGR;

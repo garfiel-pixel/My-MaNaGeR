@@ -711,8 +711,25 @@ var MMGR = window.MMGR || {};
   // is still live, extraction stays deferred to endMeeting (which reads the
   // live transcript). If the meeting already ended (stop+end in quick
   // succession), write to the stored record and extract immediately.
+  // Task 5 (2026-09-19): a capture started from the Daily Field Report
+  // (_target.kind === 'field') routes the finished transcript into the open
+  // report instead - the meeting record is skipped entirely.
+  let _target = { kind: 'meeting' };
+  function startForFieldReport() {
+    _target = { kind: 'field' };
+    const ok = startCapture();
+    if (!ok) _target = { kind: 'meeting' }; // failed to start: reset
+    return ok;
+  }
   function applyWhisperText(text, sessionId) {
     const clean = String(text || '').trim();
+    if (_target && _target.kind === 'field') {
+      _target = { kind: 'meeting' }; // one-shot: reset regardless of outcome
+      if (ns.FieldReport && ns.FieldReport.insertTranscript && clean) {
+        ns.FieldReport.insertTranscript(clean);
+      }
+      return;
+    }
     ns.State.updateState(function(st) {
       const live = (st.activeMeeting && st.activeMeeting.captureSession === sessionId) ? st.activeMeeting : null;
       const stored = live ? null : (st.meetings || []).find(function(m) { return m.captureSession === sessionId; });
@@ -1149,6 +1166,7 @@ var MMGR = window.MMGR || {};
     isCapturing: isCapturing,
     startCapture: startCapture,
     stopCapture: stopCapture,
+    startForFieldReport: startForFieldReport,
     discardCapture: discardCapture,
     clearPendingForMeeting: clearPendingForMeeting,
     extractFromTranscript: extractFromTranscript,

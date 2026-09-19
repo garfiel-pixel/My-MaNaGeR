@@ -263,6 +263,15 @@ var MMGR = window.MMGR || {};
 
     const s = S();
 
+    // Task 6 (owner 2026-09-19): background assistant. One immediate pass,
+    // then every 60s while the app is open. Zero-throw, zero network; the
+    // watchers read local state only. Premium gate lands inside the
+    // Entitlements seam later - run() will consult it then.
+    if (ns.Watch) {
+      try { ns.Watch.run(); } catch (e) { /* never block boot */ }
+      setInterval(function() { try { ns.Watch.run(); } catch (e) {} }, 60000);
+    }
+
     // ACTION-PLAN 4.1: view-only scope , reduced read-only view. The body
     // class + banner are the visible state; the delegated event guards below
     // block every mutating data-action, while navigation / Copy All / Print
@@ -1291,6 +1300,36 @@ var MMGR = window.MMGR || {};
             }
           });
           title.parentNode.appendChild(b);
+          // Task 5 (2026-09-19): one-voice capture from the field report +
+          // quick action item. The transcript lands in today's field notes
+          // (inside the report prompt) - never in a meeting record.
+          if (ns.Voice && ns.Voice.startForFieldReport) {
+            const v = document.createElement('button');
+            v.id = 'field-voice-btn';
+            v.className = 'btn btn-o btn-s';
+            v.style.marginLeft = '10px';
+            v.textContent = 'Capture audio';
+            v.title = 'One-voice capture: records one microphone. It cannot tell people apart - keep attendee names in the meeting header instead. The transcript lands in this report, hand-editable.';
+            v.addEventListener('click', function() {
+              if (v.textContent === 'Capture audio') {
+                if (ns.Voice.startForFieldReport()) v.textContent = 'Stop capture';
+              } else {
+                ns.Voice.stopCapture();
+                v.textContent = 'Capture audio';
+              }
+            });
+            title.parentNode.appendChild(v);
+          }
+          const a = document.createElement('button');
+          a.id = 'field-action-btn';
+          a.className = 'btn btn-o btn-s';
+          a.style.marginLeft = '10px';
+          a.textContent = 'Add action item';
+          a.title = 'Adds an action to the Closure list, referenced to this report. It counts in the Decision Engine until done.';
+          a.addEventListener('click', function() {
+            if (ns.FieldReport && ns.FieldReport.addFieldAction) ns.FieldReport.addFieldAction();
+          });
+          title.parentNode.appendChild(a);
         }, 30);
       }
     }
@@ -1683,6 +1722,11 @@ window.MMGR = MMGR;
     'idReadWithAi': () => window.MMGR.Tasks.idReadWithAi(),
     'idFilePickTrigger': () => window.MMGR.Tasks.idFilePickTrigger(),
     'idFilePick': (el) => window.MMGR.Tasks.idFilePick(el),
+    'openAiMailbox': () => window.MMGR.Watch.openMailbox(),
+    'closeAiMailbox': () => window.MMGR.Watch.closeMailbox(),
+    'closeAiMailboxBg': (el, e) => { if (e && e.target && e.target.id === 'ai-mailbox') window.MMGR.Watch.closeMailbox(); },
+    'dismissAiNote': (el) => window.MMGR.Watch.dismissNote(el.getAttribute('data-id')),
+    'clearAiMailbox': () => window.MMGR.Watch.clearMailbox(),
     // MONOLITH-FEATURE-PARITY-DIRECTIVES RESTORE-2: Import Dates 'Copy List'.
     'copyIdTemplate': () => window.MMGR.Tasks.copyIdTemplate(),
     'saveSprint': () => window.MMGR.Tasks.saveSprint(),
@@ -2216,6 +2260,10 @@ window.MMGR = MMGR;
     // Task 3 AI import: preview, AI read, file load and the file dialog
     // never mutate state (only Fill In does) - safe in view-only mode.
     'idReadWithAi': 1, 'idFilePickTrigger': 1, 'idFilePick': 1,
+    // Task 6 mailbox: open/close/dismiss are view actions over s.aiInbox;
+    // dismiss/clear DO mutate the inbox (local, reversible by the watcher
+    // regenerating) - they stay blocked in view-only mode, open/close pass.
+    'openAiMailbox': 1, 'closeAiMailbox': 1, 'closeAiMailboxBg': 1,
     // Phase 7: wxRefresh (view the forecast) + wxCopyNotice (copy text) are
     // read-only; wxGeocode writes the site location config and wxLogToday /
     // wxLogManual write the LD-claim weather log , all stay blocked in

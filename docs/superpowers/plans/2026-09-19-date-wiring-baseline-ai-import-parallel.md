@@ -277,7 +277,7 @@ git add -A && git commit -m "feat(baseline): auto-capture first baseline with vi
 - Consumes: existing grammar regex `^(.+?)\s*\(\s*(\d+)\s*d\s*\)\s*\[\s*(\d{4}-\d{2}-\d{2})\s*→\s*(\d{4}-\d{2}-\d{2})\s*\]\s*$` (preview + commit, `mmgr-tasks.js:421/440`); `MMGR.AI` submit seam/relay (relay degrades to Tier-A offline); `idCommit`'s `pushUndo` + name-idempotent matching.
 - Produces: `MMGR.Tasks.validateImportLines(lines)` → `{ ok: [...], issues: [{ line, name, reason, severity }] }`; commit stays blocked while `issues` has severity `error`.
 
-- [ ] **Step 1: Validator (pure, offline — the mismatch engine)**
+- [x] **Step 1: Validator (pure, offline — the mismatch engine)**
 
 In `js/mmgr-tasks.js`:
 
@@ -304,7 +304,7 @@ function validateImportLines(lines) {
 }
 ```
 
-- [ ] **Step 2: AI normalize (Tier-B relay; offline degrades cleanly)**
+- [x] **Step 2: AI normalize (Tier-B relay; offline degrades cleanly)**
 
 `js/mmgr-ai.js` — new prompt builder following `mmgr-prompts.js` conventions:
 
@@ -326,11 +326,11 @@ function aiNormalizeSchedulePrompt(rawText, knownTasks) {
 
 Modal wiring: "Read with AI" button calls the existing relay seam (`relayChat` path used by `mmgr-ai.js:701-730`); response text is split to lines, fed through `validateImportLines`, and rendered into `id-preview` + `#id-mismatch`. **Offline / no key:** toast "AI reading needs the AI window (online). Paste the strict format instead - it works offline." and the strict path stays fully functional. Files: `.txt`/`.md` file input fills `id-source` (plain `FileReader.readAsText`); unsupported files (PDF etc.) get "Can't read that file type here - paste the text instead." (owner-approved limitation).
 
-- [ ] **Step 3: Mismatch panel + guarded commit**
+- [x] **Step 3: Mismatch panel + guarded commit**
 
 `idPreview()` additionally calls `validateImportLines(lines)`, renders issues into `#id-mismatch` (red rows: name + reason, error vs warn styling via existing `--danger`/`--amber`), and `idCommit()` refuses when any `severity === 'error'` (toast lists the count). `idCommit` then also reconciles warn-level duration mismatches: dates win (sets `task.duration` from `durationFromDates`) — "dates drive days", consistent with Task 1.
 
-- [ ] **Step 4: QA + verify + commit**
+- [x] **Step 4: QA + verify + commit**
 
 Extend the Task 1 harness: paste valid text → preview rows; paste garbage line → error issue + commit blocked; paste disagreeing days → warn row + commit reconciles duration. `node build.js && npm run verify`, run harness, then:
 

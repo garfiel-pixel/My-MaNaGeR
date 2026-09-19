@@ -54,6 +54,14 @@ How to load: use your skill-loading mechanism on the skill **name** below
 `cloudflare` (platform), `workers-best-practices` (worker.js), and
 `skeptical-code-audit` (verification) cover most edits in this repo.
 
+### Codebase map
+Before navigating `js/` for the first time in a session, read
+[`docs/DEVELOPER-GUIDE.md`](docs/DEVELOPER-GUIDE.md): every `js/` module's
+responsibility keyed by load-order layer (the `build.js` bundle order IS the
+dependency graph in this global-namespace codebase), the `data-action`
+dispatch convention, and the measured list of largest functions (split
+candidates) with refactor ground rules.
+
 ## Project-critical rules (do not violate)
 
 1. **CSP hash drift breaks pages silently.** `worker.js` embeds SHA-256 hashes

@@ -1635,9 +1635,16 @@
     <div class="wi-step">
       <div class="wi-lbl">2. Paste durations</div>
       <textarea id="id-source" aria-label="Import dates source text" data-action="idPreview" placeholder="Five days&#10;Six days&#10;Two days"></textarea>
+      <div class="wi-actions wi-actions-left" style="margin-top:8px;gap:8px;flex-wrap:wrap">
+        <input type="file" id="id-file" data-action="idFilePick" accept=".txt,.md" style="display:none" aria-hidden="true">
+        <button type="button" class="btn btn-n btn-s" data-action="idFilePickTrigger"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-upload"></use></svg> Load a .txt / .md file</button>
+        <button type="button" class="btn btn-n btn-s" id="id-ai-btn" data-action="idReadWithAi"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cpu"></use></svg> Read with AI</button>
+        <span id="id-ai-note" style="font-size:.72rem;color:var(--slate)"></span>
+      </div>
     </div>
     <div class="wi-step">
       <div class="wi-lbl">3. Preview</div>
+      <div id="id-mismatch"></div>
       <div id="id-preview"></div>
     </div>
     <div class="wi-actions">

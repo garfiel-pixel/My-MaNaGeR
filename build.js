@@ -72,6 +72,9 @@ const APP_MODULES = [   // Core (loaded first - defines MMGR namespace + utiliti
   // Baseline guard (owner 2026-09-19): auto-capture + nudge dot; needs
   // State + App toast at call time, wired into renderDash.
   'js/app/baseline-guard.js',
+  // Entitlements seam (owner 2026-09-19): the one future door for gating AI
+  // features on sign-in; premium rules land inside later, callers never change.
+  'js/app/entitlements.js',
   'js/app/export.js',
   'js/app/history.js',
   'js/app/definitions.js',

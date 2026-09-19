@@ -1971,6 +1971,25 @@ var MMGR = window.MMGR || {};
     askFromCommandBar(e);
   });
 
+  // ---- Task 3 (2026-09-19): import normalization prompt ----
+  // Feeds messy user text to the connected model and demands back ONE strict
+  // grammar line per task (the exact grammar idPreview/idCommit already
+  // parse). The AI only FORMATS; every line is still validated against state
+  // + date math by validateImportLines before anything is committed.
+  function aiNormalizeSchedulePrompt(rawText, knownTasks) {
+    return [
+      "Convert the user's text into ONE line per task, exactly this format:",
+      'Task Name (3d) [2026-08-16 \u2192 2026-08-20]',
+      'Rules: durations in working days; ISO dates (YYYY-MM-DD); use the task names given when they match:',
+      (knownTasks || []).slice(0, 80).join(' | '),
+      'If the text lacks dates, compute them from the durations and the earliest date given.',
+      'Output ONLY the lines. No commentary.',
+      '',
+      'TEXT:',
+      String(rawText || '')
+    ].join('\n');
+  }
+
   // ---- API ----
   ns.AiWin = {
     open: open,
@@ -1990,6 +2009,9 @@ var MMGR = window.MMGR || {};
     setAiCfg: setAiCfg,
     tglDrawerTier: tglDrawerTier,
     submit: submit,
+    // Task 3: import normalization prompt builder (formatting only; the
+    // validator in mmgr-tasks.js is the gate that blocks bad lines).
+    aiNormalizeSchedulePrompt: aiNormalizeSchedulePrompt,
     runPreset: runPreset,
     runQuestion: runQuestion,
     renderOutput: renderOutput,

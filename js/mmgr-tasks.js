@@ -26,6 +26,38 @@ var MMGR = window.MMGR || {};
     return Math.floor(raw + 0.5);
   }
 
+  // ---- Task 3 (2026-09-19): AI-assisted import - validate BEFORE commit ----
+  // Every candidate line is checked against state + the app's own date math
+  // (durationFromDates, Task 1 invariant). Severity 'error' blocks commit;
+  // 'warn' shows but allows. Each issue names its line so the mismatch panel
+  // points at exactly where the problem is (owner: "show where there is issues").
+  function validateImportLines(lines) {
+    const s = ns.State.getState();
+    const known = new Set((s.tasks || []).map(function (t) { return t.name; }));
+    const ok = [], issues = [];
+    for (const line of lines) {
+      const m = line.match(/^(.+?)\s*\(\s*(\d+)\s*d\s*\)\s*\[\s*(\d{4}-\d{2}-\d{2})\s*→\s*(\d{4}-\d{2}-\d{2})\s*\]\s*$/);
+      if (!m) {
+        issues.push({ line: line, name: line.slice(0, 60), reason: 'Not in the format Name (3d) [2026-08-16 → 2026-08-20]', severity: 'error' });
+        continue;
+      }
+      const name = m[1].trim(), dur = parseInt(m[2], 10), start = m[3], end = m[4];
+      if (start > end) {
+        issues.push({ line: line, name: name, reason: 'End date is before start date', severity: 'error' });
+        continue;
+      }
+      const calc = durationFromDates(start, end);
+      if (calc !== null && calc !== dur) {
+        issues.push({ line: line, name: name, reason: 'Days say ' + dur + ' but the dates span ' + calc + ' working days - the dates win', severity: 'warn' });
+      }
+      if (!known.has(name)) {
+        issues.push({ line: line, name: name, reason: 'New task (will be created)', severity: 'warn' });
+      }
+      ok.push({ name: name, dur: dur, start: start, end: end });
+    }
+    return { ok: ok, issues: issues };
+  }
+
   // ---- Task CRUD ----
   function addTask() {
     ns.State.updateState(function(s) {
@@ -403,6 +435,7 @@ var MMGR = window.MMGR || {};
     if (source) source.value = '';
     const commitBtn = U.$('id-commit-btn');
     if (commitBtn) commitBtn.disabled = true;
+    syncIdAiNote(); // AI button reflects the entitlement seam on every open
     modal.classList.add('on');
   }
 
@@ -459,6 +492,102 @@ var MMGR = window.MMGR || {};
     html += '</tbody></table>';
     preview.innerHTML = html;
     if (commitBtn) commitBtn.disabled = validCount === 0;
+    renderIdMismatch(lines);
+  }
+
+  // ---- Task 3: mismatch panel ----
+  // Red rows block the Fill In button; amber rows just warn. Every row names
+  // the offending line so the user sees exactly where the problem is.
+  function renderIdMismatch(lines) {
+    const box = U.$('id-mismatch');
+    if (!box) return null;
+    const res = validateImportLines(lines);
+    if (!res.issues.length) { box.innerHTML = ''; return res; }
+    let html = '<div style="margin-bottom:8px">';
+    for (const issue of res.issues) {
+      const color = issue.severity === 'error' ? 'var(--danger)' : 'var(--amber)';
+      const tag = issue.severity === 'error' ? 'Blocks import' : 'Heads up';
+      html += '<div style="border-left:3px solid ' + color + ';padding:4px 8px;margin-bottom:4px;font-size:.74rem">'
+        + '<span style="color:' + color + ';font-weight:700">' + tag + '</span> '
+        + '<strong>' + U.escapeHtml(issue.name) + '</strong> - ' + U.escapeHtml(issue.reason)
+        + '</div>';
+    }
+    box.innerHTML = html + '</div>';
+    return res;
+  }
+
+  // ---- Task 3: AI-assisted read (signed-in only; strict path works offline) ----
+  async function idReadWithAi() {
+    const source = U.$('id-source');
+    if (!source) return;
+    const raw = source.value.trim();
+    if (!raw) { ns.App.showToast('Paste or load your text first, then use Read with AI.', 'err'); return; }
+    // Owner directive: AI-assisted features are part of the signed-in
+    // experience. The strict-grammar paste path stays available to everyone.
+    if (!(ns.Entitlements && ns.Entitlements.aiAssistant && ns.Entitlements.aiAssistant())) {
+syncIdAiNote();
+      ns.App.showToast('AI reading is part of the signed-in experience. Sign in, or paste the strict format - it works offline.', 'err');
+      return;
+    }
+    syncIdAiNote();
+    ns.App.showToast('Reading your text with AI...', 'ok');
+    const known = (ns.State.getState().tasks || []).map(function (t) { return t.name; });
+    const prompt = ns.AiWin.aiNormalizeSchedulePrompt(raw, known);
+    try {
+      const res = await ns.AiWin.submit(prompt, '', { type: 'import-normalize' });
+      if (!res || !res.ok || !res.text) {
+        ns.App.showToast('AI reading is not available right now - paste the strict format instead, it works offline.', 'err');
+        return;
+      }
+      const lines = String(res.text).split('\n').map(function (l) { return l.trim(); }).filter(function (l) {
+        return l && !l.startsWith('#') && !/^(here|sure|okay|the following)/i.test(l);
+      });
+      if (!lines.length) {
+        ns.App.showToast('The AI reply had no task lines - paste the strict format instead.', 'err');
+        return;
+      }
+      source.value = lines.join('\n');
+      idPreview();
+      ns.App.showToast('AI formatted ' + lines.length + ' line(s). Check the flagged issues, then Fill In.', 'ok');
+    } catch (e) {
+      if (ns.Errors && ns.Errors.log) ns.Errors.log('AI import read failed: ' + (e && e.message), 'idReadWithAi');
+      ns.App.showToast('AI reading failed - paste the strict format instead, it works offline.', 'err');
+    }
+  }
+
+  // One quiet hint under the buttons; the full sentence only when it matters.
+  function syncIdAiNote() {
+    const note = U.$('id-ai-note');
+    const btn = U.$('id-ai-btn');
+    if (!note || !btn) return;
+    const allowed = ns.Entitlements && ns.Entitlements.aiAssistant && ns.Entitlements.aiAssistant();
+    btn.disabled = !allowed;
+    note.textContent = allowed ? '' : 'AI reading is part of the signed-in experience.';
+  }
+
+  // ---- Task 3: file picker (.txt/.md only; honest refusal otherwise) ----
+  function idFilePickTrigger() {
+    const fi = U.$('id-file');
+    if (fi) fi.click();
+  }
+  async function idFilePick(el) {
+    const f = el && el.files && el.files[0];
+    if (!f) return;
+    const source = U.$('id-source');
+    const name = (f.name || '').toLowerCase();
+    try {
+      if (!(name.endsWith('.txt') || name.endsWith('.md'))) {
+        throw new Error("Can't read that file type here - paste the text instead.");
+      }
+      const text = await f.text();
+      if (source) source.value = String(text || '').trim();
+      idPreview();
+      ns.App.showToast('File loaded. Check the flagged issues, then Fill In.', 'ok');
+    } catch (err) {
+      ns.App.showToast(err.message || "Can't read that file - paste the text instead.", 'err');
+    } finally {
+      el.value = ''; // allow re-picking the same file
+    }
   }
 
   function idCommit() {
@@ -467,6 +596,24 @@ var MMGR = window.MMGR || {};
     const text = source.value.trim();
     if (!text) { ns.App.showToast('No data to import.', 'err'); return; }
     const lines = text.split('\n').filter(l => l.trim() && !l.trim().startsWith('#'));
+    // Task 3 gate: validation runs BEFORE anything mutates. Any blocking
+    // issue (bad shape, end before start) refuses the whole import with a
+    // count toast; the mismatch panel above already shows where each one is.
+    const check = validateImportLines(lines);
+    const errors = check.issues.filter(i => i.severity === 'error');
+    if (errors.length) {
+      ns.App.showToast('Cannot import: ' + errors.length + ' line(s) have blocking problems - fix the red rows in the preview.', 'err');
+      return;
+    }
+    // Warn-level reconciliation: when the days number and the date span
+    // disagree, the DATES WIN (same invariant as Task 1) - duration is
+    // recomputed from the dates at commit time.
+    const durationOverride = {};
+    for (const issue of check.issues) {
+      if (issue.severity !== 'warn' || /working days/.test(issue.reason) === false) continue;
+      const m = issue.line.match(/^(.+?)\s*\(\s*(\d+)\s*d\s*\)\s*\[\s*(\d{4}-\d{2}-\d{2})\s*→\s*(\d{4}-\d{2}-\d{2})\s*\]\s*$/);
+      if (m) durationOverride[m[1].trim()] = durationFromDates(m[3], m[4]);
+    }
     // Bulk import is destructive , make it undoable.
     ns.State.pushUndo();
     let created = 0, updated = 0;
@@ -503,6 +650,11 @@ var MMGR = window.MMGR || {};
           task.duration = dur;
           task.startDate = start;
           task.endDate = end;
+          // Task 3: dates drive days - a flagged days-vs-dates disagreement
+          // was already reconciled above; apply it so state matches the dates.
+          if (durationOverride[name] !== undefined && durationOverride[name] !== null) {
+            task.duration = String(durationOverride[name]);
+          }
         }
       }
     });
@@ -626,6 +778,10 @@ var MMGR = window.MMGR || {};
     closeImportDates: closeImportDates,
     idPreview: idPreview,
     idCommit: idCommit,
+    idReadWithAi: idReadWithAi,
+    idFilePickTrigger: idFilePickTrigger,
+    idFilePick: idFilePick,
+    validateImportLines: validateImportLines,
     copyIdTemplate: copyIdTemplate,
     addTaskComment: addTaskComment,
     delTaskComment: delTaskComment,

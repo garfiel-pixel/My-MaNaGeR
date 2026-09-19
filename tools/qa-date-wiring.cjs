@@ -264,8 +264,83 @@ const FLUSH_RAF = `new Promise(r => requestAnimationFrame(() => requestAnimation
       await ev(`await ${FLUSH_RAF}`);
       await delay(250);
       const b4 = await ev(`(function(){ const s = MMGR.State.getState(); const el = document.querySelector('[data-baseline-dot]');
-        return { hasBaseline: !!s.baseline, dotVisible: el ? !el.hidden : 'missing' }; })()`);
-      check('B4 manual Save Baseline hides dot', b4 && b4.hasBaseline && b4.dotVisible === false, b4);
+        return { hasBaseline: !!s.baseline, dotVisible: el ? !el.hidden : 'missing' }; })()`);      check('B4 manual Save Baseline hides dot', b4 && b4.hasBaseline && b4.dotVisible === false, b4);
+
+      // ---- Task 3 gates: AI-assisted import + mismatch flagging ----
+      // NOTE: line breaks inside eval'd strings use String.fromCharCode(10) -
+      // a \n escape in a harness template literal becomes a REAL newline in
+      // the sent expression, i.e. a newline inside a quoted string = parse
+      // error (harness bug caught when I1/I2 returned null).
+      const idOk = await ev(`(function(){
+        MMGR.Tasks.openImportDates();
+        const src = document.getElementById('id-source');
+        src.value = ['Pour Slab (5d) [2026-08-17 → 2026-08-21]', 'Steel Frame (4d) [2026-08-24 → 2026-08-27]'].join(String.fromCharCode(10));
+        MMGR.Tasks.idPreview();
+        const modal = document.getElementById('importdates-modal');
+        const rows = document.querySelectorAll('#id-preview table tbody tr').length;
+        const errs = document.querySelectorAll('#id-mismatch [style*="var(--danger)"]').length;
+        return { modalOpen: modal.classList.contains('on'), rows: rows, blockingRows: errs, commitDisabled: document.getElementById('id-commit-btn').disabled };
+      })()`);
+      check('I1 valid strict lines: preview rows, no red rows, commit enabled',
+        idOk && idOk.modalOpen && idOk.rows === 2 && idOk.blockingRows === 0 && idOk.commitDisabled === false, idOk);
+
+      const idGarbage = await ev(`(function(){
+        const src = document.getElementById('id-source');
+        src.value = ['Pour Slab (5d) [2026-08-17 → 2026-08-21]', 'garbage line no format', 'Backwards (3d) [2026-08-25 → 2026-08-20]'].join(String.fromCharCode(10));
+        MMGR.Tasks.idPreview();
+        const res = MMGR.Tasks.validateImportLines(src.value.split(String.fromCharCode(10)).filter(l => l.trim()));
+        const errs = document.querySelectorAll('#id-mismatch [style*="var(--danger)"]').length;
+        // The real user path: Fill In must refuse.
+        const before = JSON.stringify(MMGR.State.getState().tasks.map(t => t.name));
+        MMGR.Tasks.idCommit();
+        const after = JSON.stringify(MMGR.State.getState().tasks.map(t => t.name));
+        return { errorCount: res.issues.filter(i => i.severity === 'error').length, redRows: errs, stateUnchanged: before === after };
+      })()`);
+      check('I2 garbage + backwards dates: flagged error, Fill In refuses',
+        idGarbage && idGarbage.errorCount === 2 && idGarbage.redRows >= 2 && idGarbage.stateUnchanged === true, idGarbage);
+
+      const idWarn = await ev(`(function(){
+        const src = document.getElementById('id-source');
+        // Days say 4 but Mon-Fri spans 5 working days (app convention, Task 1).
+        src.value = 'Warn Task (4d) [2026-08-17 \u2192 2026-08-21]';
+        MMGR.Tasks.idPreview();
+        const amber = document.querySelectorAll('#id-mismatch [style*="var(--amber)"]').length;
+        MMGR.Tasks.idCommit();
+        const t = MMGR.State.getState().tasks.find(x => x.name === 'Warn Task');
+        return { amberRows: amber, created: !!t, daysCommitted: t ? t.duration : null, start: t ? t.startDate : null, end: t ? t.endDate : null };
+      })()`);
+      check('I3 days-vs-dates disagreement: amber warn, commit reconciles (dates win, 5)',
+        idWarn && idWarn.amberRows >= 1 && idWarn.created === true && idWarn.daysCommitted === '5', idWarn);
+
+      const idOffline = await ev(`(async function(){
+        // Entitlement seam: signed-out device must see the AI button disabled
+        // + the honest note, and idReadWithAi must refuse BEFORE any network.
+        const noteBefore = document.getElementById('id-ai-note').textContent;
+        const btnDisabled = document.getElementById('id-ai-btn').disabled;
+        const allowed = MMGR.Entitlements && MMGR.Entitlements.aiAssistant();
+        return { note: noteBefore, btnDisabled: btnDisabled, allowed: allowed };
+      })()`);
+      check('I4 signed-out: AI button gated by Entitlements seam, note shown',
+        idOffline && idOffline.allowed === false && idOffline.btnDisabled === true && /signed-in/.test(idOffline.note), idOffline);
+
+      const idFile = await ev(`(function(){
+        // File gate: only .txt/.md accepted; the real FileReader path is
+        // exercised via DataTransfer on the hidden input.
+        const dtBad = new DataTransfer();
+        dtBad.items.add(new File(['x'], 'photo.png', { type: 'image/png' }));
+        const input = document.getElementById('id-file');
+        input.files = dtBad.files;
+        let refused = false;
+        const origToast = MMGR.App.showToast;
+        MMGR.App.showToast = function(msg) { if (/file type|paste the text/.test(msg)) refused = true; };
+        MMGR.Tasks.idFilePick(input);
+        MMGR.App.showToast = origToast;
+        return { refusedPlain: refused };
+      })()`);
+      check('I5 non-txt file refused in plain language', idFile && idFile.refusedPlain === true, idFile);
+
+      await ev(`MMGR.Tasks.closeImportDates();`);
+
     });
   } catch (e) {
     log('FATAL harness exception: ' + (e && e.stack || e));

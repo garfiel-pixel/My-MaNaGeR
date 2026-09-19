@@ -1680,6 +1680,9 @@ window.MMGR = MMGR;
     'openImportDates': () => window.MMGR.Tasks.openImportDates(),
     'idPreview': () => window.MMGR.Tasks.idPreview(),
     'idCommit': () => window.MMGR.Tasks.idCommit(),
+    'idReadWithAi': () => window.MMGR.Tasks.idReadWithAi(),
+    'idFilePickTrigger': () => window.MMGR.Tasks.idFilePickTrigger(),
+    'idFilePick': (el) => window.MMGR.Tasks.idFilePick(el),
     // MONOLITH-FEATURE-PARITY-DIRECTIVES RESTORE-2: Import Dates 'Copy List'.
     'copyIdTemplate': () => window.MMGR.Tasks.copyIdTemplate(),
     'saveSprint': () => window.MMGR.Tasks.saveSprint(),
@@ -2210,6 +2213,9 @@ window.MMGR = MMGR;
     // blocked in view-only (deliberately not listed here).
     'riskMatrixCell': 1, 'riskMatrixClear': 1, 'tglWbsIssues': 1,
     'copyIdTemplate': 1, 'emailTpl': 1, 'printCharter': 1,
+    // Task 3 AI import: preview, AI read, file load and the file dialog
+    // never mutate state (only Fill In does) - safe in view-only mode.
+    'idReadWithAi': 1, 'idFilePickTrigger': 1, 'idFilePick': 1,
     // Phase 7: wxRefresh (view the forecast) + wxCopyNotice (copy text) are
     // read-only; wxGeocode writes the site location config and wxLogToday /
     // wxLogManual write the LD-claim weather log , all stay blocked in
@@ -2376,7 +2382,7 @@ window.MMGR = MMGR;
     // field (Google OAuth Client ID) , it was missing from this change
     // whitelist, so the value sat in the box but was never persisted.
     // `change` is the correct event for a one-time paste/type-then-blur field.
-    if (handler && (action === 'updEnvelope' || action === 'saveSprint' || action === 'setWorkWeek' || action === 'setRegion' || action === 'loadProjectFile' || action === 'mergeProjectFile' || action === 'updCharter' || action === 'updClose' || action === 'setUserName' || action === 'addRaciTaskFromPicker' || action === 'addRaciPersonFromPicker' || action === 'updField' || action === 'updTaskField' || action === 'updKPI' || action === 'updKPILink' || action === 'updKPIDir' || action === 'updSpendEntry' || action === 'updRaciTask' || action === 'updRaciPerson' || action === 'claimSetCause' || action === 'aiSetTier' || action === 'setErrWebhook' || action === 'driveAutoInterval' || action === 'driveSetPass' || action === 'syncClientId' || action === 'bidPkgUpd' || action === 'bidSubUpd' || action === 'bidLineUpd' || action === 'bidAmount' || action === 'gonogoUpd' || action === 'gonogoCatUpd' || action === 'gonogoCritUpd' || action === 'updInspItem')) {
+    if (handler && (action === 'updEnvelope' || action === 'saveSprint' || action === 'setWorkWeek' || action === 'setRegion' || action === 'loadProjectFile' || action === 'mergeProjectFile' || action === 'updCharter' || action === 'updClose' || action === 'setUserName' || action === 'addRaciTaskFromPicker' || action === 'addRaciPersonFromPicker' || action === 'updField' || action === 'updTaskField' || action === 'updKPI' || action === 'updKPILink' || action === 'updKPIDir' || action === 'updSpendEntry' || action === 'updRaciTask' || action === 'updRaciPerson' || action === 'claimSetCause' || action === 'aiSetTier' || action === 'setErrWebhook' || action === 'driveAutoInterval' || action === 'driveSetPass' || action === 'syncClientId' || action === 'bidPkgUpd' || action === 'bidSubUpd' || action === 'bidLineUpd' || action === 'bidAmount' || action === 'gonogoUpd' || action === 'gonogoCatUpd' || action === 'gonogoCritUpd' || action === 'updInspItem' || action === 'idFilePick')) {
       handler(el, e);
     }
   });

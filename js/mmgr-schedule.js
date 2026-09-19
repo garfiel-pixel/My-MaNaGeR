@@ -819,6 +819,29 @@ var MMGR = window.MMGR || {};
   }
 
   // ---- API ----
+  // ---- Parallel tasks (Task 4, 2026-09-19) ----
+  // Non-phase, non-lead-time tasks whose scheduled windows overlap by >= 1
+  // day, using the SAME calendar-day predicate as findResourceConflicts and
+  // audit() so the three can never disagree. Render-time only: nothing is
+  // stored, no state bloat, no schema change. O(n^2) pairwise is fine at WBS
+  // scale (hundreds of rows worst case = tens of thousands of comparisons).
+  function parallelGroups(tasks) {
+    const map = new Map();
+    const list = (tasks || []).filter(t => !t.isPhase && !t.leadTime && t.startDate && t.endDate);
+    for (let i = 0; i < list.length; i++) {
+      for (let j = i + 1; j < list.length; j++) {
+        const a = list[i], b = list[j];
+        if (U.daysBetween(b.startDate, a.endDate) >= 0 && U.daysBetween(a.startDate, b.endDate) >= 0) {
+          if (!map.has(a.id)) map.set(a.id, { peers: [], window: { start: a.startDate, end: a.endDate } });
+          if (!map.has(b.id)) map.set(b.id, { peers: [], window: { start: b.startDate, end: b.endDate } });
+          map.get(a.id).peers.push(b.id);
+          map.get(b.id).peers.push(a.id);
+        }
+      }
+    }
+    return map;
+  }
+
   ns.Schedule = {
     lookaheadTasks: lookaheadTasks,
     computePpc: computePpc,
@@ -839,6 +862,7 @@ var MMGR = window.MMGR || {};
     getNearCritical: getNearCritical,
     findLeadTimeItems: findLeadTimeItems,
     findResourceConflicts: findResourceConflicts,
+    parallelGroups: parallelGroups,
     audit: audit,
     triSample: triSample,
     simulateSchedule: simulateSchedule,

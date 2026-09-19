@@ -1141,6 +1141,10 @@ var MMGR = window.MMGR || {};
       if (t.isPhase || (t.level || 0) === 0) phaseStack.push({ indent: indent, id: t.id });
       if (!hidden) visibleTasks.push(t);
     }
+    // Task 4 (2026-09-19): parallel groups computed ONCE per render (the
+    // pairwise overlap predicate matches audit() exactly). Badge markup is
+    // rendered per-row from this map.
+    const parGroups = ns.Schedule && ns.Schedule.parallelGroups ? ns.Schedule.parallelGroups(visibleTasks) : null;
     body.innerHTML = visibleTasks.map(t => {
       const level = t.level || 0;
       const isPhase = t.isPhase || level === 0;
@@ -1159,6 +1163,12 @@ var MMGR = window.MMGR || {};
           <label class="wb-milestone" title="Mark as Milestone"><input type="checkbox" ${t.milestone ? 'checked' : ''} data-action="tglMilestone" data-id="${U.escapeHtml(t.id)}"> <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-flag"></use></svg></label>
           ${t.critical ? '<span class="badge bo" style="font-size:.6rem;padding:1px 4px;margin-left:4px">CP</span>' : ''}
           ${chainRisk ? '<span class="badge br" style="font-size:.6rem;padding:1px 4px;margin-left:4px" title="A predecessor is overdue, this downstream chain is at risk (2.1)">CHAIN</span>' : ''}
+          ${parGroups && parGroups.has(t.id) ? (() => {
+            const g = parGroups.get(t.id);
+            const names = g.peers.map(pid => { const p = visibleTasks.find(x => String(x.id) === String(pid)); return p ? p.name : pid; }).join(', ');
+            const when = g.window.start + ' to ' + g.window.end;
+            return '<span class="badge bo" tabindex="0" role="img" aria-label="Runs in parallel with ' + U.escapeHtml(names) + ' (' + when + ')" title="Parallel with: ' + U.escapeHtml(names) + ' (' + when + ')" style="font-size:.6rem;padding:1px 4px;margin-left:4px;cursor:help"><svg class="ico" aria-hidden="true" style="font-size:.62rem"><use href="css/mmgr-icons.svg#i-parallel"></use></svg> ' + g.peers.length + '</span>';
+          })() : ''}
           ${t.leadTime ? '<span class="tt-lead-badge">LT</span>' : ''}
           ${t.recurring ? '<span class="tt-rec-badge"><svg class="ico" aria-hidden="true" style="font-size:.6rem"><use href="css/mmgr-icons.svg#i-refresh"></use></svg></span>' : ''}
           ${t.weatherExposed ? '<svg class="ico" aria-hidden="true" style="color:#38bdf8;font-size:.7rem" title="Weather-exposed"><use href="css/mmgr-icons.svg#i-cloud-rain"></use></svg>' : ''}

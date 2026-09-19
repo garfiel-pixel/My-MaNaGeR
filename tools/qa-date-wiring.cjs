@@ -341,6 +341,43 @@ const FLUSH_RAF = `new Promise(r => requestAnimationFrame(() => requestAnimation
 
       await ev(`MMGR.Tasks.closeImportDates();`);
 
+      // ---- Task 4 gates: parallel badges ----
+      const P4 = await ev(`(async function(){
+        // Seed three tasks: A and B overlap (Aug 17-21 vs Aug 19-25), C stands
+        // alone (Aug 28-29). Phases/lead-time items are excluded by design.
+        // Gate isolation: drop leftovers from earlier gates (e.g. Warn Task,
+        // Aug 17-21, which ALSO overlaps pA - the badge correctly counted it).
+        MMGR.State.updateState(function(s){
+          s.tasks = s.tasks.filter(t => t.name !== 'Warn Task');
+        });
+        MMGR.State.updateState(function(s){
+          s.tasks.push(
+            { id:'pA', name:'Parallel A', level:0, indent:0, isPhase:false, status:'todo', startDate:'2026-08-17', endDate:'2026-08-21', duration:'5', assignee:'', critical:false, leadTime:false, recurring:false, weatherExposed:false, confidence:'high', predecessors:[], notes:'', weatherSensitive:false },
+            { id:'pB', name:'Parallel B', level:0, indent:0, isPhase:false, status:'todo', startDate:'2026-08-19', endDate:'2026-08-25', duration:'5', assignee:'', critical:false, leadTime:false, recurring:false, weatherExposed:false, confidence:'high', predecessors:[], notes:'', weatherSensitive:false },
+            { id:'pC', name:'Solo C', level:0, indent:0, isPhase:false, status:'todo', startDate:'2026-08-28', endDate:'2026-08-29', duration:'2', assignee:'', critical:false, leadTime:false, recurring:false, weatherExposed:false, confidence:'high', predecessors:[], notes:'', weatherSensitive:false }
+          );
+        });
+        const map = MMGR.Schedule.parallelGroups(MMGR.State.getState().tasks);
+        const aPeers = map.get('pA') ? map.get('pA').peers.slice() : [];
+        const bPeers = map.get('pB') ? map.get('pB').peers.slice() : [];
+        const cFlagged = !!map.get('pC');
+        MMGR.Render.renderWbs();
+        await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(() => r(true))));
+        const badgeA = document.querySelector('#wbs-body tr.wbs-row[data-id="pA"] .badge[role="img"]');
+        const badgeC = document.querySelector('#wbs-body tr.wbs-row[data-id="pC"] .badge[role="img"]');
+        return {
+          aSeesB: aPeers.indexOf('pB') > -1, bSeesA: bPeers.indexOf('pA') > -1, cFlagged: cFlagged,
+          badgeOnA: !!badgeA, badgeCount: badgeA ? badgeA.textContent.trim() : null,
+          aria: badgeA ? badgeA.getAttribute('aria-label') : null,
+          title: badgeA ? badgeA.getAttribute('title') : null,
+          badgeIcon: badgeA ? !!badgeA.querySelector('use[href*="i-parallel"]') : false,
+          noBadgeOnC: !badgeC
+        };
+      })()`);
+      check('P1 parallelGroups: A<->B peers, C untouched', P4 && P4.aSeesB && P4.bSeesA && !P4.cFlagged, P4);
+      check('P2 WBS badge on A with count 1, none on C', P4 && P4.badgeOnA && P4.badgeCount === '1' && P4.noBadgeOnC, P4);
+      check('P3 hover/aria names the peer task + shared window', P4 && /Parallel B/.test(P4.aria) && /2026-08/.test(P4.title) && P4.badgeIcon, P4);
+
     });
   } catch (e) {
     log('FATAL harness exception: ' + (e && e.stack || e));

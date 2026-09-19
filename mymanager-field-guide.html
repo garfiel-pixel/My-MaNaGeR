@@ -555,6 +555,22 @@ code{overflow-wrap:anywhere;}
 
 .reveal{opacity:0;transform:translateY(22px);transition:opacity .6s var(--ease),transform .6s var(--ease);}
 .reveal.in-view{opacity:1;transform:translateY(0);}
+/* Mobile readability safeguard (owner 2026-09-19): fast momentum scrolls can
+   skip the IntersectionObserver reveal, leaving whole sheets invisible until
+   something late triggers. On small screens we skip the animation entirely -
+   reading beats animation. Live-probed: 29/32 revealed at bottom on desktop
+   Chrome; on phones the race is real and the blank spans the owner hit. */
+@media (max-width:700px){
+  .reveal{opacity:1;transform:none;transition:none;}
+}
+/* Reduced-motion users get content immediately (a11y belt + braces). */
+@media (prefers-reduced-motion: reduce){
+  .reveal{opacity:1;transform:none;transition:none;}
+}
+/* Printed guide shows everything. */
+@media print{
+  .reveal{opacity:1;transform:none;}
+}
 
 /* footer */
 footer{padding:70px 64px 46px;position:relative;}

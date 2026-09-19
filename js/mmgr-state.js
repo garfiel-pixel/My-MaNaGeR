@@ -251,6 +251,9 @@ var MMGR = window.MMGR || {};
       },
       // Baseline
       baseline: null,
+      // Baseline guard (owner 2026-09-19): set once when the first baseline
+      // is auto-captured - the never-auto-capture-again marker.
+      baselineAutoAt: null,
       // Weather region driving selective schedule padding
       weatherRegion: 'northern-temperate',
       // ACTION-PLAN 7: Open-Meteo forecast , one-time geocode + TTL cache,

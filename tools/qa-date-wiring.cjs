@@ -216,6 +216,56 @@ const FLUSH_RAF = `new Promise(r => requestAnimationFrame(() => requestAnimation
       await delay(250);
       const d5 = await ev(`(function(){ const t = MMGR.State.getState().tasks.find(x=>x.id==='dw1'); return { dur: t.duration, start: t.startDate, end: t.endDate }; })()`);
       check('D5 dashboard render + RAF flush preserves wiring', d5 && d5.dur === d4.dur && d5.start === d4.start && d5.end === d4.end, { got: d5, want: d4 });
+
+      // ---- Task 2: baseline guard (auto-capture + nudge dot) ----
+      // B1: the project is schedulable (Task 1 gave dw1 dates+days) and the
+      // dashboard render just ran -> the first baseline must now exist, with
+      // the auto marker set and the nudge dot hidden.
+      const b1 = await ev(`(function(){ const s = MMGR.State.getState();
+        return { hasBaseline: !!(s.baseline && s.baseline.tasks && s.baseline.capturedAt),
+                 autoAt: !!s.baselineAutoAt,
+                 baseTasks: s.baseline ? (s.baseline.tasks||[]).length : -1 };
+      })()`);
+      check('B1 baseline auto-captured on first schedulable render', b1 && b1.hasBaseline && b1.autoAt && b1.baseTasks === 1, b1);
+
+      // B2: nudge dot hidden now that a baseline exists.
+      const dbg = await ev(`(function(){
+        const el = document.querySelector('[data-baseline-dot]');
+        const before = el ? el.hidden : 'missing';
+        MMGR.BaselineGuard.ensure();
+        const after = el ? el.hidden : 'missing';
+        return { before: before, after: after,
+                 hasBaseline: !!MMGR.State.getState().baseline,
+                 count: document.querySelectorAll('[data-baseline-dot]').length };
+      })()`);
+      log('B2 debug: ' + JSON.stringify(dbg));
+      const b2 = dbg ? dbg.after : null;
+      check('B2 nudge dot hidden once baseline exists', b2 === true, dbg);
+
+      // B3: baseline cleared AFTER the auto-capture already happened (user
+      // deleted it / an import wiped it) -> auto-recapture would silently move
+      // the variance reference, so the DOT lights and NO recapture fires.
+      const b3v = await ev(`(function(){
+        MMGR.State.updateState(function(st){ st.baseline = null; });   // keep baselineAutoAt
+        MMGR.BaselineGuard.ensure();
+        const el1 = document.querySelector('[data-baseline-dot]');
+        return { dotVisible: el1 ? !el1.hidden : 'missing',
+                 notRecaptured: !MMGR.State.getState().baseline };
+      })()`);
+      check('B3 cleared-after-capture: dot visible, no silent recapture',
+        b3v && b3v.dotVisible === true && b3v.notRecaptured === true, b3v);
+
+      // B4: restore capture via the real user path (dispatch through the
+      // delegated click handler on the actual button element), then a dash
+      // render (the manual path does not auto-render) hides the dot.
+      await ev(`(function(){ const el = document.querySelector('[data-action="saveBaseline"]'); el.click(); return true; })()`);
+      await delay(400);
+      await ev(`MMGR.Render.renderDash();`);
+      await ev(`await ${FLUSH_RAF}`);
+      await delay(250);
+      const b4 = await ev(`(function(){ const s = MMGR.State.getState(); const el = document.querySelector('[data-baseline-dot]');
+        return { hasBaseline: !!s.baseline, dotVisible: el ? !el.hidden : 'missing' }; })()`);
+      check('B4 manual Save Baseline hides dot', b4 && b4.hasBaseline && b4.dotVisible === false, b4);
     });
   } catch (e) {
     log('FATAL harness exception: ' + (e && e.stack || e));

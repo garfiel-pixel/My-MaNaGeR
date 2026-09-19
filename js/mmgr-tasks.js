@@ -10,6 +10,22 @@ var MMGR = window.MMGR || {};
   const U = ns.Utils;
   const R = ns.Render;
 
+  // Inclusive working-day duration between two ISO dates - the EXACT inverse
+  // of the app's forward convention endDate = addWorkingDays(start, dur - 1):
+  //   duration = workingDaysBetween(start, end)          (strictly-between)
+  //            + isWorkDay(start) + isWorkDay(end)      (endpoint bonuses)
+  //   floor(... + 0.5) rounds a half-open weekend endpoint to its workday.
+  // Mon-Fri with a 5-day week = 5. Same-day = 1 when the day is a workday.
+  // Returns null when either date is missing or the pair is inverted -
+  // callers treat null as "nothing to write".
+  function durationFromDates(start, end) {
+    if (!start || !end) return null;
+    const between = U.workingDaysBetween(start, end);
+    if (between < 0) return null;
+    const raw = between + (U.isWorkDay(start) ? 1 : 0) + (U.isWorkDay(end) ? 1 : 0);
+    return Math.floor(raw + 0.5);
+  }
+
   // ---- Task CRUD ----
   function addTask() {
     ns.State.updateState(function(s) {
@@ -103,6 +119,12 @@ var MMGR = window.MMGR || {};
               task.endDate = U.fmtDate(U.addWorkingDays(task.startDate, dur - 1));
             }
           }
+        } else if (field === 'endDate') {
+          // Dates drive days (owner 2026-09-19): setting the end date
+          // back-computes the Days cell from start+end. No endDate rewrite
+          // here - the user just set it deliberately.
+          const dur = durationFromDates(task.startDate, task.endDate);
+          if (dur !== null) task.duration = String(dur);
         }
       }
     });
@@ -129,6 +151,17 @@ var MMGR = window.MMGR || {};
           const row = document.querySelector('#wbs-body tr.wbs-row[data-id="' + id + '"]');
           const endInp = row && row.querySelector('input[data-field="endDate"]');
           if (endInp) endInp.value = task.endDate;
+        }
+      }
+      if (field === 'endDate') {
+        // Mirror of the startDate patch: the Days cell updates in place so the
+        // date picker stays anchored and the WBS table is never rebuilt.
+        const st = ns.State.getState();
+        const task = (st.tasks || []).find(t => t.id === id);
+        if (task && task.duration) {
+          const row = document.querySelector('#wbs-body tr.wbs-row[data-id="' + id + '"]');
+          const durInp = row && row.querySelector('input[data-field="duration"]');
+          if (durInp) durInp.value = task.duration;
         }
       }
       R.renderGantt();
@@ -571,6 +604,7 @@ var MMGR = window.MMGR || {};
   // ---- API ----
   ns.Tasks = {
     addTask: addTask,
+    durationFromDates: durationFromDates,
     updTaskField: updTaskField,
     tglMilestone: tglMilestone,
     tglWeather: tglWeather,

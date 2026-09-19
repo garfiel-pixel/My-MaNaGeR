@@ -1828,4 +1828,6 @@ dogfood-output/ (720KB QA screenshots) gitignored + added to
 f57a023 (run 35420387750, no failing steps). Deployed 328694ca-7b9c
 from verified staging copy ($HOME/mmgr-deploy): live smoke health 200,
 served CSP carries 5or126vT, sw.js at the edge is v303, zero portfolio
-residue in served app.html, /app strip redirect 200.
+residue in served app.html, /app strip redirect 200. Readability pass
+(owner ask): why-comments added to session.js TTL/lockout constants and
+mintAuthToken's two-layer design - comments only, zero behavior change.

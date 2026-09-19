@@ -188,6 +188,10 @@ export async function sendAuthEmail(env, to, subject, textBody) {
 
 // ---- One-time signed tokens -----------------------------------------------
 
+// Mints a one-time link token: base64url(payload).base64url(HMAC-SHA256).
+// The HMAC makes the payload tamper-proof; the D1 auth_tokens row (jti)
+// makes it single-use. Two layers on purpose - the signature alone would
+// still allow replay. consumeAuthToken (below) is the enforcing reader.
 export async function mintAuthToken(env, email, purpose, ttlMs) {
   const nowSec = Math.floor(Date.now() / 1000);
   const jti = crypto.randomUUID();

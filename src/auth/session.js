@@ -38,6 +38,14 @@ function authPasswordProblem(pw) {
   if (classes < 3) return 'password is too weak - use a mix of upper and lower case, numbers or symbols';
   return null;
 }
+// Auth-flow tuning knobs, in three groups:
+//   Lifetimes  - how long a minted link stays usable (verify is long because
+//                it sits in a welcome email; reset is short because it can
+//                change a password). Both are enforced server-side at
+//                consume time (consumeAuthToken checks payload.exp).
+//   Send caps  - anti-mail-bomb limits (forgot-password per email per hour).
+//   Lockout    - failed-login ladder: 5 fails locks the account for 15 min;
+//                10 fails escalates the lock to a full hour.
 const AUTH_VERIFY_TTL_MS = 24 * 60 * 60 * 1000;
 const AUTH_RESET_TTL_MS = 15 * 60 * 1000;
 const AUTH_RESET_MAX_PER_EMAIL_H = 5;

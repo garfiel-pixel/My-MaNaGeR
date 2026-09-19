@@ -1581,6 +1581,17 @@ body.dark-mode .wbs-alert-item{background:rgba(255,255,255,.04);}
 #importdates-modal.on{display:flex;}
 #importdates-modal .wi-box{background:var(--card);border:1px solid var(--border);border-radius:12px;max-width:860px;width:100%;max-height:90vh;overflow:auto;padding:20px;}
 #importdates-modal h3{color:var(--gold);margin-bottom:10px;font-size:1.05rem;}
+/* IMPORT-BOX-SIZES (owner 2026-09-19): the template + paste boxes had no
+   sizing rule (sibling #wbsimport-modal has one) and collapsed to the
+   ~2-row browser default - unreadable. Same recipe as the WBS import:
+   full width, generous min-heights (template reads-only shows the task
+   list to dictate against; source is where users paste AI output),
+   resize:vertical ONLY (owner: no horizontal resize). */
+#importdates-modal textarea{width:100%;min-height:180px;background:var(--canvas);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:10px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.78rem;resize:vertical;}
+/* Preview + mismatch output: readable table height instead of a cramped
+   strip; grows with content, scrolls inside the modal like the rest. */
+#importdates-modal #id-preview,#importdates-modal #id-mismatch{min-height:110px;}
+#importdates-modal #id-preview:empty{min-height:0;padding:6px 2px;color:var(--slate);font-size:.8rem;}
 
 /* ---- Print ---- */
 /* A clean, ink-friendly printout: chrome hidden, every panel laid out as

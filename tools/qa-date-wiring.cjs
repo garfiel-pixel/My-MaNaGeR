@@ -378,6 +378,72 @@ const FLUSH_RAF = `new Promise(r => requestAnimationFrame(() => requestAnimation
       check('P2 WBS badge on A with count 1, none on C', P4 && P4.badgeOnA && P4.badgeCount === '1' && P4.noBadgeOnC, P4);
       check('P3 hover/aria names the peer task + shared window', P4 && /Parallel B/.test(P4.aria) && /2026-08/.test(P4.title) && P4.badgeIcon, P4);
 
+      // ---- Task 6 gates: background assistant + mailbox ----
+      const W1 = await ev(`(function(){
+        // Seed the owner's exact example: steel fixing lead time, 2 days left.
+        const d = new Date(); d.setDate(d.getDate() + 2);
+        const iso = d.toISOString().slice(0, 10);
+        MMGR.State.updateState(function(s){
+          s.tasks.push({ id:'lt1', name:'Steel fixing', level:0, indent:0, isPhase:false, status:'todo',
+            startDate:'2026-08-01', endDate:'2026-08-05', duration:'5', assignee:'', critical:false,
+            leadTime:true, expectedDate: iso, delivered:false, recurring:false, weatherExposed:false,
+            confidence:'high', predecessors:[], notes:'', weatherSensitive:false });
+        });
+        MMGR.Watch.run();
+        const count = MMGR.Watch.unreadCount();
+        const inbox = MMGR.State.getState().aiInbox || [];
+        const steel = inbox.find(n => /Steel fixing lead time/.test(n.text));
+        return { count: count, hasSteel: !!steel, sev: steel ? steel.severity : null, text: steel ? steel.text : '' };
+      })()`);
+      check('W1 lead-time watcher fires (2 days left -> info notice)', W1 && W1.count >= 1 && W1.hasSteel && W1.sev === 'info', W1);
+
+      const W2 = await ev(`(function(){
+        const before = MMGR.Watch.unreadCount();
+        MMGR.Watch.run(); // idempotent: same condition must NOT re-add
+        const after = MMGR.State.getState().aiInbox.length;
+        MMGR.Watch.openMailbox();
+        const box = document.getElementById('ai-mailbox');
+        const listed = box.classList.contains('on') && /Steel fixing lead time/.test(box.querySelector('[data-mailbox-list]').textContent);
+        const dotHidden = document.querySelector('[data-bell-dot]').hidden; // opened => read => dot clears
+        return { deduped: MMGR.State.getState().aiInbox.length === after, listed: listed, dotHidden: dotHidden, before: before };
+      })()`);
+      check('W2 run() idempotent, mailbox lists notice, dot clears on open', W2 && W2.deduped && W2.listed && W2.dotHidden, W2);
+
+      const W3 = await ev(`(function(){
+        const inbox = MMGR.State.getState().aiInbox;
+        const id = inbox[0].id;
+        MMGR.Watch.dismissNote(id);
+        const gone = !(MMGR.State.getState().aiInbox || []).some(n => n.id === id);
+        // Condition still true -> next run() regenerates a NEW notice (documented behavior).
+        MMGR.Watch.run();
+        const regen = (MMGR.State.getState().aiInbox || []).some(n => /Steel fixing lead time/.test(n.text));
+        return { gone: gone, regenerated: regen };
+      })()`);
+      check('W3 dismiss removes; persistent condition resurfaces (documented)', W3 && W3.gone && W3.regenerated, W3);
+
+      // ---- Task 5 gates: field-report voice destination + action item ----
+      const V1 = await ev(`(function(){
+        MMGR.FieldReport.insertTranscript('Poured the west slab, weather holding.');
+        const notes = MMGR.FieldReport.getFieldNotes();
+        return { saved: /Voice capture/.test(notes) && /west slab/.test(notes) };
+      })()`);
+      check('V1 insertTranscript lands in today field notes, hand-editable', V1 && V1.saved, V1);
+
+      const V2 = await ev(`(function(){
+        MMGR.FieldReport.addFieldAction();
+        const s = MMGR.State.getState();
+        const item = (s.closure.items || []).find(i => String(i.text || '').indexOf('[Field report ') === 0);
+        return { added: !!item };
+      })()`);
+      check('V2 quick action item lands in Closure with report reference', V2 && V2.added, V2);
+
+      const V3 = await ev(`(function(){
+        // Guide carries the one-voice honesty statement (fetched from server).
+        return fetch('/mymanager-field-guide.html').then(r => r.text()).then(t =>
+          ({ honest: /one-voice capture/.test(t) && /cannot tell people apart/.test(t) }));
+      })()`);
+      check('V3 field guide states one-voice capture honestly', V3 && V3.honest, V3);
+
     });
   } catch (e) {
     log('FATAL harness exception: ' + (e && e.stack || e));

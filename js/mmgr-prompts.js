@@ -641,6 +641,12 @@ Generate a client-facing status update in plain language (no PM jargon):
         'Near-critical: ' + (nearCrit.length ? nearCrit.map(t => `[${t.id}] ${t.name} (float ${t.totalFloat}d)`).join(', ') : 'none'),
         '',
         tlLine,
+        // Task 5 (2026-09-19): voice-captured field notes ride inside the
+        // report so the digest is grounded in what the site actually said.
+        (function() {
+          const notes = (MMGR.FieldReport && MMGR.FieldReport.getFieldNotes) ? MMGR.FieldReport.getFieldNotes() : '';
+          return notes ? ('## FIELD NOTES (voice-captured today - hand-editable in state)\n' + notes + '\n') : '';
+        })(),
         '## OUTPUT',
         'Use short sections with the same headings above, then close with the "Where We Stand" paragraph.',
         '',

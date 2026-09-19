@@ -254,6 +254,11 @@ var MMGR = window.MMGR || {};
       // Baseline guard (owner 2026-09-19): set once when the first baseline
       // is auto-captured - the never-auto-capture-again marker.
       baselineAutoAt: null,
+      // Task 5/6 (owner 2026-09-19): field voice notes (per day) + the
+      // background assistant's mailbox. Local-machine only, user-deletable;
+      // additive optional fields, no schema bump.
+      fieldReportNotes: [],
+      aiInbox: [],
       // Weather region driving selective schedule padding
       weatherRegion: 'northern-temperate',
       // ACTION-PLAN 7: Open-Meteo forecast , one-time geocode + TTL cache,

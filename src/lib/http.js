@@ -201,27 +201,52 @@ export async function mintAuthToken(env, email, purpose, ttlMs) {
 }
 
 export async function consumeAuthToken(env, rawToken, purpose) {
-  let payload;
+  // SECURITY (2026-09-18, account-takeover fix): the signature is verified
+  // BEFORE any payload field is trusted, and the ledger lookup is bound to
+  // the token's own email + purpose. Previously neither was done, so a
+  // signed-in attacker could take any valid unused jti they owned (from
+  // their own reset/verify email), re-encode the payload with a VICTIM's
+  // address and a far-future exp, and POST /api/auth/reset to replace the
+  // victim's password. Proven end to end against a local wrangler dev.
+  let payload, payloadStr, sigBytes;
   try {
-    const dot = String(rawToken).indexOf('.');
-    if (dot <= 0) return null;
-    const payloadStr = base64UrlDecode(String(rawToken).slice(0, dot));
+    const raw = String(rawToken);
+    const dot = raw.indexOf('.');
+    if (dot <= 0 || dot >= raw.length - 1) return null;
+    payloadStr = base64UrlDecode(raw.slice(0, dot));
+    sigBytes = base64UrlToBytes(raw.slice(dot + 1));
     payload = JSON.parse(payloadStr);
   } catch (e) { return null; }
   if (!payload || typeof payload !== 'object') return null;
+  // 1. HMAC over the exact payload segment (same scheme as readSession).
+  let expected;
+  try {
+    expected = new Uint8Array(await crypto.subtle.sign('HMAC', await sessionKey(env), new TextEncoder().encode(payloadStr)));
+  } catch (e) { return null; }
+  if (expected.length !== sigBytes.length) return null;
+  let diff = 0;
+  for (let i = 0; i < expected.length; i++) diff |= expected[i] ^ sigBytes[i];
+  if (diff !== 0) return null;
   if (payload.t !== purpose) return null;
   const exp = Number(payload.exp);
   if (!Number.isFinite(exp) || exp * 1000 <= Date.now()) return null;
   const jti = payload.j;
-  if (!jti) return null;
+  const email = typeof payload.e === 'string' ? payload.e : '';
+  if (!jti || !email) return null;
   try {
-    const row = await env.DB.prepare('SELECT used_at FROM auth_tokens WHERE id = ?').bind(jti).first();
+    // 2. Bind the ledger row to the token's own email + purpose, so a token
+    //    can only ever act on the account it was minted for.
+    const row = await env.DB.prepare('SELECT used_at FROM auth_tokens WHERE id = ? AND email = ? AND purpose = ?')
+      .bind(jti, email, purpose).first();
     if (!row) return null;
     if (row.used_at) return null;
-    await env.DB.prepare('UPDATE auth_tokens SET used_at = ? WHERE id = ? AND used_at IS NULL')
+    // 3. Race-safe single use: the winner of the UPDATE is the only one that
+    //    may proceed (mirrors the admin-recovery OTP contract).
+    const up = await env.DB.prepare('UPDATE auth_tokens SET used_at = ? WHERE id = ? AND used_at IS NULL')
       .bind(new Date().toISOString(), jti).run();
+    if (!up || !up.meta || up.meta.changes !== 1) return null;
   } catch (e) { return null; }
-  return payload.e || null;
+  return email;
 }
 
 export function authVerifyEmailBody(name, origin, token) {

@@ -30,7 +30,7 @@
      display-only and never gates anything.
 
    Namespaced as window.MMGR.GoogleAuth (MMGR is created by
-   mmgr-portfolio.js on app.html; created here on admin.html if
+   js/mmgr-utils.js on app.html; created here on admin.html if
    absent). No dependency on any other module. Zero-throw: every
    network / GIS / DOM path is guarded so a missing Google global,
    offline load, or blocked script can never break the page.

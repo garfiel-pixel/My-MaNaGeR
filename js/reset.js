@@ -4,7 +4,7 @@
    Reads ?token=, validates the new password client-side (min 8,
    match), POSTs /api/auth/reset, drives the card states (form /
    ok / error), and offers a fresh-link recovery form (POST
-   /api/auth/forgot) when the 30-min single-use token is dead , the
+   /api/auth/forgot) when the 15-min single-use token is dead , the
    recoverable error path (Complete-States §11).
 
    External file on purpose: CSP script-src 'self', zero hash churn.

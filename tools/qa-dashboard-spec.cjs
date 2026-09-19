@@ -6,13 +6,15 @@
    Asserts the spec's shipped surface without a browser:
      1. --db-* tokens + component rules exist in css/mmgr.css (dark-scoped)
      2. app.html markup: body.db-page, #db-sidebar, #db-nav-btn, #db-scrim,
-        #db-metrics, #top, and every sidebar anchor target resolves
+        #top, and every sidebar anchor target resolves
         (no dead links — skeptical-code-audit rule)
      3. Every icon <use href="#i-..."> introduced by the dashboard exists in
         the sprite (no invisible-glyph regressions)
-     4. mmgr-portfolio.js exposes renderMetrics() and render() calls it
-     5. WCAG 2.2 contrast on every recorded --db-* pair (Gate 4.1, 4.3)
-     6. app.html inline-script CSP hashes match worker.js + serve.cjs
+     4. WCAG 2.2 contrast on every recorded --db-* pair (Gate 4.1, 4.3)
+     5. app.html inline-script CSP hashes match worker.js + serve.cjs
+
+   (The #db-metrics container and js/mmgr-portfolio.js renderMetrics tail
+   were removed 2026-09-18 — owner: strip the dead portfolio-rollup plumbing.)
    ============================================================ */
 'use strict';
 const fs = require('fs');
@@ -25,7 +27,6 @@ const read = p => fs.readFileSync(path.join(ROOT, p), 'utf8');
 const css = read('css/mmgr.css');
 const appHtml = read('app.html');
 const sprite = read('css/mmgr-icons.svg');
-const portfolio = read('js/mmgr-portfolio.js');
 const worker = read('worker.js');
 const serve = read('serve.cjs');
 
@@ -42,8 +43,8 @@ const tokens = ['--db-gold', '--db-gold-soft', '--db-jet-black', '--db-canvas',
   '--db-surface', '--db-surface-raised', '--db-accent', '--db-accent-soft',
   '--db-border', '--db-text-secondary'];
 for (const t of tokens) check('token ' + t, css.includes(t + ':'), t);
-for (const sel of ['body.dark-mode.db-page .db-side{', 'body.dark-mode.db-page .db-metrics{',
-  'body.dark-mode.db-page .db-metric{', '.db-side,.db-hamb,.db-scrim,.db-metrics{display:none;}',
+for (const sel of ['body.dark-mode.db-page .db-side{',
+  '.db-side,.db-hamb,.db-scrim{display:none;}',
   'body.dark-mode.db-page .pcard,']) {
   check('rule ' + sel.slice(0, 45), css.includes(sel));
 }
@@ -59,7 +60,6 @@ check('body class db-page', /<body class="[^"]*\bdb-page\b[^"]*">/.test(appHtml)
 check('#db-sidebar rail', appHtml.includes('id="db-sidebar"') && appHtml.includes('class="db-side"'));
 check('#db-nav-btn hamburger', appHtml.includes('id="db-nav-btn"') && appHtml.includes('data-action="toggleSidebar"'));
 check('#db-scrim', appHtml.includes('id="db-scrim"'));
-check('#db-metrics container', appHtml.includes('id="db-metrics"'));
 check('#top anchor exists', appHtml.includes('id="top"'));
 check('#grid anchor exists', appHtml.includes('id="grid"'));
 check('toggleSidebar in DASH_ACTION_MAP', /'toggleSidebar':\s*\(\)\s*=>\s*toggleSidebar\(\)/.test(appHtml));
@@ -80,14 +80,7 @@ const dashBlock = appHtml.slice(appHtml.indexOf('DASHBOARD-UI-REFRESH-SPEC: dark
 const iconRefs = [...dashBlock.matchAll(/use href="css\/mmgr-icons\.svg#([^"]+)"/g)].map(m => m[1]);
 for (const id of iconRefs) check('icon #' + id, new RegExp('id="' + id + '"').test(sprite), id);
 
-console.log('--- 4. mmgr-portfolio.js renderMetrics ---');
-check('renderMetrics() defined', /function renderMetrics\(\)/.test(portfolio));
-check('render() calls renderMetrics', /function render\(\) {\s*renderMetrics\(\)/.test(portfolio));
-check('renderMetrics in API', /renderMetrics: renderMetrics/.test(portfolio));
-check('renderMetrics is a no-op (launcher metrics removed per UI plan)', /el\.innerHTML = '';/.test(portfolio));
-check('render() still calls renderMetrics', /function render\(\) {\s*renderMetrics\(\)/.test(portfolio));
-
-console.log('--- 5. WCAG 2.2 contrast on recorded pairs (Gate 4.1/4.3) ---');
+console.log('--- 4. WCAG 2.2 contrast on recorded pairs (Gate 4.1/4.3) ---');
 function lum(hex) {
   const c = [0, 2, 4].map(i => parseInt(hex.slice(i, i + 2), 16) / 255)
     .map(v => v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4));
@@ -111,7 +104,7 @@ for (const [name, fg, bg] of pairs) {
   check(name + ' ≥ 4.5:1 (' + r.toFixed(2) + ':1)', r >= 4.5, r.toFixed(2) + ':1');
 }
 
-console.log('--- 6. app.html CSP hashes match worker.js + serve.cjs ---');
+console.log('--- 5. app.html CSP hashes match worker.js + serve.cjs ---');
 const inlineScripts = [];
 const re = /<script>([\s\S]*?)<\/script>/g;
 let m;

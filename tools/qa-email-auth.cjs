@@ -61,6 +61,11 @@
      generic no-leak responses + per-email quota, reset revokes ALL
      sessions, subscription confirmation/cancellation emails,
      resend-verify (unverified -> 2nd email, verified -> no email)
+     E14   TOKEN FORGERY (owner 2026-09-18 account-takeover fix): a
+     valid unused jti + a re-encoded payload naming ANOTHER account
+     (junk or genuine signature) is rejected, a purpose swap is
+     rejected, the forged password never lands, and the genuine
+     token still works for its own purpose
 
    PHASE 4 — PASSWORD-CHANGE API CONTRACT (POST /api/auth/password):
      F1  register a fresh account              -> 200 + cookie
@@ -573,6 +578,47 @@ async function phase3() {
   const frankNewToken = tokenFromLink(frankMailsAfterResend[1] && frankMailsAfterResend[1].text, 'verify');
   const e12b = await api('/api/auth/verify', { method: 'POST', headers: jsonHeaders, body: JSON.stringify({ token: frankNewToken }) });
   check('E12b the fresh resend link verifies the account -> 200', e12b.status === 200 && e12b.body.ok === true, e12b.text);
+
+  // E14 — TOKEN FORGERY / TAMPERING (owner 2026-09-18 account-takeover fix).
+  // Before the fix, consumeAuthToken trusted the token PAYLOAD without
+  // verifying its HMAC and without binding the auth_tokens row to the token's
+  // own email + purpose. Any user could take a valid unused jti they hold
+  // (from their own reset OR verify email), re-encode the payload with a
+  // VICTIM's address and a far-future exp, and POST /api/auth/reset with a
+  // junk signature to replace that victim's password and revoke their
+  // sessions — full account takeover, proven against a local wrangler dev.
+  // These gates keep the hole closed. They deliberately reuse a token that
+  // already exists (FRANK's first verify link is still unused) so the E11
+  // per-email quota arithmetic above is never disturbed.
+  const b64u = (s) => Buffer.from(s, 'utf8').toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  const payloadSeg = (t) => t.slice(0, t.indexOf('.'));
+  const sigSeg = (t) => t.slice(t.indexOf('.') + 1);
+  const jtiOf = (t) => JSON.parse(Buffer.from(payloadSeg(t).replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8')).j;
+  const forgeFrankToken = tokenFromLink(frankMailsAfterRegister[0] && frankMailsAfterRegister[0].text, 'verify');
+  const forgeJti = forgeFrankToken ? jtiOf(forgeFrankToken) : null;
+  const farExp = Math.floor(Date.now() / 1000) + 3600;
+  const forgedReset = (email, jti) => b64u(JSON.stringify({ t: 'reset', e: email, j: jti, iat: Math.floor(Date.now() / 1000), exp: farExp }));
+  check('E14 setup: an unused genuine jti is in hand', !!forgeJti, { forgeJti: forgeJti });
+
+  const e14a = await api('/api/auth/reset', { method: 'POST', headers: jsonHeaders, body: JSON.stringify({ token: forgedReset(DAVE, forgeJti) + '.not-a-real-signature', newPassword: 'forged-pass-1' }) });
+  check('E14a forged reset token (own jti + another account email, junk signature) -> 400',
+    e14a.status === 400 && e14a.body.ok === false, e14a.text);
+
+  const e14b = await api('/api/auth/reset', { method: 'POST', headers: jsonHeaders, body: JSON.stringify({ token: forgedReset(DAVE, forgeJti) + '.' + sigSeg(forgeFrankToken), newPassword: 'forged-pass-1' }) });
+  check('E14b tampered payload carrying the GENUINE signature -> 400',
+    e14b.status === 400 && e14b.body.ok === false, e14b.text);
+
+  const e14c = await api('/api/auth/reset', { method: 'POST', headers: jsonHeaders, body: JSON.stringify({ token: forgedReset(FRANK, forgeJti) + '.' + sigSeg(forgeFrankToken), newPassword: 'forged-pass-1' }) });
+  check('E14c purpose swap (verify jti presented as a reset token) -> 400',
+    e14c.status === 400 && e14c.body.ok === false, e14c.text);
+
+  const e14d = await api('/api/auth/login', { method: 'POST', headers: jsonHeaders, body: JSON.stringify({ email: DAVE, password: 'forged-pass-1' }) });
+  check('E14d the forged password never landed on the target account -> 401',
+    e14d.status === 401 && /invalid email or password/.test(e14d.body.error || ''), e14d.text);
+
+  const e14e = await api('/api/auth/verify', { method: 'POST', headers: jsonHeaders, body: JSON.stringify({ token: forgeFrankToken }) });
+  check('E14e the genuine token still works for its OWN purpose -> 200',
+    e14e.status === 200 && e14e.body.ok === true && e14e.body.email === FRANK, e14e.text);
 }
 
 // ---- PHASE 4 — password-change API contract (POST /api/auth/password) ----

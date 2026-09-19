@@ -753,34 +753,13 @@ async function check(name, expr, expected, hint) {
     return {val: wbsEmpty && kanDeep, wbsEmpty:wbsEmpty, kanDeep:kanDeep};
   })()`);
 
-  // ---- ACTION-PLAN Phase 6: portfolio rollup ----
-  await check('57 portfolio: ranks unlocked projects by urgency with visible reason', `(function(){
-    // Seed a second project's saved state (mirroring mmgr_state_<id> keys)
-    var hot={v:8,schemaVersion:8,projectId:'hot-project',projectName:'Hotel Fit-Out',updatedAt:new Date().toISOString(),
-      tasks:[{id:'h1',name:'Pour Slab',level:0,indent:0,isPhase:true,status:'inprogress',startDate:'2026-06-01',endDate:'2026-07-01',duration:'30',assignee:'A',critical:true,leadTime:false,predecessors:[],milestone:false,weatherSensitive:false,weatherExposed:false},
-             {id:'h2',name:'MEP Rough-In',level:1,indent:1,status:'inprogress',startDate:'2026-07-01',endDate:'2026-07-02',duration:'20',assignee:'B',critical:false,leadTime:false,predecessors:['h1'],milestone:false,weatherSensitive:false,weatherExposed:false}],
-      issues:[{id:'i1',description:'Crane breakdown',status:'open'}],
-      risks:[{id:'r1',description:'Steel strike',probability:'High',impact:'High'}],
-      budgetLines:[{id:'b1',category:'Materials',planned:100000,actual:150000}],
-      changes:[],logEntries:[],commsEntries:[],documents:[],resources:[],stakeholders:[],meetings:[],raci:{tasks:[],persons:[],matrix:{}},charter:{targetCompletion:'2026-07-01'}};
-    localStorage.setItem('mmgr_state_hot-project',JSON.stringify(hot));
-    localStorage.setItem('mmgr_unlocked_hot-project','1');
-    // demo-project is already unlocked in this profile
-    var ranked=MMGR.Portfolio.rank([{id:'demo-project',title:'Demo'},{id:'hot-project',title:'Hotel'}]);
-    var hotRow=ranked.filter(function(r){return r.project.id==='hot-project';})[0];
-    var demoRow=ranked.filter(function(r){return r.project.id==='demo-project';})[0];
-    var hotFirst=ranked[0].project.id==='hot-project';
-    var health=hotRow.health?hotRow.health.score:null;
-    var hasReason=hotRow.urgency.reason.length>3;
-    var demoHasScore=!!demoRow && !!demoRow.health && demoRow.health.score!==null;
-    var tiers={};
-    ranked.forEach(function(r){tiers[r.project.id]=r.urgency.tier;});
-    localStorage.removeItem('mmgr_state_hot-project');
-    localStorage.removeItem('mmgr_unlocked_hot-project');
-    return {val: hotFirst && health!==null && hasReason && demoHasScore && tiers['hot-project']==='high', health:health, reason:hotRow.urgency.reason, demoScore:demoRow?demoRow.health.score:null, order:ranked.map(function(r){return r.project.id;})};
-  })()`);
+  // ---- ACTION-PLAN Phase 6: portfolio rollup — REMOVED 2026-09-18 (owner:
+  // dead #portfolio-strip plumbing stripped; MMGR.Portfolio module deleted) ----
 
   // ---- ACTION-PLAN Phase 7: weather-aware scheduling ----
+  await check('56b portfolio-rollup retired: MMGR.Portfolio is gone by design', `(function(){
+    return {val: typeof MMGR.Portfolio === 'undefined' && !document.getElementById('portfolio-strip')};
+  })()`);
   await check('58 forecast: module booted + dashboard cards + wx buttons present', `(function(){
     var ok=!!window.MMGR && !!MMGR.Forecast;
     var c1=!!document.getElementById('weather-forecast-card');
@@ -873,27 +852,6 @@ async function check(name, expr, expected, hint) {
     var wx=items.filter(function(i){return i.src==='Weather';})[0];
     var impactOrder=items.length>=2 && items[0].impact>=items[items.length-1].impact;
     return {val: !!wx && wx.title.indexOf('Weather risk')>-1 && wx.impact===12 && wx.detail.indexOf('precip 80%')>-1 && impactOrder, wx:wx?wx.detail:null, impact:wx?wx.impact:null, n:items.length};
-  })()`);
-  await check('65 portfolio wx: cached risk days produce a card badge', `(function(){
-    // Pure function + render-path test with an explicitly seeded state, so it
-    // never depends on debounced-save persistence across page reloads.
-    var iso=function(d){var x=new Date(d);return x.toISOString().slice(0,10);};
-    var today=new Date();today.setHours(0,0,0,0);
-    var days=[];
-    for(var i=1;i<=4;i++){var dt=new Date(today.getTime()+i*86400000);days.push({date:iso(dt),code:0,precip:i===1?85:5,tMax:26,tMin:14});}
-    var fake={tasks:[{id:'f1',name:'F',status:'inprogress',startDate:'2026-06-01',endDate:'2026-07-01'}],issues:[],risks:[],budgetLines:[],changes:[],wxCache:{at:Date.now(),lat:1,lon:1,days:days}};
-    var wN=MMGR.Portfolio.wxRiskDays(fake).length;
-    var backup=localStorage.getItem('mmgr_state_demo-project');
-    localStorage.setItem('mmgr_state_demo-project',JSON.stringify(fake));
-    var host=document.createElement('div');host.id='portfolio-strip';document.body.appendChild(host);
-    window.MMGR_PROJECTS=[{id:'demo-project',title:'Demo'}];
-    MMGR.Portfolio.render();
-    var t=host.textContent;
-    var badge=t.indexOf('wx-risk')>-1;
-    host.remove();
-    delete window.MMGR_PROJECTS;
-    if(backup!==null){localStorage.setItem('mmgr_state_demo-project',backup);}
-    return {val: wN>=1 && badge, wN:wN, badge:badge, t:t.slice(0,140)};
   })()`);
 
   // ---- Definitions glossary ----
@@ -1415,23 +1373,28 @@ async function check(name, expr, expected, hint) {
     localStorage.removeItem('mmgr_unlocked_qa-ro');
     return {val: scope === 'readonly' && unlocked === '1', scope:scope, unlocked:unlocked};
   })()`);
-  await check('70f manifest: published demo roCodeHash unlocks viewdemo into readonly', `(async function(){
-    var rec = window.MMGR_PROJECTS ? window.MMGR_PROJECTS.find(function(p){ return p.id === 'demo-project'; }) : null;
-    if(!rec || !rec.roCodeHash) return {val:false, why:'no roCodeHash in manifest', ro: rec && rec.roCodeHash ? rec.roCodeHash.slice(0,8) : null};
-    // Test isolation: capture the demo project's pre-existing unlock keys and
-    // restore them afterwards — attemptUnlock() overwrites them and schedules
-    // a 400ms navigation, and later checks (70e) depend on the scope key being
-    // present so project.html opens past its gate.
-    var prevUnlocked = localStorage.getItem('mmgr_unlocked_demo-project');
-    var prevScope = localStorage.getItem('mmgr_scope_demo-project');
-    activeProject = rec;
-    document.getElementById('code-input').value = 'viewdemo';
+  await check('70f v10 readonly: roCodeHash still maps to readonly scope (attemptUnlock probe)', `(async function(){
+    // v299 #10 removed demo-project (and its published 'viewdemo' roCodeHash)
+    // from the public manifest, so the old live unlock is gone. The mapping it
+    // guarded still ships: a code matching a manifest entry's roCodeHash must
+    // unlock with scope=readonly, never full. Probe the real attemptUnlock
+    // against a demo manifest record; capture/restore the record's stored
+    // unlock keys (attemptUnlock overwrites them and schedules a 400ms
+    // navigation that the next harness navigation supersedes).
+    var rec = (window.MMGR_PROJECTS || []).find(function(p){ return p && p.id === 'demo-filled'; });
+    if(!rec) return {val:false, why:'no demo-filled in manifest'};
+    var prevUnlocked = localStorage.getItem('mmgr_unlocked_demo-filled');
+    var prevScope = localStorage.getItem('mmgr_scope_demo-filled');
+    var code = 'QA-RO-PROBE-9241';
+    var hash = await mmgrHash(code);
+    activeProject = {id:'demo-filled', title:rec.title, description:rec.description, status:rec.status, file:rec.file, codeHash:'', roCodeHash:hash};
+    document.getElementById('code-input').value = code;
     await attemptUnlock();
-    var scope = localStorage.getItem('mmgr_scope_demo-project');
-    var unlocked = localStorage.getItem('mmgr_unlocked_demo-project');
-    if(prevUnlocked === null) localStorage.removeItem('mmgr_unlocked_demo-project'); else localStorage.setItem('mmgr_unlocked_demo-project', prevUnlocked);
-    if(prevScope === null) localStorage.removeItem('mmgr_scope_demo-project'); else localStorage.setItem('mmgr_scope_demo-project', prevScope);
-    return {val: scope === 'readonly' && unlocked === '1', scope:scope, unlocked:unlocked, ro:rec.roCodeHash.slice(0,8)};
+    var scope = localStorage.getItem('mmgr_scope_demo-filled');
+    var unlocked = localStorage.getItem('mmgr_unlocked_demo-filled');
+    if(prevUnlocked === null) localStorage.removeItem('mmgr_unlocked_demo-filled'); else localStorage.setItem('mmgr_unlocked_demo-filled', prevUnlocked);
+    if(prevScope === null) localStorage.removeItem('mmgr_scope_demo-filled'); else localStorage.setItem('mmgr_scope_demo-filled', prevScope);
+    return {val: unlocked === '1' && scope === 'readonly', scope:scope, unlocked:unlocked};
   })()`);
   await send('Page.navigate', { url: BASE + '/project.html?id=demo-project' }); await delay(3000);
 
@@ -1464,9 +1427,22 @@ async function check(name, expr, expected, hint) {
   // never the creator's own. ----
   await ev(`localStorage.setItem('mmgr_admin_projects', JSON.stringify([{id:'qa-local', title:'QA Local Project', description:'created on this device', status:'planning', file:'project.html?id=qa-local', code:'QLOCAL1', codeHash:'x'}]));`);
   await send('Page.navigate', { url: BASE + '/app.html' }); await delay(2500);
-  await check('70g v11 local-first: locally-created project renders with On-this-device + Not-published chips', `(function(){
+  await check('70g v299 W1: local card carries the /local tag + sync dot, chip pills retired', `(function(){
     var card = document.querySelector('.pcard[data-id="qa-local"]');
-    return {val: !!card && !!card.querySelector('.pc-chip.pc-local') && !!card.querySelector('.pc-chip.pc-note'), hasCard: !!card};
+    if(!card) return {val:false, why:'no card'};
+    var chips = card.querySelectorAll('.pc-chip').length;
+    var title = card.querySelector('.pc-title').textContent;
+    // W1b sync state: fabricate the shape fetchCloudSync builds (the session
+    // cloud list) and re-render so the Synced branch is actually exercised,
+    // then restore the boot value.
+    var prevSync = _cloudSync;
+    _cloudSync = { 'qa-local': new Date().toISOString() };
+    renderCards();
+    var sync = document.querySelector('.pcard[data-id="qa-local"] .pc-sync');
+    _cloudSync = prevSync;
+    renderCards();
+    return {val: chips === 0 && title.indexOf('/ local') > -1 && !!sync && sync.textContent.indexOf('Synced') > -1,
+            chips:chips, title:title, sync: sync ? sync.textContent : null};
   })()`);
   // The click is synchronous up to the navigation assignment, so all side
   // effects (full-scope unlock, no modal) are readable before unload. The
@@ -1482,16 +1458,18 @@ async function check(name, expr, expected, hint) {
   // Visitor path must be unchanged: a published-only (non-local) project still
   // opens the access-code modal — publish validation still gates strangers.
   await check('70i v11 local-first: published-only project still opens the unlock modal', `(function(){
-    var prevU = localStorage.getItem('mmgr_unlocked_demo-project');
-    var prevS = localStorage.getItem('mmgr_scope_demo-project');
-    localStorage.removeItem('mmgr_unlocked_demo-project');
-    localStorage.removeItem('mmgr_scope_demo-project');
-    var local = isLocalProject('demo-project');
-    handleCardClick('demo-project');
+    // v299 #10: demo-project left the public manifest; demo-filled is the
+    // remaining published record (boot-seeded as unlocked, so remove that
+    // first or handleCardClick navigates instead of opening the modal).
+    var prevU = localStorage.getItem('mmgr_unlocked_demo-filled');
+    var prevS = localStorage.getItem('mmgr_scope_demo-filled');
+    localStorage.removeItem('mmgr_unlocked_demo-filled');
+    var local = isLocalProject('demo-filled');
+    handleCardClick('demo-filled');
     var modalOpen = document.getElementById('om').classList.contains('open');
     closeModal();
-    if(prevU === null) localStorage.removeItem('mmgr_unlocked_demo-project'); else localStorage.setItem('mmgr_unlocked_demo-project', prevU);
-    if(prevS === null) localStorage.removeItem('mmgr_scope_demo-project'); else localStorage.setItem('mmgr_scope_demo-project', prevS);
+    if(prevU === null) localStorage.removeItem('mmgr_unlocked_demo-filled'); else localStorage.setItem('mmgr_unlocked_demo-filled', prevU);
+    if(prevS === null) localStorage.removeItem('mmgr_scope_demo-filled'); else localStorage.setItem('mmgr_scope_demo-filled', prevS);
     return {val: modalOpen && !local, modalOpen: modalOpen, local: local};
   })()`);
   // Deep-link: project.html?id=qa-local with NO unlock flag set must pass the

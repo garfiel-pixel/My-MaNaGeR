@@ -2327,7 +2327,7 @@ body.glass-premium .sec-nav{position:relative;z-index:1;}
 body.glass-premium .db-side{z-index:200!important;}
 /* Premium Glass performance: containment + reduced glow for weaker devices */
 @supports (contain:layout style){
-  body.glass-premium .pcard,body.glass-premium .cd-card,body.glass-premium .pf-card{contain:layout style;}
+  body.glass-premium .pcard,body.glass-premium .cd-card{contain:layout style;}
 }
 body.glass-premium .mouse-glow{width:260px;height:260px;margin:-130px 0 0 -130px;transition:opacity .5s ease;}
 body.glass-premium.dark-mode .mouse-glow{background:radial-gradient(circle,rgba(99,102,241,.14) 0%,rgba(99,102,241,.06) 34%,rgba(99,102,241,0) 70%);}
@@ -2381,7 +2381,7 @@ body.glass-premium.dark-mode .mouse-glow{background:radial-gradient(circle,rgba(
 body.dark-mode .sync-suggest{background:rgba(245,158,11,.10);border-color:rgba(245,158,11,.4);}
 
 /* DASHBOARD-UI-REFRESH-SPEC - dark dashboard treatment (app.html ONLY) */
-.db-side,.db-hamb,.db-scrim,.db-metrics{display:none;}
+.db-side,.db-hamb,.db-scrim{display:none;}
 body.dark-mode.db-page{
   /* OWNER 2026-09-07: app dark theme joins the pure B&W system */
   --db-gold:#ffffff;            /* accent = white in dark */
@@ -2453,28 +2453,8 @@ body.dark-mode.db-page .db-link:hover{color:var(--db-accent);background:color-mi
 }
 body.dark-mode.db-page .db-link .ico{width:16px;height:16px;flex-shrink:0;}
 body.dark-mode.db-page .db-link:focus-visible{outline:2px solid var(--db-accent);outline-offset:2px;}
-/* ---- Metric summary row (spec §3: Active / At-Risk / Avg Health) ---- */
-body.dark-mode.db-page .db-metrics{
-  display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;
-  margin-bottom:28px;
-}
-body.dark-mode.db-page .db-metric{
-  background:var(--db-surface-raised);border:1px solid var(--db-border);
-  border-radius:var(--squircle-md);padding:18px 20px;
-  display:flex;flex-direction:column;gap:6px;
-}
-body.dark-mode.db-page .db-metric .dm-label{
-  font-size:.66rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
-  color:var(--db-text-secondary);
-}
-body.dark-mode.db-page .db-metric .dm-value{
-  font-size:1.9rem;font-weight:800;line-height:1;color:var(--db-accent);
-  font-variant-numeric:tabular-nums;
-}
-body.dark-mode.db-page .db-metric .dm-unit{font-size:.8rem;font-weight:600;color:var(--db-text-secondary);margin-left:4px;}
 /* ---- Content surfaces: SOLID (Gate 6.1 - dense content never glass) ---- */
 body.dark-mode.db-page .pcard,
-body.dark-mode.db-page .pf-card,
 body.dark-mode.db-page .cd-card{
   background:var(--db-surface);border:1px solid var(--db-border);
   backdrop-filter:none;-webkit-backdrop-filter:none;
@@ -2482,12 +2462,8 @@ body.dark-mode.db-page .cd-card{
 }
 body.dark-mode.db-page .pcard:hover{border-color:var(--db-accent);background:var(--db-surface-raised);}
 body.dark-mode.db-page .pcard.unlocked{box-shadow:inset 0 3px 0 var(--db-accent),0 4px 16px rgba(0,0,0,.35);}
-body.dark-mode.db-page .pf-rank{background:var(--db-accent);color:var(--db-jet-black);}  /* 13.38:1 */
-body.dark-mode.db-page .pf-title,
 body.dark-mode.db-page .pc-title,
 body.dark-mode.db-page .cd-title{color:var(--text);}
-body.dark-mode.db-page .pf-meta,
-body.dark-mode.db-page .pf-reason,
 body.dark-mode.db-page .pc-desc,
 body.dark-mode.db-page .cd-meta,
 body.dark-mode.db-page .cd-sub,
@@ -2531,7 +2507,6 @@ body.dark-mode.db-page .pcard:not(.unlocked) .pc-cta{color:var(--db-text-seconda
     display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:110;
   }
   body.dark-mode.db-page.side-open .db-scrim{display:block;}
-  body.dark-mode.db-page .db-metrics{grid-template-columns:1fr;}
 }
 /* MASTER-ACTION-PLAN RANK 8 (8.1) - projects-list visual weight */
 body.db-page:not(.dark-mode) #grid{position:relative;isolation:isolate;}
@@ -3141,8 +3116,6 @@ body.db-page:not(.dark-mode) .cd-sub,
 body.db-page:not(.dark-mode) .cd-empty,
 body.db-page:not(.dark-mode) .db-sec-sub,
 body.db-page:not(.dark-mode) .pc-desc,
-body.db-page:not(.dark-mode) .pf-meta,
-body.db-page:not(.dark-mode) .pf-reason,
 body.db-page:not(.dark-mode) .db-sub-empty{color:color-mix(in oklch,var(--text) 70%,var(--slate) 30%);}
 /* notice banner (owner 2026-08-15): */
 body.db-page:not(.dark-mode) .notice{

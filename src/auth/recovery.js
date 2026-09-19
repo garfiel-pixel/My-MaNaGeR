@@ -86,17 +86,22 @@ export async function handleAdminRecoveryStatus(request, env) {
 
 // POST /api/auth/admin-recovery/send — email the admin a single-use OTP.
 export async function handleAdminRecoverySend(request, env) {
-  // OWNER 2026-09-14: IP-scoped cap on recovery-code emails (5/30min) as a
-  // first layer; the handler's own 3/hr + 5-attempt-lock layers stay. The
-  // slot is consumed only when an email actually goes out.
-  const rl = await cloudRateCheck(request, 'authmail', env);
-  if (rl.limited) return json({ ok: false, error: 'too many recovery requests - try again in 30 minutes' }, 429);
+  // Auth / flag / eligibility FIRST (owner 2026-09-18): the rate check used to
+  // run before the session check, so an anonymous caller got 429 instead of the
+  // contract's 401 AND burned the shared 'authmail' bucket (5/30min per IP)
+  // that also gates forgot-password from the same address. Only a genuine,
+  // eligible, signed-in request may consume a slot now.
   const session = await readSession(request, env);
   if (!session || !session.sub) return json({ ok: false, error: 'not signed in' }, 401);
   if (!recFlagOn(env)) return recEnabledOffResponse();
   if (!(await recEligible(env, session))) {
     return json({ ok: false, error: 'this account has no verified email on file' }, 403);
   }
+  // OWNER 2026-09-14: IP-scoped cap on recovery-code emails (5/30min) as a
+  // first layer; the handler's own 3/hr + 5-attempt-lock layers stay. The
+  // slot is consumed only when an email actually goes out.
+  const rl = await cloudRateCheck(request, 'authmail', env);
+  if (rl.limited) return json({ ok: false, error: 'too many recovery requests - try again in 30 minutes' }, 429);
   const email = String(session.email || '');
   const hourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
   let sentCount = 0;

@@ -928,3 +928,14 @@ OWNER NEXT STEPS
   broken - you jumped into an invisible section). Menu button now
   trustworthy on mobile.
 - Versions: T8 deploy cb4b98c9-7c4e-4ba7-ba96-741c95336cb7.
+
+## Session 2026-09-19b - GUIDE MOBILE SIDEBAR (owner live report: "screen gets dark, can't tap options")
+
+ROOT CAUSE (second look after owner's real-phone report; earlier synthetic-click probe had wrongly passed):
+- The scrim was a <body> child at z-750; the sidebar (z-800) sits INSIDE .shell, whose z-index:1 creates a stacking context - so from the page's perspective the whole shell (open drawer included) is z-1, UNDER the scrim. Every real tap hit the scrim -> closeSidebar(). Drawer looked open but was untappable.
+- LESSON (recorded): synthetic element.click() bypasses hit-testing - a scrim covering the target still "passes". Real-input probes must use CDP Input.dispatchTouchEvent (goes through Chrome hit-testing) or elementFromPoint assertions at target coordinates. New probe: tmp/touch-probe-guide.cjs (S0 sanity, S1 open, S2 hit-test of nav links, S3 tap->navigate->close).
+- LESSON: touch-probe tool-chain gotchas: (a) tools/chrome-launcher.cjs exports chromePath as a STRING (not a function); (b) ws addEventListener messages carry .data (JSON.parse(ev.data), not the event itself); (c) file:// URLs must be Windows-form (C:/...) - prefer serving via serve.cjs and testing http://127.0.0.1:8765.
+
+FIX: scrim div moved inside .shell (before the sidebar) -> same stacking context; sidebar 800 > scrim 750 > content. One-line markup move; no inline script touched (CSP hashes unchanged; no CSS churn).
+
+VERIFY: local probe FAIL before / PASS after (all 3 nav links hit-test to themselves, tap navigates #welcome + closes drawer); emoji scan PASS; npm run verify PASS after SW cache bump v303->v304 (shell HTML changed; PWA contract); CI GREEN a84dd93; deployed (Version 11458498); PRODUCTION touch probe PASS on /mymanager-field-guide.

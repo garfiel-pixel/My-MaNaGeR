@@ -1823,3 +1823,9 @@ Get-CimInstance ID, restarted, live header verified. Final: qa-full 180/180
 (0 console errors, 0 page exceptions), qa-email-auth 75/75 (real forgot->
 reset flow on the 15-min TTL), npm run verify green (CSP 24/24),
 dashboard-spec 76/76, bundles rebuilt 63/9/4/4 modules zero residual.
+dogfood-output/ (720KB QA screenshots) gitignored + added to
+.assetsignore so wrangler static assets never uploads it. CI green on
+f57a023 (run 35420387750, no failing steps). Deployed 328694ca-7b9c
+from verified staging copy ($HOME/mmgr-deploy): live smoke health 200,
+served CSP carries 5or126vT, sw.js at the edge is v303, zero portfolio
+residue in served app.html, /app strip redirect 200.

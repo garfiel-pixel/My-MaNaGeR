@@ -886,3 +886,26 @@ VERIFICATION EVIDENCE
 OWNER NEXT STEPS
 - Open the local "new town hotel renovation" once - the boot migration re-points it at the existing cloud record; sync then hits the right project.
 - Admin-code backup/recovery is live: sign in on the setup device -> code escrows automatically; recovery = admin page -> "Get my admin code from my account" (requires email-verified account); unverified/never-signed-in cases remain owner-contacted per directive.
+
+## Session 2026-09-19 (Task 1 executed: dates drive days)
+- Shipped: updTaskField endDate branch back-computes duration (inclusive
+  working days, exact inverse of addWorkingDays(start, dur-1), weekend
+  endpoints floored to workdays); endDate commit patches the Days cell in
+  place (no WBS rebuild, date-picker anchor preserved); Gantt move-drag
+  commits run the same invariant via MMGR.Tasks.durationFromDates.
+- KEY CONVENTION (future tasks): duration = workingDaysBetween(start,end)
+  + isWorkDay(start) + isWorkDay(end), floored. Mon-Fri = 5. Same-day = 1.
+  The plan doc originally had an off-by-one (d+1) - corrected in code,
+  harness, and plan doc.
+- Gates: tools/verify-date-wiring.cjs (4/4) + tools/qa-date-wiring.cjs
+  (10/10, CDP, own wrangler :8793, persist OUTSIDE repo).
+- HARNESS LESSONS (2026-09-19): (a) about:blank has an opaque origin -
+  seed localStorage AFTER landing on the real app origin or the seed is
+  silently discarded; (b) project.html requires a locally-owned id
+  (mmgr_admin_projects) or ?id=xxx or the app gate-bounces to app?locked=;
+  (c) compute harness expectations IN-PAGE with the app's own helpers -
+  hand calendar arithmetic got D4/D5 wrong twice.
+- Protocol: commit b3a1a63 pushed; CI run for b3a1a63 GREEN (Actions API
+  polled); deployed from $HOME/mmgr-deploy staging (durationFromDates
+  verified in staged copy pre-deploy); live check: served mmgr-tasks.js
+  contains durationFromDates. Version ffad6c51-7122-40d5-9c18-671fe6ca6aa8.

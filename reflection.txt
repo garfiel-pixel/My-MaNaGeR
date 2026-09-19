@@ -909,3 +909,22 @@ OWNER NEXT STEPS
   polled); deployed from $HOME/mmgr-deploy staging (durationFromDates
   verified in staged copy pre-deploy); live check: served mmgr-tasks.js
   contains durationFromDates. Version ffad6c51-7122-40d5-9c18-671fe6ca6aa8.
+
+## Session 2026-09-19 (Tasks 8 + 11: field guide mobile fixes)
+- T8 SHIPPED (4dafbaf, CI green, deployed cb4b98c9): guide blank-section
+  fix. Live-probed the real cause first: the inline script RUNS in prod
+  (hash WAS registered - earlier session diagnosis wrong); sidebar opens
+  on the live site. The blank sections were the reveal IntersectionObserver
+  being skipped by fast momentum scrolls (32 reveals, 0 in-view at load;
+  29/32 even after full scroll on desktop Chrome). Fix is CSS-only:
+  <=700px + reduced-motion + print force .reveal visible. Mobile probe:
+  0 invisible sections at rest AND after rapid flick scrolls; desktop
+  animation intact. NOTE (lesson): the .html route 404s on live checks -
+  prod strips extensions, use the extensionless path.
+- T11 VERIFIED-WORKING, no code change needed: mobile sidebar opens,
+  internally scrollable (overflow-y:auto + touch scrolling present),
+  nav click navigates to the topic AND closes the drawer. The owner's
+  report predated T8's fix (blank CONTENT below made navigation appear
+  broken - you jumped into an invisible section). Menu button now
+  trustworthy on mobile.
+- Versions: T8 deploy cb4b98c9-7c4e-4ba7-ba96-741c95336cb7.

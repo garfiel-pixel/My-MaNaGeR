@@ -51,3 +51,8 @@ my-manager.garfieldprocis.workers.dev-*.html
 /images/pages/launcher-mobile.png
 /images/pages/marketing.png
 /images/pages/project-workspace.png
+
+# QA dogfood session artifacts (screenshots from browser probes, 2026-09-18).
+# Session output, not source. Also in .assetsignore so wrangler static
+# assets never uploads it (wrangler does NOT honor .gitignore).
+/dogfood-output/

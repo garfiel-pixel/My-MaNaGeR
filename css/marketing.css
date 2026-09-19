@@ -1257,3 +1257,9 @@ body.dark-mode .nav-dd-item:hover{color:var(--gold);background:rgba(var(--gold-r
 @media (max-width:880px){
   .site-header .signin-btn:not(.is-signedin), .site-header .signin-trigger:not(.is-signedin){display:inline-flex!important;}
 }
+
+/* ---- SIGN-IN-POLISH (owner 2026-09-19): trust line + legal links ---- */
+.email-auth-trust{font-size:.72rem;color:var(--ink);opacity:.75;margin:6px 0 0;line-height:1.4;}
+.auth-legal{font-size:.72rem;margin:4px 0 0;}
+.auth-legal a{color:var(--gold-deep);text-decoration:underline;}
+.auth-legal a:hover{color:var(--gold);}

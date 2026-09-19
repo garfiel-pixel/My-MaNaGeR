@@ -26,7 +26,10 @@ function authPasswordProblem(pw) {
   if (typeof pw !== 'string' || pw.length < AUTH_MIN_PASSWORD) {
     return 'password must be at least ' + AUTH_MIN_PASSWORD + ' characters';
   }
-  if (/^(.)\\1+$/.test(pw)) return 'password is too weak - mix letters, numbers and symbols';
+  // FIX (2026-09-18): this was /^(.)\\1+$/ - a DOUBLE backslash, so it matched
+  // a literal backslash and never fired: 'aaaaaaaa' passed the strength gate.
+  // Register, reset and password-change all route through here.
+  if (/^(.)\1+$/.test(pw)) return 'password is too weak - mix letters, numbers and symbols';
   let classes = 0;
   if (/[a-z]/.test(pw)) classes++;
   if (/[A-Z]/.test(pw)) classes++;
@@ -36,7 +39,7 @@ function authPasswordProblem(pw) {
   return null;
 }
 const AUTH_VERIFY_TTL_MS = 24 * 60 * 60 * 1000;
-const AUTH_RESET_TTL_MS = 30 * 60 * 1000;
+const AUTH_RESET_TTL_MS = 15 * 60 * 1000;
 const AUTH_RESET_MAX_PER_EMAIL_H = 5;
 const AUTH_LOCK_FAILS = 5;
 const AUTH_LOCK_WINDOW_MS = 15 * 60 * 1000;
@@ -219,7 +222,7 @@ export async function handleAuthForgot(request, env) {
         const rtoken = await mintAuthToken(env, email, 'reset', AUTH_RESET_TTL_MS);
         await sendAuthEmail(env, email,
           'Reset your My MaNaGeR password',
-          'We received a request to reset your My MaNaGeR password.\n\nReset it here (the link expires in 30 minutes):\n\n' +
+          'We received a request to reset your My MaNaGeR password.\n\nReset it here (the link expires in 15 minutes):\n\n' +
           origin + '/reset.html?token=' + encodeURIComponent(rtoken) + '\n\nIf you did not request this, you can ignore this email.');
         await recordSend();
       }

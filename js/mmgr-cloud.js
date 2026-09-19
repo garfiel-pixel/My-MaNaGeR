@@ -49,7 +49,7 @@
    cloud feature is additive, exactly like the Drive section.
 
    Namespaced as window.MMGR.Cloud (MMGR created by
-   mmgr-portfolio.js / mmgr-state.js). Buttons use data-action so
+   js/mmgr-state.js / the page's first loaded module). Buttons use data-action so
    the readonly guard and ACTION_MAP delegation apply (mmgr-app.js).
    ============================================================ */
 var MMGR = window.MMGR || {};

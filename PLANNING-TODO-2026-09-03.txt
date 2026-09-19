@@ -1792,3 +1792,34 @@ ai-relay PASS, report-issue 27/27, dynamic-labels 3/3, delegate-gate OK,
 wrangler dry-run OK, emoji scan clean, npm run verify green. Incident:
 stale serve.cjs (PID 8564) squatted :8765 -> phase1 404s (lesson 10);
 killed by PID, port freed, 29/29. CI green 8ec14e2 (run 35299640769). Deployed 44081388-7f72: remote D1 migration 0021 applied, staged copy verified (bundle+router+migration greps) before deploy, live smoke: health 200, app.html 307 strip, PUT /api/auth/admin-code live (400 on bad body).
+SESS 2026-09-18 (wave 5) - Reset-TTL 15min + dead portfolio plumbing removed
++ qa-full v299 drift repair. Owner rulings: (a) reset link window 30min ->
+15min (constant/email copy/comment said 30 consistently, owner ruled 15):
+AUTH_RESET_TTL_MS (src/auth/session.js:42) + reset email copy + js/reset.js
+comment, all synced; reset.html/verify.html/field guide state no window, QA
+mints its own tokens, no other copy touched. (b) portfolio rollup strip
+(dead since 8776d5f "launcher is not a dashboard"): REMOVE the plumbing.
+Deleted js/mmgr-portfolio.js (~7KB x2 bundles), app.html boot render call,
+never-populated #db-metrics host + its CLS rule, .pf-* rules (app.html +
+mmgr.css, both themes; cloud-dash cards keep their own duplicated styling),
+build.js entries + dev-fallback loader lines (app.html, project.html).
+qa-full 57/65 replaced by 56b module-absence gate;
+tools/qa-dashboard-spec.cjs updated in lockstep to assert the removal
+(76/76). project.html meta-CSP hash swapped for the edited dev-fallback
+script (regen tool only covers worker/serve header lists; one pre-existing
+orphan hash 1lQZ8Znh left untouched). SW v301->v302; v303 re-bump after the
+late meta-CSP fix (bump must follow the last shell edit).
+HARNESS REPAIR (CI loop rule): qa-full 70f/70g/70i still asserted the v299
+pre-contract - 70f expected demo-project's roCodeHash in the public manifest
+(v299 #10 removed it), 70g/70i expected the retired On-this-device /
+Not-published chip pills (v299 #1 -> /local title tag + .pc-sync dot).
+Rewritten: 70f probes real attemptUnlock with a fabricated roCodeHash on
+demo-filled (mapping contract: ro hash -> scope=readonly), 70g asserts
+zero .pc-chip + /local tag + Synced dot (fetchCloudSync shape fabricated +
+restored), 70i uses demo-filled as the published-only record. Incident:
+stale serve.cjs (PID 3748) squatted :8765 with pre-edit CSP hashes -> 5
+phantom launcher failures (lesson 10 again); killed by PID after
+Get-CimInstance ID, restarted, live header verified. Final: qa-full 180/180
+(0 console errors, 0 page exceptions), qa-email-auth 75/75 (real forgot->
+reset flow on the 15-min TTL), npm run verify green (CSP 24/24),
+dashboard-spec 76/76, bundles rebuilt 63/9/4/4 modules zero residual.

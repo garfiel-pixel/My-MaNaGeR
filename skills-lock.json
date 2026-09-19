@@ -120,6 +120,12 @@
       "sourceType": "local",
       "skillPath": ".agents/skills/think outside the box skill/think outside the box.md",
       "computedHash": "c217e7e23fbbc922f6512c493e819f78b1c03904a89ebda4eef80e416ec85309"
+    },
+    "sleek-design-mobile-apps": {
+      "source": "sleekdotdesign/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/design-mobile-apps/SKILL.md",
+      "computedHash": "1e7a933ac86d075fb82d28067bb5f6c148b480028f726a1906f4ecb9d55717a5"
     }
   }
 }

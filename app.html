@@ -121,20 +121,11 @@ body.glass-premium .wrap{position:relative;z-index:1;}
 .cd-meta{font-size:.66rem;color:var(--slate);line-height:1.5;}
 .cd-empty{grid-column:1/-1;text-align:center;color:var(--slate);font-size:.76rem;padding:18px 10px;}
 .cd-card .btn{width:auto;align-self:flex-start;}
-/* ACTION-PLAN 6.1 portfolio rollup strip */
-.pf-strip{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;margin:0 auto 28px;max-width:1040px;}
-.pf-card{display:flex;gap:12px;background:var(--glass-fill-dark);backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturate));-webkit-backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturate));border:var(--glass-border);border-radius:var(--squircle-md);padding:14px 16px;box-shadow:var(--glass-rim),var(--glass-shadow);}
-.pf-rank{width:26px;height:26px;flex-shrink:0;border-radius:50%;background:var(--gold);color:#0b0c10;font-weight:800;font-size:.8rem;display:flex;align-items:center;justify-content:center;}
-.pf-body{min-width:0;}
-.pf-title{font-size:.8rem;font-weight:800;line-height:1.35;}
-.pf-meta{font-size:.68rem;color:var(--slate);margin-top:4px;}
-.pf-reason{font-size:.66rem;color:var(--slate);margin-top:4px;font-style:italic;}
 /* Hide sign-in icon from header - keep it in sidebar only */
 #db-user-avatar{display:none!important;}
 /* CLS PREVENTION: reserve space for dynamic content areas so cards
    rendering after initial paint don't shift the layout. */
 #grid:empty,#demo-grid:empty{min-height:120px;}
-#db-metrics:empty{min-height:0;}
 /* Sidebar margin: smooth transition, no shift on desktop open */
 @media(min-width:769px){.wrap{will-change:margin-left;}}
 
@@ -438,11 +429,6 @@ body.db-page.side-open .sidebar-icons{opacity:0;pointer-events:none;}
        #btn-drive-backup / ...) are unchanged so js/mmgr-google-auth.js
        wiring keeps working as-is. -->
 
-  <!-- DASHBOARD-UI-REFRESH-SPEC §3: portfolio summary metrics (Active /
-       At-Risk / Avg Health), rendered by mmgr-portfolio.js renderMetrics()
-       only in dark dashboard mode , light mode stays untouched (§5). -->
-  <div class="db-metrics" id="db-metrics" aria-label="Portfolio summary"></div>
-
   <!-- SECTION HEADER (visual-analysis fix 2026-08-14): the local/published
        grid and the cloud section below are explicitly labeled so the two
        project lists can never be confused (Cloud vs Local). -->
@@ -619,7 +605,7 @@ body.db-page.side-open .sidebar-icons{opacity:0;pointer-events:none;}
 document.addEventListener('DOMContentLoaded', function() {
   if (!window.__mmgrAppBundleMissing) return;
   var MMGR = window.MMGR || {};
-  ['projects-data.js','demo-data.js','js/mmgr-utils.js','js/mmgr-portfolio.js',
+  ['projects-data.js','demo-data.js','js/mmgr-utils.js',
    'js/mmgr-google-auth.js','js/app/components.js','js/mmgr-cloud-dash.js',
    'js/mmgr-viewport.js','js/mmgr-glass.js'
   ].forEach(function(f) { var e = document.createElement('script'); e.src = f; document.body.appendChild(e); });
@@ -1586,7 +1572,12 @@ const DASH_ACTION_MAP = {
    this device out and reloads. Signed-out visitors see the sign-in hint.
    ============================================================ */
 function setDelAccountErr(msg){
-  var el = document.getElementById('del-account-err');
+  // FIX (2026-09-18): this used to write to #del-account-err, which no longer
+  // exists - the old rail accordion was replaced by the #dam popup. Every
+  // deletion failure (wrong password, missing CONFIRM, server refusal,
+  // offline) was therefore silent. #dam-err is the surface the user is
+  // actually looking at, so write there.
+  var el = document.getElementById('dam-err') || document.getElementById('del-account-err');
   if (el) el.textContent = msg || '';
 }
 function syncDelAccountPanel(user){
@@ -1704,7 +1695,10 @@ function closeDeleteAccountModal(){
   if (inp) inp.addEventListener('input', gate);
   if (go) go.addEventListener('click', function(){
     if (!inp || String(inp.value || '').trim().toUpperCase() !== 'CONFIRM') return;
-    closeDeleteAccountModal();
+    // FIX (2026-09-18): do NOT close the popup before the request. Closing it
+    // first meant a failed delete (wrong password, offline, server refusal)
+    // reported into a hidden node and the user saw nothing at all. Success
+    // reloads the page, so the popup only ever needs to stay open on failure.
     deleteMyAccount(damKind);
   });
   if (cancel) cancel.addEventListener('click', closeDeleteAccountModal);
@@ -1787,8 +1781,6 @@ document.addEventListener('DOMContentLoaded', function() {
   document.querySelectorAll('[data-action="tglGlassMode"]').forEach(g => { g.checked = glass; });
   if (window.MMGR && MMGR.Glass && MMGR.Glass.sync) MMGR.Glass.sync();
 })();
-if (window.MMGR && window.MMGR.Portfolio) window.MMGR.Portfolio.render();
-
 /* NEW-UI-CREATION-BRIEF I1 follow-up , boot the rail v2 surface: render the
    All Projects accordion list, set the moon/sun icon to the current theme,
    and sync the hamburger icon/aria with the early-apply side-open default

@@ -476,6 +476,11 @@ var MMGR = window.MMGR || {};
       '</span>' +
       '<input type="text" class="email-auth-input email-auth-name" placeholder="Name (optional)" autocomplete="name" aria-label="Name" inputmode="text" enterkeyhint="next" autocapitalize="words" hidden>' +
       '<button type="submit" class="btn btn-g email-auth-submit">Sign in</button>' +
+      // SIGN-IN-POLISH (owner 2026-09-19): trust microcopy + legal links.
+      // Owner directive: Privacy/Terms live on the sign-in sheet and in the
+      // field guide - nowhere else new.
+      '<p class="email-auth-trust">You are signing in to save projects to your own cloud. Nothing is shared.</p>' +
+      '<p class="auth-legal"><a href="privacy.html">Privacy Policy</a><span aria-hidden="true"> \u00b7 </span><a href="terms.html">Terms of Service</a></p>' +
       '</div>' +
       '<div class="email-auth-alt">' +
       '<button type="button" class="email-auth-mode">Create an account instead</button>' +
@@ -752,6 +757,13 @@ var MMGR = window.MMGR || {};
       if (!email || !password) { setEmailAuthError(block, 'Enter your email and password.'); return; }
       if (password.length < 8) { setEmailAuthError(block, 'Password must be at least 8 characters.'); return; }
       if (pass) pass.value = ''; // never echo the password in the DOM
+      // SIGN-IN-POLISH: visible in-flight state - the button disables and
+      // names what is happening, so a slow link never reads as a dead click.
+      const originalLabel = submitBtn ? submitBtn.textContent : '';
+      if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Signing you in\u2026'; }
+      const restoreBtn = function() {
+        if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = (_emailMode === 'register') ? 'Create account' : 'Sign in'; }
+      };
       const p = (_emailMode === 'register')
         ? emailRegister(email, password, name)
         : emailLogin(email, password);
@@ -774,8 +786,10 @@ var MMGR = window.MMGR || {};
         if (typeof window.mmgrOnGoogleSignIn === 'function') {
           try { window.mmgrOnGoogleSignIn(user); } catch (e) { /* optional hook */ }
         }
+        restoreBtn();
       }).catch(function(err) {
         setEmailAuthError(block, (err && err.message) || 'Sign-in failed.');
+        restoreBtn();
       });
     });
   }

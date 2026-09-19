@@ -3659,3 +3659,9 @@ body.view-3d .view-deck{--glass-blur:0px;}
 .ai-note-tx{font-size:.8rem;color:var(--text);line-height:1.45;}
 .ai-note-meta{font-size:.68rem;color:var(--slate);}
 .ai-note-empty{border-left-color:var(--border);color:var(--slate);}
+
+/* ---- SIGN-IN-POLISH (owner 2026-09-19): trust line + legal links ---- */
+.email-auth-trust{font-size:.72rem;color:var(--slate);margin:6px 0 0;line-height:1.4;}
+.auth-legal{font-size:.72rem;margin:4px 0 0;}
+.auth-legal a{color:var(--slate);text-decoration:underline;}
+.auth-legal a:hover{color:var(--text);}

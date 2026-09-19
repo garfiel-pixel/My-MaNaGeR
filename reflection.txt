@@ -939,3 +939,20 @@ ROOT CAUSE (second look after owner's real-phone report; earlier synthetic-click
 FIX: scrim div moved inside .shell (before the sidebar) -> same stacking context; sidebar 800 > scrim 750 > content. One-line markup move; no inline script touched (CSP hashes unchanged; no CSS churn).
 
 VERIFY: local probe FAIL before / PASS after (all 3 nav links hit-test to themselves, tap navigates #welcome + closes drawer); emoji scan PASS; npm run verify PASS after SW cache bump v303->v304 (shell HTML changed; PWA contract); CI GREEN a84dd93; deployed (Version 11458498); PRODUCTION touch probe PASS on /mymanager-field-guide.
+
+## Session 2026-09-19c - TASK 3: AI-ASSISTED IMPORT + MISMATCH FLAGGING (2856425, CI GREEN, deployed 91dd7039)
+
+SHIPPED:
+- validateImportLines(lines) in mmgr-tasks.js: severity 'error' (bad grammar, end<start) blocks commit; 'warn' (days-vs-dates disagreement, new task name) shows. Each issue carries line+name+reason so the panel points at exactly where the problem is.
+- Mismatch panel (#id-mismatch) inside the Import Dates modal: red rows (var(--danger)) = blocks, amber rows (var(--amber)) = heads-up. idCommit refuses while any error exists (count toast), reconciles warn durations at commit with DATES WIN (durationFromDates) - same invariant as Task 1.
+- AI read (idReadWithAi): aiNormalizeSchedulePrompt(rawText, knownTasks) in mmgr-ai.js (exported on ns.AiWin) demands the strict grammar + ONLY-lines; response split/filtered, fed through the validator, preview + mismatch re-rendered. Degrades honestly: no text / empty reply / exception -> toast "paste the strict format instead, it works offline".
+- Entitlement seam: js/app/entitlements.js (MMGR.Entitlements.aiAssistant()) = the ONE future door (owner: AI features are the signed-in experience; premium rules land inside later, callers never change). Signed-out: AI button disabled + quiet note "AI reading is part of the signed-in experience."; strict path untouched. Seem built in Task 3 slot though planned for Task 9 - Task 9 now only EXTENDS it (weather watcher).
+- File picker: hidden #id-file (accept=.txt,.md) + visible trigger button; .txt/.md read via f.text(); anything else refused "Can't read that file type here - paste the text instead."
+- View-only: idReadWithAi/idFilePickTrigger/idFilePick added to READONLY_SAFE_ACTIONS (no mutation); idCommit stays blocked for viewers.
+
+GATES: verify-ai-import.cjs 12/12 (new static T1); qa-date-wiring.cjs extended 14 -> 19 gates, 19/19 (I1 valid preview, I2 garbage+backwards blocked+state unchanged, I3 amber warn + commit reconciles 4d->5d, I4 sign-in gating UI, I5 file-type refusal). npm run verify ALL PASS. CI completed success on 2856425. Staged copy grep-verified (validateImportLines/aiNormalizeSchedulePrompt/Entitlements present) before deploy; live bundle serves 5 hits.
+
+HARNESS LESSONS (recorded for every future task):
+- Line breaks inside eval'd strings MUST use String.fromCharCode(10): a \n escape in a harness template literal becomes a REAL newline inside the sent expression's quoted string = SyntaxError, eval returns null (cost I1/I2 a round).
+- Export-wrapper gate (verify-render-exports) requires js/app/*.js exports to have delegation wrappers in mmgr-app.js; standalone utility modules are exempt via APP_EXCLUDE (components.js precedent; entitlements.js added with rationale).
+- syncIdAiNote() must run on modal OPEN, not only on click, or a signed-out user sees an enabled AI button (I4 caught it).

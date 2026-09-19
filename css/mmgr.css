@@ -3629,3 +3629,9 @@ body.view-3d .view-deck{--glass-blur:0px;}
 [data-perf="on"] .dock{box-shadow:0 6px 18px rgba(15,23,42,.12);}
 [data-perf="on"] .drw-sheet{backdrop-filter:blur(8px) saturate(150%);-webkit-backdrop-filter:blur(8px) saturate(150%);}
 [data-perf="on"] body.db-page:not(.dark-mode) .top{backdrop-filter:blur(6px) saturate(140%);-webkit-backdrop-filter:blur(6px) saturate(140%);}
+
+/* Baseline nudge dot (owner 2026-09-19): visible signal that a schedulable
+   project still has no baseline. Hidden by default; BaselineGuard reveals. */
+.nudge-dot{display:inline-block;width:8px;height:8px;border-radius:50%;
+  background:var(--danger);margin-left:6px;vertical-align:middle}
+.nudge-dot[hidden]{display:none}

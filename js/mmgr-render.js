@@ -286,9 +286,13 @@ var MMGR = window.MMGR || {};
     } else if (baseEl) {
       baseEl.textContent = '';
       baseEl.style.color = 'var(--slate)';
-      if (baseSub) baseSub.textContent = 'No baseline saved, use Save Baseline in Settings';
+      if (baseSub) baseSub.textContent = 'No baseline yet - one is captured automatically once a task has dates and days, or use Save Baseline in Controls.';
       if (baseCard) baseCard.classList.add('tier3');
     }
+    // Baseline guard (owner 2026-09-19): idempotent - auto-captures the first
+    // baseline when the project becomes schedulable and toggles the nudge
+    // dots. Runs on every dashboard render so the signal can never go stale.
+    if (ns.BaselineGuard) ns.BaselineGuard.ensure();
 
     // Baseline variance table, schedule days per task + overall cost delta
     const bvt = $('base-var-body');
@@ -318,7 +322,7 @@ var MMGR = window.MMGR || {};
           ).join('');
         }
       } else {
-        bvt.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--slate);padding:14px">No baseline captured yet. Use Save Baseline in Settings &gt; Controls.</td></tr>';
+        bvt.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--slate);padding:14px">No baseline captured yet - one is captured automatically once a task has dates and days. Use Save Baseline in Controls to set one now.</td></tr>';
       }
       const costEl = $('base-var-cost');
       if (costEl) {

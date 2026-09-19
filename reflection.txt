@@ -956,3 +956,19 @@ HARNESS LESSONS (recorded for every future task):
 - Line breaks inside eval'd strings MUST use String.fromCharCode(10): a \n escape in a harness template literal becomes a REAL newline inside the sent expression's quoted string = SyntaxError, eval returns null (cost I1/I2 a round).
 - Export-wrapper gate (verify-render-exports) requires js/app/*.js exports to have delegation wrappers in mmgr-app.js; standalone utility modules are exempt via APP_EXCLUDE (components.js precedent; entitlements.js added with rationale).
 - syncIdAiNote() must run on modal OPEN, not only on click, or a signed-out user sees an enabled AI button (I4 caught it).
+
+## Session 2026-09-19d - IMPORT-BOX POLISH + TASK 4 PARALLEL BADGES (7b8c524 + dbe0274, both CI GREEN, deployed 42b70c9e / 192bdf91)
+
+IMPORT-BOX POLISH (owner: "two tiny boxes nobody can recognize, vertical resize only"):
+- Root cause: #importdates-modal had NO textarea sizing rule while sibling #wbsimport-modal has one (min-height:180px) - both boxes collapsed to the ~2-row browser default.
+- Fix: same recipe as the WBS import (width:100%, min-height:180px, mono font, resize:vertical ONLY - owner explicitly ruled out horizontal). #id-preview/#id-mismatch get min-height:110px + an :empty quiet state.
+- Verified in a real browser: template + source both 808x180, resize vertical/vertical, modal 860px wide (tmp/measure-import-boxes.cjs).
+- PROBE GOTCHA: seeding the gate AFTER a ?locked= bounce leaves the profile stuck bouncing (MMGR stub, State undefined). Seed mmgr_admin_projects on app.html FIRST, then navigate - fresh profile each run.
+
+TASK 4 PARALLEL BADGES (dbe0274):
+- Schedule.parallelGroups(tasks): pure, render-time only, same calendar-day overlap predicate as findResourceConflicts/audit (never disagrees); excludes phases + lead-time items; returns Map<id, {peers, window}>.
+- WBS name cell: badge (i-parallel sprite symbol, SVG-only hard gate) with peer COUNT; title + aria-label name the peer tasks and the shared date window (keyboard focusable, role=img); no new state, no schema bump.
+- Definitions: plain-language "Parallel Tasks" entry (Scheduling group) per owner directive.
+- Gates: harness 22/22 (P1 pure function A<->B / C clean, P2 badge count + absence on solo task, P3 hover/aria content). One gate lesson: earlier gate leftovers (Warn Task Aug 17-21) ALSO overlap - a correct badge "failed" an assumption written against stale state; gates now filter their own leftovers.
+
+LIVE: production bundle + sprite verified serving parallelGroups + i-parallel after deploy.

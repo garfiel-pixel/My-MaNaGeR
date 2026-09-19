@@ -381,6 +381,8 @@ const FLUSH_RAF = `new Promise(r => requestAnimationFrame(() => requestAnimation
       // ---- Task 6 gates: background assistant + mailbox ----
       const W1 = await ev(`(function(){
         // Seed the owner's exact example: steel fixing lead time, 2 days left.
+        // (Task 9 gates watchers on sign-in, so simulate signed-in here - the
+        // signed-out no-op is E1's job.)
         const d = new Date(); d.setDate(d.getDate() + 2);
         const iso = d.toISOString().slice(0, 10);
         MMGR.State.updateState(function(s){
@@ -389,23 +391,31 @@ const FLUSH_RAF = `new Promise(r => requestAnimationFrame(() => requestAnimation
             leadTime:true, expectedDate: iso, delivered:false, recurring:false, weatherExposed:false,
             confidence:'high', predecessors:[], notes:'', weatherSensitive:false });
         });
-        MMGR.Watch.run();
+        const real = MMGR.GoogleAuth.isSignedIn;
+        MMGR.GoogleAuth.isSignedIn = function(){ return true; };
+        try { MMGR.Watch.run(); } finally { MMGR.GoogleAuth.isSignedIn = real; }
         const count = MMGR.Watch.unreadCount();
         const inbox = MMGR.State.getState().aiInbox || [];
         const steel = inbox.find(n => /Steel fixing lead time/.test(n.text));
         return { count: count, hasSteel: !!steel, sev: steel ? steel.severity : null, text: steel ? steel.text : '' };
       })()`);
-      check('W1 lead-time watcher fires (2 days left -> info notice)', W1 && W1.count >= 1 && W1.hasSteel && W1.sev === 'info', W1);
+      check('W1 lead-time watcher fires (2 days left -> info notice, signed-in)', W1 && W1.count >= 1 && W1.hasSteel && W1.sev === 'info', W1);
 
       const W2 = await ev(`(function(){
         const before = MMGR.Watch.unreadCount();
-        MMGR.Watch.run(); // idempotent: same condition must NOT re-add
+        const real = MMGR.GoogleAuth.isSignedIn;
+        MMGR.GoogleAuth.isSignedIn = function(){ return true; };
+        try { MMGR.Watch.run(); } finally { MMGR.GoogleAuth.isSignedIn = real; } // idempotent: same condition must NOT re-add
         const after = MMGR.State.getState().aiInbox.length;
-        MMGR.Watch.openMailbox();
+        // openMailbox is a signed-in surface too - RE-raise the seam (the
+        // finally above already restored it after run()).
+        MMGR.GoogleAuth.isSignedIn = function(){ return true; };
+        try { MMGR.Watch.openMailbox(); } finally { MMGR.GoogleAuth.isSignedIn = real; }
         const box = document.getElementById('ai-mailbox');
         const listed = box.classList.contains('on') && /Steel fixing lead time/.test(box.querySelector('[data-mailbox-list]').textContent);
+        const unreadAfterOpen = MMGR.Watch.unreadCount();
         const dotHidden = document.querySelector('[data-bell-dot]').hidden; // opened => read => dot clears
-        return { deduped: MMGR.State.getState().aiInbox.length === after, listed: listed, dotHidden: dotHidden, before: before };
+        return { deduped: MMGR.State.getState().aiInbox.length === after, listed: listed, unreadAfterOpen: unreadAfterOpen, dotHidden: dotHidden, before: before };
       })()`);
       check('W2 run() idempotent, mailbox lists notice, dot clears on open', W2 && W2.deduped && W2.listed && W2.dotHidden, W2);
 
@@ -415,7 +425,9 @@ const FLUSH_RAF = `new Promise(r => requestAnimationFrame(() => requestAnimation
         MMGR.Watch.dismissNote(id);
         const gone = !(MMGR.State.getState().aiInbox || []).some(n => n.id === id);
         // Condition still true -> next run() regenerates a NEW notice (documented behavior).
-        MMGR.Watch.run();
+        const real = MMGR.GoogleAuth.isSignedIn;
+        MMGR.GoogleAuth.isSignedIn = function(){ return true; };
+        try { MMGR.Watch.run(); } finally { MMGR.GoogleAuth.isSignedIn = real; }
         const regen = (MMGR.State.getState().aiInbox || []).some(n => /Steel fixing lead time/.test(n.text));
         return { gone: gone, regenerated: regen };
       })()`);
@@ -443,6 +455,74 @@ const FLUSH_RAF = `new Promise(r => requestAnimationFrame(() => requestAnimation
           ({ honest: /one-voice capture/.test(t) && /cannot tell people apart/.test(t) }));
       })()`);
       check('V3 field guide states one-voice capture honestly', V3 && V3.honest, V3);
+
+      // ---- Task 9 gates: sign-in gating + weather watcher ----
+      const E1 = await ev(`(function(){
+        // Signed-out (fresh profile): run() must be a no-op and the mailbox
+        // must show the sign-in card.
+        MMGR.State.updateState(function(s){ s.aiInbox = []; });
+        MMGR.Watch.run();
+        const count = MMGR.State.getState().aiInbox.length;
+        MMGR.Watch.openMailbox();
+        const list = document.getElementById('ai-mailbox').querySelector('[data-mailbox-list]').textContent;
+        const hasCard = /signed-in experience/.test(list) && /Sign in/.test(list);
+        const btn = document.querySelector('#ai-mailbox [data-action="openSignIn"]');
+        const seam = typeof MMGR.Entitlements.aiAssistant === 'function' && MMGR.Entitlements.aiAssistant() === false;
+        return { noop: count === 0, hasCard: hasCard, hasSignInBtn: !!btn, seam: seam };
+      })()`);
+      check('E1 signed-out: run() no-ops, mailbox shows sign-in card, seam denies', E1 && E1.noop && E1.hasCard && E1.hasSignInBtn && E1.seam, E1);
+
+      const E2 = await ev(`(function(){
+        // Simulate sign-in by faking the auth seam (harness cannot do a real
+        // Google flow); restore the real function afterwards.
+        const real = MMGR.GoogleAuth.isSignedIn;
+        MMGR.GoogleAuth.isSignedIn = function(){ return true; };
+        let ok = false;
+        try {
+          ok = MMGR.Entitlements.aiAssistant() === true;
+          // Seeded steel-fixing lead time from W1 was dismissed+regenerated;
+          // clear inbox, run as signed-in: watchers now produce notices.
+          MMGR.State.updateState(function(s){ s.aiInbox = []; });
+          MMGR.Watch.run();
+          var produced = (MMGR.State.getState().aiInbox || []).length >= 1;
+        } finally { MMGR.GoogleAuth.isSignedIn = real; }
+        return { seamAllows: ok, produced: produced };
+      })()`);
+      check('E2 signed-in: seam allows, watchers produce notices', E2 && E2.seamAllows && E2.produced, E2);
+
+      const E3 = await ev(`(function(){
+        // Weather watcher: seed a cached forecast day flagged by the
+        // forecast module's own thresholds (precip >= 60) overlapping a
+        // weather-exposed task; assert one notice citing that date.
+        const day = new Date(); day.setDate(day.getDate() + 1);
+        const iso = day.toISOString().slice(0, 10);
+        MMGR.GoogleAuth.isSignedIn = function(){ return true; };
+        try {
+          MMGR.State.updateState(function(s){
+            s.wxCache = { at: Date.now(), days: [ { date: iso, precip: 80, tMax: 20, tMin: 12, code: 61 } ] };
+            s.tasks.push({ id:'wx1', name:'Concrete pour B', level:0, indent:0, isPhase:false, status:'todo',
+              startDate: iso, endDate: iso, duration:'1', assignee:'', critical:false, leadTime:false,
+              recurring:false, weatherExposed:true, weatherSensitive:false, confidence:'high', predecessors:[], notes:'' });
+          });
+          MMGR.State.updateState(function(s){ s.aiInbox = []; });
+          MMGR.Watch.run();
+          var wx = (MMGR.State.getState().aiInbox || []).find(n => n.kind === 'weather' && /Concrete pour B/.test(n.text) && n.text.indexOf(iso) > -1);
+        } finally { delete MMGR.GoogleAuth.isSignedIn; }
+        return { fired: !!wx };
+      })()`);
+      check('E3 weather-exposed task inside a risk day -> one weather notice', E3 && E3.fired, E3);
+
+      const E4 = await ev(`(function(){
+        // Offline path: expired/absent cache -> no weather notice, no error.
+        MMGR.GoogleAuth.isSignedIn = function(){ return true; };
+        try {
+          MMGR.State.updateState(function(s){ s.wxCache = null; s.aiInbox = []; });
+          MMGR.Watch.run();
+          var wx = (MMGR.State.getState().aiInbox || []).some(n => n.kind === 'weather');
+        } finally { delete MMGR.GoogleAuth.isSignedIn; }
+        return { silentOffline: !wx };
+      })()`);
+      check('E4 offline (no cache): no weather notice, no error', E4 && E4.silentOffline, E4);
 
     });
   } catch (e) {

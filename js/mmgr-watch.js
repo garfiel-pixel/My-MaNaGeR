@@ -66,15 +66,47 @@ var MMGR = window.MMGR || {};
     return out;
   }
 
+  // Weather-aware scheduling hint (Task 9): weather-EXPOSED tasks whose
+  // window contains a forecast risk day. Reads ONLY the forecast module's
+  // cached days through its own riskDays() - same thresholds (precip 60%,
+  // heat 32C, cold 0C), same source of truth; this never invents weather.
+  // Offline (no/expired cache) it silently returns nothing.
+  function watchWeather(s) {
+    if (!ns.Forecast || !ns.Forecast.riskDays) return [];
+    const risky = ns.Forecast.riskDays(s);
+    if (!risky || !risky.length) return [];
+    const out = [];
+    for (const t of (s.tasks || [])) {
+      if (!t.weatherExposed || !t.startDate || !t.endDate) continue;
+      for (const d of risky) {
+        if (d.date >= t.startDate && d.date <= t.endDate) {
+          const why = (d.alerts && d.alerts.length) ? d.alerts.join(', ') : 'weather risk';
+          out.push({ kind: 'weather', severity: 'info',
+            text: t.name + ' runs ' + t.startDate + ' to ' + t.endDate + ' - forecast flags ' + d.date + ' (' + why + '). Check the window.' });
+          break; // one notice per task, not per day
+        }
+      }
+    }
+    return out;
+  }
+
+  // Signed-in gate (Task 9): the assistant is part of the signed-in
+  // experience. Signed-out, run() is a no-op and the mailbox shows the
+  // plain-language card. The Entitlements seam is the only rule source.
+  function assistantActive() {
+    return !!(ns.Entitlements && ns.Entitlements.aiAssistant && ns.Entitlements.aiAssistant());
+  }
+
   // Dedup: a (kind + text) pair already in the inbox (read or unread) is
   // not re-added. Dismissed notices are removed from the array entirely,
   // so a persistent condition resurfaces as a NEW notice later - by design.
   function run() {
     try {
+      if (!assistantActive()) { renderBell(); return; }
       const s = ns.State.getState();
       if (!s || !s.tasks) return;
       const today = U.todayStr();
-      const found = [].concat(watchLeadTimes(s, today), watchBudget(s), watchResources(s));
+      const found = [].concat(watchLeadTimes(s, today), watchBudget(s), watchResources(s), watchWeather(s));
       if (!found.length) return;
       let added = 0;
       ns.State.updateState(function(st) {
@@ -110,10 +142,20 @@ var MMGR = window.MMGR || {};
   }
 
   function openMailbox() {
-    const s = ns.State.getState();
     const box = document.getElementById('ai-mailbox');
     if (!box) return;
     const list = box.querySelector('[data-mailbox-list]');
+    // Task 9: locked card for signed-out users - plain language, one route
+    // to the existing sign-in sheet. No notices are computed or shown.
+    if (!assistantActive()) {
+      if (list) list.innerHTML =
+        '<div class="ai-note"><div class="ai-note-tx">The background assistant is part of the signed-in experience. Sign in and it starts watching lead times, budget and resources on this project - everything stays on this machine either way.</div>' +
+        '<div style="margin-top:6px"><button class="btn btn-g btn-s" data-action="openSignIn">Sign in</button></div></div>';
+      renderBell();
+      box.classList.add('on');
+      return;
+    }
+    const s = ns.State.getState();
     if (list) {
       const items = (s.aiInbox || []).map(n =>
         '<div class="ai-note' + (n.severity === 'attention' ? ' ai-note-hot' : '') + '">' +
@@ -148,6 +190,6 @@ var MMGR = window.MMGR || {};
   ns.Watch = { run: run, openMailbox: openMailbox, closeMailbox: closeMailbox,
     dismissNote: dismissNote, clearMailbox: clearMailbox, unreadCount: unreadCount,
     renderBell: renderBell, watchLeadTimes: watchLeadTimes, watchBudget: watchBudget,
-    watchResources: watchResources };
+    watchResources: watchResources, watchWeather: watchWeather };
 })(MMGR);
 window.MMGR = MMGR;

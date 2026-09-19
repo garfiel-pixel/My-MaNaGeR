@@ -817,7 +817,11 @@ var MMGR = window.MMGR || {};
     // C28 Equipment Log (rental/ownership/maintenance)
     'equipment',
     // C24 Template Library
-    'projectTemplates'];
+    'projectTemplates',
+    // Task 5/6 (owner 2026-09-19): field voice notes + assistant mailbox ride
+    // the per-field timestamp/merge machinery like every other list; without
+    // this they would be silently dropped by cloud conflict resolution.
+    'fieldReportNotes', 'aiInbox'];
   let _fieldJsonCache = null; // { fieldName: jsonString } - cached per-field serialization.
   // Dirty-field tracking: updateState() marks fields whose top-level reference
   // changed; stampFieldTs() only re-serializes dirty fields instead of all 60+.

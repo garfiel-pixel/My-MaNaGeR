@@ -1110,3 +1110,18 @@ COMMIT/CI/DEPLOY: guide + directive + tracker + reflection in one
 docs commit; CI polled; deployed per protocol if the owner says go
 (docs-only wave, but the SW bump is a client-facing cache change so
 the standing ship order applies).
+
+2026-09-20 Session 10: owner reported three broken surfaces (signed-out
+backup click dead, chip lying "Not backed up" while synced, sync one-way
+up) plus a dead app-page code-entry section and a dark-theme shape
+language request. Root causes were all real: createProject had no
+sign-in queue, renderDirtyIndicator only counted held owner codes, no
+pull watcher existed, cloudCodeOpen had no handler AND its module was
+not in the app bundle, openSignInModal died on a page with no #siom.
+The harnesses caught two of my own wiring mistakes before they shipped
+(qa-sync-bond D5a: guard placed before the bond probe; qa-client-codes
+P10a: 16-only shape check when client codes are 8 chars) - the battery
+earns its keep. Lesson: seed-session storage contracts are load-bearing;
+the code-entry path mirrors exactly what project.html's boot reads.
+Dark button language scoped to body.dark-mode:not(.db-page) so app.html
+stays reference-only. Verify: all harnesses green; SW v306.

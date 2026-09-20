@@ -45,6 +45,109 @@
     if (el) { el.textContent = msg || ''; el.style.color = isErr ? 'var(--danger)' : ''; }
   }
 
+  // ---- HAVE A CODE? (owner 2026-09-20) -------------------------------------
+  // The #code-entry section on app.html shipped as markup only (P2-14): its
+  // data-action had no handler and mmgr-cloud.js is not in this bundle, so
+  // the button was a dead end. This wires it end to end, mirroring the
+  // My Cloud Projects load path: lookup the code (POST /api/cloud/codes/lookup
+  // resolves ANY code - owner, editor, viewer, client - to its project),
+  // pull the snapshot with the code as the credential, seed the same
+  // session/local slots mmgr-cloud.js reads on project.html, then navigate.
+  const CODE_IN = 'code-entry-in';
+  const CODE_BTN = 'code-entry-btn';
+  const CODE_STATUS = 'code-entry-status';
+  function codeStatus(msg, isErr) {
+    const el = $(CODE_STATUS);
+    if (el) { el.textContent = msg || ''; el.style.color = isErr ? 'var(--danger)' : ''; }
+  }
+  function normalizeCode(raw) {
+    const s = String(raw || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+    // Two valid shapes: 16-char owner/editor/viewer code (grouped) and the
+    // 8-char client code (client-codes.js genCode) - pass 8 chars through.
+    if (s.length === 16) return s.slice(0, 4) + '-' + s.slice(4, 8) + '-' + s.slice(8, 12) + '-' + s.slice(12, 16);
+    return s;
+  }
+  function isCodeShape(code) {
+    if (/^[A-Z2-9]{4}(-[A-Z2-9]{4}){3}$/.test(code)) return true;
+    return /^[A-Z2-9]{8}$/.test(code);
+  }
+  function roleHeader(role, code) {
+    if (role === 'owner') return { 'X-Owner-Code': code };
+    if (role === 'view') return { 'X-View-Code': code };
+    if (role === 'client') return { 'X-Client-Code': code };
+    return { 'X-Editor-Code': code };
+  }
+  async function codeEntryOpen() {
+    const inp = $(CODE_IN);
+    const code = normalizeCode(inp && inp.value);
+    if (!isCodeShape(code)) {
+      codeStatus('Enter the full 16-character code (it looks like XXXX-XXXX-XXXX-XXXX).', true);
+      return;
+    }
+    const btn = $(CODE_BTN);
+    if (btn) { btn.disabled = true; btn.textContent = 'Checking\u2026'; }
+    codeStatus('Checking the code\u2026', false);
+    try {
+      const lookRes = await fetch('/api/cloud/codes/lookup', {
+        method: 'POST', credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: code })
+      });
+      const look = await lookRes.json().catch(function() { return {}; });
+      if (!lookRes.ok || !look || !look.ok) {
+        const err = look && look.error;
+        codeStatus(err === 'code_expired' ? 'This code expired' + (look.expiresAt ? ' on ' + String(look.expiresAt).slice(0, 10) : '') + '. Ask for a new one.'
+          : 'That code was not accepted. Check it and try again.', true);
+        return;
+      }
+      if (look.deleted) { codeStatus('The project this code belongs to was deleted by its admin.', true); return; }
+      const pid = look.projectId;
+      if (!pid || !/^[A-Za-z0-9_-]{1,64}$/.test(pid)) { codeStatus('That code was not accepted. Check it and try again.', true); return; }
+      // Pull the snapshot with the code as the credential (owner codes
+      // authenticate /load too - the server accepts either path).
+      const loadRes = await fetch('/api/cloud/projects/' + encodeURIComponent(pid) + '/load', {
+        method: 'POST', credentials: 'same-origin',
+        headers: Object.assign({ 'Content-Type': 'application/json' }, roleHeader(look.role, code)),
+        body: JSON.stringify({})
+      });
+      const data = await loadRes.json().catch(function() { return {}; });
+      if (!loadRes.ok || !data || !data.ok) {
+        const err = data && data.error;
+        codeStatus(err === 'code_revoked' ? 'This code was revoked by the project admin. Ask for a new one.'
+          : err === 'project_deleted' ? 'The project this code belongs to was deleted by its admin.'
+          : 'Could not open the project with this code. Try again in a moment.', true);
+        return;
+      }
+      if (!data.state) {
+        codeStatus('This project has no cloud snapshot yet. Ask the owner to save it once, then use the code again.', true);
+        return;
+      }
+      try {
+        localStorage.setItem('mmgr_unlocked_' + pid, '1');
+        localStorage.setItem('mmgr_state_' + pid, JSON.stringify(data.state));
+        localStorage.setItem('mmgr_scope_' + pid, (look.role === 'view') ? 'readonly' : 'full');
+        // Seed the SAME session slots mmgr-cloud.js reads, so the opened
+        // project keeps the credential for Save/Load without re-entry.
+        if (look.role === 'owner') {
+          sessionStorage.setItem('mmgr_cloud_code_' + pid, code);
+        } else {
+          sessionStorage.setItem('mmgr_cloud_ecode_' + pid, code);
+          sessionStorage.setItem('mmgr_cloud_escope_' + pid, JSON.stringify({
+            label: (data.editorLabel || data.viewerLabel || (look.role === 'client' ? 'Client' : 'Editor')),
+            sections: data.scope || data.sections || [],
+            role: look.role
+          }));
+        }
+      } catch (e) { codeStatus('Storage is blocked in this browser , the project could not be opened.', true); return; }
+      codeStatus('Opening ' + pid + '\u2026', false);
+      window.location.href = 'project.html?id=' + encodeURIComponent(pid);
+    } catch (e) {
+      codeStatus('Could not reach the cloud service , check your connection and try again.', true);
+    } finally {
+      if (btn && document.body.contains(btn)) { btn.disabled = false; btn.innerHTML = '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg> Open project'; }
+    }
+  }
+
   // Rail Cloud Projects accordion content. Compact rows; clicking one loads
   // the project through the SAME data-cd-load path as the dashboard cards.
   function renderRailCloud(projects) {
@@ -468,6 +571,12 @@
 
   // ---- events ----
   document.addEventListener('click', function(e) {
+    // HAVE A CODE? (owner 2026-09-20): the section's Open button + Enter key.
+    if (e.target && e.target.closest && e.target.closest('#' + CODE_BTN)) {
+      e.preventDefault();
+      codeEntryOpen();
+      return;
+    }
     // 3-dot menu toggle , handled FIRST so a click on the button neither
     // closes itself (outside-click logic below) nor leaks to card actions.
     const menuBtn = e.target && e.target.closest ? e.target.closest('[data-cd-menu]') : null;
@@ -538,6 +647,11 @@
   });
   document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') { closeMenus(); closeDeleteConfirm(); }
+    // HAVE A CODE?: Enter in the code box opens, like every other form here.
+    if (e.key === 'Enter') {
+      const t = e.target;
+      if (t && t.id === CODE_IN) { e.preventDefault(); codeEntryOpen(); }
+    }
   });
   document.addEventListener('mmgr:google-signed-in', function() { loadList(); });
   document.addEventListener('mmgr:google-signed-out', function() {

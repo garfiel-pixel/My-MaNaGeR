@@ -353,11 +353,23 @@ async function main() {
   await ev('(function(){var b=document.querySelector("[data-action=cloudSave]");if(b)b.click();return true;})()');
   const pushStatus = await statusSettle();
   check('D4a bonded device pushed its merge back to the cloud (save ok)', /ds-ok/.test(pushStatus || ''), pushStatus);
-  const loadBack = await api('/api/cloud/projects/' + PID + '/load', {
+  // HARNESS LAW (shared rate bucket, 2026-09-20): the two-way sync watcher
+  // legitimately polls /meta on device sessions, so late-run HTTP probes can
+  // land on a 429 through no fault of the app. Retry on 429 (3 attempts,
+  // 15s apart) keeps the assertion about DATA, not about bucket timing.
+  let loadBack = await api('/api/cloud/projects/' + PID + '/load', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'X-Owner-Code': CODE },
     body: JSON.stringify({})
   });
+  for (let i = 0; i < 3 && loadBack.status === 429; i++) {
+    await delay(15000);
+    loadBack = await api('/api/cloud/projects/' + PID + '/load', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Owner-Code': CODE },
+      body: JSON.stringify({})
+    });
+  }
   check('D4b cloud copy now carries device B\\u2019s edit (actual 400)', loadBack.status === 200 && loadBack.body && loadBack.body.ok && loadBack.body.state && loadBack.body.state.budgetLines && loadBack.body.state.budgetLines[0].actual === 400, loadBack.text.slice(0, 200));
 
   // ---- D6: bond shape never carries a credential (live bytes, device B2) --

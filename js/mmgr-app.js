@@ -665,14 +665,37 @@ var MMGR = window.MMGR || {};
   // because a button drawn while the sheet is hidden comes out 0x0.
   function openSignInModal() {
     const m = U.$('siom');
-    if (!m) return;
-    m.classList.add('open');
-    try {
-      const G = ns.GoogleAuth;
-      if (G && G.ensureGisButton) G.ensureGisButton();
-    } catch (e) { /* GIS quirk - the fallback button still shows */ }
-    const f = m.querySelector('.email-auth-input');
-    if (f && f.focus) { try { f.focus(); } catch (e) {} }
+    if (m) {
+      m.classList.add('open');
+      try {
+        const G = ns.GoogleAuth;
+        if (G && G.ensureGisButton) G.ensureGisButton();
+      } catch (e) { /* GIS quirk - the fallback button still shows */ }
+      const f = m.querySelector('.email-auth-input');
+      if (f && f.focus) { try { f.focus(); } catch (e) {} }
+      return;
+    }
+    // SIGN-IN FALLBACK (owner 2026-09-20): project.html ships no #siom sheet,
+    // so callers there previously hit a silent dead end. The drawer's cloud
+    // section carries the real sign-in surface (email + Google button), so
+    // open it, land on the Controls tab, and bring the sign-in button into
+    // view instead of dying.
+    const C = window.MMGR && window.MMGR.Cloud;
+    const drw = U.$('drw');
+    if (!drw) return;
+    drw.classList.add('open');
+    const tabBtn = document.querySelector('.dtab[data-tab="ctrl"]');
+    if (tabBtn) swDtab('ctrl', tabBtn);
+    if (C && C.render) { try { C.render(); } catch (e) { /* section keeps its last state */ } }
+    const focusSignin = function() {
+      const btn = document.querySelector('#ctrl-share [data-action="cloudSignIn"]');
+      if (btn) {
+        try { btn.scrollIntoView({ block: 'center', behavior: 'auto' }); }
+        catch (e) { try { btn.scrollIntoView(); } catch (e2) {} }
+        try { btn.focus(); } catch (e) {}
+      }
+    };
+    requestAnimationFrame(function() { focusSignin(); setTimeout(focusSignin, 350); });
   }
   function closeSignInModal() {
     const m = U.$('siom');

@@ -163,6 +163,19 @@ var MMGR = window.MMGR || {};
   function open() {
     const modal = U.$('ai-win');
     if (!modal) return;
+    // OWNER 2026-09-19 (signed-in AI): the assistant is part of the
+    // signed-in experience , the Entitlements seam is the only rule source.
+    // Signed-out, the click opens the sign-in flow and the window resumes
+    // the moment the session exists. Never a dead click, never a half-open
+    // window a visitor cannot use.
+    if (!(ns.Entitlements && ns.Entitlements.aiAssistant && ns.Entitlements.aiAssistant())) {
+      _aiOpenPending = true;
+      if (ns.App && ns.App.showToast) ns.App.showToast('AI features need sign-in , sign in and the assistant opens.', 'warn');
+      const GA = ns.GoogleAuth;
+      if (GA && typeof GA.openSignInPrompt === 'function') { try { GA.openSignInPrompt(); } catch (e) { /* fallback surfaces via the header */ } }
+      return;
+    }
+    _aiOpenPending = false;
     const chips = U.$('ai-presets');
     if (chips && !chips.dataset.filled) {
       const types = (ns.Prompts && ns.Prompts.list) ? ns.Prompts.list() : [];
@@ -185,6 +198,15 @@ var MMGR = window.MMGR || {};
     const q = U.$('ai-q');
     if (q) setTimeout(function() { q.focus(); }, 60);
   }
+
+  // Resume the deferred open once the session exists (see open() gate).
+  let _aiOpenPending = false;
+  document.addEventListener('mmgr:google-signed-in', function() {
+    if (_aiOpenPending) { _aiOpenPending = false; try { open(); } catch (e) { /* zero-throw */ } }
+  });
+  document.addEventListener('mmgr:user-changed', function() {
+    if (_aiOpenPending) { _aiOpenPending = false; try { open(); } catch (e) { /* zero-throw */ } }
+  });
 
   function close() {
     const modal = U.$('ai-win');
@@ -1204,6 +1226,12 @@ var MMGR = window.MMGR || {};
   }
 
   async function runCloud(prompt, ctx, cfg) {
+    // OWNER 2026-09-19 (signed-in AI): hard gate at the actual send seam too
+    // , the open() gate is UX; this one is the contract. A connected BYO key
+    // is NOT a session (the key vault is session-scoped, not an identity).
+    if (!(ns.Entitlements && ns.Entitlements.aiAssistant && ns.Entitlements.aiAssistant())) {
+      throw new Error('AI needs sign-in , sign in once (Google or email) and the cloud engine unlocks.');
+    }
     // STEP-4 gate: live chat requires a connected session key. The key and
     // provider come from the vault ONLY , state.config.ai.apiKey (legacy) is
     // never read, so no project-state field can ever carry the key.

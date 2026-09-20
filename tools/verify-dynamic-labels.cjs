@@ -102,13 +102,25 @@ async function bootChrome(port, profile, url) {
   // exactly the flake the header below documents. --remote-allow-origins=*
   // keeps the DevTools WebSocket connectable on newer Chrome.
   const proc = spawn(CHROME, ['--headless=new', '--no-sandbox', '--disable-dev-shm-usage', '--disable-gpu', '--no-first-run', '--remote-allow-origins=*', '--remote-debugging-port=' + port, '--user-data-dir=' + profile, '--window-size=1440,1200', 'about:blank'], { stdio: ['ignore', 'ignore', 'pipe'] });
+  bootChrome._proc = proc; // expose for boot-retry cleanup
   proc.stderr && proc.stderr.on('data', (c) => { chromeStderr = (chromeStderr + c.toString()).slice(-4000); });
-  for (let i = 0; i < 60; i++) {
-    try { const r = await fetch('http://127.0.0.1:' + port + '/json/version'); if (r.ok) break; } catch (e) {}
-    await delay(300);
+  // CI hardening (2026-09-20, run 35516043397): the DevTools-port poll passed
+  // but the immediately-following /json target fetch threw a bare
+  // "TypeError: fetch failed" (ECONNREFUSED) — Chrome died between the two
+  // probes — and the harness crashed unhelpfully instead of failing with a
+  // self-describing dump. waitForDevTools tolerates transient target-fetch
+  // failures for a bounded window instead of crashing.
+  let targets = null;
+  for (let i = 0; i < 10; i++) {
+    try {
+      const r = await fetch('http://127.0.0.1:' + port + '/json');
+      if (r.ok) { targets = await r.json(); break; }
+    } catch (e) { /* Chrome may still be settling; retry */ }
+    await delay(500);
   }
-  const targets = await (await fetch('http://127.0.0.1:' + port + '/json')).json();
+  if (!targets) throw new Error('devtools /json unreachable on :' + port + ' after readiness poll (chrome stderr: ' + chromeStderr.slice(-300).replace(/\s+/g, ' ') + ')');
   const pages = targets.filter(t => t.type === 'page');
+  if (!pages.length) throw new Error('devtools /json returned no page targets (chrome stderr: ' + chromeStderr.slice(-300).replace(/\s+/g, ' ') + ')');
   ws = new WebSocket(pages[0].webSocketDebuggerUrl);
   ws.onmessage = (evt) => {
     const m = JSON.parse(evt.data);
@@ -189,7 +201,22 @@ async function bootChrome(port, profile, url) {
     if (!b.ok) log('WARN dist/bundle.js not served — the CI build step or the server is wrong');
   } catch (e) { log('WARN asset probe failed: ' + (e && e.message)); }
 
-  const proc = await bootChrome(9245, PROFILE);
+  // CI hardening (2026-09-20): one full boot retry with a fresh profile.
+  // The ubuntu runner flaked once here (Chrome died between the DevTools
+  // readiness poll and the /json fetch — ECONNREFUSED 127.0.0.1:9245) after
+  // passing 3/3 on the immediately-prior run, i.e. a boot flake, not a
+  // regression. A retry turns that into a green run instead of a red one.
+  let proc;
+  try {
+    proc = await bootChrome(9245, PROFILE);
+  } catch (e1) {
+    log('boot attempt 1 failed: ' + (e1 && e1.message));
+    log('retrying Chrome boot on a fresh port + profile (attempt 2)');
+    // Kill the wedged attempt-1 Chrome so it cannot leak (or hold the port).
+    try { if (bootChrome._proc) bootChrome._proc.kill('SIGKILL'); } catch (e) {}
+    chromeStderr = '';
+    proc = await bootChrome(9246, PROFILE + '-retry');
+  }
   const check = (name, val, detail) => { results.push({ name, val, detail }); log((val ? 'PASS' : 'FAIL') + ' ' + name + (val ? '' : '  <-- ' + JSON.stringify(detail === undefined ? null : detail))); };
 
   try {

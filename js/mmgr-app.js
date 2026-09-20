@@ -687,7 +687,7 @@ var MMGR = window.MMGR || {};
     const tabBtn = document.querySelector('.dtab[data-tab="ctrl"]');
     if (tabBtn) swDtab('ctrl', tabBtn);
     if (C && C.render) { try { C.render(); } catch (e) { /* section keeps its last state */ } }
-    const focusSignin = function() {
+    const focusCloudSignin = function() {
       const btn = document.querySelector('#ctrl-share [data-action="cloudSignIn"]');
       if (btn) {
         try { btn.scrollIntoView({ block: 'center', behavior: 'auto' }); }
@@ -695,7 +695,7 @@ var MMGR = window.MMGR || {};
         try { btn.focus(); } catch (e) {}
       }
     };
-    requestAnimationFrame(function() { focusSignin(); setTimeout(focusSignin, 350); });
+    requestAnimationFrame(function() { focusCloudSignin(); setTimeout(focusCloudSignin, 350); });
   }
   function closeSignInModal() {
     const m = U.$('siom');
@@ -1358,10 +1358,14 @@ var MMGR = window.MMGR || {};
     }
   }
 
-  function openDrwToSave() {
+  // Monolith-side mechanics: open the drawer on the Controls tab. The body
+  // lives in js/app/backup.js (delegate-gate contract) which adds the cloud
+  // sign-in affordance on top; monolith openDrwToSave is a one-line delegate.
+  function openDrwToSaveMechanics() {
     swDtab('ctrl', null);
     openDrw();
   }
+  function openDrwToSave() { if (ns.AppBackup) ns.AppBackup.openDrwToSave(); }
 
   // ---- Backup & Cloud-Sync UI ---- (extracted to js/app/backup.js)
   function cloudLinked() { return ns.AppBackup && ns.AppBackup.cloudLinked ? ns.AppBackup.cloudLinked() : false; }
@@ -1496,6 +1500,7 @@ var MMGR = window.MMGR || {};
   ns.App = {
     init: init,
     _boot: _boot,
+    openDrwToSaveMechanics: openDrwToSaveMechanics,
     isReadonly: isReadonly,
     cloudCodeHeld: cloudCodeHeld,
     cloudExportBlocked: cloudExportBlocked,

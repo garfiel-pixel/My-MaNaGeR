@@ -97,12 +97,28 @@ var MMGR = window.MMGR || {};
     }
   }
 
-  // Unlinked drawer open: jump the user to the sign-in affordance inside the
-  // Cloud Backup section so the "what do I do next" is visible immediately.
+  // Unlinked drawer open: land on the Controls tab (monolith mechanics),
+  // render the cloud section so its sign-in surface exists, then bring the
+  // sign-in button into view - the "what do I do next" is visible
+  // immediately instead of a bare drawer.
   function openDrwToSave() {
-    if (ns.App && ns.App.openDrwToSave) ns.App.openDrwToSave();
+    if (ns.App && ns.App.openDrwToSaveMechanics) ns.App.openDrwToSaveMechanics();
     const C = window.MMGR.Cloud;
-    if (C && C.signIn) { try { C.signIn(); } catch (e) { /* the section still shows its own guidance */ } }
+    if (!C) return;
+    const focusSignin = function() {
+      const btn = document.querySelector('#ctrl-share [data-action="cloudSignIn"]') ||
+                  document.querySelector('#cloud-section [data-action="cloudSignIn"]');
+      if (btn) {
+        try { btn.scrollIntoView({ block: 'center', behavior: 'auto' }); }
+        catch (e) { try { btn.scrollIntoView(); } catch (e2) {} }
+        try { btn.focus(); } catch (e) {}
+      }
+    };
+    if (C.render) {
+      Promise.resolve(C.render()).then(function() { requestAnimationFrame(focusSignin); }, function() { focusSignin(); });
+    } else {
+      focusSignin();
+    }
   }
 
   ns.AppBackup = {

@@ -728,3 +728,8 @@ qa-client-codes ALL, qa-dashboard-spec 76/76. SW v306.
      Live smoke both domains (workers.dev + mymanagerworkspace.com): health 200, bundle carries c.checkMe(!1).
   LAW reinforced: a browser harness that polls a DevTools port must tolerate the fetch dying right after the
   poll, and every boot path needs one retry - runners flake, the run is the truth.
+2026-09-20 FOLLOW-UP (Session 10b closeout) - field guide A-15 backup card states the anonymous-create
+  contract in plain language (first click opens sign-in, one more click creates the cloud copy + shows the
+  16-character owner code once; "picks up where it left off" overstatement corrected - the signed-out path
+  queues nothing), banned-vocab + emoji + dash gates clean on the edited line, SW v306 -> v307 for the
+  served-guide edit. Session scratch cleaned: tmp/ emptied, $HOME/mmgr-deploy staging copy removed.

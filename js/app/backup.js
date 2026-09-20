@@ -87,24 +87,37 @@ var MMGR = window.MMGR || {};
       // Editor code held , save flows through the owner-review path.
       if (C.saveToCloud) C.saveToCloud();
     } else {
-      // OWNER 2026-09-19 (no-op fix): "Backup to cloud" on a device with no
-      // credential must DO something. The link itself (Create) needs the
-      // Google session, so route the user to sign-in at this exact moment;
-      // the session-owner render path then answers every later click, and
-      // Create runs automatically right after sign-in completes.
-      openDrwToSave();
-      if (C && C.createProject) C.createProject();
+      // OWNER 2026-09-20 (no-op fix + CI phase1 C4c contract): "Backup to
+      // cloud" on a device with no credential must DO something. Create
+      // itself works anonymously (the owner code it hands back IS the
+      // credential - phase1 encodes that), so the pill routes a signed-out
+      // visitor to sign-in at this exact moment; a signed-in device calls
+      // Create directly. Either way the drawer opens so the "what next"
+      // surface is visible. checkMe is chained AFTER the drawer render:
+      // signIn() needs #cloud-gis-host, which only exists once the cloud
+      // section has rendered.
+      openDrwToSave(function() {
+        if (C && C.checkMe) {
+          Promise.resolve(C.checkMe(false)).then(function(signedIn) {
+            if (signedIn) { if (C.createProject) C.createProject(); }
+            else if (C.signIn) { Promise.resolve(C.signIn()).catch(function() {}); }
+          }, function() {});
+        } else if (C && C.createProject) {
+          C.createProject(); // no checkMe on this host - behave as before
+        }
+      });
     }
   }
 
   // Unlinked drawer open: land on the Controls tab (monolith mechanics),
   // render the cloud section so its sign-in surface exists, then bring the
   // sign-in button into view - the "what do I do next" is visible
-  // immediately instead of a bare drawer.
-  function openDrwToSave() {
+  // immediately instead of a bare drawer. `done` (optional) runs after the
+  // render settles so callers can chain sign-in prompts on the rendered host.
+  function openDrwToSave(done) {
     if (ns.App && ns.App.openDrwToSaveMechanics) ns.App.openDrwToSaveMechanics();
     const C = window.MMGR.Cloud;
-    if (!C) return;
+    if (!C) { if (done) done(); return; }
     const focusSignin = function() {
       const btn = document.querySelector('#ctrl-share [data-action="cloudSignIn"]') ||
                   document.querySelector('#cloud-section [data-action="cloudSignIn"]');
@@ -114,10 +127,11 @@ var MMGR = window.MMGR || {};
         try { btn.focus(); } catch (e) {}
       }
     };
+    const settle = function() { requestAnimationFrame(function() { focusSignin(); if (done) done(focusSignin); }); };
     if (C.render) {
-      Promise.resolve(C.render()).then(function() { requestAnimationFrame(focusSignin); }, function() { focusSignin(); });
+      Promise.resolve(C.render()).then(settle, settle);
     } else {
-      focusSignin();
+      settle();
     }
   }
 

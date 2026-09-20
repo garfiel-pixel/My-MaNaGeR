@@ -432,16 +432,11 @@ var MMGR = window.MMGR || {};
       }
       return; // a bonded project never falls through to a blind create
     }
-    // OWNER 2026-09-19 (signed-out routing fix): linking REQUIRES the Google
-    // session (the server binds the project to the account). A signed-out
-    // visitor clicking "Backup to cloud" used to die on a bare 403; now the
-    // sign-in prompt opens at this exact click and Create resumes itself on
-    // the mmgr:google-signed-in event (same pattern as recovery/re-sync).
-    // Bonded devices never reach this line (the block above returned).
-    if (!(await checkMe(true))) {
-      queueAfterSignIn('back up this project to the cloud', createProject);
-      return;
-    }
+    // OWNER 2026-09-20 (CI phase1 C4c contract): Create works ANONYMOUSLY -
+    // the owner code it hands back IS the credential. Sign-in routing for a
+    // signed-out visitor lives at the backup-pill entry point (app/backup.js),
+    // not here; the drawer's Create button must keep creating + storing the
+    // code with no session present.
     // OWNER 2026-09-17 (id-mismatch fix): the cloud only accepts ids made of
     // letters, numbers, dashes and underscores. An id with spaces used to
     // fail here with a bare 400 the user could not connect to the cause.
@@ -2569,6 +2564,7 @@ var MMGR = window.MMGR || {};
 
   // ---- public API ---------------------------------------------------------
   ns.Cloud = {
+    checkMe: checkMe,
     render: render,
     createProject: createProject,
     _isSessionOwner: function() { return _sessOwner; }, // P1-6 (2026-09-12): share.js mirrors the linked gate

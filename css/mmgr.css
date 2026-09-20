@@ -3665,3 +3665,101 @@ body.view-3d .view-deck{--glass-blur:0px;}
 .auth-legal{font-size:.72rem;margin:4px 0 0;}
 .auth-legal a{color:var(--slate);text-decoration:underline;}
 .auth-legal a:hover{color:var(--text);}
+
+/* ============================================================
+   DARK BUTTON LANGUAGE (owner 2026-09-20) , project pages only
+   (body.dark-mode:not(.db-page); app/admin keep their own look).
+   Reference: GitHub-style enterprise buttons , rectangular with
+   smooth edges, NOT pills.
+   - SHAPE: pills die inside the project. Rounded rectangles via
+     --radius-rect (deeper smooth than 8px, still clearly a rectangle).
+   - REST: the button MIMICS THE BACKGROUND , transparent fill on the
+     pitch-black canvas, one thin hairline, white label. No green/gold/
+     cyan fills standing around; the color mixture is gone. The gray
+     glass-box read dies too (no blur, no fill, no rim on controls).
+   - HOVER: the accent lives here , real brand gold border + label + a
+     faint gold fill. The fill is how you know you are on it.
+   - STATEFUL toggles (weather / lead-time ON) mark state with a gold
+     hairline + gold label, not a filled tint block.
+   - DESTRUCTIVE keeps its red identity (hairline + label), neutral fill.
+   - Sizing never changes: same padding, same hairline weight, only the
+     corner geometry and the color story move.
+   - Icons inside buttons grow 1.2x: small but important.
+   Light theme: untouched (every rule is dark-mode scoped).
+   ============================================================ */
+body.dark-mode:not(.db-page){
+  --radius-rect:10px;        /* rounded-rectangle control radius (owner 2026-09-20) */
+  --gold-accent:#D96B27;     /* the brand gold returns for HOVER accents only */
+  --gold-accent-rgb:217,107,39;
+}
+body.dark-mode:not(.db-page) .btn{
+  background:transparent;
+  backdrop-filter:none;
+  -webkit-backdrop-filter:none;
+  border:1px solid rgba(255,255,255,.14);
+  border-radius:var(--radius-rect);
+  color:var(--text);
+  box-shadow:none;
+}
+body.dark-mode:not(.db-page) .btn-g,body.dark-mode:not(.db-page) .btn-o,
+body.dark-mode:not(.db-page) .btn-warn,body.dark-mode:not(.db-page) .btn-n{
+  background:transparent;color:var(--text);
+  border:1px solid rgba(255,255,255,.14);box-shadow:none;
+}
+body.dark-mode:not(.db-page) .btn:hover,body.dark-mode:not(.db-page) .btn-g:hover,
+body.dark-mode:not(.db-page) .btn-o:hover,body.dark-mode:not(.db-page) .btn-warn:hover,
+body.dark-mode:not(.db-page) .btn-n:hover{
+  background:rgba(var(--gold-accent-rgb),.08);
+  border-color:rgba(var(--gold-accent-rgb),.65);
+  color:var(--gold-accent);
+}
+body.dark-mode:not(.db-page) .btn-ghost{background:transparent;}
+body.dark-mode:not(.db-page) .btn-ghost:hover{color:var(--gold-accent);background:rgba(var(--gold-accent-rgb),.08);}
+body.dark-mode:not(.db-page) .btn-d{
+  background:transparent;border:1px solid rgba(var(--dot-red-rgb),.4);color:var(--dot-red);box-shadow:none;
+}
+body.dark-mode:not(.db-page) .btn-d:hover{
+  background:rgba(var(--dot-red-rgb),.08);border-color:var(--dot-red);color:var(--dot-red);
+}
+/* Stateful ON toggles: a gold mark, not a filled tint block. */
+body.dark-mode:not(.db-page) .btn-lt,body.dark-mode:not(.db-page) .btn-wx{
+  background:transparent;border:1px solid rgba(var(--gold-accent-rgb),.55);color:var(--gold-accent);box-shadow:none;
+}
+body.dark-mode:not(.db-page) .btn-lt:hover,body.dark-mode:not(.db-page) .btn-wx:hover{
+  background:rgba(var(--gold-accent-rgb),.08);border-color:rgba(var(--gold-accent-rgb),.8);
+}
+body.dark-mode:not(.db-page) .btn-pill{border-radius:var(--radius-rect);}
+body.dark-mode:not(.db-page) .btn .ico{font-size:1.2em;}
+/* Section tabs (Budget / Resources / Command Board ...): same rounded-
+   rectangle language. Inset shadow carries the hairline so the control's
+   size is unchanged (no border-box shift). Inactive = background-mimic +
+   white label; hover = gold; active keeps its white highlight, now square-
+   shouldered instead of pill. */
+body.dark-mode:not(.db-page) .tab-btn{
+  border-radius:var(--radius-rect);
+  color:var(--text);
+  background:transparent;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.14);
+}
+body.dark-mode:not(.db-page) .tab-btn:hover{
+  color:var(--gold-accent);
+  background:rgba(var(--gold-accent-rgb),.08);
+  box-shadow:inset 0 0 0 1px rgba(var(--gold-accent-rgb),.65);
+}
+body.dark-mode:not(.db-page) .tab-btn.active{
+  color:#0b0b0d;background:#ffffff;box-shadow:none;
+}
+/* Card toolbars (Add Task / Import from Text / ...): a teensy bit more
+   breathing room between the controls. */
+body.dark-mode:not(.db-page) .card-title .g6{gap:9px;}
+
+/* ---- HAVE A CODE? (owner 2026-09-20, app.html) ------------------------
+   The question mark beside the section heading explains what a code IS on
+   hover or keyboard focus. Pure CSS tooltip: no JS, no handlers, no CSP
+   surface. Hidden from the tab order reading flow except the focusable
+   trigger, and the tip text doubles as the aria-label on the trigger. */
+.code-help{position:relative;display:inline-flex;align-items:center;margin-left:6px;color:var(--slate);cursor:help;vertical-align:middle;}
+.code-help .ico{width:.95em;height:.95em;}
+.code-help:hover,.code-help:focus{color:var(--gold);outline:none;}
+.code-help-tip{position:absolute;left:50%;bottom:calc(100% + 8px);transform:translateX(-50%);width:230px;background:var(--surface-raised);color:var(--text);border:1px solid var(--border);border-radius:var(--radius);padding:8px 10px;font-size:.68rem;font-weight:500;line-height:1.45;text-align:left;opacity:0;visibility:hidden;pointer-events:none;transition:opacity var(--tr);z-index:60;box-shadow:0 8px 24px rgba(0,0,0,.25);}
+.code-help:hover .code-help-tip,.code-help:focus .code-help-tip{opacity:1;visibility:visible;}

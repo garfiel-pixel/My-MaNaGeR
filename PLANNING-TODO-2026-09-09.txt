@@ -696,3 +696,22 @@ CSP hashes unchanged, npm run verify green. SHIP: commit c5f5f05
 pushed, CI run green (polled), deployed from verified clean staging
 -> Version cfaa6a61-e71a-4627-8b52-e45bc447fb15; live smoke BOTH
 domains: guide serves the new cards, sw.js at the edge is v305.
+
+2026-09-20 - Session 10 (TWO-WAY SYNC + SIGN-IN WIRING + HAVE-A-CODE +
+DARK BUTTON LANGUAGE). Owner-reported wiring gaps, all root-caused then
+fixed: (1) signed-out Backup-to-cloud click now routes to sign-in and
+resumes the create after (was a silent dead end); (2) header chip
+honesty - green "Synced to cloud" for owner/editor/session links (was
+"Not backed up" on synced session-owner devices), "Viewing cloud copy"
+for read-only; (3) sync is now TWO-WAY - 60s pull watcher for
+owner/editor links, per-field newest-wins, echo-suppressed, mid-edit
+safe, view-only off; (4) AI cloud engine consults Entitlements;
+(5) project.html sign-in fallback opens the drawer's cloud section;
+(6) app.html "Have a code?" wired end-to-end (lookup -> snapshot ->
+session seeds -> project boot; 16-char AND 8-char client codes) with a
+plain-language tooltip; (7) dark-theme button language (project pages
+only): pills -> rounded rectangles, background-mimicking rest state,
+gold on hover only, 1.2x button icons, tabs mimic the background;
+light theme untouched. Gates: npm run verify, verify-date-wiring 13/13,
+qa-date-wiring 32/32, qa-ai-relay PASS, qa-sync-bond 20/20,
+qa-client-codes ALL, qa-dashboard-spec 76/76. SW v306.

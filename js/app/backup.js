@@ -72,18 +72,37 @@ var MMGR = window.MMGR || {};
     const C = window.MMGR.Cloud;
     el.textContent = (C && C.getCode && C.getCode())
       ? 'Cloud-backed project , snapshots auto-sync to the cloud as you work.'
-      : 'File backup is optional , save a .json copy whenever you\u2019re ready (e.g. at the end of a task). Link to the cloud once in Settings for automatic backups.';
+      : (C && C.getECode && C.getECode())
+        ? 'Cloud project via code , your scoped edits sync to the cloud (editor saves wait for the owner\u2019s review).'
+        : 'Sign in with Google to back this project up to the cloud , sign-in opens right after you click Backup to cloud. File backup stays optional either way.';
   }
 
   function bkCloud() {
     const C = window.MMGR.Cloud;
     bkClose();
     if (C && C.getCode && C.getCode()) {
+      // Already linked with an owner code on this device , push the snapshot.
+      if (C.saveToCloud) C.saveToCloud();
+    } else if (C && C.getECode && C.getECode()) {
+      // Editor code held , save flows through the owner-review path.
       if (C.saveToCloud) C.saveToCloud();
     } else {
-      // Not linked yet , open the drawer at the Cloud Backup section
-      if (ns.App && ns.App.openDrwToSave) ns.App.openDrwToSave();
+      // OWNER 2026-09-19 (no-op fix): "Backup to cloud" on a device with no
+      // credential must DO something. The link itself (Create) needs the
+      // Google session, so route the user to sign-in at this exact moment;
+      // the session-owner render path then answers every later click, and
+      // Create runs automatically right after sign-in completes.
+      openDrwToSave();
+      if (C && C.createProject) C.createProject();
     }
+  }
+
+  // Unlinked drawer open: jump the user to the sign-in affordance inside the
+  // Cloud Backup section so the "what do I do next" is visible immediately.
+  function openDrwToSave() {
+    if (ns.App && ns.App.openDrwToSave) ns.App.openDrwToSave();
+    const C = window.MMGR.Cloud;
+    if (C && C.signIn) { try { C.signIn(); } catch (e) { /* the section still shows its own guidance */ } }
   }
 
   ns.AppBackup = {

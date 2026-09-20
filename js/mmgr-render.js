@@ -973,7 +973,12 @@ var MMGR = window.MMGR || {};
     const s = S();
     if (!s || !ns.State) return;
     const C = window.MMGR.Cloud;
-    const linked = !!(C && C.getCode && C.getCode());
+    // OWNER 2026-09-19 (synced-chip honesty): the old check counted ONLY a
+    // held owner code, so two fully-synced shapes showed "Not backed up":
+    // an editor-code device (its saves ride the owner-review path) and the
+    // signed-in owner (session cookie authenticates, no code on device).
+    // Any active credential IS a live cloud link , the chip must say so.
+    const linked = !!(C && ((C.getCode && C.getCode()) || (C.getECode && C.getECode()) || (C._isSessionOwner && C._isSessionOwner())));
     // OWNER 2026-09-09: the backup popover carries the sign-in nudge when
     // the project is not cloud-linked. Hidden once linked (the green chip
     // state) or when the visitor is already signed in. The GAuth session
@@ -989,9 +994,15 @@ var MMGR = window.MMGR || {};
     if (linked) {
       // B3 (owner 2026-09-17): dot + word, no icon - the CSS ::before draws
       // the green dot (same .sdot convention as the dashboard stats).
+      // OWNER 2026-09-19 (two-way sync): the link is a live SYNC, not a one
+      // time backup - local edits flow up (debounced auto-save) and cloud
+      // edits flow down (the pull watcher). Say exactly that.
+      const viewOnly = !!(C.getECode && C.getECode() && C.getEScope && C.getEScope() && (C.getEScope().role === 'view' || C.getEScope().role === 'client'));
       ind.classList.add('on', 'ci-cloud');
-      ind.innerHTML = 'Cloud backed up';
-      ind.setAttribute('title', 'This project is backed up to the cloud, snapshots auto-sync as you work. Click for backup options (cloud or a portable .json file).');
+      ind.innerHTML = viewOnly ? 'Viewing cloud copy' : 'Synced to cloud';
+      ind.setAttribute('title', viewOnly
+        ? 'You are viewing this project through a read-only cloud code - it refreshes from the cloud automatically. Click for backup options.'
+        : 'This project is synced with its cloud copy: edits here flow up automatically, and edits saved elsewhere flow down. Click for backup options (cloud or a portable .json file).');
     } else {
       ind.classList.remove('ci-cloud');
       backedUp = !!(s.lastBackedUpAt && s.updatedAt && s.lastBackedUpAt >= s.updatedAt);
@@ -1009,7 +1020,7 @@ var MMGR = window.MMGR || {};
     const foot = $('bk-foot');
     if (foot) {
       foot.textContent = linked
-        ? 'Cloud backup active, a .json file copy is optional (e.g. to keep in your file manager).'
+        ? 'Synced with the cloud copy: edits here and edits saved elsewhere reconcile automatically. A .json file copy is optional.'
         : (backedUp && s.lastBackedUpAt
           ? 'Last file backup: ' + new Date(s.lastBackedUpAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) + '.'
           : 'No file backup yet, autosave keeps your changes on this device.');

@@ -479,12 +479,13 @@ body.db-page.side-open .sidebar-icons{opacity:0;pointer-events:none;}
        instead" per the owner's flow description. -->
   <div class="cloud-dash" id="code-entry" aria-label="Open a project with a code" style="margin-top:8px;">
     <div class="cd-head">
-      <h2><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-unlock"></use></svg> Open with code</h2>
-      <span class="cd-sub">Got a project or editor code? Enter it and open the project</span>
+      <h2><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-unlock"></use></svg> Have a code?
+        <span class="code-help" tabindex="0" aria-label="A code is what an admin or a project owner gives you. Paste it here to open their project."><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-help"></use></svg><span class="code-help-tip" role="tooltip">A code is what an admin or a project owner gives you. Paste it here to open their project.</span></span></h2>
+      <span class="cd-sub">Paste the code you were given and open the project</span>
     </div>
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
       <input id="code-entry-in" type="text" maxlength="32" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="XXXX-XXXX-XXXX-XXXX" aria-label="Project code" style="background:var(--tile-bg);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-size:.82rem;letter-spacing:.08em;padding:8px 12px;font-family:ui-monospace,monospace;outline:none;flex:1;min-width:180px;max-width:280px;">
-      <button type="button" class="btn btn-n btn-s" id="code-entry-btn" data-action="cloudCodeOpen"><svg class="ico" aria-hidden="true" style="width:14px;height:14px;"><use href="css/mmgr-icons.svg#i-download"></use></svg> Use code instead</button>
+      <button type="button" class="btn btn-n btn-s" id="code-entry-btn"><svg class="ico" aria-hidden="true" style="width:14px;height:14px;"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg> Open project</button>
       <span class="cd-status" id="code-entry-status" role="status" aria-live="polite"></span>
     </div>
   </div>

@@ -390,6 +390,8 @@ var MMGR = window.MMGR || {};
     // must LINK to its existing twin, not create a duplicate. If a bond is
     // stored, probe the twin first: reachable -> claim/adopt it; gone ->
     // say so and keep the bond for retry rather than silently forking.
+    // (This block owns its own sign-in messaging - the generic create
+    // guard below sits AFTER it so bonded devices never see it.)
     const bond = getBond();
     if (bond && bond.cloudProjectId) {
       if (bond.cloudProjectId !== (ns.projectId || 'default')) adoptBondId();
@@ -429,6 +431,16 @@ var MMGR = window.MMGR || {};
         setStatus('Cloud is unavailable on this host (needs the Worker API) , the bond is kept for retry.', 'err');
       }
       return; // a bonded project never falls through to a blind create
+    }
+    // OWNER 2026-09-19 (signed-out routing fix): linking REQUIRES the Google
+    // session (the server binds the project to the account). A signed-out
+    // visitor clicking "Backup to cloud" used to die on a bare 403; now the
+    // sign-in prompt opens at this exact click and Create resumes itself on
+    // the mmgr:google-signed-in event (same pattern as recovery/re-sync).
+    // Bonded devices never reach this line (the block above returned).
+    if (!(await checkMe(true))) {
+      queueAfterSignIn('back up this project to the cloud', createProject);
+      return;
     }
     // OWNER 2026-09-17 (id-mismatch fix): the cloud only accepts ids made of
     // letters, numbers, dashes and underscores. An id with spaces used to
@@ -1717,6 +1729,10 @@ var MMGR = window.MMGR || {};
     // while visible + visibilitychange + rev-changed) - idempotent, so
     // every render pass is safe.
     startClientRefresh();
+    // TWO-WAY SYNC (owner 2026-09-19): owner/editor/session links get the
+    // cloud-to-local pull watcher (idempotent; read-only codes + unlinked
+    // projects are a no-op inside).
+    startSyncWatcher();
     // The Controls-tab Share & Access card must mirror the same credential
     // state , render it alongside the cloud section on every render pass.
     renderShare();
@@ -2137,6 +2153,7 @@ var MMGR = window.MMGR || {};
       const data = await res.json().catch(function() { return {}; });
       if (!res.ok || !data.ok) { setStatus((data && data.error) || 'Unlink failed (HTTP ' + res.status + ').', 'err'); return; }
       clearCode(); clearECode(); clearSessOwner(); setLastSeen(''); clearPendingEditorCode();
+      stopSyncWatcher();
       await render();
       setStatus('Unlinked , the cloud copy is deleted. This device keeps its local data.', 'ok');
     } catch (e) {
@@ -2474,6 +2491,82 @@ var MMGR = window.MMGR || {};
     setTimeout(function() { clientPollTick(false); }, 4000);
   }
 
+  // =========================================================================
+  // TWO-WAY SYNC WATCHER (owner 2026-09-19): the cloud link has flowed UP
+  // (debounced auto-save) since launch; this adds the DOWN flow for
+  // owner/editor connections. Every 60s (and on tab focus), probe /meta's
+  // updatedAt; when the cloud snapshot changed since this device last synced
+  // and the user is NOT mid-edit, pull it through State.mergeExternal ,
+  // per-field newest-wins, so a quiet field here never loses to a newer
+  // cloud edit and vice versa. Zero-throw, silent when nothing changed,
+  // never runs for read-only codes (they already have startClientRefresh).
+  // Echo-suppression: after OUR own push, getLastSeen() equals the snapshot
+  // the server reports, so the very next tick sees no change and pulls
+  // nothing (mirror of clientPollTick's contract).
+  // =========================================================================
+  let _syncPoll = null;
+  let _syncBusy = false;
+  function syncWatcherCred() {
+    // Owner connections only (code or session); editor WITH the review
+    // pending-path still pulls: their /load is read-authorized via the
+    // adoption record, so a rebroadcast edit reaches them too.
+    if (getCode()) return { header: 'X-Owner-Code', code: getCode() };
+    if (getECode()) return { header: (getEScope() && getEScope().role !== 'view' && getEScope().role !== 'client') ? 'X-Editor-Code' : 'X-View-Code', code: getECode() };
+    if (_sessOwner) return { header: null, code: '' }; // cookie authenticates
+    return null;
+  }
+  function userMidEdit() {
+    try {
+      const a = document.activeElement;
+      if (!a) return false;
+      const t = a.tagName;
+      return (t === 'INPUT' || t === 'TEXTAREA' || a.isContentEditable);
+    } catch (e) { return false; }
+  }
+  async function syncPollTick() {
+    if (_syncBusy) return;
+    if (document.visibilityState !== 'visible') return;
+    const cred = syncWatcherCred();
+    if (!cred) return;
+    _syncBusy = true;
+    try {
+      const headers = {};
+      if (cred.header) headers[cred.header] = cred.code;
+      const res = await fetch('/api/cloud/projects/' + encodeURIComponent(pid()) + '/meta', { method: 'GET', credentials: 'same-origin', headers: headers });
+      const meta = await res.json().catch(function() { return {}; });
+      if (!res.ok || !meta || !meta.ok) return; // quiet: watcher never shouts
+      const cloudStamp = meta.updatedAt || '';
+      const last = getLastSeen();
+      if (!last || cloudStamp === last) { if (cloudStamp) setLastSeen(cloudStamp); return; }
+      // Cloud changed since our last sync , pull. Mid-edit safety: typing
+      // into a field wins for now; the next tick (or tab refocus) merges it.
+      if (userMidEdit()) return;
+      const loadRes = await fetch('/api/cloud/projects/' + encodeURIComponent(pid()) + '/load', { method: 'POST', credentials: 'same-origin', headers: Object.assign({ 'Content-Type': 'application/json' }, headers), body: JSON.stringify({}) });
+      const data = await loadRes.json().catch(function() { return {}; });
+      if (!loadRes.ok || !data.ok || !data.state) return;
+      const report = ns.State.mergeExternal(data.state);
+      if (!report) return;
+      setLastSeen(data.savedAt || cloudStamp);
+      if (report.adopted > 0) {
+        if (ns.Render && ns.Render.renderAll) { try { ns.Render.renderAll(); } catch (e) { /* best-effort */ } }
+        if (ns.App && ns.App.showToast) ns.App.showToast('Synced ' + report.adopted + ' update' + (report.adopted === 1 ? '' : 's') + ' from the cloud copy.', 'ok');
+      }
+    } catch (e) { /* offline / static host , silent, retried next tick */ }
+    finally { _syncBusy = false; }
+  }
+  function startSyncWatcher() {
+    if (_syncPoll) return;
+    if (!syncWatcherCred()) return; // read-only codes + unlinked: no watcher
+    _syncPoll = setInterval(function() { syncPollTick(); }, 60000);
+    document.addEventListener('visibilitychange', function() {
+      if (document.visibilityState === 'visible') syncPollTick();
+    });
+    setTimeout(function() { syncPollTick(); }, 6000);
+  }
+  function stopSyncWatcher() {
+    if (_syncPoll) { clearInterval(_syncPoll); _syncPoll = null; }
+  }
+
   // ---- public API ---------------------------------------------------------
   ns.Cloud = {
     render: render,
@@ -2485,6 +2578,10 @@ var MMGR = window.MMGR || {};
     saveToCloud: saveToCloud,
     autoSaveToCloud: autoSaveToCloud,
     loadFromCloud: loadFromCloud,
+    // TWO-WAY SYNC (owner 2026-09-19): watcher controls + tick hook for QA.
+    _startSyncWatcher: startSyncWatcher,
+    _stopSyncWatcher: stopSyncWatcher,
+    _syncPollTick: syncPollTick,
     loadWithCode: loadWithCode,
     recoverCode: recoverCode,
     copyCode: copyCode,

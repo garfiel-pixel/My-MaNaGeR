@@ -692,4 +692,7 @@ and how Re-sync works (newest-wins per field, sign-in when no code
 is held, bond kept on failure). Banned-vocab + emoji + dash scans
 clean; sw.js v304 -> v305 for the guide edit; directive STATUS LOG
 Session 9 entry written. Docs-only wave: no inline scripts touched,
-CSP hashes unchanged, npm run verify green.
+CSP hashes unchanged, npm run verify green. SHIP: commit c5f5f05
+pushed, CI run green (polled), deployed from verified clean staging
+-> Version cfaa6a61-e71a-4627-8b52-e45bc447fb15; live smoke BOTH
+domains: guide serves the new cards, sw.js at the edge is v305.

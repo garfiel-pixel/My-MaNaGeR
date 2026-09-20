@@ -104,14 +104,18 @@ async function bootChrome(port, profile, url) {
   const proc = spawn(CHROME, ['--headless=new', '--no-sandbox', '--disable-dev-shm-usage', '--disable-gpu', '--no-first-run', '--remote-allow-origins=*', '--remote-debugging-port=' + port, '--user-data-dir=' + profile, '--window-size=1440,1200', 'about:blank'], { stdio: ['ignore', 'ignore', 'pipe'] });
   bootChrome._proc = proc; // expose for boot-retry cleanup
   proc.stderr && proc.stderr.on('data', (c) => { chromeStderr = (chromeStderr + c.toString()).slice(-4000); });
-  // CI hardening (2026-09-20, run 35516043397): the DevTools-port poll passed
-  // but the immediately-following /json target fetch threw a bare
+  // CI hardening (2026-09-20, run 35516043397 + its fix): the DevTools-port
+  // poll passed but the immediately-following /json target fetch threw a bare
   // "TypeError: fetch failed" (ECONNREFUSED) — Chrome died between the two
   // probes — and the harness crashed unhelpfully instead of failing with a
-  // self-describing dump. waitForDevTools tolerates transient target-fetch
-  // failures for a bounded window instead of crashing.
+  // self-describing dump. This single tolerant loop REPLACES both the old
+  // 18s /json/version poll and the crash-prone one-shot fetch. Window is a
+  // full 30s (60 x 500ms): run 35516714 died on BOTH boot attempts with the
+  // interim 10x500ms (5s) window — cold CI runners spend several seconds on
+  // first-run profile init + dbus before the DevTools port even opens (the
+  // dbus/bus.cc noise in stderr is normal headless-Linux chatter).
   let targets = null;
-  for (let i = 0; i < 10; i++) {
+  for (let i = 0; i < 60; i++) {
     try {
       const r = await fetch('http://127.0.0.1:' + port + '/json');
       if (r.ok) { targets = await r.json(); break; }

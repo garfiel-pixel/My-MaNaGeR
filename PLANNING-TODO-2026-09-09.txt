@@ -616,3 +616,60 @@ NOTES
 - The skeptical-code-audit skill is MANDATORY for verification.
 - Web research (Serper + read_url) and Playwright/BeautifulSoup (via
   web-research/*.py patterns) are available for any doubt.
+
+--------------------------------------------------------------------
+SESSION 2026-09-19 (Task 13 + 14: SYNC BOND + PLAN CLOSEOUT)
+--------------------------------------------------------------------
+Owner order: read the empty "last sessionm.txt", clean up last
+session, complete what is left. Verified the 14-task plan doc: Tasks
+1-11 committed; Task 13 (sync bond) not started; Task 14 (docs
+closeout) open. Cleanup: deleted the empty notes file + all session
+txt debris (Freebuff*/Windows PowerShell*/crashes), emptied tmp/ (197
+files), removed the stale $HOME/mmgr-deploy staging copy.
+
+TASK 13 SHIPPED - sync bond (file trips keep the cloud twin link):
+- js/mmgr-state.js: exportState embeds cloudBond {cloudProjectId,
+  linkedAt} when the cloud module reports a link; importState stores
+  mmgr_cloud_bond_<localId> + raises State.isBondPending. Bond is a
+  POINTER, never a credential (no owner code rides the file).
+- js/mmgr-cloud.js: bond helpers + adoptBondId (re-points
+  mmgr_cloud_id_<pid> at the twin); bonded createProject probes with
+  held code first, session fallback, sign-in challenge otherwise (the
+  Task 13 resolution order) - never a blind create; cloudResync (load
+  + State.mergeExternal, newest-wins per field, honest status); one-
+  time offer card + Later dismiss; Re-sync row with lastSyncedAt in
+  linked branches; successful re-sync clears the offer.
+- js/mmgr-app.js: cloudResync/cloudBondLater ACTION_MAP entries;
+  cloudResync deliberately OUTSIDE READONLY_SAFE_ACTIONS (a merge can
+  overwrite local fields - same honesty contract as cloudLoad/import);
+  cloudBondLater is dismiss-only, safe.
+- tools/qa-sync-bond.cjs (new, CI T2 port 8810): 20/20 - D1 bond
+  embed/no-credential, D2 fresh-device detection + offer, D3 re-sync
+  arrival + newest-wins + offer cleared, D4 B pushes back + cloud
+  carries it, D5 sign-in challenge + bond kept + no duplicate row,
+  D6 live bond shape.
+- HARNESS LESSONS: (1) ev() on a closed CDP socket hangs the run -
+  capture the last in-page value BEFORE switching device contexts
+  (D6 was captured on device B2, not after the ghost context); (2)
+  drawer-button queries must scope to #cloud-section - Share &
+  Access renders its own cloudCreate button earlier in the DOM (the
+  app was correct; the harness read the wrong node); (3) CI's general
+  rate bucket is shared by code-less /meta render probes - dense
+  anonymous phases can 429 a later direct probe.
+- TOOLS FIX (pre-existing, not this wave): qa-date-wiring W-gates
+  computed expectedDate in UTC (toISOString) while the app's todayStr
+  is local - off-by-one west of Greenwich, silently 28/32 on the
+  owner's machine while green on UTC CI runners. Fixed to local
+  convention: 32/32.
+
+TASK 14 DONE - docs closeout:
+- docs/DEVELOPER-GUIDE.md: js/app/* row gained baseline-guard +
+  entitlements; mmgr-tasks row gained Task 1/3 notes + updTaskField
+  split-candidate watch; mmgr-cloud row gained the sync-bond summary
+  + current line count; mmgr-watch row added.
+- Plan doc Task 13/14 checkboxes marked with evidence; reflection.txt
+  session record written.
+
+GATES: qa-sync-bond 20/20; verify-date-wiring 13/13; qa-date-wiring
+32/32; npm run verify ALL CHECKS PASSED; bundles rebuilt; emoji scan
+clean on touched files. Commit + CI poll + deploy per protocol.

@@ -57,8 +57,8 @@ attaches (e.g. `MMGR.Cloud`).
 | `mmgr-render.js` | 2,390 | `Render` | Rendering engine: `renderDash()` (dashboard), `renderWbs()`, `renderGantt()`, `drawDependencyArrows()`, plus RAF-wrapped dispatch of the `js/render/*` sub-renderers. |
 | `js/render/*.js` | — | `Render` | Render sub-modules extracted from mmgr-render.js: `financials`, `people`, `closure`, `documents`, `weather`, `kanban`, `risks`, `resources`. Loaded *before* mmgr-render.js which wraps them. |
 | `mmgr-app.js` | 2,578 | `App` | Application controller: `init()` boot, access gate, delegated `data-action` dispatch (`ACTION_MAP`), drawers/modals/toast, keyboard shortcuts, mention dropdown, Gantt PNG export. |
-| `js/app/*.js` | — | `App` | App sub-modules extracted from mmgr-app.js: `components`, `confirm`, `copy-text`, `sidebar`, `weather`, `backup`, `export`, `history`, `definitions`. |
-| `mmgr-tasks.js` | 623 | `Tasks` | WBS/task CRUD: add/edit/indent, `updTaskField`, `wiCommit` (work-item commit). |
+| `js/app/*.js` | — | `App` | App sub-modules extracted from mmgr-app.js: `components`, `confirm`, `copy-text`, `sidebar`, `weather`, `backup`, `export`, `history`, `definitions`, `baseline-guard` (Task 2: auto-captures the first baseline + red-dot nudge), `entitlements` (Task 9: the ONE gating seam — `aiAssistant()` reads sign-in; premium flags land inside later, callers never change). |
+| `mmgr-tasks.js` | 623 | `Tasks` | WBS/task CRUD: add/edit/indent, `updTaskField` (endDate edits + Gantt drags back-compute duration via `durationFromDates`, Task 1), `validateImportLines` + AI-assisted Import Dates mismatch panel (Task 3). Split-candidate note: `updTaskField` grew — keep an eye. |
 | `mmgr-schedule.js` | 849 | `Schedule` | CPM engine: topological sort, forward/backward pass, float, critical path, weather padding, resource conflicts, `audit()`. **Purity contract**: pass functions are pure — they never mutate live tasks. |
 | `mmgr-risks.js` | 215 | `Risks` | Risk & issue CRUD. |
 | `mmgr-resources.js` | 428 | `Resources` | Resource & budget management (rates, allocation, utilization, budget lines). |
@@ -88,9 +88,10 @@ attaches (e.g. `MMGR.Cloud`).
 | `mmgr-glass.js` | 429 | `Glass` | Opt-in premium liquid-glass Three.js backdrop (CSS `backdrop-filter` is the default tier). `activate()` boots the engine. |
 | `mmgr-dock.js` | 213 | `Dock` | Shared bottom dock (theme stack + glass toggle) on every app page. External file on purpose — zero CSP hash churn. |
 | `mmgr-calculator.js` | 1,507 | `Calculator` | Floating draggable calculator FAB: trades/site tabs, `wireInputs`, and the giant `handleAction` switch. |
+| `mmgr-watch.js` | — | `Watch` | Background assistant (Task 6): deterministic watchers (lead-time, budget, resources, weather) writing into `s.aiInbox`; header bell + mailbox. Gated on sign-in via Entitlements (Task 9). Notices are local-only, user-deletable. |
 | `mmgr-sync.js` | 299 | `Sync` | Optional Google identity for sync labelling. Never gating. |
 | `mmgr-google-auth.js` | 1,798 | `GoogleAuth` | Optional operator identity: GIS load, `showUser`, email+password auth (`wireEmailAuth`, `mountPasswordControl`), marketing-page sign-in sheet. |
-| `mmgr-cloud.js` | 2,423 | `Cloud` | Cloud Backup & Recovery section (Controls drawer): owner/editor codes, save/load/recover, changelog+revert. **Strictly opt-in per project.** Server-side scope enforcement is the real gate; UI greying is UX only. |
+| `mmgr-cloud.js` | 2,593 | `Cloud` | Cloud Backup & Recovery section (Controls drawer): owner/editor codes, save/load/recover, changelog+revert, sync bond (`cloudBond`: file exports carry a twin pointer, import detects it, bonded `createProject` probes before forking, `cloudResync` = load + per-field merge). **Strictly opt-in per project.** Server-side scope enforcement is the real gate; UI greying is UX only. |
 | `js/cloud/*.js` | — | `Cloud` | Cloud sub-modules: `diffs`, `scope`, `share`, `review`, `webhooks`. |
 | `mmgr-cloud-dash.js` | 724 | `CloudDash` | "My Cloud Projects" launcher dashboard (app.html). Self-contained on purpose — loads before mmgr-utils; degrades silently without the Worker. |
 | `mmgr-pool.js` | 237 | `Pool` | Cloud shared resource pool client (C23): list/link/unlink pool rows, owner-gated server-side. |

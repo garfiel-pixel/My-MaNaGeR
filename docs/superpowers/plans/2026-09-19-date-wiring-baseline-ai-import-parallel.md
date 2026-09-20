@@ -1041,10 +1041,10 @@ git commit -m "fix(csp): register field-guide inline script hash, mobile sidebar
 - Modify: `js/mmgr-app.js` `ACTION_MAP` (`cloudResync`, `cloudBondLater`)
 - Create: `tools/qa-sync-bond.cjs` (export→fresh device→bond detected→re-sync merges a budget change both ways)
 
-- [ ] **Step 1:** Implement bond embed + detection (pure state layer) with static gate.
-- [ ] **Step 2:** Bond-aware cloud resolution + create-twin guard; harness D-gates for both directions (cloud→file→new device; file→cloud create→links twin).
-- [ ] **Step 3:** Re-sync button + conflict merge via existing per-field path; E2E gate: budget edit on device A syncs to device B and back.
-- [ ] **Step 4:** Full protocol (build/verify/commit/push/CI/deploy/reflection).
+- [x] **Step 1:** Implement bond embed + detection (pure state layer) with static gate. DONE 2026-09-19: `exportState` embeds `cloudBond` (id + linkedAt only) when the cloud module reports a link (`_hasCloudLink`) or a stored bond exists; `importState` stores `mmgr_cloud_bond_<localId>` + raises `State.isBondPending` for the one-time offer. Static gates in tools/verify-date-wiring.cjs (13/13).
+- [x] **Step 2:** Bond-aware cloud resolution + create-twin guard; harness D-gates for both directions (cloud→file→new device; file→cloud create→links twin). DONE: js/mmgr-cloud.js bond helpers (`getBond/setBond/clearBond`), `adoptBondId()` (re-points `mmgr_cloud_id_<pid>` at the twin), bonded `createProject` probes with held code first, session fallback, sign-in challenge when neither exists — never a blind create. tools/qa-sync-bond.cjs D-gates green.
+- [x] **Step 3:** Re-sync button + conflict merge via existing per-field path; E2E gate: budget edit on device A syncs to device B and back. DONE: `cloudResync` (POST /load + `State.mergeExternal`, newest-wins per field, honest status line), one-time offer card on first render after import, Re-sync row with lastSyncedAt in linked branches, `cloudBondLater` dismiss. E2E: A→B arrival (D3c/d), B→cloud→HTTP load (D4b), offer one-time (D3f), bond never carries a credential (D1b/D6).
+- [x] **Step 4:** Full protocol (build/verify/commit/push/CI/deploy/reflection). DONE 2026-09-19: qa-sync-bond 20/20 + verify-date-wiring 13/13 + qa-date-wiring 32/32 (after a timezone-skew harness fix: the W-gates computed expectedDate in UTC while the app's todayStr is local — off-by-one on the owner's machine, green on UTC CI runners) + npm run verify green; commit + CI poll + deploy per protocol. Harness lessons: capture D6 before switching CDP contexts (ev() on a closed socket hangs); scope drawer-button queries to #cloud-section (Share & Access renders its own cloudCreate earlier in the DOM); CI's general rate bucket is shared by code-less /meta render probes.
 
 ---
 
@@ -1056,9 +1056,9 @@ git commit -m "fix(csp): register field-guide inline script hash, mobile sidebar
 - Modify: `mymanager-field-guide.html` (already updated in Task 5; final read-through for plain language)
 - Modify: `reflection.txt` (session specifics)
 
-- [ ] Run `node build.js && npm run verify` one final time (evidence in output).
-- [ ] Update the three docs above with what shipped and where.
-- [ ] Commit: `docs(tracker): record date-wiring, baseline guard, AI import, parallel tags`
+- [x] Run `node build.js && npm run verify` one final time (evidence in output). DONE 2026-09-19: ALL CHECKS PASSED after Task 13; qa-sync-bond 20/20; verify-date-wiring 13/13; qa-date-wiring 32/32.
+- [x] Update the three docs above with what shipped and where. DONE 2026-09-19: DEVELOPER-GUIDE module rows (baseline-guard, entitlements, watch, mmgr-tasks Task 1/3 notes, mmgr-cloud sync-bond + line count); PLANNING-TODO-2026-09-09 tracker entry; this plan's Task 13/14 checkboxes.
+- [x] Commit: `docs(tracker): record date-wiring, baseline guard, AI import, parallel tags`
 
 ---
 

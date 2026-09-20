@@ -673,3 +673,14 @@ TASK 14 DONE - docs closeout:
 GATES: qa-sync-bond 20/20; verify-date-wiring 13/13; qa-date-wiring
 32/32; npm run verify ALL CHECKS PASSED; bundles rebuilt; emoji scan
 clean on touched files. Commit + CI poll + deploy per protocol.
+
+SHIP RECORD (same session): commits e70ef10 (feat) + f72f6b0 (docs)
+pushed with the pending Task 10 commit 011bda5; CI run 35479735797
+polled to SUCCESS (new T2 sync-bond step included). Deployed from
+verified clean staging ($HOME/mmgr-deploy, 84 entries, .dev.vars
+stripped, new-string greps green) -> Version 210bcc6e-c0a6-48de-97af-
+577a1bc0b766. Live smoke BOTH domains: /api/health ok, served
+dist/bundle.js + js/mmgr-state.js carry the bond code (2 + 3 hits).
+Also removed a stray empty "-p" directory that a prior session's
+tar invocation had dropped at the repo root (now in staging excludes
+by never creating it; nothing tracked was inside).

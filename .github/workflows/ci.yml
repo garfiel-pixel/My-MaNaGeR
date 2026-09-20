@@ -295,6 +295,12 @@ jobs:
         env:
           QA_PORT: 8809
 
+      - name: "T2: Sync bond E2E (file trip keeps the cloud twin link + re-sync merge)"
+        id: qa-sync-bond
+        run: node tools/qa-sync-bond.cjs
+        env:
+          QA_PORT: 8810
+
       # ── CI Summary ──────────────────────────────────────────────────
       - name: CI Summary
         if: always()
@@ -309,6 +315,7 @@ jobs:
           echo "| Line endings | ${{ steps.eol.outcome }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Client codes E2E | ${{ steps.qa-client-codes.outcome }} |" >> $GITHUB_STEP_SUMMARY
           echo "| API keys E2E | ${{ steps.qa-api-keys.outcome }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Sync bond E2E | ${{ steps.qa-sync-bond.outcome }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Service Worker | ${{ steps.sw.outcome }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Hidden attributes | ${{ steps.hidden.outcome }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Skills lock | ${{ steps.skills.outcome }} |" >> $GITHUB_STEP_SUMMARY

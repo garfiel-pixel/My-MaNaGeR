@@ -1948,6 +1948,10 @@ window.MMGR = MMGR;
     'mcpCopyUrl': () => { var inp = document.getElementById('mcp-url'); if (inp && inp.value) { navigator.clipboard.writeText(inp.value).then(function() { var st = document.getElementById('mcp-status'); if (st) st.textContent = 'Copied to clipboard.'; setTimeout(function() { var s = document.getElementById('mcp-status'); if (s) s.textContent = ''; }, 2000); }).catch(function() { inp.select(); document.execCommand('copy'); }); } },
     'cloudSignIn': () => { const C = window.MMGR.Cloud; if (C && C.signIn) C.signIn(); },
     'cloudLoadWithCode': () => { const C = window.MMGR.Cloud; if (C && C.loadWithCode) C.loadWithCode(); },
+    // SYNC BOND (Task 13): explicit re-sync for bonded projects + the
+    // one-time offer's Later dismiss (both are drawer actions, no mutation).
+    'cloudResync': () => { const C = window.MMGR.Cloud; if (C && C.cloudResync) C.cloudResync(); },
+    'cloudBondLater': () => { const C = window.MMGR.Cloud; if (C && C.cloudBondLater) C.cloudBondLater(); },
     // CLOUD-BACKEND-ARCHITECTURE-PLAN Phase 2/3: editor-code management
     // (create/list/revoke , owner-only, enforced server-side) and the
     // changelog view/revert (owner-only). Same zero-throw pattern as the
@@ -2331,6 +2335,13 @@ window.MMGR = MMGR;
     // local workspace like driveRestore/import, so it stays blocked in
     // view-only.
     'cloudCreate': 1, 'cloudClaim': 1, 'cloudUpgrade': 1, 'cloudResendVerify': 1, 'cloudSave': 1, 'cloudRecover': 1, 'cloudCopyCode': 1, 'cloudSignIn': 1,
+    // SYNC BOND (Task 13): re-sync pulls the cloud snapshot through the
+    // per-field merge (newest-wins). A merge CAN overwrite local field
+    // values with newer cloud ones - the same honesty contract as
+    // cloudLoad/import, which are deliberately excluded here - so
+    // cloudResync stays OUT of the view-only safe list (owners/editors
+    // only). cloudBondLater is dismiss-only, safe in view-only.
+    'cloudBondLater': 1,
     // CLOUD-BACKEND-ARCHITECTURE-PLAN Phase 2/3: editor-code management and
     // changelog view/revert never mutate the local workspace (owner-only
     // server calls; a revert changes the CLOUD snapshot, not this device) , 

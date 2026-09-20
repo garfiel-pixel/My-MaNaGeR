@@ -1125,3 +1125,27 @@ earns its keep. Lesson: seed-session storage contracts are load-bearing;
 the code-entry path mirrors exactly what project.html's boot reads.
 Dark button language scoped to body.dark-mode:not(.db-page) so app.html
 stays reference-only. Verify: all harnesses green; SW v306.
+
+SESSION 10b (2026-09-20) - CI REPAIR LOOP + THE ANON-CREATE LAW.
+The sync wave's first push went red and took three cycles to green.
+Cycle 1 taught the harness law: verify-dynamic-labels died ECONNREFUSED
+on its DevTools port AFTER the readiness poll passed - the /json fetch
+needs its own bounded retry and every Chrome boot path needs one full
+retry (fresh port + profile, kill the wedged attempt). Cycle 2 was the
+real lesson and it was MY bug: I had put a session guard inside
+createProject, but fresh cloud-create is an anonymous flow - the owner
+code the create hands back IS the credential (phase1's C1a proves the
+server allows it over plain HTTP). The guard killed code storage, the
+UI save, and device B's pull. Fixed by removing the guard entirely and
+routing sign-in at the ENTRY POINT only: the backup pill chains
+checkMe (now exported) after the drawer render, because signIn needs
+#cloud-gis-host which only exists once the cloud section renders - my
+first attempt raced checkMe against that render and was dead on
+arrival. PRODUCT LAW: never gate createProject on a session; gate the
+buttons that lead to it. Cycle 3: green on 6f8297c, deploy 31c4222a,
+both domains smoke-verified. Then the field guide's backup card was
+taught the same contract in plain language (first click opens sign-in,
+one more click creates + shows the code once; corrected the "picks up
+where it left off" overstatement - nothing queues in the signed-out
+path), tmp/ + staging cleaned, SW v307.
+

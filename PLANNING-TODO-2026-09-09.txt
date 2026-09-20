@@ -684,3 +684,12 @@ dist/bundle.js + js/mmgr-state.js carry the bond code (2 + 3 hits).
 Also removed a stray empty "-p" directory that a prior session's
 tar invocation had dropped at the repo root (now in staging excludes
 by never creating it; nothing tracked was inside).
+
+GUIDE WAVE (same session, owner follow-up): field guide A-15 gained
+two plain-language flow cards - what the cloud bond is (exported
+files carry a quiet link to their cloud copy, no codes in the file)
+and how Re-sync works (newest-wins per field, sign-in when no code
+is held, bond kept on failure). Banned-vocab + emoji + dash scans
+clean; sw.js v304 -> v305 for the guide edit; directive STATUS LOG
+Session 9 entry written. Docs-only wave: no inline scripts touched,
+CSP hashes unchanged, npm run verify green.

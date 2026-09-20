@@ -676,6 +676,16 @@ var MMGR = window.MMGR || {};
   function undoDepth() { return _undoStack.length; }
   function redoDepth() { return _redoStack.length; }
 
+  // ---- SYNC BOND (Task 13, owner 2026-09-19) ------------------------------
+  // A pending-bond flag set by importState when the incoming file carried a
+  // cloudBond. The app reads/clears it once (the one-time "Re-sync with its
+  // cloud copy?" offer). Deliberately NOT persisted - the bond itself lives
+  // under mmgr_cloud_bond_<id> (mmgr-cloud.js resolves + clears pending
+  // from there); the flag only survives long enough for the offer.
+  let _bondPending = false;
+  function markBondPending(v) { _bondPending = !!v; }
+  function isBondPending() { return _bondPending; }
+
   function getProjectKey() {
     return STORAGE_KEY + '_' + (ns.projectId || 'default');
   }
@@ -1104,7 +1114,32 @@ var MMGR = window.MMGR || {};
     // Deep-clone, strip secrets from the CLONE only, serialize. The live
     // in-memory state is never mutated as a side effect of exporting it.
     const out = JSON.parse(JSON.stringify(getState()));
-    return JSON.stringify(stripSecrets(out), null, 2);
+    stripSecrets(out);
+    // SYNC BOND (owner 2026-09-19, Task 13): a file exported from a
+    // cloud-linked project carries a pointer to its cloud twin so a fresh
+    // device can re-link instead of forking a second record. The bond
+    // POINTS, it never authenticates - the owner code itself stays out of
+    // the file (secrets stay stripped exactly as before).
+    try {
+      const bondPid = ns.Cloud && typeof ns.Cloud._pid === 'function' ? ns.Cloud._pid() : null;
+      if (bondPid && typeof bondPid === 'string' && bondPid !== 'demo-filled' && bondPid !== 'demo-empty') {
+        // A project counts as cloud-linked when a credential is held this
+        // session (owner/editor code), the session-owner probe passed, or a
+        // stored bond already points at a twin. _hasCloudLink is sync - the
+        // boot render has already run the /meta probe by the time a user
+        // clicks export.
+        const linked = !!(ns.Cloud && typeof ns.Cloud._hasCloudLink === 'function' && ns.Cloud._hasCloudLink());
+        let storedBond = null;
+        try { storedBond = JSON.parse(localStorage.getItem('mmgr_cloud_bond_' + (ns.projectId || 'default')) || 'null'); } catch (e) {}
+        if (linked || (storedBond && storedBond.cloudProjectId)) {
+          out.cloudBond = {
+            cloudProjectId: (storedBond && storedBond.cloudProjectId) || bondPid,
+            linkedAt: out.updatedAt || new Date().toISOString()
+          };
+        }
+      }
+    } catch (e) { /* bond is best-effort - export never fails for it */ }
+    return JSON.stringify(out, null, 2);
   }
 
   function importState(jsonStr) {
@@ -1114,6 +1149,21 @@ var MMGR = window.MMGR || {};
       // never include them, but a legacy file can). The session vault is the
       // only home for keys now , an import must never re-seed state with one.
       stripSecrets(parsed);
+      // SYNC BOND (Task 13): remember a cloud twin pointer BEFORE migrate
+      // (migrate may drop unknown fields) so the app can offer to re-link
+      // this device to the cloud copy the file came from. The bond is a
+      // pointer, not a credential - it carries only the cloud project id.
+      try {
+        const b = parsed && parsed.cloudBond;
+        if (b && typeof b.cloudProjectId === 'string' && /^[A-Za-z0-9_-]+$/.test(b.cloudProjectId)) {
+          const localId = getProjectKey().replace('mmgr_state_', '');
+          localStorage.setItem('mmgr_cloud_bond_' + localId, JSON.stringify({
+            cloudProjectId: b.cloudProjectId,
+            lastSyncedAt: (typeof b.linkedAt === 'string') ? b.linkedAt : ''
+          }));
+          markBondPending(true);
+        }
+      } catch (e) { /* bond detection is best-effort - import never fails for it */ }
       const migrated = migrate(parsed);
       _state = migrated;
       markAllDirty();
@@ -1191,6 +1241,8 @@ var MMGR = window.MMGR || {};
     onChange: onChange,
     exportState: exportState,
     importState: importState,
+    markBondPending: markBondPending,
+    isBondPending: isBondPending,
     clearProject: clearProject,
     saveBaseline: saveBaseline,
     validate: validate,

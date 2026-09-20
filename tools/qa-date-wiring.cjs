@@ -383,8 +383,14 @@ const FLUSH_RAF = `new Promise(r => requestAnimationFrame(() => requestAnimation
         // Seed the owner's exact example: steel fixing lead time, 2 days left.
         // (Task 9 gates watchers on sign-in, so simulate signed-in here - the
         // signed-out no-op is E1's job.)
-        const d = new Date(); d.setDate(d.getDate() + 2);
-        const iso = d.toISOString().slice(0, 10);
+        // TIMEZONE FIX (2026-09-19): compute the date with the app's own
+        // LOCAL convention (U.todayStr is local, not UTC) - an ISO-UTC date
+        // here diverges by a day west of Greenwich and misses the d<=2
+        // window, silently failing the gate on the owner's machine while
+        // passing on UTC CI runners.
+        const p = function(n){ return String(n).padStart(2,'0'); };
+        const t = new Date(); t.setDate(t.getDate() + 2);
+        const iso = t.getFullYear() + '-' + p(t.getMonth()+1) + '-' + p(t.getDate());
         MMGR.State.updateState(function(s){
           s.tasks.push({ id:'lt1', name:'Steel fixing', level:0, indent:0, isPhase:false, status:'todo',
             startDate:'2026-08-01', endDate:'2026-08-05', duration:'5', assignee:'', critical:false,

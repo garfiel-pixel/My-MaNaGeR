@@ -169,6 +169,109 @@ var MMGR = window.MMGR || {};
     try { sessionStorage.setItem(lastSeenKey(), String(t || '')); } catch (e) { /* ignore */ }
   }
 
+  // ---- SYNC BOND (Task 13, owner 2026-09-19) ------------------------------
+  // A file exported from a cloud-linked project carries a cloudBond pointer;
+  // when that file is imported on a fresh device (this module's key slots all
+  // empty), the stored bond lets this device re-link to the SAME cloud twin
+  // instead of forking a second, unrelated cloud project. The bond is a
+  // POINTER, never a credential - the owner code itself never rides the file.
+  // Keyed by the LOCAL project id (mmgr_cloud_bond_<localId>): the local id
+  // is what this device addresses the project by; the cloud twin id lives
+  // INSIDE the record (cloudProjectId).
+  function bondKey() { return 'mmgr_cloud_bond_' + (ns.projectId || 'default'); }
+  function getBond() {
+    try {
+      const raw = localStorage.getItem(bondKey());
+      if (!raw) return null;
+      const p = JSON.parse(raw);
+      return (p && typeof p.cloudProjectId === 'string' && /^[A-Za-z0-9_-]+$/.test(p.cloudProjectId)) ? p : null;
+    } catch (e) { return null; }
+  }
+  function setBond(b) {
+    try { localStorage.setItem(bondKey(), JSON.stringify(b)); } catch (e) { /* ignore */ }
+  }
+  function clearBond() {
+    try { localStorage.removeItem(bondKey()); } catch (e) { /* ignore */ }
+  }
+  // Sync (non-async) link check for State.exportState: a held credential or
+  // a stored bond means the exported file should carry the twin pointer.
+  // The session-owner probe (_sessOwner) is filled in by render()'s /meta
+  // pass; before that it is simply not counted (worst case: an export in
+  // the first seconds of a session-owner project carries no bond - benign,
+  // the file still round-trips as plain data).
+  function hasCloudLink() {
+    if (getCode() || getECode()) return true;
+    if (_sessOwner) return true;
+    return !!getBond();
+  }
+  // One-time offer state: set when an import left a pending bond for THIS
+  // project id (State.importState writes the bond + raises the flag; the
+  // boot render surfaces the offer card once, then clears the flag).
+  function bondOfferPending() {
+    try { return !!(ns.State && ns.State.isBondPending && ns.State.isBondPending()); } catch (e) { return false; }
+  }
+  function bondOfferDone() {
+    try { if (ns.State && ns.State.markBondPending) ns.State.markBondPending(false); } catch (e) { /* ignore */ }
+  }
+  // Resolve the bond: if the local id and the bonded cloud id differ, adopt
+  // the cloud twin's id as this device's cloud-facing id (the same
+  // mmgr_cloud_id_<pid> override the 2026-09-17 id-migration introduced),
+  // so every cloud URL builder addresses the twin.
+  function adoptBondId() {
+    const b = getBond();
+    if (!b || !b.cloudProjectId) return false;
+    if (b.cloudProjectId === (ns.projectId || 'default')) return false;
+    try {
+      localStorage.setItem('mmgr_cloud_id_' + (ns.projectId || 'default'), b.cloudProjectId);
+      return true;
+    } catch (e) { return false; }
+  }
+  // Re-sync now: bonded projects pull the twin's snapshot through the same
+  // load+merge path cloud-first sync uses (per-field newest-wins, never a
+  // silent whole-file overwrite). Works with any held credential; with no
+  // credential it routes through sign-in first (session fallback), keeping
+  // the bond for retry on failure.
+  async function resyncNow() {
+    const b = getBond();
+    if (!b) { setStatus('No cloud bond stored for this project.', 'warn'); return; }
+    const cred = activeCredential();
+    if (!cred) {
+      queueAfterSignIn('re-sync with the cloud copy', resyncNow);
+      return;
+    }
+    setStatus('Re-syncing with the cloud copy…', 'busy');
+    try {
+      const headers = { 'Content-Type': 'application/json' };
+      if (cred.header) headers[cred.header] = cred.code;
+      const res = await fetch('/api/cloud/projects/' + encodeURIComponent(pid()) + '/load', {
+        method: 'POST', credentials: 'same-origin', headers: headers, body: JSON.stringify({})
+      });
+      const data = await res.json().catch(function() { return {}; });
+      if (!res.ok || !data.ok) {
+        const raw = (data && data.error) || '';
+        const msg = raw === 'code_revoked' ? 'The code this project travelled with was revoked by the admin - ask for a new one.'
+          : raw === 'project_deleted' ? 'The cloud copy this project was bonded to was deleted.'
+          : (data && data.error) || ('Re-sync failed (HTTP ' + res.status + ').');
+        setStatus(msg + ' The bond is kept - try Re-sync again once you have access.', 'err');
+        return;
+      }
+      if (!data.state) { setStatus('The cloud copy has no snapshot yet - save it once from its home device first.', 'warn'); return; }
+      // Per-field merge through the state layer (newest-wins per field),
+      // NOT a whole-file overwrite - side-by-side edits reconcile.
+      const report = ns.State.mergeExternal(data.state);
+      if (!report) { setStatus('Cloud snapshot could not be merged - it is not a valid project file.', 'err'); return; }
+      setLastSeen(data.savedAt || '');
+      setBond({ cloudProjectId: b.cloudProjectId, lastSyncedAt: new Date().toISOString() });
+      bondOfferDone(); // a successful re-sync IS the offer's answer
+      if (ns.Render && ns.Render.renderAll) ns.Render.renderAll();
+      setStatus('Re-synced ' + report.adopted + ' update' + (report.adopted === 1 ? '' : 's') + ' from the cloud copy' + (report.adopted ? '' : ' - already up to date') + '.', 'ok');
+    } catch (e) {
+      var _detail = (e && (e.message || e.name || String(e))) || 'unknown';
+      setStatus('Cloud is unavailable on this host (needs the Worker API). [' + _detail + ']', 'err');
+    }
+  }
+  function bondLater() { bondOfferDone(); render(); }
+
   // ---- pending just-created editor code (shown-once banner, gap-audit G23) --
   // Delegates to the extracted CloudShare module (2026-09-05 collapse). The
   // canonical trio lives in js/cloud/share.js; these shims exist so the two
@@ -283,6 +386,50 @@ var MMGR = window.MMGR || {};
   async function createProject() {
     if (_createInFlight) return; // BUG-1: debounce rapid clicks
     if (getCode() || _sessOwner) { setStatus('This project is already linked to the cloud , use Save / Load below.', 'warn'); return; }
+    // SYNC BOND (Task 13): an offline copy that later becomes a cloud copy
+    // must LINK to its existing twin, not create a duplicate. If a bond is
+    // stored, probe the twin first: reachable -> claim/adopt it; gone ->
+    // say so and keep the bond for retry rather than silently forking.
+    const bond = getBond();
+    if (bond && bond.cloudProjectId) {
+      if (bond.cloudProjectId !== (ns.projectId || 'default')) adoptBondId();
+      setStatus('Checking for this project\u2019s cloud copy…', 'busy');
+      try {
+        // Resolution order (Task 13 design): a held code authorizes the
+        // probe directly; only with NO credential do we route through
+        // sign-in (the session fallback). A code-holding device never
+        // needs the Google session to see its own twin.
+        const heldCred = activeCredential();
+        if (!heldCred && !(await checkMe(true))) {
+          queueAfterSignIn('link this offline copy to its cloud twin', createProject);
+          return;
+        }
+        const probeHeaders = { 'Content-Type': 'application/json' };
+        if (heldCred && heldCred.header) probeHeaders[heldCred.header] = heldCred.code;
+        const metaRes = await fetch('/api/cloud/projects/' + encodeURIComponent(pid()) + '/meta', { method: 'GET', credentials: 'same-origin', headers: probeHeaders });
+        const metaData = await metaRes.json().catch(function() { return {}; });
+        if (metaRes.ok && metaData && metaData.ok) {
+          // Twin alive and this session can see it. If the session is the
+          // owner, the ordinary session-owner path now answers; otherwise
+          // the project needs its owner code - say exactly that.
+          clearSessOwner();
+          await render();
+          if (metaData.linked && (await probeOwnerSession(true))) {
+            setStatus('Reconnected to the existing cloud copy , it was already in your account. Save / Load are ready below.', 'ok');
+          } else {
+            setStatus('This project\u2019s cloud copy exists , enter its owner code (or sign in as its owner) to sync with it.', 'warn');
+          }
+        } else if (metaRes.status === 404) {
+          setStatus('The cloud copy this project came from no longer exists , the bond was cleared, so Create makes a fresh cloud project now.', 'warn');
+          clearBond();
+        } else {
+          setStatus('Could not reach the bonded cloud copy (HTTP ' + metaRes.status + ') , the bond is kept; try Create again later.', 'err');
+        }
+      } catch (e) {
+        setStatus('Cloud is unavailable on this host (needs the Worker API) , the bond is kept for retry.', 'err');
+      }
+      return; // a bonded project never falls through to a blind create
+    }
     // OWNER 2026-09-17 (id-mismatch fix): the cloud only accepts ids made of
     // letters, numbers, dashes and underscores. An id with spaces used to
     // fail here with a bare 400 the user could not connect to the cause.
@@ -1584,10 +1731,23 @@ var MMGR = window.MMGR || {};
 
     let body = '';
     if (!code && !ecode && !sessOwner) {
+      // SYNC BOND (Task 13): an import left a pending bond for this project -
+      // offer the one-time re-link card INSTEAD of the plain create block.
+      // The bond persists (localStorage), so Later is honest: the card can
+      // be summoned again from Create (which probes the twin first).
+      const offer = bondOfferPending();
       body =
         '<div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-folder"></use></svg> Cloud Backup (Owner or Editor Code)</span></div>' +
         '<div class="sr-hint">Optional , link this project to the cloud so its state JSON lives in your backend (D1 + R2) and can be pulled back on any device. Never required; JSON export/import stays the guaranteed path.</div>' +
-        '<div class="exp-row"><button class="btn btn-g btn-s" data-action="cloudCreate"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-upload"></use></svg> Create Cloud Project</button></div>' +
+        (offer
+          ? '<div class="sr" style="margin-top:6px"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> This project came from the cloud</span></div>' +
+            '<div class="sr-hint">A bond to its cloud copy was stored with the file. Re-sync to pull the latest cloud snapshot into this device (changes merge field by field, newest wins) - or keep working offline and re-sync later.</div>' +
+            '<div class="exp-row">' +
+            '<button class="btn btn-g btn-s" data-action="cloudResync"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> Re-sync with its cloud copy</button>' +
+            '<button class="btn btn-n btn-s" data-action="cloudBondLater"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> Later</button>' +
+            '</div>'
+          : '') +
+        '<div class="exp-row" style="margin-top:6px"><button class="btn btn-g btn-s" data-action="cloudCreate"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-upload"></use></svg> ' + (offer ? 'Create anyway (checks the cloud copy first)' : 'Create Cloud Project') + '</button></div>' +
         '<div class="sr" style="margin-top:6px"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> On another device?</span></div>' +
         '<div class="sr-hint">Enter the owner code you copied when this project was first linked, or an editor code you were given (the code lives only in the creator\u2019s session, so a new device needs it typed in here):</div>' +
         '<div class="exp-row">' +
@@ -1634,6 +1794,9 @@ var MMGR = window.MMGR || {};
       // server's session fallback matches /load's existing behavior). Code
       // management stays explicit: Recover Owner Code mints a code for this
       // device without inventing one silently.
+      // SYNC BOND (Task 13): this project travelled through a file and carries
+      // a bond - offer explicit re-sync with the last-synced stamp shown.
+      const sb = getBond();
       body =
         '<div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-folder"></use></svg> Cloud Backup , linked to your account</span></div>' +
         '<div class="sr-hint">You are signed in as this project\u2019s owner on this device - backup runs against your cloud copy. Save now pushes immediately; background auto-sync keeps it current as you work. Want the portable owner code on this device too? Use Recover Owner Code below (the previous code stops working, by design).</div>' +
@@ -1643,6 +1806,8 @@ var MMGR = window.MMGR || {};
         '<button class="btn btn-n btn-s" data-action="cloudRecover"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> Recover Owner Code</button>' +
         '<button class="btn btn-n btn-s" data-action="cloudClaim"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cloud"></use></svg> Link to my account</button>' +
         '</div>' +
+        (sb ? '<div class="exp-row"><button class="btn btn-n btn-s" data-action="cloudResync"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> Re-sync with bonded cloud copy</button>' +
+              '<span class="sr-hint" style="margin:0">Last re-sync: ' + esc((sb.lastSyncedAt || '').slice(0, 19).replace('T', ' ') || 'never') + '</span></div>' : '') +
         '<div class="exp-row"><button class="btn btn-o btn-s" data-action="cloudUnlink"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> Unlink from Cloud (delete cloud copy)</button></div>' +
         // P3-17 (owner 2026-09-12): the offline-copy machinery works for the
         // session owner too - the register route accepts the session
@@ -1664,6 +1829,10 @@ var MMGR = window.MMGR || {};
         '<button class="btn btn-n btn-s" data-action="cloudRecover"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> Recover Owner Code</button>' +
         '<button class="btn btn-n btn-s" data-action="cloudClaim"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cloud"></use></svg> Link to my account</button>' +
         '</div>' +
+        // SYNC BOND (Task 13): explicit re-sync when this device's project
+        // carries a bond (e.g. it was restored from a file backup).
+        (getBond() ? '<div class="exp-row"><button class="btn btn-n btn-s" data-action="cloudResync"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> Re-sync with bonded cloud copy</button>' +
+              '<span class="sr-hint" style="margin:0">Last re-sync: ' + esc((getBond().lastSyncedAt || '').slice(0, 19).replace('T', ' ') || 'never') + '</span></div>' : '') +
         // gap-audit B10: deliberate unlink (keep local copy, stop syncing).
         '<div class="exp-row"><button class="btn btn-o btn-s" data-action="cloudUnlink"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> Unlink from Cloud (delete cloud copy)</button></div>' +
         '<div id="cloud-last-sync" class="sr-hint" role="status" aria-live="polite"></div>' +
@@ -2369,6 +2538,9 @@ var MMGR = window.MMGR || {};
     cloudMakeCopy: cloudMakeCopy,
     cloudUpdateCopy: cloudUpdateCopy,
     cloudRemoveCopy: cloudRemoveCopy,
+    // SYNC BOND (Task 13): bond-aware re-link + explicit re-sync + offer.
+    cloudResync: resyncNow,
+    cloudBondLater: bondLater,
     cloudBroadcast: cloudBroadcast,
     cloudAutoBroadcast: cloudAutoBroadcast,
     cloudOfflineList: cloudOfflineList,
@@ -2399,6 +2571,12 @@ var MMGR = window.MMGR || {};
     _esc: esc,
     _setStatus: setStatus,
     _render: render,
+    // SYNC BOND (Task 13): sync link-check + bond accessors for
+    // State.exportState and the QA harness.
+    _hasCloudLink: hasCloudLink,
+    _getBond: getBond,
+    _setBond: setBond,
+    _clearBond: clearBond,
     // B1 FIX (owner 2026-09-17): review.js's editorCodeDone() calls
     // C.clearPendingEditorCode() - these three wrappers were never exported,
     // so Confirm threw a TypeError and the shown-once banner stayed up with

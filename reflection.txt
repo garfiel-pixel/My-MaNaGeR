@@ -1067,3 +1067,46 @@ VERIFICATION EVIDENCE
 OUTSTANDING / OWNER'S CALL
 - Nothing open from the 14-task plan - it is fully closed.
 - Owner-side items stay in OWNER-REVIEW.md (email/domain, billing).
+
+## Session 2026-09-19f - GUIDE CLOUD-BOND SHEET + DIRECTIVE UPDATE (owner follow-up)
+
+Owner order: extend the field guide with a plain-language explanation
+of the cloud bond and re-sync, and update the directives as well.
+
+WHAT WAS DONE
+- mymanager-field-guide.html, sheet A-15 (Data, Backup & Access):
+  two new flow cards in the "Save, load, recover, and unlink" stream,
+  placed before Unlink from Cloud:
+  1. "Take a project offline with a file - it stays tied to its
+     cloud copy" - names the thing (a quiet link in the file), not
+     the mechanism (no cloudBond JSON key, no storage-key talk, no
+     "pointer/credential" vocabulary). Covers: the file still opens
+     as plain data anywhere; the offer card appears in Cloud Backup
+     on a never-seen device; Later is honest because Create checks
+     the twin first.
+  2. "Re-sync - pull the cloud copy's latest, without losing local
+     work" - explains newest-wins in field terms ("each field keeps
+     whichever side was edited most recently"), the sign-in case,
+     the Re-sync button on linked projects, and failure honesty
+     (says what happened, keeps the link for retry).
+- Plain-language gates: banned-vocab scan (hash/credential/
+  localStorage/authenticate/provision/persist/utilize/via) clean on
+  the new copy; emoji scan 0; em/en-dash scan 0 (the guide's own
+  spaced-ASCII " , " convention preserved).
+- sw.js v304 -> v305 (served HTML changed; PWA contract) with the
+  v305 history comment.
+- CONTINUATION-DIRECTIVE.md STATUS LOG: Session 9 entry written
+  (cleanup + Task 13 ship record + the three harness laws + the
+  pre-existing timezone-skew harness fix + this guide wave).
+- PLANNING-TODO-2026-09-09.txt: guide-wave note appended to the
+  session's ship record.
+
+VERIFICATION
+- npm run verify ALL CHECKS PASSED (SW v305 > SHELL assets; CSP
+  hashes untouched - guide markup only, no inline scripts).
+- Copy scans as above. No app behavior change (docs only).
+
+COMMIT/CI/DEPLOY: guide + directive + tracker + reflection in one
+docs commit; CI polled; deployed per protocol if the owner says go
+(docs-only wave, but the SW bump is a client-facing cache change so
+the standing ship order applies).

@@ -715,3 +715,16 @@ gold on hover only, 1.2x button icons, tabs mimic the background;
 light theme untouched. Gates: npm run verify, verify-date-wiring 13/13,
 qa-date-wiring 32/32, qa-ai-relay PASS, qa-sync-bond 20/20,
 qa-client-codes ALL, qa-dashboard-spec 76/76. SW v306.
+2026-09-20 CI REPAIR LOOP (run for the two-way-sync wave) - 3 cycles to green on 6f8297c:
+  1. add8d48 delegate repair pushed -> next step surfaced: T1 dynamic-labels died ECONNREFUSED 127.0.0.1:9245
+     (Chrome boot flake: readiness poll passed, /json fetch crashed bare). Fixed harness: bounded /json retry
+     with self-describing error, clean throw on no page targets, one full boot retry on port 9246 + fresh
+     profile (525550c). Step passed next run.
+  2. Next latent failure surfaced (loop law): T2 phase1 C4c/C4d/C4h - my session guard inside createProject
+     broke the anonymous fresh-create contract (owner code IS the credential). Guard removed; backup pill
+     chains checkMe (newly exported) AFTER drawer render: signed-in -> create directly, signed-out -> rendered
+     sign-in host (signIn needs #cloud-gis-host). Local: phase1 29/29, sync-bond 20/20, client-codes green (6f8297c).
+  3. CI run SUCCESS on 6f8297c. Deployed via verified staging -> Version 31c4222a-ae82-495f-937d-381d3e011d4b.
+     Live smoke both domains (workers.dev + mymanagerworkspace.com): health 200, bundle carries c.checkMe(!1).
+  LAW reinforced: a browser harness that polls a DevTools port must tolerate the fetch dying right after the
+  poll, and every boot path needs one retry - runners flake, the run is the truth.

@@ -3800,24 +3800,29 @@ body.dark-mode:not(.db-page) #app-sidebar .sec-btn{
   border-radius:var(--radius-rect);
 }
 
-/* ---- OWNER 2026-09-20 (LIGHT THEME: SHAPE ONLY) -------------------------
-   The rectangular language is universal: light mode gets the same corner
-   geometry on section tabs, methodology tabs and toolbars - SHAPE ONLY, no
-   color/hover/fill changes (owner: "no really color changes to the light
-   theme, just a shape"). Confirms/rectangularizes .btn-pill confirm-style
-   pills (radius-only - their colors are untouched). Specificity doubling
-   keeps it ahead of the base radius rules.
+/* ---- OWNER 2026-09-20 (LIGHT THEME: SHAPE ONLY, REVISED SAME DAY) -------
+   Owner correction: the METHODOLOGY tabs (.tab-btn) are NEVER rectangular
+   in any theme - their pill look is untouched everywhere (the light rule
+   that caught them is removed; the dark theme never touched them either).
+   The light-theme rectangle pass covers:
+   - .sec-btn section tabs + the #app-sidebar clones (already rank-correct),
+   - .btn INSIDE-PAGE action buttons (Import from Text / Add Dates / the
+     budget, Gantt and WBS card controls) - the same family the dark wave
+     rectangularized, mirrored to light at the owner's instruction.
+   SHAPE ONLY: radius changes, zero color/hover/icon changes. Scoped to
+   project pages (:not(.db-page), mirroring the dark pass) so the launcher
+   is never caught. Specificity doubling outranks the base radius rules.
    ============================================================ */
-body:not(.dark-mode) .tab-btn.tab-btn,
-body:not(.dark-mode) .sec-btn.sec-btn{
+body:not(.dark-mode):not(.db-page) .sec-btn.sec-btn,
+body:not(.dark-mode):not(.db-page) .btn.btn{
   border-radius:var(--radius-rect);
 }
-body:not(.dark-mode) .btn-pill.btn-pill{
+body:not(.dark-mode):not(.db-page) .btn-pill.btn-pill{
   border-radius:var(--radius-rect);
 }
 /* Light-theme sidebar clone joins the rectangle pass (same ID-rank reason
    as the dark rule above); its colors stay exactly as they were. */
-body:not(.dark-mode) #app-sidebar .sec-btn{
+body:not(.dark-mode):not(.db-page) #app-sidebar .sec-btn{
   border-radius:var(--radius-rect);
 }
 /* ---- HAVE A CODE? (owner 2026-09-20, app.html) ------------------------

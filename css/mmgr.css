@@ -71,6 +71,9 @@ svg.ico use{fill:inherit;stroke:inherit;}
   --premium-gold:#FFE082;
   --radius:8px;   /* MMGR-NEW-UI-CREATION-BRIEF §4.1 - Law of Nested Radii: outer = inner + padding */
   --radius-control:8px;   /* inner controls: buttons, inputs, rail links */
+  --radius-rect:10px;     /* rounded-rectangle control radius (owner 2026-09-20):
+                             defined at :root so the LIGHT-theme shape pass resolves it;
+                             the dark block re-declares the same value for its scope */
   --pad-card:16px;        /* card padding */
   --dock-h:120px;         /* bottom dock height (owner D3): toasts, the calc
                              FAB and body padding-bottom clear it via calc */
@@ -3730,29 +3733,93 @@ body.dark-mode:not(.db-page) .btn-lt:hover,body.dark-mode:not(.db-page) .btn-wx:
 }
 body.dark-mode:not(.db-page) .btn-pill{border-radius:var(--radius-rect);}
 body.dark-mode:not(.db-page) .btn .ico{font-size:1.2em;}
-/* Section tabs (Budget / Resources / Command Board ...): same rounded-
-   rectangle language. Inset shadow carries the hairline so the control's
-   size is unchanged (no border-box shift). Inactive = background-mimic +
-   white label; hover = gold; active keeps its white highlight, now square-
-   shouldered instead of pill. */
-body.dark-mode:not(.db-page) .tab-btn{
-  border-radius:var(--radius-rect);
-  color:var(--text);
-  background:transparent;
-  box-shadow:inset 0 0 0 1px rgba(255,255,255,.14);
-}
-body.dark-mode:not(.db-page) .tab-btn:hover{
-  color:var(--gold-accent);
-  background:rgba(var(--gold-accent-rgb),.08);
-  box-shadow:inset 0 0 0 1px rgba(var(--gold-accent-rgb),.65);
-}
-body.dark-mode:not(.db-page) .tab-btn.active{
-  color:#0b0b0d;background:#ffffff;box-shadow:none;
-}
+/* ---- OWNER 2026-09-20 (UI AUTHORIZATION RESTORE) ------------------------
+   Commit 0e4b5ac styled the WRONG selector: its rounded-rectangle block
+   landed on .tab-btn (the methodology switch: Waterfall / Agile / Hybrid)
+   when the owner's instruction was aimed at the section tabs (.sec-btn).
+   The methodology tabs' look was NEVER authorized to change. EXACT RESTORE
+   (owner-confirmed): the unauthorized dark-theme overrides are deleted so
+   the pre-0e4b5ac rules govern again - pill shape (base .tab-btn,
+   border-radius:100px), transparent rest, hover green label (base),
+   selected = white box with black label (body.dark-mode .tab-btn.active,
+   line ~198). No re-implementation here on purpose - the originals carry
+   the look. The --radius-rect token stays for the rules that legitimately
+   use it (dark-theme .btn language + the light-theme shape pass below).
+   Owner 2026-09-20.
+   ============================================================ */
 /* Card toolbars (Add Task / Import from Text / ...): a teensy bit more
    breathing room between the controls. */
 body.dark-mode:not(.db-page) .card-title .g6{gap:9px;}
 
+/* ---- OWNER 2026-09-20 (SECTION TABS - the instruction 0e4b5ac missed) ---
+   The rounded-rectangle background-mimic treatment was meant for THESE
+   buttons (the 22 section selectors + the desktop sidebar clones - one
+   class, .sec-btn), but 0e4b5ac wrote it onto .tab-btn instead. Spec agreed
+   with the owner, 2026-09-20:
+   - Rest: background-mimic (transparent - the fully dark project shows
+     through, no gray/frosted fill) + mandatory gray hairline outline that
+     frames the icon (inset ring, so sizing never shifts) + white label.
+     Kills the shared .tab-btn,.sec-btn glass fill (line ~1885) for these
+     buttons - that frosted white fill was the gray the owner rejected.
+   - Hover: soft WHITE glow on the outline + a faint white film, label
+     readable - monochrome, NO gold on these buttons.
+   - Selected (.active): solid white box, black label - today's highlight,
+     kept exactly (owner confirmed).
+   - Black-and-white theme only; light theme sees the SHAPE change only
+     (separate rule below - no color changes there).
+   Specificity note: each rule doubles a class (>= .tab-btn,.sec-btn's
+   0-2-0) so it wins the cascade without !important.
+   ============================================================ */
+body.dark-mode:not(.db-page) .sec-btn.sec-btn{
+  border-radius:var(--radius-rect);
+  color:var(--text);
+  background:transparent;
+  border-color:transparent;
+  backdrop-filter:none;
+  -webkit-backdrop-filter:none;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.22);
+}
+body.dark-mode:not(.db-page) .sec-btn.sec-btn:hover{
+  color:#ffffff;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.85),0 0 10px rgba(255,255,255,.18),inset 0 0 0 100px rgba(255,255,255,.08);
+}
+body.dark-mode:not(.db-page) .sec-btn.sec-btn.active,
+body.dark-mode:not(.db-page) .sec-nav .sec-btn.active{
+  border-color:rgba(255,255,255,.7);
+  color:#0b0b0d;
+  background:#ffffff;
+  font-weight:700;
+  box-shadow:0 0 0 1px rgba(255,255,255,.7),0 0 14px rgba(255,255,255,.18);
+}
+/* The sidebar clones carry the same look (they share .sec-btn by design -
+   one source of truth); width rules below stay layout-only. The clone
+   radius needs the #app-sidebar ID in the chain: #app-sidebar .sec-btn
+   (1-1-0, line ~412) out-ranks class-only rules, so the 10px rectangle
+   would otherwise lose to the 8px --radius-control default. */
+body.dark-mode:not(.db-page) #app-sidebar .sec-btn{
+  border-radius:var(--radius-rect);
+}
+
+/* ---- OWNER 2026-09-20 (LIGHT THEME: SHAPE ONLY) -------------------------
+   The rectangular language is universal: light mode gets the same corner
+   geometry on section tabs, methodology tabs and toolbars - SHAPE ONLY, no
+   color/hover/fill changes (owner: "no really color changes to the light
+   theme, just a shape"). Confirms/rectangularizes .btn-pill confirm-style
+   pills (radius-only - their colors are untouched). Specificity doubling
+   keeps it ahead of the base radius rules.
+   ============================================================ */
+body:not(.dark-mode) .tab-btn.tab-btn,
+body:not(.dark-mode) .sec-btn.sec-btn{
+  border-radius:var(--radius-rect);
+}
+body:not(.dark-mode) .btn-pill.btn-pill{
+  border-radius:var(--radius-rect);
+}
+/* Light-theme sidebar clone joins the rectangle pass (same ID-rank reason
+   as the dark rule above); its colors stay exactly as they were. */
+body:not(.dark-mode) #app-sidebar .sec-btn{
+  border-radius:var(--radius-rect);
+}
 /* ---- HAVE A CODE? (owner 2026-09-20, app.html) ------------------------
    The question mark beside the section heading explains what a code IS on
    hover or keyboard focus. Pure CSS tooltip: no JS, no handlers, no CSP

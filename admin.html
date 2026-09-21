@@ -814,6 +814,8 @@ let liveFetched = false;
    (the mismatch the owner reported). Also enables stale detection: the
    cloud's updatedAt vs the workspace copy's updatedAt on this device. */
 let _cloudTruth = null;   /* projectId -> updatedAt (ISO string) */
+let _cloudTruthRoles = null;   /* projectId -> accessRole (owner/editor/view) - role-gates auto-adopt */
+let _cloudTruthSnap = null;    /* projectId -> hasSnapshot (bool) - honest red while no snapshot exists */
 async function fetchCloudTruth(){
   try{
     const res = await fetch('/api/cloud/projects', { credentials: 'same-origin' });
@@ -821,13 +823,40 @@ async function fetchCloudTruth(){
     else {
       const data = await res.json().catch(()=>({}));
       const map = {};
+      const roles = {};
+      const snaps = {};
       ((data && data.projects) || []).forEach(function(x){
-        if (x && x.projectId) map[x.projectId] = x.updatedAt || '';
+        if (x && x.projectId){ map[x.projectId] = x.updatedAt || ''; roles[x.projectId] = x.accessRole || 'owner'; snaps[x.projectId] = !!x.hasSnapshot; }
       });
       _cloudTruth = map;
+      _cloudTruthRoles = roles;
+      _cloudTruthSnap = snaps;
     }
   }catch(e){ _cloudTruth = null; }
-  renderProjects();   /* re-render with truth applied (mirrors mergeLiveData) */
+  adoptOrphanedCloudLinks();   /* reconcile the registry with server truth first */
+  renderProjects();            /* re-render with truth applied (mirrors mergeLiveData) */
+}
+/* OWNER 2026-09-21 (auto-adopt at boot): a cloud project can legitimately
+   exist while the local admin record has no cloudId - the copy was drawn
+   from the cloud (code entry / My Cloud Projects / saveOfflineCopy) or the
+   record predates the link. The row then showed a false red "Not published"
+   even though visitors had a live version. Once per boot (and after every
+   truth refresh), a record whose id EXISTS in the signed-in account's cloud
+   list with owner role is adopted as 'session'-linked - provable from the
+   server, so it is wiring, not guessing. Editor/view-only pins are left
+   alone (no push credential); truly absent projects keep the red line. */
+function adoptOrphanedCloudLinks(){
+  if (!_cloudTruth) return;
+  if (!_cloudTruthRoles) return;
+  let changed = false;
+  projects.forEach(function(p){
+    if (p.cloudId) return;                                   // already linked
+    if (_cloudTruthRoles[p.id] !== 'owner') return;          // only pushable truth adopts
+    p.cloudId = p.id;
+    p.cloudOwnerCode = 'session';
+    changed = true;
+  });
+  if (changed) saveProjects();
 }
 function localWorkspaceUpdatedAt(id){
   try{
@@ -836,6 +865,18 @@ function localWorkspaceUpdatedAt(id){
     const s = JSON.parse(raw);
     return (s && s.updatedAt) || '';
   }catch(e){ return ''; }
+}
+/* OWNER 2026-09-21 (last-push stamp): human-readable "when did this row last
+   push its snapshot", shown on live/stale rows so "it updated itself" is
+   visible without opening anything. */
+function fmtPushWhen(iso){
+  if (!iso) return '';
+  try {
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return '';
+    return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + ', ' +
+      d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+  } catch (e) { return ''; }
 }
 
 async function mergeLiveData(){
@@ -1630,11 +1671,21 @@ function renderProjects(){
     let stateHtml = '';
     if (p.cloudId){
       const cloudUpdatedAt = _cloudTruth ? _cloudTruth[p.cloudId] : undefined;
+      // OWNER 2026-09-21 (honest snapshot states): the list API reports
+      // hasSnapshot. Linked-with-no-snapshot is NOT "live in the cloud" -
+      // it is exactly the red case the owner described (publish said
+      // updated, visitors still had nothing). Red + one-click real push.
+      const hasSnapshot = (!_cloudTruthSnap || _cloudTruthSnap[p.cloudId] !== false);
       const localUpdatedAt = localWorkspaceUpdatedAt(p.id);
       const stale = !!(cloudUpdatedAt && localUpdatedAt && String(localUpdatedAt) > String(cloudUpdatedAt));
-      stateHtml = stale
-        ? `<div class="note-line stale" data-state="stale"><span class="sdot a"></span> Live in the cloud. Push the latest state so visitors see your changes. <button class="btn btn-n btn-s" data-action="updateCloudSnapshot" data-idx="${i}">Update Cloud Snapshot</button></div>`
-        : `<div class="note-line live" data-state="live"><span class="sdot g"></span> Live in the cloud.</div>`;
+      const pushLabel = p.lastCloudPushAt ? ' - last pushed ' + fmtPushWhen(p.lastCloudPushAt) : '';
+      if (!hasSnapshot){
+        stateHtml = `<div class="note-line warn" data-state="not-published"><span class="sdot r"></span><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-alert-triangle"></use></svg> Linked to the cloud, but no snapshot has been pushed yet - visitors can't open this project. <button class="btn btn-n btn-s" data-action="updateCloudSnapshot" data-idx="${i}">Push first snapshot now</button></div>`;
+      } else if (stale){
+        stateHtml = `<div class="note-line stale" data-state="stale"><span class="sdot a"></span> Live in the cloud${pushLabel}. Push the latest state so visitors see your changes. <button class="btn btn-n btn-s" data-action="updateCloudSnapshot" data-idx="${i}">Update Cloud Snapshot</button></div>`;
+      } else {
+        stateHtml = `<div class="note-line live" data-state="live"><span class="sdot g"></span> Live in the cloud${pushLabel}.</div>`;
+      }
     } else if (!published){
       stateHtml = `<div class="note-line warn" data-state="not-published"><span class="sdot r"></span><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-alert-triangle"></use></svg> Not published. Visitors can't see this yet.</div>`;
     } /* published without a cloud link (self-hosted manifest) = healthy, silent */
@@ -1858,6 +1909,13 @@ async function saveProjectForm(){
 
   if(editingIndex !== null){
     record.isDemo = projects[editingIndex].isDemo; // preserve the demo tag if editing the seed
+    // OWNER 2026-09-21 (link-persistence fix): the record is rebuilt here,
+    // and the old object discarded - without carrying the cloud fields over,
+    // EVERY edit of a cloud-linked project silently unlinked it (cloudId
+    // gone -> row flipped red "Not published" -> Publish offered again).
+    record.cloudId = projects[editingIndex].cloudId;
+    record.cloudOwnerCode = projects[editingIndex].cloudOwnerCode;
+    record.lastCloudPushAt = projects[editingIndex].lastCloudPushAt || null;
     projects[editingIndex] = record;
   }else{
     // LOCAL-CAP (owner 2026-09-19): a device holds up to 8 projects. The
@@ -1871,11 +1929,20 @@ async function saveProjectForm(){
   }
   saveProjects();
   renderProjects();
-  const cloudLinked = !!(projects[editingIndex !== null ? editingIndex : projects.length - 1].cloudId);
+  // OWNER 2026-09-21 (wholehearted link, admin side): an edit to a
+  // cloud-linked project flows to the cloud automatically - the same rule
+  // the project page already follows. The row button and this auto-push
+  // share ONE code path (updateCloudSnapshot), so the always-available
+  // Update button and the automatic push can never disagree.
+  const editedIdx = editingIndex !== null ? editingIndex : projects.length - 1;
+  const cloudLinked = !!(projects[editedIdx] && projects[editedIdx].cloudId);
   closeProjectModal();
-  toast(cloudLinked
-    ? 'Project saved. Push the latest state with Update Cloud Snapshot on its row.'
-    : 'Project saved. Download the static manifest (toolbar) to publish this change.');
+  if (cloudLinked){
+    toast('Project saved. Syncing your changes to the cloud…');
+    updateCloudSnapshot(editedIdx);
+  } else {
+    toast('Project saved. Download the static manifest (toolbar) to publish this change.');
+  }
 }
 
 /* ============================================================
@@ -2070,6 +2137,13 @@ async function updateCloudSnapshot(i){
   }
   const isSessionAuth = p.cloudOwnerCode === 'session';
   if (isSessionAuth){
+    // OWNER 2026-09-21 (role-honest push): the list API states this
+    // session's role - a non-owner session push can only be refused, so say
+    // the truth before the attempt instead of failing mid-flight.
+    if (_cloudTruthRoles && _cloudTruthRoles[p.cloudId] && _cloudTruthRoles[p.cloudId] !== 'owner'){
+      toast('This cloud project belongs to another owner - this device holds a ' + _cloudTruthRoles[p.cloudId] + ' link, and only the owner pushes updates.', 'warn');
+      return;
+    }
     const GA = window.MMGR && window.MMGR.GoogleAuth;
     if (!(GA && GA.isSignedIn && GA.isSignedIn())){ toast('This project is linked through your account. Sign in (hamburger menu) to push updates.', 'warn'); return; }
   }
@@ -2113,6 +2187,10 @@ async function updateCloudSnapshot(i){
       toast(((data && data.error) || 'Cloud snapshot update failed (HTTP ' + res.status + ').') + (res.status === 402 ? '. Upgrade needed.' : ''), 'error');
       return;
     }
+    // OWNER 2026-09-21: stamp the push on the record so the row shows when
+    // it last pushed (visible "it updated itself"), and persist the stamp.
+    p.lastCloudPushAt = new Date().toISOString();
+    saveProjects();
     toast('Cloud snapshot updated at ' + String(data.savedAt || '').slice(0,19).replace('T',' ') + '. Visitors loading from My Cloud Projects see the latest state.');
     fetchCloudTruth();   /* refresh server truth so the row flips to green */
   }catch(e){
@@ -2175,9 +2253,34 @@ async function publishToCloud(i){
     }
     p.cloudId = data.projectId;
     p.cloudOwnerCode = data.ownerCode;
+    // OWNER 2026-09-21 (wholehearted link): publish = link + PUSH in the
+    // same click. The old flow stopped at link, so "Published to cloud" was
+    // true while the cloud copy had no snapshot - visitors got nothing and
+    // the row could still read red. The workspace copy (or a fallback seed)
+    // is pushed now, the same call the Update Cloud Snapshot button uses.
+    let st = null;
+    try {
+      const raw = localStorage.getItem('mmgr_state_' + p.id);
+      if (raw) st = JSON.parse(raw);
+    } catch (e2) { st = null; }
+    if (!st) st = { projectId: p.id, projectName: p.title, schemaVersion: 19, updatedAt: new Date().toISOString() };
+    st.projectName = p.title;
+    if (st.schemaVersion === undefined) st.schemaVersion = 19;
+    st.updatedAt = new Date().toISOString();
+    const sres = await fetch('/api/cloud/projects/' + encodeURIComponent(p.cloudId) + '/save', {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json', 'X-Owner-Code': data.ownerCode },
+      body: JSON.stringify({ state: st })
+    });
+    const sdata = await sres.json().catch(function(){ return {}; });
+    if (sres.ok && sdata.ok){
+      p.lastCloudPushAt = new Date().toISOString();
+      toast('Published to cloud with the current state. Cloud ID ' + data.projectId + '. Owner code copied to the clipboard.');
+    } else {
+      toast('Linked to the cloud, but the state push failed (HTTP ' + sres.status + '). Use "Push first snapshot now" on the row - visitors need a snapshot.', 'warn');
+    }
     saveProjects();
     renderProjects();
-    toast('Published to cloud. Cloud ID ' + data.projectId + '. Owner code copied to the clipboard.');
     if (data.ownerCode && navigator.clipboard && navigator.clipboard.writeText){
       navigator.clipboard.writeText(data.ownerCode).catch(()=>{});
     }

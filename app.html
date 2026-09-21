@@ -678,6 +678,20 @@ async function fetchCloudSync(){
   } catch (e) { _cloudSync = null; }
   renderCards();   // re-render with truth applied (mirror of mergeLiveData)
 }
+/* LIVE CHIP (owner 2026-09-21): the sync chip is a window into the cloud
+   truth, not a snapshot from page load. While the launcher stays open it
+   re-reads the cloud list on a quiet 60s cadence (and whenever the tab
+   becomes visible again), so a chip that says Not synced flips green the
+   moment the underlying copy is healed elsewhere - no reload needed.
+   The launcher itself never pushes (opt-in sync per project is untouched):
+   pushes stay on the project page, which already auto-saves to the cloud. */
+function startCloudSyncRefresh(){
+  if (window.__cloudSyncTimer) return;
+  window.__cloudSyncTimer = setInterval(fetchCloudSync, 60000);
+  document.addEventListener('visibilitychange', function(){
+    if (document.visibilityState === 'visible') fetchCloudSync();
+  });
+}
 function fmtSyncWhen(iso){
   if (!iso) return '';
   try {
@@ -1747,6 +1761,7 @@ document.addEventListener('DOMContentLoaded', function() {
   syncDemoToggle();
   renderCards();
   fetchCloudSync();   // W1b: sync chips re-render once the cloud list lands
+  startCloudSyncRefresh();   // LIVE CHIP: keep them honest while the page stays open
   // recently opened codes list (owner 2026-09-12): one-click re-open of codes
   // this device has already used; renders into #recent-dash if any exist.
   if (typeof MMGRRecentCodes !== 'undefined' && MMGRRecentCodes.init) {

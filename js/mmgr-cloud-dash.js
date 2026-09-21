@@ -343,6 +343,14 @@
       if (!data || !data.ok) { setStatus('Could not load that project right now.', true); return; }
       if (data.state) {
         try {
+          // SAME-DEVICE LINK (owner 2026-09-21): only the OWNER role stamps
+          // the registry link - an editor/viewer pinning a shared project has
+          // no push credential and must never read as a pushable owner row.
+          if (data.role === 'owner' || !data.role) {
+            stampCloudLinkInRegistry(projectId,
+              (data.state && data.state.charter && data.state.charter.projectName) ||
+              (data.state && data.state.projectName) || projectId);
+          }
           localStorage.setItem('mmgr_unlocked_' + projectId, '1');
           localStorage.setItem('mmgr_scope_' + projectId, 'full');
           localStorage.setItem('mmgr_state_' + projectId, JSON.stringify(data.state));
@@ -415,14 +423,22 @@
         return;
       }
       const title = data.label || (data.state && data.state.charter && data.state.charter.projectName) || projectId;
+      // SAME-DEVICE LINK (owner 2026-09-21): a copy drawn from the cloud is
+      // linked to its cloud twin the moment it lands - the registry record
+      // carries cloudId + the session marker, so admin/boot adopt sees it
+      // and the launcher chip reads Synced. No code is stored (the session
+      // is the credential). Stamped on the record BEFORE the registry write
+      // (a post-write helper call would be clobbered by this same line).
       list.push({
         id: projectId,
         title: title,
-        description: 'Restored from your cloud copy.',
+        description: 'Restored from your cloud copy, linked to it.',
         status: 'active',
         file: 'project.html?id=' + encodeURIComponent(projectId),
         code: '',
-        codeHash: null
+        codeHash: null,
+        cloudId: projectId,
+        cloudOwnerCode: 'session'
       });
       try {
         localStorage.setItem('mmgr_admin_projects', JSON.stringify(list));
@@ -430,13 +446,33 @@
         localStorage.setItem('mmgr_unlocked_' + projectId, '1');
         localStorage.setItem('mmgr_scope_' + projectId, 'full');
       } catch (e) { setStatus('Storage unavailable - could not save the offline copy.', true); return; }
-      notify('"' + title + '" saved to this device. It opens from your project grid.', 'ok');
+      notify('"' + title + '" saved to this device, linked to its cloud copy. It opens from your project grid.', 'ok');
       setStatus('');
       renderCardsIfPresent();
     } catch (e) {
       setStatus('Could not reach the cloud service.', true);
     }
   }
+  /* SAME-DEVICE LINK (owner 2026-09-21): stamp cloudId + the session marker
+     into the admin registry record for a project drawn from the cloud. The
+     record must already exist (saveOfflineCopy pushes it first). Never
+     overwrites a DIFFERENT existing cloud link - only fills an empty one. */
+  function stampCloudLinkInRegistry(projectId, title) {
+    try {
+      var raw = localStorage.getItem('mmgr_admin_projects');
+      var list = raw ? JSON.parse(raw) : [];
+      if (!Array.isArray(list)) list = [];
+      for (var i = 0; i < list.length; i++) {
+        if (list[i] && list[i].id === projectId && !list[i].cloudId) {
+          list[i].cloudId = projectId;
+          list[i].cloudOwnerCode = 'session';
+          localStorage.setItem('mmgr_admin_projects', JSON.stringify(list));
+          return;
+        }
+      }
+    } catch (e) { /* best-effort link stamping - never block the restore */ }
+  }
+
   // The launcher grid lives in app.html's inline script; refresh it when we
   // are on that page (the cloud dash and the grid share the page).
   function renderCardsIfPresent() {

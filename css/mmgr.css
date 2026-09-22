@@ -2524,10 +2524,16 @@ body.dark-mode.db-page .pcard:not(.unlocked) .pc-cta{color:var(--db-text-seconda
 }
 /* MASTER-ACTION-PLAN RANK 8 (8.1) - projects-list visual weight */
 body.db-page:not(.dark-mode) #grid{position:relative;isolation:isolate;}
+/* OWNER 2026-09-21: the wash was clamped to #grid's box (top:-70px), which
+   drew a hard horizontal edge partway down the page - the tint stopped
+   short of the viewport top and read as a cut-off band. It is now a fixed
+   full-viewport ambient layer: same --gold-rgb token, same three washes,
+   anchored to the viewport so the tint meets the true top of the page with
+   no interior seam. position:fixed cannot overflow the viewport, so the
+   Phase 7 right-side clamp and the mobile inset guard are retired. Still
+   app-page-only (#grid exists nowhere else) and still off in dark mode. */
 body.db-page:not(.dark-mode) #grid::before{
-  content:'';position:absolute;z-index:-1;pointer-events:none;
-  /* Desktop right-side clamp (Phase 7 fix, 2026-09-04): */
-  top:-70px;bottom:-70px;left:-50px;right:-6px;
+  content:'';position:fixed;inset:0;z-index:-1;pointer-events:none;
   /* Only the existing --gold-rgb token (per 8.1: no new colors) - three
      layered washes at different positions/opacities so it reads as depth,
      not a single blob. */
@@ -2539,10 +2545,8 @@ body.db-page:not(.dark-mode) #grid::before{
 /* Dark db-page: the glow layer is OFF (the dashboard treatment owns the
    canvas there); this guard keeps the light-mode rule from leaking. */
 body.db-page.dark-mode #grid::before{display:none;}
-/* Mobile overflow guard (NEW-UI-CREATION-BRIEF I1 follow-up, 2026-08-14): */
-@media(max-width:768px){
-  body.db-page:not(.dark-mode) #grid::before{inset:-40px -6px;}
-}
+/* (Mobile overflow guard retired 2026-09-21: the fixed inset:0 wash cannot
+   overflow the viewport, so the small-screen clamp is no longer needed.) */
 /* 8.2 consistency: cards keep full contrast - their own surface is opaque
    enough that the wash never sits between text and background. */
 @media (prefers-reduced-motion:reduce){

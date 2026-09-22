@@ -380,8 +380,18 @@ const j = async (res) => { try { return await res.json(); } catch (e) { return {
         try { const v = await (await fetch('http://127.0.0.1:9231/json/version')).json(); if (v.webSocketDebuggerUrl) break; } catch (e) {}
         await delay(300);
       }
-      const targets = await (await fetch('http://127.0.0.1:9231/json')).json();
-      const tgt = targets.find(t => t.type === 'page');
+      // Poll for the page target: /json/version answers as soon as the DevTools
+      // HTTP server is up, but the about:blank page target can register a couple
+      // of seconds later (observed on Windows) — a bare find() here raced it and
+      // threw on undefined.webSocketDebuggerUrl every run.
+      let tgt = null;
+      for (let i = 0; i < 40 && !tgt; i++) {
+        try {
+          const targets = await (await fetch('http://127.0.0.1:9231/json')).json();
+          tgt = (targets || []).find(t => t.type === 'page' && t.webSocketDebuggerUrl);
+        } catch (e) { /* not ready yet */ }
+        if (!tgt) await delay(300);
+      }
       ws = new WebSocket(tgt.webSocketDebuggerUrl);
       const pending = new Map(); let cid = 0;
       ws.onmessage = (e) => { const m = JSON.parse(e.data); if (m.id && pending.has(m.id)) { pending.get(m.id)(m); pending.delete(m.id); } };

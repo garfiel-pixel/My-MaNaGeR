@@ -1644,9 +1644,19 @@ function enterAdmin(){
    PROJECT LIST rendering
    ============================================================ */
 function renderProjects(){
-  const list = document.getElementById('project-list');   /* Filter out code-based demo projects - they live on the app page only */
-  const adminProjects = projects.filter(function(p){ return !p.isDemo && !(p.id && p.id.indexOf('demo-') === 0); });
-  if(!adminProjects.length){
+  const list = document.getElementById('project-list');
+  /* OWNER 2026-09-21 (index-shift fix): rows were built from the DEMO-FILTERED
+     array while every action handler reads projects[data-idx] - the UNFILTERED
+     array. With any demo record stored before a real one, every row action
+     (Open / Edit / Codes / Copy cloud code / Delete) resolved to the WRONG
+     project: the row said Bank Renovation but Open loaded Newtown Hotel
+     Renovation, and the MCP/cloud actions followed the same shifted record.
+     Rows now carry the TRUE index into projects; the filter only decides
+     WHICH rows render, never renumbers them. */
+  const adminRows = projects
+    .map(function(p, i){ return { p: p, i: i }; })
+    .filter(function(row){ return !row.p.isDemo && !(row.p.id && row.p.id.indexOf('demo-') === 0); });
+  if(!adminRows.length){
     list.innerHTML = '<div class="empty">No projects yet. Click "+ Add Project" to create your first one.</div>';
     return;
   }
@@ -1657,7 +1667,7 @@ function renderProjects(){
       staleLive.map(function(s){ return escapeHtml(s.title); }).join(', ') +
       '), still visible to visitors until you publish.</div>'
     : '';
-  list.innerHTML = staleLine + adminProjects.map((p, i) => {
+  list.innerHTML = staleLine + adminRows.map(({p, i}) => {
     const status = (p.status||'active').toLowerCase();
     const published = isPublishedRecord(p);
     /* OWNER 2026-09-17 (plan v2 Part 1 - row status language): exactly one

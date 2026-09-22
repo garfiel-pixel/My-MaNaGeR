@@ -2079,8 +2079,26 @@ body.dark-mode .ltr-roll td{color:var(--text);}
    floating AI window could never be closed. Only flex when actually open. */
 #ai-win.float-mode.open{border:1px solid var(--border);border-radius:var(--radius);box-shadow:0 18px 60px rgba(0,0,0,.35);animation:none;display:flex;}
 #ai-win.float-mode .ai-rz-w{display:none;} /* width-only dock handle is meaningless while floating */
-#drw.float-mode{left:auto !important;filter:none;animation:none;}
+/* OWNER 2026-09-21 (settings-focus polish): the old left:auto !important
+   fought the drag engine's inline left/top (the window could never move and
+   sat pinned at the left corner). Geometry is owned by JS (centered on
+   float-on, draggable after); CSS only kills the dock offsets. */
+#drw.float-mode{right:auto !important;filter:none;animation:none;}
+/* Closing while floating must actually hide: the docked off-screen regime
+   (right:-430px) is inert here because right is auto. */
+#drw.float-mode:not(.open){display:none;}
 #drw.float-mode .drw-sheet{border:1px solid var(--border);border-radius:var(--radius);box-shadow:0 18px 60px rgba(0,0,0,.35);}
+/* OWNER 2026-09-21 (focus dim): while the settings drawer floats, the page
+   behind dims + soft-blurs so attention lands on the popup. Clicking the dim
+   docks the drawer back into its sidebar (minimize). z-index: above the app
+   (1) and below the drawer (1000) + modals. */
+body.drw-float-open::after{content:'';position:fixed;inset:0;background:rgba(9,10,15,.32);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);z-index:999;}
+@media (prefers-reduced-transparency:reduce){
+  body.drw-float-open::after{backdrop-filter:none;-webkit-backdrop-filter:none;background:rgba(9,10,15,.45);}
+}
+/* Floating = the pop-out affordance becomes minimize: the sprite arrow flips
+   to point back into its box (same SVG symbol, no per-icon duplication). */
+.float-mode [data-float-toggle] svg{transform:rotate(180deg);}
 .float-mode .mh,.float-mode .dh{cursor:move;touch-action:none;user-select:none;}
 .float-tgl{opacity:.75;}
 .float-tgl:hover{opacity:1;}

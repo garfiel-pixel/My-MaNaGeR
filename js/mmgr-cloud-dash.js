@@ -241,7 +241,13 @@
         (hasMenu ? '<button type="button" class="cd-menu" data-cd-menu="' + escapeHtml(p.projectId) + '" aria-haspopup="menu" aria-expanded="false" aria-label="Project options for ' + escapeHtml(title) + '"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-more"></use></svg></button>' +
         '<div class="cd-menu-pop" hidden role="menu" data-cd-menu-pop="' + escapeHtml(p.projectId) + '" aria-label="Options for ' + escapeHtml(title) + '">' + menuItem + '</div>' : '') +
         '<div class="cd-title">' + escapeHtml(title) + chip + '</div>' +
-        '<div class="cd-meta">' + escapeHtml(p.projectId || '') + '<br>' + escapeHtml(when) + (p.linkedName ? '<br>Shared by ' + escapeHtml(p.linkedName) : '') + '</div>' +
+        /* OWNER 2026-09-21 (declutter): the raw projectId under the title
+           repeated the heading and read as noise. The meta line now speaks
+           people + time: owned cards say "Created by <account name>" and
+           shared cards "Shared by <account name>" (the list API's linkedName
+           is the OWNER's account name on both paths), followed by the
+           existing Last saved / Created stamp. */
+        '<div class="cd-meta">' + (p.linkedName ? (shared ? 'Shared by ' : 'Created by ') + escapeHtml(p.linkedName) + '<br>' : '') + escapeHtml(when) + '</div>' +
         discBanner +
         snap +
         '<div class="cd-actions">' +

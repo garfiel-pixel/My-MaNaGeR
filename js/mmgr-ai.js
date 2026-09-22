@@ -1917,11 +1917,42 @@ var MMGR = window.MMGR || {};
       toggleFloat(id);
     });
   }
+  // OWNER 2026-09-21 (settings-focus polish): while the settings drawer
+  // floats, the page behind carries a dim + soft blur (body.drw-float-open);
+  // tapping the dim MINIMIZES back into the sidebar. One tap target, wired
+  // once. The AI window keeps its own scrim behavior and is unaffected.
+  let _dimWired = false;
+  function wireDimClick() {
+    if (_dimWired) return;
+    _dimWired = true;
+    document.addEventListener('click', function(e) {
+      if (!document.body.classList.contains('drw-float-open')) return;
+      // The ::after dim is not hit-testable; a click on the page BEHIND the
+      // floating drawer (not inside it, not on its controls) = minimize.
+      const drw = U.$('drw');
+      if (drw && (drw.contains(e.target) || e.target === drw)) return;
+      if (e.target.closest('#drw,[data-float-toggle]')) return;
+      if (drw && drw.classList.contains('float-mode') && drw.classList.contains('open')) {
+        e.stopPropagation();
+        toggleFloat('drw');
+      }
+    }, true);
+  }
+  function syncFloatState(id) {
+    if (id !== 'drw') return;
+    const el = U.$(id);
+    if (!el) return;
+    const on = el.classList.contains('float-mode') && el.classList.contains('open');
+    document.body.classList.toggle('drw-float-open', on);
+    el.setAttribute('aria-modal', on ? 'true' : 'false');
+    if (on) wireDimClick();
+  }
   function toggleFloat(id) {
     const el = U.$(id);
     if (!el) return;
     if (el.classList.contains('float-mode')) {
-      // DOCK: restore the pre-float inline geometry (saved on float-on).
+      // DOCK (minimize): restore the pre-float inline geometry (saved on
+      // float-on) and put the drawer back into its sidebar.
       const saved = el.__dockGeom || {};
       el.classList.remove('float-mode');
       el.style.left = saved.left || '';
@@ -1931,31 +1962,51 @@ var MMGR = window.MMGR || {};
       el.style.right = saved.right || '';
       el.style.transform = '';
       clearFloatPos(id);
+      syncFloatState(id);
       toast('Docked back.', 'ok');
     } else {
-      // FLOAT: remember the docked geometry, then pop out centered (or at
-      // the last saved float position). Sized 66vw x 80vh, clamped.
+      // FLOAT: remember the docked geometry, then pop out CENTERED at a
+      // decent size (66vw x 80vh, clamped). No stale per-device position:
+      // the owner asked for a focused popup, not a window that remembers
+      // where it was dragged last month - each open re-centers.
       const r = el.getBoundingClientRect();
       el.__dockGeom = {
         left: el.style.left, top: el.style.top, width: el.style.width,
         height: el.style.height, right: el.style.right
       };
       el.classList.add('float-mode');
+      // Robustness: pop-out on a closed drawer opens it too (the toggle
+      // lives in the header, so this is defensive - never a half-floated,
+      // invisible window).
+      if (id === 'drw' && !el.classList.contains('open')) el.classList.add('open');
       const fw = Math.max(FLOAT_W_MIN, Math.min(Math.round(window.innerWidth * 0.66), window.innerWidth - 32));
       const fh = Math.max(FLOAT_H_MIN, Math.min(Math.round(window.innerHeight * 0.8), window.innerHeight - 32));
       el.style.width = fw + 'px';
       el.style.height = fh + 'px';
       el.style.right = 'auto';
-      const saved = readFloatPos(id);
-      const x = saved ? saved.x : Math.max(8, Math.round((window.innerWidth - fw) / 2));
-      const y = saved ? saved.y : Math.max(8, Math.round((window.innerHeight - fh) / 2));
+      const x = Math.max(8, Math.round((window.innerWidth - fw) / 2));
+      const y = Math.max(8, Math.round((window.innerHeight - fh) / 2));
       el.style.left = x + 'px';
       el.style.top = y + 'px';
-      saveFloatPos(id, x, y);
-      toast('Floating. Drag the header to move it; the pop-out button docks it back.', 'ok');
+      clearFloatPos(id);
+      syncFloatState(id);
+      toast('Floating. Drag the header to move it; the pop-out button minimizes it back.', 'ok');
     }
   }
   [setupFloatSurface('ai-win'), setupFloatSurface('drw')];
+  // OWNER 2026-09-21: closing the settings drawer while it floats must dock
+  // FIRST (class removal alone leaves float geometry applied - the dead-X
+  // bug). A floating window that closes is gone, not parked mid-screen.
+  const _drwCloseWatcher = setInterval(function() {
+    const drw = U.$('drw');
+    if (!drw) { clearInterval(_drwCloseWatcher); return; }
+    if (drw.classList.contains('float-mode') && !drw.classList.contains('open') && !drw.__floatDocking) {
+      drw.__floatDocking = true;
+      toggleFloat('drw');
+      drw.__floatDocking = false;
+    }
+    syncFloatState('drw');
+  }, 150);
   // Keep a floating surface inside the viewport on resize.
   window.addEventListener('resize', function() {
     ['ai-win', 'drw'].forEach(function(id) {

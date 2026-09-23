@@ -824,6 +824,22 @@ TRIAGE (recorded in the registry, not silently dropped): qa-stress D02 is
 SW v313 -> v314: css/mmgr.css, admin.html and project.html are shell-cached,
   so clients need the bump to re-fetch. Markup + CSS only - no inline
   <script> was touched, so CSP hashes are unchanged (verify:csp green).
+2026-09-22 CI REPAIR LOOP (run for the health-audit/typography wave) - 1 cycle
+  so far on e3bf7ae: step 29 'T2: Page health sweep' FAILED on ubuntu-latest
+  while the same command was green locally against the Worker. Root cause
+  found WITHOUT the log (the Actions logs endpoint 403s: 'must have admin
+  rights' - reading a failing step from this workstation is impossible, so
+  the step list is the only signal): chrome-launcher returns an ABSOLUTE
+  chromePath on Windows/macOS but a BARE COMMAND NAME on Linux
+  ('google-chrome'). The CDP-based harnesses spawn that through a shell so
+  they are fine; the new sweep is the repo's ONLY Playwright consumer, and
+  Playwright requires an absolute executablePath -> launch() throws
+  'Executable doesn't exist', exit 2, fast red. Fix: absolutizeChrome()
+  resolves a bare name through 'where'/'command -v' and returns undefined
+  (Playwright's own browser) if it cannot; verified all four branches
+  (bare resolvable, bare missing, absolute exists, absolute missing) plus a
+  green live sweep on Windows. NOTE for future waves: step 23 'Chrome
+  available' only proves a binary exists in PATH, which is exactly the trap.
 Owner gate: everything verified by exit code before push - npm run verify
   exit 0, all 6 T1 suites, all 25 EXTENDED suites, all T4 CI batteries,
   both health sweeps, wrangler dry-run.

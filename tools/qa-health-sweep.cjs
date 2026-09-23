@@ -17,6 +17,14 @@
 
    Expected-on-localhost findings are classified, not counted (otherwise the
    gate could never go green and would be ignored):
+     - ONE OR MORE CSP violations per page on a Cloudflare-proxied custom
+       domain: the edge injects its own bot-detection inline script
+       (__CF$cv$params) whose per-request token can never be hashed by the
+       app's CSP, so the browser blocks it (project.html carried three in one
+       load: Cloudflare injects twice + its challenge script). The same build
+       is clean on the workers.dev hostname. Requires
+       the edge marker in the document AND a required hash that appears
+       nowhere in the page on disk; anything else stays a finding.
      - accounts.google.com/gsi/* 400/403 - Google rejects 127.0.0.1 as an
        unregistered OAuth origin; works on the real domain.
      - /api/* 401/403 - the signed-out gate. There is no session in a fresh
@@ -217,16 +225,20 @@ function diskHashes(file) {
         lang: document.documentElement.getAttribute('lang') || '',
         viewport: (document.querySelector('meta[name="viewport"]') || {}).content || '',
         sheets: Array.from(document.querySelectorAll('link[rel=stylesheet]')).map((l) => l.getAttribute('href') || ''),
-        bodyText: (document.body ? document.body.innerText : '').slice(0, 200000)
+        bodyText: (document.body ? document.body.innerText : '').slice(0, 200000),
+        // Cloudflare's edge-injected bot-detection script marker (see the
+        // classification below). One document scan, no network.
+        cfInjected: /__CF\$cv\$params/.test(document.documentElement.outerHTML || '')
       }));
     } catch (e) { /* page died during evaluate */ }
 
+    const onDiskHashes = diskHashes(file) || [];
     let cspNote = '';
     let cspMissing = 0;
     try {
       const header = (res && res.headers()['content-security-policy']) || '';
       const declared = (header.match(/sha256-[A-Za-z0-9+/=]+/g) || []).map((s) => s.slice(7));
-      const onDisk = diskHashes(file) || [];
+      const onDisk = onDiskHashes;
       cspMissing = onDisk.filter((h) => declared.indexOf(h) === -1).length;
       if (!header) cspNote = 'NO CSP HEADER';
       else if (cspMissing) cspNote = 'MISSING-FROM-LIVE-CSP x' + cspMissing;
@@ -241,11 +253,43 @@ function diskHashes(file) {
     const unexpectedResponses = badResponses.filter((s) => { const p = parse(s); return !isExpectedOnLocalhost(p.url, p.status); });
     const unexpectedFailed = failed.filter((s) => !isExpectedOnLocalhost(s, 0));
     const realConsoleErrors = consoleErrors.filter((t) => !isExpectedConsoleMessage(t));
-    const expectedCount = badResponses.length - unexpectedResponses.length + (failed.length - unexpectedFailed.length);
+
+    // Cloudflare injects its own bot-detection script at the edge
+    // (__CF$cv$params -> /cdn-cgi/challenge-platform/scripts/jsd/main.js) on
+    // proxied custom domains. Our CSP carries no hash for it - its content holds
+    // a per-request token, so it can never be hashed - and the browser blocks
+    // it. Seen on mymanagerworkspace.com 2026-09-22: one-plus violations per
+    // page, while the same build was clean on the workers.dev hostname. That is
+    // the CSP doing its job on a script the app did not write, so it is
+    // classified as expected. The discriminator is the hash the browser says it
+    // REQUIRED: a blocked app script names the app's own inline-block hash, while
+    // the edge's injected script names one that appears nowhere in the page on
+    // disk. So an edge violation is one whose required hash is not ours AND the
+    // edge marker is present - precise, and it cannot mask a real drift (some
+    // pages carry TWO OR THREE edge violations per load).
+    // The REQUIRED hash is the one inside "a hash ('sha256-...')" at the end
+    // of the message - NOT every hash quoted in the message (the directive
+    // listing echoes the whole site-wide allowlist, which IS on disk by
+    // definition; matching all of them made every edge violation look real -
+    // found live against mymanagerworkspace.com 2026-09-23).
+    const requiredHashes = (v) => {
+      const m = String(v).match(/hash \('sha256-([A-Za-z0-9+/=]+)'\)/);
+      return m ? [m[1]] : [];
+    };
+    const isEdgeInjection = (v) => {
+      if (!info.cfInjected) return false;
+      if (!/(Executing|Refused to execute) inline script/.test(String(v))) return false;
+      const req = requiredHashes(v);
+      return req.length > 0 && req.every((h) => onDiskHashes.indexOf(h) === -1);
+    };
+    const realCspViolations = cspViolations.filter((v) => !isEdgeInjection(v));
+    const expectedEdgeCsp = cspViolations.length - realCspViolations.length;
+    const expectedCount = badResponses.length - unexpectedResponses.length +
+      (failed.length - unexpectedFailed.length) + expectedEdgeCsp;
 
     const problems = [];
     if (realConsoleErrors.length) problems.push('console-errors:' + realConsoleErrors.length);
-    if (cspViolations.length) problems.push('CSP-violations:' + cspViolations.length);
+    if (realCspViolations.length) problems.push('CSP-violations:' + realCspViolations.length);
     if (exceptions.length) problems.push('exceptions:' + exceptions.length);
     if (unexpectedResponses.length) problems.push('http>=400:' + unexpectedResponses.length);
     if (unexpectedFailed.length) problems.push('req-failed:' + unexpectedFailed.length);
@@ -260,7 +304,7 @@ function diskHashes(file) {
     loadedSheets[file] = info.sheets || [];
     rows.push({
       file, status: res ? res.status() : 'n/a', problems, cspNote, expectedCount,
-      consoleErrors: realConsoleErrors, cspViolations, exceptions,
+      consoleErrors: realConsoleErrors, cspViolations: realCspViolations, exceptions,
       badResponses: unexpectedResponses, failed: unexpectedFailed,
       emojiSample: emoji ? (info.bodyText.match(EMOJI_RE) || [''])[0] : '',
       leakSample: leak ? (info.bodyText.match(LEAK_RE) || [''])[0] : ''

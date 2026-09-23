@@ -72,16 +72,16 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
   // master; state.theme is the portable fallback), then assert via the shared
   // Appearance controls now live inline inside the Customize/Appearance panels
   // on app.html / admin.html / project.html (wrapped in .dock.dock-inline);
-  // the floating bottom dock was removed. The mmgr-dock.js selectors still
-  // match because the inline markup keeps the .dock class.
+  // the floating bottom dock was removed, and the .pal-btn pill group was
+  // replaced by the shared <select id="theme-select"> (mmgr-dock.js drives it).
   await ev(`try{localStorage.setItem('mmgr_theme','dark');}catch(e){} MMGR.State.updateState(function(s){ s.theme='dark'; s.crosshairOn=true; });`); await delay(400);
   await send('Page.navigate', { url: BASE + '/project.html?id=demo-project' }); await delay(4000);
   const persist = await ev(`(function(){
-    var darkBtn = document.querySelector('.dock .pal-btn[data-pal="dark"]');
+    var themeSel = document.getElementById('theme-select');
     return {
       dark: document.body.classList.contains('dark-mode'),
       cross: document.body.classList.contains('crosshair-on'),
-      thm: !!darkBtn && darkBtn.getAttribute('aria-pressed') === 'true',
+      thm: !!themeSel && themeSel.value === 'dark',
       ch: !!document.getElementById('ch-tgl') && document.getElementById('ch-tgl').checked === true
     };
   })()`);

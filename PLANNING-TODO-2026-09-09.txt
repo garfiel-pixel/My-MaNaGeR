@@ -733,3 +733,97 @@ qa-client-codes ALL, qa-dashboard-spec 76/76. SW v306.
   16-character owner code once; "picks up where it left off" overstatement corrected - the signed-out path
   queues nothing), banned-vocab + emoji + dash gates clean on the edited line, SW v306 -> v307 for the
   served-guide edit. Session scratch cleaned: tmp/ emptied, $HOME/mmgr-deploy staging copy removed.
+
+2026-09-22 - Session 11 (FULL HEALTH AUDIT + TYPOGRAPHY WAVE + CI
+COVERAGE). Owner asked for a whole-codebase health check, local and
+browser-driven, plus a wrangler update.
+Agent toolchain: wrangler 4.131.1 -> 4.136.3 (package.json + lockfile);
+deploy dry-run resolves every binding; all wrangler-dependent suites
+re-run green on the new version.
+TWO REAL DEFECTS FOUND AND FIXED (both shipped, neither gated):
+  1. CSS comment trap (AGENTS.md lesson 13): two comments in css/mmgr.css
+     contained a comment-CLOSER mid-prose, so the comment ended early and
+     the browser DROPPED the rule that followed. .t-sm was dead in
+     dist/mmgr.min.css, and .btn.full{justify-content:center} with it.
+     Real elements (<div class="t-sm">Completed</div>, #d-iss) rendered at
+     the wrong size/colour in production. Fixed the two comments; proved
+     in-browser that the rule was previously dropped (CSSOM 0 -> 1) and
+     that every one of the 971 mmgr.css / 183 marketing.css rules is now
+     live. New gate tools/verify-css-integrity.cjs (npm run verify ARM 1
+     source terminator, ARM 2 every source rule survives into dist) +
+     browser-truth arm in qa-health-sweep (live CSSOM coverage).
+  2. Four inline styles in project.html (from commit 2856425) violating the
+     zero-inline-style doctrine -> existing utilities (.flex-1, .is-hide,
+     .t-xs + scoped .wi-actions-tools); computed styles verified
+     pixel-identical in-browser.
+TYPOGRAPHY WAVE: defined the muted-text scale steps, then migrated
+admin.html onto existing utilities with a solver that only emits
+provably value-identical replacements (63 unique inline patterns scanned,
+19 conversions applied) - admin.html 73 -> 54 inline styles. app.html's 12
+inline styles are all geometry (right:54px, max-height:50vh) with no exact
+utility equivalent, so they stay: inventing single-use classes is worse
+than the inline style. Before/after computed-style snapshots diffed on
+both pages, both themes; the only deltas were the two rules restored by
+fix 1 (intended). No theming exposure anywhere - every remaining inline
+colour is a token reference.
+HARNESS CORPUS RE-BASELINED (app contracts changed intentionally under
+them; each re-baseline verified in a browser, not assumed):
+  - qa-full 177/181 -> 181/181: AI window now requires sign-in
+    (Entitlements.aiAssistant, owner 2026-09-19). Documented QA seam +
+    NEW check 68b asserting the signed-out refusal + toast.
+  - qa-ai 15 failures -> 0: ONE root cause, the same entitlements gate -
+    open() AND the runCloud() send seam both consult it. Correcting an
+    earlier guess in this session: the relay-first ladder was never
+    broken, it passes unchanged.
+  - verify-theme-cdp + qa-p1: drove the retired .pal-btn[data-pal] group
+    -> now drive select#theme-select (7/7 scenarios, theme logic intact).
+  - qa-v11: 6 checks re-baselined (AI on-by-default per owner 2026-09-15;
+    readonly assertion no longer pinned to tier off; dated re-import
+    "dates win over typed days" = working days). View-only was verified
+    in-browser to REFUSE the AI switch with a toast and no state write.
+CI COVERAGE (owner directive: account for EVERY test):
+  - docs/CI-TEST-COVERAGE.md - every one of the 73 harnesses with a
+    status token (CI / EXTENDED / TRIAGE / MANUAL) and what it covers.
+  - tools/verify-test-registry.cjs - fails the build if a qa-*/verify-*/
+    audit-*.cjs is unregistered or unstatused. Wired into npm run verify
+    and both workflows. This is the fix for the real root cause of this
+    session's drift: qa-full/qa-ai/qa-v11/qa-p1 were never wired into CI
+    at all, so they broke silently for weeks.
+  - .github/workflows/extended-qa.yml (new, weekly Sun 04:00 + manual):
+    every EXTENDED harness - verify-ai-import, verify-date-wiring,
+    verify-contrast, audit-action-map, qa-p0, qa-sync, qa-r3,
+    qa-restore-verify, qa-obs-verify, qa-typing, qa-rhythm, qa-voice,
+    qa-focus, qa-marketing, qa-pwa, qa-calculator, qa-view-mode,
+    qa-legal-links, qa-pool-ui, qa-live-pool, verify-spy-cdp,
+    verify-gates-cdp, verify-gates-themes, verify-glass-preview-cdp,
+    qa-cloud-pool. All 25 verified green locally before wiring.
+  - ci.yml: T4 browser batteries wired (qa-full, qa-ai, qa-v11, qa-p1,
+    verify-theme-cdp against serve.cjs), page-health sweep against the
+    real Worker, CSS integrity, test registry.
+  - nightly.yml: qa-prefs-roundtrip was burning 20 minutes EVERY NIGHT
+    parking on its browser stop-file (AGENTS.md lesson 12) - now
+    MMGR_QA_NO_BROWSER=1; added CSS-integrity + registry steps.
+  - tools/qa-health-sweep.cjs (new gate, npm run qa:health-sweep [url]):
+    every served page for console errors, uncaught exceptions, 4xx/5xx,
+    CSP violations, live-vs-disk CSP hash drift, emoji, leaked
+    undefined/NaN/[object Object], meta sanity, and live-CSSOM rule
+    coverage. Expected localhost noise (signed-out API 401/403, GSI
+    origin, dev 404s) is classified so RED means real breakage. 15/15
+    clean against BOTH serve.cjs and the Worker.
+TRIAGE (recorded in the registry, not silently dropped): qa-stress D02 is
+  a REAL bug - the IndexedDB crash journal held the pre-kill edit but
+  restoreFromJournal() only accepts a journal whose updatedAt is STRICTLY
+  newer than localStorage's, while journalPut() stores a ts the restore
+  ignores, so any boot-time localStorage write defeats crash recovery.
+  Not bundled into a deploy wave; next state-layer session.
+  qa-glass/qa-glass-visual (engine never boots under headless Chrome, not
+  just the missing GPU), qa-ai-visual (same entitlements seam),
+  qa-oauth (3 checks assume the old unlock modal), tools/qa-ai-polish (2
+  clipboard checks headless refuses; app copy path sound),
+  qa-drive-smoke/qa-admin-recovery/qa-admin-code-escrow = MANUAL.
+SW v313 -> v314: css/mmgr.css, admin.html and project.html are shell-cached,
+  so clients need the bump to re-fetch. Markup + CSS only - no inline
+  <script> was touched, so CSP hashes are unchanged (verify:csp green).
+Owner gate: everything verified by exit code before push - npm run verify
+  exit 0, all 6 T1 suites, all 25 EXTENDED suites, all T4 CI batteries,
+  both health sweeps, wrangler dry-run.

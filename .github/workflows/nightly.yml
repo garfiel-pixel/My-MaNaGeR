@@ -38,6 +38,12 @@ jobs:
       - name: Verify module exports
         run: node tools/verify-render-exports.cjs
 
+      - name: Verify CSS integrity
+        run: node tools/verify-css-integrity.cjs
+
+      - name: Verify test registry (no orphaned harnesses)
+        run: node tools/verify-test-registry.cjs
+
       - name: Wrangler deploy dry-run
         run: npx wrangler deploy --dry-run
 
@@ -133,9 +139,13 @@ jobs:
           WRANGLER_DEV_URL: http://127.0.0.1:8787
 
       - name: "T2: Prefs roundtrip"
+        # MMGR_QA_NO_BROWSER=1: without it this harness prints READY after its
+        # 15 API gates and then polls for a browser stop-file for 20 MINUTES
+        # (AGENTS.md lesson 12). It burned 20 nightly minutes every night.
         run: node tools/qa-prefs-roundtrip.cjs
         env:
           WRANGLER_DEV_URL: http://127.0.0.1:8787
+          MMGR_QA_NO_BROWSER: "1"
 
       - name: "T2: AI badge E2E"
         run: node tools/qa-ai-badge-e2e.cjs

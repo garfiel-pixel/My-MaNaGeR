@@ -49,6 +49,27 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
   await send('Page.navigate', { url: BASE + '/seed-test.html' }); await delay(4000);
   await ev('window.MMGR.Schedule.cascade("northern-temperate",{threshold:999}); window.MMGR.Render.renderAll();'); await delay(300);
 
+  // AI-ENTITLEMENTS (owner 2026-09-19): the assistant is part of the signed-in
+  // experience. MMGR.Entitlements.aiAssistant() reports the Google sign-in
+  // state (js/app/entitlements.js), and BOTH AiWin.open() and the actual send
+  // seam runCloud() consult it - a signed-out harness cannot open the window or
+  // place a cloud call at all. Install the documented QA seam (true) for this
+  // document AND every later navigation, since the layout/readonly sections
+  // re-navigate. The signed-out refusal itself is asserted by qa-full check 68b.
+  await send('Page.addScriptToEvaluateOnNewDocument', { source: `
+    (function(){
+      var tries=0;
+      var iv=setInterval(function(){
+        if (window.MMGR && window.MMGR.Entitlements) {
+          window.MMGR.Entitlements.aiAssistant = function(){ return true; };
+          clearInterval(iv);
+        }
+        if (++tries > 400) clearInterval(iv);
+      }, 25);
+    })();
+  ` });
+  await ev(`(function(){ if (window.MMGR && MMGR.Entitlements) MMGR.Entitlements.aiAssistant = function(){ return true; }; return true; })()`);
+
   const check = (name, val, detail) => { results.push({ name, val, detail }); log((val ? 'PASS' : 'FAIL') + ' ' + name + (val ? '' : '  <-- ' + JSON.stringify(detail))); };
 
   // ---- 1. boot: modules present + config defaults ----

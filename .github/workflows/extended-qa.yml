@@ -1,0 +1,178 @@
+name: Extended QA Battery
+
+# The suites that are green but too slow / too niche for the push gate in
+# ci.yml. Every harness here is marked EXTENDED in docs/CI-TEST-COVERAGE.md,
+# and tools/verify-test-registry.cjs (which runs on every push) fails if a
+# harness is neither wired into CI nor scheduled here.
+#
+# Purpose: no battery can drift silently again. qa-full, qa-ai, qa-v11 and
+# qa-p1 sat broken for weeks because nothing ran them; the same protection is
+# now extended to the long tail.
+
+on:
+  schedule:
+    # Weekly, Sunday 04:00 UTC (nightly.yml owns the daily 03:00 slot).
+    - cron: '0 4 * * 0'
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  extended:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund
+
+      - name: Build JS/CSS bundles
+        run: npm run build
+
+      # ── Static gates + registry ───────────────────────────────────────
+      - name: Static verification battery
+        run: npm run verify
+
+      - name: Wrangler deploy dry-run
+        run: npx wrangler deploy --dry-run
+
+      # ── EXTENDED Tier 1 (pure static, no browser, no server) ─────────
+      - name: "E-T1: AI-assisted import seams"
+        run: node tools/verify-ai-import.cjs
+
+      - name: "E-T1: Date wiring + parallel groups + lead-time watcher"
+        run: node tools/verify-date-wiring.cjs
+
+      - name: "E-T1: WCAG contrast pairs"
+        run: node tools/verify-contrast.cjs
+
+      - name: "E-T1: data-action map completeness"
+        run: node tools/audit-action-map.cjs
+
+      # ── Static QA server for the Tier 4 batteries (:8765) ────────────
+      - name: Start static QA server (serve.cjs)
+        run: |
+          node serve.cjs > /tmp/serve-extended.log 2>&1 &
+          READY=0
+          for i in $(seq 1 20); do
+            if curl -sf http://127.0.0.1:8765/app.html > /dev/null 2>&1; then READY=1; break; fi
+            sleep 1
+          done
+          if [ $READY -eq 0 ]; then
+            echo "FATAL: serve.cjs did not answer on :8765"
+            tail -50 /tmp/serve-extended.log
+            exit 1
+          fi
+          echo "serve.cjs ready on 127.0.0.1:8765"
+
+      - name: "E-T4: P0 smoke battery"
+        run: node qa-p0.cjs
+
+      - name: "E-T4: sync/merge battery"
+        run: node qa-sync.cjs
+
+      - name: "E-T4: R3 battery"
+        run: node qa-r3.cjs
+
+      - name: "E-T4: backup restore"
+        run: node qa-restore-verify.cjs
+
+      - name: "E-T4: observability / error log"
+        run: node qa-obs-verify.cjs
+
+      - name: "E-T4: typing + focus retention"
+        run: node qa-typing.cjs
+
+      - name: "E-T4: schedule rhythm + cascade"
+        run: node qa-rhythm.cjs
+
+      - name: "E-T4: voice capture seams"
+        run: node qa-voice.cjs
+
+      - name: "E-T4: focus retention across re-render"
+        run: node qa-focus.cjs
+
+      - name: "E-T4: marketing pages (zero console errors)"
+        run: node qa-marketing.cjs
+
+      - name: "E-T4: PWA manifest + service worker + offline CRUD"
+        run: node qa-pwa.cjs
+
+      - name: "E-T4: floating calculator"
+        run: node tools/qa-calculator.cjs
+
+      - name: "E-T4: view-mode / deck gates"
+        run: node tools/qa-view-mode.cjs
+
+      - name: "E-T4: legal link targets"
+        run: node tools/qa-legal-links.cjs
+
+      - name: "E-T4: resource pool UI"
+        run: node tools/qa-pool-ui.cjs
+
+      - name: "E-T4: live pool gates"
+        run: node tools/qa-live-pool.cjs
+
+      - name: "E-T4: marketing scroll-spy"
+        run: node tools/verify-spy-cdp.cjs
+
+      - name: "E-T4: app/admin gate screens render"
+        run: node tools/verify-gates-cdp.cjs
+
+      - name: "E-T4: gate screens in every theme state"
+        run: node tools/verify-gates-themes.cjs
+
+      - name: "E-T4: glass preview surfaces"
+        run: node tools/verify-glass-preview-cdp.cjs
+
+      - name: "E-T4: Stop static QA server"
+        if: always()
+        run: pkill -f "node serve.cjs" || true
+
+      # ── Cloud pool suites need the Worker, so they run last ───────────
+      # NOTE: no --no-bundle: wrangler must bundle worker.js itself so
+      # './src/router.js' resolves inside workerd (nightly failure 34020153594).
+      - name: Start wrangler dev
+        id: wrangler-extended
+        run: |
+          rm -rf /tmp/mmgr-extended-state
+          npx wrangler d1 migrations apply my-manager-db --local --config wrangler.ci.jsonc --persist-to /tmp/mmgr-extended-state
+          npx wrangler dev --config wrangler.ci.jsonc --port 8787 --ip 127.0.0.1 --persist-to /tmp/mmgr-extended-state > /tmp/wrangler-extended.log 2>&1 &
+          for i in $(seq 1 30); do
+            if curl -sf http://127.0.0.1:8787/api/health > /dev/null 2>&1; then
+              echo "Wrangler ready on :8787"
+              break
+            fi
+            sleep 2
+          done
+          curl -sf http://127.0.0.1:8787/api/health > /dev/null 2>&1 || { echo "FATAL: wrangler not responding"; tail -50 /tmp/wrangler-extended.log; exit 1; }
+          sleep 5
+          curl -sf http://127.0.0.1:8787/dist/bundle.js > /dev/null 2>&1 || { echo "FATAL: static assets not ready"; exit 1; }
+          echo "Wrangler fully ready (health + assets OK)"
+
+      - name: "E-T2: cloud resource pool"
+        if: success() && steps.wrangler-extended.outcome == 'success'
+        run: node tools/qa-cloud-pool.cjs
+        env:
+          WRANGLER_DEV_URL: http://127.0.0.1:8787
+          QA_PERSIST_DIR: /tmp/mmgr-extended-state/v3/d1/miniflare-D1DatabaseObject
+
+      - name: "E-T4: Stop wrangler dev"
+        if: always()
+        run: |
+          echo "--- Final wrangler log ---"
+          cat /tmp/wrangler-extended.log 2>/dev/null || true
+          pkill -f "wrangler" || true
+          sleep 2
+          pkill -9 -f "wrangler" || true
+
+      - name: Extended battery summary
+        if: always()
+        run: |
+          echo "## Extended QA Battery" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Run at: $(date -u)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Every suite marked EXTENDED in docs/CI-TEST-COVERAGE.md." >> $GITHUB_STEP_SUMMARY

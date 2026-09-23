@@ -1564,6 +1564,12 @@ a.bk-signin{text-decoration:none;color:inherit;}
 #wbsimport-modal textarea{width:100%;min-height:180px;background:var(--canvas);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:10px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.78rem;resize:vertical;}
 #wbsimport-modal .wi-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:6px;}
 #importdates-modal .wi-actions-left{display:flex;justify-content:flex-start;gap:8px;margin-top:6px;}
+/* Tool row (file picker + Read with AI): wraps on narrow modals and sits a
+   touch lower than the plain action row. Replaces the per-element inline
+   styles removed 2026-09-22 (qa-full gate 37: project.html carries zero
+   inline styles). Higher specificity than the base rule above so the
+   margin/wrap do not depend on source order. */
+#importdates-modal .wi-actions-left.wi-actions-tools{flex-wrap:wrap;margin-top:8px;}
 #wbs-alerts{margin-bottom:10px;}
 /* WBS-ALERT-TOGGLE (2026-09-09): the banner's Hide/Show toggle is back. Hide
    collapses the warning list; a quiet pill re-shows it so a dismiss is always
@@ -1698,13 +1704,14 @@ body.dark-mode .wbs-alert-item{background:rgba(255,255,255,.04);}
   .tab-btn{padding:6px 12px;font-size:.78rem;}
 }
 
-/* Phase F - project.html layout utilities */.mb-*/.m0a spacing: margin-top/bottom in px; m0a = no
+/* Phase F - project.html layout utilities
+   - .mb-*, .m0a      spacing: margin-top/bottom in px; m0a = no
                       margin + centered text
-   - .t-sm/.t-xs/.t-xxs/.t-md/.t78*   muted text tiers; .txt-*
-                      bare color; .stat*/.mlc-t figures; .dsec*
+   - .t-sm .t-xs .t-xxs .t-md .t78   muted text tiers; .txt-sl
+                      bare color; .stat, .mlc-t figures; .dsec, .dsec4
                       section labels; .amber-b emphasis
-   - .w38…w180        fixed table column widths
-   - .ctl-in/.sp-in*/.bud-in   controls-drawer / sprint / budget
+   - .w38 ... w180    fixed table column widths
+   - .ctl-in, .sp-in, .bud-in   controls-drawer / sprint / budget
                       envelope inputs
    - .mlc-card/.mlc-body/.mlc-when  methodology popover
    - .n3              next-3 priority list
@@ -1722,6 +1729,9 @@ body.dark-mode .wbs-alert-item{background:rgba(255,255,255,.04);}
 .fb-sm{display:flex;justify-content:space-between;align-items:center;font-size:.78rem;}
 .fb-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;}
 .ox{overflow-x:auto;}
+/* Grow-and-shrink a flex child without an inline style (the AI-mailbox
+   header spacer). Keeps the token-first rule: no style="" in markup. */
+.flex-1{flex:1;min-width:0;}
 /* spacing */
 .mt-lg{margin-top:18px;}
 .mt-md{margin-top:8px;}
@@ -1734,12 +1744,30 @@ body.dark-mode .wbs-alert-item{background:rgba(255,255,255,.04);}
 .mb12{margin-bottom:12px;}
 .mb14{margin-bottom:14px;}
 /* .m0a moved above .mt16 (CSS-ALIGNMENT-FIX): the margin:0 shorthand was
-   cancelling the mt*/mb* utilities in m0a+utility combos on source order. */
+   cancelling the mt/mb utilities in m0a+utility combos on source order. */
 /* muted text tiers (size + slate) */
 .t-sm{font-size:.78rem;color:var(--slate);}
 .t-xs{font-size:.72rem;color:var(--slate);}
 .t-xxs{font-size:.7rem;color:var(--slate);}
 .t-md{font-size:.74rem;color:var(--slate);}
+/* TYPOGRAPHY-UTILITY-WAVE (owner 2026-09-22): the scale step the admin page had
+   hand-inlined most often (.76rem) plus the weight/line-height companions those
+   same inline styles carried. Only the steps this wave actually needed are
+   defined - a utility nothing references is churn, not a scale.
+   NOTE: no margin shorthand utility is defined here on purpose - a shorthand
+   (margin:0) combined with a longhand utility (mb8) is cascade-order fragile,
+   which is exactly what the CSS-ALIGNMENT-FIX note above had to repair. */
+.t-body{font-size:.76rem;color:var(--slate);}
+.t-mut{font-weight:400;color:var(--slate);}
+/* Named text blocks for the two patterns that recur often enough to deserve a
+   name rather than a 4-property inline style (same convention as .modal-txt and
+   .dsec below): a muted note line, and a small sub-heading. */
+.t-note{font-size:.72rem;color:var(--slate);line-height:1.5;margin:0 0 8px;}
+.sub-head{font-size:.78rem;font-weight:600;margin-bottom:8px;}
+.lh15{line-height:1.5;}
+.lh16{line-height:1.6;}
+.lh18{line-height:1.8;}
+.mb8{margin-bottom:8px;}
 .t78{font-size:.78rem;}
 .t78-mb{font-size:.78rem;margin-bottom:10px;}
 .txt-sl{color:var(--slate);}

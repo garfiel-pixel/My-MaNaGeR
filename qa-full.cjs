@@ -932,6 +932,35 @@ async function check(name, expr, expected, hint) {
     if(backup!==null){localStorage.setItem('mmgr_state_demo-project',backup);}
     return {val: ok, condition:last&&last.condition, manual:last&&last.manual};
   })()`);
+  // AI-ENTITLEMENTS (owner 2026-09-19): the assistant is part of the
+  // signed-in experience. MMGR.Entitlements.aiAssistant() reports the Google
+  // sign-in state (js/app/entitlements.js), so a signed-out click opens the
+  // sign-in flow and never the window. Assert that contract first, then
+  // install the documented QA seam so the window's own mechanics (presets,
+  // context dump, copy, Escape close, view-only allowance) stay covered.
+  await check('68b v10 AI window: signed-out click refuses + shows the sign-in toast', `(function(){
+    var win=document.getElementById('ai-win');
+    win.classList.remove('open');
+    document.querySelector('[data-action=openAiWin]').click();
+    var open=win.classList.contains('open');
+    var toast=(document.querySelector('.toast')||{}).textContent||'';
+    return {val: !open && toast.indexOf('sign in')>-1, open:open, toast:toast.slice(0,70)};
+  })()`);
+  // QA seam for the entitlement (the ONE door the callers ask): stub it true
+  // for this document AND every later navigation (check 70b re-navigates).
+  await send('Page.addScriptToEvaluateOnNewDocument', { source: `
+    (function(){
+      var tries=0;
+      var iv=setInterval(function(){
+        if (window.MMGR && window.MMGR.Entitlements) {
+          window.MMGR.Entitlements.aiAssistant = function(){ return true; };
+          clearInterval(iv);
+        }
+        if (++tries > 400) clearInterval(iv);
+      }, 25);
+    })();
+  ` });
+  await ev(`(function(){ if (window.MMGR && MMGR.Entitlements) MMGR.Entitlements.aiAssistant = function(){ return true; }; return true; })()`);
   await check('69 v10 AI window: presets + free-form + context dump + copy', `(function(){
     document.querySelector('[data-action=openAiWin]').click();
     var open=document.getElementById('ai-win').classList.contains('open');

@@ -1160,7 +1160,7 @@
     <div class="ai-mailbox-head">
       <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-bell"></use></svg>
       <strong>Assistant notices</strong>
-      <span style="flex:1"></span>
+      <span class="flex-1"></span>
       <button class="btn btn-s btn-n" data-action="clearAiMailbox">Clear all</button>
       <button class="btn btn-s btn-n" data-action="closeAiMailbox">Close</button>
     </div>
@@ -1651,11 +1651,11 @@
     <div class="wi-step">
       <div class="wi-lbl">2. Paste durations</div>
       <textarea id="id-source" aria-label="Import dates source text" data-action="idPreview" placeholder="Five days&#10;Six days&#10;Two days"></textarea>
-      <div class="wi-actions wi-actions-left" style="margin-top:8px;gap:8px;flex-wrap:wrap">
-        <input type="file" id="id-file" data-action="idFilePick" accept=".txt,.md" style="display:none" aria-hidden="true">
+      <div class="wi-actions wi-actions-left wi-actions-tools">
+        <input type="file" id="id-file" class="is-hide" data-action="idFilePick" accept=".txt,.md" aria-hidden="true">
         <button type="button" class="btn btn-n btn-s" data-action="idFilePickTrigger"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-upload"></use></svg> Load a .txt / .md file</button>
         <button type="button" class="btn btn-n btn-s" id="id-ai-btn" data-action="idReadWithAi"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cpu"></use></svg> Read with AI</button>
-        <span id="id-ai-note" style="font-size:.72rem;color:var(--slate)"></span>
+        <span id="id-ai-note" class="t-xs"></span>
       </div>
     </div>
     <div class="wi-step">

@@ -298,6 +298,97 @@ curl -sI http://127.0.0.1:8765/app.html | grep -io "sha256-[^']*"
 The two sets must match 1:1. A hash missing from the live header means the
 server process predates the edit - restart it, do not trust disk-only checks.
 
+### 11. Wrangler dev reload-loops if its LOG lands inside the assets directory
+
+`wrangler.jsonc` serves assets from `.` (the repo root), and wrangler watches
+that directory. A wrangler dev log written into the repo - e.g.
+`tmp/wrangler.log` - is picked up by the asset watcher, which reloads the
+worker, which writes more log, which reloads again: 400+ "Reloading local
+server" lines and `/api/health` never answers (cost the 2026-09-22 session a
+120s timeout + stale-process cleanup before the cause was spotted; same class
+of loop as the comment at the top of `tools/qa-cloud-phase1.cjs`).
+
+**Keep wrangler dev logs and persist state OUTSIDE the repo** (wrangler does
+NOT honor .gitignore for its watcher):
+
+```bash
+# log + persist dir under $HOME, never tmp/ or any repo path
+(npx wrangler dev --config wrangler.ci.jsonc --port 8787 --ip 127.0.0.1 \
+  --persist-to "$HOME/wrangler-state" > "$HOME/wrangler.log" 2>&1 &)
+```
+
+Related, same session: the T2 harnesses that run against a shared dev server
+(`WRANGLER_DEV_URL`) need the matching state passed through or their direct
+D1/R2 inspections read the wrong files - `QA_PERSIST_DIR="$HOME/wrangler-state"`
+and `ADMIN_CODE` must match what `.dev.vars` gave the dev server (phase2's
+P4.1a 403s otherwise). CI's own step list carries these envs; replicate them
+exactly when running suites locally (see `grep "node tools/" ci.yml`).
+
+### 12. qa-prefs-roundtrip BLOCKS waiting for a browser phase by design
+
+`tools/qa-prefs-roundtrip.cjs` is two-phase: the API phase runs (15 gates),
+then it prints READY and polls for a stop file
+(`$TMP/mmgr-prefs-e2e-stop`) for up to **20 minutes** waiting for a manual/CDP
+browser phase. Run bare, that looks like a hang (cost the 2026-09-22 session
+a 300s timeout and two "stale process" kills that were actually the harness
+waiting). CI runs it headless:
+
+```bash
+MMGR_QA_NO_BROWSER=1 node tools/qa-prefs-roundtrip.cjs   # skips the wait
+```
+
+Before diagnosing any harness "hang", read its tail for a stop-file/READY line
+- two-phase harnesses park by design. (`qa-ai-badge-e2e` and
+`verify-cloud-autosave-signin` have the same `MMGR_QA_NO_BROWSER` pattern;
+prefs's is the only 20-minute one.)
+
+### 13. A CSS comment that spells a comment-CLOSER kills the NEXT rule
+
+An explanatory comment whose prose contains the two-character comment terminator
+typed out (e.g. writing `mt*/mb*` or `.mb-*/` to describe utilities) ENDS the
+comment early. The remaining prose is then parsed as CSS, and the browser's
+error recovery **DROPS THE RULE THAT FOLLOWS IT**. No error is logged, the build
+is clean, `minify` is clean, and the affected element silently renders with
+inherited styles.
+
+This shipped for weeks: two comments in `css/mmgr.css` (lines ~1705, ~1744)
+contained the terminator mid-prose, which killed `.t-sm` and
+`.btn.full{justify-content:center}` in `dist/mmgr.min.css`. Real elements
+(`<div class="t-sm">Completed</div>`, `#d-iss`) were rendering at the wrong size
+and color in production.
+
+**Gate:** `node tools/verify-css-integrity.cjs` (in `npm run verify`, ARM 1
+catches the stray terminator in source, ARM 2 proves every source rule survives
+into dist). `tools/qa-health-sweep.cjs` adds browser truth: it walks the live
+CSSOM and fails if any source class has no applied rule.
+
+Rule of thumb: when describing utilities in a comment, **never type the
+terminator** - write "close-marker", or break the characters apart, or put the
+example on its own line without the pair.
+
+### 14. An unwired harness drifts silently - the registry gate prevents that
+
+`qa-full`, `qa-ai`, `qa-v11` and `qa-p1` (and `verify-theme-cdp`) sat BROKEN for
+weeks while every gate stayed green: they existed, they were runnable, nothing
+ran them. Each wave had changed the app under them (an entitlements gate, a
+retired `.pal-btn` control, AI on-by-default) and no signal ever fired.
+
+The fix is a registry: `docs/CI-TEST-COVERAGE.md` lists every harness with a
+status token (**CI** / **EXTENDED** / **TRIAGE** / **MANUAL**), and
+`tools/verify-test-registry.cjs` (in `npm run verify`, so it runs on every push)
+fails if a `qa-*.cjs` / `verify-*.cjs` / `audit-*.cjs` in the root or `tools/`
+is not registered, or is registered without a status.
+
+**Adding a harness therefore means editing three places, not one:** the harness,
+the registry row, and either `ci.yml` (fast + deploy-relevant) or
+`.github/workflows/extended-qa.yml` (green but slow/niche). A harness that can
+never run here is marked MANUAL with the reason.
+
+When a wave intentionally changes an app contract, the harness gets re-baselined
+TOGETHER with the app - and the re-baseline is verified in a browser, not assumed.
+`qa-full` check 68b (signed-out AI refusal) came out of exactly that: the stale
+checks were replaced by one that asserts the NEW contract.
+
 ## Editing workflow
 
 1. Identify which skills apply (table above) and load them.

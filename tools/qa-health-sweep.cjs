@@ -115,6 +115,27 @@ function resolvePlaywright() {
   throw new Error('playwright library not found - `npm i -D playwright` or set PLAYWRIGHT_MODULE to its path');
 }
 
+// Playwright demands an ABSOLUTE executablePath. chrome-launcher returns an
+// absolute path on Windows/macOS but a bare command name on Linux
+// ('google-chrome') - and the CDP-based harnesses are fine with that because
+// they spawn it through a shell. Passing the bare name to launch() throws
+// "Executable doesn't exist", which is exactly how the sweep passed on Windows
+// and failed CI run 35822426941 (step 29, T2 page health sweep) on
+// ubuntu-latest. Resolve the bare name through the shell first; if that fails,
+// return undefined so Playwright falls back to its own bundled browser.
+function absolutizeChrome(p) {
+  if (!p) return undefined;
+  if (path.isAbsolute(p)) return fs.existsSync(p) ? p : undefined;
+  const finder = os.platform() === 'win32' ? 'where' : 'command -v';
+  try {
+    const out = require('child_process')
+      .execSync(finder + ' ' + JSON.stringify(p), { stdio: ['ignore', 'pipe', 'ignore'] })
+      .toString().trim().split(/\r?\n/)[0];
+    if (out && fs.existsSync(out)) return out;
+  } catch (e) { /* not on PATH - let Playwright try its own browser */ }
+  return undefined;
+}
+
 // Executable inline-script hashes for a page. A data block
 // (<script type="application/ld+json">) is never executed, so script-src
 // never applies and the repo's CSP verifier does not hash it either.
@@ -135,6 +156,7 @@ function diskHashes(file) {
   const { chromium } = resolvePlaywright();
   let executablePath;
   try { executablePath = require('./chrome-launcher.cjs').chromePath || undefined; } catch (e) { /* fall back to playwright's browser */ }
+  executablePath = absolutizeChrome(executablePath);
   const browser = await chromium.launch({ headless: true, executablePath });
   const rows = [];
   const loadedSheets = {};

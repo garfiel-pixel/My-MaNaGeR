@@ -51,10 +51,11 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
   })()`);
   check('02 flags: 4 chips render in Controls (AI is a tier switch, not a flag)', f2.count === 4 && f2.checked && f2.labels.indexOf('weatherForecast') > -1 && f2.aiSwitch, f2);
 
-  // MERGED-AI-CONTROL: the drawer switch is the single AI on/off. Default tier
-  // is 'off' -> switch unchecked + FAB hidden. Turning it ON restores the last
-  // non-off tier (default 'local') and shows the FAB; OFF -> tier 'off' + FAB
-  // hidden. This exercises the 'can never disagree' invariant both ways.
+  // MERGED-AI-CONTROL: the drawer switch is the single AI on/off. OWNER
+  // 2026-09-15: AI is ON by default (tier 'local', zero-key engine) -> switch
+  // checked + FAB visible on a new project. OFF -> tier 'off' + FAB hidden;
+  // back ON restores the last non-off tier (default 'local'). This exercises
+  // the 'can never disagree' invariant both ways.
   const f3a = await ev(`(function(){
     var fab = document.getElementById('ai-fab');
     var ai = document.querySelector('[data-action="tglAiTier"]');
@@ -62,7 +63,7 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
       fabHidden: !!fab && fab.classList.contains('is-hide'),
       chipChecked: !!ai && ai.checked };
   })()`);
-  check('03a flags: default AI state = tier off, switch unchecked, FAB hidden', f3a.tier === 'off' && f3a.fabHidden && !f3a.chipChecked, f3a);
+  check('03a flags: default AI state = tier local (on by default), switch checked, FAB visible', f3a.tier === 'local' && !f3a.fabHidden && f3a.chipChecked, f3a);
 
   await ev(`document.querySelector('[data-action="tglAiTier"]').click()`); await delay(300);
   const f3b = await ev(`(function(){
@@ -72,7 +73,7 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
       fabVisible: !!fab && !fab.classList.contains('is-hide'),
       chipChecked: !!ai && ai.checked };
   })()`);
-  check('03b flags: AI switch ON -> tier local (restore default), FAB visible', f3b.tier === 'local' && f3b.fabVisible && f3b.chipChecked, f3b);
+  check('03b flags: AI switch OFF -> tier off, switch unchecked, FAB hidden', f3b.tier === 'off' && !f3b.fabVisible && !f3b.chipChecked, f3b);
 
   await ev(`document.querySelector('[data-action="tglAiTier"]').click()`); await delay(300);
   const f3c = await ev(`(function(){
@@ -82,7 +83,7 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
       fabHidden: !!fab && fab.classList.contains('is-hide'),
       chipChecked: !!ai && ai.checked };
   })()`);
-  check('03c flags: AI switch OFF -> tier off, FAB hidden again', f3c.tier === 'off' && f3c.fabHidden && !f3c.chipChecked, f3c);
+  check('03c flags: AI switch back ON -> tier local (lastTier restored), FAB visible', f3c.tier === 'local' && !f3c.fabHidden && f3c.chipChecked, f3c);
 
   await ev(`document.querySelector('[data-action="tglFlag"][data-flag="monteCarlo"]').click()`); await delay(300);
   const f4 = await ev(`(function(){
@@ -121,6 +122,9 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
 
   // persist + gate across a hard refresh. Flush the debounced autosave
   // explicitly (deterministic, no timing bet on the 300ms save timer).
+  // AI is ON by default (owner 2026-09-15): flip it OFF explicitly so the
+  // persisted-'off' arm of check 08 still means something.
+  await ev(`(function(){ var ai=document.querySelector('[data-action="tglAiTier"]'); if (ai && ai.checked) ai.click(); return true; })()`); await delay(300);
   await ev('MMGR.State.save(true); true;'); await delay(200);
   await send('Page.navigate', { url: BASE + '/project.html?id=demo-project' }); await delay(4000);
   const f8 = await ev(`(function(){
@@ -271,13 +275,17 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
     MMGR.Tasks.idCommit();
     var c2 = MMGR.State.getState().tasks.filter(function(t){ return t.name === 'QA Dated'; }).length;
     var t = MMGR.State.getState().tasks.find(function(x){ return x.name === 'QA Dated'; });
-    var upd = !!t && t.startDate === '2026-02-01' && t.endDate === '2026-02-07' && t.duration === '7';
+    // Dates drive days: the importer reconciles a days-vs-dates disagreement in
+    // favour of the DATES, counted in WORKING days (the '(7 d)' annotation is
+    // the flagged half of the disagreement, not the winner). Feb 1 2026 is a
+    // Sunday, so Feb 1-7 = Mon-Fri Feb 2-6 = 5 working days.
+    var upd = !!t && t.startDate === '2026-02-01' && t.endDate === '2026-02-07' && t.duration === '5';
     var s2 = MMGR.State.getState();
     s2.tasks = s2.tasks.filter(function(x){ return x.name !== 'QA Dated'; });
     MMGR.Render.renderAll();
     return { first: c1 === 1, secondStillOne: c2 === 1, updatedInPlace: upd };
   })()`);
-  check('19 import: dated re-import updates in place, no duplicate', i2.first && i2.secondStillOne && i2.updatedInPlace, i2);
+  check('19 import: dated re-import updates in place (dates win, working days), no duplicate', i2.first && i2.secondStillOne && i2.updatedInPlace, i2);
 
   // ---- CONFIG + AI CONTEXT ---------------------------------------------------
   const c1 = await ev(`(function(){
@@ -314,7 +322,9 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
     chip.click();
     var after = (MMGR.AiWin && MMGR.AiWin.getAiCfg) ? MMGR.AiWin.getAiCfg().tier : null;
     var toast = document.querySelector('.toast');
-    return { blocked: before === after && before === 'off', toastShown: !!toast && toast.textContent.indexOf('View-only') > -1 };
+    // The invariant is "the tier did not move" + the view-only refusal toast;
+    // the tier's own value is no longer pinned to 'off' (AI is on by default).
+    return { blocked: before === after, tier: before, toastShown: !!toast && toast.textContent.indexOf('View-only') > -1 };
   })()`);
   check('23 readonly: AI master switch refused with toast, tier unchanged', r1.blocked && r1.toastShown, r1);
 

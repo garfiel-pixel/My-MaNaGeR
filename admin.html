@@ -415,7 +415,7 @@ pre.snippet{background:var(--tile-bg);border:1px solid var(--border);border-radi
         </div>
         <div class="hint">The site admin code set when the site was deployed. Project codes do not work here. It stays in this tab only.</div>
       </div>
-      <div id="cloud-admin-status" style="font-size:.72rem;color:var(--slate);margin-bottom:8px"></div>
+      <div class="t-xs mb8" id="cloud-admin-status"></div>
       <div id="cloud-admin-list"></div>
     </div>
 
@@ -492,7 +492,7 @@ pre.snippet{background:var(--tile-bg);border:1px solid var(--border);border-radi
         <input id="pf-title" type="text" placeholder="e.g. Riverside Tower Renovation" data-action="syncSlug">
       </div>
       <div class="field">
-        <label>Description <span style="font-weight:400;color:var(--slate)">(shown on the dashboard card)</span></label>
+        <label>Description <span class="t-mut">(shown on the dashboard card)</span></label>
         <textarea id="pf-desc" placeholder="One or two sentences a client would recognize their project by."></textarea>
       </div>
       <div class="field">
@@ -505,12 +505,12 @@ pre.snippet{background:var(--tile-bg);border:1px solid var(--border);border-radi
         </select>
       </div>
       <div class="field">
-        <label>Project ID <span style="font-weight:400;color:var(--slate)">(url-safe, unique; auto-filled from title)</span></label>
+        <label>Project ID <span class="t-mut">(url-safe, unique; auto-filled from title)</span></label>
         <input id="pf-id" type="text" placeholder="riverside-tower" data-action="pfIdManual">
         <div class="hint">Used in the file path and to keep this project's saved data separate from others. Avoid changing it once you've shared a code, or treat it as a new project.</div>
       </div>
       <div class="field">
-        <label>Project File <span style="font-weight:400;color:var(--slate)">(relative path to the project page)</span></label>
+        <label>Project File <span class="t-mut">(relative path to the project page)</span></label>
         <input id="pf-file" type="text" placeholder="project.html?id=riverside-tower">
         <div class="hint">Used as the link on the public dashboard. Defaults to <code>project.html?id=&lt;id&gt;</code>. Change it only if you host per-project pages elsewhere.</div>
       </div>
@@ -528,7 +528,7 @@ pre.snippet{background:var(--tile-bg);border:1px solid var(--border);border-radi
         <div class="hint" id="pf-code-hint">This is the code you'll share with the client. It's only ever stored in plaintext on this device. Write it down somewhere safe.</div>
       </div>
       <div class="field">
-        <label>View-Only Code <span style="font-weight:400;color:var(--slate)">(optional; opens the project read-only)</span></label>
+        <label>View-Only Code <span class="t-mut">(optional; opens the project read-only)</span></label>
         <div class="code-row">
           <input id="pf-rocode" type="text" maxlength="16" placeholder="Leave blank to disable view-only access">
           <select id="pf-rocodelen" style="width:auto">
@@ -563,14 +563,14 @@ pre.snippet{background:var(--tile-bg);border:1px solid var(--border);border-radi
         <select id="codes-role" style="width:auto"><option value="editor">Editor (can edit the sections below)</option><option value="view">Viewer (read-only, can see them)</option></select>
         <button class="btn btn-g btn-s" data-action="codesCreate"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-plus"></use></svg> Create Code</button>
       </div>
-      <div id="codes-scope" style="font-size:.72rem;color:var(--slate);margin-bottom:10px;line-height:1.6"><span style="margin:0">Sections this code may edit (or see, for a viewer):</span><span id="codes-scope-load" style="margin:0"> loading…</span></div>
+      <div class="t-xs mb10 lh16" id="codes-scope"><span style="margin:0">Sections this code may edit (or see, for a viewer):</span><span id="codes-scope-load" style="margin:0"> loading…</span></div>
       <div id="codes-reveal" style="border:1px solid var(--gold);background:rgba(var(--gold-rgb),.1);border-radius:var(--radius);padding:8px 10px;margin:10px 0;font-size:.76rem" hidden role="status"></div>
-      <div id="codes-list" style="font-size:.72rem;color:var(--slate)">Loading codes…</div>
+      <div class="t-xs" id="codes-list">Loading codes…</div>
       <!-- C19: Client Code Section -->
       <div style="border-top:1px solid var(--border);margin-top:12px;padding-top:12px">
-        <div style="font-size:.78rem;font-weight:600;margin-bottom:8px"><svg class="ico" aria-hidden="true" style="width:14px;height:14px"><use href="css/mmgr-icons.svg#i-user"></use></svg> Client Access (Read-Only)</div>
-        <p style="font-size:.72rem;color:var(--slate);margin:0 0 8px;line-height:1.5">Generate a client code with section toggles. The client can only see the sections you enable.</p>
-        <div id="client-sections" style="font-size:.72rem;color:var(--slate);margin-bottom:8px;line-height:1.8"></div>
+        <div class="sub-head"><svg class="ico" aria-hidden="true" style="width:14px;height:14px"><use href="css/mmgr-icons.svg#i-user"></use></svg> Client Access (Read-Only)</div>
+        <p class="t-note">Generate a client code with section toggles. The client can only see the sections you enable.</p>
+        <div class="t-xs lh18 mb8" id="client-sections"></div>
         <label style="display:flex;align-items:center;gap:6px;font-size:.72rem;color:var(--slate);margin-bottom:8px">Expires in
           <select id="client-code-expiry" style="width:auto;font-size:.72rem">
             <option value="0">Never</option>
@@ -582,19 +582,19 @@ pre.snippet{background:var(--tile-bg);border:1px solid var(--border);border-radi
         </label>
         <button class="btn btn-g btn-s" data-action="createClientCode"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-plus"></use></svg> Create Client Code</button>
         <div id="client-code-reveal" style="border:1px solid var(--gold);background:rgba(var(--gold-rgb),.1);border-radius:var(--radius);padding:8px 10px;margin:10px 0;font-size:.76rem" hidden role="status"></div>
-        <div id="client-codes-list" style="font-size:.72rem;color:var(--slate);margin-top:8px"></div>
+        <div class="t-xs mt-md" id="client-codes-list"></div>
       </div>
       <!-- C23: Shared Resource Pool (Phase 6) -->
       <div style="border-top:1px solid var(--border);margin-top:12px;padding-top:12px">
-        <div style="font-size:.78rem;font-weight:600;margin-bottom:8px"><svg class="ico" aria-hidden="true" style="width:14px;height:14px"><use href="css/mmgr-icons.svg#i-users"></use></svg> Shared Resource Pool (this account)</div>
-        <p style="font-size:.72rem;color:var(--slate);margin:0 0 8px;line-height:1.5">Your account-wide library of reusable people, equipment and materials. Any project you link can pull these rows into its Resources panel. Deleting a row unlinks it everywhere (projects keep their local copy).</p>
+        <div class="sub-head"><svg class="ico" aria-hidden="true" style="width:14px;height:14px"><use href="css/mmgr-icons.svg#i-users"></use></svg> Shared Resource Pool (this account)</div>
+        <p class="t-note">Your account-wide library of reusable people, equipment and materials. Any project you link can pull these rows into its Resources panel. Deleting a row unlinks it everywhere (projects keep their local copy).</p>
         <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
           <input id="pool-new-name" type="text" maxlength="120" placeholder="Name, e.g. Forman, 60t crane" style="flex:1;min-width:160px" autocomplete="off" aria-label="New pool row name">
           <select id="pool-new-kind" style="width:auto" aria-label="Pool row kind"><option value="person">Person</option><option value="equipment">Equipment</option><option value="material">Material</option></select>
           <button class="btn btn-g btn-s" data-action="poolCreateRow"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-plus"></use></svg> Add to Pool</button>
         </div>
-        <div id="pool-reveal" style="font-size:.76rem;color:var(--slate);margin-bottom:8px">Loading pool…</div>
-        <div id="pool-list" style="font-size:.72rem;color:var(--slate)"></div>
+        <div class="t-body mb8" id="pool-reveal">Loading pool…</div>
+        <div class="t-xs" id="pool-list"></div>
       </div>
     </div>
   </div>
@@ -605,7 +605,7 @@ pre.snippet{background:var(--tile-bg);border:1px solid var(--border);border-radi
   <div class="mb">
     <div class="mh"><span class="mt"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Access URL</span><button class="dc" data-action="closeSnippetModal"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> </button></div>
     <div class="mbody">
-      <p style="font-size:.76rem;color:var(--slate);margin-bottom:12px;line-height:1.5">
+      <p class="t-body mb12 lh15">
         This is the direct URL for this project. Share it with the project team.<br>
         The access code is the project's short code.
       </p>
@@ -623,7 +623,7 @@ pre.snippet{background:var(--tile-bg);border:1px solid var(--border);border-radi
   <div class="mb">
     <div class="mh"><span class="mt" id="adm-cfm-title">Confirm</span><button class="dc" data-action="admCfmCancel"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> </button></div>
     <div class="mbody">
-      <p style="font-size:.78rem;color:var(--slate);line-height:1.5;margin:0" id="adm-cfm-msg"></p>
+      <p class="modal-txt" id="adm-cfm-msg"></p>
     </div>
     <div class="mf">
       <button class="btn btn-n" data-action="admCfmCancel" id="adm-cfm-cancel">Cancel</button>
@@ -642,7 +642,7 @@ pre.snippet{background:var(--tile-bg);border:1px solid var(--border);border-radi
         <input id="pw-current" type="password" autocomplete="current-password">
       </div>
       <div class="field">
-        <label>New password <span style="font-weight:400;color:var(--slate)">(min 8 characters)</span></label>
+        <label>New password <span class="t-mut">(min 8 characters)</span></label>
         <input id="pw-new" type="password" autocomplete="new-password">
       </div>
       <div class="field">
@@ -663,7 +663,7 @@ pre.snippet{background:var(--tile-bg);border:1px solid var(--border);border-radi
   <div class="mb">
     <div class="mh"><span class="mt"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-alert-triangle"></use></svg> Changes from Another Tab</span></div>
     <div class="mbody">
-      <p style="font-size:.78rem;color:var(--slate);line-height:1.5;margin:0" id="adm-conflict-info"></p>
+      <p class="modal-txt" id="adm-conflict-info"></p>
     </div>
     <div class="mf">
       <button class="btn btn-g" data-action="admLoadTheirs">Load Theirs</button>

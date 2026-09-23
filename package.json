@@ -5,7 +5,8 @@
   "description": "My MaNaGeR — offline-first construction PM workspace (Cloudflare Workers static assets).",
   "devDependencies": {
     "esbuild": "^0.25.0",
-    "wrangler": "^4.131.1"
+    "playwright": "^1.63.0",
+    "wrangler": "^4.136.3"
   },
   "scripts": {
     "build": "node build.js",
@@ -19,8 +20,10 @@
     "verify:sw": "node tools/verify-sw-cache.cjs",
     "verify:skills": "node tools/verify-skills-lock.cjs",
     "verify:hidden": "node tools/verify-hidden-attr.cjs",
+    "verify:css": "node tools/verify-css-integrity.cjs",
+    "verify:registry": "node tools/verify-test-registry.cjs",
     "verify:exports": "node tools/verify-render-exports.cjs",
-    "verify": "npm run verify:csp && npm run verify:inline && npm run verify:sw && npm run verify:hidden && npm run verify:skills && npm run verify:exports",
+    "verify": "npm run verify:csp && npm run verify:inline && npm run verify:sw && npm run verify:hidden && npm run verify:skills && npm run verify:exports && npm run verify:css && npm run verify:registry",
     "qa:cloud": "node tools/qa-cloud-phase1.cjs",
     "qa:cloud-import": "node tools/qa-cloud-import.cjs",
     "qa:changelog-diffs": "node tools/qa-changelog-diffs.cjs",
@@ -39,6 +42,7 @@
     "qa:offline-copies": "node tools/qa-offline-copies.cjs",
     "qa:ai-polish": "node tools/qa-ai-polish.cjs",
     "qa:ai-relay": "node tools/qa-ai-relay.cjs",
+    "qa:health-sweep": "node tools/qa-health-sweep.cjs",
     "import:mcp": "node tools/import-mcp-changelog.cjs",
     "predeploy": "npm run verify",
     "deploy": "npm run build && npm run predeploy && rm -rf \"$HOME/mmgr-deploy\" && mkdir -p \"$HOME/mmgr-deploy\" && tar --exclude='.git' --exclude='.wrangler' --exclude='node_modules' --exclude='.agents' --exclude='_archive' --exclude='tmp' --exclude='.dev.vars*' --exclude='.gitattributes' --exclude='.gitignore' --exclude='Freebuff*' --exclude='Windows PowerShell*' --exclude='crashes from last session.txt' --exclude='my_manager_web favicon*' --exclude='mymanagerworkspace.com favicon.png' --exclude='screenshots' --exclude='web-research' --exclude='*.md' --exclude='*.json' -cf - . | tar -xf - -C \"$HOME/mmgr-deploy\" && cp package.json wrangler.jsonc \"$HOME/mmgr-deploy/\" && cd \"$HOME/mmgr-deploy\" && npm install --ignore-scripts --no-audit --no-fund && npx wrangler deploy"

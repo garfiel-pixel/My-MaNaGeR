@@ -100,20 +100,20 @@ async function waitForPageTarget() {
   `, `(function(){
     return JSON.stringify({
       darkClass: document.body.classList.contains('dark-mode'),
-      pressedDark: (function(){ var b=document.querySelector('.dock .pal-btn[data-pal="dark"]'); return b ? b.getAttribute('aria-pressed') === 'true' : null; })(),
+      pressedDark: (function(){ var s=document.getElementById('theme-select'); return s ? s.value === 'dark' : null; })(),
       pref: localStorage.getItem('mmgr_theme'),
       stateTheme: (window.MMGR && MMGR.State.getState) ? MMGR.State.getState().theme : 'n/a'
     });
   })()`);
 
-  // S2 — click the dock's Light button (S1 left Dark active): pref, pressed
-  // state, and body class update together.
-  await evaluate(`(function(){ var b=document.querySelector('.dock .pal-btn[data-pal="light"]'); if(b) b.click(); return true; })()`);
+  // S2 — drive the Settings appearance select to Light (S1 left Dark active):
+  // pref, select value and body class update together.
+  await evaluate(`(function(){ var s=document.getElementById('theme-select'); if(s){ s.value='light'; s.dispatchEvent(new Event('change',{bubbles:true})); } return true; })()`);
   await sleep(800);
   out.push({ scenario: 'S2-dock-light', result: await evaluate(`(function(){
     return JSON.stringify({
       darkClass: document.body.classList.contains('dark-mode'),
-      pressedLight: (function(){ var b=document.querySelector('.dock .pal-btn[data-pal="light"]'); return b ? b.getAttribute('aria-pressed') === 'true' : null; })(),
+      pressedLight: (function(){ var s=document.getElementById('theme-select'); return s ? s.value === 'light' : null; })(),
       pref: localStorage.getItem('mmgr_theme'),
       stateTheme: (window.MMGR && MMGR.State.getState) ? MMGR.State.getState().theme : 'n/a'
     });
@@ -135,7 +135,7 @@ async function waitForPageTarget() {
     });
   })()`);
 
-  // S4 — launcher (app.html) dock click: light -> dark flips pref + class.
+  // S4 — launcher (app.html) appearance select: light -> dark flips pref + class.
   const pre4 = await send('Page.addScriptToEvaluateOnNewDocument', { source: `
     try{localStorage.setItem('mmgr_theme','light');}catch(e){}
     try{indexedDB.deleteDatabase('mmgr_journal');}catch(e){}
@@ -145,20 +145,20 @@ async function waitForPageTarget() {
   await sleep(4000);
   const s4before = JSON.parse(await evaluate(`(function(){ return JSON.stringify({
     darkClass: document.body.classList.contains('dark-mode'),
-    pressedDark: (function(){ var b=document.querySelector('.dock .pal-btn[data-pal="dark"]'); return b ? b.getAttribute('aria-pressed') === 'true' : null; })()
+    pressedDark: (function(){ var s=document.getElementById('theme-select'); return s ? s.value === 'dark' : null; })()
   }); })()`));
-  await evaluate(`(function(){ var b=document.querySelector('.dock .pal-btn[data-pal="dark"]'); if(b) b.click(); return true; })()`);
+  await evaluate(`(function(){ var s=document.getElementById('theme-select'); if(s){ s.value='dark'; s.dispatchEvent(new Event('change',{bubbles:true})); } return true; })()`);
   await sleep(400);
   const s4after = JSON.parse(await evaluate(`(function(){ return JSON.stringify({
     darkClass: document.body.classList.contains('dark-mode'),
-    pressedDark: (function(){ var b=document.querySelector('.dock .pal-btn[data-pal="dark"]'); return b ? b.getAttribute('aria-pressed') === 'true' : null; })(),
+    pressedDark: (function(){ var s=document.getElementById('theme-select'); return s ? s.value === 'dark' : null; })(),
     pref: localStorage.getItem('mmgr_theme')
   }); })()`));
   await send('Page.removeScriptToEvaluateOnNewDocument', { identifier: pre4.identifier });
   out.push({ scenario: 'S4-launcher-toggle', before: s4before, after: s4after, errors: issues.slice(s4start) });
   console.log('SCENARIO S4-launcher-toggle: ' + JSON.stringify({ before: s4before, after: s4after }));
 
-  // S5 — admin header toggle click (logged-in session).
+  // S5 — admin appearance select (logged-in session).
   const pre5 = await send('Page.addScriptToEvaluateOnNewDocument', { source: `
     try{localStorage.setItem('mmgr_theme','light');}catch(e){}
     try{localStorage.setItem('mmgr_admin_pass_hash','seedhash');}catch(e){}
@@ -171,7 +171,7 @@ async function waitForPageTarget() {
     darkClass: document.body.classList.contains('dark-mode'),
     adminVisible: !document.getElementById('admin-app').classList.contains('hidden')
   }); })()`));
-  await evaluate(`(function(){ var b=document.querySelector('.dock .pal-btn[data-pal="dark"]'); if(b) b.click(); return true; })()`);
+  await evaluate(`(function(){ var s=document.getElementById('theme-select'); if(s){ s.value='dark'; s.dispatchEvent(new Event('change',{bubbles:true})); } return true; })()`);
   await sleep(400);
   const s5after = JSON.parse(await evaluate(`(function(){ return JSON.stringify({
     darkClass: document.body.classList.contains('dark-mode'),
@@ -197,7 +197,7 @@ async function waitForPageTarget() {
     readonlyMode: document.body.classList.contains('readonly-mode'),
     darkClass: document.body.classList.contains('dark-mode')
   }); })()`));
-  await evaluate(`(function(){ var b=document.querySelector('.dock .pal-btn[data-pal="dark"]'); if(b) b.click(); return true; })()`);
+  await evaluate(`(function(){ var s=document.getElementById('theme-select'); if(s){ s.value='dark'; s.dispatchEvent(new Event('change',{bubbles:true})); } return true; })()`);
   await sleep(600);
   const s6after = JSON.parse(await evaluate(`(function(){ return JSON.stringify({
     darkClass: document.body.classList.contains('dark-mode'),
@@ -232,7 +232,7 @@ async function waitForPageTarget() {
       darkClass: document.body.classList.contains('dark-mode'),
       mqDark: matchMedia('(prefers-color-scheme: dark)').matches,
       pref: localStorage.getItem('mmgr_theme'),
-      pressedSystem: (function(){ var b=document.querySelector('.dock .pal-btn[data-pal="system"]'); return b ? b.getAttribute('aria-pressed') === 'true' : null; })()
+      pressedSystem: (function(){ var s=document.getElementById('theme-select'); return s ? s.value === 'system' : null; })()
     }); })()`));
   await send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: 'light' }] });
   await send('Page.navigate', { url: 'file:///' + ROOT + '/index.html' });

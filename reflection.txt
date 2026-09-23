@@ -1149,3 +1149,70 @@ one more click creates + shows the code once; corrected the "picks up
 where it left off" overstatement - nothing queues in the signed-out
 path), tmp/ + staging cleaned, SW v307.
 
+SESSION 2026-09-23 - DEPLOY RECIPE (tools/deploy.cjs) + LIVE CSP CLASSIFIER SHIPPED
+
+CONTEXT
+Resumed the wave the previous session left uncommitted (tools/deploy.cjs
+new, package.json + tools/qa-health-sweep.cjs modified) and drove it to a
+verified commit. Owner first asked for a live online console read of
+production via Playwright - findings below.
+
+LIVE CONSOLE AUDIT (tmp/probe-live-console.cjs, both origins, 15 pages)
+- All 15 pages 200, titles render, redirects correct, ZERO page errors,
+  zero failed requests, zero unclassified console errors.
+- mymanagerworkspace.com: 1-3 CSP violations per page, all Cloudflare edge
+  injection (bot-detection inline script, __CF$cv$params marker present,
+  required hash differs every load = unallowlistable by design).
+  workers.dev: SAME build, ZERO violations - the A/B that proves the
+  source is the edge, not the app.
+- Only other console entries: signed-out 403 /api/cloud/projects x2 on the
+  launcher pages - the anonymous gate working as designed.
+
+WHAT SHIPPED (this wave's commits)
+- tools/deploy.cjs (NEW): the whole deploy recipe in node. Root cause it
+  kills (incident 2026-09-22): npm runs package.json scripts via cmd.exe,
+  where $HOME is not a variable - the old bash one-liner staged into
+  ./\$HOME/mmgr-deploy INSIDE the repo, tarred the repo into a copy of
+  itself, npm-installed 231 MB of node_modules into the tree, and deployed
+  from that path. The script stages to os.homedir()/mmgr-deploy, refuses a
+  stage inside the repo or containing an unexpanded variable, byte-compares
+  12 tracked deploy files against the working tree before shipping, and
+  runs wrangler from the STAGE dir. package.json: deploy -> node
+  tools/deploy.cjs + new deploy:stage (skips the deploy). npm.cmd on
+  Windows needs the shell form (run('npm run verify'), no args array -
+  avoids the DEP0190 warning).
+- tools/qa-health-sweep.cjs: Cloudflare edge-injection classification for
+  the CSP gate (page-level cfInjected marker + required-hash-not-on-disk),
+  plus the CSS rule-coverage arm (live CSSOM vs source classes) from the
+  2026-09-22 incident.
+
+THE BUG I CAUGHT IN THE UNCOMMITTED CLASSIFIER (proof the gate run matters)
+- First sweep run against production: 13/15 pages still flagged REAL. The
+  draft's requiredHashes regex ('sha256-...'/g) matched EVERY quoted hash
+  in the violation text - including the entire site-wide allowlist the
+  message echoes. The live list is a superset of the page's own hashes, so
+  req.every(notOnDisk) was always false and every edge violation looked
+  like app drift. The REQUIRED hash is the one inside "a hash
+  ('sha256-...')" at the end of the message. One regex fix -> 15/15 clean,
+  edge counts matching my independent probe exactly (1 marketing pages,
+  3 project.html, 2 seed-test). Lesson: an unverified draft gate is just a
+  hypothesis; run it against the real failing surface before committing.
+- Also widened the header comment: 'exactly one violation' was wrong -
+  project.html carries THREE per load (edge injects its script twice + the
+  challenge script); the classifier is per-violation, not per-count.
+
+VERIFICATION EVIDENCE
+- node --check clean on both tools; npm run verify ALL CHECKS PASSED
+  (CSS integrity, registry 73/73 included).
+- Health sweep vs https://mymanagerworkspace.com: 15 clean / 0 findings,
+  exit 0; CSS rule coverage PASS (965 + 183 rules live).
+- deploy.cjs exclude audit: /favicon/i drops nothing referenced (no HTML
+  references favicon.png; manifest uses images/mpw-icon.png + the two
+  root icons). COPY_BACK restores package.json + wrangler.jsonc past the
+  *.json exclude.
+
+BOOKKEEPING
+- reflection.txt (this entry) + CONTINUATION-DIRECTIVE.md STATUS LOG.
+- tmp/probe-live-console.cjs kept (gitignored scratch, tmp/ convention).
+- SW cache NOT bumped: no served file changed (tools + package.json only).
+

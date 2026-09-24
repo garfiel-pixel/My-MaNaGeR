@@ -1216,3 +1216,19 @@ BOOKKEEPING
 - tmp/probe-live-console.cjs kept (gitignored scratch, tmp/ convention).
 - SW cache NOT bumped: no served file changed (tools + package.json only).
 
+
+2026-09-24 SESSION (completion pass on the silent-errors + session-owner-review-gate wave)
+- Shipped the uncommitted wave: handleReviewList now either-auth (session OR code) unconditionally;
+  client review.js probes _sessOwner (exported as a GETTER - a value copy would snapshot false forever);
+  session-owner branch of the cloud section now renders the review queue; diff absent labels honest
+  ("not set yet" / "removed"); setStatus err/warn also toasts (auto-backup err:quiet); template save/delete
+  feedback + re-render.
+- LESSON (grep -c vs grep -o): the minified bundle is ONE line, so grep -c 'string' returns 1 even when the
+  string appears many times - undercounting made me doubt a fix had landed. Always grep -o | wc -l on dist.
+- LESSON (harness honesty, lesson 14 again): qa-reviews passed 25/25 WITHOUT ever exercising the fixed path
+  (no session-cookie/no-header request existed). A green suite proves only what it asserts. Added R4s gates.
+- R4s gates moved the blob mid-flow; three downstream assertions had hardcoded blob values -> re-baselined
+  (reject assertion + MCP import honesty-gate AFTER values). The import honesty gate WORKS: it refused an
+  entry whose AFTER did not match the live blob ('blob diverged from the MCP edit') - the failure was proof.
+- qa-changelog-diffs G2a still asserted the OLD 'absent' word - the wave's whole point was the relabel.
+- mpw-icon-48.png is referenced by nothing (regenerated spare); noted in the tracker, not deleted.

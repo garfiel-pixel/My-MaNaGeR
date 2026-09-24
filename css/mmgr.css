@@ -2426,6 +2426,7 @@ body.glass-premium.dark-mode .mouse-glow{background:radial-gradient(circle,rgba(
   .drive-status{font-size:.68rem;color:var(--slate);max-width:260px;line-height:1.35;}
 .drive-status.ds-ok{color:var(--green);}
 .drive-status.ds-err{color:var(--danger);}
+.drive-status.ds-warn{color:var(--amber);}
 .drive-status.ds-busy{color:var(--gold);}
 .auth-bar .btn[disabled]{opacity:.55;cursor:default;}
 @media(max-width:640px){.auth-bar{flex-wrap:wrap;justify-content:center;}.cloud-sync-controls{justify-content:center;width:100%;}.drive-status{text-align:center;max-width:100%;}}

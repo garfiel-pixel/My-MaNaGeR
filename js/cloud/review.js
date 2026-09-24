@@ -16,15 +16,26 @@ var MMGR = window.MMGR || {};
   function getECode() { return C.getECode(); }
   function setStatus(msg, kind) { C._setStatus(msg, kind); }
   function renderDiffPanel(en) { return C._renderDiffPanel(en); }
+  // OWNER FIX 2026-09-24 (session-owner review gate): owner identity is
+  // either-auth (code OR session). A signed-in owner with no code held on the
+  // device used to get "Owner code required." and never saw their own review
+  // queue. The credential read is sync, so probe the session flag the module
+  // already maintains (_sessOwner, set by render's probeOwnerSession).
+  function hasOwnerAccess() { return !!getCode() || !!C._sessOwner; }
+  function ownerHeaders() {
+    const h = {};
+    const code = getCode();
+    if (code) h['X-Owner-Code'] = code; // session owner: headerless, cookie authenticates
+    return h;
+  }
 
   async function cloudReviewList() {
  const wrap = $('cloud-review-list');
  if (!wrap) return;
- const code = getCode();
- if (!code) { wrap.innerHTML = '<div class="sr-hint">Owner code required.</div>'; return; }
+ if (!hasOwnerAccess()) { wrap.innerHTML = '<div class="sr-hint">Owner access required.</div>'; return; }
  try {
  const res = await fetch('/api/cloud/projects/' + encodeURIComponent(pid()) + '/reviews', {
- method: 'GET', credentials: 'same-origin', headers: { 'X-Owner-Code': code }
+ method: 'GET', credentials: 'same-origin', headers: ownerHeaders()
  });
  const data = await res.json().catch(function() { return {}; });
  if (!res.ok || !data.ok) { wrap.innerHTML = '<div class="sr-hint">Could not load proposals.</div>'; return; }
@@ -104,14 +115,13 @@ var MMGR = window.MMGR || {};
   }
 
   async function cloudReviewAccept(id) {
- const code = getCode();
- if (!code || !id) return;
+ if (!hasOwnerAccess() || !id) { setStatus('Owner access required.', 'warn'); return; }
  if (!window.confirm('Accept this change? It is applied to the cloud project now and logged in the changelog (and offline copies refresh).')) return;
  setStatus('Accepting\u2026', 'busy');
  try {
  const res = await fetch('/api/cloud/projects/' + encodeURIComponent(pid()) + '/reviews/' + encodeURIComponent(id) + '/accept', {
  method: 'POST', credentials: 'same-origin',
- headers: { 'Content-Type': 'application/json', 'X-Owner-Code': code },
+ headers: Object.assign({ 'Content-Type': 'application/json' }, ownerHeaders()),
  body: JSON.stringify({})
  });
  const data = await res.json().catch(function() { return {}; });
@@ -124,14 +134,13 @@ var MMGR = window.MMGR || {};
   }
 
   async function cloudReviewReject(id) {
- const code = getCode();
- if (!code || !id) return;
+ if (!hasOwnerAccess() || !id) { setStatus('Owner access required.', 'warn'); return; }
  if (!window.confirm('Reject this change? It is discarded - the cloud project stays as it is, and the source device sees it was rejected.')) return;
  setStatus('Rejecting\u2026', 'busy');
  try {
  const res = await fetch('/api/cloud/projects/' + encodeURIComponent(pid()) + '/reviews/' + encodeURIComponent(id) + '/reject', {
  method: 'POST', credentials: 'same-origin',
- headers: { 'Content-Type': 'application/json', 'X-Owner-Code': code },
+ headers: Object.assign({ 'Content-Type': 'application/json' }, ownerHeaders()),
  body: JSON.stringify({})
  });
  const data = await res.json().catch(function() { return {}; });

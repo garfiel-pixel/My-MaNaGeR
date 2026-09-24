@@ -282,11 +282,26 @@ var MMGR = window.MMGR || {};
   function clearPendingEditorCode() { if (ns.CloudShare && ns.CloudShare.clearPendingEditorCode) ns.CloudShare.clearPendingEditorCode(); }
 
   // ---- status line (reuses the drive-status classes already in mmgr.css) --
+  // OWNER 2026-09-24 (silent-errors wave): the status line lives at the bottom
+  // of the Cloud & Sync section, but most flows that report through it (code
+  // and API-key create/revoke, webhooks, review queue) render their forms at
+  // the TOP of the Controls drawer in #ctrl-share - a validation or server
+  // error was written here and the user, staring at the form, saw nothing at
+  // all. So err/warn outcomes ALSO raise the shared toast (screen-wide, next
+  // to whatever the user is touching); ok/busy stay quiet on the status line.
+  // Suppression is per-call via an internal kind suffix: the background
+  // auto-backup reports its failure non-intrusively (dirty indicator) and
+  // must not toast - it passes 'err:quiet' and only the line updates.
   function setStatus(msg, kind) {
     const s = $('cloud-status');
-    if (!s) return;
-    s.textContent = msg || '';
-    s.className = 'drive-status' + (kind ? ' ds-' + kind : '');
+    if (s) {
+      s.textContent = msg || '';
+      s.className = 'drive-status' + (kind ? ' ds-' + String(kind).split(':')[0] : '');
+    }
+    if ((kind === 'err' || kind === 'warn') && msg) {
+      const A = window.MMGR && window.MMGR.App;
+      if (A && typeof A.showToast === 'function') A.showToast(msg, kind);
+    }
   }
 
   // ---- read-only sign-in state via /api/auth/me ---------------------------
@@ -717,7 +732,7 @@ var MMGR = window.MMGR || {};
       const data = await res.json().catch(function() { return {}; });
       if (!res.ok || !data.ok) {
         if (res.status === 403) { if (cred.header === 'X-Owner-Code') clearCode(); else if (cred.header) clearECode(); else clearSessOwner(); } // stale credential - drop the link
-        setStatus('Auto cloud backup failed , open Cloud Backup and Save manually.', 'err');
+        setStatus('Auto cloud backup failed , open Cloud Backup and Save manually.', 'err:quiet'); // background path - the dirty indicator already flags it; a toast on every failed auto-save would spam
         return false;
       }
       if (data.savedAt) setLastSeen(data.savedAt);
@@ -1296,8 +1311,8 @@ var MMGR = window.MMGR || {};
   // imports diff entire records on add/delete) become compact JSON. Long
   // strings are ellipsis-truncated on screen with the full value in the
   // title attribute. Everything is escaped , the values are server state.
-  function _clValImpl(v, absent, cls) {
-    if (absent) return '<em class="cl-absent">absent</em>';
+  function _clValImpl(v, absent, cls, absentWord) {
+    if (absent) return '<em class="cl-absent">' + esc(absentWord || 'absent') + '</em>';
     let s;
     if (v === undefined) v = null;
     if (v === null) s = 'null';
@@ -1317,14 +1332,16 @@ var MMGR = window.MMGR || {};
     const diffs = (Array.isArray(en.diffs) ? en.diffs : []).slice(0, 60);
     const n = Array.isArray(en.diffs) ? en.diffs.length : 0;
     if (!diffs.length) return '';
+    // OWNER 2026-09-24: per-row .cl-diff wrapper kept (it IS the grid row);
+    // absent labels clarified - see js/cloud/diffs.js.
     let rows = '';
     for (let i = 0; i < diffs.length; i++) {
       const d = diffs[i] || {};
       rows += '<div class="cl-diff">' +
         '<code class="cl-diff-path" title="' + esc(String(d.path || '')) + '">' + esc(String(d.path || '?')) + '</code>' +
-        _clValImpl(d.before, d.beforeAbsent === true, 'cl-old') +
+        _clValImpl(d.before, d.beforeAbsent === true, 'cl-old', 'not set yet') +
         '<span class="cl-arr">→</span>' +
-        _clValImpl(d.after, d.afterAbsent === true, 'cl-new') +
+        _clValImpl(d.after, d.afterAbsent === true, 'cl-new', 'removed') +
         '</div>';
     }
     if (n > diffs.length) rows += '<div class="cl-more">… and ' + (n - diffs.length) + ' more field(s)</div>';
@@ -1827,6 +1844,15 @@ var MMGR = window.MMGR || {};
         // version of their own project.
         '<div class="sr" style="margin-top:8px"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Offline copy</span></div>' +
         '<div id="cloud-offline-copy-box"></div>' +
+        // OWNER FIX 2026-09-24: the Review queue was only rendered in the
+        // held-code branch, so a signed-in owner (session-owner mode, P1-6)
+        // never saw proposals queued for their own project - including MCP/
+        // API-key submissions. Same panel, same ids; the request goes out
+        // headerless and the session authenticates (server either-auth).
+        '<div class="sr" style="margin-top:8px"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-check"></use></svg> Review incoming changes</span>' +
+        '<button class="btn btn-n btn-s" data-action="cloudReviewList" style="margin-left:8px"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> Refresh</button></div>' +
+        '<div class="sr-hint">Edits from editor codes and AI agents wait here for your decision , accept to apply them to the cloud project, reject to discard.</div>' +
+        '<div id="cloud-review-list"></div>' +
         '<div id="cloud-last-sync" class="sr-hint" role="status" aria-live="polite"></div>' +
         '<div class="sr-hint">Your owner code and editor-code manager live in <strong>Controls ▸ Share &amp; Access</strong> once a code is held on this device.</div>';
     } else {
@@ -1962,6 +1988,13 @@ var MMGR = window.MMGR || {};
     }
     if (code) {
       cloudOfflineList();
+      cloudReviewList();
+    } else if (sessOwner) {
+      // OWNER FIX 2026-09-24: a session owner's cloud section now carries the
+      // review list too - load it on render so proposals are visible without
+      // recovering a code first (see the session-owner branch above).
+      // (cloudOfflineList is NOT called here: the session-owner body has no
+      // #cloud-offline-list broadcast row, so the call would no-op anyway.)
       cloudReviewList();
     } else if (getECode() && !getCode()) {
       const escope2 = getEScope();
@@ -2680,7 +2713,13 @@ var MMGR = window.MMGR || {};
     clearPendingEditorCode: clearPendingEditorCode,
     _listLog: listLog,
     _activeCredential: activeCredential,
-    _getSections: function() { return _sections; }
+    _getSections: function() { return _sections; },
+    // Session-owner flag (filled by render's probe; review.js reads it so a
+    // signed-in owner with no held code can still open the review queue).
+    // GETTER, not a value copy: _sessOwner flips true after the probe runs,
+    // and a plain property would snapshot the initial false forever (the
+    // exact bug that left the owner's review queue refusing to load).
+    get _sessOwner() { return _sessOwner; }
   };
 
   // Render on boot (App.init calls this too via the guarded hook; the

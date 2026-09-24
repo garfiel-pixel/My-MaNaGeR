@@ -1727,7 +1727,16 @@ window.MMGR = MMGR;
     'closeImportModal': () => { const m = document.getElementById('import-modal'); if (m) m.remove(); },
     'saveAsTemplate': () => {
       const name = prompt('Template name:');
-      if (name) { window.MMGR.Templates.saveAsTemplate(name); alert('Template saved: ' + name); }
+      // OWNER 2026-09-24 (silent-errors wave): prompt-cancel or an empty name
+      // fell through silently - no feedback at all. Name it, confirm with a
+      // toast, and refresh the list (save mutates state but nothing re-rendered
+      // #template-list until the next full render).
+      if (name === null) return; // user cancelled
+      const clean = name.trim();
+      if (!clean) { showToast('Give the template a name first.', 'warn'); return; }
+      window.MMGR.Templates.saveAsTemplate(clean);
+      if (window.MMGR.Render && window.MMGR.Render.renderTemplates) window.MMGR.Render.renderTemplates();
+      showToast('Template saved: ' + clean, 'ok');
     },
     'applyTemplate': (el) => {
       const tplId = el.getAttribute('data-tpl-id');
@@ -1735,7 +1744,11 @@ window.MMGR = MMGR;
     },
     'deleteTemplate': (el) => {
       const tplId = el.getAttribute('data-tpl-id');
-      if (tplId && confirm('Delete this template?')) window.MMGR.Templates.deleteTemplate(tplId);
+      if (tplId && confirm('Delete this template?')) {
+        window.MMGR.Templates.deleteTemplate(tplId);
+        if (window.MMGR.Render && window.MMGR.Render.renderTemplates) window.MMGR.Render.renderTemplates();
+        showToast('Template deleted.', 'ok');
+      }
     },
     'outdentTask': (el) => window.MMGR.Tasks.outdentTask(el.getAttribute('data-id')),
     'tglPhase': (el) => window.MMGR.Tasks.tglPhase(el.getAttribute('data-id')),

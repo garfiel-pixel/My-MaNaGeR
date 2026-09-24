@@ -18,6 +18,13 @@
    R5  accepting the same proposal again -> 409 (not pending)
    R6  reject path: a new editor proposal rejected -> blob
        unchanged, changelog 'rejected' entry, status rejected
+   R4s SESSION-OWNER either-auth (P1-6 regression gate, 2026-09-24):
+       the project is created LINKED to a signed-in session and the
+       R4s probes strip the owner code on purpose - a signed-in owner
+       with NO X-Owner-Code header must be able to list AND accept
+       proposals with the session cookie alone (the old code-first
+       gate in handleReviewList 403'd exactly this path), while a
+       request with neither session nor code still gets 403
    R7  an editor credential (mine=1) sees only their own
        proposals with status; an editor listing ALL reviews -> 403
    R8  MCP import -> proposal (not an instant changelog row);
@@ -131,14 +138,38 @@ function baseState(pid, name) {
     await startWrangler();
     const pid = 'rv-proj-' + Date.now().toString(36);
 
-    // R0 create + seed + editor code.
-    let r = await fetch(BASE + '/api/cloud/projects', {
+    // R0-pre: mint a real session (email register + login) so the project is
+    // created LINKED to the signed-in owner - the P1-6 session-owner mode that
+    // the R4s gates exercise (the owner code is still held and used elsewhere
+    // in this flow; either-auth means both credentials work).
+    let r = await fetch(BASE + '/api/auth/register', {
       method: 'POST', credentials: 'same-origin',
       headers: jsonHeaders,
+      body: JSON.stringify({ email: 'rv-qa@example.com', password: 's3cure-pass-1', name: 'Review QA Owner' })
+    });
+    let reg = await j(r);
+    let scm = (r.headers.get('set-cookie') || '').match(/mmgr_session=([^;]+)/);
+    let sessCookie = scm ? scm[1] : '';
+    if (!sessCookie || !reg.ok) {
+      r = await fetch(BASE + '/api/auth/login', {
+        method: 'POST', credentials: 'same-origin',
+        headers: jsonHeaders,
+        body: JSON.stringify({ email: 'rv-qa@example.com', password: 's3cure-pass-1' })
+      });
+      reg = await j(r);
+      scm = (r.headers.get('set-cookie') || '').match(/mmgr_session=([^;]+)/);
+      if (scm) sessCookie = scm[1];
+    }
+    check('R0-pre email session minted (session-owner mode)', !!sessCookie && !!reg.ok, { reg, hasCookie: !!sessCookie });
+
+    // R0 create + seed + editor code.
+    r = await fetch(BASE + '/api/cloud/projects', {
+      method: 'POST', credentials: 'same-origin',
+      headers: Object.assign({}, jsonHeaders, { Cookie: 'mmgr_session=' + sessCookie }),
       body: JSON.stringify({ projectId: pid, name: 'Review QA' })
     });
     const created = await j(r);
-    check('R0a create cloud project', r.ok && created.ok && !!created.ownerCode, created);
+    check('R0a create cloud project (session-linked)', r.ok && created.ok && !!created.ownerCode, created);
     const ownerCode = created.ownerCode;
 
     const state0 = baseState(pid, 'Review QA');
@@ -243,6 +274,42 @@ function baseState(pid, name) {
     const pA = (listA.proposals || []).find(function(x) { return x.id === reviewId2; });
     check('R4d proposal now accepted with decidedAt', !!pA && pA.status === 'accepted' && !!pA.decidedAt, pA);
 
+    // R4s SESSION-OWNER either-auth (2026-09-24 fix): handleReviewList used to
+    // read the X-Owner-Code header FIRST and only consult the session when a
+    // code string was present, so a signed-in owner with no code on the device
+    // got 403 and never saw proposals queued for their own project (P1-6).
+    // The owner code IS held in this flow, so these probes strip it on purpose.
+    const stateS = JSON.parse(JSON.stringify(state0));
+    stateS.tasks[0].name = 'Session-owner accepts this';
+    r = await fetch(BASE + '/api/cloud/projects/' + pid + '/save', {
+      method: 'POST', credentials: 'same-origin',
+      headers: Object.assign({}, jsonHeaders, { 'X-Editor-Code': editorCode }),
+      body: JSON.stringify({ state: stateS })
+    });
+    const edSaveS = await j(r);
+    const reviewIdS = edSaveS.reviewId;
+    check('R4s-a editor re-proposal queued for the session-owner gate', r.ok && edSaveS.ok && !!reviewIdS, edSaveS);
+    r = await fetch(BASE + '/api/cloud/projects/' + pid + '/reviews', {
+      method: 'GET', credentials: 'same-origin',
+      headers: { Cookie: 'mmgr_session=' + sessCookie }
+    });
+    const listS = await j(r);
+    const pS = (listS.proposals || []).find(function(x) { return x.id === reviewIdS; });
+    check('R4s-b session owner lists proposals with the cookie ALONE (no X-Owner-Code)',
+      r.ok && listS.ok && !!pS && pS.status === 'pending', { status: r.status, listS });
+    r = await fetch(BASE + '/api/cloud/projects/' + pid + '/reviews/' + reviewIdS + '/accept', {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json', Cookie: 'mmgr_session=' + sessCookie },
+      body: JSON.stringify({})
+    });
+    const accS = await j(r);
+    check('R4s-c session owner accepts with the cookie ALONE',
+      r.ok && accS.ok && accS.status === 'accepted' && Array.isArray(accS.applied) && accS.applied.indexOf('wbs') !== -1, accS);
+    r = await fetch(BASE + '/api/cloud/projects/' + pid + '/reviews', {
+      method: 'GET', credentials: 'same-origin', headers: jsonHeaders
+    });
+    check('R4s-d no session + no code -> 403 (the queue is never public)', r.status === 403, { status: r.status });
+
     // R5 accept again -> 409.
     r = await fetch(BASE + '/api/cloud/projects/' + pid + '/reviews/' + reviewId2 + '/accept', {
       method: 'POST', credentials: 'same-origin',
@@ -274,7 +341,10 @@ function baseState(pid, name) {
       body: JSON.stringify({})
     });
     const blobR = await j(r);
-    check('R6b rejected change NOT in the blob', r.ok && blobR.state.tasks[0].name === 'Edited again (WBS)', blobR.state && blobR.state.tasks);
+    // The blob's truth at this point is the R4s-c session-owner accepted value
+    // ('Session-owner accepts this'); the assertion is that the REJECTED
+    // proposal's value never landed.
+    check('R6b rejected change NOT in the blob', r.ok && blobR.state.tasks[0].name === 'Session-owner accepts this' && blobR.state.risks[0].name === 'Risk One', blobR.state && blobR.state.tasks);
     r = await fetch(BASE + '/api/cloud/projects/' + pid + '/changelog', {
       method: 'GET', credentials: 'same-origin', headers: { 'X-Owner-Code': ownerCode }
     });
@@ -300,10 +370,12 @@ function baseState(pid, name) {
       r.ok && allTry.ok && allTry.proposals.length >= 2 && onlyMine && !(allTry.proposals || []).some(function(x) { return x.sourceType === 'mcp'; }), allTry);
 
     // R8 MCP import inserts directly into changelog (with import_key for idempotency).
+    // The entry's AFTER value must match the live blob (import honesty gate):
+    // the blob at tasks[0].name is the R4s-c accepted value.
     const mcpEntry = {
       localId: 101, entry_type: 'edit', actor_type: 'owner', actor_label: 'MCP AI',
       created_at: new Date().toISOString(),
-      diffs_json: [{ path: 'tasks[0].name', before: 'Task One', beforeAbsent: false, after: 'Edited again (WBS)', afterAbsent: false }]
+      diffs_json: [{ path: 'tasks[0].name', before: 'Edited again (WBS)', beforeAbsent: false, after: 'Session-owner accepts this', afterAbsent: false }]
     };
     r = await fetch(BASE + '/api/cloud/projects/' + pid + '/changelog/import', {
       method: 'POST', credentials: 'same-origin',
@@ -331,7 +403,7 @@ function baseState(pid, name) {
     const mcpEntry2 = {
       localId: 102, entry_type: 'edit', actor_type: 'owner', actor_label: 'MCP AI',
       created_at: new Date().toISOString(),
-      diffs_json: [{ path: 'tasks[0].name', before: 'Edited again (WBS)', beforeAbsent: false, after: 'AI wants this name', afterAbsent: false }]
+      diffs_json: [{ path: 'tasks[0].name', before: 'Session-owner accepts this', beforeAbsent: false, after: 'AI wants this name', afterAbsent: false }]
     };
     r = await fetch(BASE + '/api/cloud/projects/' + pid + '/save', {
       method: 'POST', credentials: 'same-origin',

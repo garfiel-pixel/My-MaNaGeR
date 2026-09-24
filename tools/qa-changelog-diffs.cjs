@@ -55,13 +55,16 @@ check('G1c renders null value', h1.indexOf('null') !== -1, h1);
 check('G1d header row labels the columns', h1.indexOf('Field') !== -1 && h1.indexOf('Before') !== -1 && h1.indexOf('After') !== -1, h1);
 check('G1e before gets the old (danger) class, after the new (green) class', h1.indexOf('cl-old') !== -1 && h1.indexOf('cl-new') !== -1, h1);
 
-// G2: absent states render as "absent" (not the raw value).
+// G2: absent states render as honest labels, not the raw value.
+// OWNER 2026-09-24 relabel: an absent BEFORE reads "not set yet" (nothing was
+// ever there) and an absent AFTER reads "removed" (something was taken away),
+// so a create no longer skims as a deletion in the diff panel.
 const h2 = R({ id: 2, diffs: [
   { path: 'raci.matrix.mike', before: 'A', beforeAbsent: true, after: 'R', afterAbsent: false },
   { path: 'tasks[0]', before: { id: 't1', name: 'Found' }, beforeAbsent: false, after: null, afterAbsent: true }
 ] });
-check('G2a beforeAbsent shows absent', h2.indexOf('cl-absent') !== -1 && h2.indexOf('>absent<') !== -1, h2);
-check('G2b afterAbsent shows absent', (h2.match(/cl-absent/g) || []).length === 2, h2);
+check('G2a beforeAbsent shows "not set yet"', h2.indexOf('cl-absent') !== -1 && h2.indexOf('>not set yet<') !== -1, h2);
+check('G2b afterAbsent shows "removed" (both absent cells rendered)', (h2.match(/cl-absent/g) || []).length === 2 && h2.indexOf('>removed<') !== -1, h2);
 // The record JSON is escaped on output (&quot;), so assert the escaped form.
 check('G2c whole-record before becomes JSON', h2.indexOf('&quot;id&quot;:&quot;t1&quot;') !== -1 && h2.indexOf('{') !== -1, h2);
 

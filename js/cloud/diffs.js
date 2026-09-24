@@ -12,8 +12,8 @@ var MMGR = window.MMGR || {};
   const $ = function(id) { return document.getElementById(id); };
   function esc(v) { return C._esc(v); }
 
-  function clVal(v, absent, cls) {
-    if (absent) return '<em class="cl-absent">absent</em>';
+  function clVal(v, absent, cls, absentWord) {
+    if (absent) return '<em class="cl-absent">' + esc(absentWord || 'absent') + '</em>';
     let s;
     if (v === undefined) v = null;
     if (v === null) s = 'null';
@@ -29,14 +29,20 @@ var MMGR = window.MMGR || {};
     const diffs = (Array.isArray(en.diffs) ? en.diffs : []).slice(0, 60);
     const n = Array.isArray(en.diffs) ? en.diffs.length : 0;
     if (!diffs.length) return '';
+    // OWNER 2026-09-24 (reverted experiment + honest labels): the per-row
+    // .cl-diff wrapper IS the grid (matches .cl-diffs-head columns) - flat
+    // cells broke the 4-column layout when the panel lacked a grid container.
+    // Kept from the experiment: absent BEFORE now reads "not set yet" and
+    // absent AFTER reads "removed", so a create no longer looks like a
+    // deletion when skimmed.
     let rows = '';
     for (let i = 0; i < diffs.length; i++) {
       const d = diffs[i] || {};
       rows += '<div class="cl-diff">' +
         '<code class="cl-diff-path" title="' + esc(String(d.path || '')) + '">' + esc(String(d.path || '?')) + '</code>' +
-        clVal(d.before, d.beforeAbsent === true, 'cl-old') +
+        clVal(d.before, d.beforeAbsent === true, 'cl-old', 'not set yet') +
         '<span class="cl-arr">\u2192</span>' +
-        clVal(d.after, d.afterAbsent === true, 'cl-new') +
+        clVal(d.after, d.afterAbsent === true, 'cl-new', 'removed') +
         '</div>';
     }
     if (n > diffs.length) rows += '<div class="cl-more">\u2026 and ' + (n - diffs.length) + ' more field(s)</div>';

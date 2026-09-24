@@ -85,8 +85,13 @@ export async function handleReviewsList(env) {
 }
 
 export async function handleReviewList(request, env, projectId, mine) {
-  const code = String(request.headers.get('X-Owner-Code') || '').trim();
-  const owner = code ? await cloudAuthOwnerEither(request, env, projectId) : null;
+  // OWNER FIX 2026-09-24: the old gate read the X-Owner-Code header FIRST and
+  // only consulted the session when a code string was present, so a signed-in
+  // owner with no code on the device (session-owner mode, P1-6) got a 403 and
+  // never saw proposals queued for their own project. Owner identity is
+  // either-auth by design (cloudAuthOwnerEither: code header OR session) -
+  // ask it unconditionally; it timing-sinks on total failure.
+  const owner = await cloudAuthOwnerEither(request, env, projectId);
   let editorId = null; let editorLabel = null;
   if (!owner) {
     const ecode = String(request.headers.get('X-Editor-Code') || '').trim();

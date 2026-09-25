@@ -57,6 +57,10 @@ const SKIP_DIRS = new Set([
 ]);
 const SKIP_FILE_RE = [
   /^\.dev\.vars/, /^\.gitattributes$/, /^\.gitignore$/, /\.md$/i, /\.json$/i,
+  // v316 follow-up (2026-09-24): the v316 deploy uploaded .github/workflows/ci.yml
+  // as a public static asset - no secrets inside, but repo internals do not
+  // belong in the asset bundle. Same rule for .assetsignore below.
+  /\.ya?ml$/i,
   /^Freebuff/i, /^Windows PowerShell/i, /^crashes from last session\.txt$/i,
   /favicon/i, /^\.claude$/i, /^\.codebuff$/i
 ];

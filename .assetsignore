@@ -21,6 +21,8 @@ tools
 migrations
 *.md
 *.json
+*.yml
+*.yaml
 !package.json
 !wrangler.jsonc
 !skills-lock.json

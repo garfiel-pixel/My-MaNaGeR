@@ -300,14 +300,29 @@ var MMGR = window.MMGR || {};
   // auto-backup reports its failure non-intrusively (dirty indicator) and
   // must not toast - it passes 'err:quiet' and only the line updates.
   function setStatus(msg, kind) {
+    const base = kind ? String(kind).split(':')[0] : '';
+    const quiet = String(kind || '').indexOf(':quiet') !== -1;
     const s = $('cloud-status');
     if (s) {
       s.textContent = msg || '';
-      s.className = 'drive-status' + (kind ? ' ds-' + String(kind).split(':')[0] : '');
+      s.className = 'drive-status' + (base ? ' ds-' + base : '');
     }
     if ((kind === 'err' || kind === 'warn') && msg) {
       const A = window.MMGR && window.MMGR.App;
       if (A && typeof A.showToast === 'function') A.showToast(msg, kind);
+    }
+    // FAILURE-SURFACE AUDIT 2026-09-25 (owner directive): with the cloud
+    // section half-rendered (the v316/v317 boot race) #cloud-status did not
+    // exist and messages were written into a node that was not there - only
+    // the err/warn toast fired, easy to miss. Fall back to the shared toast
+    // whenever the status node is missing: err/warn as usual, plus 'ok'
+    // confirmations the user just triggered. Transient 'busy' never toasts,
+    // and the explicit err:quiet / warn:quiet suppression (background
+    // auto-backup reports via the dirty indicator) is honored exactly as
+    // when the node exists.
+    if (!s && msg && !quiet && (base === 'err' || base === 'warn' || base === 'ok')) {
+      const A = window.MMGR && window.MMGR.App;
+      if (A && typeof A.showToast === 'function') A.showToast(msg, base);
     }
   }
 

@@ -3,9 +3,12 @@
    (owner directive 2026-08-15: "Save to Cloud isn't automatic"
    + "Google connect not routed from cloud actions")
      C1 — editor-session auto-save fires with X-Editor-Code
-     C2 — recoverCode while unsigned pops sign-in, then auto-resumes
-     C3 — admin Publish to Cloud while unsigned pops sign-in, then
-          auto-publishes after sign-in; re-click skips sign-in
+     C2 — recoverCode while unsigned pops sign-in, then auto-resumes   C3 — admin Publish to Cloud while unsigned pops sign-in, then
+        auto-publishes after sign-in; re-click skips sign-in
+   C4 — review-queue accept surfaces (2026-09-25 owner directive):
+        zero-applied accept warns (never false success), real accept
+        still reports success, server errors surface their text, and
+        every message reaches the toast when #cloud-status is missing
    Run: node tools/verify-cloud-autosave-signin.cjs
    ============================================================ */
 const { spawn, execFileSync } = require('child_process');
@@ -281,6 +284,55 @@ function annotateFailure() {
   check('C3 admin publish pops the sign-in prompt + toast', c3 && c3.prompted === true && c3.toastMentionsSignIn === true, c3);
   check('C3 admin publish auto-resumes after sign-in', c3 && c3.publishedAfter === true, c3);
   if (!(c3 && c3.publishBlocked && c3.prompted && c3.toastMentionsSignIn && c3.publishedAfter)) annotateFailure();
+
+  // ---- C4: review-queue accept failure surfaces (2026-09-25) --------------
+  // The owner's live incident, made testable: an accept whose merge applied
+  // ZERO diffs used to report success, and any accept message written into a
+  // #cloud-status node that the half-rendered section never created was
+  // missable. Both client contracts changed; this gate locks them.
+  await send('Page.navigate', { url: BASE + '/project.html?id=qa-edit' });
+  await delay(2500);
+  const cloudMod = await ev(`(function(){ try { return { cloud: !!(window.MMGR && window.MMGR.Cloud && window.MMGR.CloudReview) }; } catch (e) { return { cloud: false }; } })()`);
+  if (!(cloudMod && cloudMod.cloud)) log('[cas] C4 WARNING: CloudReview unavailable on the project page (stale bundle / CSP hash is the classic cause)');
+  const c4 = await ev(`(async function(){
+    try {
+      const sleep = ms => new Promise(r => setTimeout(r, ms));
+      const CR = window.MMGR.CloudReview;
+      const toasts = [];
+      const origFetch = window.fetch;
+      // Owner gate must pass so the accept path actually runs (C2 removed
+      // the session codes). Then REMOVE #cloud-status: every C4 message must
+      // therefore arrive via the missing-node toast fallback - one probe
+      // asserts both the message contract AND the fallback at once.
+      sessionStorage.setItem('mmgr_cloud_code_qa-edit', 'AAAA-BBBB-CCCC-DDDD');
+      try { const n = document.getElementById('cloud-status'); if (n) n.remove(); } catch (e) {}
+      window.MMGR.App.showToast = function(msg, kind){ toasts.push({ msg: String(msg), kind: String(kind || '') }); };
+      const ok = (body, status) => Promise.resolve(new Response(JSON.stringify(body), { status: status || 200, headers: { 'Content-Type': 'application/json' } }));
+      window.fetch = function(url){
+        const u = String(url);
+        if (/\\/reviews$/.test(u)) return ok({ ok: true, proposals: [] });
+        if (/\\/reviews\\/1\\/accept$/.test(u)) return ok({ ok: true, reviewId: 1, status: 'accepted', applied: [], blocked: [] });
+        if (/\\/reviews\\/2\\/accept$/.test(u)) return ok({ ok: true, reviewId: 2, status: 'accepted', applied: ['wbs'], savedAt: '2026-09-25T00:00:00Z', changelog: { id: 9 } });
+        if (/\\/reviews\\/3\\/accept$/.test(u)) return ok({ ok: false, error: 'proposal is not pending' }, 409);
+        return ok({ ok: true });
+      };
+      window.confirm = function(){ return true; };
+      try {
+        await CR.cloudReviewAccept(1); await sleep(300);
+        const zeroWarn = toasts.some(t => /nothing left to apply/.test(t.msg) && t.kind.indexOf('warn') === 0);
+        await CR.cloudReviewAccept(2); await sleep(300);
+        const realOk = toasts.some(t => /now in the cloud project/.test(t.msg) && t.kind.indexOf('ok') === 0);
+        await CR.cloudReviewAccept(3); await sleep(300);
+        const errShown = toasts.some(t => t.msg.indexOf('proposal is not pending') !== -1 && t.kind.indexOf('err') === 0);
+        return { zeroWarn: zeroWarn, realOk: realOk, errShown: errShown, toastCount: toasts.length };
+      } finally { window.fetch = origFetch; }
+    } catch (e) { return { threw: String(e && e.message || e) }; }
+  })()`);
+  check('C4a zero-applied accept warns nothing-left-to-apply (no false success)', c4 && c4.zeroWarn === true, c4);
+  check('C4b real accept still reports success', c4 && c4.realOk === true, c4);
+  check('C4c server accept error surfaces its exact text', c4 && c4.errShown === true, c4);
+  check('C4d all three messages reached the toast with #cloud-status missing', c4 && c4.toastCount >= 3, c4);
+  if (!(c4 && c4.zeroWarn && c4.realOk && c4.errShown && c4.toastCount >= 3)) annotateFailure();
 
   try { await send('Page.close'); } catch (e) {}
   try { proc.kill(); } catch (e) {}

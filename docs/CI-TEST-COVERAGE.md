@@ -71,7 +71,7 @@ or too niche for the deploy gate), **TRIAGE** (known-drifting, findings listed),
 | `tools/qa-reviews.cjs` | CI | review queue accept/reject + changelog (25/25) |
 | `tools/qa-t9-adoption.cjs` | CI | adoption/discontinue flows (27/27) |
 | `tools/qa-email-auth.cjs` | CI | email/password auth, reset, verify (75/75) |
-| `tools/verify-cloud-autosave-signin.cjs` | CI | cloud autosave + sign-in queue/resume (8/8) |
+| `tools/verify-cloud-autosave-signin.cjs` | CI | cloud autosave + sign-in queue/resume + review-accept failure surfaces incl. missing-#cloud-status toast fallback (12/12) |
 
 ## T3 — headless Chrome, own wrangler
 
@@ -80,6 +80,7 @@ or too niche for the deploy gate), **TRIAGE** (known-drifting, findings listed),
 | `tools/qa-client-codes.cjs` | CI | client-code entry -> project client scope, soft delete |
 | `tools/qa-api-keys.cjs` | CI | scoped API key read + review-queue writes, MCP PATH-A |
 | `tools/qa-sync-bond.cjs` | CI | file trip keeps the cloud twin link; re-sync merge (20/20) |
+| `tools/qa-mcp-live-e2e.cjs` | EXTENDED | MCP propose -> owner review Accept end-to-end in a real browser: scoped key + PATH-A, queue gating, never-auto-apply, zero-diff accept warns (v318), revoke/delete hygiene (20 gates). Runs nightly + extended battery; self-contained (own wrangler/Chrome, never a live site) |
 
 ## T4 — headless Chrome against serve.cjs (:8765)
 

@@ -172,6 +172,13 @@ jobs:
         env:
           WRANGLER_DEV_URL: http://127.0.0.1:8787
 
+      - name: "T3: MCP live E2E (self-contained wrangler + Chrome)"
+        # Self-contained T3: spawns its own wrangler on :8833 + persist dir
+        # outside the repo, and its own Chrome on :9333. Never targets a live
+        # site - the base URL is always the spawned server. Cleans up the
+        # throwaway project, key, Chrome and wrangler in a finally block.
+        run: node tools/qa-mcp-live-e2e.cjs
+
       - name: "Stop wrangler dev"
         if: always()
         run: |

@@ -89,7 +89,14 @@ var MMGR = window.MMGR || {};
   function ecodeKey() { return 'mmgr_cloud_ecode_' + cloudPid(); }
   function escopeKey() { return 'mmgr_cloud_escope_' + cloudPid(); }
   function getCode() {
-    try { return sessionStorage.getItem(codeKey()) || ''; } catch (e) { return ''; }
+    try {
+      const v = sessionStorage.getItem(codeKey()) || '';
+      // OWNER 2026-09-24 (owner-gate bug): 'session' is the admin registry's
+      // link marker, never a code (codes are 16 chars). If one ever landed in
+      // the slot (pre-fix adopter), treat it as absent so the session-owner
+      // probe answers instead of a guaranteed-403 fake header.
+      return v && v !== 'session' ? v : '';
+    } catch (e) { return ''; }
   }
   function setCode(code) {
     try { sessionStorage.setItem(codeKey(), String(code || '')); } catch (e) { /* ignore */ }
@@ -594,9 +601,14 @@ var MMGR = window.MMGR || {};
   function clearSessOwner() { _sessOwner = false; _sessOwnerProbed = false; }
   async function probeOwnerSession(force) {
     if (_sessOwnerProbed && !force) return _sessOwner;
-    _sessOwnerProbed = true;
     _sessOwner = false;
-    if (getCode() || getECode()) return _sessOwner; // a held code already answers
+    // OWNER 2026-09-24 (owner-gate bug): a held code answers ownership for
+    // THIS render pass, but the negative must not be memoized - after the
+    // code is dropped (Use owner code instead, sign-out, a 403 cleanup) the
+    // next render has to re-probe the session, or a signed-in owner stays
+    // unrecognized on their own project.
+    if (getCode() || getECode()) { _sessOwnerProbed = false; return false; }
+    _sessOwnerProbed = true;
     if (!(await checkMe())) return _sessOwner;      // not signed in - no session credential
     try {
       const res = await fetch('/api/cloud/projects/' + encodeURIComponent(pid()) + '/meta', { method: 'GET', credentials: 'same-origin' });
@@ -607,6 +619,25 @@ var MMGR = window.MMGR || {};
     } catch (e) { /* offline / static host - stays false */ }
     return _sessOwner;
   }
+  // OWNER 2026-09-24 (owner-gate bug): one owner-gate message for every
+  // surface, matched to the ACTUAL state. The old single line ("Open this
+  // project as its owner first...") read as an accusation to the signed-in
+  // creator - it never said what the app thinks is missing or which one
+  // click fixes it. Plain-language per state:
+  //  - signed in, project not linked to any account -> the project's cloud
+  //    row has no account on it; "Link to my account" stamps this account
+  //    on (needs the owner code, which lives on the device that created it,
+  //    or Recover from the admin panel).
+  //  - signed in, project linked to another account -> name the cause.
+  //  - not signed in -> sign in with the account that created the project,
+  //    or hold the owner code.
+  function ownerGateMessage() {
+    if (_signedIn) {
+      return 'This project\u2019s cloud copy is not linked to your account yet. Sign in is done , one step left: open Cloud Backup and click \u201CLink to my account\u201D (asks for the owner code from the device that created the project). Until then, code and API-key management stays locked.';
+    }
+    return 'Sign in with the account that created this project (or enter its owner code under Cloud Backup) , that is what unlocks saving, codes and API keys.';
+  }
+
   function activeCredential() {
     const oc = getCode();
     const ec = getECode();
@@ -823,6 +854,17 @@ var MMGR = window.MMGR || {};
   }
   document.addEventListener('mmgr:google-signed-in', resumePendingSignIn);
   document.addEventListener('mmgr:user-changed', resumePendingSignIn);
+  // OWNER 2026-09-24 (owner-gate bug): an EMAIL sign-in only dispatches
+  // mmgr:user-changed, and resumePendingSignIn above returns early when no
+  // action is queued - so checkMe's cached "not signed in" and a memoized
+  // false _sessOwner probe survived the sign-in. Every owner gate then
+  // answered "open as its owner" until a full reload. Invalidate both
+  // memos on ANY identity change; the next render re-probes. (Sign-out
+  // dispatches the same event - re-probing false there is equally correct.)
+  document.addEventListener('mmgr:user-changed', function() {
+    _meChecked = false;
+    clearSessOwner();
+  });
 
   // ---- recover owner code -------------------------------------------------
   async function recoverCode() {
@@ -964,7 +1006,7 @@ var MMGR = window.MMGR || {};
     // was loaded through My Cloud Projects (session owner, no code in
     // hand). Send no header for a session owner; the cookie authenticates.
     const cred = activeCredential();
-    if (!cred || (!cred.header && !_sessOwner)) { setStatus('Open this project as its owner first (load it from My Cloud Projects, or hold the owner code).', 'warn'); return; }
+    if (!cred || (!cred.header && !_sessOwner)) { setStatus(ownerGateMessage(), 'warn'); return; }
     if (cred.header === 'X-View-Code' || cred.header === 'X-Client-Code') { setStatus('Viewer and client codes are read-only , they cannot manage codes.', 'warn'); return; }
     setStatus('Creating code…', 'busy');
     try {
@@ -1066,7 +1108,7 @@ var MMGR = window.MMGR || {};
     const expiryIn = $('cloud-client-expiry');
     const days = expiryIn ? parseInt(expiryIn.value, 10) : 0;
     const cred = activeCredential();
-    if (!cred || (!cred.header && !_sessOwner)) { setStatus('Open this project as its owner first (load it from My Cloud Projects, or hold the owner code).', 'warn'); return; }
+    if (!cred || (!cred.header && !_sessOwner)) { setStatus(ownerGateMessage(), 'warn'); return; }
     if (cred.header === 'X-View-Code' || cred.header === 'X-Client-Code') { setStatus('Viewer and client codes are read-only , they cannot manage codes.', 'warn'); return; }
     setStatus('Creating client code…', 'busy');
     try {
@@ -1158,7 +1200,7 @@ var MMGR = window.MMGR || {};
     const expiryIn = $('cloud-apikey-expiry');
     const days = expiryIn && expiryIn.value ? parseInt(expiryIn.value, 10) : 0;
     const cred = activeCredential();
-    if (!cred || (!cred.header && !_sessOwner)) { setStatus('Open this project as its owner first (load it from My Cloud Projects, or hold the owner code).', 'warn'); return; }
+    if (!cred || (!cred.header && !_sessOwner)) { setStatus(ownerGateMessage(), 'warn'); return; }
     if (cred.header === 'X-View-Code' || cred.header === 'X-Client-Code') { setStatus('Viewer and client codes are read-only , they cannot manage keys.', 'warn'); return; }
     setStatus('Creating API key\u2026', 'busy');
     try {
@@ -1720,7 +1762,16 @@ var MMGR = window.MMGR || {};
       if (!Array.isArray(recs)) return;
       const rec = recs.find(function (r) { return r && String(r.id) === pid(); });
       if (!rec || !rec.cloudOwnerCode) return;
-      setCode(String(rec.cloudOwnerCode));
+      // OWNER 2026-09-24 (owner-gate bug): the admin registry stores the
+      // marker 'session' for projects linked by signed-in session with no
+      // code (admin adopt + launcher restore). Seeding it here poisoned the
+      // owner-code slot: activeCredential() returned X-Owner-Code: session,
+      // the server 403'd every request, and the owner saw "Open this
+      // project as its owner first" on their OWN project. Only seed a real
+      // (16-char) code; a session link answers through the /meta probe.
+      const c = String(rec.cloudOwnerCode);
+      if (c === 'session') return; // session-linked: the probe answers, no code exists
+      setCode(c);
     } catch (e) { /* read-only best effort , never throws */ }
   }
 

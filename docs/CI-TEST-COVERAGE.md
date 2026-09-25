@@ -45,6 +45,7 @@ or too niche for the deploy gate), **TRIAGE** (known-drifting, findings listed),
 | `tools/verify-report-issue.cjs` | CI | report-issue payload excludes PII/budget (27 checks) |
 | `tools/verify-dynamic-labels.cjs` | CI | JS-rendered table inputs get derived accessible names |
 | `tools/verify-delegate-gate.cjs` | CI | monolith shims stay shims; no duplicate implementations |
+| `tools/verify-owner-gate.cjs` | CI | session-marker never becomes a fake owner code; sign-in invalidates ownership memos; state-aware owner-gate message (12 checks) |
 | `tools/verify-render-exports.cjs` | CI | (also listed above) render/API export completeness |
 | `tools/verify-ai-import.cjs` | EXTENDED | AI-assisted import seams (12 checks) |
 | `tools/verify-date-wiring.cjs` | EXTENDED | date-change wiring + re-sync offer |

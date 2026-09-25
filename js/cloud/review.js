@@ -43,9 +43,12 @@ var MMGR = window.MMGR || {};
  if (!props.length) {
  wrap.innerHTML = '<div class="sr-hint">Nothing waiting for review - edits from editor codes and AI imports land here until you accept them.</div>';
  return;
- }
- wrap.innerHTML = props.map(function(p) {
- const isMCP = p.sourceType === 'mcp';
+ }  wrap.innerHTML = props.map(function(p) {
+ // E2E-PROBE FIX 2026-09-25: the MCP server inserts proposal_type='mcp'
+ // with source_type='api' (src/mcp/server.js), so the old sourceType-only
+ // check never matched - MCP proposals rendered as "MCP AI (editor)"
+ // without the sparkle badge. Match the proposal type the server writes.
+ const isMCP = p.proposalType === 'mcp' || p.sourceType === 'mcp';
  const src = isMCP
  ? '<span class="badge-ai"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg> MCP AI</span> ' + esc(p.sourceLabel || 'AI edit')
  : '<strong>' + esc(p.sourceLabel || 'Editor') + '</strong> (editor)';
@@ -126,7 +129,17 @@ var MMGR = window.MMGR || {};
  });
  const data = await res.json().catch(function() { return {}; });
  if (!res.ok || !data.ok) { setStatus((data && data.error) || 'Accept failed (HTTP ' + res.status + ').', 'err'); return; }
- setStatus('Accepted - the change is now in the cloud project' + (data.savedAt ? ' (' + String(data.savedAt).slice(0, 19).replace('T', ' ') + ')' : '') + '. Load from Cloud to pull it into this workspace.', 'ok');
+ // FAILURE-SURFACE AUDIT 2026-09-25: the server answers ok:true with NO
+ // savedAt when the merge applied zero diffs - the same values already
+ // landed another way (an earlier accept, a parallel save, or an MCP
+ // re-propose of an applied change). The old message claimed the change
+ // "is now in the cloud project" for that case. Say what actually happened.
+ if (!data.savedAt) {
+   setStatus('Accepted, but there was nothing left to apply - the cloud project already had these values (an earlier accept or save got there first). The proposal is closed.', 'warn');
+   cloudReviewList();
+   return;
+ }
+ setStatus('Accepted - the change is now in the cloud project (' + String(data.savedAt).slice(0, 19).replace('T', ' ') + '). Load from Cloud to pull it into this workspace.', 'ok');
  cloudReviewList();
  } catch (e) {
  setStatus('Cloud is unavailable on this host (needs the Worker API).', 'err');

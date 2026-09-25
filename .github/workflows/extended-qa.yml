@@ -159,6 +159,13 @@ jobs:
           WRANGLER_DEV_URL: http://127.0.0.1:8787
           QA_PERSIST_DIR: /tmp/mmgr-extended-state/v3/d1/miniflare-D1DatabaseObject
 
+      - name: "E-T3: MCP live E2E (self-contained wrangler + Chrome)"
+        # Self-contained T3 (own wrangler :8833 + Chrome :9333, never a live
+        # site, throwaway project/key cleaned up in a finally block). Runs
+        # alongside the shared :8787 server without touching it; the stop
+        # step below still reaps anything left over.
+        run: node tools/qa-mcp-live-e2e.cjs
+
       - name: "E-T4: Stop wrangler dev"
         if: always()
         run: |

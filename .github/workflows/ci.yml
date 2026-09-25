@@ -128,6 +128,10 @@ jobs:
         id: qa-delegate
         run: node tools/verify-delegate-gate.cjs
 
+      - name: "T1: Owner-gate regression (session marker / probe memos)"
+        id: qa-owner-gate
+        run: node tools/verify-owner-gate.cjs
+
       # Chrome is needed from here on: the page-health sweep in T2 drives it
       # against wrangler dev, and the T3 batteries drive it directly.
       - name: Chrome available

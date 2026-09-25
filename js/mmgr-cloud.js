@@ -864,6 +864,14 @@ var MMGR = window.MMGR || {};
   document.addEventListener('mmgr:user-changed', function() {
     _meChecked = false;
     clearSessOwner();
+    // OWNER 2026-09-25 (v316 follow-up): restoring a session on boot fires
+    // mmgr:user-changed. Wiping the memo WITHOUT re-probing left a window
+    // where the cloud section rendered from the pre-wipe render pass (no
+    // owner UI) and later clicks read _sessOwner=false - the owner saw
+    // "Owner access required" on their own review queue until the next
+    // full render. Kick one immediately; it is memoized, so the repeat
+    // probe in the next render reuses this result instead of refetching.
+    probeOwnerSession(true).then(function() { if (!_resumingAfterSignIn) render(); });
   });
 
   // ---- recover owner code -------------------------------------------------

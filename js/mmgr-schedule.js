@@ -344,19 +344,32 @@ var MMGR = window.MMGR || {};
       }
     });
 
-    // Which live tasks would actually change?
+    // Which live tasks would actually change? Status-aware (owner 2026-09-26
+    // cascade-polish): completed and in-progress tasks carry ACTUAL dates -
+    // work that really happened - so the cascade never rewrites them (they
+    // still drive successors as facts; forwardPass reads their stored dates
+    // regardless). The preview list here and the applyPlan write-back use the
+    // same predicate, so the confirm dialog never promises a rewrite the
+    // write-back would not perform.
     const changes = [];
+    const skipped = [];
     live.forEach(t => {
       const rec = schedMap[t.id];
       if (!rec || !rec.es || !rec.ef) return;
       const newStart = U.fmtDate(rec.es);
       const newEnd = U.fmtDate(rec.ef);
+      if (t.status === 'completed' || t.status === 'inprogress') {
+        if (newStart !== t.startDate || newEnd !== t.endDate) {
+          skipped.push({ id: t.id, status: t.status });
+        }
+        return;
+      }
       if (newStart !== t.startDate || newEnd !== t.endDate) {
         changes.push({ id: t.id, fromStart: t.startDate, toStart: newStart, fromEnd: t.endDate, toEnd: newEnd });
       }
     });
 
-    return { sched, schedMap, changes };
+    return { sched, schedMap, changes, skipped };
   }
 
   // ---- Apply the computed plan back onto LIVE tasks ----
@@ -369,8 +382,12 @@ var MMGR = window.MMGR || {};
     live.forEach(t => {
       const rec = schedMap[t.id];
       if (!rec) return;
-      // Date write-back
-      if (rec.es && rec.ef && !t.isPhase) {
+      // Date write-back - status-aware (owner 2026-09-26 cascade-polish):
+      // completed and in-progress tasks carry actual dates (history), so the
+      // cascade never rewrites them; their stored dates still anchor the plan
+      // for every successor. Same predicate as computePlan's preview list.
+      const isActual = t.status === 'completed' || t.status === 'inprogress';
+      if (rec.es && rec.ef && !t.isPhase && !isActual) {
         t.startDate = U.fmtDate(rec.es);
         t.endDate = U.fmtDate(rec.ef);
       } else if (t.isPhase && rec.es && rec.ef) {
@@ -433,7 +450,9 @@ var MMGR = window.MMGR || {};
       ns.Render.renderGantt();
       ns.Render.renderDash();
       const critTasks = tasks.filter(t => t.critical && !t.isPhase);
-      ns.App.showToast('Cascade complete. ' + critTasks.length + ' tasks on critical path.', 'ok');
+      const skippedN = (plan.skipped || []).length;
+      ns.App.showToast('Cascade complete. ' + critTasks.length + ' tasks on critical path.'
+        + (skippedN ? ' ' + skippedN + ' completed or in-progress task(s) left untouched.' : ''), 'ok');
       return true;
     };
 
@@ -441,7 +460,8 @@ var MMGR = window.MMGR || {};
     if (affected.length > threshold) {
       ns.App.askConfirm({
         title: 'Confirm Schedule Cascade',
-        message: affected.length + ' task(s) will have their start/end dates rewritten by this cascade.',
+        message: affected.length + ' task(s) will have their start/end dates rewritten by this cascade.'
+          + ((plan.skipped || []).length ? ' ' + plan.skipped.length + ' completed or in-progress task(s) keep their actual dates.' : ''),
         items: affected.map(c => c.id),
         danger: true,
         confirmLabel: 'Cascade Dates',

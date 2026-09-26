@@ -1335,3 +1335,28 @@ BOOKKEEPING
   opposite marking flattened Monte Carlo (round(base*1.1)=base on short
   tasks = zero variance).
 - Open: commit the working tree; revoke the sk-mmgr- test key.
+
+
+2026-09-26 SESSION FINAL (zero-days root cause + cascade polish + full ship)
+
+- Owner report "dates that have zero days" -> real off-by-one found:
+  durationFromDates double-counted same-day spans (0 between + 1 + 1 = 2)
+  and scored weekend-anchored same-day pairs 0 (0 + 0 + 0). Same-day now
+  always returns 1 (exact inverse of addWorkingDays(start, 0) === start);
+  multi-day math untouched. Cloud repair: #31 corrected 22 one-day rows
+  (receipt 22/22 exact). Re-audit on fresh state: 121/121 stored durations
+  match the fixed math, zero empty, zero zero, 22 one-day rows correct.
+- CASCADE POLISH (owner wiring directive): applyPlan used to rewrite dates
+  of completed/in-progress tasks - actual history. Now status-aware:
+  actual-date tasks are never rewritten (still drive successors as facts),
+  computePlan preview + applyPlan share the same predicate, the confirm
+  dialog and the completion toast name how many actual-date tasks were
+  left untouched. qa-date-wiring D6 locks it: 47/47.
+- LOCAL QA GREEN: npm run verify ALL; qa-api-keys 33/33 (P18 gate family
+  green); qa-date-wiring 47/47; qa-dashboard-spec 76/76;
+  qa-changelog-diffs all; verify-date-wiring / render-exports /
+  delegate-gate ALL.
+- SHIP: commit c593a07 pushed; CI 36255060305 SUCCESS; guide commit
+  e6e3441 CI also confirmed SUCCESS. SW v321 carries both fixes
+  (same-day + cascade status-aware write-back). Deploy executed LAST
+  after all greens; live smoke to follow in the directive.

@@ -1373,3 +1373,52 @@ BOOKKEEPING
   remaining item is the owner's key revocation.
 - Session scratch inventory noted in the directive's NEXT-SESSION NOTES
   (tmp/ probe scripts, gitignored, clean when convenient).
+
+
+2026-09-26 GANTT READABILITY WAVE (export + live parity + schedule watcher)
+
+- PNG EXPORT REWRITE (js/mmgr-app.js exportGanttPNG): label column now
+  measures its longest name (padL clamped 120-340px, ellipsis backstop),
+  weekend fills + Monday week-start lines drawn separately, phase banding
+  with PHASE_TABS color strips, milestone diamonds, FS dependency
+  connectors (critical chain gold, others faint slate, elbow routing with
+  overlap fallback), red dashed TODAY line only when today sits inside
+  the window (all-future projects legitimately render none), title block
+  (project, window, rows, export date, prepared by), wrapping 12-entry
+  legend with headroom.
+- LIVE-VIEW PARITY (js/mmgr-render.js renderGantt): .gantt-today marker,
+  .gantt-wknd-band layer BEHIND the bars + .gd-wknd header marks,
+  .gb-milestone diamonds (click-only by design; drag handlers key on .gb),
+  .gr-phase banding in chart AND labels, label glyph for milestones;
+  arrow barMap extended to '.gb, .gb-milestone' so milestone predecessors
+  keep their connectors. CSS near .gantt-arrows incl. dark-mode parity.
+- SCHEDULE WATCHER (js/mmgr-watch.js watchSchedule): four fault classes -
+  critical-path gates with no float, idle lead-time >=7d before first
+  successor, weather-sensitive criticals without buffer, completed-late /
+  inprogress-past-end drift. kind='schedule', severity info/attention,
+  lands in the aiInbox mailbox (deduped, 50 cap, bell dot).
+- CI CAUGHT A REAL REGRESSION: first push 290be3a went red on qa-full
+  check 38 (whole-doc inline-style census < 200). The wave's bands/today
+  line added 9 inline styles onto a census already near the ceiling (203)
+  - root cause was renderGantt emitting a fully STATIC inline style on
+  every gantt label row (63 duplicates in the QA seed). Fixed app-side
+  per the repair loop (never loosen the gate): static label-row layout
+  hoisted to one CSS rule (#gantt-labels .gr); dynamic left/width stays
+  inline. Commit d328f26. Lesson recorded: the census only counts the DOM
+  after full renders, so a boot-time probe shows 85 - reproduce with the
+  harness itself, and debug copies of qa-full must live in the repo root
+  (it resolves paths off __dirname).
+- QA: tmp/gantt-wave-probe.cjs 11/11 (atomic seed + toBlob intercept + a
+  today-span probe task; isSignedIn stubbed as a FUNCTION - a boolean
+  stub breaks the cloud render path). After the census fix: qa-full
+  181/181, npm run verify ALL, qa-date-wiring 47/47, dashboard-spec
+  76/76, qa-api-keys ALL.
+- SHIP: commits 290be3a (wave) + d328f26 (census fix) pushed; CI runs
+  36259432724 (red, caught the regression) then polled SUCCESS on
+  d328f26. Deploy executed LAST per owner order -> Version
+  1b8f043a-0ea4-4320-a877-acaac7ed954a. Live smoke: /api/health ok,
+  served sw.js = mmgr-shell-v322, dist/bundle.js byte-identical to
+  local, PROD CDP probe (tmp/gantt-wave-prod.cjs) 11/11 against
+  mymanagerworkspace.com. Repo state = CI state = deployed state.
+- STILL OWED (owner action only): revoke the sk-mmgr- test key exposed
+  in chats; mint a fresh one if the MCP test round continues.

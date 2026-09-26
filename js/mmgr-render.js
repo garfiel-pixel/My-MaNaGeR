@@ -1460,7 +1460,10 @@ var MMGR = window.MMGR || {};
       </div>`;
 
       // Labels
-      labelsHtml += `<div class="gr ${isPhaseRow ? 'gr-phase' : ''} ${(hlOn && !t.critical) ? 'hl-dim' : ''}" style="padding:0 10px;display:flex;align-items:center;gap:4px;font-size:.72rem">
+      // Static label-row layout (padding/gap/font-size) lives in CSS
+      // (#gantt-labels .gr) - keeps the whole-document inline-style census
+      // (qa-full 38) honest; dynamic geometry stays inline.
+      labelsHtml += `<div class="gr ${isPhaseRow ? 'gr-phase' : ''} ${(hlOn && !t.critical) ? 'hl-dim' : ''}">
         ${t.milestone ? '<span class="ms-diamond" aria-hidden="true">&#9670;</span>' : ''}
         <span class="${t.critical ? 'cp-lbl' : ''}" style="${isPhaseRow ? 'font-weight:700;font-size:.78rem;' : ''}${t.critical ? 'color:var(--gold);font-weight:700' : ''}">${U.escapeHtml(t.name)}</span>
         ${floatStr}

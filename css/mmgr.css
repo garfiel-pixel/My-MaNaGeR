@@ -902,6 +902,11 @@ body.dark-mode .cu-tab.active{color:#0b0b0d;background:var(--gold);}
    chain stays bright, everything else is dimmed to ~30% (monolith S.cp). */
 body.hl-critical .gb:not(.crit):not(.gb-base){opacity:.3;}
 body.hl-critical #gantt-labels .gr.hl-dim{opacity:.3;}
+/* Gantt LABEL rows only (chart rows use absolute-positioned bars and must
+   not get horizontal padding): static layout hoisted from per-row inline
+   styles in renderGantt - keeps the whole-document inline-style census
+   (qa-full 38) honest. Dynamic geometry (left/width) stays inline. */
+#gantt-labels .gr{padding:0 10px;gap:4px;font-size:.72rem;}
 
 /* ---- Dashboard secondary panels (V3.3 monolith port) ---- */
 .ct-sub{font-size:.65rem;font-weight:400;color:var(--slate);margin-left:8px;vertical-align:middle;}

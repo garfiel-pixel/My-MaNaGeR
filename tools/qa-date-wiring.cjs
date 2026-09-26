@@ -186,6 +186,86 @@ const FLUSH_RAF = `new Promise(r => requestAnimationFrame(() => requestAnimation
       check('D3 WBS row NOT rebuilt (same DOM node)', d3 && d3.rowSame === true, d3);
       check('D3 Days cell patched in place', d3 && d3.cellPatched === true, d3);
 
+      // ---- DATE-TRIAD (2026-09-26): any two of start/end/duration determine
+      // the third, whichever was typed first. New branches: start+end (no
+      // duration) fills the Days cell; end+duration (no start) back-computes
+      // the start as the exact inverse of endDate = addWorkingDays(start,
+      // dur-1). The pre-existing directions (D1/D2) must still hold.
+      // D3a: start typed while end is already present and no duration was
+      // ever set -> Days fills from the date pair.
+      const seedTriad = await ev(`(function(){
+        const s = MMGR.State.getState();
+        s.tasks.push({ id:'dw2', name:'Triad probe', level:1, indent:1, isPhase:false,
+          status:'todo', startDate:'', endDate:'', duration:'', assignee:'',
+          critical:false, leadTime:false, recurring:false, weatherExposed:false,
+          confidence:'high', predecessors:[], notes:'', weatherSensitive:false });
+        return s.tasks.filter(t=>t.id==='dw2').length;
+      })()`);
+      check('D3a triad probe task seeded', seedTriad === 1, seedTriad);
+      await ev(`MMGR.Tasks.updTaskField('dw2','endDate','2026-09-18','change')`);
+      await ev(`MMGR.Tasks.updTaskField('dw2','startDate','2026-09-14','change')`);
+      const d3a = await ev(`(function(){
+        const t = MMGR.State.getState().tasks.find(x=>x.id==='dw2');
+        return { dur: t.duration, start: t.startDate, end: t.endDate,
+                 want: MMGR.Tasks.durationFromDates('2026-09-14','2026-09-18') };
+      })()`);
+      check('D3a start+end (no duration) -> Days fills (Mon-Fri = 5)', d3a && d3a.dur === String(d3a.want) && d3a.want === 5, d3a);
+      // D3b: the typed-duration direction still wins after the triad edit.
+      await ev(`MMGR.Tasks.updTaskField('dw2','duration','3','change')`);
+      const d3b = await ev(`(function(){ const t = MMGR.State.getState().tasks.find(x=>x.id==='dw2'); return { dur: t.duration, end: t.endDate }; })()`);
+      check('D3b duration+start still derives endDate (3d -> 2026-09-16)', d3b && d3b.dur === '3' && d3b.end === '2026-09-16', d3b);
+      // D3c: end + duration with NO start -> start back-computes (inverse of
+      // the forward convention), computed in-page with the app's own helpers.
+      const seedTriad2 = await ev(`(function(){
+        const s = MMGR.State.getState();
+        s.tasks.push({ id:'dw3', name:'Triad probe 2', level:1, indent:1, isPhase:false,
+          status:'todo', startDate:'', endDate:'', duration:'', assignee:'',
+          critical:false, leadTime:false, recurring:false, weatherExposed:false,
+          confidence:'high', predecessors:[], notes:'', weatherSensitive:false });
+        return s.tasks.filter(t=>t.id==='dw3').length;
+      })()`);
+      check('D3c second probe task seeded', seedTriad2 === 1, seedTriad2);
+      await ev(`MMGR.Tasks.updTaskField('dw3','duration','3','change')`);
+      const d3cGuard = await ev(`(function(){ const t = MMGR.State.getState().tasks.find(x=>x.id==='dw3'); return { start: t.startDate, end: t.endDate }; })()`);
+      check('D3c duration alone invents no dates (guard)', d3cGuard && d3cGuard.start === '' && d3cGuard.end === '', d3cGuard);
+      await ev(`MMGR.Tasks.updTaskField('dw3','endDate','2026-09-18','change')`);
+      const d3d = await ev(`(function(){
+        const t = MMGR.State.getState().tasks.find(x=>x.id==='dw3');
+        return { start: t.startDate, end: t.endDate, dur: t.duration,
+                 want: MMGR.Utils.fmtDate(MMGR.Utils.addWorkingDays(MMGR.Utils.parseDL('2026-09-18'), -2)) };
+      })()`);
+      check('D3d end+duration (no start) -> start back-computes (3d -> 2026-09-16)', d3d && d3d.start === d3d.want && d3d.want === '2026-09-16', d3d);
+      // D3e: the back-computed start patches into the WBS row in place
+      // (no rebuild - same picker-anchoring contract as D3).
+      const markTriad = await ev(`(function(){
+        const r = document.querySelector('#wbs-body tr.wbs-row[data-id="dw3"]');
+        if(!r) return 'no-row';
+        r.setAttribute('data-wire-mark','1');
+        return true;
+      })()`);
+      await ev(`MMGR.Tasks.updTaskField('dw3','endDate','2026-09-25','change')`);
+      const d3e = await ev(`(function(){
+        const r = document.querySelector('#wbs-body tr.wbs-row[data-id="dw3"]');
+        const startInp = r && r.querySelector('input[data-field="startDate"]');
+        const t = MMGR.State.getState().tasks.find(x=>x.id==='dw3');
+        return { rowSame: !!(r && r.getAttribute('data-wire-mark') === '1'),
+                 cellPatched: !!(startInp && startInp.value === t.startDate),
+                 start: t.startDate, dur: t.duration };
+      })()`);
+      check('D3e WBS row NOT rebuilt on the start back-compute', d3e && d3e.rowSame === true, d3e);
+      check('D3e start cell patched in place', d3e && d3e.cellPatched === true, d3e);
+      // D3f: the original endDate->days direction still holds on the triad
+      // row: typing a new end recomputes days even when a duration was set
+      // earlier (09-19 law - the deliberately typed end wins).
+      await ev(`MMGR.Tasks.updTaskField('dw2','endDate','2026-09-25','change')`);
+      const d3f = await ev(`(function(){
+        const t = MMGR.State.getState().tasks.find(x=>x.id==='dw2');
+        return { dur: t.duration, end: t.endDate,
+                 want: MMGR.Tasks.durationFromDates(t.startDate, t.endDate) };
+      })()`);
+      check('D3f endDate edit still back-computes days (D1 contract intact)', d3f && d3f.dur === String(d3f.want) && d3f.want === 10, d3f);
+      await ev(`MMGR.Render.renderWbs();`);
+
       // D4: gantt drag commit keeps the invariant. Simulate the committed
       // move the same way the drag handler does (state-level), then verify
       // duration survives the start move.

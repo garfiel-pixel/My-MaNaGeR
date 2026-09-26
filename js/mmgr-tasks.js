@@ -146,17 +146,35 @@ var MMGR = window.MMGR || {};
         if (field === 'duration' || field === 'startDate') {
           if (task.startDate && task.duration) {
             const dur = parseInt(task.duration);
-            if (!isNaN(dur)) {
+            if (!isNaN(dur) && dur >= 1) {
               // Duration counts WORKING days (respects the work-week control).
               task.endDate = U.fmtDate(U.addWorkingDays(task.startDate, dur - 1));
             }
+          } else if (field === 'startDate' && task.startDate && task.endDate && !task.isPhase) {
+            // DATE-TRIAD (2026-09-26): start typed while an end date is
+            // already present and no duration was ever deliberately set -
+            // fill the Days cell from the date pair (same inclusive
+            // working-day math the endDate branch uses). Whichever of the
+            // three fields is touched first, the other two determine it.
+            const c = durationFromDates(task.startDate, task.endDate);
+            if (c !== null) task.duration = String(c);
           }
         } else if (field === 'endDate') {
           // Dates drive days (owner 2026-09-19): setting the end date
           // back-computes the Days cell from start+end. No endDate rewrite
           // here - the user just set it deliberately.
           const dur = durationFromDates(task.startDate, task.endDate);
-          if (dur !== null) task.duration = String(dur);
+          if (dur !== null) {
+            task.duration = String(dur);
+          } else if (!task.startDate && task.duration && !task.isPhase) {
+            // DATE-TRIAD (2026-09-26): end typed with only a duration and no
+            // start - back-compute the start as the exact inverse of the
+            // forward convention endDate = addWorkingDays(start, dur - 1).
+            const d = parseInt(task.duration);
+            if (!isNaN(d) && d >= 1) {
+              task.startDate = U.fmtDate(U.addWorkingDays(task.endDate, -(d - 1)));
+            }
+          }
         }
       }
     });
@@ -184,6 +202,13 @@ var MMGR = window.MMGR || {};
           const endInp = row && row.querySelector('input[data-field="endDate"]');
           if (endInp) endInp.value = task.endDate;
         }
+        if (task && task.duration) {
+          // DATE-TRIAD: the startDate edit may have filled the Days cell
+          // (start+end, no duration) - patch it in place, picker stays put.
+          const row = document.querySelector('#wbs-body tr.wbs-row[data-id="' + id + '"]');
+          const durInp = row && row.querySelector('input[data-field="duration"]');
+          if (durInp) durInp.value = task.duration;
+        }
       }
       if (field === 'endDate') {
         // Mirror of the startDate patch: the Days cell updates in place so the
@@ -194,6 +219,13 @@ var MMGR = window.MMGR || {};
           const row = document.querySelector('#wbs-body tr.wbs-row[data-id="' + id + '"]');
           const durInp = row && row.querySelector('input[data-field="duration"]');
           if (durInp) durInp.value = task.duration;
+        }
+        if (task && task.startDate) {
+          // DATE-TRIAD: the endDate edit may have back-computed the start
+          // (end+duration, no start) - patch the start cell in place too.
+          const row = document.querySelector('#wbs-body tr.wbs-row[data-id="' + id + '"]');
+          const startInp = row && row.querySelector('input[data-field="startDate"]');
+          if (startInp) startInp.value = task.startDate;
         }
       }
       R.renderGantt();

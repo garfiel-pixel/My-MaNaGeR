@@ -20,6 +20,12 @@ var MMGR = window.MMGR || {};
   // callers treat null as "nothing to write".
   function durationFromDates(start, end) {
     if (!start || !end) return null;
+    // SAME-DAY (2026-09-26): the endpoint bonuses below DOUBLE-COUNT a
+    // one-day span (0 strictly-between + 1 + 1 = 2; a weekend day scored
+    // 0 + 0 + 0 = 0 - the owner's "dates that have zero days"). The exact
+    // inverse of the forward convention for start == end is always 1:
+    // addWorkingDays(start, 0) === start for any day of the week.
+    if (start === end) return 1;
     const between = U.workingDaysBetween(start, end);
     if (between < 0) return null;
     const raw = between + (U.isWorkDay(start) ? 1 : 0) + (U.isWorkDay(end) ? 1 : 0);

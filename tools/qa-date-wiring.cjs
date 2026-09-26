@@ -264,6 +264,72 @@ const FLUSH_RAF = `new Promise(r => requestAnimationFrame(() => requestAnimation
                  want: MMGR.Tasks.durationFromDates(t.startDate, t.endDate) };
       })()`);
       check('D3f endDate edit still back-computes days (D1 contract intact)', d3f && d3f.dur === String(d3f.want) && d3f.want === 10, d3f);
+      // D3g-i: SAME-DAY spans (owner 2026-09-26 "dates that have zero days").
+      // durationFromDates double-counted a one-day span (0 between + 1 + 1 =
+      // 2) and scored a weekend same-day pair 0. Same-day is always 1 day of
+      // duration - the exact inverse of addWorkingDays(start, 0) === start.
+      const d3g = await ev(`(function(){
+        MMGR.State.updateState(function(s){
+          s.tasks.push({ id:'dw4', name:'Same-day probe', level:1, indent:1, isPhase:false,
+            status:'todo', startDate:'', endDate:'', duration:'', assignee:'',
+            critical:false, leadTime:false, recurring:false, weatherExposed:false,
+            confidence:'high', predecessors:[], notes:'', weatherSensitive:false });
+        });
+        MMGR.Tasks.updTaskField('dw4','startDate','2026-09-21','change');   // Mon
+        MMGR.Tasks.updTaskField('dw4','endDate','2026-09-21','change');     // same Mon
+        const t = MMGR.State.getState().tasks.find(x=>x.id==='dw4');
+        return { dur: t.duration, start: t.startDate, end: t.endDate };
+      })()`);
+      check('D3g same-day workday span -> duration 1 (was 2)', d3g && d3g.dur === '1' && d3g.start === d3g.end, d3g);
+      const d3h = await ev(`(function(){
+        MMGR.Tasks.updTaskField('dw4','startDate','2026-09-19','change');   // Sat
+        MMGR.Tasks.updTaskField('dw4','endDate','2026-09-19','change');     // same Sat
+        const t = MMGR.State.getState().tasks.find(x=>x.id==='dw4');
+        return { dur: t.duration, start: t.startDate, end: t.endDate };
+      })()`);
+      check('D3h same-day weekend span -> duration 1 (was 0: the zero-days bug)', d3h && d3h.dur === '1' && d3h.start === d3h.end, d3h);
+      const d3i = await ev(`(function(){
+        MMGR.Tasks.updTaskField('dw4','startDate','2026-09-18','change');   // Fri
+        MMGR.Tasks.updTaskField('dw4','endDate','2026-09-21','change');     // Mon
+        const t = MMGR.State.getState().tasks.find(x=>x.id==='dw4');
+        return { dur: t.duration, start: t.startDate, end: t.endDate };
+      })()`);
+      check('D3i Fri to Mon cross-weekend still duration 2 (bonus path intact)', d3i && d3i.dur === '2', d3i);
+      // D6: CASCADE STATUS-AWARE WRITE-BACK (owner 2026-09-26 polish). A
+      // completed task carries actual dates (history) - the cascade must not
+      // rewrite them, while its todo successors still move. The preview
+      // (computePlan.changes) and the write-back (applyPlan) use the same
+      // predicate: what the confirm dialog promises is what the write does.
+      const d6 = await ev(`(function(){
+        MMGR.State.updateState(function(s){
+          s.tasks.push({ id:'dw5', name:'Actual history task', level:1, indent:1, isPhase:false,
+            status:'completed', startDate:'2026-09-14', endDate:'2026-09-18', duration:'5',
+            critical:false, leadTime:false, confidence:'high', predecessors:[], notes:'', weatherSensitive:false });
+          s.tasks.push({ id:'dw6', name:'Todo successor', level:1, indent:1, isPhase:false,
+            status:'todo', startDate:'2026-09-15', endDate:'2026-09-17', duration:'3',
+            critical:false, leadTime:false, confidence:'high', predecessors:['dw5'], notes:'', weatherSensitive:false });
+        });
+        // Move the completed task's successors window deep into the future so
+        // the engine WANTS to rewrite it - a status-blind cascade would.
+        MMGR.State.updateState(function(s){
+          const t = s.tasks.find(x=>x.id==='dw5');
+          t.startDate = '2026-09-14'; t.endDate = '2026-09-18';
+        });
+        const snap = function(){
+          const t = MMGR.State.getState().tasks.find(x=>x.id==='dw5');
+          return { s: t.startDate, e: t.endDate, d: t.duration, st: t.status };
+        };
+        const before = snap();
+        const r = MMGR.Schedule.cascade(null, { threshold: 100000 });
+        const after = snap();
+        const succ = MMGR.State.getState().tasks.find(x=>x.id==='dw6');
+        return { ran: r === true, before: before, after: after,
+                 completedDatesUntouched: before.s === after.s && before.e === after.e && before.d === after.d && before.st === after.st,
+                 succStart: succ.startDate, moved: succ.startDate !== '2026-09-15' };
+      })()`);
+      check('D6 cascade ran with actual-date tasks present', d6 && d6.ran === true, d6);
+      check('D6 completed task keeps its actual dates (never rewritten)', d6 && d6.completedDatesUntouched === true, d6);
+      check('D6 todo successor still schedules after the completed task', d6 && d6.moved === true && d6.succStart === '2026-09-21', d6 && { succStart: d6.succStart });
       await ev(`MMGR.Render.renderWbs();`);
 
       // D4: gantt drag commit keeps the invariant. Simulate the committed

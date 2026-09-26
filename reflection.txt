@@ -1360,3 +1360,16 @@ BOOKKEEPING
   e6e3441 CI also confirmed SUCCESS. SW v321 carries both fixes
   (same-day + cascade status-aware write-back). Deploy executed LAST
   after all greens; live smoke to follow in the directive.
+
+
+2026-09-26 SESSION BOOKKEEPING (directive + reflection synced)
+
+- CONTINUATION-DIRECTIVE.md Session 12 entry updated to the true end-state:
+  guide wave (A-28 + accept law on A-27, counts 29), zero-days wave
+  (same-day = 1; #31 cloud repair; 121/121 re-audit clean), cascade
+  status-aware write-back (D6), all gate families green, 5/5 CI runs
+  green, final deploy 43a050fb from committed head, live smoke v321
+  byte-match + MCP 121 tasks. Owed-verification list closed out; the only
+  remaining item is the owner's key revocation.
+- Session scratch inventory noted in the directive's NEXT-SESSION NOTES
+  (tmp/ probe scripts, gitignored, clean when convenient).

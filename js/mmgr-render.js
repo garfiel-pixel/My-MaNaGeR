@@ -1382,16 +1382,27 @@ var MMGR = window.MMGR || {};
     const hlChip = document.querySelector('[data-action="toggleCritical"]');
     if (hlChip) hlChip.classList.toggle('is-on', hlOn);
 
-    // Render header (show week numbers + day numbers)
+    // Render header (show week numbers + day numbers) + weekend bands
+    // C2 (visual directive 2026-09-26): Sat/Sun columns shaded; the Monday
+    // gd-hl stays as the week-start divider - two different signals.
     let headerHtml = '<div class="gh">';
+    let weekendBandsHtml = '';
     for (let i = 0; i < totalDays; i++) {
       const d = U.addDays(minDate, i);
       const isMonday = d.getDay() === 1;
       const isFirst = i === 0;
-      headerHtml += `<div class="gd${isMonday || isFirst ? ' gd-hl' : ''}">${d.getDate()}</div>`;
+      const isWeekend = d.getDay() === 0 || d.getDay() === 6;
+      headerHtml += `<div class="gd${isMonday || isFirst ? ' gd-hl' : ''}${isWeekend ? ' gd-wknd' : ''}">${d.getDate()}</div>`;
+      if (isWeekend) weekendBandsHtml += `<div class="gantt-wknd-band" style="left:${i * dayWidth}px;width:${dayWidth}px"></div>`;
     }
     headerHtml += '</div>';
     gc.innerHTML = headerHtml;
+
+    // C1: today marker offset (null when today is outside the range -
+    // no marker, no error for all-past/all-future projects)
+    const todayStr = U.todayStr();
+    const todayLeft = (todayStr >= minDate && todayStr <= maxDate)
+      ? U.daysBetween(minDate, todayStr) * dayWidth : null;
 
     // Build task bars (baseline grey bar under the live bar per row)
     let barsHtml = '';
@@ -1433,23 +1444,35 @@ var MMGR = window.MMGR || {};
       // Weather icon
       const weatherIcon = t.weatherExposed ? '<svg class="ico" aria-hidden="true" style="font-size:.6rem"><use href="css/mmgr-icons.svg#i-cloud-rain"></use></svg>' : '';
 
-      barsHtml += `<div class="gr">
-        ${baseBar}
-        <div class="gb ${classes.join(' ')}" data-id="${U.escapeHtml(t.id)}" style="left:${left}px;width:${width}px" title="${U.escapeHtml(t.name)}${t.weatherExposed ? ' [Weather-exposed]' : ''}${t.critical ? ' [Critical Path]' : ''}${t.totalFloat !== null ? ' [Float: ' + t.totalFloat + 'd]' : ''}">
+      // C4: phase rows band in BOTH columns (chart chunking on long charts)
+      const isPhaseRow = !!(t.isPhase || (t.level || 0) === 0);
+      // C3: milestones render as diamonds, not one-day rectangles; click-only
+      // (date edits via the task detail) - drag handlers key on .gb and the
+      // diamond is a different class, so no ambiguous drag on a diamond.
+      const barInner = t.milestone
+        ? `<div class="gb-milestone ${t.critical ? 'crit' : ''}" data-id="${U.escapeHtml(t.id)}" style="left:${left + width / 2 - 8}px" title="${U.escapeHtml(t.name)} [Milestone]${t.critical ? ' [Critical Path]' : ''}"></div>`
+        : `<div class="gb ${classes.join(' ')}" data-id="${U.escapeHtml(t.id)}" style="left:${left}px;width:${width}px" title="${U.escapeHtml(t.name)}${t.weatherExposed ? ' [Weather-exposed]' : ''}${t.critical ? ' [Critical Path]' : ''}${t.totalFloat !== null ? ' [Float: ' + t.totalFloat + 'd]' : ''}">
           ${weatherIcon}${U.escapeHtml(t.name)}
-        </div>
+        </div>`;
+      barsHtml += `<div class="gr ${isPhaseRow ? 'gr-phase' : ''}">
+        ${baseBar}
+        ${barInner}
       </div>`;
 
       // Labels
-      labelsHtml += `<div class="gr ${(hlOn && !t.critical) ? 'hl-dim' : ''}" style="padding:0 10px;display:flex;align-items:center;gap:4px;font-size:.72rem">
-        <span class="${t.critical ? 'cp-lbl' : ''}" style="${t.critical ? 'color:var(--gold);font-weight:700' : ''}">${U.escapeHtml(t.name)}</span>
+      labelsHtml += `<div class="gr ${isPhaseRow ? 'gr-phase' : ''} ${(hlOn && !t.critical) ? 'hl-dim' : ''}" style="padding:0 10px;display:flex;align-items:center;gap:4px;font-size:.72rem">
+        ${t.milestone ? '<span class="ms-diamond" aria-hidden="true">&#9670;</span>' : ''}
+        <span class="${t.critical ? 'cp-lbl' : ''}" style="${isPhaseRow ? 'font-weight:700;font-size:.78rem;' : ''}${t.critical ? 'color:var(--gold);font-weight:700' : ''}">${U.escapeHtml(t.name)}</span>
         ${floatStr}
         ${t.critical ? '<span class="badge bo" style="font-size:.55rem;padding:1px 5px">CP</span>' : ''}
         ${t.weatherExposed ? '<svg class="ico" aria-hidden="true" style="color:#38bdf8;font-size:.65rem" title="Weather-exposed"><use href="css/mmgr-icons.svg#i-cloud-rain"></use></svg>' : ''}
       </div>`;
     }
 
-    gc.innerHTML = headerHtml + barsHtml;
+    // C2: weekend bands render BEHIND the bars (DOM order + z-index),
+    // inside the same scroll coordinate space as the bars.
+    gc.innerHTML = headerHtml + '<div class="gantt-wknd-layer">' + weekendBandsHtml + '</div>' + barsHtml
+      + (todayLeft !== null ? `<div class="gantt-today" style="left:${todayLeft}px" title="Today: ${todayStr}"></div>` : '');
     if (gl) gl.innerHTML = labelsHtml;
 
     // Draw dependency arrows (SVG overlay)
@@ -1478,7 +1501,10 @@ var MMGR = window.MMGR || {};
     const hasPreds = tasks.some(t => t.predecessors && t.predecessors.length);
     if (!hasPreds) return;
 
-    const bars = gc.querySelectorAll('.gb');
+    // Milestone diamonds are included so a milestone predecessor still gets
+    // its dependency arrow (the diamond carries data-id like any bar); drag
+    // remains excluded from diamonds by design (drag handlers key on .gb).
+    const bars = gc.querySelectorAll('.gb, .gb-milestone');
     if (!bars.length) return;
 
     // Map task id -> bar element (attribute lookup, no selector escaping)

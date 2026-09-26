@@ -90,6 +90,65 @@ var MMGR = window.MMGR || {};
     return out;
   }
 
+  // Schedule-health watcher (owner 2026-09-26): the assistant reads the
+  // plan like a consultant and recommends changes - NEVER edits, and never
+  // more than one notice per condition (the run() dedup handles repeats).
+  // Grounded strictly in stored state: no invention, no model calls.
+  function watchSchedule(s) {
+    const out = [];
+    const tasks = (s.tasks || []).filter(t => t.startDate && t.endDate && !t.isPhase);
+    if (tasks.length < 3) return out;
+    // 1. Phase gates with zero slack: a failed inspection cascades into the
+    // next phase. Gates on the critical path with no float deserve reserve.
+    const gates = (s.tasks || []).filter(t => /gate/i.test(t.name || '') && !t.isPhase);
+    gates.forEach(g => {
+      if (g.critical && (g.totalFloat === 0 || g.totalFloat === null || g.totalFloat === undefined)) {
+        out.push({ kind: 'schedule', severity: 'info',
+          text: g.name + ' sits on the critical path with no slack. Best practice is 2-3 days of management reserve before a gate so one failed inspection does not cascade into the next phase.' });
+      }
+    });
+    // 2. Long-lead items that finish well before their successor needs them:
+    // front-loaded cash with no schedule benefit - stagger the order.
+    const byId = new Map((s.tasks || []).map(t => [t.id, t]));
+    for (const t of tasks) {
+      if (!t.leadTime || !t.expectedDate) continue;
+      let minSuccessorStart = null, succName = '';
+      for (const c of tasks) {
+        if (!(c.predecessors || []).some(p => String(p) === String(t.id))) continue;
+        if (minSuccessorStart === null || c.startDate < minSuccessorStart) { minSuccessorStart = c.startDate; succName = c.name; }
+      }
+      if (!minSuccessorStart) continue;
+      const slack = U.daysBetween(t.expectedDate, minSuccessorStart);
+      if (slack >= 7) {
+        out.push({ kind: 'schedule', severity: 'info',
+          text: t.name + ' is expected ' + t.expectedDate + ' but its first successor (' + succName + ') does not start until ' + minSuccessorStart + ' - ' + slack + ' days of idle lead time. Staggering this order frees cash without moving the schedule.' });
+      }
+    }
+    // 3. Weather-sensitive tasks with zero buffer: resequence or add float
+    // so one rain day does not land on the critical chain.
+    for (const t of tasks) {
+      if (!t.weatherSensitive) continue;
+      const dur = parseInt(t.duration) || 0;
+      if (t.critical && dur >= 3 && !t._schedPad) {
+        out.push({ kind: 'schedule', severity: 'info',
+          text: t.name + ' is weather-sensitive, critical, and runs ' + dur + ' working days with no buffer. Check the window against the rainy season or resequence it off the chain.' });
+      }
+    }
+    // 4. Early drift: completed/started tasks that ended after their plan
+    // (or are running past their end date) - catch slip before it compounds.
+    const today = U.todayStr();
+    for (const t of tasks) {
+      if (t.status === 'completed' && t.completedDate && t.endDate && t.completedDate > t.endDate) {
+        out.push({ kind: 'schedule', severity: 'attention',
+          text: t.name + ' finished ' + t.completedDate + ' but was planned to finish ' + t.endDate + ' - actual slip already on the record. Check whether its successors absorbed it or inherited it.' });
+      } else if (t.status === 'inprogress' && t.endDate && t.endDate < today) {
+        out.push({ kind: 'schedule', severity: 'attention',
+          text: t.name + ' is still in progress past its ' + t.endDate + ' end date. Update the plan or the end date before the slip cascades.' });
+      }
+    }
+    return out;
+  }
+
   // Signed-in gate (Task 9): the assistant is part of the signed-in
   // experience. Signed-out, run() is a no-op and the mailbox shows the
   // plain-language card. The Entitlements seam is the only rule source.
@@ -106,7 +165,7 @@ var MMGR = window.MMGR || {};
       const s = ns.State.getState();
       if (!s || !s.tasks) return;
       const today = U.todayStr();
-      const found = [].concat(watchLeadTimes(s, today), watchBudget(s), watchResources(s), watchWeather(s));
+      const found = [].concat(watchLeadTimes(s, today), watchBudget(s), watchResources(s), watchWeather(s), watchSchedule(s));
       if (!found.length) return;
       let added = 0;
       ns.State.updateState(function(st) {

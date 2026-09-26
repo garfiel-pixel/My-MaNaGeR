@@ -1120,6 +1120,24 @@ body.dark-mode .dmaic-chip{background:rgba(255,255,255,.06);}
 .ppc-note{display:flex;align-items:center;gap:6px;font-size:.72rem;color:var(--amber);margin:6px 0;}
 .ppc-basis{font-size:.66rem;color:var(--slate);margin-top:6px;}
 .gantt-arrows{position:absolute;top:0;left:0;pointer-events:none;overflow:visible;z-index:5;}
+/* GANTT VISUAL WAVE (owner 2026-09-26): today line, weekend bands, milestone
+   diamonds, phase banding - pure render-layer additions, no schema change. */
+.gantt-today{position:absolute;top:0;bottom:0;width:2px;background:var(--danger,#dc2626);z-index:4;pointer-events:none;}
+.gantt-today::before{content:'';position:absolute;top:-6px;left:-4px;width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:6px solid var(--danger,#dc2626);}
+.gd-wknd{background:rgba(148,163,184,.06);}
+.gantt-wknd-layer{position:absolute;top:0;left:0;height:100%;pointer-events:none;z-index:0;}
+.gantt-wknd-band{position:absolute;top:0;bottom:0;background:rgba(148,163,184,.05);}
+.gb-milestone{position:absolute;width:16px;height:16px;background:var(--green);transform:rotate(45deg);top:9px;z-index:3;cursor:pointer;border:1px solid rgba(0,0,0,.15);}
+.gb-milestone.crit{background:var(--gold);}
+.ms-diamond{color:var(--green);font-size:.6rem;}
+.gr-phase{background:rgba(var(--gold-rgb),.06);border-top:1px solid rgba(var(--gold-rgb),.25);border-bottom:1px solid rgba(var(--gold-rgb),.25);}
+.gr-phase .gb{opacity:.92;}
+/* Dark-theme parity for the visual wave (token-driven, same hues both themes). */
+body.dark-mode .gd-wknd{background:rgba(148,163,184,.08);}
+body.dark-mode .gantt-wknd-band{background:rgba(148,163,184,.07);}
+/* Dark-theme parity for the visual wave (token-driven, same hues both themes). */
+body.dark-mode .gd-wknd{background:rgba(148,163,184,.08);}
+body.dark-mode .gantt-wknd-band{background:rgba(148,163,184,.07);}
 
 /* ---- Gantt interactions (drag / tooltip / baseline overlay) ---- */
 .gb{z-index:2;}

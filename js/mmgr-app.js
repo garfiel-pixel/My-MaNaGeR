@@ -970,78 +970,171 @@ var MMGR = window.MMGR || {};
   function hideDefTip() { if (ns.AppDefs && ns.AppDefs.hideDefTip) ns.AppDefs.hideDefTip(); }
 
   // ---- 5.x Gantt high-res PNG export ----
-  // Renders the CURRENT schedule to an offscreen 2x canvas (bars + critical
-  // path gold + weather-exposed hatching + baseline overlay + weekday
-  // header) and downloads it as a large print-ready PNG. Client-side only;
-  // no server, no external library.
+  // Renders the CURRENT schedule to an offscreen 2x canvas and downloads it
+  // as a large print-ready PNG. Client-side only; no server, no library.
+  // READABILITY WAVE (owner 2026-09-26, external review of a real export):
+  // today line, FS dependency connectors (critical chain highlighted so the
+  // eye can follow WHY the schedule reads as it does), milestone diamonds,
+  // phase header banding + phase tab strips, weekend column shading, a real
+  // title block (project, window, export date, prepared by) and a legible
+  // legend. Bars/critical/weather/baseline carry over unchanged.
   function exportGanttPNG() {
     const s = ns.State.getState();
-    const tasks = (s.tasks || []).filter(t => t.startDate && t.endDate);
+    const all = (s.tasks || []);
+    const tasks = all.filter(t => t.startDate && t.endDate);
     if (!tasks.length) { showToast('No dated tasks to export.', 'err'); return; }
     let minDate = null, maxDate = null;
     tasks.forEach(t => {
       if (!minDate || t.startDate < minDate) minDate = t.startDate;
       if (!maxDate || t.endDate > maxDate) maxDate = t.endDate;
     });
-    const dayWidth = 14, rowH = 26, headerH = 40, padL = 180, padR = 20, padT = 16, padB = 24;
+    // C1 (directive 2026-09-26): dynamic label column - measure the longest
+    // label, clamp the left pad 120..320, and truncate with an ellipsis as
+    // the hard backstop. The fixed 200px guess let long names run into the
+    // bar region (the visible defect in the owner's exported image).
+    const measureCtx = document.createElement('canvas').getContext('2d');
+    measureCtx.font = '700 11px sans-serif';
+    let maxLabelWidth = 0;
+    all.forEach(t => { const w = measureCtx.measureText(t.name || '').width; if (w > maxLabelWidth) maxLabelWidth = w; });
+    const dayWidth = 14, rowH = 26, headerH = 56;
+    const padL = Math.min(Math.max(120, Math.ceil(maxLabelWidth) + 30), 340);
+    const padR = 20, padT = 16, padB = 44; // C7: 2-line legend wrap headroom
+    const phaseGap = 7; // breathing room before each phase row (chunking)
     const totalDays = U.daysBetween(minDate, maxDate) + 1;
+    // Row geometry pass: y per task + phase gap before isPhase rows + phase
+    // ownership for the tab strips (nearest preceding phase row).
+    const rowY = new Map(); const rowPhase = new Map(); const rowById = new Map();
+    let curPhase = null, phaseIdx = -1;
+    const PHASE_TABS = ['#8b5cf6', '#f97316', '#0ea5e9', '#22c55e', '#eab308', '#ec4899', '#14b8a6', '#a855f7', '#64748b', '#d4af37'];
+    let y = padT + headerH;
+    tasks.forEach(t => {
+      if (t.isPhase) { phaseIdx++; curPhase = t; y += (rowY.size ? phaseGap : 0); }
+      rowY.set(t.id, y);
+      rowPhase.set(t.id, { phase: curPhase, color: PHASE_TABS[Math.abs(phaseIdx) % PHASE_TABS.length] });
+      rowById.set(t.id, t);
+      y += rowH;
+    });
     const W = padL + totalDays * dayWidth + padR;
-    const H = padT + headerH + tasks.length * rowH + padB;
+    const H = y + padB;
     const scale = 2;
     const canvas = document.createElement('canvas');
     canvas.width = W * scale; canvas.height = H * scale;
     const ctx = canvas.getContext('2d');
     ctx.scale(scale, scale);
+    const X = d => padL + U.daysBetween(minDate, d) * dayWidth;
     // Background
     ctx.fillStyle = '#0e1116'; ctx.fillRect(0, 0, W, H);
-    // Header + weekday labels
-    ctx.fillStyle = '#f1f5f9'; ctx.font = '700 11px sans-serif';
-    ctx.fillText((s.projectName || 'Project') + ' , Schedule Export', padL, padT + 12);
+    // Title block (owner review: project, window, export date, prepared by)
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#f1f5f9'; ctx.font = '700 13px sans-serif';
+    ctx.fillText((s.projectName || 'Project') + ' - Schedule Export', 8, padT + 12);
     ctx.font = '10px sans-serif'; ctx.fillStyle = '#94a3b8';
+    ctx.fillText(minDate + ' to ' + maxDate + '  |  ' + tasks.length + ' rows  |  exported ' + new Date().toISOString().slice(0, 10) + (s.userName ? '  |  prepared by ' + s.userName : ''), 8, padT + 28);
+    // Chart-area header + weekend shading + week-start dividers + day labels
+    // C2 (directive): weekend FILL is separate from the Monday week-start
+    // LINE - the old code conflated them into one Monday-only fill.
     for (let i = 0; i < totalDays; i++) {
       const d = U.addDays(minDate, i);
       const x = padL + i * dayWidth;
-      if (d.getDay() === 1) { ctx.fillStyle = 'rgba(255,255,255,.06)'; ctx.fillRect(x, padT + headerH - 20, dayWidth, tasks.length * rowH + 20); ctx.fillStyle = '#94a3b8'; }
-      ctx.fillText(String(d.getDate()), x + 1, padT + headerH - 6);
+      const dow = d.getDay();
+      if (dow === 0 || dow === 6) { ctx.fillStyle = 'rgba(148,163,184,.10)'; ctx.fillRect(x, padT + headerH - 18, dayWidth, H - padT - headerH + 4); }
+      if (dow === 1) { ctx.strokeStyle = 'rgba(255,255,255,.10)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x + .5, padT + headerH - 18); ctx.lineTo(x + .5, H - padB); ctx.stroke(); }
+      ctx.font = '10px sans-serif'; ctx.fillStyle = dow === 0 || dow === 6 ? '#64748b' : '#94a3b8';
+      ctx.fillText(String(d.getDate()), x + 1, padT + headerH - 22);
+      if (d.getDate() === 1) { ctx.fillStyle = '#cbd5e1'; ctx.font = '700 9px sans-serif'; ctx.fillText(d.toLocaleString('default', { month: 'short' }), x + 1, padT + headerH - 34); }
     }
-    // Baseline overlay bars
+    // C1 backstop: label truncation (binary search for the widest prefix
+    // that fits) - static PNGs have no tooltips, so the full name stays
+    // readable in the live view; the export stays unclipped.
+    function truncateToWidth(c, text, maxWidth) {
+      if (c.measureText(text).width <= maxWidth) return text;
+      let lo = 0, hi = text.length;
+      while (lo < hi) { const mid = (lo + hi + 1) >> 1; if (c.measureText(text.slice(0, mid) + '...').width <= maxWidth) lo = mid; else hi = mid - 1; }
+      return text.slice(0, lo) + '...';
+    }
+    // Baseline map
     const baseMap = {};
     if (s.baseline && s.baseline.tasks) (s.baseline.tasks || []).forEach(bt => { baseMap[bt.id] = bt; });
-    tasks.forEach((t, ri) => {
-      const y = padT + headerH + ri * rowH;
-      const x0 = padL + U.daysBetween(minDate, t.startDate) * dayWidth;
-      const bw = Math.max(1, U.daysBetween(t.startDate, t.endDate)) * dayWidth;
-      // Task label
-      ctx.fillStyle = '#e2e8f0'; ctx.font = '600 10px sans-serif';
-      ctx.fillText(U.escapeHtml ? t.name : t.name, 8, y + rowH / 2 + 3);
-      // Baseline (grey underlay)
+    const todayStr = U.todayStr();
+    const midY = id => rowY.get(id) + rowH / 2;
+    // Rows: bands, tabs, labels, bars
+    tasks.forEach(t => {
+      const ry = rowY.get(t.id);
+      const x0 = X(t.startDate);
+      const bw = Math.max(3, U.daysBetween(t.startDate, t.endDate) * dayWidth + dayWidth * 0.2);
+      if (t.isPhase) { ctx.fillStyle = 'rgba(148,163,184,.08)'; ctx.fillRect(padL, ry, W - padL - padR, rowH); }
+      const tab = rowPhase.get(t.id);
+      if (tab) { ctx.fillStyle = tab.color; ctx.globalAlpha = t.isPhase ? 0.9 : 0.55; ctx.fillRect(padL - 6, ry + 2, 3, rowH - 4); ctx.globalAlpha = 1; }
+      ctx.fillStyle = t.isPhase ? '#f8fafc' : '#e2e8f0';
+      ctx.font = t.isPhase ? '700 11px sans-serif' : '600 10px sans-serif';
+      ctx.fillText(truncateToWidth(ctx, t.name || '', padL - 30), t.isPhase ? 8 : 20, ry + rowH / 2 + 3);
       const bt = baseMap[t.id];
       if (bt && bt.startDate && bt.endDate) {
-        const bx = padL + U.daysBetween(minDate, bt.startDate) * dayWidth;
+        const bx = X(bt.startDate);
         const bww = Math.max(1, U.daysBetween(bt.startDate, bt.endDate)) * dayWidth;
-        ctx.fillStyle = 'rgba(148,163,184,.35)'; ctx.fillRect(bx, y + 3, bww, rowH - 10);
+        ctx.fillStyle = 'rgba(148,163,184,.35)'; ctx.fillRect(bx, ry + 3, bww, rowH - 10);
       }
-      // Weather hatching on exposed bars
       if (t.weatherExposed) {
-        ctx.fillStyle = 'rgba(56,189,248,.25)';
-        ctx.fillRect(x0, y, bw, rowH);
+        ctx.fillStyle = 'rgba(56,189,248,.25)'; ctx.fillRect(x0, ry, bw, rowH);
         ctx.strokeStyle = 'rgba(56,189,248,.8)'; ctx.lineWidth = 1;
-        for (let hx = x0; hx < x0 + bw; hx += 7) { ctx.beginPath(); ctx.moveTo(hx, y); ctx.lineTo(hx + 7, y + rowH); ctx.stroke(); }
+        for (let hx = x0; hx < x0 + bw; hx += 7) { ctx.beginPath(); ctx.moveTo(hx, ry); ctx.lineTo(hx + 7, ry + rowH); ctx.stroke(); }
       }
-      // Bar color by status
       const col = t.critical ? '#d4af37' : t.status === 'completed' ? '#009b3a' : U.isOverdue(t.endDate) && t.status !== 'completed' ? '#D63A3A' : U.isDueSoon(t.endDate, 3) && t.status !== 'completed' ? '#f59e0b' : '#3b82f6';
       ctx.fillStyle = col;
-      ctx.fillRect(x0, y + (t.critical ? 0 : 4), bw, rowH - (t.critical ? 0 : 8));
-      if (t.critical) { ctx.strokeStyle = 'rgba(255,255,255,.6)'; ctx.lineWidth = 1; ctx.strokeRect(x0 + .5, y + .5, bw - 1, rowH - 1); }
+      if (t.milestone) {
+        // Milestones read as diamonds (owner review: gates must not read as slivers)
+        const cx = x0 + bw / 2, cy = ry + rowH / 2, r = rowH / 2 - 4;
+        ctx.beginPath(); ctx.moveTo(cx, cy - r); ctx.lineTo(cx + r, cy); ctx.lineTo(cx, cy + r); ctx.lineTo(cx - r, cy); ctx.closePath(); ctx.fill();
+        if (t.critical) { ctx.strokeStyle = 'rgba(255,255,255,.6)'; ctx.lineWidth = 1; ctx.stroke(); }
+      } else {
+        ctx.fillRect(x0, ry + (t.critical ? 0 : 4), bw, rowH - (t.critical ? 0 : 8));
+        if (t.critical) { ctx.strokeStyle = 'rgba(255,255,255,.6)'; ctx.lineWidth = 1; ctx.strokeRect(x0 + .5, ry + .5, bw - 1, rowH - 1); }
+      }
     });
-    // Legend
-    ctx.font = '9px sans-serif';
-    const legend = [['#d4af37', 'Critical'], ['#3b82f6', 'Task'], ['#009b3a', 'Done'], ['#f59e0b', 'Due soon'], ['#D63A3A', 'Overdue'], ['rgba(56,189,248,.6)', 'Weather-exposed'], ['rgba(148,163,184,.5)', 'Baseline']];
-    let lx = padL;
+    // Dependency connectors (owner: "no line as signaler to say this is this")
+    // FS elbows: right edge of predecessor -> next-row column -> arrow into
+    // successor left edge. Critical-chain links draw gold on top; the rest
+    // stay subtle so the eye can trace the story of the schedule.
+    function connector(pid, sid, gold) {
+      const p = rowById.get(String(pid)), sRow = rowById.get(String(sid));
+      if (!p || !sRow || !rowY.has(p.id) || !rowY.has(sRow.id)) return;
+      const x1 = X(p.endDate) + Math.max(3, U.daysBetween(p.startDate, p.endDate) * dayWidth + dayWidth * 0.2);
+      const y1 = midY(p.id), y2 = midY(sRow.id);
+      const x2 = X(sRow.startDate) - 3;
+      if (x2 <= x1 + 2) { // successor starts before pred ends (overlap/lag): route below
+        ctx.strokeStyle = gold ? 'rgba(212,175,55,.85)' : 'rgba(148,163,184,.28)';
+        ctx.lineWidth = gold ? 1.4 : 1;
+        ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x1 + 4, y1); ctx.lineTo(x1 + 4, y2 + (y2 > y1 ? 4 : -4)); ctx.lineTo(x2, y2 + (y2 > y1 ? 4 : -4)); ctx.stroke();
+        return;
+      }
+      ctx.strokeStyle = gold ? 'rgba(212,175,55,.85)' : 'rgba(148,163,184,.28)';
+      ctx.lineWidth = gold ? 1.4 : 1;
+      ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x1 + 5, y1); ctx.lineTo(x1 + 5, y2); ctx.lineTo(x2, y2); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x2, y2); ctx.lineTo(x2 - 4, y2 - 3); ctx.lineTo(x2 - 4, y2 + 3); ctx.closePath();
+      ctx.fillStyle = gold ? 'rgba(212,175,55,.9)' : 'rgba(148,163,184,.5)'; ctx.fill();
+    }
+    tasks.forEach(t => (t.predecessors || []).forEach(pid => connector(pid, t.id, !!(rowById.get(String(pid)) || {}).critical && !!t.critical)));
+    // Today line (owner review: fastest way to see late vs upcoming)
+    if (todayStr >= minDate && todayStr <= maxDate) {
+      const tx = X(todayStr) + dayWidth / 2;
+      ctx.strokeStyle = 'rgba(214,58,58,.9)'; ctx.lineWidth = 1.5;
+      ctx.setLineDash([5, 4]);
+      ctx.beginPath(); ctx.moveTo(tx, padT + headerH - 18); ctx.lineTo(tx, H - padB); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = '#D63A3A'; ctx.font = '700 9px sans-serif';
+      ctx.fillText('TODAY', tx + 4, padT + headerH - 20);
+    }
+    // C7: legend wraps upward when one line cannot fit it all; padB = 44
+    // reserves the two-row headroom so it never collides with the last row.
+    ctx.font = '11px sans-serif';
+    const legend = [['#d4af37', 'Critical'], ['#3b82f6', 'Task'], ['#009b3a', 'Done'], ['#f59e0b', 'Due soon'], ['#D63A3A', 'Overdue'], ['rgba(56,189,248,.6)', 'Weather-exposed'], ['rgba(148,163,184,.5)', 'Baseline'], ['rgba(212,175,55,.85)', 'Critical chain link'], ['rgba(148,163,184,.5)', 'Dependency'], ['#D63A3A', 'Today line'], ['#8b5cf6', 'Phase tab'], ['#009b3a', 'Milestone']];
+    let lx = padL, ly = H - 20;
     legend.forEach(l => {
-      ctx.fillStyle = l[0]; ctx.fillRect(lx, H - 18, 12, 10);
-      ctx.fillStyle = '#94a3b8'; ctx.fillText(l[1], lx + 15, H - 9);
-      lx += 18 + ctx.measureText(l[1]).width + 16;
+      const lw = ctx.measureText(l[1]).width;
+      if (lx + 24 + lw > W - padR) { lx = padL; ly -= 16; }
+      ctx.fillStyle = l[0]; ctx.fillRect(lx, ly, 16, 12);
+      ctx.fillStyle = '#cbd5e1'; ctx.fillText(l[1], lx + 20, ly + 10);
+      lx += 24 + lw + 18;
     });
     canvas.toBlob(function(blob) {
       if (!blob) { showToast('Export failed.', 'err'); return; }

@@ -726,6 +726,7 @@ footer{padding:70px 64px 46px;position:relative;}
         <a class="nav-link" href="#calculator"><span class="idx">A-25</span>Floating Calculator</a>
         <a class="nav-link" href="#shared-pool"><span class="idx">A-26</span>Shared Resource Pool</a>
         <a class="nav-link" href="#connect-ai"><span class="idx">A-27</span>Connect an Outside AI</a>
+        <a class="nav-link" href="#api-keys"><span class="idx">A-28</span>API Keys &amp; Rotation</a>
       </div>
     </nav>
   </aside>
@@ -1830,10 +1831,34 @@ Date: ____________  Focus: ____________</pre>
         <div class="card"><span class="cnum">READ</span><h4>Only what you ticked</h4><p>A key granted only Budget cannot see tasks or stakeholders , the server trims the answer, not just the UI. The same rule applies through MCP: a budget-only key calling the tasks tool gets a clear refusal, not the data.</p></div>
         <div class="card"><span class="cnum">WRITE</span><h4>Never without you</h4><p>Every change an outside AI proposes , through MCP or REST , waits in <strong>Review incoming changes</strong> inside the project with a field-level diff. Nothing touches your project until you press Accept. Reject, and it is discarded with a changelog record.</p></div>
         <div class="card"><span class="cnum">SAFETY</span><h4>Expiry, revoke, containment</h4><p>Expired and revoked keys answer with the same refusal as a wrong key, a key stops working the moment its project is deleted, and without any key at all the server simply refuses to share data , politely, and only when a tool asks. Rate limits apply to the AI endpoint like every other route, and a leaked key is contained: revoke it, mint a new one, and nothing else about the project changes.</p></div>
+      </div>      <h3 class="h-sub">Accepting proposals without surprises</h3>
+      <div class="grid grid-2">
+        <div class="card"><span class="cnum">ACCEPT</span><h4>The whole task list travels together</h4><p>A proposal that adds or changes tasks carries a full picture of the task list as it was when the AI made it. Accepting saves that whole picture. So keep it simple: accept tasks proposals <strong>one at a time</strong>, and if one has been sitting in the queue a while while you accepted others, ask the AI to send it again fresh rather than accepting a stale list. Records the proposal never mentioned are only kept if they were already in the project when it was made.</p></div>
+        <div class="card"><span class="cnum">TIMING</span><h4>Newest first, one at a time</h4><p>The review queue shows the newest proposal at the top. If two proposals touch the same list (tasks, budget lines...), accepting them top-down in one pass means the newer one wins and the older one's work can be left out. Settle one, then take the next , or have the AI combine everything into a single proposal up front.</p></div>
       </div>
       <div class="divider-note">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 2a5 5 0 015 5v3h1a2 2 0 012 2v7a2 2 0 01-2 2H6a2 2 0 01-2-2v-7a2 2 0 012-2h1V7a5 5 0 015-5zm0 2a3 3 0 00-3 3v3h6V7a3 3 0 00-3-3z" stroke="currentColor" stroke-width="1.2"/></svg>
         <p><strong>One key, one project, one purpose.</strong> Treat a key like the key to the site office: anyone holding it can do exactly what you ticked, no more. If it ever lands somewhere it should not , a chat window, a screenshot , revoke it and mint a fresh one; it takes ten seconds.</p>
+      </div>
+    </section>
+
+    <!-- ============ A-28 API KEYS & ROTATION ============ -->
+    <section class="sheet sheet-alt reveal" id="api-keys">
+      <div class="tblock">
+        <div class="tblock-left"><span class="sheet-no">A-28</span><h2>API Keys &amp; Rotation</h2></div>
+        <div class="tblock-right"><div><b>Scale</b>1 : 1 detail</div></div>
+      </div>
+      <span class="kicker">The owner's care-and-feeding sheet for the keys an outside AI holds</span>
+      <p class="lede">Sheet A-27 covers connecting an AI. This one covers living with the keys afterwards: what the list tells you, when to rotate, and why rotation is a ten-second job that changes nothing else. Open <strong>Settings</strong> inside the project and find <strong>API Keys</strong> in the Cloud &amp; Sync manager , everything below happens in that one panel.</p>
+      <div class="grid grid-2">
+        <div class="card bracket"><span class="cnum">PANEL</span><h4>What the list shows</h4><p>Each row carries the <strong>label</strong> you gave it, the <strong>sections</strong> it may see, its <strong>expiry</strong>, and the <strong>last-used date</strong>. The key itself is shown once, at creation , after that the row can only confirm it exists, never reveal it. A last-used date you do not recognize is the panel talking to you: rotate.</p></div>
+        <div class="card bracket"><span class="cnum">ROTATE</span><h4>Rotate a key in ten seconds</h4><p><strong>Revoke</strong> the old row, <strong>create</strong> a new key with the same sections ticked, <strong>paste</strong> the new key into your tool's connector settings. Done. Nothing else changes: the sections, the project link, and the review queue are untouched, and the old key stops working everywhere the moment you revoke it.</p></div>
+        <div class="card bracket"><span class="cnum">WHEN</span><h4>When to rotate</h4><p>After a key has been pasted into any chat window or screenshot. When a teammate who had it moves on. When the last-used date looks wrong. And on the calendar even if nothing happened , that is what the expiry choices (30 / 90 / 365 days) are for: a key with an expiry cleans itself up, and rotation becomes a habit instead of an incident response.</p></div>
+        <div class="card bracket"><span class="cnum">STILL SAFE</span><h4>Whatever the key, you hold the pen</h4><p>Rotation is hygiene, not emergency gear. Even a key that leaked does not hand anyone your project: every change it submits waits in <strong>Review incoming changes</strong> with a field-level diff, and only you can accept. Worst case for a leaked key is a stranger reading what you ticked , and revoking ends even that.</p></div>
+      </div>
+      <div class="divider-note">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M17 8V7a5 5 0 00-10 0v3H5a2 2 0 00-2 2v7a2 2 0 002 2h14a2 2 0 002-2v-7a2 2 0 00-2-2h-2V8zm-8-1a3 3 0 016 0v3H9V7z" stroke="currentColor" stroke-width="1.2"/></svg>
+        <p><strong>The rule of thumb:</strong> if a key has ever been seen outside this panel, rotate it. Ten seconds, three clicks, and every copy of the old key becomes a dead string.</p>
       </div>
     </section>
 
@@ -1843,9 +1868,9 @@ Date: ____________  Focus: ____________</pre>
       <div class="band-bg" style="background-image:url('images/completed-kitchen.webp')"></div>
       <div class="band-overlay"></div>
       <div class="band-content" style="max-width:680px">
-        <span class="kicker">Sheet A-26 and beyond</span>
+        <span class="kicker">Sheet A-28 and beyond</span>
         <h3>This index has room for what's next.</h3>
-        <p>New panels and features get their own sheet, numbered and slotted in , the guide grows the same way the app does. Twenty-seven sheets so far, from Welcome (A-00) through the Shared Resource Pool (A-26). For now: open My MaNaGeR in the next tab over, start with the Charter, and keep this page bookmarked.</p>
+        <p>New panels and features get their own sheet, numbered and slotted in , the guide grows the same way the app does. Twenty-nine sheets so far, from Welcome (A-00) through API Keys &amp; Rotation (A-28). For now: open My MaNaGeR in the next tab over, start with the Charter, and keep this page bookmarked.</p>
         <div class="hero-cta" style="margin-top:28px">
           <a href="#top" class="btn btn-brass">Back to the top ↑</a>
           <a href="#quickstart" class="btn btn-ghost">Revisit Quick Start</a>
@@ -1858,7 +1883,7 @@ Date: ____________  Focus: ____________</pre>
       <div class="footer-grid">
         <div class="footer-brand">
           <h4>My MaNaGeR , Field Guide</h4>
-          <p>An unofficial companion guide to the My MaNaGeR workspace , twenty-eight sheets, one per panel or workflow, built to sit open in a second tab while you learn the app.</p>
+          <p>An unofficial companion guide to the My MaNaGeR workspace , twenty-nine sheets, one per panel or workflow, built to sit open in a second tab while you learn the app.</p>
         </div>
         <div class="footer-cols">
           <div class="footer-col">
@@ -1889,6 +1914,7 @@ Date: ____________  Focus: ____________</pre>
             <a href="#calculator">A-25 Floating Calculator</a>
             <a href="#shared-pool">A-26 Shared Resource Pool</a>
             <a href="#connect-ai">A-27 Connect an Outside AI</a>
+            <a href="#api-keys">A-28 API Keys &amp; Rotation</a>
           </div>
           <div class="footer-col">
             <b>Site</b>

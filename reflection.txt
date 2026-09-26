@@ -1232,3 +1232,106 @@ BOOKKEEPING
   entry whose AFTER did not match the live blob ('blob diverged from the MCP edit') - the failure was proof.
 - qa-changelog-diffs G2a still asserted the OLD 'absent' word - the wave's whole point was the relabel.
 - mpw-icon-48.png is referenced by nothing (regenerated spare); noted in the tracker, not deleted.
+
+
+2026-09-26 SESSION (live MCP E2E on bank-renovation; two real server bugs found; one fixed locally pending deploy)
+
+- Owner directive: connect to the live MCP endpoint (mymanagerworkspace.com/api/mcp/bank-renovation)
+  with an sk-mmgr- key and run a full forged project through it: 100+ task WBS, predecessors,
+  lead-time/weather toggles, comprehensive registers, meeting-log-anchored sequence.
+- L1: agent-browser compound commands hang (known infra gote) - `agent-browser read <url>` (no Chrome)
+  is the research path that works. ap.construction (long-lead register: vault door, ATM, night
+  depository, millwork, signage, switchgear) + Boswell (vault install chain) became P2/P3 spines.
+- QUEUED AND ACCEPTED: #19 (+55d shift), #20 registers, #21 WBS (108 rows/10 phases), #22 top-up.
+  #21 + #20 only PARTIALLY applied - root causes below.
+- BUG (product, real, no code change) - LAST-ACCEPT-WINS on tasks: accepting a tasks proposal
+  replaces the WHOLE tasks array (reviews.js 'mcp' branch -> cloudScopeMerge whole-array put,
+  same contract as REST save). #22's 6-task accept wiped #21's 108 (live count fell to 13).
+  LAW for MCP users: one tasks proposal per flight; fold diffs + creates into ONE apply_changes;
+  never queue overlapping tasks proposals in parallel.
+- BUG (product, real, FIXED locally in src/mcp/server.js) - the create gate demanded the literal
+  `name` key, so title-keyed lists (meetings, logEntries, commsEntries - title-keyed by
+  CREATE_DEFAULTS itself AND by the app's own creators) were refused at QUEUE time and the
+  receipt undercounted ("Queued 270" for a 494-leaf payload). Proven by live id arithmetic
+  (stakeholders landed at mcp_mui0rixh_11..19 = resources consumed 1-10) + count deltas.
+  Fix: gate accepts name OR title; message updated. No harness asserts the old refusal string
+  (grep = only stale .wrangler/tmp builds); serve.cjs has no mirror (creates are MCP-only).
+  node --check clean; npm run verify ALL CHECKS PASSED (registry 75/75). NOT DEPLOYED - owner
+  go required (node tools/deploy.cjs).
+- L2: MCP get_tasks projects `dependencies` and NEVER `predecessors` - predecessor state is
+  unreadable via the MCP read tools; use POST /api/cloud/projects/:id/load with the key
+  (scope-projected, full records). tmp/wbs-wire.cjs v1 reported "nothing to wire" because of
+  this trap; v2 reads /load and dry-ran clean (found the 6 top-up dangling name refs).
+- RECOVERY QUEUED (receipts prove the fix math): #23 = ONLY the three lost lists (16 meetings +
+  12 log + 4 comms, title->name mirrors so it passes both the prod gate and the fixed one,
+  296 fields) and #24 = ONE tasks proposal (21 legacy diffs shifting the 7 September tasks +55d
+  with statuses reset to todo, + 108 WBS creates = 1,997 fields; final array 117 rows).
+- LAW (legacy-keep): a whole-array accept deletes any live row not re-submitted; the legacy
+  tasks ride INSIDE #24 as diffs (ids preserved) - never as creates (ids reassigned), never as
+  a separate earlier accept that #24's queue-time snapshot would not include.
+- PENDING: owner accepts #23 then #24; run node tmp/wbs-wire.cjs -> predecessor ID wiring
+  proposal (scheduler resolves preds strictly by task id - name refs silently no-op); accept;
+  browser pass over the WBS tab; qa-api-keys P12-P17 before deploy; REVOKE the test key
+  (now exposed in two chats - owner's own key-hygiene rule).
+- Scratch kept (gitignored tmp/): wbs-build.cjs (WBS generator, 10 phases), wbs-recover.cjs
+  (payload builder), wbs-wire.cjs (wiring), repro-merge.mjs (local merge repro running the
+  repo's own cloudScopeMerge - the proof the merge code was never the dropper).
+- Bookkeeping: CONTINUATION-DIRECTIVE.md STATUS LOG Session 12 entry (this session).
+
+
+2026-09-26 SESSION ADDENDUM (wiring inversion, harness, deploy)
+
+- Owner accepted #23+#24+#25 top-down; the queue lists NEWEST-FIRST so #25
+  (wiring) accepted BEFORE #24 (WBS) - #24's whole-array accept overwrote the
+  wiring with its queue-time snapshot. Live verification caught it (101
+  dangling name refs, blob savedAt = #24's accept). LESSON: the review
+  queue's own order can violate the one-tasks-proposal law - after accepting
+  stacked tasks proposals, re-run wiring LAST with an empty queue. #26
+  queued (identical 101 diffs, uncontested); owner accepts #26 alone.
+- Regression harness shipped in tools/qa-api-keys.cjs (existing CI-registered
+  MCP harness, lesson-14 law): P18a title-only creates queue; P18b queued
+  proposal carries MATERIALIZED meetings+log diffs (undercount detector);
+  P18c accept applies meet+log; P18d state round-trips title-keyed records;
+  P18e negative refuses with the updated 'name or title' message. ALL 33
+  GATES PASSED locally against the fixed source.
+- DEPLOYED via node tools/deploy.cjs -> Version ef981bba-5d8b-48de-8819-
+  4e9de9599a26. LIVE GATE PROBE (zero-pollution negative create) on
+  mymanagerworkspace.com: 'record needs at least a name or title' = fixed
+  gate live; /api/health ok; probe queued nothing.
+- STILL OPEN: owner accepts #26 (wiring) -> then verify chain live; revoke
+  the sk-mmgr- test key (two chats now).
+
+
+2026-09-26 SESSION CLOSE-OUT (final verification)
+
+- #26 accepted -> chain LIVE: 101/101 predecessor refs resolve to task IDs,
+  0 dangling (blob savedAt 14:18). #27 accepted (lead-time flags, 36/36
+  receipt math exact - the fixed gate's proof): leadTime + submittedDate +
+  expectedDate on all 9 long-lead tasks, dates carried in notes.
+- FINAL VERIFICATION 13/13 PASS on fresh state: 121 tasks / 10 phases /
+  2026-10-26..2027-02-26 / 101 id-wired preds / 9 complete lead-time
+  records / meetings 16, log 12, comms 4, risks 11, documents 14.
+- MCP E2E TEST COMPLETE. Remaining owner actions: revoke the sk-mmgr- test
+  key (two chats); commit the working tree (create-gate fix + P18 harness
+  + session docs) when ready.
+
+
+2026-09-26 SESSION DEPLOY ADDENDUM (triad + bundle + SW v319)
+
+- Deployed Version 01265893-11f3-4edb-b92b-f139d0840c5a: date-triad fix
+  (start+end -> Days fills; end+duration -> start back-computes; both legacy
+  directions preserved; in-place patches, picker anchored) + rebuilt bundle,
+  SW bumped v318 -> v319 (shell-cached; bump is the only re-fetch path).
+- Gates: qa-date-wiring D3a-D3f added, 41/41; npm run verify ALL PASS
+  (registry 75/75); live smoke byte-compared sw.js + dist/bundle.js
+  local vs prod - identical; prod SW = mmgr-shell-v319.
+- Data waves closed via MCP (all receipts exact): #28 confidence mix +
+  High-prob risks; #29 duration backfill 121/121 (cascade unblocked);
+  #30 acceptance-path -> low schedule confidence.
+- Cascade walk in real browser: 14/14 - guards fire, engine rewrites dates,
+  criticals + floats stamped, weather padding moves completion Feb->Apr.
+- LESSON: confidence = SCHEDULE risk. External-party-gated tasks (owner
+  acceptance, jurisdiction, consultant) are LOW; crew work is HIGH. The
+  opposite marking flattened Monte Carlo (round(base*1.1)=base on short
+  tasks = zero variance).
+- Open: commit the working tree; revoke the sk-mmgr- test key.

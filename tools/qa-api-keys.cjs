@@ -456,6 +456,60 @@ const j = async (res) => { try { return await res.json(); } catch (e) { return {
     check('P17c MCP unauthenticated initialize -> 200 serverInfo (PATH-A handshake)',
       r.status === 200 && mcpAnon.result && mcpAnon.result.serverInfo && mcpAnon.result.serverInfo.name === 'my-manager-mcp', { status: r.status, mcpAnon });
 
+    // P18: TITLE-KEYED CREATE GATE (regression, 2026-09-26 bank-renovation
+    // incident). meetings / logEntries / commsEntries are title-keyed by the
+    // app's own creators AND by CREATE_DEFAULTS, but the create gate used to
+    // demand the literal `name` key - those creates were REFUSED AT QUEUE
+    // TIME, the receipt undercounted, and an owner accepting the proposal
+    // got silently fewer records. The gate must accept name OR title.
+    // Uses the owner-code Bearer (full access): the scoped key above grants
+    // wbs+bud only, and meetings/refused-scope would muddy the regression.
+    r = await fetch(mcpUrl, {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + ownerCode },
+      body: JSON.stringify({ jsonrpc: '2.0', id: 8, method: 'tools/call', params: { name: 'apply_changes', arguments: { label: 'P18 title-keyed create regression', creates: [
+        { path: 'meetings', record: { title: 'P18 kickoff meeting', date: '2026-10-27', notes: 'title-only create regression' } },
+        { path: 'logEntries', record: { title: 'P18 decision', decision: 'Gate accepts title-keyed records', date: '2026-10-27' } }
+      ] } } })
+    });
+    const mcpTitle = await j(r);
+    const titleText = (((mcpTitle.result || {}).content || [])[0] || {}).text || '';
+    check('P18a title-only meeting+log creates -> queued (never refused)',
+      r.ok && mcpTitle.result && !mcpTitle.result.isError && titleText.indexOf('Queued') === 0 && titleText.indexOf('needs at least a name') === -1, mcpTitle);
+    r = await fetch(BASE + '/api/cloud/projects/' + pid + '/reviews', {
+      method: 'GET', credentials: 'same-origin', headers: ownerHeaders
+    });
+    const revListT = await j(r);
+    const revsT = revListT.reviews || revListT.proposals || [];
+    const pendT = revsT.find(x => x.status === 'pending' && x.proposalType === 'mcp');
+    const tDiffs = JSON.stringify((pendT && pendT.diffs) || []);
+    check('P18b queued proposal carries MATERIALIZED meetings+log diffs (undercount detector)',
+      r.ok && !!pendT && tDiffs.indexOf('meetings') !== -1 && tDiffs.indexOf('P18 kickoff meeting') !== -1 && tDiffs.indexOf('logEntries') !== -1, { pendT });
+    r = await fetch(BASE + '/api/cloud/projects/' + pid + '/reviews/' + pendT.id + '/accept', {
+      method: 'POST', credentials: 'same-origin', headers: ownerHeaders, body: JSON.stringify({})
+    });
+    const accT = await j(r);
+    check('P18c owner accepts the title-keyed proposal -> applied', r.ok && accT.ok && (accT.applied || []).indexOf('meet') !== -1 && (accT.applied || []).indexOf('log') !== -1, accT);
+    r = await fetch(BASE + '/api/cloud/projects/' + pid + '/load', {
+      method: 'POST', credentials: 'same-origin', headers: ownerHeaders, body: JSON.stringify({})
+    });
+    const postT = await j(r);
+    const meetRec = ((postT.state || {}).meetings || []).find(x => x.title === 'P18 kickoff meeting');
+    const logRec = ((postT.state || {}).logEntries || []).find(x => x.title === 'P18 decision');
+    check('P18d accepted state renders title-keyed records (round-trip)',
+      r.ok && postT.ok && !!meetRec && meetRec.date === '2026-10-27' && !!logRec && logRec.decision === 'Gate accepts title-keyed records', postT.state && { meetings: postT.state.meetings, logEntries: postT.state.logEntries });
+    r = await fetch(mcpUrl, {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + ownerCode },
+      body: JSON.stringify({ jsonrpc: '2.0', id: 9, method: 'tools/call', params: { name: 'apply_changes', arguments: { label: 'P18e negative', creates: [
+        { path: 'meetings', record: { date: '2026-10-28', notes: 'no name and no title' } }
+      ] } } })
+    });
+    const mcpNoName = await j(r);
+    const noNameText = (((mcpNoName.result || {}).content || [])[0] || {}).text || '';
+    check('P18e create with neither name nor title -> refused with the updated message',
+      r.ok && mcpNoName.result && mcpNoName.result.isError === true && noNameText.indexOf('needs at least a name or title') !== -1, mcpNoName);
+
     const failed = results.filter(x => !x.val).length;
     log('----------------------------------------');
     log(failed === 0 ? 'ALL API-KEY GATES PASSED' : failed + ' CHECK(S) FAILED');

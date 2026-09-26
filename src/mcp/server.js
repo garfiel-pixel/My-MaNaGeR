@@ -453,8 +453,15 @@ async function handleMcpRequest(body, projectId, env, auth) {
         if (!csec) { refusedCreates.push((cpath || '(empty)') + ': not a project section'); continue; }
         if (granted.indexOf(csec) === -1) { refusedCreates.push(cpath + ': outside the granted sections'); continue; }
         if (!recInput || typeof recInput !== 'object') { refusedCreates.push('create ' + i + ': missing record'); continue; }
-        const hasName = recInput.name !== undefined && recInput.name !== null && String(recInput.name).trim() !== '';
-        if (!hasName) { refusedCreates.push('create ' + i + ' (' + cpath + '): record needs at least a name'); continue; }
+        // TITLE-KEYED LISTS (2026-09-26): meetings, logEntries and commsEntries
+        // are title-keyed by the app's own creators (mmgr-meetings.js,
+        // mmgr-decisions.js, mmgr-closure.js) AND by CREATE_DEFAULTS below, so
+        // the gate must accept name OR title. A title-only create used to be
+        // refused with 'record needs at least a name', silently shrinking the
+        // queued proposal (found via the bank-renovation #20 field-count gap).
+        const titleVal = recInput.title !== undefined && recInput.title !== null ? String(recInput.title).trim() : '';
+        const hasName = (recInput.name !== undefined && recInput.name !== null && String(recInput.name).trim() !== '') || titleVal !== '';
+        if (!hasName) { refusedCreates.push('create ' + i + ' (' + cpath + '): record needs at least a name or title'); continue; }
         if (!CREATE_DEFAULTS[cpath]) { refusedCreates.push(cpath + ': not a list that accepts new records'); continue; }
         const arr2 = Array.isArray(base[cpath]) ? base[cpath] : (base[cpath] = []);
         arr2.push(buildCreatedRecord(cpath, recInput, nowMs, counterRef));

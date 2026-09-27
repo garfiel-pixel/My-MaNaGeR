@@ -112,9 +112,6 @@ jobs:
       - name: "E-T4: resource pool UI"
         run: node tools/qa-pool-ui.cjs
 
-      - name: "E-T4: live pool gates"
-        run: node tools/qa-live-pool.cjs
-
       - name: "E-T4: marketing scroll-spy"
         run: node tools/verify-spy-cdp.cjs
 
@@ -158,6 +155,20 @@ jobs:
         env:
           WRANGLER_DEV_URL: http://127.0.0.1:8787
           QA_PERSIST_DIR: /tmp/mmgr-extended-state/v3/d1/miniflare-D1DatabaseObject
+
+      - name: "E-T2b: live pool gates"
+        # CI-REPAIR 2026-09-27 (run 36310287699): this step used to sit in the
+        # serve.cjs group, BEFORE "Start wrangler dev :8787" - qa-live-pool
+        # speaks the worker API (auth/cloud/pool) and every gate 404/conn-
+        # refused against a server that did not exist yet. Moved into the
+        # worker-backed group next to its sibling E-T2. Local repro with the
+        # exact CI recipe (migrations -> wrangler dev :8787 -> harness):
+        # ALL 17 LIVE POOL GATES PASSED; no QA_D1_VERIFY needed in CI (no
+        # RESEND secret -> register auto-verifies, unlike a live worker).
+        if: success() && steps.wrangler-extended.outcome == 'success'
+        run: node tools/qa-live-pool.cjs
+        env:
+          QA_BASE: http://127.0.0.1:8787
 
       - name: "E-T3: MCP live E2E (self-contained wrangler + Chrome)"
         # Self-contained T3 (own wrangler :8833 + Chrome :9333, never a live

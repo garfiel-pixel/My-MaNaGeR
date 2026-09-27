@@ -727,6 +727,7 @@ footer{padding:70px 64px 46px;position:relative;}
         <a class="nav-link" href="#shared-pool"><span class="idx">A-26</span>Shared Resource Pool</a>
         <a class="nav-link" href="#connect-ai"><span class="idx">A-27</span>Connect an Outside AI</a>
         <a class="nav-link" href="#api-keys"><span class="idx">A-28</span>API Keys &amp; Rotation</a>
+        <a class="nav-link" href="#deadline"><span class="idx">A-29</span>Project Deadline &amp; Float</a>
       </div>
     </nav>
   </aside>
@@ -1862,15 +1863,35 @@ Date: ____________  Focus: ____________</pre>
       </div>
     </section>
 
+    <!-- ============ A-29 PROJECT DEADLINE & FLOAT ============ -->
+    <section class="sheet sheet-alt reveal" id="deadline">
+      <div class="tblock">
+        <div class="tblock-left"><span class="sheet-no">A-29</span><h2>Project Deadline &amp; Float</h2></div>
+        <div class="tblock-right"><div><b>Scale</b>1 : 1 detail</div></div>
+      </div>
+      <span class="kicker">Tell the engine your committed finish date - and read the slack it answers with</span>
+      <p class="lede">The Gantt toolbar has a <strong>Deadline</strong> date box next to Cascade Dates. Set the date you have <em>committed</em> to the client (not the aspirational Target Completion in the Charter - this one is an engine constraint), and the schedule engine answers with real float on the closing chain.</p>
+      <div class="grid grid-2">
+        <div class="card bracket"><span class="cnum">EARLY</span><h4>Finishing before the deadline</h4><p>The last tasks (the ones with nothing after them) earn <strong>real slack</strong>: their float badges show the working days you can absorb - a failed inspection, a late crane set - before the deadline is threatened. A gate that sat rigid at zero float softens to show the room it really has.</p></div>
+        <div class="card bracket"><span class="cnum">LATE</span><h4>Finishing after the deadline</h4><p>The engine tells you plainly: the plan still shows its true completion date, the whole closing chain stays at zero float (still critical), and nothing is hidden. The engine never invents negative-float fiction to make a plan look compliant.</p></div>
+        <div class="card bracket"><span class="cnum">SAFE</span><h4>What it never touches</h4><p>Dates never move because of a deadline - only float and the critical highlight change. Tasks in the middle of the network keep their relational float between linked work; the deadline only speaks to chains that reach the end. Clear the box and everything returns to a pure no-deadline plan.</p></div>
+        <div class="card bracket"><span class="cnum">CLOUD</span><h4>Where it lives</h4><p>The deadline saves with the project's WBS in the cloud (one of the Tasks fields), travels with cloud sync, and reaches outside AI readers the same as task dates do. On this device it persists like every other project field.</p></div>
+      </div>
+      <div class="divider-note">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M8 2v4m8-4v4M3 10h18M5 6h14a2 2 0 012 2v12a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2z" stroke="currentColor" stroke-width="1.2"/></svg>
+        <p><strong>The habit:</strong> set the deadline the day you commit it, run Cascade Dates, and read the float badges on the closing chain. That number is the honest distance between promise and plan.</p>
+      </div>
+    </section>
+
     <!-- ============ CLOSING CTA BAND ============ -->
     <!-- Local photo (completed kitchen) , the finished job. -->
     <div class="band reveal" style="min-height:420px">
       <div class="band-bg" style="background-image:url('images/completed-kitchen.webp')"></div>
       <div class="band-overlay"></div>
       <div class="band-content" style="max-width:680px">
-        <span class="kicker">Sheet A-28 and beyond</span>
+        <span class="kicker">Sheet A-29 and beyond</span>
         <h3>This index has room for what's next.</h3>
-        <p>New panels and features get their own sheet, numbered and slotted in , the guide grows the same way the app does. Twenty-nine sheets so far, from Welcome (A-00) through API Keys &amp; Rotation (A-28). For now: open My MaNaGeR in the next tab over, start with the Charter, and keep this page bookmarked.</p>
+        <p>New panels and features get their own sheet, numbered and slotted in , the guide grows the same way the app does. Thirty sheets so far, from Welcome (A-00) through Project Deadline &amp; Float (A-29). For now: open My MaNaGeR in the next tab over, start with the Charter, and keep this page bookmarked.</p>
         <div class="hero-cta" style="margin-top:28px">
           <a href="#top" class="btn btn-brass">Back to the top ↑</a>
           <a href="#quickstart" class="btn btn-ghost">Revisit Quick Start</a>
@@ -1883,7 +1904,7 @@ Date: ____________  Focus: ____________</pre>
       <div class="footer-grid">
         <div class="footer-brand">
           <h4>My MaNaGeR , Field Guide</h4>
-          <p>An unofficial companion guide to the My MaNaGeR workspace , twenty-nine sheets, one per panel or workflow, built to sit open in a second tab while you learn the app.</p>
+          <p>An unofficial companion guide to the My MaNaGeR workspace , thirty sheets, one per panel or workflow, built to sit open in a second tab while you learn the app.</p>
         </div>
         <div class="footer-cols">
           <div class="footer-col">

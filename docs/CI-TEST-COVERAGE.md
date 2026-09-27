@@ -81,6 +81,7 @@ or too niche for the deploy gate), **TRIAGE** (known-drifting, findings listed),
 | `tools/qa-api-keys.cjs` | CI | scoped API key read + review-queue writes, MCP PATH-A |
 | `tools/qa-sync-bond.cjs` | CI | file trip keeps the cloud twin link; re-sync merge (20/20) |
 | `tools/qa-mcp-live-e2e.cjs` | EXTENDED | MCP propose -> owner review Accept end-to-end in a real browser: scoped key + PATH-A, queue gating, never-auto-apply, zero-diff accept warns (v318), revoke/delete hygiene (20 gates). Runs nightly + extended battery; self-contained (own wrangler/Chrome, never a live site) |
+| `tools/qa-engine-parity.cjs` | EXTENDED | ENGINE-PARITY LAW (owner 2026-09-27): the REAL served schedule engine must catch hand-authored/MCP-seeded schedule fiction - seeded dependency violation corrected to the exact engine date in the served page, MCP reads (get_tasks vs /load predecessors contract) and apply_changes remediation queueing asserted. Self-contained (own wrangler + Chrome); born green 12/12 |
 
 ## T4 — headless Chrome against serve.cjs (:8765)
 

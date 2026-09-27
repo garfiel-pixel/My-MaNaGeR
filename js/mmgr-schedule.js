@@ -183,16 +183,50 @@ var MMGR = window.MMGR || {};
     return sched;
   }
 
+  // ---- Project deadline (owner 2026-09-27): the LAST step of the backward
+  // pass. Terminal tasks (no successors) get LF = min(deadline, projectEnd)
+  // instead of projectEnd alone, so a plan finishing BEFORE its committed date
+  // shows real terminal-chain float while everything else stays purely
+  // relational (float between linked tasks never changes, dates never change,
+  // the critical path never changes). A missed deadline returns early - the
+  // engine reports the overrun through the normal zero-float chain, never
+  // negative-float fiction. Sibling deadline, not the charter's aspirational
+  // targetCompletion (owner directive: the commitment lives with the engine).
+  function deadlineFor(tasks, sched) {
+    const s = ns.State.getState();
+    const dl = s && U.parseDL(s.projectDeadline);
+    if (!dl) return null;
+    const dlStr = U.fmtDate(dl);
+    const hasSucc = {};
+    (tasks || []).forEach(t => {
+      (t.predecessors || []).forEach(p => { hasSucc[p] = true; });
+    });
+    let terminalEF = null;
+    sched.forEach(rec => {
+      if (rec.ef && !hasSucc[rec.id] && (!terminalEF || rec.ef > terminalEF)) terminalEF = rec.ef;
+    });
+    // rec.ef is a Date; compare in STRING space (yyyy-mm-dd sorts lexically).
+    if (terminalEF && dlStr < U.fmtDate(terminalEF)) return null; // deadline missed: never rewrite history
+    return dlStr;
+  }
+
   // ---- Backward Pass (Late Start / Late Finish) ----
   // PURE with respect to tasks. Accepts the schedule array produced by
   // forwardPass (transient objects) and returns it annotated with lf/ls.
-  function backwardPass(tasks, sched) {
+  // deadline (optional, string yyyy-mm-dd): extends TERMINAL tasks' late
+  // finish so terminal chains earn float when the plan finishes early.
+  function backwardPass(tasks, sched, deadline) {
     const schedMap = toSchedMap(sched);
     let projectEnd = null;
     sched.forEach(rec => {
       if (rec.ef && (!projectEnd || rec.ef > projectEnd)) projectEnd = rec.ef;
     });
     if (!projectEnd) return sched;
+    // Normalize the deadline into Date space ONCE: rec.es/ef/lf and projectEnd
+    // are all Dates in this pass - a raw string here would coerce through
+    // toString and silently never compare equal (found by the deadline test).
+    const dlDate = deadline ? U.parseDL(deadline) : null;
+    if (dlDate && dlDate > projectEnd) projectEnd = dlDate;
 
     // Reverse dependency order so successors' ls are already computed.
     const ordered = topologicalSort(tasks).reverse();
@@ -209,19 +243,30 @@ var MMGR = window.MMGR || {};
           if (os && os.ls && (!minSuccLS || os.ls < minSuccLS)) minSuccLS = os.ls;
         }
       }
-      const lf = minSuccLS ? U.addWorkingDays(minSuccLS, -1) : projectEnd;
+      const lf = minSuccLS ? U.addWorkingDays(minSuccLS, -1)
+        : (dlDate && !hasSuccessor(schedMap, tasks, t.id) && rec.ef < dlDate ? dlDate : projectEnd);
       rec.lf = lf;
       rec.ls = U.addWorkingDays(lf, -(dur - 1));
     });
     return sched;
   }
 
+  // Any successor references this task id? (deadline float is terminal-only)
+  function hasSuccessor(schedMap, tasks, id) {
+    for (const other of tasks) {
+      if (other.predecessors && other.predecessors.length && other.predecessors.includes(id)) return true;
+    }
+    return false;
+  }
+
   // ---- Float Calculation ----
   // PURE with respect to tasks. Annotates the transient sched array.
+  // totalFloat keeps its sign: 0 = critical, positive = slack, NEGATIVE = the
+  // chain finishes past its LF (possible when a deadline pulls LF below EF).
   function calcFloat(tasks, sched) {
     const schedMap = toSchedMap(sched);
     sched.forEach(rec => {
-      rec.totalFloat = (rec.lf && rec.ef) ? U.workingDaysBetween(rec.ef, rec.lf) : null;
+      rec.totalFloat = (rec.lf && rec.ef) ? signAwareFloat(rec.ef, rec.lf) : null;
     });
     sched.forEach(rec => {
       if (!rec.ef) { rec.freeFloat = null; return; }
@@ -235,6 +280,13 @@ var MMGR = window.MMGR || {};
       rec.freeFloat = minSuccES ? (U.workingDaysBetween(rec.ef, minSuccES) - 1) : rec.totalFloat;
     });
     return sched;
+  }
+
+  // Sign-aware float: forward = working days of slack; reversed = NEGATIVE
+  // working days the chain is late by. workingDaysBetween is symmetric, so
+  // this decides the sign explicitly instead of assuming order.
+  function signAwareFloat(ef, lf) {
+    return ef <= lf ? U.workingDaysBetween(ef, lf) : -U.workingDaysBetween(lf, ef);
   }
 
   // ---- Weather helpers ----
@@ -324,7 +376,8 @@ var MMGR = window.MMGR || {};
     applyWeatherPadding(work, regionId, bufferDays || 5);
 
     let sched = forwardPass(work);
-    sched = backwardPass(work, sched);
+    const deadline = deadlineFor(work, sched);
+    sched = backwardPass(work, sched, deadline);
     sched = calcFloat(work, sched);
 
     // Phase roll-up: phase spans derive from their children's plan.
@@ -615,7 +668,8 @@ var MMGR = window.MMGR || {};
     // Pure computation on transient clones , live tasks stay untouched.
     const work = tasks.map(t => Object.assign({}, t));
     let sched = forwardPass(work);
-    sched = backwardPass(work, sched);
+    const deadline = deadlineFor(work, sched);
+    sched = backwardPass(work, sched, deadline);
     sched = calcFloat(work, sched);
     const schedMap = toSchedMap(sched);
 

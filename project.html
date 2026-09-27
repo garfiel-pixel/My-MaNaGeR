@@ -539,6 +539,7 @@
       <div class="card-title">Gantt Chart , Schedule View
         <div class="g6">
           <button class="btn btn-g btn-s" data-action="cascadeGantt" data-def="Cascade Dates"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> Cascade Dates</button>
+          <label class="wx-field" data-def="Project deadline - the engine gives terminal chains float when the plan finishes before it"><span class="t-xs">Deadline</span> <input type="date" id="deadline-input" data-action="setDeadline"></label>
           <button class="btn btn-o btn-s toggle-chip is-off" data-action="toggleCritical" data-def="Critical Path"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-target"></use></svg> Highlight Critical</button>
           <button class="btn btn-n btn-s" data-action="exportGanttPNG" title="Download a large print-ready PNG of the current schedule (baseline + critical path + weather hatching included)"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-printer"></use></svg> Export Chart</button>
         </div>

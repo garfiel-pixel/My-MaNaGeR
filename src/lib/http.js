@@ -596,7 +596,7 @@ export function cloudDeepEqual(a, b) {
 
 export const CLOUD_SECTIONS = {
   charter: { label: 'Charter', keys: ['projectName', 'methodology', 'methodologyLocked', 'charter'] },
-  wbs:     { label: 'WBS / Tasks', keys: ['tasks'] },
+  wbs:     { label: 'WBS / Tasks', keys: ['tasks', 'projectDeadline'] },
   res:     { label: 'Resources', keys: ['resources'] },
   bud:     { label: 'Budget', keys: ['budgetLines', 'budgetEnvelope', 'spendLog', 'nspid'] },
   stk:     { label: 'Stakeholders', keys: ['stakeholders'] },

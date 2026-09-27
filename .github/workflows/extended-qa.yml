@@ -166,6 +166,12 @@ jobs:
         # step below still reaps anything left over.
         run: node tools/qa-mcp-live-e2e.cjs
 
+      - name: "E-T3b: Engine parity over MCP-loaded state (self-contained)"
+        # Owner 2026-09-27 ("can't skip the engine"): the served engine must
+        # catch hand-authored schedule fiction. Self-contained like E-T3 -
+        # own wrangler dev + Chrome, seeded throwaway project + scoped key.
+        run: node tools/qa-engine-parity.cjs
+
       - name: "E-T4: Stop wrangler dev"
         if: always()
         run: |

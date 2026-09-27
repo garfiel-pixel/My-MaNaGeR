@@ -1347,6 +1347,13 @@ var MMGR = window.MMGR || {};
     const gl = $('gantt-labels');
     if (!gc) return;
 
+    // Deadline input mirrors state (owner 2026-09-27): keep the toolbar date
+    // picker in sync when the value arrives from cloud merge/restore instead
+    // of this device's typing. Never clobbers a value being typed: only
+    // writes when it actually differs.
+    const dl = $('deadline-input');
+    if (dl && dl.value !== (s.projectDeadline || '')) dl.value = s.projectDeadline || '';
+
     const tasks = s.tasks.filter(t => t.startDate && t.endDate);
     if (tasks.length === 0) {
       gc.innerHTML = '<div class="es"><div class="ic"><svg class="ico" style="font-size:2rem" aria-hidden="true"><use href="css/mmgr-icons.svg#i-bar-chart"></use></svg></div><div>Add tasks with dates to see the Gantt chart.</div><button class="btn btn-g btn-s" data-action="showSec" data-section="wbs">+ Add Task</button></div>';

@@ -261,6 +261,12 @@ var MMGR = window.MMGR || {};
       aiInbox: [],
       // Weather region driving selective schedule padding
       weatherRegion: 'northern-temperate',
+      // Project deadline (owner 2026-09-27): engine-side commitment date. The
+      // backward pass gives TERMINAL task chains float when the plan finishes
+      // before it; a missed deadline is clamped (never negative-float
+      // fiction). Cloud-saved with the WBS section; additive, no schema bump -
+      // same additive policy as weatherRegion/aiInbox.
+      projectDeadline: '',
       // ACTION-PLAN 7: Open-Meteo forecast , one-time geocode + TTL cache,
       // plus the weather-delay daily log and the LD contract rate.
       siteLat: null,
@@ -807,7 +813,7 @@ var MMGR = window.MMGR || {};
   // the current updatedAt (plus nested charter keys , those are edited as
   // subfields). The merge module (MMGR.Merge) reads these to decide
   // last-write-wins per field instead of replacing the whole document.
-  const FIELD_KEYS = ['projectName', 'methodology', 'workWeek', 'theme', 'crosshairOn', 'userName', 'charter', 'tasks', 'meetings', 'meetingPromises', 'activeMeeting', 'resources', 'budgetLines', 'budgetEnvelope', 'spendLog', 'stakeholders', 'risks', 'issues', 'changes', 'logEntries', 'commsEntries', 'documents', 'closure', 'raci', 'sprint', 'dailySnapshots', 'dmaic', 'baseline', 'weatherRegion', 'siteLat', 'siteLon', 'sitePlace', 'wxCache', 'weatherLog', 'ldRate', 'wxViewDays', 'wxWindow', 'kbShowLeadtime', 'hlCritical', 'dailySnapshot', 'focusMode', 'streak', 'sentimentHistory', 'scheduleSlips', 'slipCauses', 'digestSnapshot', 'aiOutputs', 'packs', 'packsCalloutDismissed', 'packsEverEnabled',
+  const FIELD_KEYS = ['projectName', 'methodology', 'workWeek', 'theme', 'crosshairOn', 'userName', 'charter', 'tasks', 'meetings', 'meetingPromises', 'activeMeeting', 'resources', 'budgetLines', 'budgetEnvelope', 'spendLog', 'stakeholders', 'risks', 'issues', 'changes', 'logEntries', 'commsEntries', 'documents', 'closure', 'raci', 'sprint', 'dailySnapshots', 'dmaic', 'baseline', 'weatherRegion', 'projectDeadline', 'siteLat', 'siteLon', 'sitePlace', 'wxCache', 'weatherLog', 'ldRate', 'wxViewDays', 'wxWindow', 'kbShowLeadtime', 'hlCritical', 'dailySnapshot', 'focusMode', 'streak', 'sentimentHistory', 'scheduleSlips', 'slipCauses', 'digestSnapshot', 'aiOutputs', 'packs', 'packsCalloutDismissed', 'packsEverEnabled',
     // MARKET-FEATURE-ROADMAP Section C registries (C1/C2/C3 shipped in
     // batch 1 , these were missing from the whitelist, so their per-field
     // timestamps were never stamped and cloud-merge conflict resolution

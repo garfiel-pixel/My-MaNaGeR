@@ -332,6 +332,96 @@ const FLUSH_RAF = `new Promise(r => requestAnimationFrame(() => requestAnimation
       check('D6 todo successor still schedules after the completed task', d6 && d6.moved === true && d6.succStart === '2026-09-21', d6 && { succStart: d6.succStart });
       await ev(`MMGR.Render.renderWbs();`);
 
+      // D7: PROJECT DEADLINE (owner 2026-09-27). The gantt toolbar date input
+      // feeds the engine's backward pass: terminal chains earn float when the
+      // plan finishes before the deadline; a missed deadline is clamped (no
+      // negative-float fiction, no date rewrites). Full wiring path asserted:
+      // DOM change event -> whitelist -> ACTION_MAP -> state -> engine.
+      const d7seed = await ev(`(function(){
+        MMGR.State.updateState(function(s){
+          s.tasks.push({ id:'dw7', name:'Deadline chain head', level:1, indent:1, isPhase:false,
+            status:'todo', startDate:'2026-09-14', endDate:'2026-09-16', duration:'3',
+            critical:false, leadTime:false, confidence:'high', predecessors:[], notes:'', weatherSensitive:false });
+          s.tasks.push({ id:'dw8', name:'Deadline chain tail', level:1, indent:1, isPhase:false,
+            status:'todo', startDate:'2026-09-17', endDate:'2026-09-18', duration:'2',
+            critical:false, leadTime:false, confidence:'high', predecessors:['dw7'], notes:'', weatherSensitive:false });
+        });
+        const r = MMGR.Schedule.cascade(null, { threshold: 100000 });
+        const t = MMGR.State.getState().tasks.find(x=>x.id==='dw8');
+        return { ran: r === true, start: t.startDate, end: t.endDate, tf: t.totalFloat };
+      })()`);
+      check('D7s deadline chain seeded and cascaded', d7seed && d7seed.ran === true && d7seed.start === '2026-09-17' && d7seed.end === '2026-09-18', d7seed);
+
+      // D7a: the REAL DOM path - set the input, fire change, state updates.
+      const d7a = await ev(`(function(){
+        const inp = document.getElementById('deadline-input');
+        if (!inp) return { found: false };
+        inp.value = '2026-09-30';
+        inp.dispatchEvent(new Event('change', { bubbles: true }));
+        return { found: true, state: MMGR.State.getState().projectDeadline };
+      })()`);
+      check('D7a deadline input change event reaches state (whitelist+map+handler)', d7a && d7a.found === true && d7a.state === '2026-09-30', d7a);
+
+      // D7b: deadline AFTER completion - terminal tail earns float, dates untouched.
+      const d7b = await ev(`(function(){
+        const t = MMGR.State.getState().tasks.find(x=>x.id==='dw8');
+        const before = { s: t.startDate, e: t.endDate };
+        const r = MMGR.Schedule.cascade(null, { threshold: 100000 });
+        const after = MMGR.State.getState().tasks.find(x=>x.id==='dw8');
+        return { ran: r === true, before: before,
+          tf: after.totalFloat, crit: after.critical,
+          s: after.startDate, e: after.endDate,
+          datesUntouched: before.s === after.startDate && before.e === after.endDate,
+          inputMirrors: (document.getElementById('deadline-input')||{}).value === '2026-09-30' };
+      })()`);
+      check('D7b deadline-after cascade ran', d7b && d7b.ran === true, d7b);
+      check('D7b terminal tail earns positive float under deadline', d7b && d7b.tf > 0 && d7b.crit === false, d7b && { tf: d7b.tf, crit: d7b.crit });
+      check('D7b dates never rewritten by the deadline', d7b && d7b.datesUntouched === true, d7b);
+      check('D7b toolbar input mirrors state after render', d7b && d7b.inputMirrors === true, d7b);
+
+      // D7c: deadline BEFORE completion - clamp guard. The deadline is
+      // earlier than terminal tasks' earliest finishes, so deadlineFor
+      // abandons it (never rewrites history) and the plan falls back to the
+      // pure relational pass: the END-DEFINING task reads TF 0 / critical
+      // (the overrun surfaces there), no negative float exists anywhere, and
+      // non-end-defining terminal tasks keep their relational float.
+      const d7c = await ev(`(function(){
+        MMGR.State.updateState(function(s){ s.projectDeadline = '2026-09-10'; });
+        const r = MMGR.Schedule.cascade(null, { threshold: 100000 });
+        const t = MMGR.State.getState().tasks.filter(x=>x.totalFloat!==null&&x.totalFloat!==undefined);
+        let endDefiner = null, minTF = Infinity;
+        for (const x of MMGR.State.getState().tasks) {
+          if (x.isPhase || !x.endDate) continue;
+          if (!endDefiner || x.endDate > endDefiner.endDate) endDefiner = x;
+          if (x.totalFloat !== null && x.totalFloat !== undefined) minTF = Math.min(minTF, x.totalFloat);
+        }
+        return { ran: r === true, endDefiner: endDefiner ? { name: endDefiner.name, tf: endDefiner.totalFloat, crit: endDefiner.critical } : null,
+                 minTF: minTF === Infinity ? null : minTF };
+      })()`);
+      check('D7c missed deadline clamps: end-defining task stays TF 0 critical (overrun surfaces)', d7c && d7c.ran === true && d7c.endDefiner && d7c.endDefiner.tf === 0 && d7c.endDefiner.crit === true, d7c);
+      check('D7c missed deadline: no negative float anywhere (clamp guard)', d7c && d7c.minTF !== null && d7c.minTF >= 0, d7c);
+      check('D7c missed deadline leaves dates alone', d7c && d7c.ran === true, d7c);
+
+      // D7d: clearing restores the pure no-deadline plan (float back to baseline).
+      const d7d = await ev(`(function(){
+        MMGR.State.updateState(function(s){ s.projectDeadline = ''; });
+        MMGR.Schedule.cascade(null, { threshold: 100000 });
+        const t = MMGR.State.getState().tasks.find(x=>x.id==='dw8');
+        return { tf: t.totalFloat, state: MMGR.State.getState().projectDeadline,
+                 inputCleared: (document.getElementById('deadline-input')||{}).value === '' };
+      })()`);
+      check('D7d clearing the deadline restores baseline float', d7d && d7d.tf === d7seed.tf && d7d.state === '', d7d);
+      check('D7d toolbar input clears with state', d7d && d7d.inputCleared === true, d7d);
+
+      // D7e: persistence - FIELD_KEYS registration carries it through save/load.
+      const d7e = await ev(`(function(){
+        MMGR.State.updateState(function(s){ s.projectDeadline = '2026-09-30'; });
+        MMGR.State.save(true);
+        const raw = JSON.parse(localStorage.getItem('mmgr_state_dwire') || '{}');
+        return { saved: raw.projectDeadline === '2026-09-30' };
+      })()`);
+      check('D7e projectDeadline persists through save (FIELD_KEYS)', d7e && d7e.saved === true, d7e);
+
       // D4: gantt drag commit keeps the invariant. Simulate the committed
       // move the same way the drag handler does (state-level), then verify
       // duration survives the start move.

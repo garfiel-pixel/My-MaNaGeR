@@ -1169,6 +1169,26 @@ var MMGR = window.MMGR || {};
   // ---- Weather Region ---- (extracted to js/app/weather.js)
   function setRegion(val) { if (ns.AppWeather && ns.AppWeather.setRegion) ns.AppWeather.setRegion(val); }
 
+  // ---- Project Deadline (owner 2026-09-27) ----
+  // Engine-side commitment date: the backward pass gives terminal chains
+  // float when the plan finishes before it (a missed deadline is clamped,
+  // never negative-float fiction). Sibling of weatherRegion's setter; the
+  // gantt toolbar date input carries data-action="setDeadline" and arrives
+  // through the same change-event delegation. Empty value clears the
+  // constraint. A cascade after the change re-stamps float/criticals; dates
+  // are NEVER rewritten by the deadline itself.
+  function setDeadline(val) {
+    ns.State.updateState(function(s) { s.projectDeadline = (val || '').trim(); });
+    const dl = (val || '').trim();
+    if (ns.Schedule && ns.Schedule.markCritical && ns.State.getState().tasks.length) {
+      try { ns.Schedule.markCritical(ns.Schedule.computePlan(ns.State.getState().weatherRegion, 5).sched); } catch (e) { /* zero-throw like the watchers */ }
+    }
+    if (ns.Render) { ns.Render.renderGantt(); if (ns.Render.renderDash) ns.Render.renderDash(); }
+    if (ns.App && ns.App.showToast) {
+      ns.App.showToast(dl ? ('Deadline set: ' + dl + ' - cascade to refresh float.') : 'Deadline cleared.', 'ok');
+    }
+  }
+
   // ---- Confirmation Dialog (replaces bare confirm() for destructive ops) ----
   // ---- Confirmation Dialog ---- (extracted to js/app/confirm.js)
   function askConfirm(opts) { if (ns.AppConfirm) ns.AppConfirm.askConfirm(opts); }
@@ -1663,6 +1683,7 @@ var MMGR = window.MMGR || {};
     redo: redo,
     updateUndoUi: updateUndoUi,
     setRegion: setRegion,
+    setDeadline: setDeadline,
     askConfirm: askConfirm,
     cfmOk: cfmOk,
     cfmCancel: cfmCancel,
@@ -2163,6 +2184,7 @@ window.MMGR = MMGR;
     'undo': () => window.MMGR.App.undo(),
     'redo': () => window.MMGR.App.redo(),
     'setRegion': (el) => window.MMGR.App.setRegion(el.value),
+    'setDeadline': (el) => window.MMGR.App.setDeadline(el.value),
     'cfmOk': () => window.MMGR.App.cfmOk(),
     'cfmCancel': () => window.MMGR.App.cfmCancel(),
     'keepMine': () => window.MMGR.App.keepMine(),
@@ -2575,7 +2597,7 @@ window.MMGR = MMGR;
     // field (Google OAuth Client ID) , it was missing from this change
     // whitelist, so the value sat in the box but was never persisted.
     // `change` is the correct event for a one-time paste/type-then-blur field.
-    if (handler && (action === 'updEnvelope' || action === 'saveSprint' || action === 'setWorkWeek' || action === 'setRegion' || action === 'loadProjectFile' || action === 'mergeProjectFile' || action === 'updCharter' || action === 'updClose' || action === 'setUserName' || action === 'addRaciTaskFromPicker' || action === 'addRaciPersonFromPicker' || action === 'updField' || action === 'updTaskField' || action === 'updKPI' || action === 'updKPILink' || action === 'updKPIDir' || action === 'updSpendEntry' || action === 'updRaciTask' || action === 'updRaciPerson' || action === 'claimSetCause' || action === 'aiSetTier' || action === 'setErrWebhook' || action === 'driveAutoInterval' || action === 'driveSetPass' || action === 'syncClientId' || action === 'bidPkgUpd' || action === 'bidSubUpd' || action === 'bidLineUpd' || action === 'bidAmount' || action === 'gonogoUpd' || action === 'gonogoCatUpd' || action === 'gonogoCritUpd' || action === 'updInspItem' || action === 'idFilePick')) {
+    if (handler && (action === 'updEnvelope' || action === 'saveSprint' || action === 'setWorkWeek' || action === 'setRegion' || action === 'setDeadline' || action === 'loadProjectFile' || action === 'mergeProjectFile' || action === 'updCharter' || action === 'updClose' || action === 'setUserName' || action === 'addRaciTaskFromPicker' || action === 'addRaciPersonFromPicker' || action === 'updField' || action === 'updTaskField' || action === 'updKPI' || action === 'updKPILink' || action === 'updKPIDir' || action === 'updSpendEntry' || action === 'updRaciTask' || action === 'updRaciPerson' || action === 'claimSetCause' || action === 'aiSetTier' || action === 'setErrWebhook' || action === 'driveAutoInterval' || action === 'driveSetPass' || action === 'syncClientId' || action === 'bidPkgUpd' || action === 'bidSubUpd' || action === 'bidLineUpd' || action === 'bidAmount' || action === 'gonogoUpd' || action === 'gonogoCatUpd' || action === 'gonogoCritUpd' || action === 'updInspItem' || action === 'idFilePick')) {
       handler(el, e);
     }
   });

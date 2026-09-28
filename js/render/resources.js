@@ -11,6 +11,11 @@ var MMGR = window.MMGR || {};
   const S = () => ns.State ? ns.State.getState() : null;
   const U = ns.Utils;
   const $ = U.$;
+  // B2 (audit 2026-09-28): R().renderResources() used an undeclared identifier.
+  // A load-time `const R = ns.Render` would capture undefined (this module
+  // loads at build position 47, BEFORE mmgr-render.js at 48), so capture
+  // lazily at call time — same convention as S above.
+  const R = () => ns.Render;
 
   function emptyStateRow(colspan, text, actionsHtml) {
     return '<tr><td colspan="' + colspan + '"><div class="es es-row">' +
@@ -251,7 +256,7 @@ var MMGR = window.MMGR || {};
       if (statusEl) statusEl.textContent = (r.queued ? 'Offline - link queued and will sync when back online.' : ('Link failed: ' + (r.error || 'unknown')));
     } else {
       const out = await P.refreshAndMerge();
-      R.renderResources();
+      R().renderResources();
       const toast = ns.App && ns.App.showToast ? ns.App.showToast : null;
       if (toast && out.ok) toast('Linked from pool' + (out.created ? ' - ' + out.created + ' resource(s) added.' : '.'), 'ok');
     }
@@ -263,7 +268,7 @@ var MMGR = window.MMGR || {};
     const r = await P.unlinkItem(id);
     const statusEl = overlay.querySelector('#pool-status');
     if (!r.ok && statusEl) statusEl.textContent = (r.queued ? 'Offline - unlink queued.' : ('Unlink failed: ' + (r.error || 'unknown')));
-    else R.renderResources();
+    else R().renderResources();
     poolLoadList(overlay);
   }
 
@@ -273,7 +278,7 @@ var MMGR = window.MMGR || {};
     if (nameEl) nameEl.textContent = 'Deleting…';
     const r = await P.deleteItem(id);
     if (nameEl) nameEl.textContent = r.ok ? 'Deleted from pool. Projects keep their local copy.' : (r.queued ? 'Offline - delete queued.' : ('Delete failed: ' + (r.error || 'unknown')));
-    R.renderResources();
+    R().renderResources();
     poolLoadList(overlay);
   }
 
@@ -290,7 +295,7 @@ var MMGR = window.MMGR || {};
     const linked = await P.linkItem(r.item.id);
     if (linked.ok) {
       await P.refreshAndMerge();
-      R.renderResources();
+      R().renderResources();
       const toast = ns.App && ns.App.showToast ? ns.App.showToast : null;
       if (toast) toast('Added "' + r.item.name + '" to the pool and linked it.', 'ok');
     }
@@ -306,7 +311,7 @@ var MMGR = window.MMGR || {};
     P.addRowToPool(res).then(function(r) {
       if (r && r.ok) { if (toast) toast('Added "' + (r.item.name || '') + '" to the Shared Resource Pool.', 'ok'); }
       else if (toast) toast((r && r.error) ? ('Add to pool failed: ' + r.error) : 'Add to pool failed (offline - row queued).', 'err');
-      R.renderResources();
+      R().renderResources();
     });
   }
 

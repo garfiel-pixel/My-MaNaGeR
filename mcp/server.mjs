@@ -239,6 +239,71 @@ async function listProjectsTool() {
   });
 }
 
+// B3 (audit 2026-09-28): the dispatch table called listCloudProjectsTool()
+// and chooseCloudProjectTool() but neither was defined — every call died
+// with a -32603 internal error. Implemented as thin wrappers over the
+// existing cloudListProjects()/cloudResolveProject() helpers, following the
+// same toolResult/toolError shapes as listProjectsTool above.
+async function listCloudProjectsTool() {
+  if (!CLOUD_MODE) {
+    return toolError('cloud mode is not configured — set MMGR_MCP_CLOUD_URL + MMGR_MCP_OWNER_CODE (or MMGR_MCP_EDITOR_CODE) to enable it.');
+  }
+  const list = await cloudListProjects();
+  if (!list.ok) return toolError(list.error);
+  const projects = list.projects || [];
+  const lines = [];
+  if (!projects.length) {
+    lines.push('No cloud projects reachable for this account.');
+  } else {
+    lines.push('Cloud projects (' + projects.length + ') via ' + CLOUD_URL + ':');
+    projects.forEach(p => {
+      const role = p.accessRole || 'unknown';
+      const label = p.name || p.label || '';
+      const extra = [role];
+      if (p.adoptedAt) extra.push('adopted ' + p.adoptedAt.slice(0, 10));
+      if (p.discontinued) extra.push('discontinued ' + (p.deletedAt ? p.deletedAt.slice(0, 10) : ''));
+      lines.push('  - ' + p.projectId + (label ? ' (' + label + ')' : '') + ' — ' + extra.join(', '));
+    });
+    lines.push('Use mmgr_choose_cloud_project to pick one, then pass its cloud id to the other tools.');
+  }
+  return toolResult(lines.join('\n'), { cloudMode: true, cloudUrl: CLOUD_URL, projects });
+}
+
+async function chooseCloudProjectTool(query) {
+  if (!CLOUD_MODE) {
+    return toolError('cloud mode is not configured — set MMGR_MCP_CLOUD_URL + MMGR_MCP_OWNER_CODE (or MMGR_MCP_EDITOR_CODE) to enable it.');
+  }
+  const r = await cloudResolveProject(query);
+  if (!r.ok) return toolError(r.error);
+  const p = r.project || {};
+  const s = r.state || {};
+  const h = Engine.computeHealth(s);
+  const e = Engine.computeEvm(s);
+  const tasks = s.tasks || [];
+  const chosen = {
+    projectId: p.projectId,
+    name: p.name || p.label || s.projectName || (s.charter && s.charter.name) || '(untitled)',
+    accessRole: p.accessRole || 'unknown',
+    adoptedAt: p.adoptedAt || null,
+    tasks: tasks.length,
+    tasksComplete: tasks.filter(t => t.status === 'completed').length,
+    overdue: tasks.filter(t => Engine.isOverdue(t.endDate) && t.status !== 'completed').length,
+    risks: (s.risks || []).length,
+    issues: (s.issues || []).length,
+    health: h ? h.score : null,
+    spi: e && e.spi !== null && e.spi !== undefined ? Number(e.spi.toFixed(2)) : null,
+    cpi: e && e.cpi !== null && e.cpi !== undefined ? Number(e.cpi.toFixed(2)) : null
+  };
+  const text = [
+    '**' + chosen.name + '** (cloud id: ' + chosen.projectId + ', ' + chosen.accessRole + ')',
+    '- Health: ' + chosen.health + '/100',
+    '- Tasks: ' + chosen.tasks + ' total · ' + chosen.tasksComplete + ' complete · ' + chosen.overdue + ' overdue',
+    '- Risks: ' + chosen.risks + ' · Issues: ' + chosen.issues,
+    'Pass projectId "' + chosen.projectId + '" as the project argument to the other tools.'
+  ].join('\n');
+  return toolResult(text, { chosen });
+}
+
 async function getProjectOverviewTool(project) {
   const p = await resolveProject(project);
   if (!p.ok) return toolError(p.error);
@@ -1411,8 +1476,7 @@ const TOOLS = [
   },
   {
     name: 'mmgr_propose_change',
-    description: 'Validate and stage a batch of write operations against a project. Returns a preview (before/after) and a single-use approval token. Does NOT modify the file — the owner must approve via mmgr_approve_change. Operations: task/risk/issue/resource/stakeholder/decision/document/bidPackage.add/update/delete, budgetLine.add/update/delete, change.update, charter.update, closure.update, sprint.update, spendLog.add, weatherLog.add, commsEntry.add, logEntry.add, dmaic.update, raci.update. Only whitelisted fields per record type (see mmgr_list_writable_fields).',
-    description: 'Validate and stage a batch of write operations against a project. Returns a preview (before/after) and a single-use approval token. Does NOT modify the file — the owner must approve via mmgr_approve_change. Operations: task.add/update/delete, risk.add/update/delete, issue.add/update/delete, budgetLine.add/update/delete, change.update, charter.update. Only whitelisted fields per record type (see mmgr_list_writable_fields).',
+    description: 'Validate and stage a batch of write operations against a project. Returns a preview (before/after) and a single-use approval token. Does NOT modify the file — the owner must approve via mmgr_approve_change. Operations: task/risk/issue/resource/stakeholder/decision/document/bidPackage/meeting.add/update/delete, budgetLine.add/update/delete, change.update, charter.update, closure.update, sprint.update, spendLog.add, weatherLog.add, commsEntry.add, logEntry.add, dmaic.update, raci.update. Only whitelisted fields per record type (see mmgr_list_writable_fields).',
     inputSchema: {
       type: 'object',
       properties: {

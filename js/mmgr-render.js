@@ -1362,6 +1362,22 @@ var MMGR = window.MMGR || {};
     const _tip = $('gantt-tip');
     if (_tip) _tip.classList.remove('vis');
 
+    // B8 (audit 2026-09-28): critical/float on live tasks only refreshed
+    // when setDeadline or a gantt drag ended, so date edits made elsewhere
+    // left both the gantt bars AND the PNG export stale. Recompute before
+    // painting — read-only annotation (dates never move), via the public
+    // pass sequence (ganttDragEnd's exact pattern; computePlan is NOT
+    // exported on ns.Schedule and would silently no-op in a catch).
+    if (ns.Schedule && ns.Schedule.forwardPass && ns.Schedule.markCritical && s.tasks.length) {
+      try {
+        const fresh = s.tasks.filter(x => x.startDate && x.endDate);
+        let sc = ns.Schedule.forwardPass(fresh);
+        sc = ns.Schedule.backwardPass(fresh, sc);
+        sc = ns.Schedule.calcFloat(fresh, sc);
+        ns.Schedule.markCritical(sc);
+      } catch (e) { /* zero-throw like the watchers */ }
+    }
+
     // Deadline input mirrors state (owner 2026-09-27): keep the toolbar date
     // picker in sync when the value arrives from cloud merge/restore instead
     // of this device's typing. Never clobbers a value being typed: only

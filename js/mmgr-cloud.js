@@ -2767,7 +2767,6 @@ var MMGR = window.MMGR || {};
     _probeLoad: probeLoad,
     _normalizeCode: normalizeCode,
     // Internal utilities exposed for extracted modules (js/cloud/*.js)
-    _pid: pid,
     _esc: esc,
     _setStatus: setStatus,
     _render: render,

@@ -1180,8 +1180,18 @@ var MMGR = window.MMGR || {};
   function setDeadline(val) {
     ns.State.updateState(function(s) { s.projectDeadline = (val || '').trim(); });
     const dl = (val || '').trim();
-    if (ns.Schedule && ns.Schedule.markCritical && ns.State.getState().tasks.length) {
-      try { ns.Schedule.markCritical(ns.Schedule.computePlan(ns.State.getState().weatherRegion, 5).sched); } catch (e) { /* zero-throw like the watchers */ }
+    if (ns.Schedule && ns.Schedule.forwardPass && ns.Schedule.markCritical && ns.State.getState().tasks.length) {
+      // B8 companion fix (audit 2026-09-28): this recompute silently no-oped
+      // since v323 — computePlan is not exported on ns.Schedule, so the call
+      // threw ReferenceError and the catch swallowed it. Public pass sequence
+      // instead (ganttDragEnd's pattern), read-only: dates never move.
+      try {
+        const fresh = ns.State.getState().tasks.filter(x => x.startDate && x.endDate);
+        let sc = ns.Schedule.forwardPass(fresh);
+        sc = ns.Schedule.backwardPass(fresh, sc);
+        sc = ns.Schedule.calcFloat(fresh, sc);
+        ns.Schedule.markCritical(sc);
+      } catch (e) { /* zero-throw like the watchers */ }
     }
     if (ns.Render) { ns.Render.renderGantt(); if (ns.Render.renderDash) ns.Render.renderDash(); }
     if (ns.App && ns.App.showToast) {
@@ -2498,7 +2508,6 @@ window.MMGR = MMGR;
     // Rank 4.5: Google identity is a device-level label, never a gate to
     // project data , signing in/out/dismissing never mutates project state.
     'syncConnect': 1, 'syncSignOut': 1, 'syncClientId': 1, 'syncDismissSuggest': 1,
-    'openSignIn': 1, 'closeSignIn': 1,
     // GOOGLE-DRIVE-BACKUP: backup is export-equivalent (reads the workspace,
     // writes Drive + a device pref) and the auto-interval + backup passphrase
     // are device-level preferences (localStorage / sessionStorage, never

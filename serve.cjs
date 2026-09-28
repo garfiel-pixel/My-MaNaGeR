@@ -113,7 +113,9 @@ const SECURITY_HEADERS = {
   'X-Content-Type-Options': 'nosniff',
   'X-Frame-Options': 'DENY',
   'Referrer-Policy': 'strict-origin-when-cross-origin',
-  'Permissions-Policy': 'camera=(), microphone=(self), geolocation=(), payment=(), usb=()',
+  // Mirrors worker.js: geolocation=(self) lets the project page's own
+  // "Use my current location" button reach navigator.geolocation.
+  'Permissions-Policy': 'camera=(), microphone=(self), geolocation=(self), payment=(), usb=()',
   'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
   'Cross-Origin-Opener-Policy': 'same-origin-allow-popups',
   'Cross-Origin-Resource-Policy': 'same-origin'

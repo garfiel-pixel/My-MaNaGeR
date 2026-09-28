@@ -1245,8 +1245,18 @@ body.readonly-mode .btn[data-action]:not([data-action="showSec"]):not([data-acti
 @media (prefers-reduced-motion:reduce){.bs-spin{animation:none;}}
 
 /* ---- Kanban ---- */
-.kb{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;align-items:start;}
-.kcol{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);min-height:380px;}
+.kb{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;align-items:stretch;}
+/* OWNER 2026-09-28: every column shares the tallest sibling's height
+   (grid stretch) and the card area fills the remainder, so a packed To Do
+   column no longer towers over empty ones; empty space inside a column is
+   a live drop target for pulling work out of the packed lane. */
+.kcol{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);min-height:380px;display:flex;flex-direction:column;}
+.kcol>.kcc{flex:1 1 auto;}
+/* Drop-target emphasis while a card is being dragged anywhere: the whole
+   board leans in (borders), the hovered column tints - dropping into any
+   column or the Lead-Time lane is always visible. .kb.is-dragging is
+   toggled by the document dragstart/dragend listeners. */
+.kb.is-dragging .kcol{border-color:color-mix(in oklch,var(--gold) 45%,var(--border));border-style:dashed;}
 .kch{padding:12px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
 .kct{font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;}
 .col-todo .kct{color:var(--slate);}.col-ip .kct{color:var(--gold);}.col-bl .kct{color:var(--danger);}.col-dn .kct{color:var(--green);}

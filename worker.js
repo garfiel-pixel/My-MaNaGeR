@@ -72,7 +72,10 @@ const HEADERS = {
   'X-Content-Type-Options': 'nosniff',
   'X-Frame-Options': 'DENY',
   'Referrer-Policy': 'strict-origin-when-cross-origin',
-  'Permissions-Policy': 'camera=(), microphone=(self), geolocation=(), payment=(), usb=()',
+  // OWNER 2026-09-28: geolocation=(self) - the wxUseLocation button calls
+  // navigator.geolocation on OUR page; the old blanket () blocked it in
+  // every browser and the button could only ever error.
+  'Permissions-Policy': 'camera=(), microphone=(self), geolocation=(self), payment=(), usb=()',
   'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
   'Cross-Origin-Opener-Policy': 'same-origin-allow-popups',
   'Cross-Origin-Resource-Policy': 'same-origin'

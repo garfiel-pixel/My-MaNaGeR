@@ -1309,6 +1309,17 @@ var MMGR = window.MMGR || {};
   // ---- Kanban ----
   let dragTaskId = null;
 
+  // OWNER 2026-09-28: dragend fires on the drag SOURCE element. A successful
+  // drop re-renders the board, which detaches that element, so the event
+  // never bubbles to document and the dragend cleanup would never run -
+  // the board's is-dragging highlight would stick on. Drop paths call this
+  // explicitly; dragend still covers cancelled/failed drags (source stays
+  // attached there, so its dragend does reach document).
+  function endBoardDrag() {
+    const board = document.querySelector('.kb');
+    if (board) board.classList.remove('is-dragging');
+  }
+
   function dragCard(ev, taskId) {
     // VIEW-ONLY HARDENING (owner 2026-09-12): a read-only session must never
     // move a card. The DnD listeners below are plain document-level events,
@@ -1348,12 +1359,18 @@ var MMGR = window.MMGR || {};
       ns.State.updateState(function(s) {
         const task = (s.tasks || []).find(t => t.id === dragTaskId);
         if (task) task.status = status;
+        // OWNER 2026-09-28: a card that enters a status column LEAVES the
+        // Lead-Time lane. The old render kept it in both places, so dragging
+        // it out changed nothing and dropping it back toggled leadTime off -
+        // the card silently vanished from the lane.
+        if (task) task.leadTime = false;
       });
       R.renderKanban();
       R.renderWbs();
       R.renderDash();
     }
     dragTaskId = null;
+    endBoardDrag();
     document.querySelectorAll('.kcol').forEach(c => c.classList.remove('dov'));
   }
 
@@ -1369,7 +1386,10 @@ var MMGR = window.MMGR || {};
     if (dragTaskId) {
       ns.State.updateState(function(s) {
         const task = (s.tasks || []).find(t => t.id === dragTaskId);
-        if (task) task.leadTime = !task.leadTime;
+        // OWNER 2026-09-28: idempotent add, no toggle. Toggling made the
+        // out-and-back dance silently REMOVE the lead-time flag (the
+        // vanishing card); a lane drop now always means "keep it lead-time".
+        if (task) task.leadTime = true;
       });
       // Interaction re-audit: toggling lead-time changes the WBS row (LT badge
       // + submitted/expected inputs) and the Dashboard's Lead-Time Tracker , 
@@ -1381,6 +1401,7 @@ var MMGR = window.MMGR || {};
     dragTaskId = null;
     // Symmetry with dropCard: clear any lingering drop-highlight styling on
     // the columns after a lead-time drop.
+    endBoardDrag();
     document.querySelectorAll('.kcol').forEach(c => c.classList.remove('dov'));
   }
 
@@ -1695,6 +1716,7 @@ var MMGR = window.MMGR || {};
     tglLeadtimeLane: tglLeadtimeLane,
     dragCard: dragCard,
     dropCard: dropCard,
+    endBoardDrag: endBoardDrag,
     dropCardLeadtime: dropCardLeadtime,
     populateSprint: populateSprint,
     openPrompt: openPrompt,
@@ -2687,7 +2709,21 @@ window.MMGR = MMGR;
     const el = e.target.closest('[data-drag-id]');
     if (el) {
       window.MMGR.App.dragCard(e, el.getAttribute('data-drag-id'));
+      // OWNER 2026-09-28 (kanban drop-targets): while a card is airborne,
+      // light up every drop destination on the board and lift the dragged
+      // card. dragend (fires even on cancelled drops) cleans up.
+      const board = document.querySelector('.kb');
+      if (board) {
+        board.classList.add('is-dragging');
+        el.classList.add('drag');
+      }
     }
+  });
+
+  document.addEventListener('dragend', function(e) {
+    window.MMGR.App.endBoardDrag();
+    const el = e.target && e.target.closest ? e.target.closest('[data-drag-id]') : null;
+    if (el) el.classList.remove('drag');
   });
 
   document.addEventListener('dragover', function(e) {

@@ -1826,7 +1826,7 @@ var MMGR = window.MMGR || {};
     h.addEventListener('dblclick', function () {
       win.style.width = AI_SIZE_DEFAULT_W + 'px';
       try { localStorage.removeItem(AI_SIZE_KEY); } catch (e) { /* ignore */ }
-      _toast('Panel width reset to default.', 'ok');
+      toast('Panel width reset to default.', 'ok');
     });
   })();
 

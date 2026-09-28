@@ -337,11 +337,6 @@ var MMGR = window.MMGR || {};
     /* BUG #7: time constants - single source of truth for ms/day */
     MS_PER_DAY: 86400000,
 
-    /* BUG #4: consistent date formatting */
-    fmtDate: function(d) {
-      d = d instanceof Date ? d : new Date(d);
-      return isNaN(d) ? '' : d.toISOString().slice(0, 10);
-    },
     fmtDateLocal: function(d) {
       d = d instanceof Date ? d : new Date(d);
       return isNaN(d) ? '' : d.toLocaleDateString('en-US', {year:'numeric',month:'short',day:'numeric'});

@@ -19,6 +19,9 @@
      W5  approve refuses when the file changed on disk (stale)
      W6  revert restores the pre-change state + logs a revert row
      W7  changelog entries carry the cloud shape (diffs_json)
+     C1  mmgr_list_cloud_projects answers (clean toolError when cloud off)
+     C2  mmgr_choose_cloud_project answers (clean toolError when cloud off)
+     C3  mmgr_propose_change has ONE description listing meeting ops (B4)
    Run: node mcp/qa-mcp.cjs   (from repo root)
    ============================================================ */
 
@@ -151,6 +154,25 @@ async function main() {
 
   const wxl = await c.rpc('tools/call', { name: 'mmgr_get_weather_log', arguments: {} });
   check('R17 get_weather_log returns entries array', Array.isArray(wxl.structuredContent.entries), wxl);
+
+  // C1-C3 (B3/B4 audit fixes 2026-09-28): the two cloud tools were advertised
+  // in tools/list but undefined in the dispatch (every call died with a
+  // -32603 internal error), and mmgr_propose_change carried a duplicate
+  // description key whose stale copy won. Cloud-off QA asserts the clean
+  // deterministic toolError; a live cloud round-trip needs real creds.
+  const clp = await c.rpc('tools/call', { name: 'mmgr_list_cloud_projects', arguments: {} });
+  check('C1 list_cloud_projects answers (clean toolError when cloud off)',
+    clp.isError === true && /cloud mode is not configured/.test(clp.content[0].text), clp);
+
+  const ccp = await c.rpc('tools/call', { name: 'mmgr_choose_cloud_project', arguments: { query: 'riverwalk' } });
+  check('C2 choose_cloud_project answers (clean toolError when cloud off)',
+    ccp.isError === true && /cloud mode is not configured/.test(ccp.content[0].text), ccp);
+
+  const propose = list.tools.find(t => t.name === 'mmgr_propose_change');
+  const srcDesc = fs.readFileSync(SERVER, 'utf8');
+  const descKeyCount = (srcDesc.match(/description: 'Validate and stage a batch/g) || []).length;
+  check('C3 propose_change has ONE description listing meeting ops (B4 dedup)',
+    descKeyCount === 1 && propose && /meeting\.add\/update\/delete/.test(propose.description) && /closure\.update/.test(propose.description), { descKeyCount, desc: propose && propose.description });
 
   const wOff = await c.rpc('tools/call', { name: 'mmgr_propose_change', arguments: { operations: [{ op: 'task.update', id: 't-2', status: 'completed' }] } });
   check('W1 write tools gated off without MMGR_MCP_ALLOW_WRITES=1',

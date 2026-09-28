@@ -42,10 +42,10 @@ const WORK = {
   excav:      { group: 'Groundworks', d1: 'Length (m)', d2: 'Width (m)', d3: 'Depth (m)',
     q: (a, b, c) => ({ qty: a * b * c * 1.25, unit: 'm3', qtyLabel: 'Excavated volume (incl. 1.25 bulking)' }),
     rate: { mat: 2, lab: 14 }, matDesc: 'Cart-away / disposal' },
-  slab:       { group: 'Groundworks', d1: 'Length (m)', d2: 'Width (m)', d3: 'Thickness (mm)',
+  slab:       { group: 'Groundworks', d1: 'Length (m)', d2: 'Width (m)', d3: 'Thickness (mm)', piece: { priceLabel: 'Price per bag of mix', sizeLabel: 'Bag yield (litres)', single: true, div: 'volume', qtyUnit: 'm3', ph: 'e.g. 9200 per bag', phSize: 'e.g. 20' },
     q: (a, b, c) => ({ qty: a * b * (c / 1000) * 1.05, unit: 'm3', qtyLabel: 'Concrete (incl. 5% waste)' }),
     rate: { mat: 150, lab: 85 }, matDesc: 'C20/25 ready-mix, mesh, vapor barrier' },
-  footings:   { group: 'Groundworks', d1: 'Total run (m)', d2: 'Width (mm)', d3: 'Depth (mm)',
+  footings:   { group: 'Groundworks', d1: 'Total run (m)', d2: 'Width (mm)', d3: 'Depth (mm)', piece: { priceLabel: 'Price per bag of mix', sizeLabel: 'Bag yield (litres)', single: true, div: 'volume', qtyUnit: 'm3', ph: 'e.g. 9200 per bag', phSize: 'e.g. 20' },
     q: (a, b, c) => ({ qty: a * (b / 1000) * (c / 1000) * 1.05, unit: 'm3', qtyLabel: 'Concrete (incl. 5% waste)' }),
     rate: { mat: 155, lab: 90 }, matDesc: 'C20/25, rebar cage allowance' },
   blockwall:  { group: 'Structure', d1: 'Length (m)', d2: 'Height (m)', d3: null, piece: { priceLabel: 'Price per block', sizeLabel: 'Block size - length x height (cm)', unit: 'cm', div: 'area', ph: 'e.g. 800 per block', phSize: 'e.g. 40 x 20' },
@@ -66,7 +66,7 @@ const WORK = {
   render:     { group: 'Envelope', d1: 'Length (m)', d2: 'Height (m)', d3: null,
     q: (a, b) => ({ qty: a * b, unit: 'm2', qtyLabel: 'Rendered area' }),
     rate: { mat: 11, lab: 19 }, matDesc: 'Two-coat render, bead, primer' },
-  paint:      { group: 'Envelope', d1: 'Length (m)', d2: 'Height (m)', d3: null,
+  paint:      { group: 'Envelope', d1: 'Length (m)', d2: 'Height (m)', d3: null, piece: { priceLabel: 'Price per container', sizeLabel: 'Container yield (litres)', single: true, div: 'volume', qtyUnit: 'L', ph: 'e.g. 9000 per gallon-can', phSize: 'e.g. 3.785' },
     q: (a, b) => ({ qty: a * b * 2 / 10, unit: 'L', qtyLabel: 'Paint (2 coats at 10 m2/L)' }),
     rate: { mat: 14, lab: 11 }, matDesc: 'Emulsion, primer, rollers' },
   drywall:    { group: 'Envelope', d1: 'Length (m)', d2: 'Height (m)', d3: null,
@@ -75,7 +75,7 @@ const WORK = {
   tile:       { group: 'Finishes', d1: 'Length (m)', d2: 'Width (m)', d3: null, piece: { priceLabel: 'Price per tile', sizeLabel: 'Tile size - width x length (cm)', unit: 'cm', div: 'area', ph: 'e.g. 950 per tile', phSize: 'e.g. 30 x 60' },
     q: (a, b) => ({ qty: a * b * 1.1, unit: 'm2', qtyLabel: 'Tiles (incl. 10% cuts/waste)' }),
     rate: { mat: 24, lab: 32 }, matDesc: 'Tiles, adhesive, grout, trim' },
-  'concrete-drive': { group: 'Finishes', d1: 'Length (m)', d2: 'Width (m)', d3: 'Thickness (mm)',
+  'concrete-drive': { group: 'Finishes', d1: 'Length (m)', d2: 'Width (m)', d3: 'Thickness (mm)', piece: { priceLabel: 'Price per bag of mix', sizeLabel: 'Bag yield (litres)', single: true, div: 'volume', qtyUnit: 'm3', ph: 'e.g. 9200 per bag', phSize: 'e.g. 20' },
     q: (a, b, c) => ({ qty: a * b * (c / 1000) * 1.05, unit: 'm3', qtyLabel: 'Concrete (incl. 5% waste)' }),
     rate: { mat: 145, lab: 75 }, matDesc: 'C25/30 air-entrained, mesh, cure' },
   fencing:    { group: 'Finishes', d1: 'Total run (m)', d2: 'Height (m)', d3: null, piece: { priceLabel: 'Price per panel', sizeLabel: 'Panel size - width x height (m)', unit: 'm', div: 'width', ph: 'e.g. 9500 per panel', phSize: 'e.g. 2.5 x 1.8' },
@@ -213,26 +213,38 @@ function compute() {
   const mr = matOverride ? matRaw : modelMr;
   const lr = labOverride ? labRaw : w.rate.lab;
   // F4b per-piece pricing: price-per-piece + piece size becomes the
-  // effective material rate. Area trades (tile, block, brick, roof sheets)
-  // divide price by piece AREA -> rate per m2. Run-meter trades (fencing)
-  // divide by panel WIDTH -> rate per run-meter. Piece sizes are entered in
-  // the spec unit (cm, or m for sheet/panel trades); imperial entry converts
-  // inches->cm and ft->m before the division.
+  // effective material rate. Three divisors: AREA (tile, block, brick,
+  // roof sheets) -> price / piece area = rate per m2; WIDTH (fencing
+  // panels) -> price / panel width = rate per run-meter; VOLUME (concrete
+  // bags, paint containers) -> price / yield in litres = rate per litre,
+  // which multiplies the litre/m3 quantity directly. Single-value specs
+  // (bag yield) take one number, not a W x L pair; imperial entry converts
+  // in->cm / ft->m for dimensioned specs (yield specs are unit-free).
   let piece = null;
   const pieceRaw = parseFloat(($('calc-piece-price') || {}).value);
   if (w.piece && isFinite(pieceRaw) && pieceRaw > 0) {
+    const spec = w.piece;
     const sizeStr = (($('calc-piece-size') || {}).value || '').trim();
-    const m = sizeStr.match(/^([\d.]+)\s*(?:x|by|\*)\s*([\d.]+)$/i);
-    if (m) {
-      const spec = w.piece;
-      const conv = _units === 'imperial' ? (spec.unit === 'm' ? FT : FT * 100) : 1;
-      const a = parseFloat(m[1]) * conv, b = parseFloat(m[2]) * conv;
-      if (a > 0 && b > 0) {
-        if (spec.div === 'width') {
-          piece = { w: a, l: b, unit: spec.unit, div: 'width', price: pieceRaw, perUnit: pieceRaw / a };
-        } else {
-          const areaM2 = spec.unit === 'm' ? a * b : (a / 100) * (b / 100);
-          piece = { w: a, l: b, unit: spec.unit, div: 'area', price: pieceRaw, areaM2: areaM2, perUnit: pieceRaw / areaM2 };
+    if (spec.div === 'volume') {
+      const yieldL = parseFloat(sizeStr);
+      if (isFinite(yieldL) && yieldL > 0) {
+        // Match the quantity's unit: m3 trades need $/m3 (price x 1000 /
+        // yield), litre trades need $/L (price / yield).
+        const perUnit = spec.qtyUnit === 'm3' ? pieceRaw * 1000 / yieldL : pieceRaw / yieldL;
+        piece = { w: yieldL, l: null, unit: 'L', qtyUnit: spec.qtyUnit, div: 'volume', price: pieceRaw, perUnit: perUnit };
+      }
+    } else {
+      const m = sizeStr.match(/^([\d.]+)\s*(?:x|by|\*)\s*([\d.]+)$/i);
+      if (m) {
+        const conv = _units === 'imperial' ? (spec.unit === 'm' ? FT : FT * 100) : 1;
+        const a = parseFloat(m[1]) * conv, b = parseFloat(m[2]) * conv;
+        if (a > 0 && b > 0) {
+          if (spec.div === 'width') {
+            piece = { w: a, l: b, unit: spec.unit, div: 'width', price: pieceRaw, perUnit: pieceRaw / a };
+          } else {
+            const areaM2 = spec.unit === 'm' ? a * b : (a / 100) * (b / 100);
+            piece = { w: a, l: b, unit: spec.unit, div: 'area', price: pieceRaw, areaM2: areaM2, perUnit: pieceRaw / areaM2 };
+          }
         }
       }
     }
@@ -341,7 +353,9 @@ function estimateCsv(r) {
     ['Units entered', _units],
     ['Material rate used', r.piece ? (Math.round(r.effMat * 100) / 100) + ' per m2 (from piece pricing)' : Math.round(r.mr)],
     ['Labor rate used', Math.round(r.lr)],
-    ['Piece pricing', r.piece ? r.piece.price + ' per ' + Math.round(r.piece.w) + ' x ' + Math.round(r.piece.l) + ' ' + r.piece.unit + (r.piece.div === 'width' ? ' (per ' + (Math.round(r.piece.perUnit * 100) / 100) + '/m)' : ' (per ' + (Math.round(r.piece.perUnit * 100) / 100) + '/m2)') : 'no'],
+    ['Piece pricing', r.piece ? (r.piece.div === 'volume'
+        ? r.piece.price + ' per ' + r.piece.w + ' L yield (per ' + (Math.round(r.piece.perUnit * 100) / 100) + '/' + r.piece.qtyUnit + ')'
+        : r.piece.price + ' per ' + Math.round(r.piece.w) + ' x ' + Math.round(r.piece.l) + ' ' + r.piece.unit + (r.piece.div === 'width' ? ' (per ' + (Math.round(r.piece.perUnit * 100) / 100) + '/m)' : ' (per ' + (Math.round(r.piece.perUnit * 100) / 100) + '/m2)')) : 'no'],
     ['Materials', Math.round(r.mat)],
     ['Labor', Math.round(r.lab)],
     ['Subtotal', Math.round(r.sub)],
@@ -395,11 +409,18 @@ function render() {
   const pieceNarr = r.piece
     ? (r.piece.div === 'width'
         ? (Math.round(r.piece.perUnit * 100) / 100).toLocaleString() + '/m of run'
+        : r.piece.div === 'volume'
+        ? (Math.round(r.piece.perUnit * 100) / 100).toLocaleString() + '/' + r.piece.qtyUnit
         : (Math.round(r.piece.perUnit * 100) / 100).toLocaleString() + '/m2')
     : null;
+  const pieceDesc = r.piece
+    ? (r.piece.div === 'volume'
+        ? r.piece.price.toLocaleString() + ' per ' + r.piece.w + ' L yield = ' + pieceNarr
+        : r.piece.price.toLocaleString() + ' / ' +
+          (_units === 'imperial' ? Math.round(r.piece.w / 2.54) + ' x ' + Math.round(r.piece.l / 2.54) + ' in' : r.piece.w + ' x ' + r.piece.l + ' ' + r.piece.unit) + ' = ' + pieceNarr)
+    : null;
   const matLabel = r.piece
-    ? 'Materials - priced per piece at ' + r.piece.price.toLocaleString() + ' / ' +
-      (_units === 'imperial' ? Math.round(r.piece.w / 2.54) + ' x ' + Math.round(r.piece.l / 2.54) + ' in' : r.piece.w + ' x ' + r.piece.l + ' ' + r.piece.unit) + ' = ' + pieceNarr
+    ? 'Materials - priced per piece at ' + pieceDesc
     : 'Materials' + (r.matOverridden ? ' - your rate' : '');
   out.innerHTML =
     '<div class="calc-sum">' +
@@ -649,8 +670,12 @@ function refreshRateFields() {
   if (pw) pw.hidden = !w.piece;
   if (w.piece && priceEl && sizeEl) {
     $('calc-piece-price-label').textContent = w.piece.priceLabel;
-    $('calc-piece-size-label').textContent = _units === 'imperial'
-      ? w.piece.sizeLabel.replace('(cm)', '(in)').replace('(m)', '(ft)') : w.piece.sizeLabel;
+    // Volume specs take a single yield number (unit-free - a 20 L bag is a
+    // 20 L bag in any unit system); dimensioned specs convert cm->in, m->ft.
+    $('calc-piece-size-label').textContent = w.piece.div === 'volume'
+      ? w.piece.sizeLabel
+      : (_units === 'imperial'
+        ? w.piece.sizeLabel.replace('(cm)', '(in)').replace('(m)', '(ft)') : w.piece.sizeLabel);
     if (!priceEl.placeholder || priceEl.dataset.phWork !== key) {
       priceEl.placeholder = w.piece.ph;
       sizeEl.placeholder = w.piece.phSize;
@@ -658,7 +683,14 @@ function refreshRateFields() {
     }
   }
   const hint = $('calc-piece-hint');
-  if (hint) hint.hidden = !w.piece;
+  if (hint) {
+    hint.hidden = !w.piece;
+    if (w.piece) {
+      hint.textContent = w.piece.div === 'volume'
+        ? 'Enter the bag or container yield and its price - the estimate prices the exact quantity needed (concrete in m3, paint in litres).'
+        : 'Leave empty to price by the square meter with the rate above. Fill it in to price by the piece.';
+    }
+  }
 }
 
 // Live labels follow the work item (the floating calculator's spirit, page form).

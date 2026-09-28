@@ -57,6 +57,13 @@
      RS3  quick-picker select applies
      RS4  delete removes the sheet
 
+   F4d VOLUME PIECE PRICING (owner 2026-09-28: per bag of mix, per gallon):
+     V1   slab per-bag: 9,200/bag over 20 L yield -> 460,000/m3 exact
+     V2   paint per-gallon-can: 9,000 / 3.785 L -> 2,377.81/L exact
+     V3   bag/paint rows show on concrete+paint, hidden on tile
+     V4   invalid yield falls back to the m2-model rate (no crash)
+     V5   yield survives imperial (unit-free) + imperial dims recompute
+
    Usage:  node tools/qa-calculator-page.cjs   (needs serve.cjs on :8765)
    Registry: CI-TEST-COVERAGE.md -> CI row (fast, serve.cjs battery).
    ============================================================ */
@@ -397,9 +404,10 @@ async function withChrome(fn) {
     const r5b = await ev(`(function(){
       document.getElementById('calc-work').value = 'slab';
       document.getElementById('calc-work').dispatchEvent(new Event('change',{bubbles:true}));
-      return { hidden: document.getElementById('calc-piece-wrap').hidden };
+      var lbl = document.getElementById('calc-piece-price-label').textContent;
+      return { visible: !document.getElementById('calc-piece-wrap').hidden, bagLbl: lbl };
     })()`);
-    check('R5 piece row hides on slab, showed on tile', r45 && r45.pieceVisible && r5b && r5b.hidden, r5b);
+    check('R5 piece row follows the trade: area on tile, bag-yield on slab', r45 && r45.pieceVisible && r5b && r5b.visible && /bag/i.test(r5b.bagLbl), r5b);
 
     // E1: exact recall identity - run with a full settings set, disturb
     // everything, recall, and require the ENTIRE st object back.
@@ -541,6 +549,75 @@ async function withChrome(fn) {
       return { left: raw.length, empty: !!document.querySelector('#calc-sheets .calc-empty') };
     })()`);
     check('RS4 delete removes the sheet + shows empty state', rs4 && rs4.left===0 && rs4.empty, rs4);
+
+    // ---------- F4d: VOLUME PIECE PRICING ----------
+    // V1: concrete per bag. 10x8x0.15m slab with 5% waste = 12.6 m3.
+    // 9,200 per 20 L bag -> 9,200 x 1000 / 20 = 460,000/m3.
+    const v1 = await ev(`(function(){
+      document.querySelector('[data-action="calcUnits"][data-units="metric"]').click();
+      document.getElementById('calc-work').value='slab';
+      document.getElementById('calc-work').dispatchEvent(new Event('change',{bubbles:true}));
+      document.getElementById('calc-d1').value='10'; document.getElementById('calc-d2').value='8'; document.getElementById('calc-d3').value='150';
+      document.getElementById('calc-piece-price').value='9200'; document.getElementById('calc-piece-size').value='20';
+      document.getElementById('calc-d1').dispatchEvent(new Event('input',{bubbles:true}));
+      var t=document.getElementById('calc-output').textContent;
+      return { per: t.indexOf('460,000/m3') > -1, narr: t.indexOf('per 20 L yield') > -1, vis: !document.getElementById('calc-piece-wrap').hidden };
+    })()`);
+    check('V1 slab per-bag 9,200 / 20 L -> 460,000/m3 exact', v1 && v1.per && v1.narr && v1.vis, v1);
+
+    // V2: paint per gallon-can. 10x8 wall, 2 coats = 16 L. 9,000 per
+    // 3.785 L (US gallon) -> 9,000 / 3.785 = 2,377.809... -> 2,377.81/L.
+    const v2 = await ev(`(function(){
+      document.getElementById('calc-work').value='paint';
+      document.getElementById('calc-work').dispatchEvent(new Event('change',{bubbles:true}));
+      document.getElementById('calc-d1').value='10'; document.getElementById('calc-d2').value='8';
+      document.getElementById('calc-piece-price').value='9000'; document.getElementById('calc-piece-size').value='3.785';
+      document.getElementById('calc-d1').dispatchEvent(new Event('input',{bubbles:true}));
+      var t=document.getElementById('calc-output').textContent;
+      return { per: t.indexOf('2,377.81/L') > -1, narr: t.indexOf('per 3.785 L yield') > -1 };
+    })()`);
+    check('V2 paint per gallon-can 9,000 / 3.785 L -> 2,377.81/L exact', v2 && v2.per && v2.narr, v2);
+
+    // V3: volume rows show on concrete + paint, hide on area trades.
+    const v3 = await ev(`(function(){
+      var onSlab = !document.getElementById('calc-piece-wrap').hidden;
+      document.getElementById('calc-work').value='tile';
+      document.getElementById('calc-work').dispatchEvent(new Event('change',{bubbles:true}));
+      var onTile = !document.getElementById('calc-piece-wrap').hidden;
+      var tileLbl = document.getElementById('calc-piece-price-label').textContent;
+      document.getElementById('calc-work').value='footings';
+      document.getElementById('calc-work').dispatchEvent(new Event('change',{bubbles:true}));
+      var onFoot = !document.getElementById('calc-piece-wrap').hidden;
+      var footLbl = document.getElementById('calc-piece-price-label').textContent;
+      document.getElementById('calc-work').value='slab';
+      document.getElementById('calc-work').dispatchEvent(new Event('change',{bubbles:true}));
+      return { onSlab: onSlab, onTile: onTile, tileLbl: tileLbl, onFoot: onFoot, footLbl: footLbl };
+    })()`);
+    check('V3 volume rows on slab/footings, area rows on tile, labels follow', v3 && v3.onSlab && v3.onTile && v3.onFoot && /bag/.test(v3.footLbl) && /tile/i.test(v3.tileLbl), v3);
+
+    // V4: an invalid yield silently falls back to the model rate.
+    const v4 = await ev(`(function(){
+      document.getElementById('calc-piece-price').value='9200'; document.getElementById('calc-piece-size').value='abc';
+      document.getElementById('calc-piece-price').dispatchEvent(new Event('input',{bubbles:true}));
+      var t=document.getElementById('calc-output').textContent;
+      var matMod = t.indexOf('Materials$') > -1 || t.indexOf('Materials \u0024') > -1;
+      return { noPiece: t.indexOf('per') === -1 || matMod, noThrow: t.length > 10 };
+    })()`);
+    check('V4 invalid yield -> clean model-rate fallback, no crash', v4 && v4.noPiece && v4.noThrow, v4);
+
+    // V5: switching to imperial keeps the yield (unit-free) and the math
+    // converts the DIMENSIONS (ft) before the volume is computed.
+    const v5 = await ev(`(function(){
+      document.getElementById('calc-piece-size').value='20';
+      document.querySelector('[data-action="calcUnits"][data-units="imperial"]').click();
+      var lbl=document.getElementById('calc-d1-label').textContent;
+      var sizeLbl=document.getElementById('calc-piece-size-label').textContent;
+      var t=document.getElementById('calc-output').textContent;
+      var m=t.match(/Estimated total[^\\d]*([\\d,]+)/);
+      document.querySelector('[data-action="calcUnits"][data-units="metric"]').click();
+      return { lbl: lbl, sizeLblStillYield: sizeLbl, hasTotal: !!m };
+    })()`);
+    check('V5 imperial dims recompute; yield label unit-free', v5 && v5.lbl==='Length (ft)' && v5.sizeLblStillYield.indexOf('litres') > -1 && v5.hasTotal, v5);
 
     // ---------- PARALLEL-AWARE ASSISTANT (seeded project state) ----------
     // Seed through the served app bundle on project.html (locally-owned gate).

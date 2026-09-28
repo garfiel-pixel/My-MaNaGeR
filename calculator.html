@@ -23,7 +23,7 @@
 <meta name="robots" content="noindex">
 <link rel="icon" type="image/png" href="images/mpw-icon.png">
 <link rel="apple-touch-icon" href="images/mpw-icon.png">
-<link rel="stylesheet" href="dist/mmgr.min.css?v=6">
+<link rel="stylesheet" href="dist/mmgr.min.css?v=7">
 <script src="js/mmgr-theme.js" data-sync="1"></script>
 </head>
 <body class="db-page calculator-page">
@@ -150,6 +150,7 @@
       <div class="bcp-row bcp-row-2" id="calc-piece-wrap">
         <div class="bcp-field"><label for="calc-piece-price" id="calc-piece-price-label">Price per piece</label><input type="number" id="calc-piece-price" min="0" step="any" inputmode="decimal" placeholder="e.g. 950 per tile"></div>
         <div class="bcp-field"><label for="calc-piece-size" id="calc-piece-size-label">Piece size - width x length (cm)</label><input type="text" id="calc-piece-size" inputmode="decimal" placeholder="e.g. 30 x 60"></div>
+        <!-- size input is type=text: dimensioned specs take "W x L", volume specs take a single yield number -->
       </div>
       <div class="bcp-piece-hint" id="calc-piece-hint">Leave empty to price by the square meter with the rate above. Fill it in to price by the piece.</div>
 
@@ -197,6 +198,6 @@
      worker, so its raw assets ride the HTTP cache (1y immutable) - any
      change here must bump v, or returning calculator-only visitors keep
      the old script/styles for a year. -->
-<script src="js/calculator-page.js?v=7"></script>
+<script src="js/calculator-page.js?v=8"></script>
 </body>
 </html>

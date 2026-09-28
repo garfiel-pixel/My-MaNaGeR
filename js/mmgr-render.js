@@ -1355,6 +1355,13 @@ var MMGR = window.MMGR || {};
     const gl = $('gantt-labels');
     if (!gc) return;
 
+    // OWNER 2026-09-28: a re-render swaps the bar the pointer may be over;
+    // no mouseout ever fires for a removed node, so the hover tip would
+    // survive with nothing left to leave. Hide it with the chart it
+    // described (same fix as showSection's section-switch guard).
+    const _tip = $('gantt-tip');
+    if (_tip) _tip.classList.remove('vis');
+
     // Deadline input mirrors state (owner 2026-09-27): keep the toolbar date
     // picker in sync when the value arrives from cloud merge/restore instead
     // of this device's typing. Never clobbers a value being typed: only
@@ -2258,6 +2265,10 @@ var MMGR = window.MMGR || {};
   }, true);
 
   document.addEventListener('mousemove', function(e) {
+    // OWNER 2026-09-28: only track while a gantt bar is hovered (or a bar
+    // drag preview is up). The un-gated version chased the cursor page-wide
+    // after the pointer had left the chart.
+    if (!_ganttDrag && !($('gantt-chart') && $('gantt-chart').matches(':hover'))) return;
     const tip = $('gantt-tip');
     if (tip && tip.classList.contains('vis')) positionGanttTip(e);
   });
@@ -2267,11 +2278,11 @@ var MMGR = window.MMGR || {};
     if (!gc) return;
     const bar = e.target.closest && e.target.closest('.gb');
     if (!bar) return;
-    const rt = e.relatedTarget;
-    if (!rt || !gc.contains(rt)) {
-      const tip = $('gantt-tip');
-      if (tip) tip.classList.remove('vis');
-    }
+    // OWNER 2026-09-28: leave the BAR, lose the tip. The old check demanded
+    // the pointer land outside the whole chart, so gliding from a bar onto
+    // the grid kept the description following the cursor across the page.
+    const tip = $('gantt-tip');
+    if (tip) tip.classList.remove('vis');
   }, true);
 
   // ==================================================================

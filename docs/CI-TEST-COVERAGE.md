@@ -103,7 +103,8 @@ or too niche for the deploy gate), **TRIAGE** (known-drifting, findings listed),
 | `qa-focus.cjs` | EXTENDED | focus retention across re-render (twin fields, date commit) |
 | `qa-marketing.cjs` | EXTENDED | marketing pages, zero console errors (20/20) |
 | `qa-pwa.cjs` | EXTENDED | manifest + service worker registration, offline CRUD |
-| `tools/qa-calculator-page.cjs` | CI | Build Cost Calculator page (15 work items, quantities, tax/currency, history) + parallel-aware assistant (kickoff nudge, cluster summary, severity dots) - 19 gates, serve.cjs battery |
+| `tools/qa-calculator-page.cjs` | CI | Build Cost Calculator page (15 work items, quantities, tax/currency, history) + parallel-aware assistant (kickoff nudge, cluster summary, severity dots) + F4 enhancements (units, export, named estimates) + F4b rate freedom + exact recall - 37 gates, serve.cjs battery |
+| `tools/qa-calc-playwright-audit.cjs` | CI | Playwright UX audit of both calculators (owner 2026-09-28 directive): 3 viewports x layout/focus/live-recompute, light+dark themes, exact-recall fidelity through real UI events, mobile reachability - 31 gates, serve.cjs battery |
 | `tools/qa-calculator.cjs` | EXTENDED | floating calculator (27/27) |
 | `tools/qa-view-mode.cjs` | EXTENDED | view-mode/deck gates |
 | `tools/qa-legal-links.cjs` | EXTENDED | legal link targets (7/7) |

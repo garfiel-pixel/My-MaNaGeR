@@ -1483,3 +1483,73 @@ STATE AT SESSION END
   bag count (qty / yield) in the breakdown; rate sheets could carry a
   finish-level default; paint could offer per-coat toggle. Owner has not
   directed these - suggestions only.
+
+--------------------------------------------------------------------
+SESSION 2026-09-28 — EXTERNAL BUG-AUDIT FIX WAVE (B1-B10) — REFLECTION
+--------------------------------------------------------------------
+WHAT WAS SHIPPED (v334, commit 693b55b, CI run 36494254903 green,
+Version 7ec54f3f-36ef-4129-a132-4b66f1cd9a2f)
+- B1 fmtDate shadow (the headline): one object literal declared fmtDate
+  TWICE; the later toISOString/UTC copy silently won for weeks.
+  todayStr() = fmtDate(new Date()) fed 26 call sites, so every daily
+  date (closure docs, field reports, snapshots, weather log, Gantt
+  TODAY line) rolled to TOMORROW after 7pm in Jamaica. The shadow was
+  literally labeled "BUG #4: consistent date formatting" - the fix
+  commit that CAUSED the bug wore the costume of a fix.
+- B2 resources.js undeclared R (lazy capture, load-order constraint).
+- B3 MCP ghost tools listCloudProjects/chooseCloudProject: dispatched,
+  never defined, advertised in tools/list - every call was a -32603.
+- B8 renderGantt recompute + the setDeadline companion fix.
+- B5 _toast ReferenceError, B4 duplicate description keys, B6 duplicate
+  object keys.
+
+LESSONS
+1. A DUPLICATE OBJECT KEY IS A SILENT COUP. Two fmtDate keys, no
+   warning at build or runtime; the later one just takes the throne.
+   The audit found it, but the TZ probe PROVED it (23:30 local ->
+   tomorrow's date). Verify a shadow by calling the exported name, not
+   by reading the source and guessing which key "should" win.
+2. THE FIX PATTERN ITSELF CAN BE THE TRAP (B8, twice over). setDeadline
+   shipped in v323 with a recompute calling ns.Schedule.computePlan -
+   which is NOT exported. ReferenceError, swallowed by the zero-throw
+   catch, silently no-oping for a month. My first B8 patch copied that
+   same broken line because it LOOKED canonical, and my probe caught
+   flags staying false live. The skeptical audit had verified the
+   pattern in isolation; the browser told the truth. ALWAYS prove a
+   recompute actually annotates state before shipping it; and when a
+   try/catch is doing "harmlessness", check whether it is also doing
+   invisibility.
+3. VERIFY THE EXPORT SURFACE, NOT THE FUNCTION EXISTENCE. computePlan
+   existed in mmgr-schedule.js the whole time (line 367) - it just
+   never made the ns.Schedule export list. `function defined` and
+   `callable through the public namespace` are different facts.
+4. IMMUTABLE CACHE BITES THE VERIFIER TOO. Two probes read null floats
+   because the fresh reload still served the OLD dist/bundle.js from
+   the immutable HTTP cache (same origin). A brand-new agent-browser
+   session = cold cache = truth. The stale-session false-negative
+   wasted two probe rounds; the fresh-session rule is now reflex.
+5. ENGINE INPUT CONTRACTS ARE PART OF THE TEST. forwardPass nulls
+   es/ef for tasks without duration - my minimal probe tasks (dates,
+   no duration) got null floats and looked like a broken fix. Real WBS
+   rows always carry duration (the v319 triad fills it). A probe with
+   unrealistic input tests nothing.
+6. QA ONLY NAMES THE TOOLS, SO NOTHING CALLS THEM. qa-mcp asserted 33
+   tool NAMES and never called the two cloud ones - the ghost shipped
+   through a green harness. C1/C2 now actually CALL both tools. An
+   existence check is not a wiring check (same law as lesson 14's
+   registry gate: unwired verification drifts silently).
+7. THE MINIFIED BUNDLE LIES TO grep IF YOU ASK FOR SOURCE NAMES. The
+   local R got renamed by the minifier, so "R().renderResources()" was
+   0 matches and the bare "R.renderResources()" was 1 match - in a
+   DIFFERENT module that legitimately defines its own R. Count the
+   invariant (0 broken sites / lazy capture present), not the literal.
+
+STATE AT SESSION END
+- Production = v334, Version 7ec54f3f-36ef-4129-a132-4b66f1cd9a2f, CI
+  green on 693b55b. qa-mcp 52/52 (C1-C3 new), qa-full 181/181, qa-ai
+  green, qa-date-wiring 59/59, npm run verify green.
+- Session infra: serve.cjs on :8765 (verify PID before kill),
+  agent-browser sessions auditfix/auditfix2 left alive for review.
+- NEXT CANDIDATES (not directed): the audit's non-bugs (B7/B9/B10)
+  stay as-is by design; consider a build-time duplicate-key lint for
+  object literals (B1/B4/B6 were all one class) - owner has not asked.

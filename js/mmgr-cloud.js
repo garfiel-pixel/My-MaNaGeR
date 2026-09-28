@@ -1549,7 +1549,7 @@ var MMGR = window.MMGR || {};
             '<input type="text" id="mcp-url" class="ctl-in" readonly style="flex:1;min-width:200px;font-family:ui-monospace,monospace;font-size:.72rem;letter-spacing:.02em;background:var(--tile-bg)" value="' + esc(mcpUrl) + '" aria-label="MCP Server URL">' +
             '<button class="btn btn-n btn-s" data-action="mcpCopyUrl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy</button>' +
             '</div>' +
-            '<div class="sr-hint" style="margin-top:4px">Use a project API key (Settings ▸ API Keys) as the key - it is scoped and revocable. Your owner code works too but grants full access; treat it as a last resort.</div>' +
+            '<div class="sr-hint" style="margin-top:4px">Use a project API key (Settings ▸ API Keys) as the key - it is scoped and revocable. Your owner code works too but grants full access; treat it as a last resort. The AI reads your project deadline along with the task dates, so it plans around the same commitment you do.</div>' +
             (!code && !sessOwner
               ? ''
               : _mcpConnectHtml(mcpUrl)) +

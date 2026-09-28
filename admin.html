@@ -94,7 +94,13 @@ body.dark-mode .gbox input{background:rgba(0,0,0,.3);}
      screens and the admin panel alike. ── */
 /* Premium backdrop layers above the fixed z-0 canvas on this page. */
 body.glass-premium .gatewrap{position:relative;z-index:1;}
-body.glass-premium header{position:relative;z-index:1;}
+/* HEADER STAYS STICKY under premium glass (owner 2026-09-28): the old
+   body.glass-premium header{position:relative;z-index:1} demoted the
+   sticky header, so with Performance Mode OFF (which allows the premium
+   engine) the header scrolled away while the fixed .db-side stayed - the
+   sidebar looked "separated from the top section". The header's own
+   position:sticky;top:0;z-index:100 already sits above the z-0 glass
+   canvas; only main needs the explicit lift. */
 body.glass-premium main{position:relative;z-index:1;}
 
 /* ── app shell (admin layout) ── */

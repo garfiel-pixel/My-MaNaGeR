@@ -195,7 +195,15 @@ var MMGR = window.MMGR || {};
     // Budget Variance
     const bud = Array.isArray(s.budgetLines) ? s.budgetLines : [];
     const planned = bud.reduce((sum, l) => sum + (+l.planned || 0), 0);
-    const actual = bud.reduce((sum, l) => sum + (+l.actual || 0), 0);
+    // Actual follows the single source of truth (Spend.budgetLineActual): a
+    // line's actual $ is the sum of its own Spend Log entries once any exist,
+    // otherwise the manual lump value. Same derivation EVM and Health use -
+    // without this the dashboard card showed Actual: $0 on projects with a
+    // real spend log (owner go-ahead 2026-09-28).
+    const SpendMod = ns.Spend;
+    const actual = SpendMod && SpendMod.budgetLineActual
+      ? bud.reduce((sum, l) => sum + SpendMod.budgetLineActual(l, s), 0)
+      : bud.reduce((sum, l) => sum + (+l.actual || 0), 0);
     const variance = planned - actual;
     const budEl = $('dw-bud');
     const budCard = $('dw-bud-card');
@@ -1370,6 +1378,11 @@ var MMGR = window.MMGR || {};
     }
     if (!minDate || !maxDate) { gc.innerHTML = '<div class="es">No valid date range.</div>'; return; }
 
+    // Parallel groups (owner go-ahead 2026-09-28): same source as the WBS
+    // name-cell badges (Schedule.parallelGroups), computed once per render.
+    // Surfaces as a badge on the label row + a tooltip line on the bar.
+    const parGroups = ns.Schedule && ns.Schedule.parallelGroups ? ns.Schedule.parallelGroups(tasks) : null;
+
     const totalDays = U.daysBetween(minDate, maxDate) + 1;
     const dayWidth = 28;
 
@@ -1448,6 +1461,17 @@ var MMGR = window.MMGR || {};
         ? `<span class="float-badge ${t.totalFloat <= 0 ? 'float-critical' : t.totalFloat <= 5 ? 'float-consumed' : ''}">TF:${t.totalFloat}d</span>`
         : '';
 
+      // Parallel badge on the label row (same data + look as the WBS badge):
+      // names/peers from the shared parallelGroups map, aria-label carries
+      // the full picture for screen readers, title gives hover detail.
+      let parBadge = '';
+      if (parGroups && parGroups.has(t.id)) {
+        const g = parGroups.get(t.id);
+        const names = g.peers.map(pid => { const p = tasks.find(x => String(x.id) === String(pid)); return p ? p.name : pid; }).join(', ');
+        const when = g.window.start + ' to ' + g.window.end;
+        parBadge = '<span class="badge bo gantt-par" tabindex="0" role="img" aria-label="Runs in parallel with ' + U.escapeHtml(names) + ' (' + when + ')" title="Parallel with: ' + U.escapeHtml(names) + ' (' + when + ')"><svg class="ico" aria-hidden="true" style="font-size:.62rem"><use href="css/mmgr-icons.svg#i-parallel"></use></svg> ' + g.peers.length + '</span>';
+      }
+
       // Weather icon
       const weatherIcon = t.weatherExposed ? '<svg class="ico" aria-hidden="true" style="font-size:.6rem"><use href="css/mmgr-icons.svg#i-cloud-rain"></use></svg>' : '';
 
@@ -1458,7 +1482,7 @@ var MMGR = window.MMGR || {};
       // diamond is a different class, so no ambiguous drag on a diamond.
       const barInner = t.milestone
         ? `<div class="gb-milestone ${t.critical ? 'crit' : ''}" data-id="${U.escapeHtml(t.id)}" style="left:${left + width / 2 - 8}px" title="${U.escapeHtml(t.name)} [Milestone]${t.critical ? ' [Critical Path]' : ''}"></div>`
-        : `<div class="gb ${classes.join(' ')}" data-id="${U.escapeHtml(t.id)}" style="left:${left}px;width:${width}px" title="${U.escapeHtml(t.name)}${t.weatherExposed ? ' [Weather-exposed]' : ''}${t.critical ? ' [Critical Path]' : ''}${t.totalFloat !== null ? ' [Float: ' + t.totalFloat + 'd]' : ''}">
+        : `<div class="gb ${classes.join(' ')}" data-id="${U.escapeHtml(t.id)}" style="left:${left}px;width:${width}px" title="${U.escapeHtml(t.name)}${t.weatherExposed ? ' [Weather-exposed]' : ''}${t.critical ? ' [Critical Path]' : ''}${t.totalFloat !== null ? ' [Float: ' + t.totalFloat + 'd]' : ''}${parGroups && parGroups.has(t.id) ? ' [Parallel with: ' + U.escapeHtml(parGroups.get(t.id).peers.map(pid => { const p = tasks.find(x => String(x.id) === String(pid)); return p ? p.name : pid; }).join(', ')) + ']' : ''}">
           ${weatherIcon}${U.escapeHtml(t.name)}
         </div>`;
       barsHtml += `<div class="gr ${isPhaseRow ? 'gr-phase' : ''}">
@@ -1474,6 +1498,7 @@ var MMGR = window.MMGR || {};
         ${t.milestone ? '<span class="ms-diamond" aria-hidden="true">&#9670;</span>' : ''}
         <span class="${t.critical ? 'cp-lbl' : ''}" style="${isPhaseRow ? 'font-weight:700;font-size:.78rem;' : ''}${t.critical ? 'color:var(--gold);font-weight:700' : ''}">${U.escapeHtml(t.name)}</span>
         ${floatStr}
+        ${parBadge}
         ${t.critical ? '<span class="badge bo" style="font-size:.55rem;padding:1px 5px">CP</span>' : ''}
         ${t.weatherExposed ? '<svg class="ico" aria-hidden="true" style="color:#38bdf8;font-size:.65rem" title="Weather-exposed"><use href="css/mmgr-icons.svg#i-cloud-rain"></use></svg>' : ''}
       </div>`;

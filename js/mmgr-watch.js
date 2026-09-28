@@ -293,7 +293,15 @@ var MMGR = window.MMGR || {};
       // (money/dates hurt), caution = yellow (act before it hurts), info =
       // blue (opportunity). Legacy 'attention' notices keep their hot class.
       const SEV = { attention: 'ai-note-hot', caution: 'ai-note-caution', info: 'ai-note-info' };
-      const items = (s.aiInbox || []).map(n =>
+      // Severity first, recency within tier (owner 2026-09-28): the newest
+      // notice can be a blue info ping while a red money/date notice sits
+      // below it. aiInbox is stored newest-first, so a stable sort keeps
+      // recency order inside each tier; unknown severities sort last.
+      const SEV_ORDER = { attention: 0, caution: 1, info: 2 };
+      const sorted = (s.aiInbox || []).slice().sort((a, b) =>
+        (SEV_ORDER[a.severity] !== undefined ? SEV_ORDER[a.severity] : 99) -
+        (SEV_ORDER[b.severity] !== undefined ? SEV_ORDER[b.severity] : 99));
+      const items = sorted.map(n =>
         '<div class="ai-note ' + (SEV[n.severity] || 'ai-note-info') + '">' +
         '<div class="ai-note-tx"><svg class="ico ai-sev-dot" aria-hidden="true"><use href="css/mmgr-icons.svg#i-dot"></use></svg>' + U.escapeHtml(n.text) + '</div>' +
         '<div class="ai-note-meta">' + U.escapeHtml((n.at || '').slice(0, 10)) + '</div>' +

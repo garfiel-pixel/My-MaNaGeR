@@ -23,7 +23,7 @@
 <meta name="robots" content="noindex">
 <link rel="icon" type="image/png" href="images/mpw-icon.png">
 <link rel="apple-touch-icon" href="images/mpw-icon.png">
-<link rel="stylesheet" href="dist/mmgr.min.css?v=5">
+<link rel="stylesheet" href="dist/mmgr.min.css?v=6">
 <script src="js/mmgr-theme.js" data-sync="1"></script>
 </head>
 <body class="db-page calculator-page">
@@ -140,6 +140,13 @@
         <div class="bcp-field"><label for="calc-rate-lab" id="calc-rate-lab-label">Labor rate</label><input type="number" id="calc-rate-lab" min="0" step="any" inputmode="decimal"></div>
       </div>
 
+      <div class="bcp-sheets-bar">
+        <input type="text" id="calc-sheet-name" maxlength="40" placeholder="e.g. low-bid, sustain" aria-label="Rate sheet name">
+        <button type="button" class="btn btn-n btn-s" data-action="calcSheetSave"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-receipt"></use></svg> Save rate sheet</button>
+        <select id="calc-sheet-select" data-action="calcSheetPick" aria-label="Apply a saved rate sheet"></select>
+      </div>
+      <div id="calc-sheets" class="calc-hist bcp-sheets"></div>
+
       <div class="bcp-row bcp-row-2" id="calc-piece-wrap">
         <div class="bcp-field"><label for="calc-piece-price" id="calc-piece-price-label">Price per piece</label><input type="number" id="calc-piece-price" min="0" step="any" inputmode="decimal" placeholder="e.g. 950 per tile"></div>
         <div class="bcp-field"><label for="calc-piece-size" id="calc-piece-size-label">Piece size - width x length (cm)</label><input type="text" id="calc-piece-size" inputmode="decimal" placeholder="e.g. 30 x 60"></div>
@@ -190,6 +197,6 @@
      worker, so its raw assets ride the HTTP cache (1y immutable) - any
      change here must bump v, or returning calculator-only visitors keep
      the old script/styles for a year. -->
-<script src="js/calculator-page.js?v=5"></script>
+<script src="js/calculator-page.js?v=7"></script>
 </body>
 </html>

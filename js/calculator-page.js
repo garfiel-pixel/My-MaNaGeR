@@ -48,10 +48,10 @@ const WORK = {
   footings:   { group: 'Groundworks', d1: 'Total run (m)', d2: 'Width (mm)', d3: 'Depth (mm)',
     q: (a, b, c) => ({ qty: a * (b / 1000) * (c / 1000) * 1.05, unit: 'm3', qtyLabel: 'Concrete (incl. 5% waste)' }),
     rate: { mat: 155, lab: 90 }, matDesc: 'C20/25, rebar cage allowance' },
-  blockwall:  { group: 'Structure', d1: 'Length (m)', d2: 'Height (m)', d3: null,
+  blockwall:  { group: 'Structure', d1: 'Length (m)', d2: 'Height (m)', d3: null, piece: { priceLabel: 'Price per block', sizeLabel: 'Block size - length x height (cm)', unit: 'cm', div: 'area', ph: 'e.g. 800 per block', phSize: 'e.g. 40 x 20' },
     q: (a, b) => ({ qty: a * b, unit: 'm2', qtyLabel: 'Wall area' }),
     rate: { mat: 22, lab: 28 }, matDesc: 'Blocks (12.5/m2), mortar, ties' },
-  brickwall:  { group: 'Structure', d1: 'Length (m)', d2: 'Height (m)', d3: null,
+  brickwall:  { group: 'Structure', d1: 'Length (m)', d2: 'Height (m)', d3: null, piece: { priceLabel: 'Price per brick', sizeLabel: 'Brick size - length x height (cm)', unit: 'cm', div: 'area', ph: 'e.g. 140 per brick', phSize: 'e.g. 20 x 10' },
     q: (a, b) => ({ qty: a * b, unit: 'm2', qtyLabel: 'Wall area' }),
     rate: { mat: 34, lab: 42 }, matDesc: 'Bricks (60/m2), mortar, wall ties' },
   framing:    { group: 'Structure', d1: 'Length (m)', d2: 'Height (m)', d3: null,
@@ -60,7 +60,7 @@ const WORK = {
   rebar:      { group: 'Structure', d1: 'Concrete volume (m3)', d2: null, d3: null,
     q: (a) => ({ qty: a * 85 / 1000, unit: 't', qtyLabel: 'Steel (85 kg per m3)' }),
     rate: { mat: 950, lab: 380 }, matDesc: 'Bars, ties, chairs, cutting waste' },
-  roof:       { group: 'Envelope', d1: 'Length (m)', d2: 'Slope width (m)', d3: null,
+  roof:       { group: 'Envelope', d1: 'Length (m)', d2: 'Slope width (m)', d3: null, piece: { priceLabel: 'Price per sheet', sizeLabel: 'Sheet size - width x length (m)', unit: 'm', div: 'area', ph: 'e.g. 6120 per sheet', phSize: 'e.g. 0.85 x 3.6' },
     q: (a, b) => ({ qty: a * b * 1.1, unit: 'm2', qtyLabel: 'Sheet area (incl. 10% laps/pitch)' }),
     rate: { mat: 26, lab: 18 }, matDesc: 'Sheets, fixings, flashings' },
   render:     { group: 'Envelope', d1: 'Length (m)', d2: 'Height (m)', d3: null,
@@ -72,13 +72,13 @@ const WORK = {
   drywall:    { group: 'Envelope', d1: 'Length (m)', d2: 'Height (m)', d3: null,
     q: (a, b) => ({ qty: a * b, unit: 'm2', qtyLabel: 'Partition area' }),
     rate: { mat: 12, lab: 17 }, matDesc: 'Boards, studs, tape, screws' },
-  tile:       { group: 'Finishes', d1: 'Length (m)', d2: 'Width (m)', d3: null, piece: { priceLabel: 'Price per tile', sizeLabel: 'Tile size - width x length (cm)' },
+  tile:       { group: 'Finishes', d1: 'Length (m)', d2: 'Width (m)', d3: null, piece: { priceLabel: 'Price per tile', sizeLabel: 'Tile size - width x length (cm)', unit: 'cm', div: 'area', ph: 'e.g. 950 per tile', phSize: 'e.g. 30 x 60' },
     q: (a, b) => ({ qty: a * b * 1.1, unit: 'm2', qtyLabel: 'Tiles (incl. 10% cuts/waste)' }),
     rate: { mat: 24, lab: 32 }, matDesc: 'Tiles, adhesive, grout, trim' },
   'concrete-drive': { group: 'Finishes', d1: 'Length (m)', d2: 'Width (m)', d3: 'Thickness (mm)',
     q: (a, b, c) => ({ qty: a * b * (c / 1000) * 1.05, unit: 'm3', qtyLabel: 'Concrete (incl. 5% waste)' }),
     rate: { mat: 145, lab: 75 }, matDesc: 'C25/30 air-entrained, mesh, cure' },
-  fencing:    { group: 'Finishes', d1: 'Total run (m)', d2: 'Height (m)', d3: null, piece: { priceLabel: 'Price per panel', sizeLabel: 'Panel size - width x height (m)' },
+  fencing:    { group: 'Finishes', d1: 'Total run (m)', d2: 'Height (m)', d3: null, piece: { priceLabel: 'Price per panel', sizeLabel: 'Panel size - width x height (m)', unit: 'm', div: 'width', ph: 'e.g. 9500 per panel', phSize: 'e.g. 2.5 x 1.8' },
     q: (a, b) => ({ qty: a, unit: 'm', qtyLabel: 'Fence run' }),
     rate: { mat: (a, b) => 18 + Math.max(0, ((b || 1.8) - 1.2)) * 9, lab: 15 }, matDesc: 'Chain-link, posts, concrete backfill' }
 };
@@ -212,23 +212,35 @@ function compute() {
   const labOverride = isFinite(labRaw) && labRaw >= 0 && (!labEl || String(labRaw) !== labEl.dataset.model);
   const mr = matOverride ? matRaw : modelMr;
   const lr = labOverride ? labRaw : w.rate.lab;
-  // F4b per-piece pricing (area trades): price-per-piece over piece area
-  // becomes the effective material rate for the m2 math. Imperial entry:
-  // piece price is in the user's currency per piece either way; piece size
-  // is metric cm (label says so) or imperial in, converted to meters.
+  // F4b per-piece pricing: price-per-piece + piece size becomes the
+  // effective material rate. Area trades (tile, block, brick, roof sheets)
+  // divide price by piece AREA -> rate per m2. Run-meter trades (fencing)
+  // divide by panel WIDTH -> rate per run-meter. Piece sizes are entered in
+  // the spec unit (cm, or m for sheet/panel trades); imperial entry converts
+  // inches->cm and ft->m before the division.
   let piece = null;
   const pieceRaw = parseFloat(($('calc-piece-price') || {}).value);
   if (w.piece && isFinite(pieceRaw) && pieceRaw > 0) {
     const sizeStr = (($('calc-piece-size') || {}).value || '').trim();
     const m = sizeStr.match(/^([\d.]+)\s*(?:x|by|\*)\s*([\d.]+)$/i);
     if (m) {
-      const conv = _units === 'imperial' ? FT * 100 : 1; // in -> cm when imperial
-      const wCm = parseFloat(m[1]) * conv, lCm = parseFloat(m[2]) * conv;
-      if (wCm > 0 && lCm > 0) piece = { w: wCm, l: lCm, areaM2: (wCm / 100) * (lCm / 100), price: pieceRaw };
+      const spec = w.piece;
+      const conv = _units === 'imperial' ? (spec.unit === 'm' ? FT : FT * 100) : 1;
+      const a = parseFloat(m[1]) * conv, b = parseFloat(m[2]) * conv;
+      if (a > 0 && b > 0) {
+        if (spec.div === 'width') {
+          piece = { w: a, l: b, unit: spec.unit, div: 'width', price: pieceRaw, perUnit: pieceRaw / a };
+        } else {
+          const areaM2 = spec.unit === 'm' ? a * b : (a / 100) * (b / 100);
+          piece = { w: a, l: b, unit: spec.unit, div: 'area', price: pieceRaw, areaM2: areaM2, perUnit: pieceRaw / areaM2 };
+        }
+      }
     }
   }
   const quality = QUALITY[($('calc-quality') || {}).value] || 1;
-  const effMat = piece ? piece.price / piece.areaM2 : mr;
+  // Area trades: $/m2 x m2 quantity. Fencing width-div: $/run-m x m run.
+  // The qty x rate dimension check holds for both.
+  const effMat = piece ? piece.perUnit : mr;
   const mat = qr.qty * effMat * quality;
   const lab = qr.qty * lr * quality;
   const country = ($('calc-country') || {}).value || 'US';
@@ -246,6 +258,57 @@ function compute() {
 const NKEY = 'mmgr_calc_estimates';
 function loadEstimates() { try { return JSON.parse(localStorage.getItem(NKEY) || '[]'); } catch (e) { return []; } }
 function persistEstimates(list) { try { localStorage.setItem(NKEY, JSON.stringify(list.slice(0, 30))); } catch (e) { /* storage full - saving is a nicety, never a gate */ } }
+
+// ---- Rate sheets (owner 2026-09-28: 'low-bid', 'sustain' - companies price
+// differently per job, save the whole rate set under a name and switch).
+// Stores the current rate fields (material, labor, piece) under a name;
+// applying a sheet fills the fields; the model prefill rule is bypassed
+// because the fields are non-empty. Device-local, 20 cap.
+const RKEY = 'mmgr_calc_rate_sheets';
+function applySheetById(id) {
+  const sh = loadSheets().find(function(x) { return x.id === id; });
+  if (!sh) return;
+  const r = sh.rates;
+  if ($('calc-rate-mat')) $('calc-rate-mat').value = r.rateMat;
+  if ($('calc-rate-lab')) $('calc-rate-lab').value = r.rateLab;
+  if ($('calc-piece-price')) $('calc-piece-price').value = r.piecePrice || '';
+  if ($('calc-piece-size')) $('calc-piece-size').value = r.pieceSize || '';
+  if ($('calc-rate-mat')) $('calc-rate-mat').dataset.sheet = sh.name;
+  render();
+  const outEl = $('calc-output');
+  if (outEl) outEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+function loadSheets() { try { return JSON.parse(localStorage.getItem(RKEY) || '[]'); } catch (e) { return []; } }
+function persistSheets(list) { try { localStorage.setItem(RKEY, JSON.stringify(list.slice(0, 20))); } catch (e) { /* nicety, never a gate */ } }
+
+function activeSheetName() {
+  const matEl = $('calc-rate-mat'), labEl = $('calc-rate-lab');
+  if (!matEl || !labEl) return null;
+  if (matEl.value === '' || labEl.value === '') return null;
+  if (String(parseFloat(matEl.value)) === matEl.dataset.model || String(parseFloat(labEl.value)) === labEl.dataset.model) return null;
+  return matEl.dataset.sheet || null;
+}
+
+function renderSheets() {
+  const wrap = $('calc-sheets');
+  const sel = $('calc-sheet-select');
+  if (!wrap || !sel) return;
+  const list = loadSheets();
+  sel.innerHTML = '<option value="">Saved rate sheets' + (list.length ? '...' : ' (none yet)') + '</option>' +
+    list.map(function(sh) { return '<option value="' + esc(sh.id) + '">' + esc(sh.name) + '</option>'; }).join('');
+  const act = activeSheetName();
+  wrap.innerHTML = list.length
+    ? list.map(function(sh) {
+        return '<div class="bcp-sheet-row">' +
+          '<span class="bcp-est-name">' + esc(sh.name) + '</span>' +
+          '<span class="bcp-est-meta">mat ' + esc(sh.rates.rateMat) + ' / lab ' + esc(sh.rates.rateLab) +
+            (sh.rates.piecePrice ? ' / piece ' + esc(sh.rates.piecePrice) : '') + '</span>' +
+          '<button type="button" class="btn btn-n btn-s" data-action="calcSheetApply" data-id="' + esc(sh.id) + '">Apply</button>' +
+          '<button type="button" class="btn btn-n btn-s" data-action="calcSheetDelete" data-id="' + esc(sh.id) + '">Delete</button>' +
+        '</div>';
+      }).join('')
+    : '<div class="calc-empty">No saved rate sheets yet. Set your rates above, then Save rate sheet.</div>';
+}
 
 function renderEstimates() {
   const wrap = $('calc-estimates');
@@ -278,7 +341,7 @@ function estimateCsv(r) {
     ['Units entered', _units],
     ['Material rate used', r.piece ? (Math.round(r.effMat * 100) / 100) + ' per m2 (from piece pricing)' : Math.round(r.mr)],
     ['Labor rate used', Math.round(r.lr)],
-    ['Piece pricing', r.piece ? r.piece.price + ' per ' + Math.round(r.piece.w) + ' x ' + Math.round(r.piece.l) + ' cm' : 'no'],
+    ['Piece pricing', r.piece ? r.piece.price + ' per ' + Math.round(r.piece.w) + ' x ' + Math.round(r.piece.l) + ' ' + r.piece.unit + (r.piece.div === 'width' ? ' (per ' + (Math.round(r.piece.perUnit * 100) / 100) + '/m)' : ' (per ' + (Math.round(r.piece.perUnit * 100) / 100) + '/m2)') : 'no'],
     ['Materials', Math.round(r.mat)],
     ['Labor', Math.round(r.lab)],
     ['Subtotal', Math.round(r.sub)],
@@ -329,10 +392,14 @@ function render() {
   if (r.error) { out.innerHTML = '<div class="calc-empty">' + r.error + '</div>'; return; }
   lastResult = r;
   if ($('calc-out-actions')) $('calc-out-actions').classList.remove('is-hide');
+  const pieceNarr = r.piece
+    ? (r.piece.div === 'width'
+        ? (Math.round(r.piece.perUnit * 100) / 100).toLocaleString() + '/m of run'
+        : (Math.round(r.piece.perUnit * 100) / 100).toLocaleString() + '/m2')
+    : null;
   const matLabel = r.piece
     ? 'Materials - priced per piece at ' + r.piece.price.toLocaleString() + ' / ' +
-      (_units === 'imperial' ? Math.round(r.piece.w / 2.54) + ' x ' + Math.round(r.piece.l / 2.54) + ' in' : r.piece.w + ' x ' + r.piece.l + ' cm') + ' = ' +
-      (Math.round(r.effMat * 100) / 100).toLocaleString() + '/m2'
+      (_units === 'imperial' ? Math.round(r.piece.w / 2.54) + ' x ' + Math.round(r.piece.l / 2.54) + ' in' : r.piece.w + ' x ' + r.piece.l + ' ' + r.piece.unit) + ' = ' + pieceNarr
     : 'Materials' + (r.matOverridden ? ' - your rate' : '');
   out.innerHTML =
     '<div class="calc-sum">' +
@@ -482,7 +549,36 @@ const ACTIONS = {
     const id = el.getAttribute('data-id');
     persistEstimates(loadEstimates().filter(function(x) { return x.id !== id; }));
     renderEstimates();
-  }
+  },
+  // ---- Rate sheets ----
+  calcSheetSave: function() {
+    const nameEl = $('calc-sheet-name');
+    const name = ((nameEl && nameEl.value) || '').trim();
+    if (!name) {
+      if (nameEl) { nameEl.focus(); nameEl.placeholder = 'Name it first - e.g. low-bid'; }
+      return;
+    }
+    const matEl = $('calc-rate-mat'), labEl = $('calc-rate-lab');
+    if (!matEl || !matEl.value || !labEl || !labEl.value) return;
+    const list = loadSheets().filter(function(sh) { return sh.name.toLowerCase() !== name.toLowerCase(); });
+    list.unshift({ id: 'r' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), name: name,
+      at: new Date().toISOString().slice(0, 10),
+      rates: { rateMat: matEl.value, rateLab: labEl.value,
+        piecePrice: ($('calc-piece-price') || {}).value || '', pieceSize: ($('calc-piece-size') || {}).value || '' } });
+    persistSheets(list);
+    if (nameEl) { nameEl.value = ''; nameEl.placeholder = 'e.g. low-bid, sustain'; }
+    matEl.dataset.sheet = name;
+    renderSheets();
+  },
+  calcSheetApply: function(el) {
+    applySheetById(el.getAttribute('data-id'));
+  },
+  calcSheetDelete: function(el) {
+    const id = el.getAttribute('data-id');
+    persistSheets(loadSheets().filter(function(x) { return x.id !== id; }));
+    renderSheets();
+  },
+  calcSheetPick: null
 };
 
 document.addEventListener('click', function(e) {
@@ -490,6 +586,16 @@ document.addEventListener('click', function(e) {
   if (!el) return;
   const fn = ACTIONS[el.getAttribute('data-action')];
   if (fn) fn(el);
+});
+
+// Rate-sheet quick picker: choosing a sheet in the <select> applies it.
+// The select carries the sheet id as its option VALUE (row buttons carry
+// data-id) - resolve by value here, then snap back to the placeholder row.
+document.addEventListener('change', function(e) {
+  const el = e.target.closest('[data-action="calcSheetPick"]');
+  if (!el || !el.value) return;
+  applySheetById(el.value);
+  el.selectedIndex = 0;
 });
 
 // Print scope is class-scoped; window.print() blocks, so remove the class
@@ -544,7 +650,12 @@ function refreshRateFields() {
   if (w.piece && priceEl && sizeEl) {
     $('calc-piece-price-label').textContent = w.piece.priceLabel;
     $('calc-piece-size-label').textContent = _units === 'imperial'
-      ? w.piece.sizeLabel.replace('(cm)', '(in)') : w.piece.sizeLabel;
+      ? w.piece.sizeLabel.replace('(cm)', '(in)').replace('(m)', '(ft)') : w.piece.sizeLabel;
+    if (!priceEl.placeholder || priceEl.dataset.phWork !== key) {
+      priceEl.placeholder = w.piece.ph;
+      sizeEl.placeholder = w.piece.phSize;
+      priceEl.dataset.phWork = key;
+    }
   }
   const hint = $('calc-piece-hint');
   if (hint) hint.hidden = !w.piece;
@@ -646,4 +757,5 @@ if ($('calc-work')) {
 }
 renderHistory();
 renderEstimates();
+renderSheets();
 })();

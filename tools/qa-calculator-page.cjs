@@ -46,6 +46,17 @@
      E2   legacy history row (no st) recalls with inferred units + defaults
      X3   CSV carries the used rates + piece pricing line
 
+   F4c PER-PIECE EXPANSION + RATE SHEETS (owner 2026-09-28):
+     P1   blocks: 800/block over 40x20cm -> 1000/m2 exact
+     P2   bricks: 140/brick over 20x10cm -> 700/m2 exact
+     P3   roof sheets: 6120/sheet over 0.85x3.6m -> 2000/m2 exact
+     P4   fencing panel: 9500 over 2.5m wide -> 3800/m run (width-div)
+     P5   placeholders follow the work item
+     RS1  save a rate sheet (name + rates + piece)
+     RS2  apply restores the rates + recomputes
+     RS3  quick-picker select applies
+     RS4  delete removes the sheet
+
    Usage:  node tools/qa-calculator-page.cjs   (needs serve.cjs on :8765)
    Registry: CI-TEST-COVERAGE.md -> CI row (fast, serve.cjs battery).
    ============================================================ */
@@ -456,6 +467,80 @@ async function withChrome(fn) {
                piece: text.indexOf('950 per 30 x 60 cm') > -1 };
     })()`);
     check('X3 CSV carries used rates + piece pricing lines', x3 && x3.ok && x3.rates && x3.piece, x3);
+
+    // ---------- F4c: PER-PIECE EXPANSION + RATE SHEETS ----------
+    // P1-P4: piece math per trade (metric explicitly).
+    const pieceCheck = async (work, price, size, d1, d2, expectPat, name) => {
+      const r = await ev(`(function(){
+        document.querySelector('[data-action="calcUnits"][data-units="metric"]').click();
+        document.getElementById('calc-work').value = '${work}';
+        document.getElementById('calc-work').dispatchEvent(new Event('change',{bubbles:true}));
+        document.getElementById('calc-d1').value='${d1}'; document.getElementById('calc-d2').value='${d2}';
+        document.getElementById('calc-piece-price').value='${price}'; document.getElementById('calc-piece-size').value='${size}';
+        document.getElementById('calc-d1').dispatchEvent(new Event('input',{bubbles:true}));
+        var t = document.getElementById('calc-output').textContent;
+        return { hit: t.indexOf('${expectPat}') > -1, line: t.indexOf('priced per piece') > -1, pieceVisible: !document.getElementById('calc-piece-wrap').hidden };
+      })()`);
+      check(name, r && r.hit && r.line && r.pieceVisible, r);
+    };
+    await pieceCheck('blockwall', '800', '40 x 20', '10', '2.4', '10,000/m2', 'P1 blocks 800 / (0.4x0.2) = 10,000/m2 exact');
+    await pieceCheck('brickwall', '140', '20 x 10', '10', '2.4', '7,000/m2', 'P2 bricks 140 / (0.2x0.1) = 7,000/m2 exact');
+    await pieceCheck('roof', '6120', '0.85 x 3.6', '10', '4', '2,000/m2', 'P3 roof sheets 6120 / (0.85x3.6) = 2,000/m2 exact');
+    await pieceCheck('fencing', '9500', '2.5 x 1.8', '10', '1.8', '3,800/m of run', 'P4 fencing panel 9500 / 2.5m = 3,800/m run (width-div)');
+
+    // P5: placeholders follow the work item.
+    const p5 = await ev(`(function(){
+      document.getElementById('calc-work').value = 'blockwall';
+      document.getElementById('calc-work').dispatchEvent(new Event('change',{bubbles:true}));
+      var a = document.getElementById('calc-piece-price').placeholder;
+      document.getElementById('calc-work').value = 'roof';
+      document.getElementById('calc-work').dispatchEvent(new Event('change',{bubbles:true}));
+      var b = document.getElementById('calc-piece-price').placeholder;
+      return { block: a, roof: b, differ: a !== b };
+    })()`);
+    check('P5 piece placeholders follow the trade', p5 && p5.differ && /800/.test(p5.block) && /6120/.test(p5.roof), p5);
+
+    // RS1-RS4: rate sheets lifecycle.
+    const rs1 = await ev(`(function(){
+      document.getElementById('calc-work').value='tile';
+      document.getElementById('calc-work').dispatchEvent(new Event('change',{bubbles:true}));
+      document.getElementById('calc-rate-mat').value='18'; document.getElementById('calc-rate-lab').value='25';
+      document.getElementById('calc-piece-price').value='900'; document.getElementById('calc-piece-size').value='30 x 60';
+      document.getElementById('calc-sheet-name').value='low-bid';
+      document.querySelector('[data-action=calcSheetSave]').click();
+      var raw = JSON.parse(localStorage.getItem('mmgr_calc_rate_sheets')||'[]');
+      return { count: raw.length, name: raw.length?raw[0].name:null, mat: raw.length?raw[0].rates.rateMat:null,
+               rows: document.querySelectorAll('#calc-sheets .bcp-sheet-row').length };
+    })()`);
+    check('RS1 save rate sheet stores name+rates+piece', rs1 && rs1.count===1 && rs1.name==='low-bid' && rs1.mat==='18' && rs1.rows===1, rs1);
+
+    const rs2 = await ev(`(function(){
+      document.getElementById('calc-rate-mat').value='99'; document.getElementById('calc-rate-lab').value='99';
+      document.getElementById('calc-rate-mat').dispatchEvent(new Event('input',{bubbles:true}));
+      document.querySelector('[data-action=calcSheetApply]').click();
+      return { mat: document.getElementById('calc-rate-mat').value, lab: document.getElementById('calc-rate-lab').value,
+               piece: document.getElementById('calc-piece-price').value,
+               total: document.getElementById('calc-output').textContent.indexOf('Estimated total') > -1 };
+    })()`);
+    check('RS2 apply restores rates + piece + recomputes', rs2 && rs2.mat==='18' && rs2.lab==='25' && rs2.piece==='900' && rs2.total, rs2);
+
+    const rs3 = await ev(`(function(){
+      document.getElementById('calc-rate-mat').value = '99';
+      var sel = document.getElementById('calc-sheet-select');
+      var sheetId = sel.options[1] ? sel.options[1].value : '';
+      if (!sheetId) return { err: 'no sheet in picker' };
+      sel.value = sheetId;
+      sel.dispatchEvent(new Event('change',{bubbles:true}));
+      return { mat: document.getElementById('calc-rate-mat').value, reset: sel.selectedIndex === 0, id: sheetId };
+    })()`);
+    check('RS3 quick-picker select applies + resets selection', rs3 && rs3.mat==='18' && rs3.reset, rs3);
+
+    const rs4 = await ev(`(function(){
+      document.querySelector('[data-action=calcSheetDelete]').click();
+      var raw = JSON.parse(localStorage.getItem('mmgr_calc_rate_sheets')||'[]');
+      return { left: raw.length, empty: !!document.querySelector('#calc-sheets .calc-empty') };
+    })()`);
+    check('RS4 delete removes the sheet + shows empty state', rs4 && rs4.left===0 && rs4.empty, rs4);
 
     // ---------- PARALLEL-AWARE ASSISTANT (seeded project state) ----------
     // Seed through the served app bundle on project.html (locally-owned gate).

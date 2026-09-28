@@ -2346,6 +2346,14 @@ body.dark-mode .ai-byo-status[data-state="untested"]{background:rgba(245,158,11,
 .bcp-rates-label{font-size:.78rem;font-weight:700;color:var(--text);}
 .bcp-piece-hint{font-size:.72rem;color:var(--slate);line-height:1.5;margin-top:6px;}
 .bcp-piece-hint[hidden]{display:none;}
+/* Rate sheets bar (owner 2026-09-28 'low-bid'/'sustain' directive): name +
+   save + quick-picker on one row; saved sheets list mirrors the estimate
+   rows below it. */
+.bcp-sheets-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:4px 0 10px;}
+.bcp-sheets-bar input{flex:1;min-width:160px;background:var(--tile-bg);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);padding:7px 10px;font-size:.82rem;font-family:inherit;}
+.bcp-sheets-bar input:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 3px rgba(var(--gold-rgb),.14);}
+.bcp-sheets-bar select{max-width:220px;background:var(--tile-bg);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);padding:7px 10px;font-size:.8rem;font-family:inherit;}
+.bcp-sheet-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;border:1px solid var(--border);border-radius:10px;padding:6px 12px;font-size:.8rem;min-width:0;margin-bottom:8px;}
 .bcp-run{width:100%;justify-content:center;margin-top:6px;}
 /* F4-1 unit toggle (owner 2026-09-28): metric/imperial segmented control.
    Tokens only - active state rides the brand gold wash, both themes hold. */

@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<!--
+  My MaNaGeR - Build Cost Calculator (client-facing, owner 2026-09-28).
+  Standalone page: no sign-in, no project, no network calls. A client picks
+  what they want to build, enters dimensions, chooses currency + country,
+  and gets quantities, labor hours, costs, tax and total. History saves on
+  this device (localStorage, user-clearable). External script only - no
+  inline scripts, CSP hashes stay untouched. Icons are sprite symbols,
+  no emoji (owner gate). Black & white themes ride the shared theme helper.
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Build Cost Calculator | My MaNaGeR</title>
+<meta name="description" content="Estimate build costs: quantities, labor, materials, tax by country. Free, on-device, no account.">
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/png" href="images/mpw-icon.png">
+<link rel="apple-touch-icon" href="images/mpw-icon.png">
+<link rel="stylesheet" href="dist/marketing.min.css">
+<script src="js/mmgr-theme.js"></script>
+</head>
+<body class="auth-page">
+
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="site-header">
+  <div class="nav-wrap">
+    <a class="brand" href="index.html" aria-label="My MaNaGeR home">
+      <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-mpw"></use></svg>
+      <span>My MaNaGeR</span>
+    </a>
+    <nav class="nav-links" aria-label="Primary">
+      <a href="index.html">Home</a>
+      <a href="features.html">Features</a>
+      <a href="app.html">Open the app</a>
+      <a href="mymanager-field-guide.html">Field Guide</a>
+    </nav>
+    <button type="button" class="theme-btn" data-action="tglTheme" aria-label="Toggle dark mode">
+      <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-moon"></use></svg>
+    </button>
+  </div>
+</header>
+
+<main id="main" class="calc-main">
+  <div class="calc-head">
+    <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-calculator"></use></svg>
+    <div>
+      <h1>Build Cost Calculator</h1>
+      <p class="calc-lede">Pick a work item, enter the dimensions, choose your currency and country. Quantities, labor, materials, tax and total - computed on this device, nothing sent anywhere.</p>
+    </div>
+  </div>
+
+  <div class="calc-grid">
+    <section class="calc-card" aria-labelledby="calc-inputs-h">
+      <h2 id="calc-inputs-h" class="calc-card-t">What are you pricing?</h2>
+
+      <div class="calc-field">
+        <label for="calc-work">Work item</label>
+        <select id="calc-work">
+          <optgroup label="Groundworks">
+            <option value="siteprep">Site clearing &amp; strip (per m2)</option>
+            <option value="excav">Trench / bulk excavation (per m3)</option>
+            <option value="slab">Concrete slab on grade (per m2)</option>
+            <option value="footings">Strip footings (per m)</option>
+          </optgroup>
+          <optgroup label="Structure">
+            <option value="blockwall">Blockwork wall (per m2)</option>
+            <option value="brickwall">Brick veneer wall (per m2)</option>
+            <option value="framing">Timber stud framing (per m2)</option>
+            <option value="rebar">Rebar in concrete (per m3 of concrete)</option>
+          </optgroup>
+          <optgroup label="Envelope">
+            <option value="roof">Roof sheeting over purlins (per m2)</option>
+            <option value="render">Render / stucco (per m2)</option>
+            <option value="paint">Painting (per m2 of wall)</option>
+            <option value="drywall">Drywall partition (per m2)</option>
+          </optgroup>
+          <optgroup label="Finishes">
+            <option value="tile">Floor tiling (per m2)</option>
+            <option value="concrete-drive">Concrete driveway (per m2)</option>
+            <option value="fencing">Chain-link fencing (per m)</option>
+          </optgroup>
+        </select>
+      </div>
+
+      <div class="calc-row">
+        <div class="calc-field"><label for="calc-d1" id="calc-d1-label">Length (m)</label><input type="number" id="calc-d1" min="0" step="any" inputmode="decimal"></div>
+        <div class="calc-field" id="calc-d2-wrap"><label for="calc-d2" id="calc-d2-label">Width / height (m)</label><input type="number" id="calc-d2" min="0" step="any" inputmode="decimal"></div>
+        <div class="calc-field" id="calc-d3-wrap"><label for="calc-d3" id="calc-d3-label">Depth / thickness (mm)</label><input type="number" id="calc-d3" min="0" step="any" inputmode="decimal"></div>
+      </div>
+
+      <div class="calc-row calc-row-2">
+        <div class="calc-field">
+          <label for="calc-currency">Currency</label>
+          <select id="calc-currency">
+            <option value="USD" selected>USD - US dollar</option>
+            <option value="JMD">JMD - Jamaican dollar</option>
+            <option value="GBP">GBP - Pound sterling</option>
+            <option value="EUR">EUR - Euro</option>
+            <option value="CAD">CAD - Canadian dollar</option>
+            <option value="AUD">AUD - Australian dollar</option>
+            <option value="JPY">JPY - Japanese yen</option>
+          </select>
+        </div>
+        <div class="calc-field">
+          <label for="calc-country">Country (sets the tax)</label>
+          <select id="calc-country">
+            <option value="US" selected>United States (sales tax 0% here - set your local rate)</option>
+            <option value="JM">Jamaica (GCT 15%)</option>
+            <option value="GB">United Kingdom (VAT 20%)</option>
+            <option value="AU">Australia (GST 10%)</option>
+            <option value="CA">Canada (GST 5%)</option>
+            <option value="JP">Japan (consumption tax 10%)</option>
+            <option value="DE">Germany (VAT 19%)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="calc-row calc-row-2">
+        <div class="calc-field"><label for="calc-quality">Finish level</label>
+          <select id="calc-quality">
+            <option value="standard" selected>Standard</option>
+            <option value="economy">Economy (-15%)</option>
+            <option value="premium">Premium (+35%)</option>
+          </select>
+        </div>
+        <div class="calc-field"><label for="calc-tax-override">Custom tax % (optional)</label><input type="number" id="calc-tax-override" min="0" max="40" step="0.5" inputmode="decimal" placeholder="e.g. 8.25"></div>
+      </div>
+
+      <button type="button" class="btn btn-g calc-run" data-action="calcRun">
+        <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-calculator"></use></svg> Calculate
+      </button>
+    </section>
+
+    <section class="calc-card calc-result" aria-labelledby="calc-out-h" aria-live="polite">
+      <h2 id="calc-out-h" class="calc-card-t">Estimate</h2>
+      <div id="calc-output" class="calc-out">
+        <div class="calc-empty">Pick a work item, enter dimensions, then Calculate. The breakdown lands here.</div>
+      </div>
+    </section>
+  </div>
+
+  <section class="calc-card calc-history-card" aria-labelledby="calc-hist-h">
+    <div class="calc-hist-head">
+      <h2 id="calc-hist-h" class="calc-card-t">History <span class="calc-hist-note">- saved on this device only</span></h2>
+      <button type="button" class="btn btn-n btn-s" data-action="calcClearHistory">
+        <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-trash"></use></svg> Clear history
+      </button>
+    </div>
+    <div id="calc-history" class="calc-hist"><div class="calc-empty">Nothing saved yet.</div></div>
+  </section>
+
+  <p class="calc-fineprint">Rates are planning-grade averages for early estimates, not quotes. Every line item is editable in the app once the project starts. Tax rates are the standard national rates (PwC VAT/GST table, 2026) - a custom rate field overrides them. Everything runs on this device; clearing your browser data clears the history.</p>
+</main>
+
+<footer class="site-footer">
+  <p>My MaNaGeR - project management for people who build. <a href="features.html">See what is inside</a>.</p>
+</footer>
+
+<script src="js/calculator-page.js"></script>
+</body>
+</html>

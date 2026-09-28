@@ -641,7 +641,9 @@ const FLUSH_RAF = `new Promise(r => requestAnimationFrame(() => requestAnimation
         const steel = inbox.find(n => /Steel fixing lead time/.test(n.text));
         return { count: count, hasSteel: !!steel, sev: steel ? steel.severity : null, text: steel ? steel.text : '' };
       })()`);
-      check('W1 lead-time watcher fires (2 days left -> info notice, signed-in)', W1 && W1.count >= 1 && W1.hasSteel && W1.sev === 'info', W1);
+      // Severity re-map (owner 2026-09-28): an imminent lead-time (<=2 days)
+      // is CAUTION (yellow, act before it hurts); past-due stays attention.
+      check('W1 lead-time watcher fires (2 days left -> caution notice, signed-in)', W1 && W1.count >= 1 && W1.hasSteel && W1.sev === 'caution', W1);
 
       const W2 = await ev(`(function(){
         const before = MMGR.Watch.unreadCount();

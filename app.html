@@ -373,6 +373,10 @@ body.db-page.side-open .sidebar-icons{opacity:0;pointer-events:none;}
     <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-folder"></use></svg>
     <span class="sidebar-tooltip">All Projects</span>
   </button>
+  <button type="button" class="sidebar-icon" data-nav="calculator" title="Build Cost Calculator" aria-label="Build Cost Calculator">
+    <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-calculator"></use></svg>
+    <span class="sidebar-tooltip">Build Cost Calculator</span>
+  </button>
   <button type="button" class="sidebar-icon" data-nav="admin" title="Admin panel" aria-label="Admin panel">
     <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-shield"></use></svg>
     <span class="sidebar-tooltip">Admin panel</span>
@@ -1839,6 +1843,11 @@ document.addEventListener('click', function(e){
           grid.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }, 300);
       }
+      break;
+    case 'calculator':
+      // Client-facing Build Cost Calculator (owner 2026-09-28): standalone
+      // page, no sign-in, no project - a client can price work there.
+      window.location.href = 'calculator.html';
       break;
     case 'admin':
       window.location.href = 'admin.html';

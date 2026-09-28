@@ -1422,3 +1422,64 @@ BOOKKEEPING
   mymanagerworkspace.com. Repo state = CI state = deployed state.
 - STILL OWED (owner action only): revoke the sk-mmgr- test key exposed
   in chats; mint a fresh one if the MCP test round continues.
+
+SESSION 2026-09-28 — CALCULATOR FREEDOM WAVES (F4b/F4c/F4d) — REFLECTION
+
+WHAT WAS BUILT (three ships, one arc: rate freedom)
+- v331 (22dd779d): editable material/labor rates prefilled from the model
+  (dataset.model sentinel distinguishes untouched prefill from typed
+  override - the 'your rate' annotation must never lie), per-piece pricing
+  born (tile + fencing), EXACT RECALL (readState/applyState move the whole
+  settings object; the owner's complaint - recalling a metric calc while
+  imperial was selected gave a different price - dead), Playwright audit
+  harness born (31 gates), Calculate scrolls the below-fold result into
+  view on phones.
+- v332 (e2b6d128): piece engine generalized (per-trade unit + divisor);
+  blocks/bricks/roof sheets added; fencing width-divisor FIXED a latent bug
+  (panel price was divided by panel AREA against a run-meter quantity);
+  rate sheets ('low-bid'/'sustain') with row-button + quick-picker apply.
+- v333 (0c2aa39a): volume divisor - per-bag pricing for the three concrete
+  trades (yield litres -> $/m3 = price x 1000 / yield), per-container for
+  paint (-> $/L = price / yield; the 3.785 L US gallon can is the
+  placeholder). Piece family complete: area / width / volume.
+
+LESSONS THAT BIT AND THE RULES THEY WROTE
+1. UNIT RECONCILIATION IS THE WHOLE GAME IN VOLUME PRICING. The first cut
+   computed $/L for a trade whose quantity is in m3 - off by 1000x. The
+   piece spec now carries qtyUnit and the divisor derives the per-unit to
+   MATCH THE QUANTITY. Rule: whenever a derived rate meets a quantity, write
+   the unit equation on paper first (price x 1000 / yield for m3).
+2. SILENT WIRING NO-OPS NEED GATES THAT DISTURB FIRST. The rate-sheet
+   quick-picker read a data-id the select never had - total silence. RS3
+   passed Falsely because the previous gate left rates at the expected
+   value. Re-baselined: set a wrong value (99), then require the right one
+   back (18). A verification that cannot fail is not a verification.
+3. THE ?v= BUMP IS THE FEATURE, NOT A CHORE. Twice this session the QA
+   browser kept the old calculator-page.js across reloads because the raw
+   file is immutable-cached and the page never registers the SW. Editing
+   without bumping ?v means testing yesterday's code and trusting green
+   checks that checked nothing. v=4 -> v=5 -> v=6 -> v=7 -> v=8, every edit.
+4. MY OWN GATE EXPECTATIONS CAN BE WRONG (twice): block 0.4x0.2m is 0.08
+   m2, not 0.4 (10,000/m2 not 1,000 - arithmetic), and FileReader.readAsText
+   STRIPS the UTF-8 BOM (verify bytes, not decoded text). When a check
+   fails, the first suspect is the code, the second is the check; only
+   evidence decides which.
+5. HEADER-LEVEL FEATURES NEED HEADER-LEVEL CHECKS (v328's geolocation
+   lesson, same class): a policy/header/cache can veto working code. Probe
+   permissions.query and versioned URLs, not just the JS path.
+
+STATE AT SESSION END
+- Production = v333, Version 0c2aa39a-5cc9-467a-9530-cb23589e114d, CI
+  green on 83119f9. qa-calculator-page 51/51, qa-calculator 27/27, PW audit
+  31/31, npm run verify green. Session infrastructure left running:
+  serve.cjs (new PID after restarts, verify via tasklist before kill),
+  agent-browser sessions (default + calc-f4).
+- Piece specs live in js/calculator-page.js WORK map (piece: {priceLabel,
+  sizeLabel, unit, div, qtyUnit, ph, phSize}); adding a trade's piece
+  pricing = one object + a V-family gate. Rate sheets: mmgr_calc_rate_sheets;
+  estimates: mmgr_calc_estimates; history: mmgr_calc_history (all {st}
+  exact-recall shapes; legacy rows fall back via applyLegacy).
+- STILL OWED / NEXT CANDIDATES: concrete per-bag narrative could name the
+  bag count (qty / yield) in the breakdown; rate sheets could carry a
+  finish-level default; paint could offer per-coat toggle. Owner has not
+  directed these - suggestions only.

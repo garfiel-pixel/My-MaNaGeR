@@ -25,7 +25,7 @@ var MMGR = window.MMGR || {};
       if (!t.leadTime || !t.expectedDate || t.delivered) continue;
       const d = U.daysBetween(today, t.expectedDate); // negative = overdue
       if (d <= 2) {
-        out.push({ kind: 'leadtime', severity: d < 0 ? 'attention' : 'info',
+        out.push({ kind: 'leadtime', severity: d < 0 ? 'attention' : 'caution',
           text: t.name + ' lead time: ' + (d < 0 ? Math.abs(d) + ' day(s) past' : d + ' day(s) left') +
                 ' (expected ' + t.expectedDate + '). Check on the vendor.' });
       }
@@ -34,6 +34,10 @@ var MMGR = window.MMGR || {};
   }
 
   // Budget watchdog: any category running >=10% over planned.
+  // Severity tiers (owner 2026-09-28): 'attention' = red dot, money or dates
+  // already hurt; 'caution' = yellow dot, act before it hurts; 'info' = blue
+  // dot, opportunity or context. Dot colors come from the theme-aware
+  // --dot-* status tokens (never raw hex here).
   function watchBudget(s) {
     const out = [];
     const byCat = {};
@@ -46,7 +50,7 @@ var MMGR = window.MMGR || {};
     for (const cat in byCat) {
       const c = byCat[cat];
       if (c.planned > 0 && c.actual > c.planned * 1.10) {
-        out.push({ kind: 'budget', severity: 'attention',
+        out.push({ kind: 'budget', severity: 'caution',
           text: cat + ' is running ' + Math.round((c.actual / c.planned - 1) * 100) + '% over plan (' +
                 Math.round(c.actual).toLocaleString() + ' of ' + Math.round(c.planned).toLocaleString() + ').' });
       }
@@ -149,6 +153,74 @@ var MMGR = window.MMGR || {};
     return out;
   }
 
+  // Parallel-work spotter (owner 2026-09-28): the PM kicks off one task and
+  // the assistant points at work that could start alongside it instead of
+  // queueing behind it. Two honest signals, both derived from the same
+  // data the WBS parallel badges use (Schedule.parallelGroups):
+  //   1. KICKOFF NUDGE: the user starts task A (status inprogress) while a
+  //      non-adjacent peer shares its window - name the peer, cite the
+  //      shared window, and say what both need before starting (resource
+  //      names when they overlap, otherwise predecessor readiness).
+  //   2. CLUSTER SUMMARY: an upcoming window with N>=3 same-day starts
+  //      that have NO predecessors between them (independent starts) - one
+  //      blue notice naming the window and the trades, capped at 1 per run.
+  // Never invents tasks, never chatters: dedup handles repeats.
+  function watchParallel(s) {
+    const out = [];
+    const tasks = (s.tasks || []).filter(t => !t.isPhase && t.startDate && t.endDate);
+    if (tasks.length < 2) return out;
+    const groups = ns.Schedule && ns.Schedule.parallelGroups ? ns.Schedule.parallelGroups(s.tasks) : null;
+    if (!groups) return out;
+    const byId = new Map((s.tasks || []).map(t => [t.id, t]));
+    const nameOf = id => { const t = byId.get(id); return t ? (t.name || id) : id; };
+
+    // 1. Kickoff nudges: in-progress tasks with ready-to-run peers.
+    const running = tasks.filter(t => t.status === 'inprogress');
+    for (const a of running) {
+      const g = groups.get(a.id);
+      if (!g || !g.peers.length) continue;
+      const peers = g.peers.map(id => byId.get(id)).filter(p => p && p.status === 'todo');
+      if (!peers.length) continue;
+      const peer = peers[0];
+      // Shared-resource read: if both name the same assignee, say so -
+      // starting both needs a crew decision, which is the actionable point.
+      const sameCrew = a.assignee && peer.assignee && a.assignee === peer.assignee;
+      const need = sameCrew
+        ? 'Both name ' + peer.assignee + ' - split the crew or sequence them before kicking off both.'
+        : 'Different crews, no shared predecessor - it can start alongside.';
+      out.push({ kind: 'parallel', severity: 'info',
+        text: nameOf(a.id) + ' is running, and ' + nameOf(peer.id) + ' shares its window (' +
+              peer.startDate + ' to ' + peer.endDate + '). ' + need });
+      break; // one kickoff nudge per run - the mailbox must stay quiet
+    }
+
+    // 2. One cluster summary: >=3 independent same-window starts ahead.
+    //    Independent = no predecessor links between any two members, so the
+    //    owner could parallelize the whole group if crews allow.
+    const byStart = new Map();
+    for (const t of tasks) {
+      if (t.status !== 'todo') continue;
+      if (!byStart.has(t.startDate)) byStart.set(t.startDate, []);
+      byStart.get(t.startDate).push(t);
+    }
+    const today = U.todayStr();
+    const starts = Array.from(byStart.keys()).filter(d => d >= today).sort();
+    for (const day of starts) {
+      const group = byStart.get(day);
+      if (group.length < 3) continue;
+      const ids = new Set(group.map(t => t.id));
+      const linked = group.some(t => (t.predecessors || []).some(p => ids.has(p)));
+      if (linked) continue; // a dependency inside the group = not independent
+      const names = group.slice(0, 4).map(t => t.name);
+      const more = group.length > 4 ? ' and ' + (group.length - 4) + ' more' : '';
+      out.push({ kind: 'parallel', severity: 'info',
+        text: group.length + ' tasks can start together on ' + day + ' with no handoffs between them: ' +
+              names.join(', ') + more + '. Worth a crew check before they queue single-file.' });
+      break; // one cluster notice per run
+    }
+    return out;
+  }
+
   // Signed-in gate (Task 9): the assistant is part of the signed-in
   // experience. Signed-out, run() is a no-op and the mailbox shows the
   // plain-language card. The Entitlements seam is the only rule source.
@@ -165,7 +237,7 @@ var MMGR = window.MMGR || {};
       const s = ns.State.getState();
       if (!s || !s.tasks) return;
       const today = U.todayStr();
-      const found = [].concat(watchLeadTimes(s, today), watchBudget(s), watchResources(s), watchWeather(s), watchSchedule(s));
+      const found = [].concat(watchLeadTimes(s, today), watchBudget(s), watchResources(s), watchWeather(s), watchSchedule(s), watchParallel(s));
       if (!found.length) return;
       let added = 0;
       ns.State.updateState(function(st) {
@@ -216,9 +288,14 @@ var MMGR = window.MMGR || {};
     }
     const s = ns.State.getState();
     if (list) {
+      // Severity classes (owner 2026-09-28): every notice carries a colored
+      // status dot from the theme-aware --dot-* tokens. attention = red
+      // (money/dates hurt), caution = yellow (act before it hurts), info =
+      // blue (opportunity). Legacy 'attention' notices keep their hot class.
+      const SEV = { attention: 'ai-note-hot', caution: 'ai-note-caution', info: 'ai-note-info' };
       const items = (s.aiInbox || []).map(n =>
-        '<div class="ai-note' + (n.severity === 'attention' ? ' ai-note-hot' : '') + '">' +
-        '<div class="ai-note-tx">' + U.escapeHtml(n.text) + '</div>' +
+        '<div class="ai-note ' + (SEV[n.severity] || 'ai-note-info') + '">' +
+        '<div class="ai-note-tx"><svg class="ico ai-sev-dot" aria-hidden="true"><use href="css/mmgr-icons.svg#i-dot"></use></svg>' + U.escapeHtml(n.text) + '</div>' +
         '<div class="ai-note-meta">' + U.escapeHtml((n.at || '').slice(0, 10)) + '</div>' +
         '<button class="btn btn-s btn-n" data-action="dismissAiNote" data-id="' + U.escapeHtml(n.id) + '">Dismiss</button>' +
         '</div>').join('') ||

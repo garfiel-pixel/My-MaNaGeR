@@ -103,6 +103,7 @@ or too niche for the deploy gate), **TRIAGE** (known-drifting, findings listed),
 | `qa-focus.cjs` | EXTENDED | focus retention across re-render (twin fields, date commit) |
 | `qa-marketing.cjs` | EXTENDED | marketing pages, zero console errors (20/20) |
 | `qa-pwa.cjs` | EXTENDED | manifest + service worker registration, offline CRUD |
+| `tools/qa-calculator-page.cjs` | CI | Build Cost Calculator page (15 work items, quantities, tax/currency, history) + parallel-aware assistant (kickoff nudge, cluster summary, severity dots) - 19 gates, serve.cjs battery |
 | `tools/qa-calculator.cjs` | EXTENDED | floating calculator (27/27) |
 | `tools/qa-view-mode.cjs` | EXTENDED | view-mode/deck gates |
 | `tools/qa-legal-links.cjs` | EXTENDED | legal link targets (7/7) |

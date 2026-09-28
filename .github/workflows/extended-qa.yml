@@ -103,6 +103,9 @@ jobs:
       - name: "E-T4: floating calculator"
         run: node tools/qa-calculator.cjs
 
+      - name: "E-T4: build cost calculator page + parallel assistant"
+        run: node tools/qa-calculator-page.cjs
+
       - name: "E-T4: view-mode / deck gates"
         run: node tools/qa-view-mode.cjs
 

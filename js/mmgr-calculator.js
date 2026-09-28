@@ -160,6 +160,15 @@
 
     // Wire up all calculator inputs
     wireInputs();
+
+    // Resize handles (owner 2026-09-28): 8-way drag to any size, remembered
+    // per device in mmgr_calc_size - same one-axis persistence pattern as the
+    // AI window's mmgr_ai_size. Position (icon/panel drag) stays per-session.
+    _panel.querySelectorAll('.calc-rz').forEach(function(h) {
+      var dir = h.getAttribute('data-rz');
+      h.addEventListener('mousedown', function(e) { e.preventDefault(); rzStart(dir, e.clientX, e.clientY); });
+      h.addEventListener('touchstart', function(e) { e.preventDefault(); var t = e.touches[0]; rzStart(dir, t.clientX, t.clientY); }, { passive: false });
+    });
   }
 
   function buildPanelHTML() {
@@ -189,7 +198,12 @@
         buildEvmTab() +
         buildSettingsTab() +
       '</div>' +
-      '<div class="calc-history" id="calc-history" hidden></div>';
+      '<div class="calc-history" id="calc-history" hidden></div>' +
+      // 8-way resize handles (paint + hit areas inside the panel bounds;
+      // overflow:hidden is safe - nothing sticks out)
+      ['n', 's', 'e', 'w', 'ne', 'nw', 'se', 'sw'].map(function(d) {
+        return '<div class="calc-rz calc-rz-' + d + '" data-rz="' + d + '" aria-hidden="true"></div>';
+      }).join('');
   }
 
   /* ── General (basic arithmetic) ── */
@@ -1341,8 +1355,9 @@
       s.classList.toggle('is-hide', hidden);
     });
     // A taller tab changes the panel height AFTER the open-time clamp, so
-    // re-clamp on every switch (Live-eyeball fix, Phase 5).
-    requestAnimationFrame(clampPanelInViewport);
+    // re-clamp on every switch (Live-eyeball fix, Phase 5). With a saved
+    // size the panel keeps its height (body scrolls) - re-apply + clamp.
+    requestAnimationFrame(reapplySavedHeight);
     return tabId;
   }
 
@@ -1413,6 +1428,57 @@
     if (_open) close(); else open();
   }
 
+  /* ── Resize (owner 2026-09-28): 8-way drag handles + per-device size ── */
+  var SZ_KEY = 'mmgr_calc_size';
+  function loadSize() {
+    try { var s = JSON.parse(localStorage.getItem(SZ_KEY) || 'null');
+      if (s && s.w >= 300 && s.w <= 900 && s.h >= 220 && s.h <= window.innerHeight - 40) {
+        // Clamp to the CURRENT viewport: a size saved on a desktop window must
+        // never push the panel past a smaller screen (mobile found this).
+        return { w: Math.min(s.w, window.innerWidth - 20), h: Math.min(s.h, window.innerHeight - 40) };
+      }
+    } catch (e) {}
+    return null;
+  }
+  function saveSize(w, h) {
+    try { localStorage.setItem(SZ_KEY, JSON.stringify({ w: Math.round(w), h: Math.round(h) })); } catch (e) {}
+  }
+  var _rz = null;
+  function rzStart(dir, cx, cy) {
+    var r = _panel.getBoundingClientRect();
+    _rz = { dir: dir, cx: cx, cy: cy, l: r.left, t: r.top, w: r.width, h: r.height };
+    document.addEventListener('mousemove', onRzMove);
+    document.addEventListener('mouseup', onRzEnd);
+    document.addEventListener('touchmove', onRzMoveTouch, { passive: false });
+    document.addEventListener('touchend', onRzEnd);
+  }
+  function rzApply(cx, cy) {
+    if (!_rz) return;
+    var minW = 300, minH = 220;
+    var maxW = Math.max(minW, window.innerWidth - 20);
+    var maxH = Math.max(minH, window.innerHeight - 40);
+    var dx = cx - _rz.cx, dy = cy - _rz.cy;
+    var l = _rz.l, t = _rz.t, w = _rz.w, h = _rz.h;
+    if (_rz.dir.indexOf('e') > -1) w = Math.min(maxW, Math.max(minW, _rz.w + dx));
+    if (_rz.dir.indexOf('s') > -1) h = Math.min(maxH, Math.max(minH, _rz.h + dy));
+    if (_rz.dir.indexOf('w') > -1) { w = Math.min(maxW, Math.max(minW, _rz.w - dx)); l = _rz.l + (_rz.w - w); }
+    if (_rz.dir.indexOf('n') > -1) { h = Math.min(maxH, Math.max(minH, _rz.h - dy)); t = _rz.t + (_rz.h - h); }
+    // Keep the panel on screen while resizing (8px breathing room).
+    l = Math.min(Math.max(8, l), window.innerWidth - w - 8);
+    t = Math.min(Math.max(8, t), window.innerHeight - h - 8);
+    _panel.style.left = l + 'px'; _panel.style.top = t + 'px';
+    _panel.style.width = w + 'px'; _panel.style.height = h + 'px';
+  }
+  function onRzMove(e) { e.preventDefault(); rzApply(e.clientX, e.clientY); }
+  function onRzMoveTouch(e) { e.preventDefault(); rzApply(e.touches[0].clientX, e.touches[0].clientY); }
+  function onRzEnd() {
+    document.removeEventListener('mousemove', onRzMove);
+    document.removeEventListener('mouseup', onRzEnd);
+    document.removeEventListener('touchmove', onRzMoveTouch);
+    document.removeEventListener('touchend', onRzEnd);
+    if (_rz) { saveSize(_panel.offsetWidth, _panel.offsetHeight); _rz = null; }
+  }
+
   /* ── Open / Close ── */
   function open() {
     build();
@@ -1422,12 +1488,15 @@
     _panel.style.display = 'flex';
     // Position panel near the icon
     var rect = _icon.getBoundingClientRect();
-    var pw = Math.min(380, window.innerWidth - 20);
+    var saved = loadSize();
+    var pw = saved ? saved.w : Math.min(380, window.innerWidth - 20);
+    var ph = saved ? saved.h : 500;
     var px = Math.min(rect.left, window.innerWidth - pw - 10);
-    var py = Math.max(10, rect.top - 500);
+    var py = Math.max(10, rect.top - ph - 20);
     _panel.style.left = px + 'px';
     _panel.style.top = py + 'px';
     _panel.style.width = pw + 'px';
+    _panel.style.height = saved ? saved.h + 'px' : ''; // unsaved = content-height default
     // Live-eyeball fix (Phase 5): the panel auto-grows up to its max-height
     // on tall tabs (Trades stacks 9 cards), and the icon-anchored py could
     // push the panel's tail below the viewport fold. Re-measure and clamp
@@ -1440,7 +1509,9 @@
 
   // Shared clamp used after open() AND after every tab switch (a taller tab
   // grows the panel after the open-time measurement, so a tab click must
-  // re-clamp or the new content's tail lands below the fold).
+  // re-clamp or the new content's tail lands below the fold). With a saved
+  // height the panel is fixed-size and the clamp only moves it, never grows
+  // it; without one the content-height behavior is unchanged.
   function clampPanelInViewport() {
     if (!_panel || !_open) return;
     var cur = parseFloat(_panel.style.top) || 0;
@@ -1448,6 +1519,17 @@
     if (cur + ph > window.innerHeight - 8) {
       _panel.style.top = Math.max(8, window.innerHeight - ph - 8) + 'px';
     }
+  }
+  // Tab switches must not leave a resized panel overflowing: the panel keeps
+  // its saved height (body scrolls), so only the position needs re-clamping.
+  function reapplySavedHeight() {
+    if (!_panel || !_open) return;
+    var saved = loadSize();
+    if (saved) {
+      _panel.style.width = saved.w + 'px';
+      _panel.style.height = saved.h + 'px';
+    }
+    clampPanelInViewport();
   }
 
   function close() {

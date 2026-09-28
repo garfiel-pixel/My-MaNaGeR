@@ -191,8 +191,9 @@ const ACTIONS = {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   },
   tglTheme: function() {
-    // Same theme helper the other standalone pages use (mmgr-theme.js).
-    if (window.MMGR && MMGR.Theme && MMGR.Theme.toggle) { MMGR.Theme.toggle(); return; }
+    // Same theme helper every page uses (mmgr-theme.js exposes MMGRTheme);
+    // body.dark-mode + persistence are owned there, never duplicated here.
+    if (window.MMGRTheme && MMGRTheme.setMode) { MMGRTheme.setMode(MMGRTheme.isDark() ? 'light' : 'dark'); return; }
     document.body.classList.toggle('dark-mode');
     try { localStorage.setItem('mmgr_theme', document.body.classList.contains('dark-mode') ? 'dark' : 'light'); } catch (e) {}
   }
@@ -229,11 +230,9 @@ function countryLabel(code) {
   return map[code] || code;
 }
 
-// Init: restore theme, wire inputs, first render of history.
-try {
-  const saved = localStorage.getItem('mmgr_theme');
-  if (saved === 'dark') document.body.classList.add('dark-mode');
-} catch (e) {}
+// Init: theme comes from the shared helper (mmgr-theme.js, loaded in <head>
+// with data-sync="1") which applies the saved mode before first paint - no
+// local restore here, a second writer would fight the helper.
 if ($('calc-work')) {
   $('calc-work').addEventListener('change', syncLabels);
   ['calc-currency', 'calc-country', 'calc-quality', 'calc-tax-override', 'calc-d1', 'calc-d2', 'calc-d3']

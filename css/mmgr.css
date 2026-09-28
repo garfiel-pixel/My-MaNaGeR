@@ -2340,6 +2340,26 @@ body.dark-mode .ai-byo-status[data-state="untested"]{background:rgba(245,158,11,
 .bcp-field label{font-size:.72rem;color:var(--slate);font-weight:600;letter-spacing:.02em;}
 .bcp-field select,.bcp-field input{background:var(--tile-bg);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);padding:9px 12px;font-size:.88rem;font-family:inherit;min-width:0;width:100%;}
 .bcp-run{width:100%;justify-content:center;margin-top:6px;}
+/* F4-1 unit toggle (owner 2026-09-28): metric/imperial segmented control.
+   Tokens only - active state rides the brand gold wash, both themes hold. */
+.bcp-units-label{font-size:.72rem;color:var(--slate);font-weight:600;letter-spacing:.02em;}
+.bcp-seg{display:inline-flex;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;width:max-content;max-width:100%;margin-top:5px;}
+.bcp-seg-btn{border:none;background:transparent;color:var(--slate);font-size:.8rem;font-weight:600;font-family:inherit;padding:7px 14px;cursor:pointer;transition:color var(--tr),background var(--tr);min-height:34px;}
+.bcp-seg-btn:hover{color:var(--text);background:color-mix(in oklch,var(--gold) 8%,transparent);}
+.bcp-seg-btn.active{background:color-mix(in oklch,var(--gold) 14%,transparent);color:var(--gold);}
+.bcp-seg-btn:focus-visible{outline:2px solid var(--gold);outline-offset:-2px;}
+/* F4-2 result actions (print / CSV / save) under the live estimate. */
+.bcp-out-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:14px;padding-top:12px;border-top:1px solid var(--border);}
+.bcp-save{display:inline-flex;gap:6px;flex:1;min-width:220px;margin-left:auto;}
+.bcp-save input{flex:1;min-width:0;background:var(--tile-bg);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);padding:7px 10px;font-size:.82rem;font-family:inherit;}
+.bcp-save input:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 3px rgba(var(--gold-rgb),.14);}
+/* Imperial reading under the metric quantity when imperial is active. */
+.calc-qty-alt{display:block;font-size:.7rem;font-weight:400;color:var(--slate);}
+/* F4-3 named estimates list (mirrors .calc-hist-row's shape). */
+.bcp-est-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;border:1px solid var(--border);border-radius:10px;padding:8px 12px;font-size:.82rem;min-width:0;margin-bottom:8px;}
+.bcp-est-name{color:var(--text);font-weight:700;flex:1;min-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.bcp-est-meta{color:var(--slate);font-size:.72rem;}
+@media (max-width:600px){.bcp-save{margin-left:0;width:100%;}}
 .bcp-out{display:flex;flex-direction:column;gap:2px;min-width:0;}
 .bcp-hist-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:10px;}
 .bcp-hist-note{color:var(--slate);font-weight:400;font-size:.78rem;}
@@ -2362,6 +2382,29 @@ body.dark-mode .ai-byo-status[data-state="untested"]{background:rgba(245,158,11,
 .calc-hist-date{color:var(--slate);font-size:.72rem;min-width:74px;}
 .calc-hist-work{color:var(--text);flex:1;min-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .calc-hist-total{color:var(--text);font-weight:700;font-variant-numeric:tabular-nums;}
+
+/* ============================================================
+   BUILD COST CALCULATOR - PRINT SHEET (F4-2, owner 2026-09-28)
+   body.print-estimate scopes it so nothing else inherits it. Chrome
+   hidden, light paper, dark ink; the estimate and history cards become
+   a client-ready one-pager. Escape hatch: body.print-estimate .no-print
+   opts any element out.
+   ============================================================ */
+@media print{
+  body.print-estimate .bcp-top,body.print-estimate .bcp-head,
+  body.print-estimate #calc-input-card,body.print-estimate #calc-out-actions,
+  body.print-estimate .no-print{display:none!important;}
+  body.print-estimate{background:#fff!important;color:#111!important;}
+  body.print-estimate .bcp-main{max-width:none;padding:0;}
+  body.print-estimate .card{box-shadow:none!important;border:1px solid #ccc!important;break-inside:avoid;background:#fff!important;color:#111!important;}
+  body.print-estimate .card-title,body.print-estimate .calc-line,body.print-estimate .calc-line strong,
+  body.print-estimate .calc-sum-qty,body.print-estimate .calc-hist-total{color:#111!important;}
+  body.print-estimate .calc-sum-label,body.print-estimate .calc-sum-sub,body.print-estimate .calc-line,
+  body.print-estimate .calc-fine,body.print-estimate .calc-hist-date,body.print-estimate .bcp-hist-note{color:#444!important;}
+  body.print-estimate .calc-line-total strong{color:#000!important;}
+  body.print-estimate .calc-hist-row,body.print-estimate .bcp-est-row{border-color:#ddd!important;}
+  body.print-estimate .calc-qty-alt{color:#555!important;}
+}
 
 /* chat input bar (replaces the old footer) */
 .ai-inputbar{padding:14px 20px;border-top:1px solid var(--border);display:flex;gap:10px;align-items:flex-end;background:var(--card);}

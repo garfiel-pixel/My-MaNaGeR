@@ -23,6 +23,18 @@
      C8   Clear history empties the list and storage
      C9   dark-mode toggle persists to localStorage
 
+   F4 ENHANCEMENTS (owner 2026-09-28):
+     U1   imperial toggle flips labels + aria-pressed + persists
+     U2   imperial slab 33ft x 26ft x 6in -> 12.76 m3 exact + sq ft reading
+     U3   back to metric: labels restore, storage metric
+     U4   unit choice survives a reload (labels come back imperial)
+     X1   valid result reveals the print/CSV/save actions row
+     X2   CSV export builds a BOM-prefixed blob with the total line
+     S1   Save stores a named estimate (name + work + total)
+     S2   Open restores the inputs and recomputes
+     S3   Delete removes the named estimate
+     S4   history rows are individually deletable (calcDelHist)
+
    Usage:  node tools/qa-calculator-page.cjs   (needs serve.cjs on :8765)
    Registry: CI-TEST-COVERAGE.md -> CI row (fast, serve.cjs battery).
    ============================================================ */
@@ -187,6 +199,119 @@ async function withChrome(fn) {
       return { dark: dark, saved: saved, backLight: !document.body.classList.contains('dark-mode') };
     })()`);
     check('C9 theme toggle flips + persists', c9 && c9.dark && c9.saved === 'dark' && c9.backLight, c9);
+
+    // ---------- F4 ENHANCEMENTS ----------
+    // U1: imperial toggle - labels convert, state persists, aria follows.
+    const u1 = await ev(`(function(){
+      document.querySelector('[data-action="calcUnits"][data-units="imperial"]').click();
+      return { d1: document.getElementById('calc-d1-label').textContent,
+               d3: document.getElementById('calc-d3-label').textContent,
+               stored: localStorage.getItem('mmgr_calc_units'),
+               pressed: document.querySelector('[data-action="calcUnits"][data-units="imperial"]').getAttribute('aria-pressed') };
+    })()`);
+    check('U1 imperial toggle: labels (ft)/(in), stored, aria-pressed', u1 && u1.d1 === 'Length (ft)' && u1.d3 === 'Thickness (in)' && u1.stored === 'imperial' && u1.pressed === 'true', u1);
+
+    // U2: imperial slab entry converts to the metric math (exact).
+    const u2 = await ev(`(function(){
+      document.getElementById('calc-work').value = 'slab';
+      document.getElementById('calc-work').dispatchEvent(new Event('change',{bubbles:true}));
+      document.getElementById('calc-d1').value = '33';
+      document.getElementById('calc-d2').value = '26';
+      document.getElementById('calc-d3').value = '6';
+      document.getElementById('calc-d1').dispatchEvent(new Event('input',{bubbles:true}));
+      const out = document.getElementById('calc-output').textContent;
+      const m = out.match(/([\\d.]+) m3/);
+      return { qty: m && m[1], alt: out.indexOf('cu yd') > -1 };
+    })()`);
+    check('U2 imperial slab 33x26x6in -> 12.76 m3 + cu yd reading', u2 && u2.qty === '12.76' && u2.alt === true, u2);
+
+    // U3: back to metric - labels restore, storage flips back.
+    const u3 = await ev(`(function(){
+      document.querySelector('[data-action="calcUnits"][data-units="metric"]').click();
+      return { d1: document.getElementById('calc-d1-label').textContent, stored: localStorage.getItem('mmgr_calc_units') };
+    })()`);
+    check('U3 metric restore: label (m), storage metric', u3 && u3.d1 === 'Length (m)' && u3.stored === 'metric', u3);
+
+    // X1: a valid result reveals the export/save actions row.
+    const x1 = await ev(`(function(){
+      document.getElementById('calc-d1').value = '10';
+      document.getElementById('calc-d2').value = '8';
+      document.getElementById('calc-d3').value = '150';
+      document.getElementById('calc-d1').dispatchEvent(new Event('input',{bubbles:true}));
+      var wrap = document.getElementById('calc-out-actions');
+      return { visible: wrap && !wrap.classList.contains('is-hide'),
+               print: !!document.querySelector('[data-action="calcPrint"]'),
+               csv: !!document.querySelector('[data-action="calcCsv"]'),
+               save: !!document.querySelector('[data-action="calcSave"]') };
+    })()`);
+    check('X1 valid result reveals print/CSV/save actions', x1 && x1.visible && x1.print && x1.csv && x1.save, x1);
+
+    // X2: CSV export - BOM-prefixed blob carrying the total line.
+    const x2 = await ev(`(async function(){
+      var created = [];
+      var origCreate = URL.createObjectURL;
+      URL.createObjectURL = function(b){ created.push(b); return 'blob:qa'; };
+      var origClick = HTMLAnchorElement.prototype.click;
+      var clicked = false;
+      HTMLAnchorElement.prototype.click = function(){ clicked = true; };
+      document.querySelector('[data-action="calcCsv"]').click();
+      URL.createObjectURL = origCreate;
+      HTMLAnchorElement.prototype.click = origClick;
+      if (!created.length) return { ok: false };
+      // The BOM is verified as raw BYTES: readAsText strips it per spec, but
+      // Excel needs the EF BB BF bytes in the file - bytes are the contract.
+      var bytes = await new Promise(function(res){ var fr = new FileReader(); fr.onload = function(){ res(new Uint8Array(fr.result)); }; fr.onerror = function(){ res(null); }; fr.readAsArrayBuffer(created[0]); });
+      var text = bytes ? new TextDecoder('utf-8').decode(bytes) : '';
+      return { ok: clicked, bom: !!bytes && bytes[0] === 0xEF && bytes[1] === 0xBB && bytes[2] === 0xBF, hasTotal: text.indexOf('Estimated total') > -1, hasSlab: text.indexOf('Concrete slab') > -1 };
+    })()`);
+    check('X2 CSV export: BOM bytes + total + work item in blob', x2 && x2.ok && x2.bom && x2.hasTotal && x2.hasSlab, x2);
+
+    // S1: named estimate saves with name + work + total.
+    const s1 = await ev(`(function(){
+      document.getElementById('calc-save-name').value = 'Garage slab QA';
+      document.querySelector('[data-action="calcSave"]').click();
+      var raw = localStorage.getItem('mmgr_calc_estimates');
+      var rows = document.querySelectorAll('#calc-estimates .bcp-est-row').length;
+      return { stored: !!raw, rows: rows, first: raw ? JSON.parse(raw)[0] : null };
+    })()`);
+    check('S1 Save stores the named estimate', s1 && s1.rows === 1 && s1.first && s1.first.name === 'Garage slab QA' && s1.first.work === 'slab', s1);
+
+    // S2: Open restores the inputs and recomputes.
+    const s2 = await ev(`(function(){
+      document.getElementById('calc-d1').value = '';
+      document.querySelector('[data-action="calcOpen"]').click();
+      return { d1: document.getElementById('calc-d1').value, total: document.getElementById('calc-output').textContent.indexOf('Estimated total') > -1 };
+    })()`);
+    check('S2 Open restores inputs + recomputes', s2 && s2.d1 === '10' && s2.total, s2);
+
+    // S3: Delete removes the named estimate.
+    const s3 = await ev(`(function(){
+      document.querySelector('[data-action="calcDeleteEst"]').click();
+      var raw = localStorage.getItem('mmgr_calc_estimates');
+      return { left: raw ? JSON.parse(raw).length : 0, empty: !!document.querySelector('#calc-estimates .calc-empty') };
+    })()`);
+    check('S3 Delete removes the named estimate', s3 && s3.left === 0 && s3.empty, s3);
+
+    // S4: history rows are individually deletable.
+    const s4 = await ev(`(function(){
+      document.querySelector('[data-action="calcRun"]').click();
+      var before = document.querySelectorAll('.calc-hist-row').length;
+      document.querySelector('[data-action="calcDelHist"]').click();
+      var after = document.querySelectorAll('.calc-hist-row').length;
+      return { before: before, after: after };
+    })()`);
+    check('S4 history row delete removes exactly one row', s4 && s4.before >= 1 && s4.after === s4.before - 1, s4);
+
+    // U4: the unit choice survives a reload (init reads storage before first paint).
+    await ev(`document.querySelector('[data-action="calcUnits"][data-units="imperial"]').click();`);
+    await ev(`location.reload();`);
+    await delay(1800);
+    const u4 = await ev(`(function(){
+      return { d1: document.getElementById('calc-d1-label').textContent,
+               pressed: document.querySelector('[data-action="calcUnits"][data-units="imperial"]').getAttribute('aria-pressed'),
+               emptyState: document.getElementById('calc-output').textContent.indexOf('Pick a work item') > -1 };
+    })()`);
+    check('U4 unit choice survives reload (labels imperial, form clean)', u4 && u4.d1 === 'Length (ft)' && u4.pressed === 'true' && u4.emptyState, u4);
 
     // ---------- PARALLEL-AWARE ASSISTANT (seeded project state) ----------
     // Seed through the served app bundle on project.html (locally-owned gate).

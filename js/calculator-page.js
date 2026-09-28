@@ -7,6 +7,13 @@
    planning-grade public formulas; all data stays on the device
    (history in localStorage). Delegated clicks via data-action,
    same convention as the app. No network. No emoji.
+
+   F4 enhancements (owner 2026-09-28): (1) unit toggle - metric or
+   imperial dimension entry, converted to the metric math on input,
+   choice remembered per device; (2) Print (ink-friendly @media print
+   sheet) and CSV export of the live breakdown; (3) named estimates -
+   save/recall/delete named snapshots (localStorage mmgr_calc_estimates)
+   beside the automatic 20-row history.
    ============================================================ */
 (function() {
 'use strict';
@@ -70,6 +77,39 @@ const TAX = { US: 0, JM: 15, GB: 20, AU: 10, CA: 5, JP: 10, DE: 19 };
 const CURRENCY = { USD: '$', JMD: 'J$', GBP: '\u00A3', EUR: '\u20AC', CAD: 'C$', AUD: 'A$', JPY: '\u00A5' };
 const QUALITY = { economy: 0.85, standard: 1, premium: 1.35 };
 
+// ---- Units (F4-1): metric is the math; imperial converts on entry -------
+// Dimensions typed in ft/in are converted before the formulas run, so the
+// rate models (per m2 / m3 / m) stay untouched. Quantities report their
+// native metric unit with an approximate imperial reading beside them.
+const FT = 0.3048;          // meters per foot
+const IN = 25.4;            // millimeters per inch
+let _units = 'metric';
+
+function dimLabel(w, which) {
+  let lbl = w[which] || '';
+  if (_units === 'imperial') {
+    lbl = lbl.replace('(m2)', '(sq ft)').replace('(m3)', '(cu yd)')
+             .replace('(m)', '(ft)').replace('(mm)', '(in)');
+  }
+  return lbl;
+}
+
+// Approximate imperial reading for a metric quantity (display only).
+function qtyAlt(qty, unit) {
+  if (_units !== 'imperial') return '';
+  const map = { m2: ['sq ft', 10.7639], m3: ['cu yd', 1.30795], m: ['ft', 3.28084], L: ['US gal', 0.264172] };
+  const c = map[unit];
+  if (!c) return '';
+  return ' (about ' + (Math.round(qty * c[1] * 10) / 10).toLocaleString() + ' ' + c[0] + ')';
+}
+
+// Tiny local escaper - user-typed estimate names reach innerHTML.
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, function(c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+  });
+}
+
 const $ = (id) => document.getElementById(id);
 const num = (el) => { const v = parseFloat(el && el.value); return isFinite(v) && v > 0 ? v : 0; };
 
@@ -86,10 +126,16 @@ function compute() {
   const key = $('calc-work').value;
   const w = WORK[key];
   if (!w) return null;
-  const d1 = num($('calc-d1'));
-  const d2 = w.d2 ? num($('calc-d2')) : null;
-  const d3 = w.d3 ? num($('calc-d3')) : null;
-  if (!d1 || (w.d2 && !d2) || (w.d3 && !d3)) return { error: 'Enter the dimensions the form asks for (all three when thickness or depth applies).' };
+  const raw1 = num($('calc-d1'));
+  const raw2 = w.d2 ? num($('calc-d2')) : null;
+  const raw3 = w.d3 ? num($('calc-d3')) : null;
+  if (!raw1 || (w.d2 && !raw2) || (w.d3 && !raw3)) return { error: 'Enter the dimensions the form asks for (all three when thickness or depth applies).' };
+  // Imperial entry converts to the metric the formulas speak (ft to m,
+  // in to mm); metric passes through untouched.
+  const imp = _units === 'imperial';
+  const d1 = imp ? raw1 * FT : raw1;
+  const d2 = w.d2 ? (imp ? raw2 * FT : raw2) : null;
+  const d3 = w.d3 ? (imp ? raw3 * IN : raw3) : null;
   const qr = w.q(d1, d2, d3);
   const mr = matRate(w, d1, d2);
   const quality = QUALITY[($('calc-quality') || {}).value] || 1;
@@ -105,6 +151,66 @@ function compute() {
     mat, lab, sub, taxRate, tax, total: sub + tax, overrideApplied: override !== null, currency: ($('calc-currency') || {}).value };
 }
 
+// ---- Named estimates (F4-3): save / recall / delete, this device only ---
+const NKEY = 'mmgr_calc_estimates';
+function loadEstimates() { try { return JSON.parse(localStorage.getItem(NKEY) || '[]'); } catch (e) { return []; } }
+function persistEstimates(list) { try { localStorage.setItem(NKEY, JSON.stringify(list.slice(0, 30))); } catch (e) { /* storage full - saving is a nicety, never a gate */ } }
+
+function renderEstimates() {
+  const wrap = $('calc-estimates');
+  if (!wrap) return;
+  const list = loadEstimates();
+  if (!list.length) { wrap.innerHTML = '<div class="calc-empty">No saved estimates yet. Price something, then Save it with a name.</div>'; return; }
+  wrap.innerHTML = list.map(function(est) {
+    return '<div class="bcp-est-row">' +
+      '<span class="bcp-est-name">' + esc(est.name) + '</span>' +
+      '<span class="bcp-est-meta">' + esc(est.at) + ' - ' + esc(est.total) + '</span>' +
+      '<button type="button" class="btn btn-n btn-s" data-action="calcOpen" data-id="' + esc(est.id) + '">Open</button>' +
+      '<button type="button" class="btn btn-n btn-s" data-action="calcDeleteEst" data-id="' + esc(est.id) + '">Delete</button>' +
+    '</div>';
+  }).join('');
+}
+
+// ---- Export (F4-2): print + CSV of the live breakdown -------------------
+function estimateCsv(r) {
+  const q = (v) => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
+  const rows = [
+    ['Build Cost Calculator - My MaNaGeR'],
+    ['Exported', new Date().toISOString().slice(0, 10)],
+    ['Name', ($('#calc-save-name') || {}).value || r.name],
+    ['Work item', r.name],
+    ['Quantity', (Math.round(r.qty * 100) / 100) + ' ' + r.unit + qtyAlt(r.qty, r.unit)],
+    ['Rate basis', r.matDesc],
+    ['Finish level', ($('calc-quality') || {}).value || 'standard'],
+    ['Currency', r.currency],
+    ['Country', ($('calc-country') || {}).value || ''],
+    ['Units entered', _units],
+    ['Materials', Math.round(r.mat)],
+    ['Labor', Math.round(r.lab)],
+    ['Subtotal', Math.round(r.sub)],
+    ['Tax rate %', r.taxRate],
+    ['Tax', Math.round(r.tax)],
+    ['Estimated total', Math.round(r.total)],
+    [],
+    ['Planning-grade estimate - not a quote.']
+  ];
+  return '\uFEFF' + rows.map(function(row) { return row.map(q).join(','); }).join('\r\n');
+}
+
+function slug(s) { return String(s || 'estimate').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40) || 'estimate'; }
+
+function downloadCsv() {
+  if (!lastResult) return;
+  const blob = new Blob([estimateCsv(lastResult)], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'estimate-' + slug(($('calc-save-name') || {}).value || lastResult.name) + '-' + new Date().toISOString().slice(0, 10) + '.csv';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(function() { URL.revokeObjectURL(a.href); }, 500);
+}
+
 function workName(key) {
   const sel = $('calc-work');
   const opt = sel && sel.selectedOptions && sel.selectedOptions[0];
@@ -115,16 +221,25 @@ function row(label, value, cls) {
   return '<div class="calc-line' + (cls ? ' ' + cls : '') + '"><span>' + label + '</span><strong>' + value + '</strong></div>';
 }
 
+let lastResult = null;
+
 function render() {
   const out = $('calc-output');
   if (!out) return;
   const r = compute();
+  if (!r || r.error) {
+    lastResult = null;
+    if ($('calc-out-actions')) $('calc-out-actions').classList.add('is-hide');
+  }
   if (!r) { out.innerHTML = '<div class="calc-empty">Pick a work item, enter dimensions, then Calculate.</div>'; return; }
   if (r.error) { out.innerHTML = '<div class="calc-empty">' + r.error + '</div>'; return; }
+  lastResult = r;
+  if ($('calc-out-actions')) $('calc-out-actions').classList.remove('is-hide');
   out.innerHTML =
     '<div class="calc-sum">' +
       '<div class="calc-sum-main"><span class="calc-sum-label">' + r.qtyLabel + '</span>' +
-      '<strong class="calc-sum-qty">' + (Math.round(r.qty * 100) / 100) + ' ' + r.unit + '</strong></div>' +
+      '<strong class="calc-sum-qty">' + (Math.round(r.qty * 100) / 100) + ' ' + r.unit +
+        '<span class="calc-qty-alt">' + esc(qtyAlt(r.qty, r.unit)) + '</span></strong></div>' +
       '<div class="calc-sum-sub">' + r.matDesc + '</div>' +
     '</div>' +
     row('Materials', fmtMoney(r.mat)) +
@@ -157,6 +272,7 @@ function renderHistory() {
       '<span class="calc-hist-work">' + e.name + '</span>' +
       '<span class="calc-hist-total">' + e.total + '</span>' +
       '<button type="button" class="btn btn-n btn-s" data-action="calcRestore" data-idx="' + i + '">Recall</button>' +
+      '<button type="button" class="btn btn-n btn-s" data-action="calcDelHist" data-idx="' + i + '" aria-label="Delete this history row">X</button>' +
     '</div>').join('');
 }
 
@@ -168,7 +284,7 @@ const ACTIONS = {
       saveHistory({ at: new Date().toISOString().slice(0, 10), name: r.name, qty: r.qty + ' ' + r.unit,
         total: fmtMoney(r.total), work: $('calc-work').value, d1: $('calc-d1').value, d2: ($('calc-d2') || {}).value || '',
         d3: ($('calc-d3') || {}).value || '', currency: r.currency, country: ($('calc-country') || {}).value,
-        quality: ($('calc-quality') || {}).value });
+        quality: ($('calc-quality') || {}).value, units: _units, dLabels: currentDimLabels() });
       renderHistory();
     }
   },
@@ -179,6 +295,7 @@ const ACTIONS = {
   calcRestore: function(el) {
     const h = loadHistory()[parseInt(el.getAttribute('data-idx'), 10)];
     if (!h) return;
+    if (h.units) setUnits(h.units, true);
     $('calc-work').value = h.work;
     syncLabels();
     $('calc-d1').value = h.d1 || '';
@@ -190,12 +307,74 @@ const ACTIONS = {
     render();
     window.scrollTo({ top: 0, behavior: 'smooth' });
   },
+  calcDelHist: function(el) {
+    const idx = parseInt(el.getAttribute('data-idx'), 10);
+    const h = loadHistory();
+    if (isNaN(idx) || !h[idx]) return;
+    h.splice(idx, 1);
+    try { localStorage.setItem(HKEY, JSON.stringify(h)); } catch (e) {}
+    renderHistory();
+  },
   tglTheme: function() {
     // Same theme helper every page uses (mmgr-theme.js exposes MMGRTheme);
     // body.dark-mode + persistence are owned there, never duplicated here.
     if (window.MMGRTheme && MMGRTheme.setMode) { MMGRTheme.setMode(MMGRTheme.isDark() ? 'light' : 'dark'); return; }
     document.body.classList.toggle('dark-mode');
     try { localStorage.setItem('mmgr_theme', document.body.classList.contains('dark-mode') ? 'dark' : 'light'); } catch (e) {}
+  },
+  // F4-1: metric / imperial toggle. Inputs convert on entry; labels and the
+  // quantity's imperial reading follow. Choice persists per device.
+  calcUnits: function(el) {
+    setUnits(el.getAttribute('data-units') === 'imperial' ? 'imperial' : 'metric', false);
+  },
+  // F4-2: export the live breakdown.
+  calcPrint: function() {
+    if (!lastResult) return;
+    document.body.classList.add('print-estimate');
+    window.print();
+  },
+  calcCsv: downloadCsv,
+  // F4-3: named estimates.
+  calcSave: function() {
+    if (!lastResult) return;
+    const nameEl = $('calc-save-name');
+    const name = ((nameEl && nameEl.value) || '').trim() || (lastResult.name + ' - ' + fmtMoney(lastResult.total));
+    const list = loadEstimates();
+    list.unshift({
+      id: 'e' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+      name: name,
+      at: new Date().toISOString().slice(0, 10),
+      total: fmtMoney(lastResult.total),
+      work: $('calc-work').value,
+      d1: $('calc-d1').value, d2: ($('calc-d2') || {}).value || '', d3: ($('calc-d3') || {}).value || '',
+      currency: lastResult.currency, country: ($('calc-country') || {}).value,
+      quality: ($('calc-quality') || {}).value, units: _units,
+      taxOverride: ($('calc-tax-override') || {}).value || ''
+    });
+    persistEstimates(list);
+    if (nameEl) nameEl.value = '';
+    renderEstimates();
+  },
+  calcOpen: function(el) {
+    const est = loadEstimates().find(function(x) { return x.id === el.getAttribute('data-id'); });
+    if (!est) return;
+    if (est.units) setUnits(est.units, true);
+    $('calc-work').value = est.work;
+    syncLabels();
+    $('calc-d1').value = est.d1 || '';
+    if ($('calc-d2')) $('calc-d2').value = est.d2 || '';
+    if ($('calc-d3')) $('calc-d3').value = est.d3 || '';
+    if ($('calc-currency')) $('calc-currency').value = est.currency || 'USD';
+    if ($('calc-country')) $('calc-country').value = est.country || 'US';
+    if ($('calc-quality')) $('calc-quality').value = est.quality || 'standard';
+    if ($('calc-tax-override')) $('calc-tax-override').value = est.taxOverride || '';
+    render();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  },
+  calcDeleteEst: function(el) {
+    const id = el.getAttribute('data-id');
+    persistEstimates(loadEstimates().filter(function(x) { return x.id !== id; }));
+    renderEstimates();
   }
 };
 
@@ -206,16 +385,21 @@ document.addEventListener('click', function(e) {
   if (fn) fn(el);
 });
 
+// Print scope is class-scoped; window.print() blocks, so remove the class
+// right after it returns (covers the common browsers' dialog lifecycle;
+// afterprint is the standards path where it fires).
+window.addEventListener('afterprint', function() { document.body.classList.remove('print-estimate'); });
+
 // Live labels follow the work item (the floating calculator's spirit, page form).
 function syncLabels() {
   const key = ($('calc-work') || {}).value;
   const w = WORK[key];
   if (!w) return;
-  $('calc-d1-label').textContent = w.d1;
-  $('calc-d2-label').textContent = w.d2 || '';
+  $('calc-d1-label').textContent = dimLabel(w, 'd1');
+  $('calc-d2-label').textContent = dimLabel(w, 'd2') || '';
   $('calc-d2-wrap').hidden = !w.d2;
   $('calc-d2').hidden = !w.d2;
-  $('calc-d3-label').textContent = w.d3 || '';
+  $('calc-d3-label').textContent = dimLabel(w, 'd3') || '';
   $('calc-d3-wrap').hidden = !w.d3;
   $('calc-d3').hidden = !w.d3;
   // Country default tax hint follows selection when no custom override.
@@ -223,6 +407,30 @@ function syncLabels() {
   if ($('calc-country') && !$('calc-tax-override').value) {
     $('calc-country').selectedOptions[0].textContent = countryLabel(c);
   }
+}
+
+// Labels as entered right now (stored with history so a recalled row
+// re-labels itself in the unit system it was typed in).
+function currentDimLabels() {
+  const w = WORK[($('calc-work') || {}).value];
+  if (!w) return [];
+  return [dimLabel(w, 'd1'), dimLabel(w, 'd2'), dimLabel(w, 'd3')].filter(Boolean);
+}
+
+// F4-1 core: switch unit system, re-label, remember, re-render only when
+// there is something on the table (a bare form keeps its friendly empty
+// state instead of flashing the dimensions error).
+function setUnits(mode, silent) {
+  _units = mode === 'imperial' ? 'imperial' : 'metric';
+  try { localStorage.setItem('mmgr_calc_units', _units); } catch (e) {}
+  document.querySelectorAll('.bcp-seg-btn').forEach(function(b) {
+    const on = b.getAttribute('data-units') === _units;
+    b.classList.toggle('active', on);
+    b.setAttribute('aria-pressed', on ? 'true' : 'false');
+  });
+  syncLabels();
+  const any = ['calc-d1', 'calc-d2', 'calc-d3'].some(function(id) { return $(id) && $(id).value; });
+  if (any || silent !== true) render();
 }
 function countryLabel(code) {
   const map = { US: 'United States (sales tax varies - use the custom field)', JM: 'Jamaica (GCT 15%)',
@@ -237,7 +445,12 @@ if ($('calc-work')) {
   $('calc-work').addEventListener('change', syncLabels);
   ['calc-currency', 'calc-country', 'calc-quality', 'calc-tax-override', 'calc-d1', 'calc-d2', 'calc-d3']
     .forEach(function(id) { const el = $(id); if (el) el.addEventListener('input', function() { render(); }); });
-  syncLabels();
+  // Saved unit system comes back before first interaction; silent keeps the
+  // empty-state text until the user actually enters dimensions.
+  let savedUnits = 'metric';
+  try { savedUnits = localStorage.getItem('mmgr_calc_units') || 'metric'; } catch (e) {}
+  setUnits(savedUnits, true);
 }
 renderHistory();
+renderEstimates();
 })();

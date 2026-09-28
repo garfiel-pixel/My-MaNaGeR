@@ -14,6 +14,18 @@
    sheet) and CSV export of the live breakdown; (3) named estimates -
    save/recall/delete named snapshots (localStorage mmgr_calc_estimates)
    beside the automatic 20-row history.
+
+   F4b (owner 2026-09-28 rate-freedom directive): (4) editable material
+   + labor rates, prefilled from the model so any company can price at
+   its own numbers (low-bid or sustain) with Reset-to-model to come
+   back; (5) per-piece pricing for area trades - price per piece +
+   piece size (W x L cm) becomes the effective material rate, m2 math
+   underneath stays untouched; (6) EXACT RECALL - history and named
+   estimates store the full settings state (work, dimensions, units,
+   currency, country, quality, tax override, rates, piece pricing) and
+   restore all of it, so a recalled row reproduces its sum exactly.
+   Legacy history rows without stored settings restore what they carry
+   (work/dims/units fall back from dimension magnitudes).
    ============================================================ */
 (function() {
 'use strict';
@@ -60,13 +72,13 @@ const WORK = {
   drywall:    { group: 'Envelope', d1: 'Length (m)', d2: 'Height (m)', d3: null,
     q: (a, b) => ({ qty: a * b, unit: 'm2', qtyLabel: 'Partition area' }),
     rate: { mat: 12, lab: 17 }, matDesc: 'Boards, studs, tape, screws' },
-  tile:       { group: 'Finishes', d1: 'Length (m)', d2: 'Width (m)', d3: null,
+  tile:       { group: 'Finishes', d1: 'Length (m)', d2: 'Width (m)', d3: null, piece: { priceLabel: 'Price per tile', sizeLabel: 'Tile size - width x length (cm)' },
     q: (a, b) => ({ qty: a * b * 1.1, unit: 'm2', qtyLabel: 'Tiles (incl. 10% cuts/waste)' }),
     rate: { mat: 24, lab: 32 }, matDesc: 'Tiles, adhesive, grout, trim' },
   'concrete-drive': { group: 'Finishes', d1: 'Length (m)', d2: 'Width (m)', d3: 'Thickness (mm)',
     q: (a, b, c) => ({ qty: a * b * (c / 1000) * 1.05, unit: 'm3', qtyLabel: 'Concrete (incl. 5% waste)' }),
     rate: { mat: 145, lab: 75 }, matDesc: 'C25/30 air-entrained, mesh, cure' },
-  fencing:    { group: 'Finishes', d1: 'Total run (m)', d2: 'Height (m)', d3: null,
+  fencing:    { group: 'Finishes', d1: 'Total run (m)', d2: 'Height (m)', d3: null, piece: { priceLabel: 'Price per panel', sizeLabel: 'Panel size - width x height (m)' },
     q: (a, b) => ({ qty: a, unit: 'm', qtyLabel: 'Fence run' }),
     rate: { mat: (a, b) => 18 + Math.max(0, ((b || 1.8) - 1.2)) * 9, lab: 15 }, matDesc: 'Chain-link, posts, concrete backfill' }
 };
@@ -122,6 +134,55 @@ function fmtMoney(v) {
 // The fencing material rate is height-dependent; normalize to a number.
 function matRate(w, d1, d2) { return typeof w.rate.mat === 'function' ? w.rate.mat(d1, d2) : w.rate.mat; }
 
+// ---- Model rates (for the rate fields + Reset to model) -----------------
+function modelMatRate(key, d1m, d2m) {
+  const w = WORK[key];
+  if (!w) return '';
+  const r = w.rate.mat;
+  return typeof r === 'function' ? r(d1m, d2m) : r;
+}
+
+// ---- Live settings state (F4b: one shape, saved + restored verbatim) -----
+function readState() {
+  return {
+    work: ($('calc-work') || {}).value || '',
+    d1: ($('calc-d1') || {}).value || '',
+    d2: ($('calc-d2') || {}).value || '',
+    d3: ($('calc-d3') || {}).value || '',
+    currency: ($('calc-currency') || {}).value || 'USD',
+    country: ($('calc-country') || {}).value || 'US',
+    quality: ($('calc-quality') || {}).value || 'standard',
+    taxOverride: ($('calc-tax-override') || {}).value || '',
+    rateMat: ($('calc-rate-mat') || {}).value || '',
+    rateLab: ($('calc-rate-lab') || {}).value || '',
+    piecePrice: ($('calc-piece-price') || {}).value || '',
+    pieceSize: ($('calc-piece-size') || {}).value || '',
+    units: _units
+  };
+}
+
+// Restore a settings object written by readState(). Every field is
+// restored so a recalled entry reproduces its sum exactly (owner
+// directive: recall must re-create the settings that achieved the sum).
+function applyState(st) {
+  if (!st) return;
+  if (st.units) setUnits(st.units, true);
+  if (st.work) $('calc-work').value = st.work;
+  syncLabels();
+  $('calc-d1').value = st.d1 || '';
+  if ($('calc-d2')) $('calc-d2').value = st.d2 || '';
+  if ($('calc-d3')) $('calc-d3').value = st.d3 || '';
+  if ($('calc-currency')) $('calc-currency').value = st.currency || 'USD';
+  if ($('calc-country')) $('calc-country').value = st.country || 'US';
+  if ($('calc-quality')) $('calc-quality').value = st.quality || 'standard';
+  if ($('calc-tax-override')) $('calc-tax-override').value = st.taxOverride || '';
+  if ($('calc-rate-mat')) $('calc-rate-mat').value = st.rateMat || '';
+  if ($('calc-rate-lab')) $('calc-rate-lab').value = st.rateLab || '';
+  if ($('calc-piece-price')) $('calc-piece-price').value = st.piecePrice || '';
+  if ($('calc-piece-size')) $('calc-piece-size').value = st.pieceSize || '';
+  refreshRateFields();
+}
+
 function compute() {
   const key = $('calc-work').value;
   const w = WORK[key];
@@ -137,10 +198,39 @@ function compute() {
   const d2 = w.d2 ? (imp ? raw2 * FT : raw2) : null;
   const d3 = w.d3 ? (imp ? raw3 * IN : raw3) : null;
   const qr = w.q(d1, d2, d3);
-  const mr = matRate(w, d1, d2);
+  const modelMr = matRate(w, d1, d2);
+  // F4b rate freedom: an explicitly typed rate overrides the model. Empty
+  // rate fields are auto-prefilled with the model (see refreshRateFields)
+  // so the numbers on screen are always the numbers in the math.
+  const matEl = $('calc-rate-mat'), labEl = $('calc-rate-lab');
+  const matRaw = parseFloat((matEl || {}).value);
+  const labRaw = parseFloat((labEl || {}).value);
+  // An UNTOUCHED prefill (value equals what refreshRateFields last put
+  // there) is NOT an override - only a typed value earns the "your rate"
+  // note. Typing the same number as the model is harmless (same math).
+  const matOverride = isFinite(matRaw) && matRaw >= 0 && (!matEl || String(matRaw) !== matEl.dataset.model);
+  const labOverride = isFinite(labRaw) && labRaw >= 0 && (!labEl || String(labRaw) !== labEl.dataset.model);
+  const mr = matOverride ? matRaw : modelMr;
+  const lr = labOverride ? labRaw : w.rate.lab;
+  // F4b per-piece pricing (area trades): price-per-piece over piece area
+  // becomes the effective material rate for the m2 math. Imperial entry:
+  // piece price is in the user's currency per piece either way; piece size
+  // is metric cm (label says so) or imperial in, converted to meters.
+  let piece = null;
+  const pieceRaw = parseFloat(($('calc-piece-price') || {}).value);
+  if (w.piece && isFinite(pieceRaw) && pieceRaw > 0) {
+    const sizeStr = (($('calc-piece-size') || {}).value || '').trim();
+    const m = sizeStr.match(/^([\d.]+)\s*(?:x|by|\*)\s*([\d.]+)$/i);
+    if (m) {
+      const conv = _units === 'imperial' ? FT * 100 : 1; // in -> cm when imperial
+      const wCm = parseFloat(m[1]) * conv, lCm = parseFloat(m[2]) * conv;
+      if (wCm > 0 && lCm > 0) piece = { w: wCm, l: lCm, areaM2: (wCm / 100) * (lCm / 100), price: pieceRaw };
+    }
+  }
   const quality = QUALITY[($('calc-quality') || {}).value] || 1;
-  const mat = qr.qty * mr * quality;
-  const lab = qr.qty * w.rate.lab * quality;
+  const effMat = piece ? piece.price / piece.areaM2 : mr;
+  const mat = qr.qty * effMat * quality;
+  const lab = qr.qty * lr * quality;
   const country = ($('calc-country') || {}).value || 'US';
   const overrideRaw = parseFloat(($('calc-tax-override') || {}).value);
   const override = isFinite(overrideRaw) && overrideRaw >= 0 ? overrideRaw : null;
@@ -148,7 +238,8 @@ function compute() {
   const sub = mat + lab;
   const tax = sub * taxRate / 100;
   return { key, name: workName(key), qty: qr.qty, unit: qr.unit, qtyLabel: qr.qtyLabel, matDesc: w.matDesc,
-    mat, lab, sub, taxRate, tax, total: sub + tax, overrideApplied: override !== null, currency: ($('calc-currency') || {}).value };
+    mr, lr, effMat, modelMr, piece, mat, lab, sub, taxRate, tax, total: sub + tax, overrideApplied: override !== null,
+    matOverridden: matOverride, labOverridden: labOverride, currency: ($('calc-currency') || {}).value };
 }
 
 // ---- Named estimates (F4-3): save / recall / delete, this device only ---
@@ -185,6 +276,9 @@ function estimateCsv(r) {
     ['Currency', r.currency],
     ['Country', ($('calc-country') || {}).value || ''],
     ['Units entered', _units],
+    ['Material rate used', r.piece ? (Math.round(r.effMat * 100) / 100) + ' per m2 (from piece pricing)' : Math.round(r.mr)],
+    ['Labor rate used', Math.round(r.lr)],
+    ['Piece pricing', r.piece ? r.piece.price + ' per ' + Math.round(r.piece.w) + ' x ' + Math.round(r.piece.l) + ' cm' : 'no'],
     ['Materials', Math.round(r.mat)],
     ['Labor', Math.round(r.lab)],
     ['Subtotal', Math.round(r.sub)],
@@ -235,6 +329,11 @@ function render() {
   if (r.error) { out.innerHTML = '<div class="calc-empty">' + r.error + '</div>'; return; }
   lastResult = r;
   if ($('calc-out-actions')) $('calc-out-actions').classList.remove('is-hide');
+  const matLabel = r.piece
+    ? 'Materials - priced per piece at ' + r.piece.price.toLocaleString() + ' / ' +
+      (_units === 'imperial' ? Math.round(r.piece.w / 2.54) + ' x ' + Math.round(r.piece.l / 2.54) + ' in' : r.piece.w + ' x ' + r.piece.l + ' cm') + ' = ' +
+      (Math.round(r.effMat * 100) / 100).toLocaleString() + '/m2'
+    : 'Materials' + (r.matOverridden ? ' - your rate' : '');
   out.innerHTML =
     '<div class="calc-sum">' +
       '<div class="calc-sum-main"><span class="calc-sum-label">' + r.qtyLabel + '</span>' +
@@ -242,8 +341,8 @@ function render() {
         '<span class="calc-qty-alt">' + esc(qtyAlt(r.qty, r.unit)) + '</span></strong></div>' +
       '<div class="calc-sum-sub">' + r.matDesc + '</div>' +
     '</div>' +
-    row('Materials', fmtMoney(r.mat)) +
-    row('Labor', fmtMoney(r.lab)) +
+    row(matLabel, fmtMoney(r.mat)) +
+    row('Labor' + (r.labOverridden ? ' - your rate' : ''), fmtMoney(r.lab)) +
     row('Subtotal', fmtMoney(r.sub), 'calc-line-sub') +
     row('Tax (' + r.taxRate + '%' + (r.overrideApplied ? ', your rate' : '') + ')', fmtMoney(r.tax)) +
     row('Estimated total', fmtMoney(r.total), 'calc-line-total') +
@@ -281,11 +380,24 @@ const ACTIONS = {
   calcRun: function() {
     const r = render();
     if (r && !r.error) {
-      saveHistory({ at: new Date().toISOString().slice(0, 10), name: r.name, qty: r.qty + ' ' + r.unit,
-        total: fmtMoney(r.total), work: $('calc-work').value, d1: $('calc-d1').value, d2: ($('calc-d2') || {}).value || '',
-        d3: ($('calc-d3') || {}).value || '', currency: r.currency, country: ($('calc-country') || {}).value,
-        quality: ($('calc-quality') || {}).value, units: _units, dLabels: currentDimLabels() });
+      // F4b exact recall: the row carries the FULL settings state so recall
+      // reproduces this sum exactly (owner directive), not a re-skin of it.
+      const st = readState();
+      saveHistory({ at: new Date().toISOString().slice(0, 10), name: r.name,
+        qty: r.qty + ' ' + r.unit, total: fmtMoney(r.total), st: st });
       renderHistory();
+      // Playwright UX audit finding (2026-09-28): on phones the result card
+      // sits below the fold, so tapping Calculate looked like nothing
+      // happened. Bring the estimate into view - explicit action only,
+      // NEVER on live typing (that would yank the page mid-edit).
+      const outEl = $('calc-output');
+      if (outEl) {
+        const rect = outEl.getBoundingClientRect();
+        if (rect.top < 0 || rect.top > window.innerHeight - 80) {
+          const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+          outEl.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'start' });
+        }
+      }
     }
   },
   calcClearHistory: function() {
@@ -295,15 +407,14 @@ const ACTIONS = {
   calcRestore: function(el) {
     const h = loadHistory()[parseInt(el.getAttribute('data-idx'), 10)];
     if (!h) return;
-    if (h.units) setUnits(h.units, true);
-    $('calc-work').value = h.work;
-    syncLabels();
-    $('calc-d1').value = h.d1 || '';
-    if ($('calc-d2')) $('calc-d2').value = h.d2 || '';
-    if ($('calc-d3')) $('calc-d3').value = h.d3 || '';
-    if ($('calc-currency')) $('calc-currency').value = h.currency || 'USD';
-    if ($('calc-country')) $('calc-country').value = h.country || 'US';
-    if ($('calc-quality')) $('calc-quality').value = h.quality || 'standard';
+    if (h.st) {
+      // New rows: restore EVERYTHING the sum was computed with.
+      applyState(h.st);
+    } else {
+      // Legacy rows (pre-F4b): restore what they carry; infer the unit
+      // system from dimension magnitudes so the numbers read as typed.
+      applyLegacy(h);
+    }
     render();
     window.scrollTo({ top: 0, behavior: 'smooth' });
   },
@@ -314,6 +425,15 @@ const ACTIONS = {
     h.splice(idx, 1);
     try { localStorage.setItem(HKEY, JSON.stringify(h)); } catch (e) {}
     renderHistory();
+  },
+  // F4b: put the model rates back (the escape hatch from your own rates).
+  calcRatesReset: function() {
+    if ($('calc-rate-mat')) $('calc-rate-mat').value = '';
+    if ($('calc-rate-lab')) $('calc-rate-lab').value = '';
+    if ($('calc-piece-price')) $('calc-piece-price').value = '';
+    if ($('calc-piece-size')) $('calc-piece-size').value = '';
+    refreshRateFields();
+    render();
   },
   tglTheme: function() {
     // Same theme helper every page uses (mmgr-theme.js exposes MMGRTheme);
@@ -340,17 +460,8 @@ const ACTIONS = {
     const nameEl = $('calc-save-name');
     const name = ((nameEl && nameEl.value) || '').trim() || (lastResult.name + ' - ' + fmtMoney(lastResult.total));
     const list = loadEstimates();
-    list.unshift({
-      id: 'e' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
-      name: name,
-      at: new Date().toISOString().slice(0, 10),
-      total: fmtMoney(lastResult.total),
-      work: $('calc-work').value,
-      d1: $('calc-d1').value, d2: ($('calc-d2') || {}).value || '', d3: ($('calc-d3') || {}).value || '',
-      currency: lastResult.currency, country: ($('calc-country') || {}).value,
-      quality: ($('calc-quality') || {}).value, units: _units,
-      taxOverride: ($('calc-tax-override') || {}).value || ''
-    });
+    list.unshift({ id: 'e' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+      name: name, at: new Date().toISOString().slice(0, 10), total: fmtMoney(lastResult.total), st: readState() });
     persistEstimates(list);
     if (nameEl) nameEl.value = '';
     renderEstimates();
@@ -358,16 +469,12 @@ const ACTIONS = {
   calcOpen: function(el) {
     const est = loadEstimates().find(function(x) { return x.id === el.getAttribute('data-id'); });
     if (!est) return;
-    if (est.units) setUnits(est.units, true);
-    $('calc-work').value = est.work;
-    syncLabels();
-    $('calc-d1').value = est.d1 || '';
-    if ($('calc-d2')) $('calc-d2').value = est.d2 || '';
-    if ($('calc-d3')) $('calc-d3').value = est.d3 || '';
-    if ($('calc-currency')) $('calc-currency').value = est.currency || 'USD';
-    if ($('calc-country')) $('calc-country').value = est.country || 'US';
-    if ($('calc-quality')) $('calc-quality').value = est.quality || 'standard';
-    if ($('calc-tax-override')) $('calc-tax-override').value = est.taxOverride || '';
+    if (est.st) {
+      applyState(est.st);
+    } else if (est.work) {
+      applyLegacy(est);
+      if (est.taxOverride && $('calc-tax-override')) $('calc-tax-override').value = est.taxOverride;
+    }
     render();
     window.scrollTo({ top: 0, behavior: 'smooth' });
   },
@@ -390,6 +497,59 @@ document.addEventListener('click', function(e) {
 // afterprint is the standards path where it fires).
 window.addEventListener('afterprint', function() { document.body.classList.remove('print-estimate'); });
 
+// ---- Rate fields (F4b): prefill from the model, label with units, --------
+// piece rows show only on trades that have a piece spec.
+function rateUnitLabel(key) {
+  const w = WORK[key];
+  if (!w) return '';
+  const map = { m2: 'per m2', m3: 'per m3', m: 'per m', t: 'per tonne', L: 'per litre' };
+  const imp = _units === 'imperial';
+  const impMap = { m2: 'per sq ft', m3: 'per cu yd', m: 'per ft', t: 'per tonne', L: 'per litre' };
+  return (imp ? impMap : map)[w.q(1, 1, 1).unit] || '';
+}
+
+function currentDims() {
+  const imp = _units === 'imperial';
+  const raw1 = num($('calc-d1'));
+  const raw2 = $('calc-d2') && !$('calc-d2').hidden ? num($('calc-d2')) : null;
+  return {
+    d1: imp ? raw1 * FT : raw1,
+    d2: raw2 !== null ? (imp ? raw2 * FT : raw2) : null
+  };
+}
+
+// Prefill empty rate fields with the model rate; leave typed values alone.
+// Reruns on every work/units change so the labels carry the right per-unit.
+function refreshRateFields() {
+  const key = ($('calc-work') || {}).value;
+  const w = WORK[key];
+  if (!w) return;
+  const d = currentDims();
+  const matEl = $('calc-rate-mat'), labEl = $('calc-rate-lab');
+  if (!matEl || !labEl) return;
+  const modelM = String(Math.round(modelMatRate(key, d.d1, d.d2) * 100) / 100);
+  const modelL = String(w.rate.lab);
+  // Prefill empty fields; an UNTOUCHED prefill (value === what we last put
+  // there) follows the model when dimensions change the model rate. A typed
+  // override is never overwritten - that is the rate freedom.
+  if (matEl.value === '' || matEl.value === matEl.dataset.model) matEl.value = modelM;
+  if (labEl.value === '' || labEl.value === labEl.dataset.model) labEl.value = modelL;
+  matEl.dataset.model = modelM;
+  labEl.dataset.model = modelL;
+  $('calc-rate-mat-label').textContent = 'Material rate ' + rateUnitLabel(key);
+  $('calc-rate-lab-label').textContent = 'Labor rate ' + rateUnitLabel(key);
+  // Piece rows: only trades with a piece spec; labels follow work + units.
+  const pw = $('calc-piece-wrap'), priceEl = $('calc-piece-price'), sizeEl = $('calc-piece-size');
+  if (pw) pw.hidden = !w.piece;
+  if (w.piece && priceEl && sizeEl) {
+    $('calc-piece-price-label').textContent = w.piece.priceLabel;
+    $('calc-piece-size-label').textContent = _units === 'imperial'
+      ? w.piece.sizeLabel.replace('(cm)', '(in)') : w.piece.sizeLabel;
+  }
+  const hint = $('calc-piece-hint');
+  if (hint) hint.hidden = !w.piece;
+}
+
 // Live labels follow the work item (the floating calculator's spirit, page form).
 function syncLabels() {
   const key = ($('calc-work') || {}).value;
@@ -407,14 +567,46 @@ function syncLabels() {
   if ($('calc-country') && !$('calc-tax-override').value) {
     $('calc-country').selectedOptions[0].textContent = countryLabel(c);
   }
+  refreshRateFields();
 }
 
-// Labels as entered right now (stored with history so a recalled row
-// re-labels itself in the unit system it was typed in).
+// Labels as entered right now (kept for CSV display).
 function currentDimLabels() {
   const w = WORK[($('calc-work') || {}).value];
   if (!w) return [];
   return [dimLabel(w, 'd1'), dimLabel(w, 'd2'), dimLabel(w, 'd3')].filter(Boolean);
+}
+
+// ---- Legacy recall (pre-F4b rows without a st object) --------------------
+// Restores what the old shape carried and infers the unit system from
+// dimension magnitudes, so old rows still land close to their original
+// inputs instead of being misread through the wrong unit lens.
+function applyLegacy(h) {
+  const w = WORK[h.work];
+  let units = null;
+  if (w && h.d1) {
+    const v = parseFloat(h.d1);
+    if (isFinite(v) && v > 0) {
+      const d1s = String(w.d1 || '');
+      if (d1s.indexOf('(mm)') > -1) units = v >= 100 ? 'metric' : 'imperial';
+      else if (d1s.indexOf('(m2)') > -1 || d1s.indexOf('(m3)') > -1 || d1s.indexOf('(m)') > -1) units = v >= 3 ? 'metric' : 'imperial';
+    }
+  }
+  if (h.units) units = h.units;
+  if (units) setUnits(units, true);
+  $('calc-work').value = h.work || 'slab';
+  syncLabels();
+  $('calc-d1').value = h.d1 || '';
+  if ($('calc-d2')) $('calc-d2').value = h.d2 || '';
+  if ($('calc-d3')) $('calc-d3').value = h.d3 || '';
+  if ($('calc-currency')) $('calc-currency').value = h.currency || 'USD';
+  if ($('calc-country')) $('calc-country').value = h.country || 'US';
+  if ($('calc-quality')) $('calc-quality').value = h.quality || 'standard';
+  if ($('calc-rate-mat')) $('calc-rate-mat').value = '';
+  if ($('calc-rate-lab')) $('calc-rate-lab').value = '';
+  if ($('calc-piece-price')) $('calc-piece-price').value = '';
+  if ($('calc-piece-size')) $('calc-piece-size').value = '';
+  refreshRateFields();
 }
 
 // F4-1 core: switch unit system, re-label, remember, re-render only when
@@ -443,7 +635,8 @@ function countryLabel(code) {
 // local restore here, a second writer would fight the helper.
 if ($('calc-work')) {
   $('calc-work').addEventListener('change', syncLabels);
-  ['calc-currency', 'calc-country', 'calc-quality', 'calc-tax-override', 'calc-d1', 'calc-d2', 'calc-d3']
+  ['calc-currency', 'calc-country', 'calc-quality', 'calc-tax-override', 'calc-d1', 'calc-d2', 'calc-d3',
+   'calc-rate-mat', 'calc-rate-lab', 'calc-piece-price', 'calc-piece-size']
     .forEach(function(id) { const el = $(id); if (el) el.addEventListener('input', function() { render(); }); });
   // Saved unit system comes back before first interaction; silent keeps the
   // empty-state text until the user actually enters dimensions.

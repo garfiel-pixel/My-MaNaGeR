@@ -2339,6 +2339,13 @@ body.dark-mode .ai-byo-status[data-state="untested"]{background:rgba(245,158,11,
 .bcp-field{display:flex;flex-direction:column;gap:5px;min-width:0;}
 .bcp-field label{font-size:.72rem;color:var(--slate);font-weight:600;letter-spacing:.02em;}
 .bcp-field select,.bcp-field input{background:var(--tile-bg);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);padding:9px 12px;font-size:.88rem;font-family:inherit;min-width:0;width:100%;}
+/* F4b rate freedom (owner 2026-09-28): rates head + piece-pricing rows.
+   Same field language as the rest of the form; the hint line carries the
+   per-piece explanation in the muted note style. */
+.bcp-rates-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin:4px 0 10px;}
+.bcp-rates-label{font-size:.78rem;font-weight:700;color:var(--text);}
+.bcp-piece-hint{font-size:.72rem;color:var(--slate);line-height:1.5;margin-top:6px;}
+.bcp-piece-hint[hidden]{display:none;}
 .bcp-run{width:100%;justify-content:center;margin-top:6px;}
 /* F4-1 unit toggle (owner 2026-09-28): metric/imperial segmented control.
    Tokens only - active state rides the brand gold wash, both themes hold. */

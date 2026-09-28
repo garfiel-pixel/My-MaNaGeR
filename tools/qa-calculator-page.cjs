@@ -35,6 +35,17 @@
      S3   Delete removes the named estimate
      S4   history rows are individually deletable (calcDelHist)
 
+   F4b RATE FREEDOM + EXACT RECALL (owner 2026-09-28):
+     R1   rate fields prefill from the model; labels carry per-unit
+     R2   typing a material rate changes the total (your-rate annotation)
+     R3   Reset to model restores the model total
+     R4   tile per-piece: 950/tile over 0.18 m2 -> 5277.78/m2 exact
+     R5   piece row hides on non-piece trades, shows on tile
+     E1   exact recall: run JMD imperial tile with override+rates+piece,
+          change everything, recall -> EVERY setting returns (st identity)
+     E2   legacy history row (no st) recalls with inferred units + defaults
+     X3   CSV carries the used rates + piece pricing line
+
    Usage:  node tools/qa-calculator-page.cjs   (needs serve.cjs on :8765)
    Registry: CI-TEST-COVERAGE.md -> CI row (fast, serve.cjs battery).
    ============================================================ */
@@ -272,9 +283,11 @@ async function withChrome(fn) {
       document.querySelector('[data-action="calcSave"]').click();
       var raw = localStorage.getItem('mmgr_calc_estimates');
       var rows = document.querySelectorAll('#calc-estimates .bcp-est-row').length;
-      return { stored: !!raw, rows: rows, first: raw ? JSON.parse(raw)[0] : null };
+      var first = raw ? JSON.parse(raw)[0] : null;
+      var work = first ? (first.st ? first.st.work : first.work) : null;
+      return { stored: !!raw, rows: rows, name: first && first.name, work: work };
     })()`);
-    check('S1 Save stores the named estimate', s1 && s1.rows === 1 && s1.first && s1.first.name === 'Garage slab QA' && s1.first.work === 'slab', s1);
+    check('S1 Save stores the named estimate', s1 && s1.rows === 1 && s1.name === 'Garage slab QA' && s1.work === 'slab', s1);
 
     // S2: Open restores the inputs and recomputes.
     const s2 = await ev(`(function(){
@@ -312,6 +325,137 @@ async function withChrome(fn) {
                emptyState: document.getElementById('calc-output').textContent.indexOf('Pick a work item') > -1 };
     })()`);
     check('U4 unit choice survives reload (labels imperial, form clean)', u4 && u4.d1 === 'Length (ft)' && u4.pressed === 'true' && u4.emptyState, u4);
+
+    // ---------- F4b RATE FREEDOM + EXACT RECALL ----------
+    // R1: rate fields prefill with the model rate + per-unit labels.
+    // (Metric first: earlier F4 gates leave imperial behind.)
+    const r1 = await ev(`(function(){
+      document.querySelector('[data-action="calcUnits"][data-units="metric"]').click();
+      document.getElementById('calc-work').value = 'slab';
+      document.getElementById('calc-work').dispatchEvent(new Event('change',{bubbles:true}));
+      return { mat: document.getElementById('calc-rate-mat').value,
+               lab: document.getElementById('calc-rate-lab').value,
+               matLbl: document.getElementById('calc-rate-mat-label').textContent,
+               labLbl: document.getElementById('calc-rate-lab-label').textContent };
+    })()`);
+    check('R1 rate prefill: slab 150/85, per m3 labels', r1 && r1.mat === '150' && r1.lab === '85' && /per m3/.test(r1.matLbl) && /per m3/.test(r1.labLbl), r1);
+
+    // R2: a typed material rate changes the total and is annotated.
+    const r2 = await ev(`(function(){
+      document.getElementById('calc-d1').value='10'; document.getElementById('calc-d2').value='8'; document.getElementById('calc-d3').value='150';
+      document.getElementById('calc-d1').dispatchEvent(new Event('input',{bubbles:true}));
+      document.querySelector('[data-action=calcRun]').click();
+      // Currency-agnostic total grab (earlier gates may have left any currency).
+      const grab = (t) => { const seg = t.split('Estimated total')[1] || ''; const m = seg.replace(/[^\\d,]/g,' ').match(/([\\d,]+)/); return m ? parseFloat(m[1].replace(/,/g,'')) : null; };
+      const before = grab(document.getElementById('calc-output').textContent);
+      document.getElementById('calc-rate-mat').value = '200';
+      document.getElementById('calc-rate-mat').dispatchEvent(new Event('input',{bubbles:true}));
+      const txt = document.getElementById('calc-output').textContent;
+      const after = grab(txt);
+      return { before: before, after: after, yours: txt.indexOf('your rate') > -1,
+               grew: before !== null && after !== null && after > before };
+    })()`);
+    check('R2 material rate override raises total + your-rate note', r2 && r2.grew && r2.yours, r2);
+
+    // R3: Reset to model returns to the model total.
+    const r3 = await ev(`(function(){
+      document.querySelector('[data-action=calcRatesReset]').click();
+      const txt = document.getElementById('calc-output').textContent;
+      return { mat: document.getElementById('calc-rate-mat').value, yours: txt.indexOf('your rate') > -1 };
+    })()`);
+    check('R3 reset-to-model clears override (back to 150, no note)', r3 && r3.mat === '150' && !r3.yours, r3);
+
+    // R4+R5: per-piece pricing on tile (exact division), row visibility.
+    // (Metric explicitly: R2/R3 left whatever units; piece sizes are cm here.)
+    const r45 = await ev(`(function(){
+      document.querySelector('[data-action="calcUnits"][data-units="metric"]').click();
+      document.getElementById('calc-work').value = 'tile';
+      document.getElementById('calc-work').dispatchEvent(new Event('change',{bubbles:true}));
+      var pieceVisible = !document.getElementById('calc-piece-wrap').hidden;
+      document.getElementById('calc-d1').value='10'; document.getElementById('calc-d2').value='8';
+      document.getElementById('calc-d1').dispatchEvent(new Event('input',{bubbles:true}));
+      document.getElementById('calc-piece-price').value = '950';
+      document.getElementById('calc-piece-size').value = '30 x 60';
+      document.getElementById('calc-piece-price').dispatchEvent(new Event('input',{bubbles:true}));
+      var txt = document.getElementById('calc-output').textContent;
+      var m = txt.match(/= ([\\d.,]+)\\/m2/);
+      var eff = m ? parseFloat(m[1].replace(/,/g,'')) : null;
+      return { pieceVisible: pieceVisible, eff: eff, line: txt.indexOf('priced per piece') > -1 };
+    })()`);
+    check('R4 tile per-piece 950 / (0.3x0.6) = 5277.78/m2 exact', r45 && r45.eff === 5277.78 && r45.line, r45);
+    const r5b = await ev(`(function(){
+      document.getElementById('calc-work').value = 'slab';
+      document.getElementById('calc-work').dispatchEvent(new Event('change',{bubbles:true}));
+      return { hidden: document.getElementById('calc-piece-wrap').hidden };
+    })()`);
+    check('R5 piece row hides on slab, showed on tile', r45 && r45.pieceVisible && r5b && r5b.hidden, r5b);
+
+    // E1: exact recall identity - run with a full settings set, disturb
+    // everything, recall, and require the ENTIRE st object back.
+    const e1 = await ev(`(function(){
+      document.getElementById('calc-currency').value='JMD'; document.getElementById('calc-country').value='JM';
+      document.getElementById('calc-currency').dispatchEvent(new Event('input',{bubbles:true}));
+      document.querySelector('[data-action="calcUnits"][data-units="imperial"]').click();
+      document.getElementById('calc-work').value='tile';
+      document.getElementById('calc-work').dispatchEvent(new Event('change',{bubbles:true}));
+      document.getElementById('calc-d1').value='33'; document.getElementById('calc-d2').value='26';
+      document.getElementById('calc-rate-mat').value='950'; document.getElementById('calc-rate-lab').value='40';
+      document.getElementById('calc-tax-override').value='12.5';
+      document.getElementById('calc-d1').dispatchEvent(new Event('input',{bubbles:true}));
+      document.querySelector('[data-action=calcRun]').click();
+      var saved = JSON.parse(localStorage.getItem('mmgr_calc_history'))[0].st;
+      // Disturb EVERYTHING.
+      document.querySelector('[data-action="calcUnits"][data-units="metric"]').click();
+      document.getElementById('calc-work').value='slab';
+      document.getElementById('calc-work').dispatchEvent(new Event('change',{bubbles:true}));
+      document.getElementById('calc-d1').value='1'; document.getElementById('calc-d2').value='1'; document.getElementById('calc-d3').value='1';
+      document.getElementById('calc-rate-mat').value='1'; document.getElementById('calc-rate-lab').value='1';
+      document.getElementById('calc-tax-override').value='';
+      document.getElementById('calc-d1').dispatchEvent(new Event('input',{bubbles:true}));
+      // Recall the row.
+      document.querySelector('[data-action=calcRestore]').click();
+      var now = {
+        units: localStorage.getItem('mmgr_calc_units'),
+        work: document.getElementById('calc-work').value,
+        d1: document.getElementById('calc-d1').value, d2: document.getElementById('calc-d2').value,
+        cur: document.getElementById('calc-currency').value, cty: document.getElementById('calc-country').value,
+        rm: document.getElementById('calc-rate-mat').value, rl: document.getElementById('calc-rate-lab').value,
+        tax: document.getElementById('calc-tax-override').value,
+        lbl: document.getElementById('calc-d1-label').textContent };
+      return { saved: saved, now: now,
+        ok: now.units==='imperial' && now.work==='tile' && now.d1==='33' && now.d2==='26' &&
+            now.cur==='JMD' && now.cty==='JM' && now.rm==='950' && now.rl==='40' && now.tax==='12.5' &&
+            now.lbl==='Length (ft)' };
+    })()`);
+    check('E1 exact recall restores EVERY setting (sum replicates)', e1 && e1.ok === true, e1);
+
+    // E2: a legacy row (old shape, no st) recalls with inferred units.
+    const e2 = await ev(`(function(){
+      localStorage.setItem('mmgr_calc_history', JSON.stringify([{ at:'2026-09-01', name:'Old row', qty:'96.9 m2', total:'J$1,000',
+        work:'tile', d1:'10', d2:'8', currency:'JMD', country:'JM', quality:'standard' }]));
+      document.querySelector('[data-action=calcRestore]').click();
+      return { work: document.getElementById('calc-work').value, d1: document.getElementById('calc-d1').value,
+               units: localStorage.getItem('mmgr_calc_units'), rm: document.getElementById('calc-rate-mat').value };
+    })()`);
+    check('E2 legacy row recalls: units inferred (m), rates default', e2 && e2.work==='tile' && e2.d1==='10' && e2.units==='metric' && e2.rm !== '', e2);
+
+    // X3: CSV carries the used rates + piece lines.
+    const x3 = await ev(`(async function(){
+      document.getElementById('calc-work').value='tile';
+      document.getElementById('calc-work').dispatchEvent(new Event('change',{bubbles:true}));
+      document.getElementById('calc-d1').value='10'; document.getElementById('calc-d2').value='8';
+      document.getElementById('calc-piece-price').value='950'; document.getElementById('calc-piece-size').value='30 x 60';
+      document.getElementById('calc-d1').dispatchEvent(new Event('input',{bubbles:true}));
+      var created=[]; var oc=URL.createObjectURL; URL.createObjectURL=function(b){created.push(b);return 'blob:qa';};
+      var oclk=HTMLAnchorElement.prototype.click; HTMLAnchorElement.prototype.click=function(){};
+      document.querySelector('[data-action=calcCsv]').click();
+      URL.createObjectURL=oc; HTMLAnchorElement.prototype.click=oclk;
+      if(!created.length) return {ok:false};
+      var text = await new Promise(function(res){ var fr=new FileReader(); fr.onload=function(){res(fr.result);}; fr.onerror=function(){res('');}; fr.readAsText(created[0]); });
+      return { ok:true, rates: text.indexOf('Material rate used') > -1 && text.indexOf('Labor rate used') > -1,
+               piece: text.indexOf('950 per 30 x 60 cm') > -1 };
+    })()`);
+    check('X3 CSV carries used rates + piece pricing lines', x3 && x3.ok && x3.rates && x3.piece, x3);
 
     // ---------- PARALLEL-AWARE ASSISTANT (seeded project state) ----------
     // Seed through the served app bundle on project.html (locally-owned gate).

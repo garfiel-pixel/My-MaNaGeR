@@ -576,6 +576,15 @@ function row(label, value, cls) {
 
 let lastResult = null;
 
+// D3: optional business letterhead for printed/PDF estimates. Device-local
+// (mmgr_calc_biz_name); the quote head is display:none on screen.
+const BKEY = 'mmgr_calc_biz_name';
+function bizName() {
+  const el = $('calc-biz-name');
+  if (el && el.value.trim()) return el.value.trim();
+  try { return localStorage.getItem(BKEY) || ''; } catch (e) { return ''; }
+}
+
 function render() {
   const out = $('calc-output');
   if (!out) return;
@@ -605,6 +614,9 @@ function render() {
     ? 'Materials - priced per piece at ' + pieceDesc
     : 'Materials' + (r.matOverridden ? ' - your rate' : '');
   const shown = qtyShown(r.qty, r.unit);
+  const qh = $('calc-quote-biz'), qm = $('calc-quote-meta');
+  if (qh) qh.textContent = bizName();
+  if (qm) qm.textContent = (($('calc-save-name') || {}).value || r.name) + '  -  ' + r.name + '  -  ' + shown.main + '  -  ' + new Date().toISOString().slice(0, 10);
   out.innerHTML =
     '<div class="calc-sum">' +
       '<div class="calc-sum-main"><span class="calc-sum-label">' + r.qtyLabel + '</span>' +
@@ -860,6 +872,17 @@ document.addEventListener('change', function(e) {
 // afterprint is the standards path where it fires).
 window.addEventListener('afterprint', function() { document.body.classList.remove('print-estimate'); });
 
+// D3: persist the business letterhead name on every keystroke. Rendering
+// follows through the same input path as every other field.
+(function() {
+  const el = $('calc-biz-name');
+  if (!el) return;
+  el.addEventListener('input', function() {
+    try { localStorage.setItem(BKEY, el.value.trim()); } catch (e) { /* nicety */ }
+    render();
+  });
+})();
+
 // ---- Rate fields (F4b): prefill from the model, label with units, --------
 // piece rows show only on trades that have a piece spec.
 function rateUnitLabel(key) {
@@ -1042,4 +1065,11 @@ if ($('calc-work')) {
 renderHistory();
 renderEstimates();
 renderSheets();
+// D3: restore the saved business name after the listeners are attached.
+(function() {
+  let saved = '';
+  try { saved = localStorage.getItem(BKEY) || ''; } catch (e) {}
+  const el = $('calc-biz-name');
+  if (el && saved && !el.value) el.value = saved;
+})();
 })();

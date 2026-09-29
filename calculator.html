@@ -201,8 +201,21 @@
   </section>
 
   <section class="card" id="calc-estimates-card" aria-labelledby="calc-est-h">
-    <h2 id="calc-est-h" class="card-title">Named estimates <span class="bcp-hist-note">- your client-facing saves, kept on this device</span></h2>
+    <div class="bcp-hist-head">
+      <h2 id="calc-est-h" class="card-title">Named estimates <span class="bcp-hist-note">- your client-facing saves, kept on this device</span></h2>
+      <button type="button" class="btn btn-n btn-s" data-action="calcCompare">
+        <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-bar-chart"></use></svg> Compare
+      </button>
+    </div>
     <div id="calc-estimates" class="calc-hist"><div class="calc-empty">No saved estimates yet. Price something, then Save it with a name.</div></div>
+  </section>
+
+  <section class="card" id="calc-compare-card" aria-labelledby="calc-cmp-h" hidden>
+    <div class="bcp-hist-head">
+      <h2 id="calc-cmp-h" class="card-title">Compare estimates</h2>
+      <button type="button" class="btn btn-n btn-s" data-action="calcCompareClose">Close</button>
+    </div>
+    <div id="calc-compare" class="bcp-cmp"></div>
   </section>
 
   <p class="bcp-fineprint">Rates are planning-grade averages for early estimates, not quotes. Every line item is editable in the app once the project starts. Tax rates are the standard national rates (PwC VAT/GST table, 2026) - a custom rate field overrides them. Dimensions can be typed in metric or imperial - the math is the same underneath. Everything runs on this device; clearing your browser data clears the history and saved estimates.</p>

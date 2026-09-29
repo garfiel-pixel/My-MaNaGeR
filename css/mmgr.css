@@ -3936,11 +3936,13 @@ body.view-3d .view-deck{--glass-blur:0px;}
 .dock{min-width:188px;}
 .dock .dock-item{gap:10px;}
 
-/* ---- Performance Mode (mmgr-perf.js, [data-perf=on] default) ----
-   Trims the heaviest CSS layers: big backdrop blurs drop to a cheap radius,
-   large blurred shadows collapse to flat ones. Animations, transitions and
-   small blurs are untouched - the UI keeps its feel, the GPU gets a break.
-   The starry WebGL shader is NOT affected (capability-gated in viewport). */
+/* ---- Performance Mode (mmgr-perf.js, pretty by default 2026-09-29) ----
+   Applies only when the USER turns Performance Mode on: big backdrop blurs
+   drop to a cheap radius, large blurred shadows collapse to flat ones.
+   Animations, transitions and small blurs are untouched - the UI keeps its
+   feel, the GPU gets a break. Fresh devices ship PRETTY (perf off) so the
+   artwork the owner put in is visible out of the box. The starry WebGL
+   shader is NOT affected by these CSS trims (capability-gated in viewport). */
 [data-perf="on"] .dock,
 [data-perf="on"] #drw,
 [data-perf="on"] .db-sheet{backdrop-filter:blur(6px) saturate(140%);-webkit-backdrop-filter:blur(6px) saturate(140%);}

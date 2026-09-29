@@ -1574,7 +1574,12 @@ const DASH_ACTION_MAP = {
   'tglTheme': (el) => tglTheme(el),
   // Performance Mode (owner 2026-09-06): same contract as project.html's
   // ACTION_MAP entry - checkbox toggles own their click, read checked as-is.
-  'tglPerfMode': (el) => { const P = window.MMGR.Perf; if (P && P.set) P.set(el.checked); },
+  // OWNER 2026-09-29: glass re-sync added (parity with project.html's
+  // mmgr-app.js handler and admin.html's inline map since v279) - turning
+  // perf OFF tears the starry canvas down live; turning it ON brings the
+  // background back on capable machines. Without the sync the shader only
+  // followed the toggle after a reload.
+  'tglPerfMode': (el) => { const P = window.MMGR.Perf; if (P && P.set) P.set(el.checked); if (window.MMGR && MMGR.Glass && MMGR.Glass.sync) MMGR.Glass.sync(); },
   'tglGlassMode': (el) => tglGlassMode(el),
   'toggleSidebar': () => toggleSidebar(),
   'tglThemeQuick': () => tglThemeQuick(),

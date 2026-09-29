@@ -1868,3 +1868,18 @@ qa-calculator 27/27, health sweep 15/15 (1041 CSS rules live), header+backnav
 probes all-PASS, npm run verify green, emoji scan clean. Commits: 8
 conventional (no attribution footers per owner gate). NOT DEPLOYED - owner
 reviews locally first.
+
+DEPLOY 2026-09-29 (same session, owner go-ahead): via the canonical
+tools/deploy.cjs (build + verify + stage + byte-verify + deploy) - version
+90ea8768-58c1-49d5-8b3a-cee400ba1fc2 at
+https://my-manager.garfieldprocis.workers.dev. LAST-MINUTE FIX caught by the
+deploy verify: the A1 .bcp-group/.bcp-row-3/.bcp-waste-field CSS block had
+never actually landed in css/mmgr.css (fieldsets rendered browser-default) -
+committed 0020a59 before shipping. Lesson: hand staging missed SKIP_DIRS
+(screenshots/web-research) + *.md/*.json excludes -> 50 MB stage; deploy.cjs
+does it right (dist/ INCLUDED - it is gitignored but served; do not tar-exclude
+it). Edge probes post-deploy (curl -L, /calculator 307-strips): health 200,
+sw v336, calc assets ?v=9 + calcBack live, mmgr.min.css bcp-group/bcp-row-3
+live, project hdr-left live, features/guide data-back live, marketing bundle
+carries the handler. CI watch: next push runs qa suites against the new
+69-gate contract (registry updated).

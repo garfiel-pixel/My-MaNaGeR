@@ -240,7 +240,9 @@ async function withChrome(fn) {
     })()`);
     check('U1 imperial toggle: labels (ft)/(in), stored, aria-pressed', u1 && u1.d1 === 'Length (ft)' && u1.d3 === 'Thickness (in)' && u1.stored === 'imperial' && u1.pressed === 'true', u1);
 
-    // U2: imperial slab entry converts to the metric math (exact).
+    // U2 (re-baselined 2026-09-29, A2 unit-primary hero): imperial slab entry
+    // now shows SQ FT / CU YD as the primary hero with the metric reading as
+    // the secondary line (owner review: the hero follows the unit toggle).
     const u2 = await ev(`(function(){
       document.getElementById('calc-work').value = 'slab';
       document.getElementById('calc-work').dispatchEvent(new Event('change',{bubbles:true}));
@@ -249,10 +251,31 @@ async function withChrome(fn) {
       document.getElementById('calc-d3').value = '6';
       document.getElementById('calc-d1').dispatchEvent(new Event('input',{bubbles:true}));
       const out = document.getElementById('calc-output').textContent;
-      const m = out.match(/([\\d.]+) m3/);
-      return { qty: m && m[1], alt: out.indexOf('cu yd') > -1 };
+      const hero = out.match(/([\\d.,]+) cu yd/);
+      return { cuyd: hero && hero[1], altMetric: out.indexOf('12.76 m3') > -1 };
     })()`);
-    check('U2 imperial slab 33x26x6in -> 12.76 m3 + cu yd reading', u2 && u2.qty === '12.76' && u2.alt === true, u2);
+    check('U2 imperial slab 33x26x6in -> 16.7 cu yd hero + metric reading', u2 && u2.cuyd === '16.7' && u2.altMetric === true, u2);
+
+    // I1 (A2): the hero follows the unit toggle on the same input. Drives its
+    // own toggles AND restores work=slab + metric so the following gates keep
+    // their assumptions (X1/S1 read the live work item).
+    const i1 = await ev(`(function(){
+      document.getElementById('calc-work').value = 'tile';
+      document.getElementById('calc-work').dispatchEvent(new Event('change',{bubbles:true}));
+      document.getElementById('calc-d1').value = '6';
+      document.getElementById('calc-d2').value = '6';
+      document.getElementById('calc-d1').dispatchEvent(new Event('input',{bubbles:true}));
+      document.querySelector('[data-action="calcUnits"][data-units="metric"]').click();
+      const metricHero = document.querySelector('#calc-output .calc-sum-qty').textContent;
+      document.querySelector('[data-action="calcUnits"][data-units="imperial"]').click();
+      const impHero = document.querySelector('#calc-output .calc-sum-qty').textContent;
+      // restore the ambient state the surrounding gates assume
+      document.querySelector('[data-action="calcUnits"][data-units="metric"]').click();
+      document.getElementById('calc-work').value = 'slab';
+      document.getElementById('calc-work').dispatchEvent(new Event('change',{bubbles:true}));
+      return { metricHero: metricHero, impHero: impHero };
+    })()`);
+    check('I1 unit-primary hero: 39.6 m2 metric / 40 sq ft imperial', i1 && i1.metricHero.indexOf('39.6 m2') === 0 && i1.impHero.indexOf('40 sq ft') === 0 && i1.impHero.indexOf('3.68 m2') > -1, i1);
 
     // U3: back to metric - labels restore, storage flips back.
     const u3 = await ev(`(function(){

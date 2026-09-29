@@ -14,6 +14,10 @@ svg.ico use{fill:inherit;stroke:inherit;}
   /* -- Surface hierarchy -- */
   --canvas:#F5EFE6;     /* warm off-white - Level 0 */
   --sidebar:#FDFBF7;    /* very light warm - sidebar background */
+  /* Skeleton screens (2026-09-29): placeholder box fill + moving sheen.
+     Derived from the existing track/tile surfaces so both themes hold. */
+  --skel-base:var(--track-bg);
+  --skel-sheen:var(--tile-bg);
   --card:#ffffff;       /* crisp white - Level 1 cards */
   --surface:#ffffff;    /* Level 1: work surfaces / cards / panels */
   --surface-raised:#f8f5f0; /* Level 2: focused / elevated surfaces */
@@ -121,6 +125,10 @@ body.dark-mode{
   --sidebar:#101013;      /* neutral dark sidebar */
   --card:#151518;         /* neutral dark surface */
   --surface:#151518;
+  /* Skeleton sheen re-map: light alpha fills read as boxes on the dark
+     canvas (never dark-on-dark). */
+  --skel-base:rgba(255,255,255,.06);
+  --skel-sheen:rgba(255,255,255,.13);
   --surface-raised:#1c1c20;
   --border:#2c2c31;       /* neutral dark border */
   --text:#f5f5f5;         /* true white text */
@@ -1204,6 +1212,27 @@ body.gantt-dragging .gb{cursor:grabbing;}
 /* ---- Boot loading skeleton (Phase F) ---- */
 #boot-splash{position:fixed;inset:0;z-index:10000;background:var(--canvas);display:flex;align-items:center;justify-content:center;transition:opacity .3s;}
 #boot-splash.off{opacity:0;pointer-events:none;}
+/* ---- Skeleton primitives (2026-09-29, replaces the bs-spin spinner) ----
+   .skel-box is the placeholder shape; a ::after sheen layer sweeps across it
+   (transform-based, compositable). --skel-base/--skel-sheen are defined in
+   :root and re-mapped under body.dark-mode (see the token blocks). */
+.skel-box{background:var(--skel-base);border-radius:8px;position:relative;overflow:hidden;min-height:10px;}
+.skel-box::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent 20%,var(--skel-sheen) 50%,transparent 80%);transform:translateX(-100%);animation:skel-sheen 1.4s infinite ease-in-out;}
+@keyframes skel-sheen{to{transform:translateX(100%);}}
+@media (prefers-reduced-motion:reduce){.skel-box::after{animation:none;display:none;}}
+/* Size/shape modifiers matching the app's real components. */
+.skel-line{height:12px;}
+.skel-line.t-lg{height:18px;}
+.skel-pill{height:30px;border-radius:100px;}
+.skel-card{height:120px;border-radius:var(--radius-lg,16px);border:1px solid var(--border);}
+.skel-row{display:flex;align-items:center;gap:8px;}
+.skel-avatar{width:28px;height:28px;border-radius:50%;flex-shrink:0;}
+.skel-w-60{width:60%;}
+.skel-w-40{width:40%;}
+.skel-boot-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;width:100%;}
+.skel-boot-col{display:flex;flex-direction:column;gap:10px;min-width:0;}
+@media (max-width:820px){.skel-boot-grid{grid-template-columns:1fr 1fr;}}
+@media (max-width:600px){.skel-boot-grid{grid-template-columns:1fr;}}
 .bs-inner{text-align:center;color:var(--slate);font-size:.8rem;display:flex;flex-direction:column;align-items:center;gap:14px;} /* ACTION-PLAN 4.1: view-only scope - a static amber strip under the header */
 #readonly-banner{position:sticky;top:0;z-index:1500;display:flex;align-items:center;justify-content:center;gap:8px;background:rgba(245,158,11,.12);border-bottom:1px solid rgba(245,158,11,.35);color:var(--gold);font-size:.72rem;padding:6px 14px;letter-spacing:.3px;}
 #readonly-banner.is-hide{display:none;}

@@ -373,6 +373,40 @@ function applySheetById(id) {
 function loadSheets() { try { return JSON.parse(localStorage.getItem(RKEY) || '[]'); } catch (e) { return []; } }
 function persistSheets(list) { try { localStorage.setItem(RKEY, JSON.stringify(list.slice(0, 20))); } catch (e) { /* nicety, never a gate */ } }
 
+// D1 helper: transient status line under the sheets bar (also used by the
+// import flow so the user always sees what happened to their file).
+function sheetMsg(text) {
+  const el = $('calc-sheet-msg');
+  if (!el) return;
+  el.textContent = text;
+  el.hidden = !text;
+  if (text) setTimeout(function() { el.hidden = true; }, 5000);
+}
+
+// D1: validate + merge an imported sheets payload. Returns how many were
+// merged and how many entries were skipped (never throws).
+function importSheets(json) {
+  if (!json || !Array.isArray(json.sheets)) return null;
+  const existing = loadSheets();
+  let merged = 0, skipped = 0;
+  json.sheets.forEach(function(item) {
+    const name = item && typeof item.name === 'string' ? item.name.trim().slice(0, 40) : '';
+    const r = item && item.rates ? item.rates : {};
+    const mat = parseFloat(r.rateMat), lab = parseFloat(r.rateLab);
+    if (!name || !isFinite(mat) || mat < 0 || !isFinite(lab) || lab < 0) { skipped++; return; }
+    const sheet = { id: 'r' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+      name: name, at: new Date().toISOString().slice(0, 10),
+      rates: { rateMat: String(mat), rateLab: String(lab),
+        rateEq: r.rateEq != null && isFinite(parseFloat(r.rateEq)) ? String(r.rateEq) : '',
+        piecePrice: r.piecePrice || '', pieceSize: r.pieceSize || '' } };
+    const at = existing.findIndex(function(x) { return (x.name || '').toLowerCase() === name.toLowerCase(); });
+    if (at > -1) existing[at] = sheet; else existing.unshift(sheet);
+    merged++;
+  });
+  if (merged) { persistSheets(existing); renderSheets(); }
+  return { merged: merged, skipped: skipped };
+}
+
 function activeSheetName() {
   const matEl = $('calc-rate-mat'), labEl = $('calc-rate-lab');
   if (!matEl || !labEl) return null;
@@ -692,6 +726,27 @@ const ACTIONS = {
     persistSheets(loadSheets().filter(function(x) { return x.id !== id; }));
     renderSheets();
   },
+  // ---- D1 (owner review 2026-09-29): rate-sheet transfer ----------------
+  // Export downloads every saved sheet as a JSON file; import merges a file
+  // back in (same-name sheets replace, malformed entries are skipped).
+  calcSheetExport: function() {
+    const list = loadSheets();
+    if (!list.length) { sheetMsg('No saved rate sheets to export yet.'); return; }
+    const payload = JSON.stringify({ version: 1, exported: new Date().toISOString().slice(0, 10), sheets: list }, null, 2);
+    const blob = new Blob([payload], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'mmgr-calc-rate-sheets-' + new Date().toISOString().slice(0, 10) + '.json';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(function() { URL.revokeObjectURL(a.href); }, 500);
+    sheetMsg('Exported ' + list.length + ' rate sheet(s).');
+  },
+  calcSheetImport: function() {
+    const f = $('calc-sheet-file');
+    if (f) f.click();
+  },
   calcSheetPick: null
 };
 
@@ -710,6 +765,24 @@ document.addEventListener('change', function(e) {
   if (!el || !el.value) return;
   applySheetById(el.value);
   el.selectedIndex = 0;
+});
+
+// D1: the hidden file input behind the Import button. Every failure path
+// reports in the status line - a bad file never throws, never clears storage.
+document.addEventListener('change', function(e) {
+  if (e.target.id !== 'calc-sheet-file') return;
+  const file = e.target.files && e.target.files[0];
+  e.target.value = ''; // allow re-choosing the same file
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function() {
+    let json = null;
+    try { json = JSON.parse(String(reader.result)); } catch (err) { json = null; }
+    const res = importSheets(json);
+    if (res === null) { sheetMsg('That file is not a My MaNaGeR rate sheet export.'); return; }
+    sheetMsg('Imported ' + res.merged + ' rate sheet(s)' + (res.skipped ? ' (' + res.skipped + ' skipped - missing name or rates).' : '.'));
+  };
+  reader.readAsText(file);
 });
 
 // Print scope is class-scoped; window.print() blocks, so remove the class

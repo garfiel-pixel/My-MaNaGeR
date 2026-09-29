@@ -622,6 +622,71 @@ async function withChrome(fn) {
       document.getElementById('calc-rate-eq').dispatchEvent(new Event('input',{bubbles:true}));
     })()`);
 
+    // ---- D1 RATE-SHEET IMPORT/EXPORT (owner review 2026-09-29) ----
+    // Seed one sheet, then export and capture the JSON payload.
+    const t1 = await ev(`(async function(){
+      document.getElementById('calc-work').value='slab';
+      document.getElementById('calc-work').dispatchEvent(new Event('change',{bubbles:true}));
+      document.getElementById('calc-rate-mat').value='140'; document.getElementById('calc-rate-lab').value='80';
+      document.getElementById('calc-sheet-name').value='qa-low-bid';
+      document.querySelector('[data-action=calcSheetSave]').click();
+      var created=[]; var oc=URL.createObjectURL; URL.createObjectURL=function(b){created.push(b);return 'blob:qa';};
+      var oclk=HTMLAnchorElement.prototype.click; HTMLAnchorElement.prototype.click=function(){};
+      document.querySelector('[data-action=calcSheetExport]').click();
+      URL.createObjectURL=oc; HTMLAnchorElement.prototype.click=oclk;
+      if(!created.length) return {ok:false};
+      var txt = await created[0].text();
+      var json = JSON.parse(txt);
+      return { ok:true, hasName: txt.indexOf('qa-low-bid') > -1, ver: json.version, n: json.sheets.length,
+               msg: document.getElementById('calc-sheet-msg').textContent };
+    })()`);
+    check('T1 export downloads JSON carrying the saved sheet', t1 && t1.ok && t1.hasName && t1.ver === 1 && t1.n >= 1 && String(t1.msg).indexOf('Exported') > -1, t1);
+
+    // T2: import merges - same name replaces, new name is added. FileReader
+    // is async, so poll for the status line before reading storage.
+    const t2 = await ev(`(async function(){
+      var payload = { version:1, sheets: [
+        { name:'qa-low-bid', rates:{ rateMat:'111', rateLab:'22' } },
+        { name:'qa-sustain', rates:{ rateMat:'300', rateLab:'120', rateEq:'50' } } ] };
+      var f = document.getElementById('calc-sheet-file');
+      var dt = new DataTransfer();
+      dt.items.add(new File([JSON.stringify(payload)], 'sheets.json', { type:'application/json' }));
+      f.files = dt.files;
+      f.dispatchEvent(new Event('change',{bubbles:true}));
+      for (var i = 0; i < 20; i++) {
+        if (document.getElementById('calc-sheet-msg').textContent.indexOf('Imported') === 0) break;
+        await new Promise(function(r){ setTimeout(r, 100); });
+      }
+      var names = JSON.parse(localStorage.getItem('mmgr_calc_rate_sheets')).map(function(s){ return s.name; });
+      var lowBid = JSON.parse(localStorage.getItem('mmgr_calc_rate_sheets')).find(function(s){ return s.name==='qa-low-bid'; });
+      return { names: names, lowBidMat: lowBid && lowBid.rates.rateMat,
+               msg: document.getElementById('calc-sheet-msg').textContent };
+    })()`);
+    check('T2 import merges: replaces qa-low-bid, adds qa-sustain', t2 && t2.names.indexOf('qa-sustain') > -1 && String(t2.lowBidMat) === '111' && String(t2.msg).indexOf('Imported 2') > -1, t2);
+
+    // T3: garbage file -> friendly message, storage untouched (same async
+    // reader: poll until the status line changes, then compare storage).
+    const t3 = await ev(`(async function(){
+      var before = localStorage.getItem('mmgr_calc_rate_sheets');
+      var f = document.getElementById('calc-sheet-file');
+      var dt = new DataTransfer();
+      dt.items.add(new File(['not json at all {{{'], 'bad.json', { type:'application/json' }));
+      f.files = dt.files;
+      f.dispatchEvent(new Event('change',{bubbles:true}));
+      for (var i = 0; i < 20; i++) {
+        var m = document.getElementById('calc-sheet-msg').textContent;
+        if (m.indexOf('Imported') !== 0 && m !== '') break;
+        await new Promise(function(r){ setTimeout(r, 100); });
+      }
+      var after = localStorage.getItem('mmgr_calc_rate_sheets');
+      return { msg: document.getElementById('calc-sheet-msg').textContent, unchanged: before === after };
+    })()`);
+    check('T3 garbage import rejected with message, storage intact', t3 && String(t3.msg).indexOf('not a My MaNaGeR rate sheet export') > -1 && t3.unchanged, t3);
+
+    // clean the seeded sheets for later gates (renderSheets is page-internal;
+    // clearing storage is enough - nothing later asserts the sheets list)
+    await ev(`(function(){ localStorage.removeItem('mmgr_calc_rate_sheets'); })()`);
+
     // X3: CSV carries the used rates + piece lines.
     const x3 = await ev(`(async function(){
       document.getElementById('calc-work').value='tile';

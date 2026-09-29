@@ -73,6 +73,33 @@
   var year = document.getElementById('year');
   if (year) year.textContent = String(new Date().getFullYear());
 
+  /* ---- E2 universal back-navigation (owner 2026-09-29) ----
+     Every [data-back] control returns the visitor to where they came from:
+     history.back() when the referrer is a same-origin page (came from the
+     site), the href fallback (index.html / app.html) when this page is the
+     entry point (search, bookmark, shared link, PWA icon). Delegated on
+     document so any page element can carry data-back; CSP-safe (no inline
+     handlers); null-guarded, never throws. Referrer is normalized because
+     Chrome caps it at origin-level for cross-page navigations - the origin
+     match is the reliable same-site signal. */
+  document.addEventListener('click', function(e){
+    var el = e.target.closest ? e.target.closest('[data-back]') : null;
+    if (!el) return;
+    e.preventDefault();
+    var ref = '';
+    try { ref = document.referrer || ''; } catch (err) { ref = ''; }
+    var sameOrigin = false;
+    if (ref) {
+      try { sameOrigin = new URL(ref).origin === window.location.origin; } catch (err) { sameOrigin = false; }
+    }
+    if (sameOrigin && window.history.length > 1) {
+      window.history.back();
+    } else {
+      var href = el.getAttribute('href');
+      if (href) window.location.href = href;
+    }
+  });
+
   /* ---- slim edge scroll-spy (homepage only) ---- */
   var spyNav = document.querySelector('.scroll-spy');
   if (spyNav && 'IntersectionObserver' in window) {

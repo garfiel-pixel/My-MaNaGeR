@@ -82,8 +82,25 @@
 </script>
 <script src="js/mmgr-theme.js" data-sync="1"></script>
 
-<!-- Boot loading skeleton (hidden by App.init after first paint) -->
-<div id="boot-splash"><div class="bs-inner"><div class="bs-spin"></div><div>Loading project...</div></div></div>
+<!-- Boot loading skeleton (hidden by App.init after first paint): mirrors
+     the workspace's above-the-fold layout (header row, three metric cards,
+     one wide card) instead of a spinner. Static markup, token-driven sheen
+     (.skel-box in css/mmgr.css), reduced-motion renders static boxes. -->
+<div id="boot-splash" role="status" aria-live="polite" aria-busy="true" aria-label="Loading project">
+  <div class="bs-skel">
+    <div class="skel-row bs-skel-header">
+      <span class="skel-box skel-avatar"></span>
+      <span class="skel-box skel-line t-lg skel-w-40"></span>
+      <span class="skel-box skel-line skel-w-20"></span>
+    </div>
+    <div class="skel-boot-grid">
+      <div class="skel-boot-col"><div class="skel-box skel-card"></div></div>
+      <div class="skel-boot-col"><div class="skel-box skel-card"></div></div>
+      <div class="skel-boot-col"><div class="skel-box skel-card"></div></div>
+    </div>
+    <div class="skel-boot-col bs-skel-wide"><div class="skel-box skel-card bs-skel-tall"></div></div>
+  </div>
+</div>
 
 <!-- Heat/Cold SAFETY alert (Rank 10 item 21, promoted 2026-08-13) , full-width
      page-top banner when a heat or cold risk day is in the cached forecast.

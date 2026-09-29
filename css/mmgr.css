@@ -1233,7 +1233,12 @@ body.gantt-dragging .gb{cursor:grabbing;}
 .skel-boot-col{display:flex;flex-direction:column;gap:10px;min-width:0;}
 @media (max-width:820px){.skel-boot-grid{grid-template-columns:1fr 1fr;}}
 @media (max-width:600px){.skel-boot-grid{grid-template-columns:1fr;}}
-.bs-inner{text-align:center;color:var(--slate);font-size:.8rem;display:flex;flex-direction:column;align-items:center;gap:14px;} /* ACTION-PLAN 4.1: view-only scope - a static amber strip under the header */
+.bs-skel{display:flex;flex-direction:column;gap:16px;width:min(860px,92vw);}
+.bs-skel-header{width:100%;padding:12px 14px;border:1px solid var(--border);border-radius:var(--radius-lg,16px);}
+.bs-skel-header .skel-line{flex:1;}
+.bs-skel-wide{width:100%;}
+.bs-skel-tall{height:200px;}
+.skel-w-20{width:20%;} /* ACTION-PLAN 4.1: view-only scope - a static amber strip under the header */
 #readonly-banner{position:sticky;top:0;z-index:1500;display:flex;align-items:center;justify-content:center;gap:8px;background:rgba(245,158,11,.12);border-bottom:1px solid rgba(245,158,11,.35);color:var(--gold);font-size:.72rem;padding:6px 14px;letter-spacing:.3px;}
 #readonly-banner.is-hide{display:none;}
 /* Banner stack (2026-09-16): all chrome banners render as full-width rows
@@ -1282,9 +1287,8 @@ body.editor-scope .sec-btn.scope-blocked{opacity:.35;pointer-events:none;filter:
 body.editor-scope .sec-btn.scope-blocked svg{opacity:.5;}
 body.readonly-mode input:not([readonly]),body.readonly-mode textarea:not([readonly]),body.readonly-mode select:not([disabled]){pointer-events:none;opacity:.6;}
 body.readonly-mode .btn[data-action]:not([data-action="showSec"]):not([data-action="cpAllPage"]):not([data-action="print"]):not([data-action="openDrw"]):not([data-action="openDrwToPrompts"]):not([data-action="openDrwToSave"]):not([data-action="runMonteCarlo"]):not([data-action="printCharter"]):not([data-action="emailTpl"]):not([data-action="copyIdTemplate"]):not([data-action="riskMatrixClear"]):not([data-action="tglWbsIssues"]):not([data-action="copyErrorLog"]):not([data-action="downloadErrorLog"]){opacity:.55;}
-.bs-spin{width:34px;height:34px;border-radius:50%;border:3px solid var(--border);border-top-color:var(--gold);animation:bs-spin .8s linear infinite;}
-@keyframes bs-spin{to{transform:rotate(360deg)}}
-@media (prefers-reduced-motion:reduce){.bs-spin{animation:none;}}
+/* (bs-spin spinner retired 2026-09-29: the boot splash is a layout-mirroring
+   skeleton now - .skel-box primitives above; App.init's .off fade unchanged.) */
 
 /* ---- Kanban ---- */
 .kb{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;align-items:stretch;}

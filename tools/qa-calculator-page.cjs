@@ -530,6 +530,49 @@ async function withChrome(fn) {
       document.getElementById('calc-work').dispatchEvent(new Event('change',{bubbles:true}));
     })()`);
 
+    // ---- B2 PIECE COUNTS (owner review 2026-09-29) ----
+    // C1: tile 6x6 with waste 10 -> 39.6 m2; 30x60 tiles -> ceil(39.6/0.18) = 220.
+    const c1 = await ev(`(function(){
+      document.getElementById('calc-work').value='tile';
+      document.getElementById('calc-work').dispatchEvent(new Event('change',{bubbles:true}));
+      document.getElementById('calc-d1').value='6'; document.getElementById('calc-d2').value='6';
+      document.getElementById('calc-waste').value='10';
+      document.getElementById('calc-piece-price').value='950';
+      document.getElementById('calc-piece-size').value='30 x 60';
+      document.getElementById('calc-piece-price').dispatchEvent(new Event('input',{bubbles:true}));
+      var out = document.getElementById('calc-output').textContent;
+      return { order: out.match(/Order about ([\\d,]+) tiles/) && out.match(/Order about ([\\d,]+) tiles/)[1],
+               at: out.indexOf('tiles at 30 x 60 cm') > -1, mat: out.indexOf('priced per piece') > -1 };
+    })()`);
+    check('C1 tile count: ceil(39.6/0.18) = 220 tiles at 30 x 60 cm', c1 && c1.order === '220' && c1.at && c1.mat, c1);
+
+    // C2: SIZE-ONLY mode - clearing the price keeps the count (materials
+    // priced by the rate again); volume trades count bags from the yield.
+    const c2 = await ev(`(function(){
+      document.getElementById('calc-piece-price').value='';
+      document.getElementById('calc-piece-price').dispatchEvent(new Event('input',{bubbles:true}));
+      var tileOut = document.getElementById('calc-output').textContent;
+      var tileCount = tileOut.match(/Order about ([\\d,]+) tiles/);
+      var tileMat = tileOut.indexOf('priced per piece') === -1;
+      document.getElementById('calc-work').value='slab';
+      document.getElementById('calc-work').dispatchEvent(new Event('change',{bubbles:true}));
+      document.getElementById('calc-d1').value='10'; document.getElementById('calc-d2').value='10'; document.getElementById('calc-d3').value='150';
+      document.getElementById('calc-piece-price').value='';
+      document.getElementById('calc-piece-size').value='20';
+      document.getElementById('calc-piece-size').dispatchEvent(new Event('input',{bubbles:true}));
+      var slabOut = document.getElementById('calc-output').textContent;
+      var m = slabOut.match(/Order about ([\\d,]+) bags.units at 20 L/);
+      return { tileCount: tileCount && tileCount[1], tileMat: tileMat, slabBags: m && m[1],
+               matLbl: slabOut.indexOf('Materials') > -1 };
+    })()`);
+    check('C2 size-only count keeps showing; slab yield 20 -> 788 bags', c2 && c2.tileCount === '220' && c2.tileMat && c2.slabBags === '788' && c2.matLbl, c2);
+
+    // restore the ambient state later gates assume (slab + no piece pricing)
+    await ev(`(function(){
+      document.getElementById('calc-piece-size').value='';
+      document.getElementById('calc-piece-size').dispatchEvent(new Event('input',{bubbles:true}));
+    })()`);
+
     // X3: CSV carries the used rates + piece lines.
     const x3 = await ev(`(async function(){
       document.getElementById('calc-work').value='tile';

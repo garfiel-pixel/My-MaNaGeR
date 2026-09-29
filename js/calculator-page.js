@@ -206,6 +206,31 @@ function applyState(st) {
   refreshRateFields();
 }
 
+// B2 (owner review 2026-09-29: 'exact count of tile boxes/units required').
+// Works with or without a piece PRICE: a size alone shows the order count
+// while material cost stays on the rate; a price also switches the per-piece
+// math on. Pure - no DOM, shared by the live estimate and the CSV export.
+function pieceCount(qty, unit, spec, sizeStr) {
+  if (!spec || !sizeStr) return null;
+  // Ceil with float-dust guard: 39.6/0.18 must be 220 pieces, not 221
+  // (the raw IEEE quotient lands a hair above the integer).
+  const ceilClean = (v) => Math.ceil(Math.round(v * 1e6) / 1e6);
+  if (spec.div === 'volume') {
+    const y = parseFloat(sizeStr);
+    if (!isFinite(y) || y <= 0) return null;
+    const litres = unit === 'm3' ? qty * 1000 : qty; // concrete m3 -> litres; paint is already L
+    return { n: ceilClean(litres / y), lbl: unit === 'm3' ? 'bags/units' : 'containers', sizeTxt: y + ' L' };
+  }
+  const m = sizeStr.match(/^([\d.]+)\s*(?:x|by|\*)\s*([\d.]+)$/i);
+  if (!m) return null;
+  const conv = _units === 'imperial' ? (spec.unit === 'm' ? FT : FT * 100) : 1;
+  const a = parseFloat(m[1]) * conv, b = parseFloat(m[2]) * conv;
+  if (!(a > 0 && b > 0)) return null;
+  if (spec.div === 'width') return { n: ceilClean(qty / a), lbl: spec.plural || 'panels', sizeTxt: m[1] + ' x ' + m[2] + ' ' + spec.unit };
+  const areaM2 = spec.unit === 'm' ? a * b : (a / 100) * (b / 100);
+  return { n: ceilClean(qty / areaM2), lbl: spec.plural || 'pieces', sizeTxt: m[1] + ' x ' + m[2] + ' ' + spec.unit };
+}
+
 function compute() {
   const key = $('calc-work').value;
   const w = WORK[key];
@@ -254,6 +279,13 @@ function compute() {
   // in->cm / ft->m for dimensioned specs (yield specs are unit-free).
   let piece = null;
   const pieceRaw = parseFloat(($('calc-piece-price') || {}).value);
+  // Size-only mode (B2): a piece SIZE without a price still shows the order
+  // count; the per-unit rate override stays off until a price is typed too.
+  if (w.piece && (!isFinite(pieceRaw) || pieceRaw <= 0) &&
+      (($('calc-piece-size') || {}).value || '').trim() !== '') {
+    const countOnly = pieceCount(qty, qr.unit, w.piece, (($('calc-piece-size') || {}).value || '').trim());
+    if (countOnly) piece = { countOnly: true, count: countOnly };
+  }
   if (w.piece && isFinite(pieceRaw) && pieceRaw > 0) {
     const spec = w.piece;
     const sizeStr = (($('calc-piece-size') || {}).value || '').trim();
@@ -284,7 +316,7 @@ function compute() {
   const quality = QUALITY[($('calc-quality') || {}).value] || 1;
   // Area trades: $/m2 x m2 quantity. Fencing width-div: $/run-m x m run.
   // The qty x rate dimension check holds for both.
-  const effMat = piece ? piece.perUnit : mr;
+  const effMat = piece && !piece.countOnly ? piece.perUnit : mr;
   const mat = qty * effMat * quality;
   const lab = qty * lr * quality;
   const country = ($('calc-country') || {}).value || 'US';
@@ -293,7 +325,9 @@ function compute() {
   const taxRate = override !== null ? override : (TAX[country] || 0);
   const sub = mat + lab;
   const tax = sub * taxRate / 100;
+  const orderCount = pieceCount(qty, qr.unit, w.piece, (($('calc-piece-size') || {}).value || '').trim());
   return { key, name: workName(key), qty: qty, baseQty: qr.qty, unit: qr.unit, qtyLabel: qr.qtyLabel, matDesc: w.matDesc,
+    orderCount: orderCount,
     wastePct: wastePct, hasWaste: !!w.waste, wasteLbl: w.waste ? w.waste.lbl : null,
     mr, lr, effMat, modelMr, piece, mat, lab, sub, taxRate, tax, total: sub + tax, overrideApplied: override !== null,
     matOverridden: matOverride, labOverridden: labOverride, currency: ($('calc-currency') || {}).value };
@@ -380,6 +414,7 @@ function estimateCsv(r) {
     ['Work item', r.name],
     ['Quantity', qtyShown(r.qty, r.unit).main + qtyShown(r.qty, r.unit).alt],
     ['Waste allowance', r.hasWaste ? r.wastePct + '%' : 'none'],
+    ['Order quantity', r.orderCount ? r.orderCount.n.toLocaleString() + ' ' + r.orderCount.lbl + ' at ' + r.orderCount.sizeTxt : ''],
     ['Rate basis', r.matDesc],
     ['Finish level', ($('calc-quality') || {}).value || 'standard'],
     ['Currency', r.currency],
@@ -387,7 +422,7 @@ function estimateCsv(r) {
     ['Units entered', _units],
     ['Material rate used', r.piece ? (Math.round(r.effMat * 100) / 100) + ' per m2 (from piece pricing)' : Math.round(r.mr)],
     ['Labor rate used', Math.round(r.lr)],
-    ['Piece pricing', r.piece ? (r.piece.div === 'volume'
+    ['Piece pricing', r.piece && !r.piece.countOnly ? (r.piece.div === 'volume'
         ? r.piece.price + ' per ' + r.piece.w + ' L yield (per ' + (Math.round(r.piece.perUnit * 100) / 100) + '/' + r.piece.qtyUnit + ')'
         : r.piece.price + ' per ' + Math.round(r.piece.w) + ' x ' + Math.round(r.piece.l) + ' ' + r.piece.unit + (r.piece.div === 'width' ? ' (per ' + (Math.round(r.piece.perUnit * 100) / 100) + '/m)' : ' (per ' + (Math.round(r.piece.perUnit * 100) / 100) + '/m2)')) : 'no'],
     ['Materials', Math.round(r.mat)],
@@ -440,20 +475,20 @@ function render() {
   if (r.error) { out.innerHTML = '<div class="calc-empty">' + r.error + '</div>'; return; }
   lastResult = r;
   if ($('calc-out-actions')) $('calc-out-actions').classList.remove('is-hide');
-  const pieceNarr = r.piece
+  const pieceNarr = r.piece && !r.piece.countOnly
     ? (r.piece.div === 'width'
         ? (Math.round(r.piece.perUnit * 100) / 100).toLocaleString() + '/m of run'
         : r.piece.div === 'volume'
         ? (Math.round(r.piece.perUnit * 100) / 100).toLocaleString() + '/' + r.piece.qtyUnit
         : (Math.round(r.piece.perUnit * 100) / 100).toLocaleString() + '/m2')
     : null;
-  const pieceDesc = r.piece
+  const pieceDesc = r.piece && !r.piece.countOnly
     ? (r.piece.div === 'volume'
         ? r.piece.price.toLocaleString() + ' per ' + r.piece.w + ' L yield = ' + pieceNarr
         : r.piece.price.toLocaleString() + ' / ' +
           (_units === 'imperial' ? Math.round(r.piece.w / 2.54) + ' x ' + Math.round(r.piece.l / 2.54) + ' in' : r.piece.w + ' x ' + r.piece.l + ' ' + r.piece.unit) + ' = ' + pieceNarr)
     : null;
-  const matLabel = r.piece
+  const matLabel = r.piece && !r.piece.countOnly
     ? 'Materials - priced per piece at ' + pieceDesc
     : 'Materials' + (r.matOverridden ? ' - your rate' : '');
   const shown = qtyShown(r.qty, r.unit);
@@ -463,6 +498,9 @@ function render() {
       '<strong class="calc-sum-qty">' + esc(shown.main) +
         '<span class="calc-qty-alt">' + esc(shown.alt) + '</span></strong></div>' +
       '<div class="calc-sum-sub">' + r.matDesc + '</div>' +
+      (r.orderCount
+        ? '<div class="calc-sum-sub">Order about <strong>' + r.orderCount.n.toLocaleString() + '</strong> ' + esc(r.orderCount.lbl + ' at ' + r.orderCount.sizeTxt) + '</div>'
+        : '') +
     '</div>' +
     (r.hasWaste ? row(r.wasteLbl + ' allowance', r.wastePct + '%') : '') +
     row(matLabel, fmtMoney(r.mat)) +

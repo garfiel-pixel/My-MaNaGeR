@@ -177,6 +177,8 @@ function readState() {
     wastePct: ($('calc-waste') || {}).value || '',
     rateMat: ($('calc-rate-mat') || {}).value || '',
     rateLab: ($('calc-rate-lab') || {}).value || '',
+    rateEq: ($('calc-rate-eq') || {}).value || '',
+    ohPct: ($('calc-oh') || {}).value || '',
     piecePrice: ($('calc-piece-price') || {}).value || '',
     pieceSize: ($('calc-piece-size') || {}).value || '',
     units: _units
@@ -201,6 +203,8 @@ function applyState(st) {
   if ($('calc-waste')) $('calc-waste').value = st.wastePct || '';
   if ($('calc-rate-mat')) $('calc-rate-mat').value = st.rateMat || '';
   if ($('calc-rate-lab')) $('calc-rate-lab').value = st.rateLab || '';
+  if ($('calc-rate-eq')) $('calc-rate-eq').value = st.rateEq || '';
+  if ($('calc-oh')) $('calc-oh').value = st.ohPct || '';
   if ($('calc-piece-price')) $('calc-piece-price').value = st.piecePrice || '';
   if ($('calc-piece-size')) $('calc-piece-size').value = st.pieceSize || '';
   refreshRateFields();
@@ -269,6 +273,13 @@ function compute() {
   const labOverride = isFinite(labRaw) && labRaw >= 0 && (!labEl || String(labRaw) !== labEl.dataset.model);
   const mr = matOverride ? matRaw : modelMr;
   const lr = labOverride ? labRaw : w.rate.lab;
+  // B3: optional third rate (equipment / plant hire) on the same per-unit
+  // basis; empty or 0 = inactive. Overhead & margin % applies to the
+  // equipment-inclusive subtotal.
+  const eqRaw = parseFloat(($('calc-rate-eq') || {}).value);
+  const eqRate = isFinite(eqRaw) && eqRaw > 0 ? eqRaw : 0;
+  const ohRaw = parseFloat(($('calc-oh') || {}).value);
+  const ohPct = isFinite(ohRaw) && ohRaw > 0 && ohRaw <= 60 ? ohRaw : 0;
   // F4b per-piece pricing: price-per-piece + piece size becomes the
   // effective material rate. Three divisors: AREA (tile, block, brick,
   // roof sheets) -> price / piece area = rate per m2; WIDTH (fencing
@@ -319,17 +330,19 @@ function compute() {
   const effMat = piece && !piece.countOnly ? piece.perUnit : mr;
   const mat = qty * effMat * quality;
   const lab = qty * lr * quality;
+  const eq = qty * eqRate * quality;
   const country = ($('calc-country') || {}).value || 'US';
   const overrideRaw = parseFloat(($('calc-tax-override') || {}).value);
   const override = isFinite(overrideRaw) && overrideRaw >= 0 ? overrideRaw : null;
   const taxRate = override !== null ? override : (TAX[country] || 0);
-  const sub = mat + lab;
-  const tax = sub * taxRate / 100;
+  const sub = mat + lab + eq;
+  const oh = sub * ohPct / 100;
+  const tax = (sub + oh) * taxRate / 100;
   const orderCount = pieceCount(qty, qr.unit, w.piece, (($('calc-piece-size') || {}).value || '').trim());
   return { key, name: workName(key), qty: qty, baseQty: qr.qty, unit: qr.unit, qtyLabel: qr.qtyLabel, matDesc: w.matDesc,
     orderCount: orderCount,
     wastePct: wastePct, hasWaste: !!w.waste, wasteLbl: w.waste ? w.waste.lbl : null,
-    mr, lr, effMat, modelMr, piece, mat, lab, sub, taxRate, tax, total: sub + tax, overrideApplied: override !== null,
+    mr, lr, eqRate, eq, ohPct, oh, effMat, modelMr, piece, mat, lab, sub, taxRate, tax, total: sub + oh + tax, overrideApplied: override !== null,
     matOverridden: matOverride, labOverridden: labOverride, currency: ($('calc-currency') || {}).value };
 }
 
@@ -422,12 +435,15 @@ function estimateCsv(r) {
     ['Units entered', _units],
     ['Material rate used', r.piece ? (Math.round(r.effMat * 100) / 100) + ' per m2 (from piece pricing)' : Math.round(r.mr)],
     ['Labor rate used', Math.round(r.lr)],
+    ['Equipment rate used', r.eqRate > 0 ? r.eqRate : 'none'],
+    ['Overhead & margin %', r.ohPct > 0 ? r.ohPct : 'none'],
     ['Piece pricing', r.piece && !r.piece.countOnly ? (r.piece.div === 'volume'
         ? r.piece.price + ' per ' + r.piece.w + ' L yield (per ' + (Math.round(r.piece.perUnit * 100) / 100) + '/' + r.piece.qtyUnit + ')'
         : r.piece.price + ' per ' + Math.round(r.piece.w) + ' x ' + Math.round(r.piece.l) + ' ' + r.piece.unit + (r.piece.div === 'width' ? ' (per ' + (Math.round(r.piece.perUnit * 100) / 100) + '/m)' : ' (per ' + (Math.round(r.piece.perUnit * 100) / 100) + '/m2)')) : 'no'],
     ['Materials', Math.round(r.mat)],
     ['Labor', Math.round(r.lab)],
     ['Subtotal', Math.round(r.sub)],
+    ['Overhead', Math.round(r.oh)],
     ['Tax rate %', r.taxRate],
     ['Tax', Math.round(r.tax)],
     ['Estimated total', Math.round(r.total)],
@@ -505,6 +521,8 @@ function render() {
     (r.hasWaste ? row(r.wasteLbl + ' allowance', r.wastePct + '%') : '') +
     row(matLabel, fmtMoney(r.mat)) +
     row('Labor' + (r.labOverridden ? ' - your rate' : ''), fmtMoney(r.lab)) +
+    (r.eq > 0 ? row('Equipment / plant hire', fmtMoney(r.eq)) : '') +
+    (r.ohPct > 0 ? row('Overhead & margin ' + r.ohPct + '%', fmtMoney(r.oh)) : '') +
     row('Subtotal', fmtMoney(r.sub), 'calc-line-sub') +
     row('Tax (' + r.taxRate + '%' + (r.overrideApplied ? ', your rate' : '') + ')', fmtMoney(r.tax)) +
     row('Estimated total', fmtMoney(r.total), 'calc-line-total') +
@@ -740,6 +758,8 @@ function refreshRateFields() {
   labEl.dataset.model = modelL;
   $('calc-rate-mat-label').textContent = 'Material rate ' + rateUnitLabel(key);
   $('calc-rate-lab-label').textContent = 'Labor rate ' + rateUnitLabel(key);
+  const eqLbl = $('calc-rate-eq-label');
+  if (eqLbl) eqLbl.textContent = 'Equipment / plant hire ' + rateUnitLabel(key);
   // B1 waste field: only trades with a waste spec; label names the allowance,
   // empty field prefills the trade default (typed values are never clobbered).
   const ww = $('calc-waste-wrap'), we = $('calc-waste');
@@ -868,7 +888,7 @@ function countryLabel(code) {
 if ($('calc-work')) {
   $('calc-work').addEventListener('change', syncLabels);
   ['calc-currency', 'calc-country', 'calc-quality', 'calc-tax-override', 'calc-d1', 'calc-d2', 'calc-d3',
-   'calc-rate-mat', 'calc-rate-lab', 'calc-piece-price', 'calc-piece-size', 'calc-waste']
+   'calc-rate-mat', 'calc-rate-lab', 'calc-rate-eq', 'calc-oh', 'calc-piece-price', 'calc-piece-size', 'calc-waste']
     .forEach(function(id) { const el = $(id); if (el) el.addEventListener('input', function() { render(); }); });
   // Saved unit system comes back before first interaction; silent keeps the
   // empty-state text until the user actually enters dimensions.

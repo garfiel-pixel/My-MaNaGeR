@@ -2364,6 +2364,13 @@ body.dark-mode .ai-byo-status[data-state="untested"]{background:rgba(245,158,11,
 .bcp-rates-label{font-size:.78rem;font-weight:700;color:var(--text);}
 .bcp-piece-hint{font-size:.72rem;color:var(--slate);line-height:1.5;margin-top:6px;}
 .bcp-piece-hint[hidden]{display:none;}
+/* [hidden] guards (verify-hidden gate): author display rules on .bcp-field
+   and .card would override the UA's hidden=display:none. Same pattern as
+   .bcp-piece-hint above. */
+.bcp-field[hidden]{display:none;}
+/* !important: #panel-dash .g3>.card{display:flex} is a (1,2,0) compound that
+   static analysis matches against any .card; the guarantee must outrank it. */
+#calc-compare-card[hidden]{display:none!important;}
 /* Rate sheets bar (owner 2026-09-28 'low-bid'/'sustain' directive): name +
    save + quick-picker on one row; saved sheets list mirrors the estimate
    rows below it. */

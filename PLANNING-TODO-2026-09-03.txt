@@ -1831,3 +1831,40 @@ served CSP carries 5or126vT, sw.js at the edge is v303, zero portfolio
 residue in served app.html, /app strip redirect 200. Readability pass
 (owner ask): why-comments added to session.js TTL/lockout constants and
 mintAuthToken's two-layer design - comments only, zero behavior change.
+
+--------------------------------------------------------------
+2026-09-29 - SESSION: CALC-ENHANCEMENT-WAVES + HEADER-BALANCE + UNIVERSAL-BACK
+(owner go-ahead on docs/superpowers/plans/2026-09-29-calculator-enhancement-waves.md,
+inline execution, all four decision defaults taken).
+Tracker: (1) calculator page: grouped input card (.bcp-group x3),
+unit-primary hero (qtyShown; U2 re-baselined to cu-yd-primary + I1 new),
+editable waste/cuts % (B1: waste spec per trade, bulking stays in excav),
+piece counts (B2: pieceCount + ceilClean float-dust guard, size-only mode),
+equipment rate + overhead & margin % (B3: tax on sub+oh), rate-sheet JSON
+export/import (D1: importSheets merge-by-name, FileReader-async gates poll),
+estimate comparison (D2: computeFor(st) PURE engine extraction + renderCompare
+2-4 columns, .bcp-cmp-best cheapest), quote header + business letterhead +
+Print/PDF relabel (D3: .bcp-quote-head print-only; Q2 emulates print media
+over CDP - getComputedStyle never applies @media print on screen).
+(2) project.html header balance (E1): nav clusters left in .hdr-left
+(back+hamburger+greeting+pills), utility strictly right (margin-left:auto);
+focus-mode + <=768px blocks updated; tmp/header-probe.cjs ALL PASS at
+1440/820/768/600/390, light+dark shots (dark via real theme reload).
+(3) universal back (E2): calculator calcBack (history.back on same-origin
+referrer, app.html fallback), data-back + delegated handler in marketing.js,
+Back links on six marketing pages (desktop nav + mobile menu) + guide
+(mobile bar + sidebar); verify/reset/admin/app/project answered as covered;
+tmp/backnav-probe.cjs 9/9 (referrer-bearing real clicks vs CDP direct-entry).
+Harness: qa-calculator-page 51 -> 69 gates (+I1,W1-3,C1-2,E1-3(note: E-gate
+collision with recall E1/E2 names kept - new gates prefixed),T1-3,P0-3,Q1-2).
+Re-baselines: U2 (imperial hero), X2/S1 (I1 gate state leak - restored).
+Incidents: B2 replacement clobbered compute()'s return (cascade to 46
+failures - node --check caught it; lesson: syntax-check between multi-edits);
+health sweep needs a LIVE server on :8765 (auto-started harness servers die
+with the harness - run serve.cjs first); dist/ is gitignored (deploy tar
+carries it - commit source only).
+Gates: qa-calculator-page 69/69, qa-calc-playwright-audit 31/31,
+qa-calculator 27/27, health sweep 15/15 (1041 CSS rules live), header+backnav
+probes all-PASS, npm run verify green, emoji scan clean. Commits: 8
+conventional (no attribution footers per owner gate). NOT DEPLOYED - owner
+reviews locally first.

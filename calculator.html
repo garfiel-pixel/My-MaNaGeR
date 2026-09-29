@@ -149,7 +149,11 @@
         <input type="text" id="calc-sheet-name" maxlength="40" placeholder="e.g. low-bid, sustain" aria-label="Rate sheet name">
         <button type="button" class="btn btn-n btn-s" data-action="calcSheetSave"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-receipt"></use></svg> Save rate sheet</button>
         <select id="calc-sheet-select" data-action="calcSheetPick" aria-label="Apply a saved rate sheet"></select>
+        <button type="button" class="btn btn-n btn-s" data-action="calcSheetExport" title="Download your saved rate sheets as a JSON file"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Export</button>
+        <button type="button" class="btn btn-n btn-s" data-action="calcSheetImport" title="Load rate sheets from a My MaNaGeR JSON export"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-upload"></use></svg> Import</button>
+        <input type="file" id="calc-sheet-file" accept="application/json,.json" hidden>
       </div>
+      <div class="bcp-piece-hint" id="calc-sheet-msg" hidden></div>
       <div id="calc-sheets" class="calc-hist bcp-sheets"></div>
 
       <div class="bcp-row bcp-row-2" id="calc-piece-wrap">

@@ -1962,3 +1962,13 @@ sw shell bump v337 -> v338 with narrative; CSP hashes regenerated
 (tools/regen-csp-hashes.cjs, worker.js + serve.cjs, 24 hashes); bundles + CSS
 rebuilt. Gates: npm run verify green, qa-full 181/181, qa-view-mode all-pass,
 verify-glass-preview-cdp OK, health sweep 15/15, qa-dashboard-spec 92/92.
+
+DEPLOY 2026-09-29 (perf-default-pretty, owner go-ahead): via the canonical
+tools/deploy.cjs - version 5c4f7dcd-9969-4490-895f-490cb83fad9e at
+https://my-manager.garfieldprocis.workers.dev. Edge probes: health 200, sw
+v338 live, served bundle carries isOn()==="on", CSP header carries the new
+app.html inline hash (JHsGTGOI...), served app.html carries the Glass.sync
+toggle handler (probe note: /app.html 307-strips the extension - curl -L or
+fetch /app). Prod fresh-device boot probe 4/4 (data-perf=off, premium glass
+active, toggle unchecked, no pref written). Pushed c1820e3..41fe21a; CI run
+36622263685 GREEN on 41fe21a.

@@ -112,15 +112,21 @@
   <div id="readonly-banner" class="is-hide"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-eye"></use></svg> View Only</div>
   <div id="editor-scope-banner" class="is-hide"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-user"></use></svg> Editing as a scoped editor code , some panels are locked for this code (enforced by the server).</div>
   <div id="client-scope-banner" class="is-hide"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-user"></use></svg> Viewing as a client , read-only. Only the sections the admin granted you are shown.</div>
-  <div class="greeting" id="greeting"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg> <span id="greeting-text">Welcome</span></div>
-  <div class="tab-ctrl">
-    <button class="tab-btn active" data-action="swMeth" data-meth="waterfall" data-mlc="waterfall">Waterfall</button>
-    <button class="tab-btn" data-action="swMeth" data-meth="agile" data-mlc="agile">Agile</button>
-    <button class="tab-btn" data-action="swMeth" data-meth="hybrid" data-mlc="hybrid">Hybrid</button>
-  </div>
-  <div class="hdr-right">
+  <!-- E1 (owner 2026-09-29 header-balance review): navigation clusters LEFT
+       (Projects back-link, section hamburger, greeting, methodology pills);
+       .hdr-right keeps STRICTLY utility toggles. Pure markup regroup - no id
+       moved, no JS touched, so renderers and the harness contracts hold. -->
+  <div class="hdr-left">
     <a class="hdr-back" href="app.html" title="Back to projects list"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-left"></use></svg> Projects</a>
     <button class="nav-btn" id="nav-btn" data-action="tglNav" aria-label="Open navigation menu" aria-expanded="false" aria-controls="sec-nav"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-menu"></use></svg></button>
+    <div class="greeting" id="greeting"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg> <span id="greeting-text">Welcome</span></div>
+    <div class="tab-ctrl">
+      <button class="tab-btn active" data-action="swMeth" data-meth="waterfall" data-mlc="waterfall">Waterfall</button>
+      <button class="tab-btn" data-action="swMeth" data-meth="agile" data-mlc="agile">Agile</button>
+      <button class="tab-btn" data-action="swMeth" data-meth="hybrid" data-mlc="hybrid">Hybrid</button>
+    </div>
+  </div>
+  <div class="hdr-right">
     <!-- OWNER 2026-08-15: the red "Not backed up" indicator now opens the
          backup popover (#bk-pop) , Backup to cloud (automatic once linked)
          and Backup to local (.json) , instead of jumping to the Settings

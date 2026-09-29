@@ -338,6 +338,14 @@ body:not(.crosshair-on) #cx,body:not(.crosshair-on) #cy{display:none;}
 
 /* ---- Header ---- */
 #app-header{position:sticky;top:0;z-index:100;background:var(--card);border-bottom:1px solid var(--border);padding:12px 24px;display:flex;align-items:center;justify-content:space-between;gap:20px;}
+/* E1 (owner 2026-09-29 header-balance review): navigation clusters LEFT,
+   utility toggles strictly right. .hdr-left carries the back link, section
+   hamburger, greeting and methodology pills; margin-left:auto pins
+   .hdr-right to the right edge so utility never drifts inward. */
+#app-header .hdr-left{display:flex;align-items:center;gap:18px;min-width:0;flex-wrap:wrap;}
+#app-header .hdr-left .tab-ctrl{margin-left:6px;}
+#app-header .hdr-right{margin-left:auto;}
+#app-header .greeting{min-width:0;overflow:hidden;text-overflow:ellipsis;}
 .greeting{font-size:1.05rem;font-weight:700;color:var(--text);letter-spacing:-.01em;white-space:nowrap;}
 .tab-ctrl{display:flex;background:var(--track-bg);border-radius:100px;padding:4px;gap:2px;}
 .tab-btn{position:relative;z-index:1;padding:8px 18px;border:none;background:transparent;color:var(--slate);font-size:.85rem;font-weight:600;border-radius:100px;cursor:pointer;transition:color var(--tr);}
@@ -356,7 +364,7 @@ body:not(.crosshair-on) #cx,body:not(.crosshair-on) #cy{display:none;}
 
 /* ---- Focus Mode ---- */ /* Only the active panel + the exit chip remain */
 body.focus-mode #app-header,body.focus-mode .vl,
-body.focus-mode .tab-ctrl,body.focus-mode .hdr-right,
+body.focus-mode .tab-ctrl,body.focus-mode .hdr-left,body.focus-mode .hdr-right,
 body.focus-mode .sec-nav,body.focus-mode #drw,body.focus-mode #ub,
 body.focus-mode #om,body.focus-mode #cx,body.focus-mode #cy,
 body.focus-mode #meth-learn-card,body.focus-mode #gantt-tip,
@@ -1218,6 +1226,11 @@ body.gantt-dragging .gb{cursor:grabbing;}
      the calculator wave at 390px; reproduced on production). The ≤768 block
      is the right home: the header starts wrapping at tablet widths. */
   .hdr-right{flex-wrap:wrap;row-gap:6px;min-width:0;max-width:100%;}
+  /* E1: the left cluster wraps too; the greeting truncates instead of
+     pushing utility chips out, and the pills drop below on narrow phones. */
+  #app-header .hdr-left{gap:10px;row-gap:6px;}
+  #app-header .greeting{max-width:38vw;}
+  #app-header .hdr-left .tab-ctrl{margin-left:0;}
 }
 /* CLOUD-BACKEND-ARCHITECTURE-PLAN Phase 2 - scoped-editor workspace chrome.
    The banner + greyed nav are UX only: the Worker enforces the editor

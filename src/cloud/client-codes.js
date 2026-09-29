@@ -4,7 +4,7 @@
    Client codes grant read-only access to specific panels only.
    ============================================================ */
 
-import { json, hashOwnerCode, randomSaltHex, cloudAuthOwnerEither } from '../lib/http.js';
+import { json, hashOwnerCode, randomSaltHex, cloudAuthOwnerEither, codesEqual } from '../lib/http.js';
 
 // All possible section IDs that can be toggled
 const CLIENT_SECTIONS = [
@@ -149,7 +149,9 @@ export async function verifyClientCode(code, projectId, env) {
 
   for (const row of (rows.results || [])) {
     const hash = await hashOwnerCode(code, row.code_salt);
-    if (hash === row.code_hash) {
+    // B12 (audit 2026-09-28): constant-time compare like the other 14 hash
+    // checks (src/lib/http.js codesEqual) - plain === was the only outlier.
+    if (codesEqual(hash, row.code_hash)) {
       const expiresAt = row.expires_at || null;
       const expired = !!(expiresAt && new Date(expiresAt).getTime() < Date.now());
       return {

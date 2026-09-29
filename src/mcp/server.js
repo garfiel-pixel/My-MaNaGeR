@@ -210,7 +210,14 @@ function executeTool(name, state, projectId, label, scope) {
             tasks: tasks.map(t => ({
               id: t.id, name: t.name || t.id, status: t.status || 'todo',
               startDate: t.startDate || null, endDate: t.endDate || null,
-              critical: !!t.critical, dependencies: t.dependencies || [],
+              critical: !!t.critical,
+              // B16 (audit 2026-09-28): the app's dependency field is
+              // `predecessors` (mmgr-tasks.js defaults, mmgr-schedule.js
+              // engine) - the old read of t.dependencies ALWAYS produced [],
+              // so every AI client saw an unlinked schedule with no critical
+              // path. Output field name stays `dependencies` (the published
+              // MCP shape qa-engine-parity asserts); the source is corrected.
+              dependencies: (Array.isArray(t.predecessors) && t.predecessors.length) ? t.predecessors : (Array.isArray(t.dependencies) ? t.dependencies : []),
               assignee: t.assignee || null, notes: t.notes || null
             }))
           }, null, 2)

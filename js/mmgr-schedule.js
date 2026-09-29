@@ -544,6 +544,47 @@ var MMGR = window.MMGR || {};
     });
   }
 
+  // ---- Shared read-only annotation (B13/B14, audit 2026-09-28) ----
+  // The public pass sequence for the non-destructive refresh paths
+  // (renderGantt, setDeadline, ganttDragEnd). Matches the cascade engine's
+  // contract EXACTLY, because each of those paths re-ran the passes with a
+  // cheaper shape and silently corrupted what cascade had written:
+  //   - B13: backwardPass ran WITHOUT the project deadline, so terminal-chain
+  //     float (deadlineFor) collapsed back to zero and markCritical
+  //     re-stamped live tasks with the deadline-less numbers - the very
+  //     next render destroyed the float the cascade had just computed.
+  //     Deadline now rides the backward pass, same as cascade().
+  //   - B14: the recompute filtered to tasks having BOTH dates; the engine
+  //     runs the FULL task set (duration-bearing tasks anchor from the
+  //     earliest start). Different network shape -> different float than
+  //     a cascade. The full set runs here now.
+  //   - Weather padding applies to the transient clone so float reflects
+  //     the padded durations cascade writes back.
+  // Dates NEVER move. Zero-throw like the watchers. Cycle members simply
+  // keep their previous annotations (cascade refuses to run on cycles
+  // outright; this read-only path has nothing to corrupt).
+  function annotateSchedule(regionId) {
+    try {
+      const live = getTasks();
+      if (!live.length) return;
+      const s = ns.State.getState();
+      const region = regionId || (s && s.weatherRegion) || 'northern-temperate';
+      // Transient clone, same as computePlan - mutating it never touches
+      // live task data.
+      const work = live.map(t => {
+        const c = Object.assign({}, t);
+        c.predecessors = t.predecessors ? t.predecessors.slice() : [];
+        return c;
+      });
+      applyWeatherPadding(work, region, 5);
+      let sched = forwardPass(work);
+      const deadline = deadlineFor(work, sched);
+      sched = backwardPass(work, sched, deadline);
+      sched = calcFloat(work, sched);
+      markCritical(sched);
+    } catch (e) { /* zero-throw like the watchers */ }
+  }
+
   // ---- Weather Exposure Check ----
   // Annotates live tasks with the weatherExposed flag (fact AND user intent).
   function checkWeatherExposure(tasks, regionId) {
@@ -927,6 +968,7 @@ var MMGR = window.MMGR || {};
     backwardPass: backwardPass,
     calcFloat: calcFloat,
     markCritical: markCritical,
+    annotateSchedule: annotateSchedule,
     checkWeatherExposure: checkWeatherExposure,
     applyWeatherPadding: applyWeatherPadding,
     calculateWeatherBuffer: calculateWeatherBuffer,

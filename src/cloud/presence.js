@@ -28,7 +28,10 @@ export async function cloudManifestCodeOk(env, projectId, code) {
     const p = (projects || []).find(function(x) { return x && x.id === projectId; });
     if (!p) return false;
     const hash = await sha256Hex(String(code || '').trim().toUpperCase());
-    return hash === p.codeHash || hash === (p.roCodeHash || p.readOnlyCodeHash || '');
+    // B12 (audit 2026-09-28): constant-time compare (codesEqual) for both
+    // manifest hash checks - plain === was inconsistent with the codebase's
+    // own timing-safe pattern for exactly this kind of check.
+    return codesEqual(hash, p.codeHash) || codesEqual(hash, (p.roCodeHash || p.readOnlyCodeHash || ''));
   } catch (e) { return false; }
 }
 

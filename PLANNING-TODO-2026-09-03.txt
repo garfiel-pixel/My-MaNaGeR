@@ -1883,3 +1883,30 @@ sw v336, calc assets ?v=9 + calcBack live, mmgr.min.css bcp-group/bcp-row-3
 live, project hdr-left live, features/guide data-back live, marketing bundle
 carries the handler. CI watch: next push runs qa suites against the new
 69-gate contract (registry updated).
+
+SKELETON-LOADING-SCREENS WAVE 2026-09-29 (plan
+docs/superpowers/plans/2026-09-29-skeleton-loading-screens.md, owner go-ahead):
+every wait shows shape instead of a bare screen. (1) css/mmgr.css: .skel-box +
+::after sheen (@keyframes skel-sheen, transform-only), reduced-motion kills the
+sheen, size modifiers (.skel-line/.skel-pill/.skel-card/.skel-row/.skel-avatar/
+.skel-w-20/40/60/.skel-boot-grid, 820/600px responsive), --skel-base/--skel-sheen
+tokens in :root + dark re-map. (2) project.html boot splash: spinner (.bs-spin)
+replaced by .bs-skel layout-mirror (header row + 3 cards + wide card) inside the
+role=status aria-live=polite aria-busy splash; App.init .off fade untouched.
+(3) app.html cloud dash (js/mmgr-cloud-dash.js): loadList() unhides #cloud-dash,
+sets aria-busy, paints 3 skeleton cards BEFORE the /api/cloud/projects fetch +
+rail row when the accordion is visible and empty; every terminal path (catch/
+!res.ok/parse/bad payload) hides the dash + clears aria-busy (stale-innerHTML
+semantics kept on purpose). Commits: aed9968 primitives, 06cce46 boot,
+09cf2b9 cloud-dash + qa-dashboard-spec section 6. Probes: tmp/skel-probe.cjs
+all-pass (themes/reduced-motion/fade/real UI), tmp/cdskel-probe.cjs 4/4
+(document-start fetch wrapper - MutationObserver at DOMContentLoaded was too
+late, defer bundle paints+404s before it fires; terminal gates assert hidden +
+aria-busy cleared, NOT innerHTML emptied). Incidents: esbuild renames local
+functions (grep dist for surviving strings, e.g. cd-skel); verify-css-integrity
+must run AFTER build.js (stale dist false-fails ARM2). Gates: qa-dashboard-spec
+92/92 (was 79), qa-full 181/181, qa-health-sweep 15/15 (1062 mmgr rules live),
+qa-calc-playwright-audit 31/31, qa-calculator-page 69/69, npm run verify green,
+emoji scan clean on served files (sw.js hits are pre-v337 comment narratives;
+internal file, never rendered). sw.js shell bump v336 -> v337 with narrative;
+dist rebuilt; no inline scripts, CSP hashes unchanged.

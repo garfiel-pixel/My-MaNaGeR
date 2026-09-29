@@ -31,10 +31,18 @@
 <main id="main" class="bcp-main">
 
   <header class="bcp-top">
-    <a class="bcp-brand" href="app.html" title="Back to your projects">
-      <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-mpw"></use></svg>
-      <span>My MaNaGeR</span>
-    </a>
+    <div class="bcp-top-left">
+      <a class="bcp-brand" href="app.html" title="Back to your projects">
+        <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-mpw"></use></svg>
+        <span>My MaNaGeR</span>
+      </a>
+      <!-- E2 (owner 2026-09-29 universal back-navigation): Back always goes
+           where you came from - the previous page when there is one, the app
+           dashboard otherwise. Driven by calcBack in calculator-page.js. -->
+      <button type="button" class="btn btn-n btn-s bcp-back" data-action="calcBack">
+        <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-left"></use></svg> Back
+      </button>
+    </div>
     <button type="button" class="btn btn-n btn-s" data-action="tglTheme" aria-label="Toggle dark mode" title="Toggle dark mode">
       <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-moon"></use></svg> Theme
     </button>

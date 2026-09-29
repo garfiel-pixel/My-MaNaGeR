@@ -732,6 +732,20 @@ const ACTIONS = {
     document.body.classList.toggle('dark-mode');
     try { localStorage.setItem('mmgr_theme', document.body.classList.contains('dark-mode') ? 'dark' : 'light'); } catch (e) {}
   },
+  // E2 (owner 2026-09-29 universal back-navigation): Back goes where you
+  // came from when this page was opened from inside the site; straight to
+  // the app dashboard when it is the entry point (bookmark, PWA icon).
+  calcBack: function() {
+    let ref = '';
+    try { ref = document.referrer || ''; } catch (e) {}
+    let sameOrigin = false;
+    if (ref) { try { sameOrigin = new URL(ref).origin === window.location.origin; } catch (e) { sameOrigin = false; } }
+    if (sameOrigin && window.history.length > 1 && !ref.startsWith(location.href.split('#')[0])) {
+      window.history.back();
+    } else {
+      window.location.href = 'app.html';
+    }
+  },
   // F4-1: metric / imperial toggle. Inputs convert on entry; labels and the
   // quantity's imperial reading follow. Choice persists per device.
   calcUnits: function(el) {

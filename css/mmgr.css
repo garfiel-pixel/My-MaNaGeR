@@ -2336,6 +2336,11 @@ body.dark-mode .ai-byo-status[data-state="untested"]{background:rgba(245,158,11,
    gold focus ring. */
 .bcp-main{max-width:1080px;margin:0 auto;padding:32px 20px 64px;}
 .bcp-top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:26px;}
+/* E2 (owner 2026-09-29 universal back-navigation): brand + Back cluster left,
+   Theme right. Back matches the app's hdr-back pill language. */
+.bcp-top-left{display:flex;align-items:center;gap:10px;min-width:0;flex-wrap:wrap;}
+.bcp-back{flex-shrink:0;}
+@media (max-width:600px){.bcp-top-left{gap:8px;}}
 .bcp-brand{display:inline-flex;align-items:center;gap:8px;font-weight:800;font-size:.95rem;color:var(--text);text-decoration:none;}
 .bcp-brand .ico{width:20px;height:20px;color:var(--gold);}
 .bcp-brand:hover{color:var(--gold);}

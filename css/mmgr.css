@@ -1229,6 +1229,11 @@ body.gantt-dragging .gb{cursor:grabbing;}
 .skel-avatar{width:28px;height:28px;border-radius:50%;flex-shrink:0;}
 .skel-w-60{width:60%;}
 .skel-w-40{width:40%;}
+.skel-w-20{width:20%;}
+/* Cloud-dash skeleton cards (Task 3): placeholder shapes inside the existing
+   .cd-card chrome; rail rows mirror .db-project proportions. */
+.cd-skel{pointer-events:none;}
+.db-skel-row{width:100%;padding:6px 4px;}
 .skel-boot-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;width:100%;}
 .skel-boot-col{display:flex;flex-direction:column;gap:10px;min-width:0;}
 @media (max-width:820px){.skel-boot-grid{grid-template-columns:1fr 1fr;}}

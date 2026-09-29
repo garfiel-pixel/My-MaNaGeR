@@ -687,6 +687,68 @@ async function withChrome(fn) {
     // clearing storage is enough - nothing later asserts the sheets list)
     await ev(`(function(){ localStorage.removeItem('mmgr_calc_rate_sheets'); })()`);
 
+    // ---- D2 ESTIMATE COMPARISON (owner review 2026-09-29) ----
+    // Seed two named saves of the same slab: economy and premium quality.
+    const p0 = await ev(`(function(){
+      localStorage.removeItem('mmgr_calc_estimates');
+      document.getElementById('calc-work').value='slab';
+      document.getElementById('calc-work').dispatchEvent(new Event('change',{bubbles:true}));
+      document.getElementById('calc-d1').value='10'; document.getElementById('calc-d2').value='8'; document.getElementById('calc-d3').value='150';
+      document.getElementById('calc-d1').dispatchEvent(new Event('input',{bubbles:true}));
+      document.getElementById('calc-quality').value='economy';
+      document.getElementById('calc-save-name').value='qa-economy';
+      document.querySelector('[data-action=calcSave]').click();
+      document.getElementById('calc-quality').value='premium';
+      document.getElementById('calc-save-name').value='qa-premium';
+      document.querySelector('[data-action=calcSave]').click();
+      return { rows: document.querySelectorAll('#calc-estimates .bcp-est-row').length };
+    })()`);
+    check('P0 two named saves seeded (economy + premium)', p0 && p0.rows === 2, p0);
+
+    // P1: Compare with nothing ticked -> guidance message, no table.
+    const p1 = await ev(`(function(){
+      document.querySelector('[data-action=calcCompare]').click();
+      return { msg: document.getElementById('calc-sheet-msg').textContent,
+               hidden: document.getElementById('calc-compare-card').hidden };
+    })()`);
+    check('P1 compare with 0 ticked -> guidance, no table', p1 && String(p1.msg).indexOf('Tick at least two') > -1 && p1.hidden, p1);
+
+    // P2: tick both -> table renders; economy total is cheapest (gold cell).
+    const p2 = await ev(`(function(){
+      var checks = document.querySelectorAll('.bcp-cmp-check');
+      checks[0].checked = true; checks[1].checked = true;
+      document.querySelector('[data-action=calcCompare]').click();
+      var wrap = document.getElementById('calc-compare');
+      var txt = wrap.textContent;
+      var cells = wrap.querySelectorAll('td strong.bcp-cmp-best');
+      return { visible: !document.getElementById('calc-compare-card').hidden,
+               cols: wrap.querySelectorAll('thead th').length - 1,
+               hasWork: txt.indexOf('slab') > -1, hasQty: txt.indexOf('m3') > -1,
+               bestCells: cells.length,
+               ecoFirst: cells.length === 1 && txt.indexOf('qa-economy') > -1 };
+    })()`);
+    check('P2 compare table renders both columns, cheapest highlighted', p2 && p2.visible && p2.cols === 2 && p2.hasWork && p2.hasQty && p2.bestCells === 1, p2);
+
+    // P3: comparing must not mutate the live form inputs.
+    const p3 = await ev(`(function(){
+      return { d1: document.getElementById('calc-d1').value,
+               d2: document.getElementById('calc-d2').value,
+               d3: document.getElementById('calc-d3').value,
+               q: document.getElementById('calc-quality').value,
+               total: document.getElementById('calc-output').textContent.indexOf('Estimated total') > -1 };
+    })()`);
+    check('P3 comparison leaves the live form untouched', p3 && p3.d1 === '10' && p3.d2 === '8' && p3.d3 === '150' && p3.total, p3);
+
+    // close + clean for later gates (delete through the real row buttons so
+    // the page's own renderer refreshes the list)
+    await ev(`(function(){
+      document.querySelector('[data-action=calcCompareClose]').click();
+      var guard = 0;
+      while (document.querySelector('[data-action=calcDeleteEst]') && guard++ < 40) {
+        document.querySelector('[data-action=calcDeleteEst]').click();
+      }
+    })()`);
+
     // X3: CSV carries the used rates + piece lines.
     const x3 = await ev(`(async function(){
       document.getElementById('calc-work').value='tile';

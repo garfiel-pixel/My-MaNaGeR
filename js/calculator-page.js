@@ -235,17 +235,21 @@ function pieceCount(qty, unit, spec, sizeStr) {
   return { n: ceilClean(qty / areaM2), lbl: spec.plural || 'pieces', sizeTxt: m[1] + ' x ' + m[2] + ' ' + spec.unit };
 }
 
-function compute() {
-  const key = $('calc-work').value;
+// D2 (owner review 2026-09-29): PURE estimate engine. Takes a readState()-
+// shaped settings object, touches NO DOM, returns the full breakdown. The
+// live form (compute), recall fidelity, and the comparison table all run
+// through this one function - one math path, zero drift.
+function computeFor(st) {
+  const key = st.work;
   const w = WORK[key];
   if (!w) return null;
-  const raw1 = num($('calc-d1'));
-  const raw2 = w.d2 ? num($('calc-d2')) : null;
-  const raw3 = w.d3 ? num($('calc-d3')) : null;
+  const raw1 = num({ value: st.d1 });
+  const raw2 = w.d2 ? num({ value: st.d2 }) : null;
+  const raw3 = w.d3 ? num({ value: st.d3 }) : null;
   if (!raw1 || (w.d2 && !raw2) || (w.d3 && !raw3)) return { error: 'Enter the dimensions the form asks for (all three when thickness or depth applies).' };
   // Imperial entry converts to the metric the formulas speak (ft to m,
   // in to mm); metric passes through untouched.
-  const imp = _units === 'imperial';
+  const imp = st.units === 'imperial';
   const d1 = imp ? raw1 * FT : raw1;
   const d2 = w.d2 ? (imp ? raw2 * FT : raw2) : null;
   const d3 = w.d3 ? (imp ? raw3 * IN : raw3) : null;
@@ -255,30 +259,28 @@ function compute() {
   // baked-in factors). Empty/invalid falls back to the trade default.
   let wastePct = 0;
   if (w.waste) {
-    const wr = parseFloat(($('calc-waste') || {}).value);
+    const wr = parseFloat(st.wastePct);
     wastePct = isFinite(wr) && wr >= 0 && wr <= 50 ? wr : w.waste.def;
   }
   const qty = qr.qty * (1 + wastePct / 100);
   const modelMr = matRate(w, d1, d2);
-  // F4b rate freedom: an explicitly typed rate overrides the model. Empty
-  // rate fields are auto-prefilled with the model (see refreshRateFields)
-  // so the numbers on screen are always the numbers in the math.
-  const matEl = $('calc-rate-mat'), labEl = $('calc-rate-lab');
-  const matRaw = parseFloat((matEl || {}).value);
-  const labRaw = parseFloat((labEl || {}).value);
-  // An UNTOUCHED prefill (value equals what refreshRateFields last put
-  // there) is NOT an override - only a typed value earns the "your rate"
-  // note. Typing the same number as the model is harmless (same math).
-  const matOverride = isFinite(matRaw) && matRaw >= 0 && (!matEl || String(matRaw) !== matEl.dataset.model);
-  const labOverride = isFinite(labRaw) && labRaw >= 0 && (!labEl || String(labRaw) !== labEl.dataset.model);
+  // F4b rate freedom: an explicitly typed rate overrides the model. The
+  // wrapper passes dataset.model for the live form; a recalled/comparison
+  // state has no dataset, so any numeric value it carries IS its rate.
+  const matRaw = parseFloat(st.rateMat);
+  const labRaw = parseFloat(st.rateLab);
+  const matModel = st._matModel != null ? String(st._matModel) : null;
+  const labModel = st._labModel != null ? String(st._labModel) : null;
+  const matOverride = isFinite(matRaw) && matRaw >= 0 && (matModel === null || String(matRaw) !== matModel);
+  const labOverride = isFinite(labRaw) && labRaw >= 0 && (labModel === null || String(labRaw) !== labModel);
   const mr = matOverride ? matRaw : modelMr;
   const lr = labOverride ? labRaw : w.rate.lab;
   // B3: optional third rate (equipment / plant hire) on the same per-unit
   // basis; empty or 0 = inactive. Overhead & margin % applies to the
   // equipment-inclusive subtotal.
-  const eqRaw = parseFloat(($('calc-rate-eq') || {}).value);
+  const eqRaw = parseFloat(st.rateEq);
   const eqRate = isFinite(eqRaw) && eqRaw > 0 ? eqRaw : 0;
-  const ohRaw = parseFloat(($('calc-oh') || {}).value);
+  const ohRaw = parseFloat(st.ohPct);
   const ohPct = isFinite(ohRaw) && ohRaw > 0 && ohRaw <= 60 ? ohRaw : 0;
   // F4b per-piece pricing: price-per-piece + piece size becomes the
   // effective material rate. Three divisors: AREA (tile, block, brick,
@@ -289,17 +291,17 @@ function compute() {
   // (bag yield) take one number, not a W x L pair; imperial entry converts
   // in->cm / ft->m for dimensioned specs (yield specs are unit-free).
   let piece = null;
-  const pieceRaw = parseFloat(($('calc-piece-price') || {}).value);
+  const pieceRaw = parseFloat(st.piecePrice);
   // Size-only mode (B2): a piece SIZE without a price still shows the order
   // count; the per-unit rate override stays off until a price is typed too.
   if (w.piece && (!isFinite(pieceRaw) || pieceRaw <= 0) &&
-      (($('calc-piece-size') || {}).value || '').trim() !== '') {
-    const countOnly = pieceCount(qty, qr.unit, w.piece, (($('calc-piece-size') || {}).value || '').trim());
+      (st.pieceSize || '').trim() !== '') {
+    const countOnly = pieceCount(qty, qr.unit, w.piece, (st.pieceSize || '').trim());
     if (countOnly) piece = { countOnly: true, count: countOnly };
   }
   if (w.piece && isFinite(pieceRaw) && pieceRaw > 0) {
     const spec = w.piece;
-    const sizeStr = (($('calc-piece-size') || {}).value || '').trim();
+    const sizeStr = (st.pieceSize || '').trim();
     if (spec.div === 'volume') {
       const yieldL = parseFloat(sizeStr);
       if (isFinite(yieldL) && yieldL > 0) {
@@ -311,7 +313,7 @@ function compute() {
     } else {
       const m = sizeStr.match(/^([\d.]+)\s*(?:x|by|\*)\s*([\d.]+)$/i);
       if (m) {
-        const conv = _units === 'imperial' ? (spec.unit === 'm' ? FT : FT * 100) : 1;
+        const conv = st.units === 'imperial' ? (spec.unit === 'm' ? FT : FT * 100) : 1;
         const a = parseFloat(m[1]) * conv, b = parseFloat(m[2]) * conv;
         if (a > 0 && b > 0) {
           if (spec.div === 'width') {
@@ -324,26 +326,40 @@ function compute() {
       }
     }
   }
-  const quality = QUALITY[($('calc-quality') || {}).value] || 1;
+  const quality = QUALITY[st.quality] || 1;
   // Area trades: $/m2 x m2 quantity. Fencing width-div: $/run-m x m run.
   // The qty x rate dimension check holds for both.
   const effMat = piece && !piece.countOnly ? piece.perUnit : mr;
   const mat = qty * effMat * quality;
   const lab = qty * lr * quality;
   const eq = qty * eqRate * quality;
-  const country = ($('calc-country') || {}).value || 'US';
-  const overrideRaw = parseFloat(($('calc-tax-override') || {}).value);
+  const country = st.country || 'US';
+  const overrideRaw = parseFloat(st.taxOverride);
   const override = isFinite(overrideRaw) && overrideRaw >= 0 ? overrideRaw : null;
   const taxRate = override !== null ? override : (TAX[country] || 0);
   const sub = mat + lab + eq;
   const oh = sub * ohPct / 100;
   const tax = (sub + oh) * taxRate / 100;
-  const orderCount = pieceCount(qty, qr.unit, w.piece, (($('calc-piece-size') || {}).value || '').trim());
-  return { key, name: workName(key), qty: qty, baseQty: qr.qty, unit: qr.unit, qtyLabel: qr.qtyLabel, matDesc: w.matDesc,
+  const orderCount = pieceCount(qty, qr.unit, w.piece, (st.pieceSize || '').trim());
+  // Note: no `name` here - workName() reads the DOM. compute() attaches the
+  // live name; the comparison table uses each saved estimate's stored name.
+  return { key, qty: qty, baseQty: qr.qty, unit: qr.unit, qtyLabel: qr.qtyLabel, matDesc: w.matDesc,
     orderCount: orderCount,
     wastePct: wastePct, hasWaste: !!w.waste, wasteLbl: w.waste ? w.waste.lbl : null,
     mr, lr, eqRate, eq, ohPct, oh, effMat, modelMr, piece, mat, lab, sub, taxRate, tax, total: sub + oh + tax, overrideApplied: override !== null,
-    matOverridden: matOverride, labOverridden: labOverride, currency: ($('calc-currency') || {}).value };
+    matOverridden: matOverride, labOverridden: labOverride, currency: st.currency || 'USD' };
+}
+
+// Live-form wrapper: snapshot the DOM into a settings object (passing the
+// current model-prefill markers so override detection behaves exactly as
+// before), run the pure engine, and attach the DOM-derived name.
+function compute() {
+  const st = readState();
+  st._matModel = $('calc-rate-mat') ? $('calc-rate-mat').dataset.model : undefined;
+  st._labModel = $('calc-rate-lab') ? $('calc-rate-lab').dataset.model : undefined;
+  const r = computeFor(st);
+  if (r && !r.error) r.name = workName(st.work);
+  return r;
 }
 
 // ---- Named estimates (F4-3): save / recall / delete, this device only ---
@@ -442,13 +458,60 @@ function renderEstimates() {
   const list = loadEstimates();
   if (!list.length) { wrap.innerHTML = '<div class="calc-empty">No saved estimates yet. Price something, then Save it with a name.</div>'; return; }
   wrap.innerHTML = list.map(function(est) {
+    // D2: leading checkbox opts a saved estimate into the comparison table.
     return '<div class="bcp-est-row">' +
+      '<input type="checkbox" class="bcp-cmp-check" data-cmp-id="' + esc(est.id) + '" aria-label="Select ' + esc(est.name) + ' for comparison">' +
       '<span class="bcp-est-name">' + esc(est.name) + '</span>' +
       '<span class="bcp-est-meta">' + esc(est.at) + ' - ' + esc(est.total) + '</span>' +
       '<button type="button" class="btn btn-n btn-s" data-action="calcOpen" data-id="' + esc(est.id) + '">Open</button>' +
       '<button type="button" class="btn btn-n btn-s" data-action="calcDeleteEst" data-id="' + esc(est.id) + '">Delete</button>' +
     '</div>';
   }).join('');
+}
+
+// ---- D2 (owner review 2026-09-29): side-by-side comparison of saved ------
+// estimates (Economy vs Standard vs Premium for the same dimensions). The
+// table recomputes each saved settings state through the SAME pure engine
+// as the live form, so a compared total always equals a recalled total.
+function renderCompare() {
+  const wrap = $('calc-compare'), card = $('calc-compare-card');
+  if (!wrap || !card) return;
+  const ids = Array.prototype.slice.call(document.querySelectorAll('.bcp-cmp-check:checked')).map(function(c) { return c.getAttribute('data-cmp-id'); });
+  if (ids.length < 2) {
+    sheetMsg('Tick at least two saved estimates to compare.');
+    return;
+  }
+  const cols = ids.slice(0, 4).map(function(id) {
+    const est = loadEstimates().find(function(x) { return x.id === id; });
+    if (!est) return null;
+    const r = computeFor(est.st || {});
+    return r && !r.error ? { name: est.name, r: r } : null;
+  }).filter(Boolean);
+  if (cols.length < 2) { sheetMsg('Those estimates could not be recomputed - open one to check its settings.'); return; }
+  const money = function(v, cur) { return (CURRENCY[cur] || '$') + Math.round(v).toLocaleString(); };
+  const best = Math.min.apply(null, cols.map(function(c) { return c.r.total; }));
+  const rows = [
+    ['Work item', function(c) { return esc(c.r.key); }],
+    ['Quantity', function(c) { return esc(qtyShown(c.r.qty, c.r.unit).main); }],
+    ['Materials', function(c) { return money(c.r.mat, c.r.currency); }],
+    ['Labor', function(c) { return money(c.r.lab, c.r.currency); }],
+    ['Equipment', function(c) { return c.r.eq > 0 ? money(c.r.eq, c.r.currency) : '-'; }],
+    ['Overhead', function(c) { return c.r.oh > 0 ? money(c.r.oh, c.r.currency) : '-'; }],
+    ['Subtotal', function(c) { return money(c.r.sub, c.r.currency); }],
+    ['Tax', function(c) { return money(c.r.tax, c.r.currency); }],
+    ['Estimated total', function(c) {
+      const bestCell = c.r.total === best ? ' class="bcp-cmp-best"' : '';
+      return '<strong' + bestCell + '>' + money(c.r.total, c.r.currency) + '</strong>';
+    }]
+  ];
+  wrap.innerHTML = '<div class="bcp-cmp-wrap"><table><thead><tr><th scope="row"></th>' +
+    cols.map(function(c) { return '<th scope="col">' + esc(c.name) + '</th>'; }).join('') + '</tr></thead><tbody>' +
+    rows.map(function(rowDef) {
+      return '<tr><th scope="row">' + rowDef[0] + '</th>' +
+        cols.map(function(c) { return '<td>' + rowDef[1](c) + '</td>'; }).join('') + '</tr>';
+    }).join('') + '</tbody></table></div>';
+  card.hidden = false;
+  card.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 // ---- Export (F4-2): print + CSV of the live breakdown -------------------
@@ -697,6 +760,13 @@ const ACTIONS = {
     const id = el.getAttribute('data-id');
     persistEstimates(loadEstimates().filter(function(x) { return x.id !== id; }));
     renderEstimates();
+  },
+  // ---- D2 comparison ----
+  calcCompare: renderCompare,
+  calcCompareClose: function() {
+    const card = $('calc-compare-card');
+    if (card) card.hidden = true;
+    document.querySelectorAll('.bcp-cmp-check:checked').forEach(function(c) { c.checked = false; });
   },
   // ---- Rate sheets ----
   calcSheetSave: function() {

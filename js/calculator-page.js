@@ -42,11 +42,11 @@ const WORK = {
   excav:      { group: 'Groundworks', d1: 'Length (m)', d2: 'Width (m)', d3: 'Depth (m)',
     q: (a, b, c) => ({ qty: a * b * c * 1.25, unit: 'm3', qtyLabel: 'Excavated volume (incl. 1.25 bulking)' }),
     rate: { mat: 2, lab: 14 }, matDesc: 'Cart-away / disposal' },
-  slab:       { group: 'Groundworks', d1: 'Length (m)', d2: 'Width (m)', d3: 'Thickness (mm)', piece: { priceLabel: 'Price per bag of mix', sizeLabel: 'Bag yield (litres)', single: true, div: 'volume', qtyUnit: 'm3', ph: 'e.g. 9200 per bag', phSize: 'e.g. 20' },
-    q: (a, b, c) => ({ qty: a * b * (c / 1000) * 1.05, unit: 'm3', qtyLabel: 'Concrete (incl. 5% waste)' }),
+  slab:       { group: 'Groundworks', d1: 'Length (m)', d2: 'Width (m)', d3: 'Thickness (mm)', waste: { def: 5, lbl: 'Concrete waste' }, piece: { priceLabel: 'Price per bag of mix', sizeLabel: 'Bag yield (litres)', single: true, div: 'volume', qtyUnit: 'm3', ph: 'e.g. 9200 per bag', phSize: 'e.g. 20' },
+    q: (a, b, c) => ({ qty: a * b * (c / 1000), unit: 'm3', qtyLabel: 'Concrete' }),
     rate: { mat: 150, lab: 85 }, matDesc: 'C20/25 ready-mix, mesh, vapor barrier' },
-  footings:   { group: 'Groundworks', d1: 'Total run (m)', d2: 'Width (mm)', d3: 'Depth (mm)', piece: { priceLabel: 'Price per bag of mix', sizeLabel: 'Bag yield (litres)', single: true, div: 'volume', qtyUnit: 'm3', ph: 'e.g. 9200 per bag', phSize: 'e.g. 20' },
-    q: (a, b, c) => ({ qty: a * (b / 1000) * (c / 1000) * 1.05, unit: 'm3', qtyLabel: 'Concrete (incl. 5% waste)' }),
+  footings:   { group: 'Groundworks', d1: 'Total run (m)', d2: 'Width (mm)', d3: 'Depth (mm)', waste: { def: 5, lbl: 'Concrete waste' }, piece: { priceLabel: 'Price per bag of mix', sizeLabel: 'Bag yield (litres)', single: true, div: 'volume', qtyUnit: 'm3', ph: 'e.g. 9200 per bag', phSize: 'e.g. 20' },
+    q: (a, b, c) => ({ qty: a * (b / 1000) * (c / 1000), unit: 'm3', qtyLabel: 'Concrete' }),
     rate: { mat: 155, lab: 90 }, matDesc: 'C20/25, rebar cage allowance' },
   blockwall:  { group: 'Structure', d1: 'Length (m)', d2: 'Height (m)', d3: null, piece: { priceLabel: 'Price per block', sizeLabel: 'Block size - length x height (cm)', unit: 'cm', div: 'area', ph: 'e.g. 800 per block', phSize: 'e.g. 40 x 20' },
     q: (a, b) => ({ qty: a * b, unit: 'm2', qtyLabel: 'Wall area' }),
@@ -60,8 +60,8 @@ const WORK = {
   rebar:      { group: 'Structure', d1: 'Concrete volume (m3)', d2: null, d3: null,
     q: (a) => ({ qty: a * 85 / 1000, unit: 't', qtyLabel: 'Steel (85 kg per m3)' }),
     rate: { mat: 950, lab: 380 }, matDesc: 'Bars, ties, chairs, cutting waste' },
-  roof:       { group: 'Envelope', d1: 'Length (m)', d2: 'Slope width (m)', d3: null, piece: { priceLabel: 'Price per sheet', sizeLabel: 'Sheet size - width x length (m)', unit: 'm', div: 'area', ph: 'e.g. 6120 per sheet', phSize: 'e.g. 0.85 x 3.6' },
-    q: (a, b) => ({ qty: a * b * 1.1, unit: 'm2', qtyLabel: 'Sheet area (incl. 10% laps/pitch)' }),
+  roof:       { group: 'Envelope', d1: 'Length (m)', d2: 'Slope width (m)', d3: null, waste: { def: 10, lbl: 'Laps / pitch allowance' }, piece: { priceLabel: 'Price per sheet', sizeLabel: 'Sheet size - width x length (m)', unit: 'm', div: 'area', ph: 'e.g. 6120 per sheet', phSize: 'e.g. 0.85 x 3.6', plural: 'sheets' },
+    q: (a, b) => ({ qty: a * b, unit: 'm2', qtyLabel: 'Sheet area' }),
     rate: { mat: 26, lab: 18 }, matDesc: 'Sheets, fixings, flashings' },
   render:     { group: 'Envelope', d1: 'Length (m)', d2: 'Height (m)', d3: null,
     q: (a, b) => ({ qty: a * b, unit: 'm2', qtyLabel: 'Rendered area' }),
@@ -72,11 +72,11 @@ const WORK = {
   drywall:    { group: 'Envelope', d1: 'Length (m)', d2: 'Height (m)', d3: null,
     q: (a, b) => ({ qty: a * b, unit: 'm2', qtyLabel: 'Partition area' }),
     rate: { mat: 12, lab: 17 }, matDesc: 'Boards, studs, tape, screws' },
-  tile:       { group: 'Finishes', d1: 'Length (m)', d2: 'Width (m)', d3: null, piece: { priceLabel: 'Price per tile', sizeLabel: 'Tile size - width x length (cm)', unit: 'cm', div: 'area', ph: 'e.g. 950 per tile', phSize: 'e.g. 30 x 60' },
-    q: (a, b) => ({ qty: a * b * 1.1, unit: 'm2', qtyLabel: 'Tiles (incl. 10% cuts/waste)' }),
+  tile:       { group: 'Finishes', d1: 'Length (m)', d2: 'Width (m)', d3: null, waste: { def: 10, lbl: 'Cuts / waste' }, piece: { priceLabel: 'Price per tile', sizeLabel: 'Tile size - width x length (cm)', unit: 'cm', div: 'area', ph: 'e.g. 950 per tile', phSize: 'e.g. 30 x 60', plural: 'tiles' },
+    q: (a, b) => ({ qty: a * b, unit: 'm2', qtyLabel: 'Tiles' }),
     rate: { mat: 24, lab: 32 }, matDesc: 'Tiles, adhesive, grout, trim' },
-  'concrete-drive': { group: 'Finishes', d1: 'Length (m)', d2: 'Width (m)', d3: 'Thickness (mm)', piece: { priceLabel: 'Price per bag of mix', sizeLabel: 'Bag yield (litres)', single: true, div: 'volume', qtyUnit: 'm3', ph: 'e.g. 9200 per bag', phSize: 'e.g. 20' },
-    q: (a, b, c) => ({ qty: a * b * (c / 1000) * 1.05, unit: 'm3', qtyLabel: 'Concrete (incl. 5% waste)' }),
+  'concrete-drive': { group: 'Finishes', d1: 'Length (m)', d2: 'Width (m)', d3: 'Thickness (mm)', waste: { def: 5, lbl: 'Concrete waste' }, piece: { priceLabel: 'Price per bag of mix', sizeLabel: 'Bag yield (litres)', single: true, div: 'volume', qtyUnit: 'm3', ph: 'e.g. 9200 per bag', phSize: 'e.g. 20' },
+    q: (a, b, c) => ({ qty: a * b * (c / 1000), unit: 'm3', qtyLabel: 'Concrete' }),
     rate: { mat: 145, lab: 75 }, matDesc: 'C25/30 air-entrained, mesh, cure' },
   fencing:    { group: 'Finishes', d1: 'Total run (m)', d2: 'Height (m)', d3: null, piece: { priceLabel: 'Price per panel', sizeLabel: 'Panel size - width x height (m)', unit: 'm', div: 'width', ph: 'e.g. 9500 per panel', phSize: 'e.g. 2.5 x 1.8' },
     q: (a, b) => ({ qty: a, unit: 'm', qtyLabel: 'Fence run' }),
@@ -174,6 +174,7 @@ function readState() {
     country: ($('calc-country') || {}).value || 'US',
     quality: ($('calc-quality') || {}).value || 'standard',
     taxOverride: ($('calc-tax-override') || {}).value || '',
+    wastePct: ($('calc-waste') || {}).value || '',
     rateMat: ($('calc-rate-mat') || {}).value || '',
     rateLab: ($('calc-rate-lab') || {}).value || '',
     piecePrice: ($('calc-piece-price') || {}).value || '',
@@ -197,6 +198,7 @@ function applyState(st) {
   if ($('calc-country')) $('calc-country').value = st.country || 'US';
   if ($('calc-quality')) $('calc-quality').value = st.quality || 'standard';
   if ($('calc-tax-override')) $('calc-tax-override').value = st.taxOverride || '';
+  if ($('calc-waste')) $('calc-waste').value = st.wastePct || '';
   if ($('calc-rate-mat')) $('calc-rate-mat').value = st.rateMat || '';
   if ($('calc-rate-lab')) $('calc-rate-lab').value = st.rateLab || '';
   if ($('calc-piece-price')) $('calc-piece-price').value = st.piecePrice || '';
@@ -219,6 +221,15 @@ function compute() {
   const d2 = w.d2 ? (imp ? raw2 * FT : raw2) : null;
   const d3 = w.d3 ? (imp ? raw3 * IN : raw3) : null;
   const qr = w.q(d1, d2, d3);
+  // B1 (owner review 2026-09-29): waste/cuts is an editable percentage per
+  // trade (tile 10, roof laps 10, concrete 5 defaults = the previously
+  // baked-in factors). Empty/invalid falls back to the trade default.
+  let wastePct = 0;
+  if (w.waste) {
+    const wr = parseFloat(($('calc-waste') || {}).value);
+    wastePct = isFinite(wr) && wr >= 0 && wr <= 50 ? wr : w.waste.def;
+  }
+  const qty = qr.qty * (1 + wastePct / 100);
   const modelMr = matRate(w, d1, d2);
   // F4b rate freedom: an explicitly typed rate overrides the model. Empty
   // rate fields are auto-prefilled with the model (see refreshRateFields)
@@ -274,15 +285,16 @@ function compute() {
   // Area trades: $/m2 x m2 quantity. Fencing width-div: $/run-m x m run.
   // The qty x rate dimension check holds for both.
   const effMat = piece ? piece.perUnit : mr;
-  const mat = qr.qty * effMat * quality;
-  const lab = qr.qty * lr * quality;
+  const mat = qty * effMat * quality;
+  const lab = qty * lr * quality;
   const country = ($('calc-country') || {}).value || 'US';
   const overrideRaw = parseFloat(($('calc-tax-override') || {}).value);
   const override = isFinite(overrideRaw) && overrideRaw >= 0 ? overrideRaw : null;
   const taxRate = override !== null ? override : (TAX[country] || 0);
   const sub = mat + lab;
   const tax = sub * taxRate / 100;
-  return { key, name: workName(key), qty: qr.qty, unit: qr.unit, qtyLabel: qr.qtyLabel, matDesc: w.matDesc,
+  return { key, name: workName(key), qty: qty, baseQty: qr.qty, unit: qr.unit, qtyLabel: qr.qtyLabel, matDesc: w.matDesc,
+    wastePct: wastePct, hasWaste: !!w.waste, wasteLbl: w.waste ? w.waste.lbl : null,
     mr, lr, effMat, modelMr, piece, mat, lab, sub, taxRate, tax, total: sub + tax, overrideApplied: override !== null,
     matOverridden: matOverride, labOverridden: labOverride, currency: ($('calc-currency') || {}).value };
 }
@@ -367,6 +379,7 @@ function estimateCsv(r) {
     ['Name', ($('#calc-save-name') || {}).value || r.name],
     ['Work item', r.name],
     ['Quantity', qtyShown(r.qty, r.unit).main + qtyShown(r.qty, r.unit).alt],
+    ['Waste allowance', r.hasWaste ? r.wastePct + '%' : 'none'],
     ['Rate basis', r.matDesc],
     ['Finish level', ($('calc-quality') || {}).value || 'standard'],
     ['Currency', r.currency],
@@ -451,6 +464,7 @@ function render() {
         '<span class="calc-qty-alt">' + esc(shown.alt) + '</span></strong></div>' +
       '<div class="calc-sum-sub">' + r.matDesc + '</div>' +
     '</div>' +
+    (r.hasWaste ? row(r.wasteLbl + ' allowance', r.wastePct + '%') : '') +
     row(matLabel, fmtMoney(r.mat)) +
     row('Labor' + (r.labOverridden ? ' - your rate' : ''), fmtMoney(r.lab)) +
     row('Subtotal', fmtMoney(r.sub), 'calc-line-sub') +
@@ -542,6 +556,7 @@ const ACTIONS = {
     if ($('calc-rate-lab')) $('calc-rate-lab').value = '';
     if ($('calc-piece-price')) $('calc-piece-price').value = '';
     if ($('calc-piece-size')) $('calc-piece-size').value = '';
+    if ($('calc-waste')) $('calc-waste').value = '';
     refreshRateFields();
     render();
   },
@@ -687,6 +702,20 @@ function refreshRateFields() {
   labEl.dataset.model = modelL;
   $('calc-rate-mat-label').textContent = 'Material rate ' + rateUnitLabel(key);
   $('calc-rate-lab-label').textContent = 'Labor rate ' + rateUnitLabel(key);
+  // B1 waste field: only trades with a waste spec; label names the allowance,
+  // empty field prefills the trade default (typed values are never clobbered).
+  const ww = $('calc-waste-wrap'), we = $('calc-waste');
+  if (ww && we) {
+    ww.hidden = !w.waste;
+    if (w.waste) {
+      $('calc-waste-label').textContent = w.waste.lbl + ' %';
+      if (we.value === '' || we.value === we.dataset.def) {
+        we.value = String(w.waste.def);
+        we.dataset.def = String(w.waste.def);
+      }
+      we.dataset.def = String(w.waste.def);
+    }
+  }
   // Piece rows: only trades with a piece spec; labels follow work + units.
   const pw = $('calc-piece-wrap'), priceEl = $('calc-piece-price'), sizeEl = $('calc-piece-size');
   if (pw) pw.hidden = !w.piece;
@@ -801,7 +830,7 @@ function countryLabel(code) {
 if ($('calc-work')) {
   $('calc-work').addEventListener('change', syncLabels);
   ['calc-currency', 'calc-country', 'calc-quality', 'calc-tax-override', 'calc-d1', 'calc-d2', 'calc-d3',
-   'calc-rate-mat', 'calc-rate-lab', 'calc-piece-price', 'calc-piece-size']
+   'calc-rate-mat', 'calc-rate-lab', 'calc-piece-price', 'calc-piece-size', 'calc-waste']
     .forEach(function(id) { const el = $(id); if (el) el.addEventListener('input', function() { render(); }); });
   // Saved unit system comes back before first interaction; silent keeps the
   // empty-state text until the user actually enters dimensions.

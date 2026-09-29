@@ -481,6 +481,55 @@ async function withChrome(fn) {
     })()`);
     check('E2 legacy row recalls: units inferred (m), rates default', e2 && e2.work==='tile' && e2.d1==='10' && e2.units==='metric' && e2.rm !== '', e2);
 
+    // ---- B1 WASTE % (owner review 2026-09-29) ----
+    // W1: tile defaults to 10 (the old baked-in factor) - the sum matches
+    // today's engine exactly and the allowance line renders.
+    const w1 = await ev(`(function(){
+      localStorage.removeItem('mmgr_calc_history');
+      document.getElementById('calc-work').value='tile';
+      document.getElementById('calc-work').dispatchEvent(new Event('change',{bubbles:true}));
+      document.getElementById('calc-d1').value='6'; document.getElementById('calc-d2').value='6';
+      document.getElementById('calc-d1').dispatchEvent(new Event('input',{bubbles:true}));
+      var out = document.getElementById('calc-output').textContent;
+      var m = out.match(/Cuts \\/ waste allowance[\\d.,]+%/);
+      return { visible: !document.getElementById('calc-waste-wrap').hidden,
+               def: document.getElementById('calc-waste').value,
+               line: m && m[0] };
+    })()`);
+    check('W1 tile waste defaults to 10, allowance line renders', w1 && w1.visible && w1.def==='10' && w1.line && w1.line.indexOf('10%') > -1, w1);
+
+    // W2: typing 20 raises the tile count (36 -> 43.2 m2 effective) and the total.
+    const w2 = await ev(`(function(){
+      var before = document.getElementById('calc-output').textContent;
+      document.getElementById('calc-waste').value='20';
+      document.getElementById('calc-waste').dispatchEvent(new Event('input',{bubbles:true}));
+      var after = document.getElementById('calc-output').textContent;
+      var q = function(t){ var m = t.match(/([\\d.,]+) m2/); return m ? parseFloat(m[1].replace(/,/g,'')) : null; };
+      return { before: q(before), after: q(after), raised: q(after) > q(before) };
+    })()`);
+    check('W2 waste 20 raises effective quantity (36 -> 43.2 m2)', w2 && w2.before === 39.6 && w2.after === 43.2 && w2.raised, w2);
+
+    // W3: a non-waste trade hides the field; the label names the allowance.
+    // Clears the typed % first (waste carries across trades like rates do -
+    // only an EMPTY field takes the new trade's default).
+    const w3 = await ev(`(function(){
+      document.getElementById('calc-work').value='blockwall';
+      document.getElementById('calc-work').dispatchEvent(new Event('change',{bubbles:true}));
+      var hidden = document.getElementById('calc-waste-wrap').hidden;
+      document.getElementById('calc-waste').value='';
+      document.getElementById('calc-work').value='roof';
+      document.getElementById('calc-work').dispatchEvent(new Event('change',{bubbles:true}));
+      return { blockHidden: hidden, roofLbl: document.getElementById('calc-waste-label').textContent,
+               roofDef: document.getElementById('calc-waste').value };
+    })()`);
+    check('W3 non-waste trade hides field; roof label = laps', w3 && w3.blockHidden && w3.roofLbl === 'Laps / pitch allowance %' && w3.roofDef === '10', w3);
+
+    // restore slab context for the gates that follow
+    await ev(`(function(){
+      document.getElementById('calc-work').value='slab';
+      document.getElementById('calc-work').dispatchEvent(new Event('change',{bubbles:true}));
+    })()`);
+
     // X3: CSV carries the used rates + piece lines.
     const x3 = await ev(`(async function(){
       document.getElementById('calc-work').value='tile';

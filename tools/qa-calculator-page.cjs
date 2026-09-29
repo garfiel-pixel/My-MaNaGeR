@@ -573,6 +573,55 @@ async function withChrome(fn) {
       document.getElementById('calc-piece-size').dispatchEvent(new Event('input',{bubbles:true}));
     })()`);
 
+    // ---- B3 EQUIPMENT + OVERHEAD (owner review 2026-09-29) ----
+    // E1: equipment 10/m3 on a 12.6 m3 slab adds exactly qty x 10 x quality.
+    const e3a = await ev(`(function(){
+      document.getElementById('calc-d1').value='10'; document.getElementById('calc-d2').value='8'; document.getElementById('calc-d3').value='150';
+      document.getElementById('calc-d1').dispatchEvent(new Event('input',{bubbles:true}));
+      var g = function(t,k){ var s=t.split(k)[1]||''; var m=s.replace(/[^\\d,]/g,' ').match(/([\\d,]+)/); return m?parseFloat(m[1].replace(/,/g,'')):null; };
+      var before = document.getElementById('calc-output').textContent;
+      var bSub = g(before,'Subtotal');
+      document.getElementById('calc-rate-eq').value='10';
+      document.getElementById('calc-rate-eq').dispatchEvent(new Event('input',{bubbles:true}));
+      var after = document.getElementById('calc-output').textContent;
+      var aSub = g(after,'Subtotal');
+      return { hasLine: after.indexOf('Equipment / plant hire') > -1, delta: aSub - bSub };
+    })()`);
+    check('E1 equipment 10/m3 on 12.6 m3 adds 126 to subtotal', e3a && e3a.hasLine && Math.abs(e3a.delta - 126) < 2, e3a);
+
+    // E2: overhead 10% lands as its own line and tax recomputes on sub+oh.
+    const e3b = await ev(`(function(){
+      var g = function(t,k){ var s=t.split(k)[1]||''; var m=s.replace(/[^\\d,]/g,' ').match(/([\\d,]+)/); return m?parseFloat(m[1].replace(/,/g,'')):null; };
+      document.getElementById('calc-oh').value='10';
+      document.getElementById('calc-oh').dispatchEvent(new Event('input',{bubbles:true}));
+      var t = document.getElementById('calc-output').textContent;
+      var sub = g(t,'Subtotal'), oh = g(t,'Overhead & margin 10'), tot = g(t,'Estimated total');
+      // tax money follows the first % after the 'Tax (' label
+      var tx = t.indexOf('Tax ('), pc = tx > -1 ? t.indexOf('%', tx) : -1;
+      var taxSeg = pc > -1 ? t.substring(pc + 1, pc + 30) : '';
+      var tm = taxSeg.replace(/,/g,'').match(/([0-9][0-9.]*)/);
+      var tax = tm ? parseFloat(tm[1].replace(/,/g,'')) : null;
+      return { hasOh: oh !== null, taxOnSubOh: tax !== null && Math.abs(tax - (sub + oh) * 0.125) < 2,
+               totalOk: Math.abs(tot - (sub + oh) * 1.125) < 2 };
+    })()`);
+    check('E2 overhead 10% line + tax on sub+oh', e3b && e3b.hasOh && e3b.taxOnSubOh && e3b.totalOk, e3b);
+
+    // E3: defaults stay clean - clearing both fields removes both lines.
+    const e3c = await ev(`(function(){
+      document.getElementById('calc-rate-eq').value='';
+      document.getElementById('calc-oh').value='';
+      document.getElementById('calc-rate-eq').dispatchEvent(new Event('input',{bubbles:true}));
+      var t = document.getElementById('calc-output').textContent;
+      return { noEq: t.indexOf('Equipment / plant hire') === -1, noOh: t.indexOf('Overhead') === -1 };
+    })()`);
+    check('E3 empty equipment/overhead = today\'s four-line breakdown', e3c && e3c.noEq && e3c.noOh, e3c);
+
+    // restore the ambient state (clear both fields)
+    await ev(`(function(){
+      document.getElementById('calc-rate-eq').value=''; document.getElementById('calc-oh').value='';
+      document.getElementById('calc-rate-eq').dispatchEvent(new Event('input',{bubbles:true}));
+    })()`);
+
     // X3: CSV carries the used rates + piece lines.
     const x3 = await ev(`(async function(){
       document.getElementById('calc-work').value='tile';

@@ -130,14 +130,19 @@
         </div>
         <div class="bcp-field"><label for="calc-tax-override">Custom tax % (optional)</label><input type="number" id="calc-tax-override" min="0" max="40" step="0.5" inputmode="decimal" placeholder="e.g. 8.25"></div>
       </div>
+      <div class="bcp-row">
+        <div class="bcp-field"><label for="calc-oh">Overhead &amp; margin % (optional)</label><input type="number" id="calc-oh" min="0" max="60" step="0.5" inputmode="decimal" placeholder="e.g. 10"></div>
+      </div>
+      </div>
 
       <div class="bcp-rates-head">
         <span class="bcp-rates-label">Your rates <span class="bcp-hist-note">- prefilled from the planning-grade model, yours to change</span></span>
         <button type="button" class="btn btn-n btn-s" id="calc-rates-reset" data-action="calcRatesReset">Reset to model</button>
       </div>
-      <div class="bcp-row bcp-row-2">
+      <div class="bcp-row bcp-row-3">
         <div class="bcp-field"><label for="calc-rate-mat" id="calc-rate-mat-label">Material rate</label><input type="number" id="calc-rate-mat" min="0" step="any" inputmode="decimal"></div>
         <div class="bcp-field"><label for="calc-rate-lab" id="calc-rate-lab-label">Labor rate</label><input type="number" id="calc-rate-lab" min="0" step="any" inputmode="decimal"></div>
+        <div class="bcp-field"><label for="calc-rate-eq" id="calc-rate-eq-label">Equipment / plant hire</label><input type="number" id="calc-rate-eq" min="0" step="any" inputmode="decimal" placeholder="0 = none"></div>
       </div>
 
       <div class="bcp-sheets-bar">

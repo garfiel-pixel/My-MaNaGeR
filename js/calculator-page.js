@@ -106,13 +106,34 @@ function dimLabel(w, which) {
   return lbl;
 }
 
-// Approximate imperial reading for a metric quantity (display only).
+// Approximate secondary reading for a quantity (display only). Metric mode
+// keeps the historical behavior: an imperial aside on metric quantities,
+// nothing on 't'. (Owner review 2026-09-29: direction-aware, see qtyShown.)
 function qtyAlt(qty, unit) {
-  if (_units !== 'imperial') return '';
-  const map = { m2: ['sq ft', 10.7639], m3: ['cu yd', 1.30795], m: ['ft', 3.28084], L: ['US gal', 0.264172] };
-  const c = map[unit];
-  if (!c) return '';
-  return ' (about ' + (Math.round(qty * c[1] * 10) / 10).toLocaleString() + ' ' + c[0] + ')';
+  return qtyShown(qty, unit).alt;
+}
+
+// A2 (owner review 2026-09-29): the HERO quantity follows the selected unit
+// system - imperial users read sq ft / cu yd first with the metric reading
+// as the secondary line, metric users read m2 / m3 first as today. One
+// conversion table drives both directions. 't' (tonnes) has no imperial
+// mapping - it stays primary in both modes, no secondary line.
+const UNIT_CONV = {
+  m2: { imp: ['sq ft', 10.7639, 0], met: ['m2', 1, 2] },
+  m3: { imp: ['cu yd', 1.30795, 1], met: ['m3', 1, 2] },
+  m:  { imp: ['ft', 3.28084, 1],    met: ['m', 1, 2] },
+  L:  { imp: ['US gal', 0.264172, 1], met: ['L', 1, 2] }
+};
+function qtyShown(qty, unit) {
+  const c = UNIT_CONV[unit];
+  if (!c) return { main: (Math.round(qty * 100) / 100) + ' ' + unit, alt: '' };
+  const pick = _units === 'imperial' ? c.imp : c.met;
+  const other = _units === 'imperial' ? c.met : c.imp;
+  const round = (v, dp) => Math.round(v * Math.pow(10, dp)) / Math.pow(10, dp);
+  const val = round(qty * pick[1], pick[2]);
+  const oval = round(qty * other[1], other[2]);
+  return { main: val.toLocaleString() + ' ' + pick[0],
+           alt: ' (about ' + oval.toLocaleString() + ' ' + other[0] + ')' };
 }
 
 // Tiny local escaper - user-typed estimate names reach innerHTML.
@@ -345,7 +366,7 @@ function estimateCsv(r) {
     ['Exported', new Date().toISOString().slice(0, 10)],
     ['Name', ($('#calc-save-name') || {}).value || r.name],
     ['Work item', r.name],
-    ['Quantity', (Math.round(r.qty * 100) / 100) + ' ' + r.unit + qtyAlt(r.qty, r.unit)],
+    ['Quantity', qtyShown(r.qty, r.unit).main + qtyShown(r.qty, r.unit).alt],
     ['Rate basis', r.matDesc],
     ['Finish level', ($('calc-quality') || {}).value || 'standard'],
     ['Currency', r.currency],
@@ -422,11 +443,12 @@ function render() {
   const matLabel = r.piece
     ? 'Materials - priced per piece at ' + pieceDesc
     : 'Materials' + (r.matOverridden ? ' - your rate' : '');
+  const shown = qtyShown(r.qty, r.unit);
   out.innerHTML =
     '<div class="calc-sum">' +
       '<div class="calc-sum-main"><span class="calc-sum-label">' + r.qtyLabel + '</span>' +
-      '<strong class="calc-sum-qty">' + (Math.round(r.qty * 100) / 100) + ' ' + r.unit +
-        '<span class="calc-qty-alt">' + esc(qtyAlt(r.qty, r.unit)) + '</span></strong></div>' +
+      '<strong class="calc-sum-qty">' + esc(shown.main) +
+        '<span class="calc-qty-alt">' + esc(shown.alt) + '</span></strong></div>' +
       '<div class="calc-sum-sub">' + r.matDesc + '</div>' +
     '</div>' +
     row(matLabel, fmtMoney(r.mat)) +

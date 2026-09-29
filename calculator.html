@@ -176,16 +176,24 @@
 
     <section class="card bcp-result" aria-labelledby="calc-out-h" aria-live="polite">
       <h2 id="calc-out-h" class="card-title">Estimate</h2>
+      <!-- D3 (owner review 2026-09-29): print-only quote head. Hidden on
+           screen; the @media print sheet reveals it as the letterhead. -->
+      <div class="bcp-quote-head" aria-hidden="true">
+        <div class="bcp-quote-biz" id="calc-quote-biz"></div>
+        <div class="bcp-quote-title">Build Estimate</div>
+        <div class="bcp-quote-meta" id="calc-quote-meta"></div>
+      </div>
       <div id="calc-output" class="bcp-out">
         <div class="calc-empty">Pick a work item, enter dimensions, then Calculate. The breakdown lands here.</div>
       </div>
       <div class="bcp-out-actions is-hide" id="calc-out-actions">
-        <button type="button" class="btn btn-n btn-s" data-action="calcPrint"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-printer"></use></svg> Print</button>
+        <button type="button" class="btn btn-n btn-s" data-action="calcPrint"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-printer"></use></svg> Print / PDF</button>
         <button type="button" class="btn btn-n btn-s" data-action="calcCsv"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> CSV</button>
         <span class="bcp-save">
           <input type="text" id="calc-save-name" maxlength="60" placeholder="Name this estimate" aria-label="Name this estimate">
           <button type="button" class="btn btn-g btn-s" data-action="calcSave"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-receipt"></use></svg> Save</button>
         </span>
+        <input type="text" id="calc-biz-name" maxlength="60" placeholder="Your business name (appears on printed estimates)" aria-label="Your business name, shown on printed estimates">
       </div>
     </section>
   </div>

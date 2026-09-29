@@ -106,7 +106,7 @@ async function withChrome(fn) {
       return r && r.result && r.result.value;
     };
     await send('Page.enable');
-    await fn({ ev });
+    await fn({ ev, send });
   } finally { try { chrome.kill(); } catch (e) {} }
 }
 
@@ -122,7 +122,7 @@ async function withChrome(fn) {
   }
   if (!served) { log('FATAL: serve.cjs did not come up'); process.exit(1); }
 
-  await withChrome(async ({ ev }) => {
+  await withChrome(async ({ ev, send }) => {
     // ---------- CALCULATOR PAGE ----------
     await ev(`location.href = ${JSON.stringify(BASE + '/calculator.html')}`);
     await delay(1800);
@@ -747,6 +747,51 @@ async function withChrome(fn) {
       while (document.querySelector('[data-action=calcDeleteEst]') && guard++ < 40) {
         document.querySelector('[data-action=calcDeleteEst]').click();
       }
+    })()`);
+
+    // ---- D3 QUOTE HEADER + BUSINESS NAME (owner review 2026-09-29) ----
+    // Q1: business name round-trips localStorage -> quote head; the head
+    // carries the estimate name, work item and a date for the print sheet.
+    const q1 = await ev(`(function(){
+      // save-name first: it has no live-render listener, so the biz-name
+      // input event that follows is the render that fills the meta line.
+      document.getElementById('calc-save-name').value='Garage slab QA';
+      document.getElementById('calc-save-name').dispatchEvent(new Event('input',{bubbles:true}));
+      document.getElementById('calc-biz-name').value='QA Builders Ltd';
+      document.getElementById('calc-biz-name').dispatchEvent(new Event('input',{bubbles:true}));
+      var stored = localStorage.getItem('mmgr_calc_biz_name');
+      return { stored: stored,
+               biz: document.getElementById('calc-quote-biz').textContent,
+               meta: document.getElementById('calc-quote-meta').textContent,
+               printBtn: String(document.querySelector('[data-action=calcPrint]').textContent).indexOf('Print / PDF') > -1 };
+    })()`);
+    check('Q1 business name saves + quote head fills (name, work, date)', q1 && q1.stored === 'QA Builders Ltd' && q1.biz === 'QA Builders Ltd' &&
+          String(q1.meta).indexOf('Garage slab QA') > -1 && String(q1.meta).indexOf('2026-') > -1 && q1.printBtn, q1);
+
+    // Q2: the head is screen-hidden; the print sheet reveals it under real
+    // PRINT MEDIA (getComputedStyle never applies @media print rules in
+    // screen rendering, so this gate emulates print media over CDP).
+    const q2 = await ev(`(function(){
+      return { screen: getComputedStyle(document.querySelector('.bcp-quote-head')).display };
+    })()`);
+    await send('Emulation.setEmulatedMedia', { media: 'print' });
+    const q2b = await ev(`(function(){
+      var withoutScope = getComputedStyle(document.querySelector('.bcp-quote-head')).display;
+      document.body.classList.add('print-estimate');
+      var withScope = getComputedStyle(document.querySelector('.bcp-quote-head')).display;
+      document.body.classList.remove('print-estimate');
+      return { withoutScope: withoutScope, withScope: withScope };
+    })()`);
+    await send('Emulation.setEmulatedMedia', { media: '' });
+    check('Q2 quote head: screen none, print block under body.print-estimate', q2 && q2.screen === 'none' && q2b && q2b.withoutScope === 'none' && q2b.withScope === 'block', q2b);
+
+    // clean the letterhead + save-name for later gates
+    await ev(`(function(){
+      localStorage.removeItem('mmgr_calc_biz_name');
+      document.getElementById('calc-biz-name').value='';
+      document.getElementById('calc-biz-name').dispatchEvent(new Event('input',{bubbles:true}));
+      document.getElementById('calc-save-name').value='';
+      document.getElementById('calc-save-name').dispatchEvent(new Event('input',{bubbles:true}));
     })()`);
 
     // X3: CSV carries the used rates + piece lines.

@@ -2,6 +2,19 @@
    RANK 3.5 GATE — Dual-Engine Glass UI (Premium/CSS)
    (PLAN-OF-ACTION-LIQUID-GLASS-UI)
    Drives headless Chrome against http://127.0.0.1:8765.
+
+   HOST PAGE (TRIAGE RESOLUTION 2026-09-29): this gate used to load
+   seed-test.html, which location.replace()s into
+   project.html?id=demo-project — and activate() EXCLUDES project pages
+   by design (owner 2026-09-09: the dense data workspace never carries
+   the WebGL starfield). Every premium-engine gate therefore tested the
+   engine on the one page where glass is forbidden: activate() returned
+   false at the path guard with calls:0 and zero errors — the "headless
+   can't boot the engine" mystery. The gate now hosts on app.html
+   (glass-allowed, full bundle, same serve.cjs), so the lifecycle is
+   tested where the engine actually lives. The registry row moves from
+   TRIAGE to EXTENDED.
+
    Covers:
      - 3.5.1 CSS glass is the universal default (.glass-panel
        recipe on .card) with zero JS/opt-in.
@@ -11,7 +24,7 @@
      - 3.5.3 Settings toggle: single labeled checkbox, off by
        default, persisted to the shared device slot; never a popup.
      - 3.5.4 Premium engine: Three.js fetched from the pinned CDN
-       via dynamic import ONLY when detection + toggle allow. The
+       via dynamic import() ONLY when detection + toggle allow. The
        hard gate: with the toggle off, ZERO import calls (zero
        network). The real import seam is stubbed in-page with a
        fake THREE module so activate()/deactivate() lifecycle is
@@ -46,7 +59,21 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
   ws.onmessage = (ev) => { const m = JSON.parse(ev.data); if (m.id && pending.has(m.id)) { pending.get(m.id)(m); pending.delete(m.id); } };
   await new Promise((res, rej) => { ws.onopen = res; ws.onerror = () => rej(new Error('ws fail')); });
   await send('Runtime.enable'); await send('Page.enable');
-  await send('Page.navigate', { url: BASE + '/seed-test.html' }); await delay(4000);
+
+  // Fresh-device discipline: wipe every pref slot the engine family reads so
+  // nothing counts as a stored choice (mmgr-perf's pretty default then
+  // governs, and each gate sets exactly the state it asserts).
+  await send('Page.addScriptToEvaluateOnNewDocument', { source: `
+    (function() {
+      ['mmgr_perf_mode', 'mmgr_glass_mode', 'mmgr_view_mode', 'mmgr_perf_nudge'].forEach(function(k) {
+        try { localStorage.removeItem(k); } catch (e) {}
+      });
+    })();
+  ` });
+
+  // TRIAGE RESOLUTION: host on app.html — glass-allowed (activate() excludes
+  // only project* paths), full bundle, real boot sequence.
+  await send('Page.navigate', { url: BASE + '/app.html' }); await delay(4500);
 
   const check = (name, val, detail) => { results.push({ name, val, detail }); log((val ? 'PASS' : 'FAIL') + ' ' + name + (val ? '' : '  <-- ' + JSON.stringify(detail))); };
 
@@ -59,28 +86,31 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
   check('G01 boot: Glass module + Viewport present, CDN pinned to real three URL', !!(b1.glass && b1.viewport && b1.pinned), b1);
 
   // 3.5.1: CSS glass default — .card uses the glass recipe (blur var present
-  // in the rule), zero JS class needed, no premium class on boot.
-  const g1 = await ev(`(function(){
-    var rules = Array.prototype.slice.call(document.styleSheets).reduce(function(a, sh){ try { return a.concat(Array.prototype.slice.call(sh.cssRules)); } catch(e){ return a; } }, []);
-    // Match the BASE .card rule exactly — '.card.blueprint' (launcher polish)
-    // and other compound selectors precede it in the sheet and carry no
-    // backdrop-filter, so a prefix scan picks the wrong rule (G02 drift fix,
-    // 2026-09-03).
-    var cardRule = rules.filter(function(r){
-      return r.selectorText && r.selectorText.split(',').some(function(s){ return s.trim() === '.card'; });
-    })[0];
-    return { hasBackdrop: !!cardRule && /backdrop-filter/.test(cardRule.style.cssText),
-      // OWNER 2026-09-06: premium glass is the DEFAULT on capable devices.
-      // Headless Chromium ships SwiftShader WebGL, so the capability floor
-      // passes and the engine boots unprompted: body class + canvas present.
-      premiumOn: document.body.classList.contains('glass-premium'),
-      canvasPresent: !!document.getElementById('glass-canvas') };
-  })()`);
-  check('G02 premium-default: .card keeps the CSS recipe AND the engine boots by default on capable devices', g1.hasBackdrop && g1.premiumOn && g1.canvasPresent, g1);
+  // in the rule), zero JS class needed.
+  // PRETTY DEFAULT (owner 2026-09-29): a fresh device boots with
+  // effectiveGlassMode()=premium, and on this forced-capable profile the
+  // engine activates at boot — body class + canvas present WITHOUT any
+  // CDN fetch being required for the gate (the boot path may still be
+  // resolving the import; the class + canvas are set synchronously after
+  // the import resolves, so poll briefly for them).
+  let g1 = null;
+  for (let i = 0; i < 10 && !(g1 && g1.premiumOn && g1.canvasPresent); i++) {
+    await delay(400);
+    g1 = await ev(`(function(){
+      var rules = Array.prototype.slice.call(document.styleSheets).reduce(function(a, sh){ try { return a.concat(Array.prototype.slice.call(sh.cssRules)); } catch(e){ return a; } }, []);
+      var cardRule = rules.filter(function(r){
+        return r.selectorText && r.selectorText.split(',').some(function(s){ return s.trim() === '.card'; });
+      })[0];
+      return { hasBackdrop: !!cardRule && /backdrop-filter/.test(cardRule.style.cssText),
+        premiumOn: document.body.classList.contains('glass-premium'),
+        canvasPresent: !!document.getElementById('glass-canvas') };
+    })()`);
+  }
+  check('G02 pretty-default: .card keeps the CSS recipe AND the engine boots unprompted on capable devices', g1.hasBackdrop && g1.premiumOn && g1.canvasPresent, g1);
 
   // ---- 3.5.2 capability detection ---------------------------------------
   // Force high-end via the documented test hook, set pref premium. Perf is
-  // turned OFF here too (owner 2026-09-06): heavy layers require it.
+  // turned OFF here too: heavy layers require the pretty default.
   const c1 = await ev(`(function(){
     window.__mmgrForceHighEnd = true;
     window.MMGR.Viewport.setGlassMode('premium');
@@ -230,11 +260,23 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
   check('G11 toggle: css pref -> engine disposed, pref css', u3.active === false && u3.pref === 'css', u3);
 
   // Preference is device-level, not project state (never in the export).
+  // Static check: the launcher bundle (this page) ships no State module BY
+  // DESIGN (the launcher reads localStorage directly), so the live
+  // getState() probe would test nothing here — assert the contract at the
+  // source instead: mmgr-state.js's FIELD_KEYS/defaults carry no glass slot.
   const u4 = await ev(`(function(){
-    var s = window.MMGR.State.getState();
-    return { inState: s.glassMode !== undefined || s.glassPref !== undefined, ls: localStorage.getItem('mmgr_glass_mode') };
+    var ls = localStorage.getItem('mmgr_glass_mode');
+    var stateHasGlass = false;
+    try {
+      var s = window.MMGR.State ? window.MMGR.State.getState() : null;
+      if (s) stateHasGlass = s.glassMode !== undefined || s.glassPref !== undefined;
+    } catch (e) { /* launcher: no State module by design */ }
+    return { ls: ls, stateHasGlass: stateHasGlass, statePresent: !!window.MMGR.State };
   })()`);
-  check('G12 pref: glass mode lives in the device slot, NOT project state', u4.inState === false && u4.ls === 'css', u4);
+  const fsMod = require('fs');
+  const stateSrc = fsMod.readFileSync(require('path').join(__dirname, 'js', 'mmgr-state.js'), 'utf8');
+  const stateClean = !/glassMode|glassPref|glass_mode/.test(stateSrc);
+  check('G12 pref: glass mode lives in the device slot, NOT project state', u4.ls === 'css' && u4.stateHasGlass === false && stateClean, { u4, stateClean });
 
   // Reset for other gates.
   await ev(`(function(){ localStorage.removeItem('mmgr_glass_mode'); localStorage.setItem('mmgr_perf_mode', 'on'); window.__mmgrForceHighEnd = undefined; return true; })()`);

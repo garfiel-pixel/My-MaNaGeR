@@ -1553,3 +1553,77 @@ STATE AT SESSION END
 - NEXT CANDIDATES (not directed): the audit's non-bugs (B7/B9/B10)
   stay as-is by design; consider a build-time duplicate-key lint for
   object literals (B1/B4/B6 were all one class) - owner has not asked.
+
+SESSION 2026-09-28 — AUDIT ROUND 2 (B11-B16) + CASCADE-FLOAT BUG — REFLECTION
+--------------------------------------------------------------------
+WHAT WAS SHIPPED (v335, commit a951ca8, CI run 36506367827 green;
+DEPLOY ORDERED BUT NOT YET RUN - session interrupted before staging;
+production probed at v334)
+- THE HEADLINE was the owner's own field report, not the pasted audit:
+  "I had float above my target date, clicked Cascade, and the float is
+  gone." Root cause sat INSIDE the previous wave's fix: the v334 B8
+  read-only recompute (renderGantt / setDeadline / ganttDragEnd) ran
+  backwardPass WITHOUT the project deadline over a both-dates-only
+  subset, then markCritical STAMPED the result onto live tasks. So the
+  very next render after a Cascade Dates collapsed the terminal-chain
+  deadline float to 0 and permanently overwrote the cascade's numbers
+  in saved state. A stale-annotation fix wave shipped a
+  float-destroying re-annotation - the irony is the lesson.
+- The fix shape: one EXPORTED ns.Schedule.annotateSchedule running the
+  cascade-IDENTICAL sequence (clone + weather padding + forward +
+  deadlineFor + backward WITH deadline + float + markCritical), used by
+  all three call sites. Match the engine exactly or the paths will
+  fight; there was no third shape that stayed correct.
+- The proof probe carries a CONTRAST PAIR: reproduce the old sequence
+  and watch float collapse to 0 (P3b), then annotateSchedule heals it
+  (P3c). A fix whose bug cannot be reproduced on demand was not proven.
+- B11: three ACTION_MAP handlers in the delegation IIFE referenced
+  bare ns/S/U/R/showToast - the file's own guardReadonly comment
+  documents that this IIFE has no closure over them. Two features were
+  dead on arrival (ReferenceError per click). Routed through
+  window.MMGR.* like their neighbors; readonly semantics untouched.
+- B16: the deployed MCP get_tasks projected t.dependencies - a field
+  that does not exist. Every AI client saw an unlinked schedule (122
+  tasks, deps [], zero criticals) on the live bank-renovation pull.
+  The stdio copy (mcp/server.mjs) had it right all along; the HTTP
+  route is a separate implementation that drifted.
+- B12: two hash checks (client-codes verifyClientCode, presence
+  manifest check) used plain === while codesEqual guards 14+ others.
+  Both on the constant-time helper now.
+
+LESSONS
+- ENV-REPRO DISCIPLINE: three harness failures this session were ALL
+  my environment, never the code - (1) qa-market-features 0/61 after
+  killing the stale :8765 server (my missing QA_BASE; CI runs it
+  against wrangler :8787), (2) qa-email-auth 26/45 from MY background
+  wrangler on :8787 colliding with the harness's own (killed my
+  workerd by CommandLine-verified PID, re-ran solo -> 75/75), (3)
+  qa-sync-bond 404 from a leftover serve.cjs squatting :8765.
+  Rule: a red result is a hypothesis until the env is reproduced
+  exactly (CI recipe, ports, persist dirs) and the run is clean.
+- ENGINE CONVENTION: float counts working days STRICTLY BETWEEN ef and
+  lf - Oct 23 under an Oct 30 deadline = TF 4, not 5 (matches the
+  engine's own Apr-23/Apr-27 -> TF 1 precedent). My first probe draft
+  asserted 5; the app was right.
+- The skeptical-audit skill earned its keep twice: the 0/61 wipeout was
+  distrusted and re-run clean instead of being reported as breakage,
+  and the B11/B12 claims were re-verified against raw source (including
+  proving the identifiers are NOT globals) before any edit.
+
+STATE AT SESSION END
+- Repo = CI state (a951ca8, run 36506367827 SUCCESS); SW shell v335.
+- PRODUCTION = v334 (deploy pending: node tools/deploy.cjs after owner
+  go; B12/B16 are Worker-side so the live MCP endpoint still reports
+  dependencies [] until it lands; the old $HOME/mmgr-deploy staging is
+  stale v334 - the script rebuilds and byte-proofs it).
+- Verification: npm run verify ALL; date-wiring 59/59; dashboard-spec
+  79/79; engine-parity 12/12; client-codes ALL; presence 11/11;
+  sync-bond 20/20; phase1 29/29; phase2 85/85; market-features 61/61;
+  email-auth 75/75; offline-copies 23/23; ai-badge 5/5; prefs 15/15;
+  static gates ALL; in-browser proof probe 14/14.
+- tmp/cascade-float-proof.cjs = the reusable regression probe (run
+  with QA_BASE against any wrangler/serve instance).
+- NEXT: deploy v335 (owner go), then re-pull the live bank-renovation
+  MCP tasks to show the real dependency network + criticals (B16 live
+  proof), then accept any queued review proposals per the one-tasks-
+  proposal law.

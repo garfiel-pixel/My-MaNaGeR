@@ -115,6 +115,26 @@ for (const h of inlineScripts) {
 }
 check('app.html inline scripts are CSP-hashed', inlineScripts.length >= 2, inlineScripts.length + ' found');
 
+console.log('--- 6. Skeleton loading states (boot splash + cloud dash, 2026-09-29) ---');
+// Skeleton primitives + sheen live once in css/mmgr.css; the reduced-motion
+// path must kill the sheen (accessibility gate, mirrors the .db-side rule).
+for (const frag of ['.skel-box', '@keyframes skel-sheen', '.skel-card', '.skel-line',
+  '.cd-skel{pointer-events:none;}', '.bs-skel']) {
+  check('skeleton css ' + frag, css.includes(frag));
+}
+const rmBlock = css.slice(css.indexOf('prefers-reduced-motion'));
+check('skeleton sheen killed under reduced motion', /prefers-reduced-motion[\s\S]{0,600}animation:\s*none/.test(rmBlock.slice(0, 600)), 'no animation:none near the reduced-motion block');
+// project.html boot skeleton: status-role placeholder, no inline scripts added.
+const projHtml = read('project.html');
+check('boot skeleton markup in project.html', projHtml.includes('class="bs-skel"') && projHtml.includes('aria-busy="true"'));
+check('boot splash is a status region', /id="boot-splash"[^>]*role="status"/.test(projHtml) || /role="status"[^>]*id="boot-splash"/.test(projHtml));
+// cloud dash: skeleton builders + aria-busy lifecycle in the source module.
+const cloudDash = read('js/mmgr-cloud-dash.js');
+check('cloud dash paints cd-skel cards', cloudDash.includes('cd-card cd-skel') && cloudDash.includes('function dashSkeleton'));
+check('cloud dash rail skeleton builder', cloudDash.includes('function railSkeleton'));
+check('cloud dash aria-busy lifecycle', /setAttribute\('aria-busy',\s*'true'\)/.test(cloudDash) && /removeAttribute\('aria-busy'\)/.test(cloudDash));
+check('cloud dash skeleton ships in dist bundle', fs.readFileSync(path.join(ROOT, 'dist/app-bundle.js'), 'utf8').includes('cd-skel'));
+
 console.log('---');
 console.log((fails ? 'FAIL ' : 'PASS ') + passes + ' passed, ' + fails + ' failed');
 process.exit(fails ? 1 : 0);

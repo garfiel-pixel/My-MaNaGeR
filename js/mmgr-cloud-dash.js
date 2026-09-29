@@ -170,26 +170,59 @@
     if (list) list.innerHTML = '<div class="db-sub-empty">' + escapeHtml(msg || 'No cloud projects.') + '</div>';
   }
 
+  // ---- Skeleton loading states (2026-09-29) ----
+  // While the project list fetches, placeholder cards paint instead of the
+  // section being invisible-then-pop. Pure builders (no user data, nothing
+  // to escape); the sheen comes from .skel-box in css/mmgr.css.
+  function dashSkeleton(n) {
+    let out = '';
+    for (let i = 0; i < n; i++) {
+      out += '<div class="cd-card cd-skel" aria-hidden="true">' +
+        '<div class="skel-row"><span class="skel-box skel-avatar"></span>' +
+        '<span class="skel-box skel-line skel-w-60"></span></div>' +
+        '<div class="skel-box skel-line skel-w-40"></div>' +
+        '<div class="skel-box skel-pill"></div></div>';
+    }
+    return out;
+  }
+  function railSkeleton() {
+    return '<div class="skel-row db-skel-row" aria-hidden="true">' +
+      '<span class="skel-box skel-avatar"></span>' +
+      '<span class="skel-box skel-line skel-w-60"></span></div>';
+  }
+
   // ---- fetch the session-gated project list ----
   async function loadList() {
     const dash = $(DASH);
     const list = $(LIST);
     if (!dash || !list) return;
+    // Paint skeletons BEFORE the fetch so the section shows progress instead
+    // of popping in. The offline catch below hides it again immediately, so
+    // static-host visitors never see a shimmer over a hanging request.
+    dash.hidden = false;
+    dash.setAttribute('aria-busy', 'true');
+    list.innerHTML = dashSkeleton(3);
+    const railPre = $(RAIL_CLOUD);
+    if (railPre && !railPre.hidden && !railPre.innerHTML.trim()) {
+      railPre.innerHTML = railSkeleton();
+    }
     let res;
     try {
       res = await fetch('/api/cloud/projects', { method: 'GET', credentials: 'same-origin' });
     } catch (e) {
       // Static host / offline , no Worker API. Leave the section hidden.
       dash.hidden = true;
+      dash.removeAttribute('aria-busy');
       setRailCloudEmpty('Cloud sync is unavailable on this host.');
       return;
     }
-    if (!res.ok) { dash.hidden = true; setRailCloudEmpty('Sign in to see your cloud projects.'); return; }
+    if (!res.ok) { dash.hidden = true; dash.removeAttribute('aria-busy'); setRailCloudEmpty('Sign in to see your cloud projects.'); return; }
     let data = null;
-    try { data = await res.json(); } catch (e) { dash.hidden = true; setRailCloudEmpty('Could not load cloud projects.'); return; }
+    try { data = await res.json(); } catch (e) { dash.hidden = true; dash.removeAttribute('aria-busy'); setRailCloudEmpty('Could not load cloud projects.'); return; }
     const projects = (data && data.ok && Array.isArray(data.projects)) ? data.projects : null;
-    if (!projects) { dash.hidden = true; setRailCloudEmpty('Could not load cloud projects.'); return; }
+    if (!projects) { dash.hidden = true; dash.removeAttribute('aria-busy'); setRailCloudEmpty('Could not load cloud projects.'); return; }
     dash.hidden = false;
+    dash.removeAttribute('aria-busy');
     setStatus('');
     loadPlan();
     renderRailCloud(projects);

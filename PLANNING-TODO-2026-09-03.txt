@@ -1936,3 +1936,29 @@ from the token composites incl. sheen band, dash = rich-tone gate).
 Screenshots: tmp/audit/boot-{light,dark}{,-390}.png,
 clouddash-{light,dark,dark-390,reduced-motion}.png. NO CODE CHANGES needed;
 wave cleared for ship.
+
+PERF-DEFAULT-PRETTY WAVE 2026-09-29 (owner: "Performance Mode is off by
+default... turning it off is making it look plain... ensure it's default so
+it's showing all the artwork"): the 2026-09-15 revision left the fresh-device
+default at Performance Mode ON, standing the visual identity down on every
+new device (effectiveGlassMode -> css, tilt dead, [data-perf=on] blur trims).
+Fix: js/mmgr-perf.js isOn() reads stored==='on' (pretty unless the user asks
+for the trim) -> fresh devices boot data-perf=off with premium starry glass
++ 3D tilt + full blur/shadow. Capability floor untouched; stored user
+choices untouched; the lag probe now runs its designed path (samples while
+artwork is active, nudges ONCE toward perf only on real lag - it previously
+ran only when effects were already trimmed, nudging toward an already-on
+mode). Parity fix: app.html inline tglPerfMode now calls MMGR.Glass.sync()
+(project + admin already did) so the toggle tears the shader down / restores
+it LIVE. qa-glass G03b re-baselined to the 2026-09-15 contract (it was
+asserting the retired 2026-09-06 behavior; G03b green now; G07-G10 remain
+the documented TRIAGE engine-boot failures - verified identical to the
+committed baseline via git stash A/B). tmp/perf-default-probe.cjs 10/10.
+INCIDENT (lesson 10 re-proven): qa-full failed 5 launcher gates with
+ReferenceErrors after the app.html inline edit - the running serve.cjs held
+the OLD CSP; disk-vs-live hash diff caught it; killed serve.cjs BY PID
+(netstat + Get-CimInstance verify, never by image name), restarted, 181/181.
+sw shell bump v337 -> v338 with narrative; CSP hashes regenerated
+(tools/regen-csp-hashes.cjs, worker.js + serve.cjs, 24 hashes); bundles + CSS
+rebuilt. Gates: npm run verify green, qa-full 181/181, qa-view-mode all-pass,
+verify-glass-preview-cdp OK, health sweep 15/15, qa-dashboard-spec 92/92.

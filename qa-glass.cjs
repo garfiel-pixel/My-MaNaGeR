@@ -89,19 +89,19 @@ async function ev(expr) { const r = await send('Runtime.evaluate', { expression:
   })()`);
   check('G03 detect: high-end + premium pref (+ perf off) -> effective premium', c1.highEnd && c1.pref === 'premium' && c1.eff === 'premium', c1);
 
-  // G03b (owner 2026-09-06, revised): Performance Mode no longer gates the
-  // shader - the starry glass is mandatory app identity, self-gated by the
-  // capability floor. This gate now pins that separation: perf mode must
-  // NEVER flip the glass decision (shader on = shader on, either way).
+  // G03b (owner 2026-09-15, re-baselined 2026-09-29): Performance Mode DOES
+  // gate the shader now (perf must guarantee a lag-free page on weak
+  // hardware; pretty is the fresh-device default, perf is the user's trim
+  // lever). Perf ON -> css; perf OFF (pretty default) -> premium again.
   const c1b = await ev(`(function(){
     localStorage.setItem('mmgr_perf_mode', 'on');
     var effPerfOn = window.MMGR.Viewport.effectiveGlassMode();
     localStorage.setItem('mmgr_perf_mode', 'off');
     var effPerfOff = window.MMGR.Viewport.effectiveGlassMode();
-    localStorage.setItem('mmgr_perf_mode', 'on'); // restore Performance Mode ON
+    localStorage.removeItem('mmgr_perf_mode'); // back to the pretty default
     return { effPerfOn: effPerfOn, effPerfOff: effPerfOff };
   })()`);
-  check('G03b perf-mode: Performance Mode does not gate the shader (premium stays premium either way)', c1b.effPerfOn === 'premium' && c1b.effPerfOff === 'premium', c1b);
+  check('G03b perf-mode: Performance ON gates the shader to css, OFF (pretty default) restores premium', c1b.effPerfOn === 'css' && c1b.effPerfOff === 'premium', c1b);
 
   // Capability floor: force low-end while pref stays premium -> CSS wins.
   const c2 = await ev(`(function(){

@@ -1557,8 +1557,10 @@ STATE AT SESSION END
 SESSION 2026-09-28 — AUDIT ROUND 2 (B11-B16) + CASCADE-FLOAT BUG — REFLECTION
 --------------------------------------------------------------------
 WHAT WAS SHIPPED (v335, commit a951ca8, CI run 36506367827 green;
-DEPLOY ORDERED BUT NOT YET RUN - session interrupted before staging;
-production probed at v334)
+DEPLOYED Version 5ce0d214-2068-45a2-8da7-ec996c688774 - prod sw v335,
+health 200, prod bundle carries annotateSchedule; LIVE MCP PROOF:
+get_tasks now reports 102/122 bank-renovation tasks with dependencies,
+was 0 before the fix)
 - THE HEADLINE was the owner's own field report, not the pasted audit:
   "I had float above my target date, clicked Cascade, and the float is
   gone." Root cause sat INSIDE the previous wave's fix: the v334 B8
@@ -1611,11 +1613,9 @@ LESSONS
   proving the identifiers are NOT globals) before any edit.
 
 STATE AT SESSION END
-- Repo = CI state (a951ca8, run 36506367827 SUCCESS); SW shell v335.
-- PRODUCTION = v334 (deploy pending: node tools/deploy.cjs after owner
-  go; B12/B16 are Worker-side so the live MCP endpoint still reports
-  dependencies [] until it lands; the old $HOME/mmgr-deploy staging is
-  stale v334 - the script rebuilds and byte-proofs it).
+- Repo = CI state (a951ca8 + docs 079bbad, both runs SUCCESS); SW shell
+  v335. PRODUCTION = v335 (Version 5ce0d214), repo state = deployed
+  state; live MCP reports real dependencies (102/122).
 - Verification: npm run verify ALL; date-wiring 59/59; dashboard-spec
   79/79; engine-parity 12/12; client-codes ALL; presence 11/11;
   sync-bond 20/20; phase1 29/29; phase2 85/85; market-features 61/61;
@@ -1623,7 +1623,6 @@ STATE AT SESSION END
   static gates ALL; in-browser proof probe 14/14.
 - tmp/cascade-float-proof.cjs = the reusable regression probe (run
   with QA_BASE against any wrangler/serve instance).
-- NEXT: deploy v335 (owner go), then re-pull the live bank-renovation
-  MCP tasks to show the real dependency network + criticals (B16 live
-  proof), then accept any queued review proposals per the one-tasks-
-  proposal law.
+- NEXT: owner runs Cascade Dates on-device (now float-safe) and saves;
+  the stored snapshot then carries real criticals + float; then accept
+  any queued review proposals per the one-tasks-proposal law.

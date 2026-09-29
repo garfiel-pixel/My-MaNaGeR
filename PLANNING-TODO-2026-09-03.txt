@@ -1972,3 +1972,26 @@ toggle handler (probe note: /app.html 307-strips the extension - curl -L or
 fetch /app). Prod fresh-device boot probe 4/4 (data-perf=off, premium glass
 active, toggle unchecked, no pref written). Pushed c1820e3..41fe21a; CI run
 36622263685 GREEN on 41fe21a.
+
+QA-GLASS-TRIAGE-RESOLVED 2026-09-29 (wave: protect the pretty default): the
+"premium glass never activates under headless Chrome" mystery (registry
+TRIAGE, weeks old) was never SwiftShader or a missing GPU. Root cause: the
+gate hosted on seed-test.html, which location.replace()s into
+project.html?id=demo-project - and activate() EXCLUDES project pages by
+design (owner 2026-09-09: dense data workspace, no WebGL starfield). Every
+premium-engine gate tested the engine on the one page where glass is
+forbidden: activate() returned false at the path guard (calls:0, zero
+errors - the silent bail-out the triage probe pinned). Fix: qa-glass.cjs
+re-hosted on app.html (glass-allowed, full launcher bundle, real boot) with
+fresh-device pref wipes; G02 re-baselined to the pretty default (engine
+boots unprompted on a capable profile); G03b/G10/G12 updated for the
+perf-default flip (G12 now asserts the contract statically - the launcher
+bundle ships no State module BY DESIGN); glass-premium boot asserted via a
+poll (import resolution is async). qa-glass-visual.cjs stays TRIAGE with a
+note that the same fix likely unblocks it (own re-baseline first).
+Registry: qa-glass TRIAGE -> EXTENDED; ci step added to
+.github/workflows/extended-qa.yml (after glass-preview, same server).
+Verification: qa-glass 14/14 x 3 consecutive runs; npm run verify green
+(registry parity); qa-view-mode all-pass; verify-glass-preview-cdp OK.
+Harness-only wave: no served assets changed - no build, no CSP regen, no
+shell bump, no deploy needed.

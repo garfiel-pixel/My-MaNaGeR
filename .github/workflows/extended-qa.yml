@@ -127,6 +127,9 @@ jobs:
       - name: "E-T4: glass preview surfaces"
         run: node tools/verify-glass-preview-cdp.cjs
 
+      - name: "E-T4: dual-engine glass lifecycle (host: app.html, mocked THREE)"
+        run: node qa-glass.cjs
+
       - name: "E-T4: Stop static QA server"
         if: always()
         run: pkill -f "node serve.cjs" || true

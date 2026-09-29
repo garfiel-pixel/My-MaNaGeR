@@ -123,8 +123,8 @@ or too niche for the deploy gate), **TRIAGE** (known-drifting, findings listed),
 |---|---|---|
 | `qa-stress.cjs` | TRIAGE | **D02 is a REAL bug**: the IndexedDB journal held the pre-kill edit (`Grace-Crash-Edited`) but after a hard kill + relaunch nothing was restored — `restoreFromJournal()` only accepts the journal when its `updatedAt` is STRICTLY newer than localStorage's, and `journalPut()` stores a `ts` the restore ignores, so any boot-time localStorage write defeats crash recovery. P04: ambiguous-risk rendering assertion needs re-baselining. |
 | `qa-ai-visual.cjs` | TRIAGE | AI window does not open (4 checks) — same `Entitlements.aiAssistant()` signed-in gate already seamed in `qa-full`/`qa-ai`; needs the same seam. |
-| `qa-glass.cjs` | TRIAGE | premium glass engine never activates under headless Chrome (6 checks); still fails with `--use-angle=swiftshader`, so this is not only the missing GPU — needs triage of the engine boot path. |
-| `qa-glass-visual.cjs` | TRIAGE | depends on the premium canvas existing (4 checks) — blocked by the same engine boot issue. |
+| `qa-glass.cjs` | EXTENDED | dual-engine glass lifecycle, 14 gates, host page app.html (TRIAGE RESOLVED 2026-09-29: seed-test.html redirects into project.html, where activate() excludes glass by design — the "headless can't boot" mystery was the page-exclusion guard, not SwiftShader/GPU; mocked-THREE lifecycle is deterministic). |
+| `qa-glass-visual.cjs` | TRIAGE | depends on the premium canvas existing (4 checks) — the qa-glass host-page fix (app.html instead of seed-test.html) likely unblocks it too; needs its own re-baseline before it can leave TRIAGE. |
 | `qa-oauth.cjs` | TRIAGE | 3 checks assume the old unlock flow; local-first means a locally-owned project unlocks with no modal (`qa-full` 70h/70i define the current contract), and the header sign-in bar moved. |
 | `tools/qa-ai-polish.cjs` | TRIAGE | 2 checks read the clipboard back, which headless Chrome refuses (its own env probe fails first); the app's copy path is sound (`storedMatches`/`capturedExact` true). Make the clipboard arm a SKIP when the env probe fails. |
 

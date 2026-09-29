@@ -2353,6 +2353,15 @@ body.dark-mode .ai-byo-status[data-state="untested"]{background:rgba(245,158,11,
 @media (max-width:820px){.bcp-grid{grid-template-columns:1fr;}}
 .bcp-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:12px;}
 .bcp-row-2{grid-template-columns:1fr 1fr;}
+.bcp-row-3{grid-template-columns:1fr 1fr 1fr;}
+/* A1 (owner review 2026-09-29): the input card groups into three labeled
+   blocks; fieldset reset keeps the card's clean look (browser default
+   border/margin would draw double frames inside the card). */
+.bcp-group{border:1px solid var(--border);border-radius:12px;padding:12px 14px 14px;margin:0 0 14px;min-width:0;}
+.bcp-group legend{display:inline-flex;align-items:center;gap:6px;padding:0 8px;font-size:.72rem;font-weight:700;letter-spacing:.02em;color:var(--gold);}
+.bcp-group legend .ico{width:14px;height:14px;}
+.bcp-group .bcp-row:last-child{margin-bottom:0;}
+.bcp-waste-field{margin:2px 0 12px;}
 @media (max-width:600px){.bcp-row,.bcp-row-2{grid-template-columns:1fr;}}
 .bcp-field{display:flex;flex-direction:column;gap:5px;min-width:0;}
 .bcp-field label{font-size:.72rem;color:var(--slate);font-weight:600;letter-spacing:.02em;}

@@ -1180,18 +1180,16 @@ var MMGR = window.MMGR || {};
   function setDeadline(val) {
     ns.State.updateState(function(s) { s.projectDeadline = (val || '').trim(); });
     const dl = (val || '').trim();
-    if (ns.Schedule && ns.Schedule.forwardPass && ns.Schedule.markCritical && ns.State.getState().tasks.length) {
+    if (ns.Schedule && ns.Schedule.annotateSchedule && ns.State.getState().tasks.length) {
       // B8 companion fix (audit 2026-09-28): this recompute silently no-oped
-      // since v323 — computePlan is not exported on ns.Schedule, so the call
-      // threw ReferenceError and the catch swallowed it. Public pass sequence
-      // instead (ganttDragEnd's pattern), read-only: dates never move.
-      try {
-        const fresh = ns.State.getState().tasks.filter(x => x.startDate && x.endDate);
-        let sc = ns.Schedule.forwardPass(fresh);
-        sc = ns.Schedule.backwardPass(fresh, sc);
-        sc = ns.Schedule.calcFloat(fresh, sc);
-        ns.Schedule.markCritical(sc);
-      } catch (e) { /* zero-throw like the watchers */ }
+      // since v323 - computePlan is not exported on ns.Schedule, so the call
+      // threw ReferenceError and the catch swallowed it.
+      // B13/B14 (audit 2026-09-28): the replacement inline sequence ran
+      // backwardPass without the deadline on a both-dates-only subset, so
+      // the float/criticals it stamped DISAGREED with the cascade engine
+      // (terminal-chain float collapsed). annotateSchedule is the
+      // cascade-identical sequence, read-only: dates never move.
+      ns.Schedule.annotateSchedule();
     }
     if (ns.Render) { ns.Render.renderGantt(); if (ns.Render.renderDash) ns.Render.renderDash(); }
     if (ns.App && ns.App.showToast) {
@@ -1791,10 +1789,16 @@ window.MMGR = MMGR;
     },
     'completeTaskFollowUp': (el) => window.MMGR.Tasks.completeTaskFollowUp(el.getAttribute('data-id')),
     'clearTaskFollowUp': (el) => window.MMGR.Tasks.clearTaskFollowUp(el.getAttribute('data-id')),
-    'toggleTaskComments': (el) => { if (ns.Render && ns.Render.toggleTaskComments) ns.Render.toggleTaskComments(el.getAttribute('data-id')); },
+    // B11 (audit 2026-09-28): this delegation IIFE has NO closure over the
+    // App module's internals (see guardReadonly's note below) - bare ns/S/U/R/
+    // showToast here threw ReferenceError and the feature died on click.
+    // Every helper routes through the published window.MMGR.* API like the
+    // neighboring handlers.
+    'toggleTaskComments': (el) => { if (window.MMGR.Render && window.MMGR.Render.toggleTaskComments) window.MMGR.Render.toggleTaskComments(el.getAttribute('data-id')); },
     'importCrossProjectResources': () => {
       // Build a modal listing localStorage projects with their resources
-      const currentId = ns.projectId || '';
+      // (B11 2026-09-28: ns/S/U/showToast -> window.MMGR.* - see note above).
+      const currentId = window.MMGR.projectId || '';
       const projects = [];
       try {
         for (let i = 0; i < localStorage.length; i++) {
@@ -1812,17 +1816,17 @@ window.MMGR = MMGR;
           }
         }
       } catch(e) {}
-      if (!projects.length) { showToast('No other projects with resources found on this device.', 'warn'); return; }
+      if (!projects.length) { window.MMGR.App.showToast('No other projects with resources found on this device.', 'warn'); return; }
       // Show modal
       let html = '<div class="card m0a" style="padding:16px;max-width:500px"><div style="font-weight:600;font-size:.85rem;margin-bottom:10px">Import Resources from Another Project</div>';
       projects.forEach(function(p) {
-        const curRes = (S().resources || []).map(r => r.name.toLowerCase());
+        const curRes = ((window.MMGR.State.getState().resources) || []).map(r => r.name.toLowerCase());
         const newRes = p.resources.filter(r => r.name && curRes.indexOf(r.name.toLowerCase()) === -1);
         html += '<div style="border:1px solid var(--border);border-radius:6px;padding:10px;margin-bottom:8px">';
-        html += '<div style="font-weight:600;font-size:.8rem">' + U.escapeHtml(p.name) + ' <span style="color:var(--slate);font-size:.7rem">(' + p.resources.length + ' resources, ' + newRes.length + ' new)</span></div>';
+        html += '<div style="font-weight:600;font-size:.8rem">' + window.MMGR.Utils.escapeHtml(p.name) + ' <span style="color:var(--slate);font-size:.7rem">(' + p.resources.length + ' resources, ' + newRes.length + ' new)</span></div>';
         if (newRes.length) {
-          html += '<div style="font-size:.72rem;color:var(--slate);margin:4px 0">New: ' + newRes.map(r => U.escapeHtml(r.name)).join(', ') + '</div>';
-          html += '<button class="btn btn-g btn-s" style="font-size:.7rem" data-action="doImportResources" data-src-id="' + U.escapeHtml(p.id) + '" data-count="' + newRes.length + '">Import ' + newRes.length + ' resource(s)</button>';
+          html += '<div style="font-size:.72rem;color:var(--slate);margin:4px 0">New: ' + newRes.map(r => window.MMGR.Utils.escapeHtml(r.name)).join(', ') + '</div>';
+          html += '<button class="btn btn-g btn-s" style="font-size:.7rem" data-action="doImportResources" data-src-id="' + window.MMGR.Utils.escapeHtml(p.id) + '" data-count="' + newRes.length + '">Import ' + newRes.length + ' resource(s)</button>';
         } else {
           html += '<div style="font-size:.72rem;color:var(--slate)">All resources already in this project.</div>';
         }
@@ -1844,19 +1848,21 @@ window.MMGR = MMGR;
     'poolAddRow': (el) => { if (window.MMGR.RenderResources && window.MMGR.RenderResources.poolAddRow) window.MMGR.RenderResources.poolAddRow(parseInt(el.getAttribute('data-idx'), 10)); },
     'poolRefreshAndMerge': () => { if (window.MMGR.Pool) window.MMGR.Pool.refreshAndMerge().then(function() { if (window.MMGR.Render) window.MMGR.Render.renderResources(); }); },
     'doImportResources': (el) => {
+      // B11 (audit 2026-09-28): was bare ns/S/U/R/showToast - ReferenceError
+      // on every click; routed through the published window.MMGR.* API.
       const srcId = el.getAttribute('data-src-id');
       if (!srcId) return;
       try {
         const srcState = JSON.parse(localStorage.getItem('mmgr_state_' + srcId));
         const srcRes = (srcState && srcState.resources) || [];
-        const curNames = (S().resources || []).map(r => r.name.toLowerCase());
+        const curNames = ((window.MMGR.State.getState().resources) || []).map(r => r.name.toLowerCase());
         const toImport = srcRes.filter(r => r.name && curNames.indexOf(r.name.toLowerCase()) === -1);
-        if (!toImport.length) { showToast('All resources already imported.', 'warn'); return; }
-        ns.State.updateState(function(st) {
+        if (!toImport.length) { window.MMGR.App.showToast('All resources already imported.', 'warn'); return; }
+        window.MMGR.State.updateState(function(st) {
           if (!st.resources) st.resources = [];
           toImport.forEach(function(r) {
             st.resources.push({
-              id: U.genShortId('R'), name: r.name, type: r.type || 'Labor',
+              id: window.MMGR.Utils.genShortId('R'), name: r.name, type: r.type || 'Labor',
               role: r.role || '', availability: r.availability || 100,
               rate: r.rate || 0, hoursAllocated: r.hoursAllocated || 0, utilization: 0
             });
@@ -1864,10 +1870,10 @@ window.MMGR = MMGR;
         });
         const modal = document.getElementById('import-modal');
         if (modal) modal.remove();
-        R.renderResources();
-        showToast('Imported ' + toImport.length + ' resource(s).', 'ok');
+        window.MMGR.Render.renderResources();
+        window.MMGR.App.showToast('Imported ' + toImport.length + ' resource(s).', 'ok');
       } catch(e) {
-        showToast('Import failed: ' + e.message, 'err');
+        window.MMGR.App.showToast('Import failed: ' + e.message, 'err');
       }
     },
     'closeImportModal': () => { const m = document.getElementById('import-modal'); if (m) m.remove(); },

@@ -1365,17 +1365,16 @@ var MMGR = window.MMGR || {};
     // B8 (audit 2026-09-28): critical/float on live tasks only refreshed
     // when setDeadline or a gantt drag ended, so date edits made elsewhere
     // left both the gantt bars AND the PNG export stale. Recompute before
-    // painting — read-only annotation (dates never move), via the public
-    // pass sequence (ganttDragEnd's exact pattern; computePlan is NOT
-    // exported on ns.Schedule and would silently no-op in a catch).
-    if (ns.Schedule && ns.Schedule.forwardPass && ns.Schedule.markCritical && s.tasks.length) {
-      try {
-        const fresh = s.tasks.filter(x => x.startDate && x.endDate);
-        let sc = ns.Schedule.forwardPass(fresh);
-        sc = ns.Schedule.backwardPass(fresh, sc);
-        sc = ns.Schedule.calcFloat(fresh, sc);
-        ns.Schedule.markCritical(sc);
-      } catch (e) { /* zero-throw like the watchers */ }
+    // painting - read-only annotation (dates never move).
+    // B13/B14 (audit 2026-09-28): the inline pass sequence ran backwardPass
+    // WITHOUT the project deadline and on a both-dates-only task subset, so
+    // every re-render silently corrupted the float/criticals a cascade had
+    // just written (terminal-chain float collapsed to 0 and got STAMPED onto
+    // live tasks). Schedule.annotateSchedule runs the cascade-identical
+    // sequence (deadline-aware backward pass, full task set, weather-padded
+    // clone) and is zero-throw like this path was.
+    if (ns.Schedule && ns.Schedule.annotateSchedule) {
+      ns.Schedule.annotateSchedule();
     }
 
     // Deadline input mirrors state (owner 2026-09-27): keep the toolbar date
@@ -2161,12 +2160,12 @@ var MMGR = window.MMGR || {};
     // Refresh float / critical annotations READ-ONLY (dates untouched) so the
     // TF badges and CP markers stay honest after the single-task move. This
     // never rewrites the plan, a full re-schedule stays an explicit action.
-    if (ns.Schedule && ns.Schedule.forwardPass && ns.Schedule.markCritical) {
-      const fresh = (S().tasks || []).filter(x => x.startDate && x.endDate);
-      let sc = ns.Schedule.forwardPass(fresh);
-      sc = ns.Schedule.backwardPass(fresh, sc);
-      sc = ns.Schedule.calcFloat(fresh, sc);
-      ns.Schedule.markCritical(sc);
+    // B13/B14 (audit 2026-09-28): annotateSchedule is the cascade-identical
+    // sequence (deadline + full set + padding) - the inline deadline-less
+    // subset recompute here disagreed with cascade and re-stamped its
+    // numbers onto live tasks.
+    if (ns.Schedule && ns.Schedule.annotateSchedule) {
+      ns.Schedule.annotateSchedule();
     }
     ns.Render.renderGantt();
     ns.Render.renderWbs();

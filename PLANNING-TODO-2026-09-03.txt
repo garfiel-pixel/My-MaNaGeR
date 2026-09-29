@@ -1910,3 +1910,29 @@ qa-calc-playwright-audit 31/31, qa-calculator-page 69/69, npm run verify green,
 emoji scan clean on served files (sw.js hits are pre-v337 comment narratives;
 internal file, never rendered). sw.js shell bump v336 -> v337 with narrative;
 dist rebuilt; no inline scripts, CSP hashes unchanged.
+
+HUMAN-AUDIT WALK 2026-09-29 (skeleton wave, pre-ship): full walk on the two
+touched surfaces, both themes + 390px, states FROZEN for inspection - boot
+splash by aborting all external scripts at document start (the splash is
+static markup; App.init never runs so .off never fires), cloud-dash by a
+document-start fetch wrapper holding /api/cloud/projects in flight
+(tmp/audit/hold-api.js; the rail-skeleton branch exercised through the REAL
+path: rail toggle click + mmgr:google-signed-in event -> loadList()). First
+freeze attempt learned: blocking **/dist/* kills the stylesheet too
+(splash h:0, boxes transparent), and blocking only dist/bundle.js lets the
+55-file dev fallback load and App.init redirect to the launcher.
+FINDINGS: (1) blocking/ugly: NONE. (2) polish: cd-card grid gutters read
+12/11px (sub-pixel rounding, invisible at real speed); boot splash is a
+two-tone flat overlay by design (verified exact). Verified live: light boxes
+rgb(232,226,218) on rgb(245,239,230), dark rgba(255,255,255,.06) composite
+rgb(25,25,27) on rgb(11,11,13), sheen bands land between (the only extra
+tones); role=status + aria-live=polite + aria-busy + aria-label all present
+(a11y tree exposes the status region; boxes aria-hidden by design); heading
+"My Cloud Projects" labels what is loading; 390px no horizontal scroll, dash
+fits 342px; reduced-motion LIVE: sheen animation none, 0 page animations,
+static boxes remain; avatar 28px + 8px gap to 12px line (typography clean).
+tmp/audit/pixel-verify.cjs 7/7 (stdlib PNG decode; boot = exact tone family
+from the token composites incl. sheen band, dash = rich-tone gate).
+Screenshots: tmp/audit/boot-{light,dark}{,-390}.png,
+clouddash-{light,dark,dark-390,reduced-motion}.png. NO CODE CHANGES needed;
+wave cleared for ship.

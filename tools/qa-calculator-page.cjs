@@ -69,6 +69,7 @@
    ============================================================ */
 'use strict';
 const { spawn } = require('child_process');
+const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const PORT = 8765;
@@ -228,6 +229,26 @@ async function withChrome(fn) {
       return { dark: dark, saved: saved, backLight: !document.body.classList.contains('dark-mode') };
     })()`);
     check('C9 theme toggle flips + persists', c9 && c9.dark && c9.saved === 'dark' && c9.backLight, c9);
+
+    // ---------- B: APP-STYLE TOP BAR (owner 2026-09-30) ----------
+    const b1 = await ev(`(function(){
+      return {
+        back: !!document.querySelector('.bcp-back[data-action="calcBack"] svg.ico use'),
+        h1: !!document.querySelector('h1.bcp-title .bcp-brand-name'),
+        theme: !!document.querySelector('.bcp-theme[data-action="tglTheme"]'),
+        oldHead: !!document.querySelector('.bcp-head'),
+        sun: document.querySelectorAll('.bcp-theme use[href$="#i-sun"]').length,
+        moon: document.querySelectorAll('.bcp-theme use[href$="#i-moon"]').length
+      };
+    })()`);
+    check('B1 top bar: icon-only back + title h1 + theme button present', b1 && b1.back && b1.h1 && b1.theme, b1);
+    check('B2 theme pair: one sun use + one moon use in the theme button', b1 && b1.sun === 1 && b1.moon === 1, b1);
+    check('B3 old header gone: no .bcp-head block remains', b1 && b1.oldHead === false, b1);
+    const b4 = fs.readFileSync(path.join(__dirname, '..', 'css', 'mmgr.css'), 'utf8');
+    check('B4 CSS: sun/moon dark-mode switch rules exist',
+      b4.indexOf('.bcp-ico-sun{display:none') > -1 && b4.indexOf('body.dark-mode .bcp-ico-sun{display:block') > -1, null);
+    check('B5 CSS: back button is icon-only (no Back text node)',
+      (await ev(`(function(){ var b = document.querySelector('.bcp-back'); return b && b.textContent.trim() === ''; })()`)) === true, null);
 
     // ---------- F4 ENHANCEMENTS ----------
     // U1: imperial toggle - labels convert, state persists, aria follows.

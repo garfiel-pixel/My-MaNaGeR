@@ -90,8 +90,8 @@
           <optgroup label="Groundworks">
             <option value="siteprep">Site clearing &amp; strip (per m2)</option>
             <option value="excav">Trench / bulk excavation (per m3)</option>
-            <option value="slab">Concrete slab on grade (per m2)</option>
-            <option value="footings">Strip footings (per m)</option>
+            <option value="slab">Concrete slab on grade (per m3 of concrete)</option>
+            <option value="footings">Strip footings (per m run)</option>
           </optgroup>
           <optgroup label="Structure">
             <option value="blockwall">Blockwork wall (per m2)</option>
@@ -101,14 +101,27 @@
           </optgroup>
           <optgroup label="Envelope">
             <option value="roof">Roof sheeting over purlins (per m2)</option>
+            <option value="shingle-roof">Asphalt shingle roof (per roofing square)</option>
             <option value="render">Render / stucco (per m2)</option>
             <option value="paint">Painting (per m2 of wall)</option>
             <option value="drywall">Drywall partition (per m2)</option>
           </optgroup>
           <optgroup label="Finishes">
             <option value="tile">Floor tiling (per m2)</option>
-            <option value="concrete-drive">Concrete driveway (per m2)</option>
-            <option value="fencing">Chain-link fencing (per m)</option>
+            <option value="concrete-drive">Concrete driveway (per m2, thickness sets m3)</option>
+            <option value="fencing">Chain-link fencing (per m run)</option>
+            <option value="skirt">Skirting / baseboard (per m run - linear)</option>
+          </optgroup>
+          <optgroup label="Plumbing">
+            <option value="pipe-supply">Water supply pipe run (per m - linear)</option>
+            <option value="pipe-drain">Drain-waste-vent pipe run (per m - linear)</option>
+            <option value="fixture">Fixture install (each)</option>
+            <option value="bath-rough">Bathroom rough-in package (each)</option>
+          </optgroup>
+          <optgroup label="Electrical">
+            <option value="wire-point">Wiring point (per point)</option>
+            <option value="conduit">Conduit / cable run (per m - linear)</option>
+            <option value="panel">Consumer panel / breaker box (each)</option>
           </optgroup>
         </select>
       </div>

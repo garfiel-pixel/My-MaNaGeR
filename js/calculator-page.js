@@ -771,6 +771,78 @@ function renderGuide() {
   }
 }
 
+// ---- First-visit tutorial (owner 2026-09-30) ----------------------------
+// Click-to-start spotlight walkthrough in the guide's field order. One
+// flag (mmgr_calc_tour_done) gates the nudge; clearing browser data
+// removes it, so a wiped device sees the tour again (owner-specified).
+const TOUR_STEPS = [
+  { sel: '#calc-work', text: 'This is the work item - what you are pricing. Pick one and the form follows.' },
+  { sel: '.bcp-seg', text: 'Choose your measurement: metric or imperial. Everything converts as you type.' },
+  { sel: '#calc-d1', text: 'Enter the dimensions the form asks for - length, width, depth.' },
+  { sel: '#calc-currency', text: 'Your currency, and the country that sets the standard tax rate.' },
+  { sel: '#calc-quality', text: 'Finish level: economy trims about 15%, premium adds about 35%.' },
+  { sel: '#calc-oh', text: 'Overhead and margin: many builders add about 10% - yours is optional.' },
+  { sel: '#calc-rate-mat', text: 'Your rates come prefilled as planning-grade averages. Type your own; save them as rate sheets.' },
+  { sel: '.bcp-run', text: 'Hit Calculate and the breakdown lands on the right.' },
+  { sel: null, text: "That's it - you're ready to use the calculator." }
+];
+let tourIdx = -1;
+function tourDone() { try { return localStorage.getItem('mmgr_calc_tour_done') === '1'; } catch (e) { return false; } }
+function tourFlag() { try { localStorage.setItem('mmgr_calc_tour_done', '1'); } catch (e) {} }
+function tourEnd() { tourIdx = -1; tourFlag(); const o = $('calc-tour-overlay'); if (o) o.hidden = true; }
+function tourShow() {
+  const o = $('calc-tour-overlay'), pop = $('calc-tour-pop');
+  if (!o || !pop) return;
+  const st = TOUR_STEPS[tourIdx];
+  if (!st) { tourEnd(); return; }
+  o.hidden = false;
+  const c = $('calc-tour-count'), t = $('calc-tour-text'), dots = $('calc-tour-dots');
+  if (c) c.textContent = (tourIdx + 1) + ' of ' + TOUR_STEPS.length;
+  if (t) t.textContent = st.text;
+  if (dots) {
+    let h = '';
+    for (let i = 0; i < TOUR_STEPS.length; i++) h += '<span class="bcp-guide-dot' + (i === tourIdx ? ' active' : '') + '"></span>';
+    dots.innerHTML = h;
+  }
+  const tEl = st.sel ? document.querySelector(st.sel) : null;
+  if (tEl) {
+    try { tEl.scrollIntoView({ block: 'center' }); } catch (e) {}
+    pop.setAttribute('data-anchor', st.sel);
+    positionTourPop(tEl);
+  } else {
+    pop.removeAttribute('data-anchor');
+    pop.style.left = '50%';
+    pop.style.top = '50%';
+    pop.style.transform = 'translate(-50%,-50%)';
+  }
+}
+function positionTourPop(target) {
+  const pop = $('calc-tour-pop');
+  if (!pop) return;
+  pop.style.transform = 'none';
+  const r = target.getBoundingClientRect();
+  const pr = pop.getBoundingClientRect();
+  const pw = Math.min(pr.width || 320, window.innerWidth - 24);
+  const below = r.bottom + 12 + pr.height < window.innerHeight;
+  pop.style.left = Math.max(12, Math.min(r.left, window.innerWidth - pw - 12)) + 'px';
+  pop.style.top = (below ? r.bottom + 12 : Math.max(12, r.top - pr.height - 12)) + 'px';
+}
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape' && tourIdx >= 0) tourEnd();
+});
+window.addEventListener('resize', function() {
+  if (tourIdx < 0) return;
+  const st = TOUR_STEPS[tourIdx];
+  const t = st && st.sel ? document.querySelector(st.sel) : null;
+  if (t) positionTourPop(t);
+});
+// Harness hook (harmless in production).
+window.__calcTour = {
+  start: function() { ACTIONS.calcTourStart(); },
+  skip: function() { tourEnd(); },
+  state: function() { return { idx: tourIdx, done: tourDone() }; }
+};
+
 // ---- Actions (same data-action dispatch convention as the app) ----
 const ACTIONS = {
   // ---- How-to guide slider (owner 2026-09-30): field-order steps -------
@@ -778,6 +850,12 @@ const ACTIONS = {
   calcGuideNext: function() { guideIdx = (guideIdx + 1) % GUIDE_STEPS.length; renderGuide(); },
   calcGuideClose: function() { try { localStorage.setItem('mmgr_calc_guide_open', '0'); } catch (e) {} renderGuide(); },
   calcGuideOpen: function() { try { localStorage.setItem('mmgr_calc_guide_open', '1'); } catch (e) {} renderGuide(); },
+  // ---- First-visit tutorial actions (owner 2026-09-30) ----
+  calcTourStart: function() { tourIdx = 0; const n = $('calc-tour-nudge'); if (n) n.hidden = true; tourShow(); },
+  calcTourNext: function() { if (tourIdx < 0) return; if (tourIdx >= TOUR_STEPS.length - 1) { tourEnd(); return; } tourIdx++; tourShow(); },
+  calcTourPrev: function() { if (tourIdx <= 0) return; tourIdx--; tourShow(); },
+  calcTourSkip: function() { tourEnd(); },
+  calcTourDismiss: function() { const n = $('calc-tour-nudge'); if (n) n.hidden = true; tourFlag(); },
   calcRun: function() {
     const r = render();
     if (r && !r.error) {
@@ -1193,6 +1271,8 @@ renderEstimates();
 renderSheets();
 // How-to guide: paint the first step (open state decides visibility).
 renderGuide();
+// First-visit tutorial nudge: only when the flag is absent.
+(function() { const n = $('calc-tour-nudge'); if (n && !tourDone()) n.hidden = false; })();
 // Swipe support on the guide body (40px threshold, horizontal only).
 (function() {
   const body = $('calc-guide-body');

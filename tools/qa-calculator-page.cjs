@@ -395,6 +395,55 @@ async function withChrome(fn) {
       document.getElementById('calc-save-name').value = '';
     })()`);
 
+    // ---------- T: FIRST-VISIT TUTORIAL (owner 2026-09-30) ----------
+    const tut1 = await ev(`(function(){
+      localStorage.removeItem('mmgr_calc_tour_done');
+      var nudge = document.getElementById('calc-tour-nudge');
+      window.__calcTour.start();
+      var pop = document.getElementById('calc-tour-pop');
+      return { nudgeWas: !nudge.hidden, anchor: pop.getAttribute('data-anchor'),
+               overlay: !document.getElementById('calc-tour-overlay').hidden,
+               count: document.getElementById('calc-tour-count').textContent };
+    })()`);
+    check('T1 start tour: overlay opens, step 1 anchors the work item',
+      tut1 && tut1.anchor === '#calc-work' && tut1.overlay && tut1.count === '1 of 9', tut1);
+    const tut2 = await ev(`(function(){
+      var anchors = [];
+      for (var i = 0; i < 8; i++) {
+        document.querySelector('[data-action="calcTourNext"]').click();
+        anchors.push(document.getElementById('calc-tour-pop').getAttribute('data-anchor'));
+      }
+      return { anchors: anchors, count: document.getElementById('calc-tour-count').textContent };
+    })()`);
+    check('T2 steps walk the form in guide order (units, dims, currency, quality, oh, rates, run)',
+      tut2 && tut2.anchors[0] === '.bcp-seg' && tut2.anchors[1] === '#calc-d1' && tut2.anchors[2] === '#calc-currency' &&
+      tut2.anchors[3] === '#calc-quality' && tut2.anchors[4] === '#calc-oh' && tut2.anchors[5] === '#calc-rate-mat' &&
+      tut2.anchors[6] === '.bcp-run' && tut2.anchors[7] === null && tut2.count === '9 of 9', tut2.anchors);
+    const tut3 = await ev(`(function(){
+      document.querySelector('[data-action="calcTourNext"]').click();
+      return { done: window.__calcTour.state().done, overlayHidden: document.getElementById('calc-tour-overlay').hidden,
+               finalText: document.getElementById('calc-tour-text').textContent };
+    })()`);
+    check('T3 final step ends the tour + sets the done flag',
+      tut3 && tut3.done && tut3.overlayHidden && tut3.finalText.indexOf('ready to use') > -1, tut3);
+    const tut4 = await ev(`(function(){
+      try { localStorage.removeItem('mmgr_calc_tour_done'); } catch (e) {}
+      window.__calcTour.start();
+      document.querySelector('[data-action="calcTourSkip"]').click();
+      var skipDone = window.__calcTour.state().done;
+      // Esc path
+      try { localStorage.removeItem('mmgr_calc_tour_done'); } catch (e) {}
+      window.__calcTour.start();
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      return { skipDone: skipDone, escClosed: document.getElementById('calc-tour-overlay').hidden, escDone: window.__calcTour.state().done };
+    })()`);
+    check('T4 skip AND Escape both end the tour + set the flag',
+      tut4 && tut4.skipDone && tut4.escClosed && tut4.escDone, tut4);
+    await ev(`(function(){
+      try { localStorage.setItem('mmgr_calc_tour_done', '1'); } catch (e) {}
+      document.getElementById('calc-tour-nudge').hidden = true;
+    })()`);
+
     // ---------- F4 ENHANCEMENTS ----------
     // U1: imperial toggle - labels convert, state persists, aria follows.
     const u1 = await ev(`(function(){

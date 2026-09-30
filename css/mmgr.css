@@ -2503,6 +2503,25 @@ body.dark-mode .bcp-ico-moon{display:none;}
 .bcp-guide-reopen[hidden],.bcp-guide-body[hidden]{display:none;}
 .bcp-guide button[hidden]{display:none;}
 @media (max-width:600px){.bcp-guide-text{font-size:.84rem;}.bcp-guide-dot{width:8px;height:8px;}}
+/* First-visit tutorial (owner 2026-09-30): dim+blur overlay, anchored
+   popover, click-to-start nudge. [hidden] guards are mandatory (author
+   display rules would override the UA default otherwise). */
+.bcp-tour-nudge{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:390;display:flex;align-items:center;gap:12px;padding:12px 16px;max-width:min(560px,calc(100vw - 24px));box-shadow:0 8px 28px rgba(0,0,0,.18);}
+.bcp-tour-nudge-txt{display:flex;flex-direction:column;gap:2px;font-size:.84rem;color:var(--text);min-width:0;flex:1;}
+.bcp-tour-nudge[hidden]{display:none!important;}
+.bcp-tour-overlay{position:fixed;inset:0;z-index:400;background:rgba(0,0,0,.45);backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px);}
+.bcp-tour-overlay[hidden]{display:none!important;}
+.bcp-tour-pop{position:fixed;display:flex;flex-direction:column;gap:8px;max-width:340px;padding:14px 16px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius-lg,16px);box-shadow:0 12px 40px rgba(0,0,0,.28);color:var(--text);}
+.bcp-tour-count{font-size:.72rem;color:var(--slate);font-weight:700;letter-spacing:.02em;}
+.bcp-tour-text{font-size:.88rem;line-height:1.5;}
+.bcp-tour-btns{display:flex;gap:8px;flex-wrap:wrap;}
+@media (max-width:600px){
+  .bcp-tour-pop{left:12px!important;right:12px!important;max-width:none;}
+  .bcp-tour-nudge{flex-wrap:wrap;}
+}
+@media (prefers-reduced-motion:reduce){
+  .bcp-tour-overlay,.bcp-tour-pop,.bcp-tour-nudge{transition:none;}
+}
 /* Shared result + history render names (page only; see block header). */
 .calc-empty{color:var(--slate);font-size:.86rem;line-height:1.5;padding:10px 0;}
 .calc-sum{border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:10px;background:var(--tile-bg);min-width:0;}

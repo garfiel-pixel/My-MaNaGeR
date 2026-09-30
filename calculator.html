@@ -59,6 +59,27 @@
 
   <p class="bcp-lede">Pick a work item, enter the dimensions, choose your currency and country. Quantities, labor, materials, tax and total - computed on this device, nothing sent anywhere.</p>
 
+  <!-- OWNER 2026-09-30 how-to guide: step slider following the form's own
+       field order (work item FIRST). Collapsible; state per device. -->
+  <section class="card bcp-guide" id="calc-guide-card" aria-labelledby="calc-guide-h">
+    <div class="bcp-guide-head">
+      <h2 id="calc-guide-h" class="card-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-book"></use></svg> How to use</h2>
+      <button type="button" class="btn btn-n btn-s" data-action="calcGuideClose" id="calc-guide-toggle" title="Hide the guide">Hide</button>
+    </div>
+    <div class="bcp-guide-body" id="calc-guide-body">
+      <div class="bcp-guide-row">
+        <button type="button" class="btn btn-n btn-s bcp-guide-nav" data-action="calcGuidePrev" aria-label="Previous step" title="Previous step"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-left"></use></svg></button>
+        <div class="bcp-guide-step" aria-live="polite">
+          <span class="bcp-guide-count" id="calc-guide-count">1 of 8</span>
+          <span class="bcp-guide-text" id="calc-guide-text"></span>
+        </div>
+        <button type="button" class="btn btn-n btn-s bcp-guide-nav" data-action="calcGuideNext" aria-label="Next step" title="Next step"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg></button>
+      </div>
+      <div class="bcp-guide-dots" id="calc-guide-dots" aria-hidden="true"></div>
+    </div>
+    <button type="button" class="btn btn-n btn-s bcp-guide-reopen" data-action="calcGuideOpen" id="calc-guide-reopen" hidden>How to use</button>
+  </section>
+
   <div class="bcp-grid">
     <section class="card" id="calc-input-card" aria-labelledby="calc-inputs-h">
       <h2 id="calc-inputs-h" class="card-title">What are you pricing?</h2>

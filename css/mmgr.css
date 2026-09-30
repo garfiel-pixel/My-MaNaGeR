@@ -2485,6 +2485,24 @@ body.dark-mode .bcp-ico-moon{display:none;}
 .bcp-cmp .bcp-cmp-best{color:var(--gold);font-weight:800;}
 .bcp-cmp-check{width:16px;height:16px;flex-shrink:0;accent-color:var(--gold);cursor:pointer;}
 .bcp-fineprint{margin-top:18px;font-size:.72rem;color:var(--slate);line-height:1.6;max-width:860px;}
+/* How-to guide slider (owner 2026-09-30): one step at a time, dots, swipe.
+   Token-only; the count rides the muted note style. [hidden] guards keep
+   the author display rules from overriding the UA default. */
+.bcp-guide{margin-bottom:18px;}
+.bcp-guide-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;}
+.bcp-guide-head .card-title{display:inline-flex;align-items:center;gap:8px;margin:0;}
+.bcp-guide-head .ico{width:16px;height:16px;color:var(--gold);}
+.bcp-guide-row{display:flex;align-items:center;gap:10px;}
+.bcp-guide-nav{flex-shrink:0;}
+.bcp-guide-step{display:flex;flex-direction:column;gap:4px;min-width:0;flex:1;}
+.bcp-guide-count{font-size:.72rem;color:var(--slate);font-weight:700;letter-spacing:.02em;}
+.bcp-guide-text{font-size:.88rem;color:var(--text);line-height:1.5;}
+.bcp-guide-dots{display:flex;gap:6px;margin-top:10px;justify-content:center;}
+.bcp-guide-dot{width:6px;height:6px;border-radius:50%;background:var(--border);transition:background var(--tr);}
+.bcp-guide-dot.active{background:var(--gold);}
+.bcp-guide-reopen[hidden],.bcp-guide-body[hidden]{display:none;}
+.bcp-guide button[hidden]{display:none;}
+@media (max-width:600px){.bcp-guide-text{font-size:.84rem;}.bcp-guide-dot{width:8px;height:8px;}}
 /* Shared result + history render names (page only; see block header). */
 .calc-empty{color:var(--slate);font-size:.86rem;line-height:1.5;padding:10px 0;}
 .calc-sum{border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:10px;background:var(--tile-bg);min-width:0;}

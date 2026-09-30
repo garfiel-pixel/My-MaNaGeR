@@ -250,6 +250,40 @@ async function withChrome(fn) {
     check('B5 CSS: back button is icon-only (no Back text node)',
       (await ev(`(function(){ var b = document.querySelector('.bcp-back'); return b && b.textContent.trim() === ''; })()`)) === true, null);
 
+    // ---------- G: HOW-TO GUIDE SLIDER (owner 2026-09-30) ----------
+    const g1 = await ev(`(function(){
+      localStorage.removeItem('mmgr_calc_guide_open');
+      document.querySelector('[data-action="calcGuideOpen"]').click();
+      return { card: !!document.getElementById('calc-guide-card'),
+               count: (document.getElementById('calc-guide-count') || {}).textContent,
+               text: (document.getElementById('calc-guide-text') || {}).textContent || '',
+               dots: document.querySelectorAll('#calc-guide-dots .bcp-guide-dot').length };
+    })()`);
+    check('G1 guide card renders with 8 steps + counter + text',
+      g1 && g1.card && g1.count === '1 of 8' && g1.dots === 8 && g1.text.indexOf('work item') > -1, g1);
+    check('G2 guide order: step 1 is work item (never overhead first)',
+      g1 && g1.text.indexOf('Pick your work item') === 0, g1);
+    const g2 = await ev(`(function(){
+      document.querySelector('[data-action="calcGuideNext"]').click();
+      const after = document.getElementById('calc-guide-count').textContent;
+      const active = document.querySelectorAll('#calc-guide-dots .bcp-guide-dot.active').length;
+      document.querySelector('[data-action="calcGuidePrev"]').click();
+      const back = document.getElementById('calc-guide-count').textContent;
+      return { after: after, active: active, back: back };
+    })()`);
+    check('G3 next/prev cycles steps + one active dot follows',
+      g2 && g2.after === '2 of 8' && g2.active === 1 && g2.back === '1 of 8', g2);
+    const g3 = await ev(`(function(){
+      document.querySelector('[data-action="calcGuideClose"]').click();
+      const hid = document.getElementById('calc-guide-body').hidden === true;
+      const stored = localStorage.getItem('mmgr_calc_guide_open');
+      const reopenShown = document.getElementById('calc-guide-reopen').hidden === false;
+      document.querySelector('[data-action="calcGuideOpen"]').click();
+      return { hid: hid, stored: stored, reopenShown: reopenShown, back: !document.getElementById('calc-guide-body').hidden };
+    })()`);
+    check('G4 hide sets flag + reopen shows again',
+      g3 && g3.hid && g3.stored === '0' && g3.reopenShown && g3.back, g3);
+
     // ---------- F4 ENHANCEMENTS ----------
     // U1: imperial toggle - labels convert, state persists, aria follows.
     const u1 = await ev(`(function(){

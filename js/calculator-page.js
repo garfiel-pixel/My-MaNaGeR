@@ -664,8 +664,46 @@ function renderHistory() {
     '</div>').join('');
 }
 
+// ---- How-to guide slider (owner 2026-09-30) ---------------------------
+// Eight steps in the form's own top-to-bottom field order (work item
+// FIRST, overhead later) so the guide never teaches out of order.
+const GUIDE_STEPS = [
+  'Pick your work item. Choose what you are pricing - the calculator changes its fields and labels to match.',
+  'Choose metric or imperial. Everything converts as you type.',
+  'Enter the dimensions. Length, width, depth - whichever the work item asks for.',
+  'Pick your currency and country. The country sets the standard tax rate; you can override it.',
+  'Choose the finish level. Economy trims about 15%, premium adds about 35%. Add a custom tax % if yours differs.',
+  'Overhead and margin. Many builders add about 10% on top for overhead and profit - type your own or leave it at zero.',
+  'Your rates. Material, labor and equipment rates come prefilled as planning-grade averages. Change them to yours, and save them as a rate sheet to reuse.',
+  'Calculate and export. Hit Calculate, then save it with a name, print or PDF it, or export CSV. Name the document so it prints right.'
+];
+let guideIdx = 0;
+function guideOpenState() { try { return localStorage.getItem('mmgr_calc_guide_open') !== '0'; } catch (e) { return true; } }
+function renderGuide() {
+  const body = $('calc-guide-body'), reopen = $('calc-guide-reopen'), toggle = $('calc-guide-toggle');
+  if (!body) return;
+  const open = guideOpenState();
+  body.hidden = !open;
+  if (reopen) reopen.hidden = open;
+  if (toggle) toggle.hidden = !open;
+  if (!open) return;
+  const c = $('calc-guide-count'), t = $('calc-guide-text'), dots = $('calc-guide-dots');
+  if (c) c.textContent = (guideIdx + 1) + ' of ' + GUIDE_STEPS.length;
+  if (t) t.textContent = GUIDE_STEPS[guideIdx];
+  if (dots) {
+    let h = '';
+    for (let i = 0; i < GUIDE_STEPS.length; i++) h += '<span class="bcp-guide-dot' + (i === guideIdx ? ' active' : '') + '"></span>';
+    dots.innerHTML = h;
+  }
+}
+
 // ---- Actions (same data-action dispatch convention as the app) ----
 const ACTIONS = {
+  // ---- How-to guide slider (owner 2026-09-30): field-order steps -------
+  calcGuidePrev: function() { guideIdx = (guideIdx - 1 + GUIDE_STEPS.length) % GUIDE_STEPS.length; renderGuide(); },
+  calcGuideNext: function() { guideIdx = (guideIdx + 1) % GUIDE_STEPS.length; renderGuide(); },
+  calcGuideClose: function() { try { localStorage.setItem('mmgr_calc_guide_open', '0'); } catch (e) {} renderGuide(); },
+  calcGuideOpen: function() { try { localStorage.setItem('mmgr_calc_guide_open', '1'); } catch (e) {} renderGuide(); },
   calcRun: function() {
     const r = render();
     if (r && !r.error) {
@@ -1079,6 +1117,21 @@ if ($('calc-work')) {
 renderHistory();
 renderEstimates();
 renderSheets();
+// How-to guide: paint the first step (open state decides visibility).
+renderGuide();
+// Swipe support on the guide body (40px threshold, horizontal only).
+(function() {
+  const body = $('calc-guide-body');
+  if (!body) return;
+  let x0 = null;
+  body.addEventListener('touchstart', function(e) { x0 = e.touches[0].clientX; }, { passive: true });
+  body.addEventListener('touchend', function(e) {
+    if (x0 === null) return;
+    const dx = e.changedTouches[0].clientX - x0;
+    if (Math.abs(dx) > 40) { if (dx < 0) ACTIONS.calcGuideNext(); else ACTIONS.calcGuidePrev(); }
+    x0 = null;
+  }, { passive: true });
+})();
 // D3: restore the saved business name after the listeners are attached.
 (function() {
   let saved = '';

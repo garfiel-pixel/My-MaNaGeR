@@ -224,6 +224,22 @@ async function walkFocus(page) {
         };
       });
       check('M1 [' + vp.n + '] controls inside viewport + tap-sized', m.segIn && m.rateIn && m.pieceReachable && m.runTap, m);
+      // M9/M10 (owner 2026-09-30 mobile pass) on the phone viewport only.
+      if (vp.n === '390') {
+        const m9 = await page.evaluate(() => {
+          const b = document.querySelector('.bcp-run');
+          window.scrollTo(0, 800);
+          const r = b.getBoundingClientRect();
+          return { pos: getComputedStyle(b).position,
+                   inThumb: r.bottom > window.innerHeight - 160 && r.top < window.innerHeight,
+                   noHScroll: document.documentElement.scrollWidth <= window.innerWidth + 1 };
+        });
+        check('M9 [390] Calculate sticks within thumb reach after scroll', m9 && m9.pos === 'sticky' && m9.inThumb, m9);
+        const m10 = await page.evaluate(() => parseFloat(getComputedStyle(document.getElementById('calc-d1')).fontSize));
+        check('M10 [390] dimension inputs render 16px (no iOS zoom-jump)', m10 === 16, m10);
+        const m11 = await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1);
+        check('M11 [390] no horizontal scroll at 390px (bar + form)', m11, m11);
+      }
       await ctx.close();
     }
 

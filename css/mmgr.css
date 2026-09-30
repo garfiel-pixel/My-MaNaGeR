@@ -2406,6 +2406,11 @@ body.dark-mode .bcp-ico-moon{display:none;}
   .bcp-title{gap:8px;font-size:.92rem;}
   .bcp-title-page{font-size:.85rem;}
   .bcp-back,.bcp-theme{width:44px;height:44px;}
+  /* OWNER 2026-09-30 mobile pass: the run button never leaves the thumb
+     (sticky above the keyboard scroll). Print sheet unaffected (the
+     button is print-hidden). Input sizing lives AFTER the .bcp-field
+     base rule (must win the same-specificity cascade). */
+  .bcp-run{position:sticky;bottom:12px;z-index:20;box-shadow:0 6px 20px rgba(0,0,0,.18);}
 }
 .bcp-lede{margin:0;color:var(--slate);font-size:.92rem;max-width:640px;line-height:1.55;}
 .bcp-grid{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,4fr);gap:18px;align-items:start;}
@@ -2540,6 +2545,13 @@ body.dark-mode .bcp-ico-moon{display:none;}
 .calc-hist-date{color:var(--slate);font-size:.72rem;min-width:74px;}
 .calc-hist-work{color:var(--text);flex:1;min-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .calc-hist-total{color:var(--text);font-weight:700;font-variant-numeric:tabular-nums;}
+/* OWNER 2026-09-30 mobile pass: 16px inputs kill the iOS focus zoom-jump.
+   Placed AFTER the .bcp-field base rule so it wins the cascade at 600px. */
+@media (max-width:600px){
+  .bcp-field select,.bcp-field input{font-size:16px;}
+  .bcp-sheets-bar input{font-size:16px;}
+  .bcp-save input,#calc-doc-title,#calc-doc-type{font-size:16px;}
+}
 
 /* ============================================================
    BUILD COST CALCULATOR - PRINT SHEET (F4-2, owner 2026-09-28)

@@ -225,6 +225,8 @@ function readState() {
     rateLab: ($('calc-rate-lab') || {}).value || '',
     rateEq: ($('calc-rate-eq') || {}).value || '',
     ohPct: ($('calc-oh') || {}).value || '',
+    docType: docType(),
+    docTitle: docTitleRaw(),
     piecePrice: ($('calc-piece-price') || {}).value || '',
     pieceSize: ($('calc-piece-size') || {}).value || '',
     units: _units
@@ -251,6 +253,8 @@ function applyState(st) {
   if ($('calc-rate-lab')) $('calc-rate-lab').value = st.rateLab || '';
   if ($('calc-rate-eq')) $('calc-rate-eq').value = st.rateEq || '';
   if ($('calc-oh')) $('calc-oh').value = st.ohPct || '';
+  if ($('calc-doc-type')) $('calc-doc-type').value = st.docType || 'Estimate';
+  if ($('calc-doc-title')) $('calc-doc-title').value = st.docTitle || '';
   if ($('calc-piece-price')) $('calc-piece-price').value = st.piecePrice || '';
   if ($('calc-piece-size')) $('calc-piece-size').value = st.pieceSize || '';
   refreshRateFields();
@@ -566,6 +570,8 @@ function estimateCsv(r) {
   const rows = [
     ['Build Cost Calculator - My MaNaGeR'],
     ['Exported', new Date().toISOString().slice(0, 10)],
+    ['Document type', docType()],
+    ['Document title', docTitleRaw()],
     ['Name', ($('#calc-save-name') || {}).value || r.name],
     ['Work item', r.name],
     ['Quantity', qtyShown(r.qty, r.unit).main + qtyShown(r.qty, r.unit).alt],
@@ -598,12 +604,33 @@ function estimateCsv(r) {
 
 function slug(s) { return String(s || 'estimate').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40) || 'estimate'; }
 
+// ---- OWNER 2026-09-30: export naming (document type + title) -----------
+// The type becomes the printed sheet's title; type + title + date form
+// the export filename. Empty title falls back to the estimate name, then
+// the work item name. Illegal filename characters are stripped.
+function docType() { return ($('calc-doc-type') || {}).value || 'Estimate'; }
+function docTitleRaw() { return (($('calc-doc-title') || {}).value || '').trim(); }
+function docTitleBase() {
+  const base = (docTitleRaw() || (($('calc-save-name') || {}).value || '').trim() || (lastResult && lastResult.name) || 'estimate')
+    .replace(/[\\/:*?"<>|]/g, '').trim();
+  return docType() + ' - ' + (base || 'estimate');
+}
+// Test hook (harness-only convenience; harmless in production).
+window.__calcDocTitleBase = docTitleBase;
+
+document.addEventListener('change', function(e) {
+  if (e.target && e.target.id === 'calc-doc-type') render();
+});
+document.addEventListener('input', function(e) {
+  if (e.target && e.target.id === 'calc-doc-title') render();
+});
+
 function downloadCsv() {
   if (!lastResult) return;
   const blob = new Blob([estimateCsv(lastResult)], { type: 'text/csv;charset=utf-8' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = 'estimate-' + slug(($('calc-save-name') || {}).value || lastResult.name) + '-' + new Date().toISOString().slice(0, 10) + '.csv';
+  a.download = slug(docTitleBase()) + '-' + new Date().toISOString().slice(0, 10) + '.csv';
   document.body.appendChild(a);
   a.click();
   a.remove();
@@ -660,9 +687,10 @@ function render() {
     ? 'Materials - priced per piece at ' + pieceDesc
     : 'Materials' + (r.matOverridden ? ' - your rate' : '');
   const shown = qtyShown(r.qty, r.unit);
-  const qh = $('calc-quote-biz'), qm = $('calc-quote-meta');
+  const qh = $('calc-quote-biz'), qm = $('calc-quote-meta'), qt = $('calc-quote-title');
   if (qh) qh.textContent = bizName();
-  if (qm) qm.textContent = (($('calc-save-name') || {}).value || r.name) + '  -  ' + r.name + '  -  ' + shown.main + '  -  ' + new Date().toISOString().slice(0, 10);
+  if (qt) qt.textContent = docType();
+  if (qm) qm.textContent = (docTitleRaw() || (($('calc-save-name') || {}).value || r.name)) + '  -  ' + r.name + '  -  ' + shown.main + '  -  ' + new Date().toISOString().slice(0, 10);
   out.innerHTML =
     '<div class="calc-sum">' +
       '<div class="calc-sum-main"><span class="calc-sum-label">' + r.qtyLabel + '</span>' +

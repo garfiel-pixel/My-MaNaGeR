@@ -225,13 +225,21 @@
            screen; the @media print sheet reveals it as the letterhead. -->
       <div class="bcp-quote-head" aria-hidden="true">
         <div class="bcp-quote-biz" id="calc-quote-biz"></div>
-        <div class="bcp-quote-title">Build Estimate</div>
+        <div class="bcp-quote-title" id="calc-quote-title">Estimate</div>
         <div class="bcp-quote-meta" id="calc-quote-meta"></div>
       </div>
       <div id="calc-output" class="bcp-out">
         <div class="calc-empty">Pick a work item, enter dimensions, then Calculate. The breakdown lands here.</div>
       </div>
       <div class="bcp-out-actions is-hide" id="calc-out-actions">
+        <!-- OWNER 2026-09-30: export naming - the document type becomes the
+             printed sheet's title and both names ride the export filename. -->
+        <select id="calc-doc-type" aria-label="Document type" data-action="calcDocType">
+          <option value="Estimate" selected>Estimate</option>
+          <option value="Quote">Quote</option>
+          <option value="Invoice">Invoice</option>
+        </select>
+        <input type="text" id="calc-doc-title" maxlength="80" placeholder="e.g. Kitchen renovation - Smith" aria-label="Document title, shown on the printed sheet and in the export filename">
         <button type="button" class="btn btn-n btn-s" data-action="calcPrint"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-printer"></use></svg> Print / PDF</button>
         <button type="button" class="btn btn-n btn-s" data-action="calcCsv"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> CSV</button>
         <span class="bcp-save">

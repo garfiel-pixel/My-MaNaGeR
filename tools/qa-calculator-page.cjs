@@ -338,6 +338,63 @@ async function withChrome(fn) {
       document.getElementById('calc-d1').dispatchEvent(new Event('input',{bubbles:true}));
     })()`);
 
+    // ---------- E: EXPORT NAMING - document type + title (owner 2026-09-30) --
+    const doc1 = await ev(`(function(){
+      document.getElementById('calc-d1').value='10';
+      document.getElementById('calc-d2').value='8';
+      document.getElementById('calc-d3').value='150';
+      document.getElementById('calc-d1').dispatchEvent(new Event('input',{bubbles:true}));
+      return { type: document.getElementById('calc-doc-type').value,
+               title: document.getElementById('calc-doc-title').value,
+               hasBase: typeof window.__calcDocTitleBase === 'function' };
+    })()`);
+    check('E1 doc type + title fields exist, Estimate default, hook live',
+      doc1 && doc1.type === 'Estimate' && doc1.title === '' && doc1.hasBase, doc1);
+    const doc2 = await ev(`(function(){
+      document.getElementById('calc-doc-type').value = 'Invoice';
+      document.getElementById('calc-doc-type').dispatchEvent(new Event('change', { bubbles: true }));
+      document.getElementById('calc-doc-title').value = 'Kitchen - Smith';
+      document.getElementById('calc-doc-title').dispatchEvent(new Event('input', { bubbles: true }));
+      return { base: window.__calcDocTitleBase(),
+               sheetTitle: document.getElementById('calc-quote-title').textContent,
+               meta: document.getElementById('calc-quote-meta').textContent.indexOf('Kitchen - Smith') > -1 };
+    })()`);
+    check('E2 filename base follows type+title; print title says Invoice',
+      doc2 && doc2.base === 'Invoice - Kitchen - Smith' && doc2.sheetTitle === 'Invoice' && doc2.meta, doc2);
+    const doc3 = await ev(`(function(){
+      localStorage.removeItem('mmgr_calc_history');
+      document.querySelector('[data-action="calcRun"]').click();
+      const row = JSON.parse(localStorage.getItem('mmgr_calc_history'))[0];
+      return { st: row && row.st ? { docType: row.st.docType, docTitle: row.st.docTitle } : null };
+    })()`);
+    check('E3 history row carries docType+docTitle (exact recall)',
+      doc3 && doc3.st && doc3.st.docType === 'Invoice' && doc3.st.docTitle === 'Kitchen - Smith', doc3);
+    const doc4 = await ev(`(function(){
+      // Real UI path (applyState is IIFE-internal): save a named estimate
+      // with the doc fields set, clear them, then Open the save back.
+      document.getElementById('calc-doc-type').value = 'Quote';
+      document.getElementById('calc-doc-title').value = 'Recall Doc';
+      document.querySelector('[data-action="calcSave"]').click();
+      document.getElementById('calc-doc-type').value = 'Estimate';
+      document.getElementById('calc-doc-title').value = '';
+      const openBtns = document.querySelectorAll('[data-action="calcOpen"]');
+      openBtns[0].click();
+      return { type: document.getElementById('calc-doc-type').value, title: document.getElementById('calc-doc-title').value,
+               sheet: document.getElementById('calc-quote-title').textContent };
+    })()`);
+    check('E4 estimate recall restores doc fields + print title follows',
+      doc4 && doc4.type === 'Quote' && doc4.title === 'Recall Doc' && doc4.sheet === 'Quote', doc4);
+    // Cleanup: remove the E4-named estimate + reset doc fields so the
+    // downstream S-series gates see the same pre-wave state.
+    await ev(`(function(){
+      try { localStorage.setItem('mmgr_calc_estimates', '[]'); } catch (e) {}
+      document.getElementById('calc-doc-type').value = 'Estimate';
+      document.getElementById('calc-doc-type').dispatchEvent(new Event('change', { bubbles: true }));
+      document.getElementById('calc-doc-title').value = '';
+      document.getElementById('calc-doc-title').dispatchEvent(new Event('input', { bubbles: true }));
+      document.getElementById('calc-save-name').value = '';
+    })()`);
+
     // ---------- F4 ENHANCEMENTS ----------
     // U1: imperial toggle - labels convert, state persists, aria follows.
     const u1 = await ev(`(function(){

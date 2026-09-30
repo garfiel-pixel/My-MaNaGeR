@@ -226,6 +226,37 @@ async function walkFocus(page) {
       check('M1 [' + vp.n + '] controls inside viewport + tap-sized', m.segIn && m.rateIn && m.pieceReachable && m.runTap, m);
       await ctx.close();
     }
+
+    // ============ IR: icon restore after a bfcache-style restore ==========
+    // Owner bug 2026-09-30: after a back/forward-cache restore the external
+    // sprite <use> refs lose their paint. Real bfcache cannot be forced in
+    // CI, so the CONTRACT is verified: the module must exist on both pages
+    // and a synthetic persisted pageshow / direct restore() call must
+    // re-resolve every dropped external-sprite reference.
+    {
+      const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+      await page.goto(BASE + '/calculator.html', { waitUntil: 'networkidle' });
+      const ir1 = await page.evaluate(() => {
+        if (!window.MMGRIconRestore || !MMGRIconRestore.restore) return { err: 'module missing on calculator' };
+        const u = document.querySelector('svg.ico use[href^="css/mmgr-icons.svg"]');
+        if (!u) return { err: 'no external sprite use found' };
+        const before = u.getAttribute('href');
+        const n = MMGRIconRestore.restore(); // full pass: clears + re-resolves every external ref
+        return { ok: n > 0 && u.getAttribute('href') === before, n: n };
+      });
+      check('IR1 calculator: restore() re-resolves a dropped sprite href', ir1.ok === true, ir1);
+      // app.html: same contract through the bundle build
+      await page.goto(BASE + '/app.html', { waitUntil: 'networkidle' });
+      const ir2 = await page.evaluate(() => {
+        if (!window.MMGRIconRestore) return { err: 'module missing on app (bundle)' };
+        const uses = Array.from(document.querySelectorAll('use[href^="css/mmgr-icons.svg"]'));
+        if (!uses.length) return { err: 'no external sprite uses' };
+        window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true }));
+        return { ok: MMGRIconRestore.lastCount >= uses.length, n: uses.length, restored: MMGRIconRestore.lastCount };
+      });
+      check('IR2 app: persisted pageshow restores all dropped sprite hrefs', ir2.ok === true, ir2);
+      await page.close();
+    }
   } finally {
     await browser.close().catch(() => {});
     if (srv) { try { srv.kill(); } catch (e) {} }

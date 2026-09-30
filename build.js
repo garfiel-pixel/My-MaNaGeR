@@ -116,6 +116,10 @@ const APP_MODULES = [   // Core (loaded first - defines MMGR namespace + utiliti
   // Calculator (floating draggable FAB)
   'js/mmgr-calculator.js',
   'js/mmgr-templates.js',
+  // bfcache sprite restore (2026-09-30): icons vanish after Back when
+  // Chrome restores the page from the back/forward cache; load-order
+  // independent, DOM-only, so it sits last.
+  'js/mmgr-icon-restore.js',
 ];
 
 // ---- Marketing pages bundle ----
@@ -137,6 +141,9 @@ const APP_LAUNCHER_MODULES = [
   'js/mmgr-cloud-dash.js',
   'js/mmgr-viewport.js',
   'js/mmgr-glass.js',
+  // bfcache sprite restore (2026-09-30): same module as the project
+  // bundle - load-order independent, DOM-only, sits last.
+  'js/mmgr-icon-restore.js',
 ];
 
 // ---- admin.html bundle ----

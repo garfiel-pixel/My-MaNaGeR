@@ -23,38 +23,41 @@
 <meta name="robots" content="noindex">
 <link rel="icon" type="image/png" href="images/mpw-icon.png">
 <link rel="apple-touch-icon" href="images/mpw-icon.png">
-<link rel="stylesheet" href="dist/mmgr.min.css?v=9">
+<link rel="stylesheet" href="dist/mmgr.min.css?v=10">
 <script src="js/mmgr-theme.js" data-sync="1"></script>
 </head>
 <body class="db-page calculator-page">
 
 <main id="main" class="bcp-main">
 
+  <!-- OWNER 2026-09-30 app-style top bar: ONE rounded bar mirroring the
+       app page's top row - icon-only highlighted Back at far left, brand
+       + page title, icon-only sun/moon theme button right (no "Theme"
+       text). The old brand link + big .bcp-head title block are replaced;
+       the page h1 lives here now. No JS changes: calcBack + tglTheme
+       handlers are the same data-action dispatches as before. -->
   <header class="bcp-top">
     <div class="bcp-top-left">
-      <a class="bcp-brand" href="app.html" title="Back to your projects">
-        <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-mpw"></use></svg>
-        <span>My MaNaGeR</span>
-      </a>
-      <!-- E2 (owner 2026-09-29 universal back-navigation): Back always goes
-           where you came from - the previous page when there is one, the app
-           dashboard otherwise. Driven by calcBack in calculator-page.js. -->
-      <button type="button" class="btn btn-n btn-s bcp-back" data-action="calcBack">
-        <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-left"></use></svg> Back
+      <button type="button" class="bcp-back" data-action="calcBack" aria-label="Back" title="Back">
+        <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-left"></use></svg>
       </button>
+      <h1 class="bcp-title">
+        <a class="bcp-brand" href="app.html" title="Back to your projects">
+          <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-mpw"></use></svg>
+          <span class="bcp-brand-name">My MaNaGeR</span>
+        </a>
+        <span class="bcp-title-sep" aria-hidden="true">&middot;</span>
+        <span class="bcp-title-page">Build Cost Calculator</span>
+      </h1>
     </div>
-    <button type="button" class="btn btn-n btn-s" data-action="tglTheme" aria-label="Toggle dark mode" title="Toggle dark mode">
-      <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-moon"></use></svg> Theme
+    <button type="button" class="bcp-theme" data-action="tglTheme" title="Toggle dark mode">
+      <svg class="ico bcp-ico-sun" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sun"></use></svg>
+      <svg class="ico bcp-ico-moon" aria-hidden="true"><use href="css/mmgr-icons.svg#i-moon"></use></svg>
+      <span class="sr-only">Toggle dark mode</span>
     </button>
   </header>
 
-  <div class="bcp-head">
-    <span class="bcp-head-ico" aria-hidden="true"><svg class="ico"><use href="css/mmgr-icons.svg#i-calculator"></use></svg></span>
-    <div>
-      <h1>Build Cost Calculator</h1>
-      <p class="bcp-lede">Pick a work item, enter the dimensions, choose your currency and country. Quantities, labor, materials, tax and total - computed on this device, nothing sent anywhere.</p>
-    </div>
-  </div>
+  <p class="bcp-lede">Pick a work item, enter the dimensions, choose your currency and country. Quantities, labor, materials, tax and total - computed on this device, nothing sent anywhere.</p>
 
   <div class="bcp-grid">
     <section class="card" id="calc-input-card" aria-labelledby="calc-inputs-h">

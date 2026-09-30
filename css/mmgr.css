@@ -2373,19 +2373,40 @@ body.dark-mode .ai-byo-status[data-state="untested"]{background:rgba(245,158,11,
    and dark both hold with zero overrides; input focus rides the app-wide
    gold focus ring. */
 .bcp-main{max-width:1080px;margin:0 auto;padding:32px 20px 64px;}
-.bcp-top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:26px;}
-/* E2 (owner 2026-09-29 universal back-navigation): brand + Back cluster left,
-   Theme right. Back matches the app's hdr-back pill language. */
-.bcp-top-left{display:flex;align-items:center;gap:10px;min-width:0;flex-wrap:wrap;}
-.bcp-back{flex-shrink:0;}
-@media (max-width:600px){.bcp-top-left{gap:8px;}}
-.bcp-brand{display:inline-flex;align-items:center;gap:8px;font-weight:800;font-size:.95rem;color:var(--text);text-decoration:none;}
+/* OWNER 2026-09-30: app-style top bar. One rounded rectangle like the
+   app page's top row; token colors only, both themes hold. The sun/moon
+   pair is CSS-switched (icon names the mode you switch to): moon shows
+   in light, sun shows in dark. Visually-hidden label helper is local
+   to this page's needs (.sr-only). */
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;}
+.bcp-top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px;padding:10px 14px;background:var(--tile-bg);border:1px solid var(--border);border-radius:var(--radius-lg,16px);}
+.bcp-top-left{display:flex;align-items:center;gap:12px;min-width:0;flex-wrap:nowrap;}
+/* Icon-only highlighted Back (owner: "a little button that shows back"). */
+.bcp-back{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;flex-shrink:0;border-radius:100px;background:color-mix(in oklch,var(--gold) 16%,transparent);color:var(--gold);border:1px solid color-mix(in oklch,var(--gold) 35%,transparent);cursor:pointer;transition:background var(--tr),color var(--tr),transform var(--tr);}
+.bcp-back:hover{background:color-mix(in oklch,var(--gold) 26%,transparent);color:var(--gold);}
+.bcp-back:active{transform:scale(var(--press-scale,.96));}
+.bcp-back:focus-visible{outline:2px solid var(--gold);outline-offset:2px;}
+.bcp-back .ico{width:18px;height:18px;}
+.bcp-title{display:flex;align-items:center;gap:10px;margin:0;font-size:.98rem;font-weight:800;color:var(--text);min-width:0;}
+.bcp-brand{display:inline-flex;align-items:center;gap:8px;color:var(--text);text-decoration:none;flex-shrink:0;}
 .bcp-brand .ico{width:20px;height:20px;color:var(--gold);}
 .bcp-brand:hover{color:var(--gold);}
-.bcp-head{display:flex;gap:14px;align-items:flex-start;margin-bottom:22px;}
-.bcp-head-ico{display:flex;align-items:center;justify-content:center;width:42px;height:42px;flex-shrink:0;background:var(--tile-bg);border:1px solid var(--border);border-radius:var(--radius-lg,16px);color:var(--gold);}
-.bcp-head-ico .ico{width:22px;height:22px;}
-.bcp-head h1{margin:0 0 6px;font-size:1.45rem;color:var(--text);}
+.bcp-title-sep{color:var(--slate);font-weight:400;flex-shrink:0;}
+.bcp-title-page{color:var(--slate);font-weight:600;font-size:.9rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;}
+.bcp-theme{position:relative;display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;flex-shrink:0;border-radius:100px;background:var(--card);border:1px solid var(--border);color:var(--slate);cursor:pointer;transition:color var(--tr),border-color var(--tr);}
+.bcp-theme:hover{color:var(--gold);border-color:var(--gold);}
+.bcp-theme:focus-visible{outline:2px solid var(--gold);outline-offset:2px;}
+.bcp-theme .ico{width:18px;height:18px;position:absolute;}
+.bcp-ico-sun{display:none;}
+.bcp-ico-moon{display:block;}
+body.dark-mode .bcp-ico-sun{display:block;}
+body.dark-mode .bcp-ico-moon{display:none;}
+@media (max-width:600px){
+  .bcp-top{padding:10px 12px;}
+  .bcp-title{gap:8px;font-size:.92rem;}
+  .bcp-title-page{font-size:.85rem;}
+  .bcp-back,.bcp-theme{width:44px;height:44px;}
+}
 .bcp-lede{margin:0;color:var(--slate);font-size:.92rem;max-width:640px;line-height:1.55;}
 .bcp-grid{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,4fr);gap:18px;align-items:start;}
 @media (max-width:820px){.bcp-grid{grid-template-columns:1fr;}}

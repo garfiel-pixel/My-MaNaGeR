@@ -284,6 +284,60 @@ async function withChrome(fn) {
     check('G4 hide sets flag + reopen shows again',
       g3 && g3.hid && g3.stored === '0' && g3.reopenShown && g3.back, g3);
 
+    // ---------- N: RESEARCH-BACKED WORK ITEMS (owner 2026-09-30) ----------
+    const n1 = await ev(`(function(){
+      const t = document.getElementById('calc-work').textContent;
+      return { supply: t.indexOf('Water supply pipe run (per m - linear)') > -1,
+               drain: t.indexOf('Drain-waste-vent pipe run (per m - linear)') > -1,
+               conduit: t.indexOf('Conduit / cable run (per m - linear)') > -1,
+               skirt: t.indexOf('Skirting / baseboard (per m run - linear)') > -1,
+               shingle: t.indexOf('Asphalt shingle roof (per roofing square)') > -1,
+               groups: Array.from(document.querySelectorAll('#calc-work optgroup')).map(function(g){ return g.label; }) };
+    })()`);
+    check('N1 linear basis labels present (pipe, conduit, skirting, shingle)',
+      n1 && n1.supply && n1.drain && n1.conduit && n1.skirt && n1.shingle, n1);
+    check('N2 new optgroups: Plumbing + Electrical exist',
+      n1 && n1.groups.indexOf('Plumbing') > -1 && n1.groups.indexOf('Electrical') > -1, n1 && n1.groups);
+    const n3 = await ev(`(function(){
+      const sel = document.getElementById('calc-work');
+      sel.value = 'pipe-supply';
+      sel.dispatchEvent(new Event('change', { bubbles: true }));
+      document.getElementById('calc-d1').value = '12';
+      document.getElementById('calc-d1').dispatchEvent(new Event('input', { bubbles: true }));
+      const out = document.getElementById('calc-output').textContent;
+      return { run: out.indexOf('Supply pipe run (linear)') > -1, qty: out.indexOf('12 m') > -1 };
+    })()`);
+    check('N3 pipe-supply 12 m run -> 12 m linear quantity', n3 && n3.run && n3.qty, n3);
+    const n4 = await ev(`(function(){
+      const sel = document.getElementById('calc-work');
+      sel.value = 'shingle-roof';
+      sel.dispatchEvent(new Event('change', { bubbles: true }));
+      document.getElementById('calc-d1').value = '10';
+      document.getElementById('calc-d2').value = '9.2903';
+      document.getElementById('calc-d1').dispatchEvent(new Event('input', { bubbles: true }));
+      document.getElementById('calc-d2').dispatchEvent(new Event('input', { bubbles: true }));
+      const out = document.getElementById('calc-output').textContent;
+      return { sq: out.indexOf('square') > -1, m2: out.indexOf('m2') > -1 };
+    })()`);
+    check('N4 shingle-roof 10x9.2903 m -> 10 squares + m2 aside', n4 && n4.sq && n4.m2, n4);
+    const n5 = await ev(`(function(){
+      const sel = document.getElementById('calc-work');
+      sel.value = 'fixture';
+      sel.dispatchEvent(new Event('change', { bubbles: true }));
+      document.getElementById('calc-d1').value = '3';
+      document.getElementById('calc-d1').dispatchEvent(new Event('input', { bubbles: true }));
+      const out = document.getElementById('calc-output').textContent;
+      return { each: out.indexOf('3 each') > -1, sum: out.indexOf('840') > -1 };
+    })()`);
+    check('N5 fixture count math: 3 each at 130+150 = 840', n5 && n5.each && n5.sum, n5);
+    // restore slab context for the gates that follow
+    await ev(`(function(){
+      document.getElementById('calc-work').value='slab';
+      document.getElementById('calc-work').dispatchEvent(new Event('change',{bubbles:true}));
+      document.getElementById('calc-d1').value='';
+      document.getElementById('calc-d1').dispatchEvent(new Event('input',{bubbles:true}));
+    })()`);
+
     // ---------- F4 ENHANCEMENTS ----------
     // U1: imperial toggle - labels convert, state persists, aria follows.
     const u1 = await ev(`(function(){

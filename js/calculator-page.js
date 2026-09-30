@@ -80,7 +80,42 @@ const WORK = {
     rate: { mat: 145, lab: 75 }, matDesc: 'C25/30 air-entrained, mesh, cure' },
   fencing:    { group: 'Finishes', d1: 'Total run (m)', d2: 'Height (m)', d3: null, piece: { priceLabel: 'Price per panel', sizeLabel: 'Panel size - width x height (m)', unit: 'm', div: 'width', ph: 'e.g. 9500 per panel', phSize: 'e.g. 2.5 x 1.8' },
     q: (a, b) => ({ qty: a, unit: 'm', qtyLabel: 'Fence run' }),
-    rate: { mat: (a, b) => 18 + Math.max(0, ((b || 1.8) - 1.2)) * 9, lab: 15 }, matDesc: 'Chain-link, posts, concrete backfill' }
+    rate: { mat: (a, b) => 18 + Math.max(0, ((b || 1.8) - 1.2)) * 9, lab: 15 }, matDesc: 'Chain-link, posts, concrete backfill' },
+  // ---- Research-backed additions (owner 2026-09-30, spec section 3.4) ----
+  // Pipe and conduit work is priced PER LINEAR METER (running meter), never
+  // per m2 (owner: 'you don't run pipe by square meters'); fixtures/panels
+  // are per-unit counts; shingle roofing is quoted per roofing square
+  // (100 sq ft) with a laps/cuts allowance. Rates are planning-grade 2026
+  // web benchmarks (Angi PEX installed LF; per-point electrical; buildvision
+  // waste table; constructly roofing-square pricing) - editable as always.
+  'pipe-supply': { group: 'Plumbing', d1: 'Total run (m)', d2: null, d3: null,
+    q: (a) => ({ qty: a, unit: 'm', qtyLabel: 'Supply pipe run (linear)' }),
+    rate: { mat: 3, lab: 8 }, matDesc: 'PEX/PVC supply incl. fittings allowance' },
+  'pipe-drain':  { group: 'Plumbing', d1: 'Total run (m)', d2: null, d3: null,
+    q: (a) => ({ qty: a, unit: 'm', qtyLabel: 'DWV pipe run (linear)' }),
+    rate: { mat: 3, lab: 9 }, matDesc: 'PVC drain-waste-vent, slope + fittings allowance' },
+  fixture:     { group: 'Plumbing', d1: 'Fixtures to install (count)', d2: null, d3: null,
+    q: (a) => ({ qty: a, unit: 'each', qtyLabel: 'Fixtures' }),
+    rate: { mat: 130, lab: 150 }, matDesc: 'Toilet/sink/shower set + connect' },
+  'bath-rough':{ group: 'Plumbing', d1: 'Bathrooms (count)', d2: null, d3: null,
+    q: (a) => ({ qty: a, unit: 'each', qtyLabel: 'Bathroom rough-ins' }),
+    rate: { mat: 500, lab: 750 }, matDesc: 'Supply + DWV to one full bathroom' },
+  'wire-point':{ group: 'Electrical', d1: 'Wiring points (count)', d2: null, d3: null,
+    q: (a) => ({ qty: a, unit: 'point', qtyLabel: 'Wiring points' }),
+    rate: { mat: 25, lab: 60 }, matDesc: 'Socket/switch/light point incl. device' },
+  conduit:     { group: 'Electrical', d1: 'Total run (m)', d2: null, d3: null,
+    q: (a) => ({ qty: a, unit: 'm', qtyLabel: 'Conduit / cable run (linear)' }),
+    rate: { mat: 2, lab: 6 }, matDesc: 'Conduit + single-phase cable' },
+  panel:       { group: 'Electrical', d1: 'Panels (count)', d2: null, d3: null,
+    q: (a) => ({ qty: a, unit: 'each', qtyLabel: 'Panels' }),
+    rate: { mat: 450, lab: 650 }, matDesc: 'Consumer board, breakers, labeling' },
+  skirt:       { group: 'Finishes', d1: 'Total run (m)', d2: null, d3: null,
+    q: (a) => ({ qty: a, unit: 'm', qtyLabel: 'Skirting run (linear)' }),
+    rate: { mat: 3, lab: 5 }, matDesc: 'Trim + fixings, miters' },
+  'shingle-roof': { group: 'Envelope', d1: 'Length (m)', d2: 'Slope width (m)', d3: null,
+    waste: { def: 10, lbl: 'Laps / cuts allowance' },
+    q: (a, b) => ({ qty: a * b / 9.2903, unit: 'square', qtyLabel: 'Roofing squares (100 sq ft each)' }),
+    rate: { mat: 250, lab: 300 }, matDesc: 'Asphalt shingles, underlayment, starter' }
 };
 
 // Country standard tax rates (PwC VAT/GST quick table, 2026). US sales tax
@@ -126,7 +161,18 @@ const UNIT_CONV = {
 };
 function qtyShown(qty, unit) {
   const c = UNIT_CONV[unit];
-  if (!c) return { main: (Math.round(qty * 100) / 100) + ' ' + unit, alt: '' };
+  if (!c) {
+    // 'square' (roofing square, 100 sq ft) is imperial-native: it stays
+    // primary in both unit systems with an m2 aside for metric readers.
+    if (unit === 'square') {
+      const m2 = Math.round(qty * 9.2903 * 100) / 100;
+      return { main: (Math.round(qty * 100) / 100).toLocaleString() + ' square',
+               alt: ' (about ' + m2.toLocaleString() + ' m2)' };
+    }
+    // Counts (fixtures, panels, wiring points) are whole numbers.
+    if (unit === 'each' || unit === 'point') return { main: Math.round(qty).toLocaleString() + ' ' + unit, alt: '' };
+    return { main: (Math.round(qty * 100) / 100) + ' ' + unit, alt: '' };
+  }
   const pick = _units === 'imperial' ? c.imp : c.met;
   const other = _units === 'imperial' ? c.met : c.imp;
   const round = (v, dp) => Math.round(v * Math.pow(10, dp)) / Math.pow(10, dp);

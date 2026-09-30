@@ -1995,3 +1995,69 @@ Verification: qa-glass 14/14 x 3 consecutive runs; npm run verify green
 (registry parity); qa-view-mode all-pass; verify-glass-preview-cdp OK.
 Harness-only wave: no served assets changed - no build, no CSP regen, no
 shell bump, no deploy needed.
+
+SESSION 2026-09-30 - CALCULATOR-POLISH-WAVE (owner directives, spec
+docs/superpowers/specs/2026-09-30-calculator-polish-wave-design.md, plan
+docs/superpowers/plans/2026-09-30-calculator-polish-wave.md, 7 waves ALL
+SHIPPED):
+W1 fix(app) 8addb00: bfcache sprite icon-restore. Owner-reported app icons
+   vanishing after Back from calculator.html; root cause PROVEN by probe
+   (pageshow.persisted=true on the return; external-sprite <use> refs lose
+   painted content on back/forward-cache restores). js/mmgr-icon-restore.js
+   (window.MMGRIconRestore.restore()) re-resolves every external sprite ref
+   on a persisted pageshow; registered in BOTH build.js bundles + a
+   calculator.html script tag (?v=10). Real-path proof: 38 visible icons
+   painted / 0 empty after a persisted restore. Playwright IR1/IR2 (36
+   total now). Harness contract: qa-calc-playwright-audit 31 -> 33 -> 36
+   gates, CI-TEST-COVERAGE.md row updated (registry stays green).
+W2 feat(calculator) 92dada7: app-style top bar - one rounded bar (bcp-top):
+   icon-only gold Back (calcBack unchanged), brand + page title = the page
+   h1 (.bcp-head block DELETED - B3 asserts it stays gone), icon-only
+   sun/moon theme button CSS-switched by body.dark-mode (tglTheme
+   unchanged). <=600px: compact bar, 44px targets. Gates B1-B5. calculator
+   .html asset ?v bumps 9 -> 10.
+W3 feat(calculator) 211ba87: how-to guide slider (G1-G4): 8 steps in the
+   FORM'S OWN FIELD ORDER (work item first - owner's explicit ordering
+   rule), prev/next + dots + aria-live + touch swipe, collapse/reopen with
+   per-device state mmgr_calc_guide_open. i-book sprite already existed.
+W4 feat(calculator) 94dbc3a: research-backed work items (N1-N5): pipe
+   -supply + pipe-drain + conduit PER LINEAR METER (owner: "you don't run
+   pipe by square meters"), fixture + bath-rough + panel per EACH,
+   wire-point per POINT, skirt per m run, shingle-roof per ROOFING SQUARE
+   (100 sq ft, 10% laps/cuts default; square unit renders in both unit
+   systems with an m2 aside via qtyShown). 2026 web-benchmark planning
+   rates (Angi PEX installed LF, per-point electrical, buildvision waste
+   table, constructly roofing squares); all editable as always. New
+   Plumbing + Electrical optgroups; existing 15 labels gained basis
+   suffixes (slab/drive now say "per m3 of concrete" - their real basis).
+W5 feat(calculator) 0ea41f5: export naming (E1-E4): Estimate/Quote/Invoice
+   picker + document title field; type = printed sheet title, type+title
+   +date = CSV filename (illegal chars stripped, title falls back to
+   estimate name then work item); CSV header gains document_type/title
+   rows; fields ride readState/applyState so history + named estimates
+   recall them exactly. window.__calcDocTitleBase test hook.
+W6 feat(calculator) c4a659b: first-visit tutorial (T1-T4): click-to-start
+   nudge card (NEVER auto-started), 9-step spotlight walkthrough in guide
+   order ending on a "ready to use" card; Esc + Skip end the tour and set
+   mmgr_calc_tour_done; popover clamps to the viewport + repositions on
+   resize, <=600px docks bottom; cleared browser data brings the tour back
+   (owner-specified). Fail-soft: a missing element id skips its step.
+W7 feat(calculator) (this commit): mobile pass (M9-M11): sticky Calculate
+   within thumb reach at 390px, 16px inputs AFTER the .bcp-field base rule
+   (same-specificity cascade - first placement lost to line 2434, caught
+   by M10), no horizontal scroll at 390px. Shell v338 -> v339 with wave
+   narrative. Emoji scan CLEAN on all four touched served files.
+GATE COUNTS: qa-calculator-page 69 -> 91; qa-calc-playwright-audit 31 ->
+   36 (IR1/IR2 + M9/M10/M11); npm run verify green (registry 78 rows);
+   qa-health-sweep 15/15 clean. NO inline scripts anywhere - CSP hashes
+   untouched; offline-first unchanged (zero new network calls).
+HARNESS LESSON (recurring): qa-calculator-page.cjs declares const
+   b1/g1/n1/x1/e1/t1... across sections - new gates MUST prefix-check
+   before naming (three collisions hit this session: w1, x1, e1, t1;
+   settled on B/G/N/doc/TUT prefixes). E4/S1/S3 contract note: named-
+   estimate gates now reset mmgr_calc_estimates after recall assertions.
+STILL OPEN (next session candidates): admin.html icon-restore wiring is
+   OPTIONAL follow-up (admin bundle lacks the module - registered as a
+   decision point, not a defect); deploy not run this session (owner go
+   + staging recipe per AGENTS.md lesson 7); tmp/bump-sw-v339.cjs scratch
+   can be cleaned.

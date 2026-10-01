@@ -226,6 +226,12 @@ jobs:
         env:
           QA_PORT: 8802
 
+      - name: "T2: Calc workspace route (client-docs W5)"
+        if: success() && steps.wrangler-start.outcome == 'success'
+        run: node tools/qa-calc-workspace.cjs
+        env:
+          QA_PORT: 8811
+
       - name: "T2: Rank 9 API"
         if: success() && steps.wrangler-start.outcome == 'success'
         run: node tools/qa-rank9-api.cjs

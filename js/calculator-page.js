@@ -560,7 +560,7 @@ function compute() {
 // ---- Named estimates (F4-3): save / recall / delete, this device only ---
 const NKEY = 'mmgr_calc_estimates';
 function loadEstimates() { try { return JSON.parse(localStorage.getItem(NKEY) || '[]'); } catch (e) { return []; } }
-function persistEstimates(list) { try { localStorage.setItem(NKEY, JSON.stringify(list.slice(0, 30))); } catch (e) { /* storage full - saving is a nicety, never a gate */ } }
+function persistEstimates(list) { try { localStorage.setItem(NKEY, JSON.stringify(list.slice(0, 30))); } catch (e) { /* storage full - saving is a nicety, never a gate */ } wsStampNow('estimates'); scheduleWsPut(); }
 
 // ---- Rate sheets (owner 2026-09-28: 'low-bid', 'sustain' - companies price
 // differently per job, save the whole rate set under a name and switch).
@@ -827,7 +827,7 @@ const PACK_SEEDS = [
   { id: 'pack-gb', name: 'United Kingdom', currency: 'GBP', taxDefault: 20, index: 1, benchmark: 'VAT 20% applies on the works (PwC). Rates as entered.' }
 ];
 function loadPacks() { try { return JSON.parse(localStorage.getItem(PKKEY) || '[]'); } catch (e) { return []; } }
-function persistPacks(list) { try { localStorage.setItem(PKKEY, JSON.stringify(list.slice(0, 20))); } catch (e) { /* nicety */ } }
+function persistPacks(list) { try { localStorage.setItem(PKKEY, JSON.stringify(list.slice(0, 20))); } catch (e) { /* nicety */ } wsStampNow('packs'); scheduleWsPut(); }
 function ensurePackSeeds() { if (!loadPacks().length) persistPacks(PACK_SEEDS.slice()); }
 function renderPacks() {
   const sel = $('calc-pack-select'), note = $('calc-pack-note');
@@ -886,7 +886,7 @@ function importPacks(json) {
 // subtotal (pre-tax); tax is added at invoice where applicable.
 const RKEY2 = 'mmgr_calc_rollup';
 function loadRollupPrefs() { try { return JSON.parse(localStorage.getItem(RKEY2) || '{}'); } catch (e) { return {}; } }
-function persistRollupPrefs(p) { try { localStorage.setItem(RKEY2, JSON.stringify(p)); } catch (e) { /* nicety */ } }
+function persistRollupPrefs(p) { try { localStorage.setItem(RKEY2, JSON.stringify(p)); } catch (e) { /* nicety */ } wsStampNow('rollup'); scheduleWsPut(); }
 // ---- W1 (owner 2026-10-01): DISCOUNT on the roll-up ---------------------
 // A percent-off or fixed-amount-off line between the priced work and the
 // risk money. PURE: fixed wins when both are set; the discount never
@@ -1022,7 +1022,7 @@ function workLabel(key) {
   return key;
 }
 function loadBoq() { try { return JSON.parse(localStorage.getItem(BKEY2) || '[]'); } catch (e) { return []; } }
-function persistBoq(lines) { try { localStorage.setItem(BKEY2, JSON.stringify(lines.slice(0, 60))); } catch (e) { /* nicety, never a gate */ } }
+function persistBoq(lines) { try { localStorage.setItem(BKEY2, JSON.stringify(lines.slice(0, 60))); } catch (e) { /* nicety, never a gate */ } wsStampNow('boq'); scheduleWsPut(); }
 // PURE: per-line priced rows + rolled-up totals. No DOM. Shared by render,
 // the cash-flow wave and the CSV export.
 function boqTotals(lines) {
@@ -1221,8 +1221,128 @@ const Entitlements = {
   can: function(feature) { return !!(CALC_FEATURES[feature]); }
 };
 window.__calcEntitlements = Entitlements; // harness-only convenience
+
+// ---- W5 2026-10-01: WORKSPACE FOLLOWS THE ACCOUNT -------------------------
+// Optional background sync for signed-in accounts: after first render a
+// silent GET /api/calc/workspace probes the account's stored workspace,
+// merges per-section by updatedAt stamps (newer wins, corrupt skipped), and
+// every later persist schedules a debounced PUT. Signed-out (403) never
+// retries this session; every failure is silent. Zero required network -
+// the calculator stays fully offline-first.
+const WSTAMPS_KEY = 'mmgr_calc_wstamps';
+const WS_DEBOUNCE_MS = 2000;
+let wsPutTimer = null, wsPutNoLogo = false, wsSignedOut = false, wsInFlight = false, wsMerging = false;
+function wsStampsLoad() { try { const v = JSON.parse(localStorage.getItem(WSTAMPS_KEY) || '{}'); return v && typeof v === 'object' ? v : {}; } catch (e) { return {}; } }
+function wsStampNow(section) {
+  const s = wsStampsLoad(); s[section] = Date.now();
+  try { localStorage.setItem(WSTAMPS_KEY, JSON.stringify(s)); } catch (e) { /* nicety */ }
+  return s[section];
+}
+// Every persist path calls this (after its localStorage write) so a signed-in
+// device pushes its workspace without any user action.
+function scheduleWsPut() {
+  if (wsSignedOut || wsMerging) return;
+  if (wsPutTimer) clearTimeout(wsPutTimer);
+  wsPutTimer = setTimeout(wsPut, WS_DEBOUNCE_MS);
+}
+// Pure-ish collector: the seven synced sections with their stamps.
+function wsCollect() {
+  const stamps = wsStampsLoad();
+  const sec = function(section, val) { return { val: val, updatedAt: stamps[section] || 0 }; };
+  return {
+    estimates: sec('estimates', loadEstimates()),
+    boq: sec('boq', loadBoq()),
+    history: sec('history', loadHistory()),
+    packs: sec('packs', loadPacks()),
+    rollup: sec('rollup', loadRollupPrefs()),
+    brand: sec('brand', brandLoad()),
+    docCounter: sec('docCounter', docCounterLoad())
+  };
+}
+// PURE merge decision: newer stamp wins; empty local adopts cloud; equal
+// stamps keep local; corrupt (non-object) cloud sections are skipped.
+function wsMerge(localStamp, cloudStamp, localVal, cloudVal) {
+  if (!cloudVal || typeof cloudVal !== 'object') return localVal;
+  if (localVal === null || localVal === undefined || (typeof localVal === 'object' && !Array.isArray(localVal) && Object.keys(localVal).length === 0) || (Array.isArray(localVal) && localVal.length === 0)) return cloudVal;
+  return (cloudStamp || 0) > (localStamp || 0) ? cloudVal : localVal;
+}
+// Pure application of a probe payload: sets the plan, merges each section
+// into localStorage, returns what happened (no network, no rendering).
+function wsApplyProbe(data) {
+  if (!data || typeof data !== 'object') return { ok: false };
+  Entitlements.setPlan(data.plan);
+  const ws = data.ws;
+  if (!ws || typeof ws !== 'object') return { ok: true, merged: [] };
+  const stamps = wsStampsLoad();
+  const merged = [];
+  // Applying a cloud section routes through the persist helpers, which stamp
+  // + schedule a push of their own - suppressed here so adopting cloud data
+  // never immediately bounces back to the server.
+  wsMerging = true;
+  const sections = [
+    ['estimates', ws.estimates, function(v) { persistEstimates(v); }],
+    ['boq', ws.boq, function(v) { persistBoq(v); renderBoq(); }],
+    ['history', ws.history, function(v) { try { localStorage.setItem(HKEY, JSON.stringify((v || []).slice(0, 20))); } catch (e) {} renderHistory(); }],
+    ['packs', ws.packs, function(v) { persistPacks(v); renderPacks(); }],
+    ['rollup', ws.rollup, function(v) { persistRollupPrefs(v); renderRollup(); }],
+    ['brand', ws.brand, function(v) { try { localStorage.setItem(BRKEY, JSON.stringify(v)); } catch (e) {} renderBrand(); }],
+    ['docCounter', ws.docCounter, function(v) { try { localStorage.setItem(DOCNO_KEY, JSON.stringify(v)); } catch (e) {} }]
+  ];
+  try {
+    sections.forEach(function(pair) {
+      const name = pair[0], cloud = pair[1], apply = pair[2];
+      if (!cloud || typeof cloud !== 'object' || !cloud.val) return; // corrupt/absent cloud section: skip
+      const localVal = (function() { try { return JSON.parse(localStorage.getItem(wsKeys()[name]) || 'null'); } catch (e) { return null; } })();
+      const nextVal = wsMerge(stamps[name] || 0, cloud.updatedAt || 0, localVal, cloud.val);
+      if (nextVal !== localVal) {
+        try { apply(nextVal); } catch (e) { return; }
+        stamps[name] = cloud.updatedAt || Date.now();
+        merged.push(name);
+      }
+    });
+  } finally { wsMerging = false; }
+  try { localStorage.setItem(WSTAMPS_KEY, JSON.stringify(stamps)); } catch (e) {}
+  return { ok: true, merged: merged, plan: Entitlements.plan() };
+}
+// Key map is LAZY: HKEY/BRKEY/DOCNO_KEY are declared later in this module
+// and a module-eval-time const would die in the TDZ (took the whole page
+// down once already - do not hoist this back).
+let WS_KEYS = null;
+function wsKeys() {
+  if (!WS_KEYS) WS_KEYS = { estimates: NKEY, boq: BKEY2, history: HKEY, packs: PKKEY, rollup: RKEY2, brand: BRKEY, docCounter: DOCNO_KEY };
+  return WS_KEYS;
+}
+function wsPayload(withLogo) {
+  const c = wsCollect();
+  if (!withLogo && c.brand && c.brand.val && c.brand.val.logo) { c.brand.val = Object.assign({}, c.brand.val, { logo: null }); }
+  return c;
+}
+async function wsPut() {
+  if (wsSignedOut || wsInFlight || !navigator.onLine) return;
+  wsInFlight = true;
+  try {
+    let res = await fetch('/api/calc/workspace', { method: 'PUT', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(wsPayload(!wsPutNoLogo)) });
+    if (res.status === 413 && !wsPutNoLogo) { wsPutNoLogo = true; res = await fetch('/api/calc/workspace', { method: 'PUT', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(wsPayload(false)) }); }
+    if (res.status === 403) wsSignedOut = true;
+  } catch (e) { /* offline / network down - silent, offline-first */ }
+  wsInFlight = false;
+}
+async function wsProbe() {
+  if (wsSignedOut || wsInFlight || !navigator.onLine) return;
+  wsInFlight = true;
+  try {
+    const res = await fetch('/api/calc/workspace', { method: 'GET', credentials: 'same-origin' });
+    if (res.status === 403) { wsSignedOut = true; }
+    else if (res.ok) {
+      const data = await res.json();
+      const out = wsApplyProbe(data);
+      if (out.ok && out.merged && out.merged.length) render();
+    }
+  } catch (e) { /* offline - silent */ }
+  wsInFlight = false;
+}
 // W1 engine hook (harness-only convenience; harmless in production).
-window.__calcEngine = { computeFor: computeFor, boqTotals: boqTotals, readState: readState, syncLabels: syncLabels, instancesQty: instancesQty, estimateCsv: estimateCsv, prelimsTotal: prelimsTotal, rollup: rollup, cashCurve: cashCurve, formworkM2: formworkM2, importPacks: importPacks, applyDiscount: applyDiscount, companionsFor: companionsFor, syncFamily: syncFamily, brandLoad: brandLoad, logoFitsCap: logoFitsCap, docNoSuggest: docNoSuggest };
+window.__calcEngine = { computeFor: computeFor, boqTotals: boqTotals, readState: readState, syncLabels: syncLabels, instancesQty: instancesQty, estimateCsv: estimateCsv, prelimsTotal: prelimsTotal, rollup: rollup, cashCurve: cashCurve, formworkM2: formworkM2, importPacks: importPacks, applyDiscount: applyDiscount, companionsFor: companionsFor, syncFamily: syncFamily, brandLoad: brandLoad, logoFitsCap: logoFitsCap, docNoSuggest: docNoSuggest, wsCollect: wsCollect, wsMerge: wsMerge, wsApplyProbe: wsApplyProbe, scheduleWsPut: scheduleWsPut };
 
 document.addEventListener('change', function(e) {
   if (e.target && e.target.id === 'calc-doc-type') render();
@@ -1291,6 +1411,7 @@ function brandSave(patch) {
   const cur = brandLoad();
   const next = Object.assign(cur, patch, { updatedAt: Date.now() });
   try { localStorage.setItem(BRKEY, JSON.stringify(next)); } catch (e) { /* storage full - a nicety */ }
+  wsStampNow('brand'); scheduleWsPut();
   return next;
 }
 //PURE: decoded byte size of a data URL (base64 payload is 4/3 of the bytes).
@@ -1341,6 +1462,7 @@ function docCounterBump(type) {
   const c = docCounterLoad();
   c[type] = (parseInt(c[type], 10) || 1) + 1;
   try { localStorage.setItem(DOCNO_KEY, JSON.stringify(c)); } catch (e) {}
+  wsStampNow('docCounter'); scheduleWsPut();
   return c;
 }
 function bizName() {
@@ -1507,6 +1629,7 @@ function saveHistory(entry) {
     h.unshift(entry);
     localStorage.setItem(HKEY, JSON.stringify(h.slice(0, 20)));
   } catch (e) { /* storage full or blocked - history is a nicety, never a gate */ }
+  wsStampNow('history'); scheduleWsPut();
 }
 function renderHistory() {
   const wrap = $('calc-history');
@@ -1772,6 +1895,7 @@ const ACTIONS = {
     if (isNaN(idx) || !h[idx]) return;
     h.splice(idx, 1);
     try { localStorage.setItem(HKEY, JSON.stringify(h)); } catch (e) {}
+    wsStampNow('history'); scheduleWsPut();
     renderHistory();
   },
   // F4b: put the model rates back (the escape hatch from your own rates).
@@ -2601,6 +2725,9 @@ renderPacks();
 renderGuide();
 // First-visit tutorial nudge: only when the flag is absent.
 (function() { const n = $('calc-tour-nudge'); if (n && !tourDone()) n.hidden = false; })();
+// W5 workspace follow: one silent probe for signed-in accounts, after first
+// paint. Signed-out / offline / any failure: silent no-op, offline intact.
+if (navigator.onLine) setTimeout(wsProbe, 1500);
 // Swipe support on the guide body (40px threshold, horizontal only).
 (function() {
   const body = $('calc-guide-body');

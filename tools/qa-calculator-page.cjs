@@ -1262,6 +1262,60 @@ async function withChrome(fn) {
     check('ET3 setPlan(empty) resets the plan to free',
       et3 && et3.plan === 'free' && et3.logo === true, et3);
 
+    // ---------- W5 2026-10-01: WORKSPACE FOLLOW (WS family) ----------
+    const ws1 = await ev(`(function(){
+      var c = __calcEngine.wsCollect();
+      var names = Object.keys(c);
+      return { names: names.join(','), n: names.length, allSections: names.every(function(k){ return c[k] && typeof c[k] === 'object' && 'updatedAt' in c[k] && 'val' in c[k]; }), stamps: names.every(function(k){ return typeof c[k].updatedAt === 'number'; }) };
+    })()`);
+    check('WS1 wsCollect returns all seven sections each carrying an updatedAt stamp',
+      ws1 && ws1.n === 7 && ws1.allSections && ws1.stamps && ws1.names === 'estimates,boq,history,packs,rollup,brand,docCounter', ws1);
+    const ws2 = await ev(`(function(){
+      var m = __calcEngine.wsMerge;
+      var cloudObj = { a: 2 };
+      return {
+        cloudNewer: m(100, 200, { a: 1 }, cloudObj),
+        localNewer: m(300, 200, { a: 1 }, cloudObj),
+        emptyAdopts: m(0, 200, [], cloudObj),
+        emptyObjAdopts: m(0, 200, {}, cloudObj),
+        equalKeepsLocal: m(200, 200, { a: 1 }, cloudObj),
+        corruptSkipped: m(0, 500, { a: 1 }, 'garbage')
+      };
+    })()`);
+    check('WS2 wsMerge: cloud newer wins, local newer kept, empty local adopts, equal keeps local, corrupt cloud skipped',
+      ws2 && ws2.cloudNewer.a === 2 && ws2.localNewer.a === 1 && ws2.emptyAdopts.a === 2 && ws2.emptyObjAdopts.a === 2 && ws2.equalKeepsLocal.a === 1 && ws2.corruptSkipped.a === 1, ws2);
+    const ws3 = await ev(`(function(){
+      localStorage.setItem('mmgr_calc_wstamps', JSON.stringify({}));
+      var E = window.__calcEntitlements;
+      E.setPlan('');
+      var out = __calcEngine.wsApplyProbe({ plan: 'free', ws: { rollup: { val: { designC: '7' }, updatedAt: 500 }, junk: { val: 'x' }, badShape: 'nope' } });
+      var roll = JSON.parse(localStorage.getItem('mmgr_calc_rollup') || '{}');
+      var stamp = JSON.parse(localStorage.getItem('mmgr_calc_wstamps') || '{}');
+      return { ok: out.ok, plan: E.plan(), merged: out.merged, designC: roll.designC, stamp: stamp.rollup };
+    })()`);
+    check('WS3 wsApplyProbe: plan set from payload, cloud section merged + stamped, junk sections skipped',
+      ws3 && ws3.ok && ws3.plan === 'free' && ws3.merged.indexOf('rollup') > -1 && ws3.merged.length === 1 && ws3.designC === '7' && ws3.stamp === 500, ws3);
+    const ws4 = await ev(`(function(){
+      return new Promise(function(resolve){
+        var calls = 0;
+        var origFetch = window.fetch;
+        window.fetch = function(url, opts){ if (url === '/api/calc/workspace' && opts && opts.method === 'PUT') { calls++; return Promise.resolve({ status: 200, ok: true, json: function(){ return Promise.resolve({ ok: true, savedAt: 'x' }); } }); } return origFetch.apply(window, arguments); };
+        __calcEngine.scheduleWsPut();
+        __calcEngine.scheduleWsPut();
+        __calcEngine.scheduleWsPut();
+        setTimeout(function(){
+          window.fetch = origFetch;
+          resolve({ calls: calls });
+        }, 2600);
+      });
+    })()`);
+    check('WS4 scheduleWsPut coalesces: 3 schedules inside the debounce window -> exactly 1 PUT',
+      ws4 && ws4.calls === 1, ws4);
+    await ev(`(function(){
+      localStorage.removeItem('mmgr_calc_wstamps');
+      localStorage.removeItem('mmgr_calc_rollup');
+    })()`);
+
     // ---------- F4 ENHANCEMENTS ----------
     // U1: imperial toggle - labels convert, state persists, aria follows.
     const u1 = await ev(`(function(){

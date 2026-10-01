@@ -2566,6 +2566,12 @@ html.mmgr-tour-active .bcp-tour-nudge{filter:none;}
 .bcp-oncost input[type="number"]{max-width:280px;}
 .bcp-oncost input[type="number"]:disabled{opacity:.55;}
 .bcp-jm-note{font-size:.78rem;color:var(--slate);line-height:1.5;margin:8px 0 0;}
+/* W7 derived formwork offer + rebar laps hint. [hidden] guard is mandatory:
+   the author display:flex here would override the UA hidden default. */
+.bcp-formwork{display:flex;align-items:center;gap:10px;flex-wrap:wrap;border:1px dashed var(--border);border-radius:10px;padding:8px 10px;margin-top:8px;font-size:.8rem;color:var(--slate);}
+.bcp-formwork[hidden]{display:none!important;}
+.bcp-formwork-actions{display:inline-flex;align-items:center;gap:8px;}
+.bcp-formwork-actions input{width:120px;}
 /* W6 cash plan: mode + export row above the monthly lines. */
 .bcp-cash-head{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;margin:10px 0 8px;}
 .bcp-cash-head .bcp-field{min-width:200px;}

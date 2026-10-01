@@ -663,6 +663,45 @@ function renderPrelims(worksOverride) {
     : '<div class="calc-empty">No site & other costs yet. Add the items that keep the site running.</div>';
 }
 
+// ---- W7 (owner 2026-09-30): CONCRETE ACCESSORIES - formwork + rebar laps --
+// Formwork is DERIVED, not estimated: for the trades this calculator prices,
+// the contact area comes straight from dimensions already entered - slab and
+// driveway edge formwork 2(L+W) x thickness, footing side formwork 2(L+W) x
+// depth (metric dims; for a measured pour the average dims are unknown, so
+// derivation needs typed dims). Rate default 55/m2 is a planning-grade
+// supply-and-fix figure (editable like every rate). The rebar laps add-on
+// exposes the laps/cuts/offcuts allowance explicitly (research band 10-18%);
+// empty keeps the 85 kg/m3 norm as the all-in figure it has always been.
+const FORM_RATE_DEFAULT = 55;
+function formworkM2(key, d1, d2, d3) {
+  if (key !== 'slab' && key !== 'concrete-drive' && key !== 'footings') return null;
+  const a = parseFloat(d1), b = parseFloat(d2), c = parseFloat(d3);
+  if (!(a > 0) || !(b > 0) || !(c > 0)) return null;
+  const perimeter = 2 * (a + b);
+  const height = c / 1000;   // thickness/depth is always typed in mm
+  return Math.round(perimeter * height * 100) / 100;
+}
+function renderAccessories() {
+  const box = $('calc-formwork-box');
+  if (!box) return;
+  const st = readState();
+  const m2 = formworkM2(st.work, st.d1, st.d2, st.d3);
+  if (m2) {
+    const cur = CURRENCY[st.currency] || '$';
+    const rateRaw = parseFloat(($('calc-formwork-rate') || {}).value);
+    const rate = isFinite(rateRaw) && rateRaw > 0 ? rateRaw : FORM_RATE_DEFAULT;
+    box.hidden = false;
+    // Write into the text span only - the box also holds the rate input
+    // and the Add button, which a textContent wipe would destroy.
+    const txt = $('calc-formwork-text');
+    const msg = 'Derived formwork for this ' + (st.work === 'footings' ? 'footing run' : 'slab') + ': ' +
+      m2.toLocaleString() + ' m2 - about ' + cur + Math.round(m2 * rate).toLocaleString() + ' at ' + cur + rate + '/m2 (editable).';
+    if (txt) txt.textContent = msg; else box.textContent = msg;
+  } else {
+    box.hidden = true;
+  }
+}
+
 // ---- W5 (owner 2026-09-30): CONTINGENCY + ESCALATION + DURATION ---------
 // The planning waterfall: works -> site & other costs -> design contingency
 // -> construction contingency -> escalation over the build duration.
@@ -958,7 +997,7 @@ function docTitleBase() {
 // Test hook (harness-only convenience; harmless in production).
 window.__calcDocTitleBase = docTitleBase;
 // W1 engine hook (harness-only convenience; harmless in production).
-window.__calcEngine = { computeFor: computeFor, boqTotals: boqTotals, readState: readState, syncLabels: syncLabels, instancesQty: instancesQty, estimateCsv: estimateCsv, prelimsTotal: prelimsTotal, rollup: rollup, cashCurve: cashCurve };
+window.__calcEngine = { computeFor: computeFor, boqTotals: boqTotals, readState: readState, syncLabels: syncLabels, instancesQty: instancesQty, estimateCsv: estimateCsv, prelimsTotal: prelimsTotal, rollup: rollup, cashCurve: cashCurve, formworkM2: formworkM2 };
 
 document.addEventListener('change', function(e) {
   if (e.target && e.target.id === 'calc-doc-type') render();
@@ -1010,6 +1049,8 @@ function render() {
   renderRollup();
   // W6: the cash plan re-spreads whenever the numbers move.
   renderCash();
+  // W7: the derived formwork box follows dims + trade.
+  renderAccessories();
   if (!r || r.error) {
     lastResult = null;
     if ($('calc-out-actions')) $('calc-out-actions').classList.add('is-hide');
@@ -1496,6 +1537,28 @@ const ACTIONS = {
     a.remove();
     setTimeout(function() { URL.revokeObjectURL(a.href); }, 500);
   },
+  // ---- W7 concrete accessories ----
+  calcFormworkAdd: function() {
+    const st = readState();
+    const m2 = formworkM2(st.work, st.d1, st.d2, st.d3);
+    if (!m2) return;
+    const rateRaw = parseFloat(($('calc-formwork-rate') || {}).value);
+    const rate = isFinite(rateRaw) && rateRaw > 0 ? rateRaw : FORM_RATE_DEFAULT;
+    const lines = loadBoq();
+    if (lines.length >= 60) return;
+    // Formwork is priced as its own bill line: measuredQty carries the
+    // derived m2 so no WORK entry is needed; rates are prefill-marked so
+    // they behave exactly like model rates (override detection intact).
+    const lineSt = Object.assign({}, st, {
+      work: st.work,
+      _formworkM2: m2,
+      _formRate: rate,
+      piecePrice: '', pieceSize: '', wastePct: ''
+    });
+    lines.push({ st: lineSt, name: 'Formwork ' + m2.toLocaleString() + ' m2' });
+    persistBoq(lines);
+    renderBoq();
+  },
   calcInstToggle: function() {
     const wrap = $('calc-instances');
     const manual = $('calc-measured-manual');
@@ -1723,6 +1786,13 @@ function syncLabels() {
   if (jmNote) jmNote.hidden = c !== 'JM';
   // W2: instance editor follows the work item (rows re-seed per trade).
   renderInstances();
+  // W7: the rebar laps field rides the rebar trade only (same home as the
+  // d2/d3 wrap hiding - syncLabels owns per-trade field visibility).
+  const rlWrap = $('calc-rebar-laps-wrap'), rlEl = $('calc-rebar-laps');
+  if (rlWrap && rlEl) {
+    rlWrap.hidden = key !== 'rebar';
+    if (key !== 'rebar') rlEl.value = '';
+  }
   refreshRateFields();
 }
 

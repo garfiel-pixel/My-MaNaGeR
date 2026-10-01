@@ -23,7 +23,7 @@
 <meta name="robots" content="noindex">
 <link rel="icon" type="image/png" href="images/mpw-icon.png">
 <link rel="apple-touch-icon" href="images/mpw-icon.png">
-<link rel="stylesheet" href="dist/mmgr.min.css?v=13">
+<link rel="stylesheet" href="dist/mmgr.min.css?v=14">
 <script src="js/mmgr-theme.js" data-sync="1"></script>
 </head>
 <body class="db-page calculator-page">
@@ -236,6 +236,25 @@
         <input type="number" id="calc-waste" min="0" max="50" step="0.5" inputmode="decimal" placeholder="e.g. 15 for herringbone">
       </div>
 
+      <!-- W7 (owner 2026-09-30): rebar laps add-on - the 85 kg/m3 norm is
+           laps-inclusive; typing a % makes the allowance explicit instead
+           (research band 10-18% by project type). -->
+      <div class="bcp-field" id="calc-rebar-laps-wrap" hidden>
+        <label for="calc-rebar-laps">Rebar laps &amp; cuts % (optional)</label>
+        <input type="number" id="calc-rebar-laps" min="0" max="30" step="0.5" inputmode="decimal" placeholder="empty = included - e.g. 12">
+        <span class="bcp-hist-note">Laps, cuts and offcuts usually add 10-18% if you price them separately.</span>
+      </div>
+
+      <!-- W7: derived formwork - the contact area computed from the dims
+           already typed, offered as an Add-to-bill line. -->
+      <div class="bcp-formwork" id="calc-formwork-box" hidden>
+        <span id="calc-formwork-text"></span>
+        <span class="bcp-formwork-actions">
+          <input type="number" id="calc-formwork-rate" min="0" step="any" inputmode="decimal" placeholder="Rate per m2" aria-label="Formwork rate per square meter">
+          <button type="button" class="btn btn-n btn-s" data-action="calcFormworkAdd">Add formwork to bill</button>
+        </span>
+      </div>
+
 
       <button type="button" class="btn btn-g bcp-run" data-action="calcRun">
         <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-calculator"></use></svg> Calculate
@@ -410,7 +429,7 @@
      worker, so its raw assets ride the HTTP cache (1y immutable) - any
      change here must bump v, or returning calculator-only visitors keep
      the old script/styles for a year. -->
-<script src="js/mmgr-icon-restore.js?v=13"></script>
-<script src="js/calculator-page.js?v=13"></script>
+<script src="js/mmgr-icon-restore.js?v=14"></script>
+<script src="js/calculator-page.js?v=14"></script>
 </body>
 </html>

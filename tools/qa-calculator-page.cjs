@@ -740,8 +740,8 @@ async function withChrome(fn) {
       var r = __calcEngine.rollup({ works: 100000, prelims: 7000, designC: '10', constrC: '5', escPct: '5', months: '12' });
       return { designC: r.designC, constrC: r.constrC, esc: r.esc, subtotal: r.subtotal };
     })()`);
-    check('RG1 waterfall: 100k + 7k + 10k + 5k + 5350 = 127350 exact',
-      rg1 && rg1.designC === 10000 && rg1.constrC === 5000 && Math.abs(rg1.esc - 5350) < 0.01 && Math.abs(rg1.subtotal - 127350) < 0.01, rg1);
+    check('RG1 waterfall (re-baselined 2026-10-01): base 107k; contingencies + esc ride the discounted base; 100k + 7k + 10700 + 5350 + 5350 = 128400 exact',
+      rg1 && Math.abs(rg1.designC - 10700) < 0.01 && Math.abs(rg1.constrC - 5350) < 0.01 && Math.abs(rg1.esc - 5350) < 0.01 && Math.abs(rg1.subtotal - 128400) < 0.01, rg1);
     const rg2 = await ev(`(function(){
       var d = document.getElementById('calc-design-c'), c = document.getElementById('calc-constr-c'),
           e = document.getElementById('calc-esc-pct'), m = document.getElementById('calc-months');
@@ -923,6 +923,100 @@ async function withChrome(fn) {
       var p3 = document.getElementById('calc-oncost-pct');
       p3.value = '';
       p3.dataset.touched = '';
+    })()`);
+
+    // ---------- W1 2026-10-01: DISCOUNT (DC family) ----------
+    const dc1 = await ev(`(function(){
+      var a = __calcEngine.applyDiscount(100000, 6000, '5', '');
+      var b = __calcEngine.applyDiscount(100000, 6000, '5', '8000');
+      var c = __calcEngine.applyDiscount(1000, 0, '', '99999');
+      var d = __calcEngine.applyDiscount(1000, 0, '-5', '-100');
+      return { pct: a.discount, base: a.base, fixedWins: b.discount, cap: c.discount, capBase: c.base, neg: d.discount, negBase: d.base };
+    })()`);
+    check('DC1 discount math: 5% of 106k = 5300; fixed 8000 wins; caps at pool; negatives clamp',
+      dc1 && Math.abs(dc1.pct - 5300) < 0.01 && Math.abs(dc1.base - 100700) < 0.01 && Math.abs(dc1.fixedWins - 8000) < 0.01 && dc1.cap === 1000 && dc1.capBase === 0 && dc1.neg === 0 && dc1.negBase === 1000, dc1);
+    const dc2 = await ev(`(function(){
+      var r = __calcEngine.rollup({ works: 100000, prelims: 6000, designC: '10', constrC: '5', escPct: '5', months: '12', discPct: '5', discAmt: '' });
+      var b = r.base;
+      return { disc: r.discount, base: r.base, design: r.designC, constr: r.constrC, esc: r.esc, sub: r.subtotal,
+        exact: Math.abs(b * 0.10 - 10070) < 0.01 && Math.abs(b * 0.05 - 5035) < 0.01 && Math.abs(b * 0.05 - 5035) < 0.01 && Math.abs(r.subtotal - (b + b * 0.10 + b * 0.05 + b * 0.05)) < 0.01 };
+    })()`);
+    check('DC2 waterfall: contingencies + escalation ride the DISCOUNTED base',
+      dc2 && Math.abs(dc2.disc - 5300) < 0.01 && dc2.exact, dc2);
+    const dc3 = await ev(`(function(){
+      localStorage.setItem('mmgr_calc_rollup', JSON.stringify({ designC: '10', constrC: '5', escPct: '5', months: '', discPct: '7.5', discAmt: '2000' }));
+      location.reload();
+      return { pending: true };
+    })()`);
+    await delay(2500);
+    const dc3b = await ev(`(function(){
+      var p = document.getElementById('calc-disc-pct'), a = document.getElementById('calc-disc-amt');
+      return { pct: p ? p.value : null, amt: a ? a.value : null };
+    })()`);
+    check('DC3 discount settings persist and rehydrate after reload',
+      dc3b && dc3b.pct === '7.5' && dc3b.amt === '2000', dc3b);
+    const dc4 = await ev(`(function(){
+      localStorage.setItem('mmgr_calc_rollup', JSON.stringify({ designC: '10', constrC: '5', escPct: '5', months: '' }));
+      location.reload();
+      return { pending: true };
+    })()`);
+    await delay(2500);
+    const dc4b = await ev(`(function(){
+      var r = __calcEngine.rollup({ works: 100000, prelims: 0, designC: '10', constrC: '0', escPct: '0', months: '0', discPct: '', discAmt: '' });
+      var p = document.getElementById('calc-disc-pct');
+      return { disc: r.discount, fieldBlank: p ? p.value === '' : false };
+    })()`);
+    check('DC4 legacy prefs without disc keys: no discount, no error, fields blank',
+      dc4b && dc4b.disc === 0 && dc4b.fieldBlank, dc4b);
+    const dc5 = await ev(`(function(){
+      document.getElementById('calc-disc-pct').value = '10';
+      document.getElementById('calc-disc-pct').dispatchEvent(new Event('input', { bubbles: true }));
+      document.getElementById('calc-work').value = 'blockwall';
+      document.getElementById('calc-work').dispatchEvent(new Event('change', { bubbles: true }));
+      document.getElementById('calc-d1').value = '10';
+      document.getElementById('calc-d2').value = '2.4';
+      document.getElementById('calc-d1').dispatchEvent(new Event('input', { bubbles: true }));
+      var csv = __calcEngine.estimateCsv(__calcEngine.computeFor(__calcEngine.readState()));
+      var body = document.getElementById('calc-rollup-body');
+      var txt = body ? body.textContent : '';
+      return { csvHasDisc: csv.indexOf('Discount % / amount') > -1 && csv.indexOf('10 / 0') > -1,
+               discLine: txt.indexOf('Discount') > -1, pctShown: txt.indexOf('10% off') > -1, neg: txt.indexOf('-') > -1 };
+    })()`);
+    check('DC5 CSV carries the discount row; waterfall shows the discount line with pct',
+      dc5 && dc5.csvHasDisc && dc5.discLine && dc5.pctShown && dc5.neg, dc5);
+    await ev(`(function(){
+      document.getElementById('calc-disc-pct').value = '';
+      document.getElementById('calc-disc-amt').value = '';
+      document.getElementById('calc-disc-pct').dispatchEvent(new Event('input', { bubbles: true }));
+      localStorage.setItem('mmgr_calc_rollup', JSON.stringify({ designC: '10', constrC: '5', escPct: '5', months: '', discPct: '', discAmt: '' }));
+    })()`);
+
+    // The DC3/DC4 gates reload the page, which wipes the deterministic slab
+    // state - re-establish it here (same field set as the pre-wave reset).
+    await ev(`(function(){
+      document.getElementById('calc-work').value = 'slab';
+      document.getElementById('calc-work').dispatchEvent(new Event('change', { bubbles: true }));
+      document.getElementById('calc-d1').value = '';
+      document.getElementById('calc-d2').value = '';
+      document.getElementById('calc-d3').value = '';
+      document.getElementById('calc-measured-qty').value = '';
+      document.getElementById('calc-measured-manual').checked = false;
+      document.getElementById('calc-measured-qty').hidden = true;
+      document.getElementById('calc-instances').hidden = false;
+      document.getElementById('calc-currency').value = 'USD';
+      document.getElementById('calc-country').value = 'US';
+      document.getElementById('calc-country').dispatchEvent(new Event('change', { bubbles: true }));
+      document.getElementById('calc-quality').value = 'standard';
+      document.getElementById('calc-oh').value = '';
+      ['calc-design-c','calc-constr-c','calc-esc-pct','calc-months','calc-disc-pct','calc-disc-amt'].forEach(function(id2){
+        var el = document.getElementById(id2);
+        if (el) { el.value = ''; el.dispatchEvent(new Event('input', { bubbles: true })); }
+      });
+      localStorage.setItem('mmgr_calc_rollup', JSON.stringify({}));
+      var t3 = document.getElementById('calc-oncost-toggle');
+      if (t3) { t3.checked = false; t3.dispatchEvent(new Event('change', { bubbles: true })); }
+      var p3 = document.getElementById('calc-oncost-pct');
+      if (p3) { p3.value = ''; p3.dataset.touched = ''; }
     })()`);
 
     // ---------- F4 ENHANCEMENTS ----------

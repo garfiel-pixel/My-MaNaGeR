@@ -778,19 +778,37 @@ function importPacks(json) {
 const RKEY2 = 'mmgr_calc_rollup';
 function loadRollupPrefs() { try { return JSON.parse(localStorage.getItem(RKEY2) || '{}'); } catch (e) { return {}; } }
 function persistRollupPrefs(p) { try { localStorage.setItem(RKEY2, JSON.stringify(p)); } catch (e) { /* nicety */ } }
-// PURE: the waterfall math. Escalation is simple %/yr over months/12 on
-// (works + prelims); contingencies are % of works. No DOM.
+// ---- W1 (owner 2026-10-01): DISCOUNT on the roll-up ---------------------
+// A percent-off or fixed-amount-off line between the priced work and the
+// risk money. PURE: fixed wins when both are set; the discount never
+// exceeds works+prelims and never goes below zero; contingencies and
+// escalation land on the DISCOUNTED base (discount before risk money).
+function applyDiscount(works, prelims, discPct, discAmt) {
+  const w = Math.max(0, parseFloat(works) || 0);
+  const p = Math.max(0, parseFloat(prelims) || 0);
+  const pool = w + p;
+  const pct = Math.max(0, parseFloat(discPct) || 0);
+  const amt = Math.max(0, parseFloat(discAmt) || 0);
+  const discount = Math.min(pool, amt > 0 ? amt : pool * pct / 100);
+  return { works: w, prelims: p, discount: discount, base: pool - discount };
+}
+// PURE: the waterfall math. Contingencies are % of the discounted base
+// (works + prelims - discount); escalation is simple %/yr over months/12
+// on the same base. No DOM.
 function rollup(o) {
   const works = Math.max(0, parseFloat(o.works) || 0);
   const prelims = Math.max(0, parseFloat(o.prelims) || 0);
-  const designC = works * (Math.max(0, parseFloat(o.designC) || 0)) / 100;
-  const constrC = works * (Math.max(0, parseFloat(o.constrC) || 0)) / 100;
+  const d = applyDiscount(works, prelims, o.discPct, o.discAmt);
+  const base = d.base;
+  const designC = base * (Math.max(0, parseFloat(o.designC) || 0)) / 100;
+  const constrC = base * (Math.max(0, parseFloat(o.constrC) || 0)) / 100;
   const escPct = Math.max(0, parseFloat(o.escPct) || 0);
   const months = Math.max(0, parseFloat(o.months) || 0);
-  const esc = (works + prelims) * (escPct / 100) * (months / 12);
-  const subtotal = works + prelims + designC + constrC + esc;
-  return { works: works, prelims: prelims, designC: designC, constrC: constrC,
-    escPct: escPct, months: months, esc: esc, subtotal: subtotal };
+  const esc = base * (escPct / 100) * (months / 12);
+  const subtotal = base + designC + constrC + esc;
+  return { works: works, prelims: prelims, discount: d.discount, base: base,
+    designC: designC, constrC: constrC, escPct: escPct, months: months,
+    esc: esc, subtotal: subtotal };
 }
 function rollupPrefs() {
   const p = loadRollupPrefs();
@@ -798,7 +816,9 @@ function rollupPrefs() {
     designC: ($('calc-design-c') || {}).value != null && $('calc-design-c') ? $('calc-design-c').value : (p.designC != null ? p.designC : '10'),
     constrC: $('calc-constr-c') ? $('calc-constr-c').value : (p.constrC != null ? p.constrC : '5'),
     escPct: $('calc-esc-pct') ? $('calc-esc-pct').value : (p.escPct != null ? p.escPct : '5'),
-    months: $('calc-months') ? $('calc-months').value : (p.months != null ? p.months : '')
+    months: $('calc-months') ? $('calc-months').value : (p.months != null ? p.months : ''),
+    discPct: $('calc-disc-pct') ? $('calc-disc-pct').value : (p.discPct != null ? p.discPct : ''),
+    discAmt: $('calc-disc-amt') ? $('calc-disc-amt').value : (p.discAmt != null ? p.discAmt : '')
   };
 }
 function renderRollup() {
@@ -808,7 +828,8 @@ function renderRollup() {
   if (!(works > 0)) { body.innerHTML = ''; return; }
   const pref = rollupPrefs();
   const r = rollup({ works: works, prelims: prelimsTotal(prelimItems, works).total,
-    designC: pref.designC, constrC: pref.constrC, escPct: pref.escPct, months: pref.months });
+    designC: pref.designC, constrC: pref.constrC, escPct: pref.escPct, months: pref.months,
+    discPct: pref.discPct, discAmt: pref.discAmt });
   const cur = CURRENCY[lastResult && lastResult.currency] || '$';
   const line = function(label, val) {
     return '<div class="calc-line"><span>' + label + '</span><strong>' + cur + Math.round(val).toLocaleString() + '</strong></div>';
@@ -816,6 +837,9 @@ function renderRollup() {
   body.innerHTML =
     line('Works (the priced bill)', r.works) +
     line('Site &amp; other costs', r.prelims) +
+    (r.discount > 0 ? line('Discount' +
+      ((parseFloat(pref.discPct) || 0) > 0 && !(parseFloat(pref.discAmt) > 0) ? ' (' + pref.discPct + '% off)' : '') +
+      ((parseFloat(pref.discAmt) > 0) ? ' (amount off)' : ''), -r.discount) : '') +
     line('Design contingency (' + (parseFloat(pref.designC) || 0) + '%)', r.designC) +
     line('Construction contingency (' + (parseFloat(pref.constrC) || 0) + '%)', r.constrC) +
     (r.esc > 0 ? line('Escalation (' + r.escPct + '%/yr over ' + r.months + ' months)', r.esc) : '') +
@@ -861,7 +885,8 @@ function renderCash() {
   const works = prelimWorks();
   const pref = rollupPrefs();
   const r = rollup({ works: works, prelims: prelimsTotal(prelimItems, works).total,
-    designC: pref.designC, constrC: pref.constrC, escPct: pref.escPct, months: months });
+    designC: pref.designC, constrC: pref.constrC, escPct: pref.escPct, months: months,
+    discPct: pref.discPct, discAmt: pref.discAmt });
   const c = cashCurve(r.subtotal, months, mode, '3.2');
   const cur = CURRENCY[lastResult && lastResult.currency] || '$';
   let rows = '';
@@ -1042,6 +1067,9 @@ function estimateCsv(r) {
     ['Tax', Math.round(r.tax)],
     ['Estimated total', Math.round(r.total)],
     [],
+    ['Discount % / amount', (rollupPrefs().discPct || '0') + ' / ' + (rollupPrefs().discAmt || '0')],
+    ['Roll-up (bill + site costs, less discount)', Math.round(rollup({ works: prelimWorks(), prelims: prelimsTotal(prelimItems, prelimWorks()).total, designC: '0', constrC: '0', escPct: '0', months: '0', discPct: rollupPrefs().discPct, discAmt: rollupPrefs().discAmt }).subtotal)],
+    [],
     ['Planning-grade estimate - not a quote.']
   ];
   return '\uFEFF' + rows.map(function(row) { return row.map(q).join(','); }).join('\r\n');
@@ -1063,7 +1091,7 @@ function docTitleBase() {
 // Test hook (harness-only convenience; harmless in production).
 window.__calcDocTitleBase = docTitleBase;
 // W1 engine hook (harness-only convenience; harmless in production).
-window.__calcEngine = { computeFor: computeFor, boqTotals: boqTotals, readState: readState, syncLabels: syncLabels, instancesQty: instancesQty, estimateCsv: estimateCsv, prelimsTotal: prelimsTotal, rollup: rollup, cashCurve: cashCurve, formworkM2: formworkM2, importPacks: importPacks };
+window.__calcEngine = { computeFor: computeFor, boqTotals: boqTotals, readState: readState, syncLabels: syncLabels, instancesQty: instancesQty, estimateCsv: estimateCsv, prelimsTotal: prelimsTotal, rollup: rollup, cashCurve: cashCurve, formworkM2: formworkM2, importPacks: importPacks, applyDiscount: applyDiscount };
 
 document.addEventListener('change', function(e) {
   if (e.target && e.target.id === 'calc-doc-type') render();
@@ -2020,12 +2048,13 @@ if ($('calc-work')) {
   $('calc-prelims-body').addEventListener('input', prelimEdit);
   $('calc-prelims-body').addEventListener('change', prelimEdit);
   // W5: contingency/escalation/duration settings save per device.
-  ['calc-design-c', 'calc-constr-c', 'calc-esc-pct', 'calc-months'].forEach(function(id) {
+  ['calc-design-c', 'calc-constr-c', 'calc-esc-pct', 'calc-months', 'calc-disc-pct', 'calc-disc-amt'].forEach(function(id) {
     const el = $(id);
     if (!el) return;
     el.addEventListener('input', function() {
       persistRollupPrefs({ designC: $('calc-design-c').value, constrC: $('calc-constr-c').value,
-        escPct: $('calc-esc-pct').value, months: $('calc-months').value });
+        escPct: $('calc-esc-pct').value, months: $('calc-months').value,
+        discPct: $('calc-disc-pct').value, discAmt: $('calc-disc-amt').value });
       renderRollup();
       renderCash();
     });
@@ -2062,6 +2091,8 @@ renderPacks();
   if ($('calc-constr-c')) $('calc-constr-c').value = p.constrC != null ? p.constrC : '5';
   if ($('calc-esc-pct')) $('calc-esc-pct').value = p.escPct != null ? p.escPct : '5';
   if ($('calc-months')) $('calc-months').value = p.months != null ? p.months : '';
+  if ($('calc-disc-pct')) $('calc-disc-pct').value = p.discPct != null ? p.discPct : '';
+  if ($('calc-disc-amt')) $('calc-disc-amt').value = p.discAmt != null ? p.discAmt : '';
 })();
 // How-to guide: paint the first step (open state decides visibility).
 renderGuide();

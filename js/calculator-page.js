@@ -588,6 +588,81 @@ function activeSheetName() {
   return matEl.dataset.sheet || null;
 }
 
+// ---- W4 (owner 2026-09-30): PRELIMINARIES - site & other costs ----------
+// Indirect, project-wide costs priced on top of the works: one-time items
+// (establishment, permits, insurance, demob) and running items (supervision,
+// welfare, temporary utilities) as weekly x weeks. Sources: prelims typically
+// 5-15% of contract value, residential 5-8% (Plexa/Procore/RIB, 2026) - the
+// preset sums to 7% as guidance; every value is user-editable. Device-local.
+const PKEY = 'mmgr_calc_prelims';
+let prelimItems = [];
+function loadPrelims() { try { return JSON.parse(localStorage.getItem(PKEY) || '[]'); } catch (e) { return []; } }
+function persistPrelims(list) { try { localStorage.setItem(PKEY, JSON.stringify(list.slice(0, 30))); } catch (e) { /* nicety, never a gate */ } }
+// PURE: item amounts by basis. fixed = the amount; pct = % of works; week =
+// weekly rate x weeks. Negative inputs clamp to 0; bad numbers are 0.
+function prelimsTotal(items, works) {
+  const perItem = [];
+  let total = 0;
+  (items || []).forEach(function(it) {
+    const v = parseFloat(it.value);
+    let amt = 0;
+    if (it.basis === 'fixed' && isFinite(v)) amt = v;
+    else if (it.basis === 'pct' && isFinite(v)) amt = (works > 0 ? works * v / 100 : 0);
+    else if (it.basis === 'week' && isFinite(v)) {
+      const wks = parseFloat(it.weeks);
+      amt = v * (isFinite(wks) && wks > 0 ? wks : 0);
+    }
+    if (!(amt > 0)) amt = 0;
+    total += amt;
+    perItem.push({ name: it.name, amount: Math.round(amt * 100) / 100 });
+  });
+  return { perItem: perItem, total: Math.round(total * 100) / 100 };
+}
+// Typical residential set (guidance, 5-8% research band): all pct-of-works
+// so the set scales with the job; customize freely.
+const PRELIM_PRESET_RES = [
+  { name: 'Site establishment & facilities', basis: 'pct', value: '2', weeks: '' },
+  { name: 'Permits & approvals', basis: 'pct', value: '1', weeks: '' },
+  { name: 'Insurance & bonds', basis: 'pct', value: '1', weeks: '' },
+  { name: 'Site supervision', basis: 'pct', value: '1.5', weeks: '' },
+  { name: 'Temporary utilities & welfare', basis: 'pct', value: '1', weeks: '' },
+  { name: 'Demobilization & clean', basis: 'pct', value: '0.5', weeks: '' }
+];
+function prelimWorks(worksOverride) {
+  if (typeof worksOverride === 'number') return worksOverride;
+  const lines = loadBoq();
+  if (lines.length) return boqTotals(lines).sub;
+  const r = computeFor(readState());
+  return r && !r.error ? r.sub : 0;
+}
+function renderPrelims(worksOverride) {
+  const wrap = $('calc-prelims-body'), totalEl = $('calc-prelims-total');
+  if (!wrap) return;
+  const works = prelimWorks(worksOverride);
+  const t = prelimsTotal(prelimItems, works);
+  const cur = works > 0 ? (CURRENCY[lastResult && lastResult.currency] || '$') : '$';
+  if (totalEl) totalEl.textContent = prelimItems.length
+    ? 'On top of the works (' + cur + Math.round(works).toLocaleString() + '): ' + cur + Math.round(t.total).toLocaleString()
+    : '';
+  wrap.innerHTML = prelimItems.length
+    ? prelimItems.map(function(it, i) {
+        const amt = t.perItem[i] ? t.perItem[i].amount : 0;
+        return '<div class="bcp-prelim-row">' +
+          '<input type="text" data-idx="' + i + '" data-field="name" value="' + esc(it.name) + '" aria-label="Item name">' +
+          '<select data-idx="' + i + '" data-field="basis" aria-label="How this item is charged">' +
+            '<option value="fixed"' + (it.basis === 'fixed' ? ' selected' : '') + '>Fixed amount</option>' +
+            '<option value="pct"' + (it.basis === 'pct' ? ' selected' : '') + '>% of works</option>' +
+            '<option value="week"' + (it.basis === 'week' ? ' selected' : '') + '>Weekly</option>' +
+          '</select>' +
+          '<input type="number" data-idx="' + i + '" data-field="value" min="0" step="any" inputmode="decimal" placeholder="' + (it.basis === 'pct' ? '%' : 'amount') + '" value="' + esc(it.value) + '" aria-label="Value">' +
+          '<input type="number" data-idx="' + i + '" data-field="weeks" min="0" step="1" inputmode="numeric" placeholder="weeks" value="' + esc(it.weeks || '') + '"' + (it.basis === 'week' ? '' : ' hidden') + ' aria-label="Weeks">' +
+          '<span class="bcp-prelim-amt">' + (CURRENCY[lastResult && lastResult.currency] || '$') + Math.round(amt).toLocaleString() + '</span>' +
+          '<button type="button" class="btn btn-n btn-s" data-action="calcPrelimRemove" data-idx="' + i + '" aria-label="Remove this item">X</button>' +
+        '</div>';
+      }).join('')
+    : '<div class="calc-empty">No site & other costs yet. Add the items that keep the site running.</div>';
+}
+
 // ---- W1 (owner 2026-09-30): BILL OF QUANTITIES roll-up ------------------
 // A named bill collects lines; each line is a full readState() snapshot
 // priced by the SAME pure engine as the live form (one math path, zero
@@ -779,7 +854,7 @@ function docTitleBase() {
 // Test hook (harness-only convenience; harmless in production).
 window.__calcDocTitleBase = docTitleBase;
 // W1 engine hook (harness-only convenience; harmless in production).
-window.__calcEngine = { computeFor: computeFor, boqTotals: boqTotals, readState: readState, syncLabels: syncLabels, instancesQty: instancesQty, estimateCsv: estimateCsv };
+window.__calcEngine = { computeFor: computeFor, boqTotals: boqTotals, readState: readState, syncLabels: syncLabels, instancesQty: instancesQty, estimateCsv: estimateCsv, prelimsTotal: prelimsTotal };
 
 document.addEventListener('change', function(e) {
   if (e.target && e.target.id === 'calc-doc-type') render();
@@ -825,6 +900,8 @@ function render() {
   const out = $('calc-output');
   if (!out) return;
   const r = compute();
+  // W4: the preliminaries amounts ride every recompute (works basis moves).
+  renderPrelims(r && !r.error ? r.sub : 0);
   if (!r || r.error) {
     lastResult = null;
     if ($('calc-out-actions')) $('calc-out-actions').classList.add('is-hide');
@@ -1265,6 +1342,30 @@ const ACTIONS = {
     renderInstances();
     render();
   },
+  // ---- W4 preliminaries ----
+  calcPrelimPreset: function() {
+    prelimItems = PRELIM_PRESET_RES.map(function(x) { return { name: x.name, basis: x.basis, value: x.value, weeks: x.weeks }; });
+    persistPrelims(prelimItems);
+    renderPrelims();
+  },
+  calcPrelimAdd: function() {
+    if (prelimItems.length >= 30) return;
+    prelimItems.push({ name: '', basis: 'fixed', value: '', weeks: '' });
+    persistPrelims(prelimItems);
+    renderPrelims();
+  },
+  calcPrelimRemove: function(el) {
+    const idx = parseInt(el.getAttribute('data-idx'), 10);
+    if (isNaN(idx)) return;
+    prelimItems.splice(idx, 1);
+    persistPrelims(prelimItems);
+    renderPrelims();
+  },
+  calcPrelimClear: function() {
+    prelimItems = [];
+    persistPrelims(prelimItems);
+    renderPrelims();
+  },
   calcInstToggle: function() {
     const wrap = $('calc-instances');
     const manual = $('calc-measured-manual');
@@ -1590,7 +1691,20 @@ if ($('calc-work')) {
   }
   $('calc-oncost-toggle').addEventListener('change', onCostSuggest);
   $('calc-oncost-pct').addEventListener('input', function() { this.dataset.touched = '1'; render(); });
+  // W4: preliminaries rows edit live (inputs + basis selects).
+  function prelimEdit(e) {
+    const el = e.target;
+    const idx = parseInt(el.getAttribute('data-idx'), 10);
+    const field = el.getAttribute('data-field');
+    if (isNaN(idx) || !field || !prelimItems[idx]) return;
+    prelimItems[idx][field] = el.value;
+    persistPrelims(prelimItems);
+    renderPrelims();
+  }
+  $('calc-prelims-body').addEventListener('input', prelimEdit);
+  $('calc-prelims-body').addEventListener('change', prelimEdit);
   $('calc-country').addEventListener('change', function() {
+    // W3: the Contractors Levy note is Jamaica-specific.
     const note = $('calc-jm-levy-note');
     if (note) note.hidden = $('calc-country').value !== 'JM';
     if ($('calc-oncost-toggle').checked) onCostSuggest(); else render();
@@ -1606,6 +1720,9 @@ renderEstimates();
 renderSheets();
 // W1 bill of quantities: paint the stored bill on load.
 renderBoq();
+// W4 site & other costs: restore the stored items on load.
+prelimItems = loadPrelims();
+renderPrelims();
 // How-to guide: paint the first step (open state decides visibility).
 renderGuide();
 // First-visit tutorial nudge: only when the flag is absent.

@@ -58,10 +58,15 @@ function findChrome() {
   // 3. Try each candidate
   for (const c of candidates) {
     if (PLATFORM === 'linux' || PLATFORM === 'darwin') {
-      // On Unix, check if the command exists in PATH
+      // On Unix, check if the command exists in PATH. Return the ABSOLUTE
+      // path `which` printed, not the bare command name: spawn() resolves
+      // bare names through PATH, but Playwright's executablePath demands a
+      // real file path and throws instantly on 'google-chrome' (CI incident
+      // 2026-10-01: qa-calc-trade-coverage died 0s into the step).
       try {
-        execSync('which ' + JSON.stringify(c), { stdio: 'pipe' });
-        return c;
+        const out = execSync('which ' + JSON.stringify(c), { stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim().split(/\r?\n/)[0];
+        if (out && fs.existsSync(out)) return out;
+        return c; // which agreed the candidate exists - keep prior behavior
       } catch (e) { /* not in PATH */ }
     } else {
       // On Windows, check file existence

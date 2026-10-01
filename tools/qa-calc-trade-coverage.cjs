@@ -66,6 +66,19 @@ function dimSample(label) {
   if (/\(m\)/.test(label)) return '10';
   return '10';
 }
+// Playwright demands an ABSOLUTE executablePath. chrome-launcher may hand
+// back a bare command name on Unix (spawn resolves it through PATH,
+// Playwright does not) - locate it the way the sibling batteries do.
+function absolutizeChrome(p) {
+  if (!p) return undefined;
+  if (path.isAbsolute(p)) return fs.existsSync(p) ? p : undefined;
+  const finder = os.platform() === 'win32' ? 'where' : 'command -v';
+  try {
+    const out = require('child_process').execSync(finder + ' ' + JSON.stringify(p), { stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim().split(/\r?\n/)[0];
+    if (out && fs.existsSync(out)) return out;
+  } catch (e) { /* fall back */ }
+  return undefined;
+}
 (async () => {
   if (!process.env.BASE) {
     let srv = null;
@@ -78,6 +91,7 @@ function dimSample(label) {
   }
   const pw = resolvePlaywright();
   let executablePath; try { executablePath = require(path.join(ROOT, 'tools', 'chrome-launcher.cjs')).chromePath || undefined; } catch (e) {}
+  executablePath = absolutizeChrome(executablePath);
   const browser = await pw.chromium.launch({ headless: true, executablePath, args: ['--disk-cache-size=0'] });
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
   const page = await ctx.newPage();

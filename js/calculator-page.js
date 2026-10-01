@@ -1657,10 +1657,12 @@ const GUIDE_STEPS = [
   'Choose the finish level. Economy trims about 15%, premium adds about 35%. Add a custom tax % if yours differs.',
   'Overhead and margin. Many builders add about 10% on top for overhead and profit - type your own or leave it at zero.',
   'Your rates. Material, labor and equipment rates come prefilled as planning-grade averages. Change them to yours, and save them as a rate sheet to reuse.',
+  'Your business on the sheet. Open Business details to add your logo, contact lines and signature - they print on every document you make here. It stays on this device.',
   'Measure the whole job. Add each wall, pour or run as its own row with a repeat count, or type the total if you know it. Add the priced result to the bill and keep pricing the next item.',
   'Site and other costs. Add the items that keep the site running - permits, supervision, temporary facilities. Typical residential jobs carry about 5 to 8 percent here, and the button loads a set you can edit.',
-  'Contingency and timing. Design and construction contingency cover what drawings do not show yet; escalation covers price movement over the build months. The planning subtotal sits before tax.',
-  'Calculate and export. Hit Calculate, then save it with a name, print or PDF it, or export CSV. Name the document so it prints right.'
+  'Contingency, discount and timing. Design and construction contingency cover what drawings do not show yet; escalation covers price movement over the build months. One-tap companion suggestions appear as you price a trade - accepting one adds a real bill line. A discount (percent or fixed amount) sits between site costs and contingencies. The planning subtotal sits before tax.',
+  'Calculate and export. Hit Calculate, then save it with a name, print or PDF it, or export CSV. Name the document so it prints right.',
+  'The document sheet. Pick Estimate, Quote or Invoice, add the client, the document number and the dates, and the printed sheet becomes a client-ready document - invoices carry signature lines by default.'
 ];
 let guideIdx = 0;
 function guideOpenState() { try { return localStorage.getItem('mmgr_calc_guide_open') !== '0'; } catch (e) { return true; } }
@@ -1694,7 +1696,9 @@ const TOUR_STEPS = [
   { sel: '#calc-quality', text: 'Finish level: economy trims about 15%, premium adds about 35%.' },
   { sel: '#calc-oh', text: 'Overhead and margin: many builders add about 10% - yours is optional.' },
   { sel: '#calc-rate-mat', text: 'Your rates come prefilled as planning-grade averages. Type your own; save them as rate sheets.' },
+  { sel: '#calc-brand-card', text: 'Business details: your logo, contact lines and signature print on every document. Optional - it stays on this device.' },
   { sel: '#calc-boq-card', text: 'Add to bill keeps a running bill of quantities - every line priced on this device, every line editable.' },
+  { sel: '#calc-companions', text: 'Common additions show up right under the estimate - one tap adds a real, editable bill line.' },
   { sel: '#calc-prelims-card', text: 'Site and other costs price the items that keep the site running, on top of the works.' },
   { sel: '.bcp-run', text: 'Hit Calculate and the breakdown lands on the right.' },
   { sel: null, text: "That's it - you're ready to use the calculator." }
@@ -1736,6 +1740,8 @@ function tourEnd() {
   const spot = $('calc-tour-spot');
   if (spot) spot.hidden = true;
   tourBlurSet(null);
+  const popEnd = $('calc-tour-pop');
+  if (popEnd) popEnd.classList.remove('is-final');
   try { document.documentElement.classList.remove('mmgr-tour-active'); } catch (e) {}
 }
 function tourShow() {
@@ -1753,6 +1759,7 @@ function tourShow() {
     dots.innerHTML = h;
   }
   const tEl = st.sel ? document.querySelector(st.sel) : null;
+  if (st.sel) pop.classList.remove('is-final'); // dock rules own anchored steps
   // Blur everything OFF the spotlight path (owner: the rest of the screen
   // is blurred). The whole .bcp-field wrapper - label + input - stays crisp
   // so the talked-about field reads as one unit; the class lands per
@@ -1777,6 +1784,7 @@ function tourShow() {
     // Final card: no field to highlight - the centered card itself becomes
     // the spotlight target (gold ring + dim around it, page unblurred).
     pop.removeAttribute('data-anchor');
+    pop.classList.add('is-final');
     pop.style.left = '50%';
     pop.style.top = '50%';
     pop.style.transform = 'translate(-50%,-50%)';

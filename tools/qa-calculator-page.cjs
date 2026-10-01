@@ -101,6 +101,11 @@
      CF2  S-curve: months sum to the subtotal; middle > ends
      CF3  monthly table renders; mode select re-spreads
 
+   ESTIMATING DEPTH W7 - CONCRETE ACCESSORIES (owner 2026-09-30):
+     FA1  formworkM2 exact: slab + footing derivations
+     FA2  other trades -> null (correct refusal)
+     FA3  formwork line lands on the bill; laps field only on rebar
+
    Usage:  node tools/qa-calculator-page.cjs   (needs serve.cjs on :8765)
    Registry: CI-TEST-COVERAGE.md -> CI row (fast, serve.cjs battery).
    ============================================================ */
@@ -801,6 +806,47 @@ async function withChrome(fn) {
       document.getElementById('calc-months').value = '';
       document.getElementById('calc-months').dispatchEvent(new Event('input', { bubbles: true }));
     })()`);
+
+    // ---------- W7: CONCRETE ACCESSORIES (owner 2026-09-30) ----------
+    const fa1 = await ev(`(function(){
+      var slab = __calcEngine.formworkM2('slab', '10', '10', '100');
+      var foot = __calcEngine.formworkM2('footings', '10', '0.5', '500');
+      return { slab: slab, foot: foot };
+    })()`);
+    check('FA1 slab 2x20x0.1 = 4.0 m2; footing 2x10.5x0.5 = 10.5 m2',
+      fa1 && fa1.slab === 4 && fa1.foot === 10.5, fa1);
+    const fa2 = await ev(`(function(){
+      return { wall: __calcEngine.formworkM2('blockwall', '10', '2.4', ''),
+               rebar: __calcEngine.formworkM2('rebar', '50', '', '') };
+    })()`);
+    check('FA2 non-concrete trades refuse (null)',
+      fa2 && fa2.wall === null && fa2.rebar === null, fa2);
+    const fa3 = await ev(`(function(){
+      try { localStorage.removeItem('mmgr_calc_boq'); } catch (e) {}
+      document.getElementById('calc-work').value = 'slab';
+      document.getElementById('calc-work').dispatchEvent(new Event('change', { bubbles: true }));
+      document.getElementById('calc-d1').value = '10';
+      document.getElementById('calc-d2').value = '10';
+      document.getElementById('calc-d3').value = '100';
+      document.getElementById('calc-d1').dispatchEvent(new Event('input', { bubbles: true }));
+      var boxShown = !document.getElementById('calc-formwork-box').hidden;
+      var boxText = document.getElementById('calc-formwork-text').textContent;
+      document.querySelector('[data-action="calcFormworkAdd"]').click();
+      var lines = JSON.parse(localStorage.getItem('mmgr_calc_boq') || '[]');
+      document.getElementById('calc-work').value = 'rebar';
+      document.getElementById('calc-work').dispatchEvent(new Event('change', { bubbles: true }));
+      var lapsShown = !document.getElementById('calc-rebar-laps-wrap').hidden;
+      var lapsGoneOnSlab = (function(){
+        document.getElementById('calc-work').value = 'blockwall';
+        document.getElementById('calc-work').dispatchEvent(new Event('change', { bubbles: true }));
+        return document.getElementById('calc-rebar-laps-wrap').hidden;
+      })();
+      return { boxShown: boxShown, hasM2: boxText.indexOf('4') > -1, lines: lines.length,
+               named: lines[0] ? lines[0].name : '', lapsShown: lapsShown, lapsGoneOnSlab: lapsGoneOnSlab };
+    })()`);
+    check('FA3 formwork box derives 4 m2, line lands on bill, laps field rides rebar only',
+      fa3 && fa3.boxShown && fa3.hasM2 && fa3.lines === 1 && fa3.named.indexOf('Formwork') === 0 && fa3.lapsShown && fa3.lapsGoneOnSlab, fa3);
+    await ev(`(function(){ try { localStorage.removeItem('mmgr_calc_boq'); } catch (e) {} renderBoq(); })()`);
 
     // Restore the pre-wave state for the U-series gates (the W1 block above
     // deliberately dirtied the form): deterministic metric slab flow.

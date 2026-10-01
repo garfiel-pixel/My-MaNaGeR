@@ -980,8 +980,8 @@ async function withChrome(fn) {
       var vals = Array.prototype.map.call(document.getElementById('calc-work').options, function(o) { return o.value; });
       return { n: vals.length, hasDerived: vals.indexOf('formwork') > -1 || vals.indexOf('cart-away') > -1 || vals.indexOf('lining-out') > -1 };
     })()`);
-    check('FM5 picker still carries exactly the 24 user trades - derived companion items stay invisible',
-      fm5 && fm5.n === 24 && !fm5.hasDerived, fm5);
+    check('FM5 picker still carries exactly the 33 user trades (9 research-backed openings/ceiling/rainwater additions) - derived items stay invisible',
+      fm5 && fm5.n === 33 && !fm5.hasDerived, fm5);
 
     // ---------- W2 2026-10-01: COMPANION SUGGESTIONS (CP family) ----------
     const cp1 = await ev(`(function(){
@@ -1343,6 +1343,260 @@ async function withChrome(fn) {
       localStorage.removeItem('mmgr_calc_wstamps');
       localStorage.removeItem('mmgr_calc_rollup');
     })()`);
+
+    // ---------- W2 2026-10-01: DRYWALL + RESEARCH ROUND 2 (DW family) ----------
+    const dw1 = await ev(`(function(){
+      localStorage.removeItem('mmgr_calc_boq');
+      document.getElementById('calc-work').value = 'drywall';
+      document.getElementById('calc-work').dispatchEvent(new Event('change', { bubbles: true }));
+      var d1l = document.getElementById('calc-d1-label').textContent;
+      var wasteWrap = document.getElementById('calc-waste');
+      var wasteDef = wasteWrap ? wasteWrap.value : null;
+      document.getElementById('calc-d1').value = '10';
+      document.getElementById('calc-d2').value = '2.4';
+      document.getElementById('calc-d1').dispatchEvent(new Event('input', { bubbles: true }));
+      document.getElementById('calc-currency').value = 'USD';
+      document.getElementById('calc-country').value = 'US';
+      document.getElementById('calc-quality').value = 'standard';
+      // Per-board: 950 per board over a 1.22 x 2.44 m sheet = 319.13/m2.
+      document.getElementById('calc-piece-price').value = '950';
+      document.getElementById('calc-piece-size').value = '1.22 x 2.44';
+      document.getElementById('calc-piece-price').dispatchEvent(new Event('input', { bubbles: true }));
+      var r = __calcEngine.computeFor(__calcEngine.readState());
+      var perM2 = Math.round((r.mat / r.qty) * 100) / 100;
+      var count = r.orderCount ? r.orderCount.n : null;
+      document.getElementById('calc-piece-price').value = '';
+      document.getElementById('calc-piece-size').value = '';
+      document.getElementById('calc-piece-price').dispatchEvent(new Event('input', { bubbles: true }));
+      return { d1Label: d1l, wasteDef: wasteDef, perM2: perM2, boards: count };
+    })()`);
+    check('DW1 drywall per board: 950 over a 1.22x2.44 sheet = 319.13/m2 exact, waste defaults 10, order count in boards',
+      dw1 && dw1.d1Label === 'Length (m)' && dw1.wasteDef === '10' && dw1.perM2 === 319.13 && dw1.boards === 9, dw1);
+    const tx1 = await ev(`(function(){
+      document.getElementById('calc-work').value = 'slab';
+      document.getElementById('calc-work').dispatchEvent(new Event('change', { bubbles: true }));
+      document.getElementById('calc-d1').value = '10';
+      document.getElementById('calc-d2').value = '10';
+      document.getElementById('calc-d3').value = '100';
+      document.getElementById('calc-currency').value = 'USD';
+      document.getElementById('calc-country').value = 'JM';
+      document.getElementById('calc-country').dispatchEvent(new Event('change', { bubbles: true }));
+      document.getElementById('calc-quality').value = 'standard';
+      var withTax = __calcEngine.computeFor(__calcEngine.readState());
+      document.getElementById('calc-tax-override').value = '0';
+      document.getElementById('calc-tax-override').dispatchEvent(new Event('input', { bubbles: true }));
+      var noTax = __calcEngine.computeFor(__calcEngine.readState());
+      var csv = __calcEngine.estimateCsv(noTax);
+      var out = document.getElementById('calc-output').textContent;
+      document.getElementById('calc-tax-override').value = '';
+      document.getElementById('calc-tax-override').dispatchEvent(new Event('input', { bubbles: true }));
+      document.getElementById('calc-country').value = 'US';
+      document.getElementById('calc-country').dispatchEvent(new Event('change', { bubbles: true }));
+      return { jm: withTax.tax, off: noTax.tax, rateOff: noTax.taxRate, flagged: noTax.overrideApplied,
+               csvZero: csv.indexOf('"Tax rate %","0"') > -1, totalEqualsSub: Math.abs(noTax.total - (noTax.sub + noTax.oh)) < 0.01,
+               labelNoTax: out.indexOf('no tax - your rate') > -1 };
+    })()`);
+    check('TX1 tax off entirely: typing 0 in the override kills the 15% JM tax, total drops to the pre-tax subtotal, CSV carries Tax rate % 0, sheet says no tax',
+      tx1 && tx1.jm > 0 && tx1.off === 0 && tx1.rateOff === 0 && tx1.flagged && tx1.csvZero && tx1.totalEqualsSub && tx1.labelNoTax, tx1);
+    const nt1 = await ev(`(function(){
+      localStorage.setItem('mmgr_calc_family', 'finishes');
+      document.getElementById('calc-family').value = 'finishes';
+      document.getElementById('calc-work').value = 'door';
+      document.getElementById('calc-work').dispatchEvent(new Event('change', { bubbles: true }));
+      var d1l = document.getElementById('calc-d1-label').textContent;
+      document.getElementById('calc-d1').value = '3';
+      document.getElementById('calc-d1').dispatchEvent(new Event('input', { bubbles: true }));
+      document.getElementById('calc-currency').value = 'USD';
+      document.getElementById('calc-country').value = 'US';
+      document.getElementById('calc-quality').value = 'standard';
+      var r = __calcEngine.computeFor(__calcEngine.readState());
+      var fam = document.getElementById('calc-family').value;
+      var opts = Array.prototype.map.call(document.querySelectorAll('#calc-work option'), function(o){ return o.value; });
+      var newOnes = ['door','window','ceiling','gutter','floor-screed','cabinet','water-heater','septic-tank','soffit-fascia'].every(function(k){ return opts.indexOf(k) > -1; });
+      return { d1Label: d1l, each: r.qty, mat: r.mat, lab: r.lab, unit: r.unit, fam: fam, newOnes: newOnes };
+    })()`);
+    check('NT1 per-each trade math: 3 doors = 3 each, mat 3x550 lab 3x650 exact, family follows, all 9 new trades in the picker',
+      nt1 && nt1.d1Label === 'Doors (count)' && nt1.each === 3 && Math.abs(nt1.mat - 1650) < 0.01 && Math.abs(nt1.lab - 1950) < 0.01 && nt1.unit === 'each' && nt1.fam === 'finishes' && nt1.newOnes, nt1);
+    const nt2 = await ev(`(function(){
+      document.getElementById('calc-work').value = 'floor-screed';
+      document.getElementById('calc-work').dispatchEvent(new Event('change', { bubbles: true }));
+      document.getElementById('calc-d1').value = '5';
+      document.getElementById('calc-d2').value = '4';
+      document.getElementById('calc-d3').value = '50';
+      document.getElementById('calc-d1').dispatchEvent(new Event('input', { bubbles: true }));
+      var r = __calcEngine.computeFor(__calcEngine.readState());
+      document.getElementById('calc-piece-price').value = '9200';
+      document.getElementById('calc-piece-size').value = '20';
+      document.getElementById('calc-piece-price').dispatchEvent(new Event('input', { bubbles: true }));
+      var rp = __calcEngine.computeFor(__calcEngine.readState());
+      var out = document.getElementById('calc-piece-price').value = '';
+      document.getElementById('calc-piece-price').value = '';
+      document.getElementById('calc-piece-size').value = '';
+      document.getElementById('calc-piece-price').dispatchEvent(new Event('input', { bubbles: true }));
+      return { m3: r.qty, unit: r.unit, bagPerM3: Math.round((rp.mat / rp.qty) * 100) / 100 };
+    })()`);
+    check('NT2 floor screed: 5x4x50mm = 1 m3 base, 5% screed waste -> 1.05; bag-of-mix piece reuses the volume divisor (9200/20L = 460,000/m3)',
+      nt2 && Math.abs(nt2.m3 - 1.05) < 0.001 && nt2.unit === 'm3' && nt2.bagPerM3 === 460000, nt2);
+
+    // ---------- W2.7 2026-10-01: OPENINGS DEDUCTION (OP family) ----------
+    // Owner: "user should be able to add a window or a door and that will be
+    // taken out of the final measurements as they wouldn't lay block in the
+    // window space... ensure this is spread across relative trades."
+    const op1 = await ev(`(function(){
+      document.getElementById('calc-work').value = 'blockwall';
+      document.getElementById('calc-work').dispatchEvent(new Event('change', { bubbles: true }));
+      document.getElementById('calc-d1').value = '10';
+      document.getElementById('calc-d2').value = '2.4';
+      document.getElementById('calc-d1').dispatchEvent(new Event('input', { bubbles: true }));
+      var none = __calcEngine.computeFor(__calcEngine.readState());
+      document.querySelector('[data-action="calcOpenAdd"]').click();
+      var rows = document.querySelectorAll('#calc-openings-rows .bcp-open-row');
+      var wEl = rows[0].querySelector('[data-field="w"]');
+      var hEl = rows[0].querySelector('[data-field="h"]');
+      wEl.value = '1.2';
+      hEl.value = '1.2';
+      wEl.dispatchEvent(new Event('input', { bubbles: true }));
+      hEl.dispatchEvent(new Event('input', { bubbles: true }));
+      var r = __calcEngine.computeFor(__calcEngine.readState());
+      return { base: none.qty, qty: r.qty, area: r.openings.area, count: r.openings.count, has: r.hasOpenings, rowShown: !document.getElementById('calc-openings').hidden };
+    })()`);
+    check('OP1 openings deduction: blockwall 10x2.4 = 24 m2 with one 1.2x1.2 window -> 22.56 m2 exact, openings reported, editor visible',
+      op1 && Math.abs(op1.base - 24) < 1e-9 && Math.abs(op1.qty - 22.56) < 1e-9 && op1.area === 1.44 && op1.count === 1 && op1.has && op1.rowShown, op1);
+    const op2 = await ev(`(function(){
+      document.getElementById('calc-work').value = 'drywall';
+      document.getElementById('calc-work').dispatchEvent(new Event('change', { bubbles: true }));
+      document.getElementById('calc-d1').value = '10';
+      document.getElementById('calc-d2').value = '2.4';
+      document.getElementById('calc-d1').dispatchEvent(new Event('input', { bubbles: true }));
+      document.getElementById('calc-waste').value = '10';
+      document.getElementById('calc-waste').dispatchEvent(new Event('input', { bubbles: true }));
+      var r = __calcEngine.computeFor(__calcEngine.readState());
+      return { qty: r.qty, wastePct: r.wastePct };
+    })()`);
+    check('OP2 deduction before waste: drywall same wall, cuts 10 -> 22.56 x 1.1 = 24.816 (waste applies to what is laid, not the void)',
+      op2 && Math.abs(op2.qty - 24.816) < 0.001 && op2.wastePct === 10, op2);
+    const op3 = await ev(`(function(){
+      var works = ['blockwall','brickwall','framing','render','paint','drywall'];
+      return works.map(function(k){
+        document.getElementById('calc-work').value = k;
+        document.getElementById('calc-work').dispatchEvent(new Event('change', { bubbles: true }));
+        document.getElementById('calc-d1').value = '10';
+        document.getElementById('calc-d2').value = '2.4';
+        document.getElementById('calc-d1').dispatchEvent(new Event('input', { bubbles: true }));
+        var st = __calcEngine.readState();
+        var withO = __calcEngine.computeFor(st);
+        var withoutO = __calcEngine.computeFor(Object.assign({}, st, { openings: '[]' }));
+        return { k: k, has: withO.hasOpenings, area: withO.openings.area, wastePct: withO.wastePct, cut: withoutO.qty - withO.qty };
+      });
+    })()`);
+    check('OP3 spread across wall trades: blockwall/brickwall/framing/render/paint/drywall ALL deduct the same 1.44 m2 void (waste-normalized)',
+      Array.isArray(op3) && op3.length === 6 && op3.every(function(x){ return x.has && x.area === 1.44 && Math.abs(x.cut / (1 + x.wastePct / 100) - 1.44) < 1e-9; }), op3);
+    const op4 = await ev(`(function(){
+      document.querySelector('[data-action="calcUnits"][data-units="imperial"]').click();
+      document.getElementById('calc-work').value = 'blockwall';
+      document.getElementById('calc-work').dispatchEvent(new Event('change', { bubbles: true }));
+      document.getElementById('calc-d1').value = '100';
+      document.getElementById('calc-d2').value = '10';
+      document.getElementById('calc-d1').dispatchEvent(new Event('input', { bubbles: true }));
+      var rows = document.querySelectorAll('#calc-openings-rows .bcp-open-row');
+      var wEl = rows[0].querySelector('[data-field="w"]');
+      var hEl = rows[0].querySelector('[data-field="h"]');
+      wEl.value = '10';
+      hEl.value = '8';
+      wEl.dispatchEvent(new Event('input', { bubbles: true }));
+      hEl.dispatchEvent(new Event('input', { bubbles: true }));
+      var withO = __calcEngine.computeFor(__calcEngine.readState());
+      var withoutO = __calcEngine.computeFor(Object.assign({}, __calcEngine.readState(), { openings: '[]' }));
+      var diff = withoutO.qty - withO.qty;
+      document.querySelector('[data-action="calcUnits"][data-units="metric"]').click();
+      return { diff: diff, withQty: withO.qty };
+    })()`);
+    check('OP4 imperial conversion: a 10 ft x 8 ft opening on a 100 ft x 10 ft wall deducts 7.43 m2 (3.048 x 2.4384)',
+      op4 && Math.abs(op4.diff - 7.43) < 0.005, op4);
+    const op5 = await ev(`(function(){
+      document.getElementById('calc-work').value = 'blockwall';
+      document.getElementById('calc-work').dispatchEvent(new Event('change', { bubbles: true }));
+      document.getElementById('calc-d1').value = '10';
+      document.getElementById('calc-d2').value = '2.4';
+      document.getElementById('calc-d1').dispatchEvent(new Event('input', { bubbles: true }));
+      var rows = document.querySelectorAll('#calc-openings-rows .bcp-open-row');
+      var wEl = rows[0].querySelector('[data-field="w"]');
+      var hEl = rows[0].querySelector('[data-field="h"]');
+      wEl.value = '1.2';
+      hEl.value = '1.2';
+      wEl.dispatchEvent(new Event('input', { bubbles: true }));
+      hEl.dispatchEvent(new Event('input', { bubbles: true }));
+      var withCsv = __calcEngine.estimateCsv(__calcEngine.computeFor(__calcEngine.readState()));
+      var noneCsv = __calcEngine.estimateCsv(__calcEngine.computeFor(Object.assign({}, __calcEngine.readState(), { openings: '[]' })));
+      return { withLine: withCsv.indexOf('"Openings deducted","1 (1.44 m2)"') > -1, noneLine: noneCsv.indexOf('"Openings deducted","none"') > -1 };
+    })()`);
+    check('OP5 CSV artifacts: carries "Openings deducted","1 (1.44 m2)" with rows and "none" without',
+      op5 && op5.withLine && op5.noneLine, op5);
+    const op6 = await ev(`(function(){
+      document.getElementById('calc-work').value = 'blockwall';
+      document.getElementById('calc-work').dispatchEvent(new Event('change', { bubbles: true }));
+      document.getElementById('calc-d1').value = '10';
+      document.getElementById('calc-d2').value = '2.4';
+      document.getElementById('calc-d1').dispatchEvent(new Event('input', { bubbles: true }));
+      var rows = document.querySelectorAll('#calc-openings-rows .bcp-open-row');
+      var wEl = rows[0].querySelector('[data-field="w"]');
+      var hEl = rows[0].querySelector('[data-field="h"]');
+      wEl.value = '10';
+      hEl.value = '10';
+      wEl.dispatchEvent(new Event('input', { bubbles: true }));
+      hEl.dispatchEvent(new Event('input', { bubbles: true }));
+      var r = __calcEngine.computeFor(__calcEngine.readState());
+      return { qty: r.qty, fin: isFinite(r.qty), area: r.openings.area };
+    })()`);
+    check('OP6 floored at zero: 100 m2 of voids on a 24 m2 wall -> quantity exactly 0, finite, never negative',
+      op6 && op6.qty === 0 && op6.fin && op6.area === 100, op6);
+    const op7 = await ev(`(function(){
+      var guard = 0;
+      while (guard++ < 10) {
+        var del = document.querySelector('[data-action="calcOpenDel"]');
+        if (!del) break;
+        del.click();
+      }
+      document.getElementById('calc-work').value = 'slab';
+      document.getElementById('calc-work').dispatchEvent(new Event('change', { bubbles: true }));
+      var hiddenOnSlab = document.getElementById('calc-openings').hidden;
+      document.getElementById('calc-work').value = 'blockwall';
+      document.getElementById('calc-work').dispatchEvent(new Event('change', { bubbles: true }));
+      var shownOnWall = !document.getElementById('calc-openings').hidden;
+      document.querySelector('[data-action="calcOpenAdd"]').click();
+      var rows = document.querySelectorAll('#calc-openings-rows .bcp-open-row');
+      var typeSel = rows.length ? rows[0].querySelector('.bcp-open-type') : null;
+      var wEl = rows[0].querySelector('[data-field="w"]');
+      var hEl = rows[0].querySelector('[data-field="h"]');
+      wEl.value = '1.2';
+      hEl.value = '1.2';
+      wEl.dispatchEvent(new Event('input', { bubbles: true }));
+      hEl.dispatchEvent(new Event('input', { bubbles: true }));
+      var sum = document.getElementById('calc-open-sum').textContent;
+      document.getElementById('calc-d1').value = '10';
+      document.getElementById('calc-d2').value = '2.4';
+      document.getElementById('calc-d1').dispatchEvent(new Event('input', { bubbles: true }));
+      document.querySelector('.bcp-run').click();
+      var out = document.getElementById('calc-output').textContent;
+      var del = document.querySelector('[data-action="calcOpenDel"]');
+      if (del) del.click();
+      var out2 = { hiddenOnSlab: hiddenOnSlab, shownOnWall: shownOnWall, oneRow: rows.length === 1,
+               typeIsWindow: typeSel ? typeSel.value === 'window' : false,
+               sumHasDeduct: sum.indexOf('Deducts') > -1 && sum.indexOf('1.44') > -1,
+               noteHasMinus: out.indexOf('Minus 1 opening') > -1 && out.indexOf('1.44') > -1 && out.indexOf('not built') > -1,
+               rowsAfter: document.querySelectorAll('#calc-openings-rows .bcp-open-row').length,
+               sumAfter: document.getElementById('calc-open-sum').textContent };
+      // Restore the state the pre-OP gates left (floor-screed + dims) so the
+      // U-block after this reads the same page it always did.
+      document.getElementById('calc-work').value = 'floor-screed';
+      document.getElementById('calc-work').dispatchEvent(new Event('change', { bubbles: true }));
+      document.getElementById('calc-d1').value = '5';
+      document.getElementById('calc-d2').value = '4';
+      document.getElementById('calc-d3').value = '50';
+      return out2;
+    })()`);
+    check('OP7 editor lifecycle: hidden on slab / shown on blockwall, add-row defaults to Window, sum line deducts 1.44 m2, breakdown shows the Minus note, delete empties',
+      op7 && op7.hiddenOnSlab && op7.shownOnWall && op7.oneRow && op7.typeIsWindow && op7.sumHasDeduct && op7.noteHasMinus && op7.rowsAfter === 0 && op7.sumAfter === '', op7);
 
     // ---------- F4 ENHANCEMENTS ----------
     // U1: imperial toggle - labels convert, state persists, aria follows.

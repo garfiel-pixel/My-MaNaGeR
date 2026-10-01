@@ -383,6 +383,25 @@ jobs:
         id: qa-theme
         run: node tools/verify-theme-cdp.cjs
 
+      # Playwright-based calculator batteries (owner 2026-10-01: every trade
+      # covered the same way). playwright is a devDependency; installed here
+      # because the batteries use the system Chrome via chrome-launcher, so
+      # no browser download is needed.
+      - name: "T4: Install test deps (playwright devDep)"
+        run: npm install --ignore-scripts --no-audit --no-fund
+
+      - name: "T4: Calculator page battery (qa-calculator-page)"
+        id: qa-calc-page
+        run: node tools/qa-calculator-page.cjs
+
+      - name: "T4: Calculator Playwright UX audit (qa-calc-playwright-audit)"
+        id: qa-calc-audit
+        run: node tools/qa-calc-playwright-audit.cjs
+
+      - name: "T4: Calculator per-trade coverage audit (qa-calc-trade-coverage)"
+        id: qa-calc-trades
+        run: node tools/qa-calc-trade-coverage.cjs
+
       - name: "T4: Stop static QA server"
         if: always()
         run: pkill -f "node serve.cjs" || true

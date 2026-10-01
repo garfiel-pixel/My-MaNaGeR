@@ -48,13 +48,13 @@ const WORK = {
   footings:   { group: 'Groundworks', d1: 'Total run (m)', d2: 'Width (mm)', d3: 'Depth (mm)', waste: { def: 5, lbl: 'Concrete waste' }, piece: { priceLabel: 'Price per bag of mix', sizeLabel: 'Bag yield (litres)', single: true, div: 'volume', qtyUnit: 'm3', ph: 'e.g. 9200 per bag', phSize: 'e.g. 20' },
     q: (a, b, c) => ({ qty: a * (b / 1000) * (c / 1000), unit: 'm3', qtyLabel: 'Concrete' }),
     rate: { mat: 155, lab: 90 }, matDesc: 'C20/25, rebar cage allowance' },
-  blockwall:  { group: 'Structure', d1: 'Length (m)', d2: 'Height (m)', d3: null, piece: { priceLabel: 'Price per block', sizeLabel: 'Block size - length x height (cm)', unit: 'cm', div: 'area', ph: 'e.g. 800 per block', phSize: 'e.g. 40 x 20' },
+  blockwall:  { group: 'Structure', d1: 'Length (m)', d2: 'Height (m)', d3: null, openings: true, piece: { priceLabel: 'Price per block', sizeLabel: 'Block size - length x height (cm)', unit: 'cm', div: 'area', ph: 'e.g. 800 per block', phSize: 'e.g. 40 x 20' },
     q: (a, b) => ({ qty: a * b, unit: 'm2', qtyLabel: 'Wall area' }),
     rate: { mat: 22, lab: 28 }, matDesc: 'Blocks (12.5/m2), mortar, ties' },
-  brickwall:  { group: 'Structure', d1: 'Length (m)', d2: 'Height (m)', d3: null, piece: { priceLabel: 'Price per brick', sizeLabel: 'Brick size - length x height (cm)', unit: 'cm', div: 'area', ph: 'e.g. 140 per brick', phSize: 'e.g. 20 x 10' },
+  brickwall:  { group: 'Structure', d1: 'Length (m)', d2: 'Height (m)', d3: null, openings: true, piece: { priceLabel: 'Price per brick', sizeLabel: 'Brick size - length x height (cm)', unit: 'cm', div: 'area', ph: 'e.g. 140 per brick', phSize: 'e.g. 20 x 10' },
     q: (a, b) => ({ qty: a * b, unit: 'm2', qtyLabel: 'Wall area' }),
     rate: { mat: 34, lab: 42 }, matDesc: 'Bricks (60/m2), mortar, wall ties' },
-  framing:    { group: 'Structure', d1: 'Length (m)', d2: 'Height (m)', d3: null,
+  framing:    { group: 'Structure', d1: 'Length (m)', d2: 'Height (m)', d3: null, openings: true,
     q: (a, b) => ({ qty: a * b, unit: 'm2', qtyLabel: 'Framed area' }),
     rate: { mat: 19, lab: 24 }, matDesc: 'Studs, plates, sheathing' },
   rebar:      { group: 'Structure', d1: 'Concrete volume (m3)', d2: null, d3: null,
@@ -63,13 +63,13 @@ const WORK = {
   roof:       { group: 'Envelope', d1: 'Length (m)', d2: 'Slope width (m)', d3: null, waste: { def: 10, lbl: 'Laps / pitch allowance' }, piece: { priceLabel: 'Price per sheet', sizeLabel: 'Sheet size - width x length (m)', unit: 'm', div: 'area', ph: 'e.g. 6120 per sheet', phSize: 'e.g. 0.85 x 3.6', plural: 'sheets' },
     q: (a, b) => ({ qty: a * b, unit: 'm2', qtyLabel: 'Sheet area' }),
     rate: { mat: 26, lab: 18 }, matDesc: 'Sheets, fixings, flashings' },
-  render:     { group: 'Envelope', d1: 'Length (m)', d2: 'Height (m)', d3: null,
+  render:     { group: 'Envelope', d1: 'Length (m)', d2: 'Height (m)', d3: null, openings: true,
     q: (a, b) => ({ qty: a * b, unit: 'm2', qtyLabel: 'Rendered area' }),
     rate: { mat: 11, lab: 19 }, matDesc: 'Two-coat render, bead, primer' },
-  paint:      { group: 'Envelope', d1: 'Length (m)', d2: 'Height (m)', d3: null, piece: { priceLabel: 'Price per container', sizeLabel: 'Container yield (litres)', single: true, div: 'volume', qtyUnit: 'L', ph: 'e.g. 9000 per gallon-can', phSize: 'e.g. 3.785' },
+  paint:      { group: 'Envelope', d1: 'Length (m)', d2: 'Height (m)', d3: null, openings: true, piece: { priceLabel: 'Price per container', sizeLabel: 'Container yield (litres)', single: true, div: 'volume', qtyUnit: 'L', ph: 'e.g. 9000 per gallon-can', phSize: 'e.g. 3.785' },
     q: (a, b) => ({ qty: a * b * 2 / 10, unit: 'L', qtyLabel: 'Paint (2 coats at 10 m2/L)' }),
     rate: { mat: 14, lab: 11 }, matDesc: 'Emulsion, primer, rollers' },
-  drywall:    { group: 'Envelope', d1: 'Length (m)', d2: 'Height (m)', d3: null,
+  drywall:    { group: 'Envelope', d1: 'Length (m)', d2: 'Height (m)', d3: null, openings: true, waste: { def: 10, lbl: 'Cuts / waste' }, piece: { priceLabel: 'Price per board', sizeLabel: 'Board size - width x length (m)', unit: 'm', div: 'area', ph: 'e.g. 950 per board', phSize: 'e.g. 1.22 x 2.44', plural: 'boards' },
     q: (a, b) => ({ qty: a * b, unit: 'm2', qtyLabel: 'Partition area' }),
     rate: { mat: 12, lab: 17 }, matDesc: 'Boards, studs, tape, screws' },
   tile:       { group: 'Finishes', d1: 'Length (m)', d2: 'Width (m)', d3: null, waste: { def: 10, lbl: 'Cuts / waste' }, piece: { priceLabel: 'Price per tile', sizeLabel: 'Tile size - width x length (cm)', unit: 'cm', div: 'area', ph: 'e.g. 950 per tile', phSize: 'e.g. 30 x 60', plural: 'tiles' },
@@ -116,6 +116,40 @@ const WORK = {
     waste: { def: 10, lbl: 'Laps / cuts allowance' },
     q: (a, b) => ({ qty: a * b / 9.2903, unit: 'square', qtyLabel: 'Roofing squares (100 sq ft each)' }),
     rate: { mat: 250, lab: 300 }, matDesc: 'Asphalt shingles, underlayment, starter' },
+  // ---- Research-backed additions round 2 (owner 2026-10-01: "do research
+  // and add the more we need") - the openings, ceiling, rainwater and
+  // packaged-install work a residential job always carries. Rates are
+  // planning-grade 2026 web benchmarks (Doornmore/ASP door installs, Pella
+  // window installs, Angi drop-ceiling + septic, Homewyse gutters/fascia,
+  // Fuse Service water heaters, Highland cabinetry) - editable as always.
+  door:        { group: 'Finishes', d1: 'Doors (count)', d2: null, d3: null,
+    q: (a) => ({ qty: a, unit: 'each', qtyLabel: 'Doors' }),
+    rate: { mat: 550, lab: 650 }, matDesc: 'Prehung door, frame, hardware, trim (2026: $500-2,000 installed, avg $1,200)' },
+  window:      { group: 'Envelope', d1: 'Windows (count)', d2: null, d3: null,
+    q: (a) => ({ qty: a, unit: 'each', qtyLabel: 'Windows' }),
+    rate: { mat: 600, lab: 500 }, matDesc: 'Vinyl/fiberglass unit, flashing, sealant (2026: $800-1,600 installed each)' },
+  ceiling:     { group: 'Finishes', d1: 'Length (m)', d2: 'Width (m)', d3: null,
+    waste: { def: 10, lbl: 'Tile cuts / grid waste' },
+    q: (a, b) => ({ qty: a * b, unit: 'm2', qtyLabel: 'Ceiling area' }),
+    rate: { mat: 55, lab: 50 }, matDesc: 'Grid, tiles, hangers, perimeter angle (2026: $9-13/sq ft installed)' },
+  gutter:      { group: 'Envelope', d1: 'Total run (m)', d2: null, d3: null,
+    q: (a) => ({ qty: a, unit: 'm', qtyLabel: 'Gutter run (linear)' }),
+    rate: { mat: 18, lab: 14 }, matDesc: 'Aluminum gutter, downpipes, brackets, seals (2026: $6.50-14.80/ft installed)' },
+  'soffit-fascia': { group: 'Envelope', d1: 'Total run (m)', d2: null, d3: null,
+    q: (a) => ({ qty: a, unit: 'm', qtyLabel: 'Soffit & fascia run (linear)' }),
+    rate: { mat: 22, lab: 16 }, matDesc: 'Fascia board, soffit panels, vents, fixings (2026: $8.75-17/ft)' },
+  'floor-screed': { group: 'Finishes', d1: 'Length (m)', d2: 'Width (m)', d3: 'Thickness (mm)', waste: { def: 5, lbl: 'Screed waste' }, piece: { priceLabel: 'Price per bag of mix', sizeLabel: 'Bag yield (litres)', single: true, div: 'volume', qtyUnit: 'm3', ph: 'e.g. 9200 per bag', phSize: 'e.g. 20' },
+    q: (a, b, c) => ({ qty: a * b * (c / 1000), unit: 'm3', qtyLabel: 'Screed volume' }),
+    rate: { mat: 120, lab: 70 }, matDesc: 'Sand-cement screed, leveling, cure' },
+  cabinet:     { group: 'Finishes', d1: 'Cabinet run (m)', d2: null, d3: null,
+    q: (a) => ({ qty: a, unit: 'm', qtyLabel: 'Cabinet run (linear)' }),
+    rate: { mat: 800, lab: 450 }, matDesc: 'Box units, doors, drawer gear, worktop allowance (2026: $100-650/linear ft installed)' },
+  'water-heater': { group: 'Plumbing', d1: 'Water heaters (count)', d2: null, d3: null,
+    q: (a) => ({ qty: a, unit: 'each', qtyLabel: 'Water heaters' }),
+    rate: { mat: 900, lab: 650 }, matDesc: 'Tank unit, valves, flex lines, pan (2026: $1,200-5,000 installed)' },
+  'septic-tank': { group: 'Groundworks', d1: 'Septic systems (count)', d2: null, d3: null,
+    q: (a) => ({ qty: a, unit: 'each', qtyLabel: 'Septic systems' }),
+    rate: { mat: 3800, lab: 2700 }, matDesc: 'Tank, bed, distribution lines, excavation allowance (2026: $3,593-12,463 installed)' },
   // ---- W2 2026-10-01: DERIVED companion trades (punch-list reality) ------
   // Bill-only work items that never appear in the picker; a companion chip
   // fills the form state via measuredQty, so these price through the SAME
@@ -338,6 +372,7 @@ function readState() {
     measuredAuto: instSum > 0 ? String(instSum) : '',
     measuredUnit: instUnit,
     instances: JSON.stringify(instRows || []),
+    openings: JSON.stringify(openRows || []),
     units: _units
   };
 }
@@ -352,6 +387,9 @@ function applyState(st) {
   // W2: restore instance rows BEFORE syncLabels (it re-renders the editor
   // and recomputes the measured sum from the rows).
   try { instRows = Array.isArray(JSON.parse(st.instances || '[]')) ? JSON.parse(st.instances) : []; } catch (e) { instRows = []; }
+  // W2.7: openings rows ride the same snapshot so recall/bill lines
+  // reproduce the DEDUCTED measurement exactly.
+  try { openRows = Array.isArray(JSON.parse(st.openings || '[]')) ? JSON.parse(st.openings) : []; } catch (e) { openRows = []; }
   if ($('calc-measured-qty')) $('calc-measured-qty').value = st.measuredQty || '';
   syncLabels();
   $('calc-d1').value = st.d1 || '';
@@ -444,7 +482,12 @@ function computeFor(st) {
     const wr = parseFloat(st.wastePct);
     wastePct = isFinite(wr) && wr >= 0 && wr <= 50 ? wr : w.waste.def;
   }
-  const qty = qr.qty * (1 + wastePct / 100);
+  // W2.7 openings: the window/door space leaves the measurement before
+  // waste (you don't lay block in it, and waste applies to what you lay).
+  // Only wall-area trades carry the editor; floored at zero.
+  const openings = w.openings ? openingsArea(st, imp) : { count: 0, area: 0 };
+  const netQty = Math.max(0, qr.qty - openings.area);
+  const qty = netQty * (1 + wastePct / 100);
   // W2: with a measured quantity the per-dim rate inputs do not apply;
   // fencing's height-dependent rate falls back to its 1.8 m default here -
   // an explicit rate override always wins anyway.
@@ -540,6 +583,7 @@ function computeFor(st) {
   // live name; the comparison table uses each saved estimate's stored name.
   return { key, qty: qty, baseQty: qr.qty, unit: qr.unit, qtyLabel: qr.qtyLabel, matDesc: w.matDesc,
     orderCount: orderCount,
+    openings: openings, hasOpenings: !!w.openings,
     wastePct: wastePct, hasWaste: !!w.waste, wasteLbl: w.waste ? w.waste.lbl : null,
     mr, lr, eqRate, eq, onCost, onCostPct, ohPct, oh, effMat, modelMr, piece, mat, lab, sub, taxRate, tax, total: sub + oh + tax, overrideApplied: override !== null,
     matOverridden: matOverride, labOverridden: labOverride, currency: st.currency || 'USD' };
@@ -626,12 +670,43 @@ function importSheets(json) {
 // field ("type the total instead") bypasses rows when the sum is known.
 const INSTANCE_KINDS = {
   blockwall: 'wall', brickwall: 'wall', framing: 'wall', render: 'wall', paint: 'wall', drywall: 'wall',
-  tile: 'area', siteprep: 'area', roof: 'area', 'shingle-roof': 'area',
-  slab: 'pour', footings: 'pour', 'concrete-drive': 'pour', excav: 'pour',
-  fencing: 'run', skirt: 'run', 'pipe-supply': 'run', 'pipe-drain': 'run', conduit: 'run'
+  tile: 'area', siteprep: 'area', roof: 'area', 'shingle-roof': 'area', ceiling: 'area',
+  slab: 'pour', footings: 'pour', 'concrete-drive': 'pour', excav: 'pour', 'floor-screed': 'pour',
+  fencing: 'run', skirt: 'run', 'pipe-supply': 'run', 'pipe-drain': 'run', conduit: 'run',
+  gutter: 'run', 'soffit-fascia': 'run', cabinet: 'run'
 };
 const INSTANCE_LABEL = { wall: 'Wall', area: 'Area', pour: 'Pour', run: 'Run' };
 let instRows = [], instSum = 0, instUnit = '', instLastKey = null;
+
+// ---- W2.7 (owner 2026-10-01): OPENINGS DEDUCTION --------------------------
+// "You wouldn't lay block in the window space." Wall-area trades carry an
+// openings editor - windows, doors, other voids - and each row's area leaves
+// the wall measurement BEFORE waste (waste applies to what you actually
+// lay). The mechanism is spread across every trade that measures the same
+// wall: block, brick, framing, render, paint, drywall. Floored at zero -
+// an oversized deduction can never go negative.
+const OPENING_TYPES = { window: 'Window', door: 'Door', other: 'Other opening' };
+let openRows = [];
+// PURE: total deducted area (m2) + opening count from a state's openings
+// rows. Imperial entry converts ft -> m for both edges (width/height read
+// like the d1/d2 dims, not the in-based depth). Bad rows are skipped.
+function openingsArea(st, imperial) {
+  let rows = [];
+  try { rows = JSON.parse(st.openings || '[]'); } catch (e) { rows = []; }
+  if (!Array.isArray(rows)) return { count: 0, area: 0 };
+  let count = 0, area = 0;
+  rows.forEach(function(rw) {
+    if (!rw) return;
+    const n = parseFloat(rw.n);
+    const wRaw = parseFloat(rw.w), hRaw = parseFloat(rw.h);
+    if (!(n > 0) || !(wRaw > 0) || !(hRaw > 0)) return;
+    const w = imperial ? wRaw * FT : wRaw;
+    const h = imperial ? hRaw * FT : hRaw;
+    count += n;
+    area += n * w * h;
+  });
+  return { count: Math.round(count * 100) / 100, area: Math.round(area * 100) / 100 };
+}
 // PURE: sum instance rows through WORK[key].q with the SAME imperial
 // conversions computeFor applies (ft to m, in to mm). Bad rows are skipped,
 // never thrown. n = identical-repeat count (digital timesing).
@@ -687,6 +762,33 @@ function renderInstances() {
   instSum = s.qty; instUnit = s.unit;
   const sumEl = $('calc-inst-sum');
   if (sumEl) sumEl.textContent = instSum > 0 ? 'Measured total: ' + qtyShown(instSum, instUnit).main : '';
+}
+
+// W2.7: the openings editor - visibility follows the trade (wall-area
+// trades only), rows carry type + width x height + count, and the sum line
+// names the deducted area in the current unit system.
+function renderOpenings() {
+  const wrap = $('calc-openings'), rowsEl = $('calc-openings-rows');
+  if (!wrap || !rowsEl) return;
+  const key = ($('calc-work') || {}).value || '';
+  const w = WORK[key];
+  if (!w || !w.openings) { wrap.hidden = true; return; }
+  wrap.hidden = false;
+  rowsEl.innerHTML = openRows.map(function(rw, i) {
+    const opts = Object.keys(OPENING_TYPES).map(function(k) {
+      return '<option value="' + k + '"' + (rw.type === k ? ' selected' : '') + '>' + OPENING_TYPES[k] + '</option>';
+    }).join('');
+    return '<div class="bcp-inst-row bcp-open-row">' +
+      '<select class="bcp-open-type" data-idx="' + i + '" data-field="type" aria-label="Opening type">' + opts + '</select>' +
+      '<input type="number" class="bcp-inst-dim" data-idx="' + i + '" data-field="w" min="0" step="any" inputmode="decimal" placeholder="Width (m)" value="' + esc(String(rw.w || '')) + '" aria-label="Opening width">' +
+      '<input type="number" class="bcp-inst-dim" data-idx="' + i + '" data-field="h" min="0" step="any" inputmode="decimal" placeholder="Height (m)" value="' + esc(String(rw.h || '')) + '" aria-label="Opening height">' +
+      '<input type="number" class="bcp-inst-count" data-idx="' + i + '" data-field="n" min="1" step="1" inputmode="numeric" value="' + esc(String(rw.n || 1)) + '" aria-label="How many identical">' +
+      '<button type="button" class="btn btn-n btn-s" data-action="calcOpenDel" data-idx="' + i + '" aria-label="Remove this opening">X</button>' +
+    '</div>';
+  }).join('');
+  const a = openingsArea({ openings: JSON.stringify(openRows) }, _units === 'imperial');
+  const sumEl = $('calc-open-sum');
+  if (sumEl) sumEl.textContent = a.count > 0 ? 'Deducts ' + qtyShown(a.area, 'm2').main + ' across ' + a.count + ' opening' + (a.count === 1 ? '' : 's') : '';
 }
 
 function activeSheetName() {
@@ -1154,6 +1256,7 @@ function estimateCsv(r) {
     ['Work item', r.name],
     ['Quantity', qtyShown(r.qty, r.unit).main + qtyShown(r.qty, r.unit).alt],
     ['Waste allowance', r.hasWaste ? r.wastePct + '%' : 'none'],
+    ['Openings deducted', r.hasOpenings && r.openings && r.openings.count ? r.openings.count + ' (' + r.openings.area + ' m2)' : 'none'],
     ['Order quantity', r.orderCount ? r.orderCount.n.toLocaleString() + ' ' + r.orderCount.lbl + ' at ' + r.orderCount.sizeTxt : ''],
     ['Rate basis', r.matDesc],
     ['Finish level', ($('calc-quality') || {}).value || 'standard'],
@@ -1608,6 +1711,9 @@ function render() {
       (r.orderCount
         ? '<div class="calc-sum-sub">Order about <strong>' + r.orderCount.n.toLocaleString() + '</strong> ' + esc(r.orderCount.lbl + ' at ' + r.orderCount.sizeTxt) + '</div>'
         : '') +
+      (r.hasOpenings && r.openings && r.openings.count
+        ? '<div class="calc-sum-sub">Minus ' + r.openings.count + ' ' + (r.openings.count === 1 ? 'opening' : 'openings') + ' (' + r.openings.area + ' m2) not built - window and door spaces</div>'
+        : '') +
     '</div>' +
     (r.hasWaste ? row(r.wasteLbl + ' allowance', r.wastePct + '%') : '') +
     row(matLabel, fmtMoney(r.mat)) +
@@ -1616,7 +1722,7 @@ function render() {
     (r.eq > 0 ? row('Equipment / plant hire', fmtMoney(r.eq)) : '') +
     (r.ohPct > 0 ? row('Overhead & margin ' + r.ohPct + '%', fmtMoney(r.oh)) : '') +
     row('Subtotal', fmtMoney(r.sub), 'calc-line-sub') +
-    row('Tax (' + r.taxRate + '%' + (r.overrideApplied ? ', your rate' : '') + ')', fmtMoney(r.tax)) +
+    row(r.taxRate === 0 && r.overrideApplied ? 'Tax (no tax - your rate)' : 'Tax (' + r.taxRate + '%' + (r.overrideApplied ? ', your rate' : '') + ')', fmtMoney(r.tax)) +
     row('Estimated total', fmtMoney(r.total), 'calc-line-total') +
     '<div class="calc-fine">Planning-grade estimate for ' + r.currency + '. Not a quote - every line becomes editable in the app once the project starts.</div>';
   return r;
@@ -2030,6 +2136,19 @@ const ACTIONS = {
     renderInstances();
     render();
   },
+  // ---- W2.7 openings editor ----
+  calcOpenAdd: function() {
+    openRows.push({ type: 'window', w: '', h: '', n: 1 });
+    renderOpenings();
+    render();
+  },
+  calcOpenDel: function(el) {
+    const idx = parseInt(el.getAttribute('data-idx'), 10);
+    if (isNaN(idx)) return;
+    openRows.splice(idx, 1);
+    renderOpenings();
+    render();
+  },
   // ---- W4 preliminaries ----
   calcPrelimPreset: function() {
     prelimItems = PRELIM_PRESET_RES.map(function(x) { return { name: x.name, basis: x.basis, value: x.value, weeks: x.weeks }; });
@@ -2433,11 +2552,13 @@ const FAMILIES = {
   electrical: { label: 'Electrical - points, conduit, panels', hint: 'Power and light: wiring points, conduit runs and panels.' }
 };
 const WORK_FAMILY = {
-  siteprep: 'groundworks', excav: 'groundworks', slab: 'groundworks', footings: 'groundworks',
+  siteprep: 'groundworks', excav: 'groundworks', slab: 'groundworks', footings: 'groundworks', 'septic-tank': 'groundworks',
   blockwall: 'structure', brickwall: 'structure', framing: 'structure', rebar: 'structure',
   roof: 'envelope', 'shingle-roof': 'envelope', render: 'envelope', paint: 'envelope', drywall: 'envelope',
+  window: 'envelope', gutter: 'envelope', 'soffit-fascia': 'envelope',
   tile: 'finishes', 'concrete-drive': 'finishes', fencing: 'finishes', skirt: 'finishes',
-  'pipe-supply': 'plumbing', 'pipe-drain': 'plumbing', fixture: 'plumbing', 'bath-rough': 'plumbing',
+  door: 'finishes', ceiling: 'finishes', 'floor-screed': 'finishes', cabinet: 'finishes',
+  'pipe-supply': 'plumbing', 'pipe-drain': 'plumbing', fixture: 'plumbing', 'bath-rough': 'plumbing', 'water-heater': 'plumbing',
   'wire-point': 'electrical', conduit: 'electrical', panel: 'electrical'
 };
 const FKEY = 'mmgr_calc_family';
@@ -2506,6 +2627,8 @@ function syncLabels() {
   if (jmNote) jmNote.hidden = c !== 'JM';
   // W2: instance editor follows the work item (rows re-seed per trade).
   renderInstances();
+  // W2.7: the openings editor appears only on wall-area trades.
+  renderOpenings();
   // W7: the rebar laps field rides the rebar trade only (same home as the
   // d2/d3 wrap hiding - syncLabels owns per-trade field visibility).
   const rlWrap = $('calc-rebar-laps-wrap'), rlEl = $('calc-rebar-laps');
@@ -2594,9 +2717,35 @@ if ($('calc-work')) {
     if (isNaN(idx) || !field) return;
     if (field === 'n') instRows[idx].n = Math.max(1, parseInt(el.value, 10) || 1);
     else instRows[idx][field] = el.value;
-    renderInstances();
+    // Keystrokes must NOT rebuild the row the user is typing in (the innerHTML
+    // replace drops focus mid-entry); refresh the measured total only. Full
+    // re-render stays on add / delete / trade change.
+    const s = instancesQty(instRows, ($('calc-work') || {}).value || '');
+    instSum = s.qty; instUnit = s.unit;
+    const sumEl = $('calc-inst-sum');
+    if (sumEl) sumEl.textContent = instSum > 0 ? 'Measured total: ' + qtyShown(instSum, instUnit).main : '';
     render();
   });
+  // W2.7: openings rows edit live; the type select fires 'change', the
+  // number fields fire 'input' - both land in the same handler.
+  const openHandler = function(e) {
+    const el = e.target;
+    const idx = parseInt(el.getAttribute('data-idx'), 10);
+    const field = el.getAttribute('data-field');
+    if (isNaN(idx) || !field || !openRows[idx]) return;
+    if (field === 'n') openRows[idx].n = Math.max(1, parseInt(el.value, 10) || 1);
+    else openRows[idx][field] = el.value;
+    // Same no-rebuild rule as the instances rows: a full renderOpenings() on
+    // every keystroke replaces the focused input and eats the rest of the
+    // entry. Refresh the deducts-sum only; full re-render stays on add /
+    // delete / trade change.
+    const a = openingsArea({ openings: JSON.stringify(openRows) }, _units === 'imperial');
+    const sumEl = $('calc-open-sum');
+    if (sumEl) sumEl.textContent = a.count > 0 ? 'Deducts ' + qtyShown(a.area, 'm2').main + ' across ' + a.count + ' opening' + (a.count === 1 ? '' : 's') : '';
+    render();
+  };
+  const openWrap = $('calc-openings');
+  if (openWrap) { openWrap.addEventListener('input', openHandler); openWrap.addEventListener('change', openHandler); }
   $('calc-measured-qty').addEventListener('input', render);
   // W3: employer statutory on-costs. Enabling the toggle (or switching to
   // Jamaica while it is on) suggests the 12.5% stack; a typed value always

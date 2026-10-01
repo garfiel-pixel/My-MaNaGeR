@@ -2551,6 +2551,10 @@ html.mmgr-tour-active .bcp-tour-nudge{filter:none;}
 @media (prefers-reduced-motion:reduce){
   .bcp-tour-overlay,.bcp-tour-pop,.bcp-tour-nudge{transition:none;}
 }
+/* W1 bill of quantities (owner 2026-09-30): the bill total reads as a
+   compact status line above the line rows; rows reuse the estimate-row
+   language (.bcp-est-row) so no new card chrome is introduced. */
+.bcp-boq-total{margin:0 0 8px;font-size:.8rem;color:var(--slate);}
 /* Shared result + history render names (page only; see block header). */
 .calc-empty{color:var(--slate);font-size:.86rem;line-height:1.5;padding:10px 0;}
 .calc-sum{border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:10px;background:var(--tile-bg);min-width:0;}

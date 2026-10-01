@@ -64,6 +64,13 @@
      V4   invalid yield falls back to the m2-model rate (no crash)
      V5   yield survives imperial (unit-free) + imperial dims recompute
 
+   ESTIMATING DEPTH W1 - BOQ ROLL-UP (owner 2026-09-30):
+     BQ1  engine hook prices two lines into a rolled-up subtotal
+     BQ2  add-line action stores current form state (mmgr_calc_boq)
+     BQ3  bill renders per-line rows + totals row
+     BQ4  recall re-fills the form from a stored line (exact recall)
+     BQ5  remove + clear work and persist
+
    Usage:  node tools/qa-calculator-page.cjs   (needs serve.cjs on :8765)
    Registry: CI-TEST-COVERAGE.md -> CI row (fast, serve.cjs battery).
    ============================================================ */
@@ -442,6 +449,96 @@ async function withChrome(fn) {
     await ev(`(function(){
       try { localStorage.setItem('mmgr_calc_tour_done', '1'); } catch (e) {}
       document.getElementById('calc-tour-nudge').hidden = true;
+    })()`);
+
+    // ---------- W1: BOQ ROLL-UP (estimating depth, owner 2026-09-30) ----------
+    await ev(`(function(){
+      try { localStorage.removeItem('mmgr_calc_boq'); } catch (e) {}
+      // Deterministic single-trade state for the engine checks.
+      document.getElementById('calc-work').value = 'slab';
+      document.getElementById('calc-work').dispatchEvent(new Event('change', { bubbles: true }));
+      document.getElementById('calc-d1').value = '10';
+      document.getElementById('calc-d2').value = '10';
+      document.getElementById('calc-d3').value = '100';
+      document.getElementById('calc-currency').value = 'USD';
+      document.getElementById('calc-country').value = 'US';
+      document.getElementById('calc-quality').value = 'standard';
+    })()`);
+    const bq1 = await ev(`(function(){
+      var st = __calcEngine.readState();
+      var a = __calcEngine.computeFor(st);
+      var b = __calcEngine.computeFor(Object.assign({}, st, { work: 'blockwall', d1: '10', d2: '2.4', d3: '' }));
+      var s = __calcEngine.boqTotals([{ st: st, name: 'Slab line' }, { st: Object.assign({}, st, { work: 'blockwall', d1: '10', d2: '2.4', d3: '' }), name: 'Block line' }]);
+      return { n: s.perLine.length, sub: s.sub, mat: s.mat, lab: s.lab,
+               first: s.perLine[0].name, unit: s.perLine[0].unit };
+    })()`);
+    check('BQ1 engine hook: two lines priced + rolled up',
+      bq1 && bq1.n === 2 && bq1.sub > 0 && Math.abs(bq1.mat + bq1.lab - bq1.sub) < 0.01 &&
+      typeof bq1.first === 'string' && !!bq1.unit, bq1);
+    const bq2 = await ev(`(function(){
+      document.querySelector('[data-action="calcBoqAdd"]').click();
+      var list = JSON.parse(localStorage.getItem('mmgr_calc_boq') || '[]');
+      var cur = list.length;
+      document.getElementById('calc-work').value = 'blockwall';
+      document.getElementById('calc-work').dispatchEvent(new Event('change', { bubbles: true }));
+      document.getElementById('calc-d1').value = '10';
+      document.getElementById('calc-d2').value = '2.4';
+      document.getElementById('calc-d3').value = '';
+      document.querySelector('[data-action="calcBoqAdd"]').click();
+      list = JSON.parse(localStorage.getItem('mmgr_calc_boq') || '[]');
+      return { before: cur, after: list.length, work2: list[1].st.work,
+               total: list[1].st.d1 };
+    })()`);
+    check('BQ2 add-line stores form state into the current bill (2 lines)',
+      bq2 && bq2.before === 1 && bq2.after === 2 && bq2.work2 === 'blockwall' && bq2.total === '10', bq2);
+    const bq3 = await ev(`(function(){
+      var body = document.getElementById('calc-boq-body');
+      var rows = body ? body.querySelectorAll('.bcp-boq-line').length : 0;
+      var total = document.getElementById('calc-boq-total');
+      var txt = total ? total.textContent : '';
+      return { rows: rows, totalShown: txt.length > 0 && txt !== '$0', empty: body ? body.querySelector('.calc-empty') !== null : true };
+    })()`);
+    check('BQ3 bill card renders 2 line rows + non-zero totals row',
+      bq3 && bq3.rows === 2 && !bq3.empty && bq3.totalShown, bq3);
+    const bq4 = await ev(`(function(){
+      document.getElementById('calc-work').value = 'tile';
+      document.getElementById('calc-work').dispatchEvent(new Event('change', { bubbles: true }));
+      document.getElementById('calc-d1').value = '3';
+      document.getElementById('calc-d2').value = '3';
+      document.getElementById('calc-d3').value = '';
+      document.querySelector('[data-action="calcBoqRecall"][data-idx="0"]').click();
+      var st = __calcEngine.readState();
+      var back = __calcEngine.computeFor(st);
+      var list = JSON.parse(localStorage.getItem('mmgr_calc_boq') || '[]');
+      var was = __calcEngine.computeFor(list[0].st);
+      return { work: st.work, d1: st.d1, same: Math.abs(back.total - was.total) < 0.01 };
+    })()`);
+    check('BQ4 recall re-fills the form; recomputed total matches the line',
+      bq4 && bq4.work === 'slab' && bq4.d1 === '10' && bq4.same, bq4);
+    const bq5 = await ev(`(function(){
+      document.querySelector('[data-action="calcBoqRemove"][data-idx="1"]').click();
+      var list = JSON.parse(localStorage.getItem('mmgr_calc_boq') || '[]');
+      var afterRemove = list.length;
+      document.querySelector('[data-action="calcBoqClear"]').click();
+      var body = document.getElementById('calc-boq-body');
+      return { afterRemove: afterRemove,
+               cleared: body ? body.querySelectorAll('.bcp-boq-line').length === 0 : true,
+               empty: body ? body.querySelector('.calc-empty') !== null : false };
+    })()`);
+    check('BQ5 remove line + clear bill persist',
+      bq5 && bq5.afterRemove === 1 && bq5.cleared && bq5.empty, bq5);
+
+    // Restore the pre-wave state for the U-series gates (the W1 block above
+    // deliberately dirtied the form): deterministic metric slab flow.
+    await ev(`(function(){
+      document.getElementById('calc-work').value = 'slab';
+      document.getElementById('calc-work').dispatchEvent(new Event('change', { bubbles: true }));
+      document.getElementById('calc-d1').value = '';
+      document.getElementById('calc-d2').value = '';
+      document.getElementById('calc-d3').value = '';
+      document.getElementById('calc-currency').value = 'USD';
+      document.getElementById('calc-country').value = 'US';
+      document.getElementById('calc-quality').value = 'standard';
     })()`);
 
     // ---------- F4 ENHANCEMENTS ----------

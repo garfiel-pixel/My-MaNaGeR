@@ -481,6 +481,59 @@ function activeSheetName() {
   return matEl.dataset.sheet || null;
 }
 
+// ---- W1 (owner 2026-09-30): BILL OF QUANTITIES roll-up ------------------
+// A named bill collects lines; each line is a full readState() snapshot
+// priced by the SAME pure engine as the live form (one math path, zero
+// drift - the D2 rule). Lines keep exact-recall: recalling re-fills the
+// whole form from the line's stored state. Device-local storage, one bill
+// (the working bill) with up to 60 lines.
+const BKEY2 = 'mmgr_calc_boq';
+function workLabel(key) {
+  const sel = $('calc-work');
+  if (sel) {
+    const opt = Array.prototype.slice.call(sel.options || []).find(function(o) { return o.value === key; });
+    if (opt) return opt.textContent.trim();
+  }
+  return key;
+}
+function loadBoq() { try { return JSON.parse(localStorage.getItem(BKEY2) || '[]'); } catch (e) { return []; } }
+function persistBoq(lines) { try { localStorage.setItem(BKEY2, JSON.stringify(lines.slice(0, 60))); } catch (e) { /* nicety, never a gate */ } }
+// PURE: per-line priced rows + rolled-up totals. No DOM. Shared by render,
+// the cash-flow wave and the CSV export.
+function boqTotals(lines) {
+  const perLine = [];
+  let mat = 0, lab = 0;
+  (lines || []).forEach(function(line) {
+    const r = computeFor(line.st || {});
+    if (!r || r.error) return;
+    mat += r.mat; lab += r.lab;
+    perLine.push({ name: line.name || workLabel(r.key), qty: qtyShown(r.qty, r.unit).main,
+      unit: r.unit, mat: r.mat, lab: r.lab, total: r.total, currency: r.currency });
+  });
+  return { perLine: perLine, mat: mat, lab: lab, sub: mat + lab };
+}
+function renderBoq() {
+  const wrap = $('calc-boq-body'), card = $('calc-boq-card'), total = $('calc-boq-total');
+  if (!wrap) return;
+  const lines = loadBoq();
+  if (card) card.hidden = lines.length === 0 && !$('calc-boq-open');
+  const t = boqTotals(lines);
+  if (total) total.textContent = lines.length ? 'Bill total: ' + (CURRENCY[t.perLine[0].currency] || '$') + Math.round(t.sub).toLocaleString() + ' across ' + lines.length + ' line' + (lines.length === 1 ? '' : 's') : '';
+  wrap.innerHTML = lines.length
+    ? lines.map(function(line, i) {
+        const r = computeFor(line.st || {});
+        const money = r && !r.error ? (CURRENCY[r.currency] || '$') + Math.round(r.total).toLocaleString() : 'check settings';
+        const qty = r && !r.error ? qtyShown(r.qty, r.unit).main : '';
+        return '<div class="bcp-est-row bcp-boq-line">' +
+          '<span class="bcp-est-name">' + esc(line.name || workLabel((line.st || {}).work)) + '</span>' +
+          '<span class="bcp-est-meta">' + esc(qty + ' - ' + money) + '</span>' +
+          '<button type="button" class="btn btn-n btn-s" data-action="calcBoqRecall" data-idx="' + i + '">Edit</button>' +
+          '<button type="button" class="btn btn-n btn-s" data-action="calcBoqRemove" data-idx="' + i + '" aria-label="Remove this line from the bill">X</button>' +
+        '</div>';
+      }).join('')
+    : '<div class="calc-empty">No lines yet. Price something above, then Add to bill.</div>';
+}
+
 function renderSheets() {
   const wrap = $('calc-sheets');
   const sel = $('calc-sheet-select');
@@ -617,6 +670,8 @@ function docTitleBase() {
 }
 // Test hook (harness-only convenience; harmless in production).
 window.__calcDocTitleBase = docTitleBase;
+// W1 engine hook (harness-only convenience; harmless in production).
+window.__calcEngine = { computeFor: computeFor, boqTotals: boqTotals, readState: readState, syncLabels: syncLabels };
 
 document.addEventListener('change', function(e) {
   if (e.target && e.target.id === 'calc-doc-type') render();
@@ -1056,6 +1111,35 @@ const ACTIONS = {
     persistEstimates(loadEstimates().filter(function(x) { return x.id !== id; }));
     renderEstimates();
   },
+  // ---- W1 bill of quantities ----
+  calcBoqAdd: function() {
+    const r = render();
+    if (!r || r.error) return;
+    const lines = loadBoq();
+    if (lines.length >= 60) return;
+    lines.push({ st: readState(), name: r.name });
+    persistBoq(lines);
+    renderBoq();
+    const card = $('calc-boq-card');
+    if (card) card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  },
+  calcBoqRecall: function(el) {
+    const line = loadBoq()[parseInt(el.getAttribute('data-idx'), 10)];
+    if (!line) return;
+    applyState(line.st);
+    render();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  },
+  calcBoqRemove: function(el) {
+    const idx = parseInt(el.getAttribute('data-idx'), 10);
+    if (isNaN(idx)) return;
+    persistBoq(loadBoq().filter(function(x, i) { return i !== idx; }));
+    renderBoq();
+  },
+  calcBoqClear: function() {
+    persistBoq([]);
+    renderBoq();
+  },
   // ---- D2 comparison ----
   calcCompare: renderCompare,
   calcCompareClose: function() {
@@ -1348,6 +1432,8 @@ if ($('calc-work')) {
 renderHistory();
 renderEstimates();
 renderSheets();
+// W1 bill of quantities: paint the stored bill on load.
+renderBoq();
 // How-to guide: paint the first step (open state decides visibility).
 renderGuide();
 // First-visit tutorial nudge: only when the flag is absent.

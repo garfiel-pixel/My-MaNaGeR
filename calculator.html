@@ -319,6 +319,22 @@
       <div class="bcp-field"><label for="calc-months">Build duration (months)</label><input type="number" id="calc-months" min="0" max="120" step="1" inputmode="numeric" placeholder="e.g. 12"></div>
     </div>
     <div id="calc-rollup-body"></div>
+    <!-- W6 (owner 2026-09-30): the monthly cash plan over the build
+         duration - straight-line or S-curve (heavy middle, light ends).
+         Export gives the owner a CSV to take to the bank. -->
+    <div class="bcp-cash-head">
+      <div class="bcp-field">
+        <label for="calc-cash-mode">Cash plan shape</label>
+        <select id="calc-cash-mode" data-action="calcCashMode" aria-label="Cash plan distribution">
+          <option value="scurve" selected>S-curve (spend peaks mid-build)</option>
+          <option value="straight">Straight-line (even months)</option>
+        </select>
+      </div>
+      <button type="button" class="btn btn-n btn-s" data-action="calcCashCsv">
+        <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Export cash plan CSV
+      </button>
+    </div>
+    <div id="calc-cash-body"></div>
   </section>
 
   <section class="card" id="calc-hist-card" aria-labelledby="calc-hist-h">

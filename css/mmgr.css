@@ -2578,6 +2578,14 @@ html.mmgr-tour-active .bcp-tour-nudge{filter:none;}
 /* W5 planning waterfall settings: compact 4-up field row. */
 .bcp-rollup-settings{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:10px 0 8px;}
 @media (max-width:600px){.bcp-rollup-settings{grid-template-columns:1fr 1fr;}}
+/* W2 companion chips (one-tap add-on work suggestions). */
+.bcp-cp-row{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 2px;}
+.bcp-cp-row[hidden]{display:none!important;}
+.bcp-cp-title{flex:1 0 100%;font-size:.82rem;font-weight:600;color:var(--ink-soft,inherit);}
+.bcp-cp-chip{display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border-radius:999px;
+  background:var(--tile-bg);border:1px solid var(--border);color:inherit;font:inherit;font-size:.85rem;
+  cursor:pointer;transition:border-color .15s,background .15s;}
+.bcp-cp-chip:hover{border-color:var(--gold,#c8a24a);background:var(--card);}
 /* W4 site & other costs: grid rows (name, basis, value, weeks, amount, X). */
 .bcp-prelim-row{display:grid;grid-template-columns:minmax(140px,2fr) minmax(110px,1fr) minmax(80px,1fr) 76px 90px auto;gap:6px;align-items:center;margin-bottom:6px;}
 .bcp-prelim-row input,.bcp-prelim-row select{min-width:0;width:100%;}

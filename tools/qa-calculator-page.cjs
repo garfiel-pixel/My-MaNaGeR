@@ -837,8 +837,25 @@ async function withChrome(fn) {
       document.getElementById('calc-d1').dispatchEvent(new Event('input', { bubbles: true }));
       var boxShown = !document.getElementById('calc-formwork-box').hidden;
       var boxText = document.getElementById('calc-formwork-text').textContent;
+      // Deterministic pricing state: the SX gates leave statutory on-costs
+      // and margin set (the derived line correctly inherits them), so clear
+      // both here to pin the plain trade math.
+      var ohEl = document.getElementById('calc-oh');
+      ohEl.value = '';
+      ohEl.dispatchEvent(new Event('input', { bubbles: true }));
+      var ocT = document.getElementById('calc-oncost-toggle');
+      ocT.checked = false;
+      ocT.dispatchEvent(new Event('change', { bubbles: true }));
+      var ocP = document.getElementById('calc-oncost-pct');
+      ocP.value = '';
+      ocP.dataset.touched = '';
+      ocP.dispatchEvent(new Event('input', { bubbles: true }));
+      document.getElementById('calc-country').value = 'US';
+      document.getElementById('calc-country').dispatchEvent(new Event('change', { bubbles: true }));
       document.querySelector('[data-action="calcFormworkAdd"]').click();
       var lines = JSON.parse(localStorage.getItem('mmgr_calc_boq') || '[]');
+      var fst = lines[0] ? lines[0].st : {};
+      var fr = __calcEngine.computeFor(fst);
       document.getElementById('calc-work').value = 'rebar';
       document.getElementById('calc-work').dispatchEvent(new Event('change', { bubbles: true }));
       var lapsShown = !document.getElementById('calc-rebar-laps-wrap').hidden;
@@ -848,10 +865,12 @@ async function withChrome(fn) {
         return document.getElementById('calc-rebar-laps-wrap').hidden;
       })();
       return { boxShown: boxShown, hasM2: boxText.indexOf('4') > -1, lines: lines.length,
-               named: lines[0] ? lines[0].name : '', lapsShown: lapsShown, lapsGoneOnSlab: lapsGoneOnSlab };
+               named: lines[0] ? lines[0].name : '', fwWork: fst.work, fwMq: fst.measuredQty,
+               fwMat: fr ? fr.mat : null, fwLab: fr ? fr.lab : null, fwTotal: fr ? fr.total : null,
+               lapsShown: lapsShown, lapsGoneOnSlab: lapsGoneOnSlab };
     })()`);
-    check('FA3 formwork box derives 4 m2, line lands on bill, laps field rides rebar only',
-      fa3 && fa3.boxShown && fa3.hasM2 && fa3.lines === 1 && fa3.named.indexOf('Formwork') === 0 && fa3.lapsShown && fa3.lapsGoneOnSlab, fa3);
+    check('FA3 (re-baselined 2026-10-01) formwork box derives 4 m2, line PRICES AS FORMWORK via measuredQty (derived 55/m2 -> mat 220; trade labor 33/m -> lab 132; total 352), laps field rides rebar only',
+      fa3 && fa3.boxShown && fa3.hasM2 && fa3.lines === 1 && fa3.named.indexOf('Formwork') === 0 && fa3.fwWork === 'formwork' && fa3.fwMq === '4' && Math.abs(fa3.fwMat - 220) < 0.01 && Math.abs(fa3.fwLab - 132) < 0.01 && Math.abs(fa3.fwTotal - 352) < 0.01 && fa3.lapsShown && fa3.lapsGoneOnSlab, fa3);
     await ev(`(function(){ try { localStorage.removeItem('mmgr_calc_boq'); } catch (e) {} renderBoq(); })()`);
 
     // ---------- W8: LOCATION PACKS (owner 2026-09-30) ----------
@@ -924,6 +943,57 @@ async function withChrome(fn) {
       p3.value = '';
       p3.dataset.touched = '';
     })()`);
+
+    // ---------- W2 2026-10-01: COMPANION SUGGESTIONS (CP family) ----------
+    const cp1 = await ev(`(function(){
+      var hits = 0;
+      ['blockwall', 'fencing', 'siteprep'].forEach(function(k) {
+        if (__calcEngine.companionsFor({ work: k, d1: '10', d2: '2.4', units: 'metric' }).length) hits++;
+      });
+      var none = __calcEngine.companionsFor({ work: 'skirt', d1: '10', units: 'metric' }).length;
+      var lineout = __calcEngine.companionsFor({ work: 'blockwall', d1: '10', d2: '2.4', units: 'metric' }).filter(function(c) { return c.id === 'lineout'; })[0];
+      var slabCart = __calcEngine.companionsFor({ work: 'slab', d1: '10', d2: '10', d3: '100', units: 'metric' }).filter(function(c) { return c.id === 'cart3'; })[0];
+      return { hits: hits, none: none, lineout: lineout, slabCart: slabCart };
+    })()`);
+    check('CP1 companion map: blockwall/fencing/siteprep covered; skirt none; lineout derives run; slab cart3 = pour m3',
+      cp1 && cp1.hits === 3 && cp1.none === 0 && cp1.lineout && Math.abs(cp1.lineout.qty - 24.8) < 0.01 && cp1.slabCart && Math.abs(cp1.slabCart.qty - 10) < 0.01, cp1);
+    const cp2 = await ev(`(function(){
+      var holes = __calcEngine.companionsFor({ work: 'fencing', d1: '25', units: 'metric' }).filter(function(c) { return c.id === 'holes'; })[0];
+      return holes ? holes.qty : null;
+    })()`);
+    check('CP2 fencing 25 m run -> 10 post holes at 2.5 m spacing', cp2 === 10, cp2);
+    const cp3 = await ev(`(function(){
+      document.getElementById('calc-work').value = 'blockwall';
+      document.getElementById('calc-work').dispatchEvent(new Event('change', { bubbles: true }));
+      document.getElementById('calc-d1').value = '10';
+      document.getElementById('calc-d2').value = '2.4';
+      document.getElementById('calc-d1').dispatchEvent(new Event('input', { bubbles: true }));
+      var wrap = document.getElementById('calc-companions');
+      return { shown: !wrap.hidden, chips: wrap.querySelectorAll('.bcp-cp-chip').length };
+    })()`);
+    check('CP3 pricing a blockwall shows 3 companion chips; hidden before/after',
+      cp3 && cp3.shown && cp3.chips === 3, cp3);
+    const cp4 = await ev(`(function(){
+      document.querySelector('#calc-companions [data-cp="lineout"]').click();
+      document.querySelector('#calc-companions [data-cp="brush"]').click();
+      var lines = JSON.parse(localStorage.getItem('mmgr_calc_boq') || '[]');
+      var first = lines[0] || {};
+      var r = __calcEngine.computeFor(first.st || {});
+      var wrap = document.getElementById('calc-companions');
+      return { lines: lines.length, work: first.st && first.st.work, tag: first.st && first.st.derivedFrom,
+        measured: first.st && first.st.measuredQty, priced: r && !r.error && r.qty > 0, left: wrap.hidden ? 0 : wrap.querySelectorAll('.bcp-cp-chip').length };
+    })()`);
+    check('CP4 chip click adds a REAL priced bill line (measuredQty path, tagged, editable); chips thin out',
+      cp4 && cp4.lines === 2 && cp4.work === 'lining-out' && cp4.tag === 'blockwall:lineout' && cp4.measured === '24.8' && cp4.priced && cp4.left === 1, cp4);
+    const cp5 = await ev(`(function(){
+      document.querySelector('#calc-companions [data-cp="cart"]').click();
+      var wrap = document.getElementById('calc-companions');
+      var lines = JSON.parse(localStorage.getItem('mmgr_calc_boq') || '[]');
+      return { hidden: wrap.hidden, lines: lines.length };
+    })()`);
+    check('CP5 accepting every suggestion hides the chips row; all three lines on the bill',
+      cp5 && cp5.hidden && cp5.lines === 3, cp5);
+    await ev(`(function(){ try { localStorage.removeItem('mmgr_calc_boq'); } catch (e) {} renderBoq(); })()`);
 
     // ---------- W1 2026-10-01: DISCOUNT (DC family) ----------
     const dc1 = await ev(`(function(){

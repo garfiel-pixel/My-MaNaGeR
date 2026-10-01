@@ -23,7 +23,7 @@
 <meta name="robots" content="noindex">
 <link rel="icon" type="image/png" href="images/mpw-icon.png">
 <link rel="apple-touch-icon" href="images/mpw-icon.png">
-<link rel="stylesheet" href="dist/mmgr.min.css?v=16">
+<link rel="stylesheet" href="dist/mmgr.min.css?v=17">
 <script src="js/mmgr-theme.js" data-sync="1"></script>
 </head>
 <body class="db-page calculator-page">
@@ -290,6 +290,10 @@
       <div id="calc-output" class="bcp-out">
         <div class="calc-empty">Pick a work item, enter dimensions, then Calculate. The breakdown lands here.</div>
       </div>
+      <!-- W2 (owner 2026-10-01): companion work suggestions - the punch-list
+           reality. One-tap add-on lines derived from the same dimensions;
+           each becomes a normal editable bill line. -->
+      <div id="calc-companions" class="bcp-cp-row" hidden></div>
       <!-- W3: Jamaica-only levy note - a withholding the client makes, not
            a cost to add. Hidden unless the country is Jamaica (JS toggle). -->
       <p class="bcp-jm-note" id="calc-jm-levy-note" hidden>Paying a registered contractor? They may have 2% Contractors Levy withheld from contract payments (remitted to TAJ within 14 days of month-end). It comes out of the price - it is not an extra cost on top.</p>
@@ -444,7 +448,7 @@
      worker, so its raw assets ride the HTTP cache (1y immutable) - any
      change here must bump v, or returning calculator-only visitors keep
      the old script/styles for a year. -->
-<script src="js/mmgr-icon-restore.js?v=16"></script>
-<script src="js/calculator-page.js?v=16"></script>
+<script src="js/mmgr-icon-restore.js?v=17"></script>
+<script src="js/calculator-page.js?v=17"></script>
 </body>
 </html>

@@ -115,8 +115,107 @@ const WORK = {
   'shingle-roof': { group: 'Envelope', d1: 'Length (m)', d2: 'Slope width (m)', d3: null,
     waste: { def: 10, lbl: 'Laps / cuts allowance' },
     q: (a, b) => ({ qty: a * b / 9.2903, unit: 'square', qtyLabel: 'Roofing squares (100 sq ft each)' }),
-    rate: { mat: 250, lab: 300 }, matDesc: 'Asphalt shingles, underlayment, starter' }
+    rate: { mat: 250, lab: 300 }, matDesc: 'Asphalt shingles, underlayment, starter' },
+  // ---- W2 2026-10-01: DERIVED companion trades (punch-list reality) ------
+  // Bill-only work items that never appear in the picker; a companion chip
+  // fills the form state via measuredQty, so these price through the SAME
+  // engine (waste, quality, rates) with zero new math.
+  formwork:    { group: 'Groundworks', d1: '', d2: null, d3: null,
+    q: (a) => ({ qty: a, unit: 'm2', qtyLabel: 'Formwork area' }),
+    rate: { mat: 22, lab: 33 }, matDesc: 'Formwork boards, props, release agent' },
+  'lining-out': { group: 'Groundworks', d1: '', d2: null, d3: null,
+    q: (a) => ({ qty: a, unit: 'm', qtyLabel: 'Lining-out run' }),
+    rate: { mat: 4, lab: 9 }, matDesc: 'Profiles, string lines, pegs' },
+  'cart-away': { group: 'Groundworks', d1: '', d2: null, d3: null,
+    q: (a) => ({ qty: a, unit: 'm2', qtyLabel: 'Debris area' }),
+    rate: { mat: 2, lab: 7 }, matDesc: 'Debris removal allowance' },
+  debrush:     { group: 'Groundworks', d1: '', d2: null, d3: null,
+    q: (a) => ({ qty: a, unit: 'm', qtyLabel: 'Debrush run' }),
+    rate: { mat: 2, lab: 8 }, matDesc: 'Cut and clear the line' },
+  'post-holes': { group: 'Groundworks', d1: '', d2: null, d3: null,
+    q: (a) => ({ qty: a, unit: 'each', qtyLabel: 'Post holes' }),
+    rate: { mat: 5, lab: 25 }, matDesc: 'Dig, set, backfill - per hole' }
 };
+
+// ---- W2 2026-10-01: COMPANION WORK SUGGESTIONS (the punch-list reality) --
+// Pricing one trade usually implies others (a wall needs lining out, clearing
+// and carting away; a fence needs the line debrushed). PURE: each suggestion
+// derives its quantity from the SAME state - no re-typing. Suggestions are
+// one-tap adds to the bill; nothing is ever priced silently.
+const COMPANIONS = {
+  blockwall: ['lineout', 'brush', 'cart'],
+  brickwall: ['lineout', 'brush', 'cart'],
+  framing:   ['lineout', 'cart'],
+  render:    ['lineout', 'cart'],
+  paint:     ['cart'],
+  drywall:   ['cart'],
+  siteprep:  ['cart'],
+  slab:      ['cart3'],
+  footings:  ['cart3'],
+  'concrete-drive': ['cart3'],
+  rebar:     ['cart3'],
+  fencing:   ['debrush', 'holes']
+};
+// A suggestion is { id, name, work, qty(st) -> number|null }. Quantities
+// derive from typed dims (already metric in st - readState stores raw typed
+// values, so imperial conversion mirrors computeFor's FT/IN rules here).
+const COMPANION_DEFS = {
+  lineout: { name: 'Lining out the walls (profiles and string lines)', work: 'lining-out',
+    qty: function(st) {
+      const n1 = parseFloat(st.d1), n2 = parseFloat(st.d2);
+      if (!(n1 > 0)) return null;
+      const d1 = st.units === 'imperial' ? n1 * FT : n1;
+      const run = (n2 > 0) ? (st.units === 'imperial' ? n2 * FT : n2) * 2 + d1 * 2 : d1;
+      return run > 0 ? run : null;
+    } },
+  brush: { name: 'Clear brush and strip topsoil', work: 'siteprep',
+    qty: function(st) {
+      const n1 = parseFloat(st.d1), n2 = parseFloat(st.d2);
+      if (!(n1 > 0) || !(n2 > 0)) return null;
+      return st.units === 'imperial' ? (n1 * FT) * (n2 * FT) : n1 * n2;
+    } },
+  cart: { name: 'Cart away debris', work: 'cart-away',
+    qty: function(st) {
+      const n1 = parseFloat(st.d1), n2 = parseFloat(st.d2);
+      if (!(n1 > 0) || !(n2 > 0)) return null;
+      return st.units === 'imperial' ? (n1 * FT) * (n2 * FT) : n1 * n2;
+    } },
+  cart3: { name: 'Cart away debris and surplus material', work: 'cart-away',
+    qty: function(st) {
+      const v = parseFloat(st.measuredQty != null && st.measuredQty !== '' ? st.measuredQty : st.measuredAuto);
+      if (v > 0) return v;
+      const n1 = parseFloat(st.d1), n2 = parseFloat(st.d2), n3 = parseFloat(st.d3);
+      if (!(n1 > 0) || !(n2 > 0) || !(n3 > 0)) return null;
+      const d1 = st.units === 'imperial' ? n1 * FT : n1;
+      const d2 = st.units === 'imperial' ? n2 * FT : n2;
+      const d3 = st.units === 'imperial' ? n3 * IN : n3;
+      return d1 * d2 * (d3 / 1000);
+    } },
+  debrush: { name: 'Debrush the line of fence', work: 'debrush',
+    qty: function(st) {
+      const n1 = parseFloat(st.d1);
+      if (!(n1 > 0)) return null;
+      return st.units === 'imperial' ? n1 * FT : n1;
+    } },
+  holes: { name: 'Dig and backfill post holes', work: 'post-holes',
+    qty: function(st) {
+      const n1 = parseFloat(st.d1);
+      if (!(n1 > 0)) return null;
+      const run = st.units === 'imperial' ? n1 * FT : n1;
+      return Math.min(200, Math.ceil(run / 2.5));
+    } }
+};
+// PURE: the suggestions for a priced line's state, each with its derived
+// quantity (null qty = dims insufficient -> suggestion withheld).
+function companionsFor(st) {
+  const ids = COMPANIONS[st && st.work] || [];
+  return ids.map(function(id) {
+    const def = COMPANION_DEFS[id];
+    if (!def) return null;
+    const qty = def.qty(st);
+    return qty != null && qty > 0 ? { id: id, name: def.name, work: def.work, qty: qty } : null;
+  }).filter(Boolean);
+}
 
 // Country standard tax rates (PwC VAT/GST quick table, 2026). US sales tax
 // varies by state - default 0 with the custom override for the client's rate.
@@ -1091,7 +1190,7 @@ function docTitleBase() {
 // Test hook (harness-only convenience; harmless in production).
 window.__calcDocTitleBase = docTitleBase;
 // W1 engine hook (harness-only convenience; harmless in production).
-window.__calcEngine = { computeFor: computeFor, boqTotals: boqTotals, readState: readState, syncLabels: syncLabels, instancesQty: instancesQty, estimateCsv: estimateCsv, prelimsTotal: prelimsTotal, rollup: rollup, cashCurve: cashCurve, formworkM2: formworkM2, importPacks: importPacks, applyDiscount: applyDiscount };
+window.__calcEngine = { computeFor: computeFor, boqTotals: boqTotals, readState: readState, syncLabels: syncLabels, instancesQty: instancesQty, estimateCsv: estimateCsv, prelimsTotal: prelimsTotal, rollup: rollup, cashCurve: cashCurve, formworkM2: formworkM2, importPacks: importPacks, applyDiscount: applyDiscount, companionsFor: companionsFor };
 
 document.addEventListener('change', function(e) {
   if (e.target && e.target.id === 'calc-doc-type') render();
@@ -1133,6 +1232,37 @@ function bizName() {
   try { return localStorage.getItem(BKEY) || ''; } catch (e) { return ''; }
 }
 
+// ---- W2 2026-10-01: companion chips (one-tap bill lines) ----------------
+// Rendered under the estimate output; hidden until a trade with suggestions
+// is priced. Chips hide once their line is already in the bill (derivedFrom
+// match), so the row empties naturally as you accept them.
+function renderCompanions(r) {
+  const wrap = $('calc-companions');
+  if (!wrap) return;
+  wrap.innerHTML = '';
+  const res = r;
+  if (!res || res.error) { wrap.hidden = true; return; }
+  const st = readState();
+  const list = companionsFor(st).filter(function(c) {
+    return !loadBoq().some(function(line) {
+      return line.st && line.st.derivedFrom === st.work + ':' + c.id;
+    });
+  });
+  if (!list.length) { wrap.hidden = true; return; }
+  wrap.hidden = false;
+  const cur = CURRENCY[res.currency] || '$';
+  wrap.innerHTML = '<div class="bcp-cp-title">Commonly added with ' + esc(res.name) + '</div>';
+  list.forEach(function(c) {
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    chip.className = 'bcp-cp-chip';
+    chip.setAttribute('data-action', 'calcCompAdd');
+    chip.setAttribute('data-cp', c.id);
+    chip.textContent = c.name + ' - ' + qtyShown(c.qty, WORK[c.work].q(1).unit).main;
+    wrap.appendChild(chip);
+  });
+}
+
 function render() {
   const out = $('calc-output');
   if (!out) return;
@@ -1145,6 +1275,7 @@ function render() {
   renderCash();
   // W7: the derived formwork box follows dims + trade.
   renderAccessories();
+  renderCompanions(r);
   if (!r || r.error) {
     lastResult = null;
     if ($('calc-out-actions')) $('calc-out-actions').classList.add('is-hide');
@@ -1645,18 +1776,58 @@ const ACTIONS = {
     const rate = isFinite(rateRaw) && rateRaw > 0 ? rateRaw : FORM_RATE_DEFAULT;
     const lines = loadBoq();
     if (lines.length >= 60) return;
-    // Formwork is priced as its own bill line: measuredQty carries the
-    // derived m2 so no WORK entry is needed; rates are prefill-marked so
-    // they behave exactly like model rates (override detection intact).
+    // Formwork is priced as its own bill line through the REAL formwork
+    // trade with measuredQty carrying the derived m2 (2026-10-01 fix: the
+    // line previously stored markers computeFor never read, so it priced
+    // as a duplicate of the slab). Rates stay user-owned; waste/piece
+    // fields are cleared so the derived quantity is the whole story.
     const lineSt = Object.assign({}, st, {
-      work: st.work,
-      _formworkM2: m2,
-      _formRate: rate,
-      piecePrice: '', pieceSize: '', wastePct: ''
+      work: 'formwork',
+      measuredQty: String(m2),
+      measuredAuto: '',
+      measuredUnit: 'm2',
+      instances: '[]',
+      rateMat: String(rate),
+      rateLab: '',
+      _matModel: undefined,
+      _labModel: undefined,
+      piecePrice: '', pieceSize: '', wastePct: '',
+      derivedFrom: st.work + ':formwork'
     });
     lines.push({ st: lineSt, name: 'Formwork ' + m2.toLocaleString() + ' m2' });
     persistBoq(lines);
     renderBoq();
+  },
+  // ---- W2 companion chips ----
+  calcCompAdd: function(el) {
+    const id = el.getAttribute('data-cp');
+    const def = COMPANION_DEFS[id];
+    if (!def) return;
+    const st = readState();
+    const qty = def.qty(st);
+    if (!(qty > 0)) return;
+    const lines = loadBoq();
+    if (lines.length >= 60) return;
+    // Same derived-line mechanism as formwork: a real WORK entry priced by
+    // measuredQty through the one math path. Bill lines stay fully
+    // editable/removable; recall re-fills the form as a plain measured
+    // quantity of that trade.
+    const lineSt = Object.assign({}, st, {
+      work: def.work,
+      measuredQty: String(qty),
+      measuredAuto: '',
+      measuredUnit: WORK[def.work].q(1).unit,
+      instances: '[]',
+      rateMat: '', rateLab: '',
+      _matModel: undefined,
+      _labModel: undefined,
+      piecePrice: '', pieceSize: '', wastePct: '',
+      derivedFrom: st.work + ':' + id
+    });
+    lines.push({ st: lineSt, name: def.name });
+    persistBoq(lines);
+    renderBoq();
+    renderCompanions(lastResult);
   },
   // ---- W8 location packs ----
   calcPackApply: function(el) {

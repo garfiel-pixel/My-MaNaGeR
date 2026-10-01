@@ -193,6 +193,14 @@
       <div class="bcp-row">
         <div class="bcp-field"><label for="calc-oh">Overhead &amp; margin % (optional)</label><input type="number" id="calc-oh" min="0" max="60" step="0.5" inputmode="decimal" placeholder="e.g. 10"></div>
       </div>
+      <!-- W3 (owner 2026-09-30): employer statutory costs on labor - opt-in
+           because contractor labor prices usually already carry them. The
+           12.5% suggestion is the Jamaica employer stack (NIS 3 + NHT 3 +
+           HEART 3 + Education Tax 3.5, PwC 2026); any typed value wins. -->
+      <div class="bcp-field bcp-oncost">
+        <label class="bcp-inst-manual" for="calc-oncost-toggle"><input type="checkbox" id="calc-oncost-toggle"> Add employer statutory costs on labor (NIS, NHT, HEART, Education Tax)</label>
+        <input type="number" id="calc-oncost-pct" min="0" max="25" step="0.5" inputmode="decimal" placeholder="% of labor - e.g. 12.5 for Jamaica" disabled aria-label="Employer statutory costs percent of labor">
+      </div>
       </div>
 
       <div class="bcp-rates-head">
@@ -253,6 +261,9 @@
       <div id="calc-output" class="bcp-out">
         <div class="calc-empty">Pick a work item, enter dimensions, then Calculate. The breakdown lands here.</div>
       </div>
+      <!-- W3: Jamaica-only levy note - a withholding the client makes, not
+           a cost to add. Hidden unless the country is Jamaica (JS toggle). -->
+      <p class="bcp-jm-note" id="calc-jm-levy-note" hidden>Paying a registered contractor? They may have 2% Contractors Levy withheld from contract payments (remitted to TAJ within 14 days of month-end). It comes out of the price - it is not an extra cost on top.</p>
       <div class="bcp-out-actions is-hide" id="calc-out-actions">
         <!-- OWNER 2026-09-30: export naming - the document type becomes the
              printed sheet's title and both names ride the export filename. -->

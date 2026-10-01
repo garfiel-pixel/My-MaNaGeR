@@ -2561,6 +2561,11 @@ html.mmgr-tour-active .bcp-tour-nudge{filter:none;}
 .bcp-inst-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:4px;}
 .bcp-inst-manual{display:inline-flex;align-items:center;gap:6px;font-size:.8rem;color:var(--slate);}
 .bcp-inst-sum{display:block;font-size:.78rem;color:var(--gold);font-weight:600;min-height:1em;}
+/* W3 employer statutory on-costs + Jamaica levy note. */
+.bcp-oncost{display:flex;flex-direction:column;gap:6px;margin-top:8px;}
+.bcp-oncost input[type="number"]{max-width:280px;}
+.bcp-oncost input[type="number"]:disabled{opacity:.55;}
+.bcp-jm-note{font-size:.78rem;color:var(--slate);line-height:1.5;margin:8px 0 0;}
 @media (max-width:600px){.bcp-inst-row{grid-template-columns:minmax(70px,1.2fr) repeat(3,1fr) 46px auto;}}
 /* Shared result + history render names (page only; see block header). */
 .calc-empty{color:var(--slate);font-size:.86rem;line-height:1.5;padding:10px 0;}

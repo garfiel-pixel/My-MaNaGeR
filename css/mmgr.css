@@ -2564,6 +2564,10 @@ html.mmgr-tour-active .bcp-tour-nudge{filter:none;}
 /* W2 element instances: compact grid rows (name, dims, count, remove). */
 .bcp-inst-row{display:grid;grid-template-columns:minmax(90px,1.4fr) repeat(3,minmax(70px,1fr)) 64px auto;gap:6px;align-items:center;margin-bottom:6px;}
 .bcp-inst-row input{min-width:0;width:100%;}
+/* W2.7 openings: opening rows reuse the .bcp-inst-row grid (type, width,
+   height, count, remove). Selects do not shrink like inputs, so give the
+   type select the same min-width treatment. */
+.bcp-open-row .bcp-open-type{min-width:0;width:100%;}
 .bcp-inst-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:4px;}
 .bcp-inst-manual{display:inline-flex;align-items:center;gap:6px;font-size:.8rem;color:var(--slate);}
 .bcp-inst-sum{display:block;font-size:.78rem;color:var(--gold);font-weight:600;min-height:1em;}

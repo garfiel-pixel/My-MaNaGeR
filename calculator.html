@@ -23,7 +23,7 @@
 <meta name="robots" content="noindex">
 <link rel="icon" type="image/png" href="images/mpw-icon.png">
 <link rel="apple-touch-icon" href="images/mpw-icon.png">
-<link rel="stylesheet" href="dist/mmgr.min.css?v=21">
+<link rel="stylesheet" href="dist/mmgr.min.css?v=22">
 <script src="js/mmgr-theme.js" data-sync="1"></script>
 </head>
 <body class="db-page calculator-page">
@@ -108,6 +108,7 @@
             <option value="excav">Trench / bulk excavation (per m3)</option>
             <option value="slab">Concrete slab on grade (per m3 of concrete)</option>
             <option value="footings">Strip footings (per m run)</option>
+            <option value="septic-tank">Septic tank &amp; drain field (each)</option>
           </optgroup>
           <optgroup label="Structure">
             <option value="blockwall">Blockwork wall (per m2)</option>
@@ -120,19 +121,27 @@
             <option value="shingle-roof">Asphalt shingle roof (per roofing square)</option>
             <option value="render">Render / stucco (per m2)</option>
             <option value="paint">Painting (per m2 of wall)</option>
-            <option value="drywall">Drywall partition (per m2)</option>
+            <option value="drywall">Drywall partition (per m2, per board)</option>
+            <option value="window">Window install (each)</option>
+            <option value="gutter">Gutter &amp; downpipe (per m run)</option>
+            <option value="soffit-fascia">Soffit &amp; fascia (per m run)</option>
           </optgroup>
           <optgroup label="Finishes">
             <option value="tile">Floor tiling (per m2)</option>
             <option value="concrete-drive">Concrete driveway (per m2, thickness sets m3)</option>
             <option value="fencing">Chain-link fencing (per m run)</option>
             <option value="skirt">Skirting / baseboard (per m run - linear)</option>
+            <option value="door">Door install (each)</option>
+            <option value="ceiling">Suspended / drop ceiling (per m2)</option>
+            <option value="floor-screed">Floor screed (per m3, thickness sets volume)</option>
+            <option value="cabinet">Kitchen cabinets (per m run)</option>
           </optgroup>
           <optgroup label="Plumbing">
             <option value="pipe-supply">Water supply pipe run (per m - linear)</option>
             <option value="pipe-drain">Drain-waste-vent pipe run (per m - linear)</option>
             <option value="fixture">Fixture install (each)</option>
             <option value="bath-rough">Bathroom rough-in package (each)</option>
+            <option value="water-heater">Water heater install (each)</option>
           </optgroup>
           <optgroup label="Electrical">
             <option value="wire-point">Wiring point (per point)</option>
@@ -171,6 +180,20 @@
         <span class="bcp-inst-sum" id="calc-inst-sum"></span>
       </div>
 
+      <!-- W2.7 (owner 2026-10-01) openings: you wouldn't lay block in the
+           window space. Wall-area trades carry this editor - windows, doors
+           and other voids leave the wall measurement before waste, spread
+           across every trade that measures the same wall (block, brick,
+           framing, render, paint, drywall). -->
+      <div class="bcp-field bcp-inst" id="calc-openings" hidden>
+        <span class="bcp-units-label">Openings to deduct <span class="bcp-hist-note">- windows and doors leave the wall area</span></span>
+        <div id="calc-openings-rows"></div>
+        <div class="bcp-inst-actions">
+          <button type="button" class="btn btn-n btn-s" data-action="calcOpenAdd">+ Add opening</button>
+        </div>
+        <span class="bcp-inst-sum" id="calc-open-sum"></span>
+      </div>
+
       <div class="bcp-row bcp-row-2">
         <div class="bcp-field">
           <label for="calc-currency">Currency</label>
@@ -203,8 +226,7 @@
             <option value="economy">Economy (-15%)</option>
             <option value="premium">Premium (+35%)</option>
           </select>
-        </div>
-        <div class="bcp-field"><label for="calc-tax-override">Custom tax % (optional)</label><input type="number" id="calc-tax-override" min="0" max="40" step="0.5" inputmode="decimal" placeholder="e.g. 8.25"></div>
+        </div>          <div class="bcp-field"><label for="calc-tax-override">Custom tax % (optional)</label><input type="number" id="calc-tax-override" min="0" max="40" step="0.5" inputmode="decimal" placeholder="e.g. 8.25 - or 0 for no tax"></div>
       </div>
       <div class="bcp-row">
         <div class="bcp-field"><label for="calc-oh">Overhead &amp; margin % (optional)</label><input type="number" id="calc-oh" min="0" max="60" step="0.5" inputmode="decimal" placeholder="e.g. 10"></div>
@@ -524,7 +546,7 @@
      worker, so its raw assets ride the HTTP cache (1y immutable) - any
      change here must bump v, or returning calculator-only visitors keep
      the old script/styles for a year. -->
-<script src="js/mmgr-icon-restore.js?v=21"></script>
-<script src="js/calculator-page.js?v=21"></script>
+<script src="js/mmgr-icon-restore.js?v=22"></script>
+<script src="js/calculator-page.js?v=22"></script>
 </body>
 </html>

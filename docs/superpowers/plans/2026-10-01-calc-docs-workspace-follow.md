@@ -316,3 +316,37 @@ All six waves executed run-all (owner directive), each wave: gates green -> veri
 - W5 workspace follow `f4b1415` (page 152 gates: WS1-4; new T2 tools/qa-calc-workspace.cjs 6/6; registry row + ci.yml step, port 8811; page ?v=20, shell v344; TDZ lesson: WS_KEYS must build lazily - module-eval const over later keys killed the whole page once).
 - W6 integration `b67823d` (guide + tour 13 steps, M14 mobile gates, T5 tour final-card centering - dock rule vs translate(-50%,-50%) shoved the card half off-screen since v339; fine print plain-language rewrite; spotlight geometry 26/26 at 1280+390; audit 40; shell v345).
 - Ship: `node tools/deploy.cjs` -> version `2f5d78a1`. Production smoke all-pass (signed-out visit zero page errors with the silent 403 probe, wsApplyProbe, brand card + companion chips, full 13-step tour at 1280 + 390); live /api/calc/workspace 403 signed-out GET+PUT; calculator 200 on v=20 assets; sw v345 live.
+
+## Execution record: research round 2 (2026-10-01)
+
+Owner directives after W6: rate freedom (done in the rate-sheets follow-up
+`56df7b3`), research more trades ("I don't think we are covering everything
+the same way"), ability to turn tax off entirely, and the openings deduction
+("user should be able to add a window or a door and that will be taken out of
+the final measurements as they wouldn't lay block in the window space...
+ensure this is spread across relative trades").
+
+- Trade research: 9 new work items from 2026 rate sources (Doornmore doors,
+  Pella windows, Angi drop ceiling + septic, Homewyse gutters + fascia, Fuse
+  water heaters, Highland cabinets) + floor screed; drywall re-priced per
+  board (1.22 x 2.44 m, 10% cuts). Picker now 33 items; FM5 re-baselined;
+  coverage walk added (tools/qa-calc-trade-coverage.cjs, 68 gates across all
+  33 trades through the real UI, registered CI + wired into ci.yml T4).
+- Tax off: typing 0 in the override prices at zero (engine already treated
+  override >= 0 as active); breakdown label reads "Tax (no tax - your rate)";
+  CSV carries "Tax rate %","0" (TX1).
+- Openings (W2.7): OPENING_TYPES window/door/other; openingsArea() pure
+  (imperial ft->m on both edges, bad rows skipped, floored); computeFor
+  subtracts the void area BEFORE waste for the 6 wall-area trades
+  (block/brick/framing/render/paint/drywall); breakdown gains the "Minus N
+  openings (X m2) not built" sum-sub note; CSV gains "Openings deducted";
+  editor rows ride readState/applyState so recall + workspace sync keep them.
+  Gates OP1-OP7 (deduction math, before-waste ordering, spread across all 6
+  trades, imperial conversion, CSV, zero-floor, editor lifecycle).
+- REAL BUG the gates caught: both editors (instances + openings) rebuilt
+  their rows' innerHTML on every keystroke, replacing the focused input and
+  eating the rest of the entry - the openings rows never received their
+  second field and live typing lost focus. Fix: keystrokes refresh the sum
+  line only; full re-render stays on add / delete / trade change.
+- Page ?v=22, shell v347. qa-calculator-page 164/164, trade coverage 68/68,
+  playwright audit 40/40, npm run verify green, emoji scan clean.

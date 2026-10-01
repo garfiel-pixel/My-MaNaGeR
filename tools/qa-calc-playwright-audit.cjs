@@ -294,6 +294,54 @@ async function walkFocus(page) {
         check('M13 [390] logo upload stores a capped dataURL, preview shows, card stays in viewport',
           m13 && m13.stored && m13.fits && m13.prevShown && m13.cardIn, m13);
         await page.evaluate(() => { try { localStorage.removeItem('mmgr_calc_brand'); } catch (e) {} });
+        // M14 (client-docs W6): the W3/W2 surfaces hold the no-overflow +
+        // 16px contract with the brand card OPEN and companions VISIBLE -
+        // the exact states a phone user reaches in normal use.
+        const m14 = await page.evaluate(() => {
+          // Open the brand card through its own toggle (real state).
+          const openBtn = document.querySelector('#calc-brand-card [data-action="calcBrandOpen"]');
+          if (openBtn && document.getElementById('calc-brand-body').hidden) openBtn.click();
+          // Price a companion-bearing trade so the chips row shows.
+          const work = document.getElementById('calc-work');
+          work.value = 'blockwall';
+          work.dispatchEvent(new Event('change', { bubbles: true }));
+          document.getElementById('calc-d1').value = '10';
+          document.getElementById('calc-d2').value = '2.4';
+          document.getElementById('calc-d1').dispatchEvent(new Event('input', { bubbles: true }));
+          const body = document.getElementById('calc-brand-body');
+          const cp = document.getElementById('calc-companions');
+          const noHScroll = document.documentElement.scrollWidth <= window.innerWidth + 1;
+          // 16px inputs: iOS zoom-jump contract (doc fields + brand fields).
+          const ids = ['calc-client-name', 'calc-client-addr', 'calc-doc-no', 'calc-brand-name', 'calc-brand-phone'];
+          const sizes = ids.map(id2 => { const el = document.getElementById(id2); return el ? parseFloat(getComputedStyle(el).fontSize) : null; });
+          return { bodyOpen: !body.hidden, companionsShown: !cp.hidden,
+                   noHScroll: noHScroll, minFont: Math.min.apply(null, sizes.filter(s => s !== null)) };
+        });
+        check('M14 [390] brand card open + companions visible -> no horizontal scroll; doc/brand inputs 16px',
+          m14 && m14.bodyOpen && m14.companionsShown && m14.noHScroll && m14.minFont === 16, m14);
+        await page.evaluate(() => { try { localStorage.removeItem('mmgr_calc_boq'); } catch (e) {} });
+        // T5 (client-docs W6): the tour's final centered card must sit fully
+        // inside a phone viewport - the mobile dock rule (left/right 12px
+        // !important) used to fight the inline translate(-50%,-50%) and shove
+        // the card half off-screen (probe caught left:-171px at 390px).
+        const t5 = await page.evaluate(async () => {
+          try { localStorage.removeItem('mmgr_calc_tour_done'); } catch (e) {}
+          window.__calcTour.start();
+          for (let i = 0; i < 12; i++) {
+            document.querySelector('[data-action="calcTourNext"]').click();
+            await new Promise(r => setTimeout(r, 60));
+          }
+          await new Promise(r => setTimeout(r, 250));
+          const pop = document.getElementById('calc-tour-pop');
+          const r = pop.getBoundingClientRect();
+          const out = { final: pop.classList.contains('is-final'),
+            inVp: r.left >= -1 && r.right <= window.innerWidth + 1 && r.top >= -1 && r.bottom <= window.innerHeight + 1,
+            left: Math.round(r.left), right: Math.round(r.right) };
+          window.__calcTour.skip();
+          return out;
+        });
+        check('T5 [390] tour final card centers fully inside the phone viewport (dock-rule fix)',
+          t5 && t5.final && t5.inVp, t5);
       }
       await ctx.close();
     }

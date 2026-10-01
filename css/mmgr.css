@@ -2545,6 +2545,12 @@ html.mmgr-tour-active .bcp-tour-nudge{filter:none;}
 .bcp-tour-btns{display:flex;gap:8px;flex-wrap:wrap;}
 @media (max-width:600px){
   .bcp-tour-pop{left:12px!important;right:12px!important;max-width:none;}
+  /* W6: the final centered card carries inline translate(-50%,-50%); the
+     dock rule above pinned left:12px and the translate then shoved the
+     card half off-screen (probe: left -171px at 390px). .is-final
+     outranks the dock (two classes, both !important) so the card centers
+     within the docked full-width box. */
+  .bcp-tour-pop.is-final{left:50%!important;right:auto!important;}
   .bcp-tour-nudge{flex-wrap:wrap;}
   .bcp-tour-spot{border-radius:8px;}
 }
@@ -2634,6 +2640,13 @@ html.mmgr-tour-active .bcp-tour-nudge{filter:none;}
   .bcp-field select,.bcp-field input{font-size:16px;}
   .bcp-sheets-bar input{font-size:16px;}
   .bcp-save input,#calc-doc-title,#calc-doc-type{font-size:16px;}
+  /* W6 2026-10-01: the W3 brand card + per-document fields are NOT inside
+     .bcp-field wrappers, so the rule above misses them - 13.33px inputs
+     zoom-jump on iOS focus (M14 catches it). */
+  .bcp-brand-grid input,.bcp-doc-row input,#calc-client-name,#calc-client-addr{font-size:16px;}
+  /* W6: the brand grid's fixed 3-column floor (180px+2fr) overflows a
+     390px phone - stack it like the rest of the card. */
+  .bcp-brand-grid{grid-template-columns:1fr;}
 }
 
 /* ============================================================

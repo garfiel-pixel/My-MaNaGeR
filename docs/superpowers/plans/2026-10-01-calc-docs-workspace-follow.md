@@ -350,3 +350,23 @@ ensure this is spread across relative trades").
   line only; full re-render stays on add / delete / trade change.
 - Page ?v=22, shell v347. qa-calculator-page 164/164, trade coverage 68/68,
   playwright audit 40/40, npm run verify green, emoji scan clean.
+
+## Ship record: research round 2 (2026-10-01)
+
+- Commits: `4b4ef11` (openings + researched trades + tax off), `198765e`
+  (harness boot hardening), `d67d4f3` (chrome-launcher absolute path).
+- CI took two repair iterations on the NEW coverage harness: both runs died
+  0s into the T4 step (logs not retrievable without admin). Evidence came
+  from the jobs API step timings (0s = boot throw, not gate failures).
+  Root cause: chrome-launcher.cjs returned the BARE `google-chrome` name on
+  Linux - spawn() resolves it through PATH (why every CDP battery always
+  worked) but Playwright's executablePath demands a real file path and
+  threw instantly. qa-health-sweep + qa-calc-playwright-audit had their own
+  absolutizeChrome() defense (qa-health-sweep's comment names the contract
+  explicitly) - the launcher now returns the absolute path `which` printed
+  for all ~45 consumers.
+- CI green on `d67d4f3`; deployed with `node tools/deploy.cjs` -> version
+  `1615bf78-684c-46ea-a6b1-383ca7c9f780`. Production smoke: full 33-trade
+  coverage walk 68/68 against live, /calculator serves ?v=22 assets +
+  openings editor markup, served calculator-page.js carries openingsArea,
+  sw v347 live.

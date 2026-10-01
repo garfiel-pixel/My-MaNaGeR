@@ -77,7 +77,7 @@ every wave is one commit behind gates.
   `calcBoqOpen`, `calcBoqDelete`; test hook
   `window.__calcEngine = { computeFor, boqTotals }`.
 
-- [ ] **Step 1: Write failing gates (bq family) in tools/qa-calculator-page.cjs**
+- [x] **Step 1: Write failing gates (bq family) in tools/qa-calculator-page.cjs**
 
 ```js
 // BQ1: engine hook exists and prices two lines to a rolled-up subtotal
@@ -92,15 +92,15 @@ assert(bqT.perLine && bqT.perLine.length === 2 && bqT.sub > 0, 'BQ1 boqTotals ro
 // BQ4: recall re-fills the form from a stored line (exact recall)
 ```
 
-- [ ] **Step 2: Run gates - expect FAIL** (`node tools/qa-calculator-page.cjs`)
-- [ ] **Step 3: Implement** - pure `boqTotals()` beside `computeFor()`; BoQ
+- [x] **Step 2: Run gates - expect FAIL** (`node tools/qa-calculator-page.cjs`)
+- [x] **Step 3: Implement** - pure `boqTotals()` beside `computeFor()`; BoQ
   card markup in calculator.html after the history card (`#calc-boq-card`,
   table `#calc-boq-body`, "Add current form as a line" button
   `data-action="calcBoqAdd"`); storage helpers on `mmgr_calc_boq`; render +
   ACTIONS entries following the renderEstimates pattern.
-- [ ] **Step 4: build + bump** - `node build.js`; `?v=` -> next value.
-- [ ] **Step 5: Gates green** - full battery (see Global Constraints).
-- [ ] **Step 6: Commit** - `feat(calculator): multi-line bill of quantities`
+- [x] **Step 4: build + bump** - `node build.js`; `?v=` -> next value.
+- [x] **Step 5: Gates green** - full battery (see Global Constraints).
+- [x] **Step 6: Commit** - `feat(calculator): multi-line bill of quantities`
 
 ### Task 2 (W2): Element instances - add-a-wall measurement
 
@@ -120,22 +120,22 @@ assert(bqT.perLine && bqT.perLine.length === 2 && bqT.sub > 0, 'BQ1 boqTotals ro
   ACTIONS `calcInstAdd`, `calcInstDel`, `calcInstToggle`; test hook
   `window.__calcEngine.instancesQty`.
 
-- [ ] **Step 1: Failing gates (in family)** - in1 `instancesQty` sums wall
+- [x] **Step 1: Failing gates (in family)** - in1 `instancesQty` sums wall
   rows with counts (rows [Wall 1 10x2.4 n2, Wall 2 6x2.4] -> 62.4 m2); in2
   `computeFor` with `measuredQty` ignores empty d1/d2 and prices the measured
   area (blockwall 62.4 m2 -> exact mat/lab expected by hand); in3 measured
   quantity still honors waste % and quality (same input + 10% waste + premium
   -> exact values); in4 rows editor shows for blockwall, hidden for rebar;
   in5 override field ("type the total instead") bypasses rows entirely.
-- [ ] **Step 2: Gates FAIL** (`node tools/qa-calculator-page.cjs`)
-- [ ] **Step 3: Implement** - pure `instancesQty()`; `computeFor` measuredQty
+- [x] **Step 2: Gates FAIL** (`node tools/qa-calculator-page.cjs`)
+- [x] **Step 3: Implement** - pure `instancesQty()`; `computeFor` measuredQty
   branch BEFORE the dim-validation error (computeFor lines in the D2 block);
   rows editor markup (label input + dim inputs + count + remove button per
   row, mirror the bcp-row field classes); wire into readState/applyState so
   history + recall keep instances (st.instances JSON string).
-- [ ] **Step 4: build + bump** - `node build.js`; `?v=` -> next value.
-- [ ] **Step 5: Gates green** - full battery (see Global Constraints).
-- [ ] **Step 6: Commit** - `feat(calculator): measure by wall, pour and run instances`
+- [x] **Step 4: build + bump** - `node build.js`; `?v=` -> next value.
+- [x] **Step 5: Gates green** - full battery (see Global Constraints).
+- [x] **Step 6: Commit** - `feat(calculator): measure by wall, pour and run instances`
 
 ### Task 3 (W3): Statutory labor on-costs (JM-verified) + Contractors Levy note
 
@@ -153,11 +153,11 @@ assert(bqT.perLine && bqT.perLine.length === 2 && bqT.sub > 0, 'BQ1 boqTotals ro
   Defaults sourced: NIS 3% (J$5M/yr cap) + NHT 3% + HEART 3% + Education Tax
   3.5% = 12.5% of gross payroll (PwC/Dawgen/Skuad/HEART-NSTA, 2026).
 
-- [ ] **Step 1: Failing gates (sx family)** - sx1 off by default (no onCost
+- [x] **Step 1: Failing gates (sx family)** - sx1 off by default (no onCost
   key -> line absent); sx2 12.5% on a known labor subtotal (exact value);
   sx3 cap at 25; sx4 line label renders with pct; sx5 JM levy note shows
   only when country=JM.
-- [ ] **Step 2: Gates FAIL** -> **Step 3: Implement** (computeFor math + UI
+- [x] **Step 2: Gates FAIL** -> **Step 3: Implement** (computeFor math + UI
   near the tax-override field) -> **Step 4: build + bump** ->
   **Step 5: Gates green** -> **Step 6: Commit**
   `feat(calculator): optional employer statutory costs on labor (JM)`
@@ -177,14 +177,14 @@ assert(bqT.perLine && bqT.perLine.length === 2 && bqT.sub > 0, 'BQ1 boqTotals ro
   ACTIONS `calcPrelimPreset`, `calcPrelimAdd`, `calcPrelimRemove`,
   `calcPrelimClear`; hook `window.__calcEngine.prelimsTotal`.
 
-- [ ] **Step 1: Failing gates (pl family)** - pl1 pure total for fixed/pct/week
+- [x] **Step 1: Failing gates (pl family)** - pl1 pure total for fixed/pct/week
   bases; pl2 preset = 6 items; pl3 card renders item rows + total into
   `#calc-prelims-body`; pl4 removal persists.
 
-- [ ] **Step 1: Failing gates (pl family)** - pl1 pure total for fixed/pct/week
+- [x] **Step 1: Failing gates (pl family)** - pl1 pure total for fixed/pct/week
   bases; pl2 preset = 6 items; pl3 card renders item rows + total into
   `#calc-prelims-body`; pl4 removal persists.
-- [ ] **Step 2: Gates FAIL** -> **Step 3: Implement** (card "Site & other
+- [x] **Step 2: Gates FAIL** -> **Step 3: Implement** (card "Site & other
   costs", basis select per item, weeks field shown only for `week` basis)
   -> **Step 4: build + bump** -> **Step 5: Gates green** -> **Step 6: Commit**
   `feat(calculator): preliminaries card for site and other costs`
@@ -200,10 +200,10 @@ assert(bqT.perLine && bqT.perLine.length === 2 && bqT.sub > 0, 'BQ1 boqTotals ro
   design C -> construction C -> escalation; hook
   `window.__calcEngine.rollup`; fields `#calc-design-c`, `#calc-constr-c`,
   `#calc-esc-pct`, `#calc-months` (defaults 10 / 5 / 5 / blank).
-- [ ] **Step 1: Failing gates (rg family)** - rg1 pure math (works 100000,
+- [x] **Step 1: Failing gates (rg family)** - rg1 pure math (works 100000,
   prelims 6000, 10/5/5%, 12mo -> exact expected values computed by hand);
   rg2 defaults render; rg3 total row shows the full waterfall.
-- [ ] **Step 2: FAIL** -> **Step 3: Implement** (fields live in the Site &
+- [x] **Step 2: FAIL** -> **Step 3: Implement** (fields live in the Site &
   other costs card bottom; fine print gains "planning band" sentence)
   -> **Step 4: build + bump** -> **Step 5: Gates green** -> **Step 6: Commit**
   `feat(calculator): contingency, escalation and duration on the roll-up`
@@ -219,11 +219,11 @@ assert(bqT.perLine && bqT.perLine.length === 2 && bqT.sub > 0, 'BQ1 boqTotals ro
   distribution over months normalized to total (steep = sigma factor,
   default 1.5); straight = equal months; hook `window.__calcEngine.cashCurve`;
   ACTIONS `calcCashRender`, `calcCashCsv`; table `#calc-cash-body`.
-- [ ] **Step 1: Failing gates (cf family)** - cf1 straight: 12 months ->
+- [x] **Step 1: Failing gates (cf family)** - cf1 straight: 12 months ->
   per[i] === total/12 (float-safe compare 2dp); cf2 scurve: per sums to
   total (2dp) and middle months exceed end months; cf3 CSV downloads
   (blob-URL pattern from downloadCsv).
-- [ ] **Step 2: FAIL** -> **Step 3: Implement** (card "Cash flow", hidden
+- [x] **Step 2: FAIL** -> **Step 3: Implement** (card "Cash flow", hidden
   until months set; mode select; monthly + cumulative columns)
   -> **Step 4: build + bump** -> **Step 5: Gates green** -> **Step 6: Commit**
   `feat(calculator): monthly cash flow curve with CSV export`
@@ -241,11 +241,11 @@ assert(bqT.perLine && bqT.perLine.length === 2 && bqT.sub > 0, 'BQ1 boqTotals ro
   carries the 10-18% research band); "Add derived lines to the bill" action
   creates BoQ lines with rate fields prefilled from a new
   `FORM_RATE_DEFAULT = 55` per m2 (comment cites research, editable).
-- [ ] **Step 1: Failing gates (fa family)** - fa1 formworkM2 exact values
+- [x] **Step 1: Failing gates (fa family)** - fa1 formworkM2 exact values
   (slab 10x10x100mm -> 4.04 m2? NO: 2*(10+10)*0.1 = 4.0 m2; footing
   10m run x 0.5m x 0.5m deep -> 2*(10+0.5)*0.5 = 10.5 m2); fa2 other trades
   -> null; fa3 derived-line add creates two BoQ lines.
-- [ ] **Step 2: FAIL** -> **Step 3: Implement** -> **Step 4: build + bump**
+- [x] **Step 2: FAIL** -> **Step 3: Implement** -> **Step 4: build + bump**
   -> **Step 5: Gates green** -> **Step 6: Commit**
   `feat(calculator): derived formwork and rebar lap takeoff`
 
@@ -260,11 +260,11 @@ assert(bqT.perLine && bqT.perLine.length === 2 && bqT.sub > 0, 'BQ1 boqTotals ro
   MATERIAL rates only when the user ticks "apply location index" (labor
   stays user-owned); JSON export/import reusing the rate-sheet file flow
   (`calcSheetExport/Import` pattern -> `calcPackExport/Import`).
-- [ ] **Step 1: Failing gates (lp family)** - lp1 seeds exist after first
+- [x] **Step 1: Failing gates (lp family)** - lp1 seeds exist after first
   load; lp2 applying a pack sets currency + tax default and applies index to
   material rates in the engine preview; lp3 export produces JSON with the
   packs; lp4 import merges with skip rules (invalid index ignored).
-- [ ] **Step 2: FAIL** -> **Step 3: Implement** -> **Step 4: build + bump**
+- [x] **Step 2: FAIL** -> **Step 3: Implement** -> **Step 4: build + bump**
   -> **Step 5: Gates green** -> **Step 6: Commit**
   `feat(calculator): offline location data packs`
 
@@ -273,30 +273,30 @@ assert(bqT.perLine && bqT.perLine.length === 2 && bqT.sub > 0, 'BQ1 boqTotals ro
 **Files:** `js/calculator-page.js`, `calculator.html`, `css/mmgr.css`,
 `tools/qa-calc-playwright-audit.cjs`, `docs/` changelog
 
-- [ ] **Step 1: Estimate summary restructure** - grand total waterfall card:
+- [x] **Step 1: Estimate summary restructure** - grand total waterfall card:
   Works -> Prelims -> Design contingency -> Construction contingency ->
   Escalation -> Subtotal -> Tax -> TOTAL; single-item flow unchanged when no
   BoQ lines exist (regression gate: all 91 existing gates still green).
-- [ ] **Step 2: Guide + tour** - GUIDE_STEPS grows to cover the bill, the
+- [x] **Step 2: Guide + tour** - GUIDE_STEPS grows to cover the bill, the
   instance rows and site costs cards; TOUR_STEPS gains up to 2 steps (bill,
   site costs); nudge copy
   unchanged; spotlight works on the new cards automatically (body-level
   furniture + tourBlurSet path marking, 2026-09-30 fix).
-- [ ] **Step 3: Mobile gates** - M-family additions in the Playwright audit:
+- [x] **Step 3: Mobile gates** - M-family additions in the Playwright audit:
   no horizontal scroll at 390 with the bill populated; new cards stack
   single-column; inputs 16px.
-- [ ] **Step 4: Docs** - CHANGELOG entry; fine print: "Planning-grade
+- [x] **Step 4: Docs** - CHANGELOG entry; fine print: "Planning-grade
   (AACE Class 5/4 band): expect roughly -15% to +30% variance until drawings
   are priced." ; spec cross-link.
-- [ ] **Step 5: Full battery + build + bump** -> **Step 6: Commit**
+- [x] **Step 5: Full battery + build + bump** -> **Step 6: Commit**
   `feat(calculator): estimate workspace integration pass`
 
 ### Task 10: Ship loop (per wave, repeated)
 
-- [ ] `node build.js` && `npm run verify`
-- [ ] `node tools/qa-calculator-page.cjs` (91 + new) && `node
+- [x] `node build.js` && `npm run verify`
+- [x] `node tools/qa-calculator-page.cjs` (91 + new) && `node
   tools/qa-calc-playwright-audit.cjs` (36 + new)
-- [ ] Push -> poll `api.github.com/repos/garfiel-pixel/My-MaNaGeR/actions`
+- [x] Push -> poll `api.github.com/repos/garfiel-pixel/My-MaNaGeR/actions`
   until `completed` -> fix harness-vs-app drift first if red (AGENTS.md
   lesson 8) -> `node tools/deploy.cjs` -> production smoke
   (`curl /calculator` + one Playwright pass against production).
@@ -315,4 +315,71 @@ assert(bqT.perLine && bqT.perLine.length === 2 && bqT.sub > 0, 'BQ1 boqTotals ro
 - Reference coverage: tru-estimator pattern (instance rows + identical-count
   multiplier + total-override) lands in Task 2; its phase-2 ideas are parked
   in the spec, not silently dropped.
-- Wave numbering: W1..W8 map to Tasks 1..8; ship loop is Task 9.
+- Wave numbering: W1..W9 map to Tasks 1..9; ship loop is Task 10. (The
+  original line here said W1..W8 + Task 9; it predated the statutory wave's
+  insertion as W3 during planning.)
+
+---
+
+## Execution record (2026-10-01)
+
+Executed continuously in one session per the owner's directive (no per-wave
+approvals): W1 through W9 plus the ship loop, CI green, deployed to
+production and live-verified the same day. Checkboxes above were flipped as
+each step completed.
+
+### Ship table
+
+| Wave | Feature | Commit | Calc-page gates at commit |
+|---|---|---|---|
+| - | Spec + this plan | `cd1c798` | - |
+| W1 | Multi-line bill of quantities | `c1c18be` | 96/96 |
+| W2 | Measure by wall, pour and run instances | `dc03211` | 101/101 |
+| W3 | Optional employer statutory costs on labor (JM) | `ed518fa` | 106/106 |
+| W4 | Preliminaries card for site and other costs | `f78fb97` | 110/110 |
+| W5 | Contingency, escalation and duration on the roll-up | `5c113fd` | 113/113 |
+| W6 | Monthly cash flow curve with CSV export | `4a11f6c` | 116/116 |
+| W7 | Derived formwork and rebar lap takeoff | `9643c3e` | 119/119 |
+| W8 | Offline location data packs | `c1e32a8` | 122/122 |
+| - | Service-worker shell bump (v339 -> v340) | `f205d8f` | - |
+| W9 | Estimate workspace integration pass | `6a630d5` | 122/122 + audit 37/37 |
+| - | Page assets bump to v15 | `155d842` | - |
+
+Gate families as shipped: BQ1-5, IN1-5, SX1-5, PM1-4, RG1-3, CF1-3, FA1-3,
+LP1-3 (harness 91 -> 122 gates) plus M12 in the Playwright audit (36 -> 37).
+
+### Deviations from the plan as written
+
+- Prelims gate prefix `pm` instead of the planned `pl` (PL1-7 was already
+  taken in the harness). LP shipped as 3 gates (export/import verified in
+  one) rather than the sketched 4.
+- Service-worker shell cache bumped to `mmgr-shell-v340` after W1 changed
+  shared `mmgr.min.css` (the verify:sw gate requires the bump; the plan's
+  Global Constraints only named `?v=` bumps).
+- Roll-up settings persist under a fourth storage key, `mmgr_calc_rollup`,
+  beyond the three keys named in the architecture note.
+- Fine print ships in plain language ("roughly 15 percent under to 30
+  percent over actual") rather than the "-15% / +30%" notation - the plan's
+  own plain-language constraint wins over its example copy.
+- Guide and tour each ship at 11 steps (tour anchors include
+  #calc-boq-card and #calc-prelims-card); TUT gates re-baselined to match.
+- Session traps hit and cleared mid-execution: ev() template literals cook
+  backslash escapes, so harness regexes need doubled backslashes; W4
+  carried a brace-imbalance syntax repair (recorded in that commit body);
+  the W7 formwork note originally wrote into the container and wiped its
+  child controls - text now goes to #calc-formwork-text, and
+  `.bcp-formwork[hidden]{display:none!important}` was added as a guard
+  (W7 commit amended).
+
+### Verification at ship
+
+- `node tools/qa-calculator-page.cjs` 122/122; `node
+  tools/qa-calc-playwright-audit.cjs` 37/37; `npm run verify` green; emoji
+  scan clean.
+- CI run for `155d842` completed success; deployed to
+  my-manager.garfieldprocis.workers.dev as version `b50e57a7`
+  (calculator assets `?v=15`).
+- Production smoke: page serves v15 with every new card live (bill lines,
+  6 prelim rows, roll-up waterfall, 12-month cash curve, 3+ location
+  packs, instance rows, statutory toggle); live tour 11/11 steps with
+  correct spotlight geometry at 1280px and 390px, zero page errors.

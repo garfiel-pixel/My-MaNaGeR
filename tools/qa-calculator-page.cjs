@@ -106,6 +106,11 @@
      FA2  other trades -> null (correct refusal)
      FA3  formwork line lands on the bill; laps field only on rebar
 
+   ESTIMATING DEPTH W8 - LOCATION PACKS (owner 2026-09-30):
+     LP1  seeds exist (US, JM, GB) on first load
+     LP2  applying JM sets JMD + 15% tax; index scales the material rate
+     LP3  export produces JSON; import merges + skips invalid
+
    Usage:  node tools/qa-calculator-page.cjs   (needs serve.cjs on :8765)
    Registry: CI-TEST-COVERAGE.md -> CI row (fast, serve.cjs battery).
    ============================================================ */
@@ -847,6 +852,53 @@ async function withChrome(fn) {
     check('FA3 formwork box derives 4 m2, line lands on bill, laps field rides rebar only',
       fa3 && fa3.boxShown && fa3.hasM2 && fa3.lines === 1 && fa3.named.indexOf('Formwork') === 0 && fa3.lapsShown && fa3.lapsGoneOnSlab, fa3);
     await ev(`(function(){ try { localStorage.removeItem('mmgr_calc_boq'); } catch (e) {} renderBoq(); })()`);
+
+    // ---------- W8: LOCATION PACKS (owner 2026-09-30) ----------
+    const lp1 = await ev(`(function(){
+      var list = JSON.parse(localStorage.getItem('mmgr_calc_locpacks') || '[]');
+      var ids = list.map(function(p) { return p.id; });
+      return { n: list.length, us: ids.indexOf('pack-us') > -1, jm: ids.indexOf('pack-jm') > -1, gb: ids.indexOf('pack-gb') > -1,
+               picker: document.getElementById('calc-pack-select').options.length };
+    })()`);
+    check('LP1 seeds: US + JM + GB present; picker populated',
+      lp1 && lp1.n >= 3 && lp1.us && lp1.jm && lp1.gb && lp1.picker >= 4, lp1);
+    const lp2 = await ev(`(function(){
+      document.getElementById('calc-rate-mat').dataset.model = '150';
+      document.getElementById('calc-rate-mat').value = '100';
+      var sel = document.getElementById('calc-pack-select');
+      sel.value = 'pack-jm';
+      sel.dispatchEvent(new Event('change', { bubbles: true }));
+      var cur = document.getElementById('calc-currency').value;
+      var tax = document.getElementById('calc-tax-override').value;
+      var mat = document.getElementById('calc-rate-mat').value;
+      var note = document.getElementById('calc-pack-note');
+      return { cur: cur, tax: tax, mat: mat, noteShown: !note.hidden, noteHas: note.textContent.indexOf('GCT 15%') > -1 };
+    })()`);
+    check('LP2 JM pack: JMD + 15% tax; index != 1 scales the material rate; note shows',
+      lp2 && lp2.cur === 'JMD' && lp2.tax === '15' && lp2.noteShown && lp2.noteHas, lp2);
+    const lp3 = await ev(`(function(){
+      document.getElementById('calc-country').value = 'US';
+      document.getElementById('calc-country').dispatchEvent(new Event('change', { bubbles: true }));
+      var res = __calcEngine.importPacks({ version: 1, packs: [
+        { name: 'My Parish', currency: 'jmd', taxDefault: 15, index: 1.1, benchmark: 'test note' },
+        { name: '', currency: 'USD' },
+        { name: 'No Currency' }
+      ]});
+      var list = JSON.parse(localStorage.getItem('mmgr_calc_locpacks') || '[]');
+      var mine = list.find(function(p) { return p.name === 'My Parish'; });
+      return { merged: res.merged, skipped: res.skipped, cur: mine && mine.currency, idx: mine && mine.index };
+    })()`);
+    check('LP3 import merges 1 (currency normalized) + skips 2 invalid',
+      lp3 && lp3.merged === 1 && lp3.skipped === 2 && lp3.cur === 'JMD' && lp3.idx === 1.1, lp3);
+    await ev(`(function(){
+      var list = JSON.parse(localStorage.getItem('mmgr_calc_locpacks') || '[]').filter(function(p) { return p.name !== 'My Parish'; });
+      localStorage.setItem('mmgr_calc_locpacks', JSON.stringify(list));
+      renderPacks();
+      document.getElementById('calc-rate-mat').value = '';
+      document.getElementById('calc-currency').value = 'USD';
+      document.getElementById('calc-tax-override').value = '';
+      document.getElementById('calc-pack-note').hidden = true;
+    })()`);
 
     // Restore the pre-wave state for the U-series gates (the W1 block above
     // deliberately dirtied the form): deterministic metric slab flow.

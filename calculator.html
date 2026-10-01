@@ -221,6 +221,16 @@
         <button type="button" class="btn btn-n btn-s" data-action="calcSheetImport" title="Load rate sheets from a My MaNaGeR JSON export"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-upload"></use></svg> Import</button>
         <input type="file" id="calc-sheet-file" accept="application/json,.json" hidden>
       </div>
+      <!-- W8 (owner 2026-09-30) location packs: currency + tax default + an
+           optional material-rate index and a benchmark note, per location,
+           all on-device (the offline answer to a server-side rate book). -->
+      <div class="bcp-sheets-bar">
+        <select id="calc-pack-select" data-action="calcPackApply" aria-label="Apply a location pack"></select>
+        <button type="button" class="btn btn-n btn-s" data-action="calcPackExport" title="Download your location packs as a JSON file"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Export</button>
+        <button type="button" class="btn btn-n btn-s" data-action="calcPackImport" title="Load location packs from a My MaNaGeR JSON export"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-upload"></use></svg> Import</button>
+        <input type="file" id="calc-pack-file" accept="application/json,.json" hidden>
+      </div>
+      <p class="bcp-jm-note" id="calc-pack-note" hidden></p>
       <div class="bcp-piece-hint" id="calc-sheet-msg" hidden></div>
       <div id="calc-sheets" class="calc-hist bcp-sheets"></div>
 

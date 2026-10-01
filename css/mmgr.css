@@ -2580,6 +2580,22 @@ html.mmgr-tour-active .bcp-tour-nudge{filter:none;}
 @media (max-width:600px){.bcp-rollup-settings{grid-template-columns:1fr 1fr;}}
 /* W2.5 family select hint line. */
 .bcp-hint{display:block;font-size:.78rem;color:var(--ink-soft,inherit);opacity:.75;margin-top:4px;}
+/* W3 business details card + document-row inputs. */
+.bcp-brand-body{margin-top:10px;}
+.bcp-brand-body[hidden]{display:none!important;}
+.bcp-brand-grid{display:grid;grid-template-columns:minmax(180px,240px) 1fr 1fr;gap:14px;align-items:start;}
+.bcp-brand-logo{display:flex;flex-direction:column;gap:8px;}
+.bcp-brand-logo img{max-width:180px;max-height:90px;object-fit:contain;border:1px solid var(--border);border-radius:var(--radius-control,8px);background:var(--tile-bg);padding:4px;}
+.bcp-brand-logo input[type=file]{font-size:.78rem;max-width:220px;}
+.bcp-logo-note{font-size:.75rem;min-height:1em;opacity:.8;}
+/* Guard: the remove button is a .btn (inline-flex); [hidden] alone loses. */
+.bcp-brand-logo .btn[hidden]{display:none;}
+.bcp-brand-fields,.bcp-brand-sig{display:flex;flex-direction:column;gap:8px;}
+/* Shrink allowed + inner wrap: min-width:auto with flex-shrink:0 floors the
+   row at its content width and overflows phones (M11/M12 catch). */
+.bcp-doc-row{display:flex;gap:8px;flex:1 1 100%;min-width:0;flex-wrap:wrap;}
+.bcp-doc-row input{flex:1;min-width:0;}
+.bcp-sig-toggle{display:flex;align-items:center;gap:6px;font-size:.8rem;flex:1 0 100%;}
 /* W2 companion chips (one-tap add-on work suggestions). */
 .bcp-cp-row{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 2px;}
 .bcp-cp-row[hidden]{display:none!important;}
@@ -2644,9 +2660,22 @@ html.mmgr-tour-active .bcp-tour-nudge{filter:none;}
   /* D3: the quote head becomes the printed letterhead (paper is hard-coded
      light in this sheet, so the head uses print inks, not screen tokens). */
   body.print-estimate .bcp-quote-head{display:block;border-bottom:2px solid #111;margin-bottom:14px;padding-bottom:10px;}
+  body.print-estimate .bcp-qh-top{display:flex;gap:14px;align-items:flex-start;justify-content:space-between;}
+  body.print-estimate .bcp-qh-logo{max-height:64px;max-width:160px;object-fit:contain;}
+  body.print-estimate .bcp-qh-id{flex:1;}
+  body.print-estimate .bcp-qh-doc{text-align:right;}
+  body.print-estimate .bcp-qh-contact{color:#444;font-size:.75rem;margin-top:2px;white-space:pre-line;}
+  body.print-estimate .bcp-qh-docno{color:#444;font-size:.8rem;font-weight:700;}
   body.print-estimate .bcp-quote-biz{font-size:.9rem;font-weight:700;color:#111;}
   body.print-estimate .bcp-quote-title{font-size:1.3rem;font-weight:800;color:#111;margin:2px 0 4px;}
   body.print-estimate .bcp-quote-meta{color:#444;font-size:.8rem;}
+  body.print-estimate .bcp-qh-billto{margin-top:10px;font-size:.85rem;color:#111;font-weight:600;}
+  body.print-estimate .bcp-qh-sig{display:flex;gap:32px;margin-top:26px;}
+  body.print-estimate .bcp-qh-sig[hidden]{display:none;}
+  body.print-estimate .bcp-sig-col{flex:1;}
+  body.print-estimate .bcp-sig-col .bcp-sig-name{display:block;border-bottom:1px solid #111;min-height:20px;font-weight:700;color:#111;}
+  body.print-estimate .bcp-sig-col .bcp-sig-title{display:block;font-size:.75rem;color:#444;}
+  body.print-estimate .bcp-sig-col .bcp-sig-line{display:block;font-size:.7rem;color:#444;margin-top:4px;}
 }
 
 /* chat input bar (replaces the old footer) */

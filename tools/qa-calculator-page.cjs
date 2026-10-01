@@ -871,7 +871,7 @@ async function withChrome(fn) {
     })()`);
     check('FA3 (re-baselined 2026-10-01) formwork box derives 4 m2, line PRICES AS FORMWORK via measuredQty (derived 55/m2 -> mat 220; trade labor 33/m -> lab 132; total 352), laps field rides rebar only',
       fa3 && fa3.boxShown && fa3.hasM2 && fa3.lines === 1 && fa3.named.indexOf('Formwork') === 0 && fa3.fwWork === 'formwork' && fa3.fwMq === '4' && Math.abs(fa3.fwMat - 220) < 0.01 && Math.abs(fa3.fwLab - 132) < 0.01 && Math.abs(fa3.fwTotal - 352) < 0.01 && fa3.lapsShown && fa3.lapsGoneOnSlab, fa3);
-    await ev(`(function(){ try { localStorage.removeItem('mmgr_calc_boq'); } catch (e) {} renderBoq(); })()`);
+    await ev(`(function(){ try { localStorage.removeItem('mmgr_calc_boq'); } catch (e) {} })()`);
 
     // ---------- W8: LOCATION PACKS (owner 2026-09-30) ----------
     const lp1 = await ev(`(function(){
@@ -913,7 +913,6 @@ async function withChrome(fn) {
     await ev(`(function(){
       var list = JSON.parse(localStorage.getItem('mmgr_calc_locpacks') || '[]').filter(function(p) { return p.name !== 'My Parish'; });
       localStorage.setItem('mmgr_calc_locpacks', JSON.stringify(list));
-      renderPacks();
       document.getElementById('calc-rate-mat').value = '';
       document.getElementById('calc-currency').value = 'USD';
       document.getElementById('calc-tax-override').value = '';
@@ -1032,7 +1031,7 @@ async function withChrome(fn) {
     })()`);
     check('CP5 accepting every suggestion hides the chips row; all three lines on the bill',
       cp5 && cp5.hidden && cp5.lines === 3, cp5);
-    await ev(`(function(){ try { localStorage.removeItem('mmgr_calc_boq'); } catch (e) {} renderBoq(); })()`);
+    await ev(`(function(){ try { localStorage.removeItem('mmgr_calc_boq'); } catch (e) {} })()`);
 
     // ---------- W1 2026-10-01: DISCOUNT (DC family) ----------
     const dc1 = await ev(`(function(){
@@ -1126,6 +1125,119 @@ async function withChrome(fn) {
       if (t3) { t3.checked = false; t3.dispatchEvent(new Event('change', { bubbles: true })); }
       var p3 = document.getElementById('calc-oncost-pct');
       if (p3) { p3.value = ''; p3.dataset.touched = ''; }
+    })()`);
+
+    // ---------- W3 2026-10-01: BRAND + DOCUMENT SHEET (BD + SG families) ----------
+    const bd1 = await ev(`(function(){
+      localStorage.removeItem('mmgr_calc_brand');
+      var r1 = __calcEngine.brandLoad();
+      return { empty: r1.name === '' && r1.logo === null, u: typeof r1.updatedAt };
+    })()`);
+    check('BD1 brand store starts empty; shape complete (logo, name, phone, email, addr, trn, sig)',
+      bd1 && bd1.empty && bd1.u === 'number', bd1);
+    const bd2 = await ev(`(function(){
+      localStorage.setItem('mmgr_calc_biz_name', 'Fairclough Build Ltd');
+      location.reload();
+      return { pending: true };
+    })()`);
+    await delay(2500);
+    const bd2b = await ev(`(function(){
+      var b = __calcEngine.brandLoad();
+      return { migrated: b.name, oldGone: localStorage.getItem('mmgr_calc_biz_name') === null,
+               bizRow: document.getElementById('calc-biz-name').value };
+    })()`);
+    check('BD2 legacy mmgr_calc_biz_name migrates into the brand card on first load and is retired',
+      bd2b && bd2b.migrated === 'Fairclough Build Ltd' && bd2b.oldGone && bd2b.bizRow === 'Fairclough Build Ltd', bd2b);
+    // BD2's reload wipes the deterministic slab state AGAIN (same lesson as
+    // DC3/DC4: applyState restores whatever trade was last persisted). Re-
+    // establish the full slab flow before the rest of the wave runs.
+    await ev(`(function(){
+      document.getElementById('calc-work').value = 'slab';
+      document.getElementById('calc-work').dispatchEvent(new Event('change', { bubbles: true }));
+      document.getElementById('calc-d1').value = '';
+      document.getElementById('calc-d2').value = '';
+      document.getElementById('calc-d3').value = '';
+      document.getElementById('calc-measured-qty').value = '';
+      document.getElementById('calc-measured-manual').checked = false;
+      document.getElementById('calc-measured-qty').hidden = true;
+      document.getElementById('calc-instances').hidden = false;
+      document.getElementById('calc-currency').value = 'USD';
+      document.getElementById('calc-country').value = 'US';
+      document.getElementById('calc-country').dispatchEvent(new Event('change', { bubbles: true }));
+      document.getElementById('calc-quality').value = 'standard';
+      document.getElementById('calc-oh').value = '';
+      ['calc-design-c','calc-constr-c','calc-esc-pct','calc-months','calc-disc-pct','calc-disc-amt'].forEach(function(id2){
+        var el = document.getElementById(id2);
+        if (el) { el.value = ''; el.dispatchEvent(new Event('input', { bubbles: true })); }
+      });
+      localStorage.setItem('mmgr_calc_rollup', JSON.stringify({}));
+      var t3 = document.getElementById('calc-oncost-toggle');
+      if (t3) { t3.checked = false; t3.dispatchEvent(new Event('change', { bubbles: true })); }
+      var p3 = document.getElementById('calc-oncost-pct');
+      if (p3) { p3.value = ''; p3.dataset.touched = ''; }
+    })()`);
+    const bd3 = await ev(`(function(){
+      var big = 'data:image/png;base64,' + new Array(1365334).join('A');
+      var ok = 'data:image/png;base64,' + new Array(133334).join('A');
+      return { big: __calcEngine.logoFitsCap(big), ok: __calcEngine.logoFitsCap(ok), garbage: __calcEngine.logoFitsCap('not-a-data-url') };
+    })()`);
+    check('BD3 logo cap: ~1MB dataURL fails, 100KB passes, garbage rejected (bytes = b64*3/4)',
+      bd3 && bd3.big === false && bd3.ok === true && bd3.garbage === false, bd3);
+    const bd4 = await ev(`(function(){
+      return { inv: __calcEngine.docNoSuggest('Invoice', 1), quo: __calcEngine.docNoSuggest('Quote', 12), est: __calcEngine.docNoSuggest('Estimate', 3) };
+    })()`);
+    check('BD4 doc numbers format per type: INV-0001 / QUO-0012 / EST-0003',
+      bd4 && bd4.inv === 'INV-0001' && bd4.quo === 'QUO-0012' && bd4.est === 'EST-0003', bd4);
+    const bd5 = await ev(`(function(){
+      document.getElementById('calc-client-name').value = 'Smith - 12 Church Rd';
+      document.getElementById('calc-client-name').dispatchEvent(new Event('input', { bubbles: true }));
+      var bt = document.getElementById('calc-quote-billto');
+      var st = __calcEngine.readState();
+      var csv = __calcEngine.estimateCsv(__calcEngine.computeFor(__calcEngine.readState()));
+      return { billto: bt.textContent, hidden: bt.hidden, ridesState: st.clientName,
+        csvHasClient: csv.indexOf('Smith - 12 Church Rd') > -1, csvHasBiz: csv.indexOf('Fairclough Build Ltd') > -1 };
+    })()`);
+    check('BD5 client field fills bill-to, rides saved state and the CSV (with business + contact rows)',
+      bd5 && bd5.billto.indexOf('Smith - 12 Church Rd') > -1 && !bd5.hidden && bd5.ridesState === 'Smith - 12 Church Rd' && bd5.csvHasClient && bd5.csvHasBiz, bd5);
+    const sg1 = await ev(`(function(){
+      document.getElementById('calc-doc-type').value = 'Invoice';
+      document.getElementById('calc-doc-type').dispatchEvent(new Event('change', { bubbles: true }));
+      var inv = document.getElementById('calc-quote-sig').hidden;
+      document.getElementById('calc-doc-type').value = 'Estimate';
+      document.getElementById('calc-doc-type').dispatchEvent(new Event('change', { bubbles: true }));
+      var est = document.getElementById('calc-quote-sig').hidden;
+      return { invoice: inv, estimate: est };
+    })()`);
+    check('SG1 signature lines default: ON for Invoice, OFF for Estimate',
+      sg1 && sg1.invoice === false && sg1.estimate === true, sg1);
+    const sg2 = await ev(`(function(){
+      var box = document.getElementById('calc-sig-show');
+      box.checked = true;
+      box.dispatchEvent(new Event('change', { bubbles: true }));
+      var estOn = document.getElementById('calc-quote-sig').hidden;
+      box.checked = false;
+      box.dispatchEvent(new Event('change', { bubbles: true }));
+      var estOff = document.getElementById('calc-quote-sig').hidden;
+      return { estOn: estOn, estOff: estOff, stored: (JSON.parse(localStorage.getItem('mmgr_calc_brand') || '{}').sigShow) };
+    })()`);
+    check('SG2 the checkbox forces signature lines on/off for any doc type; choice persists',
+      sg2 && sg2.estOn === false && sg2.estOff === true && sg2.stored === '', sg2);
+    const sg3 = await ev(`(function(){
+      var d = document.getElementById('calc-doc-date');
+      return { today: d.value, iso: new Date().toISOString().slice(0, 10), due: document.getElementById('calc-doc-due').value };
+    })()`);
+    check('SG3 document date defaults to today; due date starts blank',
+      sg3 && sg3.today === sg3.iso && sg3.due === '', sg3);
+    await ev(`(function(){
+      localStorage.removeItem('mmgr_calc_brand');
+      localStorage.removeItem('mmgr_calc_doccounter');
+      ['calc-client-name','calc-client-addr','calc-doc-no','calc-doc-due'].forEach(function(id2){
+        var el = document.getElementById(id2); if (el) el.value = '';
+      });
+      var dt2 = document.getElementById('calc-doc-date'); if (dt2) dt2.value = new Date().toISOString().slice(0, 10);
+      document.getElementById('calc-client-name').dispatchEvent(new Event('input', { bubbles: true }));
+      document.getElementById('calc-biz-name').value = '';
+      document.getElementById('calc-biz-name').dispatchEvent(new Event('input', { bubbles: true }));
     })()`);
 
     // ---------- F4 ENHANCEMENTS ----------
@@ -1658,13 +1770,14 @@ async function withChrome(fn) {
       document.getElementById('calc-save-name').dispatchEvent(new Event('input',{bubbles:true}));
       document.getElementById('calc-biz-name').value='QA Builders Ltd';
       document.getElementById('calc-biz-name').dispatchEvent(new Event('input',{bubbles:true}));
-      var stored = localStorage.getItem('mmgr_calc_biz_name');
+      var stored = '';
+      try { stored = (JSON.parse(localStorage.getItem('mmgr_calc_brand') || '{}').name) || ''; } catch (e) {}
       return { stored: stored,
                biz: document.getElementById('calc-quote-biz').textContent,
                meta: document.getElementById('calc-quote-meta').textContent,
                printBtn: String(document.querySelector('[data-action=calcPrint]').textContent).indexOf('Print / PDF') > -1 };
     })()`);
-    check('Q1 business name saves + quote head fills (name, work, date)', q1 && q1.stored === 'QA Builders Ltd' && q1.biz === 'QA Builders Ltd' &&
+    check('Q1 (re-baselined 2026-10-01) business name saves into the BRAND store + quote head fills (name, work, date)', q1 && q1.stored === 'QA Builders Ltd' && q1.biz === 'QA Builders Ltd' &&
           String(q1.meta).indexOf('Garage slab QA') > -1 && String(q1.meta).indexOf('2026-') > -1 && q1.printBtn, q1);
 
     // Q2: the head is screen-hidden; the print sheet reveals it under real
@@ -1684,9 +1797,9 @@ async function withChrome(fn) {
     await send('Emulation.setEmulatedMedia', { media: '' });
     check('Q2 quote head: screen none, print block under body.print-estimate', q2 && q2.screen === 'none' && q2b && q2b.withoutScope === 'none' && q2b.withScope === 'block', q2b);
 
-    // clean the letterhead + save-name for later gates
+    // clean the letterhead + save-name for later gates (brand store now)
     await ev(`(function(){
-      localStorage.removeItem('mmgr_calc_biz_name');
+      localStorage.removeItem('mmgr_calc_brand');
       document.getElementById('calc-biz-name').value='';
       document.getElementById('calc-biz-name').dispatchEvent(new Event('input',{bubbles:true}));
       document.getElementById('calc-save-name').value='';

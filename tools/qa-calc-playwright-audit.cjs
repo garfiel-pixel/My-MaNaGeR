@@ -271,6 +271,29 @@ async function walkFocus(page) {
           try { localStorage.removeItem('mmgr_calc_boq'); } catch (e) {}
           if (window.renderBoq) renderBoq();
         });
+        // M13 (client-docs W3): a real logo upload through the file input
+        // lands in the brand store within the 1 MB cap, shows the preview,
+        // and the brand card stays inside the phone viewport with it.
+        const pngB64 =
+          'iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAYAAACp8Z5+AAAAFUlEQVR42mP8z8AARIQBEwMDAwMDAwAkBgMBJoEaPAAAAABJRU5ErkJggg==';
+        fs.writeFileSync(path.join(os.tmpdir(), 'mmgr-m13-logo.png'), Buffer.from(pngB64, 'base64'));
+        await page.evaluate(() => { try { localStorage.removeItem('mmgr_calc_brand'); } catch (e) {} });
+        await page.setInputFiles('#calc-logo-file', path.join(os.tmpdir(), 'mmgr-m13-logo.png'));
+        await page.waitForTimeout(600);
+        const m13 = await page.evaluate(() => {
+          const b = JSON.parse(localStorage.getItem('mmgr_calc_brand') || '{}');
+          const prev = document.getElementById('calc-logo-preview');
+          const card = document.getElementById('calc-brand-card').getBoundingClientRect();
+          return {
+            stored: typeof b.logo === 'string' && b.logo.indexOf('data:image/') === 0,
+            fits: window.__calcEngine.logoFitsCap(b.logo || ''),
+            prevShown: !!prev && !prev.hidden && (prev.getAttribute('src') || '').indexOf('data:image/') === 0,
+            cardIn: card.left >= -1 && card.right <= window.innerWidth + 1
+          };
+        });
+        check('M13 [390] logo upload stores a capped dataURL, preview shows, card stays in viewport',
+          m13 && m13.stored && m13.fits && m13.prevShown && m13.cardIn, m13);
+        await page.evaluate(() => { try { localStorage.removeItem('mmgr_calc_brand'); } catch (e) {} });
       }
       await ctx.close();
     }

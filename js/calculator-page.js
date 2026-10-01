@@ -327,6 +327,11 @@ function readState() {
     onCostPct: ($('calc-oncost-pct') || {}).value || '',
     docType: docType(),
     docTitle: docTitleRaw(),
+    clientName: ($('calc-client-name') || {}).value || '',
+    clientAddr: ($('calc-client-addr') || {}).value || '',
+    docNo: ($('calc-doc-no') || {}).value || '',
+    docDate: ($('calc-doc-date') || {}).value || '',
+    docDue: ($('calc-doc-due') || {}).value || '',
     piecePrice: ($('calc-piece-price') || {}).value || '',
     pieceSize: ($('calc-piece-size') || {}).value || '',
     measuredQty: ($('calc-measured-qty') || {}).value || '',
@@ -369,6 +374,11 @@ function applyState(st) {
   }
   if ($('calc-doc-type')) $('calc-doc-type').value = st.docType || 'Estimate';
   if ($('calc-doc-title')) $('calc-doc-title').value = st.docTitle || '';
+  if ($('calc-client-name')) $('calc-client-name').value = st.clientName || '';
+  if ($('calc-client-addr')) $('calc-client-addr').value = st.clientAddr || '';
+  if ($('calc-doc-no')) $('calc-doc-no').value = st.docNo || '';
+  if ($('calc-doc-date')) $('calc-doc-date').value = st.docDate || '';
+  if ($('calc-doc-due')) $('calc-doc-due').value = st.docDue || '';
   if ($('calc-piece-price')) $('calc-piece-price').value = st.piecePrice || '';
   if ($('calc-piece-size')) $('calc-piece-size').value = st.pieceSize || '';
   refreshRateFields();
@@ -1169,6 +1179,14 @@ function estimateCsv(r) {
     ['Discount % / amount', (rollupPrefs().discPct || '0') + ' / ' + (rollupPrefs().discAmt || '0')],
     ['Roll-up (bill + site costs, less discount)', Math.round(rollup({ works: prelimWorks(), prelims: prelimsTotal(prelimItems, prelimWorks()).total, designC: '0', constrC: '0', escPct: '0', months: '0', discPct: rollupPrefs().discPct, discAmt: rollupPrefs().discAmt }).subtotal)],
     [],
+    ['Business', bizName()],
+    ['Contact', (function() { const b = brandLoad(); return [b.phone, b.email, b.addr, b.trn ? 'TRN ' + b.trn : ''].filter(Boolean).join(' - '); })()],
+    ['Client / bill to', (($('calc-client-name') || {}).value || '')],
+    ['Project address', (($('calc-client-addr') || {}).value || '')],
+    ['Document no', (($('calc-doc-no') || {}).value || '')],
+    ['Document date', (($('calc-doc-date') || {}).value || '')],
+    ['Due date', (($('calc-doc-due') || {}).value || '')],
+    [],
     ['Planning-grade estimate - not a quote.']
   ];
   return '\uFEFF' + rows.map(function(row) { return row.map(q).join(','); }).join('\r\n');
@@ -1190,13 +1208,12 @@ function docTitleBase() {
 // Test hook (harness-only convenience; harmless in production).
 window.__calcDocTitleBase = docTitleBase;
 // W1 engine hook (harness-only convenience; harmless in production).
-window.__calcEngine = { computeFor: computeFor, boqTotals: boqTotals, readState: readState, syncLabels: syncLabels, instancesQty: instancesQty, estimateCsv: estimateCsv, prelimsTotal: prelimsTotal, rollup: rollup, cashCurve: cashCurve, formworkM2: formworkM2, importPacks: importPacks, applyDiscount: applyDiscount, companionsFor: companionsFor, syncFamily: syncFamily };
+window.__calcEngine = { computeFor: computeFor, boqTotals: boqTotals, readState: readState, syncLabels: syncLabels, instancesQty: instancesQty, estimateCsv: estimateCsv, prelimsTotal: prelimsTotal, rollup: rollup, cashCurve: cashCurve, formworkM2: formworkM2, importPacks: importPacks, applyDiscount: applyDiscount, companionsFor: companionsFor, syncFamily: syncFamily, brandLoad: brandLoad, logoFitsCap: logoFitsCap, docNoSuggest: docNoSuggest };
 
 document.addEventListener('change', function(e) {
   if (e.target && e.target.id === 'calc-doc-type') render();
   if (e.target && e.target.id === 'calc-family') onFamilyChange(e.target.value);
-});
-document.addEventListener('input', function(e) {
+});document.addEventListener('input', function(e) {
   if (e.target && e.target.id === 'calc-doc-title') render();
 });
 
@@ -1227,10 +1244,141 @@ let lastResult = null;
 // D3: optional business letterhead for printed/PDF estimates. Device-local
 // (mmgr_calc_biz_name); the quote head is display:none on screen.
 const BKEY = 'mmgr_calc_biz_name';
+// ---- W3 2026-10-01: BUSINESS DETAILS (brand) + DOCUMENT FIELDS ----------
+// One brand object (logo + letterhead + signature identity) feeds the
+// printed sheet; the logo is downscaled on-device to <= 1MB before it is
+// stored. The old lone business-name input migrates into the brand object
+// on first load. Per-document fields (client, number, dates) ride the
+// saved estimate so recall restores the whole document.
+const BRKEY = 'mmgr_calc_brand';
+const DOCNO_KEY = 'mmgr_calc_doccounter';
+function brandLoad() {
+  let b = null;
+  try { b = JSON.parse(localStorage.getItem(BRKEY) || 'null'); } catch (e) { b = null; }
+  if (!b || typeof b !== 'object') b = {};
+  // Migration: the pre-brand lone business name folds in once, PERSISTS
+  // into the brand store, then the old key is retired.
+  try {
+    const old = localStorage.getItem(BKEY);
+    if (old) {
+      localStorage.removeItem(BKEY);
+      if (!b.name) {
+        b.name = old;
+        b.updatedAt = Date.now();
+        try { localStorage.setItem(BRKEY, JSON.stringify(b)); } catch (e) {}
+      }
+    }
+  } catch (e) {}
+  return { logo: b.logo || null, name: b.name || '', phone: b.phone || '', email: b.email || '',
+    addr: b.addr || '', trn: b.trn || '', sigName: b.sigName || '', sigTitle: b.sigTitle || '',
+    sigShow: b.sigShow || '', updatedAt: b.updatedAt || 0 };
+}
+function brandSave(patch) {
+  const cur = brandLoad();
+  const next = Object.assign(cur, patch, { updatedAt: Date.now() });
+  try { localStorage.setItem(BRKEY, JSON.stringify(next)); } catch (e) { /* storage full - a nicety */ }
+  return next;
+}
+//PURE: decoded byte size of a data URL (base64 payload is 4/3 of the bytes).
+function logoFitsCap(dataUrl) {
+  const i = String(dataUrl || '').indexOf(',');
+  if (i < 0) return false;
+  const b64 = dataUrl.slice(i + 1).replace(/[^A-Za-z0-9+/=]/g, '');
+  return (b64.length * 3 / 4) <= 1000000;
+}
+// On-device downscale: max side 600px, JPEG at falling quality, then
+// dimension halving, until the stored data URL is under the 1MB cap.
+function downscaleLogo(img) {
+  return new Promise(function(resolve) {
+    try {
+      let w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
+      if (!w || !h) return resolve(null);
+      const MAX = 600;
+      let scale = Math.min(1, MAX / Math.max(w, h));
+      let cw = Math.max(1, Math.round(w * scale)), ch = Math.max(1, Math.round(h * scale));
+      const hasAlpha = (() => { try { return img.src && img.src.indexOf('image/png') > -1 || img.src.indexOf('image/webp') > -1; } catch (e) { return false; } })();
+      let q = 0.85;
+      for (let attempt = 0; attempt < 8; attempt++) {
+        const canvas = document.createElement('canvas');
+        canvas.width = cw; canvas.height = ch;
+        canvas.getContext('2d').drawImage(img, 0, 0, cw, ch);
+        const url = canvas.toDataURL(hasAlpha ? 'image/png' : 'image/jpeg', q);
+        if (logoFitsCap(url)) return resolve(url);
+        if (!hasAlpha && q > 0.5) { q -= 0.15; continue; }
+        cw = Math.max(1, Math.floor(cw / 2)); ch = Math.max(1, Math.floor(ch / 2));
+        q = 0.85;
+      }
+      resolve(null);
+    } catch (e) { resolve(null); }
+  });
+}
+// PURE: document-number suggestion per type from the counter.
+function docNoSuggest(type, n) {
+  const pre = type === 'Invoice' ? 'INV' : (type === 'Quote' ? 'QUO' : 'EST');
+  const num = Math.max(1, parseInt(n, 10) || 1);
+  return pre + '-' + (num < 10 ? '000' + num : num < 100 ? '00' + num : num < 1000 ? '0' + num : String(num));
+}
+function docCounterLoad() {
+  let c = null;
+  try { c = JSON.parse(localStorage.getItem(DOCNO_KEY) || 'null'); } catch (e) { c = null; }
+  return { Estimate: c && c.Estimate || 1, Quote: c && c.Quote || 1, Invoice: c && c.Invoice || 1 };
+}
+function docCounterBump(type) {
+  const c = docCounterLoad();
+  c[type] = (parseInt(c[type], 10) || 1) + 1;
+  try { localStorage.setItem(DOCNO_KEY, JSON.stringify(c)); } catch (e) {}
+  return c;
+}
 function bizName() {
   const el = $('calc-biz-name');
   if (el && el.value.trim()) return el.value.trim();
-  try { return localStorage.getItem(BKEY) || ''; } catch (e) { return ''; }
+  return brandLoad().name;
+}
+
+// W3: the document sheet extras. Nothing renders without its data - a
+// bare estimate prints exactly like it did before this wave.
+function renderQuoteDoc(r) {
+  const brand = brandLoad();
+  const logo = $('calc-quote-logo');
+  if (logo) { if (brand.logo) { logo.src = brand.logo; logo.hidden = false; } else { logo.removeAttribute('src'); logo.hidden = true; } }
+  const contact = $('calc-quote-contact');
+  if (contact) {
+    const parts = [brand.phone, brand.email, brand.addr, brand.trn ? 'TRN ' + brand.trn : ''].filter(Boolean);
+    contact.textContent = parts.join('  -  ');
+  }
+  const docNo = ($('calc-doc-no') || {}).value || '';
+  const qd = $('calc-quote-docno');
+  if (qd) qd.textContent = docNo;
+  const client = (($('calc-client-name') || {}).value || '').trim();
+  const addr = (($('calc-client-addr') || {}).value || '').trim();
+  const bt = $('calc-quote-billto');
+  if (bt) {
+    if (!client && !addr) { bt.textContent = ''; bt.hidden = true; }
+    else { bt.hidden = false; bt.textContent = 'Bill to: ' + (client || '') + (addr ? (client ? ', ' : '') + addr : ''); }
+  }
+  const sig = $('calc-quote-sig');
+  if (sig) {
+    const show = brand.sigShow === 'on' || (brand.sigShow === '' && docType() === 'Invoice');
+    sig.hidden = !show;
+    if (show) {
+      const nameEl = sig.querySelector('.bcp-sig-name'), titleEl = sig.querySelector('.bcp-sig-title');
+      if (nameEl) nameEl.textContent = brand.sigName || bizName();
+      if (titleEl) titleEl.textContent = brand.sigTitle || '';
+    }
+  }
+}
+function renderBrand() {
+  const b = brandLoad();
+  const preview = $('calc-logo-preview'), rm = $('calc-logo-remove');
+  if (preview) { if (b.logo) { preview.src = b.logo; preview.hidden = false; } else { preview.removeAttribute('src'); preview.hidden = true; } }
+  if (rm) rm.hidden = !b.logo;
+  const map = { 'calc-brand-name': b.name, 'calc-brand-phone': b.phone, 'calc-brand-email': b.email,
+    'calc-brand-addr': b.addr, 'calc-brand-trn': b.trn, 'calc-brand-signame': b.sigName, 'calc-brand-sigtitle': b.sigTitle };
+  Object.keys(map).forEach(function(id) { const el = $(id); if (el && document.activeElement !== el) el.value = map[id]; });
+  const sigT = $('calc-sig-show');
+  if (sigT) sigT.checked = b.sigShow === 'on';
+  const bizEl = $('calc-biz-name');
+  if (bizEl && document.activeElement !== bizEl) bizEl.value = b.name;
 }
 
 // ---- W2 2026-10-01: companion chips (one-tap bill lines) ----------------
@@ -1268,6 +1416,11 @@ function render() {
   const out = $('calc-output');
   if (!out) return;
   const r = compute();
+  // W3: the document sheet extras (logo, contact, doc number, bill-to,
+  // signature) follow their own fields on EVERY recompute - even before
+  // dims price. A document header is data-driven, not price-driven, and
+  // with no data it stays hidden (plain by default).
+  renderQuoteDoc(r);
   // W4: the preliminaries amounts ride every recompute (works basis moves).
   renderPrelims(r && !r.error ? r.sub : 0);
   // W5: the planning waterfall follows the same works basis.
@@ -1306,6 +1459,8 @@ function render() {
   if (qh) qh.textContent = bizName();
   if (qt) qt.textContent = docType();
   if (qm) qm.textContent = (docTitleRaw() || (($('calc-save-name') || {}).value || r.name)) + '  -  ' + r.name + '  -  ' + shown.main + '  -  ' + new Date().toISOString().slice(0, 10);
+  // W3: the full document sheet - logo, contact block, document number
+  // and bill-to appear ONLY when their data exists (plain by default).
   out.innerHTML =
     '<div class="calc-sum">' +
       '<div class="calc-sum-main"><span class="calc-sum-label">' + r.qtyLabel + '</span>' +
@@ -1654,8 +1809,13 @@ const ACTIONS = {
     const nameEl = $('calc-save-name');
     const name = ((nameEl && nameEl.value) || '').trim() || (lastResult.name + ' - ' + fmtMoney(lastResult.total));
     const list = loadEstimates();
+    const st = readState();
+    // W3: the doc-number counter bumps only when a save carries the exact
+    // suggested number - a hand-typed number is the user's own sequence.
+    const c = docCounterLoad();
+    if ((st.docNo || '').trim() === docNoSuggest(st.docType, c[st.docType])) docCounterBump(st.docType);
     list.unshift({ id: 'e' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
-      name: name, at: new Date().toISOString().slice(0, 10), total: fmtMoney(lastResult.total), st: readState() });
+      name: name, at: new Date().toISOString().slice(0, 10), total: fmtMoney(lastResult.total), st: st });
     persistEstimates(list);
     if (nameEl) nameEl.value = '';
     renderEstimates();
@@ -1830,6 +1990,23 @@ const ACTIONS = {
     renderBoq();
     renderCompanions(lastResult);
   },
+  // ---- W3 business details + document fields ----
+  calcBrandOpen: function(el) {
+    const body = $('calc-brand-body');
+    if (!body) return;
+    body.hidden = !body.hidden;
+    if (el) { el.setAttribute('aria-expanded', String(!body.hidden)); el.textContent = body.hidden ? 'Show' : 'Hide'; }
+    try { localStorage.setItem('mmgr_calc_brand_open', body.hidden ? '' : '1'); } catch (e) {}
+  },
+  calcLogoRemove: function() {
+    brandSave({ logo: null });
+    renderBrand();
+    render();
+  },
+  calcBrandToggle: function(el) {
+    brandSave({ sigShow: el.checked ? 'on' : '' });
+    render();
+  },
   // ---- W8 location packs ----
   calcPackApply: function(el) {
     const sel = $('calc-pack-select');
@@ -1928,6 +2105,15 @@ document.addEventListener('click', function(e) {
   const fn = ACTIONS[el.getAttribute('data-action')];
   if (fn) fn(el);
 });
+// Checkboxes and selects with data-action fire 'change', not a click that
+// carries a value in every browser - dispatch them on change as well (W3:
+// the signature-lines toggle is the first checkbox action on this page).
+document.addEventListener('change', function(e) {
+  const el = e.target.closest('[data-action]');
+  if (!el) return;
+  const fn = ACTIONS[el.getAttribute('data-action')];
+  if (fn && el.tagName === 'INPUT' && el.type === 'checkbox') fn(el);
+});
 
 // Rate-sheet quick picker: choosing a sheet in the <select> applies it.
 // The select carries the sheet id as its option VALUE (row buttons carry
@@ -1984,13 +2170,15 @@ document.addEventListener('change', function(e) {
 // afterprint is the standards path where it fires).
 window.addEventListener('afterprint', function() { document.body.classList.remove('print-estimate'); });
 
-// D3: persist the business letterhead name on every keystroke. Rendering
-// follows through the same input path as every other field.
+// D3: the export-row business name now saves into the brand store (the
+// card's name field mirrors it - both write the same key since W3).
 (function() {
   const el = $('calc-biz-name');
   if (!el) return;
   el.addEventListener('input', function() {
-    try { localStorage.setItem(BKEY, el.value.trim()); } catch (e) { /* nicety */ }
+    brandSave({ name: el.value.trim() });
+    const cardEl = $('calc-brand-name');
+    if (cardEl && document.activeElement !== cardEl) cardEl.value = el.value.trim();
     render();
   });
 })();
@@ -2335,6 +2523,66 @@ renderPacks();
   if ($('calc-disc-pct')) $('calc-disc-pct').value = p.discPct != null ? p.discPct : '';
   if ($('calc-disc-amt')) $('calc-disc-amt').value = p.discAmt != null ? p.discAmt : '';
 })();
+// W3: brand + document fields restore on load (before first render so the
+// sheet has its data); the logo pipeline downgrades big images on-device.
+(function() {
+  renderBrand();
+  const dEl = $('calc-doc-date');
+  if (dEl && !dEl.value) dEl.value = new Date().toISOString().slice(0, 10);
+  const c = docCounterLoad();
+  const dType = docType();
+  const noEl = $('calc-doc-no');
+  if (noEl && !noEl.value) noEl.placeholder = docNoSuggest(dType, c[dType]) + ' (next number)';
+  const logoFile = $('calc-logo-file');
+  if (logoFile) logoFile.addEventListener('change', function() {
+    const f = logoFile.files && logoFile.files[0];
+    const note = $('calc-logo-note');
+    if (!f) return;
+    const say = function(m) { if (note) note.textContent = m; };
+    if (!/^image\//.test(f.type)) { say('That file is not an image. Choose a PNG or JPG.'); logoFile.value = ''; return; }
+    if (f.size > 8 * 1024 * 1024) { say('That image is too large (over 8 MB). Choose a smaller one.'); logoFile.value = ''; return; }
+    const reader = new FileReader();
+    reader.onload = function() {
+      const img = new Image();
+      img.onload = function() {
+        downscaleLogo(img).then(function(url) {
+          if (!url) { say('That image could not be resized. Try a smaller one.'); return; }
+          brandSave({ logo: url });
+          renderBrand();
+          render();
+          say('Logo saved. It stays on this device.');
+          logoFile.value = '';
+        });
+      };
+      img.onerror = function() { say('That image could not be read. Try a different file.'); };
+      img.src = String(reader.result);
+    };
+    reader.onerror = function() { say('The file could not be read. Try again.'); };
+    reader.readAsDataURL(f);
+  });
+  ['calc-brand-name', 'calc-brand-phone', 'calc-brand-email', 'calc-brand-addr', 'calc-brand-trn', 'calc-brand-signame', 'calc-brand-sigtitle'].forEach(function(id) {
+    const el = $(id);
+    if (!el) return;
+    el.addEventListener('input', function() {
+      const patch = {}; patch[{ 'calc-brand-name': 'name', 'calc-brand-phone': 'phone', 'calc-brand-email': 'email',
+        'calc-brand-addr': 'addr', 'calc-brand-trn': 'trn', 'calc-brand-signame': 'sigName', 'calc-brand-sigtitle': 'sigTitle' }[id]] = el.value.trim();
+      brandSave(patch);
+      render();
+    });
+  });
+  ['calc-client-name', 'calc-client-addr', 'calc-doc-no', 'calc-doc-date', 'calc-doc-due'].forEach(function(id) {
+    const el = $(id);
+    if (el) el.addEventListener('input', render);
+  });
+  const dTypeSel = $('calc-doc-type');
+  if (dTypeSel) dTypeSel.addEventListener('change', function() {
+    const cc = docCounterLoad();
+    const t = docType();
+    const ne = $('calc-doc-no');
+    if (ne && !ne.value) ne.placeholder = docNoSuggest(t, cc[t]) + ' (next number)';
+  });
+  if (localStorage.getItem('mmgr_calc_brand_open') === '1') ACTIONS.calcBrandOpen($('calc-brand-card') ? $('calc-brand-card').querySelector('[data-action="calcBrandOpen"]') : null);
+})();
 // How-to guide: paint the first step (open state decides visibility).
 renderGuide();
 // First-visit tutorial nudge: only when the flag is absent.
@@ -2352,11 +2600,6 @@ renderGuide();
     x0 = null;
   }, { passive: true });
 })();
-// D3: restore the saved business name after the listeners are attached.
-(function() {
-  let saved = '';
-  try { saved = localStorage.getItem(BKEY) || ''; } catch (e) {}
-  const el = $('calc-biz-name');
-  if (el && saved && !el.value) el.value = saved;
-})();
+// D3 restore (pre-brand) retired 2026-10-01: brandLoad/renderBrand own the
+// business name now (mmgr_calc_biz_name migrates into mmgr_calc_brand).
 })();

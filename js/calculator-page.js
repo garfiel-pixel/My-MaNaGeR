@@ -225,6 +225,7 @@ function readState() {
     rateLab: ($('calc-rate-lab') || {}).value || '',
     rateEq: ($('calc-rate-eq') || {}).value || '',
     ohPct: ($('calc-oh') || {}).value || '',
+    onCostPct: ($('calc-oncost-pct') || {}).value || '',
     docType: docType(),
     docTitle: docTitleRaw(),
     piecePrice: ($('calc-piece-price') || {}).value || '',
@@ -261,6 +262,12 @@ function applyState(st) {
   if ($('calc-rate-lab')) $('calc-rate-lab').value = st.rateLab || '';
   if ($('calc-rate-eq')) $('calc-rate-eq').value = st.rateEq || '';
   if ($('calc-oh')) $('calc-oh').value = st.ohPct || '';
+  if ($('calc-oncost-pct')) {
+    $('calc-oncost-pct').value = st.onCostPct || '';
+    const t = $('calc-oncost-toggle');
+    if (t) t.checked = !!(st.onCostPct);
+    $('calc-oncost-pct').disabled = !$('calc-oncost-toggle').checked;
+  }
   if ($('calc-doc-type')) $('calc-doc-type').value = st.docType || 'Estimate';
   if ($('calc-doc-title')) $('calc-doc-title').value = st.docTitle || '';
   if ($('calc-piece-price')) $('calc-piece-price').value = st.piecePrice || '';
@@ -351,6 +358,15 @@ function computeFor(st) {
   const eqRate = isFinite(eqRaw) && eqRaw > 0 ? eqRaw : 0;
   const ohRaw = parseFloat(st.ohPct);
   const ohPct = isFinite(ohRaw) && ohRaw > 0 && ohRaw <= 60 ? ohRaw : 0;
+  // W3 (owner 2026-09-30): optional employer statutory on-costs on LABOR.
+  // Jamaica planning default 12.5% of gross payroll = NIS 3% (insurable
+  // earnings cap J$5,000,000/yr) + NHT 3% + HEART/NSTA 3% + Education Tax
+  // 3.5% (PwC Worldwide Tax Summaries; Dawgen; Skuad; HEART-NSTA, 2026).
+  // Off unless explicitly enabled; capped at 25% as a typo guard. Labor
+  // billed per hour here is usually a contractor price that ALREADY carries
+  // these costs, so this is opt-in, never a silent default.
+  const ocRaw = parseFloat(st.onCostPct);
+  const onCostPct = isFinite(ocRaw) && ocRaw > 0 ? Math.min(ocRaw, 25) : 0;
   // F4b per-piece pricing: price-per-piece + piece size becomes the
   // effective material rate. Three divisors: AREA (tile, block, brick,
   // roof sheets) -> price / piece area = rate per m2; WIDTH (fencing
@@ -406,7 +422,8 @@ function computeFor(st) {
   const overrideRaw = parseFloat(st.taxOverride);
   const override = isFinite(overrideRaw) && overrideRaw >= 0 ? overrideRaw : null;
   const taxRate = override !== null ? override : (TAX[country] || 0);
-  const sub = mat + lab + eq;
+  const onCost = lab * onCostPct / 100;
+  const sub = mat + lab + onCost + eq;
   const oh = sub * ohPct / 100;
   const tax = (sub + oh) * taxRate / 100;
   const orderCount = pieceCount(qty, qr.unit, w.piece, (st.pieceSize || '').trim());
@@ -415,7 +432,7 @@ function computeFor(st) {
   return { key, qty: qty, baseQty: qr.qty, unit: qr.unit, qtyLabel: qr.qtyLabel, matDesc: w.matDesc,
     orderCount: orderCount,
     wastePct: wastePct, hasWaste: !!w.waste, wasteLbl: w.waste ? w.waste.lbl : null,
-    mr, lr, eqRate, eq, ohPct, oh, effMat, modelMr, piece, mat, lab, sub, taxRate, tax, total: sub + oh + tax, overrideApplied: override !== null,
+    mr, lr, eqRate, eq, onCost, onCostPct, ohPct, oh, effMat, modelMr, piece, mat, lab, sub, taxRate, tax, total: sub + oh + tax, overrideApplied: override !== null,
     matOverridden: matOverride, labOverridden: labOverride, currency: st.currency || 'USD' };
 }
 
@@ -727,6 +744,7 @@ function estimateCsv(r) {
     ['Units entered', _units],
     ['Material rate used', r.piece ? (Math.round(r.effMat * 100) / 100) + ' per m2 (from piece pricing)' : Math.round(r.mr)],
     ['Labor rate used', Math.round(r.lr)],
+    ['Labor statutory costs %', r.onCostPct > 0 ? r.onCostPct : 'none'],
     ['Equipment rate used', r.eqRate > 0 ? r.eqRate : 'none'],
     ['Overhead & margin %', r.ohPct > 0 ? r.ohPct : 'none'],
     ['Piece pricing', r.piece && !r.piece.countOnly ? (r.piece.div === 'volume'
@@ -761,7 +779,7 @@ function docTitleBase() {
 // Test hook (harness-only convenience; harmless in production).
 window.__calcDocTitleBase = docTitleBase;
 // W1 engine hook (harness-only convenience; harmless in production).
-window.__calcEngine = { computeFor: computeFor, boqTotals: boqTotals, readState: readState, syncLabels: syncLabels, instancesQty: instancesQty };
+window.__calcEngine = { computeFor: computeFor, boqTotals: boqTotals, readState: readState, syncLabels: syncLabels, instancesQty: instancesQty, estimateCsv: estimateCsv };
 
 document.addEventListener('change', function(e) {
   if (e.target && e.target.id === 'calc-doc-type') render();
@@ -849,6 +867,7 @@ function render() {
     (r.hasWaste ? row(r.wasteLbl + ' allowance', r.wastePct + '%') : '') +
     row(matLabel, fmtMoney(r.mat)) +
     row('Labor' + (r.labOverridden ? ' - your rate' : ''), fmtMoney(r.lab)) +
+    (r.onCost > 0 ? row('Labor statutory costs (NIS, NHT, HEART, Education) ' + r.onCostPct + '%', fmtMoney(r.onCost)) : '') +
     (r.eq > 0 ? row('Equipment / plant hire', fmtMoney(r.eq)) : '') +
     (r.ohPct > 0 ? row('Overhead & margin ' + r.ohPct + '%', fmtMoney(r.oh)) : '') +
     row('Subtotal', fmtMoney(r.sub), 'calc-line-sub') +
@@ -1468,6 +1487,9 @@ function syncLabels() {
   if ($('calc-country') && !$('calc-tax-override').value) {
     $('calc-country').selectedOptions[0].textContent = countryLabel(c);
   }
+  // W3: the Contractors Levy note is Jamaica-specific.
+  const jmNote = $('calc-jm-levy-note');
+  if (jmNote) jmNote.hidden = c !== 'JM';
   // W2: instance editor follows the work item (rows re-seed per trade).
   renderInstances();
   refreshRateFields();
@@ -1554,6 +1576,25 @@ if ($('calc-work')) {
     render();
   });
   $('calc-measured-qty').addEventListener('input', render);
+  // W3: employer statutory on-costs. Enabling the toggle (or switching to
+  // Jamaica while it is on) suggests the 12.5% stack; a typed value always
+  // wins (touched flag) and 0/empty keeps it off.
+  function onCostSuggest() {
+    const t = $('calc-oncost-toggle'), p = $('calc-oncost-pct');
+    if (!t || !p) return;
+    p.disabled = !t.checked;
+    if (t.checked && $('calc-country').value === 'JM' && !p.dataset.touched && !p.value) {
+      p.value = '12.5';
+    }
+    render();
+  }
+  $('calc-oncost-toggle').addEventListener('change', onCostSuggest);
+  $('calc-oncost-pct').addEventListener('input', function() { this.dataset.touched = '1'; render(); });
+  $('calc-country').addEventListener('change', function() {
+    const note = $('calc-jm-levy-note');
+    if (note) note.hidden = $('calc-country').value !== 'JM';
+    if ($('calc-oncost-toggle').checked) onCostSuggest(); else render();
+  });
   // Saved unit system comes back before first interaction; silent keeps the
   // empty-state text until the user actually enters dimensions.
   let savedUnits = 'metric';

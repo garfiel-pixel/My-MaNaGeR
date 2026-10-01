@@ -78,6 +78,13 @@
      IN4  editor visibility follows the work item; rows render
      IN5  total-override checkbox bypasses rows
 
+   ESTIMATING DEPTH W3 - STATUTORY LABOR ON-COSTS (owner 2026-09-30):
+     SX1  off by default: no line, no math change
+     SX2  12.5% on a known labor subtotal, exact (incl. OH+tax ripples)
+     SX3  capped at 25% (typo guard)
+     SX4  breakdown line renders with the pct + CSV carries it
+     SX5  JM levy note shows only for Jamaica; toggle suggests 12.5
+
    Usage:  node tools/qa-calculator-page.cjs   (needs serve.cjs on :8765)
    Registry: CI-TEST-COVERAGE.md -> CI row (fast, serve.cjs battery).
    ============================================================ */
@@ -593,6 +600,74 @@ async function withChrome(fn) {
     check('IN5 total-override: typing 50 drives the estimate (50 m2)',
       in5 && in5.manualShown && in5.hero === '50', in5);
 
+    // ---------- W3: STATUTORY LABOR ON-COSTS (owner 2026-09-30) ----------
+    // Deterministic blockwall line: 10 x 2.4 m wall -> lab = 28 x 24 = 672.
+    await ev(`(function(){
+      document.getElementById('calc-work').value = 'blockwall';
+      document.getElementById('calc-work').dispatchEvent(new Event('change', { bubbles: true }));
+      document.getElementById('calc-d1').value = '10';
+      document.getElementById('calc-d2').value = '2.4';
+      document.getElementById('calc-measured-qty').value = '';
+      document.getElementById('calc-measured-manual').checked = false;
+      document.getElementById('calc-measured-qty').hidden = true;
+      document.getElementById('calc-currency').value = 'USD';
+      document.getElementById('calc-country').value = 'US';
+      document.getElementById('calc-quality').value = 'standard';
+      document.getElementById('calc-oh').value = '10';
+    })()`);
+    const sx1 = await ev(`(function(){
+      document.getElementById('calc-d1').dispatchEvent(new Event('input', { bubbles: true }));
+      var out = document.getElementById('calc-output').textContent;
+      return { line: out.indexOf('Labor statutory costs') > -1, total: (out.match(/Estimated total(\\d|[.,])/) || [])[1] || '' };
+    })()`);
+    check('SX1 off by default: no statutory line renders', sx1 && sx1.line === false, sx1);
+    const sx2 = await ev(`(function(){
+      var t = document.getElementById('calc-oncost-toggle');
+      t.checked = true;
+      t.dispatchEvent(new Event('change', { bubbles: true }));
+      var p = document.getElementById('calc-oncost-pct');
+      p.dataset.touched = '1';
+      p.value = '12.5';
+      p.dispatchEvent(new Event('input', { bubbles: true }));
+      var r = __calcEngine.computeFor(__calcEngine.readState());
+      return { onCost: r.onCost, sub: r.sub, total: r.total };
+    })()`);
+    check('SX2 12.5% of 672 labor = 84.00 on-cost; subtotal 1284 + OH = 1412.40 total',
+      sx2 && Math.abs(sx2.onCost - 84) < 0.01 && Math.abs(sx2.sub - 1284) < 0.01 && Math.abs(sx2.total - 1412.4) < 0.01, sx2);
+    const sx3 = await ev(`(function(){
+      var p = document.getElementById('calc-oncost-pct');
+      p.value = '99';
+      p.dispatchEvent(new Event('input', { bubbles: true }));
+      var r = __calcEngine.computeFor(__calcEngine.readState());
+      return { onCostPct: r.onCostPct, onCost: r.onCost };
+    })()`);
+    check('SX3 on-cost capped at 25%', sx3 && sx3.onCostPct === 25 && Math.abs(sx3.onCost - 168) < 0.01, sx3);
+    const sx4 = await ev(`(function(){
+      var p = document.getElementById('calc-oncost-pct');
+      p.value = '12.5';
+      p.dispatchEvent(new Event('input', { bubbles: true }));
+      var out = document.getElementById('calc-output').textContent;
+      var csv = __calcEngine.estimateCsv(__calcEngine.computeFor(__calcEngine.readState()));
+      return { line: out.indexOf('Labor statutory costs (NIS, NHT, HEART, Education) 12.5%') > -1, csvHas: csv.indexOf('Labor statutory costs %","12.5') > -1 };
+    })()`);
+    check('SX4 breakdown line renders with pct; CSV carries the row',
+      sx4 && sx4.line && sx4.csvHas, sx4);
+    const sx5 = await ev(`(function(){
+      document.getElementById('calc-country').value = 'JM';
+      document.getElementById('calc-country').dispatchEvent(new Event('change', { bubbles: true }));
+      var noteShown = !document.getElementById('calc-jm-levy-note').hidden;
+      var t = document.getElementById('calc-oncost-toggle');
+      var p = document.getElementById('calc-oncost-pct');
+      t.checked = false; t.dispatchEvent(new Event('change', { bubbles: true }));
+      t.checked = true; t.dispatchEvent(new Event('change', { bubbles: true }));
+      var suggested = p.value;
+      document.getElementById('calc-country').value = 'US';
+      document.getElementById('calc-country').dispatchEvent(new Event('change', { bubbles: true }));
+      var noteHiddenUs = document.getElementById('calc-jm-levy-note').hidden;
+      return { noteShown: noteShown, suggested: suggested, noteHiddenUs: noteHiddenUs };
+    })()`);
+    check('SX5 JM shows levy note + suggests 12.5; US hides the note',
+      sx5 && sx5.noteShown && sx5.suggested === '12.5' && sx5.noteHiddenUs, sx5);
     // Restore the pre-wave state for the U-series gates (the W1 block above
     // deliberately dirtied the form): deterministic metric slab flow.
     await ev(`(function(){
@@ -608,6 +683,13 @@ async function withChrome(fn) {
       document.getElementById('calc-currency').value = 'USD';
       document.getElementById('calc-country').value = 'US';
       document.getElementById('calc-quality').value = 'standard';
+      document.getElementById('calc-oh').value = '';
+      var t3 = document.getElementById('calc-oncost-toggle');
+      t3.checked = false;
+      t3.dispatchEvent(new Event('change', { bubbles: true }));
+      var p3 = document.getElementById('calc-oncost-pct');
+      p3.value = '';
+      p3.dataset.touched = '';
     })()`);
 
     // ---------- F4 ENHANCEMENTS ----------

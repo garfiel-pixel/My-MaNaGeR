@@ -37,6 +37,7 @@ import { handleCloudChangelogList, handleCloudChangelogRevert, handleCloudChange
 import { handleCloudPrefsGet, handleCloudPrefsPut, handleCloudBroadcast, handleCloudAutoBroadcast,
   handleOfflineCopyRegister, handleOfflineCopyList, handleOfflineCopyDelete } from './cloud/sync.js';
 import { handlePresenceUpgrade, presencePushRevChanged, cloudManifestCodeOk } from './cloud/presence.js';
+import { handleCalcWorkspaceGet, handleCalcWorkspacePut } from './cloud/calc-workspace.js';
 import { API_SHAPES, handleApiShape } from './api/shapes.js';
 import { handleWebhookCreate, handleWebhookList, handleWebhookDelete } from './webhooks.js';
 import { handleAdminCloudList } from './admin.js';
@@ -230,6 +231,14 @@ export async function routeApi(request, env, url) {
       const r = await rl(request, 'general', env);
       if (r) return r;
       return handlePresenceUpgrade(request, env, url);
+    }
+
+    // 5b. CALC WORKSPACE (client-docs W5: everything follows the account)
+    if (path === '/api/calc/workspace') {
+      const r = await rl(request, 'general', env);
+      if (r) return r;
+      if (request.method === 'GET') return handleCalcWorkspaceGet(request, env);
+      if (request.method === 'PUT') return handleCalcWorkspacePut(request, env);
     }
 
     // 6. CLOUD SYNC (offline copies, broadcast)

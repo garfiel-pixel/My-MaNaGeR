@@ -23,7 +23,7 @@
 <meta name="robots" content="noindex">
 <link rel="icon" type="image/png" href="images/mpw-icon.png">
 <link rel="apple-touch-icon" href="images/mpw-icon.png">
-<link rel="stylesheet" href="dist/mmgr.min.css?v=11">
+<link rel="stylesheet" href="dist/mmgr.min.css?v=12">
 <script src="js/mmgr-theme.js" data-sync="1"></script>
 </head>
 <body class="db-page calculator-page">
@@ -217,6 +217,13 @@
       <button type="button" class="btn btn-g bcp-run" data-action="calcRun">
         <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-calculator"></use></svg> Calculate
       </button>
+      <!-- W1 (owner 2026-09-30) bill of quantities: the priced form becomes
+           a line in a running bill; each line keeps its full settings so
+           Edit re-fills the form exactly (same exact-recall contract as
+           history + named estimates). -->
+      <button type="button" class="btn btn-n bcp-run" data-action="calcBoqAdd">
+        <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-plus"></use></svg> Add to bill
+      </button>
     </section>
 
     <section class="card bcp-result" aria-labelledby="calc-out-h" aria-live="polite">
@@ -250,6 +257,15 @@
       </div>
     </section>
   </div>
+
+  <section class="card" id="calc-boq-card" aria-labelledby="calc-boq-h">
+    <div class="bcp-hist-head">
+      <h2 id="calc-boq-h" class="card-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-list"></use></svg> Bill of quantities <span class="bcp-hist-note">- every line priced on this device</span></h2>
+      <button type="button" class="btn btn-n btn-s" data-action="calcBoqClear">Clear bill</button>
+    </div>
+    <p class="bcp-boq-total" id="calc-boq-total"></p>
+    <div id="calc-boq-body" class="calc-hist"><div class="calc-empty">No lines yet. Price something above, then Add to bill.</div></div>
+  </section>
 
   <section class="card" id="calc-hist-card" aria-labelledby="calc-hist-h">
     <div class="bcp-hist-head">
@@ -324,7 +340,7 @@
      worker, so its raw assets ride the HTTP cache (1y immutable) - any
      change here must bump v, or returning calculator-only visitors keep
      the old script/styles for a year. -->
-<script src="js/mmgr-icon-restore.js?v=11"></script>
-<script src="js/calculator-page.js?v=11"></script>
+<script src="js/mmgr-icon-restore.js?v=12"></script>
+<script src="js/calculator-page.js?v=12"></script>
 </body>
 </html>

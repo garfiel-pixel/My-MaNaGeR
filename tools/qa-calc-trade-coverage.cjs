@@ -28,6 +28,13 @@
    trade failing any step. BASE env overrides the target (the same
    file smokes production: BASE=https://... node tools/qa-calc-trade-coverage.cjs).
 
+   CI hardening (after run 36892966047 failed blind): boot waits on
+   domcontentloaded + explicit readiness (never networkidle - one
+   hanging keep-alive request would time the step out with zero
+   harness output), and a per-trade evaluate throw is captured and
+   REPORTED in the gate detail instead of crashing the step with a
+   bare exit 1. Gate logic is unchanged.
+
    Usage:  node tools/qa-calc-trade-coverage.cjs
    Registry: CI-TEST-COVERAGE.md -> CI row (serve.cjs battery).
    ============================================================ */
@@ -76,15 +83,26 @@ function dimSample(label) {
   const page = await ctx.newPage();
   let consoleErrors = 0;
   const apiNoise = []; // classified: the workspace probe 404s on the static server / 403s signed-out
+  const evalErrors = []; // evaluate throws are captured + reported, never crash the step blind
   page.on('pageerror', () => { consoleErrors++; });
   page.on('console', (m) => {
     if (m.type() !== 'error') return;
     const url = (m.location() || {}).url || '';
     if (/Failed to load resource/.test(m.text()) && /\/api\//.test(url)) { apiNoise.push(url.slice(-40)); return; }
-    consoleErrors++; apiNoise.length = apiNoise.length; // non-API errors are real
+    consoleErrors++; // non-API errors are real
   });
-  await page.goto(BASE + '/calculator.html', { waitUntil: 'networkidle' });
-  await page.waitForTimeout(600);
+  // Boot: domcontentloaded + explicit readiness, NOT networkidle - a hanging
+  // keep-alive request would time the step out with zero harness output.
+  await page.goto(BASE + '/calculator.html', { waitUntil: 'domcontentloaded', timeout: 60000 });
+  await page.waitForFunction(function() { return !!document.getElementById('calc-work') && !!window.__calcEngine; }, null, { timeout: 30000 });
+  await page.waitForTimeout(800);
+  // One wrapper for every per-trade evaluate: a throw becomes a reported
+  // payload (gate FAIL with the message) instead of an unhandled rejection
+  // that kills the whole step with no output.
+  const runTrade = async (p, trade, fn) => {
+    try { return { ok: true, r: await p.evaluate(fn, trade) }; }
+    catch (e) { const err = { evalError: String((e && e.message) || e).slice(0, 300) }; evalErrors.push(err); return { ok: false, err: err }; }
+  };
 
   const trades = await page.evaluate(() =>
     Array.prototype.map.call(document.querySelectorAll('#calc-work option'), o => o.value).filter(v => v && v !== '')
@@ -92,7 +110,7 @@ function dimSample(label) {
   check('picker exposes the user trades (>= 20)', trades.length >= 20, trades);
 
   for (const trade of trades) {
-    const r = await page.evaluate(async (trade) => {
+    const res = await runTrade(page, trade, async (trade) => {
       const dimSample = (label) => /\(mm\)/.test(label || '') ? '100' : '10';
       // Reset to a deterministic state between trades.
       try { localStorage.removeItem('mmgr_calc_boq'); localStorage.removeItem('mmgr_calc_wstamps'); } catch (e) {}
@@ -151,12 +169,13 @@ function dimSample(label) {
         heroUnit: heroUnit.slice(0, 60),
         consoleClean: true
       };
-    }, trade);
-    const ok = r.familyVisible && r.d1Label.indexOf('(') > -1 && r.qtyPositive && r.totalPositive &&
+    });
+    const r = res.ok ? res.r : null;
+    const ok = !!r && r.familyVisible && r.d1Label.indexOf('(') > -1 && r.qtyPositive && r.totalPositive &&
       r.matDesc && r.csvOk && r.billAdded &&
       (!r.piece.visible || (r.piece.pricePh && r.piece.pricePh.length > 3));
-    check('[' + trade + '] family flip + basis label + priced + CSV + bill' + (r.piece.visible ? ' + piece row' : ''),
-      ok, r);
+    check('[' + trade + '] family flip + basis label + priced + CSV + bill' + (r && r.piece.visible ? ' + piece row' : ''),
+      ok, r || res.err);
   }
 
   // Mobile pass: every trade selects, prices, and stays inside the phone.
@@ -164,13 +183,14 @@ function dimSample(label) {
   const mpage = await mctx.newPage();
   let mErrs = 0;
   mpage.on('pageerror', () => { mErrs++; });
-  await mpage.goto(BASE + '/calculator.html', { waitUntil: 'networkidle' });
-  await mpage.waitForTimeout(500);
+  await mpage.goto(BASE + '/calculator.html', { waitUntil: 'domcontentloaded', timeout: 60000 });
+  await mpage.waitForFunction(function() { return !!document.getElementById('calc-work') && !!window.__calcEngine; }, null, { timeout: 30000 });
+  await mpage.waitForTimeout(600);
   const mTrades = await mpage.evaluate(() =>
     Array.prototype.map.call(document.querySelectorAll('#calc-work option'), o => o.value).filter(v => v && v !== '')
   );
   for (const trade of mTrades) {
-    const m = await mpage.evaluate(async (trade) => {
+    const res = await runTrade(mpage, trade, async (trade) => {
       const dimSample = (label) => /\(mm\)/.test(label || '') ? '100' : '10';
       const work = document.getElementById('calc-work');
       work.value = trade;
@@ -192,12 +212,13 @@ function dimSample(label) {
         hasTotal: /Estimated total/i.test(document.getElementById('calc-output').textContent),
         runVisible: run.width > 0
       };
-    }, trade);
+    });
+    const m = res.ok ? res.r : null;
     check('[' + trade + '] [390] prices + stays inside the phone viewport',
-      m.noHScroll && m.hasTotal && m.runVisible, m);
+      !!m && m.noHScroll && m.hasTotal && m.runVisible, m || res.err);
   }
   check('zero console/page errors across all trades (both viewports; signed-out /api/ 4xx classified as expected probe noise)',
-    consoleErrors === 0 && mErrs === 0, { consoleErrors, mErrs, apiNoise });
+    consoleErrors === 0 && mErrs === 0 && evalErrors.length === 0, { consoleErrors, mErrs, evalErrors, apiNoise });
   await ctx.close(); await mctx.close(); await browser.close();
   if (global.__srv) { try { global.__srv.kill(); } catch (e) {} }
   log('==== TRADE COVERAGE: ' + passed + ' passed / ' + failed + ' failed across ' + trades.length + ' trades ====');

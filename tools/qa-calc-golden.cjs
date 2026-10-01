@@ -84,7 +84,16 @@ function absolutizeChrome(p) {
   await page.waitForTimeout(600);
 
   const near = (a, b, tol) => Math.abs((Number(a) || 0) - (Number(b) || 0)) <= tol;
+  let slipFlags = 0;
   for (const c of cases) {
+    // Pure unit-factor cases (E3): direct asserts on rateFactor, no engine.
+    if (c.pure && c.pure.rateFactor) {
+      const rows = c.pure.rateFactor;
+      const res = await page.evaluate((rows) => rows.map((rw) => ({ f: rw[0], u: rw[1], got: window.__calcEngine.rateFactor(rw[0], rw[1]), want: rw[2] })), rows);
+      const bad = res.filter((x) => Math.abs(x.got - x.want) > 1e-9);
+      check('[' + c.id + '] rate-entry unit factors hold (E3)', bad.length === 0, bad.length ? bad : res.map((x) => x.f + '->' + x.u + '=' + x.got).join(' '));
+      continue;
+    }
     let r = null, evalErr = null;
     try {
       r = await page.evaluate((c) => {
@@ -97,12 +106,15 @@ function absolutizeChrome(p) {
           piecePrice: c.piecePrice, pieceSize: c.pieceSize,
           measuredQty: c.measuredQty, measuredUnit: c.measuredUnit,
           openings: c.openings ? JSON.stringify(c.openings) : undefined,
+          variant: c.variant, labourOnly: c.labourOnly,
           _matModel: c.matModel, _labModel: c.labModel
         };
         const r = window.__calcEngine.computeFor(st);
         if (!r) return { error: 'null result' };
         if (r.error) return { error: r.error };
-        return { qty: r.qty, mat: r.mat, lab: r.lab, tax: r.tax, total: r.total };
+        // Owner directive 2026-10-01: a golden case is plausible input - the
+        // unit-slip guard must flag NOTHING on any of them (zero false positives).
+        return { qty: r.qty, mat: r.mat, lab: r.lab, tax: r.tax, total: r.total, slips: window.__calcEngine.dimSlips(st) };
       }, c);
     } catch (e) { evalErr = String((e && e.message) || e).slice(0, 300); }
     if (evalErr || !r || r.error) { check('[' + c.id + '] runs', false, evalErr || r); continue; }
@@ -113,8 +125,10 @@ function absolutizeChrome(p) {
     if (e.lab != null && !near(r.lab, e.lab, 1)) parts.push('lab ' + r.lab + ' != ' + e.lab);
     if (e.tax != null && !near(r.tax, e.tax, 1)) parts.push('tax ' + r.tax + ' != ' + e.tax);
     if (e.total != null && !near(r.total, e.total, 1)) parts.push('total ' + r.total + ' != ' + e.total);
-    check('[' + c.id + '] hand-calculated result holds' + (parts.length ? '' : ' (qty/mat/lab/total)'), parts.length === 0, parts.join('; ') || c.note);
+    if (r.slips && r.slips.length) { parts.push('unit-slip false positive: ' + r.slips.map((s) => s.msg).join(' | ')); slipFlags += r.slips.length; }
+    check('[' + c.id + '] hand-calculated result holds' + (parts.length ? '' : ' (qty/mat/lab/total, zero slip flags)'), parts.length === 0, parts.join('; ') || c.note);
   }
+  check('zero unit-slip flags across every golden case (SLIP2, zero false positives)', slipFlags === 0, slipFlags);
   check('zero console/page errors across all golden cases', consoleErrors === 0, consoleErrors);
   await ctx.close(); await browser.close();
   if (global.__srv) { try { global.__srv.kill(); } catch (e) {} }

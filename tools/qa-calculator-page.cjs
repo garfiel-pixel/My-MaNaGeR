@@ -195,16 +195,18 @@ async function withChrome(fn) {
     })()`);
     check('C1 slab 10x8x150 -> 12.6 m3 (5% waste, exact)', c12 && c12.qty === '12.6', c12 && c12.qty);
     check('C2 breakdown carries tax 15% line + total', c12 && c12.hasTax && c12.hasTotal, c12 && { tax: c12.hasTax, total: c12.hasTotal });
-    // money invariant: mat+lab+tax == total (labels may carry annotations
-    // between the name and the amount, e.g. 'Tax (15%)' - skip to the currency)
+    // money invariant: mat+lab+tax == total. Plan v2 E1: with no exchange
+    // rate set, model money renders honestly in USD terms (banner + $), so
+    // the amount parse accepts any leading symbol - the invariant itself is
+    // currency-free. The banner must be present (never a silent relabel).
     const money = await ev(`(function(){
       const txt = document.getElementById('calc-output').textContent;
-      const grab = (label) => { const m = txt.match(new RegExp(label + '[^\\\\d]*\\\\$?\\\\s*[A-Z\\\\$\\u00A3\\u20AC]*\\$?([\\\\d,]+)')); return m ? parseFloat(m[1].replace(/,/g,'')) : null; };
-      const grab2 = (label) => { const m = txt.match(new RegExp(label + '[\\\\s\\\\S]*?J\\\\$([\\\\d,]+)')); return m ? parseFloat(m[1].replace(/,/g,'')) : null; };
+      const banner = txt.indexOf('Built-in model rates are US dollars') > -1;
+      const grab2 = (label) => { const m = txt.match(new RegExp(label + '[\\\\s\\\\S]*?(?:J\\\\$|\\\\$|\\u00A3|\\u20AC)\\s*([\\\\d,]+)')); return m ? parseFloat(m[1].replace(/,/g,'')) : null; };
       const mat = grab2('Materials'), lab = grab2('Labor'), tax = grab2('Tax'), tot = grab2('Estimated total');
-      return { mat, lab, tax, tot, sums: (mat!==null && lab!==null && tax!==null && tot!==null) ? (mat+lab+tax)===tot : false };
+      return { banner, mat, lab, tax, tot, sums: (mat!==null && lab!==null && tax!==null && tot!==null) ? (mat+lab+tax)===tot : false };
     })()`);
-    check('C2b money invariant mat+lab+tax = total', money && money.sums === true, money);
+    check('C2b money invariant mat+lab+tax = total (+ honest USD banner while unconverted)', money && money.sums === true && money.banner === true, money);
 
     // C3: custom override replaces the country rate.
     const c3 = await ev(`(function(){
@@ -1269,8 +1271,8 @@ async function withChrome(fn) {
       var names = Object.keys(c);
       return { names: names.join(','), n: names.length, allSections: names.every(function(k){ return c[k] && typeof c[k] === 'object' && 'updatedAt' in c[k] && 'val' in c[k]; }), stamps: names.every(function(k){ return typeof c[k].updatedAt === 'number'; }) };
     })()`);
-    check('WS1 wsCollect returns all eight sections each carrying an updatedAt stamp (rate sheets follow the account too)',
-      ws1 && ws1.n === 8 && ws1.allSections && ws1.stamps && ws1.names === 'estimates,boq,history,packs,rollup,brand,sheets,docCounter', ws1);
+    check('WS1 wsCollect returns all ten sections each carrying an updatedAt stamp (sheets + fx + books follow the account)',
+      ws1 && ws1.n === 10 && ws1.allSections && ws1.stamps && ws1.names === 'estimates,boq,history,packs,rollup,brand,sheets,docCounter,fx,books', ws1);
     const ws2 = await ev(`(function(){
       var m = __calcEngine.wsMerge;
       var cloudObj = { a: 2 };
@@ -1598,6 +1600,251 @@ async function withChrome(fn) {
     check('OP7 editor lifecycle: hidden on slab / shown on blockwall, add-row defaults to Window, sum line deducts 1.44 m2, breakdown shows the Minus note, delete empties',
       op7 && op7.hiddenOnSlab && op7.shownOnWall && op7.oneRow && op7.typeIsWindow && op7.sumHasDeduct && op7.noteHasMinus && op7.rowsAfter === 0 && op7.sumAfter === '', op7);
 
+    // ---------- PLAN V2 PHASE 1 (2026-10-01): FOUNDATIONS ----------
+    // E2 VARIANT ENGINE (EV family).
+    const ev1 = await ev(`(function(){
+      var work = document.getElementById('calc-work');
+      work.value = 'slab'; work.dispatchEvent(new Event('change',{bubbles:true}));
+      var slabHidden = document.getElementById('calc-variant-wrap').hidden;
+      work.value = 'excav'; work.dispatchEvent(new Event('change',{bubbles:true}));
+      var wrap = document.getElementById('calc-variant-wrap');
+      var sel = document.getElementById('calc-variant');
+      return { slabHidden: slabHidden, shown: !wrap.hidden, opts: sel.options.length,
+               first: sel.options.length ? sel.options[0].textContent : '', val: sel.value };
+    })()`);
+    check('EV1 variant selector: hidden on slab, shown on excavation with its Standard dig variant',
+      ev1 && ev1.slabHidden && ev1.shown && ev1.opts === 1 && ev1.first === 'Standard dig' && ev1.val === 'standard', ev1);
+    const ev2 = await ev(`(function(){
+      var st = JSON.parse(JSON.stringify(__calcEngine.readState()));
+      var work = document.getElementById('calc-work');
+      work.value = 'slab'; work.dispatchEvent(new Event('change',{bubbles:true}));
+      __calcEngine.syncLabels();
+      // applyState with the excavated snapshot must bring the trade + variant back.
+      var fakeEl = null; // applyState reads ids directly; run it on the live form
+      st.work = 'excav';
+      // applyState is module-internal; drive it through the exported path:
+      // set the work + dispatch so renderVariant paints, then set the saved variant.
+      work.value = 'excav'; work.dispatchEvent(new Event('change',{bubbles:true}));
+      var sel = document.getElementById('calc-variant');
+      var ok = sel.value === 'standard' && __calcEngine.readState().variant === 'standard';
+      return { rides: ok };
+    })()`);
+    check('EV2 variant rides readState and survives a trade round-trip', ev2 && ev2.rides === true, ev2);
+    const ev3 = await ev(`(function(){
+      var withV = __calcEngine.computeFor({ work:'excav', d1:'10', d2:'8', d3:'1', units:'metric', quality:'standard', currency:'USD', country:'US', variant:'standard' });
+      var legacy = __calcEngine.computeFor({ work:'excav', d1:'10', d2:'8', d3:'1', units:'metric', quality:'standard', currency:'USD', country:'US' });
+      return { same: withV && legacy && withV.total === legacy.total && withV.total === 1600,
+               vLabel: withV && withV.variantLabel, vId: withV && withV.variant };
+    })()`);
+    check('EV3 excavation variant conversion: picked variant = legacy save = the pre-conversion model total (1600)',
+      ev3 && ev3.same === true && ev3.vId === 'standard' && ev3.vLabel === 'Standard dig', ev3);
+
+    // E1 CURRENCY + FX (FX family). Fresh storage has no rates.
+    const fx1 = await ev(`(function(){
+      localStorage.removeItem('mmgr_calc_fx');
+      var noJmd = __calcEngine.fxFactor('JMD');
+      var usd = __calcEngine.fxFactor('USD');
+      localStorage.setItem('mmgr_calc_fx', JSON.stringify({ JMD: { per: 157.5, asOf: new Date().toISOString().slice(0,10) } }));
+      __calcEngine.renderFx();
+      var chip = document.getElementById('calc-fx-list').textContent;
+      return { noJmd: noJmd, usd: usd, chip: chip };
+    })()`);
+    check('FX1 FX table: base=1, unset=null, saved rate renders a dated chip',
+      fx1 && fx1.noJmd === null && fx1.usd === 1 && fx1.chip.indexOf('157.5') > -1 && fx1.chip.indexOf('per USD') > -1 && fx1.chip.indexOf('as of') > -1, fx1);
+    const fx2 = await ev(`(function(){
+      var c = document.getElementById('calc-currency');
+      var work = document.getElementById('calc-work');
+      work.value = 'slab'; work.dispatchEvent(new Event('change',{bubbles:true}));
+      c.value = 'JMD'; c.dispatchEvent(new Event('change',{bubbles:true}));
+      var rm = document.getElementById('calc-rate-mat').value, rl = document.getElementById('calc-rate-lab').value;
+      document.getElementById('calc-country').value = 'JM';
+      document.getElementById('calc-tax-override').value = '';
+      document.getElementById('calc-oh').value = '';
+      document.getElementById('calc-rate-eq').value = '';
+      document.getElementById('calc-d1').value = '10'; document.getElementById('calc-d2').value = '8'; document.getElementById('calc-d3').value = '150';
+      document.getElementById('calc-d1').dispatchEvent(new Event('input',{bubbles:true}));
+      document.querySelector('[data-action=calcRun]').click();
+      var out = document.getElementById('calc-output').textContent;
+      return { rm: rm, rl: rl, jmdTotal: out.indexOf('J$536,311') > -1, noBanner: out.indexOf('Built-in model rates are US dollars') === -1 };
+    })()`);
+    check('FX2 with a rate set, JMD prefill converts (150x157.5=23625, 85x157.5=13387.5) and the total is J$536,311 with no banner',
+      fx2 && fx2.rm === '23625' && fx2.rl === '13387.5' && fx2.jmdTotal && fx2.noBanner, fx2);
+    const fx3 = await ev(`(function(){
+      localStorage.removeItem('mmgr_calc_fx'); __calcEngine.renderFx();
+      var c = document.getElementById('calc-currency');
+      c.value = 'USD'; c.dispatchEvent(new Event('change',{bubbles:true}));
+      document.getElementById('calc-country').value = 'JM';
+      document.getElementById('calc-tax-override').value = '';
+      document.getElementById('calc-oh').value = '';
+      document.getElementById('calc-rate-eq').value = '';
+      c.value = 'JMD'; c.dispatchEvent(new Event('change',{bubbles:true}));
+      var rm = document.getElementById('calc-rate-mat').value;
+      var note = !document.getElementById('calc-fx-note').hidden;
+      document.querySelector('[data-action=calcRun]').click();
+      var out = document.getElementById('calc-output').textContent;
+      return { rm: rm, note: note, banner: out.indexOf('Built-in model rates are US dollars') > -1,
+               usdMoney: out.indexOf('$3,405') > -1, noJmd: out.indexOf('J$3,405') === -1 };
+    })()`);
+    check('FX3 with no rate, JMD fields stay empty + note shows + totals carry the USD symbol (never a relabel)',
+      fx3 && fx3.rm === '' && fx3.note && fx3.banner && fx3.usdMoney && fx3.noJmd, fx3);
+    const fx4 = await ev(`(function(){
+      document.getElementById('calc-rate-mat').value = '4000';
+      document.getElementById('calc-rate-mat').dispatchEvent(new Event('input',{bubbles:true}));
+      document.querySelector('[data-action=calcRun]').click();
+      var out = document.getElementById('calc-output').textContent;
+      var r = __calcEngine.computeFor(Object.assign(__calcEngine.readState(), { _matModel: document.getElementById('calc-rate-mat').dataset.model, _labModel: document.getElementById('calc-rate-lab').dataset.model }));
+      document.getElementById('calc-rate-mat').value = '';
+      return { typedUsed: out.indexOf('50,400') > -1, mat: r ? Math.round(r.mat) : null, overridden: r ? r.matOverridden : null };
+    })()`);
+    check('FX4 typed rate is the user\'s own money: JMD 4000 prices 12.6 m3 at exactly 50,400 - never converted',
+      fx4 && fx4.typedUsed && fx4.mat === 50400 && fx4.overridden === true, fx4);
+
+    // E4 RATE BOOKS (BOOK family).
+    const book1 = await ev(`(function(){
+      localStorage.removeItem('mmgr_calc_books'); localStorage.removeItem('mmgr_calc_book_active');
+      __calcEngine.renderBooks();
+      var res = __calcEngine.importBooks({ books: [
+        { name: 'Test book', currency: 'USD', effective_from: '2026-10-01', effective_to: '2027-09-30',
+          rates: { slab: { '*': { mat: 200, lab: 100 } }, nope: { '*': { mat: 1, lab: 1 } }, tile: { '*': { mat: -5, lab: 10 } } } }
+      ]});
+      var stored = JSON.parse(localStorage.getItem('mmgr_calc_books') || '[]');
+      return { merged: res && res.merged, badKeys: res && res.badKeys, skipped: res && res.skipped,
+               checksum: stored[0] && stored[0].checksum ? stored[0].checksum.charAt(0) === 'c' : false };
+    })()`);
+    check('BOOK1 import validates: valid book merges, unknown work key rejected, negative rate skipped, checksum stamped',
+      book1 && book1.merged === 1 && book1.badKeys === 1 && book1.skipped === 1 && book1.checksum, book1);
+    const book2 = await ev(`(function(){
+      var id = JSON.parse(localStorage.getItem('mmgr_calc_books'))[0].id;
+      __calcEngine.setActiveBook(id);
+      __calcEngine.renderBooks();
+      var c = document.getElementById('calc-currency');
+      c.value = 'USD'; c.dispatchEvent(new Event('change',{bubbles:true}));
+      document.getElementById('calc-country').value = 'US';
+      document.getElementById('calc-tax-override').value = '';
+      document.getElementById('calc-oh').value = '';
+      document.getElementById('calc-rate-eq').value = '';
+      var rm = document.getElementById('calc-rate-mat').value, rl = document.getElementById('calc-rate-lab').value;
+      document.getElementById('calc-work').value = 'slab';
+      document.getElementById('calc-work').dispatchEvent(new Event('change',{bubbles:true}));
+      document.getElementById('calc-d1').value = '10'; document.getElementById('calc-d2').value = '8'; document.getElementById('calc-d3').value = '150';
+      document.getElementById('calc-d1').dispatchEvent(new Event('input',{bubbles:true}));
+      document.querySelector('[data-action=calcRun]').click();
+      var out = document.getElementById('calc-output').textContent;
+      var cleared = document.querySelector('[data-action=calcBookClear]'); cleared.click();
+      c.dispatchEvent(new Event('change',{bubbles:true}));
+      var rmAfter = document.getElementById('calc-rate-mat').value;
+      return { rm: rm, rl: rl, bookTotal: out.indexOf('$2,520') > -1 && out.indexOf('$3,780') > -1, rmAfter: rmAfter };
+    })()`);
+    check('BOOK2 active book drives the prefill (slab 200/100 -> mat 2520) and Use-model-rates restores the model',
+      book2 && book2.rm === '200' && book2.rl === '100' && book2.bookTotal && book2.rmAfter === '150', book2);
+    const book3 = await ev(`(function(){
+      var res = __calcEngine.importBooks({ books: [
+        { name: 'JM book', currency: 'JMD', rates: { slab: { '*': { mat: 30000, lab: 12000 } } } }
+      ]});
+      var id = JSON.parse(localStorage.getItem('mmgr_calc_books')).find(function(b){ return b.name === 'JM book'; }).id;
+      __calcEngine.setActiveBook(id); __calcEngine.renderBooks();
+      var c = document.getElementById('calc-currency');
+      c.value = 'JMD'; c.dispatchEvent(new Event('change',{bubbles:true}));
+      var jmd = { rm: document.getElementById('calc-rate-mat').value, rl: document.getElementById('calc-rate-lab').value };
+      c.value = 'USD'; c.dispatchEvent(new Event('change',{bubbles:true}));
+      var note = document.getElementById('calc-fx-note');
+      var usd = { rm: document.getElementById('calc-rate-mat').value, noteShown: !note.hidden, noteTxt: note.textContent };
+      document.querySelector('[data-action=calcBookClear]').click();
+      c.dispatchEvent(new Event('change',{bubbles:true}));
+      return { jmd: jmd, usd: usd };
+    })()`);
+    check('BOOK3 book currency honoured: JMD estimate reads JMD book rates as-is; USD estimate with no FX pair leaves fields empty + names the book currency',
+      book3 && book3.jmd.rm === '30000' && book3.jmd.rl === '12000' && book3.usd.rm === '' && book3.usd.noteShown && book3.usd.noteTxt.indexOf('JMD') > -1, book3);
+    const book4 = await ev(`(function(){
+      var res = __calcEngine.importBooks({ books: [
+        { name: 'Old book', currency: 'USD', effective_to: '2026-09-30', rates: { slab: { '*': { mat: 1, lab: 1 } } } }
+      ]});
+      var id = JSON.parse(localStorage.getItem('mmgr_calc_books')).find(function(b){ return b.name === 'Old book'; }).id;
+      __calcEngine.setActiveBook(id); __calcEngine.renderBooks();
+      var exp = document.getElementById('calc-book-expired');
+      var shown = !exp.hidden && exp.textContent.indexOf('expired') > -1;
+      document.querySelector('[data-action=calcBookClear]').click();
+      return { merged: res && res.merged, expiredShown: shown };
+    })()`);
+    check('BOOK4 an expired book shows the expiry banner', book4 && book4.merged === 1 && book4.expiredShown, book4);
+    const book5 = await ev(`(function(){
+      var res = __calcEngine.importBooks({ books: [
+        { name: 'Tampered', currency: 'USD', checksum: 'cWRONG', rates: { slab: { '*': { mat: 1, lab: 1 } } } }
+      ]});
+      return { merged: res && res.merged, skipped: res && res.skipped };
+    })()`);
+    check('BOOK5 a checksum mismatch (edited file) is skipped, not trusted',
+      book5 && book5.merged === 0 && book5.skipped === 1, book5);
+
+    // E6 LABOUR MODE (LM family).
+    const lm1 = await ev(`(function(){
+      var c = document.getElementById('calc-currency');
+      c.value = 'USD'; c.dispatchEvent(new Event('change',{bubbles:true}));
+      document.getElementById('calc-work').value = 'slab';
+      document.getElementById('calc-work').dispatchEvent(new Event('change',{bubbles:true}));
+      document.getElementById('calc-d1').value = '10'; document.getElementById('calc-d2').value = '8'; document.getElementById('calc-d3').value = '150';
+      document.getElementById('calc-d1').dispatchEvent(new Event('input',{bubbles:true}));
+      document.getElementById('calc-labour-only').checked = true;
+      document.getElementById('calc-labour-only').dispatchEvent(new Event('change',{bubbles:true}));
+      document.querySelector('[data-action=calcRun]').click();
+      var out = document.getElementById('calc-output').textContent;
+      var st = __calcEngine.readState();
+      var r = __calcEngine.computeFor(Object.assign(st, { _matModel: document.getElementById('calc-rate-mat').dataset.model, _labModel: document.getElementById('calc-rate-lab').dataset.model }));
+      var csv = __calcEngine.estimateCsv(r);
+      return { excluded: out.indexOf('Materials - excluded (labour only)') > -1,
+               lab: r ? Math.round(r.lab) : null, mat: r ? Math.round(r.mat) : null,
+               csvRow: csv.indexOf('"Materials","excluded (labour only)"') > -1, rides: st.labourOnly === true };
+    })()`);
+    check('LM1 labour-only: materials excluded, labor priced (12.6x85=1071), CSV names the exclusion, flag rides readState',
+      lm1 && lm1.excluded && lm1.lab === 1071 && lm1.mat === 0 && lm1.csvRow && lm1.rides, lm1);
+    const lm2 = await ev(`(function(){
+      document.getElementById('calc-rate-mat').value = '100';
+      document.getElementById('calc-rate-mat').dispatchEvent(new Event('input',{bubbles:true}));
+      document.querySelector('[data-action=calcRun]').click();
+      var r = __calcEngine.computeFor(__calcEngine.readState());
+      var out = document.getElementById('calc-output').textContent;
+      document.getElementById('calc-labour-only').checked = false;
+      document.getElementById('calc-labour-only').dispatchEvent(new Event('change',{bubbles:true}));
+      document.getElementById('calc-rate-mat').value = '';
+      return { mat: r ? Math.round(r.mat) : null, lab: r ? Math.round(r.lab) : null, inOut: out.indexOf('1,260') > -1 };
+    })()`);
+    check('LM2 labour-only with a typed material rate: the user\'s own materials still price (12.6x100=1260)',
+      lm2 && lm2.mat === 1260 && lm2.lab === 1071 && lm2.inOut, lm2);
+
+    // UNIT-SLIP GUARD (SLIP family, owner directive 2026-10-01).
+    const slip1 = await ev(`(function(){
+      var a = __calcEngine.dimSlips({ work:'slab', units:'metric', d1:'10', d2:'8', d3:'0.15' });
+      var b = __calcEngine.dimSlips({ work:'slab', units:'metric', d1:'10', d2:'8', d3:'6' });
+      var c = __calcEngine.dimSlips({ work:'blockwall', units:'metric', d1:'300', d2:'2.4' });
+      var clean = __calcEngine.dimSlips({ work:'slab', units:'metric', d1:'10', d2:'8', d3:'150' });
+      return { metres: a, inches: b, feet: c, cleanN: clean.length,
+               aFix: a[0] && a[0].fix, bFix: b[0] && b[0].fix, cFix: c[0] && c[0].fix };
+    })()`);
+    check('SLIP1 slip rules: 0.15 in a mm box suggests 150, 6 suggests 152, 30 m suggests 9.14 m (feet), clean dims flag nothing',
+      slip1 && slip1.metres.length === 1 && slip1.aFix === '150' && slip1.bFix === '152' && slip1.cFix === '91.44' && slip1.cleanN === 0, slip1);
+    const slip3 = await ev(`(function(){
+      document.getElementById('calc-work').value = 'slab';
+      document.getElementById('calc-work').dispatchEvent(new Event('change',{bubbles:true}));
+      document.getElementById('calc-d1').value = '10'; document.getElementById('calc-d2').value = '8'; document.getElementById('calc-d3').value = '0.15';
+      document.getElementById('calc-d1').dispatchEvent(new Event('input',{bubbles:true}));
+      document.querySelector('[data-action=calcRun]').click();
+      var out = document.getElementById('calc-output');
+      var flagged = out.textContent.indexOf('did you mean 150 mm?') > -1;
+      var btn = out.querySelector('[data-action=calcFixDim]');
+      var hasFix = !!btn && btn.getAttribute('data-val') === '150';
+      if (btn) btn.click();
+      var fixed = document.getElementById('calc-d3').value;
+      var out2 = document.getElementById('calc-output').textContent;
+      var gone = out2.indexOf('did you mean') === -1;
+      // Leave the page as the U-block expects it.
+      document.getElementById('calc-work').value = 'floor-screed';
+      document.getElementById('calc-work').dispatchEvent(new Event('change',{bubbles:true}));
+      document.getElementById('calc-d1').value = '5'; document.getElementById('calc-d2').value = '4'; document.getElementById('calc-d3').value = '50';
+      return { flagged: flagged, hasFix: hasFix, fixed: fixed, gone: gone };
+    })()`);
+    check('SLIP3 UI: 0.15 thickness flags with a one-tap Use 150 fix that applies and clears the flag',
+      slip3 && slip3.flagged && slip3.hasFix && slip3.fixed === '150' && slip3.gone, slip3);
+
     // ---------- F4 ENHANCEMENTS ----------
     // U1: imperial toggle - labels convert, state persists, aria follows.
     const u1 = await ev(`(function(){
@@ -1841,14 +2088,20 @@ async function withChrome(fn) {
     check('E1 exact recall restores EVERY setting (sum replicates)', e1 && e1.ok === true, e1);
 
     // E2: a legacy row (old shape, no st) recalls with inferred units.
+    // Plan v2 E1 re-baseline: in JMD with no exchange rate the fields stay
+    // EMPTY (honest note instead) while the engine still prices from the
+    // model - the total renders and the note names the missing rate.
     const e2 = await ev(`(function(){
       localStorage.setItem('mmgr_calc_history', JSON.stringify([{ at:'2026-09-01', name:'Old row', qty:'96.9 m2', total:'J$1,000',
         work:'tile', d1:'10', d2:'8', currency:'JMD', country:'JM', quality:'standard' }]));
       document.querySelector('[data-action=calcRestore]').click();
       return { work: document.getElementById('calc-work').value, d1: document.getElementById('calc-d1').value,
-               units: localStorage.getItem('mmgr_calc_units'), rm: document.getElementById('calc-rate-mat').value };
+               units: localStorage.getItem('mmgr_calc_units'), rm: document.getElementById('calc-rate-mat').value,
+               note: !document.getElementById('calc-fx-note').hidden,
+               priced: document.getElementById('calc-output').textContent.indexOf('Estimated total') > -1 };
     })()`);
-    check('E2 legacy row recalls: units inferred (m), rates default', e2 && e2.work==='tile' && e2.d1==='10' && e2.units==='metric' && e2.rm !== '', e2);
+    check('E2 legacy row recalls: units inferred (m), honest empty rates + note, still priced',
+      e2 && e2.work==='tile' && e2.d1==='10' && e2.units==='metric' && e2.rm === '' && e2.note && e2.priced, e2);
 
     // ---- B1 WASTE % (owner review 2026-09-29) ----
     // W1: tile defaults to 10 (the old baked-in factor) - the sum matches

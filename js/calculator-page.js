@@ -41,7 +41,12 @@ const WORK = {
     rate: { mat: 4, lab: 9 }, matDesc: 'Clearing, strip, disposal allowance' },
   excav:      { group: 'Groundworks', d1: 'Length (m)', d2: 'Width (m)', d3: 'Depth (m)',
     q: (a, b, c) => ({ qty: a * b * c * 1.25, unit: 'm3', qtyLabel: 'Excavated volume (incl. 1.25 bulking)' }),
-    rate: { mat: 2, lab: 14 }, matDesc: 'Cart-away / disposal' },
+    rate: { mat: 2, lab: 14 }, matDesc: 'Cart-away / disposal',
+    // E2 (plan v2 Phase 1): excavation converted to the variant structure
+    // with ONE variant whose rates equal the pre-conversion model - old
+    // saves recall to the same total (Phase 1 exit gate). Phase 2 fills the
+    // real JIC soil/depth-band variant sets from the official sheet.
+    variants: [{ id: 'standard', label: 'Standard dig', rate: { mat: 2, lab: 14 } }] },
   slab:       { group: 'Groundworks', d1: 'Length (m)', d2: 'Width (m)', d3: 'Thickness (mm)', waste: { def: 5, lbl: 'Concrete waste' }, piece: { priceLabel: 'Price per bag of mix', sizeLabel: 'Bag yield (litres)', single: true, div: 'volume', qtyUnit: 'm3', ph: 'e.g. 9200 per bag', phSize: 'e.g. 20' },
     q: (a, b, c) => ({ qty: a * b * (c / 1000), unit: 'm3', qtyLabel: 'Concrete' }),
     rate: { mat: 150, lab: 85 }, matDesc: 'C20/25 ready-mix, mesh, vapor barrier' },
@@ -257,6 +262,63 @@ const TAX = { US: 0, JM: 15, GB: 20, AU: 10, CA: 5, JP: 10, DE: 19 };
 const CURRENCY = { USD: '$', JMD: 'J$', GBP: '\u00A3', EUR: '\u20AC', CAD: 'C$', AUD: 'A$', JPY: '\u00A5' };
 const QUALITY = { economy: 0.85, standard: 1, premium: 1.35 };
 
+// ---- E1 (plan v2 Phase 1): CURRENCY BASE + FX TABLE ----------------------
+// Model rates in the WORK table are planning-grade figures written in US
+// dollars (declared base; audit A1: a JMD user was shown relabelled USD).
+// The engine itself never converts - the rate FIELDS carry the money that
+// gets charged. Prefill (refreshRateFields, via modelRatesFor) converts a
+// model/book rate through this user-maintained, date-stamped FX table; a
+// typed rate is always the user's own money in the picked currency and is
+// never touched. No rate is ever guessed: the user or an imported rate
+// book supplies it with an as-of date (plan section 4). Device-local,
+// synced with the workspace like every other calculator store.
+const BASE_CURRENCY = 'USD';
+const FXKEY = 'mmgr_calc_fx';
+function loadFx() { try { const v = JSON.parse(localStorage.getItem(FXKEY) || '{}'); return v && typeof v === 'object' && !Array.isArray(v) ? v : {}; } catch (e) { return {}; } }
+function persistFx(t) { try { localStorage.setItem(FXKEY, JSON.stringify(t)); } catch (e) { /* nicety */ } wsStampNow('fx'); scheduleWsPut(); }
+// Units of `code` per 1 USD. The base needs no entry; an unknown code
+// returns null - callers must show an honest warning, never a relabel.
+function fxFactor(code) {
+  if (!code || code === BASE_CURRENCY) return 1;
+  const e = loadFx()[code];
+  const per = e && parseFloat(e.per);
+  return isFinite(per) && per > 0 ? per : null;
+}
+// A rate older than 180 days is flagged stale in the FX card (plan: "a
+// stale warning" - it never blocks, it tells).
+function fxStale(code) {
+  const e = loadFx()[code];
+  if (!e || !e.asOf) return false;
+  const t = Date.parse(e.asOf);
+  return isFinite(t) && (Date.now() - t) > 180 * 86400000;
+}
+// Multiplier taking a rate from `src` currency to `target` currency via
+// the USD-anchored table (src X -> target Y = per(Y) / per(X)). Null when
+// either side is missing and the pair is real - callers say so honestly.
+function fxBetween(src, target) {
+  if (!src || src === target) return 1;
+  const ps = src === BASE_CURRENCY ? 1 : fxFactor(src);
+  const pt = target === BASE_CURRENCY ? 1 : fxFactor(target);
+  if (ps == null || pt == null) return null;
+  return pt / ps;
+}
+// The Exchange rates card body: one chip per set rate with its as-of date
+// (stale rates say so) and a remove button. No rate is ever fabricated.
+function renderFx() {
+  const list = $('calc-fx-list'), dateEl = $('calc-fx-asof');
+  if (dateEl && !dateEl.value) { try { dateEl.value = new Date().toISOString().slice(0, 10); } catch (e) {} }
+  if (!list) return;
+  const t = loadFx();
+  const codes = Object.keys(t);
+  list.innerHTML = codes.length
+    ? codes.map(function(c) {
+        const e = t[c] || {};
+        return '<span class="bcp-fx-chip">' + esc(c) + ': ' + esc(String(e.per)) + ' per USD (as of ' + esc(String(e.asOf || '?')) + ')' + (fxStale(c) ? ' - stale, update it' : '') +
+          ' <button type="button" class="btn btn-n btn-s" data-action="calcFxDel" data-code="' + esc(c) + '" aria-label="Remove the ' + esc(c) + ' rate">X</button></span>';
+      }).join(' ')
+    : 'No exchange rates set yet. Model rates stay US dollars until you add one or type your own rates.';
+}
+
 // ---- Units (F4-1): metric is the math; imperial converts on entry -------
 // Dimensions typed in ft/in are converted before the formulas run, so the
 // rate models (per m2 / m3 / m) stay untouched. Quantities report their
@@ -315,6 +377,26 @@ function qtyShown(qty, unit) {
            alt: ' (about ' + oval.toLocaleString() + ' ' + other[0] + ')' };
 }
 
+// ---- E3 (plan v2 Phase 1): RATE-ENTRY UNIT ADAPTER -----------------------
+// The engine's math is metric (m2, m3, m, t, L, each). A work item may
+// declare the unit its RATES are quoted in (a JIC-style sheet speaks yd2,
+// ft2, ft run, lb, dozen). The factor converts a per-entry-unit rate into
+// a per-engine-unit rate - the math stays metric underneath, exactly as
+// dimension entry already does. Values: the size of one entry unit in the
+// engine unit (1 yd2 = 0.83612736 m2; 1 ft2 = 0.09290304 m2; 1 ft run =
+// 0.3048 m; steel prices per lb convert to the tonne the engine uses:
+// 2204.62262 lb/t; 1 dozen = 12 each). Items without a runit convert 1:1,
+// so every existing trade prices exactly as before (golden cases hold).
+const RATE_UNITS = {
+  'yd2': 0.83612736, 'ft2': 0.09290304, 'ft run': 0.3048,
+  'lb': 2204.62262, 'kg': 0.001, 'dozen': 1 / 12
+};
+function rateFactor(entry, engineUnit) {
+  if (!entry || entry === engineUnit) return 1;
+  const f = RATE_UNITS[entry];
+  return isFinite(f) && f > 0 ? f : 1;
+}
+
 // Tiny local escaper - user-typed estimate names reach innerHTML.
 function esc(s) {
   return String(s == null ? '' : s).replace(/[&<>"']/g, function(c) {
@@ -325,8 +407,8 @@ function esc(s) {
 const $ = (id) => document.getElementById(id);
 const num = (el) => { const v = parseFloat(el && el.value); return isFinite(v) && v > 0 ? v : 0; };
 
-function fmtMoney(v) {
-  const cur = CURRENCY[($('calc-currency') || {}).value] || '$';
+function fmtMoney(v, code) {
+  const cur = CURRENCY[code || (($('calc-currency') || {}).value)] || '$';
   const rounded = Math.round(v);
   return cur + rounded.toLocaleString();
 }
@@ -356,6 +438,8 @@ function readState() {
     wastePct: ($('calc-waste') || {}).value || '',
     rateMat: ($('calc-rate-mat') || {}).value || '',
     rateLab: ($('calc-rate-lab') || {}).value || '',
+    matModel: (($('calc-rate-mat') || {}).dataset || {}).model || '',
+    labModel: (($('calc-rate-lab') || {}).dataset || {}).model || '',
     rateEq: ($('calc-rate-eq') || {}).value || '',
     ohPct: ($('calc-oh') || {}).value || '',
     onCostPct: ($('calc-oncost-pct') || {}).value || '',
@@ -373,6 +457,8 @@ function readState() {
     measuredUnit: instUnit,
     instances: JSON.stringify(instRows || []),
     openings: JSON.stringify(openRows || []),
+    variant: ($('calc-variant') || {}).value || '',
+    labourOnly: !!(($('calc-labour-only') || {}).checked),
     units: _units
   };
 }
@@ -380,6 +466,10 @@ function readState() {
 // Restore a settings object written by readState(). Every field is
 // restored so a recalled entry reproduces its sum exactly (owner
 // directive: recall must re-create the settings that achieved the sum).
+// E1/E4: while applying a snapshot, refreshRateFields must NOT re-prefill
+// the restored rate fields (a changed FX table or book would drift the
+// total away from what the estimate showed when it was saved).
+let recallHold = false;
 function applyState(st) {
   if (!st) return;
   if (st.units) setUnits(st.units, true);
@@ -392,6 +482,13 @@ function applyState(st) {
   try { openRows = Array.isArray(JSON.parse(st.openings || '[]')) ? JSON.parse(st.openings) : []; } catch (e) { openRows = []; }
   if ($('calc-measured-qty')) $('calc-measured-qty').value = st.measuredQty || '';
   syncLabels();
+  // E2/E6: the variant select was (re)rendered by syncLabels - restore the
+  // saved pick now that its option exists. Labour mode rides the snapshot.
+  if (st.variant && $('calc-variant')) {
+    const hasOpt = Array.prototype.some.call($('calc-variant').options || [], function(o) { return o.value === st.variant; });
+    if (hasOpt) $('calc-variant').value = st.variant;
+  }
+  if ($('calc-labour-only')) $('calc-labour-only').checked = !!st.labourOnly;
   $('calc-d1').value = st.d1 || '';
   if ($('calc-d2')) $('calc-d2').value = st.d2 || '';
   if ($('calc-d3')) $('calc-d3').value = st.d3 || '';
@@ -402,6 +499,11 @@ function applyState(st) {
   if ($('calc-waste')) $('calc-waste').value = st.wastePct || '';
   if ($('calc-rate-mat')) $('calc-rate-mat').value = st.rateMat || '';
   if ($('calc-rate-lab')) $('calc-rate-lab').value = st.rateLab || '';
+  // E1/E4: the saved prefill markers ride the snapshot so a recalled
+  // estimate keeps its model-vs-your-rate semantics (and its exact total,
+  // even if the FX table or the active book changed since it was saved).
+  if ($('calc-rate-mat')) $('calc-rate-mat').dataset.model = st.matModel != null ? String(st.matModel) : (($('calc-rate-mat').dataset || {}).model || '');
+  if ($('calc-rate-lab')) $('calc-rate-lab').dataset.model = st.labModel != null ? String(st.labModel) : (($('calc-rate-lab').dataset || {}).model || '');
   if ($('calc-rate-eq')) $('calc-rate-eq').value = st.rateEq || '';
   if ($('calc-oh')) $('calc-oh').value = st.ohPct || '';
   if ($('calc-oncost-pct')) {
@@ -419,7 +521,9 @@ function applyState(st) {
   if ($('calc-doc-due')) $('calc-doc-due').value = st.docDue || '';
   if ($('calc-piece-price')) $('calc-piece-price').value = st.piecePrice || '';
   if ($('calc-piece-size')) $('calc-piece-size').value = st.pieceSize || '';
+  recallHold = true;
   refreshRateFields();
+  recallHold = false;
 }
 
 // B2 (owner review 2026-09-29: 'exact count of tile boxes/units required').
@@ -455,6 +559,9 @@ function computeFor(st) {
   const key = st.work;
   const w = WORK[key];
   if (!w) return null;
+  // E2: the picked variant (a legacy state with no variant resolves to the
+  // first, whose rates equal the pre-conversion model).
+  const av = activeVariant(w, st);
   // W2 measured quantity: element rows (or the override field) feed the
   // engine directly - dim validation and q() are skipped, everything
   // downstream (waste, quality, piece pricing, rates) unchanged.
@@ -491,7 +598,7 @@ function computeFor(st) {
   // W2: with a measured quantity the per-dim rate inputs do not apply;
   // fencing's height-dependent rate falls back to its 1.8 m default here -
   // an explicit rate override always wins anyway.
-  const modelMr = hasMq ? matRate(w, mqRaw, null) : matRate(w, d1, d2);
+  const modelMr = hasMq ? (av ? av.rate.mat : matRate(w, mqRaw, null)) : (av ? av.rate.mat : matRate(w, d1, d2));
   // F4b rate freedom: an explicitly typed rate overrides the model. The
   // wrapper passes dataset.model for the live form; a recalled/comparison
   // state has no dataset, so any numeric value it carries IS its rate.
@@ -499,10 +606,18 @@ function computeFor(st) {
   const labRaw = parseFloat(st.rateLab);
   const matModel = st._matModel != null ? String(st._matModel) : null;
   const labModel = st._labModel != null ? String(st._labModel) : null;
-  const matOverride = isFinite(matRaw) && matRaw >= 0 && (matModel === null || String(matRaw) !== matModel);
-  const labOverride = isFinite(labRaw) && labRaw >= 0 && (labModel === null || String(labRaw) !== labModel);
-  const mr = matOverride ? matRaw : modelMr;
-  const lr = labOverride ? labRaw : w.rate.lab;
+  // E1/E4 (plan v2 Phase 1): the rate FIELDS carry the money that gets
+  // charged - the prefill already converted it (active book rate or model
+  // rate at the estimate's exchange rate), so a present field always
+  // prices and the override flag only drives the "your rate" annotation.
+  // An empty field falls back to the raw WORK model (US dollars); callers
+  // flag that case so the render can say so honestly instead of relabelling.
+  const matPresent = isFinite(matRaw) && matRaw >= 0;
+  const labPresent = isFinite(labRaw) && labRaw >= 0;
+  const matOverride = matPresent && (matModel === null || String(matRaw) !== matModel);
+  const labOverride = labPresent && (labModel === null || String(labRaw) !== labModel);
+  const mr = matPresent ? matRaw : modelMr;
+  const lr = labPresent ? labRaw : (av ? av.rate.lab : w.rate.lab);
   // B3: optional third rate (equipment / plant hire) on the same per-unit
   // basis; empty or 0 = inactive. Overhead & margin % applies to the
   // equipment-inclusive subtotal.
@@ -564,12 +679,22 @@ function computeFor(st) {
     }
   }
   const quality = QUALITY[st.quality] || 1;
+  // E3: rates (model or typed - both follow the labeled rate basis)
+  // convert from the item's rate-entry unit into the engine unit. Piece
+  // pricing already prices per engine unit and never takes the factor.
+  const runit = (av && av.runit) || w.runit || null;
+  const rf = rateFactor(runit, qr.unit);
+  // E6: labour-only mode prices the WORK - labor at its rate; material
+  // money is the user's own, so a typed material rate still shows while
+  // the model/piece material price is excluded.
+  const labourOnly = !!st.labourOnly;
+  const matExcluded = labourOnly && !matOverride;
   // Area trades: $/m2 x m2 quantity. Fencing width-div: $/run-m x m run.
   // The qty x rate dimension check holds for both.
-  const effMat = piece && !piece.countOnly ? piece.perUnit : mr;
+  const effMat = matExcluded ? 0 : ((piece && !piece.countOnly && !labourOnly) ? piece.perUnit : mr * rf);
   const mat = qty * effMat * quality;
-  const lab = qty * lr * quality;
-  const eq = qty * eqRate * quality;
+  const lab = qty * lr * rf * quality;
+  const eq = qty * eqRate * rf * quality;
   const country = st.country || 'US';
   const overrideRaw = parseFloat(st.taxOverride);
   const override = isFinite(overrideRaw) && overrideRaw >= 0 ? overrideRaw : null;
@@ -586,7 +711,9 @@ function computeFor(st) {
     openings: openings, hasOpenings: !!w.openings,
     wastePct: wastePct, hasWaste: !!w.waste, wasteLbl: w.waste ? w.waste.lbl : null,
     mr, lr, eqRate, eq, onCost, onCostPct, ohPct, oh, effMat, modelMr, piece, mat, lab, sub, taxRate, tax, total: sub + oh + tax, overrideApplied: override !== null,
-    matOverridden: matOverride, labOverridden: labOverride, currency: st.currency || 'USD' };
+    matOverridden: matOverride, labOverridden: labOverride, currency: st.currency || 'USD',
+    labourOnly: labourOnly, matExcluded: matExcluded, runit: runit, rateFactor: rf,
+    variant: av ? av.id : null, variantLabel: av ? av.label : null };
 }
 
 // Live-form wrapper: snapshot the DOM into a settings object (passing the
@@ -597,7 +724,20 @@ function compute() {
   st._matModel = $('calc-rate-mat') ? $('calc-rate-mat').dataset.model : undefined;
   st._labModel = $('calc-rate-lab') ? $('calc-rate-lab').dataset.model : undefined;
   const r = computeFor(st);
-  if (r && !r.error) r.name = workName(st.work);
+  if (r && !r.error) {
+    r.name = workName(st.work);
+    // Owner directive 2026-10-01: the unit-slip guard rides every result.
+    r.slips = dimSlips(st);
+    // E1 honesty flag: model/book money is still in its source currency
+    // because no FX rate is set for the picked one - the render says so in
+    // USD terms instead of relabelling. Both rates typed = all the user's
+    // own money = nothing to flag.
+    const cur = st.currency || BASE_CURRENCY;
+    if (cur !== BASE_CURRENCY && fxFactor(cur) == null &&
+        ((!r.matOverridden && !r.matExcluded) || !r.labOverridden)) {
+      r.modelUnconverted = true;
+    }
+  }
   return r;
 }
 
@@ -662,12 +802,148 @@ function importSheets(json) {
   return { merged: merged, skipped: skipped };
 }
 
+// ---- E4 (plan v2 Phase 1): RATE BOOKS v2 ---------------------------------
+// A whole-book object the way the plan writes it: { id, name, source,
+// effective_from, effective_to, tier, currency, rates: { workKey: {
+// variantId or '*': { mat, lab, unit } } }, checksum }. Import/export as
+// JSON through the same pattern as rate sheets; validation rejects
+// unknown work keys and negative rates; an expired book shows a banner.
+// The ACTIVE book feeds the model prefill (book rate first, WORK model
+// second), so a full JIC-style schedule switches as ONE object - fixing
+// audit A4 ("rate sheets are not rate books"). The official JIC sheet is
+// a paid IMAJ publication: we ship STRUCTURE with no built-in rates and
+// each user imports the book they bought (the licensing-safe route from
+// plan section 4). The schema is identical either way.
+const BKKEY = 'mmgr_calc_books';
+const ACTBK = 'mmgr_calc_book_active';
+function loadBooks() { try { return JSON.parse(localStorage.getItem(BKKEY) || '[]'); } catch (e) { return []; } }
+function activeBookId() { try { return JSON.parse(localStorage.getItem(ACTBK) || '""') || ''; } catch (e) { return ''; } }
+function activeBook() { const id = activeBookId(); return loadBooks().find(function(b) { return b && b.id === id; }) || null; }
+function setActiveBook(id) { try { localStorage.setItem(ACTBK, JSON.stringify(String(id || ''))); } catch (e) { /* nicety */ } wsStampNow('books'); scheduleWsPut(); }
+function persistBooks(list) { try { localStorage.setItem(BKKEY, JSON.stringify(list.slice(0, 20))); } catch (e) { /* nicety */ } wsStampNow('books'); scheduleWsPut(); }
+// djb2 over the canonical rates JSON - detects any hand edit of a book.
+function bookChecksum(rates) {
+  let h = 5381;
+  const s = JSON.stringify(rates);
+  for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) >>> 0;
+  return 'c' + h.toString(36);
+}
+// Validate + merge an imported books payload. Unknown work keys and
+// negative/absent rates are rejected and COUNTED, never thrown.
+function importBooks(json) {
+  if (!json || !Array.isArray(json.books)) return null;
+  const existing = loadBooks();
+  let merged = 0, skipped = 0, badKeys = 0;
+  json.books.forEach(function(item) {
+    const name = item && typeof item.name === 'string' ? item.name.trim().slice(0, 60) : '';
+    const cur = item && typeof item.currency === 'string' ? item.currency.toUpperCase().slice(0, 3) : '';
+    const rates = item && item.rates && typeof item.rates === 'object' && !Array.isArray(item.rates) ? item.rates : null;
+    if (!name || !cur || !rates) { skipped++; return; }
+    const clean = {};
+    Object.keys(rates).forEach(function(k) {
+      if (!WORK[k]) { badKeys++; return; }
+      const vset = rates[k] && typeof rates[k] === 'object' && !Array.isArray(rates[k]) ? rates[k] : null;
+      if (!vset) { skipped++; return; }
+      const cv = {};
+      Object.keys(vset).forEach(function(vid) {
+        const r = vset[vid];
+        const m = parseFloat(r && r.mat), l = parseFloat(r && r.lab);
+        if (!isFinite(m) || m < 0 || !isFinite(l) || l < 0) { skipped++; return; }
+        cv[vid] = { mat: m, lab: l, unit: (r && typeof r.unit === 'string') ? r.unit.slice(0, 12) : undefined };
+      });
+      if (Object.keys(cv).length) clean[k] = cv;
+    });
+    if (!Object.keys(clean).length) { skipped++; return; }
+    // A book that CARRIES a checksum must match its own rates - a mismatch
+    // means the file was edited after export; it is skipped, not trusted.
+    if (item.checksum && item.checksum !== bookChecksum(clean)) { skipped++; return; }
+    const book = { id: 'b' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+      name: name, source: (item && typeof item.source === 'string') ? item.source.slice(0, 80) : '',
+      effective_from: (item && typeof item.effective_from === 'string') ? item.effective_from.slice(0, 10) : '',
+      effective_to: (item && typeof item.effective_to === 'string') ? item.effective_to.slice(0, 10) : '',
+      tier: (item && typeof item.tier === 'string') ? item.tier.slice(0, 40) : '', currency: cur,
+      rates: clean, checksum: bookChecksum(clean) };
+    const at = existing.findIndex(function(x) { return (x.name || '').toLowerCase() === name.toLowerCase(); });
+    if (at > -1) existing[at] = book; else existing.unshift(book);
+    merged++;
+  });
+  if (merged) { persistBooks(existing); renderBooks(); }
+  return { merged: merged, skipped: skipped, badKeys: badKeys };
+}
+function bookExpired(b) {
+  if (!b || !b.effective_to) return false;
+  const t = Date.parse(b.effective_to);
+  return isFinite(t) && Date.now() > t + 86400000;
+}
+function renderBooks() {
+  const sel = $('calc-book-select'), exp = $('calc-book-expired');
+  if (!sel) return;
+  const list = loadBooks();
+  if (activeBookId() && !list.some(function(b) { return b.id === activeBookId(); })) setActiveBook('');
+  sel.innerHTML = '<option value="">' + (list.length ? 'Rate book...' : 'Rate book (none imported)') + '</option>' +
+    list.map(function(b) { return '<option value="' + esc(b.id) + '">' + esc(b.name + (b.currency ? ' (' + b.currency + ')' : '')) + '</option>'; }).join('');
+  const a = activeBook();
+  if (exp) {
+    exp.hidden = !(a && bookExpired(a));
+    if (a && bookExpired(a)) exp.textContent = 'The rate book "' + a.name + '" expired on ' + a.effective_to + ' - its rates are shown as they are. Import a newer book when you have one.';
+  }
+}
+// E1+E4 together: the rate a fresh prefill should show for a work item,
+// ALREADY in the estimate currency. Order: active book rate (workKey ->
+// variantId or '*'), else the WORK model (or the active variant's rate).
+// Both sources carry a currency (book.currency, or USD for the model);
+// conversion goes through the FX table. When the pair is missing the
+// result is flagged unconvertible - the caller leaves the fields empty
+// and says so honestly (never a silent relabel).
+function modelRatesFor(key, variantId, targetCode, d1m, d2m) {
+  const w = WORK[key];
+  if (!w) return null;
+  const b = activeBook();
+  let mat = null, lab = null, src = null, unit = null, fromBook = false;
+  if (b && b.rates && b.rates[key]) {
+    const vset = b.rates[key];
+    const r = (variantId && vset[variantId]) || vset['*'] || null;
+    if (r) { mat = r.mat; lab = r.lab; unit = r.unit || null; src = b.currency; fromBook = true; }
+  }
+  if (mat == null) {
+    const av = variantFor(key, variantId);
+    const rr = av ? av.rate : w.rate;
+    mat = typeof rr.mat === 'function' ? rr.mat(d1m, d2m) : rr.mat;
+    lab = rr.lab;
+    src = BASE_CURRENCY;
+    unit = (av && av.runit) || w.runit || null;
+  }
+  const f = fxBetween(src, targetCode || src);
+  if (f == null) return { mat: mat, lab: lab, src: src, unit: unit, fromBook: fromBook, unconvertible: true };
+  return { mat: mat * f, lab: lab * f, src: src, unit: unit, fromBook: fromBook, unconvertible: false };
+}
+
 // ---- W2 (owner 2026-09-30): ELEMENT INSTANCES - measure by element ------
 // Instead of one generic L x W, dimension-driven trades take repeated named
 // rows ("Wall 1" x2 identical, "Wall 2") - the add-a-wall pattern. Rows sum
 // through the trade's OWN q() formula (same conversions as typed dims), so
 // block counts, waste and piece pricing all still apply. A total-override
 // field ("type the total instead") bypasses rows when the sum is known.
+// ---- E2 (plan v2 Phase 1): VARIANT ENGINE --------------------------------
+// One work item, many priced versions (block 6 vs 8 inch, pipe by
+// diameter, scaffolding by height band): an optional variants list on a
+// WORK entry, each { id, label, rate: {mat, lab}, runit? }. The form shows
+// ONE selector; the active variant's rates feed the model prefill and the
+// engine fallback. A legacy save (or a state with no variant) resolves to
+// the FIRST variant, whose rates must equal the pre-conversion model - so
+// old recalls reproduce the same total (Phase 1 exit gate). Phase 2 fills
+// the real JIC variant sets from the official sheet; no invented numbers.
+function activeVariant(w, st) {
+  if (!w || !w.variants || !w.variants.length) return null;
+  const id = st && st.variant;
+  return w.variants.find(function(v) { return v && v.id === id; }) || w.variants[0];
+}
+function variantFor(key, variantId) {
+  const w = WORK[key];
+  if (!w || !w.variants || !w.variants.length) return null;
+  return w.variants.find(function(v) { return v && v.id === variantId; }) || w.variants[0];
+}
+
 const INSTANCE_KINDS = {
   blockwall: 'wall', brickwall: 'wall', framing: 'wall', render: 'wall', paint: 'wall', drywall: 'wall',
   tile: 'area', siteprep: 'area', roof: 'area', 'shingle-roof': 'area', ceiling: 'area',
@@ -706,6 +982,62 @@ function openingsArea(st, imperial) {
     area += n * w * h;
   });
   return { count: Math.round(count * 100) / 100, area: Math.round(area * 100) / 100 };
+}
+
+// ---- E3 companion (owner directive 2026-10-01): UNIT-SLIP GUARD ----------
+// "Flag any dimension outside a plausible band for that item and ask 'did
+// you mean 150 mm?'" - the classic slips are a metric thickness typed as
+// metres (0.15), inches in a millimetre box (6), feet in a metre box, or
+// a wildly large count. PURE: returns [{ field, msg, fix }] - empty on
+// plausible input; the 45 golden cases must ALL pass with zero flags
+// (zero false positives). A flag explains itself and offers a one-tap
+// fix; nothing is ever changed silently.
+function dimSlips(st) {
+  const w = WORK[st && st.work];
+  if (!w) return [];
+  const imp = st && st.units === 'imperial';
+  const out = [];
+  const r2 = (v) => Math.round(v * 100) / 100;
+  const band = function(field, label, v) {
+    if (!(v > 0)) return;
+    if (/count/.test(label)) {
+      if (v > 300) out.push({ field: field, msg: v + ' is a lot of units - check the count.', fix: null });
+      return;
+    }
+    if (/\(mm\)/.test(label)) {
+      if (imp) { // the box speaks inches here; only absurd values flag
+        if (v > 60) out.push({ field: field, msg: v + ' in is very thick - check the unit.', fix: null });
+        return;
+      }
+      if (v < 20) {
+        const guess = v < 1 ? r2(v * 1000) : Math.round(v * 25.4);
+        out.push({ field: field, msg: v + ' in a millimetre box looks like ' + (v < 1 ? 'metres' : 'inches') + ' - did you mean ' + guess + ' mm?', fix: String(guess) });
+      } else if (v > 2000) {
+        out.push({ field: field, msg: v + ' mm is very large - did you mean ' + r2(v / 1000) + ' m?', fix: String(r2(v / 1000)) });
+      }
+      return;
+    }
+    if (/\(m2\)|\(m3\)/.test(label)) {
+      if (v < 0.05) out.push({ field: field, msg: v + ' is very small - check the unit.', fix: null });
+      return;
+    }
+    if (/Height/.test(label)) {
+      if (v > (imp ? 500 : 12)) out.push({ field: field, msg: v + (imp ? ' ft' : ' m') + ' tall is unusual - check the unit.', fix: null });
+      else if (v < (imp ? 0.5 : 0.4)) out.push({ field: field, msg: v + (imp ? ' ft' : ' m') + ' is very short for a height - check the unit.', fix: null });
+      return;
+    }
+    // metre-box lengths / runs (feet boxes in imperial mode)
+    if (imp) {
+      if (v > 500) out.push({ field: field, msg: v + ' ft is very long - check the unit.', fix: null });
+      return;
+    }
+    if (v > 150) out.push({ field: field, msg: v + ' m is very long - did you mean feet? (' + Math.round(v / FT) + ' ft = ' + r2(v * FT) + ' m)', fix: String(r2(v * FT)) });
+    else if (v < 0.1) out.push({ field: field, msg: v + ' m is very small - did you mean millimetres? (' + Math.round(v * 1000) + ' mm = ' + r2(v / 1000) + ' m)', fix: String(r2(v / 1000)) });
+  };
+  band('d1', w.d1 || '', parseFloat(st.d1));
+  if (w.d2) band('d2', w.d2 || '', parseFloat(st.d2));
+  if (w.d3) band('d3', w.d3 || '', parseFloat(st.d3));
+  return out;
 }
 // PURE: sum instance rows through WORK[key].q with the SAME imperial
 // conversions computeFor applies (ft to m, in to mm). Bad rows are skipped,
@@ -1259,6 +1591,14 @@ function estimateCsv(r) {
     ['Openings deducted', r.hasOpenings && r.openings && r.openings.count ? r.openings.count + ' (' + r.openings.area + ' m2)' : 'none'],
     ['Order quantity', r.orderCount ? r.orderCount.n.toLocaleString() + ' ' + r.orderCount.lbl + ' at ' + r.orderCount.sizeTxt : ''],
     ['Rate basis', r.matDesc],
+    ['Variant', r.variantLabel || ''],
+    ['Rate unit', r.runit ? 'per ' + r.runit : ''],
+    ['Exchange rate', (function() {
+      const c = r.currency || BASE_CURRENCY;
+      if (c === BASE_CURRENCY) return 'base currency';
+      const f = fxFactor(c);
+      return f != null ? f + ' ' + c + ' per USD as of ' + ((loadFx()[c] || {}).asOf || '?') : 'not set - model rates are US dollars';
+    })()],
     ['Finish level', ($('calc-quality') || {}).value || 'standard'],
     ['Currency', r.currency],
     ['Country', ($('calc-country') || {}).value || ''],
@@ -1271,7 +1611,7 @@ function estimateCsv(r) {
     ['Piece pricing', r.piece && !r.piece.countOnly ? (r.piece.div === 'volume'
         ? r.piece.price + ' per ' + r.piece.w + ' L yield (per ' + (Math.round(r.piece.perUnit * 100) / 100) + '/' + r.piece.qtyUnit + ')'
         : r.piece.price + ' per ' + Math.round(r.piece.w) + ' x ' + Math.round(r.piece.l) + ' ' + r.piece.unit + (r.piece.div === 'width' ? ' (per ' + (Math.round(r.piece.perUnit * 100) / 100) + '/m)' : ' (per ' + (Math.round(r.piece.perUnit * 100) / 100) + '/m2)')) : 'no'],
-    ['Materials', Math.round(r.mat)],
+    ['Materials', r.matExcluded ? 'excluded (labour only)' : Math.round(r.mat)],
     ['Labor', Math.round(r.lab)],
     ['Subtotal', Math.round(r.sub)],
     ['Overhead', Math.round(r.oh)],
@@ -1360,7 +1700,9 @@ function wsCollect() {
     rollup: sec('rollup', loadRollupPrefs()),
     brand: sec('brand', brandLoad()),
     sheets: sec('sheets', loadSheets()),
-    docCounter: sec('docCounter', docCounterLoad())
+    docCounter: sec('docCounter', docCounterLoad()),
+    fx: sec('fx', loadFx()),
+    books: sec('books', { list: loadBooks(), active: activeBookId() })
   };
 }
 // PURE merge decision: newer stamp wins; empty local adopts cloud; equal
@@ -1391,7 +1733,14 @@ function wsApplyProbe(data) {
     ['rollup', ws.rollup, function(v) { persistRollupPrefs(v); renderRollup(); }],
     ['brand', ws.brand, function(v) { try { localStorage.setItem(BRKEY, JSON.stringify(v)); } catch (e) {} renderBrand(); }],
     ['sheets', ws.sheets, function(v) { persistSheets(v); renderSheets(); }],
-    ['docCounter', ws.docCounter, function(v) { try { localStorage.setItem(DOCNO_KEY, JSON.stringify(v)); } catch (e) {} }]
+    ['docCounter', ws.docCounter, function(v) { try { localStorage.setItem(DOCNO_KEY, JSON.stringify(v)); } catch (e) {} }],
+    ['fx', ws.fx, function(v) { try { localStorage.setItem(FXKEY, JSON.stringify(v && typeof v === 'object' && !Array.isArray(v) ? v : {})); } catch (e) {} renderFx(); }],
+    ['books', ws.books, function(v) {
+      const o = v && typeof v === 'object' ? v : {};
+      try { localStorage.setItem(BKKEY, JSON.stringify(Array.isArray(o.list) ? o.list : [])); } catch (e) {}
+      try { localStorage.setItem(ACTBK, JSON.stringify(typeof o.active === 'string' ? o.active : '')); } catch (e) {}
+      renderBooks();
+    }]
   ];
   try {
     sections.forEach(function(pair) {
@@ -1414,7 +1763,7 @@ function wsApplyProbe(data) {
 // down once already - do not hoist this back).
 let WS_KEYS = null;
 function wsKeys() {
-  if (!WS_KEYS) WS_KEYS = { estimates: NKEY, boq: BKEY2, history: HKEY, packs: PKKEY, rollup: RKEY2, brand: BRKEY, sheets: RKEY, docCounter: DOCNO_KEY };
+  if (!WS_KEYS) WS_KEYS = { estimates: NKEY, boq: BKEY2, history: HKEY, packs: PKKEY, rollup: RKEY2, brand: BRKEY, sheets: RKEY, docCounter: DOCNO_KEY, fx: FXKEY, books: BKKEY };
   return WS_KEYS;
 }
 function wsPayload(withLogo) {
@@ -1447,11 +1796,15 @@ async function wsProbe() {
   wsInFlight = false;
 }
 // W1 engine hook (harness-only convenience; harmless in production).
-window.__calcEngine = { computeFor: computeFor, boqTotals: boqTotals, readState: readState, syncLabels: syncLabels, instancesQty: instancesQty, estimateCsv: estimateCsv, prelimsTotal: prelimsTotal, rollup: rollup, cashCurve: cashCurve, formworkM2: formworkM2, importPacks: importPacks, applyDiscount: applyDiscount, companionsFor: companionsFor, syncFamily: syncFamily, brandLoad: brandLoad, logoFitsCap: logoFitsCap, docNoSuggest: docNoSuggest, wsCollect: wsCollect, wsMerge: wsMerge, wsApplyProbe: wsApplyProbe, scheduleWsPut: scheduleWsPut };
+window.__calcEngine = { computeFor: computeFor, boqTotals: boqTotals, readState: readState, syncLabels: syncLabels, instancesQty: instancesQty, estimateCsv: estimateCsv, prelimsTotal: prelimsTotal, rollup: rollup, cashCurve: cashCurve, formworkM2: formworkM2, importPacks: importPacks, applyDiscount: applyDiscount, companionsFor: companionsFor, syncFamily: syncFamily, brandLoad: brandLoad, logoFitsCap: logoFitsCap, docNoSuggest: docNoSuggest, wsCollect: wsCollect, wsMerge: wsMerge, wsApplyProbe: wsApplyProbe, scheduleWsPut: scheduleWsPut, rateFactor: rateFactor, dimSlips: dimSlips, activeVariant: activeVariant, variantFor: variantFor, fxFactor: fxFactor, fxBetween: fxBetween, modelRatesFor: modelRatesFor, importBooks: importBooks, setActiveBook: setActiveBook, activeBook: activeBook, loadFx: loadFx, renderFx: renderFx, renderBooks: renderBooks };
 
 document.addEventListener('change', function(e) {
   if (e.target && e.target.id === 'calc-doc-type') render();
   if (e.target && e.target.id === 'calc-family') onFamilyChange(e.target.value);
+  // E2: picking a version re-prefills the model rates for it.
+  if (e.target && e.target.id === 'calc-variant') { refreshRateFields(); render(); }
+  // E6: labour-only mode re-prices live.
+  if (e.target && e.target.id === 'calc-labour-only') render();
 });document.addEventListener('input', function(e) {
   if (e.target && e.target.id === 'calc-doc-title') render();
 });
@@ -1471,7 +1824,17 @@ function downloadCsv() {
 function workName(key) {
   const sel = $('calc-work');
   const opt = sel && sel.selectedOptions && sel.selectedOptions[0];
-  return opt ? opt.textContent.trim() : key;
+  let name = opt ? opt.textContent.trim() : key;
+  // E2: multi-variant trades carry the picked version in the name so bill
+  // lines, history and CSV name what was priced (single-variant trades -
+  // the Phase 1 excavation conversion - keep the clean base name).
+  const vSel = $('calc-variant');
+  const w = WORK[key];
+  if (vSel && vSel.value && w && w.variants && w.variants.length > 1) {
+    const av = variantFor(key, vSel.value);
+    if (av) name = name + ' - ' + av.label;
+  }
+  return name;
 }
 
 function row(label, value, cls) {
@@ -1694,7 +2057,10 @@ function render() {
     : null;
   const matLabel = r.piece && !r.piece.countOnly
     ? 'Materials - priced per piece at ' + pieceDesc
-    : 'Materials' + (r.matOverridden ? ' - your rate' : '');
+    : 'Materials' + (r.matExcluded ? ' - excluded (labour only)' : r.matOverridden ? ' - your rate' : '');
+  // E1: while model money is unconverted the breakdown says so in USD
+  // terms - the picked symbol is only shown for money in that currency.
+  const moneyCode = r.modelUnconverted ? 'USD' : null;
   const shown = qtyShown(r.qty, r.unit);
   const qh = $('calc-quote-biz'), qm = $('calc-quote-meta'), qt = $('calc-quote-title');
   if (qh) qh.textContent = bizName();
@@ -1703,6 +2069,9 @@ function render() {
   // W3: the full document sheet - logo, contact block, document number
   // and bill-to appear ONLY when their data exists (plain by default).
   out.innerHTML =
+    (r.modelUnconverted
+      ? '<p class="bcp-jm-note">Built-in model rates are US dollars - set a ' + esc(r.currency) + ' exchange rate in the Exchange rates card, or type your own rates, to price in ' + esc(r.currency) + '.</p>'
+      : '') +
     '<div class="calc-sum">' +
       '<div class="calc-sum-main"><span class="calc-sum-label">' + r.qtyLabel + '</span>' +
       '<strong class="calc-sum-qty">' + esc(shown.main) +
@@ -1715,15 +2084,22 @@ function render() {
         ? '<div class="calc-sum-sub">Minus ' + r.openings.count + ' ' + (r.openings.count === 1 ? 'opening' : 'openings') + ' (' + r.openings.area + ' m2) not built - window and door spaces</div>'
         : '') +
     '</div>' +
+    (r.slips && r.slips.length
+      ? r.slips.map(function(s) {
+          return '<p class="bcp-jm-note">' + esc(s.msg) + (s.fix != null && s.fix !== ''
+            ? ' <button type="button" class="btn btn-n btn-s" data-action="calcFixDim" data-field="' + esc(s.field) + '" data-val="' + esc(s.fix) + '">Use ' + esc(String(s.fix)) + '</button>'
+            : '') + '</p>';
+        }).join('')
+      : '') +
     (r.hasWaste ? row(r.wasteLbl + ' allowance', r.wastePct + '%') : '') +
-    row(matLabel, fmtMoney(r.mat)) +
-    row('Labor' + (r.labOverridden ? ' - your rate' : ''), fmtMoney(r.lab)) +
-    (r.onCost > 0 ? row('Labor statutory costs (NIS, NHT, HEART, Education) ' + r.onCostPct + '%', fmtMoney(r.onCost)) : '') +
-    (r.eq > 0 ? row('Equipment / plant hire', fmtMoney(r.eq)) : '') +
-    (r.ohPct > 0 ? row('Overhead & margin ' + r.ohPct + '%', fmtMoney(r.oh)) : '') +
-    row('Subtotal', fmtMoney(r.sub), 'calc-line-sub') +
-    row(r.taxRate === 0 && r.overrideApplied ? 'Tax (no tax - your rate)' : 'Tax (' + r.taxRate + '%' + (r.overrideApplied ? ', your rate' : '') + ')', fmtMoney(r.tax)) +
-    row('Estimated total', fmtMoney(r.total), 'calc-line-total') +
+    row(matLabel, fmtMoney(r.mat, moneyCode)) +
+    row('Labor' + (r.labOverridden ? ' - your rate' : ''), fmtMoney(r.lab, moneyCode)) +
+    (r.onCost > 0 ? row('Labor statutory costs (NIS, NHT, HEART, Education) ' + r.onCostPct + '%', fmtMoney(r.onCost, moneyCode)) : '') +
+    (r.eq > 0 ? row('Equipment / plant hire', fmtMoney(r.eq, moneyCode)) : '') +
+    (r.ohPct > 0 ? row('Overhead & margin ' + r.ohPct + '%', fmtMoney(r.oh, moneyCode)) : '') +
+    row('Subtotal', fmtMoney(r.sub, moneyCode), 'calc-line-sub') +
+    row(r.taxRate === 0 && r.overrideApplied ? 'Tax (no tax - your rate)' : 'Tax (' + r.taxRate + '%' + (r.overrideApplied ? ', your rate' : '') + ')', fmtMoney(r.tax, moneyCode)) +
+    row('Estimated total', fmtMoney(r.total, moneyCode), 'calc-line-total') +
     '<div class="calc-fine">Planning-grade estimate for ' + r.currency + '. Not a quote - every line becomes editable in the app once the project starts.</div>';
   return r;
 }
@@ -1764,7 +2140,7 @@ const GUIDE_STEPS = [
   'Pick your currency and country. The country sets the standard tax rate; you can override it.',
   'Choose the finish level. Economy trims about 15%, premium adds about 35%. Add a custom tax % if yours differs.',
   'Overhead and margin. Many builders add about 10% on top for overhead and profit - type your own or leave it at zero.',
-  'Your rates. Material, labor and equipment rates come prefilled as planning-grade averages. Change them to yours, and save them as a rate sheet to reuse.',
+  'Your rates. Rates come prefilled from the model, a rate book you imported, or the model converted at your exchange rate. Change them to yours, save them as a rate sheet to reuse, and pick a version where the trade offers one (like excavation).',
   'Your business on the sheet. Open Business details to add your logo, contact lines and signature - they print on every document you make here. It stays on this device.',
   'Measure the whole job. Add each wall, pour or run as its own row with a repeat count, or type the total if you know it. Add the priced result to the bill and keep pricing the next item.',
   'Site and other costs. Add the items that keep the site running - permits, supervision, temporary facilities. Typical residential jobs carry about 5 to 8 percent here, and the button loads a set you can edit.',
@@ -2363,6 +2739,63 @@ const ACTIONS = {
     const f = $('calc-sheet-file');
     if (f) f.click();
   },
+  // ---- E1 (plan v2 Phase 1): exchange rates -----------------------------
+  calcFxSave: function() {
+    const sel = $('calc-fx-code'), rateEl = $('calc-fx-rate'), dateEl = $('calc-fx-asof');
+    const code = sel && sel.value;
+    const per = parseFloat(rateEl && rateEl.value);
+    if (!code) { sheetMsg('Pick the currency first.'); return; }
+    if (!isFinite(per) || per <= 0) { sheetMsg('Enter the rate: how many ' + code + ' per 1 US dollar.'); return; }
+    const t = loadFx();
+    t[code] = { per: per, asOf: (dateEl && dateEl.value) || new Date().toISOString().slice(0, 10) };
+    persistFx(t);
+    renderFx();
+    refreshRateFields();
+    render();
+    sheetMsg('Exchange rate saved: ' + per + ' ' + code + ' per 1 US dollar.');
+  },
+  calcFxDel: function(el) {
+    const code = el.getAttribute('data-code');
+    if (!code) return;
+    const t = loadFx();
+    delete t[code];
+    persistFx(t);
+    renderFx();
+    refreshRateFields();
+    render();
+  },
+  // ---- E4 (plan v2 Phase 1): rate books ---------------------------------
+  calcBookExport: function() {
+    const list = loadBooks();
+    if (!list.length) { sheetMsg('No rate books imported yet.'); return; }
+    const payload = JSON.stringify({ version: 1, exported: new Date().toISOString().slice(0, 10), books: list }, null, 2);
+    const blob = new Blob([payload], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'mmgr-calc-rate-books-' + new Date().toISOString().slice(0, 10) + '.json';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(function() { URL.revokeObjectURL(a.href); }, 500);
+    sheetMsg('Exported ' + list.length + ' rate book(s).');
+  },
+  calcBookImport: function() { const f = $('calc-book-file'); if (f) f.click(); },
+  calcBookClear: function() {
+    setActiveBook('');
+    renderBooks();
+    refreshRateFields();
+    render();
+    sheetMsg('Rate book cleared - the built-in model rates prefill again.');
+  },
+  // Owner directive 2026-10-01: one-tap fix for a flagged unit slip.
+  calcFixDim: function(el) {
+    const f = el.getAttribute('data-field'), v = el.getAttribute('data-val');
+    const input = f ? $('calc-' + f) : null;
+    if (input && v != null && v !== '') {
+      input.value = v;
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+  },
   calcSheetPick: null
 };
 
@@ -2432,6 +2865,38 @@ document.addEventListener('change', function(e) {
   reader.readAsText(file);
 });
 
+// E4: the rate-book file input - same contract as sheets/packs. A bad file
+// reports in the status line and never throws, never clears storage.
+document.addEventListener('change', function(e) {
+  if (!e.target || e.target.id !== 'calc-book-file') return;
+  const file = e.target.files && e.target.files[0];
+  e.target.value = '';
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function() {
+    let json = null;
+    try { json = JSON.parse(String(reader.result)); } catch (err) { json = null; }
+    const res = importBooks(json);
+    if (res === null) { sheetMsg('That file is not a My MaNaGeR rate book export (expected { books: [...] }).'); return; }
+    sheetMsg('Imported ' + res.merged + ' rate book(s)' + (res.skipped ? ' (' + res.skipped + ' entries skipped - unknown items or bad rates)' : '') + (res.badKeys ? '; ' + res.badKeys + ' unknown work key(s) rejected.' : '.'));
+  };
+  reader.readAsText(file);
+});
+
+// E4: choosing a book in the select makes it the ACTIVE book (value-apply-
+// then-snap, same convention as sheets/packs). Its rates drive the prefill.
+document.addEventListener('change', function(e) {
+  const el = e.target.closest('[data-action="calcBookPick"]');
+  if (!el) return;
+  setActiveBook(el.value);
+  el.selectedIndex = 0;
+  renderBooks();
+  refreshRateFields();
+  render();
+  const a = activeBook();
+  sheetMsg(a ? 'Rate book "' + a.name + '" applied - its rates prefill the model fields.' : 'Rate book cleared - the built-in model rates prefill again.');
+});
+
 // Print scope is class-scoped; window.print() blocks, so remove the class
 // right after it returns (covers the common browsers' dialog lifecycle;
 // afterprint is the standards path where it fires).
@@ -2455,6 +2920,11 @@ window.addEventListener('afterprint', function() { document.body.classList.remov
 function rateUnitLabel(key) {
   const w = WORK[key];
   if (!w) return '';
+  // E3: a declared rate-entry unit (from the trade or its active variant)
+  // names the basis exactly as the rate source speaks it.
+  const vSel = $('calc-variant');
+  const ru = ((vSel && vSel.value && w.variants ? (variantFor(key, vSel.value) || {}).runit : null) || w.runit);
+  if (ru) return 'per ' + ru;
   const map = { m2: 'per m2', m3: 'per m3', m: 'per m', t: 'per tonne', L: 'per litre' };
   const imp = _units === 'imperial';
   const impMap = { m2: 'per sq ft', m3: 'per cu yd', m: 'per ft', t: 'per tonne', L: 'per litre' };
@@ -2480,15 +2950,45 @@ function refreshRateFields() {
   const d = currentDims();
   const matEl = $('calc-rate-mat'), labEl = $('calc-rate-lab');
   if (!matEl || !labEl) return;
-  const modelM = String(Math.round(modelMatRate(key, d.d1, d.d2) * 100) / 100);
-  const modelL = String(w.rate.lab);
-  // Prefill empty fields; an UNTOUCHED prefill (value === what we last put
-  // there) follows the model when dimensions change the model rate. A typed
-  // override is never overwritten - that is the rate freedom.
-  if (matEl.value === '' || matEl.value === matEl.dataset.model) matEl.value = modelM;
-  if (labEl.value === '' || labEl.value === labEl.dataset.model) labEl.value = modelL;
-  matEl.dataset.model = modelM;
-  labEl.dataset.model = modelL;
+  // E1+E4: the prefill rate comes from the active rate book first, then
+  // the WORK model (or the active variant), ALREADY converted into the
+  // estimate currency through the FX table. When the pair is missing the
+  // fields stay EMPTY and the note says so - never a silent relabel
+  // (that was audit A1: JMD users saw relabelled USD).
+  const cur = (($('calc-currency') || {}).value) || BASE_CURRENCY;
+  const m = modelRatesFor(key, ($('calc-variant') || {}).value || '', cur, d.d1, d.d2);
+  const fxNote = $('calc-fx-note');
+  // Warn whenever the prefill rate could not be brought into the estimate
+  // currency - including a foreign book with a USD estimate (the flag
+  // already knows; the target being the base currency is no excuse).
+  const needNote = !m || m.unconvertible;
+  if (fxNote) {
+    fxNote.hidden = !needNote;
+    if (needNote) fxNote.textContent = 'Model rates are ' + (m && m.unconvertible ? 'in ' + m.src + ' (imported rate book)' : 'US dollars') + ' - set a ' + cur + ' exchange rate in the Exchange rates card below, or type your own rates, to price in ' + cur + '.';
+  }
+  const modelM = (m && !m.unconvertible) ? String(Math.round(m.mat * 100) / 100) : '';
+  const modelL = (m && !m.unconvertible) ? String(m.lab) : '';
+  if (recallHold) {
+    // Recalling a snapshot: only truly-empty fields take a fresh prefill;
+    // restored field+marker pairs are left exactly as they were saved.
+    if (modelM !== '') {
+      if (matEl.value === '') { matEl.value = modelM; matEl.dataset.model = modelM; }
+      if (labEl.value === '') { labEl.value = modelL; labEl.dataset.model = modelL; }
+    }
+  } else if (modelM !== '') {
+    // Prefill empty fields; an UNTOUCHED prefill (value === what we last put
+    // there) follows the model when dimensions change the model rate. A typed
+    // override is never overwritten - that is the rate freedom.
+    if (matEl.value === '' || matEl.value === matEl.dataset.model) matEl.value = modelM;
+    if (labEl.value === '' || labEl.value === labEl.dataset.model) labEl.value = modelL;
+    matEl.dataset.model = modelM;
+    labEl.dataset.model = modelL;
+  } else {
+    // A stale prefill from another item (or an unconvertible book) must not
+    // linger as fake money - an untouched prefill clears; typed rates stay.
+    if (matEl.value === matEl.dataset.model) { matEl.value = ''; matEl.dataset.model = ''; }
+    if (labEl.value === labEl.dataset.model) { labEl.value = ''; labEl.dataset.model = ''; }
+  }
   $('calc-rate-mat-label').textContent = 'Material rate ' + rateUnitLabel(key);
   $('calc-rate-lab-label').textContent = 'Labor rate ' + rateUnitLabel(key);
   const eqLbl = $('calc-rate-eq-label');
@@ -2605,6 +3105,19 @@ function onFamilyChange(val) {
   syncLabels();
 }
 
+// E2: the variant selector follows the work item - one select, hidden
+// unless the trade carries a variants list (Phase 1: excavation).
+function renderVariant() {
+  const wrap = $('calc-variant-wrap'), sel = $('calc-variant');
+  if (!wrap || !sel) return;
+  const w = WORK[($('calc-work') || {}).value];
+  const vs = w && w.variants;
+  wrap.hidden = !vs;
+  if (!vs) { sel.innerHTML = ''; return; }
+  sel.innerHTML = vs.map(function(v) { return '<option value="' + esc(v.id) + '">' + esc(v.label) + '</option>'; }).join('');
+  if (!vs.some(function(v) { return v.id === sel.value; })) sel.value = vs[0].id;
+}
+
 function syncLabels() {
   const key = ($('calc-work') || {}).value;
   const w = WORK[key];
@@ -2629,6 +3142,8 @@ function syncLabels() {
   renderInstances();
   // W2.7: the openings editor appears only on wall-area trades.
   renderOpenings();
+  // E2: the variant selector follows the trade.
+  renderVariant();
   // W7: the rebar laps field rides the rebar trade only (same home as the
   // d2/d3 wrap hiding - syncLabels owns per-trade field visibility).
   const rlWrap = $('calc-rebar-laps-wrap'), rlEl = $('calc-rebar-laps');
@@ -2705,9 +3220,17 @@ function countryLabel(code) {
 if ($('calc-work')) {
   $('calc-work').addEventListener('change', syncLabels);
   if ($('calc-family')) $('calc-family').value = localStorage.getItem(FKEY) || '';
-  ['calc-currency', 'calc-country', 'calc-quality', 'calc-tax-override', 'calc-d1', 'calc-d2', 'calc-d3',
+  ['calc-currency', 'calc-country', 'calc-quality', 'calc-tax-override',
    'calc-rate-mat', 'calc-rate-lab', 'calc-rate-eq', 'calc-oh', 'calc-piece-price', 'calc-piece-size', 'calc-waste']
     .forEach(function(id) { const el = $(id); if (el) el.addEventListener('input', function() { render(); }); });
+  // E1/E4: dims feed dim-dependent model rates (fencing height) - refresh
+  // the prefill before pricing so the field IS the money being charged.
+  ['calc-d1', 'calc-d2', 'calc-d3'].forEach(function(id) {
+    const el = $(id); if (el) el.addEventListener('input', function() { refreshRateFields(); render(); });
+  });
+  // E1: switching currency re-prefills the model rates for it - the fields
+  // must never carry another currency's numbers under the new symbol.
+  if ($('calc-currency')) $('calc-currency').addEventListener('change', function() { refreshRateFields(); render(); });
   // W2: instance-row editing recomputes the measured total live; the
   // override field drives render() directly.
   $('calc-instances').addEventListener('input', function(e) {
@@ -2802,6 +3325,9 @@ if ($('calc-work')) {
 renderHistory();
 renderEstimates();
 renderSheets();
+// E1/E4: the exchange-rate card and the rate-book picker paint on load.
+renderFx();
+renderBooks();
 // W1 bill of quantities: paint the stored bill on load.
 renderBoq();
 // W4 site & other costs: restore the stored items on load.

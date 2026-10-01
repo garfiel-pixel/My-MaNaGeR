@@ -293,6 +293,23 @@
     <div id="calc-boq-body" class="calc-hist"><div class="calc-empty">No lines yet. Price something above, then Add to bill.</div></div>
   </section>
 
+  <!-- W4 (owner 2026-09-30) site & other costs: the indirect, project-wide
+       items that keep a site running (research band 5-15% of contract value,
+       residential 5-8%). One-time items as fixed amounts or % of the works;
+       running items as weekly x weeks. Nothing here is a tax. -->
+  <section class="card" id="calc-prelims-card" aria-labelledby="calc-prelims-h">
+    <div class="bcp-hist-head">
+      <h2 id="calc-prelims-h" class="card-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-book"></use></svg> Site &amp; other costs <span class="bcp-hist-note">- indirect costs, priced on top of the works</span></h2>
+      <span>
+        <button type="button" class="btn btn-n btn-s" data-action="calcPrelimPreset">Typical residential set</button>
+        <button type="button" class="btn btn-n btn-s" data-action="calcPrelimAdd">Add item</button>
+        <button type="button" class="btn btn-n btn-s" data-action="calcPrelimClear">Clear</button>
+      </span>
+    </div>
+    <p class="bcp-boq-total" id="calc-prelims-total"></p>
+    <div id="calc-prelims-body" class="calc-hist"><div class="calc-empty">No site &amp; other costs yet. Add the items that keep the site running.</div></div>
+  </section>
+
   <section class="card" id="calc-hist-card" aria-labelledby="calc-hist-h">
     <div class="bcp-hist-head">
       <h2 id="calc-hist-h" class="card-title">History <span class="bcp-hist-note">- saved on this device only</span></h2>

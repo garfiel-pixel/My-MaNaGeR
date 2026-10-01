@@ -85,6 +85,12 @@
      SX4  breakdown line renders with the pct + CSV carries it
      SX5  JM levy note shows only for Jamaica; toggle suggests 12.5
 
+   ESTIMATING DEPTH W4 - PRELIMINARIES / SITE & OTHER COSTS (owner 2026-09-30):
+     PM1  prelimsTotal: fixed / pct-of-works / weekly x weeks bases exact
+     PM2  typical residential preset = 6 items
+     PM3  card renders rows + on-top-of line; edit persists
+     PM4  remove + clear persist
+
    Usage:  node tools/qa-calculator-page.cjs   (needs serve.cjs on :8765)
    Registry: CI-TEST-COVERAGE.md -> CI row (fast, serve.cjs battery).
    ============================================================ */
@@ -668,6 +674,46 @@ async function withChrome(fn) {
     })()`);
     check('SX5 JM shows levy note + suggests 12.5; US hides the note',
       sx5 && sx5.noteShown && sx5.suggested === '12.5' && sx5.noteHiddenUs, sx5);
+    // ---------- W4: PRELIMINARIES / SITE & OTHER COSTS (owner 2026-09-30) ----------
+    const pm1 = await ev(`(function(){
+      var a = __calcEngine.prelimsTotal([
+        { name: 'Permits', basis: 'fixed', value: '250', weeks: '' },
+        { name: 'Supervision', basis: 'pct', value: '10', weeks: '' },
+        { name: 'Welfare', basis: 'week', value: '150', weeks: '8' }
+      ], 10000);
+      return { p0: a.perItem[0].amount, p1: a.perItem[1].amount, p2: a.perItem[2].amount, total: a.total };
+    })()`);
+    check('PM1 fixed 250 + pct 1000 + weekly 1200 = 2450 exact',
+      pm1 && pm1.p0 === 250 && pm1.p1 === 1000 && pm1.p2 === 1200 && pm1.total === 2450, pm1);
+    const pm2 = await ev(`(function(){
+      document.querySelector('[data-action="calcPrelimPreset"]').click();
+      var list = JSON.parse(localStorage.getItem('mmgr_calc_prelims') || '[]');
+      var total = document.getElementById('calc-prelims-total').textContent;
+      return { n: list.length, totalShown: total.indexOf('On top of the works') === 0 };
+    })()`);
+    check('PM2 preset loads 6 items; on-top-of line renders',
+      pm2 && pm2.n === 6 && pm2.totalShown, pm2);
+    const pm3 = await ev(`(function(){
+      var rows = document.querySelectorAll('#calc-prelims-body .bcp-prelim-row').length;
+      var first = document.querySelector('#calc-prelims-body input[data-field="name"]');
+      first.value = 'Renamed item';
+      first.dispatchEvent(new Event('input', { bubbles: true }));
+      var stored = JSON.parse(localStorage.getItem('mmgr_calc_prelims') || '[]');
+      return { rows: rows, renamed: stored[0].name };
+    })()`);
+    check('PM3 6 rows render; rename persists to storage',
+      pm3 && pm3.rows === 6 && pm3.renamed === 'Renamed item', pm3);
+    const pm4 = await ev(`(function(){
+      document.querySelector('[data-action="calcPrelimRemove"][data-idx="0"]').click();
+      var afterRemove = JSON.parse(localStorage.getItem('mmgr_calc_prelims') || '[]').length;
+      document.querySelector('[data-action="calcPrelimClear"]').click();
+      var afterClear = JSON.parse(localStorage.getItem('mmgr_calc_prelims') || '[]').length;
+      var empty = document.querySelector('#calc-prelims-body .calc-empty') !== null;
+      return { afterRemove: afterRemove, afterClear: afterClear, empty: empty };
+    })()`);
+    check('PM4 remove drops to 5; clear empties + empty state returns',
+      pm4 && pm4.afterRemove === 5 && pm4.afterClear === 0 && pm4.empty, pm4);
+
     // Restore the pre-wave state for the U-series gates (the W1 block above
     // deliberately dirtied the form): deterministic metric slab flow.
     await ev(`(function(){

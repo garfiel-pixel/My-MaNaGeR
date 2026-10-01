@@ -23,7 +23,7 @@
 <meta name="robots" content="noindex">
 <link rel="icon" type="image/png" href="images/mpw-icon.png">
 <link rel="apple-touch-icon" href="images/mpw-icon.png">
-<link rel="stylesheet" href="dist/mmgr.min.css?v=10">
+<link rel="stylesheet" href="dist/mmgr.min.css?v=11">
 <script src="js/mmgr-theme.js" data-sync="1"></script>
 </head>
 <body class="db-page calculator-page">
@@ -293,25 +293,38 @@
     <button type="button" class="btn btn-g btn-s" data-action="calcTourStart">Start tour</button>
     <button type="button" class="btn btn-n btn-s" data-action="calcTourDismiss">No thanks</button>
   </div>
-  <div class="bcp-tour-overlay" id="calc-tour-overlay" hidden>
-    <div class="bcp-tour-pop" id="calc-tour-pop" role="dialog" aria-modal="true" aria-labelledby="calc-tour-text">
-      <span class="bcp-tour-count" id="calc-tour-count"></span>
-      <span class="bcp-tour-text" id="calc-tour-text"></span>
-      <div class="bcp-tour-btns">
-        <button type="button" class="btn btn-n btn-s" data-action="calcTourPrev">Back</button>
-        <button type="button" class="btn btn-n btn-s" data-action="calcTourSkip">Skip tour</button>
-        <button type="button" class="btn btn-g btn-s" data-action="calcTourNext">Next</button>
-      </div>
-      <div class="bcp-guide-dots" id="calc-tour-dots" aria-hidden="true"></div>
-    </div>
-  </div>
 </main>
+
+<!-- OWNER 2026-09-30 spotlight fix: the tour furniture is BODY-LEVEL, never
+     inside .bcp-main. A filter on .bcp-main (the page blur) made that
+     container the containing block for these position:fixed elements, so
+     the spotlight cutout's viewport coordinates were re-read relative to
+     the page box - the ring landed ~94px right of the field at desktop and
+     drifted further off with every step at phone width. Out here the
+     cutout tracks getBoundingClientRect exactly, and the furniture can
+     never inherit the page blur. The cutout itself: the spot's 9999px
+     box-shadow paints the dim layer everywhere EXCEPT the hole, so the
+     field being talked about shows crisp above the blurred, dimmed page
+     (per-element blur, see .bcp-tour-blur in mmgr.css). -->
+<div class="bcp-tour-overlay" id="calc-tour-overlay" hidden>
+  <div class="bcp-tour-spot" id="calc-tour-spot" aria-hidden="true"></div>
+  <div class="bcp-tour-pop" id="calc-tour-pop" role="dialog" aria-modal="true" aria-labelledby="calc-tour-text">
+    <span class="bcp-tour-count" id="calc-tour-count"></span>
+    <span class="bcp-tour-text" id="calc-tour-text"></span>
+    <div class="bcp-tour-btns">
+      <button type="button" class="btn btn-n btn-s" data-action="calcTourPrev">Back</button>
+      <button type="button" class="btn btn-n btn-s" data-action="calcTourSkip">Skip tour</button>
+      <button type="button" class="btn btn-g btn-s" data-action="calcTourNext">Next</button>
+    </div>
+    <div class="bcp-guide-dots" id="calc-tour-dots" aria-hidden="true"></div>
+  </div>
+</div>
 
 <!-- ?v= cache-buster: this standalone page does NOT register the service
      worker, so its raw assets ride the HTTP cache (1y immutable) - any
      change here must bump v, or returning calculator-only visitors keep
      the old script/styles for a year. -->
-<script src="js/mmgr-icon-restore.js?v=10"></script>
-<script src="js/calculator-page.js?v=10"></script>
+<script src="js/mmgr-icon-restore.js?v=11"></script>
+<script src="js/calculator-page.js?v=11"></script>
 </body>
 </html>

@@ -91,6 +91,11 @@
      PM3  card renders rows + on-top-of line; edit persists
      PM4  remove + clear persist
 
+   ESTIMATING DEPTH W5 - CONTINGENCY + ESCALATION (owner 2026-09-30):
+     RG1  pure waterfall math exact (works + prelims + 10 + 5 + esc 12mo)
+     RG2  defaults render 10 / 5 / 5; settings persist
+     RG3  waterfall lines render with the planning subtotal
+
    Usage:  node tools/qa-calculator-page.cjs   (needs serve.cjs on :8765)
    Registry: CI-TEST-COVERAGE.md -> CI row (fast, serve.cjs battery).
    ============================================================ */
@@ -714,6 +719,37 @@ async function withChrome(fn) {
     check('PM4 remove drops to 5; clear empties + empty state returns',
       pm4 && pm4.afterRemove === 5 && pm4.afterClear === 0 && pm4.empty, pm4);
 
+    // ---------- W5: CONTINGENCY + ESCALATION (owner 2026-09-30) ----------
+    const rg1 = await ev(`(function(){
+      var r = __calcEngine.rollup({ works: 100000, prelims: 7000, designC: '10', constrC: '5', escPct: '5', months: '12' });
+      return { designC: r.designC, constrC: r.constrC, esc: r.esc, subtotal: r.subtotal };
+    })()`);
+    check('RG1 waterfall: 100k + 7k + 10k + 5k + 5350 = 127350 exact',
+      rg1 && rg1.designC === 10000 && rg1.constrC === 5000 && Math.abs(rg1.esc - 5350) < 0.01 && Math.abs(rg1.subtotal - 127350) < 0.01, rg1);
+    const rg2 = await ev(`(function(){
+      var d = document.getElementById('calc-design-c'), c = document.getElementById('calc-constr-c'),
+          e = document.getElementById('calc-esc-pct'), m = document.getElementById('calc-months');
+      return { d: d.value, c: c.value, e: e.value, m: m.value };
+    })()`);
+    check('RG2 defaults restored: design 10, constr 5, esc 5, months empty',
+      rg2 && rg2.d === '10' && rg2.c === '5' && rg2.e === '5' && rg2.m === '', rg2);
+    const rg3 = await ev(`(function(){
+      document.getElementById('calc-work').value = 'blockwall';
+      document.getElementById('calc-work').dispatchEvent(new Event('change', { bubbles: true }));
+      document.getElementById('calc-d1').value = '10';
+      document.getElementById('calc-d2').value = '2.4';
+      document.getElementById('calc-d1').dispatchEvent(new Event('input', { bubbles: true }));
+      var body = document.getElementById('calc-rollup-body');
+      var txt = body ? body.textContent : '';
+      return { hasWorks: txt.indexOf('Works (the priced bill)') > -1,
+               hasPrelim: txt.indexOf('Site & other costs') > -1,
+               hasDesign: txt.indexOf('Design contingency (10%)') > -1,
+               hasConstr: txt.indexOf('Construction contingency (5%)') > -1,
+               hasTotal: txt.indexOf('Planning subtotal (before tax)') > -1,
+               noEsc: txt.indexOf('Escalation (') === -1 };
+    })()`);
+    check('RG3 waterfall lines render; escalation line hidden while months empty',
+      rg3 && rg3.hasWorks && rg3.hasPrelim && rg3.hasDesign && rg3.hasConstr && rg3.hasTotal && rg3.noEsc, rg3);
     // Restore the pre-wave state for the U-series gates (the W1 block above
     // deliberately dirtied the form): deterministic metric slab flow.
     await ev(`(function(){

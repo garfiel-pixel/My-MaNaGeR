@@ -2566,6 +2566,9 @@ html.mmgr-tour-active .bcp-tour-nudge{filter:none;}
 .bcp-oncost input[type="number"]{max-width:280px;}
 .bcp-oncost input[type="number"]:disabled{opacity:.55;}
 .bcp-jm-note{font-size:.78rem;color:var(--slate);line-height:1.5;margin:8px 0 0;}
+/* W5 planning waterfall settings: compact 4-up field row. */
+.bcp-rollup-settings{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:10px 0 8px;}
+@media (max-width:600px){.bcp-rollup-settings{grid-template-columns:1fr 1fr;}}
 /* W4 site & other costs: grid rows (name, basis, value, weeks, amount, X). */
 .bcp-prelim-row{display:grid;grid-template-columns:minmax(140px,2fr) minmax(110px,1fr) minmax(80px,1fr) 76px 90px auto;gap:6px;align-items:center;margin-bottom:6px;}
 .bcp-prelim-row input,.bcp-prelim-row select{min-width:0;width:100%;}

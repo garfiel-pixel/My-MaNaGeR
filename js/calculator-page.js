@@ -663,6 +663,60 @@ function renderPrelims(worksOverride) {
     : '<div class="calc-empty">No site & other costs yet. Add the items that keep the site running.</div>';
 }
 
+// ---- W5 (owner 2026-09-30): CONTINGENCY + ESCALATION + DURATION ---------
+// The planning waterfall: works -> site & other costs -> design contingency
+// -> construction contingency -> escalation over the build duration.
+// Defaults from the research: design contingency 10%, construction 5%
+// (AACE contingency guidance), escalation 5%/yr (2026 consensus 4-6%).
+// Device-level settings (not per-estimate). Works basis is the priced bill
+// subtotal (pre-tax); tax is added at invoice where applicable.
+const RKEY2 = 'mmgr_calc_rollup';
+function loadRollupPrefs() { try { return JSON.parse(localStorage.getItem(RKEY2) || '{}'); } catch (e) { return {}; } }
+function persistRollupPrefs(p) { try { localStorage.setItem(RKEY2, JSON.stringify(p)); } catch (e) { /* nicety */ } }
+// PURE: the waterfall math. Escalation is simple %/yr over months/12 on
+// (works + prelims); contingencies are % of works. No DOM.
+function rollup(o) {
+  const works = Math.max(0, parseFloat(o.works) || 0);
+  const prelims = Math.max(0, parseFloat(o.prelims) || 0);
+  const designC = works * (Math.max(0, parseFloat(o.designC) || 0)) / 100;
+  const constrC = works * (Math.max(0, parseFloat(o.constrC) || 0)) / 100;
+  const escPct = Math.max(0, parseFloat(o.escPct) || 0);
+  const months = Math.max(0, parseFloat(o.months) || 0);
+  const esc = (works + prelims) * (escPct / 100) * (months / 12);
+  const subtotal = works + prelims + designC + constrC + esc;
+  return { works: works, prelims: prelims, designC: designC, constrC: constrC,
+    escPct: escPct, months: months, esc: esc, subtotal: subtotal };
+}
+function rollupPrefs() {
+  const p = loadRollupPrefs();
+  return {
+    designC: ($('calc-design-c') || {}).value != null && $('calc-design-c') ? $('calc-design-c').value : (p.designC != null ? p.designC : '10'),
+    constrC: $('calc-constr-c') ? $('calc-constr-c').value : (p.constrC != null ? p.constrC : '5'),
+    escPct: $('calc-esc-pct') ? $('calc-esc-pct').value : (p.escPct != null ? p.escPct : '5'),
+    months: $('calc-months') ? $('calc-months').value : (p.months != null ? p.months : '')
+  };
+}
+function renderRollup() {
+  const body = $('calc-rollup-body');
+  if (!body) return;
+  const works = prelimWorks();
+  if (!(works > 0)) { body.innerHTML = ''; return; }
+  const pref = rollupPrefs();
+  const r = rollup({ works: works, prelims: prelimsTotal(prelimItems, works).total,
+    designC: pref.designC, constrC: pref.constrC, escPct: pref.escPct, months: pref.months });
+  const cur = CURRENCY[lastResult && lastResult.currency] || '$';
+  const line = function(label, val) {
+    return '<div class="calc-line"><span>' + label + '</span><strong>' + cur + Math.round(val).toLocaleString() + '</strong></div>';
+  };
+  body.innerHTML =
+    line('Works (the priced bill)', r.works) +
+    line('Site &amp; other costs', r.prelims) +
+    line('Design contingency (' + (parseFloat(pref.designC) || 0) + '%)', r.designC) +
+    line('Construction contingency (' + (parseFloat(pref.constrC) || 0) + '%)', r.constrC) +
+    (r.esc > 0 ? line('Escalation (' + r.escPct + '%/yr over ' + r.months + ' months)', r.esc) : '') +
+    '<div class="calc-line calc-line-total"><span>Planning subtotal (before tax)</span><strong>' + cur + Math.round(r.subtotal).toLocaleString() + '</strong></div>';
+}
+
 // ---- W1 (owner 2026-09-30): BILL OF QUANTITIES roll-up ------------------
 // A named bill collects lines; each line is a full readState() snapshot
 // priced by the SAME pure engine as the live form (one math path, zero
@@ -854,7 +908,7 @@ function docTitleBase() {
 // Test hook (harness-only convenience; harmless in production).
 window.__calcDocTitleBase = docTitleBase;
 // W1 engine hook (harness-only convenience; harmless in production).
-window.__calcEngine = { computeFor: computeFor, boqTotals: boqTotals, readState: readState, syncLabels: syncLabels, instancesQty: instancesQty, estimateCsv: estimateCsv, prelimsTotal: prelimsTotal };
+window.__calcEngine = { computeFor: computeFor, boqTotals: boqTotals, readState: readState, syncLabels: syncLabels, instancesQty: instancesQty, estimateCsv: estimateCsv, prelimsTotal: prelimsTotal, rollup: rollup };
 
 document.addEventListener('change', function(e) {
   if (e.target && e.target.id === 'calc-doc-type') render();
@@ -902,6 +956,8 @@ function render() {
   const r = compute();
   // W4: the preliminaries amounts ride every recompute (works basis moves).
   renderPrelims(r && !r.error ? r.sub : 0);
+  // W5: the planning waterfall follows the same works basis.
+  renderRollup();
   if (!r || r.error) {
     lastResult = null;
     if ($('calc-out-actions')) $('calc-out-actions').classList.add('is-hide');
@@ -1703,6 +1759,16 @@ if ($('calc-work')) {
   }
   $('calc-prelims-body').addEventListener('input', prelimEdit);
   $('calc-prelims-body').addEventListener('change', prelimEdit);
+  // W5: contingency/escalation/duration settings save per device.
+  ['calc-design-c', 'calc-constr-c', 'calc-esc-pct', 'calc-months'].forEach(function(id) {
+    const el = $(id);
+    if (!el) return;
+    el.addEventListener('input', function() {
+      persistRollupPrefs({ designC: $('calc-design-c').value, constrC: $('calc-constr-c').value,
+        escPct: $('calc-esc-pct').value, months: $('calc-months').value });
+      renderRollup();
+    });
+  });
   $('calc-country').addEventListener('change', function() {
     // W3: the Contractors Levy note is Jamaica-specific.
     const note = $('calc-jm-levy-note');
@@ -1723,6 +1789,14 @@ renderBoq();
 // W4 site & other costs: restore the stored items on load.
 prelimItems = loadPrelims();
 renderPrelims();
+// W5 waterfall: restore the saved contingency/escalation settings.
+(function() {
+  const p = loadRollupPrefs();
+  if ($('calc-design-c')) $('calc-design-c').value = p.designC != null ? p.designC : '10';
+  if ($('calc-constr-c')) $('calc-constr-c').value = p.constrC != null ? p.constrC : '5';
+  if ($('calc-esc-pct')) $('calc-esc-pct').value = p.escPct != null ? p.escPct : '5';
+  if ($('calc-months')) $('calc-months').value = p.months != null ? p.months : '';
+})();
 // How-to guide: paint the first step (open state decides visibility).
 renderGuide();
 // First-visit tutorial nudge: only when the flag is absent.

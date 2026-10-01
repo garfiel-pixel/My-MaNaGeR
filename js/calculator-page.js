@@ -1207,6 +1207,20 @@ function docTitleBase() {
 }
 // Test hook (harness-only convenience; harmless in production).
 window.__calcDocTitleBase = docTitleBase;
+// ---- W4 2026-10-01: ENTITLEMENT SEAM -------------------------------------
+// The calculator's optional cloud features are gated behind a plan check so
+// paid tiers can switch them off later WITHOUT touching feature code. Today
+// every known feature is free: the plan source is the workspace probe
+// response only (W5), 'free' until one arrives, and feature code reads
+// Entitlements.can() - never the plan directly.
+const CALC_FEATURES = { cloudFollow: true, logoSync: true };
+const Entitlements = {
+  _plan: 'free',
+  setPlan: function(p) { this._plan = typeof p === 'string' && p ? p : 'free'; },
+  plan: function() { return this._plan; },
+  can: function(feature) { return !!(CALC_FEATURES[feature]); }
+};
+window.__calcEntitlements = Entitlements; // harness-only convenience
 // W1 engine hook (harness-only convenience; harmless in production).
 window.__calcEngine = { computeFor: computeFor, boqTotals: boqTotals, readState: readState, syncLabels: syncLabels, instancesQty: instancesQty, estimateCsv: estimateCsv, prelimsTotal: prelimsTotal, rollup: rollup, cashCurve: cashCurve, formworkM2: formworkM2, importPacks: importPacks, applyDiscount: applyDiscount, companionsFor: companionsFor, syncFamily: syncFamily, brandLoad: brandLoad, logoFitsCap: logoFitsCap, docNoSuggest: docNoSuggest };
 

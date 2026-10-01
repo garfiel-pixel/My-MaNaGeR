@@ -1240,6 +1240,28 @@ async function withChrome(fn) {
       document.getElementById('calc-biz-name').dispatchEvent(new Event('input', { bubbles: true }));
     })()`);
 
+    // ---------- W4 2026-10-01: ENTITLEMENT SEAM (ET family) ----------
+    const et1 = await ev(`(function(){
+      var E = window.__calcEntitlements;
+      return { follow: E.can('cloudFollow'), logo: E.can('logoSync'), nope: E.can('nope'), plan: E.plan() };
+    })()`);
+    check('ET1 entitlement seam: known features allowed on free, unknown refused, plan starts free',
+      et1 && et1.follow === true && et1.logo === true && et1.nope === false && et1.plan === 'free', et1);
+    const et2 = await ev(`(function(){
+      var E = window.__calcEntitlements;
+      E.setPlan('pro');
+      return { follow: E.can('cloudFollow'), plan: E.plan() };
+    })()`);
+    check('ET2 setPlan(pro): known features stay allowed (forward window) and plan reports pro',
+      et2 && et2.follow === true && et2.plan === 'pro', et2);
+    const et3 = await ev(`(function(){
+      var E = window.__calcEntitlements;
+      E.setPlan('');
+      return { plan: E.plan(), logo: E.can('logoSync') };
+    })()`);
+    check('ET3 setPlan(empty) resets the plan to free',
+      et3 && et3.plan === 'free' && et3.logo === true, et3);
+
     // ---------- F4 ENHANCEMENTS ----------
     // U1: imperial toggle - labels convert, state persists, aria follows.
     const u1 = await ev(`(function(){

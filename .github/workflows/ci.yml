@@ -402,6 +402,10 @@ jobs:
         id: qa-calc-trades
         run: node tools/qa-calc-trade-coverage.cjs
 
+      - name: "T4: Calculator golden-case gate (qa-calc-golden)"
+        id: qa-calc-golden
+        run: node tools/qa-calc-golden.cjs
+
       - name: "T4: Stop static QA server"
         if: always()
         run: pkill -f "node serve.cjs" || true

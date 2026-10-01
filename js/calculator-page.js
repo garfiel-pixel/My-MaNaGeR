@@ -717,6 +717,56 @@ function renderRollup() {
     '<div class="calc-line calc-line-total"><span>Planning subtotal (before tax)</span><strong>' + cur + Math.round(r.subtotal).toLocaleString() + '</strong></div>';
 }
 
+// ---- W6 (owner 2026-09-30): CASH FLOW - monthly curve + CSV -------------
+// Distributes the planning subtotal over the build duration: straight-line
+// (equal months) or S-curve (normal distribution, low start/end, heavy
+// middle - the standard construction spend shape; AICRE method). Retention
+// and progress billing are out of scope; this is the owner's own cash plan.
+function cashCurve(total, months, mode, steep) {
+  const m = Math.max(1, Math.min(120, Math.round(parseFloat(months) || 0)));
+  const T = Math.max(0, parseFloat(total) || 0);
+  const per = [];
+  if (mode === 'scurve') {
+    const sigma = m / (isFinite(parseFloat(steep)) && parseFloat(steep) > 0 ? parseFloat(steep) : 3.2);
+    const mid = (m - 1) / 2;
+    const bell = [];
+    let sum = 0;
+    for (let i = 0; i < m; i++) {
+      const w = Math.exp(-Math.pow(i - mid, 2) / (2 * sigma * sigma));
+      bell.push(w); sum += w;
+    }
+    for (let i = 0; i < m; i++) per.push(T * bell[i] / sum);
+  } else {
+    for (let i = 0; i < m; i++) per.push(T / m);
+  }
+  const cum = [];
+  let run = 0;
+  for (let i = 0; i < m; i++) { run += per[i]; cum.push(run); }
+  return { per: per, cum: cum };
+}
+function renderCash() {
+  const body = $('calc-cash-body');
+  if (!body) return;
+  const months = parseInt(($('calc-months') || {}).value, 10);
+  const mode = ($('calc-cash-mode') || {}).value || 'scurve';
+  if (!(months > 0)) {
+    body.innerHTML = '<div class="calc-empty">Set the build duration above to see the monthly cash plan.</div>';
+    return;
+  }
+  const works = prelimWorks();
+  const pref = rollupPrefs();
+  const r = rollup({ works: works, prelims: prelimsTotal(prelimItems, works).total,
+    designC: pref.designC, constrC: pref.constrC, escPct: pref.escPct, months: months });
+  const c = cashCurve(r.subtotal, months, mode, '3.2');
+  const cur = CURRENCY[lastResult && lastResult.currency] || '$';
+  let rows = '';
+  for (let i = 0; i < c.per.length; i++) {
+    rows += '<div class="calc-line"><span>Month ' + (i + 1) + '</span><strong>' + cur + Math.round(c.per[i]).toLocaleString() +
+      ' <span class="bcp-hist-note">(cum ' + cur + Math.round(c.cum[i]).toLocaleString() + ')</span></strong></div>';
+  }
+  body.innerHTML = rows;
+}
+
 // ---- W1 (owner 2026-09-30): BILL OF QUANTITIES roll-up ------------------
 // A named bill collects lines; each line is a full readState() snapshot
 // priced by the SAME pure engine as the live form (one math path, zero
@@ -908,7 +958,7 @@ function docTitleBase() {
 // Test hook (harness-only convenience; harmless in production).
 window.__calcDocTitleBase = docTitleBase;
 // W1 engine hook (harness-only convenience; harmless in production).
-window.__calcEngine = { computeFor: computeFor, boqTotals: boqTotals, readState: readState, syncLabels: syncLabels, instancesQty: instancesQty, estimateCsv: estimateCsv, prelimsTotal: prelimsTotal, rollup: rollup };
+window.__calcEngine = { computeFor: computeFor, boqTotals: boqTotals, readState: readState, syncLabels: syncLabels, instancesQty: instancesQty, estimateCsv: estimateCsv, prelimsTotal: prelimsTotal, rollup: rollup, cashCurve: cashCurve };
 
 document.addEventListener('change', function(e) {
   if (e.target && e.target.id === 'calc-doc-type') render();
@@ -958,6 +1008,8 @@ function render() {
   renderPrelims(r && !r.error ? r.sub : 0);
   // W5: the planning waterfall follows the same works basis.
   renderRollup();
+  // W6: the cash plan re-spreads whenever the numbers move.
+  renderCash();
   if (!r || r.error) {
     lastResult = null;
     if ($('calc-out-actions')) $('calc-out-actions').classList.add('is-hide');
@@ -1422,6 +1474,28 @@ const ACTIONS = {
     persistPrelims(prelimItems);
     renderPrelims();
   },
+  // ---- W6 cash flow ----
+  calcCashCsv: function() {
+    const months = parseInt(($('calc-months') || {}).value, 10);
+    if (!(months > 0)) { sheetMsg('Set the build duration first - then export the cash plan.'); return; }
+    const works = prelimWorks();
+    const pref = rollupPrefs();
+    const r = rollup({ works: works, prelims: prelimsTotal(prelimItems, works).total,
+      designC: pref.designC, constrC: pref.constrC, escPct: pref.escPct, months: months });
+    const c = cashCurve(r.subtotal, months, ($('calc-cash-mode') || {}).value || 'scurve', '3.2');
+    const rows = [['Month', 'Spend', 'Cumulative']];
+    c.per.forEach(function(v, i) { rows.push([String(i + 1), String(Math.round(v)), String(Math.round(c.cum[i]))]); });
+    rows.push([]);
+    rows.push(['Planning-grade cash plan - not a quote.']);
+    const blob = new Blob(['\uFEFF' + rows.map(function(row) { return row.map(function(cell) { return '"' + String(cell == null ? '' : cell).replace(/"/g, '""') + '"'; }).join(','); }).join('\r\n')], { type: 'text/csv;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = slug(docTitleBase()) + '-cash-plan-' + new Date().toISOString().slice(0, 10) + '.csv';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(function() { URL.revokeObjectURL(a.href); }, 500);
+  },
   calcInstToggle: function() {
     const wrap = $('calc-instances');
     const manual = $('calc-measured-manual');
@@ -1767,8 +1841,11 @@ if ($('calc-work')) {
       persistRollupPrefs({ designC: $('calc-design-c').value, constrC: $('calc-constr-c').value,
         escPct: $('calc-esc-pct').value, months: $('calc-months').value });
       renderRollup();
+      renderCash();
     });
   });
+  const cashMode = $('calc-cash-mode');
+  if (cashMode) cashMode.addEventListener('change', renderCash);
   $('calc-country').addEventListener('change', function() {
     // W3: the Contractors Levy note is Jamaica-specific.
     const note = $('calc-jm-levy-note');

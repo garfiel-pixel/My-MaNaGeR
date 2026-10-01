@@ -96,6 +96,11 @@
      RG2  defaults render 10 / 5 / 5; settings persist
      RG3  waterfall lines render with the planning subtotal
 
+   ESTIMATING DEPTH W6 - CASH FLOW (owner 2026-09-30):
+     CF1  straight-line: 12 equal months summing to the subtotal
+     CF2  S-curve: months sum to the subtotal; middle > ends
+     CF3  monthly table renders; mode select re-spreads
+
    Usage:  node tools/qa-calculator-page.cjs   (needs serve.cjs on :8765)
    Registry: CI-TEST-COVERAGE.md -> CI row (fast, serve.cjs battery).
    ============================================================ */
@@ -750,6 +755,53 @@ async function withChrome(fn) {
     })()`);
     check('RG3 waterfall lines render; escalation line hidden while months empty',
       rg3 && rg3.hasWorks && rg3.hasPrelim && rg3.hasDesign && rg3.hasConstr && rg3.hasTotal && rg3.noEsc, rg3);
+    // ---------- W6: CASH FLOW (owner 2026-09-30) ----------
+    const cf1 = await ev(`(function(){
+      var c = __calcEngine.cashCurve(120000, '12', 'straight', '3.2');
+      var sum = c.per.reduce(function(a, b) { return a + b; }, 0);
+      return { n: c.per.length, first: c.per[0], sum: sum, lastCum: c.cum[11] };
+    })()`);
+    check('CF1 straight-line: 12 months x 10000, cumulative ends at total',
+      cf1 && cf1.n === 12 && Math.abs(cf1.first - 10000) < 0.01 && Math.abs(cf1.sum - 120000) < 0.01 && Math.abs(cf1.lastCum - 120000) < 0.01, cf1);
+    const cf2 = await ev(`(function(){
+      var c = __calcEngine.cashCurve(120000, '12', 'scurve', '3.2');
+      var sum = c.per.reduce(function(a, b) { return a + b; }, 0);
+      var mid = (c.per[5] + c.per[6]) / 2, ends = (c.per[0] + c.per[11]) / 2;
+      return { sum: sum, mid: mid, ends: ends, peakHigher: mid > ends * 1.5 };
+    })()`);
+    check('CF2 S-curve: sums to total, middle months far exceed ends',
+      cf2 && Math.abs(cf2.sum - 120000) < 0.01 && cf2.peakHigher, cf2);
+    const cf3 = await ev(`(function(){
+      document.getElementById('calc-work').value = 'blockwall';
+      document.getElementById('calc-work').dispatchEvent(new Event('change', { bubbles: true }));
+      document.getElementById('calc-d1').value = '10';
+      document.getElementById('calc-d2').value = '2.4';
+      document.getElementById('calc-d1').dispatchEvent(new Event('input', { bubbles: true }));
+      document.getElementById('calc-months').value = '6';
+      document.getElementById('calc-months').dispatchEvent(new Event('input', { bubbles: true }));
+      var rows6 = document.querySelectorAll('#calc-cash-body .calc-line').length;
+      document.getElementById('calc-cash-mode').value = 'straight';
+      document.getElementById('calc-cash-mode').dispatchEvent(new Event('change', { bubbles: true }));
+      var lines = document.querySelectorAll('#calc-cash-body .calc-line strong');
+      var first = lines[0] ? lines[0].textContent : '';
+      var last = lines.length ? lines[lines.length - 1].textContent : '';
+      var m = last.match(/[^\\d]*([\\d,]+)/);   // first number = the month's own spend (double-escaped: the ev() template cooks \\d)
+      // Straight-line invariant: the rendered month x N must rebuild the rendered cumulative total.
+      var month = m ? parseFloat(m[1].replace(/,/g, '')) : 0;
+      var cum = last.match(/cum [^\\d]*([\\d,]+)/);   // no parens: the ev() template also cooks backslash-parens
+      var cumVal = cum ? parseFloat(cum[1].replace(/,/g, '')) : 0;
+      var expected = m ? '$' + Math.round(month * 6).toLocaleString('en-US') : '';
+      var consistent = cumVal > 0 && Math.abs(month * 6 - cumVal) <= 6;
+      return { rows6: rows6, firstLine: first, lastLine: last, expected: expected, consistent: consistent };
+    })()`);
+    check('CF3 table renders 6 months; even months rebuild the cumulative total',
+      cf3 && cf3.rows6 === 6 && cf3.consistent === true, cf3);
+    // Clean up the W6 duration so later waves see the default state.
+    await ev(`(function(){
+      document.getElementById('calc-months').value = '';
+      document.getElementById('calc-months').dispatchEvent(new Event('input', { bubbles: true }));
+    })()`);
+
     // Restore the pre-wave state for the U-series gates (the W1 block above
     // deliberately dirtied the form): deterministic metric slab flow.
     await ev(`(function(){

@@ -85,7 +85,7 @@ Cloudflare Workers + R2 (no D1 change).
   the two keys additively (old saved prefs without them = no discount).
   Hook: `window.__calcEngine.applyDiscount`.
 
-- [ ] **Step 1: Failing gates (DC family)** - dc1 pure math: works 100000 +
+- [x] **Step 1: Failing gates (DC family)** - dc1 pure math: works 100000 +
   prelims 6000, pct 5 -> discount 5300, base 100700; amt 8000 with pct 5 ->
   8000 (fixed wins); amt > works+prelims clamps to 106000->106000 discount
   cap (base 0); negatives clamp to 0. dc2 waterfall: renderRollup with
@@ -95,7 +95,7 @@ Cloudflare Workers + R2 (no D1 change).
   (discPct/discAmt persist + rehydrate). dc4 legacy prefs (no disc keys)
   -> no discount, no error. dc5 CSV contains the discount row; cash curve
   totals the discounted subtotal (2dp float-safe compares).
-- [ ] **Step 2: Gates FAIL** -> **Step 3: Implement** (pure fn + rollup
+- [x] **Step 2: Gates FAIL** -> **Step 3: Implement** (pure fn + rollup
   change + fields + waterfall line "Discount -X" only when > 0)
   -> **Step 4: build + bump** (`?v=16`) -> **Step 5: Gates green** ->
   **Step 6: Commit** `feat(calculator): discount on the estimate roll-up`
@@ -130,7 +130,7 @@ Cloudflare Workers + R2 (no D1 change).
   every companion already in the bill (derivedFrom match).
   ACTIONS: `calcCompAdd`. Hook: `window.__calcEngine.companionsFor(st)`.
 
-- [ ] **Step 1: Failing gates (CP family)** - cp1 map coverage: blockwall,
+- [x] **Step 1: Failing gates (CP family)** - cp1 map coverage: blockwall,
   fencing, siteprep, slab have entries; skirt/pipe-supply have none.
   cp2 derivations exact: blockwall d1=10 d2=2.4 -> lineout qty 10 m run,
   brush 24 m2, cart 24 m2; fencing run 25 -> holes ceil(25/2.5)=10.
@@ -138,7 +138,7 @@ Cloudflare Workers + R2 (no D1 change).
   for skirt. cp4 calcCompAdd creates a bill line with the derived qty +
   name + derivedFrom tag; line is editable + removable (existing flows).
   cp5 after adding all three, the companions row hides.
-- [ ] **Step 2: Gates FAIL** -> **Step 3: Implement** -> **Step 4: build +
+- [x] **Step 2: Gates FAIL** -> **Step 3: Implement** -> **Step 4: build +
   bump** (`?v=17`) -> **Step 5: Gates green** -> **Step 6: Commit**
   `feat(calculator): companion work suggestions per trade`
 
@@ -173,7 +173,7 @@ Cloudflare Workers + R2 (no D1 change).
   Logo message target: `#calc-logo-note` SPAN (never container textContent).
   Hooks: `window.__calcEngine.brandLoad/logoFitsCap/docNoSuggest`.
 
-- [ ] **Step 1: Failing gates (BD + SG families)** - bd1 brandSave/Load
+- [x] **Step 1: Failing gates (BD + SG families)** - bd1 brandSave/Load
   roundtrip + updatedAt stamp; bd2 migration: pre-seed
   `mmgr_calc_biz_name=Fairclough Build` -> brandLoad().name === that and
   old key gone; bd3 logoFitsCap: string of 1,000,000 base64 chars ->
@@ -186,12 +186,12 @@ Cloudflare Workers + R2 (no D1 change).
   sg1 signature visibility: Invoice default visible, Estimate hidden;
   sg2 brand.sigShow='on' forces visible on Estimate; sg3 fields render
   date defaults (today) and due date blank.
-- [ ] **Step 2: Gates FAIL** -> **Step 3: Implement** (card markup, print
+- [x] **Step 2: Gates FAIL** -> **Step 3: Implement** (card markup, print
   blocks, CSS letterhead + sig rules with `[hidden]` guards)
-- [ ] **Step 4: Playwright M13** - real file upload: generate a small PNG,
+- [x] **Step 4: Playwright M13** - real file upload: generate a small PNG,
   `setInputFiles('#calc-logo-file')`, expect `#calc-logo-preview` visible
   and stored dataURL length/1.33 <= 1MB; card usable at 390px.
-- [ ] **Step 5: build + bump** (`?v=18`, sw shell v341 - shared css
+- [x] **Step 5: build + bump** (`?v=18`, sw shell v341 - shared css
   changed) -> **Step 6: Gates green** -> **Step 7: Commit**
   `feat(calculator): business brand card and document sheet`
 
@@ -207,11 +207,11 @@ Cloudflare Workers + R2 (no D1 change).
   response only. Feature code NEVER reads the plan directly.
   Hook: `window.__calcEntitlements = Entitlements`.
 
-- [ ] **Step 1: Failing gates (ET family)** - et1 can('cloudFollow') &&
+- [x] **Step 1: Failing gates (ET family)** - et1 can('cloudFollow') &&
   can('logoSync') true by default, can('nope') false; et2
   setPlan('pro') keeps known features allowed (forward window) and plan()
   reports 'pro'; et3 setPlan('') resets to 'free'.
-- [ ] **Step 2: FAIL** -> **Step 3: Implement** -> **Step 4: Gates green**
+- [x] **Step 2: FAIL** -> **Step 3: Implement** -> **Step 4: Gates green**
   (no assets ship: no bump) -> **Step 5: Commit**
   `feat(calculator): entitlement seam for future paid tiers`
 
@@ -245,22 +245,22 @@ Cloudflare Workers + R2 (no D1 change).
   failure silent. Signed-out (403) = never calls again this session.
   Hooks: `window.__calcEngine.wsCollect/wsMerge`.
 
-- [ ] **Step 1: Failing gates (WS family, page harness, no network)** -
+- [x] **Step 1: Failing gates (WS family, page harness, no network)** -
   ws1 wsCollect returns all seven sections with stamps; ws2 wsMerge: cloud
   newer wins, local newer kept, empty local adopts, equal stamps keep
   local, corrupt (non-object) cloud skipped; ws3 Entitlements.plan set
   from a stubbed probe payload via wsApplyProbe(data) pure application;
   ws4 scheduleWsPut coalesces (stub fetch counting calls, 3 changes ->
   1 PUT after debounce).
-- [ ] **Step 2: FAIL** -> **Step 3: Implement** client + worker
-- [ ] **Step 4: T2 harness** `tools/qa-calc-workspace.cjs` (wrangler dev
+- [x] **Step 2: FAIL** -> **Step 3: Implement** client + worker
+- [x] **Step 4: T2 harness** `tools/qa-calc-workspace.cjs` (wrangler dev
   :8787, `$HOME` log + persist, recipe from qa-engine-parity: register ->
   cookie jar) - g1 signed-out GET 403; g2 register then PUT sample
   workspace -> ok+savedAt; g3 GET round-trips the sections; g4 PUT
   oversize (>4MB) -> 413; g5 PUT non-JSON -> 400; g6 response.plan ===
   'free'. Register in CI-TEST-COVERAGE (CI status) + ci.yml T2 group step
   with the standard env passthrough.
-- [ ] **Step 5: build + bump** (`?v=19`) -> **Step 6: Full battery green**
+- [x] **Step 5: build + bump** (`?v=19`) -> **Step 6: Full battery green**
   -> **Step 7: Commit** `feat(calculator): workspace follows the account`
 
 ### Task 6 (W6): Integration pass
@@ -269,17 +269,17 @@ Cloudflare Workers + R2 (no D1 change).
 `tools/qa-calculator-page.cjs`, `tools/qa-calc-playwright-audit.cjs`,
 `CHANGELOG.md`, `sw.js`, `docs/CI-TEST-COVERAGE.md`
 
-- [ ] **Step 1: Guide + tour** - GUIDE_STEPS +2 (business card + invoice
+- [x] **Step 1: Guide + tour** - GUIDE_STEPS +2 (business card + invoice
   sheet; discount + companions folded into the roll-up step copy);
   TOUR_STEPS 11 -> 13 with anchors `#calc-brand-card`,
   `#calc-companions`; TUT gates re-baselined (loop bound + counter text
   "1 of 13"); spotlight geometry checked at 1280 + 390.
-- [ ] **Step 2: Mobile gates** - M14: brand card open + companions visible
+- [x] **Step 2: Mobile gates** - M14: brand card open + companions visible
   at 390 -> no horizontal scroll; doc/brand inputs 16px (iOS zoom).
-- [ ] **Step 3: Docs** - CHANGELOG entry; fine print sentence: signed-in
+- [x] **Step 3: Docs** - CHANGELOG entry; fine print sentence: signed-in
   users' workspace follows the account, everything still works offline;
   "Clearing your browser data" note updated to mention sign-in restore.
-- [ ] **Step 4: Full battery + build + bump + sw v341** (if css changed
+- [x] **Step 4: Full battery + build + bump + sw v341** (if css changed
   and not already bumped) -> **Step 5: Commit**
   `feat(calculator): client documents integration pass`
 
@@ -305,3 +305,14 @@ Cloudflare Workers + R2 (no D1 change).
   `Entitlements.can`, `wsCollect/wsMerge/wsProbe/scheduleWsPut`,
   `handleCalcWorkspaceGet/Put` used consistently across gates, hooks, and
   the worker module.
+
+## Execution record (2026-10-01)
+
+All six waves executed run-all (owner directive), each wave: gates green -> verify -> commit -> push -> Actions API polled to completed.
+
+- W1 discount `9d3475f` (127 gates, DC1-5), W2 companions `0f2de07` (132, CP1-5 + the shipped formwork-pricing fix, FA3 re-baselined), W2.5 families `2c40bad` (137, FM1-5) - CI green through `2c40bad` including the Nightly Full Suite.
+- W3 brand card + document sheet `365986e` (145 gates: BD1-5, SG1-3; audit 38 with M13 real logo upload). Debug findings: renderQuoteDoc ran after render()'s error early-return (BD5/SG1/SG2); BD2's reload re-triggered the persisted-state wipe (the W1/W2.5 lesson, reset block added); .bcp-doc-row overflowed 390px (M11/M12); .btn[hidden] guard (verify:hidden); shell v342 backfill for W1-W3 CSS.
+- W4 entitlement seam `352f851` + shell v343 `b8f92c4` (148 gates: ET1-3; verify:sw requires the bump - calculator-page.js is a SHELL asset).
+- W5 workspace follow `f4b1415` (page 152 gates: WS1-4; new T2 tools/qa-calc-workspace.cjs 6/6; registry row + ci.yml step, port 8811; page ?v=20, shell v344; TDZ lesson: WS_KEYS must build lazily - module-eval const over later keys killed the whole page once).
+- W6 integration `b67823d` (guide + tour 13 steps, M14 mobile gates, T5 tour final-card centering - dock rule vs translate(-50%,-50%) shoved the card half off-screen since v339; fine print plain-language rewrite; spotlight geometry 26/26 at 1280+390; audit 40; shell v345).
+- Ship: `node tools/deploy.cjs` -> version `2f5d78a1`. Production smoke all-pass (signed-out visit zero page errors with the silent 403 probe, wsApplyProbe, brand card + companion chips, full 13-step tour at 1280 + 390); live /api/calc/workspace 403 signed-out GET+PUT; calculator 200 on v=20 assets; sw v345 live.

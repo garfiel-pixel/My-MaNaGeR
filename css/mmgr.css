@@ -2514,15 +2514,39 @@ body.dark-mode .bcp-ico-moon{display:none;}
 .bcp-tour-nudge{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:390;display:flex;align-items:center;gap:12px;padding:12px 16px;max-width:min(560px,calc(100vw - 24px));box-shadow:0 8px 28px rgba(0,0,0,.18);}
 .bcp-tour-nudge-txt{display:flex;flex-direction:column;gap:2px;font-size:.84rem;color:var(--text);min-width:0;flex:1;}
 .bcp-tour-nudge[hidden]{display:none!important;}
-.bcp-tour-overlay{position:fixed;inset:0;z-index:400;background:rgba(0,0,0,.45);backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px);}
+.bcp-tour-overlay{position:fixed;inset:0;z-index:400;}
+/* OWNER 2026-09-30 report: the tour dimmed everything but highlighted
+   NOTHING - the field being talked about was invisible under the wash.
+   The spotlight is a positioned cutout: the element itself is transparent
+   with a ring; its 9999px box-shadow spread paints the dim layer over the
+   whole viewport EXCEPT the cutout hole, so the target field shows crisp
+   while the rest of the page stays dimmed and blurred (the blur is
+   per-element, see .bcp-tour-blur below - never a filter on a container). */
+.bcp-tour-spot{position:fixed;z-index:401;border-radius:10px;box-shadow:0 0 0 9999px rgba(0,0,0,.45);pointer-events:none;}
+.bcp-tour-spot::after{content:"";position:absolute;inset:-6px;border-radius:14px;border:2px solid var(--gold);box-shadow:0 0 0 4px color-mix(in oklch,var(--gold) 30%,transparent),0 0 18px color-mix(in oklch,var(--gold) 45%,transparent);}
+.bcp-tour-spot[hidden]{display:none!important;}
+/* OWNER 2026-09-30: "spotlight the field, blur the rest". The blur lands
+   PER ELEMENT (.bcp-tour-blur, stamped by tourBlurSet() in calculator-page.js
+   on the siblings of the target's ancestor path), never on .bcp-main: a
+   filter there became the containing block for the tour's fixed furniture
+   (the cutout read viewport coordinates relative to the page box) and
+   blurred the highlighted field itself. The field wrapper - label + input -
+   and its ancestors stay crisp; everything else eases into the wash. */
+html.mmgr-tour-active .bcp-tour-blur{filter:blur(3px) saturate(.9);}
+.bcp-tour-blur{transition:filter 200ms ease;}
+html.mmgr-tour-active .bcp-tour-nudge{filter:none;}
+@media (prefers-reduced-motion:reduce){
+  html.mmgr-tour-active .bcp-tour-blur{filter:none;transition:none;}
+}
 .bcp-tour-overlay[hidden]{display:none!important;}
-.bcp-tour-pop{position:fixed;display:flex;flex-direction:column;gap:8px;max-width:340px;padding:14px 16px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius-lg,16px);box-shadow:0 12px 40px rgba(0,0,0,.28);color:var(--text);}
+.bcp-tour-pop{position:fixed;z-index:402;display:flex;flex-direction:column;gap:8px;max-width:340px;padding:14px 16px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius-lg,16px);box-shadow:0 12px 40px rgba(0,0,0,.28);color:var(--text);}
 .bcp-tour-count{font-size:.72rem;color:var(--slate);font-weight:700;letter-spacing:.02em;}
 .bcp-tour-text{font-size:.88rem;line-height:1.5;}
 .bcp-tour-btns{display:flex;gap:8px;flex-wrap:wrap;}
 @media (max-width:600px){
   .bcp-tour-pop{left:12px!important;right:12px!important;max-width:none;}
   .bcp-tour-nudge{flex-wrap:wrap;}
+  .bcp-tour-spot{border-radius:8px;}
 }
 @media (prefers-reduced-motion:reduce){
   .bcp-tour-overlay,.bcp-tour-pop,.bcp-tour-nudge{transition:none;}

@@ -789,7 +789,42 @@ const TOUR_STEPS = [
 let tourIdx = -1;
 function tourDone() { try { return localStorage.getItem('mmgr_calc_tour_done') === '1'; } catch (e) { return false; } }
 function tourFlag() { try { localStorage.setItem('mmgr_calc_tour_done', '1'); } catch (e) {} }
-function tourEnd() { tourIdx = -1; tourFlag(); const o = $('calc-tour-overlay'); if (o) o.hidden = true; }
+// Spotlight blur (owner 2026-09-30: highlight the field, blur the rest).
+// Marks the siblings of the target's ancestor path with .bcp-tour-blur;
+// CSS blurs exactly those while the target - its whole .bcp-field wrapper,
+// label included - and its ancestors stay crisp. NEVER blur .bcp-main as a
+// whole: a filter there made the container the containing block for the
+// tour's position:fixed furniture, so the cutout's viewport coordinates
+// were re-read relative to the page box (the ring landed ~94px right of
+// the field at desktop width and drifted further off with every step at
+// phone width), and the highlighted field itself blurred with the page.
+function tourBlurSet(el) {
+  const main = document.querySelector('.bcp-main');
+  if (!main) return;
+  const marked = main.querySelectorAll('.bcp-tour-blur');
+  for (let i = 0; i < marked.length; i++) marked[i].classList.remove('bcp-tour-blur');
+  if (!el || !main.contains(el)) return;
+  let cur = el;
+  while (cur && cur !== main) {
+    const parent = cur.parentElement;
+    if (!parent) break;
+    const kids = parent.children;
+    for (let i = 0; i < kids.length; i++) {
+      if (kids[i] !== cur) kids[i].classList.add('bcp-tour-blur');
+    }
+    cur = parent;
+  }
+}
+function tourEnd() {
+  tourIdx = -1;
+  tourFlag();
+  const o = $('calc-tour-overlay');
+  if (o) o.hidden = true;
+  const spot = $('calc-tour-spot');
+  if (spot) spot.hidden = true;
+  tourBlurSet(null);
+  try { document.documentElement.classList.remove('mmgr-tour-active'); } catch (e) {}
+}
 function tourShow() {
   const o = $('calc-tour-overlay'), pop = $('calc-tour-pop');
   if (!o || !pop) return;
@@ -805,16 +840,50 @@ function tourShow() {
     dots.innerHTML = h;
   }
   const tEl = st.sel ? document.querySelector(st.sel) : null;
+  // Blur everything OFF the spotlight path (owner: the rest of the screen
+  // is blurred). The whole .bcp-field wrapper - label + input - stays crisp
+  // so the talked-about field reads as one unit; the class lands per
+  // element, never on .bcp-main (see tourBlurSet - containing-block trap).
+  tourBlurSet(tEl ? ((tEl.closest && tEl.closest('.bcp-field')) || tEl) : null);
+  try { document.documentElement.classList.add('mmgr-tour-active'); } catch (e) {}
   if (tEl) {
     try { tEl.scrollIntoView({ block: 'center' }); } catch (e) {}
     pop.setAttribute('data-anchor', st.sel);
-    positionTourPop(tEl);
+    // Position AFTER the scroll settles: scrollIntoView is async-ish in
+    // layout terms, so a same-tick getBoundingClientRect can read a stale
+    // box (probe caught the cutout landing one card above the target).
+    // Double rAF = the repo's standard flush (AGENTS.md lesson 3).
+    requestAnimationFrame(function() {
+      requestAnimationFrame(function() {
+        if (tourIdx < 0 || TOUR_STEPS[tourIdx] !== st) return;
+        positionTourPop(tEl);
+        positionTourSpot(tEl);
+      });
+    });
   } else {
+    // Final card: no field to highlight - the centered card itself becomes
+    // the spotlight target (gold ring + dim around it, page unblurred).
     pop.removeAttribute('data-anchor');
     pop.style.left = '50%';
     pop.style.top = '50%';
     pop.style.transform = 'translate(-50%,-50%)';
+    positionTourSpot(pop);
   }
+}
+// The spotlight cutout: a transparent box over the target whose huge
+// box-shadow spread paints the dim layer everywhere EXCEPT the hole
+// (owner 2026-09-30: 'the specific field it's talking about isn't being
+// highlighted'). Grows 6px around the target so the gold ring sits clear
+// of the field's own border.
+function positionTourSpot(target) {
+  const spot = $('calc-tour-spot');
+  if (!spot) return;
+  spot.hidden = false;
+  const r = target.getBoundingClientRect();
+  spot.style.left = (r.left - 6) + 'px';
+  spot.style.top = (r.top - 6) + 'px';
+  spot.style.width = (r.width + 12) + 'px';
+  spot.style.height = (r.height + 12) + 'px';
 }
 function positionTourPop(target) {
   const pop = $('calc-tour-pop');
@@ -834,8 +903,18 @@ window.addEventListener('resize', function() {
   if (tourIdx < 0) return;
   const st = TOUR_STEPS[tourIdx];
   const t = st && st.sel ? document.querySelector(st.sel) : null;
-  if (t) positionTourPop(t);
+  if (t) { positionTourPop(t); positionTourSpot(t); return; }
+  // Final card: keep the ring glued to the centered pop across resizes.
+  const pop = $('calc-tour-pop');
+  if (pop) positionTourSpot(pop);
 });
+// Keep the cutout glued to the target while the page scrolls under it.
+window.addEventListener('scroll', function() {
+  if (tourIdx < 0) return;
+  const st = TOUR_STEPS[tourIdx];
+  const t = st && st.sel ? document.querySelector(st.sel) : null;
+  if (t) { positionTourPop(t); positionTourSpot(t); }
+}, { passive: true });
 // Harness hook (harmless in production).
 window.__calcTour = {
   start: function() { ACTIONS.calcTourStart(); },

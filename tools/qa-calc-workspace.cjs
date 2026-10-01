@@ -103,6 +103,7 @@ function stopWrangler() { try { proc && proc.kill(); } catch (e) {} }
       packs: { val: [], updatedAt: 0 },
       rollup: { val: { designC: '10', constrC: '5' }, updatedAt: 1727770002000 },
       brand: { val: { name: 'Fairclough Build Ltd', logo: null }, updatedAt: 1727770003000 },
+      sheets: { val: [{ id: 'sh1', name: 'low-bid', rates: { rateMat: '9500', rateLab: '5500' } }], updatedAt: 1727770003500 },
       docCounter: { val: { Estimate: 4, Quote: 2, Invoice: 9 }, updatedAt: 1727770004000 }
     };
     const g2 = await fetch(BASE + '/api/calc/workspace', { method: 'PUT', headers: auth, body: JSON.stringify(sample) });
@@ -115,6 +116,7 @@ function stopWrangler() { try { proc && proc.kill(); } catch (e) {} }
     const rt = g3b.ws && g3b.ws.estimates && g3b.ws.estimates.val[0].name === 'Jarrett Lane'
       && g3b.ws.brand.val.name === 'Fairclough Build Ltd'
       && g3b.ws.docCounter.val.Invoice === 9
+      && g3b.ws.sheets.val[0].name === 'low-bid' && g3b.ws.sheets.val[0].rates.rateMat === '9500'
       && g3b.ws.rollup.val.designC === '10'
       && typeof g3b.ws.savedAt === 'string';
     check('g3 GET round-trips the stored sections + savedAt', g3.status === 200 && g3b.ok && rt, { status: g3.status, ws: g3b.ws ? Object.keys(g3b.ws) : null });

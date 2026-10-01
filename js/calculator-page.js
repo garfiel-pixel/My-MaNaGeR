@@ -582,7 +582,7 @@ function applySheetById(id) {
   if (outEl) outEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 function loadSheets() { try { return JSON.parse(localStorage.getItem(RKEY) || '[]'); } catch (e) { return []; } }
-function persistSheets(list) { try { localStorage.setItem(RKEY, JSON.stringify(list.slice(0, 20))); } catch (e) { /* nicety, never a gate */ } }
+function persistSheets(list) { try { localStorage.setItem(RKEY, JSON.stringify(list.slice(0, 20))); } catch (e) { /* nicety, never a gate */ } wsStampNow('sheets'); scheduleWsPut(); }
 
 // D1 helper: transient status line under the sheets bar (also used by the
 // import flow so the user always sees what happened to their file).
@@ -1256,6 +1256,7 @@ function wsCollect() {
     packs: sec('packs', loadPacks()),
     rollup: sec('rollup', loadRollupPrefs()),
     brand: sec('brand', brandLoad()),
+    sheets: sec('sheets', loadSheets()),
     docCounter: sec('docCounter', docCounterLoad())
   };
 }
@@ -1286,6 +1287,7 @@ function wsApplyProbe(data) {
     ['packs', ws.packs, function(v) { persistPacks(v); renderPacks(); }],
     ['rollup', ws.rollup, function(v) { persistRollupPrefs(v); renderRollup(); }],
     ['brand', ws.brand, function(v) { try { localStorage.setItem(BRKEY, JSON.stringify(v)); } catch (e) {} renderBrand(); }],
+    ['sheets', ws.sheets, function(v) { persistSheets(v); renderSheets(); }],
     ['docCounter', ws.docCounter, function(v) { try { localStorage.setItem(DOCNO_KEY, JSON.stringify(v)); } catch (e) {} }]
   ];
   try {
@@ -1309,7 +1311,7 @@ function wsApplyProbe(data) {
 // down once already - do not hoist this back).
 let WS_KEYS = null;
 function wsKeys() {
-  if (!WS_KEYS) WS_KEYS = { estimates: NKEY, boq: BKEY2, history: HKEY, packs: PKKEY, rollup: RKEY2, brand: BRKEY, docCounter: DOCNO_KEY };
+  if (!WS_KEYS) WS_KEYS = { estimates: NKEY, boq: BKEY2, history: HKEY, packs: PKKEY, rollup: RKEY2, brand: BRKEY, sheets: RKEY, docCounter: DOCNO_KEY };
   return WS_KEYS;
 }
 function wsPayload(withLogo) {

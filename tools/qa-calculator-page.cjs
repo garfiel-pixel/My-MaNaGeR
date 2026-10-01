@@ -1269,8 +1269,8 @@ async function withChrome(fn) {
       var names = Object.keys(c);
       return { names: names.join(','), n: names.length, allSections: names.every(function(k){ return c[k] && typeof c[k] === 'object' && 'updatedAt' in c[k] && 'val' in c[k]; }), stamps: names.every(function(k){ return typeof c[k].updatedAt === 'number'; }) };
     })()`);
-    check('WS1 wsCollect returns all seven sections each carrying an updatedAt stamp',
-      ws1 && ws1.n === 7 && ws1.allSections && ws1.stamps && ws1.names === 'estimates,boq,history,packs,rollup,brand,docCounter', ws1);
+    check('WS1 wsCollect returns all eight sections each carrying an updatedAt stamp (rate sheets follow the account too)',
+      ws1 && ws1.n === 8 && ws1.allSections && ws1.stamps && ws1.names === 'estimates,boq,history,packs,rollup,brand,sheets,docCounter', ws1);
     const ws2 = await ev(`(function(){
       var m = __calcEngine.wsMerge;
       var cloudObj = { a: 2 };
@@ -1312,7 +1312,34 @@ async function withChrome(fn) {
     })()`);
     check('WS4 scheduleWsPut coalesces: 3 schedules inside the debounce window -> exactly 1 PUT',
       ws4 && ws4.calls === 1, ws4);
+    // Rate freedom (owner 2026-10-01, 'ensure there is freedom for a user to
+    // put their own rate'): a typed rate ALWAYS wins over the model, rides
+    // every export and recall path, and a saved sheet restores it exactly.
+    const rf1 = await ev(`(function(){
+      localStorage.removeItem('mmgr_calc_boq');
+      document.getElementById('calc-work').value = 'slab';
+      document.getElementById('calc-work').dispatchEvent(new Event('change', { bubbles: true }));
+      document.getElementById('calc-d1').value = '10';
+      document.getElementById('calc-d2').value = '10';
+      document.getElementById('calc-d3').value = '100';
+      document.getElementById('calc-currency').value = 'USD';
+      document.getElementById('calc-country').value = 'US';
+      document.getElementById('calc-quality').value = 'standard';
+      document.getElementById('calc-rate-mat').value = '41234';
+      document.getElementById('calc-rate-mat').dispatchEvent(new Event('input', { bubbles: true }));
+      var r1 = __calcEngine.computeFor(__calcEngine.readState());
+      var mat1 = (r1.mat / r1.qty);
+      var st = __calcEngine.readState();
+      var r2 = __calcEngine.computeFor(Object.assign({}, st));
+      var mat2 = (r2.mat / r2.qty);
+      return { perM2_1: Math.round(mat1 * 100) / 100, perM2_2: Math.round(mat2 * 100) / 100,
+               annotated: r1.matOverridden === true, kept: Math.abs(mat1 - mat2) < 0.01 };
+    })()`);
+    check('RF1 typed rate 41234 prices the m2 at exactly that rate (model discarded, override flagged, recall-stable)',
+      rf1 && rf1.perM2_1 === 41234 && rf1.perM2_2 === 41234 && rf1.annotated && rf1.kept, rf1);
     await ev(`(function(){
+      document.getElementById('calc-rate-mat').value = '';
+      document.getElementById('calc-rate-mat').dispatchEvent(new Event('input', { bubbles: true }));
       localStorage.removeItem('mmgr_calc_wstamps');
       localStorage.removeItem('mmgr_calc_rollup');
     })()`);

@@ -2578,6 +2578,8 @@ html.mmgr-tour-active .bcp-tour-nudge{filter:none;}
 /* W5 planning waterfall settings: compact 4-up field row. */
 .bcp-rollup-settings{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:10px 0 8px;}
 @media (max-width:600px){.bcp-rollup-settings{grid-template-columns:1fr 1fr;}}
+/* W2.5 family select hint line. */
+.bcp-hint{display:block;font-size:.78rem;color:var(--ink-soft,inherit);opacity:.75;margin-top:4px;}
 /* W2 companion chips (one-tap add-on work suggestions). */
 .bcp-cp-row{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 2px;}
 .bcp-cp-row[hidden]{display:none!important;}

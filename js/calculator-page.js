@@ -1190,10 +1190,11 @@ function docTitleBase() {
 // Test hook (harness-only convenience; harmless in production).
 window.__calcDocTitleBase = docTitleBase;
 // W1 engine hook (harness-only convenience; harmless in production).
-window.__calcEngine = { computeFor: computeFor, boqTotals: boqTotals, readState: readState, syncLabels: syncLabels, instancesQty: instancesQty, estimateCsv: estimateCsv, prelimsTotal: prelimsTotal, rollup: rollup, cashCurve: cashCurve, formworkM2: formworkM2, importPacks: importPacks, applyDiscount: applyDiscount, companionsFor: companionsFor };
+window.__calcEngine = { computeFor: computeFor, boqTotals: boqTotals, readState: readState, syncLabels: syncLabels, instancesQty: instancesQty, estimateCsv: estimateCsv, prelimsTotal: prelimsTotal, rollup: rollup, cashCurve: cashCurve, formworkM2: formworkM2, importPacks: importPacks, applyDiscount: applyDiscount, companionsFor: companionsFor, syncFamily: syncFamily };
 
 document.addEventListener('change', function(e) {
   if (e.target && e.target.id === 'calc-doc-type') render();
+  if (e.target && e.target.id === 'calc-family') onFamilyChange(e.target.value);
 });
 document.addEventListener('input', function(e) {
   if (e.target && e.target.id === 'calc-doc-title') render();
@@ -2080,10 +2081,78 @@ function refreshRateFields() {
 }
 
 // Live labels follow the work item (the floating calculator's spirit, page form).
+// ---- W2.5 (owner 2026-10-01): WORK FAMILIES -----------------------------
+// The flat 24-trade picker was doing too much at once. Families split the
+// choice in two: what are you building (six trades), then which trade. The
+// family select only VISUALLY filters the trade picker (optgroups hide; the
+// options stay in the DOM), so every existing recall / harness / pack path
+// that sets #calc-work directly keeps working - syncLabels flips the family
+// back on when a foreign trade is selected.
+const FAMILIES = {
+  structure: { label: 'Structure - walls, frames, steel', hint: 'Walls, frames and steel: carry the building\'s loads. Set-out lining-out and debris carting are offered with every wall.' },
+  groundworks: { label: 'Groundworks - clearing, excavation, concrete', hint: 'Below-ground work: clearing, excavation, foundations and slabs. Derived formwork appears for pours; cart-away comes with every pour.' },
+  envelope: { label: 'Envelope - roof, render, paint, drywall', hint: 'Weather-proofing skins: roof coverings, renders, paint and drywall. Cart-away is offered to clear the offcuts.' },
+  finishes: { label: 'Finishes - tiling, drives, fencing, trims', hint: 'What everyone sees and touches: tiling, drives, fencing and trims. Fencing offers debrushing and post holes.' },
+  plumbing: { label: 'Plumbing - pipe runs, fixtures', hint: 'Water in, waste out: pipe runs, fixtures and rough-in packages.' },
+  electrical: { label: 'Electrical - points, conduit, panels', hint: 'Power and light: wiring points, conduit runs and panels.' }
+};
+const WORK_FAMILY = {
+  siteprep: 'groundworks', excav: 'groundworks', slab: 'groundworks', footings: 'groundworks',
+  blockwall: 'structure', brickwall: 'structure', framing: 'structure', rebar: 'structure',
+  roof: 'envelope', 'shingle-roof': 'envelope', render: 'envelope', paint: 'envelope', drywall: 'envelope',
+  tile: 'finishes', 'concrete-drive': 'finishes', fencing: 'finishes', skirt: 'finishes',
+  'pipe-supply': 'plumbing', 'pipe-drain': 'plumbing', fixture: 'plumbing', 'bath-rough': 'plumbing',
+  'wire-point': 'electrical', conduit: 'electrical', panel: 'electrical'
+};
+const FKEY = 'mmgr_calc_family';
+// The family select only filters the VIEW: non-family optgroups hide while
+// their options stay selectable (recalls set #calc-work directly).
+function applyFamilyFilter(sel) {
+  if (!sel) return;
+  const fam = localStorage.getItem(FKEY) || '';
+  const keep = fam && FAMILIES[fam] ? FAMILIES[fam].label.split(' - ')[0] : '';
+  Array.prototype.forEach.call(sel.querySelectorAll('optgroup'), function(og) {
+    og.hidden = !!keep && og.label !== keep;
+  });
+}
+function familyHintKey(fam) { return fam && FAMILIES[fam] ? fam : ''; }
+function syncFamily() {
+  const sel = $('calc-work'), fSel = $('calc-family');
+  if (!sel || !fSel) return;
+  const key = sel.value;
+  const wanted = WORK_FAMILY[key] || '';
+  let fam = localStorage.getItem(FKEY) || '';
+  if (wanted && fam && fam !== wanted) {
+    // A foreign trade got selected (recall, pack, harness): the family
+    // follows the trade - never fight the user's work item.
+    fam = wanted;
+    try { localStorage.setItem(FKEY, fam); } catch (e) {}
+    fSel.value = fam;
+  }
+  applyFamilyFilter(sel);
+  const hintEl = $('calc-family-hint');
+  if (hintEl) hintEl.textContent = familyHintKey(fam) ? FAMILIES[fam].hint : 'Pick the kind of work first - only its trades stay in the list. Choose All to see every trade.';
+}
+// The family select's own change handler (delegated below - the page has
+// one dispatch convention).
+function onFamilyChange(val) {
+  try {
+    if (val) localStorage.setItem(FKEY, val); else localStorage.removeItem(FKEY);
+  } catch (e) {}
+  const sel = $('calc-work');
+  if (val && sel && WORK_FAMILY[sel.value] !== val) {
+    // Jump to a sensible first trade of the newly chosen family.
+    const first = Object.keys(WORK_FAMILY).find(function(k) { return WORK_FAMILY[k] === val; });
+    if (first) sel.value = first;
+  }
+  syncLabels();
+}
+
 function syncLabels() {
   const key = ($('calc-work') || {}).value;
   const w = WORK[key];
   if (!w) return;
+  syncFamily();
   $('calc-d1-label').textContent = dimLabel(w, 'd1');
   $('calc-d2-label').textContent = dimLabel(w, 'd2') || '';
   $('calc-d2-wrap').hidden = !w.d2;
@@ -2176,6 +2245,7 @@ function countryLabel(code) {
 // local restore here, a second writer would fight the helper.
 if ($('calc-work')) {
   $('calc-work').addEventListener('change', syncLabels);
+  if ($('calc-family')) $('calc-family').value = localStorage.getItem(FKEY) || '';
   ['calc-currency', 'calc-country', 'calc-quality', 'calc-tax-override', 'calc-d1', 'calc-d2', 'calc-d3',
    'calc-rate-mat', 'calc-rate-lab', 'calc-rate-eq', 'calc-oh', 'calc-piece-price', 'calc-piece-size', 'calc-waste']
     .forEach(function(id) { const el = $(id); if (el) el.addEventListener('input', function() { render(); }); });

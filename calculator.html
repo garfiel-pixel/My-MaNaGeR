@@ -23,7 +23,7 @@
 <meta name="robots" content="noindex">
 <link rel="icon" type="image/png" href="images/mpw-icon.png">
 <link rel="apple-touch-icon" href="images/mpw-icon.png">
-<link rel="stylesheet" href="dist/mmgr.min.css?v=17">
+<link rel="stylesheet" href="dist/mmgr.min.css?v=18">
 <script src="js/mmgr-theme.js" data-sync="1"></script>
 </head>
 <body class="db-page calculator-page">
@@ -84,6 +84,22 @@
     <section class="card" id="calc-input-card" aria-labelledby="calc-inputs-h">
       <h2 id="calc-inputs-h" class="card-title">What are you pricing?</h2>
 
+      <!-- W2.5 (owner 2026-10-01): work families - choose the kind of work
+           first, then the trade. The filter is visual only: every trade
+           option stays selectable for recalls and saved estimates. -->
+      <div class="bcp-field">
+        <label for="calc-family">Type of work</label>
+        <select id="calc-family" aria-describedby="calc-family-hint">
+          <option value="">All trades</option>
+          <option value="groundworks">Groundworks - clearing, excavation, concrete</option>
+          <option value="structure">Structure - walls, frames, steel</option>
+          <option value="envelope">Envelope - roof, render, paint, drywall</option>
+          <option value="finishes">Finishes - tiling, drives, fencing, trims</option>
+          <option value="plumbing">Plumbing - pipe runs, fixtures</option>
+          <option value="electrical">Electrical - points, conduit, panels</option>
+        </select>
+        <span class="bcp-hint" id="calc-family-hint">Pick the kind of work first - only its trades stay in the list. Choose All to see every trade.</span>
+      </div>
       <div class="bcp-field">
         <label for="calc-work">Work item</label>
         <select id="calc-work">
@@ -448,7 +464,7 @@
      worker, so its raw assets ride the HTTP cache (1y immutable) - any
      change here must bump v, or returning calculator-only visitors keep
      the old script/styles for a year. -->
-<script src="js/mmgr-icon-restore.js?v=17"></script>
-<script src="js/calculator-page.js?v=17"></script>
+<script src="js/mmgr-icon-restore.js?v=18"></script>
+<script src="js/calculator-page.js?v=18"></script>
 </body>
 </html>

@@ -944,6 +944,45 @@ async function withChrome(fn) {
       p3.dataset.touched = '';
     })()`);
 
+    // ---------- W2.5 2026-10-01: WORK FAMILIES (FM family) ----------
+    const fm1 = await ev(`(function(){
+      var f = document.getElementById('calc-family');
+      f.value = 'structure';
+      f.dispatchEvent(new Event('change', { bubbles: true }));
+      var vis = Array.prototype.filter.call(document.querySelectorAll('#calc-work optgroup'), function(g) { return !g.hidden; }).map(function(g) { return g.label; });
+      return { vis: vis, work: document.getElementById('calc-work').value, stored: localStorage.getItem('mmgr_calc_family') };
+    })()`);
+    check('FM1 choosing Structure filters the picker to its group and jumps to a Structure trade',
+      fm1 && fm1.vis.length === 1 && fm1.vis[0] === 'Structure' && ['blockwall','brickwall','framing','rebar'].indexOf(fm1.work) > -1 && fm1.stored === 'structure', fm1);
+    const fm2 = await ev(`(function(){
+      return { hint: document.getElementById('calc-family-hint').textContent };
+    })()`);
+    check('FM2 family hint names the family scope in plain language',
+      fm2 && fm2.hint.indexOf('loads') > -1, fm2);
+    const fm3 = await ev(`(function(){
+      document.getElementById('calc-work').value = 'tile';
+      document.getElementById('calc-work').dispatchEvent(new Event('change', { bubbles: true }));
+      var vis = Array.prototype.filter.call(document.querySelectorAll('#calc-work optgroup'), function(g) { return !g.hidden; }).map(function(g) { return g.label; });
+      return { fam: document.getElementById('calc-family').value, stored: localStorage.getItem('mmgr_calc_family'), vis: vis };
+    })()`);
+    check('FM3 a foreign trade selected directly (recall path) flips the family - never fights the work item',
+      fm3 && fm3.fam === 'finishes' && fm3.stored === 'finishes' && fm3.vis.length === 1 && fm3.vis[0] === 'Finishes', fm3);
+    const fm4 = await ev(`(function(){
+      var f = document.getElementById('calc-family');
+      f.value = '';
+      f.dispatchEvent(new Event('change', { bubbles: true }));
+      var n = Array.prototype.filter.call(document.querySelectorAll('#calc-work optgroup'), function(g) { return !g.hidden; }).length;
+      return { all: n, stored: localStorage.getItem('mmgr_calc_family'), work: document.getElementById('calc-work').value };
+    })()`);
+    check('FM4 All trades shows every group and clears the memory; work item untouched',
+      fm4 && fm4.all === 6 && fm4.stored === null && fm4.work === 'tile', fm4);
+    const fm5 = await ev(`(function(){
+      var vals = Array.prototype.map.call(document.getElementById('calc-work').options, function(o) { return o.value; });
+      return { n: vals.length, hasDerived: vals.indexOf('formwork') > -1 || vals.indexOf('cart-away') > -1 || vals.indexOf('lining-out') > -1 };
+    })()`);
+    check('FM5 picker still carries exactly the 24 user trades - derived companion items stay invisible',
+      fm5 && fm5.n === 24 && !fm5.hasDerived, fm5);
+
     // ---------- W2 2026-10-01: COMPANION SUGGESTIONS (CP family) ----------
     const cp1 = await ev(`(function(){
       var hits = 0;

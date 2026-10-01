@@ -306,8 +306,8 @@ async function withChrome(fn) {
                text: (document.getElementById('calc-guide-text') || {}).textContent || '',
                dots: document.querySelectorAll('#calc-guide-dots .bcp-guide-dot').length };
     })()`);
-    check('G1 guide card renders with 8 steps + counter + text',
-      g1 && g1.card && g1.count === '1 of 8' && g1.dots === 8 && g1.text.indexOf('work item') > -1, g1);
+    check('G1 guide card renders with 11 steps + counter + text',
+      g1 && g1.card && g1.count === '1 of 11' && g1.dots === 11 && g1.text.indexOf('work item') > -1, g1);
     check('G2 guide order: step 1 is work item (never overhead first)',
       g1 && g1.text.indexOf('Pick your work item') === 0, g1);
     const g2 = await ev(`(function(){
@@ -319,7 +319,7 @@ async function withChrome(fn) {
       return { after: after, active: active, back: back };
     })()`);
     check('G3 next/prev cycles steps + one active dot follows',
-      g2 && g2.after === '2 of 8' && g2.active === 1 && g2.back === '1 of 8', g2);
+      g2 && g2.after === '2 of 11' && g2.active === 1 && g2.back === '1 of 11', g2);
     const g3 = await ev(`(function(){
       document.querySelector('[data-action="calcGuideClose"]').click();
       const hid = document.getElementById('calc-guide-body').hidden === true;
@@ -453,10 +453,10 @@ async function withChrome(fn) {
                count: document.getElementById('calc-tour-count').textContent };
     })()`);
     check('T1 start tour: overlay opens, step 1 anchors the work item',
-      tut1 && tut1.anchor === '#calc-work' && tut1.overlay && tut1.count === '1 of 9', tut1);
+      tut1 && tut1.anchor === '#calc-work' && tut1.overlay && tut1.count === '1 of 11', tut1);
     const tut2 = await ev(`(function(){
       var anchors = [];
-      for (var i = 0; i < 8; i++) {
+      for (var i = 0; i < 10; i++) {
         document.querySelector('[data-action="calcTourNext"]').click();
         anchors.push(document.getElementById('calc-tour-pop').getAttribute('data-anchor'));
       }
@@ -465,7 +465,8 @@ async function withChrome(fn) {
     check('T2 steps walk the form in guide order (units, dims, currency, quality, oh, rates, run)',
       tut2 && tut2.anchors[0] === '.bcp-seg' && tut2.anchors[1] === '#calc-d1' && tut2.anchors[2] === '#calc-currency' &&
       tut2.anchors[3] === '#calc-quality' && tut2.anchors[4] === '#calc-oh' && tut2.anchors[5] === '#calc-rate-mat' &&
-      tut2.anchors[6] === '.bcp-run' && tut2.anchors[7] === null && tut2.count === '9 of 9', tut2.anchors);
+      tut2.anchors[6] === '#calc-boq-card' && tut2.anchors[7] === '#calc-prelims-card' &&
+      tut2.anchors[8] === '.bcp-run' && tut2.anchors[9] === null && tut2.count === '11 of 11', tut2.anchors);
     const tut3 = await ev(`(function(){
       document.querySelector('[data-action="calcTourNext"]').click();
       return { done: window.__calcTour.state().done, overlayHidden: document.getElementById('calc-tour-overlay').hidden,

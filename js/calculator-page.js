@@ -1205,6 +1205,9 @@ const GUIDE_STEPS = [
   'Choose the finish level. Economy trims about 15%, premium adds about 35%. Add a custom tax % if yours differs.',
   'Overhead and margin. Many builders add about 10% on top for overhead and profit - type your own or leave it at zero.',
   'Your rates. Material, labor and equipment rates come prefilled as planning-grade averages. Change them to yours, and save them as a rate sheet to reuse.',
+  'Measure the whole job. Add each wall, pour or run as its own row with a repeat count, or type the total if you know it. Add the priced result to the bill and keep pricing the next item.',
+  'Site and other costs. Add the items that keep the site running - permits, supervision, temporary facilities. Typical residential jobs carry about 5 to 8 percent here, and the button loads a set you can edit.',
+  'Contingency and timing. Design and construction contingency cover what drawings do not show yet; escalation covers price movement over the build months. The planning subtotal sits before tax.',
   'Calculate and export. Hit Calculate, then save it with a name, print or PDF it, or export CSV. Name the document so it prints right.'
 ];
 let guideIdx = 0;
@@ -1239,6 +1242,8 @@ const TOUR_STEPS = [
   { sel: '#calc-quality', text: 'Finish level: economy trims about 15%, premium adds about 35%.' },
   { sel: '#calc-oh', text: 'Overhead and margin: many builders add about 10% - yours is optional.' },
   { sel: '#calc-rate-mat', text: 'Your rates come prefilled as planning-grade averages. Type your own; save them as rate sheets.' },
+  { sel: '#calc-boq-card', text: 'Add to bill keeps a running bill of quantities - every line priced on this device, every line editable.' },
+  { sel: '#calc-prelims-card', text: 'Site and other costs price the items that keep the site running, on top of the works.' },
   { sel: '.bcp-run', text: 'Hit Calculate and the breakdown lands on the right.' },
   { sel: null, text: "That's it - you're ready to use the calculator." }
 ];

@@ -239,6 +239,38 @@ async function walkFocus(page) {
         check('M10 [390] dimension inputs render 16px (no iOS zoom-jump)', m10 === 16, m10);
         const m11 = await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1);
         check('M11 [390] no horizontal scroll at 390px (bar + form)', m11, m11);
+        // M12 (estimating-depth waves W2/W4): the new measuring surfaces hold
+        // the same mobile contract - instance rows + prelims rows stay inside
+        // the viewport with the bill populated.
+        const m12 = await page.evaluate(() => {
+          document.getElementById('calc-work').value = 'blockwall';
+          document.getElementById('calc-work').dispatchEvent(new Event('change', { bubbles: true }));
+          document.getElementById('calc-d1').value = '10';
+          document.getElementById('calc-d2').value = '2.4';
+          document.getElementById('calc-d1').dispatchEvent(new Event('input', { bubbles: true }));
+          document.querySelector('[data-action="calcBoqAdd"]').click();
+          document.getElementById('calc-d1').value = '6';
+          document.getElementById('calc-d2').value = '2.4';
+          document.getElementById('calc-d1').dispatchEvent(new Event('input', { bubbles: true }));
+          document.querySelector('[data-action="calcBoqAdd"]').click();
+          document.querySelector('[data-action="calcPrelimPreset"]').click();
+          document.getElementById('calc-instances').scrollIntoView({ block: 'center' });
+          const inst = document.getElementById('calc-instances').getBoundingClientRect();
+          document.getElementById('calc-prelims-card').scrollIntoView({ block: 'center' });
+          const prelim = document.getElementById('calc-prelims-card').getBoundingClientRect();
+          return {
+            instIn: inst.left >= -1 && inst.right <= window.innerWidth + 1,
+            prelimIn: prelim.left >= -1 && prelim.right <= window.innerWidth + 1,
+            noHScroll: document.documentElement.scrollWidth <= window.innerWidth + 1,
+            lines: JSON.parse(localStorage.getItem('mmgr_calc_boq') || '[]').length
+          };
+        });
+        check('M12 [390] instance rows + prelims + bill stay inside the phone viewport',
+          m12 && m12.instIn && m12.prelimIn && m12.noHScroll && m12.lines === 2, m12);
+        await page.evaluate(() => {
+          try { localStorage.removeItem('mmgr_calc_boq'); } catch (e) {}
+          if (window.renderBoq) renderBoq();
+        });
       }
       await ctx.close();
     }

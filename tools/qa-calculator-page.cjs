@@ -71,6 +71,13 @@
      BQ4  recall re-fills the form from a stored line (exact recall)
      BQ5  remove + clear work and persist
 
+   ESTIMATING DEPTH W2 - ELEMENT INSTANCES (add-a-wall, owner 2026-09-30):
+     IN1  instancesQty sums rows x counts through the trade formula
+     IN2  measured quantity prices without dims (computeFor path)
+     IN3  waste + quality still apply on top of the measured quantity
+     IN4  editor visibility follows the work item; rows render
+     IN5  total-override checkbox bypasses rows
+
    Usage:  node tools/qa-calculator-page.cjs   (needs serve.cjs on :8765)
    Registry: CI-TEST-COVERAGE.md -> CI row (fast, serve.cjs battery).
    ============================================================ */
@@ -528,6 +535,64 @@ async function withChrome(fn) {
     check('BQ5 remove line + clear bill persist',
       bq5 && bq5.afterRemove === 1 && bq5.cleared && bq5.empty, bq5);
 
+    // ---------- W2: ELEMENT INSTANCES (add-a-wall, owner 2026-09-30) ----------
+    const in1 = await ev(`(function(){
+      document.getElementById('calc-work').value = 'blockwall';
+      document.getElementById('calc-work').dispatchEvent(new Event('change', { bubbles: true }));
+      var r = __calcEngine.instancesQty([
+        { label: 'Wall 1', d1: '10', d2: '2.4', n: 2 },
+        { label: 'Wall 2', d1: '6', d2: '2.4', n: 1 }
+      ], 'blockwall');
+      return { qty: r.qty, unit: r.unit };
+    })()`);
+    check('IN1 instancesQty: 10x2.4 x2 + 6x2.4 = 62.4 m2',
+      in1 && in1.qty === 62.4 && in1.unit === 'm2', in1);
+    const in2 = await ev(`(function(){
+      var st = __calcEngine.readState();
+      st.work = 'blockwall'; st.d1 = ''; st.d2 = ''; st.d3 = '';
+      st.measuredQty = '62.4'; st.measuredUnit = 'm2';
+      var r = __calcEngine.computeFor(st);
+      return { err: r && r.error, qty: r && r.qty, mat: r && r.mat, lab: r && r.lab, total: r && r.total };
+    })()`);
+    check('IN2 measuredQty 62.4 m2 prices without dims (mat 1372.8, lab 1747.2)',
+      in2 && !in2.err && in2.qty === 62.4 && Math.abs(in2.mat - 1372.8) < 0.01 && Math.abs(in2.lab - 1747.2) < 0.01, in2);
+    const in3 = await ev(`(function(){
+      var st = __calcEngine.readState();
+      st.work = 'blockwall'; st.d1 = ''; st.d2 = ''; st.d3 = '';
+      st.measuredQty = '62.4'; st.measuredUnit = 'm2'; st.quality = 'premium';
+      st.rateMat = '30'; st._matModel = null;
+      var r = __calcEngine.computeFor(st);
+      return { mat: r && r.mat, lab: r && r.lab };
+    })()`);
+    check('IN3 waste/quality/rates still apply on measured quantity (premium + 30/m2)',
+      in3 && Math.abs(in3.mat - 30 * 62.4 * 1.35) < 0.01 && Math.abs(in3.lab - 28 * 62.4 * 1.35) < 0.01, in3);
+    const in4 = await ev(`(function(){
+      document.getElementById('calc-work').value = 'blockwall';
+      document.getElementById('calc-work').dispatchEvent(new Event('change', { bubbles: true }));
+      var vis = !document.getElementById('calc-instances').hidden;
+      var rows = document.querySelectorAll('#calc-inst-rows .bcp-inst-row').length;
+      document.getElementById('calc-work').value = 'rebar';
+      document.getElementById('calc-work').dispatchEvent(new Event('change', { bubbles: true }));
+      var hiddenOnRebar = document.getElementById('calc-instances').hidden;
+      return { vis: vis, rows: rows, hiddenOnRebar: hiddenOnRebar };
+    })()`);
+    check('IN4 editor shows for blockwall (1 seeded row), hidden for rebar',
+      in4 && in4.vis && in4.rows === 1 && in4.hiddenOnRebar, in4);
+    const in5 = await ev(`(function(){
+      document.getElementById('calc-work').value = 'blockwall';
+      document.getElementById('calc-work').dispatchEvent(new Event('change', { bubbles: true }));
+      document.getElementById('calc-measured-manual').click();
+      var manualShown = !document.getElementById('calc-measured-qty').hidden;
+      document.getElementById('calc-measured-qty').value = '50';
+      document.getElementById('calc-measured-qty').dispatchEvent(new Event('input', { bubbles: true }));
+      var out = document.getElementById('calc-output').textContent;
+      var hero = out.match(/([\\d.,]+) m2/);
+      document.getElementById('calc-measured-manual').click();
+      return { manualShown: manualShown, hero: hero && hero[1] };
+    })()`);
+    check('IN5 total-override: typing 50 drives the estimate (50 m2)',
+      in5 && in5.manualShown && in5.hero === '50', in5);
+
     // Restore the pre-wave state for the U-series gates (the W1 block above
     // deliberately dirtied the form): deterministic metric slab flow.
     await ev(`(function(){
@@ -536,6 +601,10 @@ async function withChrome(fn) {
       document.getElementById('calc-d1').value = '';
       document.getElementById('calc-d2').value = '';
       document.getElementById('calc-d3').value = '';
+      document.getElementById('calc-measured-qty').value = '';
+      document.getElementById('calc-measured-manual').checked = false;
+      document.getElementById('calc-measured-qty').hidden = true;
+      document.getElementById('calc-instances').hidden = false;
       document.getElementById('calc-currency').value = 'USD';
       document.getElementById('calc-country').value = 'US';
       document.getElementById('calc-quality').value = 'standard';

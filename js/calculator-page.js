@@ -702,6 +702,72 @@ function renderAccessories() {
   }
 }
 
+// ---- W8 (owner 2026-09-30): LOCATION DATA PACKS (offline) ---------------
+// The on-device answer to a server-side rate book: a named pack carries the
+// currency, the standard tax default, an optional material-rate index, and a
+// whole-house benchmark note. Seeds: US baseline, Jamaica (GCT 15%, PwC),
+// UK (VAT 20%). Index stays 1.0 on seeds - the JM benchmark research diverged
+// too widely (US$65-121/ft2) to bake a multiplier; users/import set their own.
+// Applying: currency + tax default + (index != 1) scales the material rate
+// (locality adjustment = your rate; labor stays user-owned). JSON in/out
+// like rate sheets. Device-local, 20 cap.
+const PKKEY = 'mmgr_calc_locpacks';
+const PACK_SEEDS = [
+  { id: 'pack-us', name: 'United States (baseline)', currency: 'USD', taxDefault: 0, index: 1, benchmark: 'Baseline - rates as entered. US averages vary widely by state; sanity-check your bill by area x local benchmark.' },
+  { id: 'pack-jm', name: 'Jamaica', currency: 'JMD', taxDefault: 15, index: 1, benchmark: 'GCT 15% on the works (PwC). Planning guidance: standard-spec residential builds have recently ranged roughly US$65-121 per sq ft - check your bill total against floor area x benchmark.' },
+  { id: 'pack-gb', name: 'United Kingdom', currency: 'GBP', taxDefault: 20, index: 1, benchmark: 'VAT 20% applies on the works (PwC). Rates as entered.' }
+];
+function loadPacks() { try { return JSON.parse(localStorage.getItem(PKKEY) || '[]'); } catch (e) { return []; } }
+function persistPacks(list) { try { localStorage.setItem(PKKEY, JSON.stringify(list.slice(0, 20))); } catch (e) { /* nicety */ } }
+function ensurePackSeeds() { if (!loadPacks().length) persistPacks(PACK_SEEDS.slice()); }
+function renderPacks() {
+  const sel = $('calc-pack-select'), note = $('calc-pack-note');
+  if (!sel) return;
+  const list = loadPacks();
+  sel.innerHTML = '<option value="">Location pack' + (list.length ? '...' : ' (none yet)') + '</option>' +
+    list.map(function(p) { return '<option value="' + esc(p.id) + '">' + esc(p.name) + '</option>'; }).join('');
+  if (note && note.dataset.forId) {
+    const p = list.find(function(x) { return x.id === note.dataset.forId; });
+    note.hidden = !p;
+    if (p) note.textContent = p.benchmark || '';
+  }
+}
+function applyPackById(id) {
+  const p = loadPacks().find(function(x) { return x.id === id; });
+  if (!p) return;
+  if ($('calc-currency') && p.currency) $('calc-currency').value = p.currency;
+  if ($('calc-tax-override') && p.taxDefault != null && p.taxDefault !== '') $('calc-tax-override').value = String(p.taxDefault);
+  const mat = $('calc-rate-mat');
+  if (p.index && p.index !== 1 && mat && mat.value) {
+    const v = parseFloat(mat.value);
+    if (isFinite(v)) mat.value = String(Math.round(v * p.index * 100) / 100);
+  }
+  const note = $('calc-pack-note');
+  if (note) { note.dataset.forId = p.id; note.hidden = !(p.benchmark); note.textContent = p.benchmark || ''; }
+  render();
+}
+// Export every pack as JSON; import merges by name (invalid entries skipped).
+function importPacks(json) {
+  if (!json || !Array.isArray(json.packs)) return null;
+  const existing = loadPacks();
+  let merged = 0, skipped = 0;
+  json.packs.forEach(function(item) {
+    const name = item && typeof item.name === 'string' ? item.name.trim().slice(0, 40) : '';
+    const idx = parseFloat(item && item.index); const td = parseFloat(item && item.taxDefault);
+    if (!name || !item.currency) { skipped++; return; }
+    const pack = { id: 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+      name: name, currency: String(item.currency).toUpperCase().slice(0, 3),
+      taxDefault: isFinite(td) && td >= 0 ? td : 0,
+      index: isFinite(idx) && idx > 0 ? idx : 1,
+      benchmark: typeof item.benchmark === 'string' ? item.benchmark.slice(0, 300) : '' };
+    const at = existing.findIndex(function(x) { return (x.name || '').toLowerCase() === name.toLowerCase(); });
+    if (at > -1) existing[at] = pack; else existing.unshift(pack);
+    merged++;
+  });
+  if (merged) { persistPacks(existing); renderPacks(); }
+  return { merged: merged, skipped: skipped };
+}
+
 // ---- W5 (owner 2026-09-30): CONTINGENCY + ESCALATION + DURATION ---------
 // The planning waterfall: works -> site & other costs -> design contingency
 // -> construction contingency -> escalation over the build duration.
@@ -997,7 +1063,7 @@ function docTitleBase() {
 // Test hook (harness-only convenience; harmless in production).
 window.__calcDocTitleBase = docTitleBase;
 // W1 engine hook (harness-only convenience; harmless in production).
-window.__calcEngine = { computeFor: computeFor, boqTotals: boqTotals, readState: readState, syncLabels: syncLabels, instancesQty: instancesQty, estimateCsv: estimateCsv, prelimsTotal: prelimsTotal, rollup: rollup, cashCurve: cashCurve, formworkM2: formworkM2 };
+window.__calcEngine = { computeFor: computeFor, boqTotals: boqTotals, readState: readState, syncLabels: syncLabels, instancesQty: instancesQty, estimateCsv: estimateCsv, prelimsTotal: prelimsTotal, rollup: rollup, cashCurve: cashCurve, formworkM2: formworkM2, importPacks: importPacks };
 
 document.addEventListener('change', function(e) {
   if (e.target && e.target.id === 'calc-doc-type') render();
@@ -1559,6 +1625,29 @@ const ACTIONS = {
     persistBoq(lines);
     renderBoq();
   },
+  // ---- W8 location packs ----
+  calcPackApply: function(el) {
+    const sel = $('calc-pack-select');
+    const id = el && el.tagName === 'SELECT' ? el.value : (sel ? sel.value : '');
+    if (!id) return;
+    applyPackById(id);
+    if (sel) sel.selectedIndex = 0;
+  },
+  calcPackExport: function() {
+    const list = loadPacks();
+    if (!list.length) { sheetMsg('No location packs to export yet.'); return; }
+    const payload = JSON.stringify({ version: 1, exported: new Date().toISOString().slice(0, 10), packs: list }, null, 2);
+    const blob = new Blob([payload], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'mmgr-calc-location-packs-' + new Date().toISOString().slice(0, 10) + '.json';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(function() { URL.revokeObjectURL(a.href); }, 500);
+    sheetMsg('Exported ' + list.length + ' location pack(s).');
+  },
+  calcPackImport: function() { const f = $('calc-pack-file'); if (f) f.click(); },
   calcInstToggle: function() {
     const wrap = $('calc-instances');
     const manual = $('calc-measured-manual');
@@ -1644,10 +1733,32 @@ document.addEventListener('change', function(e) {
   applySheetById(el.value);
   el.selectedIndex = 0;
 });
+// W8 location-pack picker: same value-apply-then-snap convention.
+document.addEventListener('change', function(e) {
+  const el = e.target.closest('[data-action="calcPackApply"]');
+  if (!el || !el.value) return;
+  applyPackById(el.value);
+  el.selectedIndex = 0;
+});
 
 // D1: the hidden file input behind the Import button. Every failure path
 // reports in the status line - a bad file never throws, never clears storage.
 document.addEventListener('change', function(e) {
+  if (e.target.id === 'calc-pack-file') {
+    const file = e.target.files && e.target.files[0];
+    e.target.value = '';
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function() {
+      let json = null;
+      try { json = JSON.parse(String(reader.result)); } catch (err) { json = null; }
+      const res = importPacks(json);
+      if (res === null) { sheetMsg('That file is not a My MaNaGeR location pack export.'); return; }
+      sheetMsg('Imported ' + res.merged + ' location pack(s)' + (res.skipped ? ' (' + res.skipped + ' skipped).' : '.'));
+    };
+    reader.readAsText(file);
+    return;
+  }
   if (e.target.id !== 'calc-sheet-file') return;
   const file = e.target.files && e.target.files[0];
   e.target.value = ''; // allow re-choosing the same file
@@ -1936,6 +2047,9 @@ renderBoq();
 // W4 site & other costs: restore the stored items on load.
 prelimItems = loadPrelims();
 renderPrelims();
+// W8 location packs: seed the first run, paint the picker.
+ensurePackSeeds();
+renderPacks();
 // W5 waterfall: restore the saved contingency/escalation settings.
 (function() {
   const p = loadRollupPrefs();

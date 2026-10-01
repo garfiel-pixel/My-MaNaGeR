@@ -229,6 +229,10 @@ function readState() {
     docTitle: docTitleRaw(),
     piecePrice: ($('calc-piece-price') || {}).value || '',
     pieceSize: ($('calc-piece-size') || {}).value || '',
+    measuredQty: ($('calc-measured-qty') || {}).value || '',
+    measuredAuto: instSum > 0 ? String(instSum) : '',
+    measuredUnit: instUnit,
+    instances: JSON.stringify(instRows || []),
     units: _units
   };
 }
@@ -240,6 +244,10 @@ function applyState(st) {
   if (!st) return;
   if (st.units) setUnits(st.units, true);
   if (st.work) $('calc-work').value = st.work;
+  // W2: restore instance rows BEFORE syncLabels (it re-renders the editor
+  // and recomputes the measured sum from the rows).
+  try { instRows = Array.isArray(JSON.parse(st.instances || '[]')) ? JSON.parse(st.instances) : []; } catch (e) { instRows = []; }
+  if ($('calc-measured-qty')) $('calc-measured-qty').value = st.measuredQty || '';
   syncLabels();
   $('calc-d1').value = st.d1 || '';
   if ($('calc-d2')) $('calc-d2').value = st.d2 || '';
@@ -293,17 +301,25 @@ function computeFor(st) {
   const key = st.work;
   const w = WORK[key];
   if (!w) return null;
+  // W2 measured quantity: element rows (or the override field) feed the
+  // engine directly - dim validation and q() are skipped, everything
+  // downstream (waste, quality, piece pricing, rates) unchanged.
+  const mqRaw = parseFloat(st.measuredQty != null && st.measuredQty !== '' ? st.measuredQty : st.measuredAuto);
+  const hasMq = isFinite(mqRaw) && mqRaw > 0;
   const raw1 = num({ value: st.d1 });
   const raw2 = w.d2 ? num({ value: st.d2 }) : null;
   const raw3 = w.d3 ? num({ value: st.d3 }) : null;
-  if (!raw1 || (w.d2 && !raw2) || (w.d3 && !raw3)) return { error: 'Enter the dimensions the form asks for (all three when thickness or depth applies).' };
+  if (!hasMq && (!raw1 || (w.d2 && !raw2) || (w.d3 && !raw3))) return { error: 'Enter the dimensions the form asks for (all three when thickness or depth applies).' };
   // Imperial entry converts to the metric the formulas speak (ft to m,
   // in to mm); metric passes through untouched.
   const imp = st.units === 'imperial';
   const d1 = imp ? raw1 * FT : raw1;
   const d2 = w.d2 ? (imp ? raw2 * FT : raw2) : null;
   const d3 = w.d3 ? (imp ? raw3 * IN : raw3) : null;
-  const qr = w.q(d1, d2, d3);
+  // Manual overrides carry no row-derived unit - derive the trade's canonical
+  // unit from q() itself (unit math never depends on the dimension values).
+  const mqUnit = st.measuredUnit || (function() { try { return w.q(1, w.d2 ? 1 : null, w.d3 ? 1 : null).unit; } catch (e) { return ''; } })();
+  const qr = hasMq ? { qty: mqRaw, unit: mqUnit } : w.q(d1, d2, d3);
   // B1 (owner review 2026-09-29): waste/cuts is an editable percentage per
   // trade (tile 10, roof laps 10, concrete 5 defaults = the previously
   // baked-in factors). Empty/invalid falls back to the trade default.
@@ -313,7 +329,10 @@ function computeFor(st) {
     wastePct = isFinite(wr) && wr >= 0 && wr <= 50 ? wr : w.waste.def;
   }
   const qty = qr.qty * (1 + wastePct / 100);
-  const modelMr = matRate(w, d1, d2);
+  // W2: with a measured quantity the per-dim rate inputs do not apply;
+  // fencing's height-dependent rate falls back to its 1.8 m default here -
+  // an explicit rate override always wins anyway.
+  const modelMr = hasMq ? matRate(w, mqRaw, null) : matRate(w, d1, d2);
   // F4b rate freedom: an explicitly typed rate overrides the model. The
   // wrapper passes dataset.model for the live form; a recalled/comparison
   // state has no dataset, so any numeric value it carries IS its rate.
@@ -471,6 +490,77 @@ function importSheets(json) {
   });
   if (merged) { persistSheets(existing); renderSheets(); }
   return { merged: merged, skipped: skipped };
+}
+
+// ---- W2 (owner 2026-09-30): ELEMENT INSTANCES - measure by element ------
+// Instead of one generic L x W, dimension-driven trades take repeated named
+// rows ("Wall 1" x2 identical, "Wall 2") - the add-a-wall pattern. Rows sum
+// through the trade's OWN q() formula (same conversions as typed dims), so
+// block counts, waste and piece pricing all still apply. A total-override
+// field ("type the total instead") bypasses rows when the sum is known.
+const INSTANCE_KINDS = {
+  blockwall: 'wall', brickwall: 'wall', framing: 'wall', render: 'wall', paint: 'wall', drywall: 'wall',
+  tile: 'area', siteprep: 'area', roof: 'area', 'shingle-roof': 'area',
+  slab: 'pour', footings: 'pour', 'concrete-drive': 'pour', excav: 'pour',
+  fencing: 'run', skirt: 'run', 'pipe-supply': 'run', 'pipe-drain': 'run', conduit: 'run'
+};
+const INSTANCE_LABEL = { wall: 'Wall', area: 'Area', pour: 'Pour', run: 'Run' };
+let instRows = [], instSum = 0, instUnit = '', instLastKey = null;
+// PURE: sum instance rows through WORK[key].q with the SAME imperial
+// conversions computeFor applies (ft to m, in to mm). Bad rows are skipped,
+// never thrown. n = identical-repeat count (digital timesing).
+function instancesQty(rows, key) {
+  const w = WORK[key];
+  if (!w) return { qty: 0, unit: '' };
+  const imp = _units === 'imperial';
+  let qty = 0, unit = '';
+  (rows || []).forEach(function(rw) {
+    if (!rw) return;
+    const n = Math.max(1, parseInt(rw.n, 10) || 1);
+    const a = parseFloat(rw.d1), b = w.d2 ? parseFloat(rw.d2) : null, c = w.d3 ? parseFloat(rw.d3) : null;
+    if (!(a > 0) || (w.d2 && !(b > 0)) || (w.d3 && !(c > 0))) return;
+    const d1 = imp ? a * FT : a;
+    const d2 = w.d2 ? (imp ? b * FT : b) : null;
+    const d3 = w.d3 ? (imp ? c * IN : c) : null;
+    const qr = w.q(d1, d2, d3);
+    qty += qr.qty * n;
+    unit = qr.unit;
+  });
+  return { qty: Math.round(qty * 100) / 100, unit: unit };
+}
+function renderInstances() {
+  const wrap = $('calc-instances'), rowsEl = $('calc-inst-rows');
+  if (!wrap || !rowsEl) return;    const key = ($('calc-work') || {}).value || '';
+    const kind = INSTANCE_KINDS[key];
+    const addBtn = $('calc-inst-add');
+    if (!kind) {
+      wrap.hidden = true;
+      instRows = []; instSum = 0; instUnit = ''; instLastKey = null;
+      return;
+    }
+  wrap.hidden = false;
+  // Rows re-seed when the work item changes (stale "Wall 1" rows must not
+  // leak into a slab); the manual-override mode keeps its own state.
+  if (instLastKey !== key || !instRows.length) {
+    instRows = [{ label: INSTANCE_LABEL[kind] + ' 1', d1: '', d2: '', d3: '', n: 1 }];
+    instLastKey = key;
+  }
+  if (addBtn) addBtn.textContent = '+ Add ' + INSTANCE_LABEL[kind].toLowerCase();
+  const w = WORK[key];
+  rowsEl.innerHTML = instRows.map(function(rw, i) {
+    return '<div class="bcp-inst-row">' +
+      '<input type="text" class="bcp-inst-label" data-idx="' + i + '" data-field="label" value="' + esc(rw.label) + '" aria-label="Element name">' +
+      '<input type="number" class="bcp-inst-dim" data-idx="' + i + '" data-field="d1" min="0" step="any" inputmode="decimal" placeholder="' + esc(dimLabel(w, 'd1')) + '" value="' + esc(rw.d1) + '">' +
+      (w.d2 ? '<input type="number" class="bcp-inst-dim" data-idx="' + i + '" data-field="d2" min="0" step="any" inputmode="decimal" placeholder="' + esc(dimLabel(w, 'd2')) + '" value="' + esc(rw.d2) + '">' : '') +
+      (w.d3 ? '<input type="number" class="bcp-inst-dim" data-idx="' + i + '" data-field="d3" min="0" step="any" inputmode="decimal" placeholder="' + esc(dimLabel(w, 'd3')) + '" value="' + esc(rw.d3) + '">' : '') +
+      '<input type="number" class="bcp-inst-count" data-idx="' + i + '" data-field="n" min="1" step="1" inputmode="numeric" value="' + esc(String(rw.n || 1)) + '" aria-label="How many identical">' +
+      '<button type="button" class="btn btn-n btn-s" data-action="calcInstDel" data-idx="' + i + '" aria-label="Remove this element">X</button>' +
+    '</div>';
+  }).join('');
+  const s = instancesQty(instRows, key);
+  instSum = s.qty; instUnit = s.unit;
+  const sumEl = $('calc-inst-sum');
+  if (sumEl) sumEl.textContent = instSum > 0 ? 'Measured total: ' + qtyShown(instSum, instUnit).main : '';
 }
 
 function activeSheetName() {
@@ -671,7 +761,7 @@ function docTitleBase() {
 // Test hook (harness-only convenience; harmless in production).
 window.__calcDocTitleBase = docTitleBase;
 // W1 engine hook (harness-only convenience; harmless in production).
-window.__calcEngine = { computeFor: computeFor, boqTotals: boqTotals, readState: readState, syncLabels: syncLabels };
+window.__calcEngine = { computeFor: computeFor, boqTotals: boqTotals, readState: readState, syncLabels: syncLabels, instancesQty: instancesQty };
 
 document.addEventListener('change', function(e) {
   if (e.target && e.target.id === 'calc-doc-type') render();
@@ -1140,6 +1230,32 @@ const ACTIONS = {
     persistBoq([]);
     renderBoq();
   },
+  // ---- W2 element instances ----
+  calcInstAdd: function() {
+    const key = ($('calc-work') || {}).value || '';
+    const kind = INSTANCE_KINDS[key];
+    if (!kind) return;
+    instRows.push({ label: INSTANCE_LABEL[kind] + ' ' + (instRows.length + 1), d1: '', d2: '', d3: '', n: 1 });
+    renderInstances();
+    render();
+  },
+  calcInstDel: function(el) {
+    const idx = parseInt(el.getAttribute('data-idx'), 10);
+    if (isNaN(idx)) return;
+    instRows.splice(idx, 1);
+    renderInstances();
+    render();
+  },
+  calcInstToggle: function() {
+    const wrap = $('calc-instances');
+    const manual = $('calc-measured-manual');
+    if (!wrap || !manual) return;
+    wrap.hidden = manual.checked;
+    const q = $('calc-measured-qty');
+    if (q) q.hidden = !manual.checked;
+    renderInstances();
+    render();
+  },
   // ---- D2 comparison ----
   calcCompare: renderCompare,
   calcCompareClose: function() {
@@ -1352,6 +1468,8 @@ function syncLabels() {
   if ($('calc-country') && !$('calc-tax-override').value) {
     $('calc-country').selectedOptions[0].textContent = countryLabel(c);
   }
+  // W2: instance editor follows the work item (rows re-seed per trade).
+  renderInstances();
   refreshRateFields();
 }
 
@@ -1423,6 +1541,19 @@ if ($('calc-work')) {
   ['calc-currency', 'calc-country', 'calc-quality', 'calc-tax-override', 'calc-d1', 'calc-d2', 'calc-d3',
    'calc-rate-mat', 'calc-rate-lab', 'calc-rate-eq', 'calc-oh', 'calc-piece-price', 'calc-piece-size', 'calc-waste']
     .forEach(function(id) { const el = $(id); if (el) el.addEventListener('input', function() { render(); }); });
+  // W2: instance-row editing recomputes the measured total live; the
+  // override field drives render() directly.
+  $('calc-instances').addEventListener('input', function(e) {
+    const el = e.target;
+    const idx = parseInt(el.getAttribute('data-idx'), 10);
+    const field = el.getAttribute('data-field');
+    if (isNaN(idx) || !field) return;
+    if (field === 'n') instRows[idx].n = Math.max(1, parseInt(el.value, 10) || 1);
+    else instRows[idx][field] = el.value;
+    renderInstances();
+    render();
+  });
+  $('calc-measured-qty').addEventListener('input', render);
   // Saved unit system comes back before first interaction; silent keeps the
   // empty-state text until the user actually enters dimensions.
   let savedUnits = 'metric';

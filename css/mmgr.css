@@ -2555,6 +2555,13 @@ html.mmgr-tour-active .bcp-tour-nudge{filter:none;}
    compact status line above the line rows; rows reuse the estimate-row
    language (.bcp-est-row) so no new card chrome is introduced. */
 .bcp-boq-total{margin:0 0 8px;font-size:.8rem;color:var(--slate);}
+/* W2 element instances: compact grid rows (name, dims, count, remove). */
+.bcp-inst-row{display:grid;grid-template-columns:minmax(90px,1.4fr) repeat(3,minmax(70px,1fr)) 64px auto;gap:6px;align-items:center;margin-bottom:6px;}
+.bcp-inst-row input{min-width:0;width:100%;}
+.bcp-inst-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:4px;}
+.bcp-inst-manual{display:inline-flex;align-items:center;gap:6px;font-size:.8rem;color:var(--slate);}
+.bcp-inst-sum{display:block;font-size:.78rem;color:var(--gold);font-weight:600;min-height:1em;}
+@media (max-width:600px){.bcp-inst-row{grid-template-columns:minmax(70px,1.2fr) repeat(3,1fr) 46px auto;}}
 /* Shared result + history render names (page only; see block header). */
 .calc-empty{color:var(--slate);font-size:.86rem;line-height:1.5;padding:10px 0;}
 .calc-sum{border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:10px;background:var(--tile-bg);min-width:0;}

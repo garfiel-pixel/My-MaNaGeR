@@ -2452,6 +2452,8 @@ body.dark-mode .bcp-ico-moon{display:none;}
 .bcp-sheets-bar input:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 3px rgba(var(--gold-rgb),.14);}
 .bcp-sheets-bar select{max-width:220px;background:var(--tile-bg);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);padding:7px 10px;font-size:.8rem;font-family:inherit;}
 .bcp-sheet-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;border:1px solid var(--border);border-radius:10px;padding:6px 12px;font-size:.8rem;min-width:0;margin-bottom:8px;}
+/* E1 (plan v2 Phase 1): exchange-rate chips in the FX card. */
+.bcp-fx-chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);border-radius:10px;padding:4px 10px;font-size:.78rem;color:var(--text);margin:2px 4px 2px 0;}
 .bcp-run{width:100%;justify-content:center;margin-top:6px;}
 /* F4-1 unit toggle (owner 2026-09-28): metric/imperial segmented control.
    Tokens only - active state rides the brand gold wash, both themes hold. */

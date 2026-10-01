@@ -370,3 +370,50 @@ ensure this is spread across relative trades").
   coverage walk 68/68 against live, /calculator serves ?v=22 assets +
   openings editor markup, served calculator-page.js carries openingsArea,
   sw v347 live.
+
+## Plan v2 execution - Phase 0 + Phase 1 (2026-10-01)
+
+Owner directive: implement Calculator_Trade_Expansion_Plan_v2.pdf (the phased
+trade-expansion plan). Executed in the plan's own order, one phase at a time.
+
+**Phase 0 (commit 30285d0)**: golden-case baseline - tools/calc-golden-cases.json
+(45 hand-calculated cases: 33 picker trades + cross-cutting) + tools/qa-calc-golden.cjs
+(47 gates) joining CI T4. All expecteds derived from the documented formulas,
+never read off the engine; >1 currency unit drift rejects the build (E5 rule).
+
+**Phase 1 (this commit)**: foundation engine upgrades, no new trades.
+- E1 currency honesty (audit A1): declared USD base; user-maintained date-stamped
+  FX table (mmgr_calc_fx, Exchange rates card, 180-day stale note); model rates
+  convert at prefill via modelRatesFor (active book first, WORK model second,
+  fxBetween); no-fx non-USD leaves fields EMPTY + honest note + USD-labelled
+  totals (never a silent relabel); typed rates are always the user's own money;
+  the engine prices from the fields (fields-win), recall restores field+marker
+  pairs under a recallHold guard so totals stay exact even when fx/book changed.
+- E2 variant engine (audit A2): WORK variants [{id,label,rate,runit?}] +
+  #calc-variant selector; excavation converted with one 'Standard dig' variant
+  equal to the old rates (Phase 1 exit gate: unchanged results for old saves;
+  legacy states resolve to the first variant).
+- E3 unit adapter (audit A3): RATE_UNITS (yd2/ft2/ft run/lb/kg/dozen) +
+  rateFactor; trades/variants may declare runit; labels follow. UNIT-SLIP GUARD
+  (owner directive): dimSlips pure rules + one-tap Use-X fix; zero flags on all
+  golden cases (SLIP2).
+- E4 rate books v2 (audit A4): whole-book {rates per workKey/variant, currency,
+  effective dates, djb2 checksum}; import validates (unknown keys + negative
+  rates + checksum mismatch rejected and counted); active book feeds prefill;
+  expiry banner; structure ships EMPTY (licensing-safe route, plan section 4).
+- E6 labour mode: labour-only pricing - typed material rate still shows, model/
+  piece material money excluded, CSV says so.
+- E5 golden harness extended: variant, labour, rateFactor + zero-slip-flag rule.
+
+Licensing note (plan section 4): shipped the safe fallback - JIC STRUCTURE with
+no built-in rates; each user imports the book they bought. Schema identical
+either way; the owner's IMAJ extract can key a JMD book later without changes.
+
+Verification: qa-calculator-page 180/180 (EV/FX/BOOK/LM/SLIP + re-baselined
+C2b/WS1/E2 to the new honest contracts), golden 52/52 across 49 cases,
+trade coverage 68/68, playwright audit 40/40, workspace 6/6, npm run verify
+green, emoji scan clean. calculator.html ?v=23; sw shell v348; registry updated.
+
+Next per the plan: Phase 2 (concrete chain - G1 formwork, G4 steel, G7
+excavation variants, G5 masonry, B1) needs the owner's IMAJ sheet for sourced
+rates; golden cases per variant are the entry ticket.

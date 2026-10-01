@@ -23,7 +23,7 @@
 <meta name="robots" content="noindex">
 <link rel="icon" type="image/png" href="images/mpw-icon.png">
 <link rel="apple-touch-icon" href="images/mpw-icon.png">
-<link rel="stylesheet" href="dist/mmgr.min.css?v=22">
+<link rel="stylesheet" href="dist/mmgr.min.css?v=23">
 <script src="js/mmgr-theme.js" data-sync="1"></script>
 </head>
 <body class="db-page calculator-page">
@@ -151,6 +151,14 @@
         </select>
       </div>
 
+      <!-- E2 (plan v2 Phase 1): one work item, several priced versions
+           (block size, pipe diameter, scaffold height band). The selector
+           appears only when the trade carries a variants list. -->
+      <div class="bcp-field" id="calc-variant-wrap" hidden>
+        <label for="calc-variant" id="calc-variant-label">Version</label>
+        <select id="calc-variant"></select>
+      </div>
+
       <div class="bcp-field">
         <span class="bcp-units-label" id="calc-units-label">Measure in</span>
         <div class="bcp-seg" role="group" aria-labelledby="calc-units-label">
@@ -239,6 +247,11 @@
         <label class="bcp-inst-manual" for="calc-oncost-toggle"><input type="checkbox" id="calc-oncost-toggle"> Add employer statutory costs on labor (NIS, NHT, HEART, Education Tax)</label>
         <input type="number" id="calc-oncost-pct" min="0" max="25" step="0.5" inputmode="decimal" placeholder="% of labor - e.g. 12.5 for Jamaica" disabled aria-label="Employer statutory costs percent of labor">
       </div>
+      <!-- E6 (plan v2 Phase 1): labour-only pricing - price the work, list
+           materials separately. A typed material rate still shows. -->
+      <div class="bcp-field bcp-oncost">
+        <label class="bcp-inst-manual" for="calc-labour-only"><input type="checkbox" id="calc-labour-only"> Labour only - skip material prices (list them separately)</label>
+      </div>
       </div>
 
       <div class="bcp-rates-head">
@@ -250,6 +263,7 @@
         <div class="bcp-field"><label for="calc-rate-lab" id="calc-rate-lab-label">Labor rate</label><input type="number" id="calc-rate-lab" min="0" step="any" inputmode="decimal"></div>
         <div class="bcp-field"><label for="calc-rate-eq" id="calc-rate-eq-label">Equipment / plant hire</label><input type="number" id="calc-rate-eq" min="0" step="any" inputmode="decimal" placeholder="0 = none"></div>
       </div>
+      <p class="bcp-jm-note" id="calc-fx-note" hidden></p>
 
       <div class="bcp-sheets-bar">
         <input type="text" id="calc-sheet-name" maxlength="40" placeholder="e.g. low-bid, sustain" aria-label="Rate sheet name">
@@ -271,6 +285,35 @@
       <p class="bcp-jm-note" id="calc-pack-note" hidden></p>
       <div class="bcp-piece-hint" id="calc-sheet-msg" hidden></div>
       <div id="calc-sheets" class="calc-hist bcp-sheets"></div>
+
+      <!-- E1 (plan v2 Phase 1) exchange rates: the user supplies the rate
+           with an as-of date - nothing is guessed. Model rates convert at
+           prefill; typed rates are always the user's own money. -->
+      <div class="bcp-sheets-bar">
+        <select id="calc-fx-code" aria-label="Currency to set a rate for">
+          <option value="JMD">JMD - Jamaican dollar</option>
+          <option value="GBP">GBP - Pound sterling</option>
+          <option value="EUR">EUR - Euro</option>
+          <option value="CAD">CAD - Canadian dollar</option>
+          <option value="AUD">AUD - Australian dollar</option>
+          <option value="JPY">JPY - Japanese yen</option>
+        </select>
+        <input type="number" id="calc-fx-rate" min="0" step="any" inputmode="decimal" placeholder="Rate per 1 USD - e.g. 157" aria-label="Exchange rate, units per 1 US dollar">
+        <input type="date" id="calc-fx-asof" aria-label="Rate as-of date">
+        <button type="button" class="btn btn-n btn-s" data-action="calcFxSave"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-receipt"></use></svg> Save rate</button>
+      </div>
+      <div class="bcp-piece-hint" id="calc-fx-list" aria-live="polite"></div>
+      <!-- E4 (plan v2 Phase 1) rate books: a whole book imports, validates
+           and switches as one object. The structure ships EMPTY - import
+           the rate book you own (licensing-safe route, plan section 4). -->
+      <div class="bcp-sheets-bar">
+        <select id="calc-book-select" data-action="calcBookPick" aria-label="Apply an imported rate book"></select>
+        <button type="button" class="btn btn-n btn-s" data-action="calcBookExport" title="Download your rate books as a JSON file"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Export</button>
+        <button type="button" class="btn btn-n btn-s" data-action="calcBookImport" title="Load a rate book from a My MaNaGeR JSON export"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-upload"></use></svg> Import</button>
+        <button type="button" class="btn btn-n btn-s" data-action="calcBookClear" title="Stop using the active rate book">Use model rates</button>
+        <input type="file" id="calc-book-file" accept="application/json,.json" hidden>
+      </div>
+      <p class="bcp-jm-note" id="calc-book-expired" hidden></p>
 
       <div class="bcp-row bcp-row-2" id="calc-piece-wrap">
         <div class="bcp-field"><label for="calc-piece-price" id="calc-piece-price-label">Price per piece</label><input type="number" id="calc-piece-price" min="0" step="any" inputmode="decimal" placeholder="e.g. 950 per tile"></div>
@@ -546,7 +589,7 @@
      worker, so its raw assets ride the HTTP cache (1y immutable) - any
      change here must bump v, or returning calculator-only visitors keep
      the old script/styles for a year. -->
-<script src="js/mmgr-icon-restore.js?v=22"></script>
-<script src="js/calculator-page.js?v=22"></script>
+<script src="js/mmgr-icon-restore.js?v=23"></script>
+<script src="js/calculator-page.js?v=23"></script>
 </body>
 </html>

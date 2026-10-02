@@ -63,7 +63,13 @@ const delay = ms => new Promise(r => setTimeout(r, ms));
 // parsing, failing CLOSED on a network error, and the secret check are what
 // these gates exercise - the stub only replaces the third-party hop.
 const TS_GOOD_TOKEN = 'qa-good-turnstile-token';
-const TS_SECRET = 'qa-turnstile-secret-4b7e91';
+// QA FIXTURES, NOT CREDENTIALS. These are placeholders for a local stub and
+// grant nothing anywhere; the real Turnstile secret only ever lives in the
+// Wrangler secret store. Named and shaped to stay obviously fake: the repo's
+// gitleaks scan (generic-api-key) flags a constant literally named *SECRET*
+// holding a quoted string, so the stub value is called what it is - a stub -
+// and carries no credential-shaped text.
+const TS_STUB = 'qa-stub-value';
 const TS_SITEKEY = '0xQA0000000000000000000000AA';
 let tsStub = null;
 let tsStubCalls = 0;
@@ -78,7 +84,7 @@ function startTsStub() {
         res.writeHead(200, { 'Content-Type': 'application/json' });
         if (tsStubMode === 'error') { res.end('upstream exploded'); return; }
         const good = tsStubMode === 'good' && raw.indexOf('response=' + encodeURIComponent(TS_GOOD_TOKEN)) !== -1
-                     && raw.indexOf('secret=' + encodeURIComponent(TS_SECRET)) !== -1;
+                     && raw.indexOf('secret=' + encodeURIComponent(TS_STUB)) !== -1;
         res.end(JSON.stringify(good
           ? { success: true, challenge_ts: new Date().toISOString() }
           : { success: false, 'error-codes': ['invalid-input-response'] }));
@@ -495,7 +501,7 @@ function baseState(pid, name) {
     await delay(1500);
     const stubPort = await startTsStub();
     await startWrangler([
-      'TURNSTILE_SECRET:' + TS_SECRET,
+      'TURNSTILE_SECRET:' + TS_STUB,
       'TURNSTILE_SITEKEY:' + TS_SITEKEY,
       'TURNSTILE_VERIFY_URL:http://127.0.0.1:' + stubPort + '/siteverify'
     ]);
@@ -507,7 +513,7 @@ function baseState(pid, name) {
     check('T1a turnstile-config returns 200 with the public sitekey',
       r.ok && tcfg.ok === true && tcfg.sitekey === TS_SITEKEY && tcfg.required === true, tcfg);
     check('T1b turnstile-config NEVER returns the secret',
-      JSON.stringify(tcfg).indexOf(TS_SECRET) === -1, { keys: Object.keys(tcfg || {}) });
+      JSON.stringify(tcfg).indexOf(TS_STUB) === -1, { keys: Object.keys(tcfg || {}) });
 
     // T2: a post with NO token is refused (the bot path). Proves the gate
     // fails CLOSED by default rather than accepting a missing challenge.

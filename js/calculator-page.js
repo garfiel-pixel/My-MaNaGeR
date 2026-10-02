@@ -42,11 +42,24 @@ const WORK = {
   excav:      { group: 'Groundworks', d1: 'Length (m)', d2: 'Width (m)', d3: 'Depth (m)',
     q: (a, b, c) => ({ qty: a * b * c * 1.25, unit: 'm3', qtyLabel: 'Excavated volume (incl. 1.25 bulking)' }),
     rate: { mat: 2, lab: 14 }, matDesc: 'Cart-away / disposal',
-    // E2 (plan v2 Phase 1): excavation converted to the variant structure
-    // with ONE variant whose rates equal the pre-conversion model - old
-    // saves recall to the same total (Phase 1 exit gate). Phase 2 fills the
-    // real JIC soil/depth-band variant sets from the official sheet.
-    variants: [{ id: 'standard', label: 'Standard dig', rate: { mat: 2, lab: 14 } }] },
+    // E2 (Phase 1) + G7 (plan v2 Phase 2): the variant structure with the
+    // FIRST variant equal to the pre-conversion model - old saves recall to
+    // the same total. Soil/depth rates are planning-grade 2026 (Model tag,
+    // editable; NY commercial band $12-28/cu yd soil, rock $35-90 -
+    // backwell.com 2026; foundation avg $11.50/cu yd - kitchingco 2025).
+    // The owner's JIC extract keys a JMD book that overrides at prefill.
+    variants: [
+      { id: 'standard', label: 'Standard dig', rate: { mat: 2, lab: 14 } },
+      { id: 'earth-fill', label: 'Compacted earth fill', rate: { mat: 1, lab: 18 } },
+      { id: 'marl', label: 'Marl', rate: { mat: 1.5, lab: 20 } },
+      { id: 'sand', label: 'Sand', rate: { mat: 1.5, lab: 17 } },
+      { id: 'clay-shallow', label: 'Stiff clay - to 5 ft deep', rate: { mat: 1, lab: 24 } },
+      { id: 'clay-deep', label: 'Stiff clay - 5 to 10 ft deep', rate: { mat: 1, lab: 30 } },
+      { id: 'asphalt', label: 'Asphaltic concrete - break out', rate: { mat: 3, lab: 28 } },
+      { id: 'rock-hand', label: 'Rock - hand, no compressor', rate: { mat: 2, lab: 55 } },
+      { id: 'rock-comp', label: 'Rock - compressor incl. labourers', rate: { mat: 12, lab: 38 } },
+      { id: 'rock-labour', label: 'Rock - labourers only', rate: { mat: 2, lab: 70 } }
+    ] },
   slab:       { group: 'Groundworks', d1: 'Length (m)', d2: 'Width (m)', d3: 'Thickness (mm)', waste: { def: 5, lbl: 'Concrete waste' }, piece: { priceLabel: 'Price per bag of mix', sizeLabel: 'Bag yield (litres)', single: true, div: 'volume', qtyUnit: 'm3', ph: 'e.g. 9200 per bag', phSize: 'e.g. 20' },
     q: (a, b, c) => ({ qty: a * b * (c / 1000), unit: 'm3', qtyLabel: 'Concrete' }),
     rate: { mat: 150, lab: 85 }, matDesc: 'C20/25 ready-mix, mesh, vapor barrier' },
@@ -55,7 +68,16 @@ const WORK = {
     rate: { mat: 155, lab: 90 }, matDesc: 'C20/25, rebar cage allowance' },
   blockwall:  { group: 'Structure', d1: 'Length (m)', d2: 'Height (m)', d3: null, openings: true, piece: { priceLabel: 'Price per block', sizeLabel: 'Block size - length x height (cm)', unit: 'cm', div: 'area', ph: 'e.g. 800 per block', phSize: 'e.g. 40 x 20' },
     q: (a, b) => ({ qty: a * b, unit: 'm2', qtyLabel: 'Wall area' }),
-    rate: { mat: 22, lab: 28 }, matDesc: 'Blocks (12.5/m2), mortar, ties' },
+    rate: { mat: 22, lab: 28 }, matDesc: 'Blocks (12.5/m2), mortar, ties',
+    // G5 (plan v2 Phase 2): block size variants - the FIRST variant equals
+    // the pre-conversion model so old saves recall identically. US installed
+    // band $14-32/sf (estimators.us, nedesestimating 2026) is upper context;
+    // JM labour prices lower - editable as always.
+    variants: [
+      { id: 'standard', label: 'Standard block', rate: { mat: 22, lab: 28 } },
+      { id: '6in', label: '6 in block', rate: { mat: 18, lab: 26 } },
+      { id: '8in', label: '8 in block', rate: { mat: 24, lab: 30 } }
+    ] },
   brickwall:  { group: 'Structure', d1: 'Length (m)', d2: 'Height (m)', d3: null, openings: true, piece: { priceLabel: 'Price per brick', sizeLabel: 'Brick size - length x height (cm)', unit: 'cm', div: 'area', ph: 'e.g. 140 per brick', phSize: 'e.g. 20 x 10' },
     q: (a, b) => ({ qty: a * b, unit: 'm2', qtyLabel: 'Wall area' }),
     rate: { mat: 34, lab: 42 }, matDesc: 'Bricks (60/m2), mortar, wall ties' },
@@ -159,9 +181,60 @@ const WORK = {
   // Bill-only work items that never appear in the picker; a companion chip
   // fills the form state via measuredQty, so these price through the SAME
   // engine (waste, quality, rates) with zero new math.
-  formwork:    { group: 'Groundworks', d1: '', d2: null, d3: null,
+  // ---- PLAN V2 PHASE 2 (owner 2026-10-01): CONCRETE CHAIN ----------------
+  // G1/G4/G5/G7/B1 structure with planning-grade 2026 rates (Model tag,
+  // every rate editable; the owner's JIC extract keys a JMD book that
+  // overrides these at prefill with no code change). Sources per line.
+  'rebar-size': { group: 'Structure', d1: 'Steel weight (kg)', d2: null, d3: null,
+    q: (a) => ({ qty: a / 1000, unit: 't', qtyLabel: 'Steel weight' }),
+    runit: 'lb',
+    matDesc: 'Bars cut, tied and placed - by bar size (rebar $0.50-1.00/lb material, $1,300-2,000/ton - homeguide 2025; installed $1.51-1.77/sf #4 - Homewyse Sep 2026)',
+    variants: [
+      { id: '3-8', label: '3/8 in bars (#3)', rate: { mat: 0.45, lab: 0.30 } },
+      { id: '1-2', label: '1/2 in bars (#4)', rate: { mat: 0.50, lab: 0.33 } },
+      { id: '5-8', label: '5/8 in bars (#5)', rate: { mat: 0.53, lab: 0.36 } },
+      { id: '3-4', label: '3/4 in bars (#6)', rate: { mat: 0.56, lab: 0.40 } },
+      { id: '1',   label: '1 in bars (#7)',   rate: { mat: 0.60, lab: 0.45 } }
+    ] },
+  stirrups:    { group: 'Structure', d1: 'Stirrups (count)', d2: null, d3: null,
+    q: (a) => ({ qty: a, unit: 'each', qtyLabel: 'Stirrups' }),
+    runit: 'dozen',
+    matDesc: 'Links cut, bent and fixed - by size (2026 planning band $1.50-2.50 each fabricated and installed)',
+    variants: [
+      { id: '1-4', label: '1/4 in links', rate: { mat: 6, lab: 12 } },
+      { id: '3-8', label: '3/8 in links', rate: { mat: 8, lab: 15 } },
+      { id: '3-8-lg', label: '3/8 in links - large girth', rate: { mat: 11, lab: 19 } }
+    ] },
+  'fabric-mesh': { group: 'Structure', d1: 'Mesh area (m2)', d2: null, d3: null,
+    q: (a) => ({ qty: a, unit: 'm2', qtyLabel: 'Mesh area' }),
+    runit: 'yd2',
+    matDesc: 'Fabric mesh, lapped and tied (2026 planning band $0.60-1.20/sf laid)',
+    rate: { mat: 5.5, lab: 2.5 } },
+  'concrete-labour': { group: 'Groundworks', d1: 'Concrete volume (m3)', d2: null, d3: null,
+    q: (a) => ({ qty: a, unit: 'm3', qtyLabel: 'Concrete placed' }),
+    matDesc: 'Labour only - price the concrete itself on the slab or footings line (2026 planning band $30-60/cu yd placed and finished)',
+    variants: [
+      { id: 'rod-settle', label: 'Rod and settle premix', rate: { mat: 0, lab: 55 } },
+      { id: 'fill-ram', label: 'Fill and ram flooring', rate: { mat: 0, lab: 48 } }
+    ] },
+  formwork:    { group: 'Groundworks', d1: 'Contact area (m2)', d2: null, d3: null,
     q: (a) => ({ qty: a, unit: 'm2', qtyLabel: 'Formwork area' }),
-    rate: { mat: 22, lab: 33 }, matDesc: 'Formwork boards, props, release agent' },
+    rate: { mat: 22, lab: 33 }, matDesc: 'Formwork boards, props, release agent',
+    // G1 (plan v2 Phase 2): formwork by element. The FIRST variant carries
+    // the pre-Phase-2 derived rates (22/33) so the W7 companion line and
+    // old saves resolve unchanged; suspended/circular carry the top of the
+    // 2026 band ($0.25-2.00/sf systems, up to ~$12/sf crew - countbricks,
+    // RSMeans C2 crew 2026).
+    variants: [
+      { id: 'wall-edge', label: 'Walls, edges, footings', rate: { mat: 22, lab: 33 } },
+      { id: 'column', label: 'Columns', rate: { mat: 30, lab: 55 } },
+      { id: 'beam', label: 'Beams', rate: { mat: 30, lab: 55 } },
+      { id: 'belt', label: 'Belt / stiffener', rate: { mat: 26, lab: 48 } },
+      { id: 'susp-floor', label: 'Suspended slab - floor', rate: { mat: 45, lab: 85 } },
+      { id: 'susp-stairs', label: 'Suspended slab - stairs', rate: { mat: 70, lab: 120 } },
+      { id: 'circular', label: 'Circular', rate: { mat: 70, lab: 120 } },
+      { id: 'manhole', label: 'Manhole sides and deck', rate: { mat: 55, lab: 100 } }
+    ] },
   'lining-out': { group: 'Groundworks', d1: '', d2: null, d3: null,
     q: (a) => ({ qty: a, unit: 'm', qtyLabel: 'Lining-out run' }),
     rate: { mat: 4, lab: 9 }, matDesc: 'Profiles, string lines, pegs' },
@@ -256,6 +329,41 @@ function companionsFor(st) {
   }).filter(Boolean);
 }
 
+// ---- X1 (plan v2, owner directive 2026-10-01): FORGOTTEN-WORK LINTER -----
+// "Rebar with no concrete, a slab with no formwork, walls with no footing."
+// PURE rules over the bill (the BoQ lines). Each flag explains itself; the
+// ones with a derivable quantity carry a one-tap fix that adds a REAL bill
+// line through the same derived-line path as the companions. An empty or
+// small bill lints clean - nothing here invents work.
+const LINT_RULES = [
+  { id: 'steel-no-concrete',
+    msg: 'Steel is on the bill but no concrete line carries it.',
+    when: function(w) { return w.rebar || w['rebar-size'] || w.stirrups; },
+    missing: function(w) { return !w.slab && !w.footings && !w['concrete-drive']; },
+    fix: null },
+  { id: 'pour-no-formwork',
+    msg: 'Concrete is priced with no formwork to hold it.',
+    when: function(w) { return w.slab || w.footings || w['concrete-drive']; },
+    missing: function(w) { return !w.formwork; },
+    fix: { work: 'formwork', label: 'Add the derived formwork' } },
+  { id: 'wall-no-footing',
+    msg: 'Walls are priced with no footing under them.',
+    when: function(w) { return w.blockwall || w.brickwall; },
+    missing: function(w) { return !w.footings; },
+    fix: null },
+  { id: 'excav-no-cart',
+    msg: 'Soil is being dug out with no cart-away line.',
+    when: function(w) { return w.excav; },
+    missing: function(w) { return !w['cart-away']; },
+    fix: { work: 'cart-away', label: 'Add a cart-away allowance' } }
+];
+// PURE: the flags for a bill (array of { st: { work } } lines).
+function billLint(lines) {
+  const w = {};
+  (lines || []).forEach(function(l) { if (l && l.st && WORK[l.st.work]) w[l.st.work] = true; });
+  return LINT_RULES.filter(function(r) { return r.when(w) && r.missing(w); });
+}
+
 // Country standard tax rates (PwC VAT/GST quick table, 2026). US sales tax
 // varies by state - default 0 with the custom override for the client's rate.
 const TAX = { US: 0, JM: 15, GB: 20, AU: 10, CA: 5, JP: 10, DE: 19 };
@@ -326,6 +434,16 @@ function renderFx() {
 const FT = 0.3048;          // meters per foot
 const IN = 25.4;            // millimeters per inch
 let _units = 'metric';
+// Phase 2 (owner 2026-10-01): single-dim AREA/VOLUME trades type their one
+// dimension as an area or volume, not a linear foot - imperial entry converts
+// with the squared/cubed factor (1 sq ft = 0.09290304 m2; 1 cu yd = 27 x
+// 0.3048^3 m3 = 0.764554858). Trades whose quantity is a PRODUCT of separate
+// linear dims (slab, excav, blockwall, ...) keep the per-dim ft->m rule.
+const IMP_D1_FACTOR = {
+  'formwork': FT * FT,
+  'fabric-mesh': FT * FT,
+  'concrete-labour': 0.764554858
+};
 
 function dimLabel(w, which) {
   let lbl = w[which] || '';
@@ -572,9 +690,10 @@ function computeFor(st) {
   const raw3 = w.d3 ? num({ value: st.d3 }) : null;
   if (!hasMq && (!raw1 || (w.d2 && !raw2) || (w.d3 && !raw3))) return { error: 'Enter the dimensions the form asks for (all three when thickness or depth applies).' };
   // Imperial entry converts to the metric the formulas speak (ft to m,
-  // in to mm); metric passes through untouched.
+  // in to mm); metric passes through untouched. A single-dim area/volume
+  // trade converts its one dim with its squared/cubed factor (IMP_D1_FACTOR).
   const imp = st.units === 'imperial';
-  const d1 = imp ? raw1 * FT : raw1;
+  const d1 = imp ? raw1 * (IMP_D1_FACTOR[key] || FT) : raw1;
   const d2 = w.d2 ? (imp ? raw2 * FT : raw2) : null;
   const d3 = w.d3 ? (imp ? raw3 * IN : raw3) : null;
   // Manual overrides carry no row-derived unit - derive the trade's canonical
@@ -949,7 +1068,8 @@ const INSTANCE_KINDS = {
   tile: 'area', siteprep: 'area', roof: 'area', 'shingle-roof': 'area', ceiling: 'area',
   slab: 'pour', footings: 'pour', 'concrete-drive': 'pour', excav: 'pour', 'floor-screed': 'pour',
   fencing: 'run', skirt: 'run', 'pipe-supply': 'run', 'pipe-drain': 'run', conduit: 'run',
-  gutter: 'run', 'soffit-fascia': 'run', cabinet: 'run'
+  gutter: 'run', 'soffit-fascia': 'run', cabinet: 'run',
+  formwork: 'area', 'fabric-mesh': 'area', 'concrete-labour': 'pour'
 };
 const INSTANCE_LABEL = { wall: 'Wall', area: 'Area', pour: 'Pour', run: 'Run' };
 let instRows = [], instSum = 0, instUnit = '', instLastKey = null;
@@ -1000,6 +1120,10 @@ function dimSlips(st) {
   const r2 = (v) => Math.round(v * 100) / 100;
   const band = function(field, label, v) {
     if (!(v > 0)) return;
+    // Weight boxes (kg / lb) are unambiguous - the length/area bands do not
+    // apply (rebar-size types steel weight in kg here; 500 kg is a normal
+    // pour's steel, not a 500 m run).
+    if (/\(kg\)|\(lb\)/.test(label)) return;
     if (/count/.test(label)) {
       if (v > 300) out.push({ field: field, msg: v + ' is a lot of units - check the count.', fix: null });
       return;
@@ -1052,7 +1176,7 @@ function instancesQty(rows, key) {
     const n = Math.max(1, parseInt(rw.n, 10) || 1);
     const a = parseFloat(rw.d1), b = w.d2 ? parseFloat(rw.d2) : null, c = w.d3 ? parseFloat(rw.d3) : null;
     if (!(a > 0) || (w.d2 && !(b > 0)) || (w.d3 && !(c > 0))) return;
-    const d1 = imp ? a * FT : a;
+    const d1 = imp ? a * (IMP_D1_FACTOR[key] || FT) : a;
     const d2 = w.d2 ? (imp ? b * FT : b) : null;
     const d3 = w.d3 ? (imp ? c * IN : c) : null;
     const qr = w.q(d1, d2, d3);
@@ -1478,6 +1602,7 @@ function renderBoq() {
   if (card) card.hidden = lines.length === 0 && !$('calc-boq-open');
   const t = boqTotals(lines);
   if (total) total.textContent = lines.length ? 'Bill total: ' + (CURRENCY[t.perLine[0].currency] || '$') + Math.round(t.sub).toLocaleString() + ' across ' + lines.length + ' line' + (lines.length === 1 ? '' : 's') : '';
+  renderLint(lines);
   wrap.innerHTML = lines.length
     ? lines.map(function(line, i) {
         const r = computeFor(line.st || {});
@@ -1491,6 +1616,21 @@ function renderBoq() {
         '</div>';
       }).join('')
     : '<div class="calc-empty">No lines yet. Price something above, then Add to bill.</div>';
+}
+
+// X1: the check-your-bill block - one row per forgotten-work flag, with a
+// one-tap fix where the quantity can be derived from the bill itself.
+function renderLint(lines) {
+  const box = $('calc-lint');
+  if (!box) return;
+  const flags = billLint(lines);
+  if (!flags.length) { box.hidden = true; box.innerHTML = ''; return; }
+  box.hidden = false;
+  box.innerHTML = '<div class="bcp-cp-title">Check your bill</div>' + flags.map(function(f) {
+    return '<div class="bcp-est-row"><span class="bcp-est-name">' + esc(f.msg) + '</span>' +
+      (f.fix ? '<button type="button" class="btn btn-n btn-s" data-action="calcLintFix" data-fix="' + esc(f.fix.work) + '">' + esc(f.fix.label) + '</button>' : '') +
+      '</div>';
+  }).join('');
 }
 
 function renderSheets() {
@@ -1796,7 +1936,7 @@ async function wsProbe() {
   wsInFlight = false;
 }
 // W1 engine hook (harness-only convenience; harmless in production).
-window.__calcEngine = { computeFor: computeFor, boqTotals: boqTotals, readState: readState, syncLabels: syncLabels, instancesQty: instancesQty, estimateCsv: estimateCsv, prelimsTotal: prelimsTotal, rollup: rollup, cashCurve: cashCurve, formworkM2: formworkM2, importPacks: importPacks, applyDiscount: applyDiscount, companionsFor: companionsFor, syncFamily: syncFamily, brandLoad: brandLoad, logoFitsCap: logoFitsCap, docNoSuggest: docNoSuggest, wsCollect: wsCollect, wsMerge: wsMerge, wsApplyProbe: wsApplyProbe, scheduleWsPut: scheduleWsPut, rateFactor: rateFactor, dimSlips: dimSlips, activeVariant: activeVariant, variantFor: variantFor, fxFactor: fxFactor, fxBetween: fxBetween, modelRatesFor: modelRatesFor, importBooks: importBooks, setActiveBook: setActiveBook, activeBook: activeBook, loadFx: loadFx, renderFx: renderFx, renderBooks: renderBooks };
+window.__calcEngine = { computeFor: computeFor, boqTotals: boqTotals, renderBoq: renderBoq, readState: readState, syncLabels: syncLabels, instancesQty: instancesQty, estimateCsv: estimateCsv, prelimsTotal: prelimsTotal, rollup: rollup, cashCurve: cashCurve, formworkM2: formworkM2, importPacks: importPacks, applyDiscount: applyDiscount, companionsFor: companionsFor, billLint: billLint, syncFamily: syncFamily, brandLoad: brandLoad, logoFitsCap: logoFitsCap, docNoSuggest: docNoSuggest, wsCollect: wsCollect, wsMerge: wsMerge, wsApplyProbe: wsApplyProbe, scheduleWsPut: scheduleWsPut, rateFactor: rateFactor, dimSlips: dimSlips, activeVariant: activeVariant, variantFor: variantFor, fxFactor: fxFactor, fxBetween: fxBetween, modelRatesFor: modelRatesFor, importBooks: importBooks, setActiveBook: setActiveBook, activeBook: activeBook, loadFx: loadFx, renderFx: renderFx, renderBooks: renderBooks };
 
 document.addEventListener('change', function(e) {
   if (e.target && e.target.id === 'calc-doc-type') render();
@@ -1832,7 +1972,9 @@ function workName(key) {
   const w = WORK[key];
   if (vSel && vSel.value && w && w.variants && w.variants.length > 1) {
     const av = variantFor(key, vSel.value);
-    if (av) name = name + ' - ' + av.label;
+    // The default (first) variant keeps the clean base name; a non-default
+    // pick names itself on bill lines, history and CSV.
+    if (av && av.id !== w.variants[0].id) name = name + ' - ' + av.label;
   }
   return name;
 }
@@ -2603,6 +2745,43 @@ const ACTIONS = {
     renderBoq();
   },
   // ---- W2 companion chips ----
+  // ---- X1 linter one-tap fixes: add a REAL derived bill line, same
+  // mechanism as the companion chips (fully editable, recall-able).
+  calcLintFix: function(el) {
+    const work = el.getAttribute('data-fix');
+    const lines = loadBoq();
+    if (!work || lines.length >= 60) return;
+    // The quantity derives from the first line that the flag came from:
+    // formwork from the first pour's contact area; cart-away from the
+    // first dig/pour volume (the same allowance basis as the cart3 chip).
+    const src = lines.map(function(l) { return l && l.st; }).filter(function(s) {
+      return s && WORK[s.work] && (work === 'formwork' ? (s.work === 'slab' || s.work === 'footings' || s.work === 'concrete-drive') : (s.work === 'excav' || s.work === 'slab' || s.work === 'footings' || s.work === 'concrete-drive'));
+    })[0];
+    if (!src) return;
+    let qty = 0;
+    if (work === 'formwork') qty = formworkM2(src.work, parseFloat(src.d1), parseFloat(src.d2), parseFloat(src.d3)) || 0;
+    else {
+      const r = computeFor(Object.assign({}, src, { measuredQty: src.measuredQty || src.measuredAuto }));
+      qty = r && !r.error ? r.qty : 0;
+    }
+    if (!(qty > 0)) { sheetMsg('Could not derive the quantity from the bill - price ' + (WORK[work] ? WORK[work].d1 || 'it' : 'it') + ' by hand.'); return; }
+    const lineSt = Object.assign({}, src, {
+      work: work,
+      measuredQty: String(Math.round(qty * 100) / 100),
+      measuredAuto: '',
+      measuredUnit: WORK[work].q(1).unit,
+      instances: '[]', openings: '[]',
+      rateMat: '', rateLab: '',
+      _matModel: undefined,
+      _labModel: undefined,
+      piecePrice: '', pieceSize: '', wastePct: '',
+      derivedFrom: 'lint:' + work + ':' + src.work
+    });
+    lines.push({ st: lineSt, name: (work === 'formwork' ? 'Formwork ' : 'Cart away ') + (Math.round(qty * 100) / 100).toLocaleString() + ' ' + WORK[work].q(1).unit });
+    persistBoq(lines);
+    renderBoq();
+    sheetMsg('Added the missing ' + (work === 'formwork' ? 'formwork' : 'cart-away') + ' line - edit it any time.');
+  },
   calcCompAdd: function(el) {
     const id = el.getAttribute('data-cp');
     const def = COMPANION_DEFS[id];
@@ -3053,7 +3232,9 @@ const FAMILIES = {
 };
 const WORK_FAMILY = {
   siteprep: 'groundworks', excav: 'groundworks', slab: 'groundworks', footings: 'groundworks', 'septic-tank': 'groundworks',
+  formwork: 'groundworks', 'concrete-labour': 'groundworks',
   blockwall: 'structure', brickwall: 'structure', framing: 'structure', rebar: 'structure',
+  'rebar-size': 'structure', stirrups: 'structure', 'fabric-mesh': 'structure',
   roof: 'envelope', 'shingle-roof': 'envelope', render: 'envelope', paint: 'envelope', drywall: 'envelope',
   window: 'envelope', gutter: 'envelope', 'soffit-fascia': 'envelope',
   tile: 'finishes', 'concrete-drive': 'finishes', fencing: 'finishes', skirt: 'finishes',

@@ -980,10 +980,14 @@ async function withChrome(fn) {
       fm4 && fm4.all === 6 && fm4.stored === null && fm4.work === 'tile', fm4);
     const fm5 = await ev(`(function(){
       var vals = Array.prototype.map.call(document.getElementById('calc-work').options, function(o) { return o.value; });
-      return { n: vals.length, hasDerived: vals.indexOf('formwork') > -1 || vals.indexOf('cart-away') > -1 || vals.indexOf('lining-out') > -1 };
+      return { n: vals.length,
+        // G1 (plan v2 Phase 2): formwork by element is INTENTIONALLY pickable
+        // now; the still-derived lines stay invisible.
+        hiddenDerived: ['cart-away', 'lining-out', 'debrush', 'post-holes'].filter(function(k) { return vals.indexOf(k) > -1; }),
+        phase2: ['formwork', 'rebar-size', 'stirrups', 'fabric-mesh', 'concrete-labour'].every(function(k) { return vals.indexOf(k) > -1; }) };
     })()`);
-    check('FM5 picker still carries exactly the 33 user trades (9 research-backed openings/ceiling/rainwater additions) - derived items stay invisible',
-      fm5 && fm5.n === 33 && !fm5.hasDerived, fm5);
+    check('FM5 picker carries exactly the 38 user trades (33 + the Phase-2 concrete chain) - formwork pickable, derived lines stay invisible',
+      fm5 && fm5.n === 38 && fm5.phase2 && fm5.hiddenDerived.length === 0, fm5);
 
     // ---------- W2 2026-10-01: COMPANION SUGGESTIONS (CP family) ----------
     const cp1 = await ev(`(function(){
@@ -1613,7 +1617,9 @@ async function withChrome(fn) {
                first: sel.options.length ? sel.options[0].textContent : '', val: sel.value };
     })()`);
     check('EV1 variant selector: hidden on slab, shown on excavation with its Standard dig variant',
-      ev1 && ev1.slabHidden && ev1.shown && ev1.opts === 1 && ev1.first === 'Standard dig' && ev1.val === 'standard', ev1);
+      // Phase 2 re-baseline: excav now carries 10 SOIL variants; the first is
+      // still 'Standard dig' (id standard) so old saves recall unchanged.
+      ev1 && ev1.slabHidden && ev1.shown && ev1.opts === 10 && ev1.first === 'Standard dig' && ev1.val === 'standard', ev1);
     const ev2 = await ev(`(function(){
       var st = JSON.parse(JSON.stringify(__calcEngine.readState()));
       var work = document.getElementById('calc-work');
@@ -1844,6 +1850,91 @@ async function withChrome(fn) {
     })()`);
     check('SLIP3 UI: 0.15 thickness flags with a one-tap Use 150 fix that applies and clears the flag',
       slip3 && slip3.flagged && slip3.hasFix && slip3.fixed === '150' && slip3.gone, slip3);
+
+    // ---------- PLAN V2 PHASE 2 (2026-10-01): CONCRETE CHAIN ----------
+    // NV family: the new variant trades price through the SAME engine.
+    const nv1 = await ev(`(function(){
+      var work = document.getElementById('calc-work');
+      work.value = 'rebar-size'; work.dispatchEvent(new Event('change',{bubbles:true}));
+      var sel = document.getElementById('calc-variant');
+      var matLbl = document.getElementById('calc-rate-mat-label').textContent;
+      work.value = 'stirrups'; work.dispatchEvent(new Event('change',{bubbles:true}));
+      var stirrupLbl = document.getElementById('calc-rate-mat-label').textContent;
+      work.value = 'fabric-mesh'; work.dispatchEvent(new Event('change',{bubbles:true}));
+      var meshLbl = document.getElementById('calc-rate-mat-label').textContent;
+      return { rebarOpts: (work.value = 'rebar-size', work.dispatchEvent(new Event('change',{bubbles:true})), document.getElementById('calc-variant').options.length),
+               matLbl: matLbl, stirrupLbl: stirrupLbl, meshLbl: meshLbl };
+    })()`);
+    check('NV1 variant trades: rebar-size shows 5 bar sizes; rate labels speak JIC units (per lb / per dozen / per yd2)',
+      nv1 && nv1.rebarOpts === 5 && nv1.matLbl.indexOf('per lb') > -1 && nv1.stirrupLbl.indexOf('per dozen') > -1 && nv1.meshLbl.indexOf('per yd2') > -1, nv1);
+    const nv2 = await ev(`(function(){
+      var r = __calcEngine.computeFor({ work:'stirrups', variant:'3-8', d1:'120', units:'metric', quality:'standard', currency:'USD', country:'US' });
+      var r2 = __calcEngine.computeFor({ work:'fabric-mesh', d1:'50', units:'metric', quality:'standard', currency:'USD', country:'US' });
+      return { stirrups: r ? { mat: Math.round(r.mat*100)/100, lab: r.lab } : null,
+               mesh: r2 ? { mat: Math.round(r2.mat*100)/100, lab: Math.round(r2.lab*100)/100 } : null,
+               stirrupUnit: r && r.unit, meshUnit: r2 && r2.unit };
+    })()`);
+    check('NV2 engine conversions: 120 stirrups at 8/15 per dozen = 80/150; 50 m2 mesh at 5.5/2.5 per yd2 = 229.94/104.52',
+      nv2 && nv2.stirrups && nv2.stirrups.mat === 80 && nv2.stirrups.lab === 150 && nv2.mesh && nv2.mesh.mat === 229.94 && nv2.mesh.lab === 104.52, nv2);
+    const nv3 = await ev(`(function(){
+      var work = document.getElementById('calc-work');
+      work.value = 'blockwall'; work.dispatchEvent(new Event('change',{bubbles:true}));
+      var blockOpts = document.getElementById('calc-variant').options.length;
+      work.value = 'excav'; work.dispatchEvent(new Event('change',{bubbles:true}));
+      var soilOpts = document.getElementById('calc-variant').options.length;
+      work.value = 'formwork'; work.dispatchEvent(new Event('change',{bubbles:true}));
+      var fwOpts = document.getElementById('calc-variant').options.length;
+      var r = __calcEngine.computeFor({ work:'formwork', variant:'wall-edge', d1:'20', units:'metric', quality:'standard', currency:'USD', country:'US' });
+      var d1l = document.getElementById('calc-d1-label').textContent;
+      return { blockOpts: blockOpts, soilOpts: soilOpts, fwOpts: fwOpts, wallEdge: r ? r.total : null, d1l: d1l };
+    })()`);
+    check('NV3 variant sets: blockwall 3 sizes, excavation 10 soils, formwork 8 elements; first variant = the old derived rates (20 m2 = 1100)',
+      nv3 && nv3.blockOpts === 3 && nv3.soilOpts === 10 && nv3.fwOpts === 8 && nv3.wallEdge === 1100 && nv3.d1l === 'Contact area (m2)', nv3);
+    const nv4 = await ev(`(function(){
+      var r = __calcEngine.computeFor({ work:'concrete-labour', variant:'rod-settle', d1:'12', units:'metric', quality:'standard', currency:'USD', country:'US' });
+      document.getElementById('calc-work').value = 'floor-screed';
+      document.getElementById('calc-work').dispatchEvent(new Event('change',{bubbles:true}));
+      return { mat: r ? r.mat : null, lab: r ? r.lab : null, labourTrade: r ? r.labourOnly === false : null };
+    })()`);
+    check('NV4 concrete labour: rod-and-settle 12 m3 = lab 660, mat 0 (a labour-only trade by rate, not by mode)',
+      nv4 && nv4.mat === 0 && nv4.lab === 660, nv4);
+
+    // LX family: the forgotten-work linter (X1, owner directive).
+    const lx1 = await ev(`(function(){
+      var mk = function(work) { return { st: { work: work } } };
+      var flags = function(lines) { return __calcEngine.billLint(lines).map(function(f) { return f.id; }); };
+      return {
+        steel: flags([mk('rebar')]),
+        pour: flags([mk('slab')]),
+        wall: flags([mk('blockwall')]),
+        dig: flags([mk('excav')]),
+        complete: flags([mk('rebar'), mk('slab'), mk('formwork'), mk('footings'), mk('blockwall'), mk('cart-away')]),
+        empty: flags([])
+      };
+    })()`);
+    check('LX1 linter rules: steel-no-concrete, pour-no-formwork, wall-no-footing, excav-no-cart fire; a complete bill and an empty bill lint clean',
+      lx1 && lx1.steel.join() === 'steel-no-concrete' && lx1.pour.join() === 'pour-no-formwork' &&
+      lx1.wall.join() === 'wall-no-footing' && lx1.dig.join() === 'excav-no-cart' &&
+      lx1.complete.length === 0 && lx1.empty.length === 0, lx1);
+    const lx2 = await ev(`(function(){
+      localStorage.setItem('mmgr_calc_boq', JSON.stringify([
+        { st: { work: 'slab', d1: '10', d2: '8', d3: '150', units: 'metric', currency: 'USD', country: 'US', quality: 'standard' }, name: 'Slab' }
+      ]));
+      __calcEngine.renderBoq();
+      var box = document.getElementById('calc-lint');
+      var shown = !box.hidden && box.textContent.indexOf('no formwork') > -1;
+      var btn = box.querySelector('[data-action=calcLintFix]');
+      var hasFix = !!btn && btn.getAttribute('data-fix') === 'formwork';
+      if (btn) btn.click();
+      var lines = JSON.parse(localStorage.getItem('mmgr_calc_boq'));
+      var added = lines.length === 2 && lines[1].st.work === 'formwork' && lines[1].st.measuredQty === '5.4';
+      var gone = document.getElementById('calc-lint').hidden;
+      localStorage.removeItem('mmgr_calc_boq');
+      __calcEngine.renderBoq();
+      return { shown: shown, hasFix: hasFix, added: added, gone: gone };
+    })()`);
+    check('LX2 UI: a slab-only bill flags the missing formwork; the one-tap fix adds the derived 5.4 m2 edge-formwork line and the flag clears',
+      lx2 && lx2.shown && lx2.hasFix && lx2.added && lx2.gone, lx2);
 
     // ---------- F4 ENHANCEMENTS ----------
     // U1: imperial toggle - labels convert, state persists, aria follows.

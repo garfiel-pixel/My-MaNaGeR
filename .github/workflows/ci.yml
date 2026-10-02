@@ -49,6 +49,15 @@ jobs:
         id: inline
         run: npm run verify:inline
 
+      # Source-script parse gate (added 2026-10-02). `node build.js` only
+      # parses what it BUNDLES, so a standalone script - js/calculator-page.js
+      # is loaded straight by calculator.html - can carry a hard SyntaxError
+      # and kill its whole page with every other gate still green. That is
+      # exactly how the calculator died on unquoted hyphenated object keys.
+      - name: Verify every source script parses (standalone scripts included)
+        id: jssyntax
+        run: npm run verify:js
+
       - name: Verify no CRLF in tracked text files
         id: eol
         # --cached: check the COMMITTED bytes (eol=lf filters normalize at add),

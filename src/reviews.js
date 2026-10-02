@@ -8,6 +8,7 @@
 import { json, cloudForbidden, cloudProjectDeleted, cloudTimingSink,
   cloudReadState, cloudScopeMerge, cloudLogSave, cloudEncryptState,
   cloudAuthOwnerEither, cloudAuthEditor, cloudAuthAdoption } from './lib/http.js';
+import { structuredLog } from './lib/observe.js';
 
 const REVIEW_TEXT_MAX = 2000;
 const REVIEW_NAME_MAX = 60;
@@ -45,10 +46,104 @@ function reviewPlainTextProblem(s) {
   return null;
 }
 
+// ============================================================
+// CLOUDFLARE TURNSTILE (owner 2026-10-02)
+// ------------------------------------------------------------
+// The reviews form is the only public WRITE surface on the site,
+// so it is the one place a bot can post. Turnstile gates it.
+//
+// The SECRET is a Wrangler secret (env.TURNSTILE_SECRET) - never
+// in source, never in a var, never logged. The sitekey is public
+// and is handed to the browser by handleTurnstileConfig below, so
+// the two halves can never drift apart in the markup.
+//
+// Fail CLOSED: once a secret is configured, a post without a valid
+// token is refused before anything is written. If NO secret is
+// configured the challenge is off entirely (local dev, CI, and the
+// window before the owner creates the widget), and the endpoint
+// reports required:false so the client renders nothing.
+const TURNSTILE_VERIFY_URL = 'https://challenges.cloudflare.com/turnstile/v0/siteverify';
+
+// The siteverify endpoint is overridable ONLY through the Worker environment
+// (never through any request input), so tools/qa-reviews.cjs can point it at a
+// local stub and assert the real accept/refuse branches offline. Unset in
+// production -> the Cloudflare endpoint above.
+function turnstileVerifyUrl(env) {
+  const u = env && typeof env.TURNSTILE_VERIFY_URL === 'string' ? env.TURNSTILE_VERIFY_URL.trim() : '';
+  return u || TURNSTILE_VERIFY_URL;
+}
+
+export function turnstileEnabled(env) {
+  return !!(env && typeof env.TURNSTILE_SECRET === 'string' && env.TURNSTILE_SECRET.trim());
+}
+
+// GET /api/turnstile-config - the public sitekey + whether a challenge is
+// required. Public by design (the sitekey is public); reveals nothing secret.
+export function handleTurnstileConfig(env) {
+  const required = turnstileEnabled(env);
+  const sitekey = (env && typeof env.TURNSTILE_SITEKEY === 'string') ? env.TURNSTILE_SITEKEY.trim() : '';
+  // Required but no sitekey to render is a misconfiguration. Report it
+  // honestly rather than stranding the visitor with an unfillable form.
+  if (required && !sitekey) {
+    return json({ ok: false, error: 'turnstile not fully configured' }, 503);
+  }
+  return json({ ok: true, sitekey: sitekey, required: required });
+}
+
+// Cloudflare sets CF-Connecting-IP on every request. Read it defensively:
+// it is only ever handed to Turnstile as an optional hint, never trusted
+// for authorization, so a missing/garbage value just means no remoteip.
+function clientIp(request) {
+  const ip = request.headers.get('CF-Connecting-IP');
+  if (typeof ip !== 'string') return '';
+  return /^[\d.]{3,45}$|^[0-9a-fA-F:]{3,45}$/.test(ip) ? ip : '';
+}
+
+// Verify one token with Cloudflare. Returns { ok:false, error } on any
+// failure so the caller can refuse without leaking which part failed.
+async function verifyTurnstileToken(token, remoteIp, env) {
+  if (!turnstileEnabled(env)) return { ok: true, skipped: true };
+  if (typeof token !== 'string' || !token.trim()) {
+    return { ok: false, error: 'please finish the check above before sending your review' };
+  }
+  // Bound the token length - siteverify tokens are ~1-2 KB, so this rejects
+  // an obvious attempt to push a huge body through the verify call.
+  const tok = token.trim();
+  if (tok.length > 4096) return { ok: false, error: 'that check could not be read, please try again' };
+  let res;
+  try {
+    res = await fetch(turnstileVerifyUrl(env), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        secret: env.TURNSTILE_SECRET,
+        response: tok,
+        ...(remoteIp ? { remoteip: remoteIp } : {})
+      })
+    });
+  } catch (e) {
+    // Network trouble reaching CF must NOT become a bypass: refuse.
+    return { ok: false, error: 'we could not check that you are human, please try again' };
+  }
+  if (!res || !res.ok) return { ok: false, error: 'we could not check that you are human, please try again' };
+  let data = null;
+  try { data = await res.json(); } catch (e) { data = null; }
+  if (!data || data.success !== true) return { ok: false, error: 'that check did not pass, please try again' };
+  return { ok: true };
+}
+
 export async function handleReviewsCreate(request, env) {
   const read = await readReviewBody(request);
   if (read.tooLarge) return json({ ok: false, error: 'review too large' }, 413);
   if (read.bad || !read.body || typeof read.body !== 'object') return json({ ok: false, error: 'bad request' }, 400);
+  // TURNSTILE FIRST: the bot gate runs before any validation, storage, or
+  // D1/R2 write, so a bot never reaches the insert path at all. The client's
+  // IP goes to CF as remoteip so the check is bound to the caller.
+  const turnstile = await verifyTurnstileToken(read.body.turnstileToken, clientIp(request), env);
+  if (!turnstile.ok) {
+    structuredLog(env, 'warn', 'review-turnstile-refused');
+    return json({ ok: false, error: turnstile.error }, 403);
+  }
   const rawName = typeof read.body.name === 'string' ? read.body.name.trim().slice(0, REVIEW_NAME_MAX) : '';
   const rawText = typeof read.body.review === 'string' ? read.body.review.trim() : '';
   if (!rawText) return json({ ok: false, error: 'review text is required' }, 400);

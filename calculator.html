@@ -55,6 +55,10 @@
       <svg class="ico bcp-ico-moon" aria-hidden="true"><use href="css/mmgr-icons.svg#i-moon"></use></svg>
       <span class="sr-only">Toggle dark mode</span>
     </button>
+    <button type="button" class="bcp-ratebook" data-action="openRateBook" title="Jamaica rate book">
+      <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-book"></use></svg>
+      <span class="bcp-ratebook-text">Jamaica rate book</span>
+    </button>
   </header>
 
   <p class="bcp-lede">Pick a work item, enter the dimensions, choose your currency and country. Quantities, labor, materials, tax and total - computed on this device, nothing sent anywhere.</p>
@@ -105,34 +109,34 @@
         <select id="calc-work">
           <optgroup label="Groundworks">
             <option value="siteprep">Site clearing &amp; strip (per m2)</option>
-            <option value="excav">Trench / bulk excavation (per m3, by soil)</option>
+            <option value="excav">Trench / bulk excavation (per m3, by JIC soil)</option>
             <option value="slab">Concrete slab on grade (per m3 of concrete)</option>
             <option value="footings">Strip footings (per m run)</option>
-            <option value="formwork">Formwork by element (per m2 of contact area)</option>
+            <option value="formwork">Formwork by element (per m2 of contact area, JIC)</option>
             <option value="concrete-labour">Concrete labour only - rod, settle, ram (per m3)</option>
             <option value="septic-tank">Septic tank &amp; drain field (each)</option>
           </optgroup>
           <optgroup label="Structure">
-            <option value="blockwall">Blockwork wall (per m2, 6/8 in block)</option>
+            <option value="blockwall">Blockwork wall (per m2, by JIC block/pocket/elevation)</option>
             <option value="brickwall">Brick veneer wall (per m2)</option>
             <option value="framing">Timber stud framing (per m2)</option>
             <option value="rebar">Rebar in concrete (per m3 of concrete)</option>
             <option value="rebar-size">Rebar by bar size (per lb of steel)</option>
-            <option value="stirrups">Stirrups / links (per dozen)</option>
-            <option value="fabric-mesh">Fabric mesh (per yd2 of mesh)</option>
+            <option value="stirrups">Stirrups / links (per dozen, JIC)</option>
+            <option value="fabric-mesh">Fabric mesh (per yd2 of mesh, JIC)</option>
           </optgroup>
           <optgroup label="Envelope">
             <option value="roof">Roof sheeting over purlins (per m2)</option>
             <option value="shingle-roof">Asphalt shingle roof (per roofing square)</option>
             <option value="render">Render / stucco (per m2)</option>
-            <option value="paint">Painting (per m2 of wall)</option>
+            <option value="paint">Painting (by JIC surface/coats, per m2 or per ft run)</option>
             <option value="drywall">Drywall partition (per m2, per board)</option>
             <option value="window">Window install (each)</option>
             <option value="gutter">Gutter &amp; downpipe (per m run)</option>
             <option value="soffit-fascia">Soffit &amp; fascia (per m run)</option>
           </optgroup>
           <optgroup label="Finishes">
-            <option value="tile">Floor tiling (per m2)</option>
+            <option value="tile">Floor tiling (by JIC stage/material, per m2 or per ft run)</option>
             <option value="concrete-drive">Concrete driveway (per m2, thickness sets m3)</option>
             <option value="fencing">Chain-link fencing (per m run)</option>
             <option value="skirt">Skirting / baseboard (per m run - linear)</option>
@@ -141,17 +145,26 @@
             <option value="floor-screed">Floor screed (per m3, thickness sets volume)</option>
             <option value="cabinet">Kitchen cabinets (per m run)</option>
           </optgroup>
+          <optgroup label="Temporary and metal works">
+            <option value="scaffold">Scaffolding (per ft2, by JIC height band)</option>
+            <option value="welding">Welding &amp; metal cutting (per in, by JIC thickness/method)</option>
+          </optgroup>
+          <optgroup label="Joinery">
+            <option value="joinery">Skirtings (per ft run, by JIC size/profile/species)</option>
+          </optgroup>
           <optgroup label="Plumbing">
             <option value="pipe-supply">Water supply pipe run (per m - linear)</option>
             <option value="pipe-drain">Drain-waste-vent pipe run (per m - linear)</option>
             <option value="fixture">Fixture install (each)</option>
             <option value="bath-rough">Bathroom rough-in package (each)</option>
             <option value="water-heater">Water heater install (each)</option>
+            <option value="plumbing-pipe">Plumbing pipes (per ft run, by JIC diameter)</option>
           </optgroup>
           <optgroup label="Electrical">
             <option value="wire-point">Wiring point (per point)</option>
             <option value="conduit">Conduit / cable run (per m - linear)</option>
             <option value="panel">Consumer panel / breaker box (each)</option>
+            <option value="electrical-conduit">Electrical conduit (per ft run, by JIC diameter)</option>
           </optgroup>
         </select>
       </div>

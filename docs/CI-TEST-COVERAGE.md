@@ -70,7 +70,7 @@ or too niche for the deploy gate), **TRIAGE** (known-drifting, findings listed),
 | `tools/qa-rank9-api.cjs` | CI | owner-gated API projections + webhooks (31/31) |
 | `tools/qa-reviews.cjs` | CI | review queue accept/reject + changelog (25/25) |
 | `tools/qa-t9-adoption.cjs` | CI | adoption/discontinue flows (27/27) |
-| `tools/qa-email-auth.cjs` | CI | email/password auth, reset, verify (75/75) |
+| `tools/qa-email-auth.cjs` | CI | email/password auth, reset, verify + billing tier across BOTH providers (83/83): LS phases B1-B6 unchanged, Paddle phase 2b PD1-PD7 (provider seam: status provider paddle, checkout honest 502 on fake key, Paddle-Signature ts/h1 verify + replay + tamper gates, cap still gates, one-time transaction.completed grant) |
 | `tools/verify-cloud-autosave-signin.cjs` | CI | cloud autosave + sign-in queue/resume + review-accept failure surfaces incl. missing-#cloud-status toast fallback (12/12) |
 
 ## T3 — headless Chrome, own wrangler

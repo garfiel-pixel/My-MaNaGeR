@@ -38,6 +38,8 @@ These were agreed in conversation. Do not re-litigate; do not invert them.
 | D5 | **Rate fields are always COST; Overhead & margin % always converts cost → price** — one consistent rule, including for book-filled lines. | A published market rate read as a *selling* price would silently double-count margin. Uniform rule under-quotes (recoverable) rather than over-quotes (never learned). |
 | D6 | **Per-day offered per trade**, not globally — rendering/painting stay measurement-only. | A day's output swings with weather/coats/substrate; it is a poor selling rate and a fine costing rate. |
 | D7 | Both notifiers ship: *"not recommended for this work"* and *"verify against JIC"*. | Owner's explicit ask. |
+| D8 | **Finish-level (economy/standard/premium) does NOT apply to a typed day rate** — it scales material only. | A crew's day rate is a price, not a unit rate. Multiplying it by a finish multiplier would silently inflate it. |
+| D9 | **The per-day opt-out list is the confirmed set only** (rendering, painting, tiling and similar finishes whose daily output swings with weather/coats/substrate). Everything else **offers** per-day. | The owner could not vouch for further trades and chose not to guess. Offering a mode that does not fit is recoverable and is the user's call; wrongly *hiding* a mode they need is not. |
 
 ---
 
@@ -101,9 +103,10 @@ Two additions, both additive and both default-inert:
   `qty * lr * rf`. `onCost` still applies (it is payroll). `mat` is untouched,
   so a line can carry **bought material + crew days** — owner's point 3.
 
-> **Open item for the owner (do not guess):** does the Finish-level multiplier
-> apply to a typed day rate? Recommendation: **no** — `quality` scales a unit
-> rate, but a crew's day rate is a price, not a unit rate. Ask before Task 4.
+> **Resolved (D8):** the Finish-level multiplier does **not** apply to a typed
+> day rate. `quality` scales the material unit rate only; `lab = days * dayRate`
+> is used exactly as typed. A crew's day rate is a price, not a unit rate, and
+> multiplying it by a finish multiplier would silently inflate it.
 
 ---
 
@@ -179,9 +182,14 @@ here, since no role list exists).
   - `#calc-allin-wrap` with `#calc-allin` + label
   - `#calc-day-wrap` with `#calc-days` and `#calc-day-rate`
   - a per-trade basis chooser, defaulting to measurement
-- [ ] Basis is **per trade**, gated by a `dayWork` opt-out on the `WORK` entries
-  where a day is a poor unit — **owner must sign off the list** (rendering and
-  painting are the named examples). Trades that are not opted out offer per-day.
+- [ ] Basis is **per trade**. Per-day is **offered on every trade except a
+  confirmed opt-out list** (D9): rendering, painting, tiling and the other
+  finishes whose daily output swings with weather, coats and substrate. Do NOT
+  extend the list speculatively — a wrongly hidden mode strands a tradesman who
+  needs it, while an ill-fitting mode he chose himself is recoverable. Every
+  non-opted-out trade offers per-day; the choice stays his.
+- [ ] The opt-out list lives in ONE named constant near `WORK` (e.g.
+  `NO_DAY_BASIS`) so it is reviewable in one place and easy to extend later.
 - [ ] Notifier 1 — *"not recommended for this work"* on trades in the opt-out
   list **and** on the margin field when such a trade is priced per-day.
 - [ ] Notifier 2 — *"these rates change — confirm against JIC before you
@@ -257,23 +265,27 @@ here, since no role list exists).
 
 ---
 
-## Decision points (default = recommendation)
+## Decision points
 
-1. **Quality multiplier on a typed day rate** — **do not apply** (a crew's day
-   rate is a price, not a unit rate). *Needs the owner's confirmation.*
-2. **Per-trade day-mode opt-out list** — default: opted **out** for rendering,
-   painting, tiling and any other finish whose daily output swings with
-   conditions. *Needs the owner's sign-off on the exact list.*
-3. **Days granularity** — 0.25 steps (half-days and quarter-days are normal on
+**Both owner questions were answered on 2026-10-02 and are now LOCKED above (D8,
+D9).** The remaining points are implementation choices, not open questions:
+
+1. **Days granularity** — 0.25 steps (half-days and quarter-days are normal on
    site), reject 0/negative/>2000.
-4. **All-in beats `piece`/`labourOnly`** when combined, rather than erroring —
+2. **All-in beats `piece`/`labourOnly`** when combined, rather than erroring —
    a form should never trap the user in an error state.
-5. **`verifiedOn` stamp** — per line (rides the estimate) rather than global.
+3. **`verifiedOn` stamp** — per line (rides the estimate) rather than global.
+4. **Sequencing** — Task 5 (the JIC book feeding the all-in field) is the
+   substance the owner most wants; Tasks 1-4 are the all-in and per-day inputs
+   that receive it. Task 5 can be pulled forward if the book should land first,
+   but it needs the `allIn` field from Task 1 to have somewhere to land, so
+   **Task 1 must come first either way.**
 
 ## Self-review
 
-- **Spec coverage:** D1–D7 each map to a task (D1→Task 1/4, D2→Task 3, D3→Task 1/3,
-  D4→Task 5, D5→Task 1 + Task 5 note, D6→Task 4 list, D7→Task 4 notifiers).
+- **Spec coverage:** D1–D9 each map to a task (D1→Task 1/4, D2→Task 3,
+  D3→Task 1/3, D4→Task 5, D5→Task 1 + Task 5 note, D6→Task 4 list, D7→Task 4
+  notifiers, D8→Task 1 engine seam, D9→Task 4 opt-out constant).
   The owner's invoice requirement (one labour total, never per-person) is Task 3.
   The owner's material point (bought material is inside the rate and shows on the
   invoice) is Task 1's material+days path and Task 5's all-in line.

@@ -1874,8 +1874,8 @@ async function withChrome(fn) {
                mesh: r2 ? { mat: Math.round(r2.mat*100)/100, lab: Math.round(r2.lab*100)/100 } : null,
                stirrupUnit: r && r.unit, meshUnit: r2 && r2.unit };
     })()`);
-    check('NV2 engine conversions: 120 stirrups at 8/15 per dozen = 80/150; 50 m2 mesh at 5.5/2.5 per yd2 = 229.94/104.52',
-      nv2 && nv2.stirrups && nv2.stirrups.mat === 80 && nv2.stirrups.lab === 150 && nv2.mesh && nv2.mesh.mat === 229.94 && nv2.mesh.lab === 104.52, nv2);
+    check('NV2 engine conversions: 120 stirrups at 8/15 per dozen = 80/150; 50 m2 mesh at 5.5/2.5 per yd2 = 328.9/149.5 (audit fix: entry-per-engine factors)',
+      nv2 && nv2.stirrups && nv2.stirrups.mat === 80 && nv2.stirrups.lab === 150 && nv2.mesh && nv2.mesh.mat === 328.9 && nv2.mesh.lab === 149.5, nv2);
     const nv3 = await ev(`(function(){
       var work = document.getElementById('calc-work');
       work.value = 'blockwall'; work.dispatchEvent(new Event('change',{bubbles:true}));

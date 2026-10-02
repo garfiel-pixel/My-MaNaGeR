@@ -25,6 +25,78 @@
   // STAR INPUT UI (STABILIZATION 2026-08-16): the picker radios drive the
   // data-val fill state and ride along on submit (1-5 int, optional).
   var pickRow = document.getElementById('rv-pick-row');
+  var turnstileDiv = document.getElementById('rv-turnstile');
+  var turnstileToken = null;
+  var turnstileWidget = null;
+  // The sitekey the Worker will require. Exposed by a tiny read-only endpoint
+  // so the key lives in the Wrangler environment (not hardcoded in the page)
+  // and the client and the server can never drift apart.
+  var turnstileRequired = false;
+
+  // ---- Cloudflare Turnstile bot protection (owner 2026-10-02) -----------
+  // Contract:
+  //   - the PUBLIC sitekey comes from GET /api/turnstile-config
+  //   - the SECRET is a Wrangler secret (TURNSTILE_SECRET), never in the repo
+  //   - the Worker validates the token with CF siteverify in
+  //     src/reviews.js handleReviewsCreate BEFORE anything is written
+  // While no key is configured the widget simply never renders and the Worker
+  // accepts posts as before, so the page stays usable in local dev and CI.
+  var TS_SCRIPT = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit&onload=mmgrTurnstileOnload';
+  var tsLoaded = false;
+
+  window.mmgrTurnstileOnload = function () {
+    if (!turnstileDiv || typeof Turnstile === 'undefined' || turnstileWidget) return;
+    try {
+      turnstileWidget = window.turnstile.render(turnstileDiv, {
+        sitekey: turnstileDiv.getAttribute('data-sitekey') || '',
+        theme: 'auto',
+        size: 'normal',
+        callback: function (token) { turnstileToken = token; },
+        'expired-callback': function () { turnstileToken = null; },
+        'error-callback': function () { turnstileToken = null; }
+      });
+    } catch (e) {
+      turnstileWidget = null;
+    }
+  };
+
+  function loadTurnstileScript() {
+    if (tsLoaded || !turnstileDiv) return;
+    tsLoaded = true;
+    var s = document.createElement('script');
+    s.src = TS_SCRIPT;
+    s.async = true;
+    s.defer = true;
+    s.onerror = function () { tsLoaded = false; };
+    document.head.appendChild(s);
+  }
+
+  // Only render once BOTH sides agree the challenge is required. Asking the
+  // Worker first is what keeps an unconfigured deploy from showing a widget
+  // whose token the server would then reject.
+  function initTurnstile() {
+    if (!turnstileDiv) return;
+    fetch('/api/turnstile-config', { credentials: 'same-origin' })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) {
+        if (!d || !d.ok || !d.sitekey) return;
+        turnstileRequired = true;
+        turnstileDiv.setAttribute('data-sitekey', d.sitekey);
+        loadTurnstileScript();
+      })
+      .catch(function () { /* offline or no Worker: leave the form as-is */ });
+  }
+
+  // Reset after every submit attempt: Turnstile tokens are single-use, so a
+  // second review needs a fresh challenge.
+  function resetTurnstile() {
+    turnstileToken = null;
+    try {
+      if (window.turnstile && turnstileWidget && typeof window.turnstile.reset === 'function') {
+        window.turnstile.reset(turnstileWidget);
+      }
+    } catch (e) { /* widget already gone */ }
+  }
 
   function selectedStars() {
     if (!pickRow) return 0;
@@ -153,6 +225,13 @@
       if (name) payload.name = name;
       var stars = selectedStars();
       if (stars) payload.stars = stars;
+      // Only send a token when the Worker told us a challenge is required.
+      // Sending nothing while required fails server-side with a clear message.
+      if (turnstileToken) payload.turnstileToken = turnstileToken;
+      if (turnstileRequired && !turnstileToken) {
+        setStatus('Please finish the check above before sending your review.', true);
+        return;
+      }
       var btn = formEl.querySelector('button[type="submit"]');
       if (btn) btn.disabled = true;
       try {
@@ -170,6 +249,7 @@
         if (nameIn) nameIn.value = '';
         if (textIn) textIn.value = '';
         resetStars();
+        resetTurnstile();
         setStatus('Thank you! Your review is live for everyone to see.');
         // Prepend the new review (newest first) , re-fetch keeps ordering
         // authoritative without trusting the echo.
@@ -178,9 +258,12 @@
         setStatus('Could not reach the server. Please try again in a moment.', true);
       } finally {
         if (btn) btn.disabled = false;
+        // Token is single-use whatever the outcome was.
+        if (turnstileRequired) resetTurnstile();
       }
     });
   }
 
+  initTurnstile();
   loadReviews();
 })();

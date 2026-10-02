@@ -2401,6 +2401,13 @@ body.dark-mode .ai-byo-status[data-state="untested"]{background:rgba(245,158,11,
 .bcp-ico-moon{display:block;}
 body.dark-mode .bcp-ico-sun{display:block;}
 body.dark-mode .bcp-ico-moon{display:none;}
+
+/* Jamaica rate book button - top bar (owner 2026-10-02) */
+.bcp-ratebook{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:100px;background:var(--card);border:1px solid var(--border);color:var(--slate);font-size:13px;cursor:pointer;transition:color var(--tr),border-color var(--tr),background var(--tr);white-space:nowrap;}
+.bcp-ratebook .ico{width:16px;height:16px;color:var(--slate);}
+.bcp-ratebook:hover{color:var(--gold);border-color:var(--gold);background:color-mix(in oklch,var(--gold) 10%,var(--card));}
+.bcp-ratebook:focus-visible{outline:2px solid var(--gold);outline-offset:2px;}
+.bcp-ratebook-text{font-family:var(--font-sans);}
 @media (max-width:600px){
   .bcp-top{padding:10px 12px;}
   .bcp-title{gap:8px;font-size:.92rem;}

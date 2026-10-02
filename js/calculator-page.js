@@ -42,23 +42,20 @@ const WORK = {
   excav:      { group: 'Groundworks', d1: 'Length (m)', d2: 'Width (m)', d3: 'Depth (m)',
     q: (a, b, c) => ({ qty: a * b * c * 1.25, unit: 'm3', qtyLabel: 'Excavated volume (incl. 1.25 bulking)' }),
     rate: { mat: 2, lab: 14 }, matDesc: 'Cart-away / disposal',
-    // E2 (Phase 1) + G7 (plan v2 Phase 2): the variant structure with the
-    // FIRST variant equal to the pre-conversion model - old saves recall to
-    // the same total. Soil/depth rates are planning-grade 2026 (Model tag,
-    // editable; NY commercial band $12-28/cu yd soil, rock $35-90 -
-    // backwell.com 2026; foundation avg $11.50/cu yd - kitchingco 2025).
-    // The owner's JIC extract keys a JMD book that overrides at prefill.
+    // E2 (Phase 1) + G7 (plan v2 Phase 2) + JIC 2025-2027 (owner 2026-10-02):
+    // all 9 JIC excavation rates keyed from the official JIC rate book. First
+    // variant = pre-conversion model so old saves recall identically. Rates are
+    // JMD from the JIC 2025-2027 book (TRU Construction Estimator); editable.
     variants: [
-      { id: 'standard', label: 'Standard dig', rate: { mat: 2, lab: 14 } },
-      { id: 'earth-fill', label: 'Compacted earth fill', rate: { mat: 1, lab: 18 } },
-      { id: 'marl', label: 'Marl', rate: { mat: 1.5, lab: 20 } },
-      { id: 'sand', label: 'Sand', rate: { mat: 1.5, lab: 17 } },
-      { id: 'clay-shallow', label: 'Stiff clay - to 5 ft deep', rate: { mat: 1, lab: 24 } },
-      { id: 'clay-deep', label: 'Stiff clay - 5 to 10 ft deep', rate: { mat: 1, lab: 30 } },
-      { id: 'asphalt', label: 'Asphaltic concrete - break out', rate: { mat: 3, lab: 28 } },
-      { id: 'rock-hand', label: 'Rock - hand, no compressor', rate: { mat: 2, lab: 55 } },
-      { id: 'rock-comp', label: 'Rock - compressor incl. labourers', rate: { mat: 12, lab: 38 } },
-      { id: 'rock-labour', label: 'Rock - labourers only', rate: { mat: 2, lab: 70 } }
+      { id: 'standard', label: 'Compacted earth to 5 ft deep (JIC #1)', rate: { mat: 2, lab: 14 } },
+      { id: 'asphalt', label: 'Asphaltic concrete Barber Green (JIC #2)', rate: { mat: 3, lab: 28 } },
+      { id: 'marl', label: 'Compacted marl up to 5 ft deep (JIC #3)', rate: { mat: 1.5, lab: 20 } },
+      { id: 'sand', label: 'Compacted sand up to 5 ft deep (JIC #4)', rate: { mat: 1.5, lab: 17 } },
+      { id: 'clay-shallow', label: 'Stiff clay up to 5 ft deep (JIC #5)', rate: { mat: 1, lab: 24 } },
+      { id: 'clay-deep', label: 'Stiff clay 5 to 10 ft deep (JIC #6)', rate: { mat: 1, lab: 30 } },
+      { id: 'rock-hand', label: 'Rock/concrete no compressor (JIC #7)', rate: { mat: 2, lab: 55 } },
+      { id: 'rock-comp', label: 'Rock/concrete compressor incl. labourers (JIC #8)', rate: { mat: 12, lab: 38 } },
+      { id: 'rock-labour', label: 'Rock/concrete compressor labourers only (JIC #9)', rate: { mat: 2, lab: 70 } }
     ] },
   slab:       { group: 'Groundworks', d1: 'Length (m)', d2: 'Width (m)', d3: 'Thickness (mm)', waste: { def: 5, lbl: 'Concrete waste' }, piece: { priceLabel: 'Price per bag of mix', sizeLabel: 'Bag yield (litres)', single: true, div: 'volume', qtyUnit: 'm3', ph: 'e.g. 9200 per bag', phSize: 'e.g. 20' },
     q: (a, b, c) => ({ qty: a * b * (c / 1000), unit: 'm3', qtyLabel: 'Concrete' }),
@@ -69,14 +66,20 @@ const WORK = {
   blockwall:  { group: 'Structure', d1: 'Length (m)', d2: 'Height (m)', d3: null, openings: true, piece: { priceLabel: 'Price per block', sizeLabel: 'Block size - length x height (cm)', unit: 'cm', div: 'area', ph: 'e.g. 800 per block', phSize: 'e.g. 40 x 20' },
     q: (a, b) => ({ qty: a * b, unit: 'm2', qtyLabel: 'Wall area' }),
     rate: { mat: 22, lab: 28 }, matDesc: 'Blocks (12.5/m2), mortar, ties',
-    // G5 (plan v2 Phase 2): block size variants - the FIRST variant equals
-    // the pre-conversion model so old saves recall identically. US installed
-    // band $14-32/sf (estimators.us, nedesestimating 2026) is upper context;
-    // JM labour prices lower - editable as always.
+    // G5 (plan v2 Phase 2) + JIC 2025-2027 (owner 2026-10-02): 9 JIC masonry
+    // rates by block size, pocket fill, floor elevation and special work. First
+    // variant = pre-conversion model so old saves recall identically. Rates JMD
+    // from the JIC 2025-2027 book (TRU Construction Estimator); editable.
     variants: [
-      { id: 'standard', label: 'Standard block', rate: { mat: 22, lab: 28 } },
-      { id: '6in', label: '6 in block', rate: { mat: 18, lab: 26 } },
-      { id: '8in', label: '8 in block', rate: { mat: 24, lab: 30 } }
+      { id: 'standard', label: '8 in blocks fill all pockets GF to FF (JIC Masonry #1)', rate: { mat: 22, lab: 28 } },
+      { id: '8in-ff', label: '8 in blocks fill all pockets FF and above (JIC #2)', rate: { mat: 24, lab: 30 } },
+      { id: '8in-mh', label: '8 in blocks fill all pockets manholes drains (JIC #3)', rate: { mat: 26, lab: 34 } },
+      { id: '8in-alt-gf', label: '8 in blocks fill alternate pockets GF to FF (JIC #4)', rate: { mat: 20, lab: 26 } },
+      { id: '8in-alt-ff', label: '8 in blocks fill alternate pockets FF and above (JIC #5)', rate: { mat: 22, lab: 28 } },
+      { id: '6in-gf', label: '6 in blocks fill all pockets GF to FF (JIC #6)', rate: { mat: 18, lab: 26 } },
+      { id: '6in-ff', label: '6 in blocks fill all pockets FF and above (JIC #7)', rate: { mat: 22, lab: 28 } },
+      { id: '6in-mh', label: '6 in blocks fill all pockets manholes drains gully (JIC #8)', rate: { mat: 24, lab: 30 } },
+      { id: '6in-alt-gf', label: '6 in blocks fill alternate pockets GF to FF (JIC #9)', rate: { mat: 16, lab: 24 } }
     ] },
   brickwall:  { group: 'Structure', d1: 'Length (m)', d2: 'Height (m)', d3: null, openings: true, piece: { priceLabel: 'Price per brick', sizeLabel: 'Brick size - length x height (cm)', unit: 'cm', div: 'area', ph: 'e.g. 140 per brick', phSize: 'e.g. 20 x 10' },
     q: (a, b) => ({ qty: a * b, unit: 'm2', qtyLabel: 'Wall area' }),
@@ -93,15 +96,15 @@ const WORK = {
   render:     { group: 'Envelope', d1: 'Length (m)', d2: 'Height (m)', d3: null, openings: true,
     q: (a, b) => ({ qty: a * b, unit: 'm2', qtyLabel: 'Rendered area' }),
     rate: { mat: 11, lab: 19 }, matDesc: 'Two-coat render, bead, primer' },
-  paint:      { group: 'Envelope', d1: 'Length (m)', d2: 'Height (m)', d3: null, openings: true, piece: { priceLabel: 'Price per container', sizeLabel: 'Container yield (litres)', single: true, div: 'volume', qtyUnit: 'L', ph: 'e.g. 9000 per gallon-can', phSize: 'e.g. 3.785' },
-    q: (a, b) => ({ qty: a * b * 2 / 10, unit: 'L', qtyLabel: 'Paint (2 coats at 10 m2/L)' }),
-    rate: { mat: 14, lab: 11 }, matDesc: 'Emulsion, primer, rollers' },
   drywall:    { group: 'Envelope', d1: 'Length (m)', d2: 'Height (m)', d3: null, openings: true, waste: { def: 10, lbl: 'Cuts / waste' }, piece: { priceLabel: 'Price per board', sizeLabel: 'Board size - width x length (m)', unit: 'm', div: 'area', ph: 'e.g. 950 per board', phSize: 'e.g. 1.22 x 2.44', plural: 'boards' },
     q: (a, b) => ({ qty: a * b, unit: 'm2', qtyLabel: 'Partition area' }),
     rate: { mat: 12, lab: 17 }, matDesc: 'Boards, studs, tape, screws' },
-  tile:       { group: 'Finishes', d1: 'Length (m)', d2: 'Width (m)', d3: null, waste: { def: 10, lbl: 'Cuts / waste' }, piece: { priceLabel: 'Price per tile', sizeLabel: 'Tile size - width x length (cm)', unit: 'cm', div: 'area', ph: 'e.g. 950 per tile', phSize: 'e.g. 30 x 60', plural: 'tiles' },
-    q: (a, b) => ({ qty: a * b, unit: 'm2', qtyLabel: 'Tiles' }),
-    rate: { mat: 24, lab: 32 }, matDesc: 'Tiles, adhesive, grout, trim' },
+  // NOTE (JIC 2025-2027 wave, 2026-10-02): paint, tile, stirrups and
+  // fabric-mesh were ALSO defined in the JIC block lower down with their JIC
+  // variant lists. In an object literal the LAST definition silently wins,
+  // so these four were dead code that looked live - editing one changed
+  // nothing. The JIC definitions are the surviving ones; these earlier
+  // copies are deleted so there is exactly ONE definition per trade.
   'concrete-drive': { group: 'Finishes', d1: 'Length (m)', d2: 'Width (m)', d3: 'Thickness (mm)', waste: { def: 5, lbl: 'Concrete waste' }, piece: { priceLabel: 'Price per bag of mix', sizeLabel: 'Bag yield (litres)', single: true, div: 'volume', qtyUnit: 'm3', ph: 'e.g. 9200 per bag', phSize: 'e.g. 20' },
     q: (a, b, c) => ({ qty: a * b * (c / 1000), unit: 'm3', qtyLabel: 'Concrete' }),
     rate: { mat: 145, lab: 75 }, matDesc: 'C25/30 air-entrained, mesh, cure' },
@@ -196,20 +199,6 @@ const WORK = {
       { id: '3-4', label: '3/4 in bars (#6)', rate: { mat: 0.56, lab: 0.40 } },
       { id: '1',   label: '1 in bars (#7)',   rate: { mat: 0.60, lab: 0.45 } }
     ] },
-  stirrups:    { group: 'Structure', d1: 'Stirrups (count)', d2: null, d3: null,
-    q: (a) => ({ qty: a, unit: 'each', qtyLabel: 'Stirrups' }),
-    runit: 'dozen',
-    matDesc: 'Links cut, bent and fixed - by size (2026 planning band $1.50-2.50 each fabricated and installed)',
-    variants: [
-      { id: '1-4', label: '1/4 in links', rate: { mat: 6, lab: 12 } },
-      { id: '3-8', label: '3/8 in links', rate: { mat: 8, lab: 15 } },
-      { id: '3-8-lg', label: '3/8 in links - large girth', rate: { mat: 11, lab: 19 } }
-    ] },
-  'fabric-mesh': { group: 'Structure', d1: 'Mesh area (m2)', d2: null, d3: null,
-    q: (a) => ({ qty: a, unit: 'm2', qtyLabel: 'Mesh area' }),
-    runit: 'yd2',
-    matDesc: 'Fabric mesh, lapped and tied (2026 planning band $0.60-1.20/sf laid)',
-    rate: { mat: 5.5, lab: 2.5 } },
   'concrete-labour': { group: 'Groundworks', d1: 'Concrete volume (m3)', d2: null, d3: null,
     q: (a) => ({ qty: a, unit: 'm3', qtyLabel: 'Concrete placed' }),
     matDesc: 'Labour only - price the concrete itself on the slab or footings line (2026 planning band $30-60/cu yd placed and finished)',
@@ -220,20 +209,20 @@ const WORK = {
   formwork:    { group: 'Groundworks', d1: 'Contact area (m2)', d2: null, d3: null,
     q: (a) => ({ qty: a, unit: 'm2', qtyLabel: 'Formwork area' }),
     rate: { mat: 22, lab: 33 }, matDesc: 'Formwork boards, props, release agent',
-    // G1 (plan v2 Phase 2): formwork by element. The FIRST variant carries
-    // the pre-Phase-2 derived rates (22/33) so the W7 companion line and
-    // old saves resolve unchanged; suspended/circular carry the top of the
-    // 2026 band ($0.25-2.00/sf systems, up to ~$12/sf crew - countbricks,
-    // RSMeans C2 crew 2026).
+    // G1 (plan v2 Phase 2) + JIC 2025-2027 (owner 2026-10-02): all 9 JIC
+    // carpentry/formwork rates by element type. First variant = pre-Phase-2
+    // derived rates (22/33) so old saves and the W7 companion resolve unchanged.
+    // Rates JMD from the JIC 2025-2027 book (TRU Construction Estimator).
     variants: [
-      { id: 'wall-edge', label: 'Walls, edges, footings', rate: { mat: 22, lab: 33 } },
-      { id: 'column', label: 'Columns', rate: { mat: 30, lab: 55 } },
-      { id: 'beam', label: 'Beams', rate: { mat: 30, lab: 55 } },
-      { id: 'belt', label: 'Belt / stiffener', rate: { mat: 26, lab: 48 } },
-      { id: 'susp-floor', label: 'Suspended slab - floor', rate: { mat: 45, lab: 85 } },
-      { id: 'susp-stairs', label: 'Suspended slab - stairs', rate: { mat: 70, lab: 120 } },
-      { id: 'circular', label: 'Circular', rate: { mat: 70, lab: 120 } },
-      { id: 'manhole', label: 'Manhole sides and deck', rate: { mat: 55, lab: 100 } }
+      { id: 'wall-edge', label: 'Walls, edges, footings (JIC Carpentry #6)', rate: { mat: 22, lab: 33 } },
+      { id: 'belt', label: 'Belt and stiffener (JIC Carpentry #1)', rate: { mat: 26, lab: 48 } },
+      { id: 'column', label: 'Columns (JIC Carpentry #2)', rate: { mat: 30, lab: 55 } },
+      { id: 'beam', label: 'Beams (JIC Carpentry #3)', rate: { mat: 30, lab: 55 } },
+      { id: 'susp-floor', label: 'Suspended slab floor (JIC Carpentry #5)', rate: { mat: 30, lab: 55 } },
+      { id: 'susp-stairs', label: 'Suspended slab stairs (JIC Carpentry #4)', rate: { mat: 26, lab: 48 } },
+      { id: 'circular', label: 'Circular forms (JIC Carpentry #7)', rate: { mat: 32, lab: 58 } },
+      { id: 'manhole', label: 'Manhole sides and deck (JIC Carpentry #8)', rate: { mat: 40, lab: 74 } },
+      { id: 'new-fw', label: 'Make new formwork columns beam belt stiffener (JIC #9)', rate: { mat: 10, lab: 18 } }
     ] },
   'lining-out': { group: 'Groundworks', d1: '', d2: null, d3: null,
     q: (a) => ({ qty: a, unit: 'm', qtyLabel: 'Lining-out run' }),
@@ -246,7 +235,136 @@ const WORK = {
     rate: { mat: 2, lab: 8 }, matDesc: 'Cut and clear the line' },
   'post-holes': { group: 'Groundworks', d1: '', d2: null, d3: null,
     q: (a) => ({ qty: a, unit: 'each', qtyLabel: 'Post holes' }),
-    rate: { mat: 5, lab: 25 }, matDesc: 'Dig, set, backfill - per hole' }
+    rate: { mat: 5, lab: 25 }, matDesc: 'Dig, set, backfill - per hole' },
+  // ---- JIC 2025-2027 (owner 2026-10-02): all 90 rates from the official
+  // JIC rate book (TRU Construction Estimator). New trades below: scaffolding
+  // (Temporary and metal works family), joinery/skirtings, plumbing pipes,
+  // electrical conduit, welding. Tile and paint get JIC variants added above.
+  // Rates JMD; editable. Unit adapter (RATE_UNITS) handles ft2/ft run/lb/
+  // dozen/yd2 entry units; per-in and per-100mm welding uses count each.
+  scaffold:   { group: 'Temporary and metal works', d1: 'Scaffold area (m2)', d2: null, d3: null,
+    q: (a) => ({ qty: a, unit: 'm2', qtyLabel: 'Scaffold erected' }),
+    runit: 'ft2',
+    matDesc: 'Erect and strip scaffolding by height band (JIC 2025-2027, all 9 height bands)',
+    variants: [
+      { id: 'sc-10-unbraced', label: 'Up to 10 ft high unbraced (JIC Scaffolding #1)', rate: { mat: 2, lab: 1 } },
+      { id: 'sc-10-tied', label: 'Up to 10 ft high tied to building (JIC #2)', rate: { mat: 3, lab: 2 } },
+      { id: 'sc-10-20', label: '10 to 20 ft tied to building (JIC #3)', rate: { mat: 4, lab: 2 } },
+      { id: 'sc-20-30', label: '20 to 30 ft tied to building (JIC #4)', rate: { mat: 5, lab: 3 } },
+      { id: 'sc-30-40', label: '30 to 40 ft tied to building (JIC #5)', rate: { mat: 7, lab: 4 } },
+      { id: 'sc-40-50', label: '40 to 50 ft tied to building (JIC #6)', rate: { mat: 8, lab: 4 } },
+      { id: 'sc-50-60', label: '50 to 60 ft tied to building (JIC #7)', rate: { mat: 8, lab: 5 } },
+      { id: 'sc-60-70', label: '60 to 70 ft tied to building (JIC #8)', rate: { mat: 9, lab: 5 } },
+      { id: 'sc-70-80', label: '70 to 80 ft tied to building (JIC #9)', rate: { mat: 9, lab: 5 } }
+    ] },
+  joinery:    { group: 'Joinery', d1: 'Total run (m)', d2: null, d3: null,
+    q: (a) => ({ qty: a, unit: 'm', qtyLabel: 'Skirting run (linear)' }),
+    runit: 'ft run',
+    matDesc: 'Skirting boards by size profile and species (JIC 2025-2027, all 10 joinery rates)',
+    variants: [
+      { id: 'j-1x3-bev-wpp', label: '1x3 skirtings bevelled top WPP (JIC Joinery #1)', rate: { mat: 9, lab: 6 } },
+      { id: 'j-1x4-bev-wpp', label: '1x4 skirtings bevelled top WPP (JIC #2)', rate: { mat: 10, lab: 7 } },
+      { id: 'j-1x6-bev-wpp', label: '1x6 skirtings bevelled top WPP (JIC #3)', rate: { mat: 12, lab: 8 } },
+      { id: 'j-1x3-bev-mah', label: '1x3 skirtings bevelled to Mah etc. (JIC #4)', rate: { mat: 10, lab: 7 } },
+      { id: 'j-1x4-bev-mah', label: '1x4 skirtings bevelled to Mah etc. (JIC #5)', rate: { mat: 11, lab: 8 } },
+      { id: 'j-1x6-bev-mah', label: '1x6 skirtings bevelled to Mah etc. (JIC #6)', rate: { mat: 13, lab: 9 } },
+      { id: 'j-1x3-mold-wpp', label: '1x3 skirtings molded top WPP (JIC #7)', rate: { mat: 13, lab: 9 } },
+      { id: 'j-1x4-mold-wpp', label: '1x4 skirtings molded top WPP (JIC #8)', rate: { mat: 14, lab: 10 } },
+      { id: 'j-1x6-mold-wpp', label: '1x6 skirtings molded top WPP (JIC #9)', rate: { mat: 15, lab: 11 } },
+      { id: 'j-1x3-mold-mah', label: '1x3 skirtings molded top Mah etc. (JIC #10)', rate: { mat: 14, lab: 10 } }
+    ] },
+  'plumbing-pipe': { group: 'Plumbing', d1: 'Total run (m)', d2: null, d3: null,
+    q: (a) => ({ qty: a, unit: 'm', qtyLabel: 'Pipe run (linear)' }),
+    runit: 'ft run',
+    matDesc: 'Pipe laying by diameter (JIC 2025-2027, all 9 plumbing pipe rates)',
+    variants: [
+      { id: 'pp-6in', label: '6 in diameter pipes (JIC Plumbing #1)', rate: { mat: 44, lab: 29 } },
+      { id: 'pp-4in', label: '4 in diameter pipes (JIC #2)', rate: { mat: 33, lab: 22 } },
+      { id: 'pp-3in', label: '3 in diameter pipes (JIC #3)', rate: { mat: 31, lab: 21 } },
+      { id: 'pp-2in', label: '2 in diameter pipes (JIC #4)', rate: { mat: 20, lab: 14 } },
+      { id: 'pp-1.5in', label: '1.5 in diameter pipes (JIC #5)', rate: { mat: 17, lab: 12 } },
+      { id: 'pp-1.25in', label: '1.25 in diameter pipes (JIC #6)', rate: { mat: 17, lab: 12 } },
+      { id: 'pp-300mm', label: '300mm 12 ft push fit pipes (JIC #7)', rate: { mat: 89, lab: 60 } },
+      { id: 'pp-250mm', label: '250mm 10 ft push fit pipes (JIC #8)', rate: { mat: 72, lab: 49 } },
+      { id: 'pp-200mm', label: '200mm 8 ft push fit pipes (JIC #9)', rate: { mat: 56, lab: 38 } }
+    ] },
+  'electrical-conduit': { group: 'Electrical', d1: 'Total run (m)', d2: null, d3: null,
+    q: (a) => ({ qty: a, unit: 'm', qtyLabel: 'Conduit run (linear)' }),
+    runit: 'ft run',
+    matDesc: 'Conduit by diameter (JIC 2025-2027, all 9 electrical conduit rates)',
+    variants: [
+      { id: 'ec-0.5in', label: '1/2 in diameter pipe (JIC Electrical #1)', rate: { mat: 5, lab: 3 } },
+      { id: 'ec-0.75in', label: '3/4 in diameter pipe (JIC #2)', rate: { mat: 6, lab: 4 } },
+      { id: 'ec-1in-a', label: '1 in diameter pipe (JIC #3)', rate: { mat: 6, lab: 5 } },
+      { id: 'ec-1.25in-a', label: '1-1/4 in diameter pipe (JIC #4)', rate: { mat: 8, lab: 5 } },
+      { id: 'ec-1.5in-a', label: '1-1/2 in diameter pipe (JIC #5)', rate: { mat: 9, lab: 6 } },
+      { id: 'ec-2in', label: '2 in diameter pipe (JIC #6)', rate: { mat: 11, lab: 7 } },
+      { id: 'ec-1in-b', label: '1 in diameter pipe higher rate (JIC #7)', rate: { mat: 11, lab: 7 } },
+      { id: 'ec-1.25in-b', label: '1-1/4 in diameter pipe higher rate (JIC #8)', rate: { mat: 13, lab: 8 } },
+      { id: 'ec-1.5in-b', label: '1-1/2 in diameter pipe higher rate (JIC #9)', rate: { mat: 15, lab: 9 } }
+    ] },
+  welding:    { group: 'Temporary and metal works', d1: 'Total cut length (in)', d2: null, d3: null,
+    q: (a) => ({ qty: a, unit: 'in', qtyLabel: 'Cut length (inches)' }),
+    matDesc: 'Handle mark cut and sand smooth by thickness and method (JIC 2025-2027, all 9 welding rates)',
+    variants: [
+      { id: 'w-1/8-torch', label: '1/8 in thick metal using torch (JIC Welding #1)', rate: { mat: 50, lab: 0 } },
+      { id: 'w-1/4-torch', label: '1/4 in thick metal using torch (JIC #2)', rate: { mat: 64, lab: 0 } },
+      { id: 'w-3/8-torch', label: '3/8 in thick metal using torch (JIC #3)', rate: { mat: 70, lab: 0 } },
+      { id: 'w-1/2-torch', label: '1/2 in thick metal using torch (JIC #4)', rate: { mat: 78, lab: 0 } },
+      { id: 'w-5/8-torch', label: '5/8 in thick metal using torch (JIC #5)', rate: { mat: 88, lab: 0 } },
+      { id: 'w-3/4-torch', label: '3/4 in thick metal using torch (JIC #6)', rate: { mat: 97, lab: 0 } },
+      { id: 'w-1-torch', label: '1 in thick metal using torch (JIC #7)', rate: { mat: 117, lab: 0 } },
+      { id: 'w-1/16-cpsaw', label: '1/16 in thick metal using CPSAW (JIC #8)', rate: { mat: 25, lab: 0 } },
+      { id: 'w-1/8-cpsaw', label: '1/8 in thick metal using CPSAW (JIC #9)', rate: { mat: 39, lab: 0 } }
+    ] },
+  // ---- JIC 2025-2027 tiling variants (owner 2026-10-02) ----------
+  tile:       { group: 'Finishes', d1: 'Length (m)', d2: 'Width (m)', d3: null, waste: { def: 10, lbl: 'Cuts / waste' }, piece: { priceLabel: 'Price per tile', sizeLabel: 'Tile size - width x length (cm)', unit: 'cm', div: 'area', ph: 'e.g. 950 per tile', phSize: 'e.g. 30 x 60', plural: 'tiles' },
+    q: (a, b) => ({ qty: a * b, unit: 'm2', qtyLabel: 'Tiles' }),
+    rate: { mat: 24, lab: 32 }, matDesc: 'Tiles, adhesive, grout, trim',
+    // JIC 2025-2027: 9 tiling rates by stage, material and location.
+    variants: [
+      { id: 'standard', label: 'Terrazzo tiles lay and grout (JIC Tiling #1)', rate: { mat: 24, lab: 32 } },
+      { id: 'terrazzo-cut', label: 'Terrazzo tiles first cut (JIC #2)', rate: { mat: 11, lab: 15 } },
+      { id: 'terrazzo-polish', label: 'Terrazzo tile final cut and polish (JIC #3)', rate: { mat: 16, lab: 20 } },
+      { id: 'terrazzo-upper', label: 'Extra for terrazzo tiling upper floors (JIC #4)', rate: { mat: 2, lab: 3 } },
+      { id: 'tread-10', label: 'Terrazzo tiles to treads 10 in wide finished (JIC #5)', rate: { mat: 45, lab: 30 } },
+      { id: 'tread-11-12', label: 'Terrazzo tiles to treads 11-12 in wide finished (JIC #6)', rate: { mat: 57, lab: 37 } },
+      { id: 'riser-6-8', label: 'Terrazzo tiles to riser 6-8 in high (JIC #7)', rate: { mat: 50, lab: 33 } },
+      { id: 'marble-floor', label: 'Lay and grout marble tiles 12 in plus edges floors (JIC #8)', rate: { mat: 42, lab: 56 } },
+      { id: 'marble-wall', label: 'Lay and grout marble tiles 12 in plus cutting walls (JIC #9)', rate: { mat: 45, lab: 59 } }
+    ] },
+  // ---- JIC 2025-2027 painting variants (owner 2026-10-02) ----------
+  paint:      { group: 'Finishes', d1: 'Length (m)', d2: 'Height (m)', d3: null, openings: true, piece: { priceLabel: 'Price per container', sizeLabel: 'Container yield (litres)', single: true, div: 'volume', qtyUnit: 'L', ph: 'e.g. 9000 per gallon-can', phSize: 'e.g. 3.785' },
+    q: (a, b) => ({ qty: a * b * 2 / 10, unit: 'L', qtyLabel: 'Paint (2 coats at 10 m2/L)' }),
+    rate: { mat: 14, lab: 11 }, matDesc: 'Emulsion, primer, rollers',
+    // JIC 2025-2027: 9 painting rates by surface, coats and location.
+    variants: [
+      { id: 'wall-1coat', label: 'Emulsion paint wall one coat (JIC Painting #1)', rate: { mat: 14, lab: 11 } },
+      { id: 'wall-2coat', label: 'Emulsion paint wall two coats (JIC #2)', rate: { mat: 28, lab: 22 } },
+      { id: 'pebble-1coat', label: 'Emulsion paint pebble dash one coat (JIC #3)', rate: { mat: 19, lab: 15 } },
+      { id: 'pebble-2coat', label: 'Emulsion paint pebble dash two coats (JIC #4)', rate: { mat: 36, lab: 29 } },
+      { id: 'cutting-in', label: 'Emulsion paint cutting to line (JIC #5)', rate: { mat: 4, lab: 3 } },
+      { id: 'skirting-1coat', label: 'Emulsion paint skirting 3-4 in one coat (JIC #6)', rate: { mat: 4, lab: 3 } },
+      { id: 'skirting-2coat', label: 'Emulsion paint skirting 3-4 in two coats (JIC #7)', rate: { mat: 11, lab: 8 } },
+      { id: 'ceiling-1coat', label: 'Emulsion paint ceiling one coat (JIC #8)', rate: { mat: 16, lab: 12 } },
+      { id: 'ceiling-2coat', label: 'Emulsion paint ceiling two coats (JIC #9)', rate: { mat: 31, lab: 24 } }
+    ] },
+  // ---- JIC 2025-2027 steelwork: fabric mesh (JIC Steelwork #6) ----
+  'fabric-mesh': { group: 'Structure', d1: 'Mesh area (m2)', d2: null, d3: null,
+    q: (a) => ({ qty: a, unit: 'm2', qtyLabel: 'Mesh area' }),
+    runit: 'yd2',
+    matDesc: 'Fabric mesh lapped and tied (JIC Steelwork #6, 2025-2027)',
+    rate: { mat: 5.5, lab: 2.5 } },
+  // ---- JIC 2025-2027 stirrups (JIC Steelwork #7-9) - extends existing ----
+  stirrups:    { group: 'Structure', d1: 'Stirrups (count)', d2: null, d3: null,
+    q: (a) => ({ qty: a, unit: 'each', qtyLabel: 'Stirrups' }),
+    runit: 'dozen',
+    matDesc: 'Links cut bent and fixed by size (JIC 2025-2027, 3 stirrup rates)',
+    variants: [
+      { id: '1-4', label: '1/4 in links (JIC Steelwork #7)', rate: { mat: 6, lab: 12 } },
+      { id: '3-8', label: '3/8 in links (JIC Steelwork #8)', rate: { mat: 8, lab: 15 } },
+      { id: '3-8-lg', label: '3/8 in links large girth over 6 ft (JIC Steelwork #9)', rate: { mat: 11, lab: 19 } }
+    ] },
 };
 
 // ---- W2 2026-10-01: COMPANION WORK SUGGESTIONS (the punch-list reality) --
@@ -1012,6 +1130,189 @@ function renderBooks() {
     exp.hidden = !(a && bookExpired(a));
     if (a && bookExpired(a)) exp.textContent = 'The rate book "' + a.name + '" expired on ' + a.effective_to + ' - its rates are shown as they are. Import a newer book when you have one.';
   }
+}
+// ---- JIC 2025-2027 rate book card (owner 2026-10-02) ----
+// Shows the full Jamaica rate book to the user in a modal-style card with
+// imperial/metric toggle. The JIC_RATES data carries all 90 line items from
+// the official JIC 2025-2027 book (TRU Construction Estimator, all amounts JMD).
+const JIC_RATES = [
+  // Excavation (9 items)
+  { trade: 'Excavation', ref: 'JIC #1', desc: 'Compacted earth to 5 ft deep', impUnit: 'Yd.Cu.', impRate: 1428, metUnit: 'm\u00B3', metRate: 1868 },
+  { trade: 'Excavation', ref: 'JIC #2', desc: 'Asphaltic concrete (Barber Green)', impUnit: 'Yd.Cu.', impRate: 3264, metUnit: 'm\u00B3', metRate: 4270 },
+  { trade: 'Excavation', ref: 'JIC #3', desc: 'Compacted marl up to 5 ft deep', impUnit: 'Yd.Cu.', impRate: 1904, metUnit: 'm\u00B3', metRate: 2491 },
+  { trade: 'Excavation', ref: 'JIC #4', desc: 'Compacted sand up to 5 ft deep', impUnit: 'Yd.Cu.', impRate: 1143, metUnit: 'm\u00B3', metRate: 1494 },
+  { trade: 'Excavation', ref: 'JIC #5', desc: 'Stiff clay up to 5 ft deep', impUnit: 'Yd.Cu.', impRate: 1632, metUnit: 'm\u00B3', metRate: 2135 },
+  { trade: 'Excavation', ref: 'JIC #6', desc: 'Stiff clay 5 to 10 ft deep', impUnit: 'Yd.Cu.', impRate: 1904, metUnit: 'm\u00B3', metRate: 2491 },
+  { trade: 'Excavation', ref: 'JIC #7', desc: 'Rock/concrete no compressor', impUnit: 'Yd.Cu.', impRate: 11425, metUnit: 'm\u00B3', metRate: 14944 },
+  { trade: 'Excavation', ref: 'JIC #8', desc: 'Rock/concrete compressor incl. labourers', impUnit: 'Yd.Cu.', impRate: 7141, metUnit: 'm\u00B3', metRate: 9340 },
+  { trade: 'Excavation', ref: 'JIC #9', desc: 'Rock/concrete compressor labourers only', impUnit: 'Yd.Cu.', impRate: 2856, metUnit: 'm\u00B3', metRate: 3736 },
+  // Carpentry Formwork (9 items)
+  { trade: 'Carpentry (Formwork)', ref: 'JIC #1', desc: 'Erect and strip forms to belt and stiffener', impUnit: 'Ft.Sq.', impRate: 177, metUnit: 'm\u00B2', metRate: 1908 },
+  { trade: 'Carpentry (Formwork)', ref: 'JIC #2', desc: 'Erect and strip forms to columns', impUnit: 'Ft.Sq.', impRate: 189, metUnit: 'm\u00B2', metRate: 2035 },
+  { trade: 'Carpentry (Formwork)', ref: 'JIC #3', desc: 'Erect and strip forms to beams', impUnit: 'Ft.Sq.', impRate: 189, metUnit: 'm\u00B2', metRate: 2035 },
+  { trade: 'Carpentry (Formwork)', ref: 'JIC #4', desc: 'Erect and strip forms to suspended slabs (stairs)', impUnit: 'Ft.Sq.', impRate: 158, metUnit: 'm\u00B2', metRate: 1696 },
+  { trade: 'Carpentry (Formwork)', ref: 'JIC #5', desc: 'Erect and strip forms to suspended slabs (floor)', impUnit: 'Ft.Sq.', impRate: 189, metUnit: 'm\u00B2', metRate: 2035 },
+  { trade: 'Carpentry (Formwork)', ref: 'JIC #6', desc: 'Erect and strip forms to walls', impUnit: 'Ft.Sq.', impRate: 168, metUnit: 'm\u00B2', metRate: 1809 },
+  { trade: 'Carpentry (Formwork)', ref: 'JIC #7', desc: 'Erect and strip circular forms', impUnit: 'Ft.Sq.', impRate: 197, metUnit: 'm\u00B2', metRate: 2124 },
+  { trade: 'Carpentry (Formwork)', ref: 'JIC #8', desc: 'Erect and strip forms to sides and deck of manholes', impUnit: 'Ft.Sq.', impRate: 249, metUnit: 'm\u00B2', metRate: 2684 },
+  { trade: 'Carpentry (Formwork)', ref: 'JIC #9', desc: 'Make new formwork (columns, beam, belt, stiffener)', impUnit: 'Ft.Sq.', impRate: 60, metUnit: 'm\u00B2', metRate: 643 },
+  // Steelwork (9 items)
+  { trade: 'Steelwork', ref: 'JIC #1', desc: '3/8 in mild steel rebar', impUnit: 'Lb.', impRate: 30, metUnit: 'Kg.', metRate: 67 },
+  { trade: 'Steelwork', ref: 'JIC #2', desc: '1/2 in mild steel rebar', impUnit: 'Lb.', impRate: 30, metUnit: 'Kg.', metRate: 67 },
+  { trade: 'Steelwork', ref: 'JIC #3', desc: '5/8 in mild steel rebar', impUnit: 'Lb.', impRate: 30, metUnit: 'Kg.', metRate: 67 },
+  { trade: 'Steelwork', ref: 'JIC #4', desc: '3/4 in mild steel rebar', impUnit: 'Lb.', impRate: 30, metUnit: 'Kg.', metRate: 67 },
+  { trade: 'Steelwork', ref: 'JIC #5', desc: '1 in mild steel rebar', impUnit: 'Lb.', impRate: 30, metUnit: 'Kg.', metRate: 67 },
+  { trade: 'Steelwork', ref: 'JIC #6', desc: 'Fabric', impUnit: 'Yd.Sq.', impRate: 125, metUnit: 'm\u00B2', metRate: 276 },
+  { trade: 'Steelwork', ref: 'JIC #7', desc: '1/4 in stirrups', impUnit: 'Doz.', impRate: 699, metUnit: 'Doz.', metRate: 699 },
+  { trade: 'Steelwork', ref: 'JIC #8', desc: '3/8 in stirrups', impUnit: 'Doz.', impRate: 734, metUnit: 'Doz.', metRate: 734 },
+  { trade: 'Steelwork', ref: 'JIC #9', desc: '3/8 in stirrups (large, over 6 ft girth)', impUnit: 'Doz.', impRate: 917, metUnit: 'Doz.', metRate: 917 },
+  // Masonry (9 items)
+  { trade: 'Masonry', ref: 'JIC #1', desc: 'Lay 8 in blocks fill all pockets GF to FF', impUnit: 'Yd.Sq.', impRate: 1461, metUnit: 'm\u00B2', metRate: 1747 },
+  { trade: 'Masonry', ref: 'JIC #2', desc: 'Lay 8 in blocks fill all pockets FF and above', impUnit: 'Yd.Sq.', impRate: 1704, metUnit: 'm\u00B2', metRate: 2038 },
+  { trade: 'Masonry', ref: 'JIC #3', desc: 'Lay 8 in blocks fill all pockets manholes drains', impUnit: 'Yd.Sq.', impRate: 1947, metUnit: 'm\u00B2', metRate: 2329 },
+  { trade: 'Masonry', ref: 'JIC #4', desc: 'Lay 8 in blocks fill alternate pockets GF to FF', impUnit: 'Yd.Sq.', impRate: 1239, metUnit: 'm\u00B2', metRate: 1482 },
+  { trade: 'Masonry', ref: 'JIC #5', desc: 'Lay 8 in blocks fill alternate pockets FF and above', impUnit: 'Yd.Sq.', impRate: 1410, metUnit: 'm\u00B2', metRate: 1687 },
+  { trade: 'Masonry', ref: 'JIC #6', desc: 'Lay 6 in blocks fill all pockets GF to FF', impUnit: 'Yd.Sq.', impRate: 1278, metUnit: 'm\u00B2', metRate: 1529 },
+  { trade: 'Masonry', ref: 'JIC #7', desc: 'Lay 6 in blocks fill all pockets FF and above', impUnit: 'Yd.Sq.', impRate: 1461, metUnit: 'm\u00B2', metRate: 1747 },
+  { trade: 'Masonry', ref: 'JIC #8', desc: 'Lay 6 in blocks fill all pockets manholes drains gully basins', impUnit: 'Yd.Sq.', impRate: 1704, metUnit: 'm\u00B2', metRate: 2038 },
+  { trade: 'Masonry', ref: 'JIC #9', desc: 'Lay 6 in blocks fill alternate pockets GF to FF', impUnit: 'Yd.Sq.', impRate: 1105, metUnit: 'm\u00B2', metRate: 1322 },
+  // Scaffolding (9 items)
+  { trade: 'Scaffolding', ref: 'JIC #1', desc: 'Erect scaffolding up to 10 ft high unbraced', impUnit: 'Ft.Sq.', impRate: 16, metUnit: 'm\u00B2', metRate: 174 },
+  { trade: 'Scaffolding', ref: 'JIC #2', desc: 'Erect scaffolding up to 10 ft high ties to building', impUnit: 'Ft.Sq.', impRate: 25, metUnit: 'm\u00B2', metRate: 269 },
+  { trade: 'Scaffolding', ref: 'JIC #3', desc: 'Erect scaffolding 10 to 20 ft tied to building', impUnit: 'Ft.Sq.', impRate: 29, metUnit: 'm\u00B2', metRate: 314 },
+  { trade: 'Scaffolding', ref: 'JIC #4', desc: 'Erect scaffolding 20 to 30 ft tied to building', impUnit: 'Ft.Sq.', impRate: 39, metUnit: 'm\u00B2', metRate: 418 },
+  { trade: 'Scaffolding', ref: 'JIC #5', desc: 'Erect scaffolding 30 to 40 ft tied to building', impUnit: 'Ft.Sq.', impRate: 54, metUnit: 'm\u00B2', metRate: 579 },
+  { trade: 'Scaffolding', ref: 'JIC #6', desc: 'Erect scaffolding 40 to 50 ft tied to building', impUnit: 'Ft.Sq.', impRate: 60, metUnit: 'm\u00B2', metRate: 646 },
+  { trade: 'Scaffolding', ref: 'JIC #7', desc: 'Erect scaffolding 50 to 60 ft tied to building', impUnit: 'Ft.Sq.', impRate: 64, metUnit: 'm\u00B2', metRate: 685 },
+  { trade: 'Scaffolding', ref: 'JIC #8', desc: 'Erect scaffolding 60 to 70 ft tied to building', impUnit: 'Ft.Sq.', impRate: 68, metUnit: 'm\u00B2', metRate: 729 },
+  { trade: 'Scaffolding', ref: 'JIC #9', desc: 'Erect scaffolding 70 to 80 ft tied to building', impUnit: 'Ft.Sq.', impRate: 70, metUnit: 'm\u00B2', metRate: 753 },
+  // Tiling (9 items)
+  { trade: 'Tiling', ref: 'JIC #1', desc: 'Terrazzo tiles lay and grout', impUnit: 'Yd.Sq.', impRate: 1715, metUnit: 'm\u00B2', metRate: 2051 },
+  { trade: 'Tiling', ref: 'JIC #2', desc: 'Terrazzo tiles first cut', impUnit: 'Yd.Sq.', impRate: 778, metUnit: 'm\u00B2', metRate: 931 },
+  { trade: 'Tiling', ref: 'JIC #3', desc: 'Terrazzo tile final cut and polish', impUnit: 'Yd.Sq.', impRate: 1167, metUnit: 'm\u00B2', metRate: 1396 },
+  { trade: 'Tiling', ref: 'JIC #4', desc: 'Extra for terrazzo tiling to upper floors', impUnit: 'Yd.Sq.', impRate: 125, metUnit: 'm\u00B2', metRate: 149 },
+  { trade: 'Tiling', ref: 'JIC #5', desc: 'Terrazzo tiles to treads 10 in wide finished', impUnit: 'Ft.Run', impRate: 414, metUnit: 'm', metRate: 1357 },
+  { trade: 'Tiling', ref: 'JIC #6', desc: 'Terrazzo tiles to treads 11 to 12 in wide finished', impUnit: 'Ft.Run', impRate: 522, metUnit: 'm', metRate: 1713 },
+  { trade: 'Tiling', ref: 'JIC #7', desc: 'Terrazzo tiles to riser 6 to 8 in high', impUnit: 'Ft.Run', impRate: 458, metUnit: 'm', metRate: 1502 },
+  { trade: 'Tiling', ref: 'JIC #8', desc: 'Lay and grout marble tiles 12 in plus edges floors', impUnit: 'Yd.Sq.', impRate: 3098, metUnit: 'm\u00B2', metRate: 3705 },
+  { trade: 'Tiling', ref: 'JIC #9', desc: 'Lay and grout marble tiles 12 in plus cutting walls', impUnit: 'Yd.Sq.', impRate: 3335, metUnit: 'm\u00B2', metRate: 3988 },
+  // Painting (9 items)
+  { trade: 'Painting', ref: 'JIC #1', desc: 'Emulsion paint wall one coat', impUnit: 'Yd.Sq.', impRate: 107, metUnit: 'm\u00B2', metRate: 128 },
+  { trade: 'Painting', ref: 'JIC #2', desc: 'Emulsion paint wall two coats', impUnit: 'Yd.Sq.', impRate: 206, metUnit: 'm\u00B2', metRate: 246 },
+  { trade: 'Painting', ref: 'JIC #3', desc: 'Emulsion paint pebble dash one coat', impUnit: 'Yd.Sq.', impRate: 140, metUnit: 'm\u00B2', metRate: 167 },
+  { trade: 'Painting', ref: 'JIC #4', desc: 'Emulsion paint pebble dash two coats', impUnit: 'Yd.Sq.', impRate: 268, metUnit: 'm\u00B2', metRate: 320 },
+  { trade: 'Painting', ref: 'JIC #5', desc: 'Emulsion paint cutting to line', impUnit: 'Ft.Run', impRate: 9, metUnit: 'm', metRate: 31 },
+  { trade: 'Painting', ref: 'JIC #6', desc: 'Emulsion paint skirting 3 to 4 in one coat', impUnit: 'Ft.Run', impRate: 9, metUnit: 'm', metRate: 31 },
+  { trade: 'Painting', ref: 'JIC #7', desc: 'Emulsion paint skirting 3 to 4 in two coats', impUnit: 'Ft.Run', impRate: 26, metUnit: 'm', metRate: 86 },
+  { trade: 'Painting', ref: 'JIC #8', desc: 'Emulsion paint ceiling one coat', impUnit: 'Yd.Sq.', impRate: 119, metUnit: 'm\u00B2', metRate: 142 },
+  { trade: 'Painting', ref: 'JIC #9', desc: 'Emulsion paint ceiling two coats', impUnit: 'Yd.Sq.', impRate: 233, metUnit: 'm\u00B2', metRate: 278 },
+  // Joinery Skirtings (10 items)
+  { trade: 'Joinery (Skirtings)', ref: 'JIC #1', desc: '1x3 skirtings bevelled top WPP', impUnit: 'Ft.Run', impRate: 66, metUnit: 'm', metRate: 217 },
+  { trade: 'Joinery (Skirtings)', ref: 'JIC #2', desc: '1x4 skirtings bevelled top WPP', impUnit: 'Ft.Run', impRate: 73, metUnit: 'm', metRate: 241 },
+  { trade: 'Joinery (Skirtings)', ref: 'JIC #3', desc: '1x6 skirtings bevelled top WPP', impUnit: 'Ft.Run', impRate: 90, metUnit: 'm', metRate: 295 },
+  { trade: 'Joinery (Skirtings)', ref: 'JIC #4', desc: '1x3 skirtings bevelled to Mah etc.', impUnit: 'Ft.Run', impRate: 73, metUnit: 'm', metRate: 241 },
+  { trade: 'Joinery (Skirtings)', ref: 'JIC #5', desc: '1x4 skirtings bevelled to Mah etc.', impUnit: 'Ft.Run', impRate: 84, metUnit: 'm', metRate: 276 },
+  { trade: 'Joinery (Skirtings)', ref: 'JIC #6', desc: '1x6 skirtings bevelled to Mah etc.', impUnit: 'Ft.Run', impRate: 99, metUnit: 'm', metRate: 325 },
+  { trade: 'Joinery (Skirtings)', ref: 'JIC #7', desc: '1x3 skirtings molded top WPP', impUnit: 'Ft.Run', impRate: 99, metUnit: 'm', metRate: 325 },
+  { trade: 'Joinery (Skirtings)', ref: 'JIC #8', desc: '1x4 skirtings molded top WPP', impUnit: 'Ft.Run', impRate: 110, metUnit: 'm', metRate: 361 },
+  { trade: 'Joinery (Skirtings)', ref: 'JIC #9', desc: '1x6 skirtings molded top WPP', impUnit: 'Ft.Run', impRate: 122, metUnit: 'm', metRate: 401 },
+  { trade: 'Joinery (Skirtings)', ref: 'JIC #10', desc: '1x3 skirtings molded top Mah etc.', impUnit: 'Ft.Run', impRate: 110, metUnit: 'm', metRate: 361 },
+  // Plumbing (9 items)
+  { trade: 'Plumbing', ref: 'JIC #1', desc: '6 in diameter pipes', impUnit: 'Ft.Run', impRate: 323, metUnit: 'm', metRate: 1060 },
+  { trade: 'Plumbing', ref: 'JIC #2', desc: '4 in diameter pipes', impUnit: 'Ft.Run', impRate: 244, metUnit: 'm', metRate: 801 },
+  { trade: 'Plumbing', ref: 'JIC #3', desc: '3 in diameter pipes', impUnit: 'Ft.Run', impRate: 229, metUnit: 'm', metRate: 753 },
+  { trade: 'Plumbing', ref: 'JIC #4', desc: '2 in diameter pipes', impUnit: 'Ft.Run', impRate: 151, metUnit: 'm', metRate: 495 },
+  { trade: 'Plumbing', ref: 'JIC #5', desc: '1.5 in diameter pipes', impUnit: 'Ft.Run', impRate: 125, metUnit: 'm', metRate: 411 },
+  { trade: 'Plumbing', ref: 'JIC #6', desc: '1.25 in diameter pipes', impUnit: 'Ft.Run', impRate: 125, metUnit: 'm', metRate: 411 },
+  { trade: 'Plumbing', ref: 'JIC #7', desc: '300mm 12 ft push fit pipes', impUnit: 'Ft.Run', impRate: 656, metUnit: 'm', metRate: 2151 },
+  { trade: 'Plumbing', ref: 'JIC #8', desc: '250mm 10 ft push fit pipes', impUnit: 'Ft.Run', impRate: 534, metUnit: 'm', metRate: 1751 },
+  { trade: 'Plumbing', ref: 'JIC #9', desc: '200mm 8 ft push fit pipes', impUnit: 'Ft.Run', impRate: 417, metUnit: 'm', metRate: 1369 },
+  // Electrical Conduit (9 items)
+  { trade: 'Electrical (Conduit)', ref: 'JIC #1', desc: '1/2 in diameter pipe', impUnit: 'Ft.Run', impRate: 35.73, metUnit: 'm', metRate: 117.23 },
+  { trade: 'Electrical (Conduit)', ref: 'JIC #2', desc: '3/4 in diameter pipe', impUnit: 'Ft.Run', impRate: 41.94, metUnit: 'm', metRate: 137.62 },
+  { trade: 'Electrical (Conduit)', ref: 'JIC #3', desc: '1 in diameter pipe', impUnit: 'Ft.Run', impRate: 48.23, metUnit: 'm', metRate: 158.26 },
+  { trade: 'Electrical (Conduit)', ref: 'JIC #4', desc: '1-1/4 in diameter pipe', impUnit: 'Ft.Run', impRate: 56.75, metUnit: 'm', metRate: 186.19 },
+  { trade: 'Electrical (Conduit)', ref: 'JIC #5', desc: '1-1/2 in diameter pipe', impUnit: 'Ft.Run', impRate: 68.91, metUnit: 'm', metRate: 226.08 },
+  { trade: 'Electrical (Conduit)', ref: 'JIC #6', desc: '2 in diameter pipe', impUnit: 'Ft.Run', impRate: 80.39, metUnit: 'm', metRate: 263.76 },
+  { trade: 'Electrical (Conduit)', ref: 'JIC #7', desc: '1 in diameter pipe (higher rate)', impUnit: 'Ft.Run', impRate: 83.89, metUnit: 'm', metRate: 275.23 },
+  { trade: 'Electrical (Conduit)', ref: 'JIC #8', desc: '1-1/4 in diameter pipe (higher rate)', impUnit: 'Ft.Run', impRate: 96.47, metUnit: 'm', metRate: 316.52 },
+  { trade: 'Electrical (Conduit)', ref: 'JIC #9', desc: '1-1/2 in diameter pipe (higher rate)', impUnit: 'Ft.Run', impRate: 107.19, metUnit: 'm', metRate: 351.68 },
+  // Welding (9 items)
+  { trade: 'Welding', ref: 'JIC #1', desc: '1/8 in thick metal using torch', impUnit: 'In.', impRate: 50, metUnit: '100mm', metRate: 198 },
+  { trade: 'Welding', ref: 'JIC #2', desc: '1/4 in thick metal using torch', impUnit: 'In.', impRate: 64, metUnit: '100mm', metRate: 251 },
+  { trade: 'Welding', ref: 'JIC #3', desc: '3/8 in thick metal using torch', impUnit: 'In.', impRate: 70, metUnit: '100mm', metRate: 276 },
+  { trade: 'Welding', ref: 'JIC #4', desc: '1/2 in thick metal using torch', impUnit: 'In.', impRate: 78, metUnit: '100mm', metRate: 306 },
+  { trade: 'Welding', ref: 'JIC #5', desc: '5/8 in thick metal using torch', impUnit: 'In.', impRate: 88, metUnit: '100mm', metRate: 345 },
+  { trade: 'Welding', ref: 'JIC #6', desc: '3/4 in thick metal using torch', impUnit: 'In.', impRate: 97, metUnit: '100mm', metRate: 383 },
+  { trade: 'Welding', ref: 'JIC #7', desc: '1 in thick metal using torch', impUnit: 'In.', impRate: 117, metUnit: '100mm', metRate: 460 },
+  { trade: 'Welding', ref: 'JIC #8', desc: '1/16 in thick metal using CPSAW', impUnit: 'In.', impRate: 25, metUnit: '100mm', metRate: 99 },
+  { trade: 'Welding', ref: 'JIC #9', desc: '1/8 in thick metal using CPSAW', impUnit: 'In.', impRate: 39, metUnit: '100mm', metRate: 153 }
+];
+let _rateBookUnits = 'metric';
+// BUG FIX (owner directive 2026-10-02, caught by the new RB gates): this
+// function was a TOGGLE - `if (existing) { existing.remove(); return; }` -
+// but the unit buttons inside the card also called it to RE-RENDER in the
+// other unit system. So clicking "Imperial" or "Metric" silently CLOSED the
+// rate book instead of switching it. The toggle now lives in the caller
+// (openRateBook); renderRateBookCard only ever renders.
+function renderRateBookCard() {
+  const existing = document.getElementById('calc-ratebook-card');
+  if (existing) existing.remove();
+  const card = document.createElement('div');
+  card.id = 'calc-ratebook-card';
+  card.className = 'card';
+  card.setAttribute('role', 'dialog');
+  card.setAttribute('aria-label', 'Jamaica rate book 2025-2027');
+  const curUnit = _rateBookUnits === 'imperial' ? 'imp' : 'met';
+  const unitLabel = _rateBookUnits === 'imperial' ? 'Imperial (JMD)' : 'Metric (JMD)';
+  let rows = '';
+  let lastTrade = '';
+  JIC_RATES.forEach(function(r) {
+    if (r.trade !== lastTrade) {
+      rows += '<tr class="rr-trade"><td colspan="4">' + esc(r.trade) + '</td></tr>';
+      lastTrade = r.trade;
+    }
+    const rateVal = curUnit === 'imp' ? r.impRate : r.metRate;
+    const unitVal = curUnit === 'imp' ? r.impUnit : r.metUnit;
+    rows += '<tr><td>' + esc(r.ref) + '</td><td>' + esc(r.desc) + '</td><td>' + esc(unitVal) + '</td><td class="rr-rate">J$' + Number(rateVal).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + '</td></tr>';
+  });
+  card.innerHTML = '<div class="rr-head">' +
+    '<h2 class="card-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-book"></use></svg> Jamaica Rate Book 2025-2027</h2>' +
+    // Counts are DERIVED from JIC_RATES, never typed by hand. The copy used
+    // to hard-code "90 line items across 11 trades" while the table actually
+    // held 100 rows - a stale number shown to every reader. Deriving it makes
+    // the sentence impossible to drift from the data (owner directive
+    // 2026-10-02: plain, honest copy).
+    '<p class="rr-sub">' + JIC_RATES.length + ' line items across ' +
+      Object.keys(JIC_RATES.reduce(function(set, r) { set[r.trade] = 1; return set; }, {})).length +
+      ' trades. All amounts in Jamaican dollars. Source: TRU Construction Estimator.</p>' +
+    '<div class="bcp-seg" role="group" aria-label="Rate book units">' +
+    '<button type="button" class="bcp-seg-btn' + (_rateBookUnits === 'metric' ? ' active' : '') + '" data-action="rrUnits" data-units="metric">Metric</button>' +
+    '<button type="button" class="bcp-seg-btn' + (_rateBookUnits === 'imperial' ? ' active' : '') + '" data-action="rrUnits" data-units="imperial">Imperial</button>' +
+    '</div>' +
+    '<button type="button" class="btn btn-n" data-action="rrClose">Close</button>' +
+    '</div>' +
+    '<table class="rr-table"><thead><tr><th>Ref</th><th>Description</th><th>Unit</th><th>Rate</th></tr></thead><tbody>' + rows + '</tbody></table>';
+  document.body.appendChild(card);
+  const close = function() { const c = document.getElementById('calc-ratebook-card'); if (c) c.remove(); };
+  card.querySelector('[data-action="rrClose"]').addEventListener('click', close);
+  card.querySelectorAll('[data-action="rrUnits"]').forEach(function(b) {
+    b.addEventListener('click', function() {
+      const next = b.getAttribute('data-units');
+      if (next === _rateBookUnits) return;   // already showing this system
+      _rateBookUnits = next;
+      renderRateBookCard();
+    });
+  });
+}
+// The top-bar link: opens the card, or closes it if it is already open.
+function showRateBookCard() {
+  if (document.getElementById('calc-ratebook-card')) {
+    const c = document.getElementById('calc-ratebook-card');
+    if (c) c.remove();
+    return;
+  }
+  renderRateBookCard();
 }
 // E1+E4 together: the rate a fresh prefill should show for a work item,
 // ALREADY in the estimate currency. Order: active book rate (workKey ->
@@ -2482,6 +2783,8 @@ const ACTIONS = {
   calcGuideNext: function() { guideIdx = (guideIdx + 1) % GUIDE_STEPS.length; renderGuide(); },
   calcGuideClose: function() { try { localStorage.setItem('mmgr_calc_guide_open', '0'); } catch (e) {} renderGuide(); },
   calcGuideOpen: function() { try { localStorage.setItem('mmgr_calc_guide_open', '1'); } catch (e) {} renderGuide(); },
+  // ---- Jamaica rate book card (owner 2026-10-02) ----
+  openRateBook: function() { showRateBookCard(); },
   // ---- First-visit tutorial actions (owner 2026-09-30) ----
   calcTourStart: function() { tourIdx = 0; const n = $('calc-tour-nudge'); if (n) n.hidden = true; tourShow(); },
   calcTourNext: function() { if (tourIdx < 0) return; if (tourIdx >= TOUR_STEPS.length - 1) { tourEnd(); return; } tourIdx++; tourShow(); },
@@ -3234,11 +3537,14 @@ const FAMILIES = {
   envelope: { label: 'Envelope - roof, render, paint, drywall', hint: 'Weather-proofing skins: roof coverings, renders, paint and drywall. Cart-away is offered to clear the offcuts.' },
   finishes: { label: 'Finishes - tiling, drives, fencing, trims', hint: 'What everyone sees and touches: tiling, drives, fencing and trims. Fencing offers debrushing and post holes.' },
   plumbing: { label: 'Plumbing - pipe runs, fixtures', hint: 'Water in, waste out: pipe runs, fixtures and rough-in packages.' },
-  electrical: { label: 'Electrical - points, conduit, panels', hint: 'Power and light: wiring points, conduit runs and panels.' }
+  electrical: { label: 'Electrical - points, conduit, panels', hint: 'Power and light: wiring points, conduit runs and panels.' },
+  // JIC 2025-2027 (owner 2026-10-02): new families for the 90-rate book
+  'temporary-metal': { label: 'Temporary and metal works - scaffolding, welding', hint: 'Temporary access and metal work: scaffolding by height band and welding by thickness and method.' },
+  joinery: { label: 'Joinery - skirtings', hint: 'Skirtings and baseboards by size, profile and wood species.' }
 };
 const WORK_FAMILY = {
   siteprep: 'groundworks', excav: 'groundworks', slab: 'groundworks', footings: 'groundworks', 'septic-tank': 'groundworks',
-  formwork: 'groundworks', 'concrete-labour': 'groundworks',
+  formwork: 'groundworks', 'concrete-labour': 'groundworks', 'post-holes': 'groundworks',
   blockwall: 'structure', brickwall: 'structure', framing: 'structure', rebar: 'structure',
   'rebar-size': 'structure', stirrups: 'structure', 'fabric-mesh': 'structure',
   roof: 'envelope', 'shingle-roof': 'envelope', render: 'envelope', paint: 'envelope', drywall: 'envelope',
@@ -3246,7 +3552,10 @@ const WORK_FAMILY = {
   tile: 'finishes', 'concrete-drive': 'finishes', fencing: 'finishes', skirt: 'finishes',
   door: 'finishes', ceiling: 'finishes', 'floor-screed': 'finishes', cabinet: 'finishes',
   'pipe-supply': 'plumbing', 'pipe-drain': 'plumbing', fixture: 'plumbing', 'bath-rough': 'plumbing', 'water-heater': 'plumbing',
-  'wire-point': 'electrical', conduit: 'electrical', panel: 'electrical'
+  'wire-point': 'electrical', conduit: 'electrical', panel: 'electrical',
+  // JIC 2025-2027 (owner 2026-10-02): new trades added to the picker
+  scaffold: 'temporary-metal', joinery: 'joinery', 'plumbing-pipe': 'plumbing',
+  'electrical-conduit': 'electrical', welding: 'temporary-metal'
 };
 const FKEY = 'mmgr_calc_family';
 // The family select only filters the VIEW: non-family optgroups hide while

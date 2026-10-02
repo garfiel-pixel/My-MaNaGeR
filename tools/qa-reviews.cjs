@@ -42,6 +42,7 @@ const { spawn, execFileSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+const http = require('http');
 
 // QA_PORT: CI assigns each self-hosting suite a UNIQUE port (see qa-presence).
 const PORT = parseInt(process.env.QA_PORT || '8795', 10);
@@ -53,6 +54,40 @@ const ADMIN_CODE = 'qa-admin-rv-31e8';
 
 const log = (s) => { process.stdout.write('[rv] ' + s + '\n'); };
 const delay = ms => new Promise(r => setTimeout(r, ms));
+
+// ---- Turnstile siteverify STUB (owner 2026-10-02) -------------------------
+// The real CF siteverify endpoint needs a live widget token, so the gates
+// point the Worker's TURNSTILE_VERIFY_URL at this local stub instead. It
+// answers exactly like CF does: {success:true} for the one good token,
+// {success:false,"error-codes":[...]} for anything else. The Worker's own
+// parsing, failing CLOSED on a network error, and the secret check are what
+// these gates exercise - the stub only replaces the third-party hop.
+const TS_GOOD_TOKEN = 'qa-good-turnstile-token';
+const TS_SECRET = 'qa-turnstile-secret-4b7e91';
+const TS_SITEKEY = '0xQA0000000000000000000000AA';
+let tsStub = null;
+let tsStubCalls = 0;
+let tsStubMode = 'good'; // 'good' | 'reject' | 'error'
+function startTsStub() {
+  return new Promise((resolve) => {
+    tsStub = http.createServer((req, res) => {
+      let raw = '';
+      req.on('data', c => { raw += c; });
+      req.on('end', () => {
+        tsStubCalls++;
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        if (tsStubMode === 'error') { res.end('upstream exploded'); return; }
+        const good = tsStubMode === 'good' && raw.indexOf('response=' + encodeURIComponent(TS_GOOD_TOKEN)) !== -1
+                     && raw.indexOf('secret=' + encodeURIComponent(TS_SECRET)) !== -1;
+        res.end(JSON.stringify(good
+          ? { success: true, challenge_ts: new Date().toISOString() }
+          : { success: false, 'error-codes': ['invalid-input-response'] }));
+      });
+    });
+    tsStub.listen(0, '127.0.0.1', () => resolve(tsStub.address().port));
+  });
+}
+function stopTsStub() { try { tsStub && tsStub.close(); } catch (e) {} tsStub = null; }
 
 const results = [];
 const check = (name, val, detail) => {
@@ -82,7 +117,7 @@ const PERSIST_DIR = path.join(os.tmpdir(), 'mmgr-rv-wstate-' + Date.now());
 let proc = null;
 let devLog = '';
 
-function startWrangler() {
+function startWrangler(extraVars) {
   return new Promise((resolve, reject) => {
     log('starting wrangler dev on :' + PORT + ' (local D1 + R2, migration 0015)…');
     try {
@@ -90,9 +125,12 @@ function startWrangler() {
         [WRANGLER_JS, 'd1', 'migrations', 'apply', 'my-manager-db', '--local', '--config', 'wrangler.ci.jsonc', '--persist-to', PERSIST_DIR],
         { cwd: ROOT, stdio: 'ignore', timeout: 120000 });
     } catch (e) { log('migrations apply (best-effort): ' + e.message); }
-    proc = spawn(process.execPath, [WRANGLER_JS, 'dev', '--config', 'wrangler.ci.jsonc', '--port', String(PORT), '--ip', '127.0.0.1', '--persist-to', PERSIST_DIR,
+    const args = [WRANGLER_JS, 'dev', '--config', 'wrangler.ci.jsonc', '--port', String(PORT), '--ip', '127.0.0.1', '--persist-to', PERSIST_DIR,
       '--var', 'GOOGLE_CLIENT_SECRET:' + SECRET,
-      '--var', 'ADMIN_CODE:' + ADMIN_CODE], {
+      '--var', 'ADMIN_CODE:' + ADMIN_CODE];
+    // Turnstile env for the T* gates (a site/secret pair + the local stub URL).
+    (extraVars || []).forEach(v => args.push('--var', v));
+    proc = spawn(process.execPath, args, {
       cwd: ROOT,
       env: Object.assign({}, process.env, { WRANGLER_SEND_METRICS: 'false' }),
       stdio: ['ignore', 'pipe', 'pipe']
@@ -448,6 +486,90 @@ function baseState(pid, name) {
     });
     check('R11b reviews list after unlink -> generic 403', r.status === 403, { status: r.status });
 
+    // ===== TURNSTILE BOT PROTECTION (owner 2026-10-02) ==================
+    // Restart the Worker WITH a Turnstile secret/sitekey so the gate is live,
+    // pointed at the local siteverify stub. Order matters: these run last so
+    // the review-queue gates above keep the unconfigured (off) behaviour.
+    log('restarting wrangler with Turnstile enabled (siteverify -> local stub)…');
+    stopWrangler();
+    await delay(1500);
+    const stubPort = await startTsStub();
+    await startWrangler([
+      'TURNSTILE_SECRET:' + TS_SECRET,
+      'TURNSTILE_SITEKEY:' + TS_SITEKEY,
+      'TURNSTILE_VERIFY_URL:http://127.0.0.1:' + stubPort + '/siteverify'
+    ]);
+
+    // T1: the config endpoint publishes the PUBLIC sitekey and says a
+    // challenge is required - and never leaks the secret.
+    r = await fetch(BASE + '/api/turnstile-config', { credentials: 'same-origin' });
+    const tcfg = await j(r);
+    check('T1a turnstile-config returns 200 with the public sitekey',
+      r.ok && tcfg.ok === true && tcfg.sitekey === TS_SITEKEY && tcfg.required === true, tcfg);
+    check('T1b turnstile-config NEVER returns the secret',
+      JSON.stringify(tcfg).indexOf(TS_SECRET) === -1, { keys: Object.keys(tcfg || {}) });
+
+    // T2: a post with NO token is refused (the bot path). Proves the gate
+    // fails CLOSED by default rather than accepting a missing challenge.
+    r = await fetch(BASE + '/api/reviews', {
+      method: 'POST', credentials: 'same-origin', headers: jsonHeaders,
+      body: JSON.stringify({ review: 'Turnstile gate T2 no token' })
+    });
+    const t2 = await j(r);
+    check('T2a post WITHOUT a turnstile token -> 403',
+      r.status === 403 && t2.ok === false, { status: r.status, body: t2 });
+    check('T2b the refusal is a plain-language message, not a stack trace',
+      typeof t2.error === 'string' && t2.error.length > 10 && t2.error.length < 200 && !/Error:|at /.test(t2.error),
+      { error: t2.error });
+
+    // T3: a post with a BOGUS token is refused - the token is really verified.
+    tsStubCalls = 0;
+    r = await fetch(BASE + '/api/reviews', {
+      method: 'POST', credentials: 'same-origin', headers: jsonHeaders,
+      body: JSON.stringify({ review: 'Turnstile gate T3 bogus token', turnstileToken: 'not-a-real-token' })
+    });
+    const t3 = await j(r);
+    check('T3a post with a BOGUS turnstile token -> 403', r.status === 403 && t3.ok === false, { status: r.status });
+    check('T3b the bogus token actually reached siteverify', tsStubCalls === 1, { calls: tsStubCalls });
+
+    // T4: the stub failing must REFUSE, not fall open (the outage-bypass bug).
+    tsStubMode = 'error';
+    r = await fetch(BASE + '/api/reviews', {
+      method: 'POST', credentials: 'same-origin', headers: jsonHeaders,
+      body: JSON.stringify({ review: 'Turnstile gate T4 verify outage', turnstileToken: TS_GOOD_TOKEN })
+    });
+    check('T4a siteverify error -> 403 (never fails OPEN)', r.status === 403, { status: r.status });
+    tsStubMode = 'good';
+
+    // T5: the good token is accepted - a real human is NOT locked out.
+    r = await fetch(BASE + '/api/reviews', {
+      method: 'POST', credentials: 'same-origin', headers: jsonHeaders,
+      body: JSON.stringify({ review: 'Turnstile gate T5 real human', name: 'QA Human', stars: 5, turnstileToken: TS_GOOD_TOKEN })
+    });
+    const t5 = await j(r);
+    check('T5a post WITH a valid turnstile token -> 200',
+      r.ok && t5.ok === true && t5.review && t5.review.review === 'Turnstile gate T5 real human', { status: r.status, body: t5 });
+
+    // T6: the accepted review is really stored (the gate is not short-circuiting).
+    r = await fetch(BASE + '/api/reviews', { credentials: 'same-origin' });
+    const tlist = await j(r);
+    check('T6a the turnstile-approved review is in the list',
+      !!(tlist.reviews || []).some(v => v.review === 'Turnstile gate T5 real human'), { count: (tlist.reviews || []).length });
+
+    // T7: the refused posts wrote NOTHING - the gate runs before the insert.
+    check('T7a refused posts left no rows behind',
+      !(tlist.reviews || []).some(v => /Turnstile gate T[234]/.test(v.review || '')),
+      { stored: (tlist.reviews || []).map(function(v) { return v.review; }) });
+
+    // T8: an oversize token is rejected before it is ever forwarded.
+    tsStubCalls = 0;
+    r = await fetch(BASE + '/api/reviews', {
+      method: 'POST', credentials: 'same-origin', headers: jsonHeaders,
+      body: JSON.stringify({ review: 'Turnstile gate T8 huge token', turnstileToken: 'x'.repeat(5000) })
+    });
+    check('T8a oversize turnstile token -> 403 and never forwarded',
+      r.status === 403 && tsStubCalls === 0, { status: r.status, calls: tsStubCalls });
+
     // Summary.
     const fails = results.filter(function(x) { return !x.val; });
     log('========================================');
@@ -455,13 +577,16 @@ function baseState(pid, name) {
     if (fails.length) {
       log('FAILED: ' + fails.map(function(f) { return f.name; }).join(' | '));
       stopWrangler();
+      stopTsStub();
       process.exit(1);
     }
     stopWrangler();
+    stopTsStub();
     process.exit(0);
   } catch (e) {
     log('HARNESS ERROR: ' + (e && e.stack || e));
     stopWrangler();
+    stopTsStub();
     process.exit(1);
   }
 })();

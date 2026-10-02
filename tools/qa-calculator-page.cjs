@@ -976,8 +976,10 @@ async function withChrome(fn) {
       var n = Array.prototype.filter.call(document.querySelectorAll('#calc-work optgroup'), function(g) { return !g.hidden; }).length;
       return { all: n, stored: localStorage.getItem('mmgr_calc_family'), work: document.getElementById('calc-work').value };
     })()`);
+    // JIC 2025-2027 re-baseline (2026-10-02): the JIC wave added two families
+    // (Temporary and metal works, Joinery), so the picker now carries 8 groups.
     check('FM4 All trades shows every group and clears the memory; work item untouched',
-      fm4 && fm4.all === 6 && fm4.stored === null && fm4.work === 'tile', fm4);
+      fm4 && fm4.all === 8 && fm4.stored === null && fm4.work === 'tile', fm4);
     const fm5 = await ev(`(function(){
       var vals = Array.prototype.map.call(document.getElementById('calc-work').options, function(o) { return o.value; });
       return { n: vals.length,
@@ -986,8 +988,19 @@ async function withChrome(fn) {
         hiddenDerived: ['cart-away', 'lining-out', 'debrush', 'post-holes'].filter(function(k) { return vals.indexOf(k) > -1; }),
         phase2: ['formwork', 'rebar-size', 'stirrups', 'fabric-mesh', 'concrete-labour'].every(function(k) { return vals.indexOf(k) > -1; }) };
     })()`);
-    check('FM5 picker carries exactly the 38 user trades (33 + the Phase-2 concrete chain) - formwork pickable, derived lines stay invisible',
-      fm5 && fm5.n === 38 && fm5.phase2 && fm5.hiddenDerived.length === 0, fm5);
+    // JIC 2025-2027 re-baseline (2026-10-02): 38 -> 43 trades. The five new
+    // JIC trades are scaffolding, welding, joinery, plumbing-pipe and
+    // electrical-conduit (scaffold/welding/joinery/plumbing-pipe/
+    // electrical-conduit), all verified pickable below.
+    check('FM5 picker carries exactly the 43 user trades (38 + the 5 JIC-2025 trades) - formwork pickable, derived lines stay invisible',
+      fm5 && fm5.n === 43 && fm5.phase2 && fm5.hiddenDerived.length === 0, fm5);
+    // NEW (JIC wave): the five JIC trades must actually be selectable.
+    const fm6 = await ev(`(function(){
+      var vals = Array.prototype.map.call(document.getElementById('calc-work').options, function(o) { return o.value; });
+      return { jic: ['scaffold','welding','joinery','plumbing-pipe','electrical-conduit'].filter(function(k) { return vals.indexOf(k) === -1; }) };
+    })()`);
+    check('FM6 the 5 JIC 2025-2027 trades are in the picker',
+      fm6 && fm6.jic.length === 0, fm6);
 
     // ---------- W2 2026-10-01: COMPANION SUGGESTIONS (CP family) ----------
     const cp1 = await ev(`(function(){
@@ -1616,10 +1629,13 @@ async function withChrome(fn) {
       return { slabHidden: slabHidden, shown: !wrap.hidden, opts: sel.options.length,
                first: sel.options.length ? sel.options[0].textContent : '', val: sel.value };
     })()`);
-    check('EV1 variant selector: hidden on slab, shown on excavation with its Standard dig variant',
-      // Phase 2 re-baseline: excav now carries 10 SOIL variants; the first is
-      // still 'Standard dig' (id standard) so old saves recall unchanged.
-      ev1 && ev1.slabHidden && ev1.shown && ev1.opts === 10 && ev1.first === 'Standard dig' && ev1.val === 'standard', ev1);
+    check('EV1 variant selector: hidden on slab, shown on excavation with its JIC #1 soil variant',
+      // JIC 2025-2027 re-baseline (2026-10-02): excav carries the 9 official
+      // JIC soil rates (#1-#9). The first is still id 'standard' - carrying the
+      // pre-conversion model rates - so old saves recall unchanged (proved by
+      // EV3's unchanged 1600 total). The LABEL is now the JIC wording.
+      ev1 && ev1.slabHidden && ev1.shown && ev1.opts === 9
+      && ev1.first === 'Compacted earth to 5 ft deep (JIC #1)' && ev1.val === 'standard', ev1);
     const ev2 = await ev(`(function(){
       var st = JSON.parse(JSON.stringify(__calcEngine.readState()));
       var work = document.getElementById('calc-work');
@@ -1643,7 +1659,11 @@ async function withChrome(fn) {
                vLabel: withV && withV.variantLabel, vId: withV && withV.variant };
     })()`);
     check('EV3 excavation variant conversion: picked variant = legacy save = the pre-conversion model total (1600)',
-      ev3 && ev3.same === true && ev3.vId === 'standard' && ev3.vLabel === 'Standard dig', ev3);
+      // The MONEY invariant is unchanged by the JIC wave (still 1600 - the
+      // first variant deliberately keeps the pre-conversion rates); only the
+      // variant label is now the official JIC #1 wording.
+      ev3 && ev3.same === true && ev3.vId === 'standard'
+      && ev3.vLabel === 'Compacted earth to 5 ft deep (JIC #1)', ev3);
 
     // E1 CURRENCY + FX (FX family). Fresh storage has no rates.
     const fx1 = await ev(`(function(){
@@ -1888,8 +1908,12 @@ async function withChrome(fn) {
       var d1l = document.getElementById('calc-d1-label').textContent;
       return { blockOpts: blockOpts, soilOpts: soilOpts, fwOpts: fwOpts, wallEdge: r ? r.total : null, d1l: d1l };
     })()`);
-    check('NV3 variant sets: blockwall 3 sizes, excavation 10 soils, formwork 8 elements; first variant = the old derived rates (20 m2 = 1100)',
-      nv3 && nv3.blockOpts === 3 && nv3.soilOpts === 10 && nv3.fwOpts === 8 && nv3.wallEdge === 1100 && nv3.d1l === 'Contact area (m2)', nv3);
+    check('NV3 variant sets: blockwall 9 JIC masonry, excavation 9 JIC soils, formwork 9 JIC carpentry; first formwork variant = the old derived rates (20 m2 = 1100)',
+      // JIC 2025-2027 re-baseline (2026-10-02): each of these three trades now
+      // carries the full 9-rate official JIC list. The wall-edge formwork
+      // first-variant total is still 1100 (pre-conversion rates preserved).
+      nv3 && nv3.blockOpts === 9 && nv3.soilOpts === 9 && nv3.fwOpts === 9
+      && nv3.wallEdge === 1100 && nv3.d1l === 'Contact area (m2)', nv3);
     const nv4 = await ev(`(function(){
       var r = __calcEngine.computeFor({ work:'concrete-labour', variant:'rod-settle', d1:'12', units:'metric', quality:'standard', currency:'USD', country:'US' });
       document.getElementById('calc-work').value = 'floor-screed';
@@ -1898,6 +1922,68 @@ async function withChrome(fn) {
     })()`);
     check('NV4 concrete labour: rod-and-settle 12 m3 = lab 660, mat 0 (a labour-only trade by rate, not by mode)',
       nv4 && nv4.mat === 0 && nv4.lab === 660, nv4);
+
+    // ---------- RB family: the JAMERICA RATE BOOK card (JIC 2025-2027) ----------
+    // The card and its top-bar link shipped with NO gate covering them
+    // (lesson 14: a feature nothing asserts rots silently). These lock the
+    // open/render/toggle/close contract AND the copy's own honesty - the
+    // "90 line items" sentence used to contradict the 100 rows it sat above.
+    const rb1 = await ev(`(function(){
+      var btn = document.querySelector('.bcp-ratebook[data-action="openRateBook"]');
+      return { hasBtn: !!btn, text: btn ? btn.textContent.replace(/\\s+/g,' ').trim() : '',
+               icon: btn ? !!btn.querySelector('svg.ico use[href*="i-book"]') : false };
+    })()`);
+    check('RB1 top bar carries the Jamaica rate book link (SVG i-book icon + text)',
+      rb1 && rb1.hasBtn && /Jamaica rate book/i.test(rb1.text) && rb1.icon, rb1);
+    const rb2 = await ev(`(function(){
+      document.querySelector('.bcp-ratebook[data-action="openRateBook"]').click();
+      var c = document.getElementById('calc-ratebook-card');
+      if (!c) return { open: false };
+      return { open: true, role: c.getAttribute('role'),
+               title: (c.querySelector('.card-title')||{}).textContent || '',
+               rows: c.querySelectorAll('tbody tr:not(.rr-trade)').length,
+               groups: c.querySelectorAll('tbody tr.rr-trade').length,
+               sub: (c.querySelector('.rr-sub')||{}).textContent || '',
+               segs: c.querySelectorAll('[data-action="rrUnits"]').length };
+    })()`);
+    check('RB2 the link opens the rate book card with the JIC 2025-2027 title',
+      rb2 && rb2.open && rb2.role === 'dialog' && /Jamaica Rate Book 2025-2027/.test(rb2.title), rb2);
+    check('RB3 the card lists all 100 JIC line items across 11 trade groups',
+      rb2 && rb2.rows === 100 && rb2.groups === 11, { rows: rb2 && rb2.rows, groups: rb2 && rb2.groups });
+    check('RB4 the line-item count in the copy MATCHES the rows it describes',
+      rb2 && new RegExp('^' + rb2.rows + ' line items across ' + rb2.groups + ' trades').test(rb2.sub.trim()),
+      { sub: rb2 && rb2.sub, rows: rb2 && rb2.rows, groups: rb2 && rb2.groups });
+    check('RB5 the card offers a metric/imperial toggle',
+      rb2 && rb2.segs === 2, { segs: rb2 && rb2.segs });
+    const rb6 = await ev(`(function(){
+      var imp = document.querySelector('#calc-ratebook-card [data-action="rrUnits"][data-units="imperial"]');
+      if (!imp) return { toggled: false };
+      imp.click();
+      var c = document.getElementById('calc-ratebook-card');
+      var first = c.querySelector('tbody tr:not(.rr-trade)');
+      var metricActive = c.querySelector('[data-units="metric"]').className.indexOf('active') > -1;
+      var impActive = c.querySelector('[data-units="imperial"]').className.indexOf('active') > -1;
+      var units = Array.prototype.map.call(c.querySelectorAll('tbody tr:not(.rr-trade) td:nth-child(3)'), function(td){ return td.textContent; });
+      return { toggled: true, rowCount: c.querySelectorAll('tbody tr:not(.rr-trade)').length,
+               firstUnit: first ? first.children[2].textContent : '', units: units.slice(0, 4),
+               metricActive: metricActive, impActive: impActive,
+               sameRowCount: c.querySelectorAll('tbody tr:not(.rr-trade)').length === 100 };
+    })()`);
+    check('RB6 the imperial toggle flips the units and keeps every row',
+      rb6 && rb6.toggled && rb6.impActive === true && rb6.metricActive === false
+      && rb6.sameRowCount === true && rb6.firstUnit !== 'Sq.', rb6);
+    const rb7 = await ev(`(function(){
+      var c = document.getElementById('calc-ratebook-card');
+      var before = !!c;
+      c.querySelector('[data-action="rrClose"]').click();
+      return { before: before, after: !!document.getElementById('calc-ratebook-card') };
+    })()`);
+    check('RB7 Close removes the rate book card', rb7 && rb7.before === true && rb7.after === false, rb7);
+    const rb8 = await ev(`(function(){
+      var c = document.getElementById('calc-ratebook-card');
+      return { leftBehind: !!c };
+    })()`);
+    check('RB8 the card leaves nothing behind after closing', rb8 && rb8.leftBehind === false, rb8);
 
     // LX family: the forgotten-work linter (X1, owner directive).
     const lx1 = await ev(`(function(){

@@ -990,6 +990,20 @@ body.dark-mode .nav-dd-item:hover{color:var(--gold);background:rgba(var(--gold-r
 .rv-field textarea:focus-visible{outline:none;border-color:var(--gold);box-shadow:0 0 0 3px rgba(var(--gold-rgb),.18);}
 .rv-field textarea{resize:vertical;min-height:110px;} /* Star rating picker (STABILIZATION 2026-08-16 - the PART F T7 follow-up: */
 .rv-pick-label{display:block;font-size:.8rem;font-weight:700;margin-bottom:6px;}
+/* Turnstile bot protection (owner 2026-10-02). The widget renders its own
+   iframe, so this rule only reserves the row and keeps the solid form card
+   clear of it. Hidden (empty display:none) while no sitekey is configured so
+   an unconfigured deploy shows no empty gap in the form. */
+.rv-turnstile{margin:6px 0 14px;min-height:0;}
+.rv-turnstile:empty{display:none;}
+/* The widget is a fixed-width 300px iframe; left-align it with the fields
+   and let it shrink on narrow phones rather than overflowing the card. */
+.rv-turnstile iframe{max-width:100%;}
+/* Cloudflare bot-protection note under the widget. */
+.rv-turn-note{
+  display:block;margin:4px 0 0;font-size:.74rem;color:var(--text-secondary);
+  line-height:1.5;
+}
 .rv-pick-row{display:inline-flex;gap:4px;}
 .rv-star-btn{display:inline-flex;align-items:center;justify-content:center;width:42px;height:42px;border-radius:10px;cursor:pointer;color:var(--border);transition:color var(--tr);}
 .rv-star-btn input{position:absolute;opacity:0;pointer-events:none;width:1px;height:1px;}

@@ -42,7 +42,7 @@ import { API_SHAPES, handleApiShape } from './api/shapes.js';
 import { handleWebhookCreate, handleWebhookList, handleWebhookDelete } from './webhooks.js';
 import { handleAdminCloudList } from './admin.js';
 import { handleReviewsCreate, handleReviewsList, handleReviewList,
-  handleReviewAccept, handleReviewReject } from './reviews.js';
+  handleReviewAccept, handleReviewReject, handleTurnstileConfig } from './reviews.js';
 import { handleContactCreate } from './contact.js';
 import { handleAiChat } from './ai-proxy.js';
 import { handleMcpServer } from './mcp/server.js';
@@ -396,6 +396,14 @@ export async function routeApi(request, env, url) {
     }
 
     // 11. PUBLIC REVIEWS
+    // 11a. TURNSTILE CONFIG (owner 2026-10-02) - hands the browser the PUBLIC
+    // sitekey and whether a challenge is required. Read-only, reveals nothing
+    // secret, and rides the general bucket like every other read.
+    if (path === '/api/turnstile-config' && request.method === 'GET') {
+      const r = await rl(request, 'general', env);
+      if (r) return r;
+      return handleTurnstileConfig(env);
+    }
     if (path === '/api/reviews') {
       if (request.method === 'GET') {
         const r = await rl(request, 'general', env);

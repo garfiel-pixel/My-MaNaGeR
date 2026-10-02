@@ -96,7 +96,7 @@ const INLINE_SCRIPT_HASHES = [
 const SECURITY_HEADERS = {
   'Content-Security-Policy': [
     "default-src 'self'",
-    "script-src 'self' 'wasm-unsafe-eval' https://unpkg.com https://accounts.google.com https://apis.google.com https://static.cloudflareinsights.com " + INLINE_SCRIPT_HASHES,
+    "script-src 'self' 'wasm-unsafe-eval' https://unpkg.com https://accounts.google.com https://apis.google.com https://static.cloudflareinsights.com https://challenges.cloudflare.com " + INLINE_SCRIPT_HASHES,
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com",
     "img-src 'self' data: blob: https://lh3.googleusercontent.com https://*.googleusercontent.com",
     "media-src 'self' data: blob:",
@@ -107,7 +107,7 @@ const SECURITY_HEADERS = {
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",
-    "frame-src https://accounts.google.com",
+    "frame-src https://accounts.google.com https://challenges.cloudflare.com",
     "frame-ancestors 'none'"
   ].join('; '),
   'X-Content-Type-Options': 'nosniff',
@@ -229,6 +229,17 @@ const server = http.createServer((req, res) => {
     // the dev server exactly like production (worker.js serves these
     // routes for real; this in-memory copy is dev-only). Same content
     // discipline: plain text only, name optional, newest first.
+    // TURNSTILE CONFIG dev mirror (owner 2026-10-02): the Worker hands the
+    // browser the public sitekey and whether a challenge is required. The
+    // dev mirror always reports required:false so the local QA battery can
+    // post reviews with no widget and no secret - the challenge is a
+    // production concern and is verified against real wrangler instead.
+    if (p === '/api/turnstile-config' && req.method === 'GET') {
+      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
+      res.end(JSON.stringify({ ok: true, sitekey: '', required: false }));
+      return;
+    }
+
     if (p === '/api/reviews') {
       if (req.method === 'GET') {
         const list = REVIEWS.slice().sort(function(a, b) {

@@ -116,6 +116,14 @@
               <label class="rv-star-btn"><input type="radio" name="stars" value="5" aria-label="5 stars out of 5"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-star"></use></svg></label>
             </div>
           </div>
+          <!-- Cloudflare Turnstile bot protection (owner 2026-10-02).
+               data-sitekey is the PUBLIC sitekey from the Cloudflare dashboard
+               (Turnstile -> Add widget). It is intentionally empty until the
+               owner pastes it here; js/reviews.js renders nothing and posts no
+               token while it is empty, so an unconfigured widget can never
+                 fake a passing state. The matching SECRET is a Wrangler
+               secret (TURNSTILE_SECRET) and is NEVER in this repo. -->
+          <div class="rv-turnstile" id="rv-turnstile" data-sitekey=""></div>
           <div class="rv-form-foot">
             <button type="submit" class="btn btn-gold">Post review</button>
             <p class="rv-status" id="review-status" role="status" aria-live="polite" hidden></p>

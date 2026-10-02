@@ -500,14 +500,20 @@ function qtyShown(qty, unit) {
 // declare the unit its RATES are quoted in (a JIC-style sheet speaks yd2,
 // ft2, ft run, lb, dozen). The factor converts a per-entry-unit rate into
 // a per-engine-unit rate - the math stays metric underneath, exactly as
-// dimension entry already does. Values: the size of one entry unit in the
-// engine unit (1 yd2 = 0.83612736 m2; 1 ft2 = 0.09290304 m2; 1 ft run =
-// 0.3048 m; steel prices per lb convert to the tonne the engine uses:
-// 2204.62262 lb/t; 1 dozen = 12 each). Items without a runit convert 1:1,
-// so every existing trade prices exactly as before (golden cases hold).
+// dimension entry already does. Values: how many ENTRY units make ONE
+// engine unit (entry-per-engine), because cost = qty(engine) x rate x
+// (entry per engine): 2204.62262 lb per t; 1/12 dozen per each; 1.19599005
+// yd2 per m2 (1/0.83612736); 10.7639104 ft2 per m2; 3.2808399 ft per m;
+// 1000 kg per t. Items without a runit convert 1:1, so every trade whose
+// rates are typed in the engine unit prices exactly as before.
+// AUDIT FIX (human audit, 2026-10-02): the first cut carried the m2-per-
+// entry sizes (0.836..., 0.0929..., 0.3048, 0.001) which UNDERPRICED any
+// rate quoted per yd2/ft2/ft run/kg by 16-99% - a $5.50/yd2 mesh rate
+// priced $4.60/m2 instead of $6.58/m2. Only lb and dozen were right, so
+// only the mesh golden case moved with the fix.
 const RATE_UNITS = {
-  'yd2': 0.83612736, 'ft2': 0.09290304, 'ft run': 0.3048,
-  'lb': 2204.62262, 'kg': 0.001, 'dozen': 1 / 12
+  'yd2': 1.19599005, 'ft2': 10.7639104, 'ft run': 3.2808399,
+  'lb': 2204.62262, 'kg': 1000, 'dozen': 1 / 12
 };
 function rateFactor(entry, engineUnit) {
   if (!entry || entry === engineUnit) return 1;

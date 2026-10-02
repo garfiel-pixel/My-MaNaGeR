@@ -1,18 +1,58 @@
 /* ============================================================
-   BILLING TIER , LemonSqueezy integration
+   BILLING TIER - dual provider seam (Paddle target, 2026-10-01)
    ------------------------------------------------------------
-   Extracted from worker.js. The tier is DORMANT until configured:
-   with none of LEMONSQUEEZY_WEBHOOK_SECRET / LEMONSQUEEZY_API_KEY /
-   LEMONSQUEEZY_VARIANT_ID / LEMONSQUEEZY_STORE_ID set, the
-   status endpoint reports "not configured", checkout returns 503,
-   and the cloud-create gate is OFF.
+   Owner directive 2026-10-01: LemonSqueezy does not support
+   Jamaica-based sellers; Paddle does (paddle.com supported-
+   countries list excludes only sanctioned countries - Jamaica is
+   not on it) and charges per transaction with no setup/monthly
+   fee. This module now carries BOTH providers behind the SAME
+   routes (/api/billing/status|checkout|webhook) and the SAME
+   entitlement table (cloud_subscriptions), so the client Upgrade
+   flow is untouched and the swap is a secrets change, not a
+   code change:
+
+     - PADDLE_WEBHOOK_SECRET + PADDLE_API_KEY + PADDLE_PRICE_ID
+       set            -> provider 'paddle' (preferred when both)
+     - else the four LEMONSQUEEZY_* secrets set -> 'lemonsqueezy'
+     - neither -> DORMANT: status configured:false, checkout 503,
+       and the cloud-create cap is OFF (byte-for-byte unchanged).
+
+   Retiring LemonSqueezy later = `wrangler secret delete` the four
+   LEMONSQUEEZY_* secrets (or leave them and Paddle simply wins).
+
+   Paddle specifics (verified against developer.paddle.com, do not
+   guess): webhook signature is the `Paddle-Signature` header
+   `ts=<unix>;h1=<hex>` (more than one h1 can appear during secret
+   rotation - accept any match); the signed payload is
+   `ts + ':' + rawBody` with the raw body byte-identical; HMAC is
+   SHA-256 keyed with the notification destination's secret key;
+   SDKs reject a timestamp older than 5 seconds (Paddle retries
+   rejected deliveries, so strictness is safe here). Checkout is a
+   POST /transactions ({items:[{price_id, quantity}], custom_data})
+   whose response carries `checkout.url`; find-or-create the
+   customer by email first so the checkout carries the account
+   email. transaction.custom_data flows to the subscription, so
+   the webhook maps `custom_data.sub` back to the owner identity.
    ============================================================ */
 import { json, readSession, cloudForbidden, codesEqual, authEmailConfigured, sendAuthEmail } from './lib/http.js';
 
 const LS_API_BASE = 'https://api.lemonsqueezy.com/v1';
+const PADDLE_API_BASE = 'https://api.paddle.com';
+const PADDLE_SANDBOX_BASE = 'https://sandbox-api.paddle.com';
+// Paddle SDK default tolerance for the webhook timestamp; deliveries that
+// fail verification are retried by Paddle, so a tight window is safe.
+const PADDLE_TS_TOLERANCE_SEC = 5;
+
+// Which provider (if any) this deployment is configured for. Paddle wins
+// when both sets exist - that is the migration direction (LS -> Paddle).
+export function billingProvider(env) {
+  if (env && env.PADDLE_WEBHOOK_SECRET && env.PADDLE_API_KEY && env.PADDLE_PRICE_ID) return 'paddle';
+  if (env && env.LEMONSQUEEZY_WEBHOOK_SECRET && env.LEMONSQUEEZY_API_KEY && env.LEMONSQUEEZY_VARIANT_ID && env.LEMONSQUEEZY_STORE_ID) return 'lemonsqueezy';
+  return null;
+}
 
 export function billingConfigured(env) {
-  return !!(env && env.LEMONSQUEEZY_WEBHOOK_SECRET && env.LEMONSQUEEZY_API_KEY && env.LEMONSQUEEZY_VARIANT_ID && env.LEMONSQUEEZY_STORE_ID);
+  return !!billingProvider(env);
 }
 
 export function billingFreeCap(env) {
@@ -24,23 +64,28 @@ function billingStatusActive(status) {
   return status === 'active' || status === 'on_trial';
 }
 
-async function billingVerifySignature(env, rawBody, sigHeader) {
+function hmacHex(secret, payload) {
+  return crypto.subtle.importKey('raw', new TextEncoder().encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign'])
+    .then(function(key) { return crypto.subtle.sign('HMAC', key, new TextEncoder().encode(payload)); })
+    .then(function(sigBytes) {
+      let hex = '';
+      const arr = new Uint8Array(sigBytes);
+      for (let i = 0; i < arr.length; i++) hex += arr[i].toString(16).padStart(2, '0');
+      return hex;
+    });
+}
+
+// ---- LemonSqueezy (legacy provider, kept until the owner retires it) ------
+
+async function lsVerifySignature(env, rawBody, sigHeader) {
   if (!env || !env.LEMONSQUEEZY_WEBHOOK_SECRET) return false;
   try {
-    const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(env.LEMONSQUEEZY_WEBHOOK_SECRET), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
-    const sigBytes = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(rawBody));
-    let hex = '';
-    const arr = new Uint8Array(sigBytes);
-    for (let i = 0; i < arr.length; i++) hex += arr[i].toString(16).padStart(2, '0');
+    const hex = await hmacHex(env.LEMONSQUEEZY_WEBHOOK_SECRET, rawBody);
     return codesEqual(hex, String(sigHeader || '').toLowerCase());
   } catch (e) { return false; }
 }
 
-export async function handleBillingWebhook(request, env) {
-  if (!env || !env.LEMONSQUEEZY_WEBHOOK_SECRET) return json({ ok: false, error: 'webhook not configured' }, 503);
-  const rawBody = await request.text();
-  const sig = request.headers.get('X-Signature') || '';
-  if (!(await billingVerifySignature(env, rawBody, sig))) return json({ ok: false, error: 'invalid signature' }, 401);
+async function lsApplyWebhook(env, rawBody) {
   let payload;
   try { payload = JSON.parse(rawBody); } catch (e) { return json({ ok: false, error: 'bad payload' }, 400); }
   const meta = (payload && payload.meta) || {};
@@ -55,46 +100,177 @@ export async function handleBillingWebhook(request, env) {
   const status = String(attrs.status || '');
   const periodEndRaw = attrs.renews_at || attrs.ends_at;
   const periodEnd = periodEndRaw ? Math.floor(new Date(periodEndRaw).getTime() / 1000) : null;
-  const now = new Date().toISOString();
-  await env.DB.prepare(
-    'INSERT INTO cloud_subscriptions (owner_sub, ls_subscription_id, status, plan, current_period_end, created_at, updated_at) VALUES (?,?,?,?,?,?,?) ' +
-    'ON CONFLICT(owner_sub) DO UPDATE SET ls_subscription_id = excluded.ls_subscription_id, status = excluded.status, ' +
-    'current_period_end = excluded.current_period_end, updated_at = excluded.updated_at'
-  ).bind(ownerSub, lsId, status, 'pro', periodEnd, now, now).run();
+  await applySubscription(env, ownerSub, lsId, status, 'pro', periodEnd);
   if (authEmailConfigured(env) && (event === 'subscription_created' || event === 'subscription_cancelled')) {
     const recipient = String(attrs.user_email || '').trim() || (ownerSub.indexOf('email:') === 0 ? ownerSub.slice('email:'.length) : '');
-    if (recipient) {
-      const confirmed = event === 'subscription_created';
-      await sendAuthEmail(env, recipient,
-        confirmed ? 'Your My MaNaGeR subscription is confirmed' : 'Your My MaNaGeR subscription was cancelled',
-        confirmed
-          ? 'Your My MaNaGeR subscription is confirmed and your plan is locked in. Thank you for supporting the project.\n\nIf you have any questions, reply to this email.'
-          : 'Your My MaNaGeR subscription has been cancelled. You can resubscribe at any time from your account.');
-    }
+    await subEmailNotice(env, recipient, event === 'subscription_created');
   }
   return json({ ok: true, event: event, status: status });
 }
 
+// ---- Paddle (target provider - framework ships first, incorporation is a
+// dashboard + secrets task: create the notification destination pointing at
+// /api/billing/webhook, set the three PADDLE_* secrets, done) ---------------
+
+async function paddleVerifySignature(env, rawBody, sigHeader) {
+  if (!env || !env.PADDLE_WEBHOOK_SECRET) return false;
+  try {
+    // Paddle-Signature: ts=<unix>;h1=<hex>[;h1=<hex>...] (rotation). Ignore
+    // unknown parts; a header without ts or without any h1 never verifies.
+    const parts = String(sigHeader || '').split(';').map(function(p) {
+      const i = p.indexOf('=');
+      return i === -1 ? [p, ''] : [p.slice(0, i), p.slice(i + 1)];
+    });
+    const tsPart = parts.filter(function(p) { return p[0] === 'ts'; }).map(function(p) { return p[1]; })[0];
+    const h1s = parts.filter(function(p) { return p[0] === 'h1' && p[1]; }).map(function(p) { return p[1].toLowerCase(); });
+    if (!tsPart || !h1s.length) return false;
+    const ts = parseInt(tsPart, 10);
+    if (!Number.isFinite(ts)) return false;
+    if (Math.abs(Date.now() / 1000 - ts) > PADDLE_TS_TOLERANCE_SEC) return false;
+    const hex = await hmacHex(env.PADDLE_WEBHOOK_SECRET, ts + ':' + rawBody);
+    return h1s.some(function(h) { return codesEqual(hex, h); });
+  } catch (e) { return false; }
+}
+
+// Paddle statuses -> the stored vocabulary billingStatusActive() reads.
+// 'trialing' means the same thing LS's 'on_trial' meant: a paying seat in
+// its trial window.
+function paddleStatus(raw) {
+  return String(raw || '') === 'trialing' ? 'on_trial' : String(raw || '');
+}
+
+async function paddleApplyWebhook(env, rawBody) {
+  let payload;
+  try { payload = JSON.parse(rawBody); } catch (e) { return json({ ok: false, error: 'bad payload' }, 400); }
+  const event = String((payload && payload.event_type) || '');
+  const data = (payload && payload.data) || {};
+  const custom = (data.custom_data && typeof data.custom_data === 'object') ? data.custom_data : {};
+  const ownerSub = String(custom.sub || '');
+  const pdId = String(data.id || '');
+  const lifecycle = ['subscription.created', 'subscription.activated', 'subscription.resumed', 'subscription.updated', 'subscription.trialed', 'subscription.paused', 'subscription.past_due', 'subscription.canceled'];
+  if (lifecycle.indexOf(event) === -1 && event !== 'transaction.completed') return json({ ok: true, ignored: event });
+  if (!ownerSub || !pdId) return json({ ok: false, error: 'missing owner identity in custom_data' }, 400);
+  let status, periodEnd = null;
+  if (event === 'transaction.completed') {
+    // One-time purchase: grant pro with no period end (nothing renews).
+    status = 'active';
+  } else {
+    status = paddleStatus(data.status);
+    const endRaw = data.current_billing_period && data.current_billing_period.ends_at;
+    if (endRaw) periodEnd = Math.floor(new Date(endRaw).getTime() / 1000);
+  }
+  await applySubscription(env, ownerSub, pdId, status, 'pro', periodEnd);
+  if (authEmailConfigured(env) && (event === 'subscription.activated' || event === 'subscription.canceled')) {
+    const recipient = ownerSub.indexOf('email:') === 0 ? ownerSub.slice('email:'.length) : '';
+    await subEmailNotice(env, recipient, event === 'subscription.activated');
+  }
+  return json({ ok: true, event: event, status: status });
+}
+
+// ---- shared entitlement write + notice (the ONLY writers, both webhook-only)
+
+async function applySubscription(env, ownerSub, providerSubId, status, plan, periodEnd) {
+  const now = new Date().toISOString();
+  // ls_subscription_id holds the provider's subscription/transaction id for
+  // whichever provider wrote the row (one row per owner, latest wins).
+  await env.DB.prepare(
+    'INSERT INTO cloud_subscriptions (owner_sub, ls_subscription_id, status, plan, current_period_end, created_at, updated_at) VALUES (?,?,?,?,?,?,?) ' +
+    'ON CONFLICT(owner_sub) DO UPDATE SET ls_subscription_id = excluded.ls_subscription_id, status = excluded.status, ' +
+    'current_period_end = excluded.current_period_end, updated_at = excluded.updated_at'
+  ).bind(ownerSub, providerSubId, status, plan, periodEnd, now, now).run();
+}
+
+async function subEmailNotice(env, recipient, confirmed) {
+  if (!recipient) return;
+  try {
+    await sendAuthEmail(env, recipient,
+      confirmed ? 'Your My MaNaGeR subscription is confirmed' : 'Your My MaNaGeR subscription was cancelled',
+      confirmed
+        ? 'Your My MaNaGeR subscription is confirmed and your plan is locked in. Thank you for supporting the project.\n\nIf you have any questions, reply to this email.'
+        : 'Your My MaNaGeR subscription has been cancelled. You can resubscribe at any time from your account.');
+  } catch (e) { /* a notification must never fail the webhook */ }
+}
+
+// ---- webhook route: the signature HEADER names the provider ---------------
+
+export async function handleBillingWebhook(request, env) {
+  const rawBody = await request.text();
+  const sigPaddle = request.headers.get('Paddle-Signature');
+  const sigLS = request.headers.get('X-Signature');
+  if (sigPaddle) {
+    if (!env || !env.PADDLE_WEBHOOK_SECRET) return json({ ok: false, error: 'webhook not configured' }, 503);
+    if (!(await paddleVerifySignature(env, rawBody, sigPaddle))) return json({ ok: false, error: 'invalid signature' }, 401);
+    return paddleApplyWebhook(env, rawBody);
+  }
+  if (sigLS) {
+    if (!env || !env.LEMONSQUEEZY_WEBHOOK_SECRET) return json({ ok: false, error: 'webhook not configured' }, 503);
+    if (!(await lsVerifySignature(env, rawBody, sigLS))) return json({ ok: false, error: 'invalid signature' }, 401);
+    return lsApplyWebhook(env, rawBody);
+  }
+  return json({ ok: false, error: 'invalid signature' }, 401);
+}
+
+// ---- status -----------------------------------------------------------------
+
 export async function handleBillingStatus(request, env) {
   const session = await readSession(request, env);
   if (!session || !session.sub) return cloudForbidden();
-  const configured = billingConfigured(env);
+  const provider = billingProvider(env);
   const cap = billingFreeCap(env);
   const cnt = await env.DB.prepare('SELECT COUNT(*) AS c FROM cloud_projects WHERE google_sub = ?').bind(session.sub).first();
   const projectCount = (cnt && cnt.c) || 0;
-  if (!configured) return json({ ok: true, configured: false, plan: 'free', active: false, projectCap: null, projectCount: projectCount });
+  if (!provider) return json({ ok: true, configured: false, plan: 'free', active: false, projectCap: null, projectCount: projectCount });
   const sub = await env.DB.prepare('SELECT status, plan, current_period_end FROM cloud_subscriptions WHERE owner_sub = ?').bind(session.sub).first();
   const active = !!(sub && billingStatusActive(sub.status));
   return json({
-    ok: true, configured: true, plan: active ? (sub.plan || 'pro') : 'free', active: active,
+    ok: true, configured: true, provider: provider, plan: active ? (sub.plan || 'pro') : 'free', active: active,
     currentPeriodEnd: (sub && sub.current_period_end) || null, projectCap: cap, projectCount: projectCount
   });
 }
 
-export async function handleBillingCheckout(request, env) {
-  const session = await readSession(request, env);
-  if (!session || !session.sub) return cloudForbidden();
-  if (!billingConfigured(env)) return json({ ok: false, error: 'billing not configured' }, 503);
+// ---- checkout ----------------------------------------------------------------
+
+async function paddleCheckout(env, session) {
+  const base = String(env.PADDLE_ENV || '') === 'sandbox' ? PADDLE_SANDBOX_BASE : PADDLE_API_BASE;
+  const auth = { 'Authorization': 'Bearer ' + env.PADDLE_API_KEY, 'Content-Type': 'application/json' };
+  try {
+    // Find-or-create the customer by email so the hosted checkout carries the
+    // account email; if the lookup path fails the checkout still opens and
+    // Paddle collects the email at payment time.
+    const email = String(session.email || '').trim();
+    let customerId = null;
+    if (email) {
+      const q = await fetch(base + '/customers?per_page=1&email=' + encodeURIComponent(email), { headers: auth });
+      const qd = await q.json().catch(function() { return {}; });
+      const found = qd && qd.data && qd.data[0] && qd.data[0].id;
+      if (found) customerId = String(found);
+      else {
+        const c = await fetch(base + '/customers', { method: 'POST', headers: auth, body: JSON.stringify({ email: email }) });
+        const cd = await c.json().catch(function() { return {}; });
+        if (c.ok && cd && cd.data && cd.data.id) customerId = String(cd.data.id);
+      }
+    }
+    const body = { items: [{ quantity: 1, price_id: String(env.PADDLE_PRICE_ID) }], custom_data: { sub: session.sub } };
+    if (customerId) body.customer_id = customerId;
+    const res = await fetch(base + '/transactions', { method: 'POST', headers: auth, body: JSON.stringify(body) });
+    const data = await res.json().catch(function() { return {}; });
+    const url = data && data.data && data.data.checkout && data.data.checkout.url;
+    if (!res.ok || !url) {
+      let detail = '';
+      try {
+        const err = (data && data.error) || {};
+        const sub = (err.errors && err.errors[0]) || {};
+        detail = String(sub.detail || err.detail || err.code || '').slice(0, 300);
+      } catch (e) { /* keep detail empty */ }
+      return json({ ok: false, error: 'checkout creation failed (Paddle HTTP ' + res.status + ')' + (detail ? ' , ' + detail : '') }, 502);
+    }
+    return json({ ok: true, checkoutUrl: url });
+  } catch (e) {
+    return json({ ok: false, error: 'checkout creation failed (upstream unreachable)' }, 502);
+  }
+}
+
+async function lsCheckout(env, session) {
   try {
     const variantId = Number(env.LEMONSQUEEZY_VARIANT_ID);
     const res = await fetch(LS_API_BASE + '/checkouts', {
@@ -132,4 +308,12 @@ export async function handleBillingCheckout(request, env) {
   } catch (e) {
     return json({ ok: false, error: 'checkout creation failed (upstream unreachable)' }, 502);
   }
+}
+
+export async function handleBillingCheckout(request, env) {
+  const session = await readSession(request, env);
+  if (!session || !session.sub) return cloudForbidden();
+  const provider = billingProvider(env);
+  if (!provider) return json({ ok: false, error: 'billing not configured' }, 503);
+  return provider === 'paddle' ? paddleCheckout(env, session) : lsCheckout(env, session);
 }

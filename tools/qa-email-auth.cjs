@@ -55,6 +55,23 @@
      B6  webhook bad signature /          -> 401 / 200 ignored
          test_request event
 
+   PHASE 2b — PADDLE CONFIGURED (fake PADDLE_* secrets only —
+   billingProvider() prefers Paddle; provider seam, owner
+   2026-10-01: LemonSqueezy does not support Jamaica):
+     PD1 status                           -> configured:true,
+         provider 'paddle', plan free, projectCap 2
+     PD2 checkout (fake key, sandbox)     -> 502 ok:false, never a
+                                            fabricated URL
+     PD3 the free cap still gates         -> 2 ok, 3rd 402
+                                            {upgrade:true}
+     PD4 webhook subscription.activated   -> 200, row upserted
+         (valid Paddle-Signature)
+     PD5 status active + create over cap  -> active:true pro / 200
+     PD6 garbage sig / tampered body /    -> 401 x4 / 200 ignored
+         stale ts / no header / unknown
+         event
+     PD7 transaction.completed one-time   -> 200 + plan stays pro
+
    PHASE 3 — EMAIL CONFIGURED (Resend stub on an in-process port):
      E1-E13b verification on signup, the verified-email cloud gate,
      verify token single-use + garbage rejection, forgot/reset with
@@ -147,6 +164,12 @@ const LS_SECRET = 'qa-ls-webhook-secret-8d2c44aa';
 const LS_KEY = 'qa-ls-api-key-00000000000000000000000000000000';
 const LS_VARIANT = '654321';
 const LS_STORE = '451253';
+// Fake Paddle credentials for PHASE 2b (provider seam, owner 2026-10-01:
+// LemonSqueezy does not support Jamaica-based sellers; Paddle does). Same
+// contract, different signature scheme + checkout API — see src/billing.js.
+const PADDLE_SECRET = 'qa-paddle-webhook-secret-3b91e7c2';
+const PADDLE_KEY = 'qa-paddle-api-key-000000000000000000000000000000';
+const PADDLE_PRICE = 'pri_01qa0000000000000000000000';
 
 const log = (s) => { process.stdout.write('[email-auth] ' + s + '\n'); };
 const delay = ms => new Promise(r => setTimeout(r, ms));
@@ -219,8 +242,11 @@ const PERSIST_DIR = path.join(TMP, 'mmgr-email-auth-wstate-' + Date.now());
 // email-auth REQUIRES its own wrangler (custom vars: RESEND, LEMONSQUEEZY, etc.)
 const { stopWranglerIfLocal } = require('./wrangler-ci-helpers.cjs');
 async function startWrangler(mode) {
-  // mode: 'dormant' (phase 1 — no secrets) | 'configured' (phase 2 — LS) | 'email' (phase 3 — LS + Resend stub)
-  const configured = mode === 'configured' || mode === 'email';
+  // mode: 'dormant' (phase 1 — no secrets) | 'configured' (phase 2 — LS) |
+  // 'paddle' (phase 2b — PADDLE_* only, provider seam) | 'email' (phase 3 — LS + Resend stub)
+  const lsConfigured = mode === 'configured' || mode === 'email';
+  const paddleConfigured = mode === 'paddle';
+  const configured = lsConfigured || paddleConfigured;
   stopWrangler();
   await delay(800); // let the previous process release the port
   log('starting wrangler dev on :' + PORT + ' (' + mode + ' phase)…');
@@ -240,12 +266,23 @@ async function startWrangler(mode) {
     '--var', 'GOOGLE_CLIENT_SECRET:' + SECRET,
     '--var', 'ADMIN_CODE:' + ADMIN_CODE
   ];
-  if (configured) {
+  if (lsConfigured) {
     args.push(
       '--var', 'LEMONSQUEEZY_WEBHOOK_SECRET:' + LS_SECRET,
       '--var', 'LEMONSQUEEZY_API_KEY:' + LS_KEY,
       '--var', 'LEMONSQUEEZY_VARIANT_ID:' + LS_VARIANT,
       '--var', 'LEMONSQUEEZY_STORE_ID:' + LS_STORE,
+      '--var', 'FREE_PROJECT_CAP:2'
+    );
+  }
+  if (paddleConfigured) {
+    // PADDLE_* ONLY — billingProvider() prefers Paddle when both sets exist,
+    // so this phase must run WITHOUT the LS vars to exercise the Paddle paths.
+    args.push(
+      '--var', 'PADDLE_WEBHOOK_SECRET:' + PADDLE_SECRET,
+      '--var', 'PADDLE_API_KEY:' + PADDLE_KEY,
+      '--var', 'PADDLE_PRICE_ID:' + PADDLE_PRICE,
+      '--var', 'PADDLE_ENV:sandbox',
       '--var', 'FREE_PROJECT_CAP:2'
     );
   }
@@ -312,6 +349,14 @@ function extractSessionCookie(res) {
 // HMAC-SHA256 hex over the RAW body — mirrors billingVerifySignature.
 function lsSignature(rawBody, secret) {
   return crypto.createHmac('sha256', secret).update(rawBody).digest('hex');
+}
+// Paddle-Signature header — mirrors paddleVerifySignature (ts=...;h1=<hex of
+// HMAC-SHA256(ts + ':' + rawBody)>). tsSec lets the harness forge a stale
+// timestamp for the replay-tolerance gate.
+function paddleSignature(rawBody, secret, tsSec) {
+  const ts = String(tsSec || Math.floor(Date.now() / 1000));
+  const h1 = crypto.createHmac('sha256', secret).update(ts + ':' + rawBody).digest('hex');
+  return 'ts=' + ts + ';h1=' + h1;
 }
 
 // ---- gate definitions -----------------------------------------------------
@@ -458,6 +503,77 @@ async function phase2() {
   const testReq = JSON.stringify({ meta: { event_name: 'test_request', custom_data: {} }, data: {} });
   const tr = await api('/api/billing/webhook', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Signature': lsSignature(testReq, LS_SECRET) }, body: testReq });
   check('B6 webhook: bad signature -> 401; test_request -> 200 ignored', bad.status === 401 && tr.status === 200 && tr.body.ignored === 'test_request', bad.text + ' | ' + tr.text);
+}
+
+// ---- PHASE 2b (Paddle configured — fake PADDLE_* secrets, provider seam) -----
+// The SAME routes + entitlement table as phase 2, driven through the Paddle
+// paths: provider prefers 'paddle' when PADDLE_* secrets exist (owner
+// 2026-10-01: LemonSqueezy does not support Jamaica; Paddle does). Signature
+// scheme per developer.paddle.com: Paddle-Signature ts=...;h1=<hex of
+// HMAC-SHA256(ts + ':' + rawBody)>, 5s replay tolerance, raw body untouched.
+const PEN = 'pen.paddle.e2e@example.com';
+const PADDLE_SUB_ID = 'sub_01paddleqa00000000000000';
+async function phasePaddle() {
+  log('--- PHASE 2b (Paddle configured — PADDLE_* only + FREE_PROJECT_CAP=2) ---');
+  // PD1 — the provider seam reports paddle + the cap.
+  const pd1r = await api('/api/auth/register', { method: 'POST', headers: jsonHeaders, body: JSON.stringify({ email: PEN, password: 'paddle-pass-1', name: 'Pen Paddle' }) });
+  const penCookie = extractSessionCookie(pd1r);
+  check('PD1 register pen -> 200', pd1r.status === 200 && !!penCookie, pd1r.text);
+  const pd1 = await api('/api/billing/status', { method: 'GET', headers: cookieHeader(penCookie) });
+  check('PD1 status (paddle): configured:true, provider paddle, plan free, projectCap 2',
+    pd1.status === 200 && pd1.body.configured === true && pd1.body.provider === 'paddle' && pd1.body.plan === 'free' && pd1.body.active === false && pd1.body.projectCap === 2, pd1.text);
+
+  // PD2 — checkout with a fake key: the upstream rejects (or is unreachable);
+  // both paths must answer the same honest 502, never a fabricated URL.
+  const pd2 = await api('/api/billing/checkout', { method: 'POST', headers: cookieHeader(penCookie), body: JSON.stringify({}) });
+  check('PD2 checkout (fake key, sandbox) -> 502 ok:false', pd2.status === 502 && pd2.body.ok === false, pd2.text);
+
+  // PD3 — the free cap still gates under the Paddle provider.
+  const capIds = ['pd-cap-1-' + Date.now().toString(36), 'pd-cap-2-' + Date.now().toString(36), 'pd-cap-3-' + Date.now().toString(36)];
+  const c1 = await api('/api/cloud/projects', { method: 'POST', headers: cookieHeader(penCookie), body: JSON.stringify({ projectId: capIds[0], name: 'Paddle Cap 1' }) });
+  const c2 = await api('/api/cloud/projects', { method: 'POST', headers: cookieHeader(penCookie), body: JSON.stringify({ projectId: capIds[1], name: 'Paddle Cap 2' }) });
+  const c3 = await api('/api/cloud/projects', { method: 'POST', headers: cookieHeader(penCookie), body: JSON.stringify({ projectId: capIds[2], name: 'Paddle Cap 3' }) });
+  check('PD3 cap (paddle): 2 creates ok, 3rd -> 402 {upgrade:true}',
+    c1.status === 200 && c2.status === 200 && c3.status === 402 && c3.body.ok === false && c3.body.upgrade === true, JSON.stringify({ c1: c1.status, c2: c2.status, c3: c3.status }));
+
+  // PD4 — signature-verified Paddle webhook flips the account active.
+  const subBody = JSON.stringify({
+    event_type: 'subscription.activated', event_id: 'evt_pd_' + Date.now().toString(36), occurred_at: new Date().toISOString(),
+    data: { id: PADDLE_SUB_ID, status: 'active', custom_data: { sub: 'email:' + PEN },
+            current_billing_period: { starts_at: new Date().toISOString(), ends_at: new Date(Date.now() + 30 * 86400000).toISOString() } }
+  });
+  const pd4 = await api('/api/billing/webhook', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Paddle-Signature': paddleSignature(subBody, PADDLE_SECRET) }, body: subBody });
+  check('PD4 webhook subscription.activated (valid Paddle-Signature) -> 200, status active',
+    pd4.status === 200 && pd4.body.event === 'subscription.activated' && pd4.body.status === 'active', pd4.text);
+
+  // PD5 — the subscription cleared the cap.
+  const pd5s = await api('/api/billing/status', { method: 'GET', headers: cookieHeader(penCookie) });
+  const pd5 = await api('/api/cloud/projects', { method: 'POST', headers: cookieHeader(penCookie), body: JSON.stringify({ projectId: capIds[2], name: 'Paddle Cap 3 retry' }) });
+  check('PD5 status active:true plan pro; create over cap -> 200',
+    pd5s.status === 200 && pd5s.body.active === true && pd5s.body.plan === 'pro' && pd5.status === 200 && pd5.body.ok === true, pd5s.text + ' | ' + pd5.text);
+
+  // PD6 — the signature gate: garbage, tampered body, stale timestamp,
+  // header-less, and a non-lifecycle event all land correctly.
+  const bad = await api('/api/billing/webhook', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Paddle-Signature': 'ts=123;h1=deadbeef' }, body: subBody });
+  const tampered = await api('/api/billing/webhook', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Paddle-Signature': paddleSignature(subBody, PADDLE_SECRET) }, body: subBody.replace(PADDLE_SUB_ID, 'sub_FORGED000000000000000') });
+  const stale = await api('/api/billing/webhook', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Paddle-Signature': paddleSignature(subBody, PADDLE_SECRET, Math.floor(Date.now() / 1000) - 60) }, body: subBody });
+  const headerless = await api('/api/billing/webhook', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: subBody });
+  const unknown = JSON.stringify({ event_type: 'product.updated', event_id: 'evt_pd_x', occurred_at: new Date().toISOString(), data: { id: 'pro_01x' } });
+  const tr = await api('/api/billing/webhook', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Paddle-Signature': paddleSignature(unknown, PADDLE_SECRET) }, body: unknown });
+  check('PD6 webhook: garbage -> 401; tampered -> 401; stale ts -> 401; header-less -> 401; unknown event -> 200 ignored',
+    bad.status === 401 && tampered.status === 401 && stale.status === 401 && headerless.status === 401 && tr.status === 200 && tr.body.ignored === 'product.updated',
+    JSON.stringify({ bad: bad.status, tampered: tampered.status, stale: stale.status, headerless: headerless.status, tr: tr.text }));
+
+  // PD7 — a one-time purchase (transaction.completed) grants pro with no
+  // period end; nothing renews, nothing expires.
+  const txnBody = JSON.stringify({
+    event_type: 'transaction.completed', event_id: 'evt_pd_t_' + Date.now().toString(36), occurred_at: new Date().toISOString(),
+    data: { id: 'txn_01paddleqa0000000000000', status: 'completed', custom_data: { sub: 'email:' + PEN } }
+  });
+  const pd7 = await api('/api/billing/webhook', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Paddle-Signature': paddleSignature(txnBody, PADDLE_SECRET) }, body: txnBody });
+  const pd7s = await api('/api/billing/status', { method: 'GET', headers: cookieHeader(penCookie) });
+  check('PD7 webhook transaction.completed -> 200; status still active (one-time grant)',
+    pd7.status === 200 && pd7.body.event === 'transaction.completed' && pd7.body.status === 'active' && pd7s.status === 200 && pd7s.body.active === true, pd7.text + ' | ' + pd7s.text);
 }
 
 // ---- PHASE 3 (email configured — Resend stub) ----------------------------------
@@ -975,6 +1091,8 @@ process.on('SIGTERM', function () { interruptSummary('SIGTERM'); });
     await phase1();
     await startWrangler('configured');
     await phase2();
+    await startWrangler('paddle');
+    await phasePaddle();
     await startEmailStub();
     await startWrangler('email');
     await phase3();

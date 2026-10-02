@@ -927,6 +927,271 @@
         "total": 660
       },
       "note": "B1: labour-only trade - mat 0; 12 m3 x 55 = 660"
+    },
+    {
+      "id": "G-allin-metric",
+      "work": "siteprep",
+      "dims": {
+        "d1": "10",
+        "d2": "8"
+      },
+      "allInRate": "20",
+      "expect": {
+        "qty": 80,
+        "mat": 0,
+        "lab": 0,
+        "sub": 1600,
+        "allInCost": 1600,
+        "total": 1600,
+        "allIn": true
+      },
+      "note": "D3: all-in (JIC combined) rate - 10 x 8 = 80 m2 x $20 = $1600. The figure is the WHOLE work cost, so mat and lab read 0 (no faked split); allInCost carries $1600 into sub/total unchanged."
+    },
+    {
+      "id": "G-allin-imperial-runit",
+      "work": "fabric-mesh",
+      "dims": {
+        "d1": "50"
+      },
+      "allInRate": "8",
+      "expect": {
+        "qty": 50,
+        "mat": 0,
+        "lab": 0,
+        "sub": 478.4,
+        "allInCost": 478.4,
+        "total": 478.4,
+        "allIn": true
+      },
+      "note": "All-in on a per-yd2 trade (E3 unit factor still applies): mesh rates are quoted per yd2, so $8/yd2 x 1.19599005 = $9.5679204/m2 x 50 m2 = $478.40. mat/lab stay 0 - the combined figure is never split."
+    },
+    {
+      "id": "G-allin-beats-piece",
+      "work": "blockwall",
+      "dims": {
+        "d1": "10",
+        "d2": "2.4"
+      },
+      "allInRate": "60",
+      "piecePrice": "800",
+      "pieceSize": "40 x 20",
+      "expect": {
+        "allIn": true,
+        "mat": 0,
+        "lab": 0,
+        "allInCost": 1440,
+        "sub": 1440,
+        "total": 1440
+      },
+      "note": "D3 guard: all-in BEATS per-piece pricing rather than erroring or stacking. piecePrice 800 for a 0.08 m2 block would have set effMat, but an all-in line ignores effMat entirely: 24 m2 x 60 = $1440."
+    },
+    {
+      "id": "G-allin-beats-labouronly",
+      "work": "siteprep",
+      "dims": {
+        "d1": "10",
+        "d2": "8"
+      },
+      "allInRate": "20",
+      "labourOnly": true,
+      "expect": {
+        "allIn": true,
+        "labourOnly": false,
+        "mat": 0,
+        "lab": 0,
+        "allInCost": 1600,
+        "sub": 1600,
+        "total": 1600
+      },
+      "note": "D3 guard: all-in BEATS labour-only mode. The combined figure already covers material, so labourOnly reports INACTIVE (false) instead of suppressing the material money out of an all-in line. 80 x 20 = $1600."
+    },
+    {
+      "id": "G-allin-oh-tax",
+      "work": "siteprep",
+      "dims": {
+        "d1": "10",
+        "d2": "8"
+      },
+      "allInRate": "20",
+      "ohPct": "10",
+      "country": "JM",
+      "expect": {
+        "allIn": true,
+        "allInCost": 1600,
+        "sub": 1600,
+        "total": 2024
+      },
+      "note": "D5: the rate field is always COST and Overhead converts cost -> price, uniformly, including on a book-filled all-in line. sub $1600 + oh 10% $160 = $1760; + JM tax 15% $264 = $2024."
+    },
+    {
+      "id": "G-allin-bookfilled-vs-typed",
+      "work": "siteprep",
+      "dims": {
+        "d1": "10",
+        "d2": "8"
+      },
+      "allInRate": "20",
+      "allInModel": "20",
+      "expect": {
+        "allIn": true,
+        "bookFilled": true,
+        "allInCost": 1600,
+        "total": 1600
+      },
+      "note": "D4: a figure equal to the prefill marker came from the rate book, so bookFilled is true - that is what raises the published-market-rate note. Typing a different number wins (typed always beats the book; the book is a default, never a lock)."
+    },
+    {
+      "id": "G-allin-typed-wins",
+      "work": "siteprep",
+      "dims": {
+        "d1": "10",
+        "d2": "8"
+      },
+      "allInRate": "25",
+      "allInModel": "20",
+      "expect": {
+        "allIn": true,
+        "bookFilled": false,
+        "allInCost": 2000,
+        "total": 2000
+      },
+      "note": "D4: the book prefilled 20 but the user typed 25, so 25 prices the line (80 x 25 = $2000) and bookFilled is false - no market-rate note on money the user chose."
+    },
+    {
+      "id": "G-allin-blank-inert",
+      "work": "siteprep",
+      "dims": {
+        "d1": "10",
+        "d2": "8"
+      },
+      "allInRate": "",
+      "expect": {
+        "allIn": false,
+        "qty": 80,
+        "mat": 320,
+        "lab": 720,
+        "sub": 1040,
+        "total": 1040
+      },
+      "note": "Default-inert: a blank all-in field prices the line exactly as it did before the feature existed (80 x 4 = 320; 80 x 9 = 720)."
+    },
+    {
+      "id": "G-dayrate-basis",
+      "work": "siteprep",
+      "dims": {
+        "d1": "10",
+        "d2": "8"
+      },
+      "days": "2.5",
+      "dayRate": "400",
+      "expect": {
+        "dayBasis": true,
+        "days": 2.5,
+        "qty": 80,
+        "mat": 320,
+        "lab": 1000,
+        "sub": 1320,
+        "total": 1320
+      },
+      "note": "D1/D2: 2.5 days x $400/day = $1000 of labour, used exactly as typed. Material is untouched (320), so one line can carry bought material AND crew days."
+    },
+    {
+      "id": "G-dayrate-plus-material",
+      "work": "siteprep",
+      "dims": {
+        "d1": "10",
+        "d2": "8"
+      },
+      "rateMat": "4",
+      "days": "2",
+      "dayRate": "400",
+      "expect": {
+        "dayBasis": true,
+        "days": 2,
+        "qty": 80,
+        "mat": 320,
+        "lab": 800,
+        "sub": 1120,
+        "total": 1120
+      },
+      "note": "Owner point 3: bought material AND crew days on one line. mat 80 x 4 = 320 (typed material rate); lab 2 days x 400 = 800; sub $1120."
+    },
+    {
+      "id": "G-dayrate-oncost-applies",
+      "work": "siteprep",
+      "dims": {
+        "d1": "10",
+        "d2": "8"
+      },
+      "days": "2",
+      "dayRate": "400",
+      "onCostPct": "12.5",
+      "expect": {
+        "dayBasis": true,
+        "days": 2,
+        "lab": 800,
+        "onCost": 100,
+        "sub": 1220,
+        "total": 1220
+      },
+      "note": "A typed day rate IS payroll, so employer statutory on-costs still apply to it: 800 x 12.5% = $100. sub 320 + 800 + 100 = $1220."
+    },
+    {
+      "id": "G-dayrate-premium-does-not-scale",
+      "work": "siteprep",
+      "dims": {
+        "d1": "10",
+        "d2": "8"
+      },
+      "days": "2",
+      "dayRate": "400",
+      "quality": "premium",
+      "expect": {
+        "dayBasis": true,
+        "days": 2,
+        "lab": 800,
+        "mat": 432,
+        "sub": 1232,
+        "total": 1232
+      },
+      "note": "D8 (locked): the finish-level multiplier scales the MATERIAL unit rate ONLY. Premium 1.35 takes material 320 -> 432, but the crew day rate stays exactly 800 (2 x 400). A day rate is a price for one crew-day, not a unit rate; multiplying it would silently inflate it to $1080."
+    },
+    {
+      "id": "G-dayrate-quarter-days",
+      "work": "siteprep",
+      "dims": {
+        "d1": "10",
+        "d2": "8"
+      },
+      "days": "0.75",
+      "dayRate": "400",
+      "expect": {
+        "dayBasis": true,
+        "days": 0.75,
+        "lab": 300,
+        "sub": 620,
+        "total": 620
+      },
+      "note": "Days land on quarter-day steps: 0.75 day x $400 = $300 (half and quarter days are normal on site)."
+    },
+    {
+      "id": "G-dayrate-invalid-falls-back",
+      "work": "siteprep",
+      "dims": {
+        "d1": "10",
+        "d2": "8"
+      },
+      "days": "0",
+      "dayRate": "400",
+      "expect": {
+        "dayBasis": false,
+        "qty": 80,
+        "mat": 320,
+        "lab": 720,
+        "sub": 1040,
+        "total": 1040
+      },
+      "note": "Guard: 0 days is rejected and the line falls back to the normal per-unit labour path (80 x 9 = 720). A blank/zero/negative/absurd day count must never put NaN into a total."
     }
   ]
 }

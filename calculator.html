@@ -276,12 +276,50 @@
         <span class="bcp-rates-label">Your rates <span class="bcp-hist-note">- prefilled from the planning-grade model, yours to change</span></span>
         <button type="button" class="btn btn-n btn-s" id="calc-rates-reset" data-action="calcRatesReset">Reset to model</button>
       </div>
-      <div class="bcp-row bcp-row-3">
+      <div class="bcp-row bcp-row-3" id="calc-rates-row">
         <div class="bcp-field"><label for="calc-rate-mat" id="calc-rate-mat-label">Material rate</label><input type="number" id="calc-rate-mat" min="0" step="any" inputmode="decimal"></div>
         <div class="bcp-field"><label for="calc-rate-lab" id="calc-rate-lab-label">Labor rate</label><input type="number" id="calc-rate-lab" min="0" step="any" inputmode="decimal"></div>
         <div class="bcp-field"><label for="calc-rate-eq" id="calc-rate-eq-label">Equipment / plant hire</label><input type="number" id="calc-rate-eq" min="0" step="any" inputmode="decimal" placeholder="0 = none"></div>
       </div>
       <p class="bcp-jm-note" id="calc-fx-note" hidden></p>
+
+      <!-- Pricing basis (owner 2026-10-02): a tradesman prices work three ways -
+           measured per unit, ONE combined all-in rate, or the crew days it
+           takes. Everything below the chooser stays hidden until it is chosen,
+           so the common measured path looks exactly as it always has. -->
+      <div class="bcp-row bcp-row-basis">
+        <div class="bcp-field bcp-basis-pick">
+          <label for="calc-basis">How do you price this work?</label>
+          <select id="calc-basis" data-action="calcBasisPick" aria-label="How do you price this work">
+            <option value="measured">Measured - by the unit</option>
+            <option value="allin">All-in rate - one combined rate</option>
+            <option value="days">Days on site - a crew rate per day</option>
+          </select>
+        </div>
+        <div class="bcp-field bcp-basis-allin" id="calc-allin-wrap" hidden>
+          <label for="calc-allin" id="calc-allin-label">All-in rate</label>
+          <input type="number" id="calc-allin" min="0" step="any" inputmode="decimal" placeholder="one rate covering the whole job">
+        </div>
+        <div class="bcp-field bcp-basis-verified" id="calc-verified-wrap" hidden>
+          <label for="calc-allin-verified">Checked against JIC on</label>
+          <input type="date" id="calc-allin-verified">
+        </div>
+        <div class="bcp-field bcp-basis-days" id="calc-days-wrap" hidden>
+          <label for="calc-days">Days on site</label>
+          <input type="number" id="calc-days" min="0" max="2000" step="0.25" inputmode="decimal" placeholder="e.g. 2.5">
+        </div>
+        <div class="bcp-field bcp-basis-dayrate" id="calc-day-rate-wrap" hidden>
+          <label for="calc-day-rate">Crew rate per day</label>
+          <input type="number" id="calc-day-rate" min="0" step="any" inputmode="decimal" placeholder="e.g. 400">
+        </div>
+      </div>
+      <!-- Notifier 1 (D7): a day's output swings with weather, coats and
+           substrate, so on the finishes that swing hardest this says so. It
+           advises; it never blocks - the choice stays the user's. -->
+      <p class="bcp-note-warn" id="calc-day-note" hidden></p>
+      <!-- Notifier 2 (D7): published rates move, so a book-filled all-in rate
+           says where it came from and when it was last checked. -->
+      <p class="bcp-note-info" id="calc-book-note" hidden></p>
 
       <div class="bcp-sheets-bar">
         <input type="text" id="calc-sheet-name" maxlength="40" placeholder="e.g. low-bid, sustain" aria-label="Rate sheet name">
@@ -328,6 +366,10 @@
         <select id="calc-book-select" data-action="calcBookPick" aria-label="Apply an imported rate book"></select>
         <button type="button" class="btn btn-n btn-s" data-action="calcBookExport" title="Download your rate books as a JSON file"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Export</button>
         <button type="button" class="btn btn-n btn-s" data-action="calcBookImport" title="Load a rate book from a My MaNaGeR JSON export"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-upload"></use></svg> Import</button>
+        <!-- Owner 2026-10-02: the Jamaica book ships with the app, built from
+             the same 100 published rows the rate-book card shows. Loading it
+             is one tap; every rate it holds is still yours to change. -->
+        <button type="button" class="btn btn-n btn-s" data-action="calcBookJic" title="Load the Jamaica rate book 2025-2027"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-book"></use></svg> Jamaica book</button>
         <button type="button" class="btn btn-n btn-s" data-action="calcBookClear" title="Stop using the active rate book">Use model rates</button>
         <input type="file" id="calc-book-file" accept="application/json,.json" hidden>
       </div>
@@ -612,6 +654,6 @@
      change here must bump v, or returning calculator-only visitors keep
      the old script/styles for a year. -->
 <script src="js/mmgr-icon-restore.js?v=25"></script>
-<script src="js/calculator-page.js?v=25"></script>
+<script src="js/calculator-page.js?v=26"></script>
 </body>
 </html>

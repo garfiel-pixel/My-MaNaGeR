@@ -1837,6 +1837,267 @@ async function withChrome(fn) {
     check('LM2 labour-only with a typed material rate: the user\'s own materials still price (12.6x100=1260)',
       lm2 && lm2.mat === 1260 && lm2.lab === 1071 && lm2.inOut, lm2);
 
+    // ---- AB: ALL-IN (JIC combined) RATE + DB: PER-DAY CREW RATE ----------
+    // Owner directive 2026-10-02, decisions D1-D9. These two families are the
+    // proof that a combined figure is NEVER split into a fabricated
+    // Materials/Labour pair on any document, and that a day rate is ONE
+    // labour total that the finish multiplier cannot inflate.
+    const ab0 = await ev(`(function(){
+      document.getElementById('calc-labour-only').checked = false;
+      document.getElementById('calc-labour-only').dispatchEvent(new Event('change',{bubbles:true}));
+      var w = document.getElementById('calc-work'); w.value = 'siteprep'; w.dispatchEvent(new Event('change',{bubbles:true}));
+      document.getElementById('calc-d1').value = '10'; document.getElementById('calc-d2').value = '8';
+      document.getElementById('calc-currency').value = 'USD';
+      var b = document.getElementById('calc-basis'); b.value = 'measured'; b.dispatchEvent(new Event('change',{bubbles:true}));
+      return { basis: b.value, wrapHidden: document.getElementById('calc-allin-wrap').hidden,
+               dayHidden: document.getElementById('calc-days-wrap').hidden,
+               ratesShown: !document.getElementById('calc-rates-row').hidden };
+    })()`);
+    check('AB0 measured is the default and hides both new input groups (default-inert)',
+      ab0 && ab0.basis === 'measured' && ab0.wrapHidden && ab0.dayHidden && ab0.ratesShown, ab0);
+    const ab1 = await ev(`(function(){
+      var b = document.getElementById('calc-basis'); b.value = 'allin'; b.dispatchEvent(new Event('change',{bubbles:true}));
+      var a = document.getElementById('calc-allin'); a.value = '20'; a.dispatchEvent(new Event('input',{bubbles:true}));
+      document.querySelector('[data-action=calcRun]').click();
+      var r = __calcEngine.computeFor(Object.assign(__calcEngine.readState(),
+        { _matModel: document.getElementById('calc-rate-mat').dataset.model,
+          _labModel: document.getElementById('calc-rate-lab').dataset.model }));
+      var out = document.getElementById('calc-output').textContent;
+      var csv = __calcEngine.estimateCsv(r);
+      return { ratesHidden: document.getElementById('calc-rates-row').hidden,
+               verifiedShown: !document.getElementById('calc-verified-wrap').hidden,
+               allIn: r.allIn, mat: r.mat, lab: r.lab, cost: Math.round(r.allInCost), total: Math.round(r.total),
+               oneRow: out.indexOf('Work rate (all-in)') > -1,
+               noMatRow: out.indexOf('Materials') === -1, noLabRow: out.indexOf('Labor') === -1,
+               csvCombined: csv.indexOf('"Work rate (all-in)","1600"') > -1,
+               csvNoSplit: csv.indexOf('"Materials"') === -1 && csv.indexOf('"Labor"') === -1 };
+    })()`);
+    check('AB1 all-in prices the whole line and shows ONE combined row - no Materials/Labour split on screen or CSV (D3)',
+      ab1 && ab1.ratesHidden && ab1.verifiedShown && ab1.allIn && ab1.mat === 0 && ab1.lab === 0 &&
+      ab1.cost === 1600 && ab1.total === 1600 && ab1.oneRow && ab1.noMatRow && ab1.noLabRow &&
+      ab1.csvCombined && ab1.csvNoSplit, ab1);
+    const ab2 = await ev(`(function(){
+      var a = document.getElementById('calc-allin'); a.value = '20'; a.dataset.model = '20';
+      a.dispatchEvent(new Event('input',{bubbles:true}));
+      document.querySelector('[data-action=calcRun]').click();
+      // computeFor reads the prefill marker under the same _allInModel key the
+      // live wrapper passes, exactly as the material/labour fields do.
+      var r = __calcEngine.computeFor(Object.assign(__calcEngine.readState(),
+        { _allInModel: a.dataset.model }));
+      var note = document.getElementById('calc-book-note');
+      return { filled: r.bookFilled, overridden: r.allInOverridden,
+               noteShown: !note.hidden, noteTxt: note.textContent };
+    })()`);
+    check('AB2 a book-filled all-in rate says so on the form (D4/D7 note)',
+      ab2 && ab2.filled === true && ab2.overridden === false && ab2.noteShown &&
+      /JIC/i.test(ab2.noteTxt || ''), ab2);
+    const ab3 = await ev(`(function(){
+      var a = document.getElementById('calc-allin'); a.value = '25'; a.dispatchEvent(new Event('input',{bubbles:true}));
+      document.querySelector('[data-action=calcRun]').click();
+      var r = __calcEngine.computeFor(__calcEngine.readState());
+      var note = document.getElementById('calc-book-note');
+      return { cost: Math.round(r.allInCost), filled: r.bookFilled, overridden: r.allInOverridden, noteHidden: note.hidden };
+    })()`);
+    check('AB3 typing over the book wins and drops the published-rate note (D4 - the book is a default, never a lock)',
+      ab3 && ab3.cost === 2000 && ab3.filled === false && ab3.overridden === true && ab3.noteHidden, ab3);
+    const ab4 = await ev(`(function(){
+      var a = document.getElementById('calc-allin'); a.value = ''; a.dispatchEvent(new Event('input',{bubbles:true}));
+      document.querySelector('[data-action=calcRun]').click();
+      var r = __calcEngine.computeFor(Object.assign(__calcEngine.readState(),
+        { _matModel: document.getElementById('calc-rate-mat').dataset.model,
+          _labModel: document.getElementById('calc-rate-lab').dataset.model }));
+      var out = document.getElementById('calc-output').textContent;
+      return { allIn: r.allIn, mat: Math.round(r.mat), lab: Math.round(r.lab), backToSplit: out.indexOf('Materials') > -1 };
+    })()`);
+    check('AB4 clearing the all-in field falls back to the split rates (320/720)',
+      ab4 && ab4.allIn === false && ab4.mat === 320 && ab4.lab === 720 && ab4.backToSplit, ab4);
+    const ab5 = await ev(`(function(){
+      var E = __calcEngine;
+      var st = Object.assign(E.readState(), { work: 'blockwall', d1: '10', d2: '2.4',
+        allInRate: '60', piecePrice: '800', pieceSize: '40 x 20', labourOnly: true });
+      var r = E.computeFor(st);
+      var st2 = Object.assign({}, st, { labourOnly: false, piecePrice: '' });
+      var r2 = E.computeFor(st2);
+      return { beatsPiece: r.allIn && r.mat === 0 && r.lab === 0 && Math.round(r.allInCost) === 1440,
+               labourOnlyInactive: r.labourOnly === false };
+    })()`);
+    check('AB5 all-in beats piece pricing and labour-only rather than erroring or double-applying',
+      ab5 && ab5.beatsPiece && ab5.labourOnlyInactive, ab5);
+    const ab6 = await ev(`(function(){
+      var E = __calcEngine;
+      // Drive the FORM, not a local state object - a snapshot only holds what
+      // the DOM actually carried, so the round-trip has to start there.
+      var b = document.getElementById('calc-basis'); b.value = 'allin'; b.dispatchEvent(new Event('change',{bubbles:true}));
+      var a = document.getElementById('calc-allin'); a.value = '25'; a.dataset.model = '';
+      a.dispatchEvent(new Event('input',{bubbles:true}));
+      document.querySelector('[data-action=calcRun]').click();
+      var before = E.computeFor(Object.assign(E.readState(), { _allInModel: a.dataset.model })).total;
+      var json = JSON.stringify(E.readState());
+      // wipe, then recall
+      ['calc-allin','calc-days','calc-day-rate'].forEach(function(id){
+        var el = document.getElementById(id); el.value = ''; if (el.dataset) el.dataset.model = '';
+      });
+      document.getElementById('calc-basis').value = 'measured';
+      E.applyState(JSON.parse(json));
+      var a2 = document.getElementById('calc-allin');
+      var after = E.computeFor(Object.assign(E.readState(), { _allInModel: a2.dataset.model })).total;
+      return { identical: Math.abs(before - after) < 0.001, before: Math.round(before), after: Math.round(after),
+               basisBack: document.getElementById('calc-basis').value, fieldBack: a2.value };
+    })()`);
+    check('AB6 an all-in line recalled from its snapshot reproduces its total exactly (D4 recall fidelity)',
+      ab6 && ab6.identical && ab6.before === ab6.after && ab6.basisBack === 'allin', ab6);
+    const ab7 = await ev(`(function(){
+      var E = __calcEngine;
+      var p = E.jicBookPayload();
+      var entries = Object.keys(p.books[0].rates).reduce(function(n,k){ return n + Object.keys(p.books[0].rates[k]).length; }, 0);
+      var res = E.importBooks(p);
+      var books = JSON.parse(localStorage.getItem('mmgr_calc_books') || '[]');
+      var rt = E.importBooks({ books: books.map(function(b){ return { name: b.name + ' RT', currency: b.currency, rates: b.rates, checksum: b.checksum }; }) });
+      var csum = books.length ? books[0].checksum : null;
+      return { entryCount: p.entryCount, entries: entries, currency: p.books[0].currency,
+               merged: res.merged, skipped: res.skipped, badKeys: res.badKeys,
+               checksumHolds: csum === p.books[0].checksum, rt: rt };
+    })()`);
+    check('AB7 the shipped Jamaica book imports 100 all-in rates with skipped 0 / badKeys 0 and its checksum round-trips',
+      ab7 && ab7.entryCount === 100 && ab7.entries === 100 && ab7.currency === 'JMD' &&
+      ab7.merged === 1 && ab7.skipped === 0 && ab7.badKeys === 0 && ab7.checksumHolds &&
+      ab7.rt && ab7.rt.skipped === 0, ab7);
+    const ab8 = await ev(`(function(){
+      // E1 currency honesty: a JMD book with no JMD rate must leave the field
+      // EMPTY and say so - never a relabelled Jamaican figure. Import the
+      // shipped book FRESH and activate it BY NAME: in a full-suite run the
+      // books store also holds unrelated fixtures, so index or currency alone
+      // would not reliably pick the Jamaican one.
+      try { localStorage.removeItem('mmgr_calc_fx'); } catch (e) {}
+      var E = __calcEngine;
+      E.importBooks(E.jicBookPayload());
+      var books = JSON.parse(localStorage.getItem('mmgr_calc_books') || '[]');
+      var jb = books.filter(function(b) { return b.name === 'Jamaica rate book 2025-2027'; })[0];
+      if (!jb) return { bookActive: false };
+      E.setActiveBook(jb.id);
+      // Re-run the prefill through the real form so the honest note is painted.
+      var w = document.getElementById('calc-work'); w.value = 'blockwall'; w.dispatchEvent(new Event('change',{bubbles:true}));
+      var v = document.getElementById('calc-variant'); if (v) { v.value = '8in-ff'; v.dispatchEvent(new Event('change',{bubbles:true})); }
+      var a = document.getElementById('calc-allin');
+      a.value = ''; a.dataset.model = '';
+      a.dispatchEvent(new Event('input',{bubbles:true}));
+      var m = E.modelRatesFor('blockwall', '8in-ff', 'USD', 10, 2.4);
+      var note = document.getElementById('calc-fx-note');
+      var fieldEmpty = document.getElementById('calc-allin').value === '';
+      var noteHonest = !!note && !note.hidden && /JMD/.test(note.textContent || '');
+      E.setActiveBook('');
+      // Leave the form as we found it so the next family starts clean.
+      w.value = 'siteprep'; w.dispatchEvent(new Event('change',{bubbles:true}));
+      document.getElementById('calc-d1').value = '10'; document.getElementById('calc-d2').value = '8';
+      document.getElementById('calc-allin').value = ''; document.getElementById('calc-allin').dataset.model = '';
+      return { unconvertible: m && m.unconvertible === true, src: m && m.src,
+               fieldEmpty: fieldEmpty, noteHonest: noteHonest, bookActive: true };
+    })()`);
+    check('AB8 with the Jamaica book active but no JMD rate set, the all-in field stays EMPTY and the note names JMD (E1 currency honesty)',
+      ab8 && ab8.unconvertible && ab8.src === 'JMD' && ab8.fieldEmpty && ab8.noteHonest, ab8);
+
+    // ---- DB: per-day crew rate ----
+    const db1 = await ev(`(function(){
+      // Set the trade up explicitly - each family owns its own form state, so
+      // no earlier gate's leftovers can move the expected material money.
+      var w = document.getElementById('calc-work'); w.value = 'siteprep'; w.dispatchEvent(new Event('change',{bubbles:true}));
+      document.getElementById('calc-d1').value = '10'; document.getElementById('calc-d2').value = '8';
+      document.getElementById('calc-currency').value = 'USD';
+      var rm = document.getElementById('calc-rate-mat'); rm.value = ''; rm.dispatchEvent(new Event('input',{bubbles:true}));
+      var b = document.getElementById('calc-basis'); b.value = 'days'; b.dispatchEvent(new Event('change',{bubbles:true}));
+      var d = document.getElementById('calc-days'); d.value = '2.5';
+      var dr = document.getElementById('calc-day-rate'); dr.value = '400';
+      d.dispatchEvent(new Event('input',{bubbles:true})); dr.dispatchEvent(new Event('input',{bubbles:true}));
+      document.querySelector('[data-action=calcRun]').click();
+      var r = __calcEngine.computeFor(Object.assign(__calcEngine.readState(),
+        { _matModel: document.getElementById('calc-rate-mat').dataset.model,
+          _labModel: document.getElementById('calc-rate-lab').dataset.model }));
+      var out = document.getElementById('calc-output').textContent;
+      var csv = __calcEngine.estimateCsv(r);
+      return { daysShown: !document.getElementById('calc-days-wrap').hidden,
+               allinHidden: document.getElementById('calc-allin-wrap').hidden,
+               dayBasis: r.dayBasis, days: r.days, lab: Math.round(r.lab), mat: Math.round(r.mat),
+               total: Math.round(r.total), labelHasDays: out.indexOf('2.5 days') > -1,
+               csvDays: csv.indexOf('"Days on site","2.5"') > -1,
+               csvRate: csv.indexOf('"Labor rate per day","400"') > -1 };
+    })()`);
+    check('DB1 days x rate lands in labour, material untouched, ONE labour total labelled with days x rate (D1/D2)',
+      db1 && db1.daysShown && db1.allinHidden && db1.dayBasis && db1.days === 2.5 &&
+      db1.lab === 1000 && db1.mat === 320 && db1.total === 1320 &&
+      db1.labelHasDays && db1.csvDays && db1.csvRate, db1);
+    const db2 = await ev(`(function(){
+      document.getElementById('calc-quality').value = 'premium';
+      document.getElementById('calc-quality').dispatchEvent(new Event('change',{bubbles:true}));
+      document.querySelector('[data-action=calcRun]').click();
+      var r = __calcEngine.computeFor(Object.assign(__calcEngine.readState(),
+        { _matModel: document.getElementById('calc-rate-mat').dataset.model,
+          _labModel: document.getElementById('calc-rate-lab').dataset.model }));
+      document.getElementById('calc-quality').value = 'standard';
+      document.getElementById('calc-quality').dispatchEvent(new Event('change',{bubbles:true}));
+      return { lab: Math.round(r.lab), mat: Math.round(r.mat) };
+    })()`);
+    check('DB2 the finish multiplier scales material only and NEVER a typed day rate (D8: 800 not 1080, mat 320->432)',
+      db2 && db2.lab === 1000 && db2.mat === 432, db2);
+    const db3 = await ev(`(function(){
+      var E = __calcEngine;
+      var base = Object.assign(E.readState(), { work: 'siteprep', d1: '10', d2: '8', daysStr: '2', dayRateStr: '400' });
+      var on = E.computeFor(base);
+      var cases = ['0','-3','abc','5000',''];
+      var bad = [];
+      cases.forEach(function(v){
+        var st = Object.assign({}, base, { daysStr: v });
+        var r = E.computeFor(st);
+        if (!r || r.dayBasis || isNaN(r.total) || r.total !== 1040) bad.push(v + '=' + (r ? r.total : 'null'));
+      });
+      var halfRate = E.computeFor(Object.assign({}, base, { dayRateStr: '' }));
+      return { okLab: Math.round(on.lab) === 800, bad: bad, halfRateFalls: halfRate.dayBasis === false && halfRate.total === 1040 };
+    })()`);
+    check('DB3 blank / zero / negative / non-numeric / absurd days all fall back safely - never NaN into a total',
+      db3 && db3.okLab && db3.bad.length === 0 && db3.halfRateFalls, db3);
+    const db4 = await ev(`(function(){
+      var E = __calcEngine;
+      var st = Object.assign(E.readState(), { work: 'siteprep', d1: '10', d2: '8',
+        basis: 'days', rateMat: '4', daysStr: '2', dayRateStr: '400', onCostPct: '12.5' });
+      var r = E.computeFor(st);
+      return { mat: Math.round(r.mat), lab: Math.round(r.lab), onCost: Math.round(r.onCost), sub: Math.round(r.sub) };
+    })()`);
+    check('DB4 bought material AND crew days on one line, with employer on-costs still on the day rate (320+800+100=1220)',
+      db4 && db4.mat === 320 && db4.lab === 800 && db4.onCost === 100 && db4.sub === 1220, db4);
+    const db5 = await ev(`(function(){
+      var E = __calcEngine, w = document.getElementById('calc-work');
+      var note = document.getElementById('calc-day-note');
+      var b = document.getElementById('calc-basis'); b.value = 'days'; b.dispatchEvent(new Event('change',{bubbles:true}));
+      var res = {};
+      ['paint','tile','render','excav','siteprep','blockwall'].forEach(function(k){
+        w.value = k; w.dispatchEvent(new Event('change',{bubbles:true}));
+        res[k] = { shown: !note.hidden, txt: note.textContent };
+      });
+      w.value = 'siteprep'; w.dispatchEvent(new Event('change',{bubbles:true}));
+      return res;
+    })()`);
+    check('DB5 the "not recommended" note appears only on the confirmed finish list, and never blocks (D9/D7)',
+      db5 && db5.paint.shown && db5.tile.shown && db5.render.shown &&
+      !db5.excav.shown && !db5.siteprep.shown && !db5.blockwall.shown &&
+      /not recommended/i.test(db5.paint.txt || ''), db5);
+    const db6 = await ev(`(function(){
+      var E = __calcEngine;
+      document.getElementById('calc-basis').value = 'days';
+      document.getElementById('calc-basis').dispatchEvent(new Event('change',{bubbles:true}));
+      var d = document.getElementById('calc-days'); d.value = '0.75';
+      var dr = document.getElementById('calc-day-rate'); dr.value = '400';
+      d.dispatchEvent(new Event('input',{bubbles:true})); dr.dispatchEvent(new Event('input',{bubbles:true}));
+      var st = Object.assign(E.readState(), { work: 'siteprep', d1: '10', d2: '8' });
+      var q = E.computeFor(st);
+      var snapped = E.computeFor(Object.assign({}, st, { daysStr: '2.3' }));
+      var json = JSON.stringify(E.readState());
+      ['calc-days','calc-day-rate'].forEach(function(id){ document.getElementById(id).value = ''; });
+      E.applyState(JSON.parse(json));
+      var back = E.computeFor(E.readState());
+      return { quarter: Math.round(q.lab), rounded: snapped.days, recallDays: back.days, recallLab: Math.round(back.lab) };
+    })()`);
+    check('DB6 quarter-days land exactly, days round to a 0.25 step, and a day line recalls identically',
+      db6 && db6.quarter === 300 && db6.rounded === 2.25 && db6.recallDays === 0.75 && db6.recallLab === 300, db6);
+
     // UNIT-SLIP GUARD (SLIP family, owner directive 2026-10-01).
     const slip1 = await ev(`(function(){
       var a = __calcEngine.dimSlips({ work:'slab', units:'metric', d1:'10', d2:'8', d3:'0.15' });

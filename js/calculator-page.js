@@ -633,6 +633,19 @@ const RATE_UNITS = {
   'yd2': 1.19599005, 'ft2': 10.7639104, 'ft run': 3.2808399,
   'lb': 2204.62262, 'kg': 1000, 'dozen': 1 / 12
 };
+
+// ---- NO_DAY_BASIS: the trades that should NOT be priced by the day (D9)
+// The confirmed set only: rendering, painting and tiling. A day's output on a
+// finish swings with weather, coats and substrate, so a day rate there is a
+// poor selling rate (though a fine costing rate) - so the form says so and
+// leaves the choice alone. Nothing else is listed: a wrongly hidden mode
+// strands a tradesman who needs it, while an ill-fitting mode he chose
+// himself is recoverable. To extend the list, add the work key here - this
+// constant is the one place the rule lives.
+const NO_DAY_BASIS = ['render', 'paint', 'tile'];
+function dayBasisNotRecommended(key) {
+  return NO_DAY_BASIS.indexOf(key) > -1;
+}
 function rateFactor(entry, engineUnit) {
   if (!entry || entry === engineUnit) return 1;
   const f = RATE_UNITS[entry];
@@ -683,6 +696,17 @@ function readState() {
     matModel: (($('calc-rate-mat') || {}).dataset || {}).model || '',
     labModel: (($('calc-rate-lab') || {}).dataset || {}).model || '',
     rateEq: ($('calc-rate-eq') || {}).value || '',
+    // All-in (JIC combined) rate + per-day crew basis. They ride the snapshot
+    // so a recalled estimate reproduces its EXACT total: the all-in figure
+    // alone can carry the whole work cost, and days x rate per day replaces
+    // the per-unit labour entirely, so dropping either silently drifts the
+    // recall away from the sum it is supposed to re-create.
+    allInRate: ($('calc-allin') || {}).value || '',
+    allInModel: (($('calc-allin') || {}).dataset || {}).model || '',
+    basis: ($('calc-basis') || {}).value || 'measured',
+    daysStr: ($('calc-days') || {}).value || '',
+    dayRateStr: ($('calc-day-rate') || {}).value || '',
+    verifiedOn: ($('calc-allin-verified') || {}).value || '',
     ohPct: ($('calc-oh') || {}).value || '',
     onCostPct: ($('calc-oncost-pct') || {}).value || '',
     docType: docType(),
@@ -747,6 +771,17 @@ function applyState(st) {
   if ($('calc-rate-mat')) $('calc-rate-mat').dataset.model = st.matModel != null ? String(st.matModel) : (($('calc-rate-mat').dataset || {}).model || '');
   if ($('calc-rate-lab')) $('calc-rate-lab').dataset.model = st.labModel != null ? String(st.labModel) : (($('calc-rate-lab').dataset || {}).model || '');
   if ($('calc-rate-eq')) $('calc-rate-eq').value = st.rateEq || '';
+  // All-in + per-day crew basis ride the same snapshot (restored here, with
+  // their prefill markers, for the same recall-fidelity reason as the rate
+  // fields above - a recalled line must price to the same money).
+  if ($('calc-allin')) $('calc-allin').value = st.allInRate || '';
+  // The chosen basis is part of the snapshot: a recalled line comes back
+  // showing the same inputs it was saved with.
+  if ($('calc-basis')) $('calc-basis').value = st.basis || 'measured';
+  if ($('calc-allin')) $('calc-allin').dataset.model = st.allInModel != null ? String(st.allInModel) : (($('calc-allin').dataset || {}).model || '');
+  if ($('calc-days')) $('calc-days').value = st.daysStr || '';
+  if ($('calc-day-rate')) $('calc-day-rate').value = st.dayRateStr || '';
+  if ($('calc-allin-verified')) $('calc-allin-verified').value = st.verifiedOn || '';
   if ($('calc-oh')) $('calc-oh').value = st.ohPct || '';
   if ($('calc-oncost-pct')) {
     $('calc-oncost-pct').value = st.onCostPct || '';
@@ -766,6 +801,7 @@ function applyState(st) {
   recallHold = true;
   refreshRateFields();
   recallHold = false;
+  syncBasis();
 }
 
 // B2 (owner review 2026-09-29: 'exact count of tile boxes/units required').
@@ -849,6 +885,50 @@ function computeFor(st) {
   const labRaw = parseFloat(st.rateLab);
   const matModel = st._matModel != null ? String(st._matModel) : null;
   const labModel = st._labModel != null ? String(st._labModel) : null;
+  // ---- All-in rate + per-day crew rate (owner decisions 2026-10-02) ----
+  // Two optional per-line inputs, both read from the state object only and
+  // both DEFAULT-INERT: absent, blank, zero, negative or absurd means the
+  // line prices exactly as it did before they existed. Every branch below
+  // is a no-op unless its own guard passes, so a snapshot from before this
+  // feature (or any state object without these keys) is unchanged.
+  //
+  // D3 - the all-in rate is the JIC COMBINED figure: one number covering
+  // material, labour and the statutory costs on it. We never invent a split,
+  // so mat and lab read 0 for presentation while the money lives in
+  // allInCost and lands in the subtotal unchanged.
+  const allInRaw = parseFloat(st.allInRate);
+  // The CHOOSER is authoritative when it says which basis is in play, so a
+  // figure left behind in the other mode's field can never price a line or
+  // reach a document. Absent (a legacy snapshot, a golden case, the pure
+  // engine called with a hand-built state) means "either may apply", and
+  // all-in still wins the overlap exactly as below.
+  const basis = st.basis || '';
+  const allIn = isFinite(allInRaw) && allInRaw > 0 && basis !== 'days';
+  const allInRate = allIn ? allInRaw : 0;
+  // The book (or the model) prefills this field and the prefill marker rides
+  // the snapshot, exactly like the material/labour fields. A number equal to
+  // the marker came from the source; anything else was typed by the user and
+  // wins (D4 - the book is a default, never a lock).
+  const allInModel = st._allInModel != null ? String(st._allInModel) : null;
+  const allInOverride = allIn && (allInModel === null || String(allInRaw) !== allInModel);
+  const bookFilled = allIn && !allInOverride;
+  // ---- Per-day crew rate ------------------------------------------------
+  // The tradesman knows how many days the job takes, so he types the days
+  // and the crew rate for one of them (D1 - per-hour and any productivity
+  // norm are deliberately out of scope; typing the days removes the norm).
+  // Days land on quarter-day steps (half and quarter days are normal on
+  // site); 0, negative, non-numeric or an absurd figure (> 2000) falls back
+  // to the normal per-unit labour path rather than putting NaN in a total.
+  const daysRaw = parseFloat(st.daysStr);
+  const daysOk = isFinite(daysRaw) && daysRaw > 0 && daysRaw <= 2000;
+  const days = daysOk ? Math.round(daysRaw * 4) / 4 : 0;
+  const dayRateRaw = parseFloat(st.dayRateStr);
+  const dayRateOk = isFinite(dayRateRaw) && dayRateRaw > 0;
+  const dayRate = dayRateOk ? dayRateRaw : 0;
+  // Both halves must be present and sane; one alone is not a day rate.
+  const dayBasis = daysOk && dayRateOk && basis !== 'allin';
+  // D2 - one crew rate per day, never a row per person. A document shows a
+  // single labour total, so there is no role list anywhere in this engine.
   // E1/E4 (plan v2 Phase 1): the rate FIELDS carry the money that gets
   // charged - the prefill already converted it (active book rate or model
   // rate at the estimate's exchange rate), so a present field always
@@ -930,31 +1010,55 @@ function computeFor(st) {
   // E6: labour-only mode prices the WORK - labor at its rate; material
   // money is the user's own, so a typed material rate still shows while
   // the model/piece material price is excluded.
-  const labourOnly = !!st.labourOnly;
+  // D3 guard: the all-in rate is the whole work cost, so it BEATS piece
+  // pricing and labour-only mode rather than stacking on top of them. A form
+  // must never trap the user in an error state, so the winner is reported and
+  // the losers simply report inactive - never double-applied.
+  const labourOnly = !!st.labourOnly && !allIn;
+  const pieceActive = !allIn && !!(piece && !piece.countOnly);
   const matExcluded = labourOnly && !matOverride;
   // Area trades: $/m2 x m2 quantity. Fencing width-div: $/run-m x m run.
   // The qty x rate dimension check holds for both.
-  const effMat = matExcluded ? 0 : ((piece && !piece.countOnly && !labourOnly) ? piece.perUnit : mr * rf);
-  const mat = qty * effMat * quality;
-  const lab = qty * lr * rf * quality;
+  const effMat = allIn || matExcluded ? 0 : (pieceActive ? piece.perUnit : mr * rf);
+  const mat = allIn ? 0 : qty * effMat * quality;
+  // D8 (locked): the finish-level multiplier scales the MATERIAL unit rate
+  // only. A typed day rate is a price for one crew-day, not a unit rate, so
+  // multiplying it by economy/standard/premium would silently inflate it.
+  // lab = days x rate per day, used exactly as typed.
+  const labDayBasis = dayBasis ? days * dayRate : 0;
+  const lab = allIn ? 0 : (dayBasis ? labDayBasis : qty * lr * rf * quality);
+  // All-in combined work cost. It carries its own material, its own labour
+  // and the statutory costs on that labour, so it enters the subtotal whole
+  // and on-costs are NOT added on top of it (adding them would charge the
+  // employer's NI twice).
+  const allInCost = allIn ? qty * allInRate * rf * quality : 0;
   const eq = qty * eqRate * rf * quality;
   const country = st.country || 'US';
   const overrideRaw = parseFloat(st.taxOverride);
   const override = isFinite(overrideRaw) && overrideRaw >= 0 ? overrideRaw : null;
   const taxRate = override !== null ? override : (TAX[country] || 0);
+  // Statutory on-costs ride LABOUR only, so they apply to a typed day rate
+  // (it is payroll) but not to an all-in rate (already inside the figure).
   const onCost = lab * onCostPct / 100;
-  const sub = mat + lab + onCost + eq;
+  const sub = mat + lab + onCost + eq + allInCost;
   const oh = sub * ohPct / 100;
   const tax = (sub + oh) * taxRate / 100;
   const orderCount = pieceCount(qty, qr.unit, w.piece, (st.pieceSize || '').trim());
   // Note: no `name` here - workName() reads the DOM. compute() attaches the
   // live name; the comparison table uses each saved estimate's stored name.
   return { key, qty: qty, baseQty: qr.qty, unit: qr.unit, qtyLabel: qr.qtyLabel, matDesc: w.matDesc,
+    basis: basis || null,
     orderCount: orderCount,
     openings: openings, hasOpenings: !!w.openings,
     wastePct: wastePct, hasWaste: !!w.waste, wasteLbl: w.waste ? w.waste.lbl : null,
     mr, lr, eqRate, eq, onCost, onCostPct, ohPct, oh, effMat, modelMr, piece, mat, lab, sub, taxRate, tax, total: sub + oh + tax, overrideApplied: override !== null,
     matOverridden: matOverride, labOverridden: labOverride, currency: st.currency || 'USD',
+    // All-in (JIC combined) + per-day crew basis. Every field is inert when
+    // the corresponding input is blank, so a caller can read allIn/dayBasis
+    // without first testing the raw strings.
+    allIn: allIn, allInRate: allInRate, allInCost: allInCost, allInOverridden: allInOverride, bookFilled: bookFilled,
+    dayBasis: dayBasis, days: days, dayRate: dayRate, labDayBasis: labDayBasis,
+    pieceActive: pieceActive,
     labourOnly: labourOnly, matExcluded: matExcluded, runit: runit, rateFactor: rf,
     variant: av ? av.id : null, variantLabel: av ? av.label : null };
 }
@@ -966,6 +1070,7 @@ function compute() {
   const st = readState();
   st._matModel = $('calc-rate-mat') ? $('calc-rate-mat').dataset.model : undefined;
   st._labModel = $('calc-rate-lab') ? $('calc-rate-lab').dataset.model : undefined;
+  st._allInModel = $('calc-allin') ? $('calc-allin').dataset.model : undefined;
   const r = computeFor(st);
   if (r && !r.error) {
     r.name = workName(st.work);
@@ -1064,13 +1169,31 @@ function activeBookId() { try { return JSON.parse(localStorage.getItem(ACTBK) ||
 function activeBook() { const id = activeBookId(); return loadBooks().find(function(b) { return b && b.id === id; }) || null; }
 function setActiveBook(id) { try { localStorage.setItem(ACTBK, JSON.stringify(String(id || ''))); } catch (e) { /* nicety */ } wsStampNow('books'); scheduleWsPut(); }
 function persistBooks(list) { try { localStorage.setItem(BKKEY, JSON.stringify(list.slice(0, 20))); } catch (e) { /* nicety */ } wsStampNow('books'); scheduleWsPut(); }
-// djb2 over the canonical rates JSON - detects any hand edit of a book.
-function bookChecksum(rates) {
+// djb2 over a canonical rendering of the rates - detects any hand edit.
+// The checksum MUST cover every field the validator keeps, including the
+// all-in figure: it is computed over the CLEANED rates, so a book whose only
+// new field is `allIn` would otherwise fail its own checksum and be skipped
+// on the very next import. Key order is sorted so the same book always
+// digests the same way regardless of how the JSON was written.
+function canonRates(rates) {
+  return Object.keys(rates || {}).sort().map(function(k) {
+    const vs = rates[k] || {};
+    return k + '{' + Object.keys(vs).sort().map(function(vid) {
+      const r = vs[vid] || {};
+      return vid + ':' + (r.mat == null ? '' : r.mat) + ',' + (r.lab == null ? '' : r.lab) +
+        ',' + (r.allIn == null ? '' : r.allIn) + ',' + (r.unit || '');
+    }).join(';') + '}';
+  }).join('|');
+}
+function djb2(s) {
   let h = 5381;
-  const s = JSON.stringify(rates);
   for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) >>> 0;
   return 'c' + h.toString(36);
 }
+function bookChecksum(rates) { return djb2(canonRates(rates)); }
+// The digest before the all-in field existed, kept so a rate book exported
+// by an earlier build still imports instead of being reported as edited.
+function legacyBookChecksum(rates) { return djb2(JSON.stringify(rates)); }
 // Validate + merge an imported books payload. Unknown work keys and
 // negative/absent rates are rejected and COUNTED, never thrown.
 function importBooks(json) {
@@ -1091,15 +1214,29 @@ function importBooks(json) {
       Object.keys(vset).forEach(function(vid) {
         const r = vset[vid];
         const m = parseFloat(r && r.mat), l = parseFloat(r && r.lab);
-        if (!isFinite(m) || m < 0 || !isFinite(l) || l < 0) { skipped++; return; }
-        cv[vid] = { mat: m, lab: l, unit: (r && typeof r.unit === 'string') ? r.unit.slice(0, 12) : undefined };
+        const a = parseFloat(r && r.allIn);
+        const mOk = isFinite(m) && m >= 0, lOk = isFinite(l) && l >= 0, aOk = isFinite(a) && a > 0;
+        // A rate carries EITHER a split (mat + lab) OR a single all-in
+        // figure. Requiring both was the quiet failure this gate exists for:
+        // an all-in-only JIC book imported as EMPTY with no error at all,
+        // because every one of its rates was silently counted as skipped.
+        if ((mOk && lOk) || aOk) { /* valid in at least one form */ }
+        else { skipped++; return; }
+        // A negative in ANY field is a broken entry, whichever form it
+        // claims: reject and count, never throw.
+        if ((isFinite(m) && m < 0) || (isFinite(l) && l < 0) || (isFinite(a) && a < 0)) { skipped++; return; }
+        cv[vid] = { mat: mOk ? m : undefined, lab: lOk ? l : undefined,
+          allIn: aOk ? a : undefined,
+          unit: (r && typeof r.unit === 'string') ? r.unit.slice(0, 12) : undefined };
       });
       if (Object.keys(cv).length) clean[k] = cv;
     });
     if (!Object.keys(clean).length) { skipped++; return; }
     // A book that CARRIES a checksum must match its own rates - a mismatch
     // means the file was edited after export; it is skipped, not trusted.
-    if (item.checksum && item.checksum !== bookChecksum(clean)) { skipped++; return; }
+    // Either digest is accepted so books exported by an earlier build (which
+    // had no all-in field) still import rather than looking hand-edited.
+    if (item.checksum && item.checksum !== bookChecksum(clean) && item.checksum !== legacyBookChecksum(clean)) { skipped++; return; }
     const book = { id: 'b' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
       name: name, source: (item && typeof item.source === 'string') ? item.source.slice(0, 80) : '',
       effective_from: (item && typeof item.effective_from === 'string') ? item.effective_from.slice(0, 10) : '',
@@ -1248,6 +1385,140 @@ const JIC_RATES = [
   { trade: 'Welding', ref: 'JIC #8', desc: '1/16 in thick metal using CPSAW', impUnit: 'In.', impRate: 25, metUnit: '100mm', metRate: 99 },
   { trade: 'Welding', ref: 'JIC #9', desc: '1/8 in thick metal using CPSAW', impUnit: 'In.', impRate: 39, metUnit: '100mm', metRate: 153 }
 ];
+const JIC_BOOK_MAP = [
+  ['Excavation', 1, 'excav', 'standard'],
+  ['Excavation', 2, 'excav', 'asphalt'],
+  ['Excavation', 3, 'excav', 'marl'],
+  ['Excavation', 4, 'excav', 'sand'],
+  ['Excavation', 5, 'excav', 'clay-shallow'],
+  ['Excavation', 6, 'excav', 'clay-deep'],
+  ['Excavation', 7, 'excav', 'rock-hand'],
+  ['Excavation', 8, 'excav', 'rock-comp'],
+  ['Excavation', 9, 'excav', 'rock-labour'],
+  ['Carpentry (Formwork)', 1, 'formwork', 'wall-edge'],
+  ['Carpentry (Formwork)', 2, 'formwork', 'belt'],
+  ['Carpentry (Formwork)', 3, 'formwork', 'column'],
+  ['Carpentry (Formwork)', 4, 'formwork', 'beam'],
+  ['Carpentry (Formwork)', 5, 'formwork', 'susp-floor'],
+  ['Carpentry (Formwork)', 6, 'formwork', 'susp-stairs'],
+  ['Carpentry (Formwork)', 7, 'formwork', 'circular'],
+  ['Carpentry (Formwork)', 8, 'formwork', 'manhole'],
+  ['Carpentry (Formwork)', 9, 'formwork', 'new-fw'],
+  ['Steelwork', 1, 'rebar-size', '3-8'],
+  ['Steelwork', 2, 'rebar-size', '1-2'],
+  ['Steelwork', 3, 'rebar-size', '5-8'],
+  ['Steelwork', 4, 'rebar-size', '3-4'],
+  ['Steelwork', 5, 'rebar-size', '1'],
+  ['Steelwork', 6, 'fabric-mesh', '*'],
+  ['Steelwork', 7, 'stirrups', '1-4'],
+  ['Steelwork', 8, 'stirrups', '3-8'],
+  ['Steelwork', 9, 'stirrups', '3-8-lg'],
+  ['Masonry', 1, 'blockwall', 'standard'],
+  ['Masonry', 2, 'blockwall', '8in-ff'],
+  ['Masonry', 3, 'blockwall', '8in-mh'],
+  ['Masonry', 4, 'blockwall', '8in-alt-gf'],
+  ['Masonry', 5, 'blockwall', '8in-alt-ff'],
+  ['Masonry', 6, 'blockwall', '6in-gf'],
+  ['Masonry', 7, 'blockwall', '6in-ff'],
+  ['Masonry', 8, 'blockwall', '6in-mh'],
+  ['Masonry', 9, 'blockwall', '6in-alt-gf'],
+  ['Scaffolding', 1, 'scaffold', 'sc-10-unbraced'],
+  ['Scaffolding', 2, 'scaffold', 'sc-10-tied'],
+  ['Scaffolding', 3, 'scaffold', 'sc-10-20'],
+  ['Scaffolding', 4, 'scaffold', 'sc-20-30'],
+  ['Scaffolding', 5, 'scaffold', 'sc-30-40'],
+  ['Scaffolding', 6, 'scaffold', 'sc-40-50'],
+  ['Scaffolding', 7, 'scaffold', 'sc-50-60'],
+  ['Scaffolding', 8, 'scaffold', 'sc-60-70'],
+  ['Scaffolding', 9, 'scaffold', 'sc-70-80'],
+  ['Tiling', 1, 'tile', 'standard'],
+  ['Tiling', 2, 'tile', 'terrazzo-cut'],
+  ['Tiling', 3, 'tile', 'terrazzo-polish'],
+  ['Tiling', 4, 'tile', 'terrazzo-upper'],
+  ['Tiling', 5, 'tile', 'tread-10'],
+  ['Tiling', 6, 'tile', 'tread-11-12'],
+  ['Tiling', 7, 'tile', 'riser-6-8'],
+  ['Tiling', 8, 'tile', 'marble-floor'],
+  ['Tiling', 9, 'tile', 'marble-wall'],
+  ['Painting', 1, 'paint', 'wall-1coat'],
+  ['Painting', 2, 'paint', 'wall-2coat'],
+  ['Painting', 3, 'paint', 'pebble-1coat'],
+  ['Painting', 4, 'paint', 'pebble-2coat'],
+  ['Painting', 5, 'paint', 'cutting-in'],
+  ['Painting', 6, 'paint', 'skirting-1coat'],
+  ['Painting', 7, 'paint', 'skirting-2coat'],
+  ['Painting', 8, 'paint', 'ceiling-1coat'],
+  ['Painting', 9, 'paint', 'ceiling-2coat'],
+  ['Joinery (Skirtings)', 1, 'joinery', 'j-1x3-bev-wpp'],
+  ['Joinery (Skirtings)', 2, 'joinery', 'j-1x4-bev-wpp'],
+  ['Joinery (Skirtings)', 3, 'joinery', 'j-1x6-bev-wpp'],
+  ['Joinery (Skirtings)', 4, 'joinery', 'j-1x3-bev-mah'],
+  ['Joinery (Skirtings)', 5, 'joinery', 'j-1x4-bev-mah'],
+  ['Joinery (Skirtings)', 6, 'joinery', 'j-1x6-bev-mah'],
+  ['Joinery (Skirtings)', 7, 'joinery', 'j-1x3-mold-wpp'],
+  ['Joinery (Skirtings)', 8, 'joinery', 'j-1x4-mold-wpp'],
+  ['Joinery (Skirtings)', 9, 'joinery', 'j-1x6-mold-wpp'],
+  ['Joinery (Skirtings)', 10, 'joinery', 'j-1x3-mold-mah'],
+  ['Plumbing', 1, 'plumbing-pipe', 'pp-6in'],
+  ['Plumbing', 2, 'plumbing-pipe', 'pp-4in'],
+  ['Plumbing', 3, 'plumbing-pipe', 'pp-3in'],
+  ['Plumbing', 4, 'plumbing-pipe', 'pp-2in'],
+  ['Plumbing', 5, 'plumbing-pipe', 'pp-1.5in'],
+  ['Plumbing', 6, 'plumbing-pipe', 'pp-1.25in'],
+  ['Plumbing', 7, 'plumbing-pipe', 'pp-300mm'],
+  ['Plumbing', 8, 'plumbing-pipe', 'pp-250mm'],
+  ['Plumbing', 9, 'plumbing-pipe', 'pp-200mm'],
+  ['Electrical (Conduit)', 1, 'electrical-conduit', 'ec-0.5in'],
+  ['Electrical (Conduit)', 2, 'electrical-conduit', 'ec-0.75in'],
+  ['Electrical (Conduit)', 3, 'electrical-conduit', 'ec-1in-a'],
+  ['Electrical (Conduit)', 4, 'electrical-conduit', 'ec-1.25in-a'],
+  ['Electrical (Conduit)', 5, 'electrical-conduit', 'ec-1.5in-a'],
+  ['Electrical (Conduit)', 6, 'electrical-conduit', 'ec-2in'],
+  ['Electrical (Conduit)', 7, 'electrical-conduit', 'ec-1in-b'],
+  ['Electrical (Conduit)', 8, 'electrical-conduit', 'ec-1.25in-b'],
+  ['Electrical (Conduit)', 9, 'electrical-conduit', 'ec-1.5in-b'],
+  ['Welding', 1, 'welding', 'w-1/8-torch'],
+  ['Welding', 2, 'welding', 'w-1/4-torch'],
+  ['Welding', 3, 'welding', 'w-3/8-torch'],
+  ['Welding', 4, 'welding', 'w-1/2-torch'],
+  ['Welding', 5, 'welding', 'w-5/8-torch'],
+  ['Welding', 6, 'welding', 'w-3/4-torch'],
+  ['Welding', 7, 'welding', 'w-1-torch'],
+  ['Welding', 8, 'welding', 'w-1/16-cpsaw'],
+  ['Welding', 9, 'welding', 'w-1/8-cpsaw']
+];
+
+// The shipped Jamaica book (owner 2026-10-02, Task 5). The JIC combined rate
+// IS the all-in figure - one number covering material and labour - so the
+// book carries no split. Built by GENERATING from JIC_RATES (the same rows
+// the rate-book card shows) rather than re-keying 100 figures by hand: this
+// table holds only the two identifiers per row, and the money is read out of
+// JIC_RATES at runtime, so the book can never drift from the table the user
+// reads on screen. Metric rates are used because the engine is metric-first
+// and rateFactor converts for the trades quoted per yd2/ft2/ft-run/lb/dozen.
+function jicBookPayload() {
+  const rates = {};
+  let entries = 0;
+  // JIC_RATES rows are identified by their trade plus the row number inside
+  // the ref ('JIC #3' -> 3); the ref itself can carry a prefix, so the number
+  // is read off the end rather than parsing the whole string.
+  const rowNo = function(ref) { const n = String(ref || '').match(/(\d+)\s*$/); return n ? Number(n[1]) : 0; };
+  JIC_RATES.forEach(function(r) {
+    const m = JIC_BOOK_MAP.find(function(x) { return x[0] === r.trade && x[1] === rowNo(r.ref); });
+    if (!m) return;
+    if (!rates[m[2]]) rates[m[2]] = {};
+    // The combined figure, in JMD, per the book's own rate unit.
+    rates[m[2]][m[3]] = { allIn: r.metRate, unit: r.metUnit };
+    entries++;
+  });
+  const book = {
+    name: 'Jamaica rate book 2025-2027',
+    source: 'Jamaica Institute of Construction (JIC) published rate book',
+    effective_from: '2025-01-01', effective_to: '2027-12-31',
+    tier: 'published combined (all-in)', currency: 'JMD', rates: rates };
+  book.checksum = bookChecksum(rates);
+  return { books: [book], entryCount: entries };
+}
 let _rateBookUnits = 'metric';
 // BUG FIX (owner directive 2026-10-02, caught by the new RB gates): this
 // function was a TOGGLE - `if (existing) { existing.remove(); return; }` -
@@ -1325,13 +1596,13 @@ function modelRatesFor(key, variantId, targetCode, d1m, d2m) {
   const w = WORK[key];
   if (!w) return null;
   const b = activeBook();
-  let mat = null, lab = null, src = null, unit = null, fromBook = false;
+  let mat = null, lab = null, allIn = null, src = null, unit = null, fromBook = false;
   if (b && b.rates && b.rates[key]) {
     const vset = b.rates[key];
     const r = (variantId && vset[variantId]) || vset['*'] || null;
-    if (r) { mat = r.mat; lab = r.lab; unit = r.unit || null; src = b.currency; fromBook = true; }
+    if (r) { mat = r.mat; lab = r.lab; allIn = r.allIn; unit = r.unit || null; src = b.currency; fromBook = true; }
   }
-  if (mat == null) {
+  if (mat == null && lab == null && allIn == null) {
     const av = variantFor(key, variantId);
     const rr = av ? av.rate : w.rate;
     mat = typeof rr.mat === 'function' ? rr.mat(d1m, d2m) : rr.mat;
@@ -1340,8 +1611,12 @@ function modelRatesFor(key, variantId, targetCode, d1m, d2m) {
     unit = (av && av.runit) || w.runit || null;
   }
   const f = fxBetween(src, targetCode || src);
-  if (f == null) return { mat: mat, lab: lab, src: src, unit: unit, fromBook: fromBook, unconvertible: true };
-  return { mat: mat * f, lab: lab * f, src: src, unit: unit, fromBook: fromBook, unconvertible: false };
+  // E1 currency honesty: with no exchange rate for the book's currency the
+  // result is flagged unconvertible and the CALLER leaves the fields empty
+  // and says so. A JMD figure is never relabelled as the user's currency.
+  if (f == null) return { mat: mat, lab: lab, allIn: allIn, src: src, unit: unit, fromBook: fromBook, unconvertible: true };
+  return { mat: mat == null ? null : mat * f, lab: lab == null ? null : lab * f,
+    allIn: allIn == null ? null : allIn * f, src: src, unit: unit, fromBook: fromBook, unconvertible: false };
 }
 
 // ---- W2 (owner 2026-09-30): ELEMENT INSTANCES - measure by element ------
@@ -2002,8 +2277,14 @@ function renderCompare() {
   const rows = [
     ['Work item', function(c) { return esc(c.r.key); }],
     ['Quantity', function(c) { return esc(qtyShown(c.r.qty, c.r.unit).main); }],
-    ['Materials', function(c) { return money(c.r.mat, c.r.currency); }],
-    ['Labor', function(c) { return money(c.r.lab, c.r.currency); }],
+    // D3: for an all-in column these two say the money is inside the combined
+    // figure - they never print a split that was invented from one number.
+    ['Materials', function(c) { return c.r.allIn ? ALLIN_INCLUDED : money(c.r.mat, c.r.currency); }],
+    ['Labor', function(c) { return c.r.allIn ? ALLIN_INCLUDED : money(c.r.lab, c.r.currency); }],
+    // D2: the day basis shows ONE labour total; the note carries the days and
+    // the rate per day so the number is checkable, never itemised per person.
+    ['Labor basis', function(c) { return c.r.dayBasis ? esc(dayBasisNote(c.r)) : '-'; }],
+    ['Work rate (all-in)', function(c) { return c.r.allIn ? '<strong>' + money(c.r.allInCost, c.r.currency) + '</strong>' : '-'; }],
     ['Equipment', function(c) { return c.r.eq > 0 ? money(c.r.eq, c.r.currency) : '-'; }],
     ['Overhead', function(c) { return c.r.oh > 0 ? money(c.r.oh, c.r.currency) : '-'; }],
     ['Subtotal', function(c) { return money(c.r.sub, c.r.currency); }],
@@ -2050,16 +2331,25 @@ function estimateCsv(r) {
     ['Currency', r.currency],
     ['Country', ($('calc-country') || {}).value || ''],
     ['Units entered', _units],
-    ['Material rate used', r.piece ? (Math.round(r.effMat * 100) / 100) + ' per m2 (from piece pricing)' : Math.round(r.mr)],
-    ['Labor rate used', Math.round(r.lr)],
+    ['Material rate used', r.allIn ? ALLIN_INCLUDED : (r.piece ? (Math.round(r.effMat * 100) / 100) + ' per m2 (from piece pricing)' : Math.round(r.mr))],
+    ['Labor rate used', r.allIn ? ALLIN_INCLUDED : Math.round(r.lr)],
+    // D2: the days and the crew rate are carried onto the document so a
+    // reader can check the labour total without it being itemised per person.
+    r.dayBasis ? [['Days on site', r.days], ['Labor rate per day', Math.round(r.dayRate)]] : [],
+    r.allIn ? [['All-in rate used', (r.runit ? 'per ' + r.runit + ' - ' : '') + Math.round(r.allInRate) + (r.allInOverridden ? ' (your rate)' : (r.bookFilled ? ' (JIC rate book)' : ''))]] : [],
     ['Labor statutory costs %', r.onCostPct > 0 ? r.onCostPct : 'none'],
     ['Equipment rate used', r.eqRate > 0 ? r.eqRate : 'none'],
     ['Overhead & margin %', r.ohPct > 0 ? r.ohPct : 'none'],
     ['Piece pricing', r.piece && !r.piece.countOnly ? (r.piece.div === 'volume'
         ? r.piece.price + ' per ' + r.piece.w + ' L yield (per ' + (Math.round(r.piece.perUnit * 100) / 100) + '/' + r.piece.qtyUnit + ')'
         : r.piece.price + ' per ' + Math.round(r.piece.w) + ' x ' + Math.round(r.piece.l) + ' ' + r.piece.unit + (r.piece.div === 'width' ? ' (per ' + (Math.round(r.piece.perUnit * 100) / 100) + '/m)' : ' (per ' + (Math.round(r.piece.perUnit * 100) / 100) + '/m2)')) : 'no'],
-    ['Materials', r.matExcluded ? 'excluded (labour only)' : Math.round(r.mat)],
-    ['Labor', Math.round(r.lab)],
+    // D3: an all-in line exports ONE combined figure and NO fabricated
+    // material/labour sub-totals. A day-rate line still carries its single
+    // labour total alongside untouched material.
+    r.allIn
+      ? [[ALLIN_ROW_LABEL, Math.round(r.allInCost)]]
+      : [['Materials', r.matExcluded ? 'excluded (labour only)' : Math.round(r.mat)],
+         ['Labor', Math.round(r.lab)]],
     ['Subtotal', Math.round(r.sub)],
     ['Overhead', Math.round(r.oh)],
     ['Tax rate %', r.taxRate],
@@ -2079,7 +2369,14 @@ function estimateCsv(r) {
     [],
     ['Planning-grade estimate - not a quote.']
   ];
-  return '\uFEFF' + rows.map(function(row) { return row.map(q).join(','); }).join('\r\n');
+  // Conditional row groups above are nested one level deep; flatten so the
+    // separator rows (empty arrays) still vanish as they always have.
+  const flat = [];
+  rows.forEach(function(row) {
+    if (Array.isArray(row) && Array.isArray(row[0])) flat.push.apply(flat, row);
+    else if (Array.isArray(row) && row.length) flat.push(row);
+  });
+  return '\uFEFF' + flat.map(function(row) { return row.map(q).join(','); }).join('\r\n');
 }
 
 function slug(s) { return String(s || 'estimate').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40) || 'estimate'; }
@@ -2243,7 +2540,7 @@ async function wsProbe() {
   wsInFlight = false;
 }
 // W1 engine hook (harness-only convenience; harmless in production).
-window.__calcEngine = { computeFor: computeFor, boqTotals: boqTotals, renderBoq: renderBoq, readState: readState, syncLabels: syncLabels, instancesQty: instancesQty, estimateCsv: estimateCsv, prelimsTotal: prelimsTotal, rollup: rollup, cashCurve: cashCurve, formworkM2: formworkM2, importPacks: importPacks, applyDiscount: applyDiscount, companionsFor: companionsFor, billLint: billLint, syncFamily: syncFamily, brandLoad: brandLoad, logoFitsCap: logoFitsCap, docNoSuggest: docNoSuggest, wsCollect: wsCollect, wsMerge: wsMerge, wsApplyProbe: wsApplyProbe, scheduleWsPut: scheduleWsPut, rateFactor: rateFactor, dimSlips: dimSlips, activeVariant: activeVariant, variantFor: variantFor, fxFactor: fxFactor, fxBetween: fxBetween, modelRatesFor: modelRatesFor, importBooks: importBooks, setActiveBook: setActiveBook, activeBook: activeBook, loadFx: loadFx, renderFx: renderFx, renderBooks: renderBooks };
+window.__calcEngine = { computeFor: computeFor, applyState: applyState, boqTotals: boqTotals, renderBoq: renderBoq, readState: readState, syncLabels: syncLabels, instancesQty: instancesQty, estimateCsv: estimateCsv, prelimsTotal: prelimsTotal, rollup: rollup, cashCurve: cashCurve, formworkM2: formworkM2, importPacks: importPacks, applyDiscount: applyDiscount, companionsFor: companionsFor, billLint: billLint, syncFamily: syncFamily, brandLoad: brandLoad, logoFitsCap: logoFitsCap, docNoSuggest: docNoSuggest, wsCollect: wsCollect, wsMerge: wsMerge, wsApplyProbe: wsApplyProbe, scheduleWsPut: scheduleWsPut, rateFactor: rateFactor, dimSlips: dimSlips, activeVariant: activeVariant, variantFor: variantFor, fxFactor: fxFactor, fxBetween: fxBetween, modelRatesFor: modelRatesFor, importBooks: importBooks, jicBookPayload: jicBookPayload, bookChecksum: bookChecksum, setActiveBook: setActiveBook, activeBook: activeBook, loadFx: loadFx, renderFx: renderFx, renderBooks: renderBooks };
 
 document.addEventListener('change', function(e) {
   if (e.target && e.target.id === 'calc-doc-type') render();
@@ -2288,6 +2585,37 @@ function workName(key) {
 
 function row(label, value, cls) {
   return '<div class="calc-line' + (cls ? ' ' + cls : '') + '"><span>' + label + '</span><strong>' + value + '</strong></div>';
+}
+
+// ---- Document vocabulary for the all-in and per-day bases (owner 2026-10-02)
+// D3: an all-in line is priced from ONE combined figure. No surface - screen,
+// CSV, comparison table, printed sheet - may invent a material/labour split
+// out of it, so the label and the "it is inside this figure" wording live here
+// and every surface reads them. That is what stops the split reappearing in
+// one export and not another.
+// D2: a day rate is shown as ONE labour total for the line, never itemised per
+// person. There is no role list anywhere in this app to itemise.
+const ALLIN_ROW_LABEL = 'Work rate (all-in)';
+const ALLIN_INCLUDED = 'in the all-in rate';
+// Plain language: "2.5 days at $400 per day", never "labour basis" or "norm".
+function dayBasisNote(r) {
+  if (!r || !r.dayBasis) return '';
+  const d = (Math.round(r.days * 100) / 100).toLocaleString();
+  return d + (r.days === 1 ? ' day at ' : ' days at ') +
+    (Math.round(r.dayRate)).toLocaleString() + ' per day';
+}
+// The source annotation shared by every surface, so the wording matches.
+function allInSourceNote(r) {
+  if (!r || !r.allIn) return '';
+  return r.allInOverridden ? ' - your rate' : (r.bookFilled ? ' - JIC rate book' : '');
+}
+function matRowLabel(r) {
+  if (r.allIn) return ALLIN_ROW_LABEL + allInSourceNote(r);
+  return 'Materials' + (r.matExcluded ? ' - excluded (labour only)' : r.matOverridden ? ' - your rate' : '');
+}
+function labRowLabel(r) {
+  return 'Labor' + (r.labOverridden && !r.dayBasis ? ' - your rate' : '') +
+    (r.dayBasis ? ' - ' + dayBasisNote(r) : '');
 }
 
 let lastResult = null;
@@ -2504,12 +2832,22 @@ function render() {
         : r.piece.price.toLocaleString() + ' / ' +
           (_units === 'imperial' ? Math.round(r.piece.w / 2.54) + ' x ' + Math.round(r.piece.l / 2.54) + ' in' : r.piece.w + ' x ' + r.piece.l + ' ' + r.piece.unit) + ' = ' + pieceNarr)
     : null;
-  const matLabel = r.piece && !r.piece.countOnly
-    ? 'Materials - priced per piece at ' + pieceDesc
-    : 'Materials' + (r.matExcluded ? ' - excluded (labour only)' : r.matOverridden ? ' - your rate' : '');
+  const matLabel = r.allIn
+    ? matRowLabel(r)
+    : (r.piece && !r.piece.countOnly
+        ? 'Materials - priced per piece at ' + pieceDesc
+        : matRowLabel(r));
+  const labLabel = labRowLabel(r);
   // E1: while model money is unconverted the breakdown says so in USD
   // terms - the picked symbol is only shown for money in that currency.
   const moneyCode = r.modelUnconverted ? 'USD' : null;
+  // D3: an all-in line shows ONE combined figure and no fabricated split.
+  // D2: a day-rate line shows ONE labour total, carrying the days and the
+  // rate per day in its label so the document explains the money.
+  const matRowHtml = r.allIn
+    ? row(matLabel, fmtMoney(r.allInCost, moneyCode))
+    : row(matLabel, fmtMoney(r.mat, moneyCode));
+  const labRowHtml = r.allIn ? '' : row(labLabel, fmtMoney(r.lab, moneyCode));
   const shown = qtyShown(r.qty, r.unit);
   const qh = $('calc-quote-biz'), qm = $('calc-quote-meta'), qt = $('calc-quote-title');
   if (qh) qh.textContent = bizName();
@@ -2541,8 +2879,8 @@ function render() {
         }).join('')
       : '') +
     (r.hasWaste ? row(r.wasteLbl + ' allowance', r.wastePct + '%') : '') +
-    row(matLabel, fmtMoney(r.mat, moneyCode)) +
-    row('Labor' + (r.labOverridden ? ' - your rate' : ''), fmtMoney(r.lab, moneyCode)) +
+    matRowHtml +
+    labRowHtml +
     (r.onCost > 0 ? row('Labor statutory costs (NIS, NHT, HEART, Education) ' + r.onCostPct + '%', fmtMoney(r.onCost, moneyCode)) : '') +
     (r.eq > 0 ? row('Equipment / plant hire', fmtMoney(r.eq, moneyCode)) : '') +
     (r.ohPct > 0 ? row('Overhead & margin ' + r.ohPct + '%', fmtMoney(r.oh, moneyCode)) : '') +
@@ -2841,10 +3179,43 @@ const ACTIONS = {
     wsStampNow('history'); scheduleWsPut();
     renderHistory();
   },
+  // Load the shipped Jamaica rate book (owner 2026-10-02). One tap, on device.
+  // The rates are a DEFAULT: they prefill the all-in field, the user can type
+  // over any of them, and the published-rate note says where they came from.
+  calcBookJic: function() {
+    const payload = jicBookPayload();
+    const res = importBooks(payload);
+    const list = loadBooks();
+    const b = list.find(function(x) { return (x.name || '').indexOf('Jamaica rate book') === 0; });
+    if (b) {
+      setActiveBook(b.id);
+      // The all-in basis is what this book speaks, so offer it directly.
+      const sel = $('calc-basis');
+      if (sel && sel.value === 'measured') sel.value = 'allin';
+    }
+    renderBooks();
+    refreshRateFields();
+    syncBasis();
+    render();
+    sheetMsg(!b
+      ? 'That Jamaica book could not be loaded - try importing it from a file instead.'
+      : 'Jamaica rate book 2025-2027 loaded: ' + payload.entryCount + ' rates. Its rates prefill the all-in field, and you can type over any of them.');
+    if (res && res.skipped) console.warn('[calc] Jamaica book skipped ' + res.skipped + ' entries');
+  },
+  // Pricing basis (owner 2026-10-02): swap which inputs are on show. The
+  // typed figures are left alone so a user can compare two ways of pricing
+  // the same work without retyping; the engine picks the active set.
+  calcBasisPick: function() {
+    syncBasis();
+    render();
+  },
   // F4b: put the model rates back (the escape hatch from your own rates).
   calcRatesReset: function() {
     if ($('calc-rate-mat')) $('calc-rate-mat').value = '';
     if ($('calc-rate-lab')) $('calc-rate-lab').value = '';
+    if ($('calc-allin')) { $('calc-allin').value = ''; $('calc-allin').dataset.model = ''; }
+    if ($('calc-days')) $('calc-days').value = '';
+    if ($('calc-day-rate')) $('calc-day-rate').value = '';
     if ($('calc-piece-price')) $('calc-piece-price').value = '';
     if ($('calc-piece-size')) $('calc-piece-size').value = '';
     if ($('calc-waste')) $('calc-waste').value = '';
@@ -3385,6 +3756,32 @@ document.addEventListener('change', function(e) {
   sheetMsg(a ? 'Rate book "' + a.name + '" applied - its rates prefill the model fields.' : 'Rate book cleared - the built-in model rates prefill again.');
 });
 
+// Pricing basis change: same delegation style as the book picker above, so
+// the chooser works before and after a snapshot restore.
+document.addEventListener('change', function(e) {
+  const el = e.target.closest('[data-action="calcBasisPick"]');
+  if (!el) return;
+  syncBasis();
+  render();
+});
+
+// The all-in field's two notifiers react to typing: the published-rate note
+// appears as soon as the typed value stops matching the book's prefill, and
+// the checked-on stamp stays visible for the life of the line.
+['calc-allin', 'calc-allin-verified'].forEach(function(id) {
+  const el = $(id);
+  if (!el) return;
+  el.addEventListener('input', function() {
+    syncBookNote();
+    render();
+  });
+});
+['calc-days', 'calc-day-rate'].forEach(function(id) {
+  const el = $(id);
+  if (!el) return;
+  el.addEventListener('input', function() { render(); });
+});
+
 // Print scope is class-scoped; window.print() blocks, so remove the class
 // right after it returns (covers the common browsers' dialog lifecycle;
 // afterprint is the standards path where it fires).
@@ -3454,8 +3851,23 @@ function refreshRateFields() {
     fxNote.hidden = !needNote;
     if (needNote) fxNote.textContent = 'Model rates are ' + (m && m.unconvertible ? 'in ' + m.src + ' (imported rate book)' : 'US dollars') + ' - set a ' + cur + ' exchange rate in the Exchange rates card below, or type your own rates, to price in ' + cur + '.';
   }
-  const modelM = (m && !m.unconvertible) ? String(Math.round(m.mat * 100) / 100) : '';
-  const modelL = (m && !m.unconvertible) ? String(m.lab) : '';
+  const modelM = (m && !m.unconvertible && m.mat != null) ? String(Math.round(m.mat * 100) / 100) : '';
+  const modelL = (m && !m.unconvertible && m.lab != null) ? String(m.lab) : '';
+  // The all-in figure prefills on exactly the same contract as the split
+  // rates: the book's number is a DEFAULT, an untouched prefill follows the
+  // model, and anything the user typed is never overwritten (D4 - the book
+  // is a default, never a lock). dataset.model is what tells a book-filled
+  // value apart from a typed one, which is what raises the market-rate note.
+  const allEl = $('calc-allin');
+  const modelA = (m && !m.unconvertible && m.allIn != null) ? String(Math.round(m.allIn * 100) / 100) : '';
+  if (allEl) {
+    if (recallHold) {
+      if (modelA !== '' && allEl.value === '') { allEl.value = modelA; allEl.dataset.model = modelA; }
+    } else if (modelA !== '') {
+      if (allEl.value === '' || allEl.value === allEl.dataset.model) allEl.value = modelA;
+      allEl.dataset.model = modelA;
+    } else if (allEl.value === allEl.dataset.model) { allEl.value = ''; allEl.dataset.model = ''; }
+  }
   if (recallHold) {
     // Recalling a snapshot: only truly-empty fields take a fresh prefill;
     // restored field+marker pairs are left exactly as they were saved.
@@ -3647,7 +4059,66 @@ function syncLabels() {
     rlWrap.hidden = key !== 'rebar';
     if (key !== 'rebar') rlEl.value = '';
   }
+  syncBasis();
   refreshRateFields();
+}
+
+// ---- Pricing basis: measured / all-in rate / crew days (owner 2026-10-02)
+// One chooser drives which inputs are visible. Everything starts hidden, so a
+// line priced the ordinary measured way looks and behaves exactly as before.
+//
+// Changing the chooser does NOT wipe what was typed in the other mode: the
+// engine decides which figures price the line, and a user comparing two ways
+// of pricing the same work should not lose the first one. The basis is part
+// of the snapshot, so a recall restores the same view it was saved in.
+function syncBasis() {
+  const key = ($('calc-work') || {}).value || '';
+  const sel = $('calc-basis');
+  if (!sel) return;
+  const mode = sel.value || 'measured';
+  const onAllin = mode === 'allin', onDays = mode === 'days';
+  if ($('calc-allin-wrap')) $('calc-allin-wrap').hidden = !onAllin;
+  // The "checked against JIC on" stamp only means anything on an all-in line.
+  if ($('calc-verified-wrap')) $('calc-verified-wrap').hidden = !onAllin;
+  if ($('calc-days-wrap')) $('calc-days-wrap').hidden = !onDays;
+  if ($('calc-day-rate-wrap')) $('calc-day-rate-wrap').hidden = !onDays;
+  // The per-unit rate row is meaningless while an all-in rate is the whole
+  // price (it would invite a faked split), so it steps aside for it.
+  const ratesRow = $('calc-rates-row');
+  if (ratesRow) ratesRow.hidden = onAllin;
+  // The all-in field follows the trade's rate unit and the picked currency,
+  // so a per-yd2 trade says "per yd2" and nobody has to guess the money.
+  const ru = (WORK[key] || {}).runit;
+  if ($('calc-allin-label')) $('calc-allin-label').textContent = syncAllinCurrencyLabel();
+  // Notifier 1 (D7): advises on the finishes whose daily output swings.
+  const dn = $('calc-day-note');
+  if (dn) {
+    dn.hidden = !onDays || !dayBasisNotRecommended(key);
+    dn.textContent = 'Not recommended for this work. How much a crew gets through in a day changes with the weather, the coats and the surface, so price this one by the unit.';
+  }
+  // Notifier 2 (D7): say where a book-filled rate came from, and when it was
+  // last checked against the published book.
+  syncBookNote();
+}
+// The published-rate note follows the CHOSEN currency, not the engine's.
+function syncBookNote() {
+  const n = $('calc-book-note');
+  if (!n) return;
+  const sel = $('calc-basis');
+  const mode = sel ? sel.value : 'measured';
+  const el = $('calc-allin');
+  const filled = mode === 'allin' && el && el.value !== '' &&
+    (el.dataset.model != null && String(el.value) === String(el.dataset.model));
+  const verified = ($('calc-allin-verified') || {}).value || '';
+  n.hidden = !filled;
+  n.textContent = 'This rate came from a published rate book. Rates change, so check it against JIC before you price' +
+    (verified ? ' (you checked it on ' + verified + ')' : '') + '.';
+}
+function syncAllinCurrencyLabel() {
+  const key = ($('calc-work') || {}).value || '';
+  const ru = (WORK[key] || {}).runit;
+  const cur = ($('calc-currency') || {}).value || BASE_CURRENCY;
+  return 'All-in rate (' + (ru ? 'per ' + ru + ', ' : '') + cur + ')';
 }
 
 // Labels as entered right now (kept for CSV display).
@@ -3726,7 +4197,7 @@ if ($('calc-work')) {
   });
   // E1: switching currency re-prefills the model rates for it - the fields
   // must never carry another currency's numbers under the new symbol.
-  if ($('calc-currency')) $('calc-currency').addEventListener('change', function() { refreshRateFields(); render(); });
+  if ($('calc-currency')) $('calc-currency').addEventListener('change', function() { refreshRateFields(); syncBasis(); render(); });
   // W2: instance-row editing recomputes the measured total live; the
   // override field drives render() directly.
   $('calc-instances').addEventListener('input', function(e) {

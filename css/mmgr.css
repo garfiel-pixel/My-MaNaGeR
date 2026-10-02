@@ -2448,6 +2448,29 @@ body.dark-mode .bcp-ico-moon{display:none;}
    and .card would override the UA's hidden=display:none. Same pattern as
    .bcp-piece-hint above. */
 .bcp-field[hidden]{display:none;}
+/* .bcp-row sets display:grid, which outranks the UA's [hidden] rule the same
+   way .bcp-field's display:flex does - the rate row hides itself on an
+   all-in line, so it needs its own guard or it would never hide. */
+.bcp-row[hidden]{display:none;}
+/* Pricing basis (owner 2026-10-02): measured / all-in rate / crew days.
+   The chooser sits with the rate fields; each basis reveals only the inputs
+   it needs, so the measured path looks untouched. Token-driven and
+   theme-agnostic - --text carries the reading and the status token carries
+   the state, which is how dark mode stays in parity here (status colours are
+   re-pointed at white with a subtle fill in the dark block). */
+.bcp-row-basis{margin-top:12px;}
+.bcp-basis-pick{grid-column:1/-1;}
+@media (min-width:760px){
+  .bcp-basis-pick{grid-column:auto;}
+}
+.bcp-note-warn,.bcp-note-info{
+  font-size:.76rem;line-height:1.5;margin:8px 0 0;padding:8px 12px;
+  border-radius:var(--radius);border-left:3px solid;background:var(--tile-bg);
+}
+.bcp-note-warn{border-left-color:var(--warning);background:var(--warning-subtle);}
+.bcp-note-info{border-left-color:var(--info);background:var(--info-subtle);}
+/* [hidden] guards for the two notifiers (verify-hidden gate). */
+.bcp-note-warn[hidden],.bcp-note-info[hidden]{display:none;}
 /* !important: #panel-dash .g3>.card{display:flex} is a (1,2,0) compound that
    static analysis matches against any .card; the guarantee must outrank it. */
 #calc-compare-card[hidden]{display:none!important;}

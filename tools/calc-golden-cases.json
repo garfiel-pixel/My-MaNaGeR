@@ -160,6 +160,34 @@
         ["lb", "t", 2204.62262], ["dozen", "each", 0.08333333333333333], [null, "m2", 1], ["m2", "m2", 1]
       ] },
       "expect": {},
-      "note": "E3: rate-entry unit factors - 1 yd2 = 0.83612736 m2, 1 ft2 = 0.09290304 m2, 1 ft run = 0.3048 m, 2204.62262 lb/t, 1 dozen = 12 each; missing/equal unit converts 1:1" }
+      "note": "E3: rate-entry unit factors - 1 yd2 = 0.83612736 m2, 1 ft2 = 0.09290304 m2, 1 ft run = 0.3048 m, 2204.62262 lb/t, 1 dozen = 12 each; missing/equal unit converts 1:1" },
+
+    { "id": "G-formwork-wall-edge", "work": "formwork", "variant": "wall-edge", "dims": { "d1": "20" },
+      "expect": { "qty": 20, "mat": 440, "lab": 660, "total": 1100 },
+      "note": "G1: the first variant carries the pre-Phase-2 derived rates - 20 m2 x 22 = 440; x 33 = 660 (companion lines resolve unchanged)" },
+    { "id": "G-formwork-column", "work": "formwork", "variant": "column", "dims": { "d1": "20" },
+      "expect": { "qty": 20, "mat": 600, "lab": 1100, "total": 1700 },
+      "note": "G1: columns 30/55 per m2 - 20 x 30 = 600; 20 x 55 = 1100" },
+    { "id": "X-formwork-susp-imperial", "work": "formwork", "variant": "susp-floor", "units": "imperial", "dims": { "d1": "100" },
+      "expect": { "qty": 9.290304, "mat": 418.06, "lab": 789.68, "total": 1207.74 },
+      "note": "Phase 2 gate (imperial): 100 ft2 = 9.290304 m2; 45 x 9.290304 = 418.06; 85 x 9.290304 = 789.68" },
+    { "id": "G-rebar-size", "work": "rebar-size", "variant": "1-2", "dims": { "d1": "500" },
+      "expect": { "qty": 0.5, "mat": 551.16, "lab": 363.76, "total": 914.92 },
+      "note": "G4: 500 kg = 0.5 t; #4 rate per lb x 2204.62262 lb/t = 1102.31/t mat, 727.53/t lab - halved = 551.16 / 363.76" },
+    { "id": "X-stirrups-dozen", "work": "stirrups", "variant": "3-8", "dims": { "d1": "120" },
+      "expect": { "qty": 120, "mat": 80, "lab": 150, "total": 230 },
+      "note": "G4: per-dozen rate converts to per-each (8/12 = 0.6667 mat, 15/12 = 1.25 lab) - 120 each = 80 / 150" },
+    { "id": "X-fabric-mesh-yd2", "work": "fabric-mesh", "dims": { "d1": "50" },
+      "expect": { "qty": 50, "mat": 229.94, "lab": 104.52, "total": 334.46 },
+      "note": "G4: per-yd2 rate converts to per-m2 (5.5 x 0.83612736 = 4.5987; 2.5 x 0.83612736 = 2.09032) - 50 m2 = 229.94 / 104.52" },
+    { "id": "G-excav-clay-deep", "work": "excav", "variant": "clay-deep", "dims": { "d1": "10", "d2": "8", "d3": "1" },
+      "expect": { "qty": 100, "mat": 100, "lab": 3000, "total": 3100 },
+      "note": "G7: stiff clay 5-10 ft, 1/30 per m3 - 100 m3 (bulking in q) = 100 / 3000" },
+    { "id": "X-blockwall-8in", "work": "blockwall", "variant": "8in", "dims": { "d1": "10", "d2": "2.4" },
+      "expect": { "qty": 24, "mat": 576, "lab": 720, "total": 1296 },
+      "note": "G5: 8 in block 24/30 - 24 m2 x 24 = 576; x 30 = 720" },
+    { "id": "G-concrete-labour", "work": "concrete-labour", "variant": "rod-settle", "dims": { "d1": "12" },
+      "expect": { "qty": 12, "mat": 0, "lab": 660, "total": 660 },
+      "note": "B1: labour-only trade - mat 0; 12 m3 x 55 = 660" }
   ]
 }

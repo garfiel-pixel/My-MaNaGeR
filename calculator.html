@@ -23,7 +23,7 @@
 <meta name="robots" content="noindex">
 <link rel="icon" type="image/png" href="images/mpw-icon.png">
 <link rel="apple-touch-icon" href="images/mpw-icon.png">
-<link rel="stylesheet" href="dist/mmgr.min.css?v=23">
+<link rel="stylesheet" href="dist/mmgr.min.css?v=24">
 <script src="js/mmgr-theme.js" data-sync="1"></script>
 </head>
 <body class="db-page calculator-page">
@@ -105,16 +105,21 @@
         <select id="calc-work">
           <optgroup label="Groundworks">
             <option value="siteprep">Site clearing &amp; strip (per m2)</option>
-            <option value="excav">Trench / bulk excavation (per m3)</option>
+            <option value="excav">Trench / bulk excavation (per m3, by soil)</option>
             <option value="slab">Concrete slab on grade (per m3 of concrete)</option>
             <option value="footings">Strip footings (per m run)</option>
+            <option value="formwork">Formwork by element (per m2 of contact area)</option>
+            <option value="concrete-labour">Concrete labour only - rod, settle, ram (per m3)</option>
             <option value="septic-tank">Septic tank &amp; drain field (each)</option>
           </optgroup>
           <optgroup label="Structure">
-            <option value="blockwall">Blockwork wall (per m2)</option>
+            <option value="blockwall">Blockwork wall (per m2, 6/8 in block)</option>
             <option value="brickwall">Brick veneer wall (per m2)</option>
             <option value="framing">Timber stud framing (per m2)</option>
             <option value="rebar">Rebar in concrete (per m3 of concrete)</option>
+            <option value="rebar-size">Rebar by bar size (per lb of steel)</option>
+            <option value="stirrups">Stirrups / links (per dozen)</option>
+            <option value="fabric-mesh">Fabric mesh (per yd2 of mesh)</option>
           </optgroup>
           <optgroup label="Envelope">
             <option value="roof">Roof sheeting over purlins (per m2)</option>
@@ -464,6 +469,10 @@
       <button type="button" class="btn btn-n btn-s" data-action="calcBoqClear">Clear bill</button>
     </div>
     <p class="bcp-boq-total" id="calc-boq-total"></p>
+    <!-- X1 (plan v2): the forgotten-work check - flags rebar with no
+         concrete, pours with no formwork, walls with no footing, digs with
+         no cart-away; one-tap fixes add a real, editable bill line. -->
+    <div id="calc-lint" class="bcp-cp-row" hidden></div>
     <div id="calc-boq-body" class="calc-hist"><div class="calc-empty">No lines yet. Price something above, then Add to bill.</div></div>
   </section>
 
@@ -589,7 +598,7 @@
      worker, so its raw assets ride the HTTP cache (1y immutable) - any
      change here must bump v, or returning calculator-only visitors keep
      the old script/styles for a year. -->
-<script src="js/mmgr-icon-restore.js?v=23"></script>
-<script src="js/calculator-page.js?v=23"></script>
+<script src="js/mmgr-icon-restore.js?v=24"></script>
+<script src="js/calculator-page.js?v=24"></script>
 </body>
 </html>

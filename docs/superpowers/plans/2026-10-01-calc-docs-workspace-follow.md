@@ -417,3 +417,54 @@ green, emoji scan clean. calculator.html ?v=23; sw shell v348; registry updated.
 Next per the plan: Phase 2 (concrete chain - G1 formwork, G4 steel, G7
 excavation variants, G5 masonry, B1) needs the owner's IMAJ sheet for sourced
 rates; golden cases per variant are the entry ticket.
+
+## Execution record - PLAN V2 PHASE 2 + X1 (2026-10-01)
+
+Owner go-ahead: "Start Phase 2: concrete chain" + the X1 forgotten-work
+linter directive. JMD/IMAJ extract still NOT in repo - researched 2026
+planning bands carry the new rates (sources cited in code comments), the
+book schema stays ready for the extract.
+
+- G1 formwork pickable: 8 element variants; FIRST 'wall-edge' carries the
+  pre-Phase-2 derived 22/33 (Phase 2 exit gate - the W7 companion line and
+  old saves resolve unchanged); column/beam 30/55, belt 26/48, susp-floor
+  45/85, susp-stairs 70/120, circular 70/120, manhole 55/100.
+- G4 steel: rebar-size per lb (#3-#7; d1 Steel weight (kg), qty in t via
+  RATE_UNITS lb), stirrups per dozen (count each), fabric-mesh per yd2
+  (runit yd2, 5.5/2.5). G7: excav 10 soil variants (first 'standard' 2/14
+  legacy). G5: blockwall 3 block sizes (first 'standard' 22/28 legacy).
+  B1: concrete-labour labour-only (rod-settle 0/55, fill-ram 0/48).
+  Picker now 38 trades; INSTANCE_KINDS/WORK_FAMILY carry the five new
+  trades; workName appends ' - VariantLabel' only for non-default variants.
+- IMPERIAL SINGLE-DIM FIX (found by the new golden case): computeFor and
+  instancesQty converted every d1 with the linear ft factor, but a
+  single-dim AREA/VOLUME trade types its one dim as sq ft / cu yd -
+  IMP_D1_FACTOR converts formwork + fabric-mesh with FT*FT (0.09290304)
+  and concrete-labour with 27 x 0.3048^3 (0.764554858); product-of-dims
+  trades keep the per-dim rule. dimSlips now skips weight boxes (kg/lb)
+  so 500 kg steel never flags as a 500 m run (SLIP2 zero false positives).
+- X1 forgotten-work linter: LINT_RULES (steel-no-concrete, pour-no-formwork,
+  wall-no-footing, excav-no-cart) + billLint PURE + renderLint paints
+  #calc-lint in the BoQ card; one-tap fixes (calcLintFix) derive the
+  quantity - formwork contact area via formworkM2, cart-away from the
+  first dig/pour result - and push a REAL derived line (derivedFrom
+  'lint:work:src'), fully editable and recall-able. billLint + renderBoq
+  exported on __calcEngine (renderBoq was IIFE-internal; the LX2 gate
+  caught the ReferenceError).
+- Golden cases +9 (58 cases / 61 gates): imperial sq-ft formwork entry,
+  per-lb rebar, per-dozen stirrups, per-yd2 mesh, clay-deep dig with
+  bulking, 8in block, labour-only pour, two more formwork variants.
+- qa-calculator-page: FM5 re-baselined to 38 trades + hiddenDerived
+  (cart-away/lining-out/debrush/post-holes stay out of the picker), NV1
+  variant counts + JIC unit labels, NV2 stirrups/mesh math, NV3 formwork
+  variants + contact-area label, NV4 labour-only pour, LX1 rule matrix,
+  LX2 end-to-end linter fix; EV1 re-baselined to 10 soil variants.
+
+Verification: qa-calc-golden 61/61 across 58 cases, qa-calculator-page
+186/186, trade coverage 78/78 across 38 trades, playwright audit 40/40,
+workspace 6/6, npm run verify green (shell v350), emoji scan clean.
+calculator.html ?v=24; sw shell v350; registry updated.
+
+Still blocked: JMD rate book keying waits for the owner's IMAJ extract in
+the repo - importBooks + the BOOK gates + golden cases are the guardrails
+when it lands.

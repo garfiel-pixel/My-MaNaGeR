@@ -619,6 +619,10 @@ async function withChrome(fn) {
     const in2 = await ev(`(function(){
       var st = __calcEngine.readState();
       st.currency = 'USD';   // OWNER 2026-10-02: pin USD for the model-rate math.
+      st.basis = 'measured';   // ...and the SPLIT path: the JIC book is selected
+      // by default and it speaks all-in, so the first-visit default lands on
+      // the all-in basis. These gates are about material+labour, so they must
+      // pin the basis exactly as they pin the currency.
       st.work = 'blockwall'; st.d1 = ''; st.d2 = ''; st.d3 = '';
       st.measuredQty = '62.4'; st.measuredUnit = 'm2';
       var r = __calcEngine.computeFor(st);
@@ -629,6 +633,7 @@ async function withChrome(fn) {
     const in3 = await ev(`(function(){
       var st = __calcEngine.readState();
       st.currency = 'USD';   // OWNER 2026-10-02: pin USD for the rate math.
+      st.basis = 'measured';   // pin the split basis too (see IN2).
       st.work = 'blockwall'; st.d1 = ''; st.d2 = ''; st.d3 = '';
       st.measuredQty = '62.4'; st.measuredUnit = 'm2'; st.quality = 'premium';
       st.rateMat = '30'; st._matModel = null;
@@ -678,6 +683,12 @@ async function withChrome(fn) {
       document.getElementById('calc-country').value = 'US';
       document.getElementById('calc-quality').value = 'standard';
       document.getElementById('calc-oh').value = '10';
+      // OWNER 2026-10-02: pin the SPLIT basis. The JIC book is selected by
+      // default and speaks all-in, so a first visit now lands on the all-in
+      // basis; these gates are about statutory on-costs riding LABOUR, which
+      // only exists on the split path. Pinned once here for SX1-SX4.
+      var bs = document.getElementById('calc-basis');
+      bs.value = 'measured'; bs.dispatchEvent(new Event('change', { bubbles: true }));
     })()`);
     const sx1 = await ev(`(function(){
       document.getElementById('calc-d1').dispatchEvent(new Event('input', { bubbles: true }));
@@ -2009,6 +2020,68 @@ async function withChrome(fn) {
       ab7 && ab7.entryCount === 100 && ab7.entries === 100 && ab7.currency === 'JMD' &&
       ab7.merged === 1 && ab7.skipped === 0 && ab7.badKeys === 0 && ab7.checksumHolds &&
       ab7.rt && ab7.rt.skipped === 0, ab7);
+    // OWNER 2026-10-02 (final, "we are not a converter - no negotiable").
+    // Locks the contract so it cannot drift back: NOTHING seeds an exchange
+    // rate, the JIC book's own JMD all-in rate fills the field with no
+    // conversion involved, and a trade the book does not cover keeps the
+    // honest empty-field note rather than borrowing a converted figure.
+    const nc = await ev(`(function(){
+      var E = __calcEngine;
+      var out = {};
+      // 1. The FX table carries no rate at all (earlier gates may have set
+      // one deliberately, so CLEAR it first - the claim under test is that
+      // the app never puts one there by itself).
+      try { localStorage.removeItem('mmgr_calc_fx'); } catch (e) {}
+      var t = E.loadFx();
+      out.fxKeys = Object.keys(t);
+      out.seededFlag = !!(t.JMD && t.JMD.seeded);
+      // 2. JMD + Jamaica are what a NEW job opens on.
+      var cc = document.getElementById('calc-currency');
+      var co = document.getElementById('calc-country');
+      cc.value = 'JMD'; cc.dispatchEvent(new Event('change',{bubbles:true}));
+      co.value = 'JM'; co.dispatchEvent(new Event('change',{bubbles:true}));
+      out.cur = cc.value;
+      out.country = co.value;
+      // 3. A JIC-covered trade: the all-in field fills from the book itself.
+      var w = document.getElementById('calc-work');
+      w.value = 'blockwall'; w.dispatchEvent(new Event('change',{bubbles:true}));
+      out.allinFilled = document.getElementById('calc-allin').value !== '';
+      // 4. It prices in JAMAIC dollars with no USD banner over it.
+      document.getElementById('calc-d1').value = '10';
+      document.getElementById('calc-d2').value = '3';
+      document.getElementById('calc-d1').dispatchEvent(new Event('input',{bubbles:true}));
+      document.querySelector('[data-action=calcRun]').click();
+      var txt = document.getElementById('calc-output').textContent;
+      out.jmd = txt.indexOf('J$') > -1;
+      out.usdBanner = txt.indexOf('Built-in model rates are US dollars') > -1;
+      out.allinLine = txt.indexOf('Work rate (all-in)') > -1;
+      var r = E.computeFor(E.readState());
+      out.allIn = r.allIn; out.modelUnconverted = !!r.modelUnconverted;
+      // 5. A trade the book does NOT cover: field EMPTY + honest note, never
+      //    a borrowed or converted number.
+      w.value = 'drywall'; w.dispatchEvent(new Event('change',{bubbles:true}));
+      out.uncovEmpty = document.getElementById('calc-rate-mat').value === '';
+      var note = document.getElementById('calc-fx-note');
+      out.uncovNote = !note.hidden && /JMD/.test(note.textContent || '');
+      // Restore the state the next families expect: this gate deliberately
+      // moved the form onto JMD/Jamaica and left the FX table cleared, and
+      // every family after it sets up its own - but the ones that only pin a
+      // field or two would otherwise inherit JMD money.
+      try { localStorage.removeItem('mmgr_calc_fx'); } catch (e) {}
+      cc.value = 'USD'; cc.dispatchEvent(new Event('change',{bubbles:true}));
+      co.value = 'US'; co.dispatchEvent(new Event('change',{bubbles:true}));
+      w.value = 'siteprep'; w.dispatchEvent(new Event('change',{bubbles:true}));
+      document.getElementById('calc-d1').value = '10';
+      document.getElementById('calc-d2').value = '8';
+      document.getElementById('calc-currency').dispatchEvent(new Event('input',{bubbles:true}));
+      var bs = document.getElementById('calc-basis');
+      bs.value = 'measured'; bs.dispatchEvent(new Event('change',{bubbles:true}));
+      return out;
+    })()`);
+    check('NC1 we are not a converter: no seeded FX rate, JMD default, the JIC book fills its own all-in rate in J$, and an uncovered trade stays empty with the honest note',
+      nc && nc.fxKeys.length === 0 && !nc.seededFlag && nc.cur === 'JMD' && nc.country === 'JM' &&
+      nc.allinFilled && nc.jmd && !nc.usdBanner && nc.allinLine && nc.allIn === true &&
+      !nc.modelUnconverted && nc.uncovEmpty && nc.uncovNote, nc);
     const ab8 = await ev(`(function(){
       // E1 currency honesty: a JMD book with no JMD rate must leave the field
       // EMPTY and say so - never a relabelled Jamaican figure. Import the
@@ -2658,12 +2731,13 @@ async function withChrome(fn) {
                note: !document.getElementById('calc-fx-note').hidden,
                priced: document.getElementById('calc-output').textContent.indexOf('Estimated total') > -1 };
     })()`);
-    // OWNER 2026-10-02: the seeded JMD starting rate means a JMD legacy row now
-    // resolves REAL rates instead of an empty field plus a note - which is
-    // the whole point of shipping a working default. The rate must be the
-    // converted model figure and no unconverted note may show.
-    check('E2 legacy JMD row recalls: units inferred (m), rates resolved from the seeded rate, no note, still priced',
-      e2 && e2.work==='tile' && e2.d1==='10' && e2.units==='metric' && e2.rm !== '' && !e2.note && e2.priced, e2);
+    // OWNER 2026-10-02 (final): WE ARE NOT A CONVERTER. The USD planning-grade
+    // model rates cannot become JMD without a rate the owner sets themselves,
+    // so a JMD legacy row recalls with an EMPTY rate field and the honest
+    // note naming the gap - exactly the E1 contract. It still prices (the
+    // engine falls back safely), it just never invents a converted number.
+    check('E2 legacy JMD row recalls: units inferred (m), rate left EMPTY with the honest note, still priced (no invented conversion)',
+      e2 && e2.work==='tile' && e2.d1==='10' && e2.units==='metric' && e2.rm === '' && e2.note && e2.priced, e2);
 
     // ---- B1 WASTE % (owner review 2026-09-29) ----
     // W1: tile defaults to 10 (the old baked-in factor) - the sum matches

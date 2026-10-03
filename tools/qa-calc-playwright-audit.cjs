@@ -213,12 +213,21 @@ async function walkFocus(page) {
       // M: mobile reachability + tap sizes.
       const m = await page.evaluate(() => {
         const seg = document.querySelector('.bcp-seg').getBoundingClientRect();
-        const rateMat = document.getElementById('calc-rate-mat').getBoundingClientRect();
+        // OWNER 2026-10-02: measure the rate control that is actually ON
+        // SCREEN for the chosen basis. The JIC book is selected by default
+        // and speaks all-in, so #calc-rate-mat is legitimately hidden on the
+        // all-in basis and its rect is 0 - measuring it unconditionally made
+        // this gate assert a box nobody can see.
+        const allIn = document.getElementById('calc-allin-wrap');
+        const usingAllIn = allIn && !allIn.hidden;
+        const rateEl = document.getElementById(usingAllIn ? 'calc-allin' : 'calc-rate-mat');
+        const rate = rateEl.getBoundingClientRect();
         const pieceRow = document.getElementById('calc-piece-wrap');
         const run = document.querySelector('[data-action=calcRun]').getBoundingClientRect();
         return {
           segIn: seg.right <= window.innerWidth + 1 && seg.height >= 26,
-          rateIn: rateMat.right <= window.innerWidth + 1 && rateMat.height >= 26,
+          usingAllIn: usingAllIn,
+          rateIn: rate.right <= window.innerWidth + 1 && rate.height >= 26,
           pieceReachable: pieceRow.hidden || pieceRow.getBoundingClientRect().width > 0,
           runTap: run.height >= 34
         };

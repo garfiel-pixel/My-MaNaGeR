@@ -56,13 +56,12 @@ const SKIP_DIRS = new Set([
   'screenshots', 'web-research', 'dogfood-output'
 ]);
 const SKIP_FILE_RE = [
-  /^\.dev\.vars/, /^\.gitattributes$/, /^\.gitignore$/, /\.md$/i, /\.json$/i,
+  /\.dev\.vars/, /\.gitattributes$/, /\.gitignore$/, /\.md$/i, /\.json$/i,
   // v316 follow-up (2026-09-24): the v316 deploy uploaded .github/workflows/ci.yml
   // as a public static asset - no secrets inside, but repo internals do not
   // belong in the asset bundle. Same rule for .assetsignore below.
   /\.ya?ml$/i,
-  /^Freebuff/i, /^Windows PowerShell/i, /^crashes from last session\.txt$/i,
-  /favicon/i, /^\.claude$/i, /^\.codebuff$/i
+  /\.txt$/i, /^(robots|planners|reflection|SECURITY)\.txt$/i, /favicon/i, /\.claude$/i, /\.codebuff$/i
 ];
 // Copied back after the sweep (the tar recipe did the same): the config the
 // deploy actually needs, which the *.json / *.md excludes would otherwise drop.

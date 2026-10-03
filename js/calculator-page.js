@@ -1588,6 +1588,9 @@ function jicBookPayload() {
   return { books: [book], entryCount: entries };
 }
 let _rateBookUnits = 'metric';
+// The open popup's document-level Escape handler, so the toggle path can
+// tear it down exactly like the Close button does (no leaked listener).
+let _rrKeyHandler = null;
 // BUG FIX (owner directive 2026-10-02, caught by the new RB gates): this
 // function was a TOGGLE - `if (existing) { existing.remove(); return; }` -
 // but the unit buttons inside the card also called it to RE-RENDER in the
@@ -1597,6 +1600,9 @@ let _rateBookUnits = 'metric';
 function renderRateBookCard() {
   const existing = document.getElementById('calc-ratebook-card');
   if (existing) existing.remove();
+  // Rebuilding in place (the Metric/Imperial toggle) must drop the previous
+  // popup's Escape handler, or each toggle stacks another live listener.
+  if (_rrKeyHandler) { document.removeEventListener('keydown', _rrKeyHandler, true); _rrKeyHandler = null; }
   const card = document.createElement('div');
   card.id = 'calc-ratebook-card';
   // OWNER 2026-10-02: it is a POPUP, not a section at the foot of the page.
@@ -1642,13 +1648,25 @@ function renderRateBookCard() {
     const c = document.getElementById('calc-ratebook-card');
     if (c) c.remove();
     document.body.classList.remove('rr-open');
+    // OWNER INCIDENT 2026-10-02: the Escape listener used to live on the
+    // card. A card that never receives focus never sees a keydown, so
+    // Escape silently did nothing. It is a document-level listener now
+    // (the app's dialog convention) and it is removed on close so it
+    // cannot leak across openings.
+    document.removeEventListener('keydown', onKey, true);
     const opener = document.querySelector('[data-action="openRateBook"]');
     if (opener) opener.focus();
   };
+  function onKey(e) { if (e.key === 'Escape') { e.stopPropagation(); close(); } }
+  _rrKeyHandler = onKey;
   card.querySelector('[data-action="rrClose"]').addEventListener('click', close);
   // A popup you can leave three ways: the X, the scrim behind it, Escape.
   card.addEventListener('click', function(e) { if (e.target === card) close(); });
-  card.addEventListener('keydown', function(e) { if (e.key === 'Escape') { e.stopPropagation(); close(); } });
+  document.addEventListener('keydown', onKey, true);
+  // Focus moves into the panel so a keyboard user is IN the dialog (and so
+  // Tab cycles its controls) the way every other dialog in the app behaves.
+  const firstBtn = card.querySelector('.rr-head button, .bcp-rr-x');
+  if (firstBtn) { try { firstBtn.focus(); } catch (e) { /* nicety */ } }
   document.body.classList.add('rr-open');
   card.querySelectorAll('[data-action="rrUnits"]').forEach(function(b) {
     b.addEventListener('click', function() {
@@ -1664,6 +1682,10 @@ function showRateBookCard() {
   if (document.getElementById('calc-ratebook-card')) {
     const c = document.getElementById('calc-ratebook-card');
     if (c) c.remove();
+    // The toggle must run the same teardown as the Close button, or the
+    // document Escape listener and the body scroll lock outlive the card.
+    document.body.classList.remove('rr-open');
+    document.removeEventListener('keydown', _rrKeyHandler, true);
     return;
   }
   renderRateBookCard();

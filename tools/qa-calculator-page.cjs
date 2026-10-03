@@ -2325,8 +2325,19 @@ async function withChrome(fn) {
       document.querySelector('.bcp-ratebook[data-action="openRateBook"]').click();
       var c = document.getElementById('calc-ratebook-card');
       if (!c) return { open: false };
+      // OWNER INCIDENT 2026-10-02: presence is not visibility. A
+      // display:none !important that escaped its @media print left the
+      // card in the DOM, carrying every attribute RB2-RB5 assert - so the
+      // whole rate-book block passed while the popup was invisible in the
+      // browser. Measure the box AND the computed display.
+      var r = c.getBoundingClientRect();
+      var cs = getComputedStyle(c);
       return { open: true, role: c.getAttribute('role'), modal: c.getAttribute('aria-modal'),
                isOverlay: c.className.indexOf('rr-overlay') > -1,
+               w: Math.round(r.width), h: Math.round(r.height),
+               display: cs.display, visibility: cs.visibility, opacity: cs.opacity,
+               panelW: Math.round((c.querySelector('.rr-panel')||{getBoundingClientRect:function(){return{width:0}}}).getBoundingClientRect().width),
+               focusIn: !!(c.contains(document.activeElement)),
                title: (c.querySelector('.card-title')||{}).textContent || '',
                rows: c.querySelectorAll('tbody tr:not(.rr-trade)').length,
                groups: c.querySelectorAll('tbody tr.rr-trade').length,
@@ -2351,6 +2362,14 @@ async function withChrome(fn) {
       { title: rb2 && rb2.title, foot: rb2 && rb2.foot });
     check('RB5 the card offers a metric/imperial toggle',
       rb2 && rb2.segs === 2, { segs: rb2 && rb2.segs });
+    // OWNER INCIDENT 2026-10-02: the popup must actually PAINT. This is
+    // the gate that would have caught the escaped print rule.
+    check('RB9 the open popup is VISIBLE (not display:none from a stray print rule)',
+      rb2 && rb2.w > 0 && rb2.h > 0 && rb2.display !== 'none' &&
+      rb2.visibility !== 'hidden' && Number(rb2.opacity) > 0 && rb2.panelW > 0,
+      { w: rb2 && rb2.w, h: rb2 && rb2.h, display: rb2 && rb2.display, visibility: rb2 && rb2.visibility, opacity: rb2 && rb2.opacity, panelW: rb2 && rb2.panelW });
+    check('RB10 opening the popup moves focus INTO it (keyboard users land in the dialog)',
+      rb2 && rb2.focusIn === true, { focusIn: rb2 && rb2.focusIn });
     const rb6 = await ev(`(function(){
       var imp = document.querySelector('#calc-ratebook-card [data-action="rrUnits"][data-units="imperial"]');
       if (!imp) return { toggled: false };
@@ -2375,6 +2394,34 @@ async function withChrome(fn) {
       return { before: before, after: !!document.getElementById('calc-ratebook-card') };
     })()`);
     check('RB7 Close removes the rate book card', rb7 && rb7.before === true && rb7.after === false, rb7);
+    // OWNER INCIDENT 2026-10-02: the Escape listener used to be bound to
+    // the card, which never has focus, so Escape did nothing. It is a
+    // document-level listener now - and it must be torn down on every exit
+    // path (Close, Escape, the top-bar toggle, the units rebuild) or each
+    // opening stacks another live handler.
+    const rbEsc = await ev(`(function(){
+      document.querySelector('.bcp-ratebook[data-action="openRateBook"]').click();
+      var opened = !!document.getElementById('calc-ratebook-card');
+      var locked = document.body.className.indexOf('rr-open') > -1;
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      var afterEsc = !!document.getElementById('calc-ratebook-card');
+      var lockAfter = document.body.className.indexOf('rr-open') > -1;
+      // toggle path: open, then click the link again to close it
+      document.querySelector('.bcp-ratebook[data-action="openRateBook"]').click();
+      var reopened = !!document.getElementById('calc-ratebook-card');
+      document.querySelector('.bcp-ratebook[data-action="openRateBook"]').click();
+      var afterToggle = !!document.getElementById('calc-ratebook-card');
+      var lockAfterToggle = document.body.className.indexOf('rr-open') > -1;
+      // a leaked listener would now fire on a stray Escape
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      return { opened: opened, locked: locked, afterEsc: afterEsc, lockAfter: lockAfter,
+               reopened: reopened, afterToggle: afterToggle, lockAfterToggle: lockAfterToggle };
+    })()`);
+    check('RB11 Escape closes the popup and releases the scroll lock',
+      rbEsc && rbEsc.opened === true && rbEsc.locked === true &&
+      rbEsc.afterEsc === false && rbEsc.lockAfter === false, rbEsc);
+    check('RB12 the top-bar toggle closes the popup and leaves no leaked state',
+      rbEsc && rbEsc.reopened === true && rbEsc.afterToggle === false && rbEsc.lockAfterToggle === false, rbEsc);
     const rb8 = await ev(`(function(){
       var c = document.getElementById('calc-ratebook-card');
       return { leftBehind: !!c };

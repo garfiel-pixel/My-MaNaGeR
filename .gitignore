@@ -1,33 +1,39 @@
-.git/
-.wrangler/
-_not-deployed/
+# My MaNaGeR .gitignore
+# Repo files (source + runtime assets)
 node_modules/
-.dev.vars
 dist/
-
+wrangler-state/
+mmgr-ak-ci-wstate/
+mmgr-backnav-profile/
+mmgr-chrome-probe/
+mmgr-cdskel-*
+mmgr-ci-state/
+mmgr-gltriage-*
+mmgr-perfdflt-*
+mmgr-prodperf-*
+mmgr-probe-profile/
+mmgr-wrangler-state/
+mmgr-ak-live-wstate/
+mmgr-e2e-state/
+mmgr-touch-profile-*
+wrangler-calcws-state/
+wrangler-e2e-state/
+wrangler-extended-state/
+wrangler-state/
+wrangler-state2/
+rowproof-wstate/
 # Local research toolkit (Playwright binaries are huge)
 web-research/
-
 # Project-local scratch convention (see AGENTS.md lesson 9): cross-tool
 # session scratch (probe outputs, fetched pages, temp scripts) goes here,
-# NOT in /tmp — Git Bash's /tmp maps to the Windows temp dir, so a file
+# NOT in /tmp - Git Bash's /tmp maps to the Windows temp dir, so a file
 # written by bash is invisible to Windows Python/node paths (real
 # FileNotFoundError incidents 2026-09-11). Never committed, never staged
-# (tar --exclude='tmp' in the deploy recipe + tmp in .assetsignore).
+(tar --exclude='tmp' in the deploy recipe + tmp in .assetsignore).
 /tmp/
-
-# Stray terminal capture from a server-failure session (not project content)
-Windows PowerShell from last session due to server failures.txt
-
-# Conversation-continuation scratch notes at the repo root (audit 2026-09-13
-# Finding 5): never source, never committed. Deploy tar already excludes them
-# (--exclude='Freebuff*').
-Freebuff*.txt
-my-manager.garfieldprocis.workers.dev-*.html
-
 # Session scratch / reference material kept on disk but NEVER deployed or
-# committed (the staging deploy recipe in wrangler.jsonc must exclude these
-# too — wrangler static assets does NOT honor .gitignore):
+# committed (the staging deploy recipe in wrangler.jsonc must exclude
+# these too - wrangler static assets does NOT honor .gitignore):
 /Freebuff add a full comprehensive calculater as a project ….txt
 /Windows PowerShell bhk.txt
 /Windows PowerShell last session.txt
@@ -51,8 +57,16 @@ my-manager.garfieldprocis.workers.dev-*.html
 /images/pages/launcher-mobile.png
 /images/pages/marketing.png
 /images/pages/project-workspace.png
-
 # QA dogfood session artifacts (screenshots from browser probes, 2026-09-18).
 # Session output, not source. Also in .assetsignore so wrangler static
 # assets never uploads it (wrangler does NOT honor .gitignore).
 /dogfood-output/
+# Session scratch (did not make the cut for the demo, but are here for
+# the record; they are ignored and deleted after each deploy)
+*.log
+*.bak
+*.tmp
+*.DS_Store
+scratch.md
+scratch.json
+tmp/

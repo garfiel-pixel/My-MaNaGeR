@@ -16,6 +16,8 @@ node_modules
 tmp
 dogfood-output
 serve.cjs
+planners/
+*.txt
 qa-*.cjs
 tools
 migrations

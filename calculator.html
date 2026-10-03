@@ -50,15 +50,22 @@
         <span class="bcp-title-page">Build Cost Calculator</span>
       </h1>
     </div>
-    <button type="button" class="bcp-theme" data-action="tglTheme" title="Toggle dark mode">
-      <svg class="ico bcp-ico-sun" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sun"></use></svg>
-      <svg class="ico bcp-ico-moon" aria-hidden="true"><use href="css/mmgr-icons.svg#i-moon"></use></svg>
-      <span class="sr-only">Toggle dark mode</span>
-    </button>
-    <button type="button" class="bcp-ratebook" data-action="openRateBook" title="Jamaica rate book">
-      <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-book"></use></svg>
-      <span class="bcp-ratebook-text">Jamaica rate book</span>
-    </button>
+    <!-- OWNER 2026-10-02 top-bar order: rate book FIRST, theme toggle LAST in
+         the far corner. An earlier wave floated the theme button into the
+         middle of the bar; the owner wants the reading order
+         rate book -> theme, both parked on the right. Wrapped in .bcp-top-right
+         so justify-content:space-between keeps the cluster intact. -->
+    <div class="bcp-top-right">
+      <button type="button" class="bcp-ratebook" data-action="openRateBook" title="Jamaica rate book 2025-2027" aria-haspopup="dialog">
+        <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-book"></use></svg>
+        <span class="bcp-ratebook-text">Rate book</span>
+      </button>
+      <button type="button" class="bcp-theme" data-action="tglTheme" title="Toggle dark mode">
+        <svg class="ico bcp-ico-sun" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sun"></use></svg>
+        <svg class="ico bcp-ico-moon" aria-hidden="true"><use href="css/mmgr-icons.svg#i-moon"></use></svg>
+        <span class="sr-only">Toggle dark mode</span>
+      </button>
+    </div>
   </header>
 
   <p class="bcp-lede">Pick a work item, enter the dimensions, choose your currency and country. Quantities, labor, materials, tax and total - computed on this device, nothing sent anywhere.</p>
@@ -223,9 +230,13 @@
       <div class="bcp-row bcp-row-2">
         <div class="bcp-field">
           <label for="calc-currency">Currency</label>
+          <!-- OWNER 2026-10-02: the calculator ships WITH the Jamaica rate
+               book and the owner works in Jamaican dollars, so JMD is the
+               default. USD no longer carries `selected`; a restored snapshot
+               or workspace probe still overrides this in applyState. -->
           <select id="calc-currency">
-            <option value="USD" selected>USD - US dollar</option>
-            <option value="JMD">JMD - Jamaican dollar</option>
+            <option value="JMD" selected>JMD - Jamaican dollar</option>
+            <option value="USD">USD - US dollar</option>
             <option value="GBP">GBP - Pound sterling</option>
             <option value="EUR">EUR - Euro</option>
             <option value="CAD">CAD - Canadian dollar</option>
@@ -235,9 +246,15 @@
         </div>
         <div class="bcp-field">
           <label for="calc-country">Country (sets the tax)</label>
+          <!-- OWNER 2026-10-02: a new job defaults to Jamaica (GCT 15%), and
+               "No tax" is a first-class pick - not every job is taxed (a
+               minor repair, an internal job, an exempt client). The "none"
+               entry maps to TAX.NONE = 0 with overrideApplied false, so the
+               breakdown reads "No tax" rather than "Tax (0%)". -->
           <select id="calc-country">
-            <option value="US" selected>United States (sales tax 0% here - set your local rate)</option>
-            <option value="JM">Jamaica (GCT 15%)</option>
+            <option value="JM" selected>Jamaica (GCT 15%)</option>
+            <option value="NONE">No tax on this job</option>
+            <option value="US">United States (sales tax 0% here - set your local rate)</option>
             <option value="GB">United Kingdom (VAT 20%)</option>
             <option value="AU">Australia (GST 10%)</option>
             <option value="CA">Canada (GST 5%)</option>
@@ -375,7 +392,21 @@
       </div>
       <p class="bcp-jm-note" id="calc-book-expired" hidden></p>
 
-      <div class="bcp-row bcp-row-2" id="calc-piece-wrap">
+      <!-- OWNER 2026-10-02: for trades whose sizes ARE in the rate sheet (block
+           sizes, blockwork pocket/elevation), the piece fields are a SPECIAL
+           CASE only - the sheet already carries the listed sizes and their
+           rates, so asking "price per block / block size" up front duplicated
+           a choice the user already made. The opt-in reveals them for a size
+           the sheet does not list. Default-inert for those trades; trades with
+           NO size list (tile, paint, drywall) keep the fields as they were.
+           [hidden] guard + explicit display rule, because .bcp-row is
+           display:grid and would otherwise outrank the UA hidden rule. -->
+      <div class="bcp-field bcp-oncost" id="calc-piece-custom-wrap" hidden>
+        <label class="bcp-inst-manual" for="calc-piece-custom">
+          <input type="checkbox" id="calc-piece-custom"> My size is not in the rate sheet - price it myself
+        </label>
+      </div>
+      <div class="bcp-row bcp-row-2 bcp-piece-row" id="calc-piece-wrap">
         <div class="bcp-field"><label for="calc-piece-price" id="calc-piece-price-label">Price per piece</label><input type="number" id="calc-piece-price" min="0" step="any" inputmode="decimal" placeholder="e.g. 950 per tile"></div>
         <div class="bcp-field"><label for="calc-piece-size" id="calc-piece-size-label">Piece size - width x length (cm)</label><input type="text" id="calc-piece-size" inputmode="decimal" placeholder="e.g. 30 x 60"></div>
         <!-- size input is type=text: dimensioned specs take "W x L", volume specs take a single yield number -->
@@ -577,6 +608,12 @@
         <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Export cash plan CSV
       </button>
     </div>
+    <!-- OWNER 2026-10-02 ("export cash plan csv dont work at all"): the button
+         DID work, but its refusal message painted in #calc-sheet-msg, which
+         lives up in the rate-book card - so from down here the click did
+         nothing visible and read as broken. It now has its own message area
+         right under the button that raised it. -->
+    <p class="bcp-note-warn" id="calc-cash-msg" hidden></p>
     <div id="calc-cash-body"></div>
   </section>
 
@@ -654,6 +691,6 @@
      change here must bump v, or returning calculator-only visitors keep
      the old script/styles for a year. -->
 <script src="js/mmgr-icon-restore.js?v=25"></script>
-<script src="js/calculator-page.js?v=26"></script>
+<script src="js/calculator-page.js?v=27"></script>
 </body>
 </html>

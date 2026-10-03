@@ -484,7 +484,16 @@ function billLint(lines) {
 
 // Country standard tax rates (PwC VAT/GST quick table, 2026). US sales tax
 // varies by state - default 0 with the custom override for the client's rate.
-const TAX = { US: 0, JM: 15, GB: 20, AU: 10, CA: 5, JP: 10, DE: 19 };
+// OWNER 2026-10-02: the Jamaica rate book ships with the calculator and the
+// owner prices in Jamaican dollars, so JMD + Jamaica are the DEFAULTS for a
+// new job (was USD + US). A restored snapshot / workspace probe still wins:
+// applyState sets both fields from the stored state, so an old USD estimate
+// recalls exactly as it was saved.
+const DEFAULT_CURRENCY = 'JMD';
+const DEFAULT_COUNTRY = 'JM';
+// 'NONE' = the job carries no tax at all (owner 2026-10-02). Tax rate 0, and
+// flagged noTax so the documents say "No tax" rather than "Tax (0%)".
+const TAX = { US: 0, JM: 15, GB: 20, AU: 10, CA: 5, JP: 10, DE: 19, NONE: 0 };
 const CURRENCY = { USD: '$', JMD: 'J$', GBP: '\u00A3', EUR: '\u20AC', CAD: 'C$', AUD: 'A$', JPY: '\u00A5' };
 const QUALITY = { economy: 0.85, standard: 1, premium: 1.35 };
 
@@ -500,7 +509,30 @@ const QUALITY = { economy: 0.85, standard: 1, premium: 1.35 };
 // synced with the workspace like every other calculator store.
 const BASE_CURRENCY = 'USD';
 const FXKEY = 'mmgr_calc_fx';
-function loadFx() { try { const v = JSON.parse(localStorage.getItem(FXKEY) || '{}'); return v && typeof v === 'object' && !Array.isArray(v) ? v : {}; } catch (e) { return {}; } }
+// OWNER 2026-10-02: the estimate now DEFAULTS to Jamaican dollars, and the
+// model rates are written in US dollars. Without a JMD rate on the table,
+// every model rate would sit EMPTY with a "set an exchange rate" note - a
+// calculator that opens unusable. So the FIRST visit seeds a working JMD
+// rate. It is a published mid-market figure, it carries its own as-of date so
+// the stale check works, it is plainly LABELLED as a starting rate, and the
+// moment the user sets their own it is replaced. Nothing is ever silently
+// converted behind the owner's back.
+const JMD_SEED = { per: '158', asOf: '2026-01-15', seeded: true };
+function loadFx() {
+  try {
+    const v = JSON.parse(localStorage.getItem(FXKEY) || '{}');
+    return v && typeof v === 'object' && !Array.isArray(v) ? v : {};
+  } catch (e) { return {}; }
+}
+// Seeds JMD once per device, and only when the user has no JMD rate at all -
+// never over a rate they typed.
+function seedDefaultFx() {
+  const t = loadFx();
+  if (t.JMD) return false;
+  t.JMD = { per: JMD_SEED.per, asOf: JMD_SEED.asOf, seeded: true };
+  persistFx(t);
+  return true;
+}
 function persistFx(t) { try { localStorage.setItem(FXKEY, JSON.stringify(t)); } catch (e) { /* nicety */ } wsStampNow('fx'); scheduleWsPut(); }
 // Units of `code` per 1 USD. The base needs no entry; an unknown code
 // returns null - callers must show an honest warning, never a relabel.
@@ -540,6 +572,9 @@ function renderFx() {
     ? codes.map(function(c) {
         const e = t[c] || {};
         return '<span class="bcp-fx-chip">' + esc(c) + ': ' + esc(String(e.per)) + ' per USD (as of ' + esc(String(e.asOf || '?')) + ')' + (fxStale(c) ? ' - stale, update it' : '') +
+          // OWNER 2026-10-02: a SEEDED rate says so. The owner must never
+          // think a working conversion is one they entered themselves.
+          (e.seeded ? ' - starting rate we added, set your own to replace it' : '') +
           ' <button type="button" class="btn btn-n btn-s" data-action="calcFxDel" data-code="' + esc(c) + '" aria-label="Remove the ' + esc(c) + ' rate">X</button></span>';
       }).join(' ')
     : 'No exchange rates set yet. Model rates stay US dollars until you add one or type your own rates.';
@@ -686,8 +721,8 @@ function readState() {
     d1: ($('calc-d1') || {}).value || '',
     d2: ($('calc-d2') || {}).value || '',
     d3: ($('calc-d3') || {}).value || '',
-    currency: ($('calc-currency') || {}).value || 'USD',
-    country: ($('calc-country') || {}).value || 'US',
+    currency: ($('calc-currency') || {}).value || DEFAULT_CURRENCY,
+    country: ($('calc-country') || {}).value || DEFAULT_COUNTRY,
     quality: ($('calc-quality') || {}).value || 'standard',
     taxOverride: ($('calc-tax-override') || {}).value || '',
     wastePct: ($('calc-waste') || {}).value || '',
@@ -718,6 +753,9 @@ function readState() {
     docDue: ($('calc-doc-due') || {}).value || '',
     piecePrice: ($('calc-piece-price') || {}).value || '',
     pieceSize: ($('calc-piece-size') || {}).value || '',
+    // OWNER 2026-10-02: the special-case opt-in is part of the state, so an
+    // estimate saved with a hand-typed block size recalls with the row open.
+    pieceCustom: !!(($('calc-piece-custom') || {}).checked),
     measuredQty: ($('calc-measured-qty') || {}).value || '',
     measuredAuto: instSum > 0 ? String(instSum) : '',
     measuredUnit: instUnit,
@@ -758,8 +796,8 @@ function applyState(st) {
   $('calc-d1').value = st.d1 || '';
   if ($('calc-d2')) $('calc-d2').value = st.d2 || '';
   if ($('calc-d3')) $('calc-d3').value = st.d3 || '';
-  if ($('calc-currency')) $('calc-currency').value = st.currency || 'USD';
-  if ($('calc-country')) $('calc-country').value = st.country || 'US';
+  if ($('calc-currency')) $('calc-currency').value = st.currency || DEFAULT_CURRENCY;
+  if ($('calc-country')) $('calc-country').value = st.country || DEFAULT_COUNTRY;
   if ($('calc-quality')) $('calc-quality').value = st.quality || 'standard';
   if ($('calc-tax-override')) $('calc-tax-override').value = st.taxOverride || '';
   if ($('calc-waste')) $('calc-waste').value = st.wastePct || '';
@@ -798,6 +836,7 @@ function applyState(st) {
   if ($('calc-doc-due')) $('calc-doc-due').value = st.docDue || '';
   if ($('calc-piece-price')) $('calc-piece-price').value = st.piecePrice || '';
   if ($('calc-piece-size')) $('calc-piece-size').value = st.pieceSize || '';
+  if ($('calc-piece-custom')) $('calc-piece-custom').checked = !!st.pieceCustom;
   recallHold = true;
   refreshRateFields();
   recallHold = false;
@@ -903,7 +942,16 @@ function computeFor(st) {
   // engine called with a hand-built state) means "either may apply", and
   // all-in still wins the overlap exactly as below.
   const basis = st.basis || '';
-  const allIn = isFinite(allInRaw) && allInRaw > 0 && basis !== 'days';
+  // OWNER 2026-10-02 BUG FIX: the shipped Jamaica book is now the DEFAULT,
+  // so an all-in figure sits prefilled in #calc-allin for every trade the
+  // book covers. The old guard only excluded the 'days' basis, which meant
+  // picking "measured" priced the line from the hidden all-in field anyway -
+  // the chooser became a lie and the measured basis was unreachable for any
+  // covered trade. The CHOOSER IS AUTHORITATIVE: an all-in figure prices only
+  // when the chooser is on 'allin', or when no basis is present at all (a
+  // legacy snapshot / golden case / hand-built state, which must keep the
+  // old all-in-beats-everything behaviour).
+  const allIn = isFinite(allInRaw) && allInRaw > 0 && basis !== 'days' && basis !== 'measured';
   const allInRate = allIn ? allInRaw : 0;
   // The book (or the model) prefills this field and the prefill marker rides
   // the snapshot, exactly like the material/labour fields. A number equal to
@@ -1033,9 +1081,13 @@ function computeFor(st) {
   // employer's NI twice).
   const allInCost = allIn ? qty * allInRate * rf * quality : 0;
   const eq = qty * eqRate * rf * quality;
-  const country = st.country || 'US';
+  // OWNER 2026-10-02: 'NONE' is a first-class country value meaning
+  // "this job is not taxed" (TAX.NONE = 0). It is NOT an override - the
+  // breakdown must read "No tax", not "Tax (0% - your rate)".
+  const country = st.country || DEFAULT_COUNTRY;
   const overrideRaw = parseFloat(st.taxOverride);
   const override = isFinite(overrideRaw) && overrideRaw >= 0 ? overrideRaw : null;
+  const noTax = country === 'NONE';
   const taxRate = override !== null ? override : (TAX[country] || 0);
   // Statutory on-costs ride LABOUR only, so they apply to a typed day rate
   // (it is payroll) but not to an all-in rate (already inside the figure).
@@ -1052,7 +1104,8 @@ function computeFor(st) {
     openings: openings, hasOpenings: !!w.openings,
     wastePct: wastePct, hasWaste: !!w.waste, wasteLbl: w.waste ? w.waste.lbl : null,
     mr, lr, eqRate, eq, onCost, onCostPct, ohPct, oh, effMat, modelMr, piece, mat, lab, sub, taxRate, tax, total: sub + oh + tax, overrideApplied: override !== null,
-    matOverridden: matOverride, labOverridden: labOverride, currency: st.currency || 'USD',
+    matOverridden: matOverride, labOverridden: labOverride, currency: st.currency || DEFAULT_CURRENCY,
+    noTax: noTax,
     // All-in (JIC combined) + per-day crew basis. Every field is inert when
     // the corresponding input is blank, so a caller can read allIn/dayBasis
     // without first testing the raw strings.
@@ -1080,7 +1133,7 @@ function compute() {
     // because no FX rate is set for the picked one - the render says so in
     // USD terms instead of relabelling. Both rates typed = all the user's
     // own money = nothing to flag.
-    const cur = st.currency || BASE_CURRENCY;
+    const cur = st.currency || DEFAULT_CURRENCY;
     if (cur !== BASE_CURRENCY && fxFactor(cur) == null &&
         ((!r.matOverridden && !r.matExcluded) || !r.labOverridden)) {
       r.modelUnconverted = true;
@@ -1164,6 +1217,10 @@ function importSheets(json) {
 // plan section 4). The schema is identical either way.
 const BKKEY = 'mmgr_calc_books';
 const ACTBK = 'mmgr_calc_book_active';
+// OWNER 2026-10-02: marks that the shipped Jamaica book has been installed on
+// this device. Set once on the FIRST visit so the default happens exactly
+// once - afterwards the user's own book choice is never overridden.
+const JICSEEN = 'mmgr_calc_jic_default';
 function loadBooks() { try { return JSON.parse(localStorage.getItem(BKKEY) || '[]'); } catch (e) { return []; } }
 function activeBookId() { try { return JSON.parse(localStorage.getItem(ACTBK) || '""') || ''; } catch (e) { return ''; } }
 function activeBook() { const id = activeBookId(); return loadBooks().find(function(b) { return b && b.id === id; }) || null; }
@@ -1262,6 +1319,16 @@ function renderBooks() {
   if (activeBookId() && !list.some(function(b) { return b.id === activeBookId(); })) setActiveBook('');
   sel.innerHTML = '<option value="">' + (list.length ? 'Rate book...' : 'Rate book (none imported)') + '</option>' +
     list.map(function(b) { return '<option value="' + esc(b.id) + '">' + esc(b.name + (b.currency ? ' (' + b.currency + ')' : '')) + '</option>'; }).join('');
+  // OWNER 2026-10-02 BUG FIX: the picker was rebuilt but never told WHICH
+  // book is active, so it always showed the "Rate book..." placeholder even
+  // with a book loaded - which read as "the button did nothing". Mirror the
+  // active id back into the select after every rebuild.
+  sel.value = activeBookId();
+  if (sel.value !== activeBookId()) {
+    // The stored id is not among the options (defensive): say so plainly
+    // rather than silently showing a placeholder that lies.
+    console.warn('[calc] active rate book id is not in the list:', activeBookId());
+  }
   const a = activeBook();
   if (exp) {
     exp.hidden = !(a && bookExpired(a));
@@ -1272,6 +1339,10 @@ function renderBooks() {
 // Shows the full Jamaica rate book to the user in a modal-style card with
 // imperial/metric toggle. The JIC_RATES data carries all 90 line items from
 // the official JIC 2025-2027 book (TRU Construction Estimator, all amounts JMD).
+// OWNER 2026-10-02: the year span the JIC book governs lives in ONE constant.
+// The popup title, the imported book's name and the CSV/documents all read it,
+// so they can never disagree about which years these rates cover.
+const JIC_YEARS = '2025-2027';
 const JIC_RATES = [
   // Excavation (9 items)
   { trade: 'Excavation', ref: 'JIC #1', desc: 'Compacted earth to 5 ft deep', impUnit: 'Yd.Cu.', impRate: 1428, metUnit: 'm\u00B3', metRate: 1868 },
@@ -1512,7 +1583,7 @@ function jicBookPayload() {
     entries++;
   });
   const book = {
-    name: 'Jamaica rate book 2025-2027',
+    name: 'Jamaica rate book ' + JIC_YEARS,
     source: 'Jamaica Institute of Construction (JIC) published rate book',
     effective_from: '2025-01-01', effective_to: '2027-12-31',
     tier: 'published combined (all-in)', currency: 'JMD', rates: rates };
@@ -1531,9 +1602,14 @@ function renderRateBookCard() {
   if (existing) existing.remove();
   const card = document.createElement('div');
   card.id = 'calc-ratebook-card';
-  card.className = 'card';
+  // OWNER 2026-10-02: it is a POPUP, not a section at the foot of the page.
+  // It gets the same overlay + panel treatment the app's dialogs use, so it
+  // is clearly something you open and then close (scrim click, Escape, or
+  // the Close button), and it cannot push the estimate down the page.
+  card.className = 'card rr-overlay';
   card.setAttribute('role', 'dialog');
-  card.setAttribute('aria-label', 'Jamaica rate book 2025-2027');
+  card.setAttribute('aria-modal', 'true');
+  card.setAttribute('aria-label', 'Jamaica rate book ' + JIC_YEARS);
   const curUnit = _rateBookUnits === 'imperial' ? 'imp' : 'met';
   const unitLabel = _rateBookUnits === 'imperial' ? 'Imperial (JMD)' : 'Metric (JMD)';
   let rows = '';
@@ -1547,26 +1623,36 @@ function renderRateBookCard() {
     const unitVal = curUnit === 'imp' ? r.impUnit : r.metUnit;
     rows += '<tr><td>' + esc(r.ref) + '</td><td>' + esc(r.desc) + '</td><td>' + esc(unitVal) + '</td><td class="rr-rate">J$' + Number(rateVal).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + '</td></tr>';
   });
-  card.innerHTML = '<div class="rr-head">' +
-    '<h2 class="card-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-book"></use></svg> Jamaica Rate Book 2025-2027</h2>' +
-    // Counts are DERIVED from JIC_RATES, never typed by hand. The copy used
-    // to hard-code "90 line items across 11 trades" while the table actually
-    // held 100 rows - a stale number shown to every reader. Deriving it makes
-    // the sentence impossible to drift from the data (owner directive
-    // 2026-10-02: plain, honest copy).
-    '<p class="rr-sub">' + JIC_RATES.length + ' line items across ' +
-      Object.keys(JIC_RATES.reduce(function(set, r) { set[r.trade] = 1; return set; }, {})).length +
-      ' trades. All amounts in Jamaican dollars. Source: TRU Construction Estimator.</p>' +
+  // OWNER 2026-10-02: the heading is the JIC's own name and the year it
+  // governs, nothing else. The old line item / trade count / source sentence
+  // was clutter the owner did not want on screen. The table below carries the
+  // detail; the years stay in ONE constant so the title, the sheet name and
+  // the cover PDF can never disagree.
+  card.innerHTML = '<div class="rr-panel">' +
+    '<div class="rr-head">' +
+    '<h2 class="card-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-book"></use></svg> JIC rates ' + JIC_YEARS + '</h2>' +
     '<div class="bcp-seg" role="group" aria-label="Rate book units">' +
     '<button type="button" class="bcp-seg-btn' + (_rateBookUnits === 'metric' ? ' active' : '') + '" data-action="rrUnits" data-units="metric">Metric</button>' +
     '<button type="button" class="bcp-seg-btn' + (_rateBookUnits === 'imperial' ? ' active' : '') + '" data-action="rrUnits" data-units="imperial">Imperial</button>' +
     '</div>' +
-    '<button type="button" class="btn btn-n" data-action="rrClose">Close</button>' +
+    '<button type="button" class="bcp-rr-x" data-action="rrClose" aria-label="Close the rate book" title="Close"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg></button>' +
     '</div>' +
-    '<table class="rr-table"><thead><tr><th>Ref</th><th>Description</th><th>Unit</th><th>Rate</th></tr></thead><tbody>' + rows + '</tbody></table>';
+    '<div class="rr-scroll"><table class="rr-table"><thead><tr><th>Ref</th><th>Description</th><th>Unit</th><th>Rate</th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
+    '<div class="rr-foot">All amounts in Jamaican dollars (J$).</div>' +
+    '</div>';
   document.body.appendChild(card);
-  const close = function() { const c = document.getElementById('calc-ratebook-card'); if (c) c.remove(); };
+  const close = function() {
+    const c = document.getElementById('calc-ratebook-card');
+    if (c) c.remove();
+    document.body.classList.remove('rr-open');
+    const opener = document.querySelector('[data-action="openRateBook"]');
+    if (opener) opener.focus();
+  };
   card.querySelector('[data-action="rrClose"]').addEventListener('click', close);
+  // A popup you can leave three ways: the X, the scrim behind it, Escape.
+  card.addEventListener('click', function(e) { if (e.target === card) close(); });
+  card.addEventListener('keydown', function(e) { if (e.key === 'Escape') { e.stopPropagation(); close(); } });
+  document.body.classList.add('rr-open');
   card.querySelectorAll('[data-action="rrUnits"]').forEach(function(b) {
     b.addEventListener('click', function() {
       const next = b.getAttribute('data-units');
@@ -2307,76 +2393,110 @@ function renderCompare() {
 // ---- Export (F4-2): print + CSV of the live breakdown -------------------
 function estimateCsv(r) {
   const q = (v) => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
-  const rows = [
-    ['Build Cost Calculator - My MaNaGeR'],
-    ['Exported', new Date().toISOString().slice(0, 10)],
-    ['Document type', docType()],
-    ['Document title', docTitleRaw()],
-    ['Name', ($('#calc-save-name') || {}).value || r.name],
+  const n = (v) => (v == null || v === '' ? '' : Math.round(Number(v)));
+  // OWNER 2026-10-02 (owner: "thats disgusting if it cant be fixed"): the CSV
+  // was a 40-row single-column label/value list, which is unreadable in a
+  // spreadsheet and useless to anyone who wants to add the numbers up.
+  // Restructured as a real table with an Item / Detail / Amount shape:
+  //   - section 1: the MONEY as one column of amounts a spreadsheet can sum
+  //   - section 2: the assumptions (rates, basis, currency) as label/value
+  // Nothing is lost - every field the old export carried is still here, just
+  // in a shape a human can read and a machine can total.
+  const moneyRows = [
+    // D3: an all-in line exports ONE combined figure and NO fabricated
+    // material/labour sub-totals. A day-rate line still carries its single
+    // labour total alongside untouched material.
+    r.allIn ? [ALLIN_ROW_LABEL, r.runit ? 'per ' + r.runit : '', n(r.allInCost)]
+      : [['Materials', 'brought in', r.matExcluded ? 'excluded (labour only)' : n(r.mat)],
+         ['Labor', r.dayBasis ? dayBasisNote(r) : '', n(r.lab)]]
+  ];
+  const money = [];
+  moneyRows.forEach(function(row) {
+    if (Array.isArray(row[0])) money.push.apply(money, row);
+    else money.push(row);
+  });
+  if (r.onCost > 0) money.push(['Labor statutory costs', r.onCostPct + '%', n(r.onCost)]);
+  if (r.eq > 0) money.push(['Equipment / plant hire', '', n(r.eq)]);
+  if (r.ohPct > 0) money.push(['Overhead & margin', r.ohPct + '%', n(r.oh)]);
+  money.push(['Subtotal', '', n(r.sub)]);
+  // OWNER 2026-10-02: the tax row ALWAYS shows. Dropping it when the amount
+  // happened to be zero hid a real decision from the document - a reader
+  // could not tell "no tax" from "tax omitted by mistake".
+  money.push([r.noTax ? 'No tax on this job' : 'Tax', r.noTax ? 'this job is not taxed' : r.taxRate + '%', n(r.tax)]);
+  money.push(['ESTIMATED TOTAL', '', n(r.total)]);
+
+  const qty = qtyShown(r.qty, r.unit);
+  const facts = [
     ['Work item', r.name],
-    ['Quantity', qtyShown(r.qty, r.unit).main + qtyShown(r.qty, r.unit).alt],
+    ['Quantity', qty.main + qty.alt],
+    ['Rate basis', r.matDesc],
+    ['Variant', r.variantLabel || '-'],
+    ['Currency', r.currency],
+    ['Country / tax', ($('calc-country') || {}).value === 'NONE' ? 'No tax on this job'
+      : (($('calc-country') || {}).value || '-') + (r.noTax ? '' : ' at ' + r.taxRate + '%')],
+    ['Finish level', ($('calc-quality') || {}).value || 'standard'],
+    ['Units entered', _units],
     ['Waste allowance', r.hasWaste ? r.wastePct + '%' : 'none'],
     ['Openings deducted', r.hasOpenings && r.openings && r.openings.count ? r.openings.count + ' (' + r.openings.area + ' m2)' : 'none'],
-    ['Order quantity', r.orderCount ? r.orderCount.n.toLocaleString() + ' ' + r.orderCount.lbl + ' at ' + r.orderCount.sizeTxt : ''],
-    ['Rate basis', r.matDesc],
-    ['Variant', r.variantLabel || ''],
-    ['Rate unit', r.runit ? 'per ' + r.runit : ''],
-    ['Exchange rate', (function() {
-      const c = r.currency || BASE_CURRENCY;
-      if (c === BASE_CURRENCY) return 'base currency';
-      const f = fxFactor(c);
-      return f != null ? f + ' ' + c + ' per USD as of ' + ((loadFx()[c] || {}).asOf || '?') : 'not set - model rates are US dollars';
-    })()],
-    ['Finish level', ($('calc-quality') || {}).value || 'standard'],
-    ['Currency', r.currency],
-    ['Country', ($('calc-country') || {}).value || ''],
-    ['Units entered', _units],
+    ['Order quantity', r.orderCount ? r.orderCount.n.toLocaleString() + ' ' + r.orderCount.lbl + ' at ' + r.orderCount.sizeTxt : '-'],
     ['Material rate used', r.allIn ? ALLIN_INCLUDED : (r.piece ? (Math.round(r.effMat * 100) / 100) + ' per m2 (from piece pricing)' : Math.round(r.mr))],
     ['Labor rate used', r.allIn ? ALLIN_INCLUDED : Math.round(r.lr)],
-    // D2: the days and the crew rate are carried onto the document so a
-    // reader can check the labour total without it being itemised per person.
-    r.dayBasis ? [['Days on site', r.days], ['Labor rate per day', Math.round(r.dayRate)]] : [],
-    r.allIn ? [['All-in rate used', (r.runit ? 'per ' + r.runit + ' - ' : '') + Math.round(r.allInRate) + (r.allInOverridden ? ' (your rate)' : (r.bookFilled ? ' (JIC rate book)' : ''))]] : [],
+    ['Days on site', r.dayBasis ? r.days : '-'],
+    ['Crew rate per day', r.dayBasis ? Math.round(r.dayRate) : '-'],
+    ['All-in rate used', r.allIn ? (r.runit ? 'per ' + r.runit + ' - ' : '') + Math.round(r.allInRate) + (r.allInOverridden ? ' (your rate)' : (r.bookFilled ? ' (JIC rate book)' : '')) : '-'],
     ['Labor statutory costs %', r.onCostPct > 0 ? r.onCostPct : 'none'],
     ['Equipment rate used', r.eqRate > 0 ? r.eqRate : 'none'],
     ['Overhead & margin %', r.ohPct > 0 ? r.ohPct : 'none'],
     ['Piece pricing', r.piece && !r.piece.countOnly ? (r.piece.div === 'volume'
         ? r.piece.price + ' per ' + r.piece.w + ' L yield (per ' + (Math.round(r.piece.perUnit * 100) / 100) + '/' + r.piece.qtyUnit + ')'
         : r.piece.price + ' per ' + Math.round(r.piece.w) + ' x ' + Math.round(r.piece.l) + ' ' + r.piece.unit + (r.piece.div === 'width' ? ' (per ' + (Math.round(r.piece.perUnit * 100) / 100) + '/m)' : ' (per ' + (Math.round(r.piece.perUnit * 100) / 100) + '/m2)')) : 'no'],
-    // D3: an all-in line exports ONE combined figure and NO fabricated
-    // material/labour sub-totals. A day-rate line still carries its single
-    // labour total alongside untouched material.
-    r.allIn
-      ? [[ALLIN_ROW_LABEL, Math.round(r.allInCost)]]
-      : [['Materials', r.matExcluded ? 'excluded (labour only)' : Math.round(r.mat)],
-         ['Labor', Math.round(r.lab)]],
-    ['Subtotal', Math.round(r.sub)],
-    ['Overhead', Math.round(r.oh)],
-    ['Tax rate %', r.taxRate],
-    ['Tax', Math.round(r.tax)],
-    ['Estimated total', Math.round(r.total)],
-    [],
-    ['Discount % / amount', (rollupPrefs().discPct || '0') + ' / ' + (rollupPrefs().discAmt || '0')],
-    ['Roll-up (bill + site costs, less discount)', Math.round(rollup({ works: prelimWorks(), prelims: prelimsTotal(prelimItems, prelimWorks()).total, designC: '0', constrC: '0', escPct: '0', months: '0', discPct: rollupPrefs().discPct, discAmt: rollupPrefs().discAmt }).subtotal)],
-    [],
-    ['Business', bizName()],
-    ['Contact', (function() { const b = brandLoad(); return [b.phone, b.email, b.addr, b.trn ? 'TRN ' + b.trn : ''].filter(Boolean).join(' - '); })()],
-    ['Client / bill to', (($('calc-client-name') || {}).value || '')],
-    ['Project address', (($('calc-client-addr') || {}).value || '')],
-    ['Document no', (($('calc-doc-no') || {}).value || '')],
-    ['Document date', (($('calc-doc-date') || {}).value || '')],
-    ['Due date', (($('calc-doc-due') || {}).value || '')],
-    [],
-    ['Planning-grade estimate - not a quote.']
+    ['Exchange rate', (function() {
+      const c = r.currency || BASE_CURRENCY;
+      if (c === BASE_CURRENCY) return 'base currency';
+      const f = fxFactor(c);
+      return f != null ? f + ' ' + c + ' per USD as of ' + ((loadFx()[c] || {}).asOf || '?') : 'not set - model rates are US dollars';
+    })()]
   ];
-  // Conditional row groups above are nested one level deep; flatten so the
-    // separator rows (empty arrays) still vanish as they always have.
-  const flat = [];
-  rows.forEach(function(row) {
-    if (Array.isArray(row) && Array.isArray(row[0])) flat.push.apply(flat, row);
-    else if (Array.isArray(row) && row.length) flat.push(row);
-  });
-  return '\uFEFF' + flat.map(function(row) { return row.map(q).join(','); }).join('\r\n');
+
+  const rollRows = [];
+  if (r.bill && r.bill.length) {
+    const bill = Array.isArray(r.bill) ? r.bill : [];
+    bill.forEach(function(ln) { rollRows.push(['Bill line: ' + (ln.name || ''), ln.qtyLabel || '', n(ln.total)]); });
+  }
+  rollRows.push(['Roll-up (bill + site costs, less discount)', 'discount ' + (rollupPrefs().discPct || '0') + '% / ' + (rollupPrefs().discAmt || '0'),
+    n(rollup({ works: prelimWorks(), prelims: prelimsTotal(prelimItems, prelimWorks()).total, designC: '0', constrC: '0', escPct: '0', months: '0', discPct: rollupPrefs().discPct, discAmt: rollupPrefs().discAmt }).subtotal)]);
+
+  const rows = [
+    [docTitleBase(), '', ''],
+    ['Exported', new Date().toISOString().slice(0, 10), ''],
+    ['Document type', docType(), ''],
+    ['Document title', docTitleRaw(), ''],
+    [($('#calc-save-name') || {}).value || r.name, '', ''],
+    [],
+    ['COST BREAKDOWN', '', r.currency],
+    ['Item', 'Detail', 'Amount']
+  ];
+  money.forEach(function(row) { rows.push(row); });
+  rows.push([]);
+  rows.push(['ASSUMPTIONS', '', '']);
+  rows.push(['Setting', 'Value', '']);
+  facts.forEach(function(row) { rows.push(row); });
+  rows.push([]);
+  rows.push(['ROLL-UP', '', r.currency]);
+  rows.push(['Item', 'Detail', 'Amount']);
+  rollRows.forEach(function(row) { rows.push(row); });
+  rows.push([]);
+  rows.push(['DOCUMENT', '', '']);
+  rows.push(['Business', bizName(), '']);
+  rows.push(['Contact', (function() { const b = brandLoad(); return [b.phone, b.email, b.addr, b.trn ? 'TRN ' + b.trn : ''].filter(Boolean).join(' - '); })(), '']);
+  rows.push(['Client / bill to', (($('calc-client-name') || {}).value || ''), '']);
+  rows.push(['Project address', (($('calc-client-addr') || {}).value || ''), '']);
+  rows.push(['Document no', (($('calc-doc-no') || {}).value || ''), '']);
+  rows.push(['Document date', (($('calc-doc-date') || {}).value || ''), '']);
+  rows.push(['Due date', (($('calc-doc-due') || {}).value || ''), '']);
+  rows.push([]);
+  rows.push(['Planning-grade estimate - not a quote.']);
+  return '\uFEFF' + rows.map(function(row) { return row.map(q).join(','); }).join('\r\n');
 }
 
 function slug(s) { return String(s || 'estimate').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40) || 'estimate'; }
@@ -2885,7 +3005,10 @@ function render() {
     (r.eq > 0 ? row('Equipment / plant hire', fmtMoney(r.eq, moneyCode)) : '') +
     (r.ohPct > 0 ? row('Overhead & margin ' + r.ohPct + '%', fmtMoney(r.oh, moneyCode)) : '') +
     row('Subtotal', fmtMoney(r.sub, moneyCode), 'calc-line-sub') +
-    row(r.taxRate === 0 && r.overrideApplied ? 'Tax (no tax - your rate)' : 'Tax (' + r.taxRate + '%' + (r.overrideApplied ? ', your rate' : '') + ')', fmtMoney(r.tax, moneyCode)) +
+    // OWNER 2026-10-02: "No tax" is a CHOICE, so it says so. Three distinct
+    // zero-tax stories must never be confused: picked "none", typed 0, or a
+    // country whose rate genuinely is 0.
+    row(r.noTax ? 'No tax on this job' : (r.taxRate === 0 && r.overrideApplied ? 'Tax (no tax - your rate)' : 'Tax (' + r.taxRate + '%' + (r.overrideApplied ? ', your rate' : '') + ')'), fmtMoney(r.tax, moneyCode)) +
     row('Estimated total', fmtMoney(r.total, moneyCode), 'calc-line-total') +
     '<div class="calc-fine">Planning-grade estimate for ' + r.currency + '. Not a quote - every line becomes editable in the app once the project starts.</div>';
   return r;
@@ -3189,6 +3312,17 @@ const ACTIONS = {
     const b = list.find(function(x) { return (x.name || '').indexOf('Jamaica rate book') === 0; });
     if (b) {
       setActiveBook(b.id);
+      // OWNER 2026-10-02: the book is in Jamaican dollars. If the estimate is
+      // still sitting on the base currency the loaded rates cannot convert,
+      // which is exactly why this button looked dead - move the estimate to
+      // the book's currency so the rates actually land in the fields. A
+      // currency the user already chose for themselves is never overridden.
+      const cur = $('calc-currency');
+      if (cur && cur.value === BASE_CURRENCY) {
+        cur.value = b.currency || DEFAULT_CURRENCY;
+        const co = $('calc-country');
+        if (co && co.value === 'US') co.value = 'JM';
+      }
       // The all-in basis is what this book speaks, so offer it directly.
       const sel = $('calc-basis');
       if (sel && sel.value === 'measured') sel.value = 'allin';
@@ -3199,8 +3333,26 @@ const ACTIONS = {
     render();
     sheetMsg(!b
       ? 'That Jamaica book could not be loaded - try importing it from a file instead.'
-      : 'Jamaica rate book 2025-2027 loaded: ' + payload.entryCount + ' rates. Its rates prefill the all-in field, and you can type over any of them.');
+      : 'Jamaica rate book ' + JIC_YEARS + ' loaded: ' + payload.entryCount + ' rates. Its rates prefill the all-in field, and you can type over any of them.');
     if (res && res.skipped) console.warn('[calc] Jamaica book skipped ' + res.skipped + ' entries');
+  },
+  // OWNER 2026-10-02: the shipped book is the DEFAULT, loaded once per device
+  // and then left entirely to the user. Only the FIRST visit installs it; after
+  // that the user's own choice (including "none") is never overridden again.
+  calcBookDefault: function() {
+    if (localStorage.getItem(JICSEEN)) return;
+    try { localStorage.setItem(JICSEEN, '1'); } catch (e) { /* nicety */ }
+    const payload = jicBookPayload();
+    const res = importBooks(payload);
+    const b = loadBooks().find(function(x) { return (x.name || '').indexOf('Jamaica rate book') === 0; });
+    if (!b) { if (res && res.skipped) console.warn('[calc] Jamaica book skipped ' + res.skipped + ' entries'); return; }
+    setActiveBook(b.id);
+    // OWNER 2026-10-02 SCOPE: the directive was "ensure the rate book is
+    // default selected and the user themself would have to manage that" -
+    // the BOOK becomes the default, nothing else. This deliberately does NOT
+    // touch #calc-basis: silently switching a new user's pricing basis to
+    // all-in would change how every line they had already set up prices.
+    sheetMsg('Loaded the Jamaica rate book ' + JIC_YEARS + ': ' + payload.entryCount + ' rates. Every rate is yours to change, and you can swap or remove the book at any time.');
   },
   // Pricing basis (owner 2026-10-02): swap which inputs are on show. The
   // typed figures are left alone so a user can compare two ways of pricing
@@ -3373,15 +3525,35 @@ const ACTIONS = {
   },
   // ---- W6 cash flow ----
   calcCashCsv: function() {
+    const msg = $('calc-cash-msg');
+    const say = function(t) { if (msg) { msg.textContent = t; msg.hidden = !t; } };
+    say('');
     const months = parseInt(($('calc-months') || {}).value, 10);
-    if (!(months > 0)) { sheetMsg('Set the build duration first - then export the cash plan.'); return; }
+    if (!(months > 0)) { say('Set the build duration in months first - then export the cash plan.'); return; }
     const works = prelimWorks();
     const pref = rollupPrefs();
     const r = rollup({ works: works, prelims: prelimsTotal(prelimItems, works).total,
       designC: pref.designC, constrC: pref.constrC, escPct: pref.escPct, months: months });
-    const c = cashCurve(r.subtotal, months, ($('calc-cash-mode') || {}).value || 'scurve', '3.2');
-    const rows = [['Month', 'Spend', 'Cumulative']];
-    c.per.forEach(function(v, i) { rows.push([String(i + 1), String(Math.round(v)), String(Math.round(c.cum[i]))]); });
+    if (!(r.subtotal > 0)) { say('Add priced work to the bill first - the cash plan spreads the money you are spending.'); return; }
+    const mode = ($('calc-cash-mode') || {}).value || 'scurve';
+    const c = cashCurve(r.subtotal, months, mode, '3.2');
+    const cur = (($('calc-currency') || {}).value) || DEFAULT_CURRENCY;
+    // Same table shape as the estimate export (owner 2026-10-02): a heading
+    // the reader can see, then Month / Spend / Cumulative with real numbers.
+    // Money columns are numbers, not pre-formatted strings, so the file opens
+    // ready to sum in a spreadsheet.
+    const rows = [
+      [docTitleBase() + ' - cash plan', '', ''],
+      ['Exported', new Date().toISOString().slice(0, 10), ''],
+      ['Build duration', months + ' months', ''],
+      ['Curve', mode === 'straight' ? 'Straight-line (even months)' : 'S-curve (spend peaks mid-build)', ''],
+      ['Currency', cur, ''],
+      ['Total spread', '', Math.round(r.subtotal)],
+      [],
+      ['Month', 'Spend', 'Cumulative']
+    ];
+    c.per.forEach(function(v, i) { rows.push([i + 1, Math.round(v), Math.round(c.cum[i])]); });
+    rows.push(['TOTAL', Math.round(r.subtotal), '']);
     rows.push([]);
     rows.push(['Planning-grade cash plan - not a quote.']);
     const blob = new Blob(['\uFEFF' + rows.map(function(row) { return row.map(function(cell) { return '"' + String(cell == null ? '' : cell).replace(/"/g, '""') + '"'; }).join(','); }).join('\r\n')], { type: 'text/csv;charset=utf-8' });
@@ -3908,8 +4080,27 @@ function refreshRateFields() {
     }
   }
   // Piece rows: only trades with a piece spec; labels follow work + units.
+  // OWNER 2026-10-02: when the trade ALREADY offers a size list (the variant
+  // picker - block sizes, blockwork pocket/elevation), the rate sheet carries
+  // those sizes, so "price per piece / piece size" is a SPECIAL CASE for a
+  // size the sheet does not list. Those trades get an opt-in toggle and the
+  // row starts hidden; trades with no size list keep the fields as they were.
   const pw = $('calc-piece-wrap'), priceEl = $('calc-piece-price'), sizeEl = $('calc-piece-size');
-  if (pw) pw.hidden = !w.piece;
+  const custom = $('calc-piece-custom'), customWrap = $('calc-piece-custom-wrap');
+  const hasSizeList = !!(w && w.piece && w.variants && w.variants.length > 1);
+  if (pw) {
+    pw.hidden = !w.piece || (hasSizeList && !(custom && custom.checked));
+    pw.classList.toggle('bcp-piece-custom-on', hasSizeList && !!(custom && custom.checked));
+  }
+  if (customWrap) {
+    customWrap.hidden = !hasSizeList;
+    if (hasSizeList && custom && custom.dataset.phWork !== key) {
+      custom.parentElement.lastChild.textContent = ' My ' +
+        (w.piece.priceLabel || 'piece').replace(/^Price per /i, '').toLowerCase() +
+        ' is not in the rate sheet - price it myself';
+      custom.dataset.phWork = key;
+    }
+  }
   if (w.piece && priceEl && sizeEl) {
     $('calc-piece-price-label').textContent = w.piece.priceLabel;
     // Volume specs take a single yield number (unit-free - a 20 L bag is a
@@ -3926,7 +4117,7 @@ function refreshRateFields() {
   }
   const hint = $('calc-piece-hint');
   if (hint) {
-    hint.hidden = !w.piece;
+    hint.hidden = !w.piece || (hasSizeList && !(custom && custom.checked));
     if (w.piece) {
       hint.textContent = w.piece.div === 'volume'
         ? 'Enter the bag or container yield and its price - the estimate prices the exact quantity needed (concrete in m3, paint in litres).'
@@ -4177,7 +4368,8 @@ function setUnits(mode, silent) {
 }
 function countryLabel(code) {
   const map = { US: 'United States (sales tax varies - use the custom field)', JM: 'Jamaica (GCT 15%)',
-    GB: 'United Kingdom (VAT 20%)', AU: 'Australia (GST 10%)', CA: 'Canada (GST 5%)', JP: 'Japan (consumption tax 10%)', DE: 'Germany (VAT 19%)' };
+    GB: 'United Kingdom (VAT 20%)', AU: 'Australia (GST 10%)', CA: 'Canada (GST 5%)', JP: 'Japan (consumption tax 10%)', DE: 'Germany (VAT 19%)',
+    NONE: 'No tax on this job' };
   return map[code] || code;
 }
 
@@ -4185,6 +4377,11 @@ function countryLabel(code) {
 // with data-sync="1") which applies the saved mode before first paint - no
 // local restore here, a second writer would fight the helper.
 if ($('calc-work')) {
+  // OWNER 2026-10-02: seed the JMD starting rate FIRST, before any listener
+  // or prefill reads the FX table. Running it later (with the other boot
+  // calls) left the first paint priced from an EMPTY rate table, so the
+  // fields flashed empty and carried a "set an exchange rate" note.
+  seedDefaultFx();
   $('calc-work').addEventListener('change', syncLabels);
   if ($('calc-family')) $('calc-family').value = localStorage.getItem(FKEY) || '';
   ['calc-currency', 'calc-country', 'calc-quality', 'calc-tax-override',
@@ -4198,6 +4395,9 @@ if ($('calc-work')) {
   // E1: switching currency re-prefills the model rates for it - the fields
   // must never carry another currency's numbers under the new symbol.
   if ($('calc-currency')) $('calc-currency').addEventListener('change', function() { refreshRateFields(); syncBasis(); render(); });
+  // OWNER 2026-10-02: the special-case piece toggle reveals the row, so it
+  // must re-run syncLabels (which owns the row's hidden state) before render.
+  if ($('calc-piece-custom')) $('calc-piece-custom').addEventListener('change', function() { syncLabels(); render(); });
   // W2: instance-row editing recomputes the measured total live; the
   // override field drives render() directly.
   $('calc-instances').addEventListener('input', function(e) {
@@ -4294,6 +4494,10 @@ renderEstimates();
 renderSheets();
 // E1/E4: the exchange-rate card and the rate-book picker paint on load.
 renderFx();
+// OWNER 2026-10-02: the shipped Jamaica book is the default on FIRST visit
+// (self-guarding via JICSEEN, so the user's own choice is never overridden
+// afterwards). Runs BEFORE renderBooks so the picker paints already-selected.
+if (ACTIONS.calcBookDefault) ACTIONS.calcBookDefault();
 renderBooks();
 // W1 bill of quantities: paint the stored bill on load.
 renderBoq();
@@ -4309,7 +4513,10 @@ renderPacks();
   if ($('calc-design-c')) $('calc-design-c').value = p.designC != null ? p.designC : '10';
   if ($('calc-constr-c')) $('calc-constr-c').value = p.constrC != null ? p.constrC : '5';
   if ($('calc-esc-pct')) $('calc-esc-pct').value = p.escPct != null ? p.escPct : '5';
-  if ($('calc-months')) $('calc-months').value = p.months != null ? p.months : '';
+  // OWNER 2026-10-02: 12 months is the common Jamaican residential build and
+// it makes the cash plan work the moment the user clicks Export, instead of
+// failing on a blank field. Their own value, once typed, always wins.
+  if ($('calc-months')) $('calc-months').value = p.months != null ? p.months : '12';
   if ($('calc-disc-pct')) $('calc-disc-pct').value = p.discPct != null ? p.discPct : '';
   if ($('calc-disc-amt')) $('calc-disc-amt').value = p.discAmt != null ? p.discAmt : '';
 })();

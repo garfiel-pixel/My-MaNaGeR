@@ -4516,5 +4516,10 @@ body.calculator-page .bcp-rr-x{border-radius:var(--radius-rect,10px);}
 .bcp-rr-x .ico{width:16px;height:16px;}
 /* While the popup is open the page behind must not scroll. */
 body.rr-open{overflow:hidden;}
-/* Print: the popup is never part of a document. */
-#calc-ratebook-card{display:none !important;}
+/* Print: the popup is never part of a document.
+   OWNER INCIDENT 2026-10-02: this rule sat OUTSIDE any @media print, so
+   `display:none !important` applied on screen too and the rate book popup
+   was invisible the moment it opened - the "Rate book" button looked dead
+   again (the exact defect the popup work was meant to kill). Any hide-this
+   rule that is NOT [hidden]-scoped must be wrapped in @media print here. */
+@media print{#calc-ratebook-card{display:none !important;}}

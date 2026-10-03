@@ -65,17 +65,58 @@ MMGR_MCP_DIR=mcp/projects MMGR_MCP_PROJECT=demo.json node mcp/server.mjs
     }
   }
 }
-```
-
-### Cursor / Claude Code
-
-```
+```text
 mcp mymanager -s node C:/path/to/mymanager/mcp/server.mjs
 ```
 
----
+### Regular terminal (stdio -- raw CLI / non-cloud AI terminal)
 
-## Environment configuration
+If you are not using a cloud or a downloaded AI agent wrapper, run the server directly
+from a plain terminal (no HTTP server, no cloud relay, no claude mcp add):
+
+```bash
+# 1. Point it at your exported project file(s)
+export MMGR_MCP_DIR=/path/to/mymanager/mcp/projects
+export MMGR_MCP_PROJECT=my-project.json
+
+# 2. Optional: supply a cloud key + provider only if the local engine cannot answer
+export MMGR_MCP_AI_KEY=sk-mmgr-...
+export MMGR_MCP_PROVIDER=google-gemini
+
+# 3. Run it
+node C:/path/to/mymanager/mcp/server.mjs
+```
+
+The server starts in **stdio** mode and speaks MCP over stdin/stdout. Point your AI
+client at it with the same shape as the examples above:
+
+```json
+{
+  "mcpServers": {
+    "mymanager": {
+      "command": "node",
+      "args": ["C:/path/to/mymanager/mcp/server.mjs"],
+      "env": {
+        "MMGR_MCP_DIR": "C:/path/to/mymanager/mcp/projects",
+        "MMGR_MCP_PROJECT": "my-project.json",
+        "MMGR_MCP_AI_KEY": "optional-cloud-key",
+        "MMGR_MCP_PROVIDER": "google-gemini",
+        "MMGR_MCP_ALLOW_WRITES": "1"
+      }
+    }
+  }
+}
+```
+
+Notes for a raw terminal:
+- **No HTTP server is started.** stdio-only; no port to open, no network handshake,
+  everything on your machine.
+- **MMGR_MCP_AI_KEY / MMGR_MCP_PROVIDER are optional.** Leave unset and the server uses
+  only the deterministic local engine (never calls the cloud).
+- **Writes are owner-approved, two-phase**, even in raw-terminal mode: propose_change
+  returns a preview; approve_change is the only write path.
+
+
 
 | Var | Default | Purpose |
 |---|---|---|

@@ -509,30 +509,21 @@ const QUALITY = { economy: 0.85, standard: 1, premium: 1.35 };
 // synced with the workspace like every other calculator store.
 const BASE_CURRENCY = 'USD';
 const FXKEY = 'mmgr_calc_fx';
-// OWNER 2026-10-02: the estimate now DEFAULTS to Jamaican dollars, and the
-// model rates are written in US dollars. Without a JMD rate on the table,
-// every model rate would sit EMPTY with a "set an exchange rate" note - a
-// calculator that opens unusable. So the FIRST visit seeds a working JMD
-// rate. It is a published mid-market figure, it carries its own as-of date so
-// the stale check works, it is plainly LABELLED as a starting rate, and the
-// moment the user sets their own it is replaced. Nothing is ever silently
-// converted behind the owner's back.
-const JMD_SEED = { per: '158', asOf: '2026-01-15', seeded: true };
 function loadFx() {
   try {
     const v = JSON.parse(localStorage.getItem(FXKEY) || '{}');
     return v && typeof v === 'object' && !Array.isArray(v) ? v : {};
   } catch (e) { return {}; }
 }
-// Seeds JMD once per device, and only when the user has no JMD rate at all -
-// never over a rate they typed.
-function seedDefaultFx() {
-  const t = loadFx();
-  if (t.JMD) return false;
-  t.JMD = { per: JMD_SEED.per, asOf: JMD_SEED.asOf, seeded: true };
-  persistFx(t);
-  return true;
-}
+// OWNER 2026-10-02 (final, no negotiable): WE ARE NOT A CONVERTER. The
+// shipped Jamaica rate book is quoted in Jamaican dollars, so JMD is simply
+// the currency we work in - no exchange rate is involved and none is seeded.
+// An earlier pass of this wave installed a starting JMD rate so the USD
+// planning-grade model rates would convert; the owner rejected it: anyone
+// who needs another currency sets their own rate, with their own date, in
+// the Exchange rates card. Until they do, a model rate that cannot convert
+// leaves the field EMPTY and says so (E1 honesty, unchanged). The JIC book's
+// own JMD rates need no conversion at all - they ARE the currency.
 function persistFx(t) { try { localStorage.setItem(FXKEY, JSON.stringify(t)); } catch (e) { /* nicety */ } wsStampNow('fx'); scheduleWsPut(); }
 // Units of `code` per 1 USD. The base needs no entry; an unknown code
 // returns null - callers must show an honest warning, never a relabel.
@@ -574,7 +565,7 @@ function renderFx() {
         return '<span class="bcp-fx-chip">' + esc(c) + ': ' + esc(String(e.per)) + ' per USD (as of ' + esc(String(e.asOf || '?')) + ')' + (fxStale(c) ? ' - stale, update it' : '') +
           // OWNER 2026-10-02: a SEEDED rate says so. The owner must never
           // think a working conversion is one they entered themselves.
-          (e.seeded ? ' - starting rate we added, set your own to replace it' : '') +
+          
           ' <button type="button" class="btn btn-n btn-s" data-action="calcFxDel" data-code="' + esc(c) + '" aria-label="Remove the ' + esc(c) + ' rate">X</button></span>';
       }).join(' ')
     : 'No exchange rates set yet. Model rates stay US dollars until you add one or type your own rates.';
@@ -1133,8 +1124,14 @@ function compute() {
     // because no FX rate is set for the picked one - the render says so in
     // USD terms instead of relabelling. Both rates typed = all the user's
     // own money = nothing to flag.
+    // OWNER 2026-10-02: an ALL-IN line is exempt. It charges only allInCost,
+    // which comes from the single figure sitting in #calc-allin - and when
+    // that figure came from the JIC book it is already in the book's own
+    // currency (JMD), i.e. the estimate's currency. The split model rates it
+    // never uses are not on the document, so flagging them would print a
+    // false "these are US dollars" banner over a correct Jamaican total.
     const cur = st.currency || DEFAULT_CURRENCY;
-    if (cur !== BASE_CURRENCY && fxFactor(cur) == null &&
+    if (!r.allIn && cur !== BASE_CURRENCY && fxFactor(cur) == null &&
         ((!r.matOverridden && !r.matExcluded) || !r.labOverridden)) {
       r.modelUnconverted = true;
     }
@@ -3347,11 +3344,16 @@ const ACTIONS = {
     const b = loadBooks().find(function(x) { return (x.name || '').indexOf('Jamaica rate book') === 0; });
     if (!b) { if (res && res.skipped) console.warn('[calc] Jamaica book skipped ' + res.skipped + ' entries'); return; }
     setActiveBook(b.id);
-    // OWNER 2026-10-02 SCOPE: the directive was "ensure the rate book is
-    // default selected and the user themself would have to manage that" -
-    // the BOOK becomes the default, nothing else. This deliberately does NOT
-    // touch #calc-basis: silently switching a new user's pricing basis to
-    // all-in would change how every line they had already set up prices.
+    // OWNER 2026-10-02 (final): with the JIC book selected and JMD as the
+    // currency, the pricing basis must follow the BOOK. The book carries
+    // all-in combined rates and no material/labour split, so leaving the
+    // basis on 'measured' made every line fall back to the USD planning-grade
+    // model and print those figures under a Jamaican dollar estimate - the
+    // relabelled-USD defect E1 exists to prevent. This is the FIRST-VISIT
+    // install only; from then on the user's own choice, including 'measured',
+    // is never overridden again.
+    const sel = $('calc-basis');
+    if (sel && sel.value === 'measured') sel.value = 'allin';
     sheetMsg('Loaded the Jamaica rate book ' + JIC_YEARS + ': ' + payload.entryCount + ' rates. Every rate is yours to change, and you can swap or remove the book at any time.');
   },
   // Pricing basis (owner 2026-10-02): swap which inputs are on show. The
@@ -4377,11 +4379,6 @@ function countryLabel(code) {
 // with data-sync="1") which applies the saved mode before first paint - no
 // local restore here, a second writer would fight the helper.
 if ($('calc-work')) {
-  // OWNER 2026-10-02: seed the JMD starting rate FIRST, before any listener
-  // or prefill reads the FX table. Running it later (with the other boot
-  // calls) left the first paint priced from an EMPTY rate table, so the
-  // fields flashed empty and carried a "set an exchange rate" note.
-  seedDefaultFx();
   $('calc-work').addEventListener('change', syncLabels);
   if ($('calc-family')) $('calc-family').value = localStorage.getItem(FKEY) || '';
   ['calc-currency', 'calc-country', 'calc-quality', 'calc-tax-override',

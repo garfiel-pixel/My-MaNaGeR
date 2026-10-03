@@ -46,15 +46,23 @@
    Zero-throw: every network / GIS / DOM path is guarded. On a
    static host with no Worker API (serve.cjs), the section shows a
    quiet "unavailable here" note and the page keeps working , the
-   cloud feature is additive, exactly like the Drive section.
-
-   Namespaced as window.MMGR.Cloud (MMGR created by
+   cloud feature is additive, exactly like the Drive section.   Namespaced as window.MMGR.Cloud (MMGR created by
    js/mmgr-state.js / the page's first loaded module). Buttons use data-action so
    the readonly guard and ACTION_MAP delegation apply (mmgr-app.js).
    ============================================================ */
 var MMGR = window.MMGR || {};
 (function(ns) {
   'use strict';
+
+  /** 
+   * ns.Cloud public API  (what a new engineer reaches for first)
+   *   render()                 -> draws the Cloud Backup section (idempotent)
+   *   _startSyncWatcher()      -> TWO-WAY sync watcher (internal, but QA-facing)
+   *   _stopSyncWatcher()       -> tears the watcher down + drops the
+   *                                visibilitychange listener (de-dup guard below)
+   *   _syncPollTick()          -> the per-tick /meta pull (internal)
+   *   loadWithCode()           -> loads via a held code
+   */
 
   const CLIENT_ID = '297970704704-m05hgt93lfaq286q90br8c96ffg1aph3.apps.googleusercontent.com';
   const GIS_SRC = 'https://accounts.google.com/gsi/client';

@@ -51,6 +51,11 @@ if (STAGE === ROOT || STAGE.startsWith(ROOT + path.sep)) {
 }
 
 // ---- Excludes: mirror the tar recipe exactly --------------------------
+// Real deploy also runs wrangler.jsonc assets.exclude (planners/*.txt/
+// robots.txt) and copies package.json + wrangler.jsonc back past the
+// *.json / *.md excludes. Before editing this list, sanity-check against
+// those two files - deploy.cjs is the staging mirror, not the source of
+// truth.
 const SKIP_DIRS = new Set([
   '.git', '.wrangler', 'node_modules', '.agents', '_archive', 'tmp',
   'screenshots', 'web-research', 'dogfood-output'
@@ -63,10 +68,6 @@ const SKIP_FILE_RE = [
   /\.ya?ml$/i,
   /\.txt$/i, /^(robots|planners|reflection|SECURITY)\.txt$/i, /favicon/i, /\.claude$/i, /\.codebuff$/i
 ];
-// Copied back after the sweep (the tar recipe did the same): the config the
-// deploy actually needs, which the *.json / *.md excludes would otherwise drop.
-const COPY_BACK = ['package.json', 'wrangler.jsonc'];
-
 // Files whose staged bytes must match the working tree before shipping.
 const MUST_MATCH = [
   'index.html', 'app.html', 'project.html', 'admin.html', 'dashboard.html',

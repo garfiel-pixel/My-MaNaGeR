@@ -2380,9 +2380,16 @@ body.dark-mode .ai-byo-status[data-state="untested"]{background:rgba(245,158,11,
    to this page's needs (.sr-only). */
 .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;}
 .bcp-top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px;padding:10px 14px;background:var(--tile-bg);border:1px solid var(--border);border-radius:var(--radius-lg,16px);}
+/* OWNER 2026-10-02: rate book FIRST, theme toggle LAST, both parked on the
+   right. A wrapper keeps the cluster intact under space-between. */
+.bcp-top-right{display:flex;align-items:center;gap:10px;flex-shrink:0;}
 .bcp-top-left{display:flex;align-items:center;gap:12px;min-width:0;flex-wrap:nowrap;}
-/* Icon-only highlighted Back (owner: "a little button that shows back"). */
-.bcp-back{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;flex-shrink:0;border-radius:100px;background:color-mix(in oklch,var(--gold) 16%,transparent);color:var(--gold);border:1px solid color-mix(in oklch,var(--gold) 35%,transparent);cursor:pointer;transition:background var(--tr),color var(--tr),transform var(--tr);}
+/* Icon-only highlighted Back (owner: "a little button that shows back").
+   OWNER 2026-10-02 SHAPE: rounded rectangle with curved edges, NOT a pill -
+   border-radius:100px made a 40px circle, which is the "pill icon" look the
+   owner asked to be gone. --radius-rect is the app's existing rectangular
+   control radius (same token the dark button language uses). */
+.bcp-back{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;flex-shrink:0;border-radius:var(--radius-rect,10px);background:color-mix(in oklch,var(--gold) 16%,transparent);color:var(--gold);border:1px solid color-mix(in oklch,var(--gold) 35%,transparent);cursor:pointer;transition:background var(--tr),color var(--tr),transform var(--tr);}
 .bcp-back:hover{background:color-mix(in oklch,var(--gold) 26%,transparent);color:var(--gold);}
 .bcp-back:active{transform:scale(var(--press-scale,.96));}
 .bcp-back:focus-visible{outline:2px solid var(--gold);outline-offset:2px;}
@@ -2393,7 +2400,8 @@ body.dark-mode .ai-byo-status[data-state="untested"]{background:rgba(245,158,11,
 .bcp-brand:hover{color:var(--gold);}
 .bcp-title-sep{color:var(--slate);font-weight:400;flex-shrink:0;}
 .bcp-title-page{color:var(--slate);font-weight:600;font-size:.9rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;}
-.bcp-theme{position:relative;display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;flex-shrink:0;border-radius:100px;background:var(--card);border:1px solid var(--border);color:var(--slate);cursor:pointer;transition:color var(--tr),border-color var(--tr);}
+/* SHAPE (owner 2026-10-02): rounded rectangle, not a pill circle. */
+.bcp-theme{position:relative;display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;flex-shrink:0;border-radius:var(--radius-rect,10px);background:var(--card);border:1px solid var(--border);color:var(--slate);cursor:pointer;transition:color var(--tr),border-color var(--tr);}
 .bcp-theme:hover{color:var(--gold);border-color:var(--gold);}
 .bcp-theme:focus-visible{outline:2px solid var(--gold);outline-offset:2px;}
 .bcp-theme .ico{width:18px;height:18px;position:absolute;}
@@ -2402,8 +2410,9 @@ body.dark-mode .ai-byo-status[data-state="untested"]{background:rgba(245,158,11,
 body.dark-mode .bcp-ico-sun{display:block;}
 body.dark-mode .bcp-ico-moon{display:none;}
 
-/* Jamaica rate book button - top bar (owner 2026-10-02) */
-.bcp-ratebook{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:100px;background:var(--card);border:1px solid var(--border);color:var(--slate);font-size:13px;cursor:pointer;transition:color var(--tr),border-color var(--tr),background var(--tr);white-space:nowrap;}
+/* Jamaica rate book button - top bar (owner 2026-10-02).
+   SHAPE: rounded rectangle with curved edges, NOT a pill. */
+.bcp-ratebook{display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border-radius:var(--radius-rect,10px);background:var(--card);border:1px solid var(--border);color:var(--slate);font-size:13px;font-weight:600;cursor:pointer;transition:color var(--tr),border-color var(--tr),background var(--tr);white-space:nowrap;}
 .bcp-ratebook .ico{width:16px;height:16px;color:var(--slate);}
 .bcp-ratebook:hover{color:var(--gold);border-color:var(--gold);background:color-mix(in oklch,var(--gold) 10%,var(--card));}
 .bcp-ratebook:focus-visible{outline:2px solid var(--gold);outline-offset:2px;}
@@ -2642,7 +2651,8 @@ html.mmgr-tour-active .bcp-tour-nudge{filter:none;}
 .bcp-cp-row{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 2px;}
 .bcp-cp-row[hidden]{display:none!important;}
 .bcp-cp-title{flex:1 0 100%;font-size:.82rem;font-weight:600;color:var(--ink-soft,inherit);}
-.bcp-cp-chip{display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border-radius:999px;
+/* OWNER 2026-10-02 SHAPE: rounded rectangle with curved edges, not a pill. */
+.bcp-cp-chip{display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border-radius:var(--radius-rect,10px);
   background:var(--tile-bg);border:1px solid var(--border);color:inherit;font:inherit;font-size:.85rem;
   cursor:pointer;transition:border-color .15s,background .15s;}
 .bcp-cp-chip:hover{border-color:var(--gold,#c8a24a);background:var(--card);}
@@ -2693,11 +2703,26 @@ html.mmgr-tour-active .bcp-tour-nudge{filter:none;}
    opts any element out.
    ============================================================ */
 @media print{
+  /* OWNER 2026-10-02 (owner: "pdf is good when exported but its exporting
+     the entire page when we only need the bill / the specific estimate",
+     "even the rate sheet is being shown in the pdf"):
+     the print sheet is the ESTIMATE ONLY. Before this, print hid just the
+     top bar, the input card and the action row, so every other card in
+     .bcp-main - the bill, the roll-up, the cash plan, history, saved
+     estimates, the rate-book popup - printed too. Inverse the approach:
+     hide EVERYTHING under .bcp-main, then bring the estimate back. An
+     allow-list, not a deny-list, so a card added later cannot silently
+     start printing again. */
+  body.print-estimate #calc-ratebook-card,
   body.print-estimate .bcp-top,body.print-estimate .bcp-head,
   body.print-estimate #calc-input-card,body.print-estimate #calc-out-actions,
   body.print-estimate .no-print{display:none!important;}
   body.print-estimate{background:#fff!important;color:#111!important;}
   body.print-estimate .bcp-main{max-width:none;padding:0;}
+  body.print-estimate .bcp-main > *{display:none!important;}
+  body.print-estimate .bcp-main > .bcp-result{display:block!important;}
+  body.print-estimate .bcp-lede{display:none!important;}
+  body.print-estimate .bcp-tour-nudge{display:none!important;}
   body.print-estimate .card{box-shadow:none!important;border:1px solid #ccc!important;break-inside:avoid;background:#fff!important;color:#111!important;}
   body.print-estimate .card-title,body.print-estimate .calc-line,body.print-estimate .calc-line strong,
   body.print-estimate .calc-sum-qty,body.print-estimate .calc-hist-total{color:#111!important;}
@@ -4366,3 +4391,130 @@ body:not(.dark-mode):not(.db-page) #app-sidebar .sec-btn{
 .code-help:hover,.code-help:focus{color:var(--gold);outline:none;}
 .code-help-tip{position:absolute;left:50%;bottom:calc(100% + 8px);transform:translateX(-50%);width:230px;background:var(--surface-raised);color:var(--text);border:1px solid var(--border);border-radius:var(--radius);padding:8px 10px;font-size:.68rem;font-weight:500;line-height:1.45;text-align:left;opacity:0;visibility:hidden;pointer-events:none;transition:opacity var(--tr);z-index:60;box-shadow:0 8px 24px rgba(0,0,0,.25);}
 .code-help:hover .code-help-tip,.code-help:focus .code-help-tip{opacity:1;visibility:visible;}
+
+/* ============================================================
+   BUILD COST CALCULATOR - OWNER WAVE 2026-10-02
+   One block for the owner directive: replicate the app page's
+   visual signature on the calculator, replace the pill icons,
+   fix the dark-mode dropdown, and make the rate book a popup.
+   ============================================================ */
+
+/* ---- (15) DARK-MODE DROPDOWNS WERE UNREADABLE ------------------
+   Owner: "when i try to chose kind of work on dark theme the main
+   works are blacked out with white text and white bar".
+   Cause: the stylesheet never declared `color-scheme`, so Chrome
+   rendered the NATIVE select popup with its LIGHT default (a white
+   list, a white scrollbar) while our dark option colours painted
+   underneath it - white text on the dark option background, plus a
+   white scrollbar. Declaring the scheme makes Chrome draw the
+   popup itself dark, and - critically - it also fixes the
+   scrollbar, which no `color`/`background` rule can reach. */
+:root{color-scheme:light;}
+html.dark-mode,body.dark-mode{color-scheme:dark;}
+
+/* ---- (10) THE APP PAGE'S BACKGROUND EFFECT ---------------------
+   Owner: "use the special effect for the background we use on the
+   app page for the calculator background, dont go overboard - make
+   it minimal but still truly visible".
+   Reference, not invention: the app page washes its canvas with
+   three layered --gold-rgb radial gradients (body.db-page
+   #grid::before) over a warm --canvas. The calculator shares the
+   body.db-page class but has no #grid, so it got none of it. Same
+   three washes, same tokens, same opacities - just anchored to
+   the page instead of the dashboard grid, and off in dark mode
+   (where the dashboard treatment owns the canvas). */
+body.calculator-page:not(.dark-mode)::before{
+  content:'';position:fixed;inset:0;z-index:-1;pointer-events:none;
+  background:
+    radial-gradient(46% 42% at 14% 4%, rgba(var(--gold-rgb),.11) 0%, rgba(var(--gold-rgb),0) 70%),
+    radial-gradient(40% 38% at 86% 14%, rgba(var(--gold-rgb),.08) 0%, rgba(var(--gold-rgb),0) 68%),
+    radial-gradient(52% 46% at 52% 98%, rgba(var(--gold-rgb),.06) 0%, rgba(var(--gold-rgb),0) 72%);
+}
+/* Dark: the wash is off (the starry canvas shows through), matching
+   the dashboard's own dark-mode guard. */
+body.calculator-page.dark-mode::before{display:none;}
+/* The page's own stacking context must not paint over the wash. */
+body.calculator-page{position:relative;isolation:isolate;}
+@media (prefers-reduced-motion:reduce){
+  body.calculator-page:not(.dark-mode)::before{transition:none;}
+}
+
+/* ---- (13) THE APP PAGE'S PRETTY UI, ON THE CALCULATOR ---------
+   Reference: app.html's hero panel - a warm gold-tinted rounded
+   panel with a soft shadow. The calculator's top bar was a flat
+   grey box that read as a different product. Same warm tint, same
+   hairline, same lift. Token-driven, both themes. */
+body.calculator-page .bcp-top{
+  background:linear-gradient(135deg,
+    color-mix(in oklch,var(--gold) 9%,var(--card)),
+    color-mix(in oklch,var(--gold) 4%,var(--card)));
+  border-color:color-mix(in oklch,var(--gold) 26%,var(--border));
+  box-shadow:0 2px 14px rgba(16,24,40,.07),inset 0 1px 0 rgba(255,255,255,.55);
+}
+body.dark-mode.calculator-page .bcp-top{
+  background:linear-gradient(135deg,
+    color-mix(in oklch,var(--gold) 14%,var(--card)),
+    color-mix(in oklch,var(--gold) 5%,var(--card)));
+  border-color:color-mix(in oklch,var(--gold) 30%,var(--border));
+  box-shadow:0 2px 14px rgba(0,0,0,.32),inset 0 1px 0 rgba(255,255,255,.06);
+}
+
+/* ---- (11) NO PILL ICONS ANYWHERE ON THIS PAGE -----------------
+   Owner: "move away from pill shaped icon and go to rectangle
+   with curved edges - make the pill icons gone". Every control on
+   this page uses the app's rectangular radius. Scoped to
+   .calculator-page so the project's other pill toasts are
+   untouched. */
+body.calculator-page .bcp-seg-btn{border-radius:var(--radius-control);}
+body.calculator-page .bcp-rr-x{border-radius:var(--radius-rect,10px);}
+
+/* ---- (6) SPECIAL-CASE PIECE ROW -------------------------------
+   The opt-in row and the piece row it reveals. Hidden guards are
+   mandatory here: .bcp-row is display:grid and would outrank the
+   UA hidden rule, and verify:hidden only scans STATIC markup so it
+   cannot see these JS-driven flips. */
+#calc-piece-custom-wrap[hidden]{display:none!important;}
+.bcp-piece-row[hidden]{display:none!important;}
+/* Once the user opts in, the row is marked so it reads as
+   deliberate rather than accidental. */
+.bcp-piece-row.bcp-piece-custom-on{
+  border-left:3px solid color-mix(in oklch,var(--warning) 60%,transparent);
+  padding-left:12px;margin-left:-3px;
+}
+
+/* ---- (9) THE CASH-PLAN MESSAGE -------------------------------- */
+#calc-cash-msg[hidden]{display:none!important;}
+
+/* ---- (4) RATE BOOK AS A POPUP, NOT A SECTION ------------------
+   Owner: "why is it being open at the bottom of the page, polish
+   it and make it be a pop up user can view and exit when needed".
+   Overlay + panel, app-dialog language: a scrim you click to leave,
+   Escape to leave, and the close button. The scrim also stops the
+   page behind scrolling under the sheet. */
+#calc-ratebook-card{
+  position:fixed;inset:0;z-index:9998;display:flex;align-items:center;justify-content:center;
+  padding:24px 16px;background:rgba(9,10,15,.46);
+  backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);
+  border:0;border-radius:0;box-shadow:none;background-color:rgba(9,10,15,.46);
+}
+.rr-panel{
+  display:flex;flex-direction:column;width:min(980px,100%);max-height:min(86vh,900px);
+  background:var(--card);border:1px solid var(--border);border-radius:var(--radius-lg,16px);
+  box-shadow:0 24px 70px rgba(0,0,0,.42);overflow:hidden;
+}
+.rr-panel .rr-head{display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid var(--border);}
+.rr-panel .rr-head .card-title{margin:0;flex:1;min-width:0;}
+.rr-scroll{overflow:auto;flex:1;min-height:0;}
+.rr-foot{padding:10px 16px;border-top:1px solid var(--border);color:var(--slate);font-size:.74rem;}
+.bcp-rr-x{
+  display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;
+  flex-shrink:0;background:var(--tile-bg);border:1px solid var(--border);border-radius:var(--radius-rect,10px);
+  color:var(--slate);cursor:pointer;transition:color var(--tr),border-color var(--tr);
+}
+.bcp-rr-x:hover{color:var(--gold);border-color:var(--gold);}
+.bcp-rr-x:focus-visible{outline:2px solid var(--gold);outline-offset:2px;}
+.bcp-rr-x .ico{width:16px;height:16px;}
+/* While the popup is open the page behind must not scroll. */
+body.rr-open{overflow:hidden;}
+/* Print: the popup is never part of a document. */
+#calc-ratebook-card{display:none !important;}

@@ -1895,6 +1895,9 @@ Date: ____________  Focus: ____________</pre>
         <div class="tblock-right"><div><b>Scale</b>Tool-level detail</div></div>
       </div>
       <span class="kicker">Price the work three ways - by the unit, by one combined rate, or by the days your crew is on site</span>
+      <!-- Owner 2026-10-02: the second wave of A-30 - Jamaican dollars by
+           default, a rate-book pop-up, a "no tax" choice, exports that carry
+           the estimate and nothing else. -->
       <p class="lede">The Build Cost Calculator turns a measurement into a document you can send. Pick a work item, enter its dimensions, hit <strong>Calculate</strong>, and you get an estimate, quote or invoice you can print, save or export. The <strong>How do you price this work?</strong> chooser decides which numbers do the pricing.</p>
       <div class="grid grid-2">
         <div class="card bracket"><span class="cnum">MEASURED</span><h4>By the unit</h4><p>The ordinary way: a material rate and a labour rate for the trade, multiplied by the measured quantity. Waste allowances, openings deducted, per-piece pricing and per-trade variants (6 in block vs 8 in, pipe by diameter, scaffolding by height band) all work here.</p></div>
@@ -1905,6 +1908,18 @@ Date: ____________  Focus: ____________</pre>
       <div class="divider-note">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" stroke="currentColor" stroke-width="1.2"/></svg>
         <p><strong>Worth knowing:</strong> on rendering, painting and tiling the calculator says a day rate is <em>not recommended</em> - how much a crew gets through in a day changes with the weather, the coats and the surface. It says so and still lets you price it your way. And the finish level (economy / standard / premium) always scales the material rate only, never a day rate you typed.</p>
+      </div>
+
+      <div class="grid grid-2">
+        <div class="card bracket"><span class="cnum">MONEY</span><h4>What it opens on</h4><p>The calculator starts in <strong>Jamaican dollars</strong> for <strong>Jamaica</strong>, with the JIC rate book already loaded. That happens once, on your first visit; after that the book and the currency are entirely yours - swap, replace or remove them in the Rate books card. Because the built-in rates are written in US dollars, we add a <strong>starting JMD exchange rate</strong> so the fields arrive filled rather than empty. It is labelled as ours, not yours, and typing your own rate replaces it for good.</p></div>
+        <div class="card bracket"><span class="cnum">TAX</span><h4>Not every job is taxed</h4><p>The country you pick sets the standard tax rate (Jamaica GCT 15%). For a job that carries no tax at all - a minor repair, an internal job, a client that does not charge - pick <strong>No tax on this job</strong> and the document says exactly that. Typing 0 in the custom tax field still works too, and reads differently, so you can tell the two apart on paper.</p></div>
+        <div class="card bracket"><span class="cnum">BOOK</span><h4>Reading the rate book</h4><p>The <strong>Rate book</strong> button opens the JIC rates for 2025-2027 in a pop-up over the page. Read any of the 100 published rates without leaving the calculator, switch between metric and imperial, and close it with the X, by clicking outside it, or with the Escape key. Nothing you have entered is lost.</p></div>
+        <div class="card bracket"><span class="cnum">SPECIAL</span><h4>A block size not on the list</h4><p>When a trade's sizes are already in the rate sheet - block sizes, blockwork pocket and elevation - the calculator does not ask you to type "price per block" again. If you are working a size the sheet does not list, tick <strong>My size is not in the rate sheet</strong> and the price and size fields appear for that special case.</p></div>
+      </div>
+
+      <div class="divider-note">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" stroke="currentColor" stroke-width="1.2"/></svg>
+        <p><strong>Getting the document out:</strong> <strong>Print / PDF</strong> prints the estimate and nothing else - not the bill, the roll-up, the cash plan or the rate book. <strong>Export CSV</strong> gives you a spreadsheet with the money in one column you can add up, and the rates and settings underneath it. The <strong>cash plan</strong> spreads the bill across your build duration (12 months to start with) and exports its own CSV, or tells you plainly what it needs first.</p>
       </div>
     </section>
 

@@ -200,13 +200,42 @@ async function withChrome(fn) {
     // the amount parse accepts any leading symbol - the invariant itself is
     // currency-free. The banner must be present (never a silent relabel).
     const money = await ev(`(function(){
+      // OWNER 2026-10-02: this gate asserts the money INVARIANT, not a
+      // currency. Pin USD so the seeded JMD conversion cannot move the
+      // figures out from under the arithmetic.
+      var cc = document.getElementById('calc-currency');
+      cc.value = 'USD'; cc.dispatchEvent(new Event('change',{bubbles:true}));
       const txt = document.getElementById('calc-output').textContent;
       const banner = txt.indexOf('Built-in model rates are US dollars') > -1;
       const grab2 = (label) => { const m = txt.match(new RegExp(label + '[\\\\s\\\\S]*?(?:J\\\\$|\\\\$|\\u00A3|\\u20AC)\\s*([\\\\d,]+)')); return m ? parseFloat(m[1].replace(/,/g,'')) : null; };
       const mat = grab2('Materials'), lab = grab2('Labor'), tax = grab2('Tax'), tot = grab2('Estimated total');
       return { banner, mat, lab, tax, tot, sums: (mat!==null && lab!==null && tax!==null && tot!==null) ? (mat+lab+tax)===tot : false };
     })()`);
-    check('C2b money invariant mat+lab+tax = total (+ honest USD banner while unconverted)', money && money.sums === true && money.banner === true, money);
+    // OWNER 2026-10-02: the "rates are still US dollars" banner used to fire
+    // because no FX rate existed. The calculator now seeds a labelled JMD
+    // starting rate, so with USD pinned there is nothing left unconverted
+    // and the honest banner is correctly ABSENT. The invariant is the point
+    // of this gate; the banner condition moves to its own gate below.
+    check('C2b money invariant mat+lab+tax = total, with no unconverted banner on a pinned-USD estimate',
+      money && money.sums === true && money.banner === false, money);
+    const fx0 = await ev(`(function(){
+      // The honesty banner must still appear when a rate genuinely cannot
+      // convert: clear the FX table, price in JMD, and read the note.
+      try { localStorage.removeItem('mmgr_calc_fx'); } catch (e) {}
+      var c = document.getElementById('calc-currency');
+      c.value = 'JMD'; c.dispatchEvent(new Event('change',{bubbles:true}));
+      var w = document.getElementById('calc-work');
+      w.value = 'slab'; w.dispatchEvent(new Event('change',{bubbles:true}));
+      var note = document.getElementById('calc-fx-note');
+      var res = { noteShown: !note.hidden, noteTxt: note.textContent,
+                  matEmpty: document.getElementById('calc-rate-mat').value === '' };
+      // Put the seeded rate back for the rest of the run.
+      try { localStorage.setItem('mmgr_calc_fx', JSON.stringify({ JMD: { per: '158', asOf: '2026-01-15', seeded: true } })); } catch (e) {}
+      c.value = 'USD'; c.dispatchEvent(new Event('change',{bubbles:true}));
+      return res;
+    })()`);
+    check('C2c with NO exchange rate the fields stay EMPTY and the honest note names the gap (E1 never a relabel)',
+      fx0 && fx0.noteShown && fx0.matEmpty && /exchange rate/i.test(fx0.noteTxt || ''), fx0);
 
     // C3: custom override replaces the country rate.
     const c3 = await ev(`(function(){
@@ -370,6 +399,9 @@ async function withChrome(fn) {
     })()`);
     check('N4 shingle-roof 10x9.2903 m -> 10 squares + m2 aside', n4 && n4.sq && n4.m2, n4);
     const n5 = await ev(`(function(){
+      // OWNER 2026-10-02: pin USD - this gate tests the fixture COUNT math.
+      var cc = document.getElementById('calc-currency');
+      cc.value = 'USD'; cc.dispatchEvent(new Event('change',{bubbles:true}));
       const sel = document.getElementById('calc-work');
       sel.value = 'fixture';
       sel.dispatchEvent(new Event('change', { bubbles: true }));
@@ -586,6 +618,7 @@ async function withChrome(fn) {
       in1 && in1.qty === 62.4 && in1.unit === 'm2', in1);
     const in2 = await ev(`(function(){
       var st = __calcEngine.readState();
+      st.currency = 'USD';   // OWNER 2026-10-02: pin USD for the model-rate math.
       st.work = 'blockwall'; st.d1 = ''; st.d2 = ''; st.d3 = '';
       st.measuredQty = '62.4'; st.measuredUnit = 'm2';
       var r = __calcEngine.computeFor(st);
@@ -595,6 +628,7 @@ async function withChrome(fn) {
       in2 && !in2.err && in2.qty === 62.4 && Math.abs(in2.mat - 1372.8) < 0.01 && Math.abs(in2.lab - 1747.2) < 0.01, in2);
     const in3 = await ev(`(function(){
       var st = __calcEngine.readState();
+      st.currency = 'USD';   // OWNER 2026-10-02: pin USD for the rate math.
       st.work = 'blockwall'; st.d1 = ''; st.d2 = ''; st.d3 = '';
       st.measuredQty = '62.4'; st.measuredUnit = 'm2'; st.quality = 'premium';
       st.rateMat = '30'; st._matModel = null;
@@ -652,6 +686,9 @@ async function withChrome(fn) {
     })()`);
     check('SX1 off by default: no statutory line renders', sx1 && sx1.line === false, sx1);
     const sx2 = await ev(`(function(){
+      // OWNER 2026-10-02: pin USD - the gate asserts 12.5% of 672 = 84.00.
+      var cc = document.getElementById('calc-currency');
+      cc.value = 'USD'; cc.dispatchEvent(new Event('change',{bubbles:true}));
       var t = document.getElementById('calc-oncost-toggle');
       t.checked = true;
       t.dispatchEvent(new Event('change', { bubbles: true }));
@@ -750,8 +787,10 @@ async function withChrome(fn) {
           e = document.getElementById('calc-esc-pct'), m = document.getElementById('calc-months');
       return { d: d.value, c: c.value, e: e.value, m: m.value };
     })()`);
-    check('RG2 defaults restored: design 10, constr 5, esc 5, months empty',
-      rg2 && rg2.d === '10' && rg2.c === '5' && rg2.e === '5' && rg2.m === '', rg2);
+    // OWNER 2026-10-02: the build duration now DEFAULTS to 12 months so the
+    // cash-plan export works the moment it is clicked.
+    check('RG2 defaults restored: design 10, constr 5, esc 5, months 12',
+      rg2 && rg2.d === '10' && rg2.c === '5' && rg2.e === '5' && rg2.m === '12', rg2);
     const rg3 = await ev(`(function(){
       document.getElementById('calc-work').value = 'blockwall';
       document.getElementById('calc-work').dispatchEvent(new Event('change', { bubbles: true }));
@@ -765,9 +804,11 @@ async function withChrome(fn) {
                hasDesign: txt.indexOf('Design contingency (10%)') > -1,
                hasConstr: txt.indexOf('Construction contingency (5%)') > -1,
                hasTotal: txt.indexOf('Planning subtotal (before tax)') > -1,
-               noEsc: txt.indexOf('Escalation (') === -1 };
+               noEsc: txt.indexOf('Escalation (') > -1 };
     })()`);
-    check('RG3 waterfall lines render; escalation line hidden while months empty',
+    // OWNER 2026-10-02: months now defaults to 12, so the escalation line is
+    // EXPECTED to render (it needs a duration).
+    check('RG3 waterfall lines render; the escalation line appears with the 12-month default',
       rg3 && rg3.hasWorks && rg3.hasPrelim && rg3.hasDesign && rg3.hasConstr && rg3.hasTotal && rg3.noEsc, rg3);
     // ---------- W6: CASH FLOW (owner 2026-09-30) ----------
     const cf1 = await ev(`(function(){
@@ -1107,7 +1148,10 @@ async function withChrome(fn) {
       var csv = __calcEngine.estimateCsv(__calcEngine.computeFor(__calcEngine.readState()));
       var body = document.getElementById('calc-rollup-body');
       var txt = body ? body.textContent : '';
-      return { csvHasDisc: csv.indexOf('Discount % / amount') > -1 && csv.indexOf('10 / 0') > -1,
+      return { // OWNER 2026-10-02 CSV RESTRUCTURE: the discount moved into the ROLL-UP
+      // block's Detail column (the rate is a modifier of the roll-up line,
+      // not its own money row).
+      csvHasDisc: csv.indexOf('discount 10% / 0') > -1,
                discLine: txt.indexOf('Discount') > -1, pctShown: txt.indexOf('10% off') > -1, neg: txt.indexOf('-') > -1 };
     })()`);
     check('DC5 CSV carries the discount row; waterfall shows the discount line with pct',
@@ -1412,7 +1456,9 @@ async function withChrome(fn) {
       document.getElementById('calc-country').value = 'US';
       document.getElementById('calc-country').dispatchEvent(new Event('change', { bubbles: true }));
       return { jm: withTax.tax, off: noTax.tax, rateOff: noTax.taxRate, flagged: noTax.overrideApplied,
-               csvZero: csv.indexOf('"Tax rate %","0"') > -1, totalEqualsSub: Math.abs(noTax.total - (noTax.sub + noTax.oh)) < 0.01,
+               // The rate is now the Detail column beside the Tax money row (the old
+      // export had a separate "Tax rate %" row).
+      csvZero: csv.indexOf('"Tax","0%","0"') > -1, totalEqualsSub: Math.abs(noTax.total - (noTax.sub + noTax.oh)) < 0.01,
                labelNoTax: out.indexOf('no tax - your rate') > -1 };
     })()`);
     check('TX1 tax off entirely: typing 0 in the override kills the 15% JM tax, total drops to the pre-tax subtotal, CSV carries Tax rate % 0, sheet says no tax',
@@ -1819,7 +1865,8 @@ async function withChrome(fn) {
       var csv = __calcEngine.estimateCsv(r);
       return { excluded: out.indexOf('Materials - excluded (labour only)') > -1,
                lab: r ? Math.round(r.lab) : null, mat: r ? Math.round(r.mat) : null,
-               csvRow: csv.indexOf('"Materials","excluded (labour only)"') > -1, rides: st.labourOnly === true };
+               // Amount is the THIRD column now; the exclusion note sits in it verbatim.
+               csvRow: csv.indexOf('"Materials","brought in","excluded (labour only)"') > -1, rides: st.labourOnly === true };
     })()`);
     check('LM1 labour-only: materials excluded, labor priced (12.6x85=1071), CSV names the exclusion, flag rides readState',
       lm1 && lm1.excluded && lm1.lab === 1071 && lm1.mat === 0 && lm1.csvRow && lm1.rides, lm1);
@@ -1869,7 +1916,7 @@ async function withChrome(fn) {
                allIn: r.allIn, mat: r.mat, lab: r.lab, cost: Math.round(r.allInCost), total: Math.round(r.total),
                oneRow: out.indexOf('Work rate (all-in)') > -1,
                noMatRow: out.indexOf('Materials') === -1, noLabRow: out.indexOf('Labor') === -1,
-               csvCombined: csv.indexOf('"Work rate (all-in)","1600"') > -1,
+               csvCombined: csv.indexOf('"Work rate (all-in)","","1600"') > -1,
                csvNoSplit: csv.indexOf('"Materials"') === -1 && csv.indexOf('"Labor"') === -1 };
     })()`);
     check('AB1 all-in prices the whole line and shows ONE combined row - no Materials/Labour split on screen or CSV (D3)',
@@ -2018,13 +2065,16 @@ async function withChrome(fn) {
                allinHidden: document.getElementById('calc-allin-wrap').hidden,
                dayBasis: r.dayBasis, days: r.days, lab: Math.round(r.lab), mat: Math.round(r.mat),
                total: Math.round(r.total), labelHasDays: out.indexOf('2.5 days') > -1,
+               // OWNER 2026-10-02: the days and the crew rate are ASSUMPTION rows now, so
+               // the labour total in the COST BLOCK carries the basis note.
                csvDays: csv.indexOf('"Days on site","2.5"') > -1,
-               csvRate: csv.indexOf('"Labor rate per day","400"') > -1 };
+               csvRate: csv.indexOf('"Crew rate per day","400"') > -1,
+               csvLabNote: csv.indexOf('2.5 days at 400 per day') > -1 };
     })()`);
     check('DB1 days x rate lands in labour, material untouched, ONE labour total labelled with days x rate (D1/D2)',
       db1 && db1.daysShown && db1.allinHidden && db1.dayBasis && db1.days === 2.5 &&
       db1.lab === 1000 && db1.mat === 320 && db1.total === 1320 &&
-      db1.labelHasDays && db1.csvDays && db1.csvRate, db1);
+      db1.labelHasDays && db1.csvDays && db1.csvRate && db1.csvLabNote, db1);
     const db2 = await ev(`(function(){
       document.getElementById('calc-quality').value = 'premium';
       document.getElementById('calc-quality').dispatchEvent(new Event('change',{bubbles:true}));
@@ -2194,26 +2244,38 @@ async function withChrome(fn) {
       return { hasBtn: !!btn, text: btn ? btn.textContent.replace(/\\s+/g,' ').trim() : '',
                icon: btn ? !!btn.querySelector('svg.ico use[href*="i-book"]') : false };
     })()`);
-    check('RB1 top bar carries the Jamaica rate book link (SVG i-book icon + text)',
-      rb1 && rb1.hasBtn && /Jamaica rate book/i.test(rb1.text) && rb1.icon, rb1);
+    // OWNER 2026-10-02: the top-bar label is the short "Rate book" (the popup
+      // heading carries the full JIC name + years).
+      check('RB1 top bar carries the rate book link (SVG i-book icon + text)',
+      rb1 && rb1.hasBtn && /rate book/i.test(rb1.text) && rb1.icon, rb1);
     const rb2 = await ev(`(function(){
       document.querySelector('.bcp-ratebook[data-action="openRateBook"]').click();
       var c = document.getElementById('calc-ratebook-card');
       if (!c) return { open: false };
-      return { open: true, role: c.getAttribute('role'),
+      return { open: true, role: c.getAttribute('role'), modal: c.getAttribute('aria-modal'),
+               isOverlay: c.className.indexOf('rr-overlay') > -1,
                title: (c.querySelector('.card-title')||{}).textContent || '',
                rows: c.querySelectorAll('tbody tr:not(.rr-trade)').length,
                groups: c.querySelectorAll('tbody tr.rr-trade').length,
-               sub: (c.querySelector('.rr-sub')||{}).textContent || '',
+               foot: (c.querySelector('.rr-foot')||{}).textContent || '',
+               closeBtn: !!c.querySelector('[data-action="rrClose"]'),
                segs: c.querySelectorAll('[data-action="rrUnits"]').length };
     })()`);
-    check('RB2 the link opens the rate book card with the JIC 2025-2027 title',
-      rb2 && rb2.open && rb2.role === 'dialog' && /Jamaica Rate Book 2025-2027/.test(rb2.title), rb2);
+    // OWNER 2026-10-02: the popup is titled for what the owner asked to see -
+    // "JIC rates" plus the years the book governs, and NOTHING else (the old
+    // line-item / trade-count / source sentence was removed).
+    check('RB2 the link opens the rate book popup titled "JIC rates 2025-2027"',
+      rb2 && rb2.open && rb2.role === 'dialog' && rb2.modal === 'true' && rb2.isOverlay &&
+      /JIC rates 2025-2027/.test(rb2.title) && rb2.closeBtn, rb2);
     check('RB3 the card lists all 100 JIC line items across 11 trade groups',
       rb2 && rb2.rows === 100 && rb2.groups === 11, { rows: rb2 && rb2.rows, groups: rb2 && rb2.groups });
-    check('RB4 the line-item count in the copy MATCHES the rows it describes',
-      rb2 && new RegExp('^' + rb2.rows + ' line items across ' + rb2.groups + ' trades').test(rb2.sub.trim()),
-      { sub: rb2 && rb2.sub, rows: rb2 && rb2.rows, groups: rb2 && rb2.groups });
+    // OWNER 2026-10-02: the count sentence is GONE by request, so this gate now
+    // asserts the copy carries no stale count AND that the currency note is
+    // still there (the table itself is checked by RB3).
+    check('RB4 the heading carries no line-item/source blurb; the currency note stays',
+      rb2 && rb2.title.indexOf('line item') === -1 && rb2.title.indexOf('Source:') === -1 &&
+      /Jamaican dollar/.test(rb2.foot),
+      { title: rb2 && rb2.title, foot: rb2 && rb2.foot });
     check('RB5 the card offers a metric/imperial toggle',
       rb2 && rb2.segs === 2, { segs: rb2 && rb2.segs });
     const rb6 = await ev(`(function(){
@@ -2368,7 +2430,8 @@ async function withChrome(fn) {
       // Excel needs the EF BB BF bytes in the file - bytes are the contract.
       var bytes = await new Promise(function(res){ var fr = new FileReader(); fr.onload = function(){ res(new Uint8Array(fr.result)); }; fr.onerror = function(){ res(null); }; fr.readAsArrayBuffer(created[0]); });
       var text = bytes ? new TextDecoder('utf-8').decode(bytes) : '';
-      return { ok: clicked, bom: !!bytes && bytes[0] === 0xEF && bytes[1] === 0xBB && bytes[2] === 0xBF, hasTotal: text.indexOf('Estimated total') > -1, hasSlab: text.indexOf('Concrete slab') > -1 };
+      return { ok: clicked, bom: !!bytes && bytes[0] === 0xEF && bytes[1] === 0xBB && bytes[2] === 0xBF, // OWNER 2026-10-02: the CSV's money total row is now "ESTIMATED TOTAL".
+      hasTotal: text.indexOf('ESTIMATED TOTAL') > -1, hasSlab: text.indexOf('Concrete slab') > -1 };
     })()`);
     check('X2 CSV export: BOM bytes + total + work item in blob', x2 && x2.ok && x2.bom && x2.hasTotal && x2.hasSlab, x2);
 
@@ -2426,6 +2489,11 @@ async function withChrome(fn) {
     // (Metric first: earlier F4 gates leave imperial behind.)
     const r1 = await ev(`(function(){
       document.querySelector('[data-action="calcUnits"][data-units="metric"]').click();
+      // OWNER 2026-10-02: this gate tests the MODEL rate (150/85). The page
+      // now defaults to JMD with a seeded 158 rate, so pin USD to read the
+      // raw model figures - the converted path is covered by FX gates.
+      var c = document.getElementById('calc-currency');
+      c.value = 'USD'; c.dispatchEvent(new Event('change',{bubbles:true}));
       document.getElementById('calc-work').value = 'slab';
       document.getElementById('calc-work').dispatchEvent(new Event('change',{bubbles:true}));
       return { mat: document.getElementById('calc-rate-mat').value,
@@ -2484,7 +2552,59 @@ async function withChrome(fn) {
       var lbl = document.getElementById('calc-piece-price-label').textContent;
       return { visible: !document.getElementById('calc-piece-wrap').hidden, bagLbl: lbl };
     })()`);
-    check('R5 piece row follows the trade: area on tile, bag-yield on slab', r45 && r45.pieceVisible && r5b && r5b.visible && /bag/i.test(r5b.bagLbl), r5b);
+    // OWNER 2026-10-02: tile's sizes ARE listed in the rate sheet, so its piece
+    // row is behind the "not in the rate sheet" opt-in (PC1 covers that).
+    // Tick it here so this gate still checks tile PRICES per piece, and
+    // leave slab as the un-opted-in control.
+    const r45b = await ev(`(function(){
+      document.getElementById('calc-work').value = 'tile';
+      document.getElementById('calc-work').dispatchEvent(new Event('change',{bubbles:true}));
+      var pc = document.getElementById('calc-piece-custom');
+      var had = pc && !pc.checked;
+      if (had) { pc.checked = true; pc.dispatchEvent(new Event('change',{bubbles:true})); }
+      var out = { visible: !document.getElementById('calc-piece-wrap').hidden,
+                  lbl: document.getElementById('calc-piece-price-label').textContent };
+      if (had) { pc.checked = false; pc.dispatchEvent(new Event('change',{bubbles:true})); }
+      return out;
+    })()`);
+    check('R5 piece row follows the trade: area on tile (behind its opt-in), bag-yield on slab',
+      r45b && r45b.visible && /tile/i.test(r45b.lbl) && r5b && r5b.visible && /bag/i.test(r5b.bagLbl),
+      { tile: r45b, slab: r5b });
+    // OWNER 2026-10-02: a trade whose SIZES are listed in the rate sheet
+    // (blockwall, tile, paint) hides its piece fields behind the opt-in; the
+    // opt-in itself only appears for those trades. slab has no size list, so
+    // its fields stay put - asserted above.
+    const pc1 = await ev(`(function(){
+      function probe(k){
+        document.getElementById('calc-work').value = k;
+        document.getElementById('calc-work').dispatchEvent(new Event('change',{bubbles:true}));
+        var pc = document.getElementById('calc-piece-custom');
+        var optInShown = pc && pc.parentElement.offsetParent !== null;
+        var rowShown = !document.getElementById('calc-piece-wrap').hidden;
+        return { optInShown: !!optInShown, rowShown: rowShown };
+      }
+      var bw = probe('blockwall');
+      var tile = probe('tile');
+      var paint = probe('paint');
+      var slab = probe('slab');
+      // Tick the opt-in on blockwall and prove the row appears.
+      document.getElementById('calc-work').value='blockwall';
+      document.getElementById('calc-work').dispatchEvent(new Event('change',{bubbles:true}));
+      var pc = document.getElementById('calc-piece-custom');
+      pc.checked = true; pc.dispatchEvent(new Event('change',{bubbles:true}));
+      var afterTick = !document.getElementById('calc-piece-wrap').hidden;
+      var lbl = document.getElementById('calc-piece-price-label').textContent;
+      // Untick again so later families start clean.
+      pc.checked = false; pc.dispatchEvent(new Event('change',{bubbles:true}));
+      var afterUntick = !document.getElementById('calc-piece-wrap').hidden;
+      // Leave the form on slab (its un-opted-in state).
+      probe('slab');
+      return { bw: bw, tile: tile, paint: paint, slab: slab, afterTick: afterTick, afterUntick: afterUntick, lbl: lbl };
+    })()`);
+    check('PC1 blockwork/tile/paint hide price-per-piece behind a "not in the rate sheet" opt-in; slab keeps its fields',
+      pc1 && pc1.bw.optInShown && !pc1.bw.rowShown && pc1.tile.optInShown && !pc1.tile.rowShown &&
+      pc1.paint.optInShown && !pc1.paint.rowShown && !pc1.slab.optInShown && pc1.slab.rowShown &&
+      pc1.afterTick && !pc1.afterUntick && /block/i.test(pc1.lbl), pc1);
 
     // E1: exact recall identity - run with a full settings set, disturb
     // everything, recall, and require the ENTIRE st object back.
@@ -2538,8 +2658,12 @@ async function withChrome(fn) {
                note: !document.getElementById('calc-fx-note').hidden,
                priced: document.getElementById('calc-output').textContent.indexOf('Estimated total') > -1 };
     })()`);
-    check('E2 legacy row recalls: units inferred (m), honest empty rates + note, still priced',
-      e2 && e2.work==='tile' && e2.d1==='10' && e2.units==='metric' && e2.rm === '' && e2.note && e2.priced, e2);
+    // OWNER 2026-10-02: the seeded JMD starting rate means a JMD legacy row now
+    // resolves REAL rates instead of an empty field plus a note - which is
+    // the whole point of shipping a working default. The rate must be the
+    // converted model figure and no unconverted note may show.
+    check('E2 legacy JMD row recalls: units inferred (m), rates resolved from the seeded rate, no note, still priced',
+      e2 && e2.work==='tile' && e2.d1==='10' && e2.units==='metric' && e2.rm !== '' && !e2.note && e2.priced, e2);
 
     // ---- B1 WASTE % (owner review 2026-09-29) ----
     // W1: tile defaults to 10 (the old baked-in factor) - the sum matches
@@ -2882,6 +3006,11 @@ async function withChrome(fn) {
         document.getElementById('calc-work').dispatchEvent(new Event('change',{bubbles:true}));
         document.getElementById('calc-d1').value='${d1}'; document.getElementById('calc-d2').value='${d2}';
         document.getElementById('calc-piece-price').value='${price}'; document.getElementById('calc-piece-size').value='${size}';
+        // OWNER 2026-10-02: trades whose sizes ARE in the rate sheet hide the
+        // piece fields behind the "my size is not in the rate sheet" opt-in.
+        // Tick it so the harness is testing PRICING, not the new visibility.
+        var pc = document.getElementById('calc-piece-custom');
+        if (pc && pc.offsetParent !== null && !pc.checked) { pc.checked = true; pc.dispatchEvent(new Event('change',{bubbles:true})); }
         document.getElementById('calc-d1').dispatchEvent(new Event('input',{bubbles:true}));
         var t = document.getElementById('calc-output').textContent;
         return { hit: t.indexOf('${expectPat}') > -1, line: t.indexOf('priced per piece') > -1, pieceVisible: !document.getElementById('calc-piece-wrap').hidden };
@@ -2990,7 +3119,23 @@ async function withChrome(fn) {
       document.getElementById('calc-work').dispatchEvent(new Event('change',{bubbles:true}));
       return { onSlab: onSlab, onTile: onTile, tileLbl: tileLbl, onFoot: onFoot, footLbl: footLbl };
     })()`);
-    check('V3 volume rows on slab/footings, area rows on tile, labels follow', v3 && v3.onSlab && v3.onTile && v3.onFoot && /bag/.test(v3.footLbl) && /tile/i.test(v3.tileLbl), v3);
+    // OWNER 2026-10-02: tile carries listed sizes, so its piece row is behind the
+      // opt-in - tick it so this gate still tests tile's AREA row + label.
+    const v3b = await ev(`(function(){
+      document.getElementById('calc-work').value='tile';
+      document.getElementById('calc-work').dispatchEvent(new Event('change',{bubbles:true}));
+      var pc = document.getElementById('calc-piece-custom');
+      if (pc && !pc.checked) { pc.checked = true; pc.dispatchEvent(new Event('change',{bubbles:true})); }
+      var onTile = !document.getElementById('calc-piece-wrap').hidden;
+      var tileLbl = document.getElementById('calc-piece-price-label').textContent;
+      pc.checked = false; pc.dispatchEvent(new Event('change',{bubbles:true}));
+      document.getElementById('calc-work').value='slab';
+      document.getElementById('calc-work').dispatchEvent(new Event('change',{bubbles:true}));
+      return { onTile: onTile, tileLbl: tileLbl };
+    })()`);
+    check('V3 volume rows on slab/footings, area rows on tile, labels follow',
+      v3 && v3.onSlab && v3.onFoot && /bag/.test(v3.footLbl) && v3b && v3b.onTile && /tile/i.test(v3b.tileLbl),
+      { slab: v3, tile: v3b });
 
     // V4: an invalid yield silently falls back to the model rate.
     const v4 = await ev(`(function(){
@@ -3026,9 +3171,16 @@ async function withChrome(fn) {
       localStorage.setItem('mmgr_current_project', 'parqa');
       return true;
     })()`);
+    // Poll for the boot rather than racing a fixed sleep: this family lost
+    // 8 gates intermittently when project.html had not finished loading in
+    // 3200ms on a loaded machine. Same pattern as AGENTS.md lesson 3 - a
+    // fixed wait is a guess, a poll is a fact.
     await ev(`location.href = ${JSON.stringify(BASE + '/project.html?id=parqa')}`);
-    await delay(3200);
-    const appBooted = await ev(`!!(window.MMGR && MMGR.Watch && MMGR.State)`);
+    let appBooted = false;
+    for (let i = 0; i < 30 && !appBooted; i++) {
+      await delay(500);
+      appBooted = await ev(`!!(window.MMGR && MMGR.Watch && MMGR.State)`);
+    }
     check('PL0 project booted with Watch module', !!appBooted, appBooted);
     // The assistant is signed-in-gated (Entitlements seam). Harness stubs the
     // seam exactly like the other watchers harnesses do.

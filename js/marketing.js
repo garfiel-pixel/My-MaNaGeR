@@ -323,6 +323,17 @@
     var hadErr = q.get('pdc');
     if (!hadTxn && !hadErr) return;
 
+    /* ONCE PER RETURN (owner report 2026-10-04): a _ptxn parameter survives in
+       the address bar and in history, so simply revisiting the URL re-asserted
+       "your payment went through" days later. Remember the reference we have
+       already acknowledged in this tab session and say nothing on a revisit.
+       sessionStorage is per-tab, so a genuine second checkout still speaks. */
+    try {
+      var seenKey = 'mmgr_paddle_return_' + String(hadTxn || hadErr);
+      if (sessionStorage.getItem(seenKey)) return;
+      sessionStorage.setItem(seenKey, '1');
+    } catch (e) { /* private mode / storage blocked: fall through and show it */ }
+
     stripPaddleParams();
 
     if (hadErr) {
@@ -333,14 +344,23 @@
       return;
     }
 
-    planBand('wait', 'Paddle has sent your payment back to us. We are confirming the plan now - this normally takes a few seconds.');
+    planBand('wait', 'You have come back from Paddle. We are checking whether a plan has been added to your account - this normally takes a few seconds.');
 
     if (typeof GA === 'undefined' || !GA || typeof GA.refreshPlan !== 'function') return;
     GA.refreshPlan().then(function(data){
       if (data && data.active) {
         planBand('ok', 'Thank you. Premium is active on your account right now, and everything Premium unlocks is already available to you.');
       } else {
-        planBand('wait', 'Your payment went through, but the plan has not reached your account yet. This takes Paddle a few seconds to send. Wait a moment and refresh this page - nothing is lost, and you will not be charged twice. If it has not appeared in a few minutes, check the contact page and quote the reference in your address bar.');
+        /* TRUTHFULNESS (owner report 2026-10-04): this used to say "Your payment
+           went through, but the plan has not reached your account yet." The
+           owner was shown that sentence having made NO payment at all and
+           never having been redirected to Paddle - a _ptxn parameter left in
+           the address bar from an earlier attempt was enough to trigger it.
+           A page must never assert that money changed hands when we cannot
+           prove it: /api/billing/status reports the PLAN, not the payment,
+           so "active" proves a plan exists and "not active" proves nothing
+           about whether anyone was charged. Say only what we can verify. */
+        planBand('wait', 'No plan is showing on your account yet. If you completed a purchase, Paddle may still be sending it - wait a few seconds and refresh this page. If you did not complete a purchase, nothing has been charged and nothing is owed.');
       }
     });
   }

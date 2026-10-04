@@ -77,6 +77,17 @@ web-research/
 *~
 # Whole-file snapshots dumped in the repo root by a past session.
 HEAD-*.md
+# 2026-10-04 cleanup of the remaining root scratch. tmp_head_readme.md was
+# another copy of the MCP README; claude-cli-1.0.5.tgz was a downloaded
+# npm package that the deploy excludes already treated as a public-asset
+# leak. Neither belongs in the repo.
+tmp_*.md
+*.tgz
+# Session transcripts dropped in the root. The tracked planning .txt files
+# (PLANNING-TODO-*, SECURITY-FIXES-PLAN) are real project docs and are NOT
+# matched here - this rule is anchored to the root and only covers the
+# "Freebuff ...txt" scratch a chat session leaves behind.
+/Freebuff*.txt
 scratch.md
 scratch.json
 tmp/

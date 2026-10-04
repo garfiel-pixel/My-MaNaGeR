@@ -1499,6 +1499,14 @@
     <div class="ctl-sec" id="ctrl-mcp-sec"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg> MCP Server</div>
     <div id="ctrl-mcp"></div>
     <div class="sr-hint">Sync identity is 100% optional , the app works forever without an account. JSON export/import is the guaranteed sync path on every device, signed in or not.</div>
+
+    <!-- REGULAR TERMINAL (non-cloud MCP): the stdio connector for an AI tool
+         running in a plain terminal on this machine, with no cloud link and no
+         HTTP server. Rendered by renderTerminal() in js/mmgr-cloud.js. Unlike
+         the MCP Server card above it does NOT depend on a cloud code or a
+         signed-in session, so it renders for every project. -->
+    <div class="ctl-sec" id="ctrl-terminal-sec"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-terminal"></use></svg> Regular Terminal</div>
+    <div id="ctrl-terminal"></div>
     <!-- GOOGLE-DRIVE-BACKUP: optional Drive backup/restore controls , never
          gating. Rendered by js/mmgr-google-auth.js into this slot. -->
     <div id="drive-section"></div>

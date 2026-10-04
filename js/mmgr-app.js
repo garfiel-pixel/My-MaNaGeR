@@ -2139,6 +2139,11 @@ window.MMGR = MMGR;
     'cloudEditorCodeDone': () => { const C = window.MMGR.Cloud; if (C && C.editorCodeDone) C.editorCodeDone(); },
     'cloudCopyCode': () => { const C = window.MMGR.Cloud; if (C && C.copyCode) C.copyCode(); },
     'mcpCopyUrl': () => { var inp = document.getElementById('mcp-url'); if (inp && inp.value) { navigator.clipboard.writeText(inp.value).then(function() { var st = document.getElementById('mcp-status'); if (st) st.textContent = 'Copied to clipboard.'; setTimeout(function() { var s = document.getElementById('mcp-status'); if (s) s.textContent = ''; }, 2000); }).catch(function() { inp.select(); document.execCommand('copy'); }); } },
+    // REGULAR TERMINAL notifier (the non-cloud stdio connector card). Same
+    // shape as mcpCopyUrl above: copy the config field, announce it through
+    // the card's own role=status live region, then clear it. A copy is safe in
+    // read-only mode (no state change) so it needs no readonly guard.
+    'terminalCopyUrl': () => { var inp = document.getElementById('terminal-mcp-url'); if (inp && inp.value) { navigator.clipboard.writeText(inp.value).then(function() { var st = document.getElementById('terminal-status'); if (st) st.textContent = 'Copied to clipboard. Remember to change the two placeholder paths to your own.'; setTimeout(function() { var s = document.getElementById('terminal-status'); if (s) s.textContent = ''; }, 4000); }).catch(function() { inp.select(); document.execCommand('copy'); if (document.getElementById('terminal-status')) document.getElementById('terminal-status').textContent = 'Copied to clipboard.'; }); } },
     'cloudSignIn': () => { const C = window.MMGR.Cloud; if (C && C.signIn) C.signIn(); },
     'cloudLoadWithCode': () => { const C = window.MMGR.Cloud; if (C && C.loadWithCode) C.loadWithCode(); },
     // SYNC BOND (Task 13): explicit re-sync for bonded projects + the

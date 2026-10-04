@@ -66,8 +66,19 @@ const SKIP_FILE_RE = [
   // as a public static asset - no secrets inside, but repo internals do not
   // belong in the asset bundle. Same rule for .assetsignore below.
   /\.ya?ml$/i,
-  /\.txt$/i, /^(robots|planners|reflection|SECURITY)\.txt$/i, /favicon/i, /\.claude$/i, /\.codebuff$/i
+  /\.txt$/i, /^(robots|planners|reflection|SECURITY)\.txt$/i, /favicon/i, /\.claude$/i, /\.codebuff$/i,
+  // 2026-10-03: a stray claude-cli-1.0.5.tgz sat untracked in the repo root and
+  // was being staged as a public static asset. Same class as the v316 .yml leak.
+  /\.tgz$/i
 ];
+// Files excluded by SKIP_FILE_RE that wrangler still NEEDS: package.json and
+// wrangler.jsonc (both *.json, so the excludes above would drop them and
+// wrangler would fail to find its config / package manifest in the stage).
+// Copied back AFTER the tree walk, which is what the comment above describes.
+// NOTE: this constant was referenced by the staging step but never actually
+// declared - the deploy tool threw `ReferenceError: COPY_BACK is not defined`
+// and could not ship anything until 2026-10-03.
+const COPY_BACK = ['package.json', 'wrangler.jsonc'];
 // Files whose staged bytes must match the working tree before shipping.
 const MUST_MATCH = [
   'index.html', 'app.html', 'project.html', 'admin.html', 'dashboard.html',

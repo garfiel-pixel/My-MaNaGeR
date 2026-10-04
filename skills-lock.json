@@ -1,24 +1,6 @@
 {
   "version": 1,
   "skills": {
-    "human-audit": {
-      "source": "local",
-      "sourceType": "local",
-      "skillPath": ".agents/skills/human-audit/SKILL.md",
-      "computedHash": "d5ee53a7a2495fd32453c862c306b0396efcac36050e88e63f160881482a9a5b"
-    },
-    "no-slacking": {
-      "source": "local",
-      "sourceType": "local",
-      "skillPath": ".agents/skills/no-slacking/SKILL.md",
-      "computedHash": "4e7cde54956480e111baf4db42244f2a1a448adba1591199462bdfbad9fe5d41"
-    },
-    "plain-language-copy": {
-      "source": "local",
-      "sourceType": "local",
-      "skillPath": ".agents/skills/plain-language-copy/SKILL.md",
-      "computedHash": "e19f1408ad6f3bfb4fedc2dff4891225a296395817cb6dfdedf1ac21052fd45d"
-    },
     "accessibility-rules": {
       "source": "community-access/accessibility-agents",
       "sourceType": "github",
@@ -49,17 +31,63 @@
       "skillPath": "skills/gws-drive/SKILL.md",
       "computedHash": "d637ff849b82a9fc195bcfedea260cffe94eaa31b843b28cd04313b1720bb153"
     },
+    "human-audit": {
+      "source": "./local",
+      "sourceType": "local",
+      "skillPath": ".agents/skills/human-audit/SKILL.md",
+      "computedHash": "d5ee53a7a2495fd32453c862c306b0396efcac36050e88e63f160881482a9a5b"
+    },
     "landing-page-generator": {
       "source": "kostja94/marketing-skills",
       "sourceType": "github",
       "skillPath": "skills/pages/marketing/landing-page/SKILL.md",
       "computedHash": "b9645cb518fe8704539cc2e48c27c48d13e8e3656a7b9c3d2ed522a48dd75a44"
     },
+    "no-slacking": {
+      "source": "./local",
+      "sourceType": "local",
+      "skillPath": ".agents/skills/no-slacking/SKILL.md",
+      "computedHash": "4e7cde54956480e111baf4db42244f2a1a448adba1591199462bdfbad9fe5d41"
+    },
     "oauth": {
       "source": "vercel-labs/portless",
       "sourceType": "github",
       "skillPath": "skills/oauth/SKILL.md",
       "computedHash": "f1c64927a58c27437f34cb668912258898668b145f44cf8cb7f0f9ba103ccac0"
+    },
+    "paddle-catalog-setup": {
+      "source": "developer.paddle.com",
+      "sourceUrl": "https://developer.paddle.com/",
+      "sourceType": "well-known",
+      "computedHash": "5f5f5f7db8480a01b56b67ca92404bf0092e8fe0974d741e55672a69037195e5",
+      "wellKnownDigest": "sha256:de4b053161038f69077c20e85304ce2846bde7433279fd85ed9cf996050ba6fb"
+    },
+    "paddle-sandbox-testing": {
+      "source": "developer.paddle.com",
+      "sourceUrl": "https://developer.paddle.com/",
+      "sourceType": "well-known",
+      "computedHash": "23760461444c8fde6e1f973fa0074054c0d139ece1b8e2564b20a3269e3c08c4",
+      "wellKnownDigest": "sha256:062270a7172e3cc629e751ef48a143e1189673f39ac7011a23d9fd283aa2ef69"
+    },
+    "paddle-subscription-sync": {
+      "source": "developer.paddle.com",
+      "sourceUrl": "https://developer.paddle.com/",
+      "sourceType": "well-known",
+      "computedHash": "ef06c0ef713ae9f9db59068b8135a2ae433c31ecc88e2ac154605d05e382995f",
+      "wellKnownDigest": "sha256:f7a7f5a01bed6245fc122bf9251938ad04104bf72d39dfe3e59a0625a9cb053b"
+    },
+    "paddle-webhooks": {
+      "source": "developer.paddle.com",
+      "sourceUrl": "https://developer.paddle.com/",
+      "sourceType": "well-known",
+      "computedHash": "9d020ce32fb1e9eb8440e18610d21f5d78c63c14665dd11934510928f0b5d9a6",
+      "wellKnownDigest": "sha256:c64d7bb6ed7f44aa1f60fb38fb96c72980009f1c8f438aefbdfd6138298fe5cb"
+    },
+    "plain-language-copy": {
+      "source": "./local",
+      "sourceType": "local",
+      "skillPath": ".agents/skills/plain-language-copy/SKILL.md",
+      "computedHash": "e19f1408ad6f3bfb4fedc2dff4891225a296395817cb6dfdedf1ac21052fd45d"
     },
     "pwa-development": {
       "source": "alinaqi/maggy",
@@ -79,6 +107,36 @@
       "skillPath": "skills/security-audit/SKILL.md",
       "computedHash": "02a15f2226610f8c9d23732b9f11fe64865f35b1c26cd0560db370f441e9a199"
     },
+    "skeptical-code-audit": {
+      "source": "./local",
+      "sourceType": "local",
+      "skillPath": ".agents/skills/skeptical-code-audit/SKILL.md",
+      "computedHash": "c60c5d7dffbebf705cebae1ad1c5f525f50614053565f3e6f855f8677dd96f5b"
+    },
+    "sleek-design-mobile-apps": {
+      "source": "sleekdotdesign/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/design-mobile-apps/SKILL.md",
+      "computedHash": "1e7a933ac86d075fb82d28067bb5f6c148b480028f726a1906f4ecb9d55717a5"
+    },
+    "think outside the box skill": {
+      "source": "./local",
+      "sourceType": "local",
+      "skillPath": ".agents/skills/think outside the box skill/think outside the box.md",
+      "computedHash": "c217e7e23fbbc922f6512c493e819f78b1c03904a89ebda4eef80e416ec85309"
+    },
+    "ui-modernization": {
+      "source": "./local",
+      "sourceType": "local",
+      "skillPath": ".agents/skills/ui-modernization/SKILL.md",
+      "computedHash": "23185631ce2d857d13683f491832add25a21fe3908c946dde3507d0e9848e82c"
+    },
+    "universal-ui-architect": {
+      "source": "./local",
+      "sourceType": "local",
+      "skillPath": ".agents/skills/universal-ui-architect/SKILL.md",
+      "computedHash": "de02a424342376830e494978ad5bbec7ae0699c412825e2d272e1035940bd38a"
+    },
     "web-perf": {
       "source": "cloudflare/skills",
       "sourceType": "github",
@@ -96,36 +154,6 @@
       "sourceType": "github",
       "skillPath": "skills/wrangler/SKILL.md",
       "computedHash": "11edeb37eedb91deedde694b2bb1cc4ff4e8b5a8f1836c217a8c871fe39abcb5"
-    },
-    "skeptical-code-audit": {
-      "source": "local",
-      "sourceType": "local",
-      "skillPath": ".agents/skills/skeptical-code-audit/SKILL.md",
-      "computedHash": "c60c5d7dffbebf705cebae1ad1c5f525f50614053565f3e6f855f8677dd96f5b"
-    },
-    "universal-ui-architect": {
-      "source": "local",
-      "sourceType": "local",
-      "skillPath": ".agents/skills/universal-ui-architect/SKILL.md",
-      "computedHash": "de02a424342376830e494978ad5bbec7ae0699c412825e2d272e1035940bd38a"
-    },
-    "ui-modernization": {
-      "source": "local",
-      "sourceType": "local",
-      "skillPath": ".agents/skills/ui-modernization/SKILL.md",
-      "computedHash": "23185631ce2d857d13683f491832add25a21fe3908c946dde3507d0e9848e82c"
-    },
-    "think outside the box skill": {
-      "source": "local",
-      "sourceType": "local",
-      "skillPath": ".agents/skills/think outside the box skill/think outside the box.md",
-      "computedHash": "c217e7e23fbbc922f6512c493e819f78b1c03904a89ebda4eef80e416ec85309"
-    },
-    "sleek-design-mobile-apps": {
-      "source": "sleekdotdesign/agent-skills",
-      "sourceType": "github",
-      "skillPath": "skills/design-mobile-apps/SKILL.md",
-      "computedHash": "1e7a933ac86d075fb82d28067bb5f6c148b480028f726a1906f4ecb9d55717a5"
     }
   }
 }

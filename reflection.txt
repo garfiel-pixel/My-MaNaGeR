@@ -1626,3 +1626,91 @@ STATE AT SESSION END
 - NEXT: owner runs Cascade Dates on-device (now float-safe) and saves;
   the stored snapshot then carries real criticals + float; then accept
   any queued review proposals per the one-tasks-proposal law.
+
+LESSONS
+- A HARD GATE IN A DOC IS NOT A GATE. AGENTS.md rule #8 (no AI credit in a
+  commit message) had no enforcement anywhere: the commit-msg hook validated
+  only the SUBJECT line, gitleaks scans file content not trailers, and no
+  verify-*.cjs reads commit messages. Rule 8 footers came back on 2026-10-03
+  precisely because the rule was prose. A rule that only exists in a markdown
+  file is a convention, and conventions drift.
+- SCAN THE WHOLE HISTORY, NOT THE RECENT COMMITS. My first footer sweep looked
+  at the last 8 commits and found 2 offenders. Scanning all 643 found a third
+  (`503698a`, an em-dash cleanup from months back). "Recent" is a sample, not a
+  search, and a shallow scan reported clean while a real violation sat in the
+  repo.
+- AN EXCLUSION LIST IS ONLY AS GOOD AS ITS LAST EXTENSION. `*.md` in
+  .assetsignore and deploy.cjs does NOT match `README.md.orig` - the suffix is
+  `.orig`, not `.md`. Each leak in this repo (the .yml, the .tgz, now
+  .orig/.head) was the same shape: a new artifact type nobody added to the
+  list. The pattern to reuse is already in the codebase - add the extension,
+  then PROVE it by running the real regex from the real file against the real
+  filenames, not by eyeballing the pattern.
+- GREP THE PATTERNS, DON'T REASON ABOUT THEM. Twice this session a config
+  looked right and was wrong: `*.md.orig` "looked" covered by `*.md` (it is
+  not), and gitignore `*` "looks" like it crosses `/` (it does not). Testing
+  the real matcher against the real filenames found both instantly.
+- EVIDENCE MUST COME FROM THE ARTIFACT THE OTHER PERSON GETS. Verifying my
+  working copy proves my working copy. After committing config, I re-extracted
+  the committed BLOB from main and ran the hook and the deploy regex against
+  that — otherwise "it works here" says nothing about "it works on main".
+- MEASUREMENT ARTIFACTS ARE THE DANGEROUS PART. Three separate false readings
+  this session, all caught only because I chased the anomaly instead of
+  accepting it: (1) Git Bash rewrote `origin/main:` to `origin\main;`, so
+  `git show` failed silently and I hashed an empty string - reported as
+  "DIFFER"; (2) curl does not follow the `/project.html` -> `/project` 307, so
+  I hashed a redirect body and reported prod as DIFFERENT when it was byte-
+  identical (AGENTS lesson 4, which I had earlier read and still fell into);
+  (3) a stale shell variable `$f` left over from a `for` loop made my own
+  sanity-check `printf` append the word DIFFERENT to tools/deploy.cjs. None
+  reached a commit, but two of them produced confident wrong answers first.
+  RULE: before reporting a mismatch, prove the comparator can detect one.
+- DON'T TRUST A GREEN FILTER AS A PASS. `npm run verify | grep -c 'FAIL'` said
+  1 — the hit was the filename `js/mmgr-errors.js` on a PASS line. Always
+  resolve the hit to its line and read it before believing it either way.
+- WRITE YOUR OWN DOC ENTRY WITHOUT THE STRING THE DOC FORBIDS. My first
+  commit explaining the new footer guard used the literal footer token in its
+  body. The hook correctly allowed it (line-start anchored), but shipping the
+  banned string into history is the exact confusion the rule prevents.
+  Amended before push; the shipped message has zero literal matches.
+- A FORCE-PUSH MAKES A SECRET-SCAN RESCAN EVERYTHING. Gitleaks went red on
+  the history-rewrite commit and green on the very next one. Cause: a force-
+  push invalidates the delta baseline, so the scan covered all 643 commits at
+  once and tripped on something old. Before blaming a rewrite for a new
+  finding, re-run on the next commit and check whether it clears.
+- BACK UP BEFORE A REWRITE, AND PREFER --force-with-lease. `git tag
+  backup-pre-footer-strip` was created before `filter-branch`, and every push
+  used an explicit lease. When the rewrite's ref was lost by a routine
+  `git fetch`, `git reflog` plus a pinned local branch recovered it - without
+  the tag there would have been no second chance.
+- ROOT SCRATCH NEEDS A RULE, NOT A DELETION. Deleting the three stray files
+  would have worked once. Without ignore entries they come back, and a
+  blanket `*.txt` would have blocked the 14 TRACKED planning documents -
+  anchor the rule to the root and to the specific naming instead.
+
+STATE AT SESSION END
+- Repo = CI state (main b535ef3; CI run 37206728109 SUCCESS, 64/64 steps,
+  0 failures). SW shell v356. PRODUCTION = Version
+  d9458141-c343-4b76-85ad-90fcb14e5c40; prod carries the terminal card and is
+  byte-identical to local for /project, /app and /dist/bundle.js.
+- Feature: Regular Terminal notifier live in the Controls tab, verified in a
+  browser against PRODUCTION (10/10 probe gates, zero page exceptions).
+- Hygiene: commit-msg hook now rejects AI-credit trailers (proven against a
+  real git commit); *.orig/*.head/*~ ignored and excluded from the asset
+  bundle; end-to-end staging proof with planted backup files showed 0 leaks.
+- History: all 643 commits rewritten message-only, 0 footers remain, all 643
+  tree SHAs byte-identical before/after. Recovery tag
+  `backup-pre-footer-strip` -> 10709d4 still local.
+- Verification: npm run verify ALL CHECKS PASSED (exit 0); prod byte-match
+  confirmed with `curl -L` against /project (not /project.html).
+- OPEN FOR THE OWNER: (a) anyone holding a clone needs
+  `git fetch && git reset --hard origin/main` after the force-push; (b) old
+  footers may still resolve via GitHub dangling-commit-by-SHA URLs until they
+  expire - not removable server-side; (c) GITLEAKS FLIPPED RED ON THE REWRITE
+  COMMIT and passed on the next - almost certainly a full-rescan artifact of
+  the force-push, but UNVERIFIED because the Actions log endpoint 403s for
+  this token; run gitleaks locally over the full history for certainty; (d)
+  the commit-msg guard is bypassable with --no-verify; closing that needs a
+  CI-side trailer check, which means a new harness PLUS a
+  docs/CI-TEST-COVERAGE.md registry row (AGENTS lesson 14); (e) delete the
+  backup tag once the owner is satisfied.

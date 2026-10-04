@@ -147,7 +147,14 @@ async function paddleApplyWebhook(env, rawBody) {
   const custom = (data.custom_data && typeof data.custom_data === 'object') ? data.custom_data : {};
   const ownerSub = String(custom.sub || '');
   const pdId = String(data.id || '');
-  const lifecycle = ['subscription.created', 'subscription.activated', 'subscription.resumed', 'subscription.updated', 'subscription.trialed', 'subscription.paused', 'subscription.past_due', 'subscription.canceled'];
+  // Paddle's event names, verified against the notification-destination event
+  // list (developer.paddle.com/webhooks/subscriptions/...). This array used to
+  // read 'subscription.trialed', which Paddle never emits - the real event is
+  // 'subscription.trialing' (its own doc page is .../subscription-trialing).
+  // Because the mismatch fell through to the `ignored` branch below and returned
+  // 200, a trial signup wrote NO row and Paddle saw success and never retried:
+  // a paid trial silently granted nothing, with no error on either side.
+  const lifecycle = ['subscription.created', 'subscription.activated', 'subscription.resumed', 'subscription.updated', 'subscription.trialing', 'subscription.paused', 'subscription.past_due', 'subscription.canceled'];
   if (lifecycle.indexOf(event) === -1 && event !== 'transaction.completed') return json({ ok: true, ignored: event });
   if (!ownerSub || !pdId) return json({ ok: false, error: 'missing owner identity in custom_data' }, 400);
   let status, periodEnd = null;

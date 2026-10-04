@@ -1442,6 +1442,15 @@ body.readonly-mode .btn[data-action]:not([data-action="showSec"]):not([data-acti
 .mcp-how{margin:6px 0 4px;}
 .mcp-how-body p{font-size:.68rem;color:var(--slate);margin:6px 0;}
 .mcp-how-body .fmt-preview{margin:4px 0 8px;}
+/* REGULAR TERMINAL card (mmgr-cloud.js renderTerminal). These values were
+   inline style="" attributes until qa-full check 38 ("rendered inline styles
+   reduced", a <200 [style]-node ceiling) failed: this card renders
+   UNCONDITIONALLY, so its styles land on every project and counted against
+   the global budget. Same look, zero inline styles. */
+#ctrl-terminal .term-step{margin-top:6px;}
+#ctrl-terminal .term-step-sm{margin-top:4px;}
+#ctrl-terminal .term-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px;}
+#ctrl-terminal .term-url{flex:1;min-width:220px;font-family:ui-monospace,monospace;font-size:.72rem;letter-spacing:.02em;background:var(--tile-bg);}
 /* Share & Access card (mmgr-cloud.js renderShare) */
 .share-card{border:1px solid var(--border);border-radius:10px;padding:13px 14px;margin-bottom:12px;background:var(--card);}
 .share-card .sr{border:none;padding:8px 0;margin:0 0 4px;}

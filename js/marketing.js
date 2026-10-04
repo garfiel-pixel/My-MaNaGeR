@@ -345,6 +345,58 @@
     });
   }
 
+  /* ---- UPGRADE FROM THE PRICING PAGE (owner report 2026-10-04) -------
+     pricing.html is both Paddle's default payment link AND the page a buyer
+     lands on after paying, yet it described Premium and then said "go and
+     use the button on your projects page" - so the page a customer is sent
+     to in order to BUY had no way to buy. Now it has a real button.
+
+     Same contract as the two app-side paths: session-gated POST
+     /api/billing/checkout, then open the returned checkout.url. The tab is
+     opened SYNCHRONOUSLY inside the click for the same reason as there:
+     window.open() after the await has lost the user activation and Chrome
+     blocks it with no message, which reads as a dead button. */
+  function wireUpgradeButtons(){
+    var btns = document.querySelectorAll('[data-pricing-upgrade]');
+    if (!btns.length) return;
+    Array.prototype.forEach.call(btns, function(btn){
+      btn.addEventListener('click', function(){
+        var status = document.querySelector('[data-pricing-status]');
+        function say(msg, bad){
+          if (!status) return;
+          status.hidden = false;
+          status.textContent = msg;
+          status.style.color = bad ? 'var(--danger, #c0392b)' : '';
+        }
+        say('Opening checkout...');
+        btn.disabled = true;
+        var tab = window.open('about:blank', '_blank');
+        fetch('/api/billing/checkout', { method: 'POST', credentials: 'same-origin' })
+          .then(function(res){
+            return res.json().catch(function(){ return {}; }).then(function(d){ return { ok: res.ok, status: res.status, data: d }; });
+          })
+          .then(function(r){
+            if (!r.ok || !r.data || !r.data.ok || !r.data.checkoutUrl) {
+              if (tab) { try { tab.close(); } catch (e) { /* already gone */ } }
+              btn.disabled = false;
+              if (r.status === 403) say('Sign in first - the plan is attached to your account.', true);
+              else if (r.status === 503) say('Checkout is not available on this server yet.', true);
+              else say((r.data && r.data.error) || ('Checkout failed (HTTP ' + r.status + ').'), true);
+              return;
+            }
+            if (tab) { try { tab.opener = null; tab.location.replace(r.data.checkoutUrl); } catch (e) { window.open(r.data.checkoutUrl, '_blank', 'noopener'); } }
+            else window.open(r.data.checkoutUrl, '_blank', 'noopener');
+            say('Checkout opened in a new tab. Finish there, then come back here.');
+          })
+          .catch(function(){
+            if (tab) { try { tab.close(); } catch (e) { /* already gone */ } }
+            btn.disabled = false;
+            say('Could not reach the server.', true);
+          });
+      });
+    });
+  }
+
   function renderSigninSignedOut(){
     if (!signinSheet) return;
     var form = signinSheet.querySelector('.email-auth');
@@ -815,5 +867,6 @@
      even if it ever ships without a sheet - a completed purchase must
      never look like a page that did nothing. */
   handlePaddleReturn();
+  wireUpgradeButtons();
   mountContactForm();
 })();

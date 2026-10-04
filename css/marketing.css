@@ -1277,3 +1277,14 @@ body.dark-mode .nav-dd-item:hover{color:var(--gold);background:rgba(var(--gold-r
 .auth-legal{font-size:.72rem;margin:4px 0 0;}
 .auth-legal a{color:var(--gold-deep);text-decoration:underline;}
 .auth-legal a:hover{color:var(--gold);}
+
+/* ---- PRICING PAGE UPGRADE CTA (owner report 2026-10-04) -------------
+   pricing.html is Paddle's default payment link AND the page a buyer lands
+   on after paying, but it had no way to buy - it described Premium and sent
+   the reader off to the app. The button and its status line live here so
+   the pricing page is a complete page. Token-driven like everything else:
+   --gold / --gold-deep / --ink / --radius, so light and dark both follow. */
+.pricing-cta{margin:1.2rem 0 .55rem;}
+.pricing-cta .btn{width:auto;display:inline-block;}
+.pricing-cta-status{font-size:.88rem;line-height:1.45;margin:0 0 .9rem;opacity:.9;}
+.pricing-cta-status[hidden]{display:none;}

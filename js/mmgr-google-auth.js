@@ -332,14 +332,17 @@ var MMGR = window.MMGR || {};
   // Free or unconfigured plan -> mounts stay hidden. Zero-throw: any failure
   // leaves the pills hidden and the page unaffected.
   async function refreshPlan() {
+    // RETURNS the parsed status (or null) so the post-checkout return in
+    // marketing.js can say what is actually true. Previously it returned
+    // undefined and rendered the pill, which was all it was written for.
     let res;
     try {
       res = await fetch('/api/billing/status', { method: 'GET', credentials: 'same-origin' });
-    } catch (e) { return; }
-    if (!res.ok) return;
+    } catch (e) { return null; }
+    if (!res.ok) return null;
     let data = null;
-    try { data = await res.json(); } catch (e) { return; }
-    if (!data || !data.ok || !data.configured) return;
+    try { data = await res.json(); } catch (e) { return null; }
+    if (!data || !data.ok || !data.configured) return null;
     const mounts = document.querySelectorAll('[data-plan-badge]');
     for (let i = 0; i < mounts.length; i++) {
       if (data.active) {
@@ -350,6 +353,7 @@ var MMGR = window.MMGR || {};
       }
     }
     document.dispatchEvent(new CustomEvent('mmgr:plan-changed', { detail: data }));
+    return data;
   }
 
   // Restore the operator identity from the Worker session cookie. Never
@@ -1789,6 +1793,11 @@ var MMGR = window.MMGR || {};
     getUser: function() { return _user; },
     isSignedIn: function() { return !!_user; },
     signOut: signOut,
+    // PADDLE POST-CHECKOUT RETURN (2026-10-04): returns the parsed
+    // /api/billing/status so marketing.js can report what actually
+    // happened on the return from checkout rather than assuming success.
+    // Resolves null on any failure or when billing is unconfigured.
+    refreshPlan: refreshPlan,
     // EMAIL + PASSWORD (deferred cloud item #14, completed 2026-08-12)
     emailLogin: emailLogin,
     emailRegister: emailRegister,

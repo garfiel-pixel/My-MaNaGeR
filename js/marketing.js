@@ -263,6 +263,88 @@
     userBox.hidden = false;
   }
 
+  /* ---- PADDLE POST-CHECKOUT RETURN (owner report 2026-10-04) -----------
+     Clicking "Upgrade to Premium" opens Paddle's hosted checkout in a new
+     tab, and Paddle returns the buyer to our DEFAULT PAYMENT LINK carrying
+     ?_ptxn=txn_... (or ?plnk= for a payment-link checkout). That redirect
+     landed on /pricing with the parameter sitting in the address bar doing
+     nothing at all - no acknowledgement, and the plan badge left over from
+     the PRE-purchase fetch, so a completed purchase looked identical to a
+     failed one.
+
+     handlePaddleReturn() does three things when it sees those parameters:
+       1. strips them from the URL with replaceState, so a refresh does not
+          replay the banner and the link stays shareable;
+       2. re-reads /api/billing/status, because the webhook that grants the
+          plan may have landed after this page first rendered;
+       3. shows a plain confirmation band saying what happened.
+
+     HONESTY: it reports "we are checking" until /api/billing/status
+     actually says active. The webhook is the only thing that grants the
+     plan, so a buyer redirected back before the delivery lands must not be
+     told they are on Premium when they are not. If the plan has not landed
+     the band says so and offers the projects page rather than guessing. */
+  function paddleReturnParams(){
+    try { return new URLSearchParams(window.location.search); }
+    catch (e) { return null; }
+  }
+
+  function stripPaddleParams(){
+    try {
+      var url = new URL(window.location.href);
+      ['_ptxn', 'plnk', '_pxc', 'pdc'].forEach(function(k){ url.searchParams.delete(k); });
+      window.history.replaceState({}, '', url.pathname + url.search + url.hash);
+    } catch (e) { /* never let history rewrite break the page */ }
+  }
+
+  function planBand(state, msg){
+    var host = document.querySelector('main') || document.body;
+    if (!host) return;
+    var old = document.getElementById('paddle-return-band');
+    if (old) old.remove();
+    var band = document.createElement('div');
+    band.id = 'paddle-return-band';
+    band.setAttribute('role', 'status');
+    band.className = 'section';
+    band.style.background = 'var(--surface-1, transparent)';
+    band.style.borderTop = '1px solid var(--border, #ddd)';
+    band.style.borderBottom = '1px solid var(--border, #ddd)';
+    band.style.padding = '1.4rem 0';
+    band.innerHTML = '<div class="container"><p style="margin:0"><strong>' +
+      (state === 'ok' ? 'You are on Premium.' : state === 'wait' ? 'Almost there.' : 'Payment received.') +
+      '</strong> ' + msg + '</p></div>';
+    host.insertBefore(band, host.firstChild);
+  }
+
+  function handlePaddleReturn(){
+    var q = paddleReturnParams();
+    if (!q) return;
+    var hadTxn = q.get('_ptxn') || q.get('plnk');
+    var hadErr = q.get('pdc');
+    if (!hadTxn && !hadErr) return;
+
+    stripPaddleParams();
+
+    if (hadErr) {
+      /* pdc carries Paddle's own encoded checkout error. We deliberately do
+         not decode or restate it - we did not cause it and cannot describe
+         it accurately. Point at the page that can. */
+      planBand('error', 'Paddle reported that the checkout did not complete, so nothing has been charged. Nothing has been added to your account. You can try again from your projects page, and we can help from the contact page if it keeps happening.');
+      return;
+    }
+
+    planBand('wait', 'Paddle has sent your payment back to us. We are confirming the plan now - this normally takes a few seconds.');
+
+    if (typeof GA === 'undefined' || !GA || typeof GA.refreshPlan !== 'function') return;
+    GA.refreshPlan().then(function(data){
+      if (data && data.active) {
+        planBand('ok', 'Thank you. Premium is active on your account right now, and everything Premium unlocks is already available to you.');
+      } else {
+        planBand('wait', 'Your payment went through, but the plan has not reached your account yet. This takes Paddle a few seconds to send. Wait a moment and refresh this page - nothing is lost, and you will not be charged twice. If it has not appeared in a few minutes, check the contact page and quote the reference in your address bar.');
+      }
+    });
+  }
+
   function renderSigninSignedOut(){
     if (!signinSheet) return;
     var form = signinSheet.querySelector('.email-auth');
@@ -727,5 +809,11 @@
       }
     });
   }
+  /* Paddle returns the buyer here after checkout, carrying ?_ptxn= (see
+     handlePaddleReturn). Called at MODULE scope rather than inside the
+     sign-in-sheet block so every marketing page acknowledges the return
+     even if it ever ships without a sheet - a completed purchase must
+     never look like a page that did nothing. */
+  handlePaddleReturn();
   mountContactForm();
 })();

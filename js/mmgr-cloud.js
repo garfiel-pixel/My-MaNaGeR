@@ -588,10 +588,17 @@ var MMGR = window.MMGR || {};
   // mmgr:google-signed-in event after the purchase webhook lands).
   async function cloudUpgrade() {
     setStatus('Opening checkout…', 'busy');
+    // POPUP GESTURE (owner report 2026-10-04): the tab must be opened
+    // SYNCHRONOUSLY inside the click. window.open() after the await has lost
+    // the user activation by then and Chrome blocks it with no message, so the
+    // upgrade button read as dead. Opened here, then navigated once the URL
+    // exists; opener is nulled after we take the reference.
+    const tab = window.open('about:blank', '_blank');
     try {
       const res = await fetch('/api/billing/checkout', { method: 'POST', credentials: 'same-origin' });
       const data = await res.json().catch(function() { return {}; });
       if (!res.ok || !data.ok || !data.checkoutUrl) {
+        if (tab) { try { tab.close(); } catch (e) { /* already gone */ } }
         if (res.status === 503) {
           _upgradePending = false;
           await render();
@@ -601,7 +608,8 @@ var MMGR = window.MMGR || {};
         }
         return;
       }
-      window.open(data.checkoutUrl, '_blank', 'noopener');
+      if (tab) { try { tab.opener = null; tab.location.replace(data.checkoutUrl); } catch (e) { window.open(data.checkoutUrl, '_blank', 'noopener'); } }
+      else window.open(data.checkoutUrl, '_blank', 'noopener');
       setStatus('Checkout opened in a new tab , complete the purchase there, then create the project again.', 'ok');
     } catch (e) {
       setStatus('Cloud is unavailable on this host (needs the Worker API).', 'err');

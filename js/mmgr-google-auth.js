@@ -405,7 +405,23 @@ var MMGR = window.MMGR || {};
       await fetch('/api/auth/logout', { method: 'POST', credentials: 'same-origin' });
     } catch (e) { /* still clear the local chip */ }
     showButton();
+    // SIGN-OUT LEAVES THE PREMIUM PILL (owner report 2026-10-04): refreshPlan()
+    // only ever SETS the pill from /api/billing/status, and the sign-out
+    // listeners on the marketing pages re-render the account row without
+    // touching it, so signing out of a Premium account left "Premium" on the
+    // page for the next person to pick up the device. The plan belongs to the
+    // ACCOUNT, so it is retracted here - in signOut() itself, which every page
+    // routes through, rather than in one page's listener where a second host
+    // would miss it. No reload: the pill is cleared as the sign-out completes.
+    clearPlanPills();
     document.dispatchEvent(new CustomEvent('mmgr:google-signed-out'));
+  }
+
+  // Retract every [data-plan-badge] pill. Paired with refreshPlan() so the two
+  // cannot disagree about whether a signed-in account is on Premium.
+  function clearPlanPills() {
+    const mounts = document.querySelectorAll('[data-plan-badge]');
+    for (let i = 0; i < mounts.length; i++) { mounts[i].hidden = true; mounts[i].innerHTML = ''; }
   }
 
   // OWNER 2026-08-15: programmatic sign-in prompt for cloud actions that

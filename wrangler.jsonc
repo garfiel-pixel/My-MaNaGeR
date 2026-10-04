@@ -67,7 +67,13 @@
     // DORMANT. Flip to true only once a verified sending domain exists
     // (RESEND_FROM_EMAIL pointed at a verified domain); send/verify then
     // 503 until then. QA flips it per-run via wrangler dev --var.
-    "EMAIL_RECOVERY_ENABLED": true
+    "EMAIL_RECOVERY_ENABLED": true,
+    // PADDLE_ENV: "live" or "sandbox" (src/billing.js:241 picks the API base).
+    // EXPLICIT rather than defaulted, because Paddle's two catalogs are
+    // separate: PADDLE_PRICE_ID and PADDLE_API_KEY must come from the SAME one
+    // this names. Set it to "sandbox" while testing, back to "live" to sell.
+    // Never a secret - it selects a hostname, it is not a credential.
+    "PADDLE_ENV": "live"
   },
   // Service binding: the Presence DO calls back to the Worker for code-based
   // auth validation (codes must not appear in the WebSocket URL query string).

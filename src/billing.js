@@ -238,7 +238,13 @@ export async function handleBillingStatus(request, env) {
 // ---- checkout ----------------------------------------------------------------
 
 async function paddleCheckout(env, session) {
-  const base = String(env.PADDLE_ENV || '') === 'sandbox' ? PADDLE_SANDBOX_BASE : PADDLE_API_BASE;
+  // PADDLE_ENV is an explicit var in wrangler.jsonc, not an accident of
+  // absence: 'sandbox' or 'live', defaulting to live when unset or unreadable.
+  // The two Paddle catalogs are SEPARATE - a sandbox price ID does not exist
+  // against the live API and vice versa - so a mismatch has to be diagnosable
+  // rather than surfacing as a bare 502.
+  const sandbox = String(env.PADDLE_ENV || '') === 'sandbox';
+  const base = sandbox ? PADDLE_SANDBOX_BASE : PADDLE_API_BASE;
   const auth = { 'Authorization': 'Bearer ' + env.PADDLE_API_KEY, 'Content-Type': 'application/json' };
   try {
     // Find-or-create the customer by email so the hosted checkout carries the
@@ -269,7 +275,19 @@ async function paddleCheckout(env, session) {
         const sub = (err.errors && err.errors[0]) || {};
         detail = String(sub.detail || err.detail || err.code || '').slice(0, 300);
       } catch (e) { /* keep detail empty */ }
-      return json({ ok: false, error: 'checkout creation failed (Paddle HTTP ' + res.status + ')' + (detail ? ' , ' + detail : '') }, 502);
+      // A price the catalog does not hold is almost always the live/sandbox
+      // split, and it is the failure the owner will hit first when testing.
+      // Say so instead of leaving a bare HTTP code to decode.
+      let hint = '';
+      if (res.status === 404 || (res.status === 400 && /invalid request/i.test(detail))) {
+        hint = ' - the price was rejected by the ' + (sandbox ? 'SANDBOX' : 'LIVE') +
+          ' API. Paddle keeps the two catalogs separate, so PADDLE_PRICE_ID, PADDLE_API_KEY and this ' +
+          'deployment\'s PADDLE_ENV must all come from the same one. A sandbox price is invisible to the live API.';
+      } else if (res.status === 401 || res.status === 403) {
+        hint = ' - Paddle rejected the API key for the ' + (sandbox ? 'sandbox' : 'live') +
+          ' API. A sandbox key cannot sign live requests and the reverse.';
+      }
+      return json({ ok: false, error: 'checkout creation failed (Paddle HTTP ' + res.status + ')' + hint + (detail ? ' , ' + detail : '') }, 502);
     }
     return json({ ok: true, checkoutUrl: url });
   } catch (e) {

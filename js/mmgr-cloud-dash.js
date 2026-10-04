@@ -340,15 +340,25 @@
   //      cloudUpgrade in mmgr-cloud.js , session-gated POST, open URL) ----
   async function upgradePlan() {
     setStatus('Opening checkout...');
+    // POPUP GESTURE (owner report2026-10-04, 'the upgrade to premium button
+    // doesn't work anymore'): window.open() used to run AFTER the await, and
+    // by then the user activation is gone, so Chrome blocks it silently -
+    // a dead button with no error. Open the tab SYNCHRONOUSLY here, inside
+    // the click, then point it at the checkout URL. Same-tab-restore trick:
+    // opener is nulled after we take the reference so the checkout page
+    // cannot reach back into this window.
+    const tab = window.open('about:blank', '_blank');
     try {
       const res = await fetch('/api/billing/checkout', { method: 'POST', credentials: 'same-origin' });
       const data = await res.json().catch(function() { return {}; });
       if (!res.ok || !data.ok || !data.checkoutUrl) {
+        if (tab) { try { tab.close(); } catch (e) { /* already gone */ } }
         if (res.status === 503) setStatus('Billing isn\u2019t configured on this server yet, so no upgrade is available.', true);
         else setStatus((data && data.error) || 'Checkout failed (HTTP ' + res.status + ').', true);
         return;
       }
-      window.open(data.checkoutUrl, '_blank', 'noopener');
+      if (tab) { try { tab.opener = null; tab.location.replace(data.checkoutUrl); } catch (e) { window.open(data.checkoutUrl, '_blank', 'noopener'); } }
+      else window.open(data.checkoutUrl, '_blank', 'noopener');
       setStatus('Checkout opened in a new tab , complete the purchase there, then refresh this page.');
     } catch (e) {
       setStatus('Could not reach the cloud service.', true);
@@ -734,7 +744,25 @@
     if (dash) dash.hidden = true;
     const rl = $(RAIL_CLOUD);
     if (rl) rl.innerHTML = '<div class="db-sub-empty">Sign in to see your cloud projects.</div>';
+    // SIGN-OUT LEAVES THE PREMIUM BADGE (owner report 2026-10-04): this
+    // handler cleared the project list but never the plan strip, so signing
+    // out of a Premium account left "Premium" on screen for the next person
+    // to pick up the device. The plan belongs to the ACCOUNT, not the
+    // browser, so a sign-out has to retract it - no reload needed.
+    hidePlan();
   });
+
+  // Shared by the signed-out handler and the sign-in refresh: retire the plan
+  // strip entirely. Also clears the plan pills the header mounts, so the two
+  // surfaces cannot disagree about whether anyone is signed in.
+  function hidePlan() {
+    const plan = $(RAIL_PLAN);
+    if (plan) { plan.hidden = true; plan.innerHTML = ''; }
+    const railUp = $(RAIL_UPGRADE);
+    if (railUp) { railUp.hidden = true; railUp.innerHTML = ''; }
+    const pills = document.querySelectorAll('[data-plan-badge]');
+    for (let i = 0; i < pills.length; i++) { pills[i].hidden = true; pills[i].innerHTML = ''; }
+  }
 
   // ---- PROJECTS CAROUSEL (owner 2026-08-16) -----------------------------
   // The launcher #grid is paged: up to PG_PER_PAGE cards per page with

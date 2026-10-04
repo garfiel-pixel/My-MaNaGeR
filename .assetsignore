@@ -28,6 +28,15 @@ migrations
 *.orig
 *.head
 *~
+# 2026-10-04: local secret files. .dev.vars was already here, but .env*,
+# *.pem and *.key were git-ignored WITHOUT a matching asset exclude - so
+# ignoring them would have made them invisible to git while still
+# publishing them to the internet. Both sides must move together.
+/.env
+.env.*
+*.pem
+*.key
+secrets.json
 *.json
 *.yml
 *.yaml

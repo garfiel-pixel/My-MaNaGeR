@@ -74,7 +74,13 @@ const SKIP_FILE_RE = [
   // mcp/README.md.orig - that file's suffix is .orig, so it failed the regex and
   // would have shipped as a public asset the moment anyone restored it. Same
   // class as the .tgz leak. Must stay in parity with .assetsignore.
-  /\.orig$/i, /\.head$/i, /~$/
+  /\.orig$/i, /\.head$/i, /~$/,
+  // 2026-10-04: local secret files. .dev.vars was already excluded (the
+  // SKIP_FILE_RE / .dev.vars entry), but .env*, *.pem and *.key had no
+  // exclude on either side - git-ignoring them alone would have made them
+  // invisible to git while still publishing them to the internet. Mirrors
+  // the new .gitignore + .assetsignore entries; keep all three in parity.
+  /^\.env$/, /^\.env\./, /\.pem$/i, /\.key$/i, /^secrets\.json$/
 ];
 // Files excluded by SKIP_FILE_RE that wrangler still NEEDS: package.json and
 // wrangler.jsonc (both *.json, so the excludes above would drop them and

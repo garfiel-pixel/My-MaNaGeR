@@ -67,6 +67,19 @@ web-research/
 *.bak
 *.tmp
 *.DS_Store
+# Local secret files. 2026-10-04: .dev.vars was already excluded from the
+# ASSET bundle (.assetsignore) so it could never ship, but it was NOT in
+# .gitignore - so the file wrangler dev reads secrets from was one
+# `git add -A` away from being committed. Same shape as the .orig/.head gap
+# closed above: the deploy side excluded it, the git side did not.
+# Prefer `wrangler secret put`, which never touches disk at all.
+.dev.vars
+.dev.vars.*
+.env
+.env.*
+*.pem
+*.key
+secrets.json
 # Editor / merge backup files. 2026-10-04: commit 243332e committed four
 # 304-line copies of mcp/README.md (HEAD-readme.md, HEAD-copy.md,
 # mcp/README.md.orig, mcp/README.md.head) instead of nothing - the real

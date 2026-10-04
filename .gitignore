@@ -67,6 +67,16 @@ web-research/
 *.bak
 *.tmp
 *.DS_Store
+# Editor / merge backup files. 2026-10-04: commit 243332e committed four
+# 304-line copies of mcp/README.md (HEAD-readme.md, HEAD-copy.md,
+# mcp/README.md.orig, mcp/README.md.head) instead of nothing - the real
+# edit was already in b25033a. *.md does NOT match README.md.orig (the
+# suffix is .orig, not .md), so these also needed an .assetsignore twin.
+*.orig
+*.head
+*~
+# Whole-file snapshots dumped in the repo root by a past session.
+HEAD-*.md
 scratch.md
 scratch.json
 tmp/

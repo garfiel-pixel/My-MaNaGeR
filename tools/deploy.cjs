@@ -69,7 +69,12 @@ const SKIP_FILE_RE = [
   /\.txt$/i, /^(robots|planners|reflection|SECURITY)\.txt$/i, /favicon/i, /\.claude$/i, /\.codebuff$/i,
   // 2026-10-03: a stray claude-cli-1.0.5.tgz sat untracked in the repo root and
   // was being staged as a public static asset. Same class as the v316 .yml leak.
-  /\.tgz$/i
+  /\.tgz$/i,
+  // 2026-10-04: editor / merge backups. /\.md$/i above does NOT cover
+  // mcp/README.md.orig - that file's suffix is .orig, so it failed the regex and
+  // would have shipped as a public asset the moment anyone restored it. Same
+  // class as the .tgz leak. Must stay in parity with .assetsignore.
+  /\.orig$/i, /\.head$/i, /~$/
 ];
 // Files excluded by SKIP_FILE_RE that wrangler still NEEDS: package.json and
 // wrangler.jsonc (both *.json, so the excludes above would drop them and

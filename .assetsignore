@@ -22,6 +22,12 @@ qa-*.cjs
 tools
 migrations
 *.md
+# 2026-10-04: *.md does not match a backup like README.md.orig - the suffix
+# is .orig, not .md - so restoring one of those files would have silently
+# published it as a public static asset. Same class as the .tgz leak.
+*.orig
+*.head
+*~
 *.json
 *.yml
 *.yaml

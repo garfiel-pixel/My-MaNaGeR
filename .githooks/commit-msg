@@ -51,4 +51,21 @@ esac
 rest="${subject#*: }"
 [ -n "$rest" ] || fail "missing subject after 'type: '."
 
+# ── Gate: no AI-assistant credit (AGENTS.md rule 8, owner hard gate) ──
+# The owner is the sole contributor. A Co-Authored-By / "Generated with"
+# trailer credits an AI assistant, which the owner ruled out on 2026-08-13
+# and reaffirmed 2026-09-04 by rewriting the whole history to strip them.
+# Without this check the rule was convention only: nothing in CI read commit
+# messages (gitleaks scans content, not trailers), so footers slipped
+# through unnoticed. Scans the WHOLE message, not just the subject, because
+# a trailer lives in the body.
+if grep -qiE '^[[:space:]]*(co-authored-by:|generated with[[:space:]])' "$msg_file"; then
+  echo "commit-msg: AI-assistant credit is a hard gate (AGENTS.md rule 8)." >&2
+  echo "commit-msg: found a 'Co-Authored-By:' or 'Generated with' trailer." >&2
+  echo "commit-msg: the owner is the only contributor - plain subject + body," >&2
+  echo "commit-msg: no attribution footer, ever." >&2
+  echo "commit-msg: one-off bypass with:  git commit --no-verify" >&2
+  exit 1
+fi
+
 exit 0

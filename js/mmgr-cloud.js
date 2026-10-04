@@ -1604,13 +1604,13 @@ var MMGR = window.MMGR || {};
     if (!host) return;
     host.innerHTML =
       '<div class="sr-hint">Connect an AI tool running in a plain terminal on this computer. It runs the local engine directly from the code base: no server to start by hand, no port, no cloud. Change the two placeholder paths below to your own , then copy the block into your AI tool\u2019s MCP settings.</div>' +
-      '<div class="sr-hint" style="margin-top:6px"><strong>1. Export this project</strong> to a <code>.json</code> file, and put it in a folder (for example <code>mcp/projects</code>).</div>' +
-      '<div class="sr-hint" style="margin-top:4px"><strong>2. Copy this</strong> into your AI tool\u2019s MCP servers list:</div>' +
-      '<div class="exp-row" style="flex-wrap:wrap;align-items:center;gap:8px">' +
-      '<input type="text" id="terminal-mcp-url" class="ctl-in" readonly style="flex:1;min-width:220px;font-family:ui-monospace,monospace;font-size:.72rem;letter-spacing:.02em;background:var(--tile-bg)" value="' + esc(_terminalConfigJson()) + '" aria-label="Regular Terminal MCP server configuration">' +
+      '<div class="sr-hint term-step"><strong>1. Export this project</strong> to a <code>.json</code> file, and put it in a folder (for example <code>mcp/projects</code>).</div>' +
+      '<div class="sr-hint term-step-sm"><strong>2. Copy this</strong> into your AI tool\u2019s MCP servers list:</div>' +
+      '<div class="term-row">' +
+      '<input type="text" id="terminal-mcp-url" class="ctl-in term-url" readonly value="' + esc(_terminalConfigJson()) + '" aria-label="Regular Terminal MCP server configuration">' +
       '<button class="btn btn-n btn-s" data-action="terminalCopyUrl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy</button>' +
       '</div>' +
-      '<div class="sr-hint" style="margin-top:4px">Or start it by hand to test it: <code>node mcp/server.mjs</code> with <code>MMGR_MCP_DIR</code> and <code>MMGR_MCP_PROJECT</code> set. Changes an AI proposes are never applied straight away , each one waits for you to approve it.</div>' +
+      '<div class="sr-hint term-step-sm">Or start it by hand to test it: <code>node mcp/server.mjs</code> with <code>MMGR_MCP_DIR</code> and <code>MMGR_MCP_PROJECT</code> set. Changes an AI proposes are never applied straight away , each one waits for you to approve it.</div>' +
       '<div id="terminal-status" class="sr-hint" role="status" aria-live="polite"></div>';
   }
 

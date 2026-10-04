@@ -1570,6 +1570,50 @@ var MMGR = window.MMGR || {};
     }
   }
 
+  // OWNER: "Regular Terminal" notifier (Controls ▸ Regular Terminal), the
+  // NON-CLOUD MCP connector. The card above (renderMcp) is the cloud path: it
+  // needs an owner/editor code or a signed-in session and talks HTTP. This one
+  // is the stdio path from mcp/README.md: an AI tool running in a plain
+  // terminal on this machine spawns the server itself with `node
+  // <repo>/mcp/server.mjs`, so there is no HTTP server, no port, no network
+  // handshake and no cloud relay. Because nothing here touches the cloud it
+  // renders for EVERY project , linked or not (the call is unconditional).
+  //
+  // HONESTY: there is no `stdio://` URI and no per-project URL for this mode ,
+  // so the card does not invent one. It shows the real two facts the user
+  // needs: the command that starts the server, and the mcpServers JSON block
+  // that points a client at it. Both carry explicit placeholders to replace,
+  // because the browser cannot know the checkout path or the exported file
+  // name , and guessing them would read as a working config when it is not.
+  function _terminalConfigJson() {
+    return JSON.stringify({
+      mcpServers: {
+        mymanager: {
+          command: 'node',
+          args: ['C:/path/to/mymanager/mcp/server.mjs'],
+          env: {
+            MMGR_MCP_DIR: 'C:/path/to/mymanager/mcp/projects',
+            MMGR_MCP_PROJECT: 'my-project.json'
+          }
+        }
+      }
+    }, null, 2);
+  }
+  function renderTerminal() {
+    const host = $('ctrl-terminal');
+    if (!host) return;
+    host.innerHTML =
+      '<div class="sr-hint">Connect an AI tool running in a plain terminal on this computer. It runs the local engine directly from the code base: no server to start by hand, no port, no cloud. Change the two placeholder paths below to your own , then copy the block into your AI tool\u2019s MCP settings.</div>' +
+      '<div class="sr-hint" style="margin-top:6px"><strong>1. Export this project</strong> to a <code>.json</code> file, and put it in a folder (for example <code>mcp/projects</code>).</div>' +
+      '<div class="sr-hint" style="margin-top:4px"><strong>2. Copy this</strong> into your AI tool\u2019s MCP servers list:</div>' +
+      '<div class="exp-row" style="flex-wrap:wrap;align-items:center;gap:8px">' +
+      '<input type="text" id="terminal-mcp-url" class="ctl-in" readonly style="flex:1;min-width:220px;font-family:ui-monospace,monospace;font-size:.72rem;letter-spacing:.02em;background:var(--tile-bg)" value="' + esc(_terminalConfigJson()) + '" aria-label="Regular Terminal MCP server configuration">' +
+      '<button class="btn btn-n btn-s" data-action="terminalCopyUrl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy</button>' +
+      '</div>' +
+      '<div class="sr-hint" style="margin-top:4px">Or start it by hand to test it: <code>node mcp/server.mjs</code> with <code>MMGR_MCP_DIR</code> and <code>MMGR_MCP_PROJECT</code> set. Changes an AI proposes are never applied straight away , each one waits for you to approve it.</div>' +
+      '<div id="terminal-status" class="sr-hint" role="status" aria-live="polite"></div>';
+  }
+
   // ---- IN-PROJECT DELETE (owner 2026-08-17) ------------------------------
   let _delBusy = false;
   // Settings > Controls > bottom (Danger Zone): the owner deletes THIS
@@ -1835,6 +1879,11 @@ var MMGR = window.MMGR || {};
     // P1-7 (owner 2026-09-12): the card now also answers for a signed-in
     // session owner with no local code (probe already ran above).
     renderMcp(sessOwner);
+    // REGULAR TERMINAL notifier (Controls ▸ Regular Terminal): the non-cloud
+    // stdio connector. Deliberately UNCONDITIONAL , unlike renderMcp above it
+    // needs no cloud code or session , so it must also paint for an unlinked
+    // project (and it runs before the early-return branches below).
+    renderTerminal();
     // IN-PROJECT DELETE: reveal the Danger Zone only while an owner code is
     // held (same render pass , one credential read, both surfaces).
     renderDangerZone();

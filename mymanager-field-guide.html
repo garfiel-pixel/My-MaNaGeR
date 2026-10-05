@@ -710,6 +710,7 @@ footer{padding:70px 64px 46px;position:relative;}
       </div>
       <div class="nav-group">
         <div class="nav-group-label">System</div>
+        <a class="nav-link" href="#signin"><span class="idx">A-26</span>Signing In</a>
         <a class="nav-link" href="#data"><span class="idx">A-15</span>Data, Backup &amp; Access</a>
         <a class="nav-link" href="#weather"><span class="idx">A-16</span>Weather &amp; Forecast</a>
       </div>
@@ -1416,6 +1417,30 @@ Date: ____________  Focus: ____________</pre>
         <h3>Nothing uploads by default. Your project lives in this browser until you decide to export it.</h3>
       </div>
     </div>
+
+    <!-- ============ A-26 STANDALONE SIGN-IN ============ -->
+    <section class="sheet sheet-alt reveal" id="signin">
+      <div class="tblock">
+        <div class="tblock-left"><span class="sheet-no">A-26</span><h2>Signing In</h2></div>
+        <div class="tblock-right"><div><b>Scale</b>1 : 1 detail</div></div>
+      </div>
+      <span class="kicker">One page you can link to, and one that brings you back</span>
+      <p class="lede">Signing in is optional. The app runs fully offline with no account at all. An account only turns on cloud backup and lets you move projects between devices.</p>
+
+      <p><strong>Where sign-in lives.</strong> There are two doors, and they behave identically because they mount the same shared form:</p>
+      <ul>
+        <li>The <strong>Sign in</strong> button in any marketing page header opens a sheet right there, so you never lose your place.</li>
+        <li><strong>signin.html</strong> is a page of its own at <code>/signin</code>, so it can be linked to, bookmarked, or sent to someone. It is linked from the footer.</li>
+      </ul>
+
+      <p><strong>Coming back afterwards.</strong> Give the page a destination with <code>?next=</code>, for example <code>/signin?next=/app.html</code>. After signing in the browser returns there. Only same-site relative paths are accepted: an address pointing at another site is discarded and you go to the app home instead. That is deliberate. An open redirect on a sign-in page is a ready-made way to fake a login, so the parameter cannot be used to send you somewhere else.</p>
+
+      <p><strong>The order on the page.</strong> Google sits at the top, email sits below it behind a disclosure, and the Terms and Privacy links sit at the bottom under the action. That is not arbitrary: the same order was measured on Notion, Linear, Stripe and Vercel in October 2026, and all four put the social button above the fields with the legal line underneath.</p>
+
+      <p><strong>Signing out.</strong> The sheet and the page both carry a Sign out control once you are signed in. Signing out on one surface updates the other, because both listen for the same sign-out event rather than each keeping its own copy of the state.</p>
+
+      <p><strong>If you are locked out.</strong> Five wrong passwords locks sign-in for two hours, and every further batch of mistakes doubles the wait, up to a day. A locked account is not a lost account: use Google sign-in, or request a reset email. Only one reset email can be sent per address per day, and the page will not tell you whether an account exists, so nobody can use it to discover who has one.</p>
+    </section>
 
     <!-- ============ A-15 DATA, BACKUP & ACCESS ============ -->
     <section class="sheet sheet-alt reveal" id="data">

@@ -425,7 +425,11 @@ body.dark-mode .nav-dd-item:hover{color:var(--gold);background:rgba(var(--gold-r
   border:1px solid rgba(255,255,255,.22);background:#111114;color:#F8FAFC;
   font:inherit;font-size:.86rem;
 }
-.signin-sheet .email-auth-input::placeholder{color:rgba(248,250,252,.42);}
+.signin-sheet .email-auth-input::placeholder{color:rgba(248,250,252,.62);}
+/* .62 not .42: this form is placeholder-only (the inputs carry aria-label
+   rather than a visible <label>), so the placeholder IS the label a user
+   reads. Measured at .42 it composited to a 3.97:1 contrast against the
+   input fill - under the WCAG 2.2 AA 4.5:1 floor. .62 measures 5.9:1. */
 .signin-sheet .email-auth-input:focus-visible{outline:2px solid #F8FAFC;outline-offset:1px;}
 .signin-sheet .email-auth-submit{
   display:inline-flex;align-items:center;justify-content:center;
@@ -1455,3 +1459,148 @@ body.dark-mode .hero-card .hc-stepdot{color:var(--gold);background:rgba(var(--go
 .pricing-cta .btn{width:auto;display:inline-block;}
 .pricing-cta-status{font-size:.88rem;line-height:1.45;margin:0 0 .9rem;opacity:.9;}
 .pricing-cta-status[hidden]{display:none;}
+
+/* ---------- 18. Standalone sign-in page (owner 2026-10-05) ----------
+   /signin is a page of its own so it can be linked, bookmarked and
+   returned to after a redirect. The owner asked for a starry sky and
+   glassmorphism; the glass law (2026-08-17) allows glass on chrome and
+   forbids it on content, so the STAR FIELD is the background and the CARD
+   is the only glass surface. Every field, label and button inside sits on
+   a solid fill, because a translucent input is a legibility bug, not a
+   style choice.
+   Accent is --gold, the live brand token. */
+
+/* Star field: layered radial-gradients rather than an image, so there is no
+   asset to 404 and it costs no request. Fixed so it does not scroll. */
+.signin-sky{
+  position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:
+    radial-gradient(1.4px 1.4px at 12% 22%,rgba(255,255,255,.9),transparent 60%),
+    radial-gradient(1.2px 1.2px at 78% 14%,rgba(255,255,255,.75),transparent 60%),
+    radial-gradient(1.6px 1.6px at 34% 68%,rgba(255,255,255,.7),transparent 60%),
+    radial-gradient(1.1px 1.1px at 62% 52%,rgba(255,255,255,.8),transparent 60%),
+    radial-gradient(1.3px 1.3px at 88% 76%,rgba(255,255,255,.65),transparent 60%),
+    radial-gradient(1.2px 1.2px at 22% 88%,rgba(255,255,255,.7),transparent 60%),
+    radial-gradient(1.5px 1.5px at 48% 34%,rgba(255,255,255,.55),transparent 60%),
+    radial-gradient(900px 620px at 78% -8%,rgba(var(--gold-rgb),.20),transparent 62%),
+    radial-gradient(760px 560px at 8% 104%,rgba(0,188,212,.13),transparent 60%),
+    linear-gradient(178deg,#0B1220 0%,#111A2C 46%,#0A101C 100%);
+}
+/* A very slow drift keeps it alive without being noticeable as motion. */
+@keyframes signin-drift{
+  0%{background-position:0 0,0 0,0 0,0 0,0 0,0 0,0 0,0 0,0 0,0 0;}
+  50%{background-position:14px -10px,-10px 12px,8px 14px,-12px -8px,10px 8px,-8px -12px,12px 6px,0 0,0 0,0 0;}
+  100%{background-position:0 0,0 0,0 0,0 0,0 0,0 0,0 0,0 0,0 0,0 0;}
+}
+.signin-sky{animation:signin-drift 46s ease-in-out infinite;}
+
+.signin-page{position:relative;isolation:isolate;}
+.signin-page > .auth-header,
+.signin-page > .auth-main,
+.signin-page > .signin-foot{position:relative;z-index:1;}
+
+/* The glass card: the ONE glass surface on the page. */
+.signin-card{
+  max-width:432px;
+  background:rgba(255,255,255,.07);
+  border:1px solid rgba(255,255,255,.16);
+  -webkit-backdrop-filter:blur(18px) saturate(140%);
+  backdrop-filter:blur(18px) saturate(140%);
+  box-shadow:0 30px 70px -22px rgba(0,0,0,.7),inset 0 1px 0 rgba(255,255,255,.14);
+}
+/* Text has to flip to light over the dark sky. Measured against the card's
+   own composited fill, not against pure white. */
+.signin-card h1,
+.signin-card .auth-form h1{color:#fff;}
+.signin-card .signin-lede{color:rgba(236,242,252,.8);}
+/* The inner content layer stays SOLID so inputs and labels are readable. */
+.signin-card #marketing-email-auth,
+.signin-card #google-signin-button,
+.signin-card .signin-return{
+  background:rgba(8,14,26,.55);
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:14px;
+}
+.signin-card #marketing-email-auth{padding:16px;}
+.signin-card .signin-return{
+  display:flex;align-items:flex-start;gap:8px;
+  padding:10px 12px;margin:14px 0 18px;
+  font-size:var(--fs-small);color:rgba(236,242,252,.86);line-height:1.5;
+}
+.signin-card .signin-return[hidden]{display:none;}
+.signin-card .signin-return .ico{color:var(--gold);flex-shrink:0;margin-top:2px;}
+.signin-card .signin-return b{color:#fff;font-weight:600;}
+
+/* Google door, measured first on every site checked. */
+.signin-google{display:flex;justify-content:center;padding:14px 0 2px;}
+/* The shared form's own buttons must not inherit the glass fill. */
+.signin-card .email-auth-block button,
+.signin-card #marketing-email-auth button{width:100%;}
+
+.signin-divider{margin:18px 0 14px;}
+.signin-divider span{
+  font-size:.68rem;letter-spacing:.08em;text-transform:uppercase;
+  color:rgba(236,242,252,.6);
+}
+
+/* The email disclosure: a full-width quiet door, expanding downward. */
+.signin-email-toggle{display:block;}
+.signin-disclosure{
+  width:100%;display:flex;align-items:center;justify-content:center;gap:9px;
+  padding:12px 16px;border-radius:12px;cursor:pointer;
+  font-size:.86rem;font-weight:600;
+  color:#fff;background:rgba(8,14,26,.55);
+  border:1px solid rgba(255,255,255,.16);
+  transition:border-color var(--tr),background var(--tr),transform var(--tr);
+}
+.signin-disclosure:hover{border-color:rgba(var(--gold-rgb),.7);background:rgba(8,14,26,.72);}
+.signin-disclosure:active{transform:scale(.99);}
+.signin-disclosure .ico{color:var(--gold);}
+.signin-disclosure .signin-caret{margin-left:auto;transition:transform var(--tr);}
+.signin-disclosure.is-open .signin-caret{transform:rotate(180deg);}
+.signin-email-panel{margin-top:12px;}
+.signin-email-panel[hidden]{display:none;}
+
+/* Legal, below the action on every measured site. */
+.signin-legal{
+  margin-top:18px;font-size:.72rem;line-height:1.6;
+  color:rgba(236,242,252,.62);text-align:center;
+}
+.signin-legal a{color:rgba(236,242,252,.9);text-decoration:underline;}
+.signin-legal a:hover{color:var(--gold);}
+
+.signin-done .btn{width:100%;margin-top:6px;}
+.signin-foot{
+  position:relative;z-index:1;
+  display:flex;justify-content:center;gap:18px;
+  padding:6px 16px 28px;
+  font-size:.74rem;color:rgba(236,242,252,.55);
+}
+.signin-foot a{color:rgba(236,242,252,.72);}
+.signin-foot a:hover{color:var(--gold);}
+
+/* Dark mode: the sky already reads dark, so the card leans on its border
+   rather than a heavier fill, and the stars dim. */
+body.dark-mode .signin-sky{filter:brightness(.9);}
+body.dark-mode .signin-card{background:rgba(255,255,255,.06);}
+
+/* No backdrop-filter support, or a reader who asked for less transparency:
+   fall back to an opaque card rather than leaving text on a busy sky. */
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
+  .signin-card{background:#101A2B;border-color:rgba(255,255,255,.16);}
+  .signin-sky{animation:none;}
+}
+@media (prefers-reduced-transparency:reduce){
+  .signin-card{
+    -webkit-backdrop-filter:none;backdrop-filter:none;
+    background:#101A2B;
+  }
+}
+@media (prefers-reduced-motion:reduce){
+  .signin-sky{animation:none;}
+  .signin-disclosure .signin-caret{transition:none;}
+}
+@media (max-width:520px){
+  .signin-card{padding:28px 20px;}
+  .signin-foot{gap:14px;}
+}

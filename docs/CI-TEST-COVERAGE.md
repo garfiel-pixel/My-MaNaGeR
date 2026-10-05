@@ -46,6 +46,7 @@ or too niche for the deploy gate), **TRIAGE** (known-drifting, findings listed),
 | `tools/qa-auth-limits.cjs` | CI | auth hardening: 1 password reset per email per day, escalating failed-login ladder (5 fails = 2h, doubling, capped 24h), generic account-collision message that names no provider, reset endpoint still cannot enumerate accounts (E11) |
 | `tools/qa-hero-cards.cjs` | EXTENDED | hero preview cards: numbered panel headers, bar tooltips on hover AND keyboard focus, CPI glow, pulsing assistant steps (CSS-counter numbered, no glyphs), cards stay SOLID, all animation dies under prefers-reduced-motion, light+dark at 1280 and 390 |
 | `tools/qa-spy-nav.cjs` | EXTENDED | marketing scroll-spy: connector line, travelling sub-dots, active glow ring in the live gold token, AND the two things a visual rewrite would lose — every label still visible at rest, and the .done progress trail still marking passed sections |
+| `tools/qa-signin-page.cjs` | EXTENDED | standalone /signin page: two doors (Google above, email disclosure below), legal below the action, OPEN-REDIRECT DEFENCE (10 hostile ?next= values rejected, 4 same-site paths honoured), disclosure is a real ARIA pattern, glass card stays legible (measured luminance), zero emoji, no overflow at 390 |
 | `tools/qa-ai-relay.cjs` | CI | AI provider routing, auth, headers, tool gate, rate limits |
 | `tools/verify-report-issue.cjs` | CI | report-issue payload excludes PII/budget (27 checks) |
 | `tools/verify-dynamic-labels.cjs` | CI | JS-rendered table inputs get derived accessible names |

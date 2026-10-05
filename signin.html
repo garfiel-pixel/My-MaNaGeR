@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<!--
+  My MaNaGeR , standalone sign-in page (owner 2026-10-05).
+
+  WHY THIS PAGE EXISTS
+  Sign-in used to live only in a hidden sheet on every marketing page. That
+  sheet has no URL of its own, so it cannot be linked to, cannot be
+  bookmarked, and cannot be returned to after a redirect. This page gives
+  sign-in an address (/signin) and makes it redirect-aware.
+
+  REDIRECT CONTRACT
+    /signin?next=<path>   after a successful sign-in the browser returns to
+                          <path>. Only SAME-SITE relative paths are honoured
+                          (see js/signin.js) - an absolute or protocol-relative
+                          value is discarded and the user falls back to the app
+                          home, so this parameter can never be used as an open
+                          redirect to a third-party site.
+
+  LAYOUT (measured, not guessed)
+  js/signin.js research pass over Notion, Linear, Stripe and Vercel on
+  2026-10-05: all four centre the form, all four put the social provider
+  ABOVE the credential fields, and all three that show legal links place
+  them BELOW the submit button. This page follows that order. The owner
+  asked for Google on top, email below, terms at the bottom, which matches
+  what the measured sites do.
+
+  VISUAL TREATMENT
+  The owner asked for a starry sky and glassmorphism. Glass law (owner
+  doctrine 2026-08-17) allows glass on chrome and forbids it on content,
+  so the STAR FIELD is the background and the CARD is the only glass
+  surface; every field, label and button inside sits on a solid fill. The
+  fields must stay readable, so they are not translucent.
+
+  SVG ICONS ONLY, no emoji (owner hard gate). NO INLINE SCRIPT: all
+  behaviour lives in js/signin.js, so the CSP inline-hash set is untouched.
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sign in | My MaNaGeR</title>
+<meta name="description" content="Sign in to My MaNaGeR to turn on cloud backup and move your projects between devices. The app itself works without an account.">
+<link rel="icon" type="image/png" href="images/mpw-icon.png">
+<link rel="apple-touch-icon" href="images/mpw-icon.png">
+<link rel="stylesheet" href="dist/marketing.min.css">
+<script src="js/mmgr-theme.js"></script>
+<script src="dist/app-bundle.js" defer></script>
+</head>
+<body class="auth-page signin-page">
+
+<a class="skip-link" href="#main">Skip to content</a>
+
+<!-- Star field. Purely decorative background, so it is hidden from
+     assistive tech and never intercepts a click (pointer-events:none). -->
+<div class="signin-sky" aria-hidden="true"></div>
+
+<header class="auth-header">
+  <a class="brand" href="index.html" aria-label="My MaNaGeR home">
+    <span class="brand-mark" aria-hidden="true">
+      <svg class="ico" aria-hidden="true" style="width:21px;height:21px;"><use href="css/mmgr-icons.svg#i-mpw"></use></svg>
+    </span>
+    <span><b>My <span>MaNaGeR</span></b></span>
+  </a>
+</header>
+
+<main id="main" class="auth-main">
+  <!-- The one glass surface on the page. Everything readable sits on a
+       solid fill inside it (Gate 6.1: glass never carries content). -->
+  <div class="auth-card signin-card">
+
+    <svg class="auth-icon head" aria-hidden="true"><use href="css/mmgr-icons.svg#i-lock"></use></svg>
+    <h1>Sign in</h1>
+    <p class="signin-lede">Signing in turns on cloud backup and lets you move projects between devices. The app itself works without an account.</p>
+
+    <!-- RETURN TARGET: set from ?next= by js/signin.js, shown so the user
+         knows where they are going. Hidden when there is nothing to return
+         to, so it never promises a redirect that will not happen. -->
+    <p class="signin-return" id="signin-return" hidden>
+      <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg>
+      <span>You will go back to <b id="signin-return-label">the app</b> after signing in.</span>
+    </p>
+
+    <!-- 1. GOOGLE FIRST. Measured order on every site checked, and what
+         the owner asked for. -->
+    <div id="google-signin-button" class="signin-google"></div>
+
+    <div class="email-auth-divider signin-divider"><span>or use your email</span></div>
+
+    <!-- 2. EMAIL, behind a disclosure. The shared form mounts here. -->
+    <div class="signin-email-toggle">
+      <button type="button" class="signin-disclosure" id="signin-email-toggle"
+              aria-expanded="false" aria-controls="signin-email-panel">
+        <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-mail"></use></svg>
+        <span>Sign in with email</span>
+        <svg class="ico signin-caret" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-down"></use></svg>
+      </button>
+    </div>
+    <div class="signin-email-panel signin-sheet" id="signin-email-panel" hidden>
+      <div id="marketing-email-auth"></div>
+    </div>
+
+    <!-- 3. LEGAL, BELOW the action. Measured on every site that shows it. -->
+    <p class="signin-legal">
+      By signing in you agree to our
+      <a href="terms.html">Terms of Service</a> and
+      <a href="privacy.html">Privacy Policy</a>.
+    </p>
+
+    <!-- Signed-in state: replaces the forms once a session exists. -->
+    <div class="auth-state signin-done" id="signin-done" hidden>
+      <svg class="auth-icon ok" aria-hidden="true"><use href="css/mmgr-icons.svg#i-check"></use></svg>
+      <h1>You are signed in</h1>
+      <p id="signin-done-name">Your projects are ready.</p>
+      <a class="btn btn-gold" href="app.html" id="signin-continue">Back to the app</a>
+      <button type="button" class="btn btn-ghost" id="signin-out">Sign out</button>
+    </div>
+
+  </div>
+</main>
+
+<footer class="signin-foot">
+  <a href="index.html">Home</a>
+  <a href="pricing.html">Pricing</a>
+  <a href="contact.html">Contact</a>
+</footer>
+
+<script src="js/signin.js" defer></script>
+</body>
+</html>

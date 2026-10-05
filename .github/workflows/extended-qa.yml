@@ -137,6 +137,9 @@ jobs:
       - name: "E-T4: standalone sign-in page and open-redirect defence"
         run: node tools/qa-signin-page.cjs
 
+      - name: "E-T4: EVM S-curve draw-on animation"
+        run: node tools/qa-scurve.cjs
+
       - name: "E-T4: gate screens in every theme state"
         run: node tools/verify-gates-themes.cjs
 

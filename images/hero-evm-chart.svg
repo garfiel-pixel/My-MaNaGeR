@@ -34,12 +34,31 @@
     <line x1="70" y1="330" x2="840" y2="330"/>
   </g>
 
-  <!-- planned value: gold, glides down -->
-  <polyline points="70,120 240,150 410,190 580,240 840,330"
-    fill="none" stroke="#E8923A" stroke-width="7" stroke-linejoin="round" stroke-linecap="round"/>
-  <!-- earned/actual: cream, tracks under planned -->
-  <polyline points="70,122 240,146 410,178 580,215 840,268"
-    fill="none" stroke="#F5EFE6" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="1 0"/>
+  <!-- planned value: gold, glides down.
+       OWNER 2026-10-05: the S-curve now DRAWS itself left to right on load.
+       stroke-dasharray/dashoffset with a <animate> does this inside the file
+       itself: an <img>-loaded SVG cannot be reached by page CSS, and SMIL
+       needs no script, so the inline-script CSP hash set is untouched. The
+       animation is fill="freeze" so the curve stays drawn after it lands,
+       and it is paired with a static stroke-dashoffset:0 fallback for
+       renderers that ignore SMIL (they show the finished curve, never a
+       blank one). -->
+  <polyline id="evm-planned" points="70,120 240,150 410,190 580,240 840,330"
+    fill="none" stroke="#E8923A" stroke-width="7" stroke-linejoin="round" stroke-linecap="round"
+    stroke-dasharray="900" stroke-dashoffset="0">
+    <animate attributeName="stroke-dashoffset" from="900" to="0" dur="1.5s"
+      begin="0s" fill="freeze" calcMode="spline"
+      keySplines="0.4 0 0.2 1" keyTimes="0;1"/>
+  </polyline>
+  <!-- earned/actual: cream, tracks under planned. Drawn second and slightly
+       faster, so the two curves read as planned-then-actual. -->
+  <polyline id="evm-earned" points="70,122 240,146 410,178 580,215 840,268"
+    fill="none" stroke="#F5EFE6" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"
+    stroke-dasharray="900" stroke-dashoffset="0">
+    <animate attributeName="stroke-dashoffset" from="900" to="0" dur="1.25s"
+      begin="0.25s" fill="freeze" calcMode="spline"
+      keySplines="0.4 0 0.2 1" keyTimes="0;1"/>
+  </polyline>
 
   <!-- today marker -->
   <line x1="580" y1="60" x2="580" y2="380" stroke="#8B5CF6" stroke-width="2" stroke-dasharray="5 7" opacity="0.85"/>

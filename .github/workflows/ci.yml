@@ -27,6 +27,13 @@ jobs:
       - name: Gitleaks secrets scan
         id: gitleaks
         uses: gitleaks/gitleaks-action@v2
+        # Explicit, so the repo's own config is the one that runs. The default
+        # ruleset is otherwise unchanged - .gitleaks.toml allowlists ONLY the
+        # Paddle client-side token in pricing.html (public by design; it can
+        # only open a checkout). It does NOT allowlist pdl_live_apikey_ keys,
+        # which stay server-only Wrangler secrets.
+        with:
+          config: .gitleaks.toml
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

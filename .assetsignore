@@ -43,3 +43,4 @@ secrets.json
 !package.json
 !wrangler.jsonc
 !skills-lock.json
+.gitleaks.toml

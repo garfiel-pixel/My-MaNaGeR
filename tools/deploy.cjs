@@ -65,7 +65,7 @@ const SKIP_FILE_RE = [
   // v316 follow-up (2026-09-24): the v316 deploy uploaded .github/workflows/ci.yml
   // as a public static asset - no secrets inside, but repo internals do not
   // belong in the asset bundle. Same rule for .assetsignore below.
-  /\.ya?ml$/i,
+  /\.ya?ml$/i, /\.gitleaks\.toml$/i,
   /\.txt$/i, /^(robots|planners|reflection|SECURITY)\.txt$/i, /favicon/i, /\.claude$/i, /\.codebuff$/i,
   // 2026-10-03: a stray claude-cli-1.0.5.tgz sat untracked in the repo root and
   // was being staged as a public static asset. Same class as the v316 .yml leak.

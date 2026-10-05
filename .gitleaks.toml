@@ -1,0 +1,46 @@
+# Gitleaks configuration for My MaNaGeR.
+#
+# The default ruleset is used unchanged EXCEPT for one narrowly scoped
+# allowlist below. Nothing else is suppressed: no paths are skipped wholesale,
+# no rule is disabled, and no generic secret pattern is ignored.
+#
+# WHAT IS ALLOWED, AND WHY IT IS SAFE
+# -----------------------------------
+# Paddle splits its credentials in two, and only one of them is a secret:
+#
+#   pdl_live_apikey_...   API key. Full read/write access to the account.
+#                        Server-only. Stored as a Wrangler secret, never in
+#                        the repository, never in a served page. NOT allowed
+#                        anywhere here and NOT matched by this exception.
+#
+#   live_...              CLIENT-SIDE token. Paddle documents this as
+#                        public: it is designed to ship in browser
+#                        JavaScript, is readable by anyone viewing source on
+#                        any checkout page, and can ONLY open a checkout.
+#                        It cannot create or change products, prices,
+#                        customers, refunds or subscriptions.
+#
+# The client-side token lives in pricing.html because Paddle requires a
+# default payment link before any transaction can be created, and
+# checkout.url is always that link plus a _ptxn parameter - so the page
+# Paddle sends buyers to must be able to render the checkout itself.
+#
+# The scope below is deliberately tight on both axes:
+#   - path:  pricing.html only, not the repository
+#   - value: the exact live_<32 hex> client-token shape, not a line or a file
+# Any pdl_live_apikey_ occurrence, or the same token shape anywhere else in
+# the tree, still fails the scan.
+
+[allowlist]
+description = "Paddle client-side token - public by design, only opens checkouts"
+paths = [
+  '''^pricing\.html$''',
+]
+regexTarget = "secret"
+regexes = [
+  # 27 lowercase hex characters is the observed Paddle client-token body
+  # (live_fc61f2641155bb991441b0b263d). Anchored on the live_ prefix and the
+  # hex-only tail, so it cannot swallow a pdl_live_apikey_... key or any
+  # other credential shape.
+  '''\blive_[0-9a-f]{20,40}\b''',
+]

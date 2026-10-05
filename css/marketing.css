@@ -686,6 +686,117 @@ body.dark-mode .nav-dd-item:hover{color:var(--gold);background:rgba(var(--gold-r
 .hc-meta{display:flex;justify-content:space-between;font-size:.68rem;color:var(--text-secondary);margin-top:7px;}
 .hero-card.offset{margin-left:auto;width:86%;}
 
+/* ---------- HERO PANEL HEADER + MOTION (owner 2026-10-05) ----------
+   The three preview cards read as application panels rather than loose
+   cards: a numbered panel header sits above the artwork, the bars explain
+   themselves on hover/focus, the CPI badge carries the gold glow, and the
+   assistant's steps pulse in sequence.
+   Cards stay SOLID (owner 2026-08-17 glass law): motion and depth only,
+   never translucency or backdrop-filter on content.
+   Accent is --gold, the live brand token used by every button and badge. */
+.hero-card .hc-panelhead{
+  display:flex;align-items:center;gap:8px;
+  margin:-4px 0 12px;padding-bottom:9px;
+  border-bottom:1px solid var(--border);
+}
+.hero-card .hc-panelno{
+  font-size:.6rem;font-weight:700;letter-spacing:.1em;
+  color:var(--gold-deep);background:rgba(var(--gold-rgb),.12);
+  border:1px solid rgba(var(--gold-rgb),.28);
+  border-radius:5px;padding:2px 6px;line-height:1.4;
+}
+.hero-card .hc-paneltitle{
+  font-size:.62rem;font-weight:700;letter-spacing:.09em;
+  text-transform:uppercase;color:var(--text-secondary);
+}
+/* Pull the artwork back up under the new header rule. */
+.hero-card .hc-panelhead + .hc-img{margin-top:0;}
+
+/* CPI badge glow: a soft gold ring, no colour change, so the value keeps
+   reading as data rather than as a button. */
+.hero-card .hc-badge-glow{
+  box-shadow:0 0 0 1px rgba(var(--gold-rgb),.18),0 0 14px rgba(var(--gold-rgb),.28);
+  animation:hc-glow 3.6s ease-in-out infinite;
+}
+@keyframes hc-glow{
+  0%,100%{box-shadow:0 0 0 1px rgba(var(--gold-rgb),.18),0 0 10px rgba(var(--gold-rgb),.22);}
+  50%    {box-shadow:0 0 0 1px rgba(var(--gold-rgb),.26),0 0 18px rgba(var(--gold-rgb),.38);}
+}
+
+/* Bar tooltip: pure CSS off data-tip, so it works with no JS and stays
+   correct if the page is cached. Hover AND focus, since the bar is
+   focusable - a mouse-only tooltip would be unreachable by keyboard. */
+.hc-bar[data-tip]{cursor:help;}
+.hc-bar[data-tip]::after{
+  content:attr(data-tip);
+  position:absolute;left:0;bottom:calc(100% + 9px);
+  z-index:6;width:max-content;max-width:260px;
+  padding:7px 10px;border-radius:8px;
+  background:var(--header-navy);color:#fff;
+  font-size:.66rem;line-height:1.45;letter-spacing:0;
+  box-shadow:0 10px 24px rgba(15,23,42,.32);
+  opacity:0;visibility:hidden;transform:translateY(4px);
+  transition:opacity var(--tr),transform var(--tr),visibility var(--tr);
+  pointer-events:none;
+}
+.hc-bar[data-tip]:hover::after,
+.hc-bar[data-tip]:focus-visible::after{opacity:1;visibility:visible;transform:translateY(0);}
+/* The bar clips its own fill, so the tooltip needs an unclipped wrapper. */
+.hc-bar{overflow:visible;}
+.hc-bar i{overflow:hidden;}
+
+/* Assistant steps: four numbered nodes that pulse in sequence to show the
+   zero-key path. Numbered via CSS counters - no emoji, no glyphs. */
+.hero-card .hc-steps{
+  list-style:none;margin:0;padding:0;
+  display:flex;flex-wrap:wrap;gap:6px 8px;
+}
+.hero-card .hc-steps li{
+  counter-increment:hc-step;
+  display:flex;align-items:center;gap:6px;
+  font-size:.66rem;color:var(--text-secondary);line-height:1.4;
+}
+.hero-card .hc-steps{counter-reset:hc-step;}
+.hero-card .hc-stepdot{
+  position:relative;
+  width:16px;height:16px;flex:0 0 16px;border-radius:50%;
+  background:rgba(var(--gold-rgb),.1);
+  border:1px solid rgba(var(--gold-rgb),.34);
+  font-size:.56rem;font-weight:700;color:var(--gold-deep);
+  display:flex;align-items:center;justify-content:center;
+}
+.hero-card .hc-stepdot::before{content:counter(hc-step);}
+.hero-card .hc-steps li:nth-child(1) .hc-stepdot{animation:hc-pulse 2.8s ease-in-out infinite;}
+.hero-card .hc-steps li:nth-child(2) .hc-stepdot{animation:hc-pulse 2.8s ease-in-out .35s infinite;}
+.hero-card .hc-steps li:nth-child(3) .hc-stepdot{animation:hc-pulse 2.8s ease-in-out .7s infinite;}
+.hero-card .hc-steps li:nth-child(4) .hc-stepdot{animation:hc-pulse 2.8s ease-in-out 1.05s infinite;}
+@keyframes hc-pulse{
+  0%,100%{box-shadow:0 0 0 0 rgba(var(--gold-rgb),.34);border-color:rgba(var(--gold-rgb),.34);}
+  50%    {box-shadow:0 0 0 5px rgba(var(--gold-rgb),0);border-color:rgba(var(--gold-rgb),.6);}
+}
+
+/* Dark mode: the panel rule and the glow need re-tinting or they vanish
+   against a dark surface. Owner doctrine: remap BOTH surface and accent. */
+body.dark-mode .hero-card .hc-panelhead{border-bottom-color:rgba(var(--gold-rgb),.24);}
+body.dark-mode .hero-card .hc-panelno{color:var(--gold);background:rgba(var(--gold-rgb),.16);}
+body.dark-mode .hero-card .hc-paneltitle{color:var(--text-secondary);}
+body.dark-mode .hero-card .hc-badge-glow{
+  box-shadow:0 0 0 1px rgba(var(--gold-rgb),.3),0 0 14px rgba(var(--gold-rgb),.3);
+}
+body.dark-mode .hero-card .hc-stepdot{color:var(--gold);background:rgba(var(--gold-rgb),.16);}
+
+/* Motion is decoration: kill every one of these animations for anyone who
+   has asked for less motion, and keep every value readable without them. */
+@media (prefers-reduced-motion:reduce){
+  .hero-card .hc-badge-glow,
+  .hero-card .hc-stepdot,
+  .hero-card .hc-steps li:nth-child(1) .hc-stepdot,
+  .hero-card .hc-steps li:nth-child(2) .hc-stepdot,
+  .hero-card .hc-steps li:nth-child(3) .hc-stepdot,
+  .hero-card .hc-steps li:nth-child(4) .hc-stepdot{animation:none;}
+  .hc-bar[data-tip]::after{transition:none;}
+}
+
 /* ---------- 7. Trusted-by / audience ---------- */
 .audience{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;}
 .aud-item{

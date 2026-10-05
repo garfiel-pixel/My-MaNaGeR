@@ -127,6 +127,10 @@ jobs:
       - name: "E-T4: Paddle checkout overlay renders on the live site"
         run: node tools/qa-paddle-csp.cjs
 
+      # Needs a local static server for light/dark + 390px rendering.
+      - name: "E-T4: hero card panels, tooltips and motion"
+        run: node tools/qa-hero-cards.cjs
+
       - name: "E-T4: gate screens in every theme state"
         run: node tools/verify-gates-themes.cjs
 

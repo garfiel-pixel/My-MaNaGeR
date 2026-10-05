@@ -843,3 +843,134 @@ SW v313 -> v314: css/mmgr.css, admin.html and project.html are shell-cached,
 Owner gate: everything verified by exit code before push - npm run verify
   exit 0, all 6 T1 suites, all 25 EXTENDED suites, all T4 CI batteries,
   both health sweeps, wrangler dry-run.
+
+================================================================================
+WAVE 2026-10-05 — OWNER-PASTED UI/UX + AUTH-HARDENING DIRECTIVE (4 WORKSTREAMS)
+================================================================================
+Owner pasted an external UI/UX recommendation for (1) the 3 hero preview cards,
+(2) the side section navigation, plus auth hardening: password-reset rate limit,
+Google/email account-collision flagging, escalating login lockout, and a full
+sign-in UI rebuild on its own page with glassmorphism/3D/starry-sky, Google on
+top, email dropdown below, terms at the bottom.
+
+STATUS: PLANNED AND TRIAGED AGAINST THE CODEBASE. NOT YET BUILT.
+Audited first (see VERIFIED FACTS). Several pasted items ALREADY EXIST and
+several CONTRADICT the locked owner design doctrine. Those need an owner call
+before build, not a silent implementation.
+
+--------------------------------------------------------------------------------
+VERIFIED FACTS (read from the code, not assumed)
+--------------------------------------------------------------------------------
+* Hero cards: index.html:146-176 already carry 3 cards, each with a custom SVG
+  illustration (images/hero-schedule.svg, hero-evm-chart.svg, hero-ai-roadmap.svg)
+  plus .hc-badge. "CPI 1.04" badge ALREADY EXISTS (index.html:161).
+* Scroll-spy: index.html:98-105 already has 6 labelled sections (Built For, Key
+  Features, How It Works, Data & Backup, Field Guide, FAQ) with .spy-stick +
+  .spy-label, and a lock-in progress trail. css/marketing.css:1137-1200.
+* AUTH LOCKOUT ALREADY EXISTS: src/auth/session.js:52-55
+    AUTH_LOCK_FAILS = 5, AUTH_LOCK_WINDOW_MS = 15 min,
+    AUTH_LOCK_ESCALATE_FAILS = 10, AUTH_LOCK_ESCALATE_MS = 60 min.
+  Enforced at session.js:107-112 (429 + Retry-After), counted at :124-130.
+  => Owner asked for "5 wrong = 2 hours, increasing". CURRENT IS 15 min then
+  1 hour. GAP, not a blank: needs WINDOW 15min->2h and a real escalating
+  ladder, not two flat tiers.
+* RESET EMAIL CAP ALREADY EXISTS: AUTH_RESET_MAX_PER_EMAIL_H = 5 (session.js:51),
+  plus an IP-scoped 5/30min cap (session.js:204-208) that returns the SAME
+  generic message so the endpoint cannot reveal account existence (E11).
+  => Owner asked for "no more than 1 password reset per day". GAP: 5/hour ->
+  1/day. MUST keep the generic-response contract or it becomes an account
+  existence oracle.
+* REGISTER collision ALREADY EXISTS: session.js:78-79 returns 409
+  "account already exists - sign in instead".
+  => REAL GAP: auth_users has NO provider column. Google users are NOT in
+  auth_users (google.js writes only auth_sessions). So a Google sign-in and an
+  email registration for the same address CANNOT collide today, because they
+  live in different stores. "Already signed in with Google" needs a new
+  provider column + a link flow, which is a MIGRATION, not a UI string.
+* Sign-in today: a hidden .signin-sheet overlay (index.html:65) on every
+  marketing page. There is NO standalone sign-in page and NO redirect flow.
+
+--------------------------------------------------------------------------------
+CONFLICTS WITH THE LOCKED DOCTRINE — OWNER DECISION NEEDED (do not silently pick)
+--------------------------------------------------------------------------------
+Per .agents/skills/ui-modernization OWNER DESIGN DOCTRINE 2026-08-17 (a hard
+gate, "turn DOWN glass, never up"):
+  C1. PASTED: "wrap hero cards in DARK glassmorphic rgba(255,255,255,.03) +
+      backdrop-filter blur(12px)". DOCTRINE: "Content is SOLID, always...
+      hero preview cards are SOLID white cards with a border + shadow, never
+      translucent backdrop-filter cards" (Gate 6.1: glass never carries
+      content). DIRECT CONTRADICTION.
+  C2. PASTED: active dot in ORANGE #E06D28. DOCTRINE: front page is BRIGHT BLUE
+      + WHITE + BLACK TEXT; gold/cyan are retired for marketing. DIRECT
+      CONTRADICTION on the accent.
+  C3. PASTED: replace text labels with a minimalist dot nav, labels only on
+      hover. DOCTRINE 5(c): the tracker must "show its labels without requiring
+      hover (a tracker you cannot read is not a tracker)". Also the existing
+      tracker LOCKS IN passed sections as a progress trail. A pure dot nav
+      deletes both. CONTRADICTION on accessibility/intent.
+  C4. PASTED: "macOS window dots (red/yellow/green)". Repo rule 7: NO EMOJI,
+      SVG icons only, and colour law is three simple colours. Traffic-light
+      dots are decorative colour, not an icon - buildable, but it is chrome
+      styling the doctrine does not use anywhere.
+ALIGNED / SAFE to build as asked: panel headers (PANEL 01 - GANTT & EVM),
+Gantt hover tooltips (baseline vs actual), S-curve draw-on animation,
+CPI badge glow, pulsing AI step nodes. All token-driven, SVG-only,
+reduced-motion aware, no doctrine conflict.
+
+--------------------------------------------------------------------------------
+WORKSTREAM BREAKDOWN (major increment -> small steps)
+--------------------------------------------------------------------------------
+WS-1 AUTH HARDENING (server-side, no UI, no doctrine conflict) - DO FIRST
+  1.1 Reset cap 5/hour -> 1/day (AUTH_RESET_MAX_PER_DAY=1). Keep the generic
+      response so it cannot enumerate accounts. New constant + comment.
+  1.2 Lockout ladder: 5 fails -> 2h, then escalating (double per tier, capped).
+      Replaces the two flat tiers; keep 429 + Retry-After contract.
+  1.3 Collision detection: add provider column to auth_users (MIGRATION
+      0014), backfill 'email', record 'google' on Google sign-in, and have
+      register/login detect the other provider. Generic 409 that does NOT
+      disclose which provider (owner: "doesnt state where").
+  1.4 Gate: extend tools/qa-email-auth.cjs for 1/day, the new ladder, and the
+      collision 409. Must not weaken the E11 generic-response assertion.
+
+WS-2 HERO CARD MOTION + PANELS (aligned items only; C1/C4 pending owner)
+  2.1 Panel header row per card (PANEL 01/02/03 + label), token-driven.
+  2.2 Gantt bar hover tooltips: baseline vs actual dates.
+  2.3 S-curve SVG stroke-dash draw-on animation on load.
+  2.4 CPI 1.04 badge glow, token-driven.
+  2.5 AI step-node pulse (1-2-3-4) with prefers-reduced-motion kill.
+  2.6 Dark-mode parity + 390px check on every one of the above.
+
+WS-3 SCROLL-SPY NAV (C2/C3 pending owner)
+  3.1 Option A (doctrine-safe): KEEP labels, add the sub-dot connector line
+      and glow-ring active state in the BLUE token.
+  3.2 Option B (as pasted): dot-only + hover tooltips - requires the owner
+      explicitly overriding doctrine 5(c).
+  3.3 Lock-in progress trail preserved in both options.
+
+WS-4 STANDALONE SIGN-IN PAGE (largest; sequenced last)
+  4.1 Research pass: Playwright screenshot sweep of modern sign-in screens.
+  4.2 New signin.html, its own route, redirect-aware (?next=), returns the user
+      to the page they came from.
+  4.3 Google button TOP; email form in a disclosure dropdown BELOW.
+  4.4 Terms/privacy acceptance at the bottom, linked.
+  4.5 Visual treatment: starry-sky background + glassmorphism. NOTE this is a
+      CONTENT surface (a form) so it must stay readable per Gate 6.1; the
+      glass goes on the CARD, the copy sits on solid. Token-driven, dark-mode
+      parity, SVG icons only.
+  4.6 Keep the existing .signin-sheet working (all marketing pages depend on
+      it) - the standalone page ADDS a path, it does not replace it silently.
+  4.7 Field guide entry (repo rule: every feature ships a guide entry).
+  4.8 sw.js bump + CSP hash regen if any inline script changes.
+
+--------------------------------------------------------------------------------
+GATES EVERY INCREMENT MUST CLEAR
+--------------------------------------------------------------------------------
+npm run verify exit 0; node --check on every touched JS; emoji scan 0 on all
+served pages; dark-mode + 390px render check; CSP hash regen + worker.js /
+serve.cjs parity; sw.js version bump; new harness registered in
+docs/CI-TEST-COVERAGE.md + ci.yml or extended-qa.yml (3 edits, repo rule 14);
+commit + push + poll CI to green before deploy.
+
+OWNER GATE: WS-1 needs no decision and can start immediately. WS-2/3/4 each
+contain a doctrine conflict that is the OWNER's call - confirm C1-C4 before
+building those, or the work will be built against a rule it then violates.

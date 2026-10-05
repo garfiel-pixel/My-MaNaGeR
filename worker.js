@@ -140,7 +140,7 @@ const PADDLE_CSP = [
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self'",
-  "frame-src https://buy.paddle.com https://checkout.paddle.com https://cdn.paddle.com https://accounts.google.com https://challenges.cloudflare.com",
+  "frame-src https://buy.paddle.com https://sandbox-buy.paddle.com https://checkout.paddle.com https://cdn.paddle.com https://accounts.google.com https://challenges.cloudflare.com",
   "frame-ancestors 'self'",
 ].join('; ');
 

@@ -264,35 +264,44 @@
   }
 
   /* ---- PADDLE POST-CHECKOUT RETURN (owner report 2026-10-04) -----------
-     Clicking "Upgrade to Premium" opens Paddle's hosted checkout in a new
-     tab, and Paddle returns the buyer to our DEFAULT PAYMENT LINK carrying
-     ?_ptxn=txn_... (or ?plnk= for a payment-link checkout). That redirect
-     landed on /pricing with the parameter sitting in the address bar doing
-     nothing at all - no acknowledgement, and the plan badge left over from
-     the PRE-purchase fetch, so a completed purchase looked identical to a
-     failed one.
+     Clicking "Upgrade to Premium" opens Paddle's hosted checkout, and
+     Paddle returns the buyer to our DEFAULT PAYMENT LINK carrying
+     ?_ptxn=txn_... . That parameter is NOT evidence that a payment
+     happened - it is Paddle's instruction to OPEN the checkout, and it
+     appears the moment a transaction record exists. Reading it as a
+     return signal is what broke this page twice (see
+     PADDLE-OWNS-_ptxn below), so nothing here treats the address bar as
+     proof of anything.
 
-     handlePaddleReturn() does three things when it sees those parameters:
-       1. strips them from the URL with replaceState, so a refresh does not
-          replay the banner and the link stays shareable;
-       2. re-reads /api/billing/status, because the webhook that grants the
-          plan may have landed after this page first rendered;
-       3. shows a plain confirmation band saying what happened.
+     Reporting a completed checkout is therefore Paddle's job, not ours:
+     onPaddleEvent listens for checkout.completed and then polls
+     /api/billing/status, because the webhook that grants the plan is the
+     only thing that can say so and it can land seconds after Paddle's own
+     success screen. handlePaddleReturn() survives only to render
+     Paddle's encoded checkout ERROR (pdc), which we do not decode - we
+     did not cause it and cannot describe it accurately.
 
-     HONESTY: it reports "we are checking" until /api/billing/status
-     actually says active. The webhook is the only thing that grants the
-     plan, so a buyer redirected back before the delivery lands must not be
-     told they are on Premium when they are not. If the plan has not landed
-     the band says so and offers the projects page rather than guessing. */
+     HONESTY: the band never says "you are on Premium" until the server
+     answers active. /api/billing/status reports the PLAN, not the
+     payment, so "not active" proves nothing about whether anyone was
+     charged and the copy must never assert otherwise. */
   function paddleReturnParams(){
     try { return new URLSearchParams(window.location.search); }
     catch (e) { return null; }
   }
 
-  function stripPaddleParams(){
+  /* PADDLE-OWNS-_ptxn (fix 2026-10-05). `_ptxn` is Paddle's instruction to
+     OPEN a checkout, not a "you have returned" signal. Paddle.Initialize()
+     reads it from the URL, so NOTHING on this page may remove it before
+     Initialize has run. The old handler stripped it first, which is why a
+     buyer landed on /pricing and no checkout ever appeared. Completion is
+     now reported by Paddle's own checkout.completed event (see
+     onPaddleEvent), never inferred from the address bar. Only `pdc`
+     (Paddle's encoded checkout error) is still read from the URL. */
+  function stripOnly(keys){
     try {
       var url = new URL(window.location.href);
-      ['_ptxn', 'plnk', '_pxc', 'pdc'].forEach(function(k){ url.searchParams.delete(k); });
+      keys.forEach(function(k){ url.searchParams.delete(k); });
       window.history.replaceState({}, '', url.pathname + url.search + url.hash);
     } catch (e) { /* never let history rewrite break the page */ }
   }
@@ -311,58 +320,46 @@
     band.style.borderBottom = '1px solid var(--border, #ddd)';
     band.style.padding = '1.4rem 0';
     band.innerHTML = '<div class="container"><p style="margin:0"><strong>' +
-      (state === 'ok' ? 'You are on Premium.' : state === 'wait' ? 'Almost there.' : 'Payment received.') +
+      (state === 'ok' ? 'You are on Premium.' : state === 'wait' ? 'Almost there.' : 'Checkout did not complete.') +
       '</strong> ' + msg + '</p></div>';
     host.insertBefore(band, host.firstChild);
   }
 
   function handlePaddleReturn(){
     var q = paddleReturnParams();
-    if (!q) return;
-    var hadTxn = q.get('_ptxn') || q.get('plnk');
-    var hadErr = q.get('pdc');
-    if (!hadTxn && !hadErr) return;
+    if (!q || !q.get('pdc')) return;
+    stripOnly(['pdc']);
+    planBand('error', 'Paddle reported that the checkout did not complete, so nothing has been charged. Nothing has been added to your account. You can try again from the button on this page, and we can help from the contact page if it keeps happening.');
+  }
 
-    /* ONCE PER RETURN (owner report 2026-10-04): a _ptxn parameter survives in
-       the address bar and in history, so simply revisiting the URL re-asserted
-       "your payment went through" days later. Remember the reference we have
-       already acknowledged in this tab session and say nothing on a revisit.
-       sessionStorage is per-tab, so a genuine second checkout still speaks. */
-    try {
-      var seenKey = 'mmgr_paddle_return_' + String(hadTxn || hadErr);
-      if (sessionStorage.getItem(seenKey)) return;
-      sessionStorage.setItem(seenKey, '1');
-    } catch (e) { /* private mode / storage blocked: fall through and show it */ }
-
-    stripPaddleParams();
-
-    if (hadErr) {
-      /* pdc carries Paddle's own encoded checkout error. We deliberately do
-         not decode or restate it - we did not cause it and cannot describe
-         it accurately. Point at the page that can. */
-      planBand('error', 'Paddle reported that the checkout did not complete, so nothing has been charged. Nothing has been added to your account. You can try again from your projects page, and we can help from the contact page if it keeps happening.');
-      return;
-    }
-
-    planBand('wait', 'You have come back from Paddle. We are checking whether a plan has been added to your account - this normally takes a few seconds.');
-
+  /* Poll /api/billing/status after a completed checkout. The webhook is the
+     ONLY thing that grants the plan and it can land a few seconds after the
+     buyer sees Paddle's success screen, so one read is not enough. 12 reads
+     at 2.5 s = 30 s, stopping the moment the server says active. */
+  function pollPlanAfterCheckout(tries){
     if (typeof GA === 'undefined' || !GA || typeof GA.refreshPlan !== 'function') return;
     GA.refreshPlan().then(function(data){
       if (data && data.active) {
         planBand('ok', 'Thank you. Premium is active on your account right now, and everything Premium unlocks is already available to you.');
+      } else if (tries < 11) {
+        setTimeout(function(){ pollPlanAfterCheckout(tries + 1); }, 2500);
       } else {
-        /* TRUTHFULNESS (owner report 2026-10-04): this used to say "Your payment
-           went through, but the plan has not reached your account yet." The
-           owner was shown that sentence having made NO payment at all and
-           never having been redirected to Paddle - a _ptxn parameter left in
-           the address bar from an earlier attempt was enough to trigger it.
-           A page must never assert that money changed hands when we cannot
-           prove it: /api/billing/status reports the PLAN, not the payment,
-           so "active" proves a plan exists and "not active" proves nothing
-           about whether anyone was charged. Say only what we can verify. */
-        planBand('wait', 'No plan is showing on your account yet. If you completed a purchase, Paddle may still be sending it - wait a few seconds and refresh this page. If you did not complete a purchase, nothing has been charged and nothing is owed.');
+        planBand('wait', 'Your payment is still being confirmed. This can take a minute. Refresh this page shortly, and if Premium still is not showing, contact us from the contact page and we will sort it out.');
       }
     });
+  }
+
+  function onPaddleEvent(ev){
+    if (!ev || !ev.name) return;
+    if (ev.name === 'checkout.completed') {
+      stripOnly(['_ptxn', 'plnk', '_pxc']);
+      planBand('wait', 'Your payment went through. We are adding Premium to your account - this normally takes a few seconds.');
+      pollPlanAfterCheckout(0);
+    } else if (ev.name === 'checkout.closed') {
+      stripOnly(['_ptxn', 'plnk', '_pxc']);
+    } else if (ev.name === 'checkout.error') {
+      planBand('error', 'Paddle reported a problem opening the checkout, so nothing has been charged. Try the button again, and contact us if it keeps happening.');
+    }
   }
 
   /* ---- UPGRADE FROM THE PRICING PAGE (owner report 2026-10-04) -------
@@ -904,31 +901,49 @@
      are present, so every other marketing page is unaffected and the app is
      untouched. handlePaddleReturn() still runs and still reports only what
      the server can verify. */
+  var paddleReady = false;
   function initializePaddle(){
+    if (paddleReady) return;
     var host = document.body;
     var token = host && host.getAttribute ? host.getAttribute('data-paddle-token') : '';
     if (!token) return;
     if (typeof window.Paddle === 'undefined' || typeof window.Paddle.Initialize !== 'function') return;
     try {
-      window.Paddle.Initialize({ token: token });
+      /* A sandbox client token (test_...) only works against Paddle's sandbox
+         environment, and Environment.set() must run BEFORE Initialize(). Live
+         tokens (live_...) skip it. */
+      if (/^test_/.test(token) && window.Paddle.Environment && typeof window.Paddle.Environment.set === 'function') {
+        window.Paddle.Environment.set('sandbox');
+      }
+      window.Paddle.Initialize({ token: token, eventCallback: onPaddleEvent });
+      paddleReady = true;
     } catch (e) { /* a checkout that will not open must not break the page */ }
   }
 
-  // Paddle.js is deferred, so it may not exist yet when this runs. Poll
-  // briefly, then give up quietly - the pricing page is still fully usable
-  // without it, and the Upgrade button carries its own path.
+  /* Paddle.js is deferred, so it may not exist yet when this runs. Poll
+     briefly. If it never arrives (ad-blocker, CDN blocked, CSP) AND a buyer
+     is trying to check out, SAY SO - a silent failure here looked exactly
+     like "the pricing page redirected me to itself". */
   function initPaddleWhenReady(){
     initializePaddle();
-    if (typeof window.Paddle !== 'undefined') return;
+    if (paddleReady) return;
     var tries = 0;
     var t = setInterval(function(){
       initializePaddle();
-      if (typeof window.Paddle !== 'undefined' || ++tries > 40) clearInterval(t);
+      if (paddleReady) { clearInterval(t); return; }
+      if (++tries > 40) {
+        clearInterval(t);
+        var q = paddleReturnParams();
+        if (q && q.get('_ptxn') && document.body && document.body.getAttribute('data-paddle-token')) {
+          planBand('error', 'The secure payment form could not load. A browser extension or content blocker may be blocking Paddle (cdn.paddle.com). Allow it for this site and reload this page, and nothing has been charged.');
+        }
+      }
     }, 150);
   }
 
+  /* ORDER MATTERS: Paddle must initialise (and read ?_ptxn=) before anything else touches the URL. */
+  initPaddleWhenReady();
   handlePaddleReturn();
   wireUpgradeButtons();
-  initPaddleWhenReady();
   mountContactForm();
 })();

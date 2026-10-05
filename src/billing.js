@@ -156,7 +156,23 @@ async function paddleApplyWebhook(env, rawBody) {
   // a paid trial silently granted nothing, with no error on either side.
   const lifecycle = ['subscription.created', 'subscription.activated', 'subscription.resumed', 'subscription.updated', 'subscription.trialing', 'subscription.paused', 'subscription.past_due', 'subscription.canceled'];
   if (lifecycle.indexOf(event) === -1 && event !== 'transaction.completed') return json({ ok: true, ignored: event });
-  if (!ownerSub || !pdId) return json({ ok: false, error: 'missing owner identity in custom_data' }, 400);
+  // A subscription's own transactions (first charge AND every renewal) must
+  // never write the entitlement row: they carry no billing period and a
+  // transaction id, so a renewal used to overwrite the real subscription id
+  // and wipe current_period_end. The subscription.* events own entitlement;
+  // only a ONE-TIME purchase (no subscription_id) is granted from here.
+  if (event === 'transaction.completed' && data.subscription_id) return json({ ok: true, ignored: 'subscription transaction' });
+  if (!ownerSub || !pdId) {
+    // No owner identity means the event did not originate from OUR checkout (a
+    // dashboard-made subscription, a test fire). Answering 400 makes Paddle
+    // retry it for days; acknowledge it and leave a trace for `wrangler tail`.
+    console.warn('paddle webhook acknowledged without owner identity: ' + event + ' ' + pdId);
+    return json({ ok: true, ignored: 'no owner identity', event: event });
+  }
+  // Paddle does not guarantee delivery order. Stamp the row with WHEN the
+  // event happened, so applySubscription can refuse an older event arriving late.
+  let occurredAt = new Date().toISOString();
+  try { if (payload && payload.occurred_at) occurredAt = new Date(payload.occurred_at).toISOString(); } catch (e) { /* keep now */ }
   let status, periodEnd = null;
   if (event === 'transaction.completed') {
     // One-time purchase: grant pro with no period end (nothing renews).
@@ -166,7 +182,7 @@ async function paddleApplyWebhook(env, rawBody) {
     const endRaw = data.current_billing_period && data.current_billing_period.ends_at;
     if (endRaw) periodEnd = Math.floor(new Date(endRaw).getTime() / 1000);
   }
-  await applySubscription(env, ownerSub, pdId, status, 'pro', periodEnd);
+  await applySubscription(env, ownerSub, pdId, status, 'pro', periodEnd, occurredAt);
   if (authEmailConfigured(env) && (event === 'subscription.activated' || event === 'subscription.canceled')) {
     const recipient = ownerSub.indexOf('email:') === 0 ? ownerSub.slice('email:'.length) : '';
     await subEmailNotice(env, recipient, event === 'subscription.activated');
@@ -176,14 +192,15 @@ async function paddleApplyWebhook(env, rawBody) {
 
 // ---- shared entitlement write + notice (the ONLY writers, both webhook-only)
 
-async function applySubscription(env, ownerSub, providerSubId, status, plan, periodEnd) {
-  const now = new Date().toISOString();
+async function applySubscription(env, ownerSub, providerSubId, status, plan, periodEnd, occurredAt) {
+  const now = occurredAt || new Date().toISOString();
   // ls_subscription_id holds the provider's subscription/transaction id for
   // whichever provider wrote the row (one row per owner, latest wins).
   await env.DB.prepare(
     'INSERT INTO cloud_subscriptions (owner_sub, ls_subscription_id, status, plan, current_period_end, created_at, updated_at) VALUES (?,?,?,?,?,?,?) ' +
     'ON CONFLICT(owner_sub) DO UPDATE SET ls_subscription_id = excluded.ls_subscription_id, status = excluded.status, ' +
-    'current_period_end = excluded.current_period_end, updated_at = excluded.updated_at'
+    'current_period_end = excluded.current_period_end, updated_at = excluded.updated_at ' +
+    'WHERE excluded.updated_at >= cloud_subscriptions.updated_at'
   ).bind(ownerSub, providerSubId, status, plan, periodEnd, now, now).run();
 }
 

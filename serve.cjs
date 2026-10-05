@@ -96,7 +96,7 @@ const INLINE_SCRIPT_HASHES = [
 const SECURITY_HEADERS = {
   'Content-Security-Policy': [
     "default-src 'self'",
-    "script-src 'self' 'wasm-unsafe-eval' https://unpkg.com https://accounts.google.com https://apis.google.com https://static.cloudflareinsights.com https://challenges.cloudflare.com " + INLINE_SCRIPT_HASHES,
+    "script-src 'self' 'wasm-unsafe-eval' https://unpkg.com https://accounts.google.com https://apis.google.com https://static.cloudflareinsights.com https://challenges.cloudflare.com https://cdn.paddle.com " + INLINE_SCRIPT_HASHES,
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com",
     "img-src 'self' data: blob: https://lh3.googleusercontent.com https://*.googleusercontent.com",
     "media-src 'self' data: blob:",
@@ -107,7 +107,7 @@ const SECURITY_HEADERS = {
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",
-    "frame-src https://accounts.google.com https://challenges.cloudflare.com",
+    "frame-src https://accounts.google.com https://challenges.cloudflare.com https://checkout.paddle.com https://cdn.paddle.com",
     "frame-ancestors 'none'"
   ].join('; '),
   'X-Content-Type-Options': 'nosniff',

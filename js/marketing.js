@@ -886,7 +886,49 @@
      sign-in-sheet block so every marketing page acknowledges the return
      even if it ever ships without a sheet - a completed purchase must
      never look like a page that did nothing. */
+  /* ---- PADDLE.JS INITIALISATION (owner go 2026-10-04) ---------------
+     Paddle's default payment link is REQUIRED to create transactions, and
+     checkout.url is ALWAYS that link plus ?_ptxn=... by design - which is
+     why buyers were being sent to a plain pricing page with no way to pay.
+     Paddle's documented shape for that page is a page on the approved
+     domain that loads Paddle.js: when the _ptxn query parameter is present
+     Paddle.js opens the checkout overlay itself, with no click handler.
+
+     So the token is carried on <body data-paddle-token> rather than in an
+     inline script - a client-side token is DESIGNED to be public (it ships
+     in browser JS and can only open checkouts), so this is where it belongs
+     and it keeps the inline-script CSP hash set unchanged. This file carries
+     the call rather than an inline block, for the same reason.
+
+     initializePaddle() is a no-op unless BOTH the token and window.Paddle
+     are present, so every other marketing page is unaffected and the app is
+     untouched. handlePaddleReturn() still runs and still reports only what
+     the server can verify. */
+  function initializePaddle(){
+    var host = document.body;
+    var token = host && host.getAttribute ? host.getAttribute('data-paddle-token') : '';
+    if (!token) return;
+    if (typeof window.Paddle === 'undefined' || typeof window.Paddle.Initialize !== 'function') return;
+    try {
+      window.Paddle.Initialize({ token: token });
+    } catch (e) { /* a checkout that will not open must not break the page */ }
+  }
+
+  // Paddle.js is deferred, so it may not exist yet when this runs. Poll
+  // briefly, then give up quietly - the pricing page is still fully usable
+  // without it, and the Upgrade button carries its own path.
+  function initPaddleWhenReady(){
+    initializePaddle();
+    if (typeof window.Paddle !== 'undefined') return;
+    var tries = 0;
+    var t = setInterval(function(){
+      initializePaddle();
+      if (typeof window.Paddle !== 'undefined' || ++tries > 40) clearInterval(t);
+    }, 150);
+  }
+
   handlePaddleReturn();
   wireUpgradeButtons();
+  initPaddleWhenReady();
   mountContactForm();
 })();

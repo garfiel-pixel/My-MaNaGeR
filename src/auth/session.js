@@ -43,16 +43,43 @@ function authPasswordProblem(pw) {
 //                it sits in a welcome email; reset is short because it can
 //                change a password). Both are enforced server-side at
 //                consume time (consumeAuthToken checks payload.exp).
-//   Send caps  - anti-mail-bomb limits (forgot-password per email per hour).
-//   Lockout    - failed-login ladder: 5 fails locks the account for 15 min;
-//                10 fails escalates the lock to a full hour.
+//   Send caps  - anti-mail-bomb limits (forgot-password per email per DAY,
+//                owner 2026-10-05: one reset a day, not five an hour).
+//   Lockout    - failed-login ladder (see authLockMsForFails).
 const AUTH_VERIFY_TTL_MS = 24 * 60 * 60 * 1000;
 const AUTH_RESET_TTL_MS = 15 * 60 * 1000;
-const AUTH_RESET_MAX_PER_EMAIL_H = 5;
+// OWNER 2026-10-05: one password reset per email per DAY (was 5 per hour).
+// A reset mail is the only pre-auth action that reaches a stranger's inbox,
+// so it is the one worth throttling hardest. The per-IP cap below still
+// covers a spray across many different addresses.
+const AUTH_RESET_MAX_PER_DAY = 1;
+// Resend-confirmation is a DIFFERENT purpose from reset and keeps its own
+// budget: a welcome/verification mail is not a password attack surface, and
+// throttling it to one a day would strand anyone whose first mail went to
+// spam. Per email per hour, same shape as before.
+const AUTH_VERIFY_MAX_PER_EMAIL_H = 5;
 const AUTH_LOCK_FAILS = 5;
-const AUTH_LOCK_WINDOW_MS = 15 * 60 * 1000;
+// OWNER 2026-10-05: 5 wrong passwords locks the account for 2 HOURS (was 15
+// minutes), and the lock DOUBLES on every further tier rather than jumping to
+// a single longer flat window. Capped at 24h so a persistent typo cannot lock
+// a real owner out of their own project indefinitely - they can still use
+// Google sign-in, or the forgot-password route.
+const AUTH_LOCK_WINDOW_MS = 2 * 60 * 60 * 1000;
 const AUTH_LOCK_ESCALATE_FAILS = 10;
-const AUTH_LOCK_ESCALATE_MS = 60 * 60 * 1000;
+const AUTH_LOCK_MAX_MS = 24 * 60 * 60 * 1000;
+const AUTH_LOCK_TIER_MULTIPLIER = 2;
+
+// The lockout ladder. Fails below AUTH_LOCK_FAILS never lock. At or above it
+// the first lock is AUTH_LOCK_WINDOW_MS (2h), and every additional
+// AUTH_LOCK_ESCALATE_FAILS failures doubles it, capped at AUTH_LOCK_MAX_MS.
+// Returned as ms, or 0 when the account is not locked yet.
+function authLockMsForFails(fails) {
+  const n = Number(fails) || 0;
+  if (n < AUTH_LOCK_FAILS) return 0;
+  const tiers = Math.floor((n - AUTH_LOCK_FAILS) / AUTH_LOCK_ESCALATE_FAILS);
+  const ms = AUTH_LOCK_WINDOW_MS * Math.pow(AUTH_LOCK_TIER_MULTIPLIER, tiers);
+  return Math.min(ms, AUTH_LOCK_MAX_MS);
+}
 
 function authNormalizeEmail(raw) {
   return String(raw || '').trim().toLowerCase();
@@ -66,6 +93,15 @@ async function authHashPassword(password, saltHex) {
   return hashOwnerCode(password, saltHex);
 }
 
+// OWNER 2026-10-05: one message for EVERY collision, whatever the cause.
+// A Google-owned address, an address that already has a password, and a
+// plain duplicate all answer with this same string, so the response cannot
+// be used to probe which addresses exist or which provider they belong to.
+// Deliberately says nothing about WHERE the account is or how it was made -
+// naming Google here would confirm to an attacker exactly which addresses
+// are Google accounts, which is the list they are trying to build.
+const AUTH_ACCOUNT_TAKEN = 'An account already uses this email address. Sign in instead.';
+
 export async function handleAuthRegister(request, env) {
   let body;
   try { body = await request.json(); } catch (e) { return json({ ok: false, error: 'bad request' }, 400); }
@@ -75,8 +111,8 @@ export async function handleAuthRegister(request, env) {
   const pwProblem = authPasswordProblem(password);
   if (pwProblem) return json({ ok: false, error: pwProblem }, 400);
   const name = String((body && body.name) || '').slice(0, 80);
-  const existing = await env.DB.prepare('SELECT email FROM auth_users WHERE email = ?').bind(email).first();
-  if (existing) return json({ ok: false, error: 'account already exists - sign in instead' }, 409);
+  const existing = await env.DB.prepare('SELECT email, provider FROM auth_users WHERE email = ?').bind(email).first();
+  if (existing) return json({ ok: false, error: AUTH_ACCOUNT_TAKEN }, 409);
   const salt = randomSaltHex();
   const hash = await authHashPassword(password, salt);
   const now = new Date().toISOString();
@@ -85,7 +121,7 @@ export async function handleAuthRegister(request, env) {
       .bind(email, salt + ':' + hash, name, now).run();
   } catch (e) {
     const raced = await env.DB.prepare('SELECT email FROM auth_users WHERE email = ?').bind(email).first();
-    if (raced) return json({ ok: false, error: 'account already exists - sign in instead' }, 409);
+    if (raced) return json({ ok: false, error: AUTH_ACCOUNT_TAKEN }, 409);
     throw e;
   }
   let emailSent = false;
@@ -122,7 +158,7 @@ export async function handleAuthLogin(request, env) {
   const hash = await authHashPassword(password, row.password_hash.slice(0, sep));
   if (!codesEqual(hash, row.password_hash.slice(sep + 1))) {
     const fails = (guard ? (Number(guard.failed_attempts) || 0) : 0) + 1;
-    const lockMs = fails >= AUTH_LOCK_ESCALATE_FAILS ? AUTH_LOCK_ESCALATE_MS : fails >= AUTH_LOCK_FAILS ? AUTH_LOCK_WINDOW_MS : 0;
+    const lockMs = authLockMsForFails(fails);
     const lockedUntil = lockMs ? new Date(Date.now() + lockMs).toISOString() : null;
     try {
       await env.DB.prepare('INSERT INTO auth_login_guard (email, failed_attempts, locked_until) VALUES (?,?,?) ON CONFLICT(email) DO UPDATE SET failed_attempts = excluded.failed_attempts, locked_until = excluded.locked_until')
@@ -222,10 +258,10 @@ export async function handleAuthForgot(request, env) {
   }
   if (authEmailConfigured(env)) {
     try {
-      const hourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+      const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
       const cnt = await env.DB.prepare('SELECT COUNT(*) AS c FROM auth_tokens WHERE email = ? AND purpose = ? AND created_at > ?')
-        .bind(email, 'reset', hourAgo).first();
-      if (!cnt || (cnt.c || 0) < AUTH_RESET_MAX_PER_EMAIL_H) {
+        .bind(email, 'reset', dayAgo).first();
+      if (!cnt || (cnt.c || 0) < AUTH_RESET_MAX_PER_DAY) {
         const origin = new URL(request.url).origin;
         const rtoken = await mintAuthToken(env, email, 'reset', AUTH_RESET_TTL_MS);
         await sendAuthEmail(env, email,
@@ -285,7 +321,7 @@ export async function handleAuthResendVerify(request, env) {
       const hourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
       const cnt = await env.DB.prepare('SELECT COUNT(*) AS c FROM auth_tokens WHERE email = ? AND purpose = ? AND created_at > ?')
         .bind(email, 'verify', hourAgo).first();
-      if (!cnt || (cnt.c || 0) < AUTH_RESET_MAX_PER_EMAIL_H) {
+      if (!cnt || (cnt.c || 0) < AUTH_VERIFY_MAX_PER_EMAIL_H) {
         const origin = new URL(request.url).origin;
         const vtoken = await mintAuthToken(env, email, 'verify', AUTH_VERIFY_TTL_MS);
         await sendAuthEmail(env, email, 'Confirm your My MaNaGeR account', authVerifyEmailBody(row.name, origin, vtoken));

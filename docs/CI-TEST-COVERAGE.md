@@ -43,6 +43,7 @@ or too niche for the deploy gate), **TRIAGE** (known-drifting, findings listed),
 | `tools/qa-dashboard-spec.cjs` | CI | dashboard tokens, markup, icons, contrast (76 checks) |
 | `tools/qa-changelog-diffs.cjs` | CI | changelog before/after diff rendering + escaping |
 | `tools/qa-paddle-csp.cjs` | EXTENDED | Paddle checkout overlay CSP: `buy.paddle.com` in frame-src, paddle styles allowed, hash gate stays strict, pricing-scoped only. Static arm runs in CI; the live-browser arm needs the deployed site |
+| `tools/qa-auth-limits.cjs` | CI | auth hardening: 1 password reset per email per day, escalating failed-login ladder (5 fails = 2h, doubling, capped 24h), generic account-collision message that names no provider, reset endpoint still cannot enumerate accounts (E11) |
 | `tools/qa-ai-relay.cjs` | CI | AI provider routing, auth, headers, tool gate, rate limits |
 | `tools/verify-report-issue.cjs` | CI | report-issue payload excludes PII/budget (27 checks) |
 | `tools/verify-dynamic-labels.cjs` | CI | JS-rendered table inputs get derived accessible names |

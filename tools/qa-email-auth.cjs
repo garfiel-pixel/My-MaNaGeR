@@ -664,15 +664,18 @@ async function phase3() {
   check('E10b webhook subscription_cancelled -> cancellation email (no user_email, falls back to the account email)',
     s2.status === 200 && cancelMails.length === 1, s2.text + ' | mails=' + cancelMails.length);
 
-  // E11 — per-email reset quota: 5/hour. E6 used 1; the next 4 mint (total 5),
-  // the 6th answers the same generic message WITHOUT minting or emailing.
+  // E11 — per-email reset quota. OWNER 2026-10-05 tightened this from 5/hour
+  // to ONE PER DAY. E6 already consumed that single allowance, so every call
+  // below must mint NOTHING and must still answer the SAME generic message —
+  // a distinct limit error here would turn /forgot into an oracle that reveals
+  // which email addresses have accounts.
   for (let i = 0; i < 5; i++) {
     await api('/api/auth/forgot', { method: 'POST', headers: jsonHeaders, body: JSON.stringify({ email: DAVE }) });
   }
   const quotaMsg = (await api('/api/auth/forgot', { method: 'POST', headers: jsonHeaders, body: JSON.stringify({ email: DAVE }) })).body;
   const resetMailsFinal = mailsTo(DAVE, 'Reset your My MaNaGeR password');
-  check('E11 forgot quota: 5 reset emails max per hour, 6th still answers the same generic message',
-    quotaMsg.ok === true && quotaMsg.message === genericMsg && resetMailsFinal.length === 5,
+  check('E11 forgot quota: 1 reset email max per DAY, every later call answers the same generic message',
+    quotaMsg.ok === true && quotaMsg.message === genericMsg && resetMailsFinal.length === 1,
     JSON.stringify({ resetMails: resetMailsFinal.length, msg: quotaMsg }));
 
   // E12/E13 — resend-verify (the fresh-link recovery path behind verify.html's

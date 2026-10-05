@@ -1,0 +1,30 @@
+-- ============================================================
+-- AUTH ACCOUNT PROVIDER (owner 2026-10-05)
+-- ------------------------------------------------------------
+-- An account could previously be EITHER a Google account or an
+-- email+password account, and the two lived in different places:
+-- Google sign-in wrote only to auth_sessions (sub 'google:<id>'),
+-- while auth_users held only password accounts. Nothing tied an
+-- address to the fact that its owner had already signed in with
+-- Google, so registering that same address with a password created a
+-- SECOND, parallel identity rather than colliding with the first.
+-- That is the gap an attacker probes: sign up with a password on an
+-- address that already belongs to a Google account.
+--
+-- This migration gives auth_users a provider column so the two
+-- account kinds can share ONE identity row per address:
+--   provider = 'email'  - has a password_hash, may reset a password
+--   provider = 'google' - identity owned by Google, no password
+--   provider = 'linked'- both: a Google identity AND a password set,
+--                          so the owner can use either door.
+--
+-- Existing rows are all password accounts (Google users were never
+-- stored here), so they backfill to 'email'. SQLite gotcha: ALTER
+-- TABLE ADD COLUMN is not idempotent, and D1 has no IF NOT EXISTS
+-- for columns - the migration file itself runs once, tracked by
+-- d1_migrations, which is the idempotency guarantee that applies.
+-- A default of 'email' keeps every pre-existing INSERT (and any
+-- harness that inserts directly) working untouched.
+-- ============================================================
+
+ALTER TABLE auth_users ADD COLUMN provider TEXT NOT NULL DEFAULT 'email';

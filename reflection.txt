@@ -1714,3 +1714,88 @@ STATE AT SESSION END
   CI-side trailer check, which means a new harness PLUS a
   docs/CI-TEST-COVERAGE.md registry row (AGENTS lesson 14); (e) delete the
   backup tag once the owner is satisfied.
+
+================================================================================
+SESSION 2026-10-05 (session 2) - THE PADDLE CHECKOUT WAS PROVEN END TO END, AND
+THE REGRESSION THAT BROKE IT WAS FINALLY GATED. SESSION CLOSED BY OWNER ORDER.
+================================================================================
+
+WHAT THIS SESSION DID
+  Asked to walk the Paddle checkout so Premium could be confirmed to grant, and
+  then - after the owner reported it working - to lock in the fix, document the
+  session and close off. Nothing was left half-done.
+
+THE RESULT THAT MATTERED
+  cloud_subscriptions gained its FIRST ever Paddle-era row at
+  2026-10-05T21:39:22.709Z: owner_sub 102408521081077434969, provider id
+  sub_01m4703mawe217sswjt0g0ssky, status on_trial, plan pro, period end
+  2026-11-05. billingStatusActive() accepts on_trial, so Premium is active -
+  the app says so, not just the database. The owner confirms it was their own
+  test checkout, not a customer.
+  This is the payoff of the 2026-10-05 _ptxn fix: the two links no one could
+  ever verify from the repo (Paddle returns a checkout URL; Paddle delivers a
+  webhook carrying custom_data.sub) both demonstrably happened.
+
+LESSONS THIS SESSION ACTUALLY LEARNED
+- A CORRECTION I HAD TO MAKE TWICE, IN OPPOSITE DIRECTIONS. Earlier I claimed
+  Premium had never been granted; D1 showed two LemonSqueezy-era rows, so the
+  honest claim was "never through Paddle". This session I read the same table
+  with `tail -40` and reported only two rows - the third, the one that proved
+  the whole thing, was cut off by my own output filter. Counting with
+  `count(*)` first is what caught it. A truncated read is not a read.
+- A GATE THAT PASSES WHILE MEASURING NOTHING IS WORSE THAN NO GATE. The 6s G7
+  poll expired mid-flight while the Worker ran PBKDF2 twice, so a correct
+  password change presented as a broken UI (submit stuck on "Updating", fields
+  visible, no error). The give-away was that G7b - the server-side check -
+  passed on every single run. When a UI gate and its API gate disagree, suspect
+  the gate before the app. Measured settle time: 2719ms.
+- CI GREEN CAN HIDE A RED GATE. qa-email-auth is registered CI, yet G7 failed
+  locally for weeks because the runner skips the Chrome phase, so the G gates
+  never execute there. "In CI" and "runs in CI" are not the same claim.
+- PROVE TEETH WITHOUT TOUCHING THE TREE. Rather than revert the fix and rebuild
+  to show a new gate could fail, the predicates were re-run offline against the
+  pre-fix source pulled from git and against the bundle with the old strip
+  spliced back in. Same confidence, zero risk of leaving the payment path
+  modified - which mattered, because the owner explicitly asked that it not be
+  disturbed mid-verification.
+- MY OWN PROBE WAS THE THING THAT WAS BROKEN. The splice in my first teeth
+  script matched nothing, because the RAW bundle quotes the key (["pdc"]) and
+  the bare [pdc] form only exists after normalisation. Two lines read "BROKEN"
+  and the fault was the script, not the gate - the mixed-quote case proved the
+  predicate itself bit.
+
+STATE AT SESSION END
+- Repo = CI state (main f4e19bc; CI run 37385144319 SUCCESS, 66/66 steps, 0
+  skipped). HEAD == origin/main. Tree clean except the owner's untracked
+  PADDLE-GO-LIVE-DIRECTIVE.md, left alone deliberately.
+- NO APPLICATION CODE CHANGED THIS SESSION. Both commits are tests + docs.
+  All six payment-path files (js/marketing.js, src/billing.js, pricing.html,
+  worker.js, serve.cjs, sw.js) verified CLEAN against HEAD. No deploy was made
+  or needed; production still runs the build the checkout was proven against
+  (sw.js = mmgr-shell-v368).
+- New coverage: the _ptxn dead-checkout contract is gated from four angles plus
+  a live browser check; qa-paddle-csp is 29 gates (24 static in CI, 5 live in
+  extended-qa). qa-email-auth is 83/83 and green locally again.
+- Verification: npm run verify exit 0; qa-paddle-csp 29/29 live; qa-email-auth
+  83/83 exit 0.
+- OWNER DECISION RECORDED: LemonSqueezy is retired - "it was and still is
+  useless". The two legacy subscription rows were test-mode rows from testing,
+  not customers. Their removal is due in time and was deliberately NOT done,
+  since entitlement data sits behind an explicit go-ahead. The exact DELETE is
+  written down in PLANNING-TODO-2026-09-09.txt so it is a one-step job later.
+
+OPEN FOR THE OWNER
+  (a) delete the two LemonSqueezy-era cloud_subscriptions rows when ready - the
+      SQL is recorded in the tracker; until then those two accounts still show
+      Premium, and note their recent updated_at stamps mean webhooks fired as
+      late as 2026-09-29, so if any is a live subscription rather than test-mode
+      it may still be renewing at LemonSqueezy - only that dashboard can say;
+  (b) the two src/billing.js branches from the Claude diff are still ungated by
+      choice (a transaction.completed carrying a subscription_id, and the
+      occurred_at out-of-order guard);
+  (c) no server-side webhook attempt log - offered, declined, so a failed
+      delivery leaves evidence only in Paddle's notification log;
+  (d) PADDLE_TS_TOLERANCE_SEC = 5 is tight, so a burst of 401s can be
+      clock/queue noise rather than a wrong secret;
+  (e) C4 (macOS window dots) from the pasted directive was never built and never
+      reached the owner decision round - flagged, not silently added.

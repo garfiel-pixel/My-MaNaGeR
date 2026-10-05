@@ -974,3 +974,102 @@ commit + push + poll CI to green before deploy.
 OWNER GATE: WS-1 needs no decision and can start immediately. WS-2/3/4 each
 contain a doctrine conflict that is the OWNER's call - confirm C1-C4 before
 building those, or the work will be built against a rule it then violates.
+
+================================================================================
+WAVE 2026-10-05 (session 2) — PADDLE GO-LIVE VERIFIED; LEMONSQUEEZY RETIRED
+STATUS: COMPLETE — checkout proven end to end, the regression is now gated, closed off
+================================================================================
+
+RESULT: PREMIUM GRANTED BY PADDLE, FOR THE FIRST TIME EVER
+  cloud_subscriptions, written 2026-10-05T21:39:22.709Z, unchanged at close:
+    owner_sub           102408521081077434969   (the owner's own test checkout)
+    ls_subscription_id  sub_01m4703mawe217sswjt0g0ssky   (a real Paddle id)
+    status              on_trial   -> billingStatusActive() accepts it, src/billing.js:63-65
+    plan                pro
+    current_period_end  2026-11-05T21:39:22Z
+  This closes links 4 and 5 of the checkout trace (Paddle returns a checkout
+  URL; Paddle delivers a webhook that passes HMAC verification and carries
+  custom_data.sub) - the only two links that were never verifiable from the
+  repo. Every Paddle-era write count was zero before this row.
+  The owner confirms this was their own trial checkout, NOT a customer.
+
+SCOPE: NO APPLICATION CODE WAS TOUCHED. Both commits are tests + docs only.
+  js/marketing.js, src/billing.js, pricing.html, worker.js, serve.cjs and sw.js
+  are byte-identical to the deployed build, so NO DEPLOY was required or made.
+  Production is still the build the checkout was proven against (sw v368).
+
+WHAT WAS CHANGED
+  cb94a0f  test(qa): gate the _ptxn dead checkout, repair G7 timing
+           tools/qa-paddle-csp.cjs  - new arm 1b (source) + arm 2b (live
+             browser) pinning the dead-checkout contract; 24 static + 5 live = 29.
+           tools/qa-email-auth.cjs  - G7 poll window 6s -> 30s (diagnosis below).
+           docs/CI-TEST-COVERAGE.md - registry row updated (repo rule 14).
+  f4e19bc  docs(qa): correct the qa-paddle-csp gate count to 29
+           The row claimed 25. Counted, not estimated: 29.
+
+THE _ptxn REGRESSION IS NOW GATED (it was not before)
+  The probe that caught the 2026-10-05 dead checkout lived in gitignored tmp/,
+  so the failure could return silently. qa-paddle-csp now asserts, so a
+  regression fails CI:
+    - js/marketing.js declares stripOnly() and stripPaddleParams() is gone
+    - handlePaddleReturn() never names _ptxn (it reads pdc only)
+    - module scope calls initPaddleWhenReady() BEFORE handlePaddleReturn()
+    - the SHIPPED dist/marketing-bundle.js carries no 4-key strip
+      (AGENTS lesson 2: the bundle is what the browser runs)
+    - LIVE: ?_ptxn= survives a real page load on the deployed site
+  TEETH PROVEN, offline and non-destructively: every predicate fails against
+  the pre-fix source from git (bf1f6f0^) and against the bundle with the old
+  4-key strip spliced back in. A gate that cannot fail is not a gate.
+
+G7 WAS A HARNESS BUG, NOT THE EMAIL-AUTH UI (root cause, not a guess)
+  qa-email-auth G7 was red locally (82/83) while CI stayed green.
+  Diagnosis: the panel sat on "Updating" with fields visible and NO inline
+  error, and the submit was still mid-flight - the success branch had not run.
+  Reason: a real change runs PBKDF2-SHA256 at 100k iterations TWICE and revokes
+  every other session before answering, and the old 20x300ms (~6s) poll expired
+  mid-flight. Measured settle time once the window was widened: 2719ms. The
+  password had ALWAYS changed (G7b passed every run); only the acknowledgement
+  was read too early. CI never caught it because the runner skips the Chrome
+  phase, so the G gates do not run there.
+  Fix: window 30s, settled ms logged, and success may no longer show an inline
+  error (a strengthening, not a weakening). Result 83/83, exit 0.
+
+OWNER DECISION 2026-10-05 — LEMONSQUEEZY RETIRED, CLEANUP DEFERRED
+  Owner, verbatim intent: LemonSqueezy "can go to the void - it was and still
+  is useless"; the two legacy accounts were TEST-MODE rows from testing, not
+  customers; removing them is "due in time".
+  State recorded, nothing deleted: two LemonSqueezy-era rows still read
+  active/pro - 102577792911984404733 (id 2436580, 2026-08-15, updated
+  2026-09-29) and 105942339690357255238 (id 2468894, 2026-08-26, updated
+  2026-09-09). Both therefore still grant Premium, and neither has any
+  cloud_projects. Entitlement data was NOT edited - this session had no go-ahead.
+  WHEN THE OWNER SAYS GO (deferred, deliberately not done here):
+      DELETE FROM cloud_subscriptions WHERE ls_subscription_id IN ('2436580','2468894');
+      -- numeric ids are the LemonSqueezy era; Paddle ids are sub_01...
+      SELECT count(*) FROM cloud_subscriptions;  -- expect 1 (the Paddle row)
+  Identity cannot be resolved from D1: auth_users is email-keyed, so Google
+  identities leave no row there.
+
+GATES AND EVIDENCE AT CLOSE
+  npm run verify exit 0 (88 harnesses registered, CSS integrity pass, CSP 24 hashes)
+  qa-paddle-csp 29/29 including the live site (overlay iframe 1280x720, zero
+    CSP violations, _ptxn survives); qa-email-auth 83/83 exit 0.
+  CI run 37383634935 (cb94a0f) SUCCESS 66/66 steps, 0 skipped.
+  CI run 37385144319 (f4e19bc) SUCCESS 66/66 steps, 0 skipped.
+  HEAD == origin/main == f4e19bc; tree clean except the owner's untracked
+  PADDLE-GO-LIVE-DIRECTIVE.md.
+
+STILL OPEN (not defects, recorded so they are not lost)
+  - The two src/billing.js branches from the Claude diff remain UNGATED, by the
+    owner's choice: a transaction.completed carrying a subscription_id (ignored)
+    and the occurred_at out-of-order guard. Reasoned, not proven. The real
+    checkout proves the main grant path only.
+  - No server-side webhook attempt log. Offered, declined by the owner; so a
+    failed delivery leaves evidence only in Paddle's notification log.
+  - PADDLE_TS_TOLERANCE_SEC = 5 (src/billing.js:44) is tight: a delivery delayed
+    in transit fails verification and retries - correct, but a burst of 401s can
+    be clock/queue noise rather than a wrong secret.
+  - mcp/qa-mcp.cjs sits outside the registry scan scope (root + tools/ only) -
+    pre-existing.
+  - C4 (macOS red/yellow/green window dots) from the pasted directive was never
+    built and was never in the owner decision round.

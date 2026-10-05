@@ -1006,22 +1006,41 @@ async function phase5() {
       p.querySelector('.email-auth-pw-submit').click();
       return true;
     })()`);
+    /* A REAL password change is not instant on a dev origin: the Worker runs
+       PBKDF2-SHA256 at 100k iterations TWICE (verify the current password,
+       then hash the new one) and revokes every other session before it
+       answers. The old 20x300ms = 6s window could therefore expire while the
+       request was still in flight, which looked exactly like a UI defect: the
+       panel sat on 'Updating' with the fields still visible, and only G7b
+       (its own later login) revealed that the server had in fact completed the
+       change. Poll for up to 30s and RECORD the elapsed time, so the gate can
+       never be fooled this way again and the wiring stays asserted unchanged. */
     let g7 = null;
-    for (let i = 0; i < 20; i++) {
-      await delay(300);
+    let g7ElapsedMs = null;
+    const g7Start = Date.now();
+    for (let i = 0; i < 60; i++) {
+      await delay(500);
       g7 = await pwEv(`(function(){
         var p = document.querySelector('#google-user-chip .email-auth-pw');
         return {
           ok: p.querySelector('.email-auth-pw-ok').hidden,
           okText: p.querySelector('.email-auth-pw-ok').textContent,
           fieldsHidden: p.querySelector('.email-auth-pw-fields').hidden,
-          actionsHidden: p.querySelector('.email-auth-pw-actions').hidden
+          actionsHidden: p.querySelector('.email-auth-pw-actions').hidden,
+          errText: p.querySelector('.email-auth-pw-err').textContent,
+          submitText: p.querySelector('.email-auth-pw-submit').textContent
         };
       })()`);
-      if (g7 && g7.ok === false) break;
+      if (g7 && g7.ok === false) { g7ElapsedMs = Date.now() - g7Start; g7.elapsedMs = g7ElapsedMs; break; }
     }
-    check('G7 correct change (real 200) -> success message, fields/actions hidden',
-      g7 && g7.ok === false && /Password updated/.test(g7.okText || '') && g7.fieldsHidden === true && g7.actionsHidden === true, g7);
+    log('G7 password-change round trip settled after ' + (g7ElapsedMs === null ? '>30s (NEVER settled — real defect)' : g7ElapsedMs + 'ms'));
+    /* ERR TEXT IS PART OF THE CONTRACT (diagnostic + assertion): on a real
+       200 the success branch must own the panel, so no inline error may be
+       showing. Disambiguates the two ways this gate can fail - the catch
+       branch ran (errText set) versus the panel was rebuilt from fresh
+       markup after success (errText empty, fields visible again). */
+    check('G7 correct change (real 200) -> success message, fields/actions hidden, no inline error',
+      g7 && g7.ok === false && /Password updated/.test(g7.okText || '') && g7.fieldsHidden === true && g7.actionsHidden === true && g7.errText === '', g7);
     // The new password must really work server-side.
     const hollyNew = await api('/api/auth/login', { method: 'POST', headers: jsonHeaders, body: JSON.stringify({ email: 'holly.pw.e2e@example.com', password: 'holly-pass-2' }) });
     check('G7b new password signs in server-side', hollyNew.status === 200 && hollyNew.body.ok === true, hollyNew.text);

@@ -17,6 +17,20 @@
 //   6. LIVE BROWSER: on the real /pricing page, opening the overlay creates a
 //      visible buy.paddle.com iframe and produces NO CSP violation.
 //
+//   7. PADDLE OWNS _ptxn (regression gate, owner incident 2026-10-05): the
+//      page must NEVER remove ?_ptxn before Paddle.Initialize() has read it.
+//      _ptxn is Paddle's instruction to OPEN a checkout, so deleting it kills
+//      the payment form outright. This is asserted from the source (the
+//      unconditional 4-key strip is gone, the return handler no longer names
+//      _ptxn, and the module-scope order puts Paddle's init first), from the
+//      SHIPPED bundle (the old 4-key strip must not be in what the browser
+//      actually runs - AGENTS lesson 2), and in a real browser (the parameter
+//      survives a normal page load).
+//   8. The browser arms target /pricing on a deployed origin and
+//      /pricing.html on a local one, because serve.cjs does NOT serve the
+//      extensionless form (it 404s, which silently turns a live assertion
+//      into a test of an error page).
+//
 // Exit 0 = pass. Any failure exits non-zero.
 const { chromium } = require('playwright');
 const fs = require('fs');
@@ -25,6 +39,10 @@ const path = require('path');
 const ROOT = path.join(__dirname, '..');
 const SITE = process.env.QA_SITE || 'https://mymanagerworkspace.com';
 const LIVE = process.env.MMGR_QA_NO_BROWSER !== '1';
+// Production 307s /pricing.html -> /pricing and carries the query string over
+// (verified), so the .html form is correct on a local serve.cjs origin and
+// harmless on a deployed one.
+const PRICING_PATH = /^https?:\/\/(127\.0\.0\.1|localhost)/.test(SITE) ? '/pricing.html' : '/pricing';
 
 let fails = 0;
 function ok(label, cond, extra) {
@@ -118,6 +136,51 @@ function directive(policySrc, name) {
   ok('serve.cjs scopes PADDLE_CSP by pricing.html basename',
      /path\.basename\(file\) === 'pricing\.html'/.test(serveSrc));
 
+  // ---- ARM 1b: PADDLE OWNS _ptxn (regression gate, owner 2026-10-05) -----
+  // The dead-checkout bug was self-inflicted and invisible: handlePaddleReturn()
+  // ran at module scope BEFORE Paddle.Initialize() and deleted ?_ptxn, which is
+  // Paddle's instruction to OPEN a checkout. A buyer who returned from our own
+  // Upgrade flow got a page with no payment form and no error anywhere. These
+  // assertions pin the contract that fixed it.
+  console.log('\n=== ARM 1b: Paddle owns _ptxn (the dead-checkout regression) ===\n');
+
+  const marketing = fs.readFileSync(path.join(ROOT, 'js', 'marketing.js'), 'utf8');
+
+  ok('js/marketing.js declares stripOnly(keys)', /function stripOnly\s*\(/.test(marketing));
+  ok('the unconditional stripPaddleParams() is gone', !/function stripPaddleParams\s*\(/.test(marketing),
+     'it deleted _ptxn before Paddle could read it');
+
+  const hprStart = marketing.indexOf('function handlePaddleReturn');
+  const hprEnd = marketing.indexOf('function pollPlanAfterCheckout');
+  const hprBody = (hprStart > -1 && hprEnd > hprStart) ? marketing.slice(hprStart, hprEnd) : '';
+  ok('handlePaddleReturn found in js/marketing.js', !!hprBody);
+  ok('handlePaddleReturn never names _ptxn', !!hprBody && hprBody.indexOf('_ptxn') === -1,
+     '_ptxn is an instruction to OPEN a checkout, never a return signal');
+  ok("handlePaddleReturn still strips pdc (Paddle's own checkout error)",
+     /stripOnly\(\s*\[\s*'pdc'\s*\]\s*\)/.test(hprBody));
+
+  // Module-scope ORDER is load-bearing, not cosmetic: Paddle must be allowed to
+  // read ?_ptxn before any other code touches the URL.
+  const orderInit = marketing.lastIndexOf('initPaddleWhenReady();');
+  const orderHandle = marketing.lastIndexOf('handlePaddleReturn();');
+  ok('module scope calls initPaddleWhenReady() BEFORE handlePaddleReturn()',
+     orderInit > -1 && orderHandle > -1 && orderInit < orderHandle,
+     'init@' + orderInit + ' return@' + orderHandle);
+
+  // The SHIPPED bundle is what the browser actually executes (AGENTS lesson 2),
+  // so assert the fix reached it. Quotes are stripped first because minify
+  // swaps them; the element ORDER is the signature that changed.
+  const bundlePath = path.join(ROOT, 'dist', 'marketing-bundle.js');
+  ok('dist/marketing-bundle.js exists (npm run build precedes this gate)', fs.existsSync(bundlePath));
+  if (fs.existsSync(bundlePath)) {
+    const norm = fs.readFileSync(bundlePath, 'utf8').replace(/["'`]/g, '').replace(/\s+/g, '');
+    ok('shipped bundle has NO 4-key strip (_ptxn,plnk,_pxc,pdc)',
+       norm.indexOf('[_ptxn,plnk,_pxc,pdc]') === -1);
+    ok('shipped bundle strips _ptxn only AFTER checkout.completed',
+       norm.indexOf('[_ptxn,plnk,_pxc]') > -1);
+    ok('shipped bundle keeps the pdc-only strip', norm.indexOf('[pdc]') > -1);
+  }
+
   if (!LIVE) {
     console.log('\n=== ARM 2 skipped (MMGR_QA_NO_BROWSER=1) ===');
     finish();
@@ -138,7 +201,20 @@ function directive(policySrc, name) {
       if (/paddle/.test(u)) viol.push('REQFAIL ' + u.slice(0, 90) + ' :: ' + ((r.failure() || {}).errorText || ''));
     });
 
-    await page.goto(SITE + '/pricing', { waitUntil: 'networkidle', timeout: 60000 });
+    // ---- ARM 2b: _ptxn SURVIVES A REAL PAGE LOAD (regression gate) -------
+    // Asserted in a BROWSER because the source alone cannot prove it: the old
+    // bug was a correct-looking call order plus an unconditional strip. If
+    // _ptxn is missing from the address bar after a normal load, the checkout
+    // is dead again - this is the exact symptom the owner reported.
+    const ptxnVal = 'txn_01m4703mawe217sswjt0g0ssky01';
+    await page.goto(SITE + PRICING_PATH + '?_ptxn=' + ptxnVal, { waitUntil: 'domcontentloaded', timeout: 60000 });
+    await page.waitForTimeout(3000);
+    const afterPtxn = await page.evaluate(() => ({ search: location.search, paddle: typeof window.Paddle }));
+    ok('_ptxn SURVIVES a real page load (the dead-checkout regression)',
+       new RegExp('[?&]_ptxn=' + ptxnVal).test(afterPtxn.search),
+       'location.search=' + (afterPtxn.search || '(empty - the page ate it)'));
+
+    await page.goto(SITE + PRICING_PATH, { waitUntil: 'networkidle', timeout: 60000 });
     await page.waitForTimeout(3000);
 
     ok('Paddle.js loaded', await page.evaluate(() => typeof window.Paddle === 'object'));

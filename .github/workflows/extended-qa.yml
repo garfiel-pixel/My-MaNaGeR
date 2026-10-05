@@ -131,6 +131,9 @@ jobs:
       - name: "E-T4: hero card panels, tooltips and motion"
         run: node tools/qa-hero-cards.cjs
 
+      - name: "E-T4: scroll-spy connector, sub-dots and label lock-in"
+        run: node tools/qa-spy-nav.cjs
+
       - name: "E-T4: gate screens in every theme state"
         run: node tools/verify-gates-themes.cjs
 

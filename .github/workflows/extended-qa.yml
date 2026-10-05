@@ -121,6 +121,12 @@ jobs:
       - name: "E-T4: app/admin gate screens render"
         run: node tools/verify-gates-cdp.cjs
 
+      # Live-browser arm: proves against the DEPLOYED site that the Paddle
+      # overlay iframe actually renders. This is the check that would have
+      # caught the 2026-10-04 "Upgrade does nothing" incident at source.
+      - name: "E-T4: Paddle checkout overlay renders on the live site"
+        run: node tools/qa-paddle-csp.cjs
+
       - name: "E-T4: gate screens in every theme state"
         run: node tools/verify-gates-themes.cjs
 

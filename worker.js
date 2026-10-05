@@ -102,6 +102,48 @@ const WHISPER_CSP = [
   "form-action 'self'"
 ].join('; ');
 
+// PADDLE-CSP: only pricing.html (Paddle's default payment link) gets the
+// origins Paddle's checkout overlay needs. Everything else keeps the strict
+// policy above - notably script-src stays HASH-ONLY with no 'unsafe-inline'.
+//
+// Why a scoped policy rather than loosening the global one: the overlay is
+// third-party code on exactly one page, and the hash allowlist is the app's
+// XSS gate. Widening it site-wide would trade a security control for a
+// convenience on pages that never run Paddle.
+//
+// Probe-verified (tools/qa-paddle-csp.cjs), 3 origins and no more:
+//   style-src  + https://cdn.paddle.com   -> paddle.css (overlay styling;
+//                                            without it checkout renders unstyled)
+//   frame-src  + https://buy.paddle.com   -> THIS IS THE REAL BLOCKER. The
+//                                            overlay iframe is buy.paddle.com,
+//                                            which was NOT in frame-src, so
+//                                            checkout could never render.
+//   frame-ancestors 'self' instead of 'none' -> 'none' also vetoed the
+//                                            overlay iframe, since frame-ancestors
+//                                            is inherited by the framed document.
+// X-Frame-Options: DENY is deliberately LEFT ALONE - it constrains who may
+// frame US and does not affect the outbound overlay (probe-verified: overlay
+// loads fine under DENY).
+//
+// public.profitwell.com is intentionally NOT allowed. Paddle requests it for
+// revenue analytics; it is not required for checkout, so it stays blocked.
+const PADDLE_CSP = [
+  "default-src 'self'",
+  "script-src 'self' 'wasm-unsafe-eval' https://unpkg.com https://accounts.google.com https://apis.google.com https://static.cloudflareinsights.com https://challenges.cloudflare.com https://cdn.paddle.com " + INLINE_SCRIPT_HASHES,
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com https://cdn.paddle.com",
+  "img-src 'self' data: blob: https://lh3.googleusercontent.com https://*.googleusercontent.com",
+  "media-src 'self' data: blob:",
+  "font-src 'self' data: https://fonts.gstatic.com",
+  "connect-src 'self' https: https://accounts.google.com https://oauth2.googleapis.com blob:",
+  "worker-src 'self'",
+  "manifest-src 'self'",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "frame-src https://buy.paddle.com https://checkout.paddle.com https://cdn.paddle.com https://accounts.google.com https://challenges.cloudflare.com",
+  "frame-ancestors 'self'",
+].join('; ');
+
 // Collapse '.'/'..' path segments so traversal can never fool the
 // whisper-path check.
 function normalizePathname(p) {
@@ -208,6 +250,13 @@ export default {
       // Scoped CSP for whisper runtime
       if (normalized.indexOf('/vendor/whisper/') === 0) {
         decorated.headers.set('Content-Security-Policy', WHISPER_CSP);
+      }
+
+      // Scoped CSP for the Paddle checkout page. pricing.html is Paddle's
+      // default payment link, so the overlay renders here and nowhere else.
+      // '/' is deliberately NOT included: the homepage does not load Paddle.
+      if (normalized === '/pricing' || normalized === '/pricing.html') {
+        decorated.headers.set('Content-Security-Policy', PADDLE_CSP);
       }
 
       return decorated;

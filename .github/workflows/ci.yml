@@ -383,6 +383,15 @@ jobs:
         id: qa-full
         run: node qa-full.cjs
 
+      # Static arm only: this gate asserts the Paddle overlay CSP shape and
+      # scoping. The live-browser arm needs the deployed site, so it runs in
+      # extended-qa (see docs/CI-TEST-COVERAGE.md).
+      - name: "T4: Paddle checkout CSP shape (static arm)"
+        id: qa-paddle-csp
+        env:
+          MMGR_QA_NO_BROWSER: 1
+        run: node tools/qa-paddle-csp.cjs
+
       - name: "T4: AI + model wiring battery (qa-ai)"
         id: qa-ai
         run: node qa-ai.cjs

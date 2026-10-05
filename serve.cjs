@@ -146,6 +146,35 @@ const WHISPER_CSP = [
   "form-action 'self'"
 ].join('; ');
 
+// PADDLE-CSP (mirror of worker.js): only pricing.html - Paddle's default
+// payment link - gets the origins the checkout overlay needs. The strict
+// policy above stays in force everywhere else, and script-src here remains
+// HASH-ONLY (no 'unsafe-inline') so the XSS gate is not widened site-wide.
+// The three additions, each probe-verified in tools/qa-paddle-csp.cjs:
+//   style-src + https://cdn.paddle.com  -> overlay styling (paddle.css)
+//   frame-src + https://buy.paddle.com  -> the overlay iframe itself; without
+//                                           it checkout could never render
+//   frame-ancestors 'self' (not 'none') -> 'none' vetoed the overlay iframe too
+// X-Frame-Options stays DENY: it governs who may frame US, not our outbound
+// overlay. public.profitwell.com (Paddle revenue analytics) stays blocked -
+// not required for checkout.
+const PADDLE_CSP = [
+  "default-src 'self'",
+  "script-src 'self' 'wasm-unsafe-eval' https://unpkg.com https://accounts.google.com https://apis.google.com https://static.cloudflareinsights.com https://challenges.cloudflare.com https://cdn.paddle.com " + INLINE_SCRIPT_HASHES,
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com https://cdn.paddle.com",
+  "img-src 'self' data: blob: https://lh3.googleusercontent.com https://*.googleusercontent.com",
+  "media-src 'self' data: blob:",
+  "font-src 'self' data: https://fonts.gstatic.com",
+  "connect-src 'self' https: https://accounts.google.com https://oauth2.googleapis.com blob:",
+  "worker-src 'self'",
+  "manifest-src 'self'",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "frame-src https://buy.paddle.com https://checkout.paddle.com https://cdn.paddle.com https://accounts.google.com https://challenges.cloudflare.com",
+  "frame-ancestors 'self'",
+].join('; ');
+
 const MIME = {
   '.html': 'text/html; charset=utf-8',
   '.js': 'text/javascript; charset=utf-8',
@@ -408,6 +437,12 @@ const server = http.createServer((req, res) => {
     // path.join(ROOT, p) result used for serving — test it directly.
     if (file.startsWith(path.join(ROOT, 'vendor', 'whisper') + path.sep)) {
       headers['Content-Security-Policy'] = WHISPER_CSP;
+    }
+    // Scoped CSP: the Paddle checkout page gets the overlay origins. Exact
+    // filename match on the resolved path (mirrors worker.js, which matches
+    // the normalized pathname) so no other page inherits it.
+    if (path.basename(file) === 'pricing.html') {
+      headers['Content-Security-Policy'] = PADDLE_CSP;
     }
     res.writeHead(200, headers);
     fs.createReadStream(file).pipe(res);

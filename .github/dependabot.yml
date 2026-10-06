@@ -11,10 +11,12 @@ updates:
       - "dependencies"
       - "security"
     reviewers: []
-    # Only security updates, not version bumps
+    # Wave 8.8 (2026-10-06): minor and patch bumps are now proposed too.
+    # Ignoring both left the dependency tree stale. Only major bumps stay
+    # ignored so a breaking upgrade never lands as an auto-PR.
     ignore:
       - dependency-name: "*"
-        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+        update-types: ["version-update:semver-major"]
 
   # GitHub Actions
   - package-ecosystem: "github-actions"

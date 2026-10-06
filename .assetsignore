@@ -44,3 +44,8 @@ secrets.json
 !wrangler.jsonc
 !skills-lock.json
 .gitleaks.toml
+# 2026-10-06 (Wave 8.2): source maps are build artifacts. dist/bundle.js.map was
+# publicly served (2.4 MB of unminified source). Excluded here AND guarded in
+# worker.js so neither path can leak it.
+*.map
+**/*.map

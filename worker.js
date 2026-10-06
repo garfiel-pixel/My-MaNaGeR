@@ -226,6 +226,11 @@ export default {
         return new Response('Not Found', { status: 404 });
       }
 
+      // 8.2: source maps are build artifacts and must never be public.
+      if (/\.map$/.test(normalized)) {
+        return new Response('Not Found', { status: 404, headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' } });
+      }
+
       const response = await env.ASSETS.fetch(request);
       const decorated = new Response(response.body, response);
       for (const [name, value] of Object.entries(HEADERS)) {

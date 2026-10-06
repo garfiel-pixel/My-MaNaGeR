@@ -590,6 +590,21 @@ pre.snippet{background:var(--tile-bg);border:1px solid var(--border);border-radi
         <div id="client-code-reveal" style="border:1px solid var(--gold);background:rgba(var(--gold-rgb),.1);border-radius:var(--radius);padding:8px 10px;margin:10px 0;font-size:.76rem" hidden role="status"></div>
         <div class="t-xs mt-md" id="client-codes-list"></div>
       </div>
+      <!-- Named team members (Wave 5, owner 2026-10-06): role-based access
+           that coexists with code sharing. Tier-gated server-side; the
+           sub-section reacts to the 402 member_limit upsell. -->
+      <div style="border-top:1px solid var(--border);margin-top:12px;padding-top:12px" id="team-section">
+        <div class="sub-head"><svg class="ico" aria-hidden="true" style="width:14px;height:14px"><use href="css/mmgr-icons.svg#i-users"></use></svg> Named Team Members</div>
+        <p class="t-note">Invite someone who already has a My MaNaGeR account and give them a role. Code sharing above keeps working alongside these roles.</p>
+        <div id="team-upsell" hidden role="status" style="border:1px solid var(--gold);background:rgba(var(--gold-rgb),.1);border-radius:var(--radius);padding:8px 10px;margin:0 0 10px;font-size:.76rem"></div>
+        <div id="team-invite-row" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
+          <input id="team-invite-email" type="email" maxlength="160" placeholder="name@example.com" style="flex:1;min-width:180px" autocomplete="off" aria-label="Team member email address">
+          <select id="team-invite-role" style="width:auto" aria-label="Team member role"><option value="manager">Manager</option><option value="supervisor">Supervisor</option><option value="contractor">Contractor</option><option value="client">Client</option></select>
+          <button class="btn btn-g btn-s" data-action="teamInvite"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-plus"></use></svg> Invite</button>
+        </div>
+        <div class="t-xs lh18 mb8" id="team-scope" hidden></div>
+        <div class="t-xs" id="team-list">Loading team…</div>
+      </div>
       <!-- C23: Shared Resource Pool (Phase 6) -->
       <div style="border-top:1px solid var(--border);margin-top:12px;padding-top:12px">
         <div class="sub-head"><svg class="ico" aria-hidden="true" style="width:14px;height:14px"><use href="css/mmgr-icons.svg#i-users"></use></svg> Shared Resource Pool (this account)</div>
@@ -2499,6 +2514,10 @@ function openCodesManager(i){
   document.getElementById('codes-list').textContent = 'Loading codes…';
   document.getElementById('codes-om').classList.add('show');
   initClientSections();
+  initTeamSections();
+  var _tu = document.getElementById('team-upsell'); if (_tu) _tu.hidden = true;
+  document.getElementById('team-list').textContent = 'Loading team…';
+  teamList();
   listClientCodes();
   codesFetchSections().then(function(secs){
     const box = document.getElementById('codes-scope');
@@ -2525,6 +2544,104 @@ function openCodesManager(i){
 function closeCodesModal(){
   document.getElementById('codes-om').classList.remove('show');
   _codesIdx = null;
+}
+
+/* ---- Named team members (Wave 5, owner 2026-10-06) ---------------------
+   Role-based access that coexists with code sharing. Owner-code
+   authenticated like the codes manager. The tier cap lives on the
+   server (402 member_limit); this panel surfaces the upsell. */
+function teamOwnerCode(){
+  return codesOwnerCode();
+}
+function teamCurrentProject(){
+  return (_codesIdx !== null) && projects[_codesIdx];
+}
+function teamRoleLabel(r){
+  return ({ manager:'Manager', supervisor:'Supervisor', contractor:'Contractor', client:'Client' })[r] || r;
+}
+async function teamList(){
+  const wrap = document.getElementById('team-list');
+  if (!wrap) return;
+  const p = teamCurrentProject();
+  const code = teamOwnerCode();
+  if (!p || !code){ wrap.textContent = 'No owner code recorded on this device for this project.'; return; }
+  try{
+    const res = await fetch('/api/cloud/projects/' + encodeURIComponent(p.cloudId) + '/team', {
+      method: 'GET', credentials: 'same-origin', headers: { 'X-Owner-Code': code }
+    });
+    const data = await res.json().catch(()=>({}));
+    if (!res.ok || !data.ok){ wrap.textContent = 'Could not load team members.'; return; }
+    const members = data.members || [];
+    if (!members.length){ wrap.textContent = 'No named members yet. Invite someone above.'; return; }
+    wrap.innerHTML = members.map(function(m){
+      const scopeTxt = (m.role === 'client' && Array.isArray(m.scope) && m.scope.length) ? ' · ' + escapeHtml(m.scope.join(', ')) : '';
+      return '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:4px 0;border-bottom:1px solid var(--border)">' +
+        '<span style="color:var(--title,var(--text));font-weight:600">' + escapeHtml(m.userSub.replace(/^email:/,'')) + '</span>' +
+        '<span style="color:var(--slate)">' + escapeHtml(teamRoleLabel(m.role)) + ' · ' + escapeHtml(m.status) + scopeTxt + '</span>' +
+        (m.status === 'revoked' ? '' : '<button class="btn btn-n btn-s" data-action="teamRevoke" data-id="' + m.id + '"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> Revoke</button>') +
+        '</div>';
+    }).join('');
+  }catch(e){
+    wrap.textContent = 'Cloud API unreachable on this host.';
+  }
+}
+function teamShowUpsell(msg){
+  const box = document.getElementById('team-upsell');
+  if (!box) return;
+  box.hidden = false;
+  box.innerHTML = escapeHtml(msg) + ' <a href="pricing.html#company">See Company plan</a>.';
+}
+async function teamInvite(){
+  const p = teamCurrentProject();
+  const code = teamOwnerCode();
+  if (!p || !code){ toast('No owner code recorded for this project on this device.', 'error'); return; }
+  const email = (document.getElementById('team-invite-email').value || '').trim().toLowerCase();
+  if (!email || email.indexOf('@') < 0){ toast('Enter the person\u2019s email address first.', 'warn'); return; }    const role = document.getElementById('team-invite-role').value || 'manager';
+  const payload = { email: email, role: role };
+  if (role === 'client'){
+    const scope = [];
+    document.querySelectorAll('#team-scope input[type=checkbox]:checked').forEach(function(cb){ scope.push(cb.value); });
+    payload.scope = scope;
+  }
+  try{
+    const res = await fetch('/api/cloud/projects/' + encodeURIComponent(p.cloudId) + '/team', {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json', 'X-Owner-Code': code },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json().catch(()=>({}));
+    if (res.status === 402 && data && data.error === 'member_limit'){
+      teamShowUpsell(data.upgradeRequired === 'company'
+        ? 'Your plan includes one named member. Upgrade to Company to add more.'
+        : 'Named team members need a paid plan. Upgrade to add members.');
+      toast('Member limit reached.', 'warn');
+      return;
+    }
+    if (res.status === 404 && data && data.error === 'user_not_found'){ toast('That email has no My MaNaGeR account yet. Ask them to sign up first.', 'warn'); return; }
+    if (res.status === 409){ toast('That person is already on this project.', 'warn'); return; }
+    if (!res.ok || !data.ok){ toast((data && data.error) || 'Invite failed.', 'error'); return; }
+    document.getElementById('team-invite-email').value = '';
+    toast('Invitation sent to ' + email + '.');
+    teamList();
+  }catch(e){
+    toast('Cloud API unreachable on this host.', 'error');
+  }
+}
+async function teamRevoke(id){
+  const p = teamCurrentProject();
+  const code = teamOwnerCode();
+  if (!p || !code || !id) return;
+  try{
+    const res = await fetch('/api/cloud/projects/' + encodeURIComponent(p.cloudId) + '/team/' + encodeURIComponent(id), {
+      method: 'DELETE', credentials: 'same-origin', headers: { 'X-Owner-Code': code }
+    });
+    const data = await res.json().catch(()=>({}));
+    if (!res.ok || !data.ok){ toast((data && data.error) || 'Revoke failed.', 'error'); return; }
+    toast('Member access revoked.');
+    teamList();
+  }catch(e){
+    toast('Cloud API unreachable on this host.', 'error');
+  }
 }
 
 /* ---- C23 Shared Resource Pool (Phase 6): owner-only CRUD ----
@@ -2715,6 +2832,27 @@ const CLIENT_SECTIONS = [
   {key:'risk',label:'Risk / Issues'},{key:'claim',label:'Claim Pack'},{key:'close',label:'Closure'},
   {key:'dmaic',label:'DMAIC'}
 ];
+function initTeamSections(){
+  const box = document.getElementById('team-scope');
+  if (!box || box.children.length) return;
+  box.appendChild(document.createTextNode('Sections this client may see: '));
+  CLIENT_SECTIONS.forEach(function(s){
+    const lbl = document.createElement('label');
+    lbl.style.cssText = 'display:inline-flex;align-items:center;gap:4px;margin:2px 10px 2px 0;font-size:.72rem;color:var(--text)';
+    const cb = document.createElement('input');
+    cb.type = 'checkbox'; cb.value = s.key;
+    lbl.appendChild(cb);
+    lbl.appendChild(document.createTextNode(s.label));
+    box.appendChild(lbl);
+  });
+  const roleSel = document.getElementById('team-invite-role');
+  if (roleSel && !roleSel._teamBound){
+    roleSel._teamBound = true;
+    roleSel.addEventListener('change', function(){
+      box.hidden = roleSel.value !== 'client';
+    });
+  }
+}
 function initClientSections(){
   const box = document.getElementById('client-sections');
   if (!box || box.children.length) return;
@@ -2975,7 +3113,9 @@ const ADMIN_ACTION_MAP = {
     // OWNER 2026-09-15: perf mode now also gates the starry WebGL shader.
     if (window.MMGR && MMGR.Glass && MMGR.Glass.sync) MMGR.Glass.sync();
   },
-  'codesCopyReveal': (el) => { const c = el.getAttribute('data-code'); if (c && navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(c).then(()=>toast('Code copied.')).catch(()=>toast('Copy manually.','warn')); }
+  'codesCopyReveal': (el) => { const c = el.getAttribute('data-code'); if (c && navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(c).then(()=>toast('Code copied.')).catch(()=>toast('Copy manually.','warn')); },
+  'teamInvite': () => teamInvite(),
+  'teamRevoke': (el) => teamRevoke(el.getAttribute('data-id'))
 };
 document.addEventListener('click', function(e){
   const el = e.target.closest('[data-action]');

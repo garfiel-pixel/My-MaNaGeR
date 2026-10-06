@@ -49,7 +49,7 @@
          projects over the cap              HTTP 402 {upgrade:true}
      B3  signature-verified webhook        -> 200, row upserted
          subscription_created for that sub
-     B4  status after webhook              -> active:true, plan 'pro'
+     B4  status after webhook              -> active:true, plan 'contractor'
      B5  create again now over the cap     -> 200 (cap cleared by an
                                             active subscription)
      B6  webhook bad signature /          -> 401 / 200 ignored
@@ -66,11 +66,11 @@
                                             {upgrade:true}
      PD4 webhook subscription.activated   -> 200, row upserted
          (valid Paddle-Signature)
-     PD5 status active + create over cap  -> active:true pro / 200
+     PD5 status active + create over cap  -> active:true contractor / 200
      PD6 garbage sig / tampered body /    -> 401 x4 / 200 ignored
          stale ts / no header / unknown
          event
-     PD7 transaction.completed one-time   -> 200 + plan stays pro
+     PD7 transaction.completed one-time   -> 200 + plan stays contractor
 
    PHASE 3 — EMAIL CONFIGURED (Resend stub on an in-process port):
      E1-E13b verification on signup, the verified-email cloud gate,
@@ -492,7 +492,7 @@ async function phase2() {
 
   // B4 — the subscription flipped the account active.
   const b4 = await api('/api/billing/status', { method: 'GET', headers: cookieHeader(carolCookie) });
-  check('B4 status after webhook: active:true, plan pro', b4.status === 200 && b4.body.active === true && b4.body.plan === 'pro', b4.text);
+  check('B4 status after webhook: active:true, plan contractor', b4.status === 200 && b4.body.active === true && b4.body.plan === 'contractor', b4.text);
 
   // B5 — an active subscription clears the cap.
   const b5 = await api('/api/cloud/projects', { method: 'POST', headers: cookieHeader(carolCookie), body: JSON.stringify({ projectId: capIds[2], name: 'Cap 3 retry' }) });
@@ -549,8 +549,8 @@ async function phasePaddle() {
   // PD5 — the subscription cleared the cap.
   const pd5s = await api('/api/billing/status', { method: 'GET', headers: cookieHeader(penCookie) });
   const pd5 = await api('/api/cloud/projects', { method: 'POST', headers: cookieHeader(penCookie), body: JSON.stringify({ projectId: capIds[2], name: 'Paddle Cap 3 retry' }) });
-  check('PD5 status active:true plan pro; create over cap -> 200',
-    pd5s.status === 200 && pd5s.body.active === true && pd5s.body.plan === 'pro' && pd5.status === 200 && pd5.body.ok === true, pd5s.text + ' | ' + pd5.text);
+  check('PD5 status active:true plan contractor; create over cap -> 200',
+    pd5s.status === 200 && pd5s.body.active === true && pd5s.body.plan === 'contractor' && pd5.status === 200 && pd5.body.ok === true, pd5s.text + ' | ' + pd5.text);
 
   // PD6 — the signature gate: garbage, tampered body, stale timestamp,
   // header-less, and a non-lifecycle event all land correctly.

@@ -1,20 +1,19 @@
 /* ============================================================
-   entitlements.js - the ONE future door for gating AI-powered
-   features (owner directive 2026-09-19: AI features are part of
-   the signed-in experience; premium/feature-flag rules land
-   INSIDE these functions later - callers never change).
-
-   Strict-grammar features (paste import, validation) stay
-   available signed-out; only the AI-assisted paths consult this.
-   Offline-first: when the auth module has not booted (e.g. the
-   guide or a fresh crash), the safe default is DENY for AI -
-   the strict path still works everywhere.
-
-   API (both sync, both boolean):
-     MMGR.Entitlements.aiAssistant()   -> background assistant / AI reads
+   entitlements.js - sole authority for feature gating.
+   Tier is written here by the billing status fetch at sign-in.
+   Callers ask a named function; the tier logic stays here.
+   Adding a new gate = add a function here, wire it nowhere else.
    ============================================================ */
 (function (ns) {
   'use strict';
+
+  var _tier = 'free'; // updated by setBillingTier() after status fetch
+
+  function setBillingTier(tier) {
+    _tier = (typeof tier === 'string' && tier) ? tier : 'free';
+  }
+
+  function tier() { return _tier; }
 
   function signedIn() {
     try {
@@ -22,14 +21,18 @@
     } catch (e) { return false; }
   }
 
-  // The AI-assisted tier rides the sign-in (owner directive). When premium
-  // gating arrives it lives HERE (e.g. also require a plan flag); every
-  // caller keeps asking the same question and never learns the difference.
-  function aiAssistant() {
-    return signedIn();
-  }
+  // Feature gates - add new ones here, never in callers
+  function aiAssistant()     { return signedIn(); }            // signed-in (unchanged)
+  function unlimitedCloud()  { return _tier !== 'free'; }      // contractor+
+  function rbacAccess()      { return _tier === 'contractor' || _tier === 'company' || _tier === 'enterprise'; }
+  function rbacUnlimited()   { return _tier === 'company' || _tier === 'enterprise'; }
 
   ns.Entitlements = {
-    aiAssistant: aiAssistant
+    setBillingTier : setBillingTier,
+    tier           : tier,
+    aiAssistant    : aiAssistant,
+    unlimitedCloud : unlimitedCloud,
+    rbacAccess     : rbacAccess,
+    rbacUnlimited  : rbacUnlimited
   };
 })(window.MMGR = window.MMGR || {});

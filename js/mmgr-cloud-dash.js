@@ -314,6 +314,10 @@
     let data = null;
     try { data = await res.json(); } catch (e) { if (plan) plan.hidden = true; if (railUp) railUp.hidden = true; return; }
     if (!data || !data.ok || !data.configured) { if (plan) plan.hidden = true; if (railUp) railUp.hidden = true; return; }
+    // Single source of truth for the active tier: the billing status fetch.
+    if (window.MMGR && MMGR.Entitlements && typeof MMGR.Entitlements.setBillingTier === 'function') {
+      MMGR.Entitlements.setBillingTier(data.plan || 'free');
+    }
     const count = data.projectCount || 0;
     const cap = data.projectCap;
     const atLimit = cap !== null && cap !== undefined && count >= cap;

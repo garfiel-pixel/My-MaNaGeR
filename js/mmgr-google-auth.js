@@ -343,6 +343,10 @@ var MMGR = window.MMGR || {};
     let data = null;
     try { data = await res.json(); } catch (e) { return null; }
     if (!data || !data.ok || !data.configured) return null;
+    // Keep the entitlement tier in sync with the authoritative billing fetch.
+    if (window.MMGR && MMGR.Entitlements && typeof MMGR.Entitlements.setBillingTier === 'function') {
+      MMGR.Entitlements.setBillingTier(data.plan || 'free');
+    }
     const mounts = document.querySelectorAll('[data-plan-badge]');
     for (let i = 0; i < mounts.length; i++) {
       if (data.active) {

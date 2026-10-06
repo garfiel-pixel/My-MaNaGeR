@@ -78,6 +78,7 @@ or too niche for the deploy gate), **TRIAGE** (known-drifting, findings listed),
 | `tools/qa-reviews.cjs` | CI | review queue accept/reject + changelog + Turnstile bot gate (41/41; T1-T8 cover the public sitekey/secret split, refuse-without-token, refuse-on-bogus-token, fail-CLOSED when siteverify errors, accept-on-valid-token, and no-rows-written on every refusal) |
 | `tools/qa-t9-adoption.cjs` | CI | adoption/discontinue flows (27/27) |
 | `tools/qa-email-auth.cjs` | CI | email/password auth, reset, verify + billing tier across BOTH providers (83/83): LS phases B1-B6 unchanged, Paddle phase 2b PD1-PD7 (provider seam: status provider paddle, checkout honest 502 on fake key, Paddle-Signature ts/h1 verify + replay + tamper gates, cap still gates, one-time transaction.completed grant) |
+| `tools/qa-team-rbac.cjs` | CI | named team members / RBAC (17/17): invite, invite email accept link, list, contractor 2nd-member 402 member_limit upgradeRequired company, single-use accept token, role+scope update (scope filtered to known sections), soft revoke excluded from list, dead revoked token, non-owner 403, unknown-address 404, company tier unlocks unlimited, unknown role 400 |
 | `tools/verify-cloud-autosave-signin.cjs` | CI | cloud autosave + sign-in queue/resume + review-accept failure surfaces incl. missing-#cloud-status toast fallback (12/12) |
 
 ## T3 — headless Chrome, own wrangler

@@ -897,6 +897,29 @@ export async function cloudAuthOwnerEither(request, env, projectId) {
   return cloudAuthOwnerSession(request, env, projectId);
 }
 
+// Returns { sub, role, source } or null.
+// source: 'owner' | 'code' | 'team'
+// role:   'owner' | 'manager' | 'supervisor' | 'contractor' | 'client'
+// Owner auth is tried first; only then does an ACTIVE named team member
+// authenticated by a session qualify. Used by routes that must serve
+// project data to collaborators, not just the owner (Wave 7).
+export async function cloudAuthWithRole(request, env, projectId) {
+  const ownerAuth = await cloudAuthOwnerEither(request, env, projectId);
+  if (ownerAuth) {
+    const sub = (ownerAuth.row && ownerAuth.row.google_sub) || '';
+    return { sub: sub, role: 'owner', source: 'owner', ownerAuth: ownerAuth };
+  }
+  const session = await readSession(request, env);
+  if (!session || !session.sub) return null;
+  const member = await env.DB.prepare(
+    'SELECT role, scope FROM cloud_team_members WHERE project_id = ? AND user_sub = ? AND status = ?'
+  ).bind(projectId, session.sub, 'active').first();
+  if (!member) { await cloudTimingSink(); return null; }
+  let scope = null;
+  if (member.scope) { try { const s = JSON.parse(member.scope); if (Array.isArray(s)) scope = s; } catch (e) { scope = null; } }
+  return { sub: session.sub, role: member.role, source: 'team', scope: scope, session: session };
+}
+
 export async function cloudAuthSharedCode(request, env, projectId, code, role) {
   if (!code) { await Promise.all([cloudDummyHash(), cloudTimingSink()]); return null; }
   const rows = await env.DB.prepare('SELECT e.id, e.code_salt, e.code_hash, e.label, e.scope, p.deleted_at FROM cloud_editor_codes e JOIN cloud_projects p ON p.project_id = e.project_id WHERE e.project_id = ? AND e.active = 1 AND e.role = ?').bind(projectId, role).all();

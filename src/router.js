@@ -40,6 +40,7 @@ import { handlePresenceUpgrade, presencePushRevChanged, cloudManifestCodeOk } fr
 import { handleCalcWorkspaceGet, handleCalcWorkspacePut } from './cloud/calc-workspace.js';
 import { API_SHAPES, handleApiShape } from './api/shapes.js';
 import { handleWebhookCreate, handleWebhookList, handleWebhookDelete } from './webhooks.js';
+import { handleTeamInvite, handleTeamList, handleTeamUpdate, handleTeamRevoke, handleTeamAccept } from './cloud/team.js';
 import { handleAdminCloudList } from './admin.js';
 import { handleReviewsCreate, handleReviewsList, handleReviewList,
   handleReviewAccept, handleReviewReject, handleTurnstileConfig } from './reviews.js';
@@ -218,6 +219,27 @@ export async function routeApi(request, env, url) {
       const r = await rl(request, 'general', env);
       if (r) return r;
       return handleWebhookDelete(request, env, webhookDelMatch[1], webhookDelMatch[2]);
+    }
+
+    // 4b. TEAM MEMBERS (named-role RBAC)
+    const teamListMatch = path.match(/^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/team$/);
+    if (teamListMatch) {
+      const r = await rl(request, 'general', env);
+      if (r) return r;
+      if (request.method === 'POST') return handleTeamInvite(request, env, teamListMatch[1]);
+      if (request.method === 'GET') return handleTeamList(request, env, teamListMatch[1]);
+    }
+    const teamMemberMatch = path.match(/^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/team\/(\d+)$/);
+    if (teamMemberMatch) {
+      const r = await rl(request, 'general', env);
+      if (r) return r;
+      if (request.method === 'PUT') return handleTeamUpdate(request, env, teamMemberMatch[1], teamMemberMatch[2]);
+      if (request.method === 'DELETE') return handleTeamRevoke(request, env, teamMemberMatch[1], teamMemberMatch[2]);
+    }
+    if (path === '/api/team/accept' && request.method === 'POST') {
+      const r = await rl(request, 'general', env);
+      if (r) return r;
+      return handleTeamAccept(request, env);
     }
 
     // 5. CLOUD PREFS / PRESENCE

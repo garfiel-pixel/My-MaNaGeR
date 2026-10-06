@@ -236,6 +236,12 @@ jobs:
           MMGR_QA_NO_BROWSER: 1
           QA_PORT: 8801
 
+      - name: "T2: Team RBAC (named members, tier caps)"
+        if: success() && steps.wrangler-start.outcome == 'success'
+        run: node tools/qa-team-rbac.cjs
+        env:
+          QA_PORT: 8812
+
       - name: "T2: Reviews"
         if: success() && steps.wrangler-start.outcome == 'success'
         run: node tools/qa-reviews.cjs

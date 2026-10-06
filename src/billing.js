@@ -69,7 +69,10 @@ export function deriveTier(priceId, env) {
   return 'contractor';
 }
 
-function billingStatusActive(status) {
+// D1 (2026-10-06): a failed payment keeps entitlement while Paddle retries,
+// so 'past_due' counts as active. Exported so the cloud layer can gate
+// tier-dependent features (RBAC member caps) on the SAME rule.
+export function billingStatusActive(status) {
   return status === 'active' || status === 'on_trial' || status === 'past_due';
 }
 
@@ -210,12 +213,16 @@ async function applySubscription(env, ownerSub, providerSubId, status, tier, per
   const now = occurredAt || new Date().toISOString();
   // ls_subscription_id holds the provider's subscription/transaction id for
   // whichever provider wrote the row (one row per owner, latest wins).
+  // plan AND tier both carry the tier string: `plan` is the historical column
+  // every reader already used, `tier` is the migration-0023 column the cloud
+  // layer reads. They are written together so neither can silently drift.
   await env.DB.prepare(
-    'INSERT INTO cloud_subscriptions (owner_sub, ls_subscription_id, status, plan, current_period_end, created_at, updated_at) VALUES (?,?,?,?,?,?,?) ' +
+    'INSERT INTO cloud_subscriptions (owner_sub, ls_subscription_id, status, plan, tier, current_period_end, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?) ' +
     'ON CONFLICT(owner_sub) DO UPDATE SET ls_subscription_id = excluded.ls_subscription_id, status = excluded.status, ' +
+    'plan = excluded.plan, tier = excluded.tier, ' +
     'current_period_end = excluded.current_period_end, updated_at = excluded.updated_at ' +
     'WHERE excluded.updated_at >= cloud_subscriptions.updated_at'
-  ).bind(ownerSub, providerSubId, status, tier, periodEnd, now, now).run();
+  ).bind(ownerSub, providerSubId, status, tier, tier, periodEnd, now, now).run();
 }
 
 async function subEmailNotice(env, recipient, confirmed) {
@@ -258,10 +265,10 @@ export async function handleBillingStatus(request, env) {
   const cnt = await env.DB.prepare('SELECT COUNT(*) AS c FROM cloud_projects WHERE google_sub = ?').bind(session.sub).first();
   const projectCount = (cnt && cnt.c) || 0;
   if (!provider) return json({ ok: true, configured: false, plan: 'free', active: false, projectCap: null, projectCount: projectCount });
-  const sub = await env.DB.prepare('SELECT status, plan, current_period_end FROM cloud_subscriptions WHERE owner_sub = ?').bind(session.sub).first();
+  const sub = await env.DB.prepare('SELECT status, plan, tier, current_period_end FROM cloud_subscriptions WHERE owner_sub = ?').bind(session.sub).first();
   const active = !!(sub && billingStatusActive(sub.status));
   return json({
-    ok: true, configured: true, provider: provider, plan: active ? (sub.plan || 'contractor') : 'free', active: active,
+    ok: true, configured: true, provider: provider, plan: active ? (sub.tier || sub.plan || 'contractor') : 'free', active: active,
     currentPeriodEnd: (sub && sub.current_period_end) || null, projectCap: cap, projectCount: projectCount
   });
 }

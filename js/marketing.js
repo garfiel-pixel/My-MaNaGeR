@@ -388,7 +388,12 @@
         say('Opening checkout...');
         btn.disabled = true;
         var tab = window.open('about:blank', '_blank');
-        fetch('/api/billing/checkout', { method: 'POST', credentials: 'same-origin' })
+        // Multi-tier (Wave 6): the button names its plan via data-tier; the
+        // server resolves the price ID. Legacy buttons keep the contractor
+        // default by sending no tier.
+        var tier = btn.getAttribute('data-tier');
+        var checkoutUrl = '/api/billing/checkout' + (tier ? '?tier=' + encodeURIComponent(tier) : '');
+        fetch(checkoutUrl, { method: 'POST', credentials: 'same-origin' })
           .then(function(res){
             return res.json().catch(function(){ return {}; }).then(function(d){ return { ok: res.ok, status: res.status, data: d }; });
           })

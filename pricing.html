@@ -12,7 +12,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Pricing | My MaNaGeR</title>
-<meta name="description" content="My MaNaGeR pricing: a free plan that never expires, and a Premium plan that removes the limit on cloud-linked projects. First month free, then $18.99 per month, cancel any time.">
+<meta name="description" content="My MaNaGeR pricing: four plans. A free plan that never expires, plus Contractor, Company and Enterprise for teams - cloud projects, the full AI assistant, and named team members with role-based access.">
 <link rel="icon" type="image/png" href="images/mpw-icon.png">
   <link rel="apple-touch-icon" href="images/mpw-icon.png">
 <link rel="stylesheet" href="dist/marketing.min.css">
@@ -82,8 +82,8 @@
     <div class="container">
       <span class="crumbs"><a href="index.html">Home</a> &middot; Pricing</span>
       <h1>Pricing</h1>
-      <p>One free plan that never expires. One paid plan that lifts a single limit.</p>
-      <p class="privacy-updated">Effective Date: October 4, 2026</p>
+      <p>Four plans. A free plan that never expires, and three that scale with your team.</p>
+      <p class="privacy-updated">Effective Date: October 6, 2026</p>
       <p class="privacy-toc">
         <a href="refund.html">Refund Policy</a> &middot;
         <a href="terms.html">Terms of Service</a> &middot;
@@ -96,36 +96,95 @@
     <div class="container privacy-content">
 
       <h2 id="the-short-version">The short version</h2>
-      <p>My MaNaGeR works fully offline and always will. The free plan is not a trial and does not run out. Paying is optional, and nothing important is locked behind payment.</p>
-      <p>Premium comes with a free first month as a trial. That trial is the one time anything here is time-limited: without it the free plan never ends, and Premium never takes a feature away from you when it ends.</p>
-      <p>Premium removes one thing and one thing only: the limit on how many projects you can link to cloud backup.</p>
-
-      <h2 id="free">Free plan</h2>
-      <p><strong>Price: nothing, for as long as you want it.</strong></p>
-      <p>The free plan includes everything the app does:</p>
-      <ul>
-        <li><strong>Every feature, with no time limit.</strong> Nothing is held back for a trial period, and no feature disappears when a trial ends.</li>
-        <li><strong>Unlimited projects on this device.</strong> Work offline, save to the device, export to a file. No account needed.</li>
-        <li><strong>Up to 8 projects linked to cloud backup.</strong> Cloud backup is optional. If you do not sign in, there is no limit to reach.</li>
-        <li><strong>The Build Cost Calculator, at full price.</strong> Including the Jamaica rate book, printed estimates and CSV exports.</li>
-        <li><strong>The AI assistant and the MCP connector.</strong> Bring your own AI key, or use the free ones already built in.</li>
-      </ul>
-      <p>To start on the free plan, <a href="app.html">open the app</a>. Nothing to sign up for.</p>
-
-      <h2 id="premium">Premium plan</h2>
-      <p><strong>First month free. Then $18.99 per month, billed monthly.</strong> Cancel any time.</p>
-      <p>Premium does not add features. It removes a ceiling. If you link more than 8 projects to cloud backup, the app will ask you to upgrade before you create the next one.</p>
-      <ul>
-        <li><strong>Your first month costs nothing.</strong> You still need a card on file, so we can start the plan for you at the end of the trial. Nothing is charged today.</li>
-        <li><strong>The plan starts on its own at the end of the month</strong>, unless you cancel first. We do not need you to do anything to keep it, and nothing to keep it going either.</li>
-        <li><strong>Cancel during the trial and you pay nothing at all.</strong> No partial charge, no fee, nothing owed.</li>
-      </ul>
-      <ul>
-        <li><strong>No limit on cloud-linked projects.</strong> Link as many as your work needs.</li>
-        <li><strong>Everything on the free plan stays exactly as it is.</strong> Same features, same calculator, same assistant, same offline use.</li>
-      </ul>
-      <p class="pricing-cta"><button type="button" class="btn btn-gold" data-pricing-upgrade>Upgrade to Premium</button></p>
+      <p>My MaNaGeR works fully offline and always will. The free plan is not a trial and does not run out. Offline projects are unlimited on every plan, including Free.</p>
+      <p>Paid plans add scale for teams: more cloud-linked projects, a full AI assistant, and named team members with role-based access. Code sharing stays free at every tier.</p>
       <p class="pricing-cta-status" data-pricing-status role="status" hidden></p>
+
+      <h2 id="plans">Plans</h2>
+      <div class="pricing-grid">
+        <div class="pricing-card">
+          <p class="pc-tier">Free</p>
+          <p class="pc-name">Starter</p>
+          <p class="pc-price">$0</p>
+          <p class="pc-note">No expiry. No card.</p>
+          <ul class="pc-list">
+            <li>1 cloud-linked project</li>
+            <li>Unlimited offline projects on your device</li>
+            <li>All PM modules (WBS, Gantt, Kanban, Risk, Budget, RACI, EVM, DMAIC, and more)</li>
+            <li>Full Build Cost Calculator with Jamaica rate book</li>
+            <li>Code sharing - generate editor and client codes</li>
+            <li>Basic AI assistant (signed in)</li>
+          </ul>
+          <p class="pc-cta"><a class="btn btn-n" href="app.html">Open the app</a></p>
+        </div>
+
+        <div class="pricing-card is-featured">
+          <p class="pc-tier">Contractor</p>
+          <p class="pc-name">Solo &amp; small crews</p>
+          <p class="pc-price">$18.99 <small>/ month</small></p>
+          <p class="pc-note">First month free, then $18.99 monthly. Cancel any time.</p>
+          <ul class="pc-list">
+            <li>Everything in Free</li>
+            <li>Unlimited cloud-linked projects</li>
+            <li>Full AI assistant across all modules</li>
+            <li>1 named team member - assign any role and choose what they can access</li>
+            <li>Priority PDF and CSV exports</li>
+          </ul>
+          <p class="pc-cta"><button type="button" class="btn btn-gold" data-pricing-upgrade data-tier="contractor">Start Contractor</button></p>
+        </div>
+
+        <div class="pricing-card">
+          <p class="pc-tier">Company</p>
+          <p class="pc-name">Growing teams</p>
+          <p class="pc-price">$50.00 <small>/ month</small></p>
+          <p class="pc-note">Billed monthly. Cancel any time.</p>
+          <ul class="pc-list">
+            <li>Everything in Contractor</li>
+            <li>Unlimited named team members</li>
+            <li>Full role-based access: Manager, Supervisor, Contractor, Client</li>
+            <li>Invite by email, manage roles from your Admin Panel</li>
+            <li>Team audit trail - who changed what and when</li>
+            <li>Code sharing still works alongside named roles</li>
+          </ul>
+          <p class="pc-cta"><button type="button" class="btn btn-gold" data-pricing-upgrade data-tier="company">Start Company</button></p>
+        </div>
+
+        <div class="pricing-card">
+          <p class="pc-tier">Enterprise</p>
+          <p class="pc-name">Organisations</p>
+          <p class="pc-price">$200.00 <small>/ month</small></p>
+          <p class="pc-note">Billed monthly. Volume pricing on request.</p>
+          <ul class="pc-list">
+            <li>Everything in Company</li>
+            <li>Unlimited members with advanced role controls</li>
+            <li>Custom onboarding session</li>
+            <li>Service level agreement</li>
+            <li>Contact us for volume pricing</li>
+          </ul>
+          <p class="pc-cta"><button type="button" class="btn btn-gold" data-pricing-upgrade data-tier="enterprise">Start Enterprise</button></p>
+        </div>
+      </div>
+
+      <h2 id="compare">Compare plans</h2>
+      <div class="cmp-wrap">
+        <table class="cmp-table">
+          <thead>
+            <tr><th scope="col">Feature</th><th scope="col">Free</th><th scope="col">Contractor</th><th scope="col">Company</th><th scope="col">Enterprise</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Cloud projects</td><td>1</td><td>Unlimited</td><td>Unlimited</td><td>Unlimited</td></tr>
+            <tr><td>Offline projects</td><td>Unlimited</td><td>Unlimited</td><td>Unlimited</td><td>Unlimited</td></tr>
+            <tr><td>All PM modules</td><td class="yes">Yes</td><td class="yes">Yes</td><td class="yes">Yes</td><td class="yes">Yes</td></tr>
+            <tr><td>Build Cost Calculator</td><td class="yes">Yes</td><td class="yes">Yes</td><td class="yes">Yes</td><td class="yes">Yes</td></tr>
+            <tr><td>Code sharing</td><td class="yes">Yes</td><td class="yes">Yes</td><td class="yes">Yes</td><td class="yes">Yes</td></tr>
+            <tr><td>Full AI assistant</td><td class="no">-</td><td class="yes">Yes</td><td class="yes">Yes</td><td class="yes">Yes</td></tr>
+            <tr><td>Named team members</td><td class="no">-</td><td>1</td><td>Unlimited</td><td>Unlimited</td></tr>
+            <tr><td>Role-based access</td><td class="no">-</td><td class="no">-</td><td class="yes">Yes</td><td class="yes">Yes</td></tr>
+            <tr><td>Team audit trail</td><td class="no">-</td><td class="no">-</td><td class="yes">Yes</td><td class="yes">Yes</td></tr>
+            <tr><td>SLA</td><td class="no">-</td><td class="no">-</td><td class="no">-</td><td class="yes">Yes</td></tr>
+          </tbody>
+        </table>
+      </div>
       <p>Checkout opens in a new tab, so you can keep this page open. You need to be signed in - the plan is attached to your account, not to this browser.</p>
 
       <h2 id="billing">How billing works</h2>
@@ -142,20 +201,21 @@
       <p>If Premium is not right for you, ask for a refund within 30 days of a payment and we will put the money back. The full policy, including what is and is not covered, is on the <a href="refund.html">Refund Policy</a> page.</p>
       <p>The free first month is not a payment, so there is nothing to refund: if you cancel during the trial you have paid nothing. The 30-day refund window starts at your first paid month.</p>
 
-      <h2 id="honest-limits">What Premium will not do</h2>
+      <h2 id="honest-limits">What paying does not change</h2>
       <p>We would rather be blunt than sell you something you will regret:</p>
       <ul>
-        <li><strong>Premium does not make the app work better.</strong> The free plan has every feature. There is no "premium-only" tool, model or export.</li>
-        <li><strong>Premium does not add more cloud storage per project.</strong> It removes a count, not a quota.</li>
+        <li><strong>The app is the same app on every plan.</strong> All PM modules and the Build Cost Calculator are on Free. Paid plans add scale - cloud projects, AI depth, and team roles.</li>
+        <li><strong>Offline work is never limited.</strong> No plan caps how many projects you keep on your own device.</li>
+        <li><strong>Code sharing is never locked.</strong> Every tier, including Free, can generate and share editor and client codes.</li>
         <li><strong>Your data stays yours either way.</strong> Cancelling or never paying does not affect projects already on your device. As always, keep your own backups.</li>
       </ul>
-      <p>If eight linked projects is enough for your work, the free plan is the right choice and we would rather you stay on it.</p>
 
       <h2 id="questions">Questions</h2>
       <ul>
-        <li><strong>Do I need an account to use the app?</strong> No. Everything works on the device without signing in. Signing in only enables cloud backup and moving projects between devices.</li>
-        <li><strong>Can I switch back to free later?</strong> Yes, at any time. See <a href="refund.html">Refunds</a> for what happens to the projects already linked.</li>
-        <li><strong>What if I want more than one plan?</strong> There is only this one. If your work needs something we do not have, tell us on the <a href="contact.html">Contact</a> page.</li>
+        <li><strong>Do I need an account to use the app?</strong> No. Everything works on the device without signing in. Signing in only enables cloud backup, AI, and team features.</li>
+        <li><strong>What is the difference between Contractor and Company?</strong> Contractor adds unlimited cloud projects, the full AI assistant, and one named team member. Company adds unlimited named members and full role-based access, including a team audit trail.</li>
+        <li><strong>Can I switch plans later?</strong> Yes, at any time. Upgrading takes effect immediately; downgrading keeps your access to the end of the period you already paid for. See <a href="refund.html">Refunds</a>.</li>
+        <li><strong>Is code sharing affected by my plan?</strong> No. Editor and client codes work on every plan, including Free.</li>
       </ul>
 
       <h2 id="related">Related pages</h2>
@@ -193,7 +253,7 @@
 
 <script src="https://cdn.paddle.com/paddle/v2/paddle.js" defer></script>
 <script src="js/mmgr-google-auth.js"></script>
-<script defer src="dist/marketing-bundle.js?v=368" onerror="window.__mmgrBundleMissing=1"></script>
+<script defer src="dist/marketing-bundle.js?v=371" onerror="window.__mmgrBundleMissing=1"></script>
 <script>
 /* Dev fallback: when dist/marketing-bundle.js is missing (local dev without
    a build), inject the source scripts in dependency order. In production

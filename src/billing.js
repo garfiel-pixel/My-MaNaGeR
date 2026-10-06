@@ -57,11 +57,20 @@ export function billingConfigured(env) {
 
 export function billingFreeCap(env) {
   const v = Number(env && env.FREE_PROJECT_CAP);
-  return Number.isFinite(v) && v > 0 ? v : 8;
+  return Number.isFinite(v) && v > 0 ? v : 1;
+}
+
+// Maps a Paddle price ID to a tier string. Falls back to 'contractor' for
+// any unrecognised ID so existing subscribers are never downgraded by mistake.
+export function deriveTier(priceId, env) {
+  if (!priceId || !env) return 'contractor';
+  if (env.PADDLE_ENTERPRISE_PRICE_ID && priceId === String(env.PADDLE_ENTERPRISE_PRICE_ID)) return 'enterprise';
+  if (env.PADDLE_COMPANY_PRICE_ID && priceId === String(env.PADDLE_COMPANY_PRICE_ID)) return 'company';
+  return 'contractor';
 }
 
 function billingStatusActive(status) {
-  return status === 'active' || status === 'on_trial';
+  return status === 'active' || status === 'on_trial' || status === 'past_due';
 }
 
 function hmacHex(secret, payload) {
@@ -100,7 +109,8 @@ async function lsApplyWebhook(env, rawBody) {
   const status = String(attrs.status || '');
   const periodEndRaw = attrs.renews_at || attrs.ends_at;
   const periodEnd = periodEndRaw ? Math.floor(new Date(periodEndRaw).getTime() / 1000) : null;
-  await applySubscription(env, ownerSub, lsId, status, 'pro', periodEnd);
+  // Legacy LS subscribers stay on Contractor - the equivalent of the old 'pro'.
+  await applySubscription(env, ownerSub, lsId, status, 'contractor', periodEnd);
   if (authEmailConfigured(env) && (event === 'subscription_created' || event === 'subscription_cancelled')) {
     const recipient = String(attrs.user_email || '').trim() || (ownerSub.indexOf('email:') === 0 ? ownerSub.slice('email:'.length) : '');
     await subEmailNotice(env, recipient, event === 'subscription_created');
@@ -175,14 +185,18 @@ async function paddleApplyWebhook(env, rawBody) {
   try { if (payload && payload.occurred_at) occurredAt = new Date(payload.occurred_at).toISOString(); } catch (e) { /* keep now */ }
   let status, periodEnd = null;
   if (event === 'transaction.completed') {
-    // One-time purchase: grant pro with no period end (nothing renews).
+    // One-time purchase: grant a tier with no period end (nothing renews).
     status = 'active';
   } else {
     status = paddleStatus(data.status);
     const endRaw = data.current_billing_period && data.current_billing_period.ends_at;
     if (endRaw) periodEnd = Math.floor(new Date(endRaw).getTime() / 1000);
   }
-  await applySubscription(env, ownerSub, pdId, status, 'pro', periodEnd, occurredAt);
+  // Paddle events carry items[0].price.id on subscription and transaction
+  // events; the price ID is what names the tier, never a hardcoded 'pro'.
+  const priceId = (data && data.items && data.items[0] && data.items[0].price && data.items[0].price.id) || null;
+  const tier = deriveTier(priceId, env);
+  await applySubscription(env, ownerSub, pdId, status, tier, periodEnd, occurredAt);
   if (authEmailConfigured(env) && (event === 'subscription.activated' || event === 'subscription.canceled')) {
     const recipient = ownerSub.indexOf('email:') === 0 ? ownerSub.slice('email:'.length) : '';
     await subEmailNotice(env, recipient, event === 'subscription.activated');
@@ -192,7 +206,7 @@ async function paddleApplyWebhook(env, rawBody) {
 
 // ---- shared entitlement write + notice (the ONLY writers, both webhook-only)
 
-async function applySubscription(env, ownerSub, providerSubId, status, plan, periodEnd, occurredAt) {
+async function applySubscription(env, ownerSub, providerSubId, status, tier, periodEnd, occurredAt) {
   const now = occurredAt || new Date().toISOString();
   // ls_subscription_id holds the provider's subscription/transaction id for
   // whichever provider wrote the row (one row per owner, latest wins).
@@ -201,7 +215,7 @@ async function applySubscription(env, ownerSub, providerSubId, status, plan, per
     'ON CONFLICT(owner_sub) DO UPDATE SET ls_subscription_id = excluded.ls_subscription_id, status = excluded.status, ' +
     'current_period_end = excluded.current_period_end, updated_at = excluded.updated_at ' +
     'WHERE excluded.updated_at >= cloud_subscriptions.updated_at'
-  ).bind(ownerSub, providerSubId, status, plan, periodEnd, now, now).run();
+  ).bind(ownerSub, providerSubId, status, tier, periodEnd, now, now).run();
 }
 
 async function subEmailNotice(env, recipient, confirmed) {
@@ -247,14 +261,14 @@ export async function handleBillingStatus(request, env) {
   const sub = await env.DB.prepare('SELECT status, plan, current_period_end FROM cloud_subscriptions WHERE owner_sub = ?').bind(session.sub).first();
   const active = !!(sub && billingStatusActive(sub.status));
   return json({
-    ok: true, configured: true, provider: provider, plan: active ? (sub.plan || 'pro') : 'free', active: active,
+    ok: true, configured: true, provider: provider, plan: active ? (sub.plan || 'contractor') : 'free', active: active,
     currentPeriodEnd: (sub && sub.current_period_end) || null, projectCap: cap, projectCount: projectCount
   });
 }
 
 // ---- checkout ----------------------------------------------------------------
 
-async function paddleCheckout(env, session) {
+async function paddleCheckout(env, session, priceId, tierParam) {
   // PADDLE_ENV is an explicit var in wrangler.jsonc, not an accident of
   // absence: 'sandbox' or 'live', defaulting to live when unset or unreadable.
   // The two Paddle catalogs are SEPARATE - a sandbox price ID does not exist
@@ -280,7 +294,7 @@ async function paddleCheckout(env, session) {
         if (c.ok && cd && cd.data && cd.data.id) customerId = String(cd.data.id);
       }
     }
-    const body = { items: [{ quantity: 1, price_id: String(env.PADDLE_PRICE_ID) }], custom_data: { sub: session.sub } };
+    const body = { items: [{ quantity: 1, price_id: priceId }], custom_data: { sub: session.sub, tier: tierParam } };
     if (customerId) body.customer_id = customerId;
     const res = await fetch(base + '/transactions', { method: 'POST', headers: auth, body: JSON.stringify(body) });
     const data = await res.json().catch(function() { return {}; });
@@ -357,5 +371,16 @@ export async function handleBillingCheckout(request, env) {
   if (!session || !session.sub) return cloudForbidden();
   const provider = billingProvider(env);
   if (!provider) return json({ ok: false, error: 'billing not configured' }, 503);
-  return provider === 'paddle' ? paddleCheckout(env, session) : lsCheckout(env, session);
+  if (provider !== 'paddle') return lsCheckout(env, session);
+  const url = new URL(request.url);
+  const tierParam = url.searchParams.get('tier') || 'contractor';
+  let priceId;
+  if (tierParam === 'enterprise' && env.PADDLE_ENTERPRISE_PRICE_ID) {
+    priceId = String(env.PADDLE_ENTERPRISE_PRICE_ID);
+  } else if (tierParam === 'company' && env.PADDLE_COMPANY_PRICE_ID) {
+    priceId = String(env.PADDLE_COMPANY_PRICE_ID);
+  } else {
+    priceId = String(env.PADDLE_PRICE_ID); // contractor (default)
+  }
+  return paddleCheckout(env, session, priceId, tierParam);
 }

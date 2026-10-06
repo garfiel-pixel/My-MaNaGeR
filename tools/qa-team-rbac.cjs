@@ -267,6 +267,10 @@ async function main() {
   const bob2 = list2.body && (list2.body.members || []).filter(m => m.userSub === 'email:' + BOB)[0];
   check('T7 list shows bob active with acceptedAt', !!bob2 && bob2.status === 'active' && !!bob2.acceptedAt, list2.text);
 
+  // T7b (Wave 7): the active manager reaches project data through the team path.
+  const bobLoad = await api('/api/cloud/projects/' + pid + '/load', { method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, ck(b.cookie)), body: '{}' });
+  check('T7b active manager loads the project via team auth', bobLoad.status === 200 && bobLoad.body && bobLoad.body.ok === true && bobLoad.body.teamRole === 'manager' && bobLoad.body.role === 'editor', bobLoad.text);
+
   // T8 update role/scope
   const bobId = bob2 ? bob2.id : 0;
   const upd = await api(teamPath + '/' + bobId, { method: 'PUT', headers: Object.assign({ 'Content-Type': 'application/json' }, ck(a.cookie)), body: JSON.stringify({ role: 'client', scope: ['wbs', 'bud', 'nope'] }) });
@@ -287,6 +291,10 @@ async function main() {
   // T11 revoked token dead
   const acc3 = await api('/api/team/accept', { method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, ck(b.cookie)), body: JSON.stringify({ token: inviteToken }) });
   check('T11 revoked invite token is dead -> 404', acc3.status === 404, acc3.text);
+
+  // T11b (Wave 7): revoke removes project access too.
+  const bobLoad2 = await api('/api/cloud/projects/' + pid + '/load', { method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, ck(b.cookie)), body: '{}' });
+  check('T11b revoked member can no longer load the project -> 403', bobLoad2.status === 403, bobLoad2.text);
 
   // T12 non-owner cannot invite
   const nonOwner = await api(teamPath, { method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, ck(b.cookie)), body: JSON.stringify({ email: CAROL, role: 'client' }) });

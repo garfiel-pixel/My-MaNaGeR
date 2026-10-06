@@ -9,12 +9,25 @@ import { json, cloudForbidden, cloudProjectDeleted, cloudTimingSink, cloudDummyH
   cloudPathDelete, cloudTouchOwner, randomOwnerCode, randomSaltHex,
   hashOwnerCode, fingerprintOf, sanitizeProjectId, codesEqual,
   cloudEncryptState, cloudDecryptState,
-  cloudAuthOwnerByCode, cloudAuthOwnerSession, cloudAuthOwnerEither,
+  cloudAuthOwnerByCode, cloudAuthOwnerSession, cloudAuthOwnerEither, cloudAuthWithRole,
   cloudAuthEditor, cloudAuthViewer, cloudAdopt, cloudAuthAdoption,
   readCloudBody, readSession,
   CLOUD_SECTIONS, authEmailConfigured,
   CLOUD_ORPHAN_WARN_MS, sendOrphanWarningEmail, cloudAuthApiKey, cloudScopeState } from '../lib/http.js';
 import { billingConfigured, billingFreeCap } from '../billing.js';
+
+// ROLE-VIEW (Wave 7, owner 2026-10-06): named team members see the sections
+// their role owns. Manager = full (minus owner-only routes); supervisor =
+// the field panels; contractor = the task list; client = the owner-chosen
+// scope. Used by /meta and /load to project state for a team session.
+const TEAM_FIELD_SECTIONS = ['wbs', 'res', 'risk', 'meet'];
+function teamScopeForRole(role, memberScope) {
+  if (role === 'manager') return Object.keys(CLOUD_SECTIONS);
+  if (role === 'supervisor') return TEAM_FIELD_SECTIONS.filter(function(k) { return !!CLOUD_SECTIONS[k]; });
+  if (role === 'contractor') return ['wbs'].filter(function(k) { return !!CLOUD_SECTIONS[k]; });
+  if (role === 'client') return Array.isArray(memberScope) ? memberScope : [];
+  return [];
+}
 
 const CLOUD_STATE_SECRET_PATHS = [
   'config.ai.apiKey',
@@ -175,6 +188,7 @@ export async function handleCloudSave(request, env, projectId, cloudPushRevChang
     || (typeof read.body.editorCode === 'string' ? read.body.editorCode.trim() : '');
   let adoptAuth = null;
   let sessOwner = null;
+  let teamAuth = null;
   if (!ownerCode && !editorCode) {
     adoptAuth = await cloudAuthAdoption(request, env, projectId);
     if (adoptAuth && adoptAuth.revoked) return json({ ok: false, error: 'code_revoked' }, 403);
@@ -188,13 +202,22 @@ export async function handleCloudSave(request, env, projectId, cloudPushRevChang
       // edit cycle. Accept the session owner here, mirroring /load's
       // sessFallback so save + auto-sync work wherever /load worked.
       sessOwner = await cloudAuthOwnerSession(request, env, projectId);
-      if (!sessOwner) { await Promise.all([cloudDummyHash(), cloudTimingSink()]); return cloudForbidden(); }
+      if (!sessOwner) {
+        // WAVE 7: an active named team member with the manager role writes
+        // like the owner (minus owner-only routes). Supervisor, contractor
+        // and client are read-only.
+        teamAuth = await cloudAuthWithRole(request, env, projectId);
+        if (!teamAuth || teamAuth.source !== 'team' || teamAuth.role !== 'manager') {
+          await Promise.all([cloudDummyHash(), cloudTimingSink()]);
+          return cloudForbidden();
+        }
+      }
     }
   }
   const now = new Date().toISOString();
   const key = 'projects/' + projectId + '/latest.json';
   let next; let actor; let authRow = null;
-  if (ownerCode || sessOwner) {
+  if (ownerCode || sessOwner || teamAuth) {
     let a;
     if (ownerCode) {
       a = await cloudAuthOwnerByCode(request, env, projectId, ownerCode);
@@ -203,11 +226,12 @@ export async function handleCloudSave(request, env, projectId, cloudPushRevChang
       // session only proves WHO is saving. Fetch the full row so the same
       // encryption + staleness path as a code-authenticated save runs.
       const rowFull = await env.DB.prepare('SELECT owner_code_salt, owner_code_hash, google_sub, google_name, deleted_at FROM cloud_projects WHERE project_id = ?').bind(projectId).first();
-      a = rowFull ? { label: sessOwner.label || rowFull.google_name || 'Owner', row: rowFull } : null;
+      const lbl = teamAuth ? 'Team manager' : (sessOwner.label || rowFull.google_name || 'Owner');
+      a = rowFull ? { label: lbl, row: rowFull } : null;
     }
     if (!a) return cloudForbidden();
     authRow = a.row;
-    actor = { type: 'owner', label: a.label };
+    actor = teamAuth ? { type: 'manager', label: a.label } : { type: 'owner', label: a.label };
     // Read previous state with decryption credentials (owner auth has the key)
     const prev = await cloudReadState(env, key, authRow.owner_code_hash, authRow.owner_code_salt);
     next = JSON.parse(JSON.stringify(read.body.state));
@@ -278,11 +302,17 @@ export async function handleCloudLoad(request, env, projectId) {
   }
   let sessFallback = null;
   let adoptFallback = null;
+  let teamFallback = null;
   if (!ownerCode && !editorCode && !viewCode && !clientCode) {
     sessFallback = await cloudAuthOwnerSession(request, env, projectId);
     if (!sessFallback) {
       adoptFallback = await cloudAuthAdoption(request, env, projectId);
-      if (!adoptFallback) { await Promise.all([cloudDummyHash(), cloudTimingSink()]); return cloudForbidden(); }
+      if (!adoptFallback) {
+        // WAVE 7: an active named team member opens the project with a
+        // section scope that matches their role.
+        teamFallback = await cloudAuthWithRole(request, env, projectId);
+        if (!teamFallback || teamFallback.source !== 'team') { await Promise.all([cloudDummyHash(), cloudTimingSink()]); return cloudForbidden(); }
+      }
     }
   }
   const row = await env.DB.prepare('SELECT owner_code_salt, owner_code_hash, latest_r2_key, updated_at, deleted_at FROM cloud_projects WHERE project_id = ?').bind(projectId).first();
@@ -320,11 +350,25 @@ export async function handleCloudLoad(request, env, projectId) {
     if (adoptFallback.deleted) return cloudProjectDeleted();
     if (adoptFallback.role === 'view') viewerAuth = adoptFallback;
     else editorAuth = adoptFallback;
+  } else if (teamFallback) {
+    // Role view: manager reads the whole project, the other roles a slice.
+    if (teamFallback.role === 'manager') {
+      ownerAuth = true;
+    } else if (teamFallback.role === 'client') {
+      clientAuth = { sections: teamFallback.scope };
+    } else {
+      editorAuth = { label: teamFallback.role === 'supervisor' ? 'Team supervisor' : 'Team contractor', scope: teamScopeForRole(teamFallback.role, teamFallback.scope) };
+    }
   }
   if (row.deleted_at) return cloudProjectDeleted();
   if (ownerAuth) await cloudTouchOwner(env, projectId);
   if (!row.latest_r2_key) {
     const base = { ok: true, state: null, savedAt: null };
+    if (teamFallback) {
+      base.teamRole = teamFallback.role; base.source = 'team';
+      base.role = teamFallback.role === 'client' ? 'client' : 'editor';
+      base.scope = teamScopeForRole(teamFallback.role, teamFallback.scope);
+    }
     if (editorAuth) { base.role = 'editor'; base.editorLabel = editorAuth.label; base.scope = editorAuth.scope; }
     if (viewerAuth) { base.role = 'view'; base.viewerLabel = viewerAuth.label; base.scope = viewerAuth.scope; }
     if (clientAuth) { base.role = 'client'; base.sections = clientAuth.sections; }
@@ -341,6 +385,7 @@ export async function handleCloudLoad(request, env, projectId) {
   // Decrypt state blob if encrypted (owner_code_hash + salt from the D1 row)
   const state = await cloudReadState(env, row.latest_r2_key, row.owner_code_hash, row.owner_code_salt);
   const resp = { ok: true, state: state, savedAt: row.updated_at };
+  if (teamFallback) { resp.teamRole = teamFallback.role; resp.source = 'team'; }
   if (editorAuth) { resp.role = 'editor'; resp.editorLabel = editorAuth.label; resp.scope = editorAuth.scope; }
   if (viewerAuth) { resp.role = 'view'; resp.viewerLabel = viewerAuth.label; resp.scope = viewerAuth.scope; }
   if (clientAuth) { resp.role = 'client'; resp.sections = clientAuth.sections; }
@@ -453,6 +498,12 @@ export async function handleCloudMeta(request, env, projectId) {
       if (viewer) viewerScope = ad.scope;
     }
   }
+  // WAVE 7: an active named team member may probe meta with their role scope.
+  let teamRole = null; let teamScope = null;
+  if (!authorized) {
+    const tr = await cloudAuthWithRole(request, env, projectId);
+    if (tr && tr.source === 'team') { authorized = true; teamRole = tr.role; teamScope = tr.scope; }
+  }
   if (!authorized) return cloudForbidden();
   if (row.deleted_at) return cloudProjectDeleted();
   if (ownerProbe) await cloudTouchOwner(env, projectId);
@@ -464,6 +515,11 @@ export async function handleCloudMeta(request, env, projectId) {
   if (isEditor && !viewer) { resp.role = 'editor'; resp.editorLabel = editorLabel; resp.scope = editorScope; }
   if (viewer) { resp.role = 'view'; resp.editorLabel = editorLabel; resp.scope = viewerScope; }
   if (clientSections) { resp.role = 'client'; resp.sections = clientSections; }
+  if (teamRole) {
+    resp.teamRole = teamRole; resp.source = 'team';
+    if (teamRole === 'client') { resp.role = 'client'; resp.sections = teamScope || []; }
+    else { resp.role = 'editor'; resp.editorLabel = 'Team ' + teamRole; resp.scope = teamScopeForRole(teamRole, teamScope); }
+  }
   return json(resp);
 }
 

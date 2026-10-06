@@ -144,6 +144,34 @@ const PADDLE_CSP = [
   "frame-ancestors 'self'",
 ].join('; ');
 
+// 8.3 (2026-10-06): extension-less paths that are NOT real pages must answer
+// a real 404. wrangler's assets SPA fallback (not_found_handling:
+// single-page-application) answered 200 with index.html for ANY unknown
+// path, so a typo looked like a working page and crawlers indexed junk.
+// These are the served page paths, extension-less (wrangler maps /pricing to
+// pricing.html by itself). /team/ is exempt because the RBAC invite link
+// (/team/accept/<token>) is a real app route awaiting its UI.
+const PAGE_ROUTES = new Set([
+  '/', '/index', '/about', '/admin', '/app', '/calculator', '/contact',
+  '/dashboard', '/features', '/mymanager-field-guide', '/pricing',
+  '/privacy', '/project', '/refund', '/reset', '/reviews', '/seed-test',
+  '/signin', '/terms', '/verify'
+]);
+
+function notFoundPage() {
+  return '<!doctype html><html lang="en"><head><meta charset="utf-8">' +
+    '<meta name="viewport" content="width=device-width,initial-scale=1">' +
+    '<title>Page not found | My MaNaGeR</title>' +
+    '<style>html{font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif}' +
+    'body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#F5EFE6;color:#1C1917}' +
+    'main{max-width:34rem;padding:2.5rem;text-align:center}' +
+    'h1{font-size:1.5rem;margin:0 0 .5rem}p{color:#57606a;line-height:1.6;margin:0 0 1.25rem}' +
+    'a{color:#B45309;font-weight:600}</style></head>' +
+    '<body><main><h1>Page not found</h1>' +
+    '<p>The page you asked for is not here. It may have moved, or the address may have a typo.</p>' +
+    '<p><a href="/">Go to the home page</a></p></main></body></html>';
+}
+
 // Collapse '.'/'..' path segments so traversal can never fool the
 // whisper-path check.
 function normalizePathname(p) {
@@ -229,6 +257,15 @@ export default {
       // 8.2: source maps are build artifacts and must never be public.
       if (/\.map$/.test(normalized)) {
         return new Response('Not Found', { status: 404, headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' } });
+      }
+
+      // 8.3: a real 404 for unknown, extension-less paths (never the SPA
+      // fallback). Paths with a file extension are left to the asset layer,
+      // which already answers 404 for a genuinely missing asset.
+      const lastSeg = normalized.slice(normalized.lastIndexOf('/') + 1);
+      if (lastSeg.indexOf('.') === -1 && normalized.indexOf('/team/') !== 0 && !PAGE_ROUTES.has(normalized)) {
+        const headers = Object.assign({ 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' }, HEADERS);
+        return new Response(notFoundPage(), { status: 404, headers: headers });
       }
 
       const response = await env.ASSETS.fetch(request);

@@ -243,12 +243,16 @@ export async function handleBillingWebhook(request, env) {
   const sigPaddle = request.headers.get('Paddle-Signature');
   const sigLS = request.headers.get('X-Signature');
   if (sigPaddle) {
-    if (!env || !env.PADDLE_WEBHOOK_SECRET) return json({ ok: false, error: 'webhook not configured' }, 503);
+    // Wave 8.13: an unauthenticated webhook is an AUTH failure (401), not a
+    // transient server problem (503). A 503 tells the provider to retry for
+    // days against a destination that can never succeed.
+    if (!env || !env.PADDLE_WEBHOOK_SECRET) return json({ ok: false, error: 'webhook not configured' }, 401);
     if (!(await paddleVerifySignature(env, rawBody, sigPaddle))) return json({ ok: false, error: 'invalid signature' }, 401);
     return paddleApplyWebhook(env, rawBody);
   }
   if (sigLS) {
-    if (!env || !env.LEMONSQUEEZY_WEBHOOK_SECRET) return json({ ok: false, error: 'webhook not configured' }, 503);
+    // Wave 8.13: same rule for a legacy delivery to a retired destination.
+    if (!env || !env.LEMONSQUEEZY_WEBHOOK_SECRET) return json({ ok: false, error: 'webhook not configured' }, 401);
     if (!(await lsVerifySignature(env, rawBody, sigLS))) return json({ ok: false, error: 'invalid signature' }, 401);
     return lsApplyWebhook(env, rawBody);
   }
